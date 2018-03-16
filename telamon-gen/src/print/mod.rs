@@ -364,7 +364,6 @@ fn bits_type(num_values: usize) -> &'static str {
 #[cfg(test)]
 /// Printing for test structures.
 mod test {
-    use ir;
     use ir::test::{EvalContext, StaticCond};
     use itertools::Itertools;
     use print;
@@ -398,23 +397,8 @@ mod test {
     /// Test the replace helper.
     #[test]
     fn replace() {
-        let _ = ::env_logger::init();
+        let _ = ::env_logger::try_init();
         let out = ENGINE.template_render("{{replace \"foobar\" foo=\"bar\"}}", &()).unwrap();
         assert_eq!(out, "barbar");
-    }
-
-    /// Test replace on set accessor printing.
-    #[test]
-    fn id_getter() {
-        let _ = ::env_logger::init();
-        let keys = std::iter::once((ir::SetDefKey::IdGetter, "$item.id()".to_string()));
-        let set_def = ir::SetDef::new("Foos".to_string(), None, keys.collect(), vec![]);
-        let set = ir::Set::new(&std::rc::Rc::new(set_def));
-        #[derive(Serialize)] struct Data<'a> { set: ir::Set, item: &'a str };
-        let data = Data { set, item: "my_foo" };
-
-        let template = "{{> set.id_getter set item=\"my_foo\"}}";
-        let out = ENGINE.template_render(template, &data).unwrap();
-        assert_eq!(out, "my_foo.id()");
     }
 }

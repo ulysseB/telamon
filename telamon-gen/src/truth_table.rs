@@ -294,7 +294,7 @@ pub mod test {
     /// Ensures the generation of filters works when no rule is present.
     #[test]
     fn no_rules() {
-        ::env_logger::init().unwrap_or(());
+        let _ = ::env_logger::try_init();
         let mut ir_desc = ir::IrDesc::default();
         ir::test::gen_enum("A", 3, &mut ir_desc);
         ir::test::gen_enum("B", 3, &mut ir_desc);
@@ -307,7 +307,7 @@ pub mod test {
     /// Ensures the generation of static condition works correctly.
     #[test]
     fn no_inputs_filter() {
-        ::env_logger::init().unwrap_or(());
+        let _ = ::env_logger::try_init();
         let mut ir_desc = ir::IrDesc::default();
         ir::test::gen_enum("A", 4, &mut ir_desc);
         let enum_ = ir_desc.get_enum("EnumA");
@@ -320,7 +320,7 @@ pub mod test {
     /// Ensures the generation of filters with a single input works correctly.
     #[test]
     fn single_input_filter() {
-        ::env_logger::init().unwrap_or(());
+        let _ = ::env_logger::try_init();
         let mut ir_desc = ir::IrDesc::default();
         ir::test::gen_enum("A", 4, &mut ir_desc);
         ir::test::gen_enum("B", 4, &mut ir_desc);
@@ -337,7 +337,7 @@ pub mod test {
     /// Snsures the generation of filters with multiple inputs works correctly.
     #[test]
     fn two_inputs_filter() {
-        ::env_logger::init().unwrap_or(());
+        let _ = ::env_logger::try_init();
         let mut ir_desc = ir::IrDesc::default();
         ir::test::gen_enum("A", 4, &mut ir_desc);
         ir::test::gen_enum("B", 3, &mut ir_desc);
@@ -388,6 +388,7 @@ pub mod test {
     #[test]
     fn normalize_equal_inputs() {
         let mut constraint = Constraint {
+            restrict_fragile: true,
             vars: vec![],
             inputs: vec![mk_input("enum_b"), mk_input("enum_b")],
             conditions: vec![mk_enum_cond(0, &["B_0"]), mk_enum_cond(1, &["B_1"])],
@@ -408,7 +409,7 @@ pub mod test {
 
     /// Create an enum condition.
     fn mk_enum_cond(input: usize, values: &[&str]) -> ir::Condition {
-        let values = values.iter().map(|s| s.into::<RcStr>()).collect();
+        let values = values.iter().map(|&s| s.into()).collect();
         ir::Condition::Enum {
             input: input,
             values: values,
@@ -422,7 +423,7 @@ pub mod test {
         ir::Rule {
             conditions: conds,
             alternatives: mk_enum_values_set(enum_, alternatives),
-            set_constraints: Vec::new(),
+            set_constraints: ir::SetConstraints::default(),
         }
     }
 

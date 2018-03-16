@@ -4,10 +4,9 @@ use libc;
 use telamon::codegen;
 use telamon::device;
 use telamon::ir;
-use telamon::explorer::{Candidate, WatchMessage};
+use telamon::explorer::Candidate;
 use telamon::search_space::{SearchSpace, DimKind};
 use telamon::model::{self, HwPressure};
-use std;
 use std::f64;
 use std::io::Write;
 use utils::*;
@@ -90,11 +89,9 @@ impl<'a> device::Context<'a> for Context {
 
     fn get_param(&self, _: &str) -> &device::Argument { &ONE }
 
-    fn async_eval<'b, 'c>(&self,
-                          sender: std::sync::mpsc::SyncSender<WatchMessage>,
-                          _: usize,
+    fn async_eval<'b, 'c>(&self, _: usize,
                           inner: &(Fn(&mut device::AsyncEvaluator<'b, 'c>) + Sync)) {
-        inner(&mut Evaluator { sender, phantom: PhantomData });
+        inner(&mut Evaluator { phantom: PhantomData });
     }
 
     fn bind_param(&mut self, param: &ir::Parameter, value: Box<device::Argument + 'a>) {
@@ -119,15 +116,15 @@ impl device::Argument for FakeArray {
 
 /// A fake asynchronous evaluator.
 struct Evaluator<'a, 'b> {
-    sender: std::sync::mpsc::SyncSender<WatchMessage>,
     phantom: PhantomData<(&'a (), &'b ())>,
 }
 
-impl<'a, 'b, 'c > device::AsyncEvaluator<'a, 'c> for Evaluator<'a, 'b> where 'a: 'b, 'c: 'b {
-    fn add_kernel(&mut self, candidate: Candidate<'a>, callback: device::AsyncCallback<'a, 'c>) {
+impl<'a, 'b, 'c > device::AsyncEvaluator<'a, 'c> for Evaluator<'a, 'b>
+where 'a: 'b, 'c: 'b {
+    fn add_kernel(&mut self, candidate: Candidate<'a>,
+                  callback: device::AsyncCallback<'a, 'c>) {
         // Try to compile the function to check it works.
         codegen::Function::build(&candidate.space);
-        self.sender.send(WatchMessage { score: 1.0, cpt: 1}).unwrap();
-        (callback)(candidate, 1.0);
+        (callback)(candidate, 1.0, 1);
     }
 }

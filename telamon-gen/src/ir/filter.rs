@@ -741,7 +741,7 @@ pub mod test {
 
     /// Creates a set from of values.
     pub fn mk_enum_values_set(enum_: &str, values: &[&str]) -> ir::ValueSet {
-        let values = values.iter().map(|x| x.into::<RcStr>()).collect();
+        let values = values.iter().map(|&x| x.into()).collect();
         ir::ValueSet::enum_values(enum_.into(), values)
     }
 

@@ -85,14 +85,13 @@ cuda = []
 default = []
 format_exh = []
 mppa = []
-[profile.bench]
-#panic = "abort"
 
-[profile.dev]
-opt-level = 0
+[profile.bench]
+panic = "abort"
 
 [profile.release]
-#panic = "abort"
+panic = "abort"
+
 [replace."rustlex:0.3.3"]
 path = "lib/rustlex"
 
@@ -101,5 +100,4 @@ members = [
     "telamon-gen",
     "telamon-utils",
     "telamon-gen/cc_tests",
-    "lib/rustlex",
 ]

@@ -381,11 +381,11 @@ pub mod test {
         }
 
         pub fn eval_rule_aux(&self, conditions: &'a [Condition],
-                          set_constraints: &'a [(Variable, Set)],
-                          alternatives: ValueSet,
-                          valid_values: &mut ValueSet) {
-            for &(var, ref t) in set_constraints {
-                if !self.var_sets[&var].is_subset_of(t) { return; }
+                             set_constraints: &'a SetConstraints,
+                             alternatives: ValueSet,
+                             valid_values: &mut ValueSet) {
+            for &(var, ref t) in set_constraints.constraints() {
+                if !(&self.var_sets[&var]).is_subset_of(t) { return; }
             }
             if conditions.iter().all(|c| self.eval_cond(c)) {
                 valid_values.intersect(alternatives);
