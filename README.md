@@ -6,7 +6,7 @@ and evaluates them on a given input to find the optimal implementation.
 Internally, it uses a performance model to trim the search space. The
 performance model is guaranteed to never drop good candidates.
 
-## Compilation
+## Building
 
 Telamon requires a nightly version of the rust compiler and of the rust package
 manager.  Both can be installed using the following command:
@@ -22,8 +22,7 @@ git submodule update --init --recursive
 
 CUDA libraries (cuda, curand, cupti, cublas) must be installed and available in
 the include and library paths (C_INCLUDE_PATH, LIBRARY_PATH and
-LD_LIBRARY_PATH). Alternatively, use the flag `--no-default-features` to
-disable CUDA support. Telamon is compiled using:
+LD_LIBRARY_PATH).
 ```bash
 $ cargo build
 ```
