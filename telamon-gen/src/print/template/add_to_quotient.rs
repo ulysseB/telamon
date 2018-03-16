@@ -10,4 +10,4 @@ if store.get_old_{{counter_name}}({{>args}}diff).max == 0 {
     }
     let new_objs = {{add_to_set}};
     Ok((new_objs, vec![]))
-} else { Ok((NewObjs::default(), vec![])) }
+} else { Ok((ir::NewObjs::default(), vec![])) }

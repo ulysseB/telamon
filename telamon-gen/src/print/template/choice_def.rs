@@ -4,7 +4,7 @@
 
 {{#if doc}}///{{doc}}{{/if}}
 #[allow(dead_code)]
-mod {{name}} {
+pub mod {{name}} {
     use super::ir;
     #[allow(unused_imports)]
     use super::ir::prelude::*;

@@ -31,7 +31,7 @@ impl DomainStore {
 
     /// Allocates the choices when new objects are created.
     #[allow(unused_variables, unused_mut)]
-    pub fn alloc(&mut self, ir_instance: &ir::Function, new_objs: &NewObjs) {
+    pub fn alloc(&mut self, ir_instance: &ir::Function, new_objs: &ir::NewObjs) {
         {{#each partial_iterators~}}
             {{#>iter_new_objects this.[0]~}}
                 {{>alloc this.[1].choice arg_names=this.[1].arg_names}}
@@ -46,13 +46,13 @@ impl DomainStore {
 #[derive(Default)]
 pub struct DomainDiff {
     {{#each choices}}
-        {{name}}: HashMap<{{>choice_ids this}}, ({{value_type}}, {{value_type}})>,
+        pub {{name}}: HashMap<{{>choice_ids this}}, ({{value_type}}, {{value_type}})>,
     {{/each}}
 }
 
 impl DomainDiff {
     /// Indicates if the `DomainDiff` does not holds any modification.
-    fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         {{~#if choices~}}
             {{#each choices~}}
                 {{~#unless @first}} && {{/unless~}}
@@ -62,7 +62,7 @@ impl DomainDiff {
     }
     {{#each choices}}
         /// Removes all the modifications of '{name}' and returns them.
-        fn pop_{{name}}_diff(&mut self)
+        pub fn pop_{{name}}_diff(&mut self)
             -> Option<(({{>choice_ids}}), {{value_type}}, {{value_type}})> {
             self.{{name}}.keys().cloned().next().map(|k| {
                 let (old, new) = unwrap!(self.{{name}}.remove(&k));

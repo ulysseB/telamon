@@ -1,5 +1,6 @@
+use super::ir;
 #[allow(unused_imports)]
-use self::ir::prelude::*;
+use super::ir::prelude::*;
 #[allow(unused_imports)]
 use std;
 use std::sync::Arc;
@@ -17,7 +18,7 @@ use utils::*;
 {{>actions this}}
 
 /// Propagate the changes stored in `diff`.
-fn propagate_changes(diff: &mut DomainDiff, ir_instance: &mut Arc<ir::Function>,
+pub fn propagate_changes(diff: &mut DomainDiff, ir_instance: &mut Arc<ir::Function>,
                      store: &mut DomainStore) -> Result<(), ()> {
     {{~#each choices}}
         while let Some((({{#each arguments}}{{this.[0]}}, {{/each}}), old, new)) =
@@ -32,7 +33,6 @@ fn propagate_changes(diff: &mut DomainDiff, ir_instance: &mut Arc<ir::Function>,
 }
 
 /// Applies a set of decisions to the domain and propagate the changes.
-#[cfg(feature="gen_applicators")]
 pub fn apply_decisions(actions: Vec<Action>, ir_instance: &mut Arc<ir::Function>,
                    domain: &mut DomainStore) -> Result<(), ()> {
     let mut diff = DomainDiff::default();
@@ -45,13 +45,15 @@ pub fn apply_decisions(actions: Vec<Action>, ir_instance: &mut Arc<ir::Function>
 #[cfg(feature="gen_applicators")]
 fn process_lowering(ir_instance: &mut ir::Function,
                     domain: &mut DomainStore,
-                    new_objs: &NewObjs,
+                    new_objs: &ir::NewObjs,
                     diff: &mut DomainDiff) -> Result<Vec<Action>, ()> {
     let mut actions = Vec::new();
     domain.alloc(ir_instance, &new_objs);
     actions.extend(init_domain_partial(domain, ir_instance, &new_objs, diff)?);
     Ok(actions)
 }
+#[cfg(not(feature="gen_applicators"))]
+use super::process_lowering;
 
 
 
@@ -89,9 +91,9 @@ pub fn init_domain(store: &mut DomainStore,
 /// Initializes the part of the `DomainStore` allocated for the given objects with available
 /// choices for each decision.
 #[allow(unused_variables, unused_mut)]
-fn init_domain_partial(store: &mut DomainStore,
+pub fn init_domain_partial(store: &mut DomainStore,
                        ir_instance: &mut ir::Function,
-                       new_objs: &NewObjs,
+                       new_objs: &ir::NewObjs,
                        diff: &mut DomainDiff) -> Result<Vec<Action>, ()> {
     let mut unused_diff = DomainDiff::default();
     // Disable new increments of existing counters.

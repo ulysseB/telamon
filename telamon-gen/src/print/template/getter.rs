@@ -56,7 +56,7 @@ pub fn set_{{name}}(&mut self{{>args_decl}}, mut value: {{value_type}}) {
 /// Restricts the domain of {name} for the given arguments. Put the old value in `diff`
 /// and indicates if the new domain is failed.
 #[allow(unused_mut)]
-fn restrict_{{name}}(&mut self{{>args_decl}}, mut value: {{value_type}},
+pub fn restrict_{{name}}(&mut self{{>args_decl}}, mut value: {{value_type}},
                          diff: &mut DomainDiff) -> Result<(), ()> {
     {{#if is_symmetric~}}
         if {{arguments.[0].[0]}} > {{arguments.[1].[0]}} {

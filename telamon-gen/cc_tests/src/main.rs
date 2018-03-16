@@ -16,6 +16,7 @@ mod ir_gen;
 mod single_enum {
     define_ir!();
     generated_file!(single_enum);
+    use self::single_enum::*;
 
     /// Ensures basic operations on domains are working.
     #[test]
@@ -64,6 +65,7 @@ mod single_enum {
 mod single_conditions {
     define_ir! { trait basic_block; struct dim: basic_block; }
     generated_file!(single_conditions);
+    use self::single_conditions::*;
 
     /// Ensures IS and IS NOT conditions are working.
     #[test]
@@ -142,6 +144,7 @@ mod single_conditions {
 mod multiple_conditions {
     define_ir! { trait basic_block; struct inst: basic_block; struct dim: basic_block; }
     generated_file!(multiple_conditions);
+    use self::multiple_conditions::*;
 
     /// Ensures conditions work correctly when referencing multiple enums.
     #[test]
@@ -253,6 +256,7 @@ mod multiple_conditions {
 mod filter_strength {
     define_ir! { trait basic_block; struct dim: basic_block; }
     generated_file!(filter_strength);
+    use self::filter_strength::*;
 
     /// Ensures a merge filter can be strictly more powerful than two separate filters.
     #[test]
@@ -274,6 +278,7 @@ mod filter_strength {
 mod symmetry {
     define_ir! { trait basic_block; struct dim: basic_block; }
     generated_file!(symmetry);
+    use self::symmetry::*;
 
     /// Ensures the inverse function works correctly.
     #[test]
@@ -350,6 +355,8 @@ mod symmetry {
 mod on_change {
     define_ir! { trait basic_block; struct inst: basic_block; struct dim: basic_block; }
     generated_file!(on_change);
+    use self::on_change::*;
+    use std::sync::Arc;
 
     /// Ensures `on_change` generates the correct actions.
     #[test]
@@ -446,6 +453,8 @@ mod on_change {
 mod counter_def {
     define_ir! { trait basic_block; struct inst: basic_block; struct dim: basic_block; }
     generated_file!(counter_def);
+    use self::counter_def::*;
+    use std::sync::Arc;
 
     /// Ensures a counter counts the number of objects correctly.
     #[test]
@@ -549,6 +558,8 @@ mod counter_def {
 mod counter_alloc {
     define_ir! { struct inst; struct dim; }
     generated_file!(counter_alloc);
+    use self::counter_alloc::*;
+    use std::sync::Arc;
 
     /// Ensures counters and increments are correctly handled when a new object is allocated.
     #[test]
@@ -632,6 +643,8 @@ mod counter_alloc {
 mod counter_cond {
     define_ir! { struct dim; }
     generated_file!(counter_cond);
+    use self::counter_cond::*;
+    use std::sync::Arc;
 
     /// Test counter conditions.
     #[test]
@@ -672,15 +685,17 @@ mod half_counter {
 mod lowering {
     define_ir! { trait basic_block; struct inst: basic_block; struct dim: basic_block; }
     generated_file!(lowering);
+    use self::lowering::*;
+    use std::sync::Arc;
 
     fn test_trigger(fun: &mut ir::Function, _: ir::dim::Id, bb: ir::basic_block::Id)
-            -> Result<(NewObjs, Vec<Action>), ()> {
+            -> Result<(ir::NewObjs, Vec<Action>), ()> {
         ir::basic_block::get(fun, bb).set_condition();
         Ok(Default::default())
     }
 
     fn test_complex_trigger(fun: &mut ir::Function, _: ir::dim::Id, dim: ir::dim::Id)
-        -> Result<(NewObjs, Vec<Action>), ()>
+        -> Result<(ir::NewObjs, Vec<Action>), ()>
     {
         ir::dim::get(fun, dim).set_condition();
         Ok(Default::default())
@@ -766,6 +781,8 @@ mod lowering {
 mod parametric_set {
     define_ir! { struct inst; struct operand[inst]; }
     generated_file!(parametric_set);
+    use self::parametric_set::*;
+    use std::sync::Arc;
 
     /// Ensures constraints on parametric sets are working.
     #[test]
@@ -815,6 +832,8 @@ mod parametric_subset {
         type value_b[param_b reverse value]: value_ab[param];
     }
     generated_file!(parametric_subset);
+    use self::parametric_subset::*;
+    use std::sync::Arc;
 
     /// Test set constraints involving parametric sets.
     #[test]
@@ -894,6 +913,8 @@ mod quotient_set {
         type dim_quotient[inst reverse dim]: dim;
     }
     generated_file!(quotient_set);
+    use self::quotient_set::*;
+    use std::sync::Arc;
 
     /// Callback that adds an instruction to the `InstQuotient` set.
     fn add_inst_to_quotient(fun: &mut ir::Function,

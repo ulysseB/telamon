@@ -187,14 +187,14 @@ mod test {
     /// Ensures `PartialPermutations` works when  k==0.
     #[test]
     fn partial_permutations_k0() {
-        let res = PartialPermutations::new((0..3), 0).collect_vec();
+        let res = PartialPermutations::new(0..3, 0).collect_vec();
         assert_eq!(&res, &[Vec::<usize>::new()]);
     }
 
     /// Ensures `PartialPermutations` works when the number of values equals k.
     #[test]
     fn partial_permutations_kn() {
-        let res = PartialPermutations::new((0..3), 3).collect_vec();
+        let res = PartialPermutations::new(0..3, 3).collect_vec();
         let expected = vec![
             vec![0, 1, 2],
             vec![0, 2, 1],
@@ -217,7 +217,7 @@ mod test {
     /// Ensures `PartialPermuations` works in the general case.
     #[test]
     fn partial_permutations() {
-        let res = PartialPermutations::new((0..5), 3).collect_vec();
+        let res = PartialPermutations::new(0..5, 3).collect_vec();
         let expected = vec![
             vec![0, 1, 2],
             vec![0, 1, 3],

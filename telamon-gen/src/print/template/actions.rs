@@ -9,7 +9,7 @@ pub enum Action {
 }
 
 /// Applies an action to the domain.
-fn apply_action(action: Action, store: &mut DomainStore, diff: &mut DomainDiff)
+pub fn apply_action(action: Action, store: &mut DomainStore, diff: &mut DomainDiff)
         -> Result<(), ()> {
     debug!("applying action {:?}", action);
     match action {

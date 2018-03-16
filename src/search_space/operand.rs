@@ -1,7 +1,7 @@
 //! Handle operands invariants.
 use ir::{self, BasicBlock, DimMapScope};
 use ir::Operand::*;
-use search_space::{Action, DimKind, DimMapping, Order, Domain};
+use search_space::choices::{Action, DimKind, DimMapping, Order, Domain};
 
 /// Generates actions to enforce operands invariants.
 pub fn invariants(fun: &ir::Function, op: &ir::Operand, user: ir::BBId) -> Vec<Action> {

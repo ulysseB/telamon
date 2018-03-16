@@ -5,6 +5,12 @@ mod dim_map;
 mod operand;
 generated_file!(choices);
 
+pub use self::choices::{Action, Bool, DimKind, Domain, DomainStore, InstFlag, Order,
+                        MemSpace};
+
+use self::choices::{apply_action, DomainDiff, init_domain, propagate_changes};
+use std::sync::Arc;
+
 // FIXME: unrolled loops of size 1 should not be allowed
 
 /// A partially specified implementation.
@@ -42,12 +48,7 @@ impl<'a> SearchSpace<'a> {
 
     /// Applies a list of decisions to the domain and propagate constraints.
     pub fn apply_decisions(&mut self, actions: Vec<Action>) -> Result<(), ()> {
-        let ref mut diff = DomainDiff::default();
-        for action in actions { apply_action(action, &mut self.domain, diff)?; }
-        while !diff.is_empty() {
-            propagate_changes(diff, &mut self.ir_instance, &mut self.domain)?;
-        }
-        Ok(())
+        choices::apply_decisions(actions, &mut self.ir_instance, &mut self.domain)
     }
 
     /// Triggers a layout lowering.
@@ -64,12 +65,12 @@ impl<'a> SearchSpace<'a> {
 /// Update the domain after a lowering.
 fn process_lowering(ir_instance: &mut ir::Function,
                     domain: &mut DomainStore,
-                    new_objs: &NewObjs,
+                    new_objs: &ir::NewObjs,
                     diff: &mut DomainDiff) -> Result<Vec<Action>, ()> {
     let mut actions = Vec::new();
     debug!("adding objects {:?}", new_objs);
     domain.alloc(ir_instance, new_objs);
-    actions.extend(init_domain_partial(domain, ir_instance, new_objs, diff)?);
+    actions.extend(choices::init_domain_partial(domain, ir_instance, new_objs, diff)?);
     // Enforce invariants and call manual triggers.
     for &inst in &new_objs.instructions {
         actions.extend(operand::inst_invariants(ir_instance, ir_instance.inst(inst)));
@@ -79,7 +80,7 @@ fn process_lowering(ir_instance: &mut ir::Function,
 
 /// Trigger to call when two dimensions are merged.
 fn merge_dims(lhs: ir::dim::Id, rhs: ir::dim::Id, ir_instance: &mut ir::Function)
-    -> Result<(NewObjs, Vec<Action>), ()>
+    -> Result<(ir::NewObjs, Vec<Action>), ()>
 {
     debug!("merge {:?} and {:?}", lhs, rhs);
     ir_instance.merge(lhs, rhs);
@@ -88,60 +89,11 @@ fn merge_dims(lhs: ir::dim::Id, rhs: ir::dim::Id, ir_instance: &mut ir::Function
 
 /// Adds a iteration dimension to a basic block.
 fn add_iteration_dim(ir_instance: &mut ir::Function,
-                     bb: ir::BBId, dim: ir::dim::Id) -> NewObjs {
+                     bb: ir::BBId, dim: ir::dim::Id) -> ir::NewObjs {
     debug!("set {:?} as iteration dim of {:?}", dim, bb);
-    let mut new_objs = NewObjs::default();
+    let mut new_objs = ir::NewObjs::default();
     if ir_instance.set_iteration_dim(bb, dim) {
         new_objs.add_iteration_dim(bb, dim);
     }
     new_objs
-}
-
-/// Stores the objects created by a lowering.
-#[derive(Default, Debug)]
-pub struct NewObjs {
-    instructions: Vec<ir::InstId>,
-    dimensions: Vec<ir::dim::Id>,
-    basic_blocks: Vec<ir::BBId>,
-    mem_blocks: Vec<ir::mem::Id>,
-    internal_mem_blocks: Vec<ir::mem::InternalId>,
-    mem_insts: Vec<ir::InstId>,
-    iteration_dims: Vec<(ir::BBId, ir::dim::Id)>,
-}
-
-impl NewObjs {
-    /// Registers a new instruction.
-    fn add_instruction(&mut self, inst: &ir::Instruction) {
-        self.add_bb(inst);
-        self.instructions.push(inst.id());
-    }
-
-    /// Registers a new memory instruction.
-    fn add_mem_instruction(&mut self, inst: &ir::Instruction) {
-        self.add_instruction(inst);
-        self.mem_insts.push(inst.id());
-    }
-
-    /// Registers a new dimension.
-    fn add_dimension(&mut self, dim: &ir::Dimension) {
-        self.add_bb(dim);
-        self.dimensions.push(dim.id());
-    }
-
-    /// Registers a new basic block.
-    fn add_bb(&mut self, bb: &ir::BasicBlock) {
-        self.basic_blocks.push(bb.bb_id());
-        for &dim in bb.iteration_dims() { self.iteration_dims.push((bb.bb_id(), dim)); }
-    }
-
-    /// Sets a dimension as a new iteration dimension.
-    fn add_iteration_dim(&mut self, bb: ir::BBId, dim: ir::dim::Id) {
-        self.iteration_dims.push((bb, dim));
-    }
-
-    /// Registers a new memory block.
-    fn add_mem_block(&mut self, id: ir::mem::InternalId) {
-        self.mem_blocks.push(id.into());
-        self.internal_mem_blocks.push(id);
-    }
 }

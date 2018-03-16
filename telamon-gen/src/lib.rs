@@ -24,7 +24,7 @@ mod constraint;
 mod flat_filter;
 mod ir;
 mod lexer;
-mod parser { generated_file!(parser); }
+generated_file!(parser);
 mod print;
 mod truth_table;
 
