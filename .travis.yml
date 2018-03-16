@@ -1,0 +1,9 @@
+language: rust
+sudo: false
+cache: cargo
+rust:
+  - nightly
+script:
+  - cargo build --verbose --all
+  - cargo test --verbose --all
+  - cd telamon-gen/cc_test && cargo test --verbose --all
