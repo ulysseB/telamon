@@ -1,0 +1,13 @@
+[package]
+name = "telamon-utils"
+version = "1.0.0"
+authors = ["Ulysse Beaugnon <ulysse.beaugnon@ens.fr>"]
+
+[dependencies]
+fnv = "1.0"
+itertools = "0.6"
+linked-list = "0.0.3"
+linked-hash-map = "0.5"
+num = "0.1"
+serde = "1.0"
+serde_derive = "1.0"

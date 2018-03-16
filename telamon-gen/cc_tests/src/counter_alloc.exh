@@ -1,0 +1,41 @@
+set Instruction:
+  item_type = "ir::inst::Obj"
+  id_type = "ir::inst::Id"
+  item_getter = "ir::inst::get($fun, $id)"
+  id_getter = "ir::inst::Obj::id($item)"
+  iterator = "ir::inst::iter($fun)"
+  var_prefix = "inst"
+  new_objs = "$objs.inst"
+end
+
+set Dimension:
+  item_type = "ir::dim::Obj"
+  id_type = "ir::dim::Id"
+  item_getter = "ir::dim::get($fun, $id)"
+  id_getter = "ir::dim::Obj::id($item)"
+  iterator = "ir::dim::iter($fun)"
+  var_prefix = "dim"
+  new_objs = "$objs.dim"
+end
+
+define enum foo($inst in Instruction, $dim in Dimension):
+  value A:
+  value B:
+end
+
+define enum bar($inst in Instruction, $dim in Dimension):
+  value A:
+  value B:
+end
+
+define counter num_foo_a($inst in Instruction):
+  forall $dim in Dimension:
+    sum "1" when:
+      foo($inst, $dim) is A
+end
+
+define internal counter num_bar($inst in Instruction):
+  forall $dim in Dimension:
+    sum "1" when:
+      bar($inst, $dim) is A
+end

@@ -1,0 +1,9 @@
+*.swp
+*.lock
+*.log
+perf.data
+perf.data.old
+target/
+log/
+settings/*
+Settings.toml

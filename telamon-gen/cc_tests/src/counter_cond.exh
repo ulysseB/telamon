@@ -1,0 +1,23 @@
+set Dimension:
+  item_type = "ir::dim::Obj"
+  id_type = "ir::dim::Id"
+  item_getter = "ir::dim::get($fun, $id)"
+  id_getter = "ir::dim::Obj::id($item)"
+  iterator = "ir::dim::iter($fun)"
+  var_prefix = "dim"
+  new_objs = "$objs.dim"
+end
+
+define enum foo($dim in Dimension):
+  value A:
+  value B:
+end
+
+define counter bounded_counter():
+  forall $dim in Dimension:
+    sum "1" when:
+      foo($dim) is A
+end
+
+require bounded_counter() >= "1"
+require bounded_counter() < "3"

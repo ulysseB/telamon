@@ -1,0 +1,49 @@
+Guido Tack Thesis:
+  * There exists a maximum propagator for a constraint.
+  * Truth table ? Montanari (1974), Mackworth (1977), Freuder (1982) and Dechter and Pearl (1987).
+  * Existence of a unique fix point when applying propagators
+  * My propagator are idempotent, monotones and (unique) optimal for the constraints they
+    - Can be defined as a domain relaxation (4.1).
+    - Is called a Domain-Complete propagator
+    - Domain completness can be generalized to any Domain System (A domain representation)
+  * My propagators only restrict one variable
+  * The order in which propagators are applied does not matter if they are monotonic
+    - Monotonicity => confluence
+  * I cannot discard my propagators once they are blind to changes
+
+Improvements
+* Propagation system only keep track of the propagators to run ?
+  - Apply actions directly in the filter
+  - Returns the filters to re-apply
+  - must be compatible with couters
+* Keep track of the modifications but apply actions directly
+  - Less variables than propagators
+  - But multiple actions can lead to the same propagator
+* Fixed values do not need to be filtered any more
+  - They are taken into consideration by filtering other values.
+
+May answer:
+* Implementation of the truth-table -> code pass
+* Implementation of the [Constraint]->truth-table pass
+* Decide which constraints to merge
+* Diff-based representation of the choice set
+* Remove the symmetry
+* Order in which to apply choices
+  - Fail-first heuristics ? (Haralick and Elliott, 1980)
+* Domain approximation for integers
+* Algorithm to generate domain-complete propagators
+* Define domain-completness for any domain system.
+* Can we create a sigle propagator to work on multiple variables at once ?
+  - Avoid duplicating the code
+  - May not improve performance
+* Stagin on propagators ?
+* Add guards to only trigger a prapagator if it can distinguish between before and after
+  - Related to the impact computation
+
+
+Names to concepts
+* A filter -> A propagator
+* The choice set -> A domain
+  - The initial domain is given by the user
+* A dead-end -> a failed domain
+* When all fiters are applied -> a stable domain

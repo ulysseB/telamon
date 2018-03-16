@@ -1,0 +1,77 @@
+set BasicBlock:
+  item_type = "ir::basic_block::Obj"
+  id_type = "ir::basic_block::Id"
+  item_getter = "ir::basic_block::get($fun, $id)"
+  id_getter = "ir::basic_block::Obj::id($item)"
+  iterator = "ir::basic_block::iter($fun)"
+  var_prefix = "bb"
+  new_objs = "$objs.basic_block"
+end
+
+set Instruction subsetof BasicBlock:
+  item_type = "ir::inst::Obj"
+  id_type = "ir::inst::Id"
+  item_getter = "ir::inst::get($fun, $id)"
+  id_getter = "ir::inst::Obj::id($item)"
+  iterator = "ir::inst::iter($fun)"
+  var_prefix = "inst"
+  new_objs = "$objs.inst"
+  from_superset = "ir::inst::from_superset($fun, $item)"
+end
+
+set Dimension subsetof BasicBlock:
+  disjoint: Instruction
+  item_type = "ir::dim::Obj"
+  id_type = "ir::dim::Id"
+  item_getter = "ir::dim::get($fun, $id)"
+  id_getter = "ir::dim::Obj::id($item)"
+  iterator = "ir::dim::iter($fun)"
+  var_prefix = "dim"
+  new_objs = "$objs.dim"
+  from_superset = "ir::dim::from_superset($fun, $item)"
+end
+
+define enum order($lhs in BasicBlock, $rhs in BasicBlock):
+  antisymmetric:
+    BEFORE -> AFTER
+    INNER -> OUTER
+  value BEFORE:
+  value AFTER:
+  value INNER:
+  value OUTER:
+  value MERGED:
+end
+
+// MERGED is transitive
+require forall $lhs in BasicBlock:
+  forall $rhs in BasicBlock:
+    forall $other in BasicBlock:
+      order($lhs, $other) is not MERGED || order($other, $rhs) is not MERGED
+        || order($lhs, $rhs) is MERGED
+
+quotient InstQuotient of $inst in Instruction:
+  repr_inst = true / order is MERGED
+  item_type = "ir::inst::Obj"
+  id_type = "ir::inst::Id"
+  item_getter = "ir::inst::get($fun, $id)"
+  id_getter = "ir::inst::Obj::id($item)"
+  iterator = "ir::inst_quotient::iter($fun)"
+  var_prefix = "inst_repr"
+  new_objs = "$objs.inst_quotient"
+  from_superset = "ir::inst_quotient::from_superset($fun, $item)"
+  add_to_set = "add_inst_to_quotient($fun, $item)"
+end
+
+quotient DimQuotient($inst in Instruction) of $dim in Dimension:
+  active_dim = order($inst, $dim) is INNER / order is MERGED
+  item_type = "ir::dim::Obj"
+  id_type = "ir::dim::Id"
+  item_getter = "ir::dim::get($fun, $id)"
+  id_getter = "ir::dim::Obj::id($item)"
+  iterator = "ir::dim_quotient::iter($fun, ir::inst::Obj::id($inst))"
+  var_prefix = "dim_repr"
+  new_objs = "$objs.dim_quotient"
+  from_superset = "ir::dim_quotient::from_superset($fun, $inst, $item)"
+  reverse forall $dim in Dimension = "ir::dim_quotient::reverse($fun, $dim.id())"
+  add_to_set = "add_dim_to_quotient($fun, $inst, $item)"
+end

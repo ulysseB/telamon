@@ -1,0 +1,33 @@
+set Instruction:
+  item_type = "ir::inst::Obj"
+  id_type = "ir::inst::Id"
+  item_getter = "ir::inst::get($fun, $id)"
+  id_getter = "ir::inst::Obj::id($item)"
+  iterator = "ir::inst::iter($fun)"
+  var_prefix = "inst"
+  new_objs = "$objs.inst"
+end
+
+set Operand($inst in Instruction):
+  item_type = "ir::operand::Obj"
+  id_type = "ir::operand::Id"
+  item_getter = "ir::operand::get($fun, $inst, $id)"
+  id_getter = "$item.id()"
+  iterator = "ir::operand::iter($fun, ir::inst::Obj::id($inst))"
+  var_prefix = "op"
+  new_objs = "$objs.operand"
+end
+
+define enum foo($inst in Instruction, $op in Operand($inst)):
+  value A:
+  value B:
+end
+
+define enum bar($inst in Instruction):
+  value C:
+  value D:
+end
+
+require forall $inst in Instruction:
+  forall $op in Operand($inst):
+      bar($inst) is C || foo($inst, $op) is A

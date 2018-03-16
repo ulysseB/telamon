@@ -1,0 +1,57 @@
+set BasicBlock:
+  item_type = "ir::basic_block::Obj"
+  id_type = "ir::basic_block::Id"
+  item_getter = "ir::basic_block::get($fun, $id)"
+  id_getter = "ir::basic_block::Obj::id($item)"
+  iterator = "ir::basic_block::iter($fun)"
+  var_prefix = "bb"
+  new_objs = "$objs.basic_block"
+end
+
+set Dimension subsetof BasicBlock:
+  item_type = "ir::dim::Obj"
+  id_type = "ir::dim::Id"
+  item_getter = "ir::dim::get($fun, $id)"
+  id_getter = "ir::dim::Obj::id($item)"
+  iterator = "ir::dim::iter($fun)"
+  var_prefix = "dim"
+  new_objs = "$objs.dim"
+  from_superset = "ir::dim::from_superset($fun, $item)"
+end
+
+define enum simple_0($bb in BasicBlock):
+  value A:
+  value B:
+end
+
+define enum simple_1($bb in BasicBlock):
+  value A:
+  value B:
+end
+
+require forall $bb in BasicBlock:
+  simple_0($bb) is A || simple_1($bb) is A
+
+define enum forall_0($bb in BasicBlock):
+  value A:
+    requires forall $other in BasicBlock:
+      forall_0($other) is A
+  value B:
+end
+
+define enum type_0($bb in BasicBlock):
+  value A:
+  value B:
+end
+
+define enum type_1($bb in Dimension):
+  value A: requires type_0($bb) is A
+  value B:
+end
+
+define enum type_2($bb in BasicBlock):
+  value A:
+    requires forall $dim in Dimension:
+      type_2($dim) is A
+  value B:
+end

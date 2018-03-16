@@ -1,0 +1,24 @@
+[package]
+authors = ["Ulysse Beaugnon <ulysse.beaugnon@ens.fr>"]
+build = "build.rs"
+name = "telamon-gen-test"
+version = "0.1.0"
+
+[build-dependencies]
+env_logger = "0.5.5"
+
+[build-dependencies.telamon-gen]
+path = "../"
+
+[dependencies]
+env_logger = "0.5.5"
+itertools = "0.7.7"
+log = "0.4.1"
+
+[dependencies.telamon-utils]
+path = "../../telamon-utils"
+
+[features]
+default = ["gen_applicators"]
+gen_applicators = []
+noformat_exh = []

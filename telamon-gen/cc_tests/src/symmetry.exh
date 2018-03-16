@@ -1,0 +1,92 @@
+set BasicBlock:
+  item_type = "ir::basic_block::Obj"
+  id_type = "ir::basic_block::Id"
+  item_getter = "ir::basic_block::get($fun, $id)"
+  id_getter = "ir::basic_block::Obj::id($item)"
+  iterator = "ir::basic_block::iter($fun)"
+  var_prefix = "bb"
+  new_objs = "$objs.basic_block"
+end
+
+/// Test symmetric enums.
+define enum enum_1($lhs in BasicBlock, $rhs in BasicBlock):
+  symmetric
+  value A:
+  value B:
+end
+
+/// Test anti-symmetric enums.
+define enum enum_2($lhs in BasicBlock, $rhs in BasicBlock):
+  value BEFORE:
+  value AFTER:
+  value MERGED:
+  value INNER:
+  value OUTER:
+  antisymmetric:
+    BEFORE -> AFTER
+    INNER -> OUTER
+end
+
+/// Test symmetric normalization within a constraint.
+define enum enum_3($lhs in BasicBlock, $rhs in BasicBlock):
+  symmetric
+  value A:
+  value B:
+  value C:
+end
+
+require forall $lhs in BasicBlock:
+  forall $rhs in BasicBlock:
+    enum_3($lhs, $rhs) is A || enum_3($rhs, $lhs) is B
+
+/// Test symmetric normalization accross constraints.
+define enum enum_4($lhs in BasicBlock, $rhs in BasicBlock):
+  symmetric
+  value A:
+  value B:
+  value C:
+end
+
+require forall $lhs in BasicBlock:
+  forall $rhs in BasicBlock:
+    enum_4($lhs, $rhs) is A | B
+
+require forall $lhs in BasicBlock:
+  forall $rhs in BasicBlock:
+    enum_4($rhs, $lhs) is B | C
+
+/// Test anti-symmetric normaliztion within a constraint.
+define enum enum_5($lhs in BasicBlock, $rhs in BasicBlock):
+  value BEFORE:
+  value AFTER:
+  value MERGED:
+  value INNER:
+  value OUTER:
+  antisymmetric:
+    BEFORE -> AFTER
+    INNER -> OUTER
+end
+
+require forall $lhs in BasicBlock:
+  forall $rhs in BasicBlock:
+    enum_5($lhs, $rhs) == enum_5($rhs, $lhs)
+
+/// Test anti-symmetric normalization accross constraints.
+define enum enum_6($lhs in BasicBlock, $rhs in BasicBlock):
+  value BEFORE:
+  value AFTER:
+  value MERGED:
+  value INNER:
+  value OUTER:
+  antisymmetric:
+    BEFORE -> AFTER
+    INNER -> OUTER
+end
+
+require forall $lhs in BasicBlock:
+  forall $rhs in BasicBlock:
+    enum_6($lhs, $rhs) is BEFORE | MERGED | INNER
+
+require forall $lhs in BasicBlock:
+  forall $rhs in BasicBlock:
+    enum_6($rhs, $lhs) is BEFORE | MERGED | OUTER

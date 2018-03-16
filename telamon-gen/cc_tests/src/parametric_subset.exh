@@ -1,0 +1,118 @@
+set Params:
+  item_type = "ir::param::Obj"
+  id_type = "ir::param::Id"
+  item_getter = "ir::param::get($fun, $id)"
+  id_getter = "ir::param::Obj::id($item)"
+  iterator = "ir::param::iter($fun)"
+  var_prefix = "param"
+  new_objs = "$objs.param"
+end
+
+set ParamsA subsetof Params:
+  item_type = "ir::param_a::Obj"
+  id_type = "ir::param_a::Id"
+  item_getter = "ir::param_a::get($fun, $id)"
+  id_getter = "ir::param_a::Obj::id($item)"
+  iterator = "ir::param_a::iter($fun)"
+  var_prefix = "param_a"
+  new_objs = "$objs.param_a"
+  from_superset = "ir::param_a::from_superset($fun, $item)"
+end
+
+set ParamsB subsetof Params:
+  item_type = "ir::param_b::Obj"
+  id_type = "ir::param_b::Id"
+  item_getter = "ir::param_b::get($fun, $id)"
+  id_getter = "ir::param_b::Obj::id($item)"
+  iterator = "ir::param_b::iter($fun)"
+  var_prefix = "param_b"
+  new_objs = "$objs.param_b"
+  from_superset = "ir::param_b::from_superset($fun, $item)"
+end
+
+set Values:
+  item_type = "ir::value::Obj"
+  id_type = "ir::value::Id"
+  item_getter = "ir::value::get($fun, $id)"
+  id_getter = "ir::value::Obj::id($item)"
+  iterator = "ir::value::iter($fun)"
+  var_prefix = "val"
+  new_objs = "$objs.value"
+end
+
+set ValuesAB($param in Params) subsetof Values:
+  item_type = "ir::value::Obj"
+  id_type = "ir::value::Id"
+  item_getter = "ir::value::get($fun, $id)"
+  id_getter = "ir::value::Obj::id($item)"
+  iterator = "ir::value_ab::iter($fun, ir::param::Obj::id($param))"
+  var_prefix = "value_ab"
+  new_objs = "$objs.value_ab"
+  from_superset = "ir::value_ab::from_superset($fun, $param, $item)"
+  reverse forall $val in Values = "ir::value_ab::reverse($fun, $val.id())"
+end
+
+set ValuesA($param in ParamsA) subsetof ValuesAB($param):
+  item_type = "ir::value::Obj"
+  id_type = "ir::value::Id"
+  item_getter = "ir::value::get($fun, $id)"
+  id_getter = "ir::value::Obj::id($item)"
+  iterator = "ir::value_a::iter($fun, ir::param::Obj::id($param))"
+  var_prefix = "value_a"
+  new_objs = "$objs.value_a"
+  from_superset = "ir::value_a::from_superset($fun, $param, $item)"
+  reverse forall $val in Values = "ir::value_a::reverse($fun, $val.id())"
+end
+
+set ValuesB($param in ParamsB) subsetof ValuesAB($param):
+  item_type = "ir::value::Obj"
+  id_type = "ir::value::Id"
+  item_getter = "ir::value::get($fun, $id)"
+  id_getter = "ir::value::Obj::id($item)"
+  iterator = "ir::value_b::iter($fun, ir::param::Obj::id($param))"
+  var_prefix = "value_b"
+  new_objs = "$objs.value_b"
+  from_superset = "ir::value_b::from_superset($fun, $param, $item)"
+  reverse forall $val in Values = "ir::value_b::reverse($fun, $val.id())"
+end
+
+define enum param_choice($param in Params):
+  value A:
+  value B:
+end
+
+define enum value_choice($val in Values):
+  value A:
+  value B:
+end
+
+define enum param_value_choice($param in Params, $val in Values):
+  value A:
+  value B:
+end
+
+define enum param_value_choice_2($param in Params, $val in Values):
+  value A:
+  value B:
+end
+
+define enum value_ab_choice($param in Params, $val in ValuesAB($param)):
+  value A:
+  value B:
+end
+
+require forall $param in ParamsA:
+  forall $val in ValuesAB($param):
+    param_choice($param) is A || value_ab_choice($param, $val) is A
+
+require forall $param in Params:
+  forall $val in ValuesAB($param):
+    param_value_choice($param, $val) is A || value_ab_choice($param, $val) is A
+
+require forall $param in Params:
+  forall $val in ValuesAB($param):
+    param_value_choice($param, $val) is A || value_choice($val) is A
+
+require forall $param in ParamsA:
+  forall $val in ValuesAB($param):
+    param_value_choice_2($param, $val) is A || value_choice($val) is A

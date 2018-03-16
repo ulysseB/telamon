@@ -1,0 +1,202 @@
+//! Lalrpop parser for constraints description.
+use ast;
+use ir;
+use lexer::Token;
+use utils::*;
+
+grammar;
+
+pub ast: ast::Ast = { statement* => ast::Ast { statements: <> } };
+
+statement: ast::Statement = {
+    <doc: doc?> set <name: set_ident> <arg: ("(" <var_def> ")")?>
+            <superset: (subsetof <set_ref>)?> ":"
+            <disjoint: set_disjoint?>
+            <keys: set_def_map*> end => {
+        let disjoint = disjoint.unwrap_or(Vec::new());
+        ast::Statement::SetDef { name, doc, arg, superset, keys, disjoint, quotient: None }
+    },
+    <doc: doc?> quotient <name: set_ident> <arg: ("(" <var_def> ")")?>
+        of <dividend: var_def> ":"
+        <representant: choice_ident> "=" <conditions: list<condition, and>> "/"
+        <equiv: choice_ident> is <equiv_cond: value_set>
+        <disjoint: set_disjoint?> <keys: set_def_map*> end =>
+    {
+        let superset = Some(dividend.set.clone());
+        let equiv_cond = equiv_cond.into_iter().map(RcStr::new).collect();
+        let quotient = Some(ast::Quotient {
+            item: dividend,
+            equiv_relation: (equiv, equiv_cond),
+            conditions,
+            representant: RcStr::new(representant),
+        });
+        let disjoint = disjoint.unwrap_or(Vec::new());
+        ast::Statement::SetDef { name, doc, arg, superset, keys, disjoint, quotient }
+    },
+    <doc: doc?> define enum_ <name: choice_ident> "(" <vars: choice_vars> ")" ":"
+        <stmts: enum_stmt*> end => {
+        ast::Statement::EnumDef {
+            name: name,
+            doc: doc,
+            variables: vars,
+            statements: stmts,
+        }
+    },
+    trigger <foralls: (forall <var_def> ":")*> <code: code> when
+        <conditions: non_empty_list<condition, and>> =>
+    {
+        ast::Statement::TriggerDef { foralls, conditions, code }
+    },
+    <doc: doc?> define <visibility: counter_visibility?> counter <name: choice_ident>
+        "(" <vars: choice_vars> ")" ":" <body: counter_body> end =>
+    {
+        let name = RcStr::new(name);
+        let visibility = visibility.unwrap_or(ir::CounterVisibility::Full);
+        ast::Statement::CounterDef { name, doc, vars, visibility, body, }
+    },
+    require <constraint> => ast::Statement::Require(<>),
+};
+
+set_def_map: (ir::SetDefKey, Option<ast::VarDef>, String) = {
+    <key: set_def_key> <var: (forall <var_def>)?> "=" <val: code> => (key, var, val),
+};
+
+set_disjoint: Vec<String> = {
+    disjoint ":" <non_empty_list<set_ident, ",">> => <>
+};
+
+choice_vars = { list<var_def, ","> };
+
+var_def: ast::VarDef = {
+    <name: var> in_ <set: set_ref> => {
+        ast::VarDef { name: RcStr::new(name), set }
+    },
+};
+
+set_ref: ast::SetRef = {
+    <name: set_ident> <var: ("(" <var> ")")?> => {
+        ast::SetRef { name: RcStr::new(name), var: var.map(RcStr::new) }
+    }
+};
+
+enum_stmt: ast::EnumStatement = {
+    <doc: doc?> value <name: val_ident> ":" <reqs: (requires <constraint>)*> => {
+        ast::EnumStatement::Value(name, doc, reqs)
+    },
+    <doc: doc?> alias <name: val_ident> "=" <set: value_set> ":"
+            <reqs: (requires <constraint>)*> => {
+        ast::EnumStatement::Alias(name, doc, set, reqs)
+    },
+    symmetric => ast::EnumStatement::Symmetric,
+    antisymmetric ":" <(<val_ident> "->" <val_ident>)*> => {
+        ast::EnumStatement::AntiSymmetric(<>)
+    },
+};
+
+counter_body: ast::CounterBody = {
+    <base: (base <code>)?>
+    <iter_vars: (forall <var_def> ":")*> <kind: counter_kind> <value: counter_val> when ":"
+        <conditions: condition*> =>
+    {
+        let base = base.unwrap_or(kind.zero().to_string());
+        ast::CounterBody { base, kind, iter_vars, value, conditions }
+    }
+};
+
+counter_val: ast::CounterVal = {
+    code => ast::CounterVal::Code(<>),
+    choice_instance => ast::CounterVal::Counter(<>),
+};
+
+value_set = { non_empty_list<val_ident, "|"> };
+
+constraint: ast::Constraint = {
+    <foralls: (forall <var_def> ":")*> <conds: (non_empty_list<condition, "||">)*> => {
+        ast::Constraint::new(foralls, conds)
+    },
+};
+
+condition: ast::Condition = {
+    <lhs: choice_instance> is <is: not?> <rhs: value_set> => {
+        let rhs = rhs.into_iter().map(RcStr::new).collect();
+        ast::Condition::Is { lhs: lhs, rhs: rhs, is: is.is_none() }
+    },
+    <lhs: choice_instance> <op: cmp_op> <rhs: choice_instance> => {
+        ast::Condition::CmpInput { lhs: lhs, rhs: rhs, op: op }
+    },
+    <lhs: choice_instance> <op: cmp_op> <rhs: code> => {
+        ast::Condition::CmpCode { lhs, rhs: RcStr::new(rhs), op }
+    },
+    code => ast::Condition::Code(RcStr::new(<>), false),
+    boolean => ast::Condition::Bool(<>),
+};
+
+choice_instance: ast::ChoiceInstance = {
+    <name: choice_ident> "(" <vars: list<var, ",">> ")" => {
+        let vars = vars.into_iter().map(RcStr::new).collect();
+        ast::ChoiceInstance { name: RcStr::new(name), vars: vars }
+    },
+};
+
+#[inline]
+non_empty_list<T, SEP>: Vec<T> = {
+    <v: (<T> SEP)*> <e: T> => {
+        let mut v = v;
+        v.push(e);
+        v
+    }
+};
+
+list<T, SEP>: Vec<T> = {
+  non_empty_list<T, SEP>? => { <>.unwrap_or(Vec::new()) }
+};
+
+extern {
+    enum Token {
+        choice_ident => Token::ChoiceIdent(<String>),
+        val_ident => Token::ValueIdent(<String>),
+        set_ident => Token::SetIdent(<String>),
+        var => Token::Var(<String>),
+        code => Token::Code(<String>),
+        doc => Token::Doc(<String>),
+        boolean => Token::Bool(<bool>),
+        counter_kind => Token::CounterKind(<ir::CounterKind>),
+        cmp_op => Token::CmpOp(<ir::CmpOp>),
+        set_def_key => Token::SetDefKey(<ir::SetDefKey>),
+        counter_visibility => Token::CounterVisibility(<ir::CounterVisibility>),
+
+        alias => Token::Alias,
+        antisymmetric => Token::AntiSymmetric,
+        base => Token::Base,
+        counter => Token::Counter,
+        define => Token::Define,
+        end => Token::End,
+        enum_ => Token::Enum,
+        forall => Token::Forall,
+        in_ => Token::In,
+        is => Token::Is,
+        not => Token::Not,
+        require => Token::Require,
+        requires => Token::Requires,
+        symmetric => Token::Symmetric,
+        trigger => Token::Trigger,
+        value => Token::Value,
+        when => Token::When,
+        set => Token::Set,
+        subsetof => Token::SubsetOf,
+        disjoint => Token::Disjoint,
+        and => Token::And,
+        of => Token::Of,
+        quotient => Token::Quotient,
+
+        ":" => Token::Colon,
+        "," => Token::Comma,
+        "(" => Token::LParen,
+        ")" => Token::RParen,
+        "|" => Token::BitOr,
+        "||" => Token::Or,
+        "=" => Token::Equal,
+        "->" => Token::Arrow,
+        "/" => Token::Divide,
+    }
+}

@@ -1,0 +1,30 @@
+[package]
+authors = ["Ulysse Beaugnon <ulysse.beaugnon@ens.fr>"]
+build = "build.rs"
+name = "telamon-gen"
+version = "1.0.0"
+
+[[bin]]
+doc = false
+name = "cli_gen"
+
+[build-dependencies]
+lalrpop = "0.14.0"
+
+[dependencies]
+env_logger = "0.5.5"
+handlebars = "0.28.0"
+itertools = "0.7.7"
+lalrpop-util = "0.14.0"
+lazy_static = "1.0.0"
+log = "0.4.1"
+regex = "0.2.9"
+rustfmt = "0.10.0"
+rustlex = "0.3.3"
+serde = "1.0.32"
+serde_derive = "1.0.32"
+serde_json = "1.0.11"
+topological-sort = "0.1.0"
+
+[dependencies.telamon-utils]
+path = "../telamon-utils"

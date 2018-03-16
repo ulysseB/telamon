@@ -1,0 +1,17 @@
+.version 3.1
+.target sm_{sm_major}{sm_minor}
+.address_size {addr_size}
+
+.entry {name}(
+  {params}
+)
+.reqntid {num_thread}
+{{
+  {var_decls}
+  {ld_params}
+  {idx_loads}
+  {mem_decls}
+  {init}
+  {body}
+  ret;
+}}

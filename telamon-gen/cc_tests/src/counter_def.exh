@@ -1,0 +1,78 @@
+set BasicBlock:
+  item_type = "ir::basic_block::Obj"
+  id_type = "ir::basic_block::Id"
+  item_getter = "ir::basic_block::get($fun, $id)"
+  id_getter = "ir::basic_block::Obj::id($item)"
+  iterator = "ir::basic_block::iter($fun)"
+  var_prefix = "bb"
+  new_objs = "$objs.basic_block"
+end
+
+set Instruction subsetof BasicBlock:
+  item_type = "ir::inst::Obj"
+  id_type = "ir::inst::Id"
+  item_getter = "ir::inst::get($fun, $id)"
+  id_getter = "ir::inst::Obj::id($item)"
+  iterator = "ir::inst::iter($fun)"
+  var_prefix = "inst"
+  new_objs = "$objs.inst"
+  from_superset = "ir::inst::from_superset($fun, $item)"
+end
+
+set Dimension subsetof BasicBlock:
+  disjoint: Instruction
+  item_type = "ir::dim::Obj"
+  id_type = "ir::dim::Id"
+  item_getter = "ir::dim::get($fun, $id)"
+  id_getter = "ir::dim::Obj::id($item)"
+  iterator = "ir::dim::iter($fun)"
+  var_prefix = "dim"
+  new_objs = "$objs.dim"
+  from_superset = "ir::dim::from_supetset($fun, $item)"
+end
+
+define counter simple_counter($inst in Instruction):
+  base "3"
+  forall $dim in Dimension:
+    sum "1" when:
+end
+
+define enum foo($dim in Dimension):
+  value A:
+  value B:
+end
+
+define enum bar($inst in Instruction):
+  value A:
+  value B:
+end
+
+define counter counter_single_cond($inst in Instruction):
+  forall $dim in Dimension:
+    sum "1" when:
+      foo($dim) is A
+end
+
+define counter counter_base($lhs in BasicBlock, $rhs in BasicBlock):
+  forall $dim in Dimension:
+    mul "2" when:
+      foo($dim) is A
+end
+
+define counter counter_of_counter($bb in BasicBlock):
+  forall $inst in Instruction:
+    sum counter_base($inst, $bb) when:
+      bar($inst) is A
+end
+
+// Test a counter based on a symmetric condition.
+define enum symm_enum($lhs in Dimension, $rhs in Dimension):
+  symmetric
+  value A:
+  value B:
+end
+
+define counter counter_of_symm($dim in Dimension):
+  forall $other in Dimension:
+    sum "1" when: symm_enum($dim, $other) is A
+end

@@ -1,0 +1,382 @@
+// TODO(cc_perf): expose reduce instructions in a separate set
+// FIXME: shared memory is not forbidden when the dimensions of the tmp mem are unsized
+// - solution: a value object, superset of memblock, with a location in REG | SHARED | GLOBAL
+
+set BasicBlocks:
+  item_type = "ir::BasicBlock"
+  id_type = "ir::BBId"
+  item_getter = "$fun.block($id)"
+  id_getter = "$item.bb_id()"
+  iterator = "$fun.blocks()"
+  var_prefix = "bb"
+  new_objs = "$objs.basic_blocks"
+end
+
+set Instructions subsetof BasicBlocks:
+  item_type = "ir::Instruction"
+  id_type = "ir::InstId"
+  item_getter = "$fun.inst($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.insts()"
+  var_prefix = "inst"
+  from_superset = "$item.as_inst()"
+  new_objs = "$objs.instructions"
+end
+
+set MemInsts subsetof Instructions:
+  item_type = "ir::Instruction"
+  id_type = "ir::InstId"
+  item_getter = "$fun.inst($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.mem_insts()"
+  var_prefix = "inst"
+  from_superset = "$item.as_mem_inst()"
+  new_objs = "$objs.mem_insts"
+end
+
+set Dimensions subsetof BasicBlocks:
+  disjoint: Instructions
+  item_type = "ir::Dimension"
+  id_type = "ir::dim::Id"
+  item_getter = "$fun.dim($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.dims()"
+  var_prefix = "dim"
+  from_superset = "$item.as_dim()"
+  new_objs = "$objs.dimensions"
+end
+
+set MemBlocks:
+  item_type = "ir::mem::Block"
+  id_type = "ir::mem::Id"
+  item_getter = "$fun.mem_block($id)"
+  id_getter = "$item.mem_id()"
+  iterator = "$fun.mem_blocks()"
+  var_prefix = "mem"
+  new_objs = "$objs.mem_blocks"
+end
+
+set InternalMemBlocks subsetof MemBlocks:
+  item_type = "ir::mem::InternalBlock"
+  id_type = "ir::mem::InternalId"
+  item_getter = "$fun.internal_mem_block($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.internal_mem_blocks()"
+  var_prefix = "mem"
+  from_superset = "$item.as_internal()"
+  new_objs = "$objs.internal_mem_blocks"
+end
+
+quotient IterationDims($bb in BasicBlocks) of $dim in Dimensions:
+  is_iteration_dim = order($dim, $bb) is OUTER / order is MERGED
+  item_type = "ir::Dimension"
+  id_type = "ir::dim::Id"
+  item_getter = "$fun.dim($id)"
+  id_getter = "$item.id()"
+  iterator = "$bb.iteration_dims().iter().map(|&d| $fun.dim(d))"
+  var_prefix = "iter_dim"
+  new_objs = "$objs.iteration_dims"
+  from_superset = "$bb.iteration_dims().get(&$item.id()).map(|_| $item)"
+  reverse forall $dim in Dimensions = "$dim.iterated().map(|bb| $fun.block(bb))"
+  add_to_set = "add_iteration_dim($fun, $bb, $item)"
+end
+
+/// Specifies how iteration dimensions are implemented.
+define enum dim_kind($dim in Dimensions):
+  /// The dimension is implemented as a regular loop.
+  value LOOP:
+  /// The dimension is fully unrolled.
+  value UNROLL:
+    requires "$dim.size().is_constant()"
+    // It doesn't makes sens to unroll outer loops.
+    requires forall $other_dim in Dimensions:
+      order($other_dim, $dim) is not INNER || dim_kind($other_dim) is VECTOR | UNROLL
+  /// The dimension is implemented by using a vector instruction.
+  value VECTOR:
+    requires "$dim.size().is_constant()"
+    requires forall $other_dim in Dimensions:
+      order($dim, $other_dim) is not OUTER
+    requires forall $inst in Instructions:
+      order($dim, $inst) is not OUTER || "$inst.is_vectorizable($dim)"
+  /// The dimension is mapped to a block dimension on the device.
+  value BLOCK:
+    requires forall $other_dim in Dimensions:
+      dim_kind($other_dim) is BLOCK || order($dim, $other_dim) is OUTER
+    requires forall $other in BasicBlocks:
+      order($dim, $other) is NESTED | MERGED
+  /// Outermost thread dimension (reverse CUDA convention).
+  value THREAD_X:
+    requires forall $other in Dimensions:
+      order($dim, $other) is not INNER || dim_kind($other) is not THREAD
+  /// Middle thread dimension.
+  value THREAD_Y:
+    requires num_thread_x($dim) > "0"
+    requires forall $other in Dimensions:
+      order($dim, $other) is not INNER || dim_kind($other) is not THREAD_Y | THREAD_Z
+  /// Innermost thread dimension (reverse CUDA convention).
+  value THREAD_Z:
+    requires num_thread_y($dim) > "0"
+    requires forall $other in Dimensions:
+      order($dim, $other) is not INNER || dim_kind($other) is not THREAD_Z
+  /// The dimension is mapped to a thread dimension on the device.
+  alias THREAD = THREAD_X | THREAD_Y | THREAD_Z:
+    requires "$dim.size().as_int().is_some()"
+  /// The dimension is parallel.
+  alias PARALLEL = BLOCK | THREAD | VECTOR:
+  /// The dimension is sequential.
+  alias SEQUENTIAL = LOOP | UNROLL:
+end
+
+/// Indicates where a memory block is located.
+define enum mem_space($mem in MemBlocks):
+  /// The block is in the device RAM.
+  value GLOBAL:
+    requires forall $inst in MemInsts:
+      "unwrap!($inst.operator().mem_used()) != $mem.mem_id()"
+        || inst_flag($inst) is MEM_GLOBAL
+  /// The block is in the memory shared between the threads of a block.
+  value SHARED:
+    requires "$mem.as_internal().is_some()"
+    requires forall $inst in MemInsts:
+      "unwrap!($inst.operator().mem_used()) != $mem.mem_id()"
+        || inst_flag($inst) is MEM_SHARED
+end
+
+require forall $mem in InternalMemBlocks:
+    "$mem.is_private() && $mem.base_size().is_some()"
+
+/// Specifies the version of an instruction to use.
+define enum inst_flag($inst in MemInsts):
+  /// Access the global memory using both L1 and L2 cache. Coherence is not guaranteed
+  /// between blocks.
+  value MEM_CA:
+    requires "$fun.device().supports_l1_access()"
+  /// Access the global memory using the L2 cache.
+  value MEM_CG:
+    requires "$fun.device().supports_l2_access()"
+  /// Access the global memory without using caches.
+  value MEM_CS:
+  /// Access the global memory using the read-only cache. Coherence is not guaranteed.
+  value MEM_NC:
+    requires "$inst.operator().supports_nc_access()"
+    requires "$fun.device().supports_nc_access()"
+  /// Access the shared memory.
+  value MEM_SHARED:
+  /// Access the global memory.
+  alias MEM_GLOBAL = MEM_CA | MEM_CG | MEM_CS | MEM_NC:
+  /// Ensure coherency between memory accesses.
+  alias MEM_COHERENT = MEM_SHARED | MEM_CG | MEM_CS:
+  /// Ensure coherency within a block between memory accesses.
+  alias MEM_BLOCK_COHERENT = MEM_COHERENT | MEM_CA:
+end
+
+/// Defines how two basic blocks are ordered.
+define enum order($lhs in BasicBlocks, $rhs in BasicBlocks):
+  antisymmetric:
+    BEFORE -> AFTER
+    INNER -> OUTER
+  /// $lhs is executed before $rhs.
+  value BEFORE:
+  /// $lhs is executed after $rhs.
+  value AFTER:
+  /// $lhs is nested inside $rhs.
+  value INNER:
+  /// $rhs is nested outside $rhs.
+  value OUTER:
+  /// $lhs and $rhs are merged.
+  value MERGED:
+
+  /// $lhs and $rhs are nested.
+  alias NESTED = INNER | OUTER:
+  /// $lhs and $rhs are sequentially ordered.
+  alias ORDERED = BEFORE | AFTER:
+end
+
+// Constraint triangles of orders
+require forall $lhs in BasicBlocks:
+  forall $mid in BasicBlocks:
+    forall $rhs in BasicBlocks:
+      // BEFORE is transitive
+      order($lhs, $rhs) is BEFORE || order($lhs, $mid) is not BEFORE
+        || order($mid, $rhs) is not BEFORE
+      // INNER is transitive
+      order($lhs, $rhs) is INNER || order($lhs, $mid) is not INNER
+        || order($mid, $rhs) is not INNER
+      // OUTER preseve the sequential ordering
+      order($lhs, $rhs) == order($lhs, $mid) || order($lhs, $mid) is not ORDERED
+        || order($mid, $rhs) is not OUTER
+      // Two blocks outer a third one are nested.
+      order($lhs, $mid) is not OUTER || order($rhs, $mid) is not OUTER
+        || order($lhs, $rhs) is NESTED | MERGED
+      // MERGED requires similar orderings on both sides
+      order($lhs, $rhs) is not MERGED || order($rhs, $mid) == order($lhs, $mid)
+
+// Intruction orders
+require forall $inst in Instructions:
+  forall $bb in BasicBlocks:
+    order($inst, $bb) is INNER | ORDERED
+
+require forall $inst in Instructions:
+  forall $dim in Dimensions:
+    "$inst.iteration_dims().contains(&$dim.id())" || "!$inst.has_side_effects()"
+      || is_iteration_dim($inst, $dim) is FALSE
+
+require forall $lhs in Dimensions:
+  forall $rhs in Dimensions:
+    // Merge constraitns
+    "$lhs.size() == $rhs.size()" || order($lhs, $rhs) is not MERGED
+    dim_kind($lhs) == dim_kind($rhs) || order($lhs, $rhs) is not MERGED
+    // Threads mapped to the same slot must have the same size
+    dim_kind($lhs) is not THREAD || dim_kind($lhs) != dim_kind($rhs)
+      || "$lhs.size() == $rhs.size()"
+
+/// Counts the number of thread dimensions.
+// TODO(cc_perf): try to rely exclusively on the counter instead of thread slots.
+
+// FIXME: replace with a late counter
+define internal counter num_thread_x($bb in BasicBlocks):
+  forall $dim in Dimensions:
+    sum "1" when:
+      order($dim, $bb) is OUTER
+      dim_kind($dim) is THREAD_X
+end
+
+// FIXME: replace with a late counter
+define internal counter num_thread_y($bb in BasicBlocks):
+  forall $dim in Dimensions:
+    sum "1" when:
+      order($dim, $bb) is OUTER
+      dim_kind($dim) is THREAD_Y
+end
+
+// FIXME: replace with a late counter
+define internal counter num_thread_z($bb in BasicBlocks):
+  forall $dim in Dimensions:
+    sum "1" when:
+      order($dim, $bb) is OUTER
+      dim_kind($dim) is THREAD_Z
+end
+
+require forall $lhs in Instructions:
+  forall $rhs in Instructions:
+    num_thread_x($lhs) <= "0" || num_thread_x($rhs) > "0"
+    num_thread_y($lhs) <= "0" || num_thread_y($rhs) > "0"
+    num_thread_z($lhs) <= "0" || num_thread_z($rhs) > "0"
+
+/// Specifies the valid mappings between two dimensions.
+define enum dim_mapping($lhs in Dimensions, $rhs in Dimensions):
+  symmetric
+  /// The dimensions cannot be mapped through registers.
+  value NOT_MAPPED:
+  /// Values may be transmitted using multiple registers within a thread
+  value UNROLL_MAP:
+    requires dim_kind($lhs) is UNROLL | VECTOR || order($lhs, $rhs) is MERGED
+  /// Values may be transmitted using one register for each thread.
+  value THREAD_MAP:
+    requires dim_kind($lhs) is THREAD
+    requires dim_kind($lhs) == dim_kind($rhs)
+  /// Values are transmitted through registers.
+  alias MAPPED = UNROLL_MAP | THREAD_MAP:
+    requires "$lhs.size() == $rhs.size()"
+end
+
+// Thread dimensions are grouped together
+require forall $outer in Dimensions:
+  forall $inner in Dimensions:
+    forall $mid in Dimensions:
+      order($outer, $mid) is not OUTER || order($mid, $inner) is not OUTER
+        || dim_kind($outer) is not THREAD || dim_kind($inner) is not THREAD
+        || dim_kind($mid) is THREAD_Y
+
+// A basic block nested with a thread dimension is nested or merged with the other
+require forall $bb in BasicBlocks:
+  forall $nested_thread in Dimensions:
+    forall $other_thread in Dimensions:
+      order($bb, $nested_thread) is not NESTED || dim_kind($nested_thread) is not THREAD
+        || order($other_thread, $nested_thread) is not NESTED
+        || dim_kind($other_thread) is not THREAD
+        || order($bb, $other_thread) is not ORDERED
+
+/// Limits the number of nested unrolled loop.
+define half counter unroll_factor($inst in Instructions):
+  forall $dim in Dimensions:
+    mul "$dim.size().as_int().unwrap_or(1)" when:
+      is_iteration_dim($inst, $dim) is TRUE
+      dim_kind($dim) is UNROLL
+end
+
+/// Limits the number of block dimensions.
+define half counter num_block_dims($inst in Instructions):
+  forall $dim in Dimensions:
+    sum "1" when:
+      is_iteration_dim($inst, $dim) is TRUE
+      dim_kind($dim) is BLOCK
+end
+
+/// Limits the number of threads.
+define half counter num_threads($inst in Instructions):
+  forall $dim in Dimensions:
+    mul "$dim.size().as_int().unwrap_or(1)" when:
+      is_iteration_dim($inst, $dim) is TRUE
+      dim_kind($dim) is THREAD
+end
+
+require forall $inst in Instructions:
+  unroll_factor($inst) <= "$fun.device().max_unrolling()"
+  num_block_dims($inst) <= "$fun.device().max_block_dims()"
+  num_threads($inst) <= "$fun.device().max_threads()"
+
+/// Counts the number on instructions nested in each dimension.
+define half counter num_nested_inst($dim in Dimensions):
+  forall $inst in Instructions:
+    sum "1" when:
+      order($dim, $inst) is OUTER
+end
+
+require forall $dim in Dimensions:
+  dim_kind($dim) is not VECTOR || num_nested_inst($dim) <= "1"
+
+require forall $dim in Dimensions:
+  forall $init in Instructions:
+    forall $reduce in Instructions:
+      "!$reduce.is_reduction_common_dim($init.id(), $dim.id())"
+        || is_iteration_dim($reduce, $dim) is FALSE || order($dim, $init) is OUTER
+
+// dim_map lowering.
+trigger forall $lhs in Dimensions:
+  forall $rhs in Dimensions:
+    "dim_map::dim_not_mapped($lhs, $rhs, ir_instance)"
+      when dim_mapping($lhs, $rhs) is NOT_MAPPED && "$lhs.id() < $rhs.id()"
+
+// Layout Lowering.
+trigger forall $lhs in Dimensions:
+  forall $rhs in Dimensions:
+    "dim_map::dim_not_merged($lhs, $rhs, ir_instance)"
+      when order($lhs, $rhs) is not MERGED && "$lhs.id() < $rhs.id()"
+
+// Merge lowering
+trigger forall $lhs in Dimensions:
+  forall $rhs in Dimensions:
+    "merge_dims($lhs, $rhs, ir_instance)"
+      when order($lhs, $rhs) is MERGED && "$lhs.id() > $rhs.id()"
+
+/// Computes the size of each memory block.
+// TODO(cleanup): use dependent sets to only iterate on necessary pairs.
+// FIXME: remove cubic choice choices
+define half counter mem_size($mem in InternalMemBlocks):
+  base "$mem.base_size().unwrap_or(1)"
+  forall $lhs in Dimensions:
+    forall $rhs in Dimensions:
+      mul "$lhs.size().as_int().unwrap_or(1)" when:
+        "$mem.maps_dims($lhs.id(), $rhs.id())"
+        order($lhs, $rhs) is not MERGED
+end
+
+/// The total amount of shared memory used.
+define half counter shared_mem_used():
+  forall $mem in InternalMemBlocks:
+    sum mem_size($mem) when: mem_space($mem) is SHARED
+end
+
+// Cannot use more shared memory that what is available.
+require shared_mem_used() <= "$fun.device().shared_mem()"

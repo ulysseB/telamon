@@ -1,0 +1,11 @@
+/// An enum with three values and no constraints.
+define enum foo():
+  // Test comment
+  value A:
+  /// Multiligne doc 1
+  /// Multiligne doc 2
+  value B:
+  value C:
+  alias AB = A | B:
+  alias BC = B | C:
+end
