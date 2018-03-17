@@ -161,7 +161,7 @@ fn induction_var_nested() {
     let _ = builder.st(&"out", &ind_var, pattern);
 
     check_candidates(builder.get(), &context, || {
-       let res = out.0.to_host();
+       let res = out.0.copy_to_host();
        // 1*(k/4 - 1) + (k/4)*(4 - 1) + k*(5 - 1) = 5*k - 1 = 59
        assert_eq!(res[0], 59);
     });
@@ -190,7 +190,7 @@ fn induction_var_simple() {
     let _ = builder.st(&"out", &ind_var, pattern);
 
     check_candidates(builder.get(), &context, || {
-       let res = out.0.to_host();
+       let res = out.0.copy_to_host();
        assert_eq!(res[0], 8);
     });
 }
@@ -204,7 +204,7 @@ fn global_vector_load() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let in_array = executor.allocate_array::<i32>(D0_LEN as usize);
-    in_array.from_host(&((0..D0_LEN).map(|i| i as i32+10).collect_vec()));
+    in_array.copy_from_host(&((0..D0_LEN).map(|i| i as i32+10).collect_vec()));
     let out_array = executor.allocate_array::<i32>(1);
     let (input, output);
 
@@ -232,7 +232,7 @@ fn global_vector_load() {
     builder.st_ex(&"output", &ld, true, output_pattern, InstFlag::MEM_CS);
 
     check_candidates(builder.get(), &context, || {
-        let res = output.0.to_host()[0];
+        let res = output.0.copy_to_host()[0];
         assert_eq!(res, 13);
     });
 }
@@ -260,7 +260,7 @@ fn size_cast() {
     let _ = builder.st(&"out", &ind_var, pattern);
 
     check_candidates(builder.get(), &context, || {
-       let res = out.0.to_host();
+       let res = out.0.copy_to_host();
        assert_eq!(res[0], 8);
     });
 }

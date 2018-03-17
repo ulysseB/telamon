@@ -25,7 +25,7 @@ impl<'a, T> Array<'a, T> {
     }
 
     /// Copies the array to the host.
-    pub fn to_host(&self) -> Vec<T> {
+    pub fn copy_to_host(&self) -> Vec<T> {
         let mut vec = Vec::with_capacity(self.len);
         unsafe {
             vec.set_len(self.len);
@@ -36,7 +36,7 @@ impl<'a, T> Array<'a, T> {
     }
 
     /// Copies an array from the host.
-    pub fn from_host(&self, vec: &[T]) {
+    pub fn copy_from_host(&self, vec: &[T]) {
         assert_eq!(self.len, vec.len());
         unsafe {
             let host_ptr = vec.as_ptr() as *const libc::c_void;
@@ -85,8 +85,8 @@ pub fn randomize_f32(array: &Array<f32>) {
 /// Compares two arrays and returns maximum relative distance between two elements.
 pub fn compare_f32(lhs: &Array<f32>, rhs: &Array<f32>) -> f32 {
     assert_eq!(lhs.len, rhs.len);
-    let lhs_vec = lhs.to_host();
-    let rhs_vec = rhs.to_host();
+    let lhs_vec = lhs.copy_to_host();
+    let rhs_vec = rhs.copy_to_host();
     lhs_vec.iter().zip(&rhs_vec).map(|(x, y)| {
         2.0*(x - y)/(x.abs() + y.abs())
     }).fold(0.0, f32::max)
