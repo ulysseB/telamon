@@ -7,4 +7,8 @@ script:
   - cargo check --features=cuda --verbose --all
   - cargo test --verbose --all
 notifications:
-  slack: parkas-team:0twCBUENCd9xqXn4DEVm0gEX
+  slack:
+    rooms:
+      - parkas-team:0twCBUENCd9xqXn4DEVm0gEX
+    on_success: change
+    on_failure: always
