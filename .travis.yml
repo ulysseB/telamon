@@ -5,6 +5,7 @@ rust:
   - nightly
 script:
   - cargo check --features=cuda --verbose --all
+  - cargo build --verbose --all
   - cargo test --verbose --all
 notifications:
   slack:
