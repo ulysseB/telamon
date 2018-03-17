@@ -99,7 +99,7 @@ impl<'a> device::Context<'a> for Context {
     }
 
     fn allocate_array(&mut self, id: ir::mem::Id, _: usize) -> Box<device::Argument> {
-        Box::new(FakeArray { id: id })
+        Box::new(FakeArray { id })
     }
 }
 

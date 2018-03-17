@@ -4,7 +4,7 @@ cache: cargo
 rust:
   - nightly
 script:
-  - cargo build --verbose --all
+  - cargo check --features=cuda --verbose --all
   - cargo test --verbose --all
 notifications:
   slack: parkas-team:0twCBUENCd9xqXn4DEVm0gEX

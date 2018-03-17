@@ -209,7 +209,7 @@ fn global_vector_load() {
     let (input, output);
 
     let mut context = cuda::Context::new(&executor);
-    let ref signature = {
+    let signature = {
         let mut builder = helper::SignatureBuilder::new("sgemm", &mut context);
         input = cuda::ArrayArg(in_array, builder.alloc_array_id());
         output = cuda::ArrayArg(out_array, builder.alloc_array_id());
@@ -273,7 +273,7 @@ fn perf_model_0() {
     let in_array = executor.allocate_array::<i32>(1024 * 1024);
     let input;
     let mut context = cuda::Context::new(&executor);
-    let ref signature = {
+    let signature = {
         let mut builder = helper::SignatureBuilder::new("test", &mut context);
         input = cuda::ArrayArg(in_array, builder.alloc_array_id());
         builder.param("n", 16);

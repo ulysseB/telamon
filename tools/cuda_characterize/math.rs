@@ -29,7 +29,7 @@ impl LinearRegression {
             ss_reg += (x * slope + offset - y).powi(2);
             ss_tot += (y_mean - y).powi(2);
         };
-        LinearRegression { slope: slope, offset: offset, error_r2: 1.0 - ss_reg/ss_tot }
+        LinearRegression { slope, offset, error_r2: 1.0 - ss_reg/ss_tot }
     }
 }
 
@@ -41,6 +41,4 @@ impl fmt::Display for LinearRegression {
 }
 
 /// Computes the mean value of a slice.
-pub fn mean(x: &[f64]) -> f64 {
-    x.iter().sum::<f64>()/(x.len() as f64)    
-}
+pub fn mean(x: &[f64]) -> f64 { x.iter().sum::<f64>()/(x.len() as f64) }

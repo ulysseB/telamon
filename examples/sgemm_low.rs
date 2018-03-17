@@ -37,12 +37,12 @@ const DATA_TYPE: ir::Type = ir::Type::F(32);
 //      > take cvt instructions into account in the perf model
 
 fn main() {
-    let _ = env_logger::init();
+    env_logger::init();
     let executor = cuda::Executor::init();
     let mut context = cuda::Context::new(&executor);
     // Declares the function signature and the arguments to use for the evaluation.
     let (a, b, c);
-    let ref signature = {
+    let signature = &{
         let mut builder = helper::SignatureBuilder::new("sgemm", &mut context);
         builder.param("m", M);
         builder.param("n", N);
@@ -55,27 +55,20 @@ fn main() {
         builder.get()
     };
     let device = context.device();
-    let candidates = (0..6).into_par_iter().flat_map(|tile_1| {
-        (0..std::cmp::min(8-tile_1, 5)).into_par_iter().map(move |tile_2| {
-            //warn!("generating search space for T1 = {} and T2 = {}", tile_1, tile_2);
+    let candidates = (1..6).into_par_iter().flat_map(|tile_1| {
+        (1..std::cmp::min(8-tile_1, 5)).into_par_iter().map(move |tile_2| {
             gen_gemm(signature, device, 1u32 << tile_1, 1u32 << tile_2, a, b, c)
         })
     }).collect();
-    /*println!("{:?}", explorer::count_candidates_par(vec![gen_gemm(&base, 16, 4)], 24));
-    for (lhs, rhs) in explorer::model_accuracy(&context, gen_gemm(&base, 16, 4)) {
-        println!("{},{}", lhs, rhs);
-    }*/
-    //println!("{:?}", explorer::count_candidates_par(candidates, 24));
-    common::gen_best(candidates, &context);
     //let candidate = gen_gemm(signature, device, 32, 4, a, b, c);
-    //explorer::test_model(&context, candidate);
+    common::gen_best(candidates, &context);
 }
 
 fn gen_gemm<'a>(signature: &'a ir::Signature, device: &'a telamon::device::Device,
                 tile_1: u32, tile_2: u32, a: ir::mem::Id, b: ir::mem::Id, c: ir::mem::Id)
         -> SearchSpace<'a> {
 
-    let mut builder = helper::Builder::new(&signature, device);
+    let mut builder = helper::Builder::new(signature, device);
     let tile_1_size = builder.cst_size(tile_1);
     let tile_2_size = builder.cst_size(tile_2);
     let data_len = DATA_TYPE.len_byte().unwrap();

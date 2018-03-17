@@ -11,7 +11,7 @@ impl PerfModelTest for EmptyLoop {
     fn name() -> &'static str { "latency_empty_loop" }
 
     fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 1000000i32);
+        builder.param("n", 1_000_000i32);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -37,7 +37,7 @@ impl PerfModelTest for TwoEmptyLoop {
         let d0 = builder.open_dim_ex(size.clone(), DimKind::LOOP);
         let d1 = builder.open_dim_ex(size, DimKind::LOOP);
         builder.mov(&0i32);
-        TwoEmptyLoop { d0: d0, d1: d1 }
+        TwoEmptyLoop { d0, d1 }
     }
 
     fn get_actions(&self) -> Vec<Action> {
@@ -54,7 +54,7 @@ impl PerfModelTest for InstChain {
     fn name() -> &'static str { "inst_chain" }
 
     fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 1000000i32);
+        builder.param("n", 1_000_000i32);
         builder.param("x", 1i32);
         builder.array("out", 8);
     }
@@ -200,7 +200,7 @@ impl PerfModelTest for OrderedThreadDims {
     }
 }
 
-/// Test the latency in presence of a DimMap.
+/// Test the latency in presence of point to point communication between loops.
 pub struct DimMap;
 
 impl PerfModelTest for DimMap {

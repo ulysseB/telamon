@@ -162,7 +162,7 @@ impl PerfModelTest for SharedLoad {
         let out_pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
         builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::MEM_CS);
         builder.order(&ptr_zero, &idx, Order::BEFORE);
-        SharedLoad { d0: d0, d1: d1, d2: d2, d3: d3 }
+        SharedLoad { d0, d1, d2, d3 }
     }
 
     fn get_actions(&self) -> Vec<Action> {
@@ -209,7 +209,7 @@ impl PerfModelTest for VectorSharedLoad {
         let out_pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
         builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::MEM_CS);
 
-        VectorSharedLoad { d0: d0, d1: d1, d2: d2, d3: d3 }
+        VectorSharedLoad { d0, d1, d2, d3 }
     }
 
     fn get_actions(&self) -> Vec<Action> {

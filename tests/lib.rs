@@ -34,7 +34,7 @@ fn two_add() {
     gen_best(&context, {
         let mut builder = helper::Builder::new(&signature, context.device());
         builder.add(&"a", &2);
-        builder.add(&3.14f32, &1.0f32);
+        builder.add(&std::f32::consts::PI, &1.0f32);
         builder.get()
     });
 }

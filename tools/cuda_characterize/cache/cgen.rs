@@ -5,6 +5,7 @@ use telamon::helper::{Builder, Reduce};
 use telamon::search_space::{DimKind, InstFlag, Order, SearchSpace};
 
 /// Increment the values stored in an array.
+#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
 pub fn incr_array<'a>(signature: &'a ir::Signature,
                       device: &'a Device,
                       ld_flag: InstFlag,
@@ -26,6 +27,7 @@ pub fn incr_array<'a>(signature: &'a ir::Signature,
 
 /// Load two successive values, add them and store the results at the two locations. Every
 /// location is used in two consecutive iterations of the loop.
+#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
 pub fn add_successive<'a>(signature: &'a ir::Signature,
                           device: &'a Device,
                           ld_flag: InstFlag,
@@ -49,6 +51,7 @@ pub fn add_successive<'a>(signature: &'a ir::Signature,
 }
 
 /// Accumulate the values stored in an array.
+#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
 pub fn acc_array<'a>(signature: &'a ir::Signature,
                      device: &'a Device,
                      ld_flag: InstFlag,
@@ -75,6 +78,7 @@ pub fn acc_array<'a>(signature: &'a ir::Signature,
 }
 
 /// Stores a value every `stride` in `tab`.
+#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
 pub fn write_array<'a>(signature: &'a ir::Signature,
                        device: &'a Device,
                        st_flag: InstFlag,

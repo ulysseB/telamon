@@ -60,7 +60,7 @@ fn ask_confirmation(msg: &str) -> bool {
 }
 
 fn main() {
-    let _ = env_logger::init();
+    env_logger::init();
     let mut opts = Options::new();
     opts.optflag("h", "help", "Print the help menu.");
     opts.optflag("w", "write", "Write the gpu description to the gpu description file.");

@@ -34,12 +34,12 @@ const DATA_TYPE: ir::Type = ir::Type::F(32);
 //      move induction pattern computations around to reduce pressure/improve latency
 
 fn main() {
-    let _ = env_logger::init();
+    env_logger::init();
     let executor = cuda::Executor::init();
     let mut context = cuda::Context::new(&executor);
     // Declares the function signature and the arguments to use for the evaluation.
     let (a, b, c);
-    let ref signature = {
+    let signature = &{
         let mut builder = helper::SignatureBuilder::new("sgemm", &mut context);
         builder.param("m", M);
         builder.param("n", N);
@@ -63,19 +63,19 @@ fn gen_gemm<'a>(signature: &'a ir::Signature, device: &'a telamon::device::Devic
                 tile_1: u32, tile_2: u32, a: ir::mem::Id, b: ir::mem::Id, c: ir::mem::Id)
         -> SearchSpace<'a>
 {
-    let ref mut full_tiling = vec![tile_1, tile_2];
-    let ref mut reduction_tiling = vec![tile_1];
+    let mut full_tiling = vec![tile_1, tile_2];
+    let mut reduction_tiling = vec![tile_1];
     full_tiling.retain(|&x| x > 1);
     reduction_tiling.retain(|&x| x > 1);
 
-    let mut builder = helper::Builder::new(&signature, device);
+    let mut builder = helper::Builder::new(signature, device);
     let size_m = builder.param_size("m");
     let size_n = builder.param_size("n");
     let size_k = builder.param_size("k");
 
     // Load A from global memory.
-    let a_ld_dim_m = builder.open_tiled_dim(size_m, full_tiling);
-    let a_ld_dim_k = builder.open_tiled_dim(size_k, reduction_tiling);
+    let a_ld_dim_m = builder.open_tiled_dim(size_m, &full_tiling);
+    let a_ld_dim_k = builder.open_tiled_dim(size_k, &reduction_tiling);
         let (a_addr, a_pattern) = builder.tensor_access(
             &"a", a, &DATA_TYPE, &[&a_ld_dim_m, &a_ld_dim_k]);
         let a_ld = builder.ld_nc(DATA_TYPE, &a_addr, a_pattern);
@@ -84,7 +84,7 @@ fn gen_gemm<'a>(signature: &'a ir::Signature, device: &'a telamon::device::Devic
 
     // Load B from global memory
     let b_ld_dim_k = builder.open_mapped_dim(&a_ld_dim_k);
-    let b_ld_dim_n = builder.open_tiled_dim(size_n, full_tiling);
+    let b_ld_dim_n = builder.open_tiled_dim(size_n, &full_tiling);
         let (b_addr, b_pattern) = builder.tensor_access(
             &"b", b, &DATA_TYPE, &[&b_ld_dim_k, &b_ld_dim_n]);
         let b_ld = builder.ld_nc(DATA_TYPE, &b_addr, b_pattern);

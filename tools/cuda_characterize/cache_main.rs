@@ -24,6 +24,7 @@ use itertools::Itertools;
 use table::Table;
 
 /// Gather performance counter values and analyse them.
+#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
 fn bench(gpu: &Gpu,
          executor: &Executor,
          bench_choice: i32,
@@ -149,8 +150,7 @@ fn analyse_counters(gpu: &Gpu, raw_table: Table<u64>) -> Table<f64>
     // Round a value v to precision 10^-n
     fn round_n(v: f64, n: i32) -> f64 {
         let prec = (10f64).powi(n);
-        let w = prec*v;
-        return w.round()/prec;
+        (prec*v).round()/prec
     };
     // Computes the division a/b of two unsigned integers without errors
     fn div(a: f64, b: f64) -> f64 {if b == 0f64 {-1f64} else {a/b}};
@@ -168,30 +168,25 @@ fn analyse_counters(gpu: &Gpu, raw_table: Table<u64>) -> Table<f64>
     }
 
     // Computes sum of values on some range of perfcounters
-    fn get_sum(entry: &Vec<u64>, index: &mut u32, range: u32, debug_descr: &str) -> f64{
+    fn get_sum(entry: &[u64], index: &mut u32, range: u32, debug_descr: &str) -> f64{
         let ind = *index as usize;
-        let mut sum = 0f64;
-        if range == 1 {
-            sum = entry[ind] as f64;
-        } else {
+        let sum = entry[ind..ind + range as usize].iter().map(|&x| x as f64).sum();
+        if range != 1 {
             // Compute the sum of the chosen related values
-            for i in ind..(ind + range as usize) {
-                sum += entry[i] as f64;
-            }
             // Check if the values are uniform over the range
             let mut uniform = true;
             for i in ind..(ind + range as usize) {
-                if !is_close(sum, (range as f64) * (entry[i as usize] as f64)) {
+                if !is_close(sum, f64::from(range) * (entry[i as usize] as f64)) {
                     uniform = false;
                 }
             }
             if !uniform {
                 print!("Non uniformity of perfcounters {}: index {}, average {}, values: ",
-                       debug_descr, ind, sum/(range as f64));
+                       debug_descr, ind, sum/f64::from(range));
                 for i in ind..(ind + range as usize) {
                     print!("{}, ", entry[i as usize]);
                 }
-                print!("\n");
+                println!();
             }
         }
         // Update *index
@@ -201,8 +196,8 @@ fn analyse_counters(gpu: &Gpu, raw_table: Table<u64>) -> Table<f64>
     };
 
     // Computes average of values on some range of perfcounters
-    fn get_average(entry: &Vec<u64>, index: &mut u32, range: u32, debug_descr: &str) -> f64 {
-        get_sum(entry, index, range, debug_descr)/(range as f64)
+    fn get_average(entry: &[u64], index: &mut u32, range: u32, debug_descr: &str) -> f64 {
+        get_sum(entry, index, range, debug_descr)/f64::from(range)
     };
 
     // Define offsets for perfcounters indexes
@@ -273,9 +268,11 @@ fn analyse_counters(gpu: &Gpu, raw_table: Table<u64>) -> Table<f64>
 
 
         // Compute the ratio between the data accessed and the size of caches
-        let data_size = loop_size * (ir::Type::F(32).len_byte().unwrap() as f64) as f64;
-        let loop_size_over_l1 = round_n(div(data_size as f64, gpu.l1_cache_size as f64), 5);
-        let loop_size_over_l2 = round_n(div(data_size as f64, gpu.l2_cache_size as f64), 5);
+        let data_size = loop_size * f64::from(ir::Type::F(32).len_byte().unwrap());
+        let loop_size_over_l1 =
+            round_n(div(data_size as f64, f64::from(gpu.l1_cache_size)), 5);
+        let loop_size_over_l2 =
+            round_n(div(data_size as f64, f64::from(gpu.l2_cache_size)), 5);
 
         // Compute the proportion of hits and misses in L1 and L2
         let l1_ld_hit_percent = round_n(div(l1_gbl_load_hit,
@@ -307,8 +304,8 @@ fn analyse_counters(gpu: &Gpu, raw_table: Table<u64>) -> Table<f64>
         for x in &entry[3..11] {
             print!("{:>7}, ",*x/ (reuse_loop as u64));
         }
-        print!("\n");
-        for x in vec![l2_read_misses, l2_write_misses, l2_total_read_queries, l2_total_write_queries, l2_read_l1_queries, l2_write_l1_queries, l2_read_l1_hit, mem_read, mem_write].iter() {
+        println!();
+        for x in &[l2_read_misses, l2_write_misses, l2_total_read_queries, l2_total_write_queries, l2_read_l1_queries, l2_write_l1_queries, l2_read_l1_hit, mem_read, mem_write] {
             print!("{:>7}, ",x/ (reuse_loop as f64));
         }
         println!("]");
@@ -325,7 +322,7 @@ fn analyse_counters(gpu: &Gpu, raw_table: Table<u64>) -> Table<f64>
 
 // Main function, gathering command line options
 fn main() {
-    let _ = env_logger::init();
+    env_logger::init();
     let executor = Executor::init();
     let gpu_name = executor.device_name();
     let gpu = Gpu::from_name(&gpu_name).unwrap();

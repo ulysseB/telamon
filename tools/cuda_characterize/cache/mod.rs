@@ -8,7 +8,7 @@ use itertools::Itertools;
 use table::Table;
 
 /// Cleans a perfcounter name, for a better display
-fn clean_perfcounter_str(s: String) -> String { //TODO(display bench) clean names
+fn clean_perfcounter_str(s: &str) -> String { //TODO(display bench) clean names
     s.replace("Subp", "").replace("Sector","Sct").replace("read", "Rd")
         .replace("write", "Wr").replace("_", "").replace("misses", "Ms")
         .replace("hit", "Hit").replace("fb", "").replace("global", "Gbl")
@@ -17,12 +17,13 @@ fn clean_perfcounter_str(s: String) -> String { //TODO(display bench) clean name
 /// Creates an empty `Table` to hold the given performance counters.
 fn create_table(parameters: &[&str], counters: &[PerfCounter]) -> Table<u64> {
     let header = parameters.iter().map(|x| x.to_string())
-        .chain(counters.iter().map(|x| clean_perfcounter_str(x.to_string())))
+        .chain(counters.iter().map(|x| clean_perfcounter_str(&x.to_string())))
         .collect_vec();
     Table::new(header)
 }
 
 /// Generate raw data for a given benchmark.
+#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
 pub fn gen_raw_data(gpu: &Gpu,
                     executor: &Executor,
                     bench_choice: i32,
@@ -77,9 +78,9 @@ pub fn gen_raw_data(gpu: &Gpu,
         _ => panic!("Unknown benchmark"),
     };
 
-    let counters = executor.create_perf_counter_set(&perf_counters);
+    let counters = executor.create_perf_counter_set(perf_counters);
     let table_headers = ["n_access", "n_inst", "stride", "n", "n_outer"];
-    let mut table = create_table(&table_headers, &perf_counters);
+    let mut table = create_table(&table_headers, perf_counters);
     let prefix = [n_access_per_iter, n_inst_per_iter];
     gen::run(&mut context, &fun, &arg_ranges, &counters, &prefix, &mut table);
     table

@@ -2,6 +2,7 @@
 use telamon::device::cuda::{self, Executor, InstDesc};
 use telamon::device::cuda::DeviceAttribute::*;
 use instruction;
+use std;
 
 const EMPTY_INST_DESC: InstDesc = InstDesc {
     latency: 0.0,
@@ -36,7 +37,7 @@ pub fn functional_desc(executor: &cuda::Executor) -> cuda::Gpu {
         shared_bank_stride: shared_bank_stride(sm_major, sm_minor),
         num_smx: executor.device_attribute(SmxCount) as u32,
         max_block_per_smx: block_per_smx(sm_major, sm_minor),
-        smx_clock: executor.device_attribute(ClockRate) as f64 /1.0E+6,
+        smx_clock: f64::from(executor.device_attribute(ClockRate)) /1.0E+6,
 
         thread_rates: EMPTY_INST_DESC,
         smx_rates: EMPTY_INST_DESC,
@@ -140,10 +141,10 @@ fn smx_rates(gpu: &cuda::Gpu, executor: &Executor) -> InstDesc {
     let l2_lines_bw = instruction::smx_bandwidth_l2_lines(gpu, executor);
     InstDesc {
         latency: gpu.smx_clock,
-        issue: issue as f64 * gpu.smx_clock,
-        alu: alu as f64 * gpu.smx_clock,
-        mem: mem as f64 * gpu.smx_clock,
-        sync: sync as f64 * gpu.smx_clock,
+        issue: f64::from(issue) * gpu.smx_clock,
+        alu: f64::from(alu) * gpu.smx_clock,
+        mem: f64::from(mem) * gpu.smx_clock,
+        sync: f64::from(sync) * gpu.smx_clock,
         l1_lines_from_l2: l1_lines_bw * gpu.smx_clock,
         l2_lines_from_l2: l2_lines_bw * gpu.smx_clock,
         ram_bw: ram_bandwidth(executor),
@@ -153,12 +154,13 @@ fn smx_rates(gpu: &cuda::Gpu, executor: &Executor) -> InstDesc {
 /// Computes the processing power of a single thread.
 fn thread_rates(gpu: &cuda::Gpu, smx_rates: &InstDesc) -> InstDesc {
     let (_, issues_per_wrap) = wrap_scheds_per_smx(gpu.sm_major, gpu.sm_minor);
+    let wrap_size = f64::from(gpu.wrap_size);
     InstDesc {
         latency: smx_rates.latency,
-        issue: issues_per_wrap as f64 * gpu.smx_clock,
-        alu: smx_rates.alu / gpu.wrap_size as f64,
-        mem: smx_rates.mem / gpu.wrap_size as f64,
-        sync: smx_rates.sync / gpu.wrap_size as f64,
+        issue: f64::from(issues_per_wrap) * gpu.smx_clock,
+        alu: smx_rates.alu / wrap_size,
+        mem: smx_rates.mem / wrap_size,
+        sync: smx_rates.sync / wrap_size,
         l1_lines_from_l2: smx_rates.l1_lines_from_l2, // FIXME: actually smaller
         l2_lines_from_l2: smx_rates.l2_lines_from_l2,
         ram_bw: smx_rates.ram_bw,
@@ -167,14 +169,15 @@ fn thread_rates(gpu: &cuda::Gpu, smx_rates: &InstDesc) -> InstDesc {
 
 /// Computes the total processing power from the processing power of a single SMX.
 fn gpu_rates(gpu: &cuda::Gpu, smx_rates: &InstDesc) -> InstDesc {
+    let num_smx = f64::from(gpu.num_smx);
     InstDesc {
         latency: smx_rates.latency,
-        issue: smx_rates.issue * gpu.num_smx as f64,
-        alu: smx_rates.alu * gpu.num_smx as f64,
-        mem: smx_rates.mem * gpu.num_smx as f64,
-        sync: smx_rates.sync * gpu.num_smx as f64,
-        l1_lines_from_l2: smx_rates.l1_lines_from_l2 * gpu.num_smx as f64,
-        l2_lines_from_l2: smx_rates.l2_lines_from_l2 * gpu.num_smx as f64,
+        issue: smx_rates.issue * num_smx,
+        alu: smx_rates.alu * num_smx,
+        mem: smx_rates.mem * num_smx,
+        sync: smx_rates.sync * num_smx,
+        l1_lines_from_l2: smx_rates.l1_lines_from_l2 * num_smx,
+        l2_lines_from_l2: smx_rates.l2_lines_from_l2 * num_smx,
         ram_bw: smx_rates.ram_bw,
     }
 }
@@ -194,11 +197,11 @@ fn wrap_scheds_per_smx(sm_major: u8, sm_minor: u8) -> (u32, u32) {
 /// Returms the RAM bandwidth in bytes per SMX clock cycle.
 fn ram_bandwidth(executor: &Executor) -> f64 {
     // TODO(model): take ECC into account.
-    let mem_clock = executor.device_attribute(MemoryClockRate) as f64 / 1.0E+6;
+    let mem_clock = f64::from(executor.device_attribute(MemoryClockRate)) / 1.0E+6;
     let mem_bus_width = executor.device_attribute(GlobalMemoryBusWidth) / 8;
     // Multiply by 2 because is a DDR, so it uses bith the up and down signals of the
     // clock.
-    2.0 * mem_clock * mem_bus_width as f64
+    2.0 * mem_clock * f64::from(mem_bus_width)
 }
 
 /// Updates the gpu description with performance numbers.
@@ -226,7 +229,7 @@ pub fn performance_desc(executor: &Executor, gpu: &mut cuda::Gpu) {
     gpu.div_f64_inst = instruction::div_f64(gpu, executor);
     gpu.div_i32_inst = instruction::div_i32(gpu, executor);
     gpu.div_i64_inst = instruction::div_i64(gpu, executor);
-    gpu.mul_wide_inst = gpu.mul_i32_inst.clone(); // TODO(model): benchmark mul wide.
+    gpu.mul_wide_inst = gpu.mul_i32_inst; // TODO(model): benchmark mul wide.
     // Compute memory accesses overhead.
     gpu.load_l2_latency = instruction::load_l2(gpu, executor);
     gpu.load_ram_latency = instruction::load_ram(gpu, executor);
@@ -234,7 +237,9 @@ pub fn performance_desc(executor: &Executor, gpu: &mut cuda::Gpu) {
     // Compute loops overhead.
     gpu.syncthread_inst = instruction::syncthread(gpu, executor);
     let addf32_lat = gpu.add_f32_inst.latency;
-    assert_eq!(instruction::syncthread_end_latency(gpu, executor, addf32_lat), 0.0);
+    let syncthread_end_latency = instruction::syncthread_end_latency(
+        gpu, executor, addf32_lat);
+    assert!(syncthread_end_latency < std::f64::EPSILON);
     gpu.loop_end_latency = instruction::loop_iter_end_latency(gpu, executor, addf32_lat);
     gpu.loop_iter_overhead = instruction::loop_iter_overhead(gpu, executor);
     gpu.loop_init_overhead = cuda::InstDesc { issue: 1f64, alu: 1f64, .. EMPTY_INST_DESC };

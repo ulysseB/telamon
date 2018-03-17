@@ -13,10 +13,11 @@ use table::Table;
 use utils::*;
 
 /// Generates a function base with the given arguments.
-pub fn base<'a>(params: &[(&str, ir::Type)], arrays: &[&str])
-        -> (Signature, Vec<ir::mem::Id>) {
-    let mut p = params.iter().map(|&(name, ref t)| {
-        ir::Parameter { name: name.to_string(), t: t.clone() }
+pub fn base(params: &[(&str, ir::Type)], arrays: &[&str])
+    -> (Signature, Vec<ir::mem::Id>)
+{
+    let mut p = params.iter().map(|&(name, t)| {
+        ir::Parameter { name: name.to_string(), t }
     }).collect_vec();
     let mut mem_blocks = 0;
     let mem_ids = arrays.iter().map(|name| {
@@ -28,7 +29,7 @@ pub fn base<'a>(params: &[(&str, ir::Type)], arrays: &[&str])
     (Signature {
         name: "bench".to_string(),
         params: p,
-        mem_blocks: mem_blocks,
+        mem_blocks,
     }, mem_ids)
 }
 
@@ -90,7 +91,7 @@ pub fn inst_chain<'a, T>(signature: &'a Signature, device: &'a Device,
                          inst_gen: &InstGenerator,
                          n_iter: &str, n_chained: u32, arg: &str, out: &str
                         ) -> SearchSpace<'a> where T: NumArg {
-    let mut builder = Builder::new(&signature, device);
+    let mut builder = Builder::new(signature, device);
     let init = builder.mov(&T::default());
     let loop_size = builder.param_size(n_iter);
     let unroll_size = builder.cst_size(n_chained);
@@ -111,7 +112,7 @@ pub fn init_stride_array<'a>(signature: &'a Signature, device: &'a Device,
                              mem_id: ir::mem::Id, array: &str, n: u32, stride: i32
                             ) -> SearchSpace<'a> {
     let byte_stride = stride * 8;
-    let mut builder = Builder::new(&signature, device);
+    let mut builder = Builder::new(signature, device);
     let size = builder.cst_size(n);
     let kind = if n == 1 { DimKind::UNROLL } else { DimKind::LOOP };
     let dim = builder.open_dim_ex(size, kind);
@@ -129,11 +130,12 @@ pub fn init_stride_array<'a>(signature: &'a Signature, device: &'a Device,
 }
 
 /// Generates a function that performs chained loads.
+#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
 pub fn load_chain<'a>(signature: &'a Signature, device: &'a Device,
                       n_threads: u32, n_iter: &str, n_chained: u32,
                       mem_id: ir::mem::Id, array: &str, out_id: ir::mem::Id, out: &str
                      ) -> SearchSpace<'a> {
-    let mut builder = Builder::new(&signature, device);
+    let mut builder = Builder::new(signature, device);
     let init = builder.mov(&array);
     let loop_size = builder.param_size(n_iter);
     let unroll_size = builder.cst_size(n_chained);
@@ -158,7 +160,7 @@ pub fn shared_load_chain<'a>(signature: &'a Signature, device: &'a Device,
                              n_iter: &str, n_chained: u32,
                              array_size: u32, out_id: ir::mem::Id, out: &str
                             ) -> SearchSpace<'a> {
-    let mut builder = Builder::new(&signature, device);
+    let mut builder = Builder::new(signature, device);
     let array_dim_size = builder.cst_size(array_size);
     let array = builder.allocate_shared(ir::Size::new(4*array_size, vec![], 1));
     let init_dim = builder.open_dim_ex(array_dim_size.clone(), DimKind::LOOP);
@@ -189,12 +191,13 @@ pub fn shared_load_chain<'a>(signature: &'a Signature, device: &'a Device,
 }
 
 /// Generates many parallel loads in a single block.
+#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
 pub fn parallel_load<'a>(signature: &'a Signature, gpu: &'a Gpu, num_blocks: &str,
                          n: &str, n_chained: u32, n_unroll: u32, num_wraps: u32, stride: u32,
                          mem_id: ir::mem::Id, array: &str,
                          out_id: ir::mem::Id, out: &str) -> SearchSpace<'a> {
     assert!(stride*4 <= gpu.l1_cache_line);
-    let mut builder = Builder::new(&signature, gpu);
+    let mut builder = Builder::new(signature, gpu);
     let block_size = builder.param_size(num_blocks);
     let _ = builder.open_dim_ex(block_size, DimKind::BLOCK);
     // Initialize the result
@@ -250,11 +253,12 @@ pub fn parallel_load<'a>(signature: &'a Signature, gpu: &'a Gpu, num_blocks: &st
 }
 
 /// Generates many parallel stores.
+#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
 pub fn parallel_store<'a>(signature: &'a Signature, gpu: &'a Gpu, num_blocks: &str,
                           n: &str, n_chained: u32, n_unroll: u32, num_wraps: u32, stride: u32,
                           mem_id: ir::mem::Id, array: &str) -> SearchSpace<'a> {
     assert!(stride*4 <= gpu.l1_cache_line);
-    let mut builder = Builder::new(&signature, gpu);
+    let mut builder = Builder::new(signature, gpu);
     let block_size = builder.param_size(num_blocks);
     let _ = builder.open_dim_ex(block_size, DimKind::BLOCK);
     // Initialize the result
@@ -268,16 +272,17 @@ pub fn parallel_store<'a>(signature: &'a Signature, gpu: &'a Gpu, num_blocks: &s
     let d3 = builder.open_dim_ex(ir::Size::new(n_chained, vec![], 1), DimKind::UNROLL);
     let d4 = builder.open_dim_ex(ir::Size::new(n_unroll, vec![], 1), DimKind::UNROLL);
     let pattern = builder.unknown_access_pattern(mem_id);
+    let d3_incr = n_unroll*num_wraps*gpu.wrap_size*gpu.l1_cache_line;
     let addr = if stride != 0 {
         builder.induction_var(&array, vec![
-            (d3, ir::Size::new(n_unroll*num_wraps*gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
+            (d3, ir::Size::new(d3_incr, vec![], 1)),
             (d4, ir::Size::new(num_wraps*gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
             (d1, ir::Size::new(gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
             (d2, ir::Size::new(stride*4, vec![], 1)),
         ])
     } else {
         builder.induction_var(&array, vec![
-            (d3, ir::Size::new(n_unroll*num_wraps*gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
+            (d3, ir::Size::new(d3_incr, vec![], 1)),
             (d4, ir::Size::new(num_wraps*gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
             (d1, ir::Size::new(gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
         ])
@@ -315,6 +320,7 @@ pub fn syncthread<'a>(signature: &'a Signature, device: &'a Device,
 }
 
 /// Generates a wrap of syncthreads separated by a single instruction.
+#[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
 pub fn chain_in_syncthread<'a>(signature: &'a Signature, device: &'a Device, n_iter: &str,
                                sync_chained: u32, add_chained: u32, wrap_size: u32,
                                out: &str, out_id: ir::mem::Id) -> SearchSpace<'a> {
@@ -368,8 +374,8 @@ pub fn load_in_loop<'a>(signature: &'a Signature, device: &'a Device, threads: u
         let k_dim = builder.open_dim_ex(k_size, DimKind::LOOP);
         // Load A
         let unroll_dim_a = builder.open_dim_ex(size_4.clone(), DimKind::VECTOR);
-        let (addr, pattern) = builder.tensor_access(&tmp_mem, tmp_mem.into(), &ir::Type::F(32),
-            &[&thread_dim_1_0, &unroll_dim_a]);
+        let (addr, pattern) = builder.tensor_access(
+            &tmp_mem, tmp_mem.into(), &ir::Type::F(32), &[&thread_dim_1_0, &unroll_dim_a]);
         let a_val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_CG);
         builder.close_dim(&unroll_dim_a);
         // Mad a and b
@@ -398,13 +404,13 @@ pub fn run(context: &mut Context, space: &SearchSpace,
            args_range: &[(&str, &[i32])], counters: &PerfCounterSet,
            result_prefix: &[u64], result: &mut Table<u64>
           ) {
-    if explorer::choice::list(&space).next() != None {
+    if explorer::choice::list(space).next() != None {
         panic!("The benchmark is not completely scheduled!");
     }
     let dev_fun = codegen::Function::build(space);
     let kernel = Kernel::compile(&dev_fun, context.gpu(), context.executor());
     for &(arg, range) in args_range { bind(arg, range[0], context); }
-    kernel.instrument(&context, counters);
+    kernel.instrument(context, counters);
     let args_range_len = args_range.iter().map(|&(_, x)| x.len()).collect_vec();
     for index in NDRange::new(&args_range_len) {
         let mut entry = result_prefix.iter().cloned().collect_vec();
@@ -416,7 +422,7 @@ pub fn run(context: &mut Context, space: &SearchSpace,
         }
         // Flush the cache
         trace!("Running with params: {:?}", arg_values);
-        entry.append(&mut kernel.instrument(&context, counters));
+        entry.append(&mut kernel.instrument(context, counters));
         result.add_entry(entry);
     }
 }

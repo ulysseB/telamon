@@ -54,7 +54,7 @@ fn run<T: PerfModelTest>(pattern: &Regex) {
     let actions = T::get_actions(&state);
 
     let mut early_model_perf = None;
-    if actions.len() != 0 {
+    if !actions.is_empty() {
         early_model_perf = Some(bound(&builder.get_clone(), &context).value());
         for action in actions {
             builder.action(action);
@@ -83,8 +83,8 @@ fn run<T: PerfModelTest>(pattern: &Regex) {
 }
 
 fn main() {
-    let _ = env_logger::init();
-    let arg = std::env::args().nth(1).unwrap_or(String::new());
+    env_logger::init();
+    let arg = std::env::args().nth(1).unwrap_or_default();
     let pattern = match Regex::new(&arg) {
         Ok(x) => x,
         Err(e) => {
