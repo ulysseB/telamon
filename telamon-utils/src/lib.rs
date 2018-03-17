@@ -170,7 +170,7 @@ pub fn log2_u32(x: u32) -> Option<u32> {
 #[macro_export]
 macro_rules! generated_file {
     ($name:ident) => {
-        #[cfg_attr(feature = "cargo-clippy", allow(needless_lifetimes))]
+        #[cfg_attr(feature = "cargo-clippy", allow(clippy))]
         mod $name {
             include!(concat!(env!("OUT_DIR"), "/", stringify!($name), ".rs"));
         }

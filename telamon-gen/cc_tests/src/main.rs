@@ -1,5 +1,5 @@
 #![feature(conservative_impl_trait, trace_macros)]
-#![allow(dead_code)]
+#![allow(dead_code, unused_imports)]
 extern crate itertools;
 #[macro_use]
 extern crate telamon_utils as utils;
@@ -71,7 +71,7 @@ mod single_conditions {
     #[test]
     fn is_conditions() {
         let _ = ::env_logger::try_init();
-        let ref mut fun = ir::Function::default();
+        let fun = &mut ir::Function::default();
         let bb0_id = ir::dim::create(fun, false).into();
         let bb1_id = ir::dim::create(fun, false).into();
         let mut store = DomainStore::new(&fun);
@@ -99,7 +99,7 @@ mod single_conditions {
     fn equal_conditions() {
         let _ = ::env_logger::try_init();
 
-        let ref mut fun = ir::Function::default();
+        let fun = &mut ir::Function::default();
         let bb0_id = ir::dim::create(fun, false).into();
         let bb1_id = ir::dim::create(fun, false).into();
         let mut store = DomainStore::new(&fun);
@@ -128,7 +128,7 @@ mod single_conditions {
     fn static_code_conditions() {
         let _ = ::env_logger::try_init();
 
-        let ref mut fun = ir::Function::default();
+        let fun = &mut ir::Function::default();
         let bb0_id = ir::dim::create(fun, false).into();
         let bb1_id = ir::dim::create(fun, true).into();
         let store = DomainStore::new(&fun);
@@ -151,7 +151,7 @@ mod multiple_conditions {
     fn multiple_enums() {
         let _ = ::env_logger::try_init();
 
-        let ref mut fun = ir::Function::default();
+        let fun = &mut ir::Function::default();
         let bb0_id = ir::dim::create(fun, false).into();
         let bb1_id = ir::dim::create(fun, false).into();
         let mut store = DomainStore::new(&fun);
@@ -187,7 +187,7 @@ mod multiple_conditions {
     fn mutiple_cases_constraints() {
         let _ = ::env_logger::try_init();
 
-        let ref mut fun = ir::Function::default();
+        let fun = &mut ir::Function::default();
         let bb0_id = ir::dim::create(fun, false).into();
         let bb1_id = ir::dim::create(fun, false).into();
         let mut store = DomainStore::new(&fun);
@@ -206,7 +206,7 @@ mod multiple_conditions {
     fn mixed_code_conditions() {
         let _ = ::env_logger::try_init();
 
-        let ref mut fun = ir::Function::default();
+        let fun = &mut ir::Function::default();
         let bb0_id = ir::dim::create(fun, false).into();
         let bb1_id = ir::dim::create(fun, true).into();
         let mut store = DomainStore::new(&fun);
@@ -235,7 +235,7 @@ mod multiple_conditions {
     fn subtype_conditions() {
         let _ = ::env_logger::try_init();
 
-        let ref mut fun = ir::Function::default();
+        let fun = &mut ir::Function::default();
         let dim = ir::dim::create(fun, false);
         let inst = ir::inst::create(fun, false);
         let mut store = DomainStore::new(&fun);
@@ -263,7 +263,7 @@ mod filter_strength {
     fn merged_filter_strength() {
         let _ = ::env_logger::try_init();
 
-        let ref mut fun = ir::Function::default();
+        let fun = &mut ir::Function::default();
         let bb0_id = ir::dim::create(fun, false).into();
         let bb1_id = ir::dim::create(fun, false).into();
         let mut store = DomainStore::new(fun);
@@ -299,7 +299,7 @@ mod symmetry {
     fn symmetric_store() {
         let _ = ::env_logger::try_init();
 
-        let ref mut fun = ir::Function::default();
+        let fun = &mut ir::Function::default();
         let block0 = ir::dim::create(fun, false).into();
         let block1 = ir::dim::create(fun, false).into();
         let block2 = ir::dim::create(fun, false).into();
@@ -323,7 +323,7 @@ mod symmetry {
     fn symmetric_normalization() {
         let _ = ::env_logger::try_init();
 
-        let ref mut fun = ir::Function::default();
+        let fun = &mut ir::Function::default();
         let b0_id = ir::dim::create(fun, false).into();
         let b1_id = ir::dim::create(fun, false).into();
         let store = DomainStore::new(&fun);
@@ -339,7 +339,7 @@ mod symmetry {
     fn antisymmetric_normalization() {
         let _ = ::env_logger::try_init();
 
-        let ref mut fun = ir::Function::default();
+        let fun = &mut ir::Function::default();
         let b0_id = ir::dim::create(fun, false).into();
         let b1_id = ir::dim::create(fun, false).into();
         let store = DomainStore::new(&fun);
@@ -351,7 +351,7 @@ mod symmetry {
     }
 }
 
-/// Tests the on_change triggers.
+/// Tests the the right actions are taken after a domain is restricted..
 mod on_change {
     define_ir! { trait basic_block; struct inst: basic_block; struct dim: basic_block; }
     generated_file!(on_change);
@@ -366,10 +366,10 @@ mod on_change {
         let mut fun = ir::Function::default();
         let b0 = ir::dim::create(&mut fun, false).into();
         let b1 = ir::dim::create(&mut fun, false).into();
-        let ref mut store = DomainStore::new(&fun);
-        let ref mut fun = Arc::new(fun);
+        let store = &mut DomainStore::new(&fun);
+        let fun = &mut Arc::new(fun);
         let (all0, all1) = (Simple0::ALL, Simple1::ALL);
-        let ref mut diff = DomainDiff::default();
+        let diff = &mut DomainDiff::default();
 
         store.set_simple_0(b0, Simple0::B);
         assert!(simple_0::on_change(all0, Simple0::B, b0, fun, store, diff).is_ok());
@@ -394,10 +394,10 @@ mod on_change {
         let mut fun = ir::Function::default();
         let b0 = ir::dim::create(&mut fun, false).into();
         let b1 = ir::dim::create(&mut fun, false).into();
-        let ref mut store = DomainStore::new(&fun);
-        let ref mut fun = Arc::new(fun);
+        let store = &mut DomainStore::new(&fun);
+        let fun = &mut Arc::new(fun);
         let all = Forall0::ALL;
-        let ref mut diff = DomainDiff::default();
+        let diff = &mut DomainDiff::default();
 
         store.set_forall_0(b0, Forall0::A);
         assert!(forall_0::on_change(all, Forall0::A, b0, fun, store, diff).is_ok());
@@ -416,11 +416,11 @@ mod on_change {
         let mut fun = ir::Function::default();
         let dim0 = ir::dim::create(&mut fun, false);
         let inst0 = ir::inst::create(&mut fun, false).into();
-        let ref mut fun = Arc::new(fun);
+        let fun = &mut Arc::new(fun);
 
         // Check with implicit type constraint on the argument
-        let ref mut diff = DomainDiff::default();
-        let ref mut store0 = DomainStore::new(&fun);
+        let diff = &mut DomainDiff::default();
+        let store0 = &mut DomainStore::new(&fun);
         store0.set_type_0(dim0.into(), Type0::B);
         assert!(type_0::on_change(
                 Type0::ALL, Type0::B, dim0.into(), fun, store0, diff).is_ok());
@@ -433,14 +433,14 @@ mod on_change {
         assert!(diff.is_empty());
 
         // Check with explicit type constraints.
-        let ref mut store1 = DomainStore::new(&fun);
+        let store1 = &mut DomainStore::new(&fun);
         store1.set_type_1(dim0, Type1::A);
         assert!(type_1::on_change(Type1::ALL, Type1::A, dim0, fun, store1, diff).is_ok());
         assert_eq!(diff.pop_type_0_diff(), Some(((dim0.into(),), Type0::ALL, Type0::A)));
         assert!(diff.is_empty());
 
         // Check with implicit type constraints on foralls.
-        let ref mut store2 = DomainStore::new(&fun);
+        let store2 = &mut DomainStore::new(&fun);
         store2.set_type_2(dim0.into(), Type2::B);
         assert!(type_2::on_change(
                 Type2::ALL, Type2::A, dim0.into(), fun, store2, diff).is_ok());
@@ -466,9 +466,9 @@ mod counter_def {
         let dim1 = ir::dim::create(&mut fun, false);
         let inst0 = ir::inst::create(&mut fun, false);
         let inst1 = ir::inst::create(&mut fun, false);
-        let ref mut store = DomainStore::new(&fun);
+        let store = &mut DomainStore::new(&fun);
         let actions = init_domain(store,&mut  fun).unwrap();
-        let ref mut fun = Arc::new(fun);
+        let fun = &mut Arc::new(fun);
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert_eq!(store.get_simple_counter(inst0), Range { min: 5, max: 5 });
         assert_eq!(store.get_simple_counter(inst1), Range { min: 5, max: 5 });
@@ -489,12 +489,12 @@ mod counter_def {
         let _dim4 = ir::dim::create(&mut fun, false);
         let _dim5 = ir::dim::create(&mut fun, false);
         let inst0 = ir::inst::create(&mut fun, false);
-        let ref mut store = DomainStore::new(&fun);
+        let store = &mut DomainStore::new(&fun);
         store.set_foo(dim0, Foo::A);
         store.set_foo(dim1, Foo::B);
         // Test initialization
         let actions = init_domain(store, &mut fun).unwrap();
-        let ref mut fun = Arc::new(fun);
+        let fun = &mut Arc::new(fun);
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert_eq!(store.get_counter_single_cond(inst0), Range { min: 1, max: 5 });
         // Check if the counter is updated when the conditions are updated
@@ -514,19 +514,19 @@ mod counter_def {
         let dim2 = ir::dim::create(&mut fun, false);
         let inst0 = ir::inst::create(&mut fun, false);
         let _inst1 = ir::inst::create(&mut fun, false);
-        let ref mut store = DomainStore::new(&fun);
+        let store = &mut DomainStore::new(&fun);
         // Test the counter is correctly computed on initialization.
         store.set_foo(dim0, Foo::A);
         store.set_bar(inst0, Bar::A);
         let actions = init_domain(store, &mut fun).unwrap();
-        let ref mut fun = Arc::new(fun);
+        let fun = &mut Arc::new(fun);
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert_eq!(store.get_counter_of_counter(dim2.into()), Range { min: 2, max: 8 });
         // Test the counter is correctly computed after the value is updated.
         assert!(apply_decisions(vec![Action::Foo(dim1, Foo::B)], fun, store).is_ok());
         assert_eq!(store.get_counter_of_counter(dim2.into()), Range {min: 2, max: 4 });
         // Test the counter value is correctly restricted.
-        let ref mut diff = DomainDiff::default();
+        let diff = &mut DomainDiff::default();
         assert!(counter_of_counter::restrict(
                 dim1.into(), fun, store, Range { min: 2, max: 2 }, diff).is_ok());
         assert_eq!(store.get_foo(dim1.into()), Foo::B);
@@ -539,9 +539,9 @@ mod counter_def {
         let mut fun = ir::Function::default();
         let dim0 = ir::dim::create(&mut fun, false);
         let dim1 = ir::dim::create(&mut fun, false);
-        let ref mut store = DomainStore::new(&fun);
+        let store = &mut DomainStore::new(&fun);
         let actions = init_domain(store, &mut fun).unwrap();
-        let ref mut fun = Arc::new(fun);
+        let fun = &mut Arc::new(fun);
         assert!(apply_decisions(actions, fun, store).is_ok());
 
         // Test the counter value at initialization.
@@ -571,8 +571,8 @@ mod counter_alloc {
         let dim0 = ir::dim::create(&mut fun, false);
         let inst0 = ir::inst::create(&mut fun, false);
 
-        let ref mut fun = Arc::new(fun);
-        let ref mut store = DomainStore::new(&fun);
+        let fun = &mut Arc::new(fun);
+        let store = &mut DomainStore::new(&fun);
         let actions = init_domain(store, Arc::make_mut(fun)).unwrap();
         assert!(apply_decisions(actions, fun, store).is_ok());
 
@@ -606,14 +606,14 @@ mod counter_alloc {
         let mut fun = ir::Function::default();
         let dim0 = ir::dim::create(&mut fun, false);
         let inst0 = ir::inst::create(&mut fun, false);
-        let ref mut fun = Arc::new(fun);
-        let ref mut store = DomainStore::new(&fun);
+        let fun = &mut Arc::new(fun);
+        let store = &mut DomainStore::new(&fun);
         let actions = init_domain(store, Arc::make_mut(fun)).unwrap();
         assert!(apply_decisions(actions, fun, store).is_ok());
 
         // Set the (inst0, dim0) increment and propagate to the counter, but not the
         // counter modification itself.
-        let ref mut diff = DomainDiff::default();
+        let diff = &mut DomainDiff::default();
         store.set_bar(inst0, dim0, Bar::B);
         assert!(store.restrict_num_bar(inst0, Range { min: 0, max: 1}, diff).is_ok());
         let expected_diff = (Range { min: 0, max: 1 }, Range { min: 0, max: 0});
@@ -711,10 +711,10 @@ mod lowering {
         let inst1 = ir::inst::create(&mut fun, false);
         let inst2 = ir::inst::create(&mut fun, false);
         let inst3 = ir::inst::create(&mut fun, false);
-        let ref mut store = DomainStore::new(&fun);
+        let store = &mut DomainStore::new(&fun);
 
         // Test trigger on initialization.
-        let ref mut fun = Arc::new(fun);
+        let fun = &mut Arc::new(fun);
         store.set_foo(dim0.into(), inst1.into(), Foo::A);
         let actions = init_domain(store, Arc::make_mut(fun)).unwrap();
         assert!(apply_decisions(actions, fun, store).is_ok());
@@ -750,8 +750,8 @@ mod lowering {
         let dim0 = ir::dim::create(&mut fun, false);
         let dim1 = ir::dim::create(&mut fun, false);
         let dim2 = ir::dim::create(&mut fun, false);
-        let ref mut store = DomainStore::new(&fun);
-        let ref mut fun = Arc::new(fun);
+        let store = &mut DomainStore::new(&fun);
+        let fun = &mut Arc::new(fun);
         let actions = init_domain(store, Arc::make_mut(fun)).unwrap();
         assert!(apply_decisions(actions, fun, store).is_ok());
 
@@ -763,7 +763,7 @@ mod lowering {
         assert!(!ir::dim::get(fun, dim2).condition());
         // Test triggers are correctly called during partial initialization, but not
         // when a triggerring value is still not propagated.
-        let ref mut diff = DomainDiff::default();
+        let diff = &mut DomainDiff::default();
         assert!(store.restrict_bar(dim2, Bar::A, diff).is_ok());
         let dim3 = ir::dim::create(Arc::make_mut(fun), false);
         let new_objs = ir::NewObjs {
@@ -793,10 +793,10 @@ mod parametric_set {
         let inst1 = ir::inst::create(&mut fun, false);
         let op0 = ir::operand::create(&mut fun, inst0, false);
         let op1 = ir::operand::create(&mut fun, inst1, false);
-        let ref mut store = DomainStore::new(&fun);
+        let store = &mut DomainStore::new(&fun);
         let actions = init_domain(store, &mut fun).unwrap();
 
-        let ref mut fun = Arc::new(fun);
+        let fun = &mut Arc::new(fun);
         assert!(apply_decisions(actions, fun, store).is_ok());
         // Constrain the operand choice by setting the instruction choice.
         assert!(apply_decisions(vec![Action::Bar(inst0, Bar::D)], fun, store).is_ok());
@@ -848,9 +848,9 @@ mod parametric_subset {
         let value_b_0 = ir::value_b::create(&mut fun, param_b_0, false);
         let value_a_1 = ir::value_a::create(&mut fun, param_a_1, false);
         let value_b_1 = ir::value_b::create(&mut fun, param_b_1, false);
-        let ref mut store = DomainStore::new(&fun);
+        let store = &mut DomainStore::new(&fun);
         let actions = init_domain(store, &mut fun).unwrap();
-        let ref mut fun = Arc::new(fun);
+        let fun = &mut Arc::new(fun);
         assert!(apply_decisions(actions, fun, store).is_ok());
 
         // Test a constraint on the parameter of a set.
@@ -882,9 +882,9 @@ mod parametric_subset {
         let param_b = ir::param_b::create(&mut fun, false);
         let value_a = ir::value_a::create(&mut fun, param_a, false);
         let value_b = ir::value_b::create(&mut fun, param_b, false);
-        let ref mut store = DomainStore::new(&fun);
+        let store = &mut DomainStore::new(&fun);
         let actions = init_domain(store, &mut fun).unwrap();
-        let ref mut fun = Arc::new(fun);
+        let fun = &mut Arc::new(fun);
         assert!(apply_decisions(actions, fun, store).is_ok());
 
         // Test a reverse set constraint, with no additional constraint.
@@ -940,9 +940,9 @@ mod quotient_set {
         let mut fun = ir::Function::default();
         let mut maybe_repr: Vec<_> = (0..4)
             .map(|_| ir::inst::create(&mut fun, false)).collect();
-        let ref mut store = DomainStore::new(&fun);
+        let store = &mut DomainStore::new(&fun);
         let actions = init_domain(store, &mut fun).unwrap();
-        let ref mut fun = Arc::new(fun);
+        let fun = &mut Arc::new(fun);
         assert!(apply_decisions(actions, fun, store).is_ok());
 
         // Ensure a single representative has been elected.
@@ -996,9 +996,9 @@ mod quotient_set {
         let dim0 = ir::dim::create(&mut fun, false);
         let dim1 = ir::dim::create(&mut fun, false);
         let dim2 = ir::dim::create(&mut fun, false);
-        let ref mut store = DomainStore::new(&fun);
+        let store = &mut DomainStore::new(&fun);
         let actions = init_domain(store, &mut fun).unwrap();
-        let ref mut fun = Arc::new(fun);
+        let fun = &mut Arc::new(fun);
         assert!(apply_decisions(actions, fun, store).is_ok());
         // Ensure no representative are set after initialization.
         assert_eq!(store.get_active_dim(inst0, dim0), Bool::ALL);
@@ -1035,7 +1035,7 @@ mod quotient_set {
         let dim0 = ir::dim::create(&mut fun, false);
         let dim1 = ir::dim::create(&mut fun, false);
 
-        let ref mut store = DomainStore::new(&fun);
+        let store = &mut DomainStore::new(&fun);
         store.set_order(dim0.into(), inst0.into(), Order::OUTER);
         store.set_order(dim0.into(), inst1.into(), Order::OUTER);
         store.set_order(dim1.into(), inst0.into(), Order::OUTER);
@@ -1043,7 +1043,7 @@ mod quotient_set {
         store.set_order(dim0.into(), inst0.into(), Order::OUTER);
         store.set_order(dim0.into(), dim1.into(), Order::OUTER);
         let actions = init_domain(store, &mut fun).unwrap();
-        let ref mut fun = Arc::new(fun);
+        let fun = &mut Arc::new(fun);
         assert!(apply_decisions(actions, fun, store).is_ok());
 
         assert_eq!(store.get_active_dim(inst0, dim0), Bool::TRUE);
