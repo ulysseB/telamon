@@ -18,7 +18,7 @@ impl<'a> Module<'a> {
         debug!("compiling... {}", code);
         let c_str = unwrap!(CString::new(code));
         let module = unsafe { compile_ptx(context, c_str.as_ptr()) };
-        Module { module: module, context: context }
+        Module { module, context }
     }
 
     /// Creates a `Module` from a cubin image.
@@ -35,7 +35,7 @@ impl<'a> Module<'a> {
         let function = unsafe {
             get_function(self.context, self.module, name_c_str.as_ptr())
         };
-        Kernel { function: function, context: self.context }
+        Kernel { function, context: self.context }
     }
 }
 

@@ -47,7 +47,7 @@ impl DependencyMap {
             if let Some(lat_to_dest) = latencies[i].clone() {
                 for (&pred, lat_to_i) in &self.deps[i] {
                     let new_lat = lat_to_i.clone().chain(i, lat_to_dest.clone());
-                    let ref mut old_lat = latencies[pred];
+                    let old_lat = &mut latencies[pred];
                     if old_lat.as_ref().map(|x| new_lat.is_better_than(x)).unwrap_or(true) {
                         *old_lat = Some(new_lat);
                     }

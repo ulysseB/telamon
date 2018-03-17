@@ -23,11 +23,10 @@ impl<'a, 'b> Kernel<'a, 'b> {
             -> Self {
         let ptx = gpu.print_ptx(fun);
         Kernel {
-            executor: executor,
             module: executor.compile_ptx(&ptx),
+            executor, ptx,
             function: fun,
             expected_blocks_per_smx: gpu.blocks_per_smx(fun.space()),
-            ptx,
         }
     }
 
@@ -82,7 +81,7 @@ impl<'a, 'b> Kernel<'a, 'b> {
         ThunkArgs {
             blocks: block_sizes,
             threads: thread_sizes,
-            tmp_arrays: tmp_arrays,
+            tmp_arrays,
             args: params,
             expected_blocks_per_smx: self.expected_blocks_per_smx,
         }

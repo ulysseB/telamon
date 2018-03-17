@@ -36,7 +36,7 @@ impl Type {
     /// Returns the number of bytes of the type.
     pub fn len_byte(&self) -> Option<u32> {
         match *self {
-            Type::I(i) | Type::F(i) => Some(div_ceil(i, 8) as u32),
+            Type::I(i) | Type::F(i) => Some(u32::from(div_ceil(i, 8))),
             Type::Void => Some(0),
             Type::PtrTo(_) => None
         }

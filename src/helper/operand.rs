@@ -138,6 +138,6 @@ impl<'a> AutoOperand<'a> for dim::Id {
 impl<'a> AutoOperand<'a> for ir::IndVarId {
     fn get<'b>(&self, fun: &Function<'b>, _: &HashMap<dim::Id, dim::Id>)
             -> Operand<'b> where 'a: 'b {
-        Operand::InductionVar(*self, fun.induction_var(*self).base().t().clone())
+        Operand::InductionVar(*self, fun.induction_var(*self).base().t())
     }
 }

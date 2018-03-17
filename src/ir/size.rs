@@ -3,7 +3,7 @@ use num;
 use std;
 
 /// The size of an iteration dimension. The size is of the form:
-/// (factor * dividend_0 * dividend_1 * ...)) / divisor
+/// `(factor * dividend_0 * dividend_1 * ...)) / divisor`
 /// where the reminder of the division is null.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Size<'a> {

@@ -8,7 +8,7 @@ generated_file!(choices);
 pub use self::choices::{Action, Bool, DimKind, Domain, DomainStore, InstFlag, Order,
                         MemSpace};
 
-use self::choices::{apply_action, DomainDiff, init_domain, propagate_changes};
+use self::choices::{apply_action, DomainDiff, init_domain};
 use std::sync::Arc;
 
 // FIXME: unrolled loops of size 1 should not be allowed

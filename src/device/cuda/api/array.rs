@@ -18,9 +18,8 @@ impl<'a, T> Array<'a, T> {
     pub fn new(context: &'a CudaContext, len: usize) -> Self {
         let n_bytes = (len * std::mem::size_of::<T>()) as u64;
         Array {
-            len: len,
+            len, context,
             array:  unsafe { allocate_array(context, n_bytes) },
-            context: context,
             t: std::marker::PhantomData
         }
     }

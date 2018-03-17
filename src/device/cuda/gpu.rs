@@ -161,7 +161,7 @@ impl Gpu {
 
     /// Returns the ratio of threads actually used per wrap.
     fn wrap_use_ratio(&self, max_num_threads: u64) -> f64 {
-        let wrap_size = self.wrap_size as u64;
+        let wrap_size = u64::from(self.wrap_size);
         let n_wraps = (max_num_threads + wrap_size - 1)/wrap_size;
         max_num_threads as f64 / (n_wraps * wrap_size) as f64
     }
@@ -185,15 +185,14 @@ impl Gpu {
         let l2_lines_from_l2 = if flags.intersects(InstFlag::MEM_SHARED) {
             0.0
         } else { mem_info.l2_coalescing };
-        let desc = InstDesc {
+        InstDesc {
             latency: f64::min(gbl_latency, shared_latency),
             issue: mem_info.replay_factor,
             mem: mem_info.replay_factor,
             l1_lines_from_l2, l2_lines_from_l2,
-            ram_bw: mem_info.l2_miss_ratio * self.l2_cache_line as f64,
+            ram_bw: mem_info.l2_miss_ratio * f64::from(self.l2_cache_line),
             .. InstDesc::default()
-        };
-        desc
+        }
     }
 
     /// Returns the description of a store instruction.
@@ -209,7 +208,7 @@ impl Gpu {
             issue: mem_info.replay_factor,
             mem: mem_info.replay_factor,
             l2_lines_from_l2,
-            ram_bw: 2.0 * mem_info.l2_miss_ratio * self.l2_cache_line as f64,
+            ram_bw: 2.0 * mem_info.l2_miss_ratio * f64::from(self.l2_cache_line),
             .. InstDesc::default()
         }
     }
@@ -218,12 +217,12 @@ impl Gpu {
     fn dim_pressure(&self, kind: DimKind, size: u32) -> HwPressure {
         if kind == DimKind::LOOP {
             let mut pressure: HwPressure = self.loop_iter_overhead.into();
-            pressure.repeat_sequential(size as f64);
+            pressure.repeat_sequential(f64::from(size));
             pressure.add_sequential(&self.loop_init_overhead.into());
             pressure
         } else if kind == DimKind::THREAD_X {
             let mut pressure: HwPressure = self.syncthread_inst.into();
-            pressure.repeat_parallel(size as f64);
+            pressure.repeat_parallel(f64::from(size));
             pressure
         } else { HwPressure::zero(self) }
     }

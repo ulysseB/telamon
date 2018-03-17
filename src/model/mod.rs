@@ -65,7 +65,7 @@ pub fn bound(space: &SearchSpace, context: &Context) -> Bound {
             },
             level::DagAction::ApplyDimMap(dim_map) => {
                 apply_dim_map(context.device(), space, &local_info, &levels,
-                    &code_point_ids, dim_map, from_node, &to_node, &mut levels_dag)
+                    &code_point_ids, &dim_map, from_node, &to_node, &mut levels_dag)
             },
         }
     }
@@ -75,7 +75,7 @@ pub fn bound(space: &SearchSpace, context: &Context) -> Bound {
     let block_latency = unwrap!(levels_dag.root().latency(root_entry, root_exit));
     debug!("block latency: {}", block_latency.value());
     // Scale the latency to the block level.
-    let block_parallelism = context.device().block_parallelism(space) as u64;
+    let block_parallelism = u64::from(context.device().block_parallelism(space));
     let min_num_blocks = local_info.parallelism.min_num_blocks;
     let max_num_blocks = local_info.parallelism.max_num_blocks;
     let latency = block_latency.scale(block_parallelism, min_num_blocks, max_num_blocks);
@@ -261,7 +261,7 @@ fn apply_dim_map(device: &Device,
                  local_info: &LocalInfo,
                  levels: &[Level],
                  code_point_ids: &HashMap<CodePoint, usize>,
-                 dim_map: level::DimMap,
+                 dim_map: &level::DimMap,
                  from_map: level::DagNodeId,
                  to_map: &[level::DagNodeId],
                  level_dag: &mut LevelDag) {

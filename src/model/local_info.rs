@@ -73,9 +73,9 @@ fn add_indvar_pressure(device: &Device,
        if dim_kind.intersects(DimKind::THREAD | DimKind::BLOCK) {
            thread_overhead.add_parallel(&overhead);
        } else if size > 1 {
-           overhead.repeat_parallel((size-1) as f64);
+           overhead.repeat_parallel(f64::from(size-1));
            unwrap!(hw_pressure.get_mut(&dim.into())).add_parallel(&overhead);
-           overhead.repeat_parallel(1.0/(size-1) as f64);
+           overhead.repeat_parallel(1.0/f64::from(size-1));
            unwrap!(dim_overhead.get_mut(&dim)).0.add_parallel(&overhead);
        }
    }
@@ -166,7 +166,7 @@ fn parallelism(space: &SearchSpace, nesting: &HashMap<ir::BBId, Nesting>,
         let mut par = Parallelism::default();
         for &dim in &nesting[&inst.bb_id()].outer_dims {
             let kind = space.domain().get_dim_kind(dim);
-            let size = dim_sizes[&dim] as u64;
+            let size = u64::from(dim_sizes[&dim]);
             if kind == DimKind::BLOCK { par.min_num_blocks *= size; }
             if kind.intersects(DimKind::BLOCK) { par.max_num_blocks *= size; }
             let thread_or_block = DimKind::THREAD | DimKind::BLOCK;

@@ -49,8 +49,8 @@ impl<'a> Operand<'a> {
             Addr(mem) => ir::Type::PtrTo(mem.into()),
             Index(..) |
             Size(..) => Type::I(32),
-            Param(p) => p.t.clone(),
-            Inst(_, ref t, ..) | Reduce(_, ref t, ..) | InductionVar(_, ref t) => t.clone(),
+            Param(p) => p.t,
+            Inst(_, t, ..) | Reduce(_, t, ..) | InductionVar(_, t) => t,
         }
     }
 

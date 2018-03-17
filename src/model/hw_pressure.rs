@@ -69,7 +69,7 @@ impl FastBound {
     pub fn iterate(self, iterations: u32, level: usize) -> Self {
         let origin = FastOrigin::Loop { iterations, level, inner: self.origin };
         FastBound {
-            value: self.value * iterations as f64,
+            value: self.value * f64::from(iterations),
             origin: Rc::new(origin),
             size: self.size + 1,
         }

@@ -109,8 +109,7 @@ impl<'a> Operator<'a> {
             Mov(ref op) |
             Mad(_, _, ref op, _) |
             Div(ref op, _, _) => op.t(),
-            Ld(ref t, ..) | TmpLd(ref t, _) | Cast(_, ref t) | Mul(.., ref t) =>
-                t.clone(),
+            Ld(t, ..) | TmpLd(t, _) | Cast(_, t) | Mul(.., t) => t,
             St(..) | TmpSt(..) => Type::Void,
         }
     }
@@ -209,7 +208,7 @@ impl<'a> Operator<'a> {
             St(_, _, _, ref pattern) => Some(Cow::Borrowed(pattern)),
             TmpLd(_, mem_id) |
             TmpSt(_, mem_id) => {
-                Some(Cow::Owned(AccessPattern::Unknown { mem_id: mem_id }))
+                Some(Cow::Owned(AccessPattern::Unknown { mem_id }))
             },
             _ => None,
         }

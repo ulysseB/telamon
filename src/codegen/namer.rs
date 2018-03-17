@@ -99,16 +99,13 @@ impl<'a, 'b> NameMap<'a, 'b> {
         let mut name_map = NameMap {
             namer: std::cell::RefCell::new(namer),
             insts: HashMap::default(),
-            indexes,
-            params: params,
-            mem_blocks,
             #[cfg(feature = "cuda")]
             num_loop: 0,
             current_indexes: HashMap::default(),
             #[cfg(feature="mppa")]
             total_num_threads: function.num_threads(),
-            induction_vars, induction_levels,
             size_casts: HashMap::default(),
+            indexes, params, mem_blocks, induction_vars, induction_levels,
         };
         // Setup induction variables.
         for var in function.induction_vars() {
@@ -177,7 +174,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
                 } else {
                     Cow::Borrowed(&self.indexes[&id])
                 },
-            Operand::Size(ref size) => self.name_size(size, &Type::I(32)),
+            Operand::Size(ref size) => self.name_size(size, Type::I(32)),
             Operand::Param(p) => self.name_param_val(&ParamVal::External(p)),
             Operand::Addr(id) => self.name_addr(id),
             Operand::InductionVar(id, _) => self.name_induction_var(id, None),
@@ -310,7 +307,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
     /// allcoated.
     pub fn declare_size_cast(&mut self, size: &'a Size<'a>, t: ir::Type) -> Option<String> {
         if size.dividend().is_empty() || t == Type::I(32) { return None; }
-        match self.size_casts.entry((size, t.clone())) {
+        match self.size_casts.entry((size, t)) {
             hash_map::Entry::Occupied(..) => None,
             hash_map::Entry::Vacant(entry) =>
                 Some(entry.insert(self.namer.borrow_mut().name(t)).to_string()),
@@ -318,18 +315,18 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     /// Assigns a name of a value to a size.
-    pub fn name_size(&self, size: &Size, expected_t: &ir::Type) -> Cow<str> {
+    pub fn name_size(&self, size: &Size, expected_t: ir::Type) -> Cow<str> {
         let size: &'a Size<'a> = unsafe { std::mem::transmute(size) };
         match (size.dividend(), expected_t) {
             (&[], _) => {
                 assert_eq!(size.divisor(), 1);
                 Cow::Owned(size.factor().to_string())
             },
-            (&[p], &Type::I(32)) if size.factor() == 1 && size.divisor() == 1 =>
+            (&[p], Type::I(32)) if size.factor() == 1 && size.divisor() == 1 =>
                 self.name_param_val(&ParamVal::External(p)),
-            (_, &Type::I(32)) => self.name_param_val(&ParamVal::Size(size)),
+            (_, Type::I(32)) => self.name_param_val(&ParamVal::Size(size)),
             _ => {
-                let size = unwrap!(self.size_casts.get(&(size, expected_t.clone())));
+                let size = unwrap!(self.size_casts.get(&(size, expected_t)));
                 Cow::Borrowed(size)
             },
         }

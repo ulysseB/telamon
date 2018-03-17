@@ -45,7 +45,7 @@ impl Level {
             device, space, local_info, BottleneckLevel::Thread, 1, &dims);
         let end_latency = dims.iter().map(|d| {
             local_info.dim_overhead[d].1.bound(BottleneckLevel::Thread, &thread_rates)
-        }).min().unwrap_or_else(|| FastBound::zero());
+        }).min().unwrap_or_else(FastBound::zero);
         let latency = pressure.bound(BottleneckLevel::Thread, &thread_rates);
         // Compute the block-level pressure.
         let only_threads = dims.iter().all(|&d| {
@@ -84,9 +84,9 @@ pub fn sum_pressure(device: &Device,
     let inner_bbs_sets = dims.iter().map(|&d| &local_info.nesting[&d.into()].inner_bbs);
     let inner_bbs = intersect_sets(inner_bbs_sets)
         .map(|x| itertools::Either::Left(x.into_iter()))
-        .unwrap_or(
+        .unwrap_or_else(|| {
             itertools::Either::Right(space.ir_instance().blocks().map(|bb| bb.bb_id()))
-        );
+        });
     // Sum the pressure on all bbs.
     for bb in inner_bbs {
         // Skip dimensions that can be merged into another one.
@@ -95,8 +95,8 @@ pub fn sum_pressure(device: &Device,
         // Compute the pressure of a single instance and the number of instances.
         let num_instances = inner_sum_dims
             .intersection(&local_info.nesting[&bb].outer_dims)
-            .map(|d| local_info.dim_sizes[d] as u64)
-            .product::<u64>() as f64;
+            .map(|d| f64::from(local_info.dim_sizes[d]))
+            .product::<f64>();
         let bb_pressure = if let ir::BBId::Dim(dim) = bb {
             let kind = space.domain().get_dim_kind(dim);
             if !bound_level.accounts_for_dim(kind) {
@@ -129,7 +129,7 @@ fn block_bound(device: &Device, space: &SearchSpace, info: &LocalInfo,
     let mut pressure = sum_pressure(device, space, info, BottleneckLevel::Block,
                                     min_num_threads, dims);
     // Repeat the pressure by the number of iterations of the level and compute the bound.
-    let n_iters = dims.iter().map(|&d| info.dim_sizes[&d.into()] as u64).product::<u64>();
+    let n_iters = dims.iter().map(|&d| u64::from(info.dim_sizes[&d])).product::<u64>();
     pressure.repeat_parallel(n_iters as f64);
     pressure.bound(BottleneckLevel::Block, &device.block_rates(max_num_threads))
 }
@@ -277,7 +277,7 @@ pub struct LevelDag {
     nodes: Vec<(Vec<RepeatLevel>, Vec<DimMap>, DependencyMap)>,
 }
 
-/// Indetifies a node of the LevelDag.
+/// Identifies a node of the `LevelDag`.
 #[derive(Copy, Clone, Debug)]
 pub struct DagNodeId(usize);
 

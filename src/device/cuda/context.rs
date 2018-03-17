@@ -31,7 +31,7 @@ impl<'a> Context<'a> {
         if let Some(gpu) = Gpu::from_name(&gpu_name) {
             Context {
                 gpu_model: gpu,
-                executor: executor,
+                executor,
                 parameters: HashMap::default(),
             }
         } else {
@@ -42,7 +42,7 @@ impl<'a> Context<'a> {
 
     /// Creates a context from the given GPU.
     pub fn from_gpu(gpu: Gpu, executor: &'a Executor) -> Self {
-        Context { gpu_model: gpu, executor: executor, parameters: HashMap::default() }
+        Context { gpu_model: gpu, executor, parameters: HashMap::default() }
     }
 
     /// Returns the GPU description.
@@ -71,10 +71,10 @@ impl<'a> device::Context<'a> for Context<'a> {
         Ok(kernel.evaluate(self)? as f64 / self.gpu_model.smx_clock)
     }
 
-    fn async_eval<'b, 'c>(&self, num_workers: usize, 
+    fn async_eval<'b, 'c>(&self, num_workers: usize,
                           inner: &(Fn(&mut device::AsyncEvaluator<'b, 'c>) + Sync)){
         // Setup the evaluator.
-        let ref blocked_time = atomic::AtomicUsize::new(0);
+        let blocked_time = &atomic::AtomicUsize::new(0);
         let (send, recv) = mpsc::sync_channel(EVAL_BUFFER_SIZE);
         let clock_rate = self.gpu_model.smx_clock;
         // Correct because the thread handle is not escaped.
@@ -85,7 +85,7 @@ impl<'a> device::Context<'a> for Context<'a> {
                     context: self,
                     sender: send.clone(),
                     ptx_daemon: self.executor.spawn_jit(),
-                    blocked_time: blocked_time,
+                    blocked_time,
                 };
                 unwrap!(scope.builder().name("Telamon - Explorer Thread".to_string())
                         .spawn(move || inner(&mut evaluator)));
@@ -112,7 +112,7 @@ impl<'a> device::Context<'a> for Context<'a> {
                     if eval < best_eval {
                         best_eval = eval;
                     }
-                    debug!("IN EVALUATOR: finished evaluating candidate for actions {:?}", 
+                    debug!("IN EVALUATOR: finished evaluating candidate for actions {:?}",
                            candidate.actions);
                     (callback)(candidate, eval, cpt_candidate);
                 }
@@ -151,7 +151,7 @@ impl<'a, 'b, 'c> device::AsyncEvaluator<'a, 'c> for AsyncEvaluator<'a, 'b>
         let t0 = std::time::Instant::now();
         unwrap!(self.sender.send((candidate, thunk, callback)));
         let t = std::time::Instant::now() - t0;
-        let t_usize = t.as_secs() as usize * 1000000000 + t.subsec_nanos() as usize;
+        let t_usize = t.as_secs() as usize * 1_000_000_000 + t.subsec_nanos() as usize;
         self.blocked_time.fetch_add(t_usize, atomic::Ordering::Relaxed);
     }
 }

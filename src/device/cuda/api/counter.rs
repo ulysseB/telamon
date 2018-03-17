@@ -31,9 +31,7 @@ impl<'a> PerfCounterSet<'a> {
         let event_pos = event_ids.into_iter().enumerate().map(|(x, y)| (y, x)).collect();
         PerfCounterSet {
             num_event: counters.len(),
-            event_sets: event_sets,
-            event_pos: event_pos,
-            context: context,
+            event_sets, event_pos, context,
         }
     }
 

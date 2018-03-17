@@ -31,7 +31,7 @@ struct Namer<'a> {
 impl<'a> Namer<'a> {
     /// Creates a new `Namer`
     fn new(fun: &'a codegen::Function<'a>, gpu: &'a Gpu) -> Self {
-        Namer { gpu: gpu, function: fun, num_var: HashMap::default(), num_sizes: 0 }
+        Namer { gpu, function: fun, num_var: HashMap::default(), num_sizes: 0 }
     }
 
     /// Generate a variable name prefix from a type.

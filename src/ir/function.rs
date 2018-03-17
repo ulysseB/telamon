@@ -203,7 +203,7 @@ impl<'a> Function<'a> {
     fn gen_internal_index(&mut self, id: mem::InternalId, dims: Vec<dim::Id>)
             -> (Operand<'a>, AccessPattern) {
         let ty_len = unwrap!(self.mem_blocks.internal_block(id).base_size());
-        self.gen_index(id.into(), ty_len, Operand::Addr(id.into()), dims)
+        self.gen_index(id.into(), ty_len, Operand::Addr(id), dims)
     }
 
     /// Generates an access pattern and the corresponding induction variable to access a
@@ -222,7 +222,7 @@ impl<'a> Function<'a> {
         let pattern = ir::AccessPattern::Tensor {
             mem_id: mem,
             stride: base_incr as i32,
-            dims: dims,
+            dims,
         };
         (addr, pattern)
     }
@@ -233,9 +233,9 @@ impl<'a> Function<'a> {
         // TODO(search_space): allow temporary memory generation for reduce operators.
         let (src_inst, data_type, src_dims, dst_dims): (_, _, Vec<_>, Vec<_>) = {
             match *self.inst(dst_inst).operands()[dst_operand_pos] {
-                Operand::Inst(ref src_id, ref t, ref dim_map, ir::DimMapScope::Global) => {
+                Operand::Inst(ref src_id, t, ref dim_map, ir::DimMapScope::Global) => {
                     let (src_dims, dst_dims) = dim_map.iter().cloned().unzip();
-                    (*src_id, t.clone(), src_dims, dst_dims)
+                    (*src_id, t, src_dims, dst_dims)
                 },
                 Operand::Inst(_, _, _, _) => {
                     debug!("The dimension mapping {:?}.{} cannot be lowered",
@@ -251,7 +251,7 @@ impl<'a> Function<'a> {
         // Build the temporary memory block.
         let tmp_mem = {
             let dims = st_dims.iter().cloned().zip(ld_dims.iter().cloned());
-            self.mem_blocks.new_tmp(data_type.clone(), dims)
+            self.mem_blocks.new_tmp(data_type, dims)
         };
         // Build the store.
         let st_dim_map = dim::Map::new(src_dims.iter().zip_eq(&st_dims).map(clone_pair));

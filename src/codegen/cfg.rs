@@ -126,12 +126,12 @@ impl<'a> CfgEvent<'a> {
             let order = space.domain().get_order(lhs_bb, rhs_bb);
             match (self, other, order) {
                 (_, _, Order::MERGED) => self.cmp_within_bb(other),
-                (_, _, Order::BEFORE) => Less,
-                (_, _, Order::AFTER) => Greater,
                 (&Exec(_), &Exec(_), Order::ORDERED) => lhs_bb.cmp(&rhs_bb),
-                (&Enter(..), _, Order::OUTER) => Less,
-                (_, &Enter(..), Order::INNER) => Greater,
-                (_, &Exit(..), Order::INNER)  => Less,
+                (_, _, Order::BEFORE) |
+                (&Enter(..), _, Order::OUTER) |
+                (_, &Exit(..), Order::INNER) => Less,
+                (_, _, Order::AFTER) |
+                (_, &Enter(..), Order::INNER) |
                 (&Exit(..), _, Order::OUTER) => Greater,
                 (lhs, rhs, ord) =>
                     panic!("Invalid order between {:?} and {:?}: {:?}.", lhs, rhs, ord),

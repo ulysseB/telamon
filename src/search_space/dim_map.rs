@@ -1,4 +1,4 @@
-//! DimMap and layout lowering.
+//! `DimMap` and layout lowering.
 use ir::{self, BasicBlock};
 use search_space::{Action, DimKind, Domain, DomainStore, InstFlag, Order};
 use search_space::operand;

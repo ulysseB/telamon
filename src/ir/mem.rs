@@ -118,7 +118,7 @@ impl<'a> BlockMap<'a> {
         }).collect();
         BlockMap {
             internal_blocks: vec![],
-            external_blocks: external_blocks,
+            external_blocks,
             layouts: HashSet::default(),
         }
     }
@@ -133,13 +133,13 @@ impl<'a> BlockMap<'a> {
             self.layouts.insert(id);
         }
         let block = InternalBlock {
-            id: id,
+            id,
             base_size: base_size.clone(),
             size: base_size,
             is_private: private,
             uses: vec![],
             mapped_dims: vec![],
-            maybe_mapped: maybe_mapped.unwrap_or_else(|| ir::DimMap::empty()),
+            maybe_mapped: maybe_mapped.unwrap_or_else(ir::DimMap::empty),
         };
         self.internal_blocks.push(block);
         id

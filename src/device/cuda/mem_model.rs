@@ -101,8 +101,8 @@ fn unknown_info(is_shared_access: Trivalent, gpu: &cuda::Gpu) -> MemInfo {
     }
     if is_shared_access.maybe_false() {
         info.l2_miss_ratio = 0.0;
-        info.l1_coalescing = 1.0/(gpu.wrap_size as f64);
-        info.l2_coalescing = 1.0/(gpu.wrap_size as f64);
+        info.l1_coalescing = 1.0/f64::from(gpu.wrap_size);
+        info.l2_coalescing = 1.0/f64::from(gpu.wrap_size);
         info.replay_factor = 1.0;
     }
     info
@@ -119,21 +119,21 @@ fn shared_replay_factor(stride: i32,
     for dim_info in sort_thread_dims(thread_dims, space, |d| d.shared_replay_freq) {
         let mut size = dim_info.size;
         total_size *= size;
-        if total_size > gpu.wrap_size as u64 {
-            let div = total_size / gpu.wrap_size as u64;
+        if total_size > u64::from(gpu.wrap_size) {
+            let div = total_size / u64::from(gpu.wrap_size);
             size /= div;
-            total_size = gpu.wrap_size as u64;
+            total_size = u64::from(gpu.wrap_size);
         }
         let replays = ((size-1) as f64 * dim_info.shared_replay_freq).floor();
         replay_factor *= 1.0 + replays;
-        if total_size == gpu.wrap_size as u64 { break }
+        if total_size == u64::from(gpu.wrap_size) { break }
     }
     // Handle the case where a single thread must access two banks.
     let max_vector_factor = tensor_dims.iter()
         .filter(|&&d| space.domain().get_dim_kind(d).intersects(DimKind::VECTOR))
         .map(|d| dim_sizes[d]).max().unwrap_or(1);
     let vector_replay = div_ceil(max_vector_factor*stride as u32, gpu.shared_bank_stride);
-    replay_factor = f64::max(replay_factor, vector_replay as f64);
+    replay_factor = f64::max(replay_factor, f64::from(vector_replay));
     trace!("shared_replay: {}", replay_factor);
     replay_factor
 }
@@ -147,21 +147,21 @@ fn global_coalescing(thread_dims: &[ThreadDimInfo], space: &SearchSpace, gpu: &c
     for dim_info in sort_thread_dims(thread_dims, space, |d| d.stride as f64) {
         let mut size = dim_info.size;
         total_size *= size;
-        if total_size > gpu.wrap_size as u64 {
-            let div = total_size / gpu.wrap_size as u64;
+        if total_size > u64::from(gpu.wrap_size) {
+            let div = total_size / u64::from(gpu.wrap_size);
             size /= div;
-            total_size = gpu.wrap_size as u64;
+            total_size = u64::from(gpu.wrap_size);
         }
-        let l1_line_len = gpu.l1_cache_line as u64;
-        let l2_line_len = gpu.l2_cache_line as u64;
+        let l1_line_len = u64::from(gpu.l1_cache_line);
+        let l2_line_len = u64::from(gpu.l2_cache_line);
         let l1_stride = std::cmp::min(dim_info.stride, l1_line_len);
         let l2_stride = std::cmp::min(dim_info.stride, l2_line_len);
         l1_line_accessed *= 1 + ((size-1)*l1_stride)/l1_line_len;
         l2_line_accessed *= 1 + ((size-1)*l2_stride)/l2_line_len;
-        if total_size == gpu.wrap_size as u64 { break }
+        if total_size == u64::from(gpu.wrap_size) { break }
     }
     trace!("global_replay: {} (size: {})", l1_line_accessed, total_size);
-    let l1_coalescing = l1_line_accessed as f64 / total_size as f64; 
+    let l1_coalescing = l1_line_accessed as f64 / total_size as f64;
     let l2_coalescing = l2_line_accessed as f64 / total_size as f64;
     (l1_coalescing, l2_coalescing, l1_line_accessed as f64)
 }
@@ -186,7 +186,7 @@ fn tensor_thread_dims(space: &SearchSpace,
     let non_zero_strides = tensor_dims.iter().rev().scan(base_stride, |stride, dim| {
         let current_stride = *stride;
         let size = sizes[dim];
-        *stride *= size as u64;
+        *stride *= u64::from(size);
         Some((dim, (size, current_stride)))
     }).collect::<HashMap<_, _>>();
     inst.iteration_dims().iter().flat_map(|&dim| {
@@ -200,16 +200,13 @@ fn tensor_thread_dims(space: &SearchSpace,
             .unwrap_or_else(|| (sizes[&id], 0));
         // TODO(model): handle strides that are not a multiple of the bank_Stride.
         let shared_replay_freq = if stride == 0 { 0.0 } else {
-            let byte_reply_distance = (gpu.shared_bank_stride * gpu.wrap_size) as u64;
+            let byte_reply_distance = u64::from(gpu.shared_bank_stride * gpu.wrap_size);
             let hop_replay_distance = integer::lcm(stride, byte_reply_distance);
             stride as f64 / hop_replay_distance as f64
         };
         ThreadDimInfo {
-            id: id,
-            is_active_thread: is_active_thread,
-            size: size as u64,
-            stride: stride,
-            shared_replay_freq: shared_replay_freq,
+            size: u64::from(size),
+            stride, shared_replay_freq, id, is_active_thread,
         }
     }).collect_vec()
 }
