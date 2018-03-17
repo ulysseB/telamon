@@ -37,7 +37,7 @@ impl Drop for JITDaemon {
 }
 
 /// A function that listen for incomming PTX code and compiles it.
-fn daemon(receiver: ipc::IpcBytesReceiver, sender: ipc::IpcBytesSender) {
+fn daemon(receiver: &ipc::IpcBytesReceiver, sender: &ipc::IpcBytesSender) {
     unsafe {
         let ctx = init_cuda(0);
         loop {
@@ -94,7 +94,7 @@ impl DaemonSpawner {
                     // We daemonize the JIT so it is attached to the closet subreaper
                     // process, i.e. the main process.
                     let tmp_pid = fork_function(|| {
-                        let pid = fork_function(|| daemon(receiver, sender));
+                        let pid = fork_function(|| daemon(&receiver, &sender));
                         if let Err(err) = pid_sender.send(pid) {
                             error!("error in PTX daemon spawner (sending PID): {:?}", err);
                             return;

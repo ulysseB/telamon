@@ -409,7 +409,7 @@ impl device::Device for Gpu {
 }
 
 /// Asigns min(lhs, rhs) to lhs.
-fn min_assign<T: std::cmp::Ord>(lhs: &mut T, rhs: T) { if &rhs < lhs { *lhs = rhs; } }
+fn min_assign<T: std::cmp::Ord>(lhs: &mut T, rhs: T) { if rhs < *lhs { *lhs = rhs; } }
 
 // TODO(model): On the Quadro K4000:
 // * The Mul wide latency is unknown.
