@@ -5,9 +5,9 @@ name = "telamon"
 readme = "README.md"
 version = "0.2.0"
 
-[[bench]]
-harness = false
-name = "mppa"
+#[[bench]]
+#harness = false
+#name = "mppa"
 
 [[bin]]
 name = "cuda-characterize"

@@ -1,3 +1,4 @@
+#![cfg(feature = "mppa")]
 extern crate pbr;
 extern crate env_logger;
 extern crate telamon;
@@ -9,7 +10,7 @@ extern crate lazy_static;
 mod bencher;
 
 use bencher::*;
-use telamon::{device, explorer, helper};
+use telamon::{device, explorer, helper, model};
 use telamon::device::Context;
 
 fn main() {
@@ -43,12 +44,8 @@ fn parallel_evaluation(bencher: &Bencher, threads: usize) {
                 let fun = fun.clone();
                 scope.spawn(move || {
                     for _ in 0..per_thread {
-                        let candidate = explorer::Candidate {
-                            space: fun.clone(),
-                            bound: 0.0,
-                            depth: 1,
-                        };
-                        eval.add_kernel(candidate);
+                        let bound = model::Bound::from_actual_time(0f64);
+                        eval.add_kernel(explorer::Candidate::new(fun.clone(), bound));
                     }
                 });
             });

@@ -20,7 +20,7 @@ const DATA_TYPE: ir::Type = ir::Type::F(32);
 // "a" is a scalar and "x" and "y" are vectors of size "n".
 fn main() {
     // Enable logging.
-    let _ = env_logger::init();
+    env_logger::init();
     // Initializes the evaluation context.
     let executor = cuda::Executor::init();
     let mut context = cuda::Context::new(&executor);
