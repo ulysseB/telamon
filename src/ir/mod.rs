@@ -92,4 +92,12 @@ impl NewObjs {
     }
 }
 
+/// A point-to-point communication lowered into a store and a load.
+pub struct LoweredDimMap {
+    pub mem: mem::InternalId,
+    pub store: InstId,
+    pub load: InstId,
+    pub dimensions: Vec<(dim::Id, dim::Id)>
+}
+
 // TODO(perf): group static computations

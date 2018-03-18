@@ -36,27 +36,28 @@ pub fn lower_layout(fun: &mut ir::Function, mem: ir::mem::InternalId,
 fn lower_dim_map(fun: &mut ir::Function, inst: ir::InstId, operand: usize,
                  new_objs: &mut ir::NewObjs) -> Result<Vec<Action>, ()> {
     debug!("lower_dim_map({:?}, {}) triggered", inst, operand);
-    let (mem, st_dims, st, ld_dims, ld) = fun.lower_dim_map(inst, operand)?;
+    let lowered_dim_map = fun.lower_dim_map(inst, operand)?;
     let mut actions = Vec::new();
     // Order the store and load loop nests.
-    for (&src, &dst) in st_dims.iter().zip_eq(&ld_dims) {
+    for &(src, dst) in &lowered_dim_map.dimensions {
         actions.push(Action::Order(src.into(), dst.into(), Order::BEFORE | Order::MERGED));
     }
     // FIXME: allow global memory
-    actions.push(Action::InstFlag(st, InstFlag::MEM_SHARED));
-    actions.push(Action::InstFlag(ld, InstFlag::MEM_SHARED));
+    actions.push(Action::InstFlag(lowered_dim_map.store, InstFlag::MEM_SHARED));
+    actions.push(Action::InstFlag(lowered_dim_map.load, InstFlag::MEM_SHARED));
     //actions.push(Action::InstFlag(st, InstFlag::MEM_COHERENT));
     //actions.push(Action::InstFlag(ld, InstFlag::MEM_COHERENT));
-    actions.push(Action::Order(st.into(), ld.into(), Order::BEFORE));
+    let store = lowered_dim_map.store;
+    actions.push(Action::Order(store.into(), lowered_dim_map.load.into(), Order::BEFORE));
     let operand = fun.inst(inst).operands()[operand];
     actions.extend(operand::invariants(fun, operand, inst.into()));
     // Update the list of new objets
-    for dim in st_dims.into_iter().chain(ld_dims) {
+    for dim in lowered_dim_map.dimensions.iter().flat_map(|&(x, y)| vec![x, y]) {
         new_objs.add_dimension(fun.dim(dim));
     }
-    new_objs.add_mem_instruction(fun.inst(st));
-    new_objs.add_mem_instruction(fun.inst(ld));
-    new_objs.add_mem_block(mem);
+    new_objs.add_mem_instruction(fun.inst(lowered_dim_map.store));
+    new_objs.add_mem_instruction(fun.inst(lowered_dim_map.load));
+    new_objs.add_mem_block(lowered_dim_map.mem);
     debug!("lower_dim_map actions: {:?}", actions);
     Ok(actions)
 }

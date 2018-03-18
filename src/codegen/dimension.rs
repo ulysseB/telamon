@@ -221,11 +221,13 @@ pub fn register_induction_vars<'a>(dims: &mut Vec<Dimension<'a>>,
     (ind_vars, precomputed_levels)
 }
 
+type IndVarIncrement<'a> = (ir::dim::Id, &'a ir::Size<'a>);
+
 /// Retrieves the list of induction levels that can be computed at the beginning of the
 /// thread and the induction levels that are updated during loops. Both lists are sorted
 /// in the order in which levels should be computed.
 fn get_ind_var_levels<'a>(ind_var: &'a ir::InductionVar<'a>, space: &SearchSpace)
-    -> (Vec<(ir::dim::Id, &'a ir::Size<'a>)>, Vec<(ir::dim::Id, &'a ir::Size<'a>)>)
+    -> (Vec<IndVarIncrement<'a>>, Vec<IndVarIncrement<'a>>)
 {
     let (mut const_levels, mut mut_levels) = (Vec::new(), Vec::new());
     for &(dim, ref size) in ind_var.dims() {

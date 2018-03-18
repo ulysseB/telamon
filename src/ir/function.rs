@@ -229,7 +229,7 @@ impl<'a> Function<'a> {
 
     /// Lowers a dim map into a partially defined layout.
     pub fn lower_dim_map(&mut self, dst_inst: InstId, dst_operand_pos: usize)
-        -> Result<(mem::InternalId, Vec<dim::Id>, InstId, Vec<dim::Id>, InstId), ()> {
+        -> Result<ir::LoweredDimMap, ()> {
         // TODO(search_space): allow temporary memory generation for reduce operators.
         let (src_inst, data_type, src_dims, dst_dims): (_, _, Vec<_>, Vec<_>) = {
             match *self.inst(dst_inst).operands()[dst_operand_pos] {
@@ -249,10 +249,8 @@ impl<'a> Function<'a> {
         let st_dims = self.spawn_mapped_dims(&src_dims);
         let ld_dims = self.spawn_mapped_dims(&dst_dims);
         // Build the temporary memory block.
-        let tmp_mem = {
-            let dims = st_dims.iter().cloned().zip(ld_dims.iter().cloned());
-            self.mem_blocks.new_tmp(data_type, dims)
-        };
+        let dims = st_dims.iter().cloned().zip_eq(ld_dims.iter().cloned()).collect_vec();
+        let tmp_mem = self.mem_blocks.new_tmp(data_type, dims.iter().cloned());
         // Build the store.
         let st_dim_map = dim::Map::new(src_dims.iter().zip_eq(&st_dims).map(clone_pair));
         let st_operand =  Operand::new_inst(
@@ -264,7 +262,7 @@ impl<'a> Function<'a> {
         let ld_dim_set = ld_dims.iter().cloned().collect();
         let ld = self.add_inst(Operator::TmpLd(data_type, tmp_mem.into()), ld_dim_set);
         self.insts[dst_inst.id as usize].lower_dim_map(dst_operand_pos, ld, ld_dim_map);
-        Ok((tmp_mem, st_dims, st, ld_dims, ld))
+        Ok(ir::LoweredDimMap { mem: tmp_mem, store: st, load: ld, dimensions: dims })
     }
 
     /// Adds multiple dimensions at once, using the sizes of the given dimensions.

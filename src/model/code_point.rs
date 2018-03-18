@@ -56,9 +56,29 @@ fn generate(space: &SearchSpace, levels: &[Level]) -> Vec<CodePoint> {
         .chain((0..levels.len()).map(CodePoint::LevelExit)).collect()
 }
 
+/// Exposes data dependencies between code points and provides a valid total order
+/// between them.
+#[derive(Debug)]
+pub struct CodePointDag {
+    pub dag: Dag<CodePoint>,
+    pub ids: HashMap<CodePoint, usize>
+}
+
+impl CodePointDag {
+    /// Builds a `CodePointDag` for the given loop levels.
+    pub fn build(space: &SearchSpace, levels: &[Level]) -> Self {
+        let dag = code_point_dag(space, levels);
+        let ids = code_point_ids(&dag);
+        CodePointDag { dag, ids }
+    }
+
+    /// Returns the number of points in the DAG.
+    pub fn len(&self) -> usize { self.ids.len() }
+}
+
 /// Generates a directed acyclic graph representing the ordering dependencies between the
 /// code points.
-pub fn code_point_dag(space: &SearchSpace, levels: &[Level]) -> Dag<CodePoint> {
+fn code_point_dag(space: &SearchSpace, levels: &[Level]) -> Dag<CodePoint> {
     let code_points = generate(space, levels);
     Dag::from_order(code_points, |&lhs, &rhs| {
         use self::CodePoint::*;
@@ -108,6 +128,6 @@ fn convert_order(space: &SearchSpace,
 }
 
 /// Creates a map from code point to code point IDs.
-pub fn code_point_ids(code_points: &Dag<CodePoint>) -> HashMap<CodePoint, usize> {
+fn code_point_ids(code_points: &Dag<CodePoint>) -> HashMap<CodePoint, usize> {
     code_points.nodes().iter().enumerate().map(|(x, &y)| (y, x)).collect()
 }

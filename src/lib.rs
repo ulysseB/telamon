@@ -12,6 +12,7 @@ extern crate immut_list;
 extern crate itertools;
 #[cfg(feature="cuda")]
 extern crate ipc_channel;
+#[cfg(feature="cuda")]
 #[macro_use]
 extern crate lazy_static;
 extern crate libc;
