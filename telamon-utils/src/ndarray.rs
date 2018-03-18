@@ -147,7 +147,7 @@ impl<'a, T> ViewMut<'a, T> {
             .iter()
             .enumerate()
             .position(|(fixed_pos, &(raw_pos, _))| fixed_pos + logical_dim < raw_pos)
-            .unwrap_or(self.fixed_indexes.len());
+            .unwrap_or_else(|| self.fixed_indexes.len());
         let raw_dim = pos_in_fixed_indexes + logical_dim;
         // at cell i: (dim, _) in fixed_indexes, dim - i = number of outer mouving dims
         // Spawn the views
