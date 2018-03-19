@@ -1,11 +1,6 @@
 //! Declarations of foreign functions and structs.
 use libc;
 
-// FIXME:
-// - move the return value of functions that can fail to the arguments
-// - return a success flag instead
-// - convert the succes flag to an error
-
 pub enum CuptiEventGroupSets {}
 pub enum CudaContext {}
 pub enum CudaModule {}

@@ -1,8 +1,7 @@
 //! Provides functions to print PTX code.
-use device::Device;
 use device::cuda::{Gpu, Namer};
 use codegen::*;
-use ir::{dim, op, Operand, Size, Type};
+use ir::{self, dim, op, Operand, Size, Type};
 use itertools::Itertools;
 use search_space::{DimKind, Domain, InstFlag};
 use std::io::Write;
@@ -21,9 +20,8 @@ fn rounding(rounding: op::Rounding) -> &'static str {
 }
 
 /// Prints a `MulMode` selector.
-fn mul_mode(from: Type, to: Type, fun: &Function, gpu: &Gpu) -> &'static str {
-    let space = fun.space();
-    match (unwrap!(gpu.lower_type(from, space)), unwrap!(gpu.lower_type(to, space))) {
+fn mul_mode(from: Type, to: Type, fun: &Function) -> &'static str {
+    match (lower_type(from, fun), lower_type(to, fun)) {
         (Type::I(32), Type::I(64)) => ".wide",
         (ref x, ref y) if x == y => ".lo",
         _ => panic!(),
@@ -54,8 +52,8 @@ fn st_operator(flag: InstFlag) -> &'static str {
 }
 
 /// Prints a `Type`.
-fn ptx_type(t: Type, fun: &Function, gpu: &Gpu) -> String {
-    match unwrap!(gpu.lower_type(t, fun.space())) {
+fn ptx_type(t: Type) -> String {
+    match t {
         Type::Void => panic!("void type cannot be printed"),
         Type::I(1) => "pred".to_string(),
         Type::I(size) => format!("s{size}", size = size),
@@ -80,15 +78,12 @@ fn host_type(t: &Type) -> &'static str {
 }
 
 /// Prints a parameter decalartion.
-fn param_decl(param: &ParamVal, fun: &Function, gpu: &Gpu, namer: &NameMap) -> String {
+fn param_decl(param: &ParamVal, namer: &NameMap) -> String {
     format!(
         ".param .{t}{attr} {name}",
-        t = ptx_type(param.t(), fun, gpu),
-        attr = match param.t() {
-            Type::PtrTo(_) => ".ptr.global.align 16",
-            _ => ""
-        },
-        name = namer.name_param(param),
+        t = ptx_type(param.t()),
+        attr = if param.is_pointer() { ".ptr.global.align 16" } else { "" },
+        name = namer.name_param(param.key()),
     )
 }
 
@@ -123,54 +118,58 @@ fn inst_arg(arg: &InstArg, namer: &mut NameMap) -> String {
 }
 
 /// Assembles the different parts of an instruction in a single string.
-fn assemble(operator: &str, t: Type, args: &[InstArg], namer: &mut NameMap,
-            fun: &Function, gpu: &Gpu) -> String {
+fn assemble(operator: &str, t: Type, args: &[InstArg], namer: &mut NameMap) -> String {
     let args_str = args.iter().map(|x| inst_arg(x, namer)).collect_vec().join(", ");
-    format!("{}.{} {};", operator, ptx_type(t, fun, gpu), args_str)
+    format!("{}.{} {};", operator, ptx_type(t), args_str)
 }
 
+// TODO(cleanup): remove this function once values are preprocessed by codegen. If values
+// are preprocessed, types will be already lowered.
+fn lower_type(t: ir::Type, fun: &Function) -> ir::Type {
+    unwrap!(fun.space().ir_instance().device().lower_type(t, fun.space()))
+}
 
 /// Prints an instruction.
-fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function, gpu: &Gpu) -> String {
+fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
     match *inst.operator() {
         op::Add(ref lhs, ref rhs, round) => {
             let operator = format!("add{}", rounding(round));
-            assemble(&operator, inst.t(), &[Inst(inst), Op(lhs), Op(rhs)], namer, fun, gpu)
+            assemble(&operator, inst.t(), &[Inst(inst), Op(lhs), Op(rhs)], namer)
         },
         op::Sub(ref lhs, ref rhs, round) => {
             let operator = format!("sub{}", rounding(round));
-            assemble(&operator, inst.t(), &[Inst(inst), Op(lhs), Op(rhs)], namer, fun, gpu)
+            assemble(&operator, inst.t(), &[Inst(inst), Op(lhs), Op(rhs)], namer)
         },
         op::Mul(ref lhs, ref rhs, rounding, return_type) => {
             let operator = if rounding == op::Rounding::Exact {
-                format!("mul{}", mul_mode(lhs.t(), return_type, fun, gpu))
+                format!("mul{}", mul_mode(lhs.t(), return_type, fun))
             } else {
                 format!("mul{}", self::rounding(rounding))
             };
-            assemble(&operator, lhs.t(), &[Inst(inst), Op(lhs), Op(rhs)], namer, fun, gpu)
+            assemble(&operator, lower_type(lhs.t(), fun), &[Inst(inst), Op(lhs), Op(rhs)], namer)
         },
         op::Mad(ref mul_lhs, ref mul_rhs, ref add_rhs, rounding) => {
             let operator = if rounding == op::Rounding::Exact {
-                format!("mad{}", mul_mode(mul_lhs.t(), add_rhs.t(), fun, gpu))
+                format!("mad{}", mul_mode(mul_lhs.t(), add_rhs.t(), fun))
             } else {
                 format!("fma{}", self::rounding(rounding))
             };
             let args = &[Inst(inst), Op(mul_lhs), Op(mul_rhs), Op(add_rhs)];
-            assemble(&operator, mul_lhs.t(), args, namer, fun, gpu)
+            assemble(&operator, lower_type(mul_lhs.t(), fun), args, namer)
         },
         op::Div(ref lhs, ref rhs, round) => {
             let operator = format!("div{}", rounding(round));
-            assemble(&operator, inst.t(), &[Inst(inst), Op(lhs), Op(rhs)], namer, fun, gpu)
+            assemble(&operator, inst.t(), &[Inst(inst), Op(lhs), Op(rhs)], namer)
         },
         op::Mov(ref op) =>
-            assemble("mov", inst.t(), &[Inst(inst), Op(op)], namer, fun, gpu),
-        op::Ld(t, ref addr, _) => {
+            assemble("mov", inst.t(), &[Inst(inst), Op(op)], namer),
+        op::Ld(_, ref addr, _) => {
             let operator = ld_operator(unwrap!(inst.mem_flag()));
-            assemble(operator, t, &[Inst(inst), Addr(addr)], namer, fun, gpu)
+            assemble(operator, inst.t(), &[Inst(inst), Addr(addr)], namer)
         },
         op::St(ref addr, ref val, _,  _) => {
             let operator = st_operator(unwrap!(inst.mem_flag()));
-            assemble(operator, val.t(), &[Addr(addr), Op(val)], namer, fun, gpu)
+            assemble(operator, lower_type(val.t(), fun), &[Addr(addr), Op(val)], namer)
         },
         op::Cast(ref op, t) => {
             let rounding = match (op.t(), t) {
@@ -179,67 +178,64 @@ fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function, gpu: &Gpu) -> S
                 (Type::F(x), Type::F(y)) => if x > y { ".rn" } else { "" },
                 _ => "",
             };
-            let operator = format!("cvt{}.{}", rounding, ptx_type(t, fun, gpu));
-            assemble(&operator, op.t(), &[Inst(inst), Op(op)], namer, fun, gpu)
+            let operator = format!("cvt{}.{}", rounding, ptx_type(lower_type(t, fun)));
+            assemble(&operator, lower_type(op.t(), fun), &[Inst(inst), Op(op)], namer)
         },
         op::TmpLd(..) | op::TmpSt(..) => panic!("non-printable instruction")
     }
 }
 
 /// Prints a vector instruction.
-fn vector_inst(inst: &Instruction, dim: &Dimension, namer: &mut NameMap, fun: &Function,
-               gpu: &Gpu) -> String {
+fn vector_inst(inst: &Instruction, dim: &Dimension, namer: &mut NameMap, fun: &Function)
+    -> String
+{
     let size = unwrap!(dim.size().as_int());
     let flag = unwrap!(inst.mem_flag());
     match *inst.operator() {
-        op::Ld(t, ref addr, _) => {
+        op::Ld(_, ref addr, _) => {
             let operator = format!("{}.v{}", ld_operator(flag), size);
             let args = [VecInst(inst, dim.id(), size), Addr(addr)];
-            assemble(&operator, t, &args, namer, fun, gpu)
+            assemble(&operator, inst.t(), &args, namer)
         },
         op::St(ref addr, ref val, _, _) => {
             let operator = format!("{}.v{}", st_operator(flag), size);
             let operands = [Addr(addr), VecOp(val, dim.id(), size)];
-            assemble(&operator, val.t(), &operands, namer, fun, gpu)
+            assemble(&operator, lower_type(val.t(), fun), &operands, namer)
         },
         _ => panic!("non-vectorizable instruction"),
     }
 }
 
 /// Prints the variables declared by the `Namer`.
-fn var_decls(namer: &Namer, fun: &Function, gpu: &Gpu) -> String {
+fn var_decls(namer: &Namer) -> String {
     let print_decl = |(&t, n)| {
         let prefix = Namer::gen_prefix(&t);
-        format!(".reg.{} %{}<{}>;", ptx_type(t, fun, gpu), prefix, n)
+        format!(".reg.{} %{}<{}>;", ptx_type(t), prefix, n)
     };
     namer.num_var.iter().map(print_decl).collect_vec().join("\n  ")
 }
 
 /// Prints a cfg.
-fn cfg<'a>(fun: &Function, c: &Cfg<'a>, namer: &mut NameMap, gpu: &Gpu) -> String {
+fn cfg<'a>(fun: &Function, c: &Cfg<'a>, namer: &mut NameMap) -> String {
     match *c {
-        Cfg::Root(ref cfgs) => cfg_vec(fun, cfgs, namer, gpu),
-        Cfg::Loop(ref dim, ref cfgs) => ptx_loop(fun, dim, cfgs, namer, gpu),
+        Cfg::Root(ref cfgs) => cfg_vec(fun, cfgs, namer),
+        Cfg::Loop(ref dim, ref cfgs) => ptx_loop(fun, dim, cfgs, namer),
         Cfg::Barrier => "bar.sync 0;".to_string(),
-        Cfg::Instruction(ref i) => inst(i, namer, fun, gpu),
+        Cfg::Instruction(ref i) => inst(i, namer, fun),
         Cfg::ParallelInductionLevel(ref level) =>
-            parallel_induction_level(level, namer, fun, gpu)
+            parallel_induction_level(level, namer)
     }
 }
 
 /// Prints a multiplicative induction var level.
-fn parallel_induction_level(level: &InductionLevel,
-                            namer: &NameMap,
-                            fun: &Function,
-                            gpu: &Gpu) -> String {
+fn parallel_induction_level(level: &InductionLevel, namer: &NameMap) -> String {
     let dim_id = level.increment.map(|(dim, _)| dim);
     let ind_var = namer.name_induction_var(level.ind_var, dim_id);
-    let lowered_t = unwrap!(gpu.lower_type(level.t(), fun.space()));
     let base_components =  level.base.components().map(|v| namer.name(v)).collect_vec();
     if let Some((dim, increment)) = level.increment {
         let index = namer.name_index(dim);
         let step = namer.name_size(increment, Type::I(32));
-        let mode = if lowered_t == Type::I(64) { "wide" } else { "lo" };
+        let mode = if level.t() == Type::I(64) { "wide" } else { "lo" };
         match base_components[..] {
             [] => format!("mul.{}.s32 {}, {}, {};", mode, ind_var, index, step),
             [ref base] =>
@@ -247,7 +243,7 @@ fn parallel_induction_level(level: &InductionLevel,
             _ => panic!()
         }
     } else {
-        let t = ptx_type(level.t(), fun, gpu);
+        let t = ptx_type(level.t());
         match base_components[..] {
             [] => format!("mov.{} {}, 0;", t, ind_var),
             [ref base] => format!("mov.{} {}, {};", t, ind_var, base),
@@ -258,19 +254,20 @@ fn parallel_induction_level(level: &InductionLevel,
 }
 
 /// Prints a vector of cfgs.
-fn cfg_vec(fun: &Function, cfgs: &[Cfg], namer: &mut NameMap, gpu: &Gpu) -> String {
-    cfgs.iter().map(|c| cfg(fun, c, namer, gpu)).collect_vec().join("\n  ")
+fn cfg_vec(fun: &Function, cfgs: &[Cfg], namer: &mut NameMap) -> String {
+    cfgs.iter().map(|c| cfg(fun, c, namer)).collect_vec().join("\n  ")
 }
 
 /// Prints a loop.
-fn ptx_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap,
-            gpu: &Gpu) -> String {
+fn ptx_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap)
+    -> String
+{
     match dim.kind() {
         DimKind::LOOP => {
             let idx = namer.name_index(dim.id()).to_string();
             let ind_levels = dim.induction_levels().iter();
             let (var_init, var_step): (String, String) = ind_levels.map(|level| {
-                let t = ptx_type(level.t(), fun, gpu);
+                let t = ptx_type(level.t());
                 let dim_id = level.increment.map(|(dim, _)| dim);
                 let ind_var = namer.name_induction_var(level.ind_var, dim_id);
                 let base_components = level.base.components().map(|v| namer.name(v));
@@ -281,8 +278,7 @@ fn ptx_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap,
                     _ => panic!(),
                 };
                 let step = if let Some((_, increment)) = level.increment {
-                    let lowered_t = unwrap!(gpu.lower_type(level.t(), fun.space()));
-                    let step = namer.name_size(increment, lowered_t);
+                    let step = namer.name_size(increment, level.t());
                     format!("add.{} {}, {}, {};\n  ", t, ind_var, step, ind_var)
                 } else { String::new() };
                 (init, step)
@@ -291,7 +287,7 @@ fn ptx_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap,
             let loop_id = namer.gen_loop_id();
             format!(include_str!("template/loop.ptx"),
                 id = loop_id,
-                body = cfg_vec(fun, cfgs, namer, gpu),
+                body = cfg_vec(fun, cfgs, namer),
                 idx = idx,
                 size = namer.name_size(dim.size(), Type::I(32)),
                 pred = pred,
@@ -303,7 +299,7 @@ fn ptx_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap,
             let mut body = Vec::new();
             let mut incr_levels = Vec::new();
             for level in dim.induction_levels() {
-                let t = ptx_type(level.t(), fun, gpu);
+                let t = ptx_type(level.t());
                 let dim_id = level.increment.map(|(dim, _)| dim);
                 let ind_var = namer.name_induction_var(level.ind_var, dim_id).to_string();
                 let base_components = level.base.components().map(|v| namer.name(v));
@@ -328,20 +324,19 @@ fn ptx_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap,
                         let incr =  if let Some(step) = incr.as_int() {
                             format!("add.{} {}, {}, {};", t, ind_var, step*i, base)
                         } else {
-                            let lowered_t = unwrap!(gpu.lower_type(level.t(), fun.space()));
-                            let step = namer.name_size(incr, lowered_t);
+                            let step = namer.name_size(incr, level.t());
                             format!("add.{} {}, {}, {};", t, ind_var, step, ind_var)
                         };
                         body.push(incr);
                     }
                 }
-                body.push(cfg_vec(fun, cfgs, namer, gpu));
+                body.push(cfg_vec(fun, cfgs, namer));
             }
             namer.unset_current_index(dim);
             body.join("\n  ")
         },
         DimKind::VECTOR => match *cfgs {
-            [Cfg::Instruction(ref inst)] => vector_inst(inst, dim, namer, fun, gpu),
+            [Cfg::Instruction(ref inst)] => vector_inst(inst, dim, namer, fun),
             _ => panic!("Invalid vector dimension body"),
         },
         kind => panic!("Invalid loop kind for ptx printing: {:?}", kind)
@@ -349,9 +344,8 @@ fn ptx_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap,
 }
 
 /// Declares a shared memory block.
-fn shared_mem_decl(block: &InternalMemBlock, namer: &mut NameMap, fun: &Function,
-                   gpu: &Gpu) -> String {
-    let ptr_type_name = ptx_type(Type::I(32), fun, gpu);
+fn shared_mem_decl(block: &InternalMemBlock, namer: &mut NameMap) -> String {
+    let ptr_type_name = ptx_type(Type::I(32));
     let name = namer.name_addr(block.id());
    format!(".shared.align 16 .u8 {vec_name}[{size}];\
             \n  mov.{t} {name}, {vec_name};",
@@ -377,7 +371,7 @@ fn privatise_global_block(block: &InternalMemBlock, namer: &mut NameMap, fun: &F
                                var, old_var, size, idx));
             (var, insts)
         });
-    let mode = mul_mode(Type::I(32), Type::I(gpu.addr_size), fun, gpu);
+    let mode = mul_mode(Type::I(32), Type::I(gpu.addr_size), fun);
     insts.push(format!("mad{}.s32 {}, {}, {}, {};",
                        mode, addr, var, size, addr));
     insts.join("\n  ")
@@ -400,25 +394,25 @@ fn decl_par_indexes(function: &Function, namer: &mut NameMap) -> String {
 
 /// Prints a `Function`.
 pub fn function(function: &Function, gpu: &Gpu) -> String {
-    let mut namer = Namer::new(function, gpu);
+    let mut namer = Namer::default();
     let (param_decls, ld_params, idx_loads, mem_decls, body);
     let mut init = Vec::new();
     {
         let name_map = &mut NameMap::new(function, &mut namer);
         param_decls = function.device_code_args()
-            .map(|v| param_decl(v, function, gpu, name_map))
+            .map(|v| param_decl(v, name_map))
             .collect_vec().join(",\n  ");
         ld_params = function.device_code_args().map(|val| {
             format!("ld.param.{t} {var_name}, [{name}];",
-                    t = ptx_type(val.t(), function, gpu),
-                    var_name = name_map.name_param_val(val),
-                    name = name_map.name_param(val))
+                    t = ptx_type(val.t()),
+                    var_name = name_map.name_param_val(val.key()),
+                    name = name_map.name_param(val.key()))
         }).collect_vec().join("\n  ");
         idx_loads = decl_par_indexes(function, name_map);
         mem_decls = function.mem_blocks().flat_map(|block| {
             match block.alloc_scheme() {
                 AllocationScheme::Shared =>
-                    Some(shared_mem_decl(block, name_map, function, gpu)),
+                    Some(shared_mem_decl(block, name_map)),
                 AllocationScheme::PrivatisedGlobal =>
                     Some(privatise_global_block(block, name_map, function, gpu)),
                 AllocationScheme::Global => None,
@@ -429,19 +423,18 @@ pub fn function(function: &Function, gpu: &Gpu) -> String {
             if !dim.kind().intersects(DimKind::UNROLL | DimKind::LOOP) { continue; }
             for level in dim.induction_levels() {
                 if let Some((_, incr)) = level.increment {
-                    let lowered_t = unwrap!(gpu.lower_type(level.t(), function.space()));
-                    let name = name_map.declare_size_cast(incr, lowered_t);
+                    let name = name_map.declare_size_cast(incr, level.t());
                     if let Some(name) = name {
-                        let ptx_t = ptx_type(level.t(), function, gpu);
+                        let ptx_t = ptx_type(level.t());
                         let old_name = name_map.name_size(incr, Type::I(32));
                         init.push(format!("cvt.{}.s32 {}, {};", ptx_t, name, old_name));
                     }
                 }
             }
         }
-        body = cfg(function, function.cfg(), name_map, gpu);
+        body = cfg(function, function.cfg(), name_map);
     }
-    let var_decls = var_decls(&namer, function, gpu);
+    let var_decls = var_decls(&namer);
     format!(include_str!("template/device.ptx"),
             sm_major = gpu.sm_major,
             sm_minor = gpu.sm_minor,
@@ -484,14 +477,14 @@ pub fn host_function(fun: &Function, gpu: &Gpu, out: &mut Write) {
     let mut extra_def = vec![];
     let mut extra_cleanup = vec![];
     let params = fun.device_code_args().map(|p| match *p {
-        ParamVal::External(p) => format!("&{}", p.name),
+        ParamVal::External(p, _) => format!("&{}", p.name),
         ParamVal::Size(size) => {
             let extra_var = format!("_extra_{}", next_extra_var_id);
             next_extra_var_id += 1;
             extra_def.push(format!("int32_t {} = {};", extra_var, host_size(size)));
             format!("&{}", extra_var)
         },
-        ParamVal::GlobalMem(_, ref size) => {
+        ParamVal::GlobalMem(_, ref size, _) => {
             let extra_var = format!("_extra_{}", next_extra_var_id);
             next_extra_var_id += 1;
             let size = host_size(size);

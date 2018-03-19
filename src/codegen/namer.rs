@@ -1,4 +1,4 @@
-use codegen::{Dimension, Function, ParamVal, AllocationScheme, Instruction};
+use codegen::{Dimension, Function, ParamValKey, AllocationScheme, Instruction};
 use ir::{self, dim, DimMap, InstId, mem, Operand, Size, Type};
 use itertools::Itertools;
 use num::bigint::BigInt;
@@ -22,7 +22,7 @@ pub trait Namer {
     /// Provides a name for a variable of the given type.
     fn name(&mut self, t: Type) -> String;
     /// Generates a name for a parameter.
-    fn name_param(&mut self, p: &ParamVal) -> String;
+    fn name_param(&mut self, p: ParamValKey) -> String;
     /// Provides a name for a floating point constant.
     fn name_float(&self, &Ratio<BigInt>, u16) -> String;
     /// Provides a name for an integer constant.
@@ -39,7 +39,7 @@ pub struct NameMap<'a, 'b> {
     /// Keeps track of loop index names.
     indexes: HashMap<dim::Id, RcStr>,
     /// Keeps track of parameter names, both in the code and in the arguments.
-    params: HashMap<&'a ParamVal<'a>, (String, String)>,
+    params: HashMap<ParamValKey<'a>, (String, String)>,
     /// Keeps track of memory block address names.
     mem_blocks: HashMap<mem::InternalId, String>,
     /// Keeps track of the next fresh ID that can be assigned to a loop.
@@ -64,11 +64,11 @@ impl<'a, 'b> NameMap<'a, 'b> {
         // Setup parameters names.
         let params = function.device_code_args().map(|val| {
             let var_name = namer.name(val.t());
-            let param_name = namer.name_param(val);
-            if let ParamVal::GlobalMem(id, _) = *val {
+            let param_name = namer.name_param(val.key());
+            if let ParamValKey::GlobalMem(id) = val.key() {
                 mem_blocks.insert(id, var_name.clone());
             }
-            (val, (var_name, param_name))
+            (val.key(), (var_name, param_name))
         }).collect();
         // Name dimensions indexes.
         let mut indexes = HashMap::default();
@@ -90,7 +90,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
         // Name shared memory blocks. Global mem blocks are named by parameters.
         for mem_block in function.mem_blocks() {
             if mem_block.alloc_scheme() == AllocationScheme::Shared {
-                let name = namer.name(Type::PtrTo(mem_block.id().into()));
+                let name = namer.name(mem_block.ptr_type());
                 mem_blocks.insert(mem_block.id(), name);
             }
         }
@@ -174,7 +174,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
                     Cow::Borrowed(&self.indexes[&id])
                 },
             Operand::Size(ref size) => self.name_size(size, Type::I(32)),
-            Operand::Param(p) => self.name_param_val(&ParamVal::External(p)),
+            Operand::Param(p) => self.name_param_val(ParamValKey::External(p)),
             Operand::Addr(id) => self.name_addr(id),
             Operand::InductionVar(id, _) => self.name_induction_var(id, None),
         }
@@ -270,15 +270,15 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     /// Returns the name of a variable representing a parameter.
-    pub fn name_param(&self, param: &ParamVal) -> Cow<str> {
-        let param: &'a ParamVal<'a> = unsafe { std::mem::transmute(param) };
-        Cow::Borrowed(&self.params[param].1)
+    pub fn name_param(&self, param: ParamValKey) -> Cow<str> {
+        let param = unsafe { std::mem::transmute(param) };
+        Cow::Borrowed(&self.params[&param].1)
     }
 
     /// Returns the name of a variable representing a parameter value.
-    pub fn name_param_val(&self, param: &ParamVal) -> Cow<str> {
-        let param: &'a ParamVal<'a> = unsafe { std::mem::transmute(param) };
-        Cow::Borrowed(&self.params[param].0)
+    pub fn name_param_val(&self, param: ParamValKey) -> Cow<str> {
+        let param = unsafe { std::mem::transmute(param) };
+        Cow::Borrowed(&self.params[&param].0)
     }
 
     /// Returns the name of the address of a memory block.
@@ -317,8 +317,8 @@ impl<'a, 'b> NameMap<'a, 'b> {
                 Cow::Owned(size.factor().to_string())
             },
             (&[p], Type::I(32)) if size.factor() == 1 && size.divisor() == 1 =>
-                self.name_param_val(&ParamVal::External(p)),
-            (_, Type::I(32)) => self.name_param_val(&ParamVal::Size(size)),
+                self.name_param_val(ParamValKey::External(p)),
+            (_, Type::I(32)) => self.name_param_val(ParamValKey::Size(size)),
             _ => {
                 let size = unwrap!(self.size_casts.get(&(size, expected_t)));
                 Cow::Borrowed(size)

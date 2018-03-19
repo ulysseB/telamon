@@ -19,6 +19,8 @@ extern crate libc;
 extern crate linked_list;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate matches;
 extern crate num;
 #[cfg(feature="mppa")]
 extern crate parking_lot;

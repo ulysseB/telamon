@@ -13,7 +13,6 @@ pub use self::gpu::{Gpu, InstDesc};
 pub use self::kernel::Kernel;
 
 use codegen;
-use device::Device;
 use ir;
 use num::bigint::BigInt;
 use num::rational::Ratio;
@@ -21,19 +20,13 @@ use num::ToPrimitive;
 use std;
 use utils::*;
 
-struct Namer<'a> {
-    gpu: &'a Gpu,
-    function: &'a codegen::Function<'a>,
+#[derive(Default)]
+struct Namer {
     num_var: HashMap<ir::Type, usize>,
     num_sizes: usize,
 }
 
-impl<'a> Namer<'a> {
-    /// Creates a new `Namer`
-    fn new(fun: &'a codegen::Function<'a>, gpu: &'a Gpu) -> Self {
-        Namer { gpu, function: fun, num_var: HashMap::default(), num_sizes: 0 }
-    }
-
+impl Namer {
     /// Generate a variable name prefix from a type.
     fn gen_prefix(t: &ir::Type) -> &'static str {
         match *t {
@@ -50,9 +43,8 @@ impl<'a> Namer<'a> {
     }
 }
 
-impl<'a> codegen::Namer for Namer<'a> {
+impl codegen::Namer for Namer {
     fn name(&mut self, t: ir::Type) -> String {
-        let t = unwrap!(self.gpu.lower_type(t, self.function.space()));
         let prefix = Namer::gen_prefix(&t);
         let entry = self.num_var.entry(t).or_insert(0);
         let name = format!("%{}{}", prefix, *entry);
@@ -72,11 +64,11 @@ impl<'a> codegen::Namer for Namer<'a> {
         format!("{}", unwrap!(val.to_i64()))
     }
 
-    fn name_param(&mut self, p: &codegen::ParamVal) -> String {
-        match *p {
-            codegen::ParamVal::External(p) => p.name.clone(),
-            codegen::ParamVal::GlobalMem(mem, _) => format!("_gbl_mem_{}", mem.0),
-            codegen::ParamVal::Size(_) => {
+    fn name_param(&mut self, p: codegen::ParamValKey) -> String {
+        match p {
+            codegen::ParamValKey::External(p) => p.name.clone(),
+            codegen::ParamValKey::GlobalMem(mem) => format!("_gbl_mem_{}", mem.0),
+            codegen::ParamValKey::Size(_) => {
                 self.num_sizes += 1;
                 format!("_size_{}", self.num_sizes-1)
             },
