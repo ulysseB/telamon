@@ -115,7 +115,7 @@ pub fn process<T: io::Write>(input: &mut io::Read, output: &mut T, format: bool)
 }
 
 // TODO(cleanup): avoid name conflicts in the printer
-// TODO: allow multiple supersets
+// TODO(feature): allow multiple supersets
 // TODO(filter): group filters if one iterates on a subtype of the other
 // TODO(filter): generate negative filter when there is at most one input.
 // TODO(filter): merge filters even if one input requires a type constraint
@@ -124,6 +124,7 @@ pub fn process<T: io::Write>(input: &mut io::Read, output: &mut T, format: bool)
 //   -> can inverse lhs and rhs in symmetric, be careful if self is symmetric
 // - detect duplicates and remove them
 // - IS A X2 LIMITING FACTOR
+// > couldn't we do this during merging ?
 // TODO(cc_perf): Only iterate on the lower triangular part of symmetric domains in
 // on_change
 // TODO(cc_perf): in truth table, intersect rules with rules with weaker conditions,

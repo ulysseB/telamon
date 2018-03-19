@@ -478,7 +478,7 @@ fn host_size(size: &Size) -> String {
 pub fn host_function(fun: &Function, gpu: &Gpu, out: &mut Write) {
     let block_sizes = host_3sizes(fun.block_dims().iter());
     let thread_sizes = host_3sizes(fun.thread_dims().iter().rev());
-    let extern_param_names =  fun.external_params().iter()
+    let extern_param_names =  fun.params.iter()
         .map(|x| &x.name as &str).collect_vec().join(", ");
     let mut next_extra_var_id = 0;
     let mut extra_def = vec![];
@@ -501,7 +501,7 @@ pub fn host_function(fun: &Function, gpu: &Gpu, out: &mut Write) {
             format!("&{}", extra_var)
         },
     }).collect_vec().join(", ");
-    let extern_params = fun.external_params().iter()
+    let extern_params = fun.params.iter()
         .map(|p| format!("{} {}", host_type(&p.t), p.name))
         .collect_vec().join(", ");
     let res = write!(out, include_str!("template/host.c"),

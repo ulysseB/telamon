@@ -81,17 +81,15 @@ impl<'a> Function<'a> {
     }
 
     // TODO(cleanup): remove unecessary methods
-    /// Returns the parameters passed to the `Function` by the caller.
-    pub fn external_params(&self) -> &[ir::Parameter] { &self.space.ir_instance().params }
-
     /// Returns the underlying implementation space.
+    // This use used only to lower types
     pub fn space(&self) -> &SearchSpace { self.space }
 }
 
 impl<'a> std::ops::Deref for Function<'a> {
-    type Target = ir::Function<'a>;
+    type Target = ir::Signature;
 
-    fn deref(&self) -> &ir::Function<'a> { self.space.ir_instance() }
+    fn deref(&self) -> &Self::Target { self.space.ir_instance() }
 }
 
 /// Represents the value of a parameter passed to the kernel by the host.
