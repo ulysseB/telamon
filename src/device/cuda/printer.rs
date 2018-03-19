@@ -165,11 +165,11 @@ fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function, gpu: &Gpu) -> S
         op::Mov(ref op) =>
             assemble("mov", inst.t(), &[Inst(inst), Op(op)], namer, fun, gpu),
         op::Ld(t, ref addr, _) => {
-            let operator = ld_operator(fun.decisions().get_inst_flag(inst.id()));
+            let operator = ld_operator(unwrap!(inst.mem_flag()));
             assemble(operator, t, &[Inst(inst), Addr(addr)], namer, fun, gpu)
         },
         op::St(ref addr, ref val, _,  _) => {
-            let operator = st_operator(fun.decisions().get_inst_flag(inst.id()));
+            let operator = st_operator(unwrap!(inst.mem_flag()));
             assemble(operator, val.t(), &[Addr(addr), Op(val)], namer, fun, gpu)
         },
         op::Cast(ref op, t) => {
@@ -190,7 +190,7 @@ fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function, gpu: &Gpu) -> S
 fn vector_inst(inst: &Instruction, dim: &Dimension, namer: &mut NameMap, fun: &Function,
                gpu: &Gpu) -> String {
     let size = unwrap!(dim.size().as_int());
-    let flag = fun.decisions().get_inst_flag(inst.id());
+    let flag = unwrap!(inst.mem_flag());
     match *inst.operator() {
         op::Ld(t, ref addr, _) => {
             let operator = format!("{}.v{}", ld_operator(flag), size);

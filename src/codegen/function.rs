@@ -1,9 +1,8 @@
 //! Describes a `Function` that is ready to execute on a device.
 use ir;
 use ir::prelude::*;
-use ir::mem::Block;
 use itertools::Itertools;
-use search_space::{DimKind, Domain, DomainStore, MemSpace, SearchSpace};
+use search_space::{self, DimKind, Domain, MemSpace, SearchSpace};
 use codegen::{cfg, Cfg, dimension, Dimension, InductionVar, InductionLevel};
 use utils::*;
 use std;
@@ -84,9 +83,6 @@ impl<'a> Function<'a> {
     // TODO(cleanup): remove unecessary methods
     /// Returns the parameters passed to the `Function` by the caller.
     pub fn external_params(&self) -> &[ir::Parameter] { &self.space.ir_instance().params }
-
-    /// Returns the underlying domain.
-    pub fn decisions(&self) -> &DomainStore { self.space.domain() }
 
     /// Returns the underlying implementation space.
     pub fn space(&self) -> &SearchSpace { self.space }
@@ -228,6 +224,7 @@ impl<'a> InternalMemBlock<'a> {
 pub struct Instruction<'a> {
     instruction: &'a ir::Instruction<'a>,
     instantiation_dims: Vec<(ir::dim::Id, u32)>,
+    mem_flag: Option<search_space::InstFlag>,
 }
 
 impl<'a> Instruction<'a> {
@@ -239,7 +236,9 @@ impl<'a> Instruction<'a> {
         }).map(|&dim| {
             (dim, unwrap!(space.ir_instance().dim(dim).size().as_int()))
         }).collect();
-        Instruction { instruction, instantiation_dims }
+        let mem_flag = instruction.as_mem_inst()
+            .map(|inst| space.domain().get_inst_flag(inst.id()));
+        Instruction { instruction, instantiation_dims, mem_flag }
     }
 
     /// Returns the ID of the instruction.
@@ -266,4 +265,7 @@ impl<'a> Instruction<'a> {
     pub fn as_reduction(&self) -> Option<(ir::InstId, &ir::DimMap)> {
         self.instruction.as_reduction().map(|(x, y, _)| (x, y))
     }
+
+    /// Returns the memory flag of the intruction, if any.
+    pub fn mem_flag(&self) -> Option<search_space::InstFlag> { self.mem_flag }
 }
