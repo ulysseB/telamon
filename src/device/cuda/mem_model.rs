@@ -396,7 +396,7 @@ mod tests {
     /// Tests `MemInfo` for global loads without coalescing.
     #[test]
     fn global_no_coalescing() {
-        let _ = env_logger::init();
+        let _ = env_logger::try_init();
         let gpu = unwrap!(Gpu::from_name("dummy_cuda_gpu"));
         let base = gen_signature();
         let (space, inst, size_map) = gen_function(&base, &gpu, Order::OUTER);
@@ -410,7 +410,7 @@ mod tests {
     /// Tests `MemInfo` for global loads with full coalescing.
     #[test]
     fn global_full_coalescing() {
-        let _ = env_logger::init();
+        let _ = env_logger::try_init();
         let gpu = unwrap!(Gpu::from_name("dummy_cuda_gpu"));
         let base = gen_signature();
         let (space, inst, size_map) = gen_function(&base, &gpu, Order::INNER);
