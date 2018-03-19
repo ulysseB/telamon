@@ -2,7 +2,7 @@
 use device::Device;
 use device::cuda::{Gpu, Namer};
 use codegen::*;
-use ir::{dim, Instruction, op, Operand, Size, Type};
+use ir::{dim, op, Operand, Size, Type};
 use itertools::Itertools;
 use search_space::{DimKind, Domain, InstFlag};
 use std::io::Write;
@@ -221,7 +221,7 @@ fn cfg<'a>(fun: &Function, c: &Cfg<'a>, namer: &mut NameMap, gpu: &Gpu) -> Strin
         Cfg::Root(ref cfgs) => cfg_vec(fun, cfgs, namer, gpu),
         Cfg::Loop(ref dim, ref cfgs) => ptx_loop(fun, dim, cfgs, namer, gpu),
         Cfg::Barrier => "bar.sync 0;".to_string(),
-        Cfg::Instruction(i) => inst(i, namer, fun, gpu),
+        Cfg::Instruction(ref i) => inst(i, namer, fun, gpu),
         Cfg::ParallelInductionLevel(ref level) =>
             parallel_induction_level(level, namer, fun, gpu)
     }
@@ -341,7 +341,7 @@ fn ptx_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap,
             body.join("\n  ")
         },
         DimKind::VECTOR => match *cfgs {
-            [Cfg::Instruction(inst)] => vector_inst(inst, dim, namer, fun, gpu),
+            [Cfg::Instruction(ref inst)] => vector_inst(inst, dim, namer, fun, gpu),
             _ => panic!("Invalid vector dimension body"),
         },
         kind => panic!("Invalid loop kind for ptx printing: {:?}", kind)

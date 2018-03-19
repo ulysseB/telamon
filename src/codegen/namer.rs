@@ -1,6 +1,5 @@
-use codegen::{Dimension, Function, ParamVal, AllocationScheme};
-use ir::{self, dim, DimMap, InstId, Instruction, mem, Operand, Size, Type, BasicBlock};
-use search_space::{DimKind, Domain};
+use codegen::{Dimension, Function, ParamVal, AllocationScheme, Instruction};
+use ir::{self, dim, DimMap, InstId, mem, Operand, Size, Type};
 use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
@@ -121,11 +120,11 @@ impl<'a, 'b> NameMap<'a, 'b> {
             };
         }
         // Setup the name of variables holding instruction results.
-        for inst in function.insts() {
-            if let Some((inst_id, dim_map, _)) = inst.as_reduction() {
-                name_map.decl_alias(inst, inst_id, dim_map, function);
+        for inst in function.cfg().instructions() {
+            if let Some((inst_id, dim_map)) = inst.as_reduction() {
+                name_map.decl_alias(inst, inst_id, dim_map);
             } else if inst.t() != Type::Void {
-                name_map.decl_inst(inst, function);
+                name_map.decl_inst(inst);
             }
         }
         name_map
@@ -199,8 +198,8 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     /// Declares an instruction to the namer.
-    fn decl_inst(&mut self, inst: &Instruction, fun: &Function) {
-        let (dim_ids, dim_sizes) = self.inst_name_dims(inst, fun);
+    fn decl_inst(&mut self, inst: &Instruction) {
+        let (dim_ids, dim_sizes) = self.inst_name_dims(inst);
         let num_name = dim_sizes.iter().product();
         let names = (0 .. num_name).map(|_| self.gen_name(inst.t())).collect_vec();
         let array = NDArray::new(dim_sizes, names);
@@ -208,9 +207,8 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     /// Declares an instruction as an alias of another.
-    fn decl_alias(&mut self, alias: &Instruction, base: InstId, dim_map: &DimMap
-                  , fun: &Function) {
-        let (dim_ids, dim_sizes) = self.inst_name_dims(alias, fun);
+    fn decl_alias(&mut self, alias: &Instruction, base: InstId, dim_map: &DimMap) {
+        let (dim_ids, dim_sizes) = self.inst_name_dims(alias);
         let names = {
             let (ref base_dims, ref base_names) = self.insts[&base];
             let permutation = {
@@ -238,12 +236,8 @@ impl<'a, 'b> NameMap<'a, 'b> {
 
     /// Returns the ids and the sizes of the dimensions on which the instructions must be
     /// named.
-    fn inst_name_dims(&self, inst: &Instruction, fun: &Function
-                      ) -> (Vec<dim::Id>, Vec<usize>) {
-        inst.iteration_dims().iter().filter(|&&dim| {
-            let kind = fun.decisions().get_dim_kind(dim);
-            unwrap!(kind.is(DimKind::VECTOR | DimKind::UNROLL).as_bool())
-        }).map(|&dim| (dim, unwrap!(fun.dim(dim).size().as_int()) as usize)).unzip()
+    fn inst_name_dims(&self, inst: &Instruction) -> (Vec<dim::Id>, Vec<usize>) {
+        inst.instantiation_dims().iter().map(|&(dim, size)| (dim, size as usize)).unzip()
     }
 
     /// Returns the name of an index.

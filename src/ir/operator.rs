@@ -115,7 +115,7 @@ impl<'a> Operator<'a> {
     }
 
     /// Retruns the list of operands.
-    pub fn operands<'b>(&'b self) -> Vec<&'b Operand<'a>> {
+    pub fn operands(&self) -> Vec<&Operand<'a>> {
         match *self {
             Add(ref lhs, ref rhs, _) |
             Sub(ref lhs, ref rhs, _) |

@@ -30,7 +30,7 @@ impl<'a> Instruction<'a> {
     }
 
     /// Returns the list of operands of an `Instruction`.
-    pub fn operands<'b>(&'b self) -> Vec<&'b Operand<'a>> { self.operator.operands() }
+    pub fn operands(&self) -> Vec<&Operand<'a>> { self.operator.operands() }
 
     /// Returns the type of the value produced by an instruction.
     pub fn t(&self) -> Type { self.operator.t() }
