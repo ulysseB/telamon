@@ -60,8 +60,8 @@ pub fn find_best<'a, 'b>(config: &Config,
 
 /// Launch all threads needed for the search. wait for each one of them to finish. Monitor is
 /// supposed to return the best candidate found
-fn launch_search<'a, T>(config: &Config, candidate_store: T, context: &Context)
-    -> Option<SearchSpace<'a>> where T: Store<'a>
+fn launch_search<'a, T>(config: &Config, candidate_store: T, context: &Context) 
+    -> Option<SearchSpace<'a>> where T: Store<'a>  
 {
     let (monitor_sender, monitor_receiver) = mpsc::sync_channel(100);
     let (log_sender, log_receiver) = mpsc::sync_channel(100);
@@ -73,10 +73,10 @@ fn launch_search<'a, T>(config: &Config, candidate_store: T, context: &Context)
     }).join()
 }
 
-fn explore_space<'a, T>(config: &Config,
-                        candidate_store: &T,
-                        eval_sender: mpsc::SyncSender<MonitorMessage<'a, T>>,
-                        context: &Context) where T: Store<'a>
+fn explore_space<'a, T>(config: &Config, 
+                        candidate_store: &T, 
+                        eval_sender: mpsc::SyncSender<MonitorMessage<'a, T>>, 
+                        context: &Context) where T: Store<'a> 
 {
     context.async_eval(config.num_workers, &|evaluator| {
         while let Some((cand, payload)) = candidate_store.explore(config, context) {
@@ -88,7 +88,7 @@ fn explore_space<'a, T>(config: &Config,
             evaluator.add_kernel(Candidate {space, .. cand }, Box::new(callback));
         }
     });
-}
+} 
 
 
 /// Explores the full search space.
