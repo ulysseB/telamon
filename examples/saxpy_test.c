@@ -78,8 +78,8 @@ CUdeviceptr copy_array(CUdeviceptr src, uint64_t size) {
 }
 
 float compare_arrays(CUdeviceptr lhs, CUdeviceptr rhs, uint64_t size) {
-  float* lhs_host = malloc(size * sizeof(float));
-  float* rhs_host = malloc(size * sizeof(float));
+  float* lhs_host = (float*)malloc(size * sizeof(float));
+  float* rhs_host = (float*)malloc(size * sizeof(float));
   CHECK_CUDA(cuMemcpyDtoH(lhs_host, lhs, size * sizeof(float)));
   CHECK_CUDA(cuMemcpyDtoH(rhs_host, rhs, size * sizeof(float)));
   float diff = 0;
@@ -107,8 +107,20 @@ int main() {
 
   cublasHandle_t h;
   cublasCreate(&h);
+  
+  CUevent cublas_start, cublas_stop;
+  float cublas_t = -1;
+  CHECK_CUDA(cuEventCreate(&cublas_start, CU_EVENT_DEFAULT));
+  CHECK_CUDA(cuEventCreate(&cublas_stop, CU_EVENT_DEFAULT));
+  CHECK_CUDA(cuCtxSynchronize());
+  CHECK_CUDA(cuEventRecord(cublas_start, 0));
   cublasSaxpy(h, N, &a, (float*)x, 1, (float*)y_ref, 1); 
   cublasDestroy(h);
+  CHECK_CUDA(cuEventRecord(cublas_stop, 0));
+  CHECK_CUDA(cuEventSynchronize(cublas_stop));
+  CHECK_CUDA(cuEventElapsedTime(&cublas_t, cublas_start, cublas_stop));
+  CHECK_CUDA(cuEventDestroy(cublas_start));
+  CHECK_CUDA(cuEventDestroy(cublas_stop));
 
   float diff = compare_arrays(y, y_ref, N);
 
@@ -117,5 +129,5 @@ int main() {
   CHECK_CUDA(cuMemFree(y_ref));
   free_cuda(&context);
 
-  printf("exec: %fms, diff: %f\n", t, diff);
+  printf("exec: %fms, cublas: %fms, diff: %f\n", t, cublas_t, diff);
 }

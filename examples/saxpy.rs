@@ -39,37 +39,28 @@ fn main() {
     // Declares the bofy of the function.
     let function = {
         let mut builder = helper::Builder::new(&signature, context.device());
-        // Declares the size of iteration dimensions.
-        let size0 = builder.tile_size("n", 1024 * 4);
-        let size1 = builder.cst_size(1024);
-        let size2 = builder.cst_size(4);
-        // Declares three iteration dimension to iterate on "n" with four levels of tile.
-        let d0 = builder.open_dim(size0);
-        let d1 = builder.open_dim(size1);
-        let d2_0 = builder.open_dim(size2);
-        // Load from "x" without enforcing memory coherency.
-        let (x_ptr, x_pat) = builder.tensor_access(
-            &"x", x, &DATA_TYPE, &[&d0, &d1, &d2_0]);
-        let x_val = builder.ld_nc(DATA_TYPE, &x_ptr, x_pat);
-        // Load from "y
-        let d2_1 = builder.open_mapped_dim(&d2_0)[0];
-        let (y_ptr, y_pat) = builder.tensor_access(
-            &"y", y, &DATA_TYPE, &[&d0, &d1, &d2_1]);
-        let y_val = builder.ld(DATA_TYPE, &y_ptr, y_pat.clone());
-        builder.close_dim(&d2_1);
-        // Compute the new element and stores it back to "y".
-        let d2_2 = builder.open_mapped_dim(&d2_0)[0];
-        let y_val = builder.dim_map(y_val, &[(&d2_1, &d2_2)], ir::DimMapScope::Local);
-        let res = builder.mad(&"a", &x_val, &y_val);
-        let d2_3 = builder.open_mapped_dim(&d2_2)[0];
-        let (y_ptr, y_pat) = builder.tensor_access(
-            &"y", y, &DATA_TYPE, &[&d0, &d1, &d2_3]);
-        builder.st(&y_ptr, &res, y_pat);
+        let n_size = builder.param_size("n");
+        // Load X.
+        let ld_x_dim = builder.open_tiled_dim(n_size, &[1024, 4]);
+        let (x_ptr, x_pat) = builder.tensor_access(&"x", x, &DATA_TYPE, &[&ld_x_dim]);
+        let ld_x = builder.ld_nc(DATA_TYPE, &x_ptr, x_pat);
+        // Load Y
+        let ld_y_dim = builder.open_mapped_dim(&ld_x_dim);
+        let (y_ptr, y_pat) = builder.tensor_access(&"y", y, &DATA_TYPE, &[&ld_y_dim]);
+        let ld_y = builder.ld_nc(DATA_TYPE, &y_ptr, y_pat);
+        // Multiply X and Y.
+        let mad_dim = builder.open_mapped_dim(&ld_y_dim);
+        let x_op = builder.dim_map(ld_x, &[(&ld_x_dim, &mad_dim)], ir::DimMapScope::Global);
+        let y_op = builder.dim_map(ld_y, &[(&ld_y_dim, &mad_dim)], ir::DimMapScope::Global);
+        let mad = builder.mad(&x_op, &"a", &y_op);
+        // Store the result.
+        let st_dim = builder.open_mapped_dim(&mad_dim);
+        let (y_ptr, y_pat) = builder.tensor_access(&"y", y, &DATA_TYPE, &[&st_dim]);
+        builder.st(&y_ptr, &mad, y_pat);
+
         builder.get()
     };
 
     // Explore the search space.
     common::gen_best(vec![function], &context);
-    //let (total, leaf) = explorer::count_candidates(function);
-    //println!("{} candidate and {} leafs", total, leaf);
 }
