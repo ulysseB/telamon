@@ -27,6 +27,8 @@ extern crate parking_lot;
 #[cfg(feature="cuda")]
 extern crate prctl;
 extern crate rand;
+extern crate futures;
+extern crate tokio_timer_futures2;
 #[cfg(feature="cuda")]
 extern crate rustc_serialize;
 #[macro_use]

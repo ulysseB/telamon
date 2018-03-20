@@ -8,8 +8,23 @@ use search_space::SearchSpace;
 use std::time::Instant;
 use explorer::logger::LogMessage;
 use std;
+use std::time::Duration;
+use futures::stream;
+use futures::prelude::*;
+use futures::executor::LocalPool;
+use tokio_timer_futures2::*;
 
 pub type MonitorMessage<'a, T: Store<'a>> = (Candidate<'a>, f64, usize, T::PayLoad);
+
+enum CommEnd {
+    TimedOut,
+    Other,
+}
+impl<T> From<TimeoutError<T>> for CommEnd {
+    fn from(_: TimeoutError<T>) -> Self {
+        CommEnd::TimedOut
+    }
+}
 
 /// This function is an interface supposed to make a connection between the Store and the
 /// evaluator. Retrieve evaluations, retains the results and update the store accordingly.
@@ -23,7 +38,8 @@ pub fn monitor<'a, T>(config: &Config, candidate_store: &T,
     while let Ok((cand, eval, cpt, payload)) = recv.recv() {
         let t = Instant::now() - t0;
         warn!("Got a new evaluation, bound: {:.4e} score: {:.4e}, current best: {:.4e}",
-              cand.bound.value(), eval, best_cand.as_ref().map_or(std::f64::INFINITY, |best: &(Candidate, f64)| best.1 ));
+              cand.bound.value(), eval, best_cand.as_ref().map_or(std::f64::INFINITY, |best:
+                                                                  &(Candidate, f64)| best.1 ));
         results_stack.push(eval);
         best_cand = match best_cand {
             Some((old_cand, score)) => {
@@ -47,6 +63,13 @@ pub fn monitor<'a, T>(config: &Config, candidate_store: &T,
         candidate_store.commit_evaluation(config, payload, eval);
     }
     best_cand.map(|x| x.0.space)
+}
+
+fn get_future_timeout<F>(config: &Config, future: F)
+    -> Timeout<F> where F: Future{
+    let timer = Timer::default();
+    let time  = Duration::from_secs(config.timeout.unwrap() * 60);
+    timer.timeout(future.map_err(|_| CommEnd::Other), time)
 }
 
 fn stop_search(config: &Config) -> bool { false }

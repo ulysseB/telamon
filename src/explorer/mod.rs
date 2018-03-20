@@ -34,6 +34,9 @@ use self::store::Store;
 //   be beneficial.
 
 
+/// Entry point of the exploration. This function returns the best candidate that it has found in
+/// the given time (or at whatever point we decided to stop the search - potentially after an
+/// exhaustive search)
 pub fn find_best<'a, 'b>(config: &Config, 
                          context: &'b Context<'b>, 
                          search_space: Vec<SearchSpace<'a>>) -> Option<SearchSpace<'a>> { 
@@ -67,12 +70,15 @@ fn launch_search<'a, T>(config: &Config, candidate_store: &T, context: &Context)
     let (log_sender, log_receiver) = mpsc::sync_channel(100);
     crossbeam::scope( |scope| {
         scope.spawn( || logger::log(config, log_receiver));
-        let best_cand_opt = scope.spawn(|| monitor(config, candidate_store, monitor_receiver, log_sender));
-        explore_space(config, candidate_store, monitor_sender, context);
+        let best_cand_opt = scope.spawn(|| monitor(config, &candidate_store, monitor_receiver,
+                                                   log_sender));
+        explore_space(config, &candidate_store, monitor_sender, context);
         best_cand_opt
     }).join()
 }
 
+/// Defines the work that explorer threads will do in a closure that will be passed to
+/// context.async_eval. Also defines a callback that will be executed by the evaluator
 fn explore_space<'a, T>(config: &Config, 
                         candidate_store: &T, 
                         eval_sender: mpsc::SyncSender<MonitorMessage<'a, T>>, 
