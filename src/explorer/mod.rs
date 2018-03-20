@@ -45,7 +45,7 @@ pub fn find_best<'a, 'b>(config: &Config,
             }).collect();
             let root = SearchTree::new(new_candidates, context);
             let safe_tree = SafeTree::new(root, band_config);
-            launch_search(config, safe_tree, context)
+            launch_search(config, &safe_tree, context)
         }
         config::SearchAlgorithm::BoundOrder => {
             let candidate_list = ParallelCandidateList::new(config.num_workers);
@@ -53,22 +53,22 @@ pub fn find_best<'a, 'b>(config: &Config,
                 let bound = bound(&space, context);
                 candidate_list.insert(Candidate::new(space, bound));
             }
-            launch_search(config, candidate_list, context)
+            launch_search(config, &candidate_list, context)
         }
     }
 }
 
 /// Launch all threads needed for the search. wait for each one of them to finish. Monitor is
 /// supposed to return the best candidate found
-fn launch_search<'a, T>(config: &Config, candidate_store: T, context: &Context) 
+fn launch_search<'a, T>(config: &Config, candidate_store: &T, context: &Context) 
     -> Option<SearchSpace<'a>> where T: Store<'a>  
 {
     let (monitor_sender, monitor_receiver) = mpsc::sync_channel(100);
     let (log_sender, log_receiver) = mpsc::sync_channel(100);
     crossbeam::scope( |scope| {
         scope.spawn( || logger::log(config, log_receiver));
-        let best_cand_opt = scope.spawn(|| monitor(config, &candidate_store, monitor_receiver, log_sender));
-        explore_space(config, &candidate_store, monitor_sender, context);
+        let best_cand_opt = scope.spawn(|| monitor(config, candidate_store, monitor_receiver, log_sender));
+        explore_space(config, candidate_store, monitor_sender, context);
         best_cand_opt
     }).join()
 }
