@@ -10,6 +10,7 @@ use explorer::logger::LogMessage;
 use std;
 use std::time::Duration;
 use futures::stream;
+use futures::channel;
 use futures::prelude::*;
 use futures::executor::LocalPool;
 use tokio_timer_futures2::*;
@@ -65,11 +66,15 @@ pub fn monitor<'a, T>(config: &Config, candidate_store: &T,
     best_cand.map(|x| x.0.space)
 }
 
-fn get_future_timeout<F>(config: &Config, future: F)
-    -> Timeout<F> where F: Future{
+fn handle_message<'a, T>(message: MonitorMessage<'a, T>) where T: Store<'a> {
+}
+
+fn get_future_timeout<'a, T>(config: &Config, receiver: channel::mpsc::Receiver<MonitorMessage<'a, T>>)
+    -> impl Future + 'a where T: Store<'a>, <T as Store<'a>>::PayLoad: 'a {
     let timer = Timer::default();
     let time  = Duration::from_secs(config.timeout.unwrap() * 60);
-    timer.timeout(future.map_err(|_| CommEnd::Other), time)
+    timer.timeout(receiver.for_each(|message| {handle_message::<T>(message); Ok(())})
+                  .map_err(|_| CommEnd::Other), time)
 }
 
 fn stop_search(config: &Config) -> bool { false }
