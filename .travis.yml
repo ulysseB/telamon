@@ -10,4 +10,4 @@ notifications:
     rooms:
       - parkas-team:0twCBUENCd9xqXn4DEVm0gEX
     on_success: change
-    on_failure: always
+    on_failure: change
