@@ -697,7 +697,7 @@ impl<'a, 'b> Node<'a, 'b> {
     /// inner.
     fn find_min_rewards(&self) -> Option<(usize, usize, f64)> {
         self.rewards.iter().enumerate().filter(|&(_, elem)| !elem.0.is_empty())
-            .map(|(out_ind, ref elem)|
+            .map(|(out_ind, elem)|
                  (out_ind, 
                   elem.0.iter().enumerate()
                   .min_by(|x1, x2| cmp_f64(*x1.1, *x2.1))

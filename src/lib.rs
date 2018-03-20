@@ -37,8 +37,8 @@ pub mod codegen;
 pub mod helper;
 pub mod device;
 // TODO(cleanup): remove warnings from the explorer
-#[allow(dead_code,unused_variables,unused_imports,ignored_generic_bounds)]
-#[cfg_attr(feature="cargo-clippy", allow(clippy))]
+//#[allow(dead_code,unused_variables,unused_imports,ignored_generic_bounds)]
+//#[cfg_attr(feature="cargo-clippy", allow(clippy))]
 pub mod explorer;
 pub mod ir;
 pub mod model;
