@@ -1,4 +1,5 @@
 /// Function shared among examples.
+use rayon::prelude::*;
 use itertools::Itertools;
 use telamon::device::Context;
 use telamon::{explorer, ir};
@@ -45,4 +46,15 @@ pub fn file_name(name: &str,
     std::fs::create_dir_all(PATH).unwrap();
     let sizes = sizes.iter().format_with("", |i, f| f(&format_args!("_{}", i)));
     format!("{}{}_{}{}.c", PATH, name, instantiated, sizes)
+}
+
+pub fn par_iter_product<I1, I2>(i1: I1, i2: I2)
+    -> impl ParallelIterator<Item=(I1::Item, I2::Item)>
+where
+    I1: IntoParallelIterator, I1::Item: Clone + Sync,
+    I2: IntoParallelIterator + Clone + Send + Sync
+{
+    i1.into_par_iter().flat_map(move |x| {
+        i2.clone().into_par_iter().map(move |y| (x.clone(), y))
+    })
 }

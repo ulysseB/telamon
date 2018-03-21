@@ -192,7 +192,7 @@ fn gen_events<'a>(space: &'a SearchSpace<'a>,
     let mut block_dims = Vec::new();
     let mut thread_dims: Vec<Option<Dimension<'a>>> = (0..3).map(|_| None).collect_vec();
     let mut events = insts.into_iter().map(CfgEvent::Exec).collect_vec();
-    for dim in dims {
+    for mut dim in dims {
         let mut add_thread_dim =
             |mut dim: Dimension<'a>, nesting: usize, events: &mut Vec<_>|
         {
@@ -206,7 +206,13 @@ fn gen_events<'a>(space: &'a SearchSpace<'a>,
             }
         };
         match dim.kind() {
-            DimKind::BLOCK => block_dims.push(dim),
+            DimKind::BLOCK => {
+                for level in dim.drain_induction_levels() {
+                    let event = EntryEvent::ParallelInductionLevel(level);
+                    events.push(CfgEvent::Enter(dim.id(), event));
+                }
+                block_dims.push(dim)
+            },
             DimKind::THREAD_X => {
                 events.push(CfgEvent::Exit(dim.id(), ExitEvent::Threads));
                 add_thread_dim(dim, 0, &mut events);

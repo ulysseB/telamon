@@ -24,6 +24,7 @@ impl<'a> Function<'a> {
         let mut dims = dimension::group_merged_dimensions(space);
         let (induction_vars, precomputed_indvar_levels) =
             dimension::register_induction_vars(&mut dims, space);
+        trace!("dims = {:?}", dims);
         let insts = space.ir_instance().insts()
             .map(|inst| Instruction::new(inst, space)).collect_vec();
         let device_code_args = dims.iter().flat_map(|d| d.host_values(space))

@@ -35,7 +35,7 @@ pub trait Context<'a>: Sync {
             result *= unwrap!(self.get_param(&p.name).as_size());
         };
         let (result, remider) = num::integer::div_rem(result, size.divisor());
-        assert_eq!(remider, 0);
+        assert_eq!(remider, 0, "invalid size: {:?}", size);
         result
     }
 }
