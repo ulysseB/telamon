@@ -1,6 +1,7 @@
 //! Helper functions to create a function signature and bind parameters.
 use device;
 use ir::{Signature, Parameter, mem};
+use helper::tensor::DimSize;
 
 /// Helper struct to build a `Signature`.
 pub struct Builder<'a, 'b> where 'b: 'a {
@@ -41,6 +42,14 @@ impl<'a, 'b> Builder<'a, 'b> {
         self.context.bind_param(&param, array);
         self.signature.params.push(param);
         id
+    }
+
+    /// Evaluates a size in the context.
+    pub fn eval_size(&self, size: DimSize) -> u32 {
+        match size {
+            DimSize::Const(s) => s,
+            DimSize::Param(p) => unwrap!(self.context.get_param(p).as_size()),
+        }
     }
 
     /// Returns the `Signature` created by the builder.

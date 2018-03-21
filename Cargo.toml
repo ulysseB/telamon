@@ -25,8 +25,8 @@ path = "tools/bench_perf_model/main.rs"
 required-features = ["cuda"]
 
 [[example]]
-name = "saxpy"
-path = "examples/saxpy.rs"
+name = "main"
+path = "examples/main.rs"
 required-features = ["cuda"]
 
 [[example]]

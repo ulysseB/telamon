@@ -3,6 +3,8 @@ mod builder;
 mod operand;
 mod signature;
 
+pub mod tensor;
+
 pub use self::builder::Builder;
 pub use self::signature::Builder as SignatureBuilder;
 pub use self::operand::{AutoOperand, Reduce, TmpArray};

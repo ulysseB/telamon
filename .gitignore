@@ -1,6 +1,7 @@
 *.swp
 *.lock
 *.log
+examples/out/
 perf.data
 perf.data.old
 target/
