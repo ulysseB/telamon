@@ -13,7 +13,7 @@ use futures::stream;
 use futures::channel;
 use futures::prelude::*;
 use futures::executor::LocalPool;
-use tokio_timer_futures2::*;
+use tokio_timer::*;
 
 pub type MonitorMessage<'a, T: Store<'a>> = (Candidate<'a>, f64, usize, T::PayLoad);
 

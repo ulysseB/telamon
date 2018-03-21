@@ -5,6 +5,16 @@ name = "telamon"
 readme = "README.md"
 version = "0.2.0"
 
+[replace]
+"rustlex:0.3.3" = { path = "lib/rustlex" }
+
+[workspace]
+members = [
+    "telamon-gen",
+    "telamon-utils",
+    "telamon-gen/cc_tests",
+]
+
 #[[bench]]
 #harness = false
 #name = "mppa"
@@ -72,8 +82,9 @@ regex = "0.2.9"
 rustc-serialize = "0.3.24"
 std-semaphore = "0.1.0"
 tokio = "0.1"
-tokio-timer-futures2 = "0.2"
-futures = "0.2.0-alpha"
+# TODO(cleanup): use an official version when futures-2.0 is released.
+tokio-timer = { git = "https://github.com/ulysseB/tokio-timer.git" }
+futures = "0.2.0-beta"
 
 [dependencies.telamon-utils]
 path = "telamon-utils"
@@ -93,13 +104,3 @@ panic = "abort"
 
 [profile.release]
 panic = "abort"
-
-[replace."rustlex:0.3.3"]
-path = "lib/rustlex"
-
-[workspace]
-members = [
-    "telamon-gen",
-    "telamon-utils",
-    "telamon-gen/cc_tests",
-]
