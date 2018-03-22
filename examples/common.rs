@@ -14,11 +14,16 @@ pub fn gen_best<'a, T>(search_space: Vec<SearchSpace>,
                        out: &str) where T: Context<'a> {
     let conf = explorer::Config::read();
     let begin_time = std::time::Instant::now();
-    let best = explorer::find_best(&conf, context, search_space).unwrap();
+    let best_opt = explorer::find_best(&conf, context, search_space);
     let duration = std::time::Instant::now() - begin_time;
-    warn!("best candidate found in {}s", duration.as_secs());
-    let mut file = std::fs::File::create(out).unwrap();
-    context.device().gen_code(&best, &mut file);
+    warn!("Search completed in {}s", duration.as_secs());
+    match best_opt {
+    Some(best) => {
+        let mut file = std::fs::File::create(out).unwrap();
+        context.device().gen_code(&best, &mut file)
+    }
+    None => println!("Did not find any well suited candidate before timeout"),
+    }
 }
 
 /// Creates a `DimSize`. If the instantiate flag is true, it uses a constant size,

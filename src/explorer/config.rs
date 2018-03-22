@@ -15,10 +15,10 @@ pub struct Config {
     pub num_workers: usize,
     /// Exploration algorithm to use.
     pub algorithm: SearchAlgorithm,
-    /// Indicates the search must be stoped if a candidate with an execution time better
+    /// Indicates the search must be stopped if a candidate with an execution time better
     /// than the bound (in ns) is found.
     pub stop_bound: Option<f64>,
-    /// Indicates the search must be stoped after the given number of minutes.
+    /// Indicates the search must be stopped after the given number of minutes.
     pub timeout: Option<u64>,
 }
 
