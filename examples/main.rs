@@ -31,7 +31,7 @@ fn main() {
     env_logger::init();
     let executor = cuda::Executor::init();
     // axpy(1 << 26, ir::Type::F(32), true, &executor);
-     mv(1 << 18, 1 << 10, ir::Type::F(32), false, &executor); 
+     mv(1 << 18, 1 << 10, ir::Type::F(32), true, &executor); 
     //gesummv(1 << 18, 1 << 10, ir::Type::F(32), true, &executor);
     // mm(1024, 1024, 1024, ir::Type::F(32), true, &executor);
     // doitgen(256, 256, 256, ir::Type::F(32), true, &executor);
