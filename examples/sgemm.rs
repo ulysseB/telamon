@@ -1,4 +1,5 @@
 extern crate env_logger;
+extern crate itertools;
 extern crate telamon;
 #[macro_use]
 extern crate log;
@@ -7,16 +8,12 @@ extern crate rayon;
 mod common;
 
 #[allow(unused_imports)]
-use telamon::{explorer, helper, ir};
+use common::*;
+use telamon::{helper, ir};
 use telamon::device::{Context, cuda};
-use telamon::search_space::{Action, DimKind, InstFlag, SearchSpace, Order};
+use telamon::helper::tensor::{Tensor, VirtualTensor};
+use telamon::search_space::{Action, DimKind, InstFlag, Order};
 use rayon::prelude::*;
-
-const M: i32 = 1024;
-const K: i32 = 1024;
-const N: i32 = 1024;
-
-const DATA_TYPE: ir::Type = ir::Type::F(32);
 
 // FIXME: allow global tmp mem
 // FIXME: Attack plan
@@ -36,96 +33,68 @@ const DATA_TYPE: ir::Type = ir::Type::F(32);
 fn main() {
     env_logger::init();
     let executor = cuda::Executor::init();
-    let mut context = cuda::Context::new(&executor);
-    // Declares the function signature and the arguments to use for the evaluation.
-    let (a, b, c);
-    let signature = &{
-        let mut builder = helper::SignatureBuilder::new("sgemm", &mut context);
-        builder.param("m", M);
-        builder.param("n", N);
-        builder.param("k", K);
-        a = builder.array("a", 4*(M*K) as usize);
-        b = builder.array("b", 4*(K*N) as usize);
-        c = builder.array("c", 4*(M*N) as usize);
-        builder.get()
-    };
-    let device = context.device();
-    let candidates = (0..6).into_par_iter().flat_map(|tile_1| {
-        (0..std::cmp::min(8-tile_1, 5)).into_par_iter().map(move |tile_2| {
-            gen_gemm(signature, device, 1u32 << tile_1, 1u32 << tile_2, a, b, c)
-        })
-    }).collect();
-    //let candidates = vec![gen_gemm(signature, device, 32, 4, a, b, c)];
-    common::gen_best(candidates, &context);
+    gen_mm(1024, 1024, 1024, ir::Type::F(32), false, &executor);
 }
 
-fn gen_gemm<'a>(signature: &'a ir::Signature, device: &'a telamon::device::Device,
-                tile_1: u32, tile_2: u32, a: ir::mem::Id, b: ir::mem::Id, c: ir::mem::Id)
-        -> SearchSpace<'a>
-{
-    let mut full_tiling = vec![tile_1, tile_2];
-    let mut reduction_tiling = vec![tile_1];
-    full_tiling.retain(|&x| x > 1);
-    reduction_tiling.retain(|&x| x > 1);
+fn gen_mm(m: i32, n: i32, k: i32,
+          data_type: ir::Type,
+          instantiate: bool,
+          executor: &cuda::Executor) {
+    let mut context = cuda::Context::new(&executor);
+    let (a, b, c);
+    let signature = &{
+        let mut builder = helper::SignatureBuilder::new("mm", &mut context);
+        let m = create_size(m, "m", instantiate, &mut builder);
+        let n = create_size(n, "n", instantiate, &mut builder);
+        let k = create_size(k, "k", instantiate, &mut builder);
+        a = Tensor::new("a", vec![m, k], data_type, true, &mut builder);
+        b = Tensor::new("b", vec![k, n], data_type, true, &mut builder);
+        c = Tensor::new("c", vec![m, n], data_type, false, &mut builder);
+        builder.get()
+    };
 
-    let mut builder = helper::Builder::new(signature, device);
-    let size_m = builder.param_size("m");
-    let size_n = builder.param_size("n");
-    let size_k = builder.param_size("k");
+    let tilings = (0..6).into_par_iter().flat_map(|t1| {
+        (0..std::cmp::min(8-t1, 5)).into_par_iter()
+            .map(move |t2| (1u32 << t1, 1u32 << t2))
+    });
+    //let tilings = std::iter::once((32, 4));
+    let candidates = tilings.map(|(tile_1, tile_2)| {
+        let full_tiling = cleanup_tiling(&[tile_1, tile_2]);
+        let small_tiling = cleanup_tiling(&[tile_1]); 
+        let mut builder = helper::Builder::new(signature, context.device());
 
-    // Load A from global memory.
-    let a_ld_dim_m = builder.open_tiled_dim(size_m, &full_tiling);
-    let a_ld_dim_k = builder.open_tiled_dim(size_k, &reduction_tiling);
-        let (a_addr, a_pattern) = builder.tensor_access(
-            &"a", a, &DATA_TYPE, &[&a_ld_dim_m, &a_ld_dim_k]);
-        let a_ld = builder.ld_nc(DATA_TYPE, &a_addr, a_pattern);
-    builder.close_dim(&a_ld_dim_k);
-    builder.close_dim(&a_ld_dim_m);
+        let ld_a = a.load(&[&full_tiling, &small_tiling], &mut builder);
+        let ld_b = b.load(&[&small_tiling, &full_tiling], &mut builder);
 
-    // Load B from global memory
-    let b_ld_dim_k = builder.open_mapped_dim(&a_ld_dim_k);
-    let b_ld_dim_n = builder.open_tiled_dim(size_n, &full_tiling);
-        let (b_addr, b_pattern) = builder.tensor_access(
-            &"b", b, &DATA_TYPE, &[&b_ld_dim_k, &b_ld_dim_n]);
-        let b_ld = builder.ld_nc(DATA_TYPE, &b_addr, b_pattern);
-    builder.close_dim(&b_ld_dim_n);
-    builder.close_dim(&b_ld_dim_k);
+        let init_dim_m = builder.open_mapped_dim(&ld_a[0]);
+        let init_dim_n = builder.open_mapped_dim(&ld_b[1]);
+            let acc_init = builder.mov(&0f32);
+        let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
+        let acc_dim_n = builder.open_mapped_dim(&init_dim_n);
+        let acc_dim_k = builder.open_mapped_dim(&ld_a[1]);
+            let a_op = ld_a.dim_map(
+                &[&acc_dim_m, &acc_dim_k], ir::DimMapScope::Global, &mut builder);
+            let b_op = ld_b.dim_map(
+                &[&acc_dim_k, &acc_dim_n], ir::DimMapScope::Global, &mut builder);
+            let acc = builder.mad(&a_op, &b_op, &helper::Reduce(acc_init));
+        builder.close_dim(&acc_dim_k);
 
-    // Initialize the accumulator.
-    let init_dim_m = builder.open_mapped_dim(&a_ld_dim_m);
-    let init_dim_n = builder.open_mapped_dim(&b_ld_dim_n);
-        let acc_init = builder.mov(&0f32);
+        let acc = VirtualTensor::new(acc, vec![acc_dim_n, acc_dim_m]);
+        let st_c = acc.store(&c, &mut builder);
 
-    // Accumulate the product of A and B.
-    let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
-    let acc_dim_n = builder.open_mapped_dim(&init_dim_n);
-    let acc_dim_k = builder.open_mapped_dim(&b_ld_dim_k);
-        let a_op = builder.dim_map(
-            a_ld, &[(&a_ld_dim_m, &acc_dim_m), (&a_ld_dim_k, &acc_dim_k)],
-            ir::DimMapScope::Global);
-        let b_op = builder.dim_map(
-            b_ld, &[(&b_ld_dim_n, &acc_dim_n), (&b_ld_dim_k, &acc_dim_k)],
-            ir::DimMapScope::Global);
-        let acc = builder.mad(&a_op, &b_op, &helper::Reduce(acc_init));
-    builder.close_dim(&acc_dim_k);
+        // Order for correctness.
+        builder.order(&st_c.inst(), &acc_dim_k, Order::AFTER);
+        // Arbitrary constrains to reduce the search space
+        builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CG | InstFlag::MEM_NC));
+        builder.action(Action::InstFlag(ld_b.inst(), InstFlag::MEM_CG | InstFlag::MEM_NC));
+        builder.action(Action::InstFlag(st_c.inst(), InstFlag::MEM_CS));
 
-    // Store the result in C.
-    let c_st_dim_m = builder.open_mapped_dim(&acc_dim_m);
-    let c_st_dim_n = builder.open_mapped_dim(&acc_dim_n);
-        let (c_addr, c_pattern) = builder.tensor_access(
-            &"c", c, &DATA_TYPE, &[&c_st_dim_m, &c_st_dim_n]);
-        let c_st = builder.st(&c_addr, &acc, c_pattern);
+        builder.action(Action::DimKind(init_dim_n[0], DimKind::BLOCK));
+        builder.action(Action::DimKind(init_dim_m[0], DimKind::BLOCK));
+        builder.get()
+    }).collect();
+    gen_best(candidates, &context, &file_name("mm", data_type, &[m, n, k], instantiate));
 
-    // Order for correctness.
-    builder.order(&c_st, &acc_dim_k, Order::AFTER);
-
-    // Arbitrary constrains to reduce the search space
-    builder.action(Action::InstFlag(a_ld, InstFlag::MEM_CG | InstFlag::MEM_NC));
-    builder.action(Action::InstFlag(b_ld, InstFlag::MEM_CG | InstFlag::MEM_NC));
-    builder.action(Action::InstFlag(c_st, InstFlag::MEM_CS));
-
-    builder.action(Action::DimKind(init_dim_n[0], DimKind::BLOCK));
-    builder.action(Action::DimKind(init_dim_m[0], DimKind::BLOCK));
     /*builder.action(Action::DimKind(thread_dim_0_n, DimKind::THREAD_Y));
     builder.action(Action::DimKind(thread_dim_0_m, DimKind::THREAD_X));
     builder.action(Action::DimKind(unroll_dim_0_n, DimKind::UNROLL));
@@ -164,5 +133,4 @@ fn gen_gemm<'a>(signature: &'a ir::Signature, device: &'a telamon::device::Devic
     ];
     assert!(space.apply_decisions(actions).is_ok());
     space*/
-    builder.get()
 }

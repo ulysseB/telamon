@@ -6,6 +6,7 @@ use std;
 use utils::*;
 
 /// An iteration dimension composed of one or mure fused dimensions.
+#[derive(Debug)]
 pub struct Dimension<'a> {
     kind: DimKind,
     representant: ir::dim::Id,
@@ -99,6 +100,7 @@ pub fn group_merged_dimensions<'a>(space: &'a SearchSpace<'a>) -> Vec<Dimension<
 }
 
 /// An induction level associated to a dimension.
+#[derive(Debug)]
 pub struct InductionLevel<'a> {
     pub ind_var: ir::IndVarId,
     pub increment: Option<(ir::dim::Id, &'a ir::Size<'a>)>,
@@ -135,6 +137,7 @@ impl<'a> InductionVar<'a> {
 
 /// The value taken by an induction variable. The actual value is the sum of the component
 /// present. If no components is present, the value must be computed elsewhere.
+#[derive(Debug)]
 pub struct InductionVarValue<'a> {
     ind_var: ir::IndVarId,
     outer_level: Option<ir::dim::Id>,
