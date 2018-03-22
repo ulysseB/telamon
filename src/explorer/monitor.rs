@@ -65,13 +65,22 @@ fn handle_message<'a, T>(config: &Config,
     let change = best_cand.as_ref().map(|&(_, time)| time > eval).unwrap_or(true);
     if change {
         warn!("Got a new best candidate, score: {:.3e}", eval);
-        candidate_store.update_cut(eval);
+        candidate_store.update_cut(get_new_cut(config, eval));
         let log_message = LogMessage::Monitor{score: eval, cpt, timestamp:t};
         log_sender.send(log_message).unwrap();
         *best_cand = Some((cand, eval));
     }
     candidate_store.commit_evaluation(config, payload, eval);
 
+}
+
+fn get_new_cut(config: &Config, eval: f64) -> f64 {
+    if let Some(bound) = config.stop_bound {
+        if eval < bound { return 0.;}
+    }
+    if let Some(ratio) = config.distance_to_best {
+        ( 1. - ratio / 100.) * eval
+    } else { eval}
 }
 
 //fn get_future<'a, T, U, V>(config: &Config, 
