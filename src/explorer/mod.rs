@@ -51,7 +51,7 @@ pub fn find_best<'a, 'b>(config: &Config,
             }).collect();
             let root = SearchTree::new(new_candidates, context);
             let safe_tree = SafeTree::new(root, band_config);
-            launch_search(config, &safe_tree, context)
+            launch_search(config, safe_tree, context)
         }
         config::SearchAlgorithm::BoundOrder => {
             let candidate_list = ParallelCandidateList::new(config.num_workers);
@@ -59,7 +59,7 @@ pub fn find_best<'a, 'b>(config: &Config,
                 let bound = bound(&space, context);
                 candidate_list.insert(Candidate::new(space, bound));
             }
-            launch_search(config, &candidate_list, context)
+            launch_search(config, candidate_list, context)
         }
     }
 }
