@@ -100,7 +100,7 @@ format_exh = []
 mppa = []
 
 [profile.bench]
-panic = "abort"
+#panic = "abort"
 
 [profile.release]
-panic = "abort"
+#panic = "abort"

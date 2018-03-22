@@ -20,7 +20,12 @@ use self::choice::{fix_order};
 use device::Context;
 use model::bound;
 use search_space::SearchSpace;
-use std::sync::mpsc;
+use std::sync;
+use futures;
+use futures::prelude::*;
+use futures::channel;
+use futures::SinkExt;
+use futures::executor::block_on;
 
 use self::bandit_arm::{SafeTree, SearchTree};
 pub use self::config::{Config, SearchAlgorithm};
@@ -48,7 +53,7 @@ pub fn find_best<'a, 'b>(config: &Config,
             }).collect();
             let root = SearchTree::new(new_candidates, context);
             let safe_tree = SafeTree::new(root, band_config);
-            launch_search(config, &safe_tree, context)
+            launch_search(config, safe_tree, context)
         }
         config::SearchAlgorithm::BoundOrder => {
             let candidate_list = ParallelCandidateList::new(config.num_workers);
@@ -56,24 +61,25 @@ pub fn find_best<'a, 'b>(config: &Config,
                 let bound = bound(&space, context);
                 candidate_list.insert(Candidate::new(space, bound));
             }
-            launch_search(config, &candidate_list, context)
+            launch_search(config, candidate_list, context)
         }
     }
 }
 
 /// Launch all threads needed for the search. wait for each one of them to finish. Monitor is
 /// supposed to return the best candidate found
-fn launch_search<'a, T>(config: &Config, candidate_store: &T, context: &Context) 
-    -> Option<SearchSpace<'a>> where T: Store<'a>  
+fn launch_search<'a, T>(config: &Config, candidate_store: T, context: &Context) 
+    -> Option<SearchSpace<'a>> where T: Store<'a>
 {
-    let (monitor_sender, monitor_receiver) = mpsc::sync_channel(100);
-    let (log_sender, log_receiver) = mpsc::sync_channel(100);
+    let (monitor_sender, monitor_receiver) = channel::mpsc::channel(100);
+    let (log_sender, log_receiver) = sync::mpsc::sync_channel(100);
     crossbeam::scope( |scope| {
-        scope.spawn( || logger::log(config, log_receiver));
-        let best_cand_opt = scope.spawn(|| monitor(config, &candidate_store, monitor_receiver,
-                                                   log_sender));
+        scope.builder().name("Telamon - Logger".to_string())
+            .spawn( || logger::log(config, log_receiver)).unwrap();
+        let best_cand_opt = scope.builder().name("Telamon - Monitor".to_string()).
+            spawn(|| monitor(config, &candidate_store, monitor_receiver, log_sender));
         explore_space(config, &candidate_store, monitor_sender, context);
-        best_cand_opt
+        best_cand_opt.unwrap()
     }).join()
 }
 
@@ -81,7 +87,7 @@ fn launch_search<'a, T>(config: &Config, candidate_store: &T, context: &Context)
 /// context.async_eval. Also defines a callback that will be executed by the evaluator
 fn explore_space<'a, T>(config: &Config, 
                         candidate_store: &T, 
-                        eval_sender: mpsc::SyncSender<MonitorMessage<'a, T>>, 
+                        eval_sender: channel::mpsc::Sender<MonitorMessage<'a, T>>, 
                         context: &Context) where T: Store<'a> 
 {
     context.async_eval(config.num_workers, &|evaluator| {
@@ -89,7 +95,10 @@ fn explore_space<'a, T>(config: &Config,
             let space = fix_order(cand.space);
             let eval_sender = eval_sender.clone();
             let callback = move |leaf, eval, cpt| {
-                eval_sender.send((leaf, eval, cpt, payload)).unwrap();
+                if let Err(err) = block_on(eval_sender.send((leaf, eval, cpt, payload))
+                                 .map(|_| ())
+                                 ) 
+                { warn!("Got disconnected , {:?}", err);}
             };
             evaluator.add_kernel(Candidate {space, .. cand }, Box::new(callback));
         }
