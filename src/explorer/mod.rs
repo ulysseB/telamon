@@ -21,10 +21,8 @@ use device::Context;
 use model::bound;
 use search_space::SearchSpace;
 use std::sync;
-use futures;
 use futures::prelude::*;
-use futures::channel;
-use futures::SinkExt;
+use futures::{channel, SinkExt};
 use futures::executor::block_on;
 
 use self::bandit_arm::{SafeTree, SearchTree};
@@ -79,7 +77,7 @@ fn launch_search<'a, T>(config: &Config, candidate_store: T, context: &Context)
         let best_cand_opt = scope.builder().name("Telamon - Monitor".to_string()).
             spawn(|| monitor(config, &candidate_store, monitor_receiver, log_sender));
         explore_space(config, &candidate_store, monitor_sender, context);
-        best_cand_opt.unwrap()
+        unwrap!(best_cand_opt)
     }).join()
 }
 

@@ -18,11 +18,11 @@ pub fn gen_best<'a, T>(search_space: Vec<SearchSpace>,
     let duration = std::time::Instant::now() - begin_time;
     warn!("Search completed in {}s", duration.as_secs());
     match best_opt {
-    Some(best) => {
-        let mut file = std::fs::File::create(out).unwrap();
-        context.device().gen_code(&best, &mut file)
-    }
-    None => println!("Did not find any well suited candidate before timeout"),
+        Some(best) => {
+            let mut file = std::fs::File::create(out).unwrap();
+            context.device().gen_code(&best, &mut file)
+        }
+        None => println!("Did not find any well suited candidate before timeout"),
     }
 }
 
