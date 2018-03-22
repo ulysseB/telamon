@@ -9,5 +9,5 @@ if store.get_old_{{counter_name}}({{>args}}diff).max == 0 {
         store.restrict_{{repr_name}}({{>args}}Bool::TRUE, diff)?;
     }
     let new_objs = {{add_to_set}};
-    Ok((new_objs, vec![]))
+    Ok((new_objs, vec![])) as Result<_, ()>
 } else { Ok((ir::NewObjs::default(), vec![])) }

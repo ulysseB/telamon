@@ -27,6 +27,8 @@ extern crate parking_lot;
 #[cfg(feature="cuda")]
 extern crate prctl;
 extern crate rand;
+extern crate futures;
+extern crate tokio_timer;
 #[cfg(feature="cuda")]
 extern crate rustc_serialize;
 #[macro_use]
@@ -36,9 +38,6 @@ pub mod codegen;
 #[macro_use]
 pub mod helper;
 pub mod device;
-// TODO(cleanup): remove warnings from the explorer
-//#[allow(dead_code,unused_variables,unused_imports,ignored_generic_bounds)]
-//#[cfg_attr(feature="cargo-clippy", allow(clippy))]
 pub mod explorer;
 pub mod ir;
 pub mod model;

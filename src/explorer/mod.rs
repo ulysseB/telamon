@@ -20,7 +20,10 @@ use self::choice::{fix_order};
 use device::Context;
 use model::bound;
 use search_space::SearchSpace;
-use std::sync::mpsc;
+use std::sync;
+use futures::prelude::*;
+use futures::{channel, SinkExt};
+use futures::executor::block_on;
 
 use self::bandit_arm::{SafeTree, SearchTree};
 pub use self::config::{Config, SearchAlgorithm};
@@ -34,6 +37,9 @@ use self::store::Store;
 //   be beneficial.
 
 
+/// Entry point of the exploration. This function returns the best candidate that it has found in
+/// the given time (or at whatever point we decided to stop the search - potentially after an
+/// exhaustive search)
 pub fn find_best<'a, 'b>(config: &Config, 
                          context: &'b Context<'b>, 
                          search_space: Vec<SearchSpace<'a>>) -> Option<SearchSpace<'a>> { 
@@ -60,22 +66,26 @@ pub fn find_best<'a, 'b>(config: &Config,
 
 /// Launch all threads needed for the search. wait for each one of them to finish. Monitor is
 /// supposed to return the best candidate found
-fn launch_search<'a, T>(config: &Config, candidate_store: &T, context: &Context) 
-    -> Option<SearchSpace<'a>> where T: Store<'a>  
+fn launch_search<'a, T>(config: &Config, candidate_store: T, context: &Context) 
+    -> Option<SearchSpace<'a>> where T: Store<'a>
 {
-    let (monitor_sender, monitor_receiver) = mpsc::sync_channel(100);
-    let (log_sender, log_receiver) = mpsc::sync_channel(100);
+    let (monitor_sender, monitor_receiver) = channel::mpsc::channel(100);
+    let (log_sender, log_receiver) = sync::mpsc::sync_channel(100);
     crossbeam::scope( |scope| {
-        scope.spawn( || logger::log(config, log_receiver));
-        let best_cand_opt = scope.spawn(|| monitor(config, candidate_store, monitor_receiver, log_sender));
-        explore_space(config, candidate_store, monitor_sender, context);
-        best_cand_opt
+        scope.builder().name("Telamon - Logger".to_string())
+            .spawn( || logger::log(config, log_receiver)).unwrap();
+        let best_cand_opt = scope.builder().name("Telamon - Monitor".to_string()).
+            spawn(|| monitor(config, &candidate_store, monitor_receiver, log_sender));
+        explore_space(config, &candidate_store, monitor_sender, context);
+        unwrap!(best_cand_opt)
     }).join()
 }
 
+/// Defines the work that explorer threads will do in a closure that will be passed to
+/// context.async_eval. Also defines a callback that will be executed by the evaluator
 fn explore_space<'a, T>(config: &Config, 
                         candidate_store: &T, 
-                        eval_sender: mpsc::SyncSender<MonitorMessage<'a, T>>, 
+                        eval_sender: channel::mpsc::Sender<MonitorMessage<'a, T>>, 
                         context: &Context) where T: Store<'a> 
 {
     context.async_eval(config.num_workers, &|evaluator| {
@@ -83,7 +93,10 @@ fn explore_space<'a, T>(config: &Config,
             let space = fix_order(cand.space);
             let eval_sender = eval_sender.clone();
             let callback = move |leaf, eval, cpt| {
-                eval_sender.send((leaf, eval, cpt, payload)).unwrap();
+                if let Err(err) = block_on(eval_sender.send((leaf, eval, cpt, payload))
+                                 .map(|_| ())
+                                 ) 
+                { warn!("Got disconnected , {:?}", err);}
             };
             evaluator.add_kernel(Candidate {space, .. cand }, Box::new(callback));
         }

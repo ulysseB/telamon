@@ -5,9 +5,7 @@ use immut_list::ImmutList;
 use data_structure_traits::Create;
 use model::{bound, Bound};
 use search_space::SearchSpace;
-use std;
 use std::cmp::{Ordering, PartialOrd};
-use std::f64;
 
 use itertools::Itertools;
 

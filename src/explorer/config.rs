@@ -15,11 +15,16 @@ pub struct Config {
     pub num_workers: usize,
     /// Exploration algorithm to use.
     pub algorithm: SearchAlgorithm,
-    /// Indicates the search must be stoped if a candidate with an execution time better
+    /// Indicates the search must be stopped if a candidate with an execution time better
     /// than the bound (in ns) is found.
     pub stop_bound: Option<f64>,
-    /// Indicates the search must be stoped after the given number of minutes.
+    /// Indicates the search must be stopped after the given number of minutes.
     pub timeout: Option<u64>,
+    /// A percentage cut
+    /// indicate that we only care to find a candidate that is in a certain range above the best
+    /// Therefore, if cut_under is 20%, we can discard any candidate whose bound is above 80% of
+    /// the current best 
+    pub distance_to_best: Option<f64>,
 }
 
 impl Config {
@@ -62,6 +67,7 @@ impl Config {
             algorithm: SearchAlgorithm::parse_config(parser),
             stop_bound: optional_param(parser.get_float("stop_bound")),
             timeout: optional_param(parser.get_int("timeout")).map(|x| x as u64),
+            distance_to_best: optional_param(parser.get_float("distance_to_best")),
         }
     }
 

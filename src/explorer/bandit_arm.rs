@@ -66,7 +66,6 @@ impl<'a, 'b, 'c> Store<'a> for SafeTree<'a, 'b, 'c> {
     }
 
     fn explore(&self, config: &Config,  _: &Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
-        warn!("Starting a descend of the tree");
         loop {
             match thread_descend_tree(config, self.config, Arc::clone(&self.shared_tree), &self.cut) {
                 DescendResult::Finished => { return None; }

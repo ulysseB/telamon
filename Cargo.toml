@@ -5,6 +5,16 @@ name = "telamon"
 readme = "README.md"
 version = "0.2.0"
 
+[replace]
+"rustlex:0.3.3" = { path = "lib/rustlex" }
+
+[workspace]
+members = [
+    "telamon-gen",
+    "telamon-utils",
+    "telamon-gen/cc_tests",
+]
+
 #[[bench]]
 #harness = false
 #name = "mppa"
@@ -51,7 +61,6 @@ crossbeam = "0.3.2"
 data_structure_traits = "0.1.8"
 env_logger = "0.5.5"
 errno = "0.2.3"
-futures = "0.1.18"
 getopts = "0.2.17"
 immut_list = "0.1.0"
 interval-heap = "0.0.5"
@@ -72,6 +81,10 @@ rayon = "1.0.0"
 regex = "0.2.9"
 rustc-serialize = "0.3.24"
 std-semaphore = "0.1.0"
+tokio = "0.1"
+# TODO(cleanup): use an official version when futures-2.0 is released.
+tokio-timer = { git = "https://github.com/ulysseB/tokio-timer.git" }
+futures = "0.2.0-beta"
 
 [dependencies.telamon-utils]
 path = "telamon-utils"
@@ -87,17 +100,7 @@ format_exh = []
 mppa = []
 
 [profile.bench]
-panic = "abort"
+#panic = "abort"
 
 [profile.release]
-panic = "abort"
-
-[replace."rustlex:0.3.3"]
-path = "lib/rustlex"
-
-[workspace]
-members = [
-    "telamon-gen",
-    "telamon-utils",
-    "telamon-gen/cc_tests",
-]
+#panic = "abort"
