@@ -24,12 +24,12 @@ pub fn gen_best<'a, T>(search_space: Vec<SearchSpace>,
 /// Creates a `DimSize`. If the instantiate flag is true, it uses a constant size,
 /// otherwise it creates a parameter with the given name.
 pub fn create_size<'a>(value: i32, name: &'a str,
-                       instantiate: bool,
+                       is_generic: bool,
                        builder: &mut SignatureBuilder) -> DimSize<'a> {
-    if instantiate { DimSize::Const(value as u32) } else {
+    if is_generic {
         builder.param(name, value);
         DimSize::Param(name)
-    }
+    } else { DimSize::Const(value as u32) }
 }
 
 /// Removes tiles of size 1.
