@@ -1,18 +1,16 @@
 //! This file exposes a single function, monitor, that is launched in a special thread and pulls
 //! the evaluations results, store them and then updates the Store accordingly.
-use explorer::store::Store;
 use explorer::candidate::Candidate;
 use explorer::config::Config;
-use std::sync;
-use futures::channel;
-use search_space::SearchSpace;
-use std::time::Instant;
 use explorer::logger::LogMessage;
-use std;
-use std::time::Duration;
-use futures::stream;
+use explorer::store::Store;
+use futures::channel;
 use futures::prelude::*;
 use futures::executor::block_on;
+use search_space::SearchSpace;
+use std::time::{Duration, Instant};
+use std;
+use std::sync;
 use tokio_timer::*;
 
 pub type MonitorMessage<'a, T: Store<'a>> = (Candidate<'a>, f64, usize, T::PayLoad);
@@ -74,6 +72,8 @@ fn handle_message<'a, T>(config: &Config,
 
 }
 
+/// Depending on the value of the evaluation we just did, computes the new cut value for the store
+/// Can be 0 if we decide to stop the search
 fn get_new_cut(config: &Config, eval: f64) -> f64 {
     if let Some(bound) = config.stop_bound {
         if eval < bound { return 0.;}
@@ -83,17 +83,8 @@ fn get_new_cut(config: &Config, eval: f64) -> f64 {
     } else { eval}
 }
 
-//fn get_future<'a, T, U, V>(config: &Config, 
-//                             receiver: channel::mpsc::Receiver<MonitorMessage<'a, T>>)
-//    -> Box<Future<Item=(), Error=()>>  where T: Store<'a>, <T as Store<'a>>::PayLoad: 'a {
-//    //timer.timeout(receiver.for_each(|message| {handle_message::<T>(message); Ok(())})
-//    if let Some(timeout) = config.timeout {
-//        Box::new(get_future_timeout(config, receiver))
-//    } else { Box::new(receiver.for_each(|message| {Ok(())})
-//        .map_err(|_| CommEnd::Other))
-//    }
-//}
-
+/// Given a receiver channel, builds and construct a future that returns whenever the tree has
+/// been fully explored or the timeout has been reached
 fn get_future_timeout<'a, 'b, T>(config: &'b Config, 
                              receiver: channel::mpsc::Receiver<MonitorMessage<'a, T>>,
                              t0: Instant,
@@ -103,24 +94,26 @@ fn get_future_timeout<'a, 'b, T>(config: &'b Config,
                              )
     -> impl Future<Error=CommEnd> + 'b where T: Store<'a>, <T as Store<'a>>::PayLoad: 'b, 'a: 'b {
     let timer = configure_timer();
-    let timeout = config.timeout.unwrap_or(1);
+    //TODO Find a clean way to get a timeout that never returns - or no timeout at all
+    let timeout = config.timeout.unwrap_or(10000);
     println!("TIMEOUT: {}min", timeout);
     let time = Duration::from_secs(timeout as u64 * 60);
-    timer.timeout(receiver.for_each(move |message| {handle_message::<T>(config,
-                                                                   message,
-                                                                   t0,
-                                                                   candidate_store,
-                                                                   log_sender,
-                                                                   best_cand);
-    Ok(())})
+    timer.timeout(receiver.for_each(move |message| {
+        handle_message::<T>(config,
+                            message,
+                            t0,
+                            candidate_store,
+                            log_sender,
+                            best_cand);
+        Ok(())})
                   .map_err(|_| CommEnd::Other), time)
 }
 
+/// Builds and returns a timer that suits our needs - that is, which timeout can be set to at least
+/// a few tens of hours
 fn configure_timer() -> Timer {
     let builder = wheel();
-    let builder = builder.tick_duration(Duration::new(1,0));
+    let builder = builder.tick_duration(Duration::new(10, 0));
     let builder = builder.num_slots(usize::pow(2, 16));
     builder.build()
 }
-
-fn stop_search(config: &Config) -> bool { false }
