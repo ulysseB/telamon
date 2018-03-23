@@ -6,6 +6,7 @@ use std::f64;
 use std::sync::{ Weak, Arc, RwLock};
 
 use utils::*;
+use itertools::Itertools;
 
 use rand::{Rng, thread_rng};
 use rand::distributions::{ Weighted, WeightedChoice, IndependentSample};
@@ -60,14 +61,14 @@ impl<'a, 'b, 'c> Store<'a> for SafeTree<'a, 'b, 'c> {
         collect_descend( node_root, new_cut);
     }
 
-    fn commit_evaluation(&self, config: &Config, payload: Self::PayLoad, eval: f64) {
+    fn commit_evaluation(&self, _config: &Config, payload: Self::PayLoad, eval: f64) {
         let (ascend_stack, pos_last_child) = payload;
         thread_ascend_tree(eval, pos_last_child, ascend_stack);
     }
 
-    fn explore(&self, config: &Config,  _: &Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
+    fn explore(&self, config: &Config,  context: &Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
         loop {
-            match thread_descend_tree(config, self.config, Arc::clone(&self.shared_tree), &self.cut) {
+            match thread_descend_tree(config, self.config, context, Arc::clone(&self.shared_tree), &self.cut) {
                 DescendResult::Finished => { return None; }
                 DescendResult::DeadEnd(pos, parent_stack) => {
                     thread_ascend_tree_no_val(pos, parent_stack);
@@ -75,6 +76,10 @@ impl<'a, 'b, 'c> Store<'a> for SafeTree<'a, 'b, 'c> {
                 DescendResult::Leaf(cand, pos, parent_stack) => {
                     return Some((cand, (parent_stack, pos)));
                 }
+                DescendResult::MonteCarloLeaf(cand, pos, parent_stack) => {
+                    return Some((cand, (parent_stack, pos)));
+                }
+                DescendResult::FailedMonteCarlo => {}
             }
         }
     }
@@ -106,6 +111,8 @@ pub enum DescendResult<'a, 'b> {
     Finished,
     DeadEnd(usize, NodeStack<'a, 'b>),
     Leaf(Candidate<'a>, usize, NodeStack<'a, 'b>),
+    MonteCarloLeaf(Candidate<'a>, usize, NodeStack<'a, 'b>),
+    FailedMonteCarlo,
 }
 
 pub enum AscendResult {
@@ -116,6 +123,7 @@ pub enum AscendResult {
 
 enum NodeDescendResult<'a, 'b> {
     Node(Arc<RwLock<Node<'a, 'b>>>, usize),
+    MonteCarlo(Arc<RwLock<Node<'a, 'b>>>, usize),
     Leaf(Candidate<'a>, usize),
     DeadEndFromExpand(usize),
     DeadEnd,
@@ -147,7 +155,9 @@ enum UpdateRes {
 /// if the deadend is found at the root, then the return value states this fact
 pub fn thread_descend_tree<'a, 'b>(
     // TODO(cleanup): remove the dependency on Config
-    config: &Config, bandit_config: &BanditConfig,
+    _config: &Config,
+    bandit_config: &BanditConfig,
+    context: &Context,
     root_lock: Arc<RwLock<SearchTree<'a, 'b>>>, 
     best_val: &RwLock<f64>) -> DescendResult<'a, 'b>
 {
@@ -164,13 +174,14 @@ pub fn thread_descend_tree<'a, 'b>(
         };
     }
     let best_val = *best_val.read().unwrap();
-    iter_descend(bandit_config, node_root, best_val)
+    iter_descend(bandit_config, context, node_root, best_val)
 }
 
 
 /// Called in thread_descend_tree, iter on the value of descend_node
 /// Builds the parents stack and returns an appropriate value at the end
 fn iter_descend<'a, 'b>(config: &BanditConfig,
+                        context: &Context,
                         node_root: Arc<RwLock<Node<'a, 'b>>>,
                         best_val: f64) -> DescendResult<'a, 'b> {
     debug!("IN ITER DESCEND");
@@ -179,6 +190,7 @@ fn iter_descend<'a, 'b>(config: &BanditConfig,
     let mut current_pos = None;
     loop {
         let next_node;
+        let mut montecarlo_candidate = None;
         {
             let mut search_node = search_node_lock.write().unwrap();
             match search_node.descend_node(config, best_val) {
@@ -187,6 +199,13 @@ fn iter_descend<'a, 'b>(config: &BanditConfig,
                     parent_stack.push((weak_ref, current_pos));
                     current_pos = Some(pos);
                     next_node = Arc::clone(&subtree_arc);
+                }
+                NodeDescendResult::MonteCarlo(subtree_arc, pos) => {
+                    let weak_ref = Arc::downgrade(&search_node_lock);
+                    next_node = Arc::clone(&subtree_arc);
+                    parent_stack.push((weak_ref, current_pos));
+                    montecarlo_candidate = Some((subtree_arc.write().unwrap()
+                        .start_montecarlo(config, context, best_val).unwrap(), pos));
                 }
                 NodeDescendResult::Leaf(candidate, pos) => {
                     let weak_ref = Arc::downgrade(&search_node_lock);
@@ -215,9 +234,29 @@ fn iter_descend<'a, 'b>(config: &BanditConfig,
             }
         }
         search_node_lock = next_node;
+        // A bit weird, but we do that so we don't have to hold the lock while descending on
+        // candidate
+        if let Some((cand, pos)) = montecarlo_candidate {
+            return handle_montecarlo_descend(config, context, cand, pos, best_val, parent_stack);
+        }
     }
 }
 
+fn handle_montecarlo_descend<'a, 'b>(config: &BanditConfig, 
+                  context: &Context, 
+                  cand: Candidate<'a>, 
+                  pos: usize, 
+                  cut: f64,
+                  parent_stack: NodeStack<'a, 'b>) -> DescendResult<'a, 'b> {
+    if let Some(cand) = montecarlo_descend(config, context, cand, cut) {
+        return DescendResult::MonteCarloLeaf(
+            cand,
+            pos,
+            parent_stack);
+    }
+    else { return DescendResult::FailedMonteCarlo;}
+
+}
 
 ///  iter on all nodes in the tree and call node_collect on them
 fn collect_descend<'a, 'b>(node_root: Arc<RwLock<Node<'a, 'b>>>, best_val: f64) {
@@ -367,7 +406,7 @@ impl<'a, 'b> Node<'a, 'b> {
         // removing the children whose bounds are over the current best score
         self.remove_children(best_time);
         if let Some(un_pos) = self.find_unexpanded_node(config, best_time) {
-            self.expand_child(un_pos)
+            self.expand_child(config, un_pos)
         } else { self.descend_expanded_node(config, best_time) } 
     }
 
@@ -564,7 +603,7 @@ impl<'a, 'b> Node<'a, 'b> {
     /// Given a vector of children and pos, which is the position of an unexpanded node, this
     /// function expands the node, remove the child if it is a deadend or replace the
     /// unexpanded child with the expanded one
-    fn expand_child(&mut self, pos: usize) -> NodeDescendResult<'a, 'b> {
+    fn expand_child(&mut self, config: &BanditConfig, pos: usize) -> NodeDescendResult<'a, 'b> {
         debug!("IN EXPAND CHILD on node {}", self.id);
         let mut id_child = self.id.clone();
         id_child.push_str(&String::from(" "));
@@ -581,7 +620,9 @@ impl<'a, 'b> Node<'a, 'b> {
             ExpandRes::Node(node) => {
                 self.children[pos] = node;
                 if let &EnumTree::Node(ref node_arc, _) = &self.children[pos].tree {
-                    NodeDescendResult::Node(Arc::clone(node_arc), pos)
+                    if config.monte_carlo {
+                     NodeDescendResult::Node(Arc::clone(node_arc), pos)
+                    } else { NodeDescendResult::MonteCarlo(Arc::clone(node_arc), pos)}
                 } else { panic!("We should have a Node here"); }
             }
         } 
@@ -705,6 +746,39 @@ impl<'a, 'b> Node<'a, 'b> {
             .map( |(out_ind, (in_ind, min_val))| (out_ind, in_ind, *min_val))
             .min_by(|x1, x2| cmp_f64(x1.2, x2.2))
     }
+
+    /// We have a newly expanded node, we want to do a montecarlo descend on it
+    fn start_montecarlo(&mut self, config: &BanditConfig, context: &Context, cut: f64) 
+        -> Option<Candidate<'a>> 
+    {
+        let ind;
+        {
+            let new_nodes = self.children.iter()
+                .map( |node| 
+                      if let EnumTree::UnexpandedNode(ref cand, _) = node.tree 
+                      {cand} else {panic!()}).collect_vec();
+            ind = match config.new_nodes_order {
+                NewNodeOrder::Api => 0,
+                NewNodeOrder::WeightedRandom => choose_cand_weighted(&new_nodes, cut),
+                NewNodeOrder::Bound => choose_cand_best(&new_nodes),
+                NewNodeOrder::Random => choose_cand_rand(&new_nodes),
+            };
+            let cand_ref = if let EnumTree::UnexpandedNode(ref cand, _) = self.children[ind].tree
+            {cand} else {panic!()};
+            let choice_opt = choice::list(&cand_ref.space).next();
+            if let Some(choice) = choice_opt {
+                let new_nodes = cand_ref.apply_choice(context, choice);
+                if new_nodes.is_empty() {
+                    return None;
+                } else { 
+                    let chosen_candidate = choose_next_cand(config, new_nodes, cut);
+                    return Some(chosen_candidate);
+                } 
+            }
+    }
+        let node = std::mem::replace(&mut self.children[ind].tree, EnumTree::NoGoBranch);
+        if let EnumTree::UnexpandedNode(cand, _) = node {Some(cand)} else {panic!()}
+    }
 }
 
 
@@ -784,13 +858,13 @@ impl<'a, 'b> SearchTree<'a, 'b> {
 
 
 
-
 /// gives a "score" to a branch of the tree at a given node n_successes is the number of successes
 /// of that branch (that is, the number of leaves that belong to the THRESHOLD best of that node
 /// and which come from that particular branch) 
 /// n_branch_trials is the number of trials of that branch (both failed and succeeded), n_trials
 /// the number of trials of the node and k the number of branches in the node
-fn heval(config: &BanditConfig, n_successes: usize, n_branch_trials: usize, n_trials: usize, n_branches: usize) -> f64 {
+fn heval(config: &BanditConfig, n_successes: usize, n_branch_trials: usize, n_trials: usize,
+         n_branches: usize) -> f64 {
     if n_trials == 0 {
         std::f64::INFINITY
     }
@@ -801,4 +875,72 @@ fn heval(config: &BanditConfig, n_successes: usize, n_branch_trials: usize, n_tr
                                                    alpha).sqrt()) / (n_branch_trials as f64);
         ret
     }
+}
+
+fn montecarlo_descend<'a>(config: &BanditConfig, 
+                          context: &Context, 
+                          candidate: Candidate<'a>, 
+                          cut: f64) 
+    -> Option<Candidate<'a>>
+{
+    let choice_opt = choice::list(&candidate.space).next();
+    if let Some(choice) = choice_opt {
+        let new_nodes = candidate.apply_choice(context, choice);
+                if new_nodes.is_empty() {
+                    None
+                } else { 
+                    let chosen_candidate = choose_next_cand(config, new_nodes, cut);
+                    montecarlo_descend(config, context, chosen_candidate, cut)
+                } 
+    }
+    else { Some(candidate) }
+}
+
+fn choose_next_cand<'a>(config: &BanditConfig, 
+                        mut new_nodes: Vec<Candidate<'a>>, 
+                        cut: f64) -> Candidate<'a> {
+    let ind = match config.new_nodes_order {
+        NewNodeOrder::Api => 0,
+        NewNodeOrder::WeightedRandom => choose_cand_weighted(&new_nodes.iter().collect_vec(), cut),
+          NewNodeOrder::Bound => choose_cand_best(&new_nodes.iter().collect_vec()),
+          NewNodeOrder::Random => choose_cand_rand(&new_nodes.iter().collect_vec()),
+    };
+    new_nodes.remove(ind)
+}
+
+
+//fn choose_cand_best<'a, T>(new_nodes: T) -> usize where T: Iterator<Item=&'a Candidate<'a>>{
+fn choose_cand_best<'a>(new_nodes: &Vec<&Candidate<'a>>) -> usize {
+    new_nodes.iter().enumerate().min_by(|x1, x2| cmp_f64(x1.1.bound.value(), x2.1.bound.value()))
+        .map(|x| x.0)
+    // We checked in montecarlo_descend that new_nodes is not empty
+        .unwrap()
+}
+
+//fn choose_cand_rand<'a, T>(new_nodes: T) -> usize where T: Iterator<Item=&'a Candidate<'a>>{
+fn choose_cand_rand<'a>(new_nodes: &Vec<&Candidate<'a>>) -> usize {
+    let mut rng = thread_rng();
+    rng.gen_range(0, new_nodes.len())
+}
+
+fn choose_cand_weighted<'a>(new_nodes: &Vec<&'a Candidate<'a>>, cut: f64) -> usize {
+//fn choose_cand_weighted<'a, T>(new_nodes: T, cut: f64) 
+//  -> usize where T: Iterator<Item=&'a Candidate<'a>>
+    let mut weighted_items = vec![];
+    let mut rng = thread_rng();
+    let max_bound = new_nodes.iter().max_by(|x1, x2|
+                                            cmp_f64(x1.bound.value(), x2.bound.value()))
+        .map(|x| x.bound.value()).unwrap();
+    for (ind, x) in new_nodes.iter().enumerate() {
+        if cut.is_infinite() {
+            let x_weight = (10f64 * max_bound / x.bound.value()).floor() as u32 ;
+            weighted_items.push(Weighted{weight: x_weight, item: ind});
+        } else {
+            assert!(x.bound.value() <= cut);
+            let weight = (1000f64 * (1f64 - x.bound.value()/cut)).floor() as u32;
+            let weight = std::cmp::max(1, weight);
+            weighted_items.push(Weighted { weight, item: ind});
+        }
+    }
+    WeightedChoice::new(&mut weighted_items).ind_sample(&mut rng)
 }
