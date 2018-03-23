@@ -186,6 +186,9 @@ pub struct BanditConfig {
     /// The biggest delta is, the more focused on the previous best candidates the
     /// exploration is.
     pub delta: f64,
+    /// If true, does not expand tree until end - instead, starts a montecarlo descend after each
+    /// expansion of a node
+    pub monte_carlo: bool,
 }
 
 impl BanditConfig {
@@ -219,6 +222,7 @@ impl BanditConfig {
             old_nodes_order: OldNodeOrder::parse_config(parser),
             threshold: unwrap!(parser.get_int("threshold")) as usize,
             delta: unwrap!(parser.get_float("delta")),
+            monte_carlo: unwrap!(parser.get_bool("monte_carlo")),
         }
     }
 }
