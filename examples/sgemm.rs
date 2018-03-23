@@ -34,20 +34,20 @@ use rayon::prelude::*;
 fn main() {
     env_logger::init();
     let executor = cuda::Executor::init();
-    gen_mm(1024, 1024, 1024, ir::Type::F(32), false, &executor);
+    gen_mm(1024, 1024, 1024, ir::Type::F(32), true, &executor);
 }
 
 fn gen_mm(m: i32, n: i32, k: i32,
           data_type: ir::Type,
-          instantiate: bool,
+          generic: bool,
           executor: &cuda::Executor) {
     let mut context = cuda::Context::new(&executor);
     let (a, b, c);
     let signature = &{
         let mut builder = helper::SignatureBuilder::new("mm", &mut context);
-        let m = create_size(m, "m", instantiate, &mut builder);
-        let n = create_size(n, "n", instantiate, &mut builder);
-        let k = create_size(k, "k", instantiate, &mut builder);
+        let m = create_size(m, "m", generic, &mut builder);
+        let n = create_size(n, "n", generic, &mut builder);
+        let k = create_size(k, "k", generic, &mut builder);
         a = Tensor::new("a", vec![m, k], data_type, true, &mut builder);
         b = Tensor::new("b", vec![k, n], data_type, true, &mut builder);
         c = Tensor::new("c", vec![m, n], data_type, false, &mut builder);
@@ -94,7 +94,7 @@ fn gen_mm(m: i32, n: i32, k: i32,
         builder.action(Action::DimKind(init_dim_m[0], DimKind::BLOCK));
         builder.get()
     }).collect();
-    gen_best(candidates, &context, &file_name("mm", data_type, &[m, n, k], instantiate));
+    gen_best(candidates, &context, &file_name("mm", data_type, &[m, n, k], generic));
 
     /*builder.action(Action::DimKind(thread_dim_0_n, DimKind::THREAD_Y));
     builder.action(Action::DimKind(thread_dim_0_m, DimKind::THREAD_X));
