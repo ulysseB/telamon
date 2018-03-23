@@ -30,46 +30,29 @@ impl<T> From<TimeoutError<T>> for CommEnd {
 pub fn monitor<'a, T>(config: &Config, candidate_store: &T, 
                       recv: channel::mpsc::Receiver<MonitorMessage<'a, T>>,
                      log_sender: sync::mpsc::SyncSender<LogMessage>) 
-    //-> Option<SearchSpace<'a>> where T: Store<'a>,  <T as Store<'a>>::PayLoad: 'a
-    //-> Option<SearchSpace<'a>> where T: Store<'a>, T:'a
     -> Option<SearchSpace<'a>> where T: Store<'a>
 {
     warn!("Monitor waiting for evaluation results");
     let t0 = Instant::now();
     let mut best_cand: Option<(Candidate, f64)> = None;
-    match block_on(
-        get_future_timeout(config, recv, t0, candidate_store, &log_sender, &mut best_cand)
-        ) {
-        Err(CommEnd::TimedOut) => {candidate_store.update_cut(0.0); warn!("Timeout expired")}
-        Err(CommEnd::Other) => warn!("No candidates to try anymore"),
-        Ok(_) => warn!("What ???? An Error is supposed to happen at some point")
+    if let Some(_) = config.timeout {
+        match block_on(
+            get_future_timeout(config, recv, t0, candidate_store, &log_sender, &mut best_cand)
+            ) {
+            Err(CommEnd::TimedOut) => {candidate_store.update_cut(0.0); warn!("Timeout expired")}
+            Err(CommEnd::Other) => warn!("No candidates to try anymore"),
+            Ok(_) => warn!("What ???? An Error is supposed to happen at some point")
+        }
+    } else {
+        match block_on(
+            get_future_unbounded(config, recv, t0, candidate_store, &log_sender, &mut best_cand)
+            ) {
+            Err(CommEnd::TimedOut) => {panic!("We are not supposed to get a timeout here !!!")}
+            Err(CommEnd::Other) => warn!("No candidates to try anymore"),
+            Ok(_) => warn!("What ???? An Error is supposed to happen at some point")
+        }
     }
-    best_cand.map(|x| x.0.space)
-}
-
-/// All work that has to be done on reception of a message, meaning updating the best cand if
-/// needed, logging, committing back to candidate_store
-fn handle_message<'a, T>(config: &Config,
-                         message: MonitorMessage<'a, T>, 
-                         t0: Instant,
-                         candidate_store: &T,
-                         log_sender: &sync::mpsc::SyncSender<LogMessage>,
-                         best_cand: &mut Option<(Candidate<'a>, f64)>) where T: Store<'a> {
-    let (cand, eval, cpt, payload) = message;
-    let t = Instant::now() - t0;
-    warn!("Got a new evaluation, bound: {:.4e} score: {:.4e}, current best: {:.4e}",
-          cand.bound.value(), eval, best_cand.as_ref().map_or(std::f64::INFINITY, |best:
-                                                              &(Candidate, f64)| best.1 ));
-    let change = best_cand.as_ref().map(|&(_, time)| time > eval).unwrap_or(true);
-    if change {
-        warn!("Got a new best candidate, score: {:.3e}", eval);
-        candidate_store.update_cut(get_new_cut(config, eval));
-        let log_message = LogMessage::Monitor{score: eval, cpt, timestamp:t};
-        log_sender.send(log_message).unwrap();
-        *best_cand = Some((cand, eval));
-    }
-    candidate_store.commit_evaluation(config, payload, eval);
-
+        best_cand.map(|x| x.0.space)
 }
 
 /// Depending on the value of the evaluation we just did, computes the new cut value for the store
@@ -81,6 +64,28 @@ fn get_new_cut(config: &Config, eval: f64) -> f64 {
     if let Some(ratio) = config.distance_to_best {
         ( 1. - ratio / 100.) * eval
     } else { eval}
+}
+
+
+/// Given a receiver channel, builds and construct a future that returns whenever the tree has
+/// been fully explored or the timeout has been reached
+fn get_future_unbounded<'a, 'b, T>(config: &'b Config, 
+                             receiver: channel::mpsc::Receiver<MonitorMessage<'a, T>>,
+                             t0: Instant,
+                             candidate_store: &'b T,
+                             log_sender: &'b sync::mpsc::SyncSender<LogMessage>,
+                             best_cand: &'b mut Option<(Candidate<'a>, f64)>
+                             )
+    -> impl Future<Error=CommEnd> + 'b where T: Store<'a>, <T as Store<'a>>::PayLoad: 'b, 'a: 'b {
+    receiver.for_each(move |message| {
+        handle_message::<T>(config,
+                            message,
+                            t0,
+                            candidate_store,
+                            log_sender,
+                            best_cand);
+        Ok(())})
+                  .map_err(|_| CommEnd::Other)
 }
 
 /// Given a receiver channel, builds and construct a future that returns whenever the tree has
@@ -107,6 +112,30 @@ fn get_future_timeout<'a, 'b, T>(config: &'b Config,
                             best_cand);
         Ok(())})
                   .map_err(|_| CommEnd::Other), time)
+}
+
+/// All work that has to be done on reception of a message, meaning updating the best cand if
+/// needed, logging, committing back to candidate_store
+fn handle_message<'a, T>(config: &Config,
+                         message: MonitorMessage<'a, T>, 
+                         t0: Instant,
+                         candidate_store: &T,
+                         log_sender: &sync::mpsc::SyncSender<LogMessage>,
+                         best_cand: &mut Option<(Candidate<'a>, f64)>) where T: Store<'a> {
+    let (cand, eval, cpt, payload) = message;
+    let t = Instant::now() - t0;
+    warn!("Got a new evaluation, bound: {:.4e} score: {:.4e}, current best: {:.4e}",
+          cand.bound.value(), eval, best_cand.as_ref().map_or(std::f64::INFINITY, |best:
+                                                              &(Candidate, f64)| best.1 ));
+    let change = best_cand.as_ref().map(|&(_, time)| time > eval).unwrap_or(true);
+    if change {
+        warn!("Got a new best candidate, score: {:.3e}", eval);
+        candidate_store.update_cut(get_new_cut(config, eval));
+        let log_message = LogMessage::Monitor{score: eval, cpt, timestamp:t};
+        log_sender.send(log_message).unwrap();
+        *best_cand = Some((cand, eval));
+    }
+    candidate_store.commit_evaluation(config, payload, eval);
 }
 
 /// Builds and returns a timer that suits our needs - that is, which timeout can be set to at least
