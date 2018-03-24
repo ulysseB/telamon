@@ -42,3 +42,11 @@ pub mod explorer;
 pub mod ir;
 pub mod model;
 pub mod search_space;
+
+// FIXME: thread-mapping
+// - have a quotient set to list active thread dims
+// - rely on thread-mapping for the dim maps
+// - put constraints on the threads quotient rather than individual instructions
+// - use the thread mapping in codegen
+// - use the thread mapping in the performance model
+// - remove old mapping constraints

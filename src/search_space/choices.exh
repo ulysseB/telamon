@@ -280,6 +280,41 @@ define enum dim_mapping($lhs in Dimensions, $rhs in Dimensions):
     requires "$lhs.size() == $rhs.size()"
 end
 
+/// Indicates how are thread dimensions mapped on the GPU.
+define enum thread_mapping($lhs in Dimensions, $rhs in Dimensions):
+  antisymmetric:
+    MAPPED_OUT -> MAPPED_IN
+  /// One of the dimensions is a not thread.
+  value NOT_THREADS:
+    requires dim_kind($lhs) is not THREAD || dim_kind($rhs) is not THREAD
+  /// The two dimensions are threads mapped to the same dimension on the GPU.
+  value MAPPED:
+    requires dim_kind($lhs) is THREAD
+    requires dim_kind($rhs) is THREAD
+    requires order($lhs, $rhs) is MERGED | ORDERED
+    requires "$lhs.size() == $rhs.size()"
+  /// The two dimensions are threads, but `lhs` is mapped to a dimension outside of `rhs`.
+  value MAPPED_OUT:
+    requires dim_kind($lhs) is THREAD
+    requires dim_kind($rhs) is THREAD
+    requires order($lhs, $rhs) is OUTER | ORDERED
+  /// The two dimensions are threads, but `lhs` is mapped to a dimension inside of `rhs`.
+  value MAPPED_IN:
+    requires dim_kind($lhs) is THREAD
+    requires dim_kind($rhs) is THREAD
+    requires order($lhs, $rhs) is INNER | ORDERED
+end
+
+// Enforce coherence between threads activations.
+require forall $lhs in Dimensions:
+  forall $rhs in Dimensions:
+    forall $other in Dimensions:
+      thread_mapping($lhs, $rhs) is not MAPPED ||
+        thread_mapping($lhs, $other) == thread_mapping($rhs, $other)
+      thread_mapping($lhs, $other) is not MAPPED_OUT ||
+        thread_mapping($other, $rhs) is not MAPPED_OUT ||
+        thread_mapping($lhs, $rhs) is MAPPED_OUT
+
 // Thread dimensions are grouped together
 require forall $outer in Dimensions:
   forall $inner in Dimensions:
