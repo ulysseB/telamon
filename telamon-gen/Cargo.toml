@@ -20,7 +20,7 @@ lazy_static = "1.0.0"
 log = "0.4.1"
 regex = "0.2.9"
 rustfmt = "0.10.0"
-rustlex = "0.3.3"
+rustlex = { git = "https://github.com/ulysseB/rustlex.git" }
 serde = "1.0.32"
 serde_derive = "1.0.32"
 serde_json = "1.0.11"
