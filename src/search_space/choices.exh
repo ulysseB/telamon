@@ -345,6 +345,15 @@ require forall $bb in BasicBlocks:
         || dim_kind($other_thread) is not THREAD
         || order($bb, $other_thread) is not ORDERED
 
+/// Limits the number of threads.
+define half counter num_threads():
+  forall $dim in Dimensions:
+    mul "$dim.size().as_int().unwrap_or(1)" when:
+      is_thread_dim($dim) is TRUE
+end
+
+require num_threads() <= "$fun.device().max_threads()"
+
 /// Limits the number of nested unrolled loop.
 define half counter unroll_factor($inst in Instructions):
   forall $dim in Dimensions:
@@ -361,18 +370,9 @@ define half counter num_block_dims($inst in Instructions):
       dim_kind($dim) is BLOCK
 end
 
-/// Limits the number of threads.
-define half counter num_threads($inst in Instructions):
-  forall $dim in Dimensions:
-    mul "$dim.size().as_int().unwrap_or(1)" when:
-      is_iteration_dim($inst, $dim) is TRUE
-      dim_kind($dim) is THREAD
-end
-
 require forall $inst in Instructions:
   unroll_factor($inst) <= "$fun.device().max_unrolling()"
   num_block_dims($inst) <= "$fun.device().max_block_dims()"
-  num_threads($inst) <= "$fun.device().max_threads()"
 
 /// Counts the number on instructions nested in each dimension.
 define half counter num_nested_inst($dim in Dimensions):
