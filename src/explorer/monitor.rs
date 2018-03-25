@@ -13,12 +13,10 @@ use std;
 use std::sync;
 use tokio_timer::*;
 
-pub type MonitorMessage<'a, T: Store<'a>> = (Candidate<'a>, f64, usize, T::PayLoad);
+pub type MonitorMessage<'a, T> = (Candidate<'a>, f64, usize, <T as Store<'a>>::PayLoad);
 
-enum CommEnd {
-    TimedOut,
-    Other,
-}
+enum CommEnd { TimedOut, Other }
+
 impl<T> From<TimeoutError<T>> for CommEnd {
     fn from(_: TimeoutError<T>) -> Self {
         CommEnd::TimedOut
@@ -35,24 +33,21 @@ pub fn monitor<'a, T>(config: &Config, candidate_store: &T,
     warn!("Monitor waiting for evaluation results");
     let t0 = Instant::now();
     let mut best_cand: Option<(Candidate, f64)> = None;
-    if let Some(_) = config.timeout {
-        match block_on(
-            get_future_timeout(config, recv, t0, candidate_store, &log_sender, &mut best_cand)
-            ) {
-            Err(CommEnd::TimedOut) => {candidate_store.update_cut(0.0); warn!("Timeout expired")}
-            Err(CommEnd::Other) => warn!("No candidates to try anymore"),
-            Ok(_) => warn!("What ???? An Error is supposed to happen at some point")
-        }
+    let res = if let Some(_) = config.timeout {
+        block_until_timeout(
+            config, recv, t0, candidate_store, &log_sender, &mut best_cand)
     } else {
-        match block_on(
-            get_future_unbounded(config, recv, t0, candidate_store, &log_sender, &mut best_cand)
-            ) {
-            Err(CommEnd::TimedOut) => {panic!("We are not supposed to get a timeout here !!!")}
-            Err(CommEnd::Other) => warn!("No candidates to try anymore"),
-            Ok(_) => warn!("What ???? An Error is supposed to happen at some point")
+        block_unbounded( config, recv, t0, candidate_store, &log_sender, &mut best_cand)
+    };
+    match res {
+        Err(CommEnd::TimedOut) => {
+            candidate_store.update_cut(0.0);
+            warn!("Timeout expired")
         }
+        Err(CommEnd::Other) => warn!("No candidates to try anymore"),
+        Ok(_) => warn!("An Error is supposed to happen at some point")
     }
-        best_cand.map(|x| x.0.space)
+    best_cand.map(|x| x.0.space)
 }
 
 /// Depending on the value of the evaluation we just did, computes the new cut value for the store
@@ -67,57 +62,47 @@ fn get_new_cut(config: &Config, eval: f64) -> f64 {
 }
 
 
-/// Given a receiver channel, builds and construct a future that returns whenever the tree has
-/// been fully explored or the timeout has been reached
-fn get_future_unbounded<'a, 'b, T>(config: &'b Config, 
-                             receiver: channel::mpsc::Receiver<MonitorMessage<'a, T>>,
-                             t0: Instant,
-                             candidate_store: &'b T,
-                             log_sender: &'b sync::mpsc::SyncSender<LogMessage>,
-                             best_cand: &'b mut Option<(Candidate<'a>, f64)>
-                             )
-    -> impl Future<Error=CommEnd> + 'b where T: Store<'a>, <T as Store<'a>>::PayLoad: 'b, 'a: 'b {
-    receiver.for_each(move |message| {
-        handle_message::<T>(config,
-                            message,
-                            t0,
-                            candidate_store,
-                            log_sender,
-                            best_cand);
-        Ok(())})
-                  .map_err(|_| CommEnd::Other)
+/// Given a receiver channel, constructs a future that returns whenever the tree has
+/// been fully explored.
+fn block_unbounded<'a, T>(config: &Config,
+                          receiver: channel::mpsc::Receiver<MonitorMessage<'a, T>>,
+                          t0: Instant,
+                          candidate_store: &T,
+                          log_sender: &sync::mpsc::SyncSender<LogMessage>,
+                          best_cand: &mut Option<(Candidate<'a>, f64)>)
+    -> Result<(), CommEnd> where T: Store<'a>
+{
+    block_on(receiver.for_each(move |message| {
+        handle_message::<T>(config, message, t0, candidate_store, log_sender, best_cand);
+        Ok(())
+    }).map_err(|_| CommEnd::Other)).map(|_| ())
 }
 
-/// Given a receiver channel, builds and construct a future that returns whenever the tree has
-/// been fully explored or the timeout has been reached
-fn get_future_timeout<'a, 'b, T>(config: &'b Config, 
-                             receiver: channel::mpsc::Receiver<MonitorMessage<'a, T>>,
-                             t0: Instant,
-                             candidate_store: &'b T,
-                             log_sender: &'b sync::mpsc::SyncSender<LogMessage>,
-                             best_cand: &'b mut Option<(Candidate<'a>, f64)>
-                             )
-    -> impl Future<Error=CommEnd> + 'b where T: Store<'a>, <T as Store<'a>>::PayLoad: 'b, 'a: 'b {
+/// Given a receiver channel, builds a future that returns whenever the tree has been fully
+/// explored or the timeout has been reached
+fn block_until_timeout<'a, 'b, T>(config: &'b Config,
+                                 receiver: channel::mpsc::Receiver<MonitorMessage<'a, T>>,
+                                 t0: Instant,
+                                 candidate_store: &'b T,
+                                 log_sender: &'b sync::mpsc::SyncSender<LogMessage>,
+                                 best_cand: &'b mut Option<(Candidate<'a>, f64)>)
+    -> Result<(), CommEnd> where T: Store<'a>
+{
     let timer = configure_timer();
     //TODO Find a clean way to get a timeout that never returns - or no timeout at all
     let timeout = config.timeout.unwrap_or(10000);
     println!("TIMEOUT: {}min", timeout);
     let time = Duration::from_secs(timeout as u64 * 60);
-    timer.timeout(receiver.for_each(move |message| {
-        handle_message::<T>(config,
-                            message,
-                            t0,
-                            candidate_store,
-                            log_sender,
-                            best_cand);
-        Ok(())})
-                  .map_err(|_| CommEnd::Other), time)
+    block_on(timer.timeout(receiver.for_each(move |message| {
+        handle_message::<T>(config, message, t0, candidate_store, log_sender, best_cand);
+        Ok(())
+    }).map_err(|_| CommEnd::Other), time).map(|_| ()))
 }
 
 /// All work that has to be done on reception of a message, meaning updating the best cand if
 /// needed, logging, committing back to candidate_store
 fn handle_message<'a, T>(config: &Config,
-                         message: MonitorMessage<'a, T>, 
+                         message: MonitorMessage<'a, T>,
                          t0: Instant,
                          candidate_store: &T,
                          log_sender: &sync::mpsc::SyncSender<LogMessage>,
