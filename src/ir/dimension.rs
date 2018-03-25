@@ -23,13 +23,18 @@ pub struct Dimension<'a> {
     size: ir::Size<'a>,
     id: Id,
     iterated: Vec<ir::InstId>,
+    is_thread_dim: bool,
 }
 
 impl<'a> Dimension<'a> {
     /// Creates a new dimension.
     pub fn new(size: ir::Size, id: Id) -> Dimension {
         assert_ne!(size.as_int(), Some(1));
-        Dimension { size, id, iterated: Vec::new() }
+        Dimension {
+            size, id,
+            iterated: Vec::new(),
+            is_thread_dim: false,
+        }
     }
 
     /// Retruns the size of the dimension.
@@ -45,6 +50,12 @@ impl<'a> Dimension<'a> {
 
     /// Adds a bb that is iterated along self.
     pub fn add_iterated(&mut self, inst: ir::InstId) { self.iterated.push(inst); }
+
+    /// Indicates if the dimension is a thread dimension.
+    pub fn is_thread_dim(&self) -> bool { self.is_thread_dim }
+
+    /// Sets the dimension as a thread dimension.
+    pub fn set_thread_dim(&mut self) { self.is_thread_dim = true }
 }
 
 impl<'a> BasicBlock<'a> for Dimension<'a> {

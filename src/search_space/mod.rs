@@ -97,3 +97,11 @@ fn add_iteration_dim(ir_instance: &mut ir::Function,
     }
     new_objs
 }
+
+/// Adds a dimension to the list of thread dimensions.
+fn add_thread_dim(ir_instance: &mut ir::Function, dim: ir::dim::Id) -> ir::NewObjs {
+    debug!("set {:?} as a thread dimension", dim);
+    let mut new_objs = ir::NewObjs::default();
+    if ir_instance.add_thread_dim(dim) { new_objs.add_thread_dim(dim); }
+    new_objs
+}
