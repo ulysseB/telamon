@@ -34,6 +34,7 @@ pub struct Function<'a> {
     device: &'a Device,
     insts: Vec<Instruction<'a>>,
     dims: Vec<Dimension<'a>>,
+    thread_dims: Vec<ir::dim::Id>,
     mem_insts: Vec<ir::InstId>,
     mem_blocks: mem::BlockMap<'a>,
     layouts_to_lower: Vec<ir::mem::InternalId>,
@@ -50,6 +51,7 @@ impl<'a> Function<'a> {
             insts: vec![],
             mem_insts: vec![],
             dims: vec![],
+            thread_dims: vec![],
             mem_blocks,
             layouts_to_lower: Vec::new(),
             induction_vars: Vec::new(),
@@ -108,6 +110,11 @@ impl<'a> Function<'a> {
     /// Lists all `BasicBlock`s.
     pub fn blocks<'b>(&'b self) -> impl Iterator<Item=&'b BasicBlock<'a>> {
         self.insts.iter().map(|x| x as _).chain(self.dims.iter().map(|x| x as _))
+    }
+
+    /// Returns the list of thread dimensions.
+    pub fn thread_dims(&self) -> impl Iterator<Item=&Dimension<'a>> {
+        self.thread_dims.iter().map(move |&d| self.dim(d))
     }
 
     /// Returns an instruction given its id.
