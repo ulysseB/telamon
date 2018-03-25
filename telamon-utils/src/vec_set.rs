@@ -114,11 +114,14 @@ where T: Ord
     }
 
     /// Inserts an element in the `VecSet`. This operation has a complexity in
-    /// O(n).
-    pub fn insert(&mut self, item: T) {
+    /// O(n). Returns `false` if the item was already present.
+    pub fn insert(&mut self, item: T) -> bool {
         match self.data.binary_search(&item) {
-            Ok(_) => (),
-            Err(pos) => self.data.insert(pos, item),
+            Ok(_) => false,
+            Err(pos) => {
+                self.data.insert(pos, item);
+                true
+            },
         }
     }
 }

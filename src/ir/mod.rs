@@ -53,6 +53,7 @@ pub struct NewObjs {
     pub internal_mem_blocks: Vec<mem::InternalId>,
     pub mem_insts: Vec<InstId>,
     pub iteration_dims: Vec<(InstId, dim::Id)>,
+    pub thread_dims: Vec<dim::Id>,
 }
 
 impl NewObjs {
@@ -84,6 +85,9 @@ impl NewObjs {
     pub fn add_iteration_dim(&mut self, inst: InstId, dim: dim::Id) {
         self.iteration_dims.push((inst, dim));
     }
+
+    /// Sets a dimension as a new thread dimension.
+    pub fn add_thread_dim(&mut self, dim: dim::Id) { self.thread_dims.push(dim) }
 
     /// Registers a new memory block.
     pub fn add_mem_block(&mut self, id: mem::InternalId) {

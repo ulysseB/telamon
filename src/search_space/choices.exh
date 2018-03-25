@@ -81,6 +81,19 @@ quotient IterationDims($inst in Instructions) of $dim in Dimensions:
   add_to_set = "::search_space::add_iteration_dim($fun, $inst, $item)"
 end
 
+quotient ThreadDims of $dim in Dimensions:
+  is_thread_dim = dim_kind($dim) is THREAD / thread_mapping is MAPPED
+  item_type = "ir::Dimension"
+  id_type = "ir::dim::Id"
+  item_getter = "$fun.dim($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.thread_dims()"
+  var_prefix = "thread_dim"
+  new_objs = "$objs.thread_dims"
+  from_superset = "(if $item.is_thread_dim() { Some($item) } else { None })"
+  add_to_set = "::search_space::add_thread_dim($fun, $item)"
+end
+
 /// Specifies how iteration dimensions are implemented.
 define enum dim_kind($dim in Dimensions):
   /// The dimension is implemented as a regular loop.
