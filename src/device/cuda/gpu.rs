@@ -289,8 +289,7 @@ impl Gpu {
     /// Computes the number of blocks that can fit in an smx.
     pub fn blocks_per_smx(&self, space: &SearchSpace) -> u32 {
         let mut block_per_smx = self.max_block_per_smx;
-        let num_thread = space.ir_instance().insts()
-            .map(|inst| space.domain().get_num_threads(inst.id()).min).max().unwrap_or(1);
+        let num_thread = space.domain().get_num_threads().min;
         min_assign(&mut block_per_smx, self.thread_per_smx/num_thread);
         let shared_mem_used = space.domain().get_shared_mem_used().min;
         if shared_mem_used != 0 {
