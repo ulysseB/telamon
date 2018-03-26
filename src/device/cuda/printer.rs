@@ -6,6 +6,7 @@ use itertools::Itertools;
 use search_space::{DimKind, Domain, InstFlag};
 use std::io::Write;
 use self::InstArg::*;
+use utils::*;
 // TODO(cc_perf): avoid concatenating strings.
 
 /// Prints a rounding mode selector.
@@ -118,9 +119,16 @@ fn inst_arg(arg: &InstArg, namer: &mut NameMap) -> String {
 }
 
 /// Assembles the different parts of an instruction in a single string.
-fn assemble(operator: &str, t: Type, args: &[InstArg], namer: &mut NameMap) -> String {
+fn assemble(operator: &str,
+            predicate: Option<RcStr>,
+            t: Type,
+            args: &[InstArg],
+            namer: &mut NameMap) -> String {
     let args_str = args.iter().map(|x| inst_arg(x, namer)).collect_vec().join(", ");
-    format!("{}.{} {};", operator, ptx_type(t), args_str)
+    let pred = if let Some(ref pred) = predicate {
+        format!("@{} ", pred)
+    } else { String::new() };
+    format!("{}{}.{} {};", pred, operator, ptx_type(t), args_str)
 }
 
 // TODO(cleanup): remove this function once values are preprocessed by codegen. If values
@@ -134,11 +142,11 @@ fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
     match *inst.operator() {
         op::Add(ref lhs, ref rhs, round) => {
             let operator = format!("add{}", rounding(round));
-            assemble(&operator, inst.t(), &[Inst(inst), Op(lhs), Op(rhs)], namer)
+            assemble(&operator, None, inst.t(), &[Inst(inst), Op(lhs), Op(rhs)], namer)
         },
         op::Sub(ref lhs, ref rhs, round) => {
             let operator = format!("sub{}", rounding(round));
-            assemble(&operator, inst.t(), &[Inst(inst), Op(lhs), Op(rhs)], namer)
+            assemble(&operator, None, inst.t(), &[Inst(inst), Op(lhs), Op(rhs)], namer)
         },
         op::Mul(ref lhs, ref rhs, rounding, return_type) => {
             let operator = if rounding == op::Rounding::Exact {
@@ -146,7 +154,8 @@ fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
             } else {
                 format!("mul{}", self::rounding(rounding))
             };
-            assemble(&operator, lower_type(lhs.t(), fun), &[Inst(inst), Op(lhs), Op(rhs)], namer)
+            let t = lower_type(lhs.t(), fun);
+            assemble(&operator, None, t, &[Inst(inst), Op(lhs), Op(rhs)], namer)
         },
         op::Mad(ref mul_lhs, ref mul_rhs, ref add_rhs, rounding) => {
             let operator = if rounding == op::Rounding::Exact {
@@ -155,21 +164,23 @@ fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
                 format!("fma{}", self::rounding(rounding))
             };
             let args = &[Inst(inst), Op(mul_lhs), Op(mul_rhs), Op(add_rhs)];
-            assemble(&operator, lower_type(mul_lhs.t(), fun), args, namer)
+            assemble(&operator, None, lower_type(mul_lhs.t(), fun), args, namer)
         },
         op::Div(ref lhs, ref rhs, round) => {
             let operator = format!("div{}", rounding(round));
-            assemble(&operator, inst.t(), &[Inst(inst), Op(lhs), Op(rhs)], namer)
+            assemble(&operator, None, inst.t(), &[Inst(inst), Op(lhs), Op(rhs)], namer)
         },
         op::Mov(ref op) =>
-            assemble("mov", inst.t(), &[Inst(inst), Op(op)], namer),
+            assemble("mov", None, inst.t(), &[Inst(inst), Op(op)], namer),
         op::Ld(_, ref addr, _) => {
             let operator = ld_operator(unwrap!(inst.mem_flag()));
-            assemble(operator, inst.t(), &[Inst(inst), Addr(addr)], namer)
+            assemble(operator, None, inst.t(), &[Inst(inst), Addr(addr)], namer)
         },
         op::St(ref addr, ref val, _,  _) => {
             let operator = st_operator(unwrap!(inst.mem_flag()));
-            assemble(operator, lower_type(val.t(), fun), &[Addr(addr), Op(val)], namer)
+            let t = lower_type(val.t(), fun);
+            let guard = namer.side_effect_guard();
+            assemble(operator, guard, t, &[Addr(addr), Op(val)], namer)
         },
         op::Cast(ref op, t) => {
             let rounding = match (op.t(), t) {
@@ -179,7 +190,8 @@ fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
                 _ => "",
             };
             let operator = format!("cvt{}.{}", rounding, ptx_type(lower_type(t, fun)));
-            assemble(&operator, lower_type(op.t(), fun), &[Inst(inst), Op(op)], namer)
+            let t = lower_type(op.t(), fun);
+            assemble(&operator, None, t, &[Inst(inst), Op(op)], namer)
         },
         op::TmpLd(..) | op::TmpSt(..) => panic!("non-printable instruction")
     }
@@ -195,12 +207,13 @@ fn vector_inst(inst: &Instruction, dim: &Dimension, namer: &mut NameMap, fun: &F
         op::Ld(_, ref addr, _) => {
             let operator = format!("{}.v{}", ld_operator(flag), size);
             let args = [VecInst(inst, dim.id(), size), Addr(addr)];
-            assemble(&operator, inst.t(), &args, namer)
+            assemble(&operator, None, inst.t(), &args, namer)
         },
         op::St(ref addr, ref val, _, _) => {
             let operator = format!("{}.v{}", st_operator(flag), size);
             let operands = [Addr(addr), VecOp(val, dim.id(), size)];
-            assemble(&operator, lower_type(val.t(), fun), &operands, namer)
+            let guard = namer.side_effect_guard();
+            assemble(&operator, guard, lower_type(val.t(), fun), &operands, namer)
         },
         _ => panic!("non-vectorizable instruction"),
     }
@@ -223,7 +236,18 @@ fn cfg<'a>(fun: &Function, c: &Cfg<'a>, namer: &mut NameMap) -> String {
         Cfg::Barrier => "bar.sync 0;".to_string(),
         Cfg::Instruction(ref i) => inst(i, namer, fun),
         Cfg::ParallelInductionLevel(ref level) =>
-            parallel_induction_level(level, namer)
+            parallel_induction_level(level, namer),
+        Cfg::EnableThreads(ref threads) => enable_threads(threads, namer),
+    }
+}
+
+/// Change the side-effect guards so that only thre specified threads are enabled.
+fn enable_threads(threads: &[bool], namer: &mut NameMap) -> String {
+    if threads.iter().cloned().all(|x| x) {
+        namer.set_side_effect_guard(None);
+        String::new()
+    } else {
+        unimplemented!() // FIXME
     }
 }
 
