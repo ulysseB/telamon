@@ -286,8 +286,7 @@ define enum dim_mapping($lhs in Dimensions, $rhs in Dimensions):
     requires dim_kind($lhs) is UNROLL | VECTOR || order($lhs, $rhs) is MERGED
   /// Values may be transmitted using one register for each thread.
   value THREAD_MAP:
-    requires dim_kind($lhs) is THREAD
-    requires dim_kind($lhs) == dim_kind($rhs)
+    requires thread_mapping($lhs, $rhs) is MAPPED
   /// Values are transmitted through registers.
   alias MAPPED = UNROLL_MAP | THREAD_MAP:
     requires "$lhs.size() == $rhs.size()"
@@ -353,6 +352,14 @@ define half counter num_threads():
 end
 
 require num_threads() <= "$fun.device().max_threads()"
+
+/// Limits the number of thread dimensions.
+define half counter num_thread_dims():
+  forall $dim in Dimensions:
+    sum "1" when: is_thread_dim($dim) is TRUE
+end
+
+require num_thread_dims() <= "3"
 
 /// Limits the number of nested unrolled loop.
 define half counter unroll_factor($inst in Instructions):
