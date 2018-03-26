@@ -6,7 +6,7 @@ mod operand;
 generated_file!(choices);
 
 pub use self::choices::{Action, Bool, DimKind, Domain, DomainStore, InstFlag, Order,
-                        MemSpace};
+                        MemSpace, ThreadMapping};
 
 use self::choices::{apply_action, DomainDiff, init_domain};
 use std::sync::Arc;

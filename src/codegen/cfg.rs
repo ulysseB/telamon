@@ -1,6 +1,6 @@
 use codegen::{Dimension, InductionLevel, Instruction};
 use ir;
-use search_space::{DimKind, Order, SearchSpace};
+use search_space::{DimKind, Domain, Order, SearchSpace, ThreadMapping};
 use itertools::Itertools;
 use std::{self, fmt};
 
@@ -12,6 +12,8 @@ pub enum Cfg<'a> {
     Loop(Dimension<'a>, Vec<Cfg<'a>>),
     /// Represents an instruction in the CFG.
     Instruction(Instruction<'a>),
+    /// Enables side effects on selected thread dimensions.
+    EnableThreads(Vec<bool>),
     /// Represent a syncthread instruction of the targeted device.
     Barrier,
     /// Computes an induction variable level, compatible with parallel dimension.
@@ -29,9 +31,7 @@ impl<'a> Cfg<'a> {
                 let body_dims = body.iter().flat_map(|cfg| cfg.dimensions());
                 Box::new(std::iter::once(dim).chain(body_dims)) as _
             },
-            Cfg::Instruction(_) | Cfg::Barrier | Cfg::ParallelInductionLevel(..) =>
-                Box::new(std::iter::empty()) as _,
-
+            _ => Box::new(std::iter::empty()) as _,
         }
     }
 
@@ -55,22 +55,51 @@ impl<'a> Cfg<'a> {
                 let inner = body.iter().flat_map(|cfg| cfg.induction_levels());
                 Box::new(inner) as Box<Iterator<Item=_>>
             },
-            Cfg::Instruction(_) | Cfg::Barrier => Box::new(std::iter::empty()) as _,
             Cfg::ParallelInductionLevel(ref level) => Box::new(std::iter::once(level)) as _,
+            _ => Box::new(std::iter::empty()) as _,
         }
     }
 
     /// Builds a CFG from a list of `CfgEvent`.
-    fn from_events<IT>(events: &mut IT) -> Cfg<'a> where IT: Iterator<Item=CfgEvent<'a>> {
+    fn from_events<IT>(events: &mut IT,
+                       has_barrier: &mut bool,
+                       last_thread_mask: &mut Vec<bool>,
+                       thread_mask: &mut Vec<bool>)
+        -> Cfg<'a> where IT: Iterator<Item=CfgEvent<'a>>
+    {
         use self::CfgEvent::*;
         let mut body = vec![];
         loop {
             match events.next() {
-                Some(Exec(inst)) => body.push(Cfg::Instruction(inst)),
-                Some(Enter(_, EntryEvent::SeqDim)) => body.push(Cfg::from_events(events)),
+                Some(Exec(inst)) => {
+                    *has_barrier = false;
+                    if last_thread_mask != thread_mask {
+                        last_thread_mask.copy_from_slice(thread_mask);
+                        body.push(Cfg::EnableThreads(thread_mask.clone()));
+                    }
+                    body.push(Cfg::Instruction(inst))
+                },
+                Some(Enter(_, EntryEvent::SeqDim)) => {
+                    let cfg = Cfg::from_events(
+                        events, has_barrier, last_thread_mask, thread_mask);
+                    body.push(cfg);
+                },
                 Some(Enter(_, EntryEvent::ParallelInductionLevel(ind_level))) =>
                     body.push(Cfg::ParallelInductionLevel(ind_level)),
-                Some(Exit(_, ExitEvent::Threads)) => body.push(Cfg::Barrier),
+                Some(Enter(_, EntryEvent::ThreadDim(pos))) => {
+                    thread_mask[pos] = true;
+                    if !*has_barrier {
+                        *has_barrier = true;
+                        body.push(Cfg::Barrier)
+                    }
+                }
+                Some(Exit(_, ExitEvent::ThreadDim)) => {
+                    for item in thread_mask.iter_mut() { *item = false; }
+                    if !*has_barrier {
+                        *has_barrier = true;
+                        body.push(Cfg::Barrier)
+                    }
+                }
                 Some(Exit(_, ExitEvent::SeqDim(dim))) =>
                     return Cfg::Loop(dim, body),
                 None => {
@@ -90,6 +119,7 @@ impl<'a> fmt::Debug for Cfg<'a> {
                 write!(f, "Loop([{:?}], {:?})", dim.dim_ids().format(","), inners),
             Cfg::Instruction(ref inst) => write!(f, "inst {:?}", inst.id()),
             Cfg::Barrier => write!(f, "Barrier"),
+            Cfg::EnableThreads(ref dims) => write!(f, "Threads({:?})", dims),
             Cfg::ParallelInductionLevel(InductionLevel {
                 ind_var, increment: Some((dim, _)), ..
             }) => write!(f, "induction lvl (dim {:?}, {:?}) ", dim, ind_var),
@@ -114,7 +144,9 @@ pub fn build<'a>(space: &'a SearchSpace<'a>,
     let (block_dims, thread_dims, mut events) = gen_events(space, insts, dims);
     events.sort_by(|lhs, rhs| lhs.cmp(rhs, space));
     let mut events = precomputed_ind_levels.chain(events);
-    let cfg = Cfg::from_events(&mut events);
+    let mut thread_mask = vec![true; thread_dims.len()];
+    let cfg = Cfg::from_events(&mut events, &mut true, &mut thread_mask.clone(),
+                               &mut thread_mask);
     assert!(events.next().is_none());
     (block_dims, thread_dims, cfg)
 }
@@ -126,9 +158,18 @@ enum CfgEvent<'a> {
     Exit(ir::dim::Id, ExitEvent<'a>),
 }
 
-enum EntryEvent<'a> { SeqDim, ParallelInductionLevel(InductionLevel<'a>) }
+/// An event to process when entering a dimension.
+enum EntryEvent<'a> {
+    /// Enter a sequential dimension.
+    SeqDim,
+    /// Enter a thread dimension.
+    ThreadDim(usize),
+    /// Compute a parallel induction level.
+    ParallelInductionLevel(InductionLevel<'a>)
+}
 
-enum ExitEvent<'a> { SeqDim(Dimension<'a>), Threads }
+/// An event to process when exiting a dimension.
+enum ExitEvent<'a> { SeqDim(Dimension<'a>), ThreadDim }
 
 impl<'a> CfgEvent<'a> {
     /// Indiciates the order of `self` with regards to `other`.
@@ -191,42 +232,31 @@ fn gen_events<'a>(space: &'a SearchSpace<'a>,
     -> (Vec<Dimension<'a>>, Vec<Dimension<'a>>, Vec<CfgEvent<'a>>)
 {
     let mut block_dims = Vec::new();
-    let mut thread_dims: Vec<Option<Dimension<'a>>> = (0..3).map(|_| None).collect_vec();
+    let mut thread_dims = Vec::new();
     let mut events = insts.into_iter().map(CfgEvent::Exec).collect_vec();
+    // Create dimension events and sort thread and block dims.
     for mut dim in dims {
-        let mut add_thread_dim =
-            |mut dim: Dimension<'a>, nesting: usize, events: &mut Vec<_>|
-        {
-            for level in dim.drain_induction_levels() {
-                let event = EntryEvent::ParallelInductionLevel(level);
-                events.push(CfgEvent::Enter(dim.id(), event));
-            }
-            match thread_dims[nesting] {
-                Some(ref mut other_dim) => other_dim.merge_from(dim),
-                ref mut x @ None => *x = Some(dim),
-            }
-        };
         match dim.kind() {
-            DimKind::BLOCK => {
-                for level in dim.drain_induction_levels() {
-                    let event = EntryEvent::ParallelInductionLevel(level);
-                    events.push(CfgEvent::Enter(dim.id(), event));
-                }
-                block_dims.push(dim)
+            DimKind::BLOCK => block_dims.push(dim),
+            DimKind::THREAD_X | DimKind::THREAD_Y | DimKind::THREAD_Z => {
+                events.push(CfgEvent::Exit(dim.id(), ExitEvent::ThreadDim));
+                thread_dims.push(dim);
             },
-            DimKind::THREAD_X => {
-                events.push(CfgEvent::Exit(dim.id(), ExitEvent::Threads));
-                add_thread_dim(dim, 0, &mut events);
-            },
-            DimKind::THREAD_Y => add_thread_dim(dim, 1, &mut events),
-            DimKind::THREAD_Z => add_thread_dim(dim, 2, &mut events),
             _ => {
                 events.push(CfgEvent::Enter(dim.id(), EntryEvent::SeqDim));
                 events.push(CfgEvent::Exit(dim.id(), ExitEvent::SeqDim(dim)));
             },
         }
     }
-    block_dims.sort_by(|lhs, rhs| {
+    // Register thread and block induction levels.
+    for dim in block_dims.iter_mut().chain(&mut thread_dims) {
+        for level in dim.drain_induction_levels() {
+            let event = EntryEvent::ParallelInductionLevel(level);
+            events.push(CfgEvent::Enter(dim.id(), event));
+        }
+    }
+    // Sort block dims.
+    block_dims.sort_unstable_by(|lhs, rhs| {
         if lhs.id() == rhs.id() { return std::cmp::Ordering::Equal; }
         match space.domain().get_order(lhs.id().into(), rhs.id().into()) {
             Order::OUTER => std::cmp::Ordering::Less,
@@ -235,5 +265,29 @@ fn gen_events<'a>(space: &'a SearchSpace<'a>,
                         lhs.id(), rhs.id()),
         }
     });
-    (block_dims, Itertools::flatten(thread_dims.into_iter()).collect(), events)
+    // Sort and group thread dims.
+    let mut merged_thread_dims = Vec::with_capacity(3);
+    for dim in thread_dims {
+        let pos = merged_thread_dims.binary_search_by(|probe: &Dimension| {
+            if probe.id() == dim.id() { return std::cmp::Ordering::Equal; }
+            match space.domain().get_thread_mapping(probe.id(), dim.id()) {
+                ThreadMapping::MAPPED_OUT => std::cmp::Ordering::Less,
+                ThreadMapping::MAPPED_IN => std::cmp::Ordering::Greater,
+                ThreadMapping::MAPPED => std::cmp::Ordering::Equal,
+                _ => panic!("invalid mapping between thread dims {:?} and {:?}",
+                            probe.id(), dim.id()),
+            }
+        });
+        match pos {
+            Ok(pos) => merged_thread_dims[pos].merge_from(dim),
+            Err(pos) => merged_thread_dims.insert(pos, dim),
+        }
+    }
+    // Register thread entering events.
+    for (pos, dim) in merged_thread_dims.iter().enumerate() {
+        for id in dim.dim_ids() {
+            events.push(CfgEvent::Enter(id, EntryEvent::ThreadDim(pos)));
+        }
+    }
+    (block_dims, merged_thread_dims, events)
 }
