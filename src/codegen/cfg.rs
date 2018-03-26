@@ -1,6 +1,6 @@
 use codegen::{Dimension, InductionLevel, Instruction};
 use ir;
-use search_space::{DimKind, Domain, Order, SearchSpace, ThreadMapping};
+use search_space::{DimKind, Order, SearchSpace, ThreadMapping};
 use itertools::Itertools;
 use std::{self, fmt};
 
@@ -274,8 +274,10 @@ fn gen_events<'a>(space: &'a SearchSpace<'a>,
                 ThreadMapping::MAPPED_OUT => std::cmp::Ordering::Less,
                 ThreadMapping::MAPPED_IN => std::cmp::Ordering::Greater,
                 ThreadMapping::MAPPED => std::cmp::Ordering::Equal,
-                _ => panic!("invalid mapping between thread dims {:?} and {:?}",
-                            probe.id(), dim.id()),
+                mapping => {
+                    panic!("invalid mapping between thread dims {:?} and {:?}: {:?}",
+                           probe.id(), dim.id(), mapping)
+                }
             }
         });
         match pos {
