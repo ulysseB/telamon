@@ -1,5 +1,7 @@
+#![feature(conservative_impl_trait)]
 extern crate env_logger;
 extern crate telamon;
+extern crate itertools;
 #[macro_use]
 extern crate log;
 extern crate rayon;
@@ -11,6 +13,7 @@ use telamon::{explorer, helper, ir};
 use telamon::device::{Context, cuda};
 use telamon::search_space::{Action, DimKind, InstFlag, SearchSpace, Order};
 use rayon::prelude::*;
+use common::*;
 
 const M: i32 = 1024;
 const K: i32 = 1024;
@@ -61,7 +64,7 @@ fn main() {
         })
     }).collect();
     //let candidate = gen_gemm(signature, device, 32, 4, a, b, c);
-    common::gen_best(candidates, &context);
+    common::gen_best(candidates, &context, &file_name("sgemm_low", DATA_TYPE, &[], true));
 }
 
 fn gen_gemm<'a>(signature: &'a ir::Signature, device: &'a telamon::device::Device,
