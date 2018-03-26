@@ -27,13 +27,18 @@ pub fn list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item=Choice> + 'a {
     }).chain(fun.dims().flat_map(move |dim| {
         let kinds = space.domain().get_dim_kind(dim.id());
         gen_choice(kinds.list(), &|k| Action::DimKind(dim.id(), k))
+    })).chain(fun.dims().enumerate().flat_map(move |(i, lhs)| {
+        fun.dims().take(i).flat_map(move |rhs| {
+            let mappings = space.domain().get_thread_mapping(lhs.id(), rhs.id());
+            gen_choice(mappings.list(), &|m| Action::ThreadMapping(lhs.id(), rhs.id(), m))
+        })
     })).chain(fun.internal_mem_blocks().flat_map(move |block| {
         let mem_spaces = space.domain().get_mem_space(block.mem_id());
         gen_choice(mem_spaces.list(), &|s| Action::MemSpace(block.mem_id(), s))
     })).chain(fun.dims().enumerate().flat_map(move |(i, lhs)| {
         // TODO(search_space): avoid picking ordering decisions that have little impact.
         // For this, we should avoid dimension-instruction and dimension-vector dim
-        // orderings. The problem is that we do not know wich choice to pick in the end. 
+        // orderings. The problem is that we do not know wich choice to pick in the end.
         let lhs = lhs.bb_id();
         let dims = fun.dims().take(i).map(|x| x.bb_id());
         dims.chain(fun.insts().map(|x| x.bb_id())).flat_map(move |rhs| {
