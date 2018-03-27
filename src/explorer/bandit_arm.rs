@@ -1,24 +1,20 @@
 //! Exploration of the search space.
 
 use device::Context;
+use explorer::candidate::Candidate;
+use explorer::choice;
+use explorer::montecarlo;
+use explorer::config::{Config, BanditConfig, NewNodeOrder, OldNodeOrder};
+use  explorer::store::Store;
+use itertools::Itertools;
+use rand::{Rng, thread_rng};
+use rand::distributions::{ Weighted, WeightedChoice, IndependentSample};
 use std;
 use std::f64;
 use std::sync::{ Weak, Arc, RwLock};
-
 use utils::*;
-use itertools::Itertools;
-
-use rand::{Rng, thread_rng};
-use rand::distributions::{ Weighted, WeightedChoice, IndependentSample};
-
-use explorer::candidate::Candidate;
-use explorer::choice;
-
-use explorer::config::{Config, BanditConfig, NewNodeOrder, OldNodeOrder};
 
 
-
-use  explorer::store::Store;
 pub struct SafeTree<'a, 'b, 'c> {
     shared_tree: Arc<RwLock<SearchTree<'a, 'b>>>,
     cut: RwLock<f64>,
@@ -36,7 +32,7 @@ impl<'a, 'b, 'c> SafeTree<'a, 'b, 'c> {
 }
 
 impl<'a, 'b, 'c> Store<'a> for SafeTree<'a, 'b, 'c> {
-    type PayLoad = (NodeStack<'a, 'b>, usize);
+    type PayLoad = PayLoadType<'a, 'b>;
 
     fn update_cut(&self, new_cut: f64) {
         let mut cut = self.cut.write().unwrap();
@@ -62,10 +58,18 @@ impl<'a, 'b, 'c> Store<'a> for SafeTree<'a, 'b, 'c> {
     }
 
     fn commit_evaluation(&self, _config: &Config, payload: Self::PayLoad, eval: f64) {
-        let (ascend_stack, pos_last_child) = payload;
-        thread_ascend_tree(eval, pos_last_child, ascend_stack);
+        match payload {
+            PayLoadType::Complete(ascend_stack, pos_last_child) => {
+                thread_ascend_tree(eval, pos_last_child, ascend_stack, true);
+            }
+            PayLoadType::MonteCarlo(ascend_stack, pos_last_child) => {
+                thread_ascend_tree(eval, pos_last_child, ascend_stack, false);
+            }
+        }
     }
 
+    /// Here, explore is constantly trying to find a new completely specified candidate by calling
+    /// thread_descend_tree - a thread safe seach in the tree - continuously.
     fn explore(&self, config: &Config,  context: &Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
         loop {
             match thread_descend_tree(config, self.config, context, Arc::clone(&self.shared_tree), &self.cut) {
@@ -74,15 +78,27 @@ impl<'a, 'b, 'c> Store<'a> for SafeTree<'a, 'b, 'c> {
                     thread_ascend_tree_no_val(pos, parent_stack);
                 }
                 DescendResult::Leaf(cand, pos, parent_stack) => {
-                    return Some((cand, (parent_stack, pos)));
+                    return Some((cand, PayLoadType::Complete(parent_stack, pos)));
                 }
                 DescendResult::MonteCarloLeaf(cand, pos, parent_stack) => {
-                    return Some((cand, (parent_stack, pos)));
+                    return Some((cand, PayLoadType::MonteCarlo(parent_stack, pos)));
                 }
+                // We have no information on where and how the search fail, so we can not update
+                // the tree in any way
                 DescendResult::FailedMonteCarlo => {}
             }
         }
     }
+}
+
+
+/// type for the implementation of the Store::PayLoad
+/// In order to do the correct update of the tree, we need to know if the leaf was found after a
+/// montecarlo descend or after a standard descend - in the first case, we do not want to cut the
+/// branch we are coming from
+pub enum PayLoadType<'a, 'b> {
+    Complete(NodeStack<'a, 'b>, usize),
+    MonteCarlo(NodeStack<'a, 'b>, usize),
 }
 
 type NodeRewards =  Vec<(Vec<f64>, usize)>;
@@ -161,7 +177,6 @@ pub fn thread_descend_tree<'a, 'b>(
     root_lock: Arc<RwLock<SearchTree<'a, 'b>>>, 
     best_val: &RwLock<f64>) -> DescendResult<'a, 'b>
 {
-    debug!("IN DESCEND TREE");
     let node_root;
     {
         let root = root_lock.read().unwrap();
@@ -184,7 +199,6 @@ fn iter_descend<'a, 'b>(config: &BanditConfig,
                         context: &Context,
                         node_root: Arc<RwLock<Node<'a, 'b>>>,
                         best_val: f64) -> DescendResult<'a, 'b> {
-    debug!("IN ITER DESCEND");
     let mut parent_stack = vec![];
     let mut search_node_lock = node_root;
     let mut current_pos = None;
@@ -204,8 +218,12 @@ fn iter_descend<'a, 'b>(config: &BanditConfig,
                     let weak_ref = Arc::downgrade(&search_node_lock);
                     next_node = Arc::clone(&subtree_arc);
                     parent_stack.push((weak_ref, current_pos));
-                    montecarlo_candidate = Some((subtree_arc.write().unwrap()
-                        .start_montecarlo(config, context, best_val).unwrap(), pos));
+                    let monte_cand_opt = subtree_arc.write().unwrap()
+                        .start_montecarlo(config, context, best_val);
+                    montecarlo_candidate = match monte_cand_opt {
+                        Some(cand) => Some((Some(cand), pos)),
+                        None => Some((None, pos))
+                    };
                 }
                 NodeDescendResult::Leaf(candidate, pos) => {
                     let weak_ref = Arc::downgrade(&search_node_lock);
@@ -235,32 +253,35 @@ fn iter_descend<'a, 'b>(config: &BanditConfig,
         }
         search_node_lock = next_node;
         // A bit weird, but we do that so we don't have to hold the lock while descending on
-        // candidate
-        if let Some((cand, pos)) = montecarlo_candidate {
-            return handle_montecarlo_descend(config, context, cand, pos, best_val, parent_stack);
+        // candidate. by doing it this way, we do not hold the lock on the node in which we found the
+        // candidate while doing the descend.
+        if let Some((cand_opt, pos)) = montecarlo_candidate {
+            if let Some(cand) = cand_opt {
+                return handle_montecarlo_descend(config, context, cand, pos, best_val, parent_stack);
+            }
+            else { return DescendResult::FailedMonteCarlo;}
         }
     }
 }
 
+/// Handles the descend from a candidate and returns an appropriate DescendResult
 fn handle_montecarlo_descend<'a, 'b>(config: &BanditConfig, 
                   context: &Context, 
                   cand: Candidate<'a>, 
                   pos: usize, 
                   cut: f64,
                   parent_stack: NodeStack<'a, 'b>) -> DescendResult<'a, 'b> {
-    if let Some(cand) = montecarlo_descend(config, context, cand, cut) {
+    if let Some(cand) = montecarlo::montecarlo_descend(config, context, cand, cut) {
         return DescendResult::MonteCarloLeaf(
             cand,
             pos,
             parent_stack);
     }
     else { return DescendResult::FailedMonteCarlo;}
-
 }
 
 ///  iter on all nodes in the tree and call node_collect on them
 fn collect_descend<'a, 'b>(node_root: Arc<RwLock<Node<'a, 'b>>>, best_val: f64) {
-    debug!("IN COLLECT TREE");
     let mut node_stack = vec![node_root];
     let mut collected_nodes = 0;
     let mut visited_nodes = 1;
@@ -279,17 +300,19 @@ fn collect_descend<'a, 'b>(node_root: Arc<RwLock<Node<'a, 'b>>>, best_val: f64) 
 /// no information to be passed
 pub fn thread_ascend_tree<'a, 'b>(val: f64, 
                                   pos_last_child: usize, 
-                                  mut parent_stack: NodeStack<'a, 'b>)
+                                  mut parent_stack: NodeStack<'a, 'b>,
+                                  update_as_complete: bool)
     -> AscendResult 
 {
-    debug!("IN ASCEND TREE");
     let parent_opt = parent_stack.pop();
     if let Some((weak_node, pos)) = parent_opt {
         if let Some(node_lock) = weak_node.upgrade() {
-            iter_ascend(node_lock, val, pos, pos_last_child, &mut parent_stack)
+            iter_ascend(node_lock, val, pos, pos_last_child, &mut parent_stack, update_as_complete)
         } else { AscendResult::InvalidParent }
     } else { AscendResult::Root }
 }
+
+
 
 /// Called by thread_ascend_tree, loop on results retrieved from ascend_node and ascend_node_no_val
 /// call the corresponding function to update the tree
@@ -297,11 +320,11 @@ fn iter_ascend<'a, 'b>(node_arc: Arc<RwLock<Node<'a, 'b>>>,
                        val: f64,
                        current_pos: Option<usize>,
                        pos_last_child: usize,
-                       parent_stack: &mut NodeStack<'a, 'b>) -> AscendResult {
-    debug!("IN ITER ASCEND");
+                       parent_stack: &mut NodeStack<'a, 'b>,
+                       last_child_completed: bool) -> AscendResult {
     let mut is_val_inserted = true;
     let mut node_arc = node_arc;
-    let mut completed = true;
+    let mut completed = last_child_completed;
     let mut pos_child = pos_last_child;
     let mut pos_parent = current_pos;
     loop {
@@ -349,7 +372,6 @@ fn iter_ascend<'a, 'b>(node_arc: Arc<RwLock<Node<'a, 'b>>>,
 pub fn thread_ascend_tree_no_val<'a, 'b>(
     pos_last_child: usize,  mut parent_stack: NodeStack<'a, 'b>) -> AscendResult
 {
-    debug!("IN ASCEND TREE NO VAL");
     let parent_opt = parent_stack.pop();
     if let Some((weak_node, pos_opt)) = parent_opt {
         if let Some(node_lock) = weak_node.upgrade() {
@@ -365,7 +387,6 @@ fn iter_ascend_no_val<'a, 'b>(node_lock: Arc<RwLock<Node<'a, 'b>>>,
                               current_pos: Option<usize>, 
                               pos_last_child: usize,
                               parent_stack: &mut NodeStack<'a, 'b>) -> AscendResult {
-    debug!("IN ITER ASCEND NO VAL");
     let mut node_arc = node_lock;
     let mut pos_child = pos_last_child;
     let mut pos_parent = current_pos;
@@ -399,14 +420,13 @@ impl<'a, 'b> Node<'a, 'b> {
     fn descend_node(&mut self, config: &BanditConfig, best_time: f64)
         -> NodeDescendResult<'a, 'b>
     {
-        debug!("IN DESCEND NODE on node {}: {} children", self.id, self.children.len());
         if self.children.is_empty() {
             panic!("We should never have an empty node");
         } 
         // removing the children whose bounds are over the current best score
         self.remove_children(best_time);
         if let Some(un_pos) = self.find_unexpanded_node(config, best_time) {
-            self.expand_child(config, un_pos)
+            self.expand_child(config, un_pos, best_time)
         } else { self.descend_expanded_node(config, best_time) } 
     }
 
@@ -502,9 +522,7 @@ impl<'a, 'b> Node<'a, 'b> {
                 weighted_items.push(Weighted { weight, item: ind });
             }
         }
-        let ind = WeightedChoice::new(&mut weighted_items).ind_sample(&mut rng);
-        debug!("Chosen ind: {}", ind);
-        ind
+        WeightedChoice::new(&mut weighted_items).ind_sample(&mut rng)
     }
 
 
@@ -513,8 +531,6 @@ impl<'a, 'b> Node<'a, 'b> {
     /// Find a suitable child, treat it and returns a NodeDescendResult
     fn descend_expanded_node(&mut self, config: &BanditConfig, best_time: f64) ->
       NodeDescendResult<'a, 'b> {
-        debug!("IN DESCEND EXPANDED NODE on node {}: {} children", 
-            self.id, self.children.len());
         let ind_opt = self.decide_next_child(config, best_time);
         if let Some(index) = ind_opt {
             self.rewards[index].1 += 1;
@@ -528,6 +544,8 @@ impl<'a, 'b> Node<'a, 'b> {
     }
 
 
+    /// Returns which child will be visited next by dispatching the real work according to config
+    /// Returns None if children is empty
     fn decide_next_child(&self, config: &BanditConfig, best_time: f64) -> Option<usize> {
       match config.old_nodes_order {
         OldNodeOrder::Bandit => self.decide_next_child_bandit_arm(config),
@@ -536,6 +554,8 @@ impl<'a, 'b> Node<'a, 'b> {
       }
     }
 
+    /// Returns the index of the child with the minimum bound
+    /// Returns None if children is empty
     fn decide_next_child_best(&self) -> Option<usize> {
       self.children.iter().enumerate().filter(|&(_, x)| {
           if let EnumTree::NoGoBranch = x.tree {false} else {true}
@@ -544,6 +564,9 @@ impl<'a, 'b> Node<'a, 'b> {
       }).map(|x| x.0)
     }
 
+    /// Decides which child will be next according to a random algorithm weighted with the bounds
+    /// of the children. Returns its index
+    /// Returns None if children is empty
     fn decide_next_child_mixed(&self, best_score: f64)
         -> Option<usize>
     {
@@ -565,7 +588,6 @@ impl<'a, 'b> Node<'a, 'b> {
     /// Given the list of rewards, returns the index of the next
     /// child to go - or None if the list is empty
     fn decide_next_child_bandit_arm(&self, config: &BanditConfig) -> Option<usize> {
-        debug!("IN DECIDE CHILD on node {}", self.id);
         assert_eq!(self.children.len(), self.rewards.len());
         let nb_tested = self.rewards.iter().fold(0, |acc, ref x| acc + x.1);
         let nb_children = self.rewards.len();
@@ -580,7 +602,6 @@ impl<'a, 'b> Node<'a, 'b> {
     /// "Remove" (that is, replace with a NoGo variant) children whose bounds are higher than best
     /// candidates score
     fn remove_children(&mut self, best_score: f64) -> usize {
-        debug!("IN REMOVE CHILDREN on node {}", self.id);
         let mut to_remove = vec![];
         for (ind, child) in self.children.iter().enumerate() {
             match child.tree {
@@ -603,12 +624,11 @@ impl<'a, 'b> Node<'a, 'b> {
     /// Given a vector of children and pos, which is the position of an unexpanded node, this
     /// function expands the node, remove the child if it is a deadend or replace the
     /// unexpanded child with the expanded one
-    fn expand_child(&mut self, config: &BanditConfig, pos: usize) -> NodeDescendResult<'a, 'b> {
-        debug!("IN EXPAND CHILD on node {}", self.id);
+    fn expand_child(&mut self, config: &BanditConfig, pos: usize, cut: f64) -> NodeDescendResult<'a, 'b> {
         let mut id_child = self.id.clone();
         id_child.push_str(&String::from(" "));
         id_child.push_str(&pos.to_string());
-        match self.children[pos].expand_node(id_child) {
+        match self.children[pos].expand_node(id_child, cut) {
             ExpandRes::DeadEnd => {
                 self.children[pos].tree = EnumTree::NoGoBranch;
                 NodeDescendResult::DeadEndFromExpand(pos)
@@ -621,8 +641,8 @@ impl<'a, 'b> Node<'a, 'b> {
                 self.children[pos] = node;
                 if let &EnumTree::Node(ref node_arc, _) = &self.children[pos].tree {
                     if config.monte_carlo {
-                     NodeDescendResult::Node(Arc::clone(node_arc), pos)
-                    } else { NodeDescendResult::MonteCarlo(Arc::clone(node_arc), pos)}
+                        NodeDescendResult::MonteCarlo(Arc::clone(node_arc), pos)
+                    } else {NodeDescendResult::Node(Arc::clone(node_arc), pos)}
                 } else { panic!("We should have a Node here"); }
             }
         } 
@@ -643,7 +663,6 @@ impl<'a, 'b> Node<'a, 'b> {
     /// and returns it 
     fn ascend_node(&mut self, parents_stack: &mut NodeStack<'a, 'b>, pos_child: usize, 
                    child_completed: bool,  val: f64) -> NodeAscendResult<'a, 'b> {
-        debug!("IN ASCEND NODE on node {}, {} children", self.id, self.children.len());
         self.remove_children(val);
         match self.update_as_parent(val, pos_child, child_completed) {
             UpdateRes::KeepGoing => self.pop_parent(parents_stack, true), 
@@ -656,7 +675,6 @@ impl<'a, 'b> Node<'a, 'b> {
 
     /// Update rewards in a node with val, also replace child with NoGo if needed
     fn update_as_parent(&mut self, val: f64, pos: usize, completed: bool) -> UpdateRes {
-        debug!("IN UPDATE AS PARENT on node {}, {} children", self.id, self.children.len());
         if completed {
             self.children[pos].tree = EnumTree::NoGoBranch;
         }
@@ -705,7 +723,6 @@ impl<'a, 'b> Node<'a, 'b> {
     /// Update a rewards list given a new value and the position where it was found
     /// returns true if the value was inserted in the node
     fn update_rewards(&mut self, pos: usize, val: f64) -> bool {
-        debug!("IN UPDATE REWARDS on node {}", self.id);
         let total_trials = self.rewards.iter().fold( 0, |acc, x| acc + x.1);
         // If total trials is less than THRESHOLD, then we simply push our new value
         // in the node where it was found. 
@@ -748,34 +765,48 @@ impl<'a, 'b> Node<'a, 'b> {
     }
 
     /// We have a newly expanded node, we want to do a montecarlo descend on it
+    /// As we cannot directly own the original candidate (which must stay in the tree, and which we
+    /// do not want to clone) we have to do this on the freshly expanded node
     fn start_montecarlo(&mut self, config: &BanditConfig, context: &Context, cut: f64) 
         -> Option<Candidate<'a>> 
     {
+        if self.children.is_empty() {
+            panic!("Called montecarlo on a node with no children !!")
+        }
         let ind;
         {
             let new_nodes = self.children.iter()
                 .map( |node| 
                       if let EnumTree::UnexpandedNode(ref cand, _) = node.tree 
-                      {cand} else {panic!()}).collect_vec();
+                      // We must only call this function on a newly expanded node, which means that
+                      // there must nothing but unexpandedNode in it
+                      {cand} else {panic!()})
+            .collect_vec();
             ind = match config.new_nodes_order {
                 NewNodeOrder::Api => 0,
-                NewNodeOrder::WeightedRandom => choose_cand_weighted(&new_nodes, cut),
-                NewNodeOrder::Bound => choose_cand_best(&new_nodes),
-                NewNodeOrder::Random => choose_cand_rand(&new_nodes),
+                NewNodeOrder::WeightedRandom => montecarlo::choose_cand_weighted(&new_nodes, cut),
+                NewNodeOrder::Bound => montecarlo::choose_cand_best(&new_nodes),
+                NewNodeOrder::Random => montecarlo::choose_cand_rand(&new_nodes),
             };
             let cand_ref = if let EnumTree::UnexpandedNode(ref cand, _) = self.children[ind].tree
             {cand} else {panic!()};
             let choice_opt = choice::list(&cand_ref.space).next();
             if let Some(choice) = choice_opt {
-                let new_nodes = cand_ref.apply_choice(context, choice);
+                let new_nodes = cand_ref.apply_choice(context, choice).into_iter()
+                    .filter(|x| x.bound.value() < cut)
+                    .collect_vec();
                 if new_nodes.is_empty() {
                     return None;
                 } else { 
-                    let chosen_candidate = choose_next_cand(config, new_nodes, cut);
+                    let chosen_candidate = montecarlo::choose_next_cand(config, new_nodes, cut);
                     return Some(chosen_candidate);
                 } 
             }
-    }
+        }
+        // This is, logically speaking, the else branch of of the last if let Some(choice) as we
+        // can only be here if this 'if' branch was not taken - there is a return in each other
+        // branches
+        // We need to do that so we can hold a mutable reference on self.children
         let node = std::mem::replace(&mut self.children[ind].tree, EnumTree::NoGoBranch);
         if let EnumTree::UnexpandedNode(cand, _) = node {Some(cand)} else {panic!()}
     }
@@ -787,18 +818,11 @@ impl<'a, 'b> SearchTree<'a, 'b> {
         SearchTree::create_node(candidates, context, 0.0, String::from("0"))
     }
 
-    /// cut all work done on the tree in a safer way than just dropping it
-    /// (could make some trouble to do so...)
-    pub fn cut_work(&mut self) {
-      self.tree = EnumTree::NoGoBranch;
-    }
-
     /// Given an expanded Node, returns a list of candidates corresponding to the choices applied
     /// to this candidate.
     /// If the list is empty, it means that no choice can be applied and this node is therefore a
     /// leaf in the tree, it has been completely constrained and must now be evaluated
-    fn expand_node(&mut self, id_node: String) -> ExpandRes<'a, 'b>  {
-        debug!("IN EXPAND NODE");
+    fn expand_node(&mut self, id_node: String, cut: f64) -> ExpandRes<'a, 'b>  {
         let node;
         {
             node = std::mem::replace(&mut self.tree, EnumTree::NoGoBranch);
@@ -806,7 +830,9 @@ impl<'a, 'b> SearchTree<'a, 'b> {
         if let EnumTree::UnexpandedNode(candidate, bound) = node {
             let choice_opt = choice::list(&candidate.space).next();
             if let Some(choice) = choice_opt {
-                let new_nodes = candidate.apply_choice(self.context, choice);
+                let new_nodes = candidate.apply_choice(self.context, choice).into_iter()
+                    .filter(|n| n.bound.value() < cut)
+                    .collect_vec();
                 if new_nodes.is_empty() {
                     ExpandRes::DeadEnd
                 } else { ExpandRes::Node(
@@ -826,6 +852,8 @@ impl<'a, 'b> SearchTree<'a, 'b> {
         }
     }
 
+    /// If called on an unexpanded or a node variant, returns the value of the bound
+    /// Panics otherwise
     fn bound(&self) -> f64 {
         match &self.tree {
             &EnumTree::Node(_, bound) | &EnumTree::UnexpandedNode(_, bound) =>
@@ -875,72 +903,4 @@ fn heval(config: &BanditConfig, n_successes: usize, n_branch_trials: usize, n_tr
                                                    alpha).sqrt()) / (n_branch_trials as f64);
         ret
     }
-}
-
-fn montecarlo_descend<'a>(config: &BanditConfig, 
-                          context: &Context, 
-                          candidate: Candidate<'a>, 
-                          cut: f64) 
-    -> Option<Candidate<'a>>
-{
-    let choice_opt = choice::list(&candidate.space).next();
-    if let Some(choice) = choice_opt {
-        let new_nodes = candidate.apply_choice(context, choice);
-                if new_nodes.is_empty() {
-                    None
-                } else { 
-                    let chosen_candidate = choose_next_cand(config, new_nodes, cut);
-                    montecarlo_descend(config, context, chosen_candidate, cut)
-                } 
-    }
-    else { Some(candidate) }
-}
-
-fn choose_next_cand<'a>(config: &BanditConfig, 
-                        mut new_nodes: Vec<Candidate<'a>>, 
-                        cut: f64) -> Candidate<'a> {
-    let ind = match config.new_nodes_order {
-        NewNodeOrder::Api => 0,
-        NewNodeOrder::WeightedRandom => choose_cand_weighted(&new_nodes.iter().collect_vec(), cut),
-          NewNodeOrder::Bound => choose_cand_best(&new_nodes.iter().collect_vec()),
-          NewNodeOrder::Random => choose_cand_rand(&new_nodes.iter().collect_vec()),
-    };
-    new_nodes.remove(ind)
-}
-
-
-//fn choose_cand_best<'a, T>(new_nodes: T) -> usize where T: Iterator<Item=&'a Candidate<'a>>{
-fn choose_cand_best<'a>(new_nodes: &Vec<&Candidate<'a>>) -> usize {
-    new_nodes.iter().enumerate().min_by(|x1, x2| cmp_f64(x1.1.bound.value(), x2.1.bound.value()))
-        .map(|x| x.0)
-    // We checked in montecarlo_descend that new_nodes is not empty
-        .unwrap()
-}
-
-//fn choose_cand_rand<'a, T>(new_nodes: T) -> usize where T: Iterator<Item=&'a Candidate<'a>>{
-fn choose_cand_rand<'a>(new_nodes: &Vec<&Candidate<'a>>) -> usize {
-    let mut rng = thread_rng();
-    rng.gen_range(0, new_nodes.len())
-}
-
-fn choose_cand_weighted<'a>(new_nodes: &Vec<&'a Candidate<'a>>, cut: f64) -> usize {
-//fn choose_cand_weighted<'a, T>(new_nodes: T, cut: f64) 
-//  -> usize where T: Iterator<Item=&'a Candidate<'a>>
-    let mut weighted_items = vec![];
-    let mut rng = thread_rng();
-    let max_bound = new_nodes.iter().max_by(|x1, x2|
-                                            cmp_f64(x1.bound.value(), x2.bound.value()))
-        .map(|x| x.bound.value()).unwrap();
-    for (ind, x) in new_nodes.iter().enumerate() {
-        if cut.is_infinite() {
-            let x_weight = (10f64 * max_bound / x.bound.value()).floor() as u32 ;
-            weighted_items.push(Weighted{weight: x_weight, item: ind});
-        } else {
-            assert!(x.bound.value() <= cut);
-            let weight = (1000f64 * (1f64 - x.bound.value()/cut)).floor() as u32;
-            let weight = std::cmp::max(1, weight);
-            weighted_items.push(Weighted { weight, item: ind});
-        }
-    }
-    WeightedChoice::new(&mut weighted_items).ind_sample(&mut rng)
 }

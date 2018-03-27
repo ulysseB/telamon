@@ -7,6 +7,7 @@ mod config;
 mod store;
 mod monitor;
 mod logger;
+mod montecarlo;
 
 use self::monitor::monitor;
 use self::monitor::MonitorMessage;
