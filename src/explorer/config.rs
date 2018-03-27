@@ -233,6 +233,7 @@ impl std::fmt::Display for BanditConfig {
         writeln!(f, "old_nodes_order = \"{}\"", self.old_nodes_order)?;
         writeln!(f, "threshold = {}", self.threshold)?;
         writeln!(f, "delta = {}", self.delta)?;
+        writeln!(f, "monte_carlo = {}", self.monte_carlo)?;
         Ok(())
     }
 }
