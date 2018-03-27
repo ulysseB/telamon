@@ -141,14 +141,6 @@ impl<'a> Function<'a> {
         }
     }
 
-    /// Returns a mutable reference to a basicblock.
-    fn block_mut(&mut self, id: BBId) -> &mut BasicBlock<'a> {
-        match id {
-            BBId::Inst(id) => &mut self.insts[id.0 as usize],
-            BBId::Dim(id) => &mut self.dims[id.0 as usize],
-        }
-    }
-
     /// Returns the list of memory blocks. The block with id `i` is in i-th position.
     pub fn mem_blocks<'b>(&'b self) -> impl Iterator<Item=&'b mem::Block> {
         self.mem_blocks.blocks()

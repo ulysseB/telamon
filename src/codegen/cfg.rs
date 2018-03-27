@@ -238,7 +238,7 @@ fn gen_events<'a>(space: &'a SearchSpace<'a>,
     for mut dim in dims {
         match dim.kind() {
             DimKind::BLOCK => block_dims.push(dim),
-            DimKind::THREAD_X | DimKind::THREAD_Y | DimKind::THREAD_Z => {
+            DimKind::THREAD => {
                 events.push(CfgEvent::Exit(dim.id(), ExitEvent::ThreadDim));
                 thread_dims.push(dim);
             },

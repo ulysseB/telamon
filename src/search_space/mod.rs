@@ -11,8 +11,6 @@ pub use self::choices::{Action, Bool, DimKind, Domain, DomainStore, InstFlag, Or
 use self::choices::{apply_action, DomainDiff, init_domain};
 use std::sync::Arc;
 
-// FIXME: unrolled loops of size 1 should not be allowed
-
 /// A partially specified implementation.
 #[derive(Clone)]
 pub struct SearchSpace<'a> {

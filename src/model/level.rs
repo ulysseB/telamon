@@ -68,7 +68,7 @@ pub fn sum_pressure(device: &Device,
     // Compute the pressure induced by the dimensions overhead.
     let mut pressure = HwPressure::min(dims.iter().map(|d| &local_info.dim_overhead[d].0))
         .unwrap_or_else(|| HwPressure::zero(device));
-    if dims.is_empty() {
+    if bound_level == BottleneckLevel::Global {
         let thread_overhead = &local_info.thread_overhead;
         pressure.repeat_and_add_bottlenecks(min_num_threads as f64, thread_overhead);
     }
@@ -93,7 +93,7 @@ pub fn sum_pressure(device: &Device,
         let merge_dims = &local_info.nesting[&bb].bigger_merged_dims;
         if inner_dims.intersection(merge_dims).next().is_some() { continue; }
         // Compute the pressure of a single instance and the number of instances.
-        let num_instances = inner_sum_dims
+        let mut num_instances = inner_sum_dims
             .intersection(&local_info.nesting[&bb].outer_dims)
             .map(|d| f64::from(local_info.dim_sizes[d]))
             .product::<f64>();
@@ -103,6 +103,8 @@ pub fn sum_pressure(device: &Device,
                 &local_info.dim_overhead[&dim].0
             } else { &local_info.hw_pressure[&bb] }
         } else { &local_info.hw_pressure[&bb] };
+        // FIXME: fix store instructions so that memory accesses are not scaled
+        num_instances *= local_info.nesting[&bb].num_unmapped_threads as f64;
         pressure.repeat_and_add_bottlenecks(num_instances, bb_pressure);
     }
     pressure
