@@ -2,7 +2,7 @@
 use device::cuda;
 use ir::{self, BasicBlock};
 use itertools::Itertools;
-use search_space::{DimKind, Domain, InstFlag, Order, SearchSpace};
+use search_space::{DimKind, Domain, InstFlag, ThreadMapping, SearchSpace};
 use std;
 use num::integer;
 use utils::*;
@@ -114,7 +114,7 @@ fn unknown_info(is_shared_access: Trivalent, gpu: &cuda::Gpu) -> MemInfo {
 
 /// Computes the replay factor for a shared memory access.
 fn shared_replay_factor(stride: i32,
-                        thread_dims: &[ThreadDimInfo], 
+                        thread_dims: &[ThreadDimInfo],
                         tensor_dims: &[ir::dim::Id],
                         dim_sizes: &HashMap<ir::dim::Id, u32>,
                         space: &SearchSpace, gpu: &cuda::Gpu) -> f64 {
@@ -186,6 +186,7 @@ fn tensor_thread_dims(space: &SearchSpace,
                       tensor_dims: &[ir::dim::Id],
                       sizes: &HashMap<ir::dim::Id, u32>,
                       gpu: &cuda::Gpu) -> Vec<ThreadDimInfo> {
+    // FIXME: add the thread dimensions that are not mapped to an active dimension
     let base_stride = base_stride as u64;
     let non_zero_strides = tensor_dims.iter().rev().scan(base_stride, |stride, dim| {
         let current_stride = *stride;
@@ -199,7 +200,7 @@ fn tensor_thread_dims(space: &SearchSpace,
             Trivalent::Maybe => Some((dim, false)),
             Trivalent::True => Some((dim, true)),
         }
-    }).map(|(id, is_active_thread)| {
+    }).chain(external_thread_dims(inst, space)).map(|(id, is_active_thread)| {
         let (size, stride) = non_zero_strides.get(&id).cloned()
             .unwrap_or_else(|| (sizes[&id], 0));
         // TODO(model): handle strides that are not a multiple of the bank_Stride.
@@ -215,13 +216,32 @@ fn tensor_thread_dims(space: &SearchSpace,
     }).collect_vec()
 }
 
+/// Returns the thread dimensions that are mapped outside an instruction but not active
+/// under this instruction. The returned boolean indicates if the thread dimension cannot
+/// be mapped to an active dimension
+fn external_thread_dims<'a>(inst: &'a ir::Instruction, space: &'a SearchSpace)
+    -> impl Iterator<Item=(ir::dim::Id, bool)> + 'a
+{
+    space.ir_instance().thread_dims().flat_map(move |dim| {
+        let is_mapped = inst.iteration_dims().iter().map(|&other| {
+            let mapping = space.domain().get_thread_mapping(dim.id(), other);
+            mapping.is(ThreadMapping::MAPPED)
+        }).fold(Trivalent::False, |l, r| l | r);
+        match is_mapped {
+            Trivalent::True => None,
+            Trivalent::Maybe => Some((dim.id(), false)),
+            Trivalent::False => Some((dim.id(), true)),
+        }
+    })
+}
+
 fn sort_thread_dims<'a, F>(dims: &'a [ThreadDimInfo], space: &SearchSpace, cost: F)
         -> Vec<&'a ThreadDimInfo> where F: Fn(&ThreadDimInfo) -> f64 {
     dims.iter().sorted_by(|lhs, rhs| {
         if lhs.id == rhs.id { return std::cmp::Ordering::Equal; }
-        let nest_order = space.domain().get_order(lhs.id.into(), rhs.id.into());
-        let maybe_out = nest_order.intersects(Order::OUTER);
-        let maybe_in = nest_order.intersects(Order::INNER);
+        let mapping = space.domain().get_thread_mapping(lhs.id, rhs.id);
+        let maybe_out = mapping.intersects(ThreadMapping::MAPPED_OUT);
+        let maybe_in = mapping.intersects(ThreadMapping::MAPPED_IN);
         let (lhs_cost, rhs_cost) = (cost(lhs), cost(rhs));
         match (maybe_in, maybe_out, lhs.is_active_thread, rhs.is_active_thread) {
             (true, false, true, _) => std::cmp::Ordering::Less,
