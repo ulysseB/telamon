@@ -220,7 +220,7 @@ impl Gpu {
             pressure.repeat_sequential(f64::from(size));
             pressure.add_sequential(&self.loop_init_overhead.into());
             pressure
-        } else if kind == DimKind::THREAD_X {
+        } else if DimKind::THREAD.contains(kind) {
             let mut pressure: HwPressure = self.syncthread_inst.into();
             pressure.repeat_parallel(f64::from(size));
             pressure
@@ -347,11 +347,10 @@ impl device::Device for Gpu {
                    bb: &ir::BasicBlock) -> model::HwPressure {
         if let Some(inst) = bb.as_inst() {
             self.inst_pressure(space, dim_sizes, inst)
-        } else {
-            let dim = unwrap!(bb.as_dim());
+        } else if let Some(dim) = bb.as_dim() {
             let kind = space.domain().get_dim_kind(dim.id());
             self.dim_pressure(kind, dim_sizes[&dim.id()])
-        }
+        } else { panic!() }
     }
 
     fn loop_iter_pressure(&self, kind: DimKind) -> (HwPressure, HwPressure) {
@@ -361,7 +360,7 @@ impl device::Device for Gpu {
                 .. InstDesc::default()
             };
             (self.loop_iter_overhead.into(), end_pressure.into())
-        } else if kind == DimKind::THREAD_X {
+        } else if DimKind::THREAD.contains(kind) {
             (self.syncthread_inst.into(), HwPressure::zero(self))
         } else { (HwPressure::zero(self), HwPressure::zero(self)) }
     }

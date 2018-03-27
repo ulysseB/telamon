@@ -117,22 +117,8 @@ define enum dim_kind($dim in Dimensions):
       dim_kind($other_dim) is BLOCK || order($dim, $other_dim) is OUTER
     requires forall $other in BasicBlocks:
       order($dim, $other) is NESTED | MERGED
-  /// Outermost thread dimension (reverse CUDA convention).
-  value THREAD_X:
-    requires forall $other in Dimensions:
-      order($dim, $other) is not INNER || dim_kind($other) is not THREAD
-  /// Middle thread dimension.
-  value THREAD_Y:
-    requires num_thread_x($dim) > "0"
-    requires forall $other in Dimensions:
-      order($dim, $other) is not INNER || dim_kind($other) is not THREAD_Y | THREAD_Z
-  /// Innermost thread dimension (reverse CUDA convention).
-  value THREAD_Z:
-    requires num_thread_y($dim) > "0"
-    requires forall $other in Dimensions:
-      order($dim, $other) is not INNER || dim_kind($other) is not THREAD_Z
   /// The dimension is mapped to a thread dimension on the device.
-  alias THREAD = THREAD_X | THREAD_Y | THREAD_Z:
+  value THREAD:
     requires "$dim.size().as_int().is_some()"
   /// The dimension is parallel.
   alias PARALLEL = BLOCK | THREAD | VECTOR:
@@ -243,39 +229,6 @@ require forall $lhs in Dimensions:
     dim_kind($lhs) is not THREAD || dim_kind($lhs) != dim_kind($rhs)
       || "$lhs.size() == $rhs.size()"
 
-/// Counts the number of thread dimensions.
-// TODO(cc_perf): try to rely exclusively on the counter instead of thread slots.
-
-// FIXME: replace with a late counter
-define internal counter num_thread_x($bb in BasicBlocks):
-  forall $dim in Dimensions:
-    sum "1" when:
-      order($dim, $bb) is OUTER
-      dim_kind($dim) is THREAD_X
-end
-
-// FIXME: replace with a late counter
-define internal counter num_thread_y($bb in BasicBlocks):
-  forall $dim in Dimensions:
-    sum "1" when:
-      order($dim, $bb) is OUTER
-      dim_kind($dim) is THREAD_Y
-end
-
-// FIXME: replace with a late counter
-define internal counter num_thread_z($bb in BasicBlocks):
-  forall $dim in Dimensions:
-    sum "1" when:
-      order($dim, $bb) is OUTER
-      dim_kind($dim) is THREAD_Z
-end
-
-require forall $lhs in Instructions:
-  forall $rhs in Instructions:
-    num_thread_x($lhs) <= "0" || num_thread_x($rhs) > "0"
-    num_thread_y($lhs) <= "0" || num_thread_y($rhs) > "0"
-    num_thread_z($lhs) <= "0" || num_thread_z($rhs) > "0"
-
 /// Specifies the valid mappings between two dimensions.
 define enum dim_mapping($lhs in Dimensions, $rhs in Dimensions):
   symmetric
@@ -333,7 +286,7 @@ require forall $outer in Dimensions:
     forall $mid in Dimensions:
       order($outer, $mid) is not OUTER || order($mid, $inner) is not OUTER
         || dim_kind($outer) is not THREAD || dim_kind($inner) is not THREAD
-        || dim_kind($mid) is THREAD_Y
+        || dim_kind($mid) is THREAD
 
 // A basic block nested with a thread dimension is nested or merged with the other
 require forall $bb in BasicBlocks:
