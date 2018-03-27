@@ -455,14 +455,14 @@ fn dim_map_active() {
     let mut builder = helper::Builder::new(&signature, context.device());
     let size_32 = builder.cst_size(32);
 
-    let d0 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD_X);
-    let d1 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD_Y);
+    let d0 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
+    let d1 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
         let a = builder.mov(&0f32);
     builder.close_dim(&d0);
     builder.close_dim(&d1);
 
-    let d2 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD_X);
-    let _d3 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD_Y);
+    let d2 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
+    let _d3 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
     let d4 = builder.open_dim_ex(size_32.clone(), DimKind::UNROLL);
         let op = builder.dim_map(a, &[(&d0, &d2), (&d1, &d4)], ir::DimMapScope::Global);
         builder.mov(&op);
@@ -480,14 +480,14 @@ fn test0() {
     let mut builder = helper::Builder::new(&signature, context.device());
     let size_32 = builder.cst_size(32);
 
-    let d0 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD_X);
+    let d0 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
     let d1 = builder.open_dim(size_32.clone());
         let i0 = builder.mov(&0f32);
     builder.close_dim(&d0);
     builder.close_dim(&d1);
 
-    let _d2 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD_X);
-    let d3 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD_Y);
+    let _d2 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
+    let d3 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
     let d4 = builder.open_dim_ex(size_32.clone(), DimKind::SEQUENTIAL);
     let op = builder.dim_map(i0, &[(&d0, &d3), (&d1, &d4)], ir::DimMapScope::Global);
     let i1 = builder.mov(&op);

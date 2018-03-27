@@ -238,18 +238,19 @@ fn cfg<'a>(fun: &Function, c: &Cfg<'a>, namer: &mut NameMap) -> String {
         Cfg::Instruction(ref i) => inst(i, namer, fun),
         Cfg::ParallelInductionLevel(ref level) =>
             parallel_induction_level(level, namer),
-        Cfg::EnableThreads(ref threads) => enable_threads(threads, namer),
+        Cfg::EnableThreads(ref threads) => enable_threads(fun, threads, namer),
     }
 }
 
 /// Change the side-effect guards so that only thre specified threads are enabled.
-fn enable_threads(threads: &[bool], namer: &mut NameMap) -> String {
+fn enable_threads(fun: &Function, threads: &[bool], namer: &mut NameMap) -> String {
     let mut ops = String::new();
     let mut guard = None;
-    for (&is_active, name) in threads.iter().rev().zip(["x", "y", "z"].iter()) {
+    for (&is_active, dim) in threads.iter().zip_eq(fun.thread_dims().iter()) {
         if is_active { continue; }
         let new_guard = namer.gen_name(ir::Type::I(1));
-        unwrap!(writeln!(ops, "  setp.eq.i32 {}, %tid.{}, 0;", new_guard, name));
+        let index = namer.name_index(dim.id());
+        unwrap!(writeln!(ops, "  setp.eq.s32 {}, {}, 0;", new_guard, index));
         if let Some(ref guard) = guard {
             unwrap!(writeln!(ops, "  and.pred {}, {}, {}", guard, guard, new_guard));
         } else {
