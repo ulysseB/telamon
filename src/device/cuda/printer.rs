@@ -5,6 +5,7 @@ use ir::{self, dim, op, Operand, Size, Type};
 use itertools::Itertools;
 use search_space::{DimKind, Domain, InstFlag};
 use std::io::Write;
+use std::fmt::Write as WriteFmt;
 use self::InstArg::*;
 use utils::*;
 // TODO(cc_perf): avoid concatenating strings.
@@ -243,12 +244,20 @@ fn cfg<'a>(fun: &Function, c: &Cfg<'a>, namer: &mut NameMap) -> String {
 
 /// Change the side-effect guards so that only thre specified threads are enabled.
 fn enable_threads(threads: &[bool], namer: &mut NameMap) -> String {
-    if threads.iter().cloned().all(|x| x) {
-        namer.set_side_effect_guard(None);
-        String::new()
-    } else {
-        unimplemented!() // FIXME
+    let mut ops = String::new();
+    let mut guard = None;
+    for (&is_active, name) in threads.iter().rev().zip(["x", "y", "z"].iter()) {
+        if is_active { continue; }
+        let new_guard = namer.gen_name(ir::Type::I(1));
+        unwrap!(writeln!(ops, "  setp.eq.i32 {}, %tid.{}, 0;", new_guard, name));
+        if let Some(ref guard) = guard {
+            unwrap!(writeln!(ops, "  and.pred {}, {}, {}", guard, guard, new_guard));
+        } else {
+            guard = Some(new_guard);
+        };
     }
+    namer.set_side_effect_guard(guard.map(RcStr::new));
+    ops
 }
 
 /// Prints a multiplicative induction var level.
