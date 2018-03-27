@@ -44,7 +44,11 @@ pub mod model;
 pub mod search_space;
 
 // FIXME: thread-mapping
-// - use the thread mapping in codegen
-// - explore thread mapping decisions
+// - test thread mapping in codegen
+//  > how ?
 // - use the thread mapping in the performance model
+//  > in active dimensions
+//    - use the global number of threads
+//    - remove dimensions that can be merged to a thread from the list of active dimensions
+//  > in mem model
 // - remove old mapping constraints
