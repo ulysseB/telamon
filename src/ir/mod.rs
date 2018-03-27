@@ -52,13 +52,14 @@ pub struct NewObjs {
     pub mem_blocks: Vec<mem::Id>,
     pub internal_mem_blocks: Vec<mem::InternalId>,
     pub mem_insts: Vec<InstId>,
-    pub iteration_dims: Vec<(BBId, dim::Id)>,
+    pub iteration_dims: Vec<(InstId, dim::Id)>,
 }
 
 impl NewObjs {
     /// Registers a new instruction.
     pub fn add_instruction(&mut self, inst: &Instruction) {
         self.add_bb(inst);
+        for &dim in inst.iteration_dims() { self.iteration_dims.push((inst.id(), dim)); }
         self.instructions.push(inst.id());
     }
 
@@ -77,12 +78,11 @@ impl NewObjs {
     /// Registers a new basic block.
     pub fn add_bb(&mut self, bb: &BasicBlock) {
         self.basic_blocks.push(bb.bb_id());
-        for &dim in bb.iteration_dims() { self.iteration_dims.push((bb.bb_id(), dim)); }
     }
 
     /// Sets a dimension as a new iteration dimension.
-    pub fn add_iteration_dim(&mut self, bb: BBId, dim: dim::Id) {
-        self.iteration_dims.push((bb, dim));
+    pub fn add_iteration_dim(&mut self, inst: InstId, dim: dim::Id) {
+        self.iteration_dims.push((inst, dim));
     }
 
     /// Registers a new memory block.

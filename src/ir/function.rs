@@ -113,6 +113,11 @@ impl<'a> Function<'a> {
     /// Returns an instruction given its id.
     pub fn inst(&self, id: InstId) -> &Instruction<'a> { &self.insts[id.id as usize] }
 
+    /// Returns a mutable reference to an instruction given its id.
+    fn inst_mut(&mut self, id: InstId) -> &mut Instruction<'a> {
+        &mut self.insts[id.id as usize]
+    }
+
     /// Retuns a dimension given its id.
     pub fn dim(&self, id: dim::Id) -> &Dimension<'a> { &self.dims[id.id as usize] }
 
@@ -169,9 +174,9 @@ impl<'a> Function<'a> {
 
     /// Sets a dimension as an iteration dimension for an instruction. Indicates if the
     /// iteration dimension was not aleady present in the set.
-    pub fn set_iteration_dim(&mut self, bb: ir::BBId, dim: ir::dim::Id) -> bool {
-        if self.block_mut(bb).add_iteration_dimension(dim) {
-            self.dims[dim.id as usize].add_iterated(bb);
+    pub fn set_iteration_dim(&mut self, inst: ir::InstId, dim: ir::dim::Id) -> bool {
+        if self.inst_mut(inst).add_iteration_dimension(dim) {
+            self.dims[dim.id as usize].add_iterated(inst);
             true
         } else { false }
     }

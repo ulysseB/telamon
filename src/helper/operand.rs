@@ -1,5 +1,4 @@
 //! Provides helpers to create instruction operands.
-use ir::prelude::*;
 use ir::{self, dim, Function, InstId, mem, Operand};
 use ir::Operand::*;
 use num::bigint::BigInt;

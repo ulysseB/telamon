@@ -67,18 +67,18 @@ set InternalMemBlocks subsetof MemBlocks:
   new_objs = "$objs.internal_mem_blocks"
 end
 
-quotient IterationDims($bb in BasicBlocks) of $dim in Dimensions:
-  is_iteration_dim = order($dim, $bb) is OUTER / order is MERGED
+quotient IterationDims($inst in Instructions) of $dim in Dimensions:
+  is_iteration_dim = order($dim, $inst) is OUTER / order is MERGED
   item_type = "ir::Dimension"
   id_type = "ir::dim::Id"
   item_getter = "$fun.dim($id)"
   id_getter = "$item.id()"
-  iterator = "$bb.iteration_dims().iter().map(|&d| $fun.dim(d))"
+  iterator = "$inst.iteration_dims().iter().map(|&d| $fun.dim(d))"
   var_prefix = "iter_dim"
   new_objs = "$objs.iteration_dims"
-  from_superset = "$bb.iteration_dims().get(&$item.id()).map(|_| $item)"
-  reverse forall $dim in Dimensions = "$dim.iterated().map(|bb| $fun.block(bb))"
-  add_to_set = "::search_space::add_iteration_dim($fun, $bb, $item)"
+  from_superset = "$inst.iteration_dims().get(&$item.id()).map(|_| $item)"
+  reverse forall $dim in Dimensions = "$dim.iterated().map(|id| $fun.inst(id))"
+  add_to_set = "::search_space::add_iteration_dim($fun, $inst, $item)"
 end
 
 /// Specifies how iteration dimensions are implemented.

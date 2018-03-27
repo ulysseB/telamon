@@ -2,7 +2,6 @@
 use ir::{self, BasicBlock};
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use utils::*;
 
 /// Provides a unique identifier for iteration dimensions.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -17,15 +16,14 @@ impl fmt::Debug  for Id {
 pub struct Dimension<'a> {
     size: ir::Size<'a>,
     id: Id,
-    iterated: Vec<ir::BBId>,
-    iter_dims: HashSet<ir::dim::Id>,
+    iterated: Vec<ir::InstId>,
 }
 
 impl<'a> Dimension<'a> {
     /// Creates a new dimension.
     pub fn new(size: ir::Size, id: Id) -> Dimension {
         assert_ne!(size.as_int(), Some(1));
-        Dimension { size, id, iterated: Vec::new(), iter_dims: HashSet::default() }
+        Dimension { size, id, iterated: Vec::new() }
     }
 
     /// Retruns the size of the dimension.
@@ -35,24 +33,18 @@ impl<'a> Dimension<'a> {
     pub fn id(&self) -> Id { self.id }
 
     /// Returns the constructs iterated along this dimension.
-    pub fn iterated<'b>(&'b self) -> impl Iterator<Item=ir::BBId> + 'b {
+    pub fn iterated<'b>(&'b self) -> impl Iterator<Item=ir::InstId> + 'b {
         self.iterated.iter().cloned()
     }
 
     /// Adds a bb that is iterated along self.
-    pub fn add_iterated(&mut self, bb: ir::BBId) { self.iterated.push(bb); }
+    pub fn add_iterated(&mut self, inst: ir::InstId) { self.iterated.push(inst); }
 }
 
 impl<'a> BasicBlock<'a> for Dimension<'a> {
     fn bb_id(&self) -> ir::BBId { self.id.into() }
 
     fn as_dim(&self) -> Option<&Dimension<'a>> { Some(self) }
-
-    fn iteration_dims(&self) -> &HashSet<ir::dim::Id> { &self.iter_dims }
-
-    fn add_iteration_dimension(&mut self, dim: ir::dim::Id) -> bool {
-        self.iter_dims.insert(dim)
-    }
 }
 
 // Dimension equality is based on `BBId`.

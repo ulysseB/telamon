@@ -89,11 +89,11 @@ fn merge_dims(lhs: ir::dim::Id, rhs: ir::dim::Id, ir_instance: &mut ir::Function
 
 /// Adds a iteration dimension to a basic block.
 fn add_iteration_dim(ir_instance: &mut ir::Function,
-                     bb: ir::BBId, dim: ir::dim::Id) -> ir::NewObjs {
-    debug!("set {:?} as iteration dim of {:?}", dim, bb);
+                     inst: ir::InstId, dim: ir::dim::Id) -> ir::NewObjs {
+    debug!("set {:?} as iteration dim of inst {:?}", dim, inst);
     let mut new_objs = ir::NewObjs::default();
-    if ir_instance.set_iteration_dim(bb, dim) {
-        new_objs.add_iteration_dim(bb, dim);
+    if ir_instance.set_iteration_dim(inst, dim) {
+        new_objs.add_iteration_dim(inst, dim);
     }
     new_objs
 }

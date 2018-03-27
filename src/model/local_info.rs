@@ -103,8 +103,7 @@ impl Nesting {
     fn compute(space: &SearchSpace, bb: ir::BBId) -> Self {
         let mut inner_dims = Vec::new();
         let mut inner_bbs = Vec::new();
-        let outer_dims = space.ir_instance().block(bb)
-            .iteration_dims().iter().cloned().collect();
+        let mut outer_dims = Vec::new();
         let mut before_self = Vec::new();
         let mut after_self = Vec::new();
         let mut bigger_merged_dims = Vec::new();
@@ -118,6 +117,12 @@ impl Nesting {
                 if (Order::OUTER | Order::AFTER).contains(order) { after_self.push(id); }
                 if order.intersects(Order::MERGED) && other_bb > bb {
                     bigger_merged_dims.push(id);
+                }
+                if Order::OUTER.contains(order) {
+                    if outer_dims.iter().cloned().all(|outer: ir::dim::Id| {
+                        let ord = space.domain().get_order(id.into(), outer.into());
+                        !ord.contains(Order::MERGED)
+                    }) { outer_dims.push(id); }
                 }
             }
         }

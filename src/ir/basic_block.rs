@@ -1,7 +1,6 @@
 //! Provides a generic decription of basic blocks.
 use ir;
 use std;
-use utils::*;
 
 /// Provides a unique identifer for a basic block.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -32,9 +31,4 @@ pub trait BasicBlock<'a>: std::fmt::Debug {
     fn as_inst(&self) -> Option<&ir::Instruction<'a>> { None }
     /// Returns 'self' if it is a dimension
     fn as_dim(&self) -> Option<&ir::Dimension<'a>> { None }
-    /// The list of dimensions the instruction must be nested in.
-    fn iteration_dims(&self) -> &HashSet<ir::dim::Id>;
-    /// Adds a new iteration dimension. Indicates if the dimension was not already an
-    /// iteration dimension.
-    fn add_iteration_dimension(&mut self, dim: ir::dim::Id) -> bool;
 }

@@ -110,18 +110,21 @@ impl<'a> Instruction<'a> {
     pub fn merge_dims(&mut self, lhs: ir::dim::Id, rhs: ir::dim::Id) {
         self.operator.merge_dims(lhs, rhs);
     }
+
+    /// The list of dimensions the instruction must be nested in.
+    pub fn iteration_dims(&self) -> &HashSet<ir::dim::Id> { &self.iter_dims }
+
+    /// Adds a new iteration dimension. Indicates if the dimension was not already an
+    /// iteration dimension.
+    pub fn add_iteration_dimension(&mut self, dim: ir::dim::Id) -> bool {
+        self.iter_dims.insert(dim)
+    }
 }
 
 impl<'a> BasicBlock<'a> for Instruction<'a> {
     fn bb_id(&self) -> BBId { self.id.into() }
 
     fn as_inst(&self) -> Option<&Instruction<'a>> { Some(self) }
-
-    fn iteration_dims(&self) -> &HashSet<ir::dim::Id> { &self.iter_dims }
-
-    fn add_iteration_dimension(&mut self, dim: ir::dim::Id) -> bool {
-        self.iter_dims.insert(dim)
-    }
 }
 
 // Instruction equality is based on `BBId`.
