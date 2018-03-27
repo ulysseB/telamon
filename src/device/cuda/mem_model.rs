@@ -1,6 +1,6 @@
 //! Memory accesses analysis.
 use device::cuda;
-use ir::{self, BasicBlock};
+use ir;
 use itertools::Itertools;
 use search_space::{DimKind, Domain, InstFlag, ThreadMapping, SearchSpace};
 use std;
@@ -224,7 +224,7 @@ fn external_thread_dims<'a>(inst: &'a ir::Instruction, space: &'a SearchSpace)
 {
     space.ir_instance().thread_dims().flat_map(move |dim| {
         let is_mapped = inst.iteration_dims().iter().map(|&other| {
-            if dim.id() == other.id() { return Trivalent::True; }
+            if dim.id() == other { return Trivalent::True; }
             let mapping = space.domain().get_thread_mapping(dim.id(), other);
             mapping.is(ThreadMapping::MAPPED)
         }).fold(Trivalent::False, |l, r| l | r);
@@ -386,6 +386,7 @@ mod tests {
     use helper;
     use ir;
     use env_logger;
+    use search_space::Order;
 
     /// Generates function with a load in two thread dimensions, with non-coalesced
     /// accessed on the first one.
