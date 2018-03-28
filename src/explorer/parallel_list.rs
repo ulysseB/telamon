@@ -49,12 +49,6 @@ impl<'a> ParallelCandidateList<'a> {
         }
     }
 
-    /// Drop all candidates in list (ends the search)
-    pub fn drop_all(&self) {
-        self.lock().0.drop_all();
-        self.wakeup.notify_all();
-    }
-
     /// Insert a candidate to process.
     pub fn insert(&self, candidate: Candidate<'a>) {
         self.lock().0.insert(candidate);
@@ -118,10 +112,6 @@ impl<'a> CandidateList<'a> {
         }
     }
 
-    pub fn drop_all(&mut self) {
-        self.queue.clear();
-    }
-
     /// Inserts a candidate to process.
     pub fn insert(&mut self, candidate: Candidate<'a>) {
         self.n_candidate += 1;
@@ -162,11 +152,5 @@ impl<'a> CandidateList<'a> {
         info!("dropping candidate: {:.4e}ns >= {:.4e}ns.",
               candidate.bound.value(), self.cut);
         self.n_dropped += 1;
-    }
-
-    /// Prints the exploration stats.
-    fn print_stats(&self) {
-        warn!("{} candidates generated, including {} leaves and {} dropped",
-              self.n_candidate, self.n_leaf, self.n_dropped);
     }
 }

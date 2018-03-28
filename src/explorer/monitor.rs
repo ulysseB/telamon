@@ -116,7 +116,7 @@ fn handle_message<'a, T>(config: &Config,
     if change {
         warn!("Got a new best candidate, score: {:.3e}", eval);
         candidate_store.update_cut(get_new_cut(config, eval));
-        let log_message = LogMessage::Monitor{score: eval, cpt, timestamp:t};
+        let log_message = LogMessage::NewBest{score: eval, cpt, timestamp:t};
         log_sender.send(log_message).unwrap();
         *best_cand = Some((cand, eval));
     }

@@ -2,15 +2,11 @@
 use std::sync::mpsc;
 use std::fs::File;
 use std::io::{Write, BufWriter};
-use std::time::Instant;
 use explorer::config::Config;
-use crossbeam;
 use std::time::Duration;
 
 pub enum LogMessage {
-    Evaluator{score: f64, cpt: usize},
-    Explorer,
-    Monitor{score: f64, cpt: usize, timestamp: Duration},
+    NewBest{score: f64, cpt: usize, timestamp: Duration},
 }
 
 
@@ -18,12 +14,12 @@ pub fn log(config: &Config, recv: mpsc::Receiver<LogMessage>) {
     let mut write_buffer = init_log(config);
     while let Ok(message) = recv.recv() {
         match message {
-            LogMessage::Monitor{score, cpt, timestamp} =>{
+            LogMessage::NewBest{score, cpt, timestamp} =>{
                 log_monitor(score, cpt, timestamp, &mut write_buffer);
             }
             // For now the evaluator is the only one to send logs, so we just ignore any other
             // types of message
-            _ => { }
+            //_ => { }
         }
         write_buffer.flush().unwrap();
     }
