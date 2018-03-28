@@ -216,7 +216,7 @@ fn mm(m: i32, n: i32, k: i32,
             let acc = builder.mad(&a_op, &b_op, &helper::Reduce(acc_init));
         builder.close_dim(&acc_dim_k);
 
-        let acc = VirtualTensor::new(acc, vec![acc_dim_n, acc_dim_m]);
+        let acc = VirtualTensor::new(acc, vec![acc_dim_m, acc_dim_n]);
         let st_c = acc.store(&c, &mut builder);
 
         // Order for correctness.
