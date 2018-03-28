@@ -23,13 +23,14 @@ impl<'a> Cfg<'a> {
     pub fn dimensions(&self) -> impl Iterator<Item=&Dimension<'a>> {
         match *self {
             Cfg::Root(ref body) =>
-                box body.iter().flat_map(|cfg| cfg.dimensions()) as Box<Iterator<Item=_>>,
+                Box::new(body.iter().flat_map(|cfg| cfg.dimensions()))
+                    as Box<Iterator<Item=_>>,
             Cfg::Loop(ref dim, ref body) => {
                 let body_dims = body.iter().flat_map(|cfg| cfg.dimensions());
-                box std::iter::once(dim).chain(body_dims) as _
+                Box::new(std::iter::once(dim).chain(body_dims)) as _
             },
             Cfg::Instruction(_) | Cfg::Barrier | Cfg::ParallelInductionLevel(..) =>
-                box std::iter::empty() as _,
+                Box::new(std::iter::empty()) as _,
 
         }
     }
@@ -52,10 +53,10 @@ impl<'a> Cfg<'a> {
             Cfg::Root(ref body) |
             Cfg::Loop(_, ref body) => {
                 let inner = body.iter().flat_map(|cfg| cfg.induction_levels());
-                box inner as Box<Iterator<Item=_>>
+                Box::new(inner) as Box<Iterator<Item=_>>
             },
-            Cfg::Instruction(_) | Cfg::Barrier => box std::iter::empty() as _,
-            Cfg::ParallelInductionLevel(ref level) => box std::iter::once(level) as _,
+            Cfg::Instruction(_) | Cfg::Barrier => Box::new(std::iter::empty()) as _,
+            Cfg::ParallelInductionLevel(ref level) => Box::new(std::iter::once(level)) as _,
         }
     }
 

@@ -1,6 +1,5 @@
 //! Tests the accuracy of the performance model. A pattern can be passed as argument to
 //! specify the tests to run.
-#![feature(stmt_expr_attributes)]
 extern crate env_logger;
 extern crate telamon;
 extern crate regex;

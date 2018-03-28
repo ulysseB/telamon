@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-#![feature(box_syntax)]
 extern crate env_logger;
 extern crate telamon;
 extern crate itertools;

@@ -1,5 +1,4 @@
-#![feature(box_syntax, box_patterns, fnbox)]
-
+extern crate boxfnonce;
 extern crate config;
 extern crate crossbeam;
 extern crate data_structure_traits;

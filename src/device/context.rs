@@ -5,10 +5,10 @@ use explorer::Candidate;
 use ir;
 use num;
 
-use std::boxed::FnBox;
+use boxfnonce::SendBoxFnOnce;
 
 /// A callback that is called after evaluating a kernel.
-pub type AsyncCallback<'a, 'b> = Box<FnBox(Candidate<'a>, f64, usize) + Send + 'b>;
+pub type AsyncCallback<'a, 'b> = SendBoxFnOnce<'b, (Candidate<'a>, f64, usize)>;
 
 /// Describes the context for which a function must be optimized.
 // FIXME: use an associated type for arguments to enable variance

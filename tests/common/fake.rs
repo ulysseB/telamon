@@ -125,6 +125,6 @@ where 'a: 'b, 'c: 'b {
                   callback: device::AsyncCallback<'a, 'c>) {
         // Try to compile the function to check it works.
         codegen::Function::build(&candidate.space);
-        (callback)(candidate, 1.0, 1);
+        callback.call(candidate, 1.0, 1);
     }
 }

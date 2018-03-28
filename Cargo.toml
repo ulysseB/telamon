@@ -5,17 +5,6 @@ name = "telamon"
 readme = "README.md"
 version = "0.2.0"
 
-[workspace]
-members = [
-    "telamon-gen",
-    "telamon-utils",
-    "telamon-gen/cc_tests",
-]
-
-#[[bench]]
-#harness = false
-#name = "mppa"
-
 [[bin]]
 name = "cuda-characterize"
 path = "tools/cuda_characterize/main.rs"
@@ -53,11 +42,13 @@ gcc = "0.3.54"
 path = "telamon-gen"
 
 [dependencies]
+boxfnonce = "0.1.0"
 config = "0.8.0"
 crossbeam = "0.3.2"
 data_structure_traits = "0.1.8"
 env_logger = "0.5.5"
 errno = "0.2.3"
+futures = "0.2.0-beta"
 getopts = "0.2.17"
 immut_list = "0.1.0"
 interval-heap = "0.0.5"
@@ -79,12 +70,12 @@ regex = "0.2.9"
 rustc-serialize = "0.3.24"
 std-semaphore = "0.1.0"
 tokio = "0.1"
-# TODO(cleanup): use an official version when futures-2.0 is released.
-tokio-timer = { git = "https://github.com/ulysseB/tokio-timer.git" }
-futures = "0.2.0-beta"
 
 [dependencies.telamon-utils]
 path = "telamon-utils"
+
+[dependencies.tokio-timer]
+git = "https://github.com/ulysseB/tokio-timer.git"
 
 [dev-dependencies]
 gcc = "0.3.54"
@@ -95,9 +86,13 @@ cuda = []
 default = []
 format_exh = []
 mppa = []
-
 [profile.bench]
-#panic = "abort"
 
 [profile.release]
-#panic = "abort"
+
+[workspace]
+members = [
+    "telamon-gen",
+    "telamon-utils",
+    "telamon-gen/cc_tests",
+]

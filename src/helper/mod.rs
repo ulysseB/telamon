@@ -20,7 +20,7 @@ pub trait MetaDimension {
 
 impl MetaDimension for ir::dim::Id {
     fn ids<'a>(&'a self) -> Box<DoubleEndedIterator<Item=ir::dim::Id> + 'a> {
-        box std::iter::once(*self)
+        Box::new(std::iter::once(*self))
     }
 }
 
@@ -34,7 +34,7 @@ impl DimGroup {
 
 impl MetaDimension for DimGroup {
     fn ids<'a>(&'a self) -> Box<DoubleEndedIterator<Item=ir::dim::Id> + 'a> {
-        box self.dims.iter().cloned()
+        Box::new(self.dims.iter().cloned())
     }
 }
 
@@ -51,12 +51,14 @@ pub trait MetaBasicBlock {
 }
 
 impl MetaBasicBlock for ir::BBId {
-    fn ids<'a>(&'a self) -> Box<Iterator<Item=ir::BBId> + 'a> { box std::iter::once(*self) }
+    fn ids<'a>(&'a self) -> Box<Iterator<Item=ir::BBId> + 'a> {
+        Box::new(std::iter::once(*self))
+    }
 }
 
 impl MetaBasicBlock for ir::InstId {
     fn ids<'a>(&'a self) -> Box<Iterator<Item=ir::BBId> + 'a> {
-        box std::iter::once((*self).into())
+        Box::new(std::iter::once((*self).into()))
     }
 }
 

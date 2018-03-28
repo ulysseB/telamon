@@ -248,7 +248,9 @@ impl Origin {
                 let inner = Box::new(inner.simplify().1);
                 (false, Origin::Scale { inner, factor }, false)
             },
-            Origin::Chain { box before, mid_point, box after } => {
+            Origin::Chain { before, mid_point, after } => {
+                let after = *after;
+                let before = *before;
                 let (trim_preds, before_origin, trim_after) = before.origin.simplify();
                 let (trim_before, after_origin, trim_succs) = after.origin.simplify();
                 let trim_preds = trim_preds || before.value == 0f64;
@@ -269,9 +271,9 @@ impl Origin {
                         size: before.size,
                     };
                     let origin = Origin::Chain {
-                        before: box before,
+                        before: Box::new(before),
                         mid_point,
-                        after: box after,
+                        after: Box::new(after),
                     };
                     (trim_preds, origin, trim_succs)
                 }

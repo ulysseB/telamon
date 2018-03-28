@@ -9,15 +9,17 @@ mod monitor;
 mod logger;
 mod montecarlo;
 
-use self::monitor::monitor;
-use self::monitor::MonitorMessage;
-
-use crossbeam;
-
+pub use self::config::{Config, SearchAlgorithm};
 pub use self::candidate::Candidate;
 
+use self::choice::fix_order;
+use self::monitor::{monitor, MonitorMessage};
 use self::parallel_list::ParallelCandidateList;
-use self::choice::{fix_order};
+use self::bandit_arm::{SafeTree, SearchTree};
+use self::store::Store;
+
+use boxfnonce::SendBoxFnOnce;
+use crossbeam;
 use device::Context;
 use model::bound;
 use search_space::SearchSpace;
@@ -25,10 +27,6 @@ use std::sync;
 use futures::prelude::*;
 use futures::{channel, SinkExt};
 use futures::executor::block_on;
-
-use self::bandit_arm::{SafeTree, SearchTree};
-pub use self::config::{Config, SearchAlgorithm};
-use self::store::Store;
 
 // TODO(cc_perf): To improve performances, the following should be considered:
 // * choices should be ranked once and then reused for multiple steps.
@@ -99,7 +97,7 @@ fn explore_space<'a, T>(config: &Config,
                                  ) 
                 { warn!("Got disconnected , {:?}", err);}
             };
-            evaluator.add_kernel(Candidate {space, .. cand }, Box::new(callback));
+            evaluator.add_kernel(Candidate {space, .. cand }, SendBoxFnOnce::from(callback));
         }
     });
 } 

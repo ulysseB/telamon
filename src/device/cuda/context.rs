@@ -114,7 +114,7 @@ impl<'a> device::Context<'a> for Context<'a> {
                     }
                     debug!("IN EVALUATOR: finished evaluating candidate for actions {:?}",
                            candidate.actions);
-                    (callback)(candidate, eval, cpt_candidate);
+                    callback.call(candidate, eval, cpt_candidate);
                 }
             });
             unwrap!(res);
