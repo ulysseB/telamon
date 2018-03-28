@@ -256,7 +256,7 @@ fn enable_threads(fun: &Function, threads: &[bool], namer: &mut NameMap) -> Stri
         let index = namer.name_index(dim.id());
         unwrap!(writeln!(ops, "  setp.eq.s32 {}, {}, 0;", new_guard, index));
         if let Some(ref guard) = guard {
-            unwrap!(writeln!(ops, "  and.pred {}, {}, {}", guard, guard, new_guard));
+            unwrap!(writeln!(ops, "  and.pred {}, {}, {};", guard, guard, new_guard));
         } else {
             guard = Some(new_guard);
         };
@@ -375,9 +375,9 @@ fn ptx_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap)
         },
         DimKind::VECTOR => match *cfgs {
             [Cfg::Instruction(ref inst)] => vector_inst(inst, dim, namer, fun),
-            _ => panic!("Invalid vector dimension body"),
+            ref body => panic!("invalid vector dimension body: {:?}", body),
         },
-        kind => panic!("Invalid loop kind for ptx printing: {:?}", kind)
+        kind => panic!("invalid loop kind for ptx printing: {:?}", kind)
     }
 }
 

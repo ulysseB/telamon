@@ -69,6 +69,7 @@ impl<'a> Cfg<'a> {
     {
         use self::CfgEvent::*;
         let mut body = vec![];
+        // FIXME: move thread mask before unrolled and vector dimensions
         loop {
             match events.next() {
                 Some(Exec(inst)) => {
@@ -79,7 +80,15 @@ impl<'a> Cfg<'a> {
                     }
                     body.push(Cfg::Instruction(inst))
                 },
-                Some(Enter(_, EntryEvent::SeqDim)) => {
+                Some(Enter(_, EntryEvent::SeqDim(kind))) => {
+                    if kind == DimKind::UNROLL || kind == DimKind::VECTOR {
+                        // We can safely enforce the thread mask here since thread
+                        // dimensions are forced outside unroll and vector dimensions.
+                        if last_thread_mask != thread_mask {
+                            last_thread_mask.copy_from_slice(thread_mask);
+                            body.push(Cfg::EnableThreads(thread_mask.clone()));
+                        }
+                    }
                     let cfg = Cfg::from_events(
                         events, has_barrier, last_thread_mask, thread_mask);
                     body.push(cfg);
@@ -161,7 +170,7 @@ enum CfgEvent<'a> {
 /// An event to process when entering a dimension.
 enum EntryEvent<'a> {
     /// Enter a sequential dimension.
-    SeqDim,
+    SeqDim(DimKind),
     /// Enter a thread dimension.
     ThreadDim(usize),
     /// Compute a parallel induction level.
@@ -243,7 +252,7 @@ fn gen_events<'a>(space: &'a SearchSpace<'a>,
                 thread_dims.push(dim);
             },
             _ => {
-                events.push(CfgEvent::Enter(dim.id(), EntryEvent::SeqDim));
+                events.push(CfgEvent::Enter(dim.id(), EntryEvent::SeqDim(dim.kind())));
                 events.push(CfgEvent::Exit(dim.id(), ExitEvent::SeqDim(dim)));
             },
         }
