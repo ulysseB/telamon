@@ -180,7 +180,9 @@ fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
         op::St(ref addr, ref val, _,  _) => {
             let operator = st_operator(unwrap!(inst.mem_flag()));
             let t = lower_type(val.t(), fun);
-            let guard = namer.side_effect_guard();
+            let guard = if inst.has_side_effects() {
+                namer.side_effect_guard()
+            } else { None };
             assemble(operator, guard, t, &[Addr(addr), Op(val)], namer)
         },
         op::Cast(ref op, t) => {
@@ -213,7 +215,9 @@ fn vector_inst(inst: &Instruction, dim: &Dimension, namer: &mut NameMap, fun: &F
         op::St(ref addr, ref val, _, _) => {
             let operator = format!("{}.v{}", st_operator(flag), size);
             let operands = [Addr(addr), VecOp(val, dim.id(), size)];
-            let guard = namer.side_effect_guard();
+            let guard = if inst.has_side_effects() {
+                namer.side_effect_guard()
+            } else { None };
             assemble(&operator, guard, lower_type(val.t(), fun), &operands, namer)
         },
         _ => panic!("non-vectorizable instruction"),

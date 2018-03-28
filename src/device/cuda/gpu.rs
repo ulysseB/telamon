@@ -353,6 +353,10 @@ impl device::Device for Gpu {
         } else { panic!() }
     }
 
+    fn skipped_pressure(&self) -> HwPressure {
+        (InstDesc { issue: 1.0, .. InstDesc::default() }).into()
+    }
+
     fn loop_iter_pressure(&self, kind: DimKind) -> (HwPressure, HwPressure) {
         if kind == DimKind::LOOP {
             let end_pressure = InstDesc {

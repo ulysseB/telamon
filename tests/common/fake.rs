@@ -55,6 +55,8 @@ impl device::Device for Device {
         HwPressure::zero(self)
     }
 
+    fn skipped_pressure(&self) -> HwPressure { HwPressure::zero(self) }
+
     fn bottlenecks(&self) -> &[&'static str] { &["issue", "alu", "mem"] }
 
     fn block_parallelism(&self, _: &SearchSpace) -> u32 { 16 }
