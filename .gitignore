@@ -8,3 +8,5 @@ target/
 log/
 settings/*
 Settings.toml
+tools/tune_bandit/settings/
+tools/tune_bandit/log/

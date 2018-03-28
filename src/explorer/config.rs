@@ -195,7 +195,7 @@ impl BanditConfig {
     /// Sets up the options that can be passed on the command line.
     fn setup_args_parser(opts: &mut getopts::Options) {
         opts.optopt("s", "default_node_selection",
-                    "selection algorithm for nodes without evaulations: \
+                    "selection algorithm for nodes without evaluations: \
                     api, random, bound, weighted_random",
                     "api|random|bound|weighted_random");
     }
@@ -213,6 +213,7 @@ impl BanditConfig {
         OldNodeOrder::setup_config_parser(parser);
         unwrap!(parser.set_default("threshold", 10));
         unwrap!(parser.set_default("delta", 0.001));
+        unwrap!(parser.set_default("monte_carlo", false));
     }
 
     /// Extracts the parameters from the configuration file.
