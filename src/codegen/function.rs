@@ -303,4 +303,7 @@ impl<'a> Instruction<'a> {
 
     /// Returns the memory flag of the intruction, if any.
     pub fn mem_flag(&self) -> Option<search_space::InstFlag> { self.mem_flag }
+
+    /// Indicates if the instruction has observable side effects.
+    pub fn has_side_effects(&self) -> bool { self.instruction.has_side_effects() }
 }

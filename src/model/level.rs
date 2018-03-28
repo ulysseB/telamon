@@ -103,8 +103,16 @@ pub fn sum_pressure(device: &Device,
                 &local_info.dim_overhead[&dim].0
             } else { &local_info.hw_pressure[&bb] }
         } else { &local_info.hw_pressure[&bb] };
-        // FIXME: fix store instructions so that memory accesses are not scaled
-        num_instances *= local_info.nesting[&bb].num_unmapped_threads as f64;
+        // Predicated instructions are not executed on unmapped thread dimensions.
+        let is_predicated = space.ir_instance().block(bb).as_inst()
+            .map(|i| i.has_side_effects()).unwrap_or(false);
+        let unmapped_threads = local_info.nesting[&bb].num_unmapped_threads as f64;
+        if is_predicated {
+            let num_skipped = unmapped_threads * (num_instances - 1.0);
+            pressure.repeat_and_add_bottlenecks(num_skipped, &device.skipped_pressure());
+        } else {
+            num_instances *= unmapped_threads;
+        }
         pressure.repeat_and_add_bottlenecks(num_instances, bb_pressure);
     }
     pressure
