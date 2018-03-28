@@ -42,6 +42,7 @@ pub fn monitor<'a, T>(config: &Config, candidate_store: &T,
     match res {
         Err(CommEnd::TimedOut) => {
             candidate_store.update_cut(0.0);
+            log_sender.send(LogMessage::Timeout).unwrap();
             warn!("Timeout expired")
         }
         Err(CommEnd::Other) => warn!("No candidates to try anymore"),

@@ -7,6 +7,7 @@ use std::time::Duration;
 
 pub enum LogMessage {
     NewBest{score: f64, cpt: usize, timestamp: Duration},
+    Timeout,
 }
 
 
@@ -16,6 +17,10 @@ pub fn log(config: &Config, recv: mpsc::Receiver<LogMessage>) {
         match message {
             LogMessage::NewBest{score, cpt, timestamp} =>{
                 log_monitor(score, cpt, timestamp, &mut write_buffer);
+            }
+            LogMessage::Timeout =>{
+                let message = format!("Stopped search after reaching timeout\n");
+                unwrap!(write_buffer.write_all(message.as_bytes()));
             }
             // For now the evaluator is the only one to send logs, so we just ignore any other
             // types of message
