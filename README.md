@@ -15,11 +15,6 @@ following command:
 $ curl -s https://static.rust-lang.org/rustup.sh | sh -s -- --channel=nightly
 ```
 
-Then git submodules should be initialized with the following command:
-```bash
-git submodule update --init --recursive
-```
-
 You can build Telamon using Rust package manager:
 
 ```bash
