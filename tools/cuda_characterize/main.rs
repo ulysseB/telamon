@@ -1,4 +1,4 @@
-#![feature(conservative_impl_trait, iterator_step_by)]
+#![feature(iterator_step_by)]
 extern crate env_logger;
 extern crate telamon;
 extern crate getopts;

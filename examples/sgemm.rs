@@ -1,4 +1,3 @@
-#![feature(conservative_impl_trait)]
 extern crate env_logger;
 extern crate itertools;
 extern crate telamon;

@@ -50,10 +50,10 @@ lazy_static! {
     static ref ENGINE: Handlebars = {
         let mut engine = Handlebars::new();
         engine.register_escape_fn(handlebars::no_escape);
-        engine.register_helper("replace", box replace);
-        engine.register_helper("to_type_name", box to_type_name);
-        engine.register_helper("ifeq", box ifeq);
-        engine.register_helper("debug_context", box debug);
+        engine.register_helper("replace", Box::new(replace));
+        engine.register_helper("to_type_name", Box::new(to_type_name));
+        engine.register_helper("ifeq", Box::new(ifeq));
+        engine.register_helper("debug_context", Box::new(debug));
         register_template!(engine, add_to_quotient);
         register_template!(engine, alloc);
         register_template!(engine, account_new_incrs);
@@ -338,11 +338,11 @@ fn value_def_order<'a>(enum_: &'a ir::Enum)
         -> impl Iterator<Item=(&'a RcStr, &'a Option<String>)> +'a {
     if let Some(mapping) = enum_.inverse_mapping() {
         let mut values: HashMap<_, _> = enum_.values().iter().collect();
-        box mapping.iter().flat_map(|&(ref x, ref y)| vec![x, y])
+        Box::new(mapping.iter().flat_map(|&(ref x, ref y)| vec![x, y])
             .map(|x| (x, values.remove(x).unwrap())).collect_vec().into_iter()
-            .chain(values) as Box<Iterator<Item=_>>
+            .chain(values)) as Box<Iterator<Item=_>>
     } else {
-        box enum_.values().iter()
+        Box::new(enum_.values().iter())
     }
 }
 

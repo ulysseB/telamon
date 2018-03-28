@@ -1,5 +1,4 @@
 //! Generic helper functions.
-#![feature(conservative_impl_trait, box_syntax)]
 extern crate fnv;
 extern crate itertools;
 extern crate linked_hash_map;

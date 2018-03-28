@@ -1,4 +1,4 @@
-#![feature(conservative_impl_trait, box_syntax, slice_patterns, drain_filter)]
+#![feature(drain_filter)]
 
 #![feature(plugin)]
 #![plugin(rustlex)]

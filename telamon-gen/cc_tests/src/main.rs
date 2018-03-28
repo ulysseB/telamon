@@ -1,4 +1,3 @@
-#![feature(conservative_impl_trait, trace_macros)]
 #![allow(dead_code, unused_imports)]
 extern crate itertools;
 #[macro_use]

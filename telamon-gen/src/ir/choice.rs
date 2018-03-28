@@ -354,11 +354,11 @@ impl ChoiceAction {
     pub fn variables<'a>(&'a self) -> Box<Iterator<Item=&'a ir::Set> + 'a> {
         match *self {
             ChoiceAction::Filter { ref filter, .. } =>
-                box filter.forall_vars.iter() as Box<_>,
+                Box::new(filter.forall_vars.iter()) as Box<_>,
             ChoiceAction::Trigger { .. } |
             ChoiceAction::IncrCounter { .. } |
             ChoiceAction::UpdateCounter { .. } |
-            ChoiceAction::FilterSelf => box std::iter::empty() as Box<_>,
+            ChoiceAction::FilterSelf => Box::new(std::iter::empty()) as Box<_>,
         }
     }
 

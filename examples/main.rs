@@ -1,4 +1,3 @@
-#![feature(conservative_impl_trait)]
 #![allow(dead_code)]
 // TODO(cleanup): remove the cuda/non-cuda switch and put in in Cargo.toml instead once
 // the required features will have landed.

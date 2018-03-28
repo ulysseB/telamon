@@ -1,4 +1,4 @@
-#![feature(slice_patterns, conservative_impl_trait, box_syntax, box_patterns, type_ascription, fnbox)]
+#![feature(box_syntax, box_patterns, fnbox)]
 
 extern crate config;
 extern crate crossbeam;

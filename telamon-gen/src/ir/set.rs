@@ -51,7 +51,7 @@ pub trait SetRef<'a> {
 
     /// Returns the `SetRefImpl` corresponding to this set.
     fn as_ref(&self) -> SetRefImpl<'a> {
-        let reverse_constraint = self.reverse_constraint().map(|s| box s);
+        let reverse_constraint = self.reverse_constraint().map(Box::new);
         SetRefImpl { def: self.def(), var: self.arg(), reverse_constraint }
     }
 }
