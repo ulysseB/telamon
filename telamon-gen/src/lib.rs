@@ -130,13 +130,8 @@ pub fn process<T: io::Write>(input: &mut io::Read, output: &mut T, format: bool)
 // TODO(cc_perf): in truth table, intersect rules with rules with weaker conditions,
 
 // FIXME: fix counters:
-// * always disable of full counters, except when the counter is created at the same time
-//   than the increment and the increment does not involves variables that where created by a
-//   lowering other than the one in the counter
-// > this makes lowering commute
-// * Have an "late" counter that allows the condition to be true even if the increment is disabled
-// > such counters do not have a min, they are used to force "at least N initial"
-// > use it to remove initial counters from the search space descrition
+// * Discard full counters. Might re-enable them later if we can find a way to make lowerings
+//  commute
 // * Fordid resrtricting the FALSE value of the repr flag from conditions that involve other decisions
 // > this makes lowering commute. Otherwise we can force the counter to be >0, which can be true or
 //   not depending if another lowering has already occured.
