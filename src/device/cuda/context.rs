@@ -15,7 +15,7 @@ use device::context::AsyncCallback;
 /// Max number of candidates waiting to be evaluated.
 const EVAL_BUFFER_SIZE: usize = 100;
 // TODO(perf): enable optimizations when possible
-const JIT_OPT_LEVEL: usize = 1;
+const JIT_OPT_LEVEL: usize = 2;
 
 /// A CUDA evaluation context.
 pub struct Context<'a> {
