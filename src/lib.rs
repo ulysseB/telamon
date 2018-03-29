@@ -42,12 +42,3 @@ pub mod explorer;
 pub mod ir;
 pub mod model;
 pub mod search_space;
-
-// FIXME: thread-mapping
-// > test the model is corrent
-//   - test local info
-//   - test sum_pressure
-// > test the codegen is correct
-//   - thread mapping
-//   - predicated store
-// > fix store

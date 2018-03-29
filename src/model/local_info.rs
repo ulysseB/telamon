@@ -112,7 +112,8 @@ pub struct Nesting {
     pub after_self: VecSet<ir::dim::Id>,
     /// The dimensions that can be merged to this one and have a bigger ID.
     pub bigger_merged_dims: VecSet<ir::dim::Id>,
-    /// Indicates if the block has thread dimensions nested inside it.
+    /// Indicates if the block may have thread dimensions nested inside it.
+    /// Only consider thread dimensions that are sure to be mapped to threads.
     pub has_inner_thread_dims: bool,
     /// Number of threads that are not represented in the active dimensions of the block.
     pub num_unmapped_threads: u32,
@@ -228,6 +229,7 @@ fn parallelism(space: &SearchSpace, nesting: &HashMap<ir::BBId, Nesting>,
             if kind == DimKind::BLOCK { par.min_num_blocks *= size; }
             if kind.intersects(DimKind::BLOCK) { par.max_num_blocks *= size; }
             if DimKind::THREAD.intersects(kind) {
+                // FIXME: incorrect
                 let is_mapped = space.ir_instance().thread_dims().any(|other| {
                     if dim == other.id() { return true };
                     let mapping = space.domain().get_thread_mapping(dim, other.id());
