@@ -25,9 +25,9 @@ impl<T> From<TimeoutError<T>> for CommEnd {
 
 /// This function is an interface supposed to make a connection between the Store and the
 /// evaluator. Retrieve evaluations, retains the results and update the store accordingly.
-pub fn monitor<'a, T>(config: &Config, candidate_store: &T, 
+pub fn monitor<'a, T>(config: &Config, candidate_store: &T,
                       recv: channel::mpsc::Receiver<MonitorMessage<'a, T>>,
-                     log_sender: sync::mpsc::SyncSender<LogMessage>) 
+                     log_sender: sync::mpsc::SyncSender<LogMessage>)
     -> Option<SearchSpace<'a>> where T: Store<'a>
 {
     warn!("Monitor waiting for evaluation results");
@@ -45,8 +45,9 @@ pub fn monitor<'a, T>(config: &Config, candidate_store: &T,
             log_sender.send(LogMessage::Timeout).unwrap();
             warn!("Timeout expired")
         }
-        Err(CommEnd::Other) => warn!("No candidates to try anymore"),
-        Ok(_) => warn!("An Error is supposed to happen at some point")
+        Err(CommEnd::Other) =>
+            panic!("an error occured in the monitor while witing for nes candidates"),
+        Ok(_) => warn!("No candidates to try anymore"),
     }
     best_cand.map(|x| x.0.space)
 }
