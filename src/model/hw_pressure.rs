@@ -135,7 +135,7 @@ pub enum FastOrigin {
 }
 
 /// The level at which a bottleneck is computed.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BottleneckLevel { Global, Block, Thread }
 
 impl BottleneckLevel {

@@ -69,6 +69,7 @@ pub fn sum_pressure(device: &Device,
     let mut pressure = HwPressure::min(dims.iter().map(|d| &local_info.dim_overhead[d].0))
         .unwrap_or_else(|| HwPressure::zero(device));
     if bound_level == BottleneckLevel::Global {
+        // FIXME:Take min_num_thread from the bound level instead of the argument
         let thread_overhead = &local_info.thread_overhead;
         pressure.repeat_and_add_bottlenecks(min_num_threads as f64, thread_overhead);
     }
@@ -107,11 +108,13 @@ pub fn sum_pressure(device: &Device,
         let is_predicated = space.ir_instance().block(bb).as_inst()
             .map(|i| i.has_side_effects()).unwrap_or(false);
         let unmapped_threads = local_info.nesting[&bb].num_unmapped_threads as f64;
-        if is_predicated {
-            let num_skipped = unmapped_threads * (num_instances - 1.0);
-            pressure.repeat_and_add_bottlenecks(num_skipped, &device.skipped_pressure());
-        } else {
-            num_instances *= unmapped_threads;
+        if bound_level <= BottleneckLevel::Block {
+            if is_predicated {
+                let num_skipped = unmapped_threads * (num_instances - 1.0);
+                pressure.repeat_and_add_bottlenecks(num_skipped, &device.skipped_pressure());
+            } else {
+                num_instances *= unmapped_threads;
+            }
         }
         pressure.repeat_and_add_bottlenecks(num_instances, bb_pressure);
     }
