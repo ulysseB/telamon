@@ -186,7 +186,6 @@ fn tensor_thread_dims(space: &SearchSpace,
                       tensor_dims: &[ir::dim::Id],
                       sizes: &HashMap<ir::dim::Id, u32>,
                       gpu: &cuda::Gpu) -> Vec<ThreadDimInfo> {
-    // FIXME: add the thread dimensions that are not mapped to an active dimension
     let base_stride = base_stride as u64;
     let non_zero_strides = tensor_dims.iter().rev().scan(base_stride, |stride, dim| {
         let current_stride = *stride;
