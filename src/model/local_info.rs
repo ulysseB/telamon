@@ -114,7 +114,7 @@ pub struct Nesting {
     pub bigger_merged_dims: VecSet<ir::dim::Id>,
     /// Indicates if the block may have thread dimensions nested inside it.
     /// Only consider thread dimensions that are sure to be mapped to threads.
-    pub has_inner_thread_dims: bool,
+    has_inner_thread_dims: bool,
     /// Number of threads that are not represented in the active dimensions of the block.
     pub num_unmapped_threads: u32,
 }
@@ -244,6 +244,13 @@ fn parallelism(space: &SearchSpace, nesting: &HashMap<ir::BBId, Nesting>,
         }
         par
     }).fold(Parallelism::default(), |lhs, rhs| Parallelism {
+        // FIXME: use lcm rather than max: we assume the real is a multiple
+        // - where ?
+        // max_t_per_b> we really need the lcm, but do not use the max: rename ?
+        // min_num_thread_per_blocks is only used for thread overhead, is easy to obtain
+        // max_num_blocks is used for scaling. Do we need lcm ?
+        // min_num_blocks is used for scaling. Do we need a multiples, gcd ? ?
+        // min_num_threads is only used for thread overhead > really need the min
         min_num_blocks: cmp::max(lhs.min_num_blocks, rhs.min_num_blocks),
         max_num_blocks: cmp::max(lhs.max_num_blocks, rhs.max_num_blocks),
         min_num_threads: cmp::max(lhs.min_num_threads, rhs.min_num_threads),
