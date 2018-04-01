@@ -5,7 +5,7 @@ mod hw_pressure;
 mod level;
 mod local_info;
 
-pub use self::hw_pressure::{Bound, HwPressure};
+pub use self::hw_pressure::{Bound, HwPressure, BottleneckLevel};
 pub use self::local_info::Nesting;
 
 // TODO(model): One some instruction, the latency dependens on the operand position.
@@ -34,7 +34,7 @@ use model::code_point::{CodePoint, CodePointDag};
 use model::dependency_map::DependencyMap;
 use model::level::{Level, RepeatLevel, LevelDag, sum_pressure};
 use model::local_info::LocalInfo;
-use model::hw_pressure::{FastBound, BottleneckLevel};
+use model::hw_pressure::{FastBound};
 use search_space::SearchSpace;
 use std::cmp;
 use utils::*;
@@ -78,11 +78,9 @@ pub fn bound(space: &SearchSpace, context: &Context) -> Bound {
     let max_num_blocks = local_info.parallelism.max_num_blocks;
     let latency = block_latency.scale(block_parallelism, min_num_blocks, max_num_blocks);
     // Compute the throughput bound at the whole device level.
-    let min_num_threads = local_info.parallelism.min_num_threads;
-    let max_num_threads = local_info.parallelism.max_num_threads_per_block;
     let global_pressure = sum_pressure(context.device(), space, &local_info,
-                                       BottleneckLevel::Global, min_num_threads, &[]);
-    let device_rates = context.device().total_rates(max_num_threads);
+                                       BottleneckLevel::Global, &[]);
+    let device_rates = context.device().total_rates();
     let throughput_bound = global_pressure.bound(BottleneckLevel::Global, &device_rates);
     // Return the biggest bound.
     debug!("full block lat: {}", unwrap!(levels[0].repeated_latency.as_ref()).value());

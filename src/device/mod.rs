@@ -15,7 +15,7 @@ use ir;
 use search_space::{SearchSpace, DimKind};
 use std::hash;
 use std::io::Write;
-use model::{HwPressure, Nesting};
+use model::{BottleneckLevel, HwPressure, Nesting};
 use utils::*;
 
 // TODO(perf): in PTX, shared and local pointers can have a 32-bit size, even in 64-bit
@@ -58,9 +58,9 @@ pub trait Device: Sync {
     /// Returns the processing rates of a single thread, in units/ns
     fn thread_rates(&self) -> HwPressure;
     /// Returns the processing rates of a single block, in units/ns.
-    fn block_rates(&self, max_num_threads: u64) -> HwPressure;
+    fn block_rates(&self,) -> HwPressure;
     /// Returns the processing rates of the whole accelerator un units/ns.
-    fn total_rates(&self, max_num_threads: u64) -> HwPressure;
+    fn total_rates(&self) -> HwPressure;
     /// Returns the names of potential bottlenecks.
     fn bottlenecks(&self) -> &[&'static str];
     /// Returns the number of blocks that can be executed in parallel on the device.
@@ -69,6 +69,10 @@ pub trait Device: Sync {
     fn additive_indvar_pressure(&self, t: &ir::Type) -> HwPressure;
     /// Returns the pressure caused by a multiplicative induction variable level.
     fn multiplicative_indvar_pressure(&self, t: &ir::Type) -> HwPressure;
+    /// Returns the ratio of hardware capacities wasted by the parallelism, given the
+    /// least common multiple of the possible numbers of threads per block.
+    fn get_waste_ratio(&self, bound_level: BottleneckLevel, lcm_threads_per_block: u64)
+        -> HwPressure;
 
     /// Lowers a type using the memory space information. Returns `None` if some
     /// information is not yet specified.
