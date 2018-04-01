@@ -69,7 +69,6 @@ impl<'a> Cfg<'a> {
     {
         use self::CfgEvent::*;
         let mut body = vec![];
-        // FIXME: move thread mask before unrolled and vector dimensions
         loop {
             match events.next() {
                 Some(Exec(inst)) => {

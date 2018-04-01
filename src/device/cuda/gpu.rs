@@ -1,10 +1,10 @@
 //! Describes CUDA-enabled GPUs.
-use device::{self, Device};
 use codegen::Function;
+use device::{self, Device};
 use device::cuda::printer as p;
 use device::cuda::mem_model::{self, MemInfo};
 use ir::{self, Type};
-use model::{self, HwPressure};
+use model::{self, HwPressure, BottleneckLevel};
 use search_space::{DimKind, Domain, InstFlag, MemSpace, SearchSpace};
 use rustc_serialize::json;
 use std;
@@ -31,19 +31,6 @@ pub struct InstDesc {
     pub l2_lines_from_l2: f64,
     /// The ram bandwidth used.
     pub ram_bw: f64,
-}
-
-impl InstDesc {
-    /// Multiplies concerned bottlenecks by the wrap use ratio.
-    fn apply_use_ratio(self, ratio: f64) -> Self {
-        InstDesc {
-            issue: self.issue * ratio,
-            alu: self.alu * ratio,
-            sync: self.sync * ratio,
-            mem: self.mem * ratio,
-            .. self
-        }
-    }
 }
 
 impl Into<HwPressure> for InstDesc {
@@ -157,13 +144,6 @@ impl Gpu {
     /// Returns the PTX code for a Function.
     pub fn print_ptx(&self, fun: &Function) -> String {
         p::function(fun, self)
-    }
-
-    /// Returns the ratio of threads actually used per wrap.
-    fn wrap_use_ratio(&self, max_num_threads: u64) -> f64 {
-        let wrap_size = u64::from(self.wrap_size);
-        let n_wraps = (max_num_threads + wrap_size - 1)/wrap_size;
-        max_num_threads as f64 / (n_wraps * wrap_size) as f64
     }
 
     /// Returns the description of a load instruction.
@@ -371,13 +351,9 @@ impl device::Device for Gpu {
 
     fn thread_rates(&self) -> HwPressure { self.thread_rates.into() }
 
-    fn block_rates(&self, max_num_threads: u64) -> HwPressure {
-        self.smx_rates.apply_use_ratio(self.wrap_use_ratio(max_num_threads)).into()
-    }
+    fn block_rates(&self) -> HwPressure { self.smx_rates.into() }
 
-    fn total_rates(&self, max_num_threads: u64) -> HwPressure {
-        self.gpu_rates.apply_use_ratio(self.wrap_use_ratio(max_num_threads)).into()
-    }
+    fn total_rates(&self) -> HwPressure { self.gpu_rates.into() }
 
     fn bottlenecks(&self) -> &[&'static str] {
         &["issue",
@@ -407,6 +383,26 @@ impl device::Device for Gpu {
             ir::Type::I(64) => self.mad_i64_inst.into(),
             _ => panic!(),
         }
+    }
+
+    fn get_waste_ratio(&self, bound_level: BottleneckLevel, lcm_threads_per_block: u64)
+        -> HwPressure
+    {
+        let ratio = if bound_level <= BottleneckLevel::Block {
+            let wrap_size = u64::from(self.wrap_size);
+            let n_wraps = (lcm_threads_per_block + wrap_size - 1)/wrap_size;
+            (n_wraps * wrap_size) as f64/lcm_threads_per_block as f64
+        } else { 1.0 };
+        (InstDesc {
+            latency: 1.0,
+            issue: ratio,
+            alu: ratio,
+            sync: ratio,
+            mem: ratio,
+            l1_lines_from_l2: 1.0,
+            l2_lines_from_l2: 1.0,
+            ram_bw: 1.0,
+        }).into()
     }
 }
 

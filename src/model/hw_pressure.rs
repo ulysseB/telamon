@@ -398,4 +398,12 @@ impl HwPressure {
     /// Returns the pressure on a bottleneck.
     #[cfg(test)]
     pub fn get_bottleneck(&self, index: usize) -> f64 { self.bottlenecks[index] }
+
+    /// Pointwise multiplication of the pressure on each resource.
+    pub fn multiply(&mut self, other: &HwPressure) {
+        self.latency *= other.latency;
+        for (b, &other_b) in self.bottlenecks.iter_mut().zip_eq(&other.bottlenecks) {
+            *b *= other_b;
+        }
+    }
 }

@@ -42,7 +42,7 @@ impl Level {
         // Compute the thread-level pressure.
         let thread_rates = device.thread_rates();
         let pressure = sum_pressure(
-            device, space, local_info, BottleneckLevel::Thread, 1, &dims);
+            device, space, local_info, BottleneckLevel::Thread, &dims);
         let end_latency = dims.iter().map(|d| {
             local_info.dim_overhead[d].1.bound(BottleneckLevel::Thread, &thread_rates)
         }).min().unwrap_or_else(FastBound::zero);
@@ -63,15 +63,21 @@ pub fn sum_pressure(device: &Device,
                     space: &SearchSpace,
                     local_info: &LocalInfo,
                     bound_level: BottleneckLevel,
-                    min_num_threads: u64,
                     dims: &[ir::dim::Id]) -> HwPressure {
     // Compute the pressure induced by the dimensions overhead.
     let mut pressure = HwPressure::min(dims.iter().map(|d| &local_info.dim_overhead[d].0))
         .unwrap_or_else(|| HwPressure::zero(device));
-    if bound_level == BottleneckLevel::Global {
-        // FIXME:Take min_num_thread from the bound level instead of the argument
-        let thread_overhead = &local_info.thread_overhead;
-        pressure.repeat_and_add_bottlenecks(min_num_threads as f64, thread_overhead);
+    if dims.is_empty() {
+        let threads_per_block = space.domain().get_num_threads().min as u64;
+        let num_threads = match bound_level {
+            BottleneckLevel::Global =>
+                threads_per_block * local_info.parallelism.min_num_blocks,
+            BottleneckLevel::Block => threads_per_block,
+            BottleneckLevel::Thread => 1,
+        };
+        let mut init_pressure = device.get_waste_ratio(bound_level, threads_per_block);
+        init_pressure.multiply(&local_info.thread_overhead);
+        pressure.repeat_and_add_bottlenecks(num_threads as f64, &init_pressure);
     }
     // Get the list of inner dimensions and inner dimensions on wich the pressure is summed.
     let inner_dim_sets = dims.iter().map(|&d| &local_info.nesting[&d.into()].inner_dims);
@@ -90,6 +96,7 @@ pub fn sum_pressure(device: &Device,
         });
     // Sum the pressure on all bbs.
     for bb in inner_bbs {
+        let nesting = &local_info.nesting[&bb];
         // Skip dimensions that can be merged into another one.
         let merge_dims = &local_info.nesting[&bb].bigger_merged_dims;
         if inner_dims.intersection(merge_dims).next().is_some() { continue; }
@@ -98,17 +105,20 @@ pub fn sum_pressure(device: &Device,
             .intersection(&local_info.nesting[&bb].outer_dims)
             .map(|d| f64::from(local_info.dim_sizes[d]))
             .product::<f64>();
-        let bb_pressure = if let ir::BBId::Dim(dim) = bb {
+        let mut bb_pressure = if let ir::BBId::Dim(dim) = bb {
             let kind = space.domain().get_dim_kind(dim);
             if !bound_level.accounts_for_dim(kind) {
                 &local_info.dim_overhead[&dim].0
             } else { &local_info.hw_pressure[&bb] }
         } else { &local_info.hw_pressure[&bb] };
-        // Predicated instructions are not executed on unmapped thread dimensions.
-        let is_predicated = space.ir_instance().block(bb).as_inst()
-            .map(|i| i.has_side_effects()).unwrap_or(false);
-        let unmapped_threads = local_info.nesting[&bb].num_unmapped_threads as f64;
+        // From parallel levels, we must take into account the thread dimensions that re
+        // not mapped to a dimension outside of the block. Predicated instructions require
+        // special care as they are only active on the dimensions they are nested on. Other
+        // threads just skip the instruction.
         if bound_level <= BottleneckLevel::Block {
+            let is_predicated = space.ir_instance().block(bb).as_inst()
+                .map(|i| i.has_side_effects()).unwrap_or(false);
+            let unmapped_threads = nesting.num_unmapped_threads as f64;
             if is_predicated {
                 let num_skipped = unmapped_threads * (num_instances - 1.0);
                 pressure.repeat_and_add_bottlenecks(num_skipped, &device.skipped_pressure());
@@ -116,7 +126,10 @@ pub fn sum_pressure(device: &Device,
                 num_instances *= unmapped_threads;
             }
         }
-        pressure.repeat_and_add_bottlenecks(num_instances, bb_pressure);
+        let mut bb_apparent_pressure = device.get_waste_ratio(
+            bound_level, nesting.max_threads_per_block);
+        bb_apparent_pressure.multiply(bb_pressure);
+        pressure.repeat_and_add_bottlenecks(num_instances, &bb_apparent_pressure);
     }
     pressure
 }
@@ -135,16 +148,12 @@ fn intersect_sets<'a, T, IT>(mut it: IT) -> Option<VecSet<T>>
 /// Generates a bound based on the pressure produced by a block of threads.
 fn block_bound(device: &Device, space: &SearchSpace, info: &LocalInfo,
                dims: &[ir::dim::Id]) -> FastBound {
-    // Compute the minimal and maximal number of threads.
-    let min_num_threads = info.parallelism.min_num_threads_per_block;
-    let max_num_threads = info.parallelism.max_num_threads_per_block;
     // Compute the pressure on the execution units in a single iteration.
-    let mut pressure = sum_pressure(device, space, info, BottleneckLevel::Block,
-                                    min_num_threads, dims);
+    let mut pressure = sum_pressure(device, space, info, BottleneckLevel::Block, dims);
     // Repeat the pressure by the number of iterations of the level and compute the bound.
     let n_iters = dims.iter().map(|&d| u64::from(info.dim_sizes[&d])).product::<u64>();
     pressure.repeat_parallel(n_iters as f64);
-    pressure.bound(BottleneckLevel::Block, &device.block_rates(max_num_threads))
+    pressure.bound(BottleneckLevel::Block, &device.block_rates())
 }
 
 /// Indicates if a dimension should be considered for dimension levels.
