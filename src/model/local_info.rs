@@ -2,8 +2,8 @@
 use device::{Context, Device};
 use ir::{self, BasicBlock};
 use model::HwPressure;
+use num::integer::{lcm, gcd};
 use search_space::{DimKind, Domain, Order, SearchSpace, ThreadMapping};
-use std::cmp;
 use utils::*;
 
 /// Local information on the different objects.
@@ -79,12 +79,15 @@ fn add_indvar_pressure(device: &Device,
        if dim_kind.intersects(DimKind::VECTOR) { continue; }
        let t = device.lower_type(indvar.base().t(), space).unwrap_or(ir::Type::I(32));
        let mut overhead = if dim_kind.intersects(DimKind::UNROLL | DimKind::LOOP) {
+           // FIXME: do not add the latency if the induction level can statically computed.
+           // This is the case when:
+           // - the loop is unrolled
+           // - the increment is a constant
+           // - both the conditions are also true for an inner dimension.
            device.additive_indvar_pressure(&t)
        } else {
            device.multiplicative_indvar_pressure(&t)
        };
-       // FIXME: do not add the latency for additive unrolled dimension that can be
-       // precomputed
        let size = dim_sizes[&dim];
        if dim_kind.intersects(DimKind::THREAD | DimKind::BLOCK) {
            thread_overhead.add_parallel(&overhead);
@@ -231,11 +234,8 @@ fn parallelism(space: &SearchSpace, nesting: &HashMap<ir::BBId, Nesting>,
         }
         par
     }).fold(Parallelism::default(), |lhs, rhs| Parallelism {
-        // FIXME: use lcm rather than max: we assume the real is a multiple
-        // > max_num_blocks is used for scaling. Do we need lcm ?
-        // > min_num_blocks is used for scaling. Do we need a multiples, gcd ? ?
-        min_num_blocks: cmp::max(lhs.min_num_blocks, rhs.min_num_blocks),
-        max_num_blocks: cmp::max(lhs.max_num_blocks, rhs.max_num_blocks),
+        min_num_blocks: gcd(lhs.min_num_blocks, rhs.min_num_blocks),
+        max_num_blocks: lcm(lhs.max_num_blocks, rhs.max_num_blocks),
     });
     par
 }
