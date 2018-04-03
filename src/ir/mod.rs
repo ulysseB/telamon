@@ -74,6 +74,7 @@ impl NewObjs {
     pub fn add_dimension(&mut self, dim: &Dimension) {
         self.add_bb(dim);
         self.dimensions.push(dim.id());
+        if dim.is_thread_dim() { self.add_thread_dim(dim.id()); }
     }
 
     /// Registers a new basic block.
