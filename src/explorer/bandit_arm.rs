@@ -265,19 +265,16 @@ fn iter_descend<'a, 'b>(config: &BanditConfig,
 }
 
 /// Handles the descend from a candidate and returns an appropriate DescendResult
-fn handle_montecarlo_descend<'a, 'b>(config: &BanditConfig, 
-                  context: &Context, 
-                  cand: Candidate<'a>, 
-                  pos: usize, 
+fn handle_montecarlo_descend<'a, 'b>(config: &BanditConfig,
+                  context: &Context,
+                  cand: Candidate<'a>,
+                  pos: usize,
                   cut: f64,
                   parent_stack: NodeStack<'a, 'b>) -> DescendResult<'a, 'b> {
-    if let Some(cand) = montecarlo::montecarlo_descend(config, context, cand, cut) {
-        return DescendResult::MonteCarloLeaf(
-            cand,
-            pos,
-            parent_stack);
-    }
-    else { return DescendResult::FailedMonteCarlo;}
+    let order = config.new_nodes_order;
+    if let Some(cand) = montecarlo::descend(order, context, cand, cut) {
+        DescendResult::MonteCarloLeaf(cand, pos, parent_stack)
+    } else { DescendResult::FailedMonteCarlo }
 }
 
 ///  iter on all nodes in the tree and call node_collect on them
@@ -767,48 +764,42 @@ impl<'a, 'b> Node<'a, 'b> {
     /// We have a newly expanded node, we want to do a montecarlo descend on it
     /// As we cannot directly own the original candidate (which must stay in the tree, and which we
     /// do not want to clone) we have to do this on the freshly expanded node
-    fn start_montecarlo(&mut self, config: &BanditConfig, context: &Context, cut: f64) 
-        -> Option<Candidate<'a>> 
+    fn start_montecarlo(&mut self, config: &BanditConfig, context: &Context, cut: f64)
+        -> Option<Candidate<'a>>
     {
         if self.children.is_empty() {
-            panic!("Called montecarlo on a node with no children !!")
+            panic!("called montecarlo on a node with no children")
         }
         let ind;
         {
-            let new_nodes = self.children.iter()
-                .map( |node| 
-                      if let EnumTree::UnexpandedNode(ref cand, _) = node.tree 
-                      // We must only call this function on a newly expanded node, which means that
-                      // there must nothing but unexpandedNode in it
-                      {cand} else {panic!()})
-            .collect_vec();
-            ind = match config.new_nodes_order {
-                NewNodeOrder::Api => 0,
-                NewNodeOrder::WeightedRandom => montecarlo::choose_cand_weighted(&new_nodes, cut),
-                NewNodeOrder::Bound => montecarlo::choose_cand_best(&new_nodes),
-                NewNodeOrder::Random => montecarlo::choose_cand_rand(&new_nodes),
-            };
-            let cand_ref = if let EnumTree::UnexpandedNode(ref cand, _) = self.children[ind].tree
-            {cand} else {panic!()};
+            let new_nodes = self.children.iter().map(|node| {
+                if let EnumTree::UnexpandedNode(ref cand, _) = node.tree { cand } else {
+                    // We must only call this function on a newly expanded node, which
+                    // means that there must nothing but unexpandedNode in it.
+                    panic!()
+                }
+            });
+            ind = unwrap!(montecarlo::next_cand_index(
+                    config.new_nodes_order, new_nodes, cut));
+            let cand_ref = if let EnumTree::UnexpandedNode(ref cand, _) =
+                self.children[ind].tree
+            {
+                cand
+            } else { panic!() };
             let choice_opt = choice::list(&cand_ref.space).next();
             if let Some(choice) = choice_opt {
                 let new_nodes = cand_ref.apply_choice(context, choice).into_iter()
                     .filter(|x| x.bound.value() < cut)
                     .collect_vec();
-                if new_nodes.is_empty() {
-                    return None;
-                } else { 
-                    let chosen_candidate = montecarlo::choose_next_cand(config, new_nodes, cut);
-                    return Some(chosen_candidate);
-                } 
+                return montecarlo::choose_next_cand(
+                    config.new_nodes_order, new_nodes, cut);
             }
         }
         // This is, logically speaking, the else branch of of the last if let Some(choice) as we
         // can only be here if this 'if' branch was not taken - there is a return in each other
-        // branches
-        // We need to do that so we can hold a mutable reference on self.children
+        // branches. We need to do that so we can hold a mutable reference on self.children.
         let node = std::mem::replace(&mut self.children[ind].tree, EnumTree::NoGoBranch);
-        if let EnumTree::UnexpandedNode(cand, _) = node {Some(cand)} else {panic!()}
+        if let EnumTree::UnexpandedNode(cand, _) = node { Some(cand) } else { panic!() }
     }
 }
 
