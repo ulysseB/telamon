@@ -8,6 +8,8 @@ extern crate getopts;
 extern crate errno;
 extern crate interval_heap;
 extern crate itertools;
+//#[cfg(feature="cpu")]
+extern crate libloading;
 #[cfg(feature="cuda")]
 extern crate ipc_channel;
 #[cfg(feature="cuda")]
