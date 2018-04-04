@@ -1,37 +1,47 @@
 //! Linera algebra kernels.
-use kernel::Kernel;
 use create_size;
+use kernel::Kernel;
+#[cfg(feature="cuda")]
+use kernel::CudaKernel;
 use telamon::{device, ir};
 use telamon::helper::{Builder, SignatureBuilder};
 use telamon::helper::tensor::{Tensor, VirtualTensor};
+use telamon::search_space::SearchSpace;
 
 use telamon::ir::DimMapScope::Global as GlobalScope;
 
 /// Computes `y = alpha*x+y`.
-struct Axpy<'a> { x: Tensor<'a>, y: Tensor<'a> }
+struct Axpy<'a> { n: i32, x: Tensor<'a>, y: Tensor<'a> }
 
 impl<'a> Kernel for Axpy<'a> {
     type Parameters = i32;
 
+    fn name() -> &'static str { "axpy" }
+
     fn build_signature(n: i32, generic: bool, builder: &mut SignatureBuilder) -> Self {
-        let n = create_size(n, "n", generic, builder);
-        builder.param("a", 1.0);
-        let x = Tensor::new("x", vec![n], ir::Type::F(32), true, builder);
-        let y = Tensor::new("y", vec![n], ir::Type::F(32), false, builder);
-        Axpy { x, y }
+        let n_size = create_size(n, "n", generic, builder);
+        builder.param("alpha", 1.0);
+        let x = Tensor::new("x", vec![n_size], ir::Type::F(32), true, builder);
+        let y = Tensor::new("y", vec![n_size], ir::Type::F(32), false, builder);
+        Axpy { n, x, y }
     }
 
-    fn build_body(&self, builder: &mut Builder) {
-        // FIXME: how to handle tiling ?
-        let tiling = &[1024, 4]; // FIXME: try more tile sizes
+    fn build_body<'b>(&self, signature: &'b ir::Signature, device: &'b device::Device)
+        -> Vec<SearchSpace<'b>>
+    {
+        let tiling = &[1024, 4]; // TODO(search_space): try more tile sizes.
+        assert!(self.n as u32 >= tiling.iter().product::<u32>());
+        let mut builder = Builder::new(signature, device);
 
-        let ld_x = self.x.load(&[tiling], builder);
-        let ld_y = self.y.load(&[tiling], builder);
+        let ld_x = self.x.load(&[tiling], &mut builder);
+        let ld_y = self.y.load(&[tiling], &mut builder);
         let mad_dim = builder.open_mapped_dim(&ld_x[0]);
-        let x_op = ld_x.dim_map(&[&mad_dim], GlobalScope, builder);
-        let y_op = ld_y.dim_map(&[&mad_dim], GlobalScope, builder);
-        let mad = VirtualTensor::new(builder.mad(&x_op, &"a", &y_op), vec![mad_dim]);
-        mad.store(&self.y, builder);
+        let x_op = ld_x.dim_map(&[&mad_dim], GlobalScope, &mut builder);
+        let y_op = ld_y.dim_map(&[&mad_dim], GlobalScope, &mut builder);
+        let mad = VirtualTensor::new(builder.mad(&x_op, &"alpha", &y_op), vec![mad_dim]);
+        mad.store(&self.y, &mut builder);
+
+        vec![builder.get()]
     }
 
     fn check_result(&self, context: &device::Context) -> Result<(), String> {
@@ -39,34 +49,15 @@ impl<'a> Kernel for Axpy<'a> {
     }
 }
 
-/*
-/// Generates code for `y = _a*x+y`.
-fn axpy(n: i32, data_type: ir::Type,  generic: bool, executor: &cuda::Executor) {
-    // Initializes the evaluation context.
-    let mut context = cuda::Context::new(&executor);
-    // Declares the function signature and the arguments to use for the evaluation.
-    let (x, y);
-    let signature = {
-        let mut builder = helper::SignatureBuilder::new("axpy", &mut context);
-        // Create two scalar parameters, with the values N and A used for the evaluation.
-        let n = create_size(n, "n", generic, &mut builder);
-        // Allocates two arrays of size N.
-        x = Tensor::new("x", vec![n], data_type, true, &mut builder);
-        y = Tensor::new("y", vec![n], data_type, false, &mut builder);
-        builder.get()
-    };
-    // Declares the bofy of the function.
-    let function = {
-        let mut builder = helper::Builder::new(&signature, context.device());
-        assert!(n >= 1024*4);
-        let tiling = &[1024, 4]; // FIXME: try more tile sizes
-
-        builder.get()
-    };
-    // Explore the search space.
-    gen_best(vec![function], &context, &file_name("axpy", data_type, &[n], generic));
+#[cfg(feature="cuda")]
+impl<'a> CudaKernel for Axpy<'a> {
+    fn benchmark_fast(&self) -> f64 {
+        // FIXME: need to allocate events. Should we reuse arrays ?
+        unimplemented!()
+    }
 }
 
+/*
 /// Generates code for `y = A.x`.
 fn mv(m: i32, n: i32, data_type: ir::Type, generic: bool, executor: &cuda::Executor) {
     let (a, x, y);

@@ -1,8 +1,14 @@
 //! Defines common kernels used to test and benchmark Telamon.
+extern crate itertools;
 extern crate telamon;
+#[macro_use]
+extern crate telamon_utils as utils;
 
-mod linalg;
 mod kernel;
+
+pub mod linalg;
+
+pub use kernel::Kernel;
 
 use telamon::helper::SignatureBuilder;
 use telamon::helper::tensor::DimSize;
