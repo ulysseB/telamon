@@ -1,0 +1,7 @@
+[package]
+name = "telamon-kernels"
+version = "0.1.0"
+authors = ["Ulysse Beaugnon <ulysse.beaugnon@ens.fr>"]
+
+[dependencies]
+telamon = { path = "../" }
