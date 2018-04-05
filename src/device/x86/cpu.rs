@@ -41,7 +41,6 @@ impl device::Device for Cpu {
 
     fn max_unrolling(&self) -> u32 { 512 }
 
-    //fn shared_mem(&self) -> u32 { 2u32.pow(25) }
     fn shared_mem(&self) -> u32 {0}
 
     fn supports_nc_access(&self) -> bool {false}
