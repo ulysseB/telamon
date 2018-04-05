@@ -1,7 +1,7 @@
 language: rust
 sudo: false
 rust:
-  - nightly
+  - nightly-2018-04-03
 script:
   - cargo build --verbose --all
   - cargo test --verbose --all

@@ -11,6 +11,7 @@ use itertools::Itertools;
 
 
 /// A node of the search tree.
+#[derive(Clone)]
 pub struct Candidate<'a> {
     /// Represents a part of the full search space.
     pub space: SearchSpace<'a>,

@@ -51,8 +51,11 @@ impl<'a> Dimension<'a> {
     pub fn host_values<'b>(&'b self, space: &'b SearchSpace)
         -> impl Iterator<Item=codegen::ParamVal<'a>> + 'b
     {
+        let size_param = if self.kind == DimKind::LOOP {
+            codegen::ParamVal::from_size(self.size)
+        } else { None };
         self.induction_levels.iter().flat_map(move |l| l.host_values(space))
-            .chain(codegen::ParamVal::from_size(self.size))
+            .chain(size_param)
     }
 
     /// Creates a new dimension from an `ir::Dimension`.

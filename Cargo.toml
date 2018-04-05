@@ -92,6 +92,7 @@ mppa = []
 
 [workspace]
 members = [
+    "kernels",
     "telamon-gen",
     "telamon-utils",
     "telamon-gen/cc_tests",
