@@ -59,12 +59,10 @@
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a class='srclink' href='../src/env_logger/lib.rs.html#807-809' title='goto source code'>[src]</a></span></h1><pre class='rust fn'>pub fn init()</pre><div class='docblock'><p>Initializes the global logger with an env logger.</p>
-<p>This should be called early in the execution of a Rust program. Any log
-events that occur before initialization will be ignored.</p>
-<h1 id="panics" class="section-header"><a href="#panics">Panics</a></h1>
-<p>This function will panic if it is called more than once, or if another
-library has already initialized a global logger.</p>
+               </span><a class='srclink' href='../src/env_logger/lib.rs.html#378-386' title='goto source code'>[src]</a></span></h1><pre class='rust fn'>pub fn init() -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>, <a class="struct" href="../log/struct.SetLoggerError.html" title="struct log::SetLoggerError">SetLoggerError</a>&gt;</pre><div class='docblock'><p>Initializes the global logger with an env logger.</p>
+<p>This should be called early in the execution of a Rust program, and the
+global logger may only be initialized once. Future initialization attempts
+will return an error.</p>
 </div></section>
     <section id='search' class="content hidden"></section>
 
