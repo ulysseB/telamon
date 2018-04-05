@@ -5,10 +5,6 @@ sudo: false
 rust:
   - nightly-2018-04-03
 
-before_install:
-  - git config user.name $(git log -1 --pretty="%an")
-  - git config user.email $(git log -1 --pretty="%ae")
-
 script:
   - cargo build --verbose --all
   - cargo test --verbose --all
@@ -22,13 +18,13 @@ deploy:
     keep-history: true
     github-token: "$GITHUB_TOKEN"
 
-env:
-  global:
-    secure: ZLjUSECDu2ewLa2eJ8DepE7b3tuQxR81tbUxFtSBKKj6IVZPppzS7CUcVZxE46Xp+pug9KKApACOfqfqil5hRaSHKtqoVoOf/sYPJs+xA3JdmVBmqVYj0YViCA5WCxVU1J5BIEDVLTqJy7y3zBy8OYP2fNquNLEBUL7r0jn/+tjbuZfrwzN2PUqL/l7YyQVT/UgdpaXzVkvAcjGEL4nXpcSLb+a0g49PSQNcJhoLiYoZziUZH6buKllBzyBszBk4f/yO+wrvs334FaVw0DBbngIyUcQyzJT56eck22AJXlTl88DpJOUPakFTTJ1oa7UG6MTD46QMp2F/LK+ASNXwT5Q1OIsk67/CltZiWLXGBmdaAX2CJXor5vClNX3kEs0jCVCxMAOwfCmbTAz9cklb0rsoHXWYO3E39L3JhcVeZjwIvfI31d1cFrTjEwIVnUBQLmPYJyp9ndjc4kj7X/NUwD9SqrquIoEDW6mtCHlGmIDnkMJYQXNEwnoenFsSA+nbq9f/zoZVYUxmPYmRyHTCSNHVABUKYp3sK7HsRREwYwLm5slADH+K5loNYcxPgVJuH+mP7SAnJ6A8BTe4qxZK/bxjGr3ltSumWN2Ao9eC+PiAxG2QXGXHNeBtnrX0QxGkYZ5hjZndfAovjxjSsQ1kObnOOdwCSw4V93zFNzHthOQ=
-
 notifications:
   slack:
     rooms:
       - parkas-team:0twCBUENCd9xqXn4DEVm0gEX
     on_success: change
     on_failure: change
+
+env:
+  global:
+    secure: ZLjUSECDu2ewLa2eJ8DepE7b3tuQxR81tbUxFtSBKKj6IVZPppzS7CUcVZxE46Xp+pug9KKApACOfqfqil5hRaSHKtqoVoOf/sYPJs+xA3JdmVBmqVYj0YViCA5WCxVU1J5BIEDVLTqJy7y3zBy8OYP2fNquNLEBUL7r0jn/+tjbuZfrwzN2PUqL/l7YyQVT/UgdpaXzVkvAcjGEL4nXpcSLb+a0g49PSQNcJhoLiYoZziUZH6buKllBzyBszBk4f/yO+wrvs334FaVw0DBbngIyUcQyzJT56eck22AJXlTl88DpJOUPakFTTJ1oa7UG6MTD46QMp2F/LK+ASNXwT5Q1OIsk67/CltZiWLXGBmdaAX2CJXor5vClNX3kEs0jCVCxMAOwfCmbTAz9cklb0rsoHXWYO3E39L3JhcVeZjwIvfI31d1cFrTjEwIVnUBQLmPYJyp9ndjc4kj7X/NUwD9SqrquIoEDW6mtCHlGmIDnkMJYQXNEwnoenFsSA+nbq9f/zoZVYUxmPYmRyHTCSNHVABUKYp3sK7HsRREwYwLm5slADH+K5loNYcxPgVJuH+mP7SAnJ6A8BTe4qxZK/bxjGr3ltSumWN2Ao9eC+PiAxG2QXGXHNeBtnrX0QxGkYZ5hjZndfAovjxjSsQ1kObnOOdwCSw4V93zFNzHthOQ=
