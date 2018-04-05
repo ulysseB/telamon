@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Domain` trait in crate `telamon`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Domain">
+
+    <title>telamon::search_space::Domain - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css"
+          id="mainThemeStyle">
+    
+    <link rel="stylesheet" type="text/css" href="../../dark.css">
+    <link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle">
+    <script src="../../storage.js"></script>
+    
+
+    
+    
+</head>
+<body class="rustdoc trait">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        <div class="sidebar-menu">&#9776;</div>
+        
+        <p class='location'>Trait Domain</p><div class="sidebar-elems"><div class="block items"><a class="sidebar-title" href="#associated-const">Associated Constants</a><div class="sidebar-links"><a href="#associatedconstant.FAILED">FAILED</a><a href="#associatedconstant.ALL">ALL</a></div><a class="sidebar-title" href="#required-methods">Required Methods</a><div class="sidebar-links"><a href="#tymethod.is_failed">is_failed</a><a href="#tymethod.is_constrained">is_constrained</a><a href="#tymethod.contains">contains</a><a href="#tymethod.restrict">restrict</a><a href="#tymethod.insert">insert</a></div><a class="sidebar-title" href="#provided-methods">Provided Methods</a><div class="sidebar-links"><a href="#method.intersects">intersects</a><a href="#method.is">is</a><a href="#method.eq">eq</a><a href="#method.neq">neq</a></div><a class="sidebar-title" href="#implementors">Implementors</a></div><p class='location'><a href='../index.html'>telamon</a>::<wbr><a href='index.html'>search_space</a></p><script>window.sidebarCurrent = {name: 'Domain', ty: 'trait', relpath: ''};</script><script defer src="sidebar-items.js"></script></div>
+    </nav>
+
+    <div class="theme-picker">
+        <button id="theme-picker" aria-label="Pick another theme!">
+            <img src="../../brush.svg" width="18" alt="Pick another theme!">
+        </button>
+        <div id="theme-choices"></div>
+    </div>
+    <script src="../../theme.js"></script>
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Trait <a href='../index.html'>telamon</a>::<wbr><a href='index.html'>search_space</a>::<wbr><a class="trait" href=''>Domain</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../../src/telamon/home/travis/build/ulysseB/telamon/target/debug/build/telamon-10fde43cfb263537/out/choices.rs.html#21202-21245' title='goto source code'>[src]</a></span></h1><div class="docblock type-decl"><pre class='rust trait'>pub trait Domain: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html" title="trait core::marker::Copy">Copy</a> + <a class="trait" href="https://doc.rust-lang.org/nightly/core/cmp/trait.Eq.html" title="trait core::cmp::Eq">Eq</a> {
+    const <a href='#associatedconstant.FAILED' class="constant"><b>FAILED</b></a>: Self;
+    const <a href='#associatedconstant.ALL' class="constant"><b>ALL</b></a>: Self;
+
+    fn <a href='#tymethod.is_failed' class='fnname'>is_failed</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>;
+<div class='item-spacer'></div>    fn <a href='#tymethod.is_constrained' class='fnname'>is_constrained</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>;
+<div class='item-spacer'></div>    fn <a href='#tymethod.contains' class='fnname'>contains</a>(&amp;self, other: Self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>;
+<div class='item-spacer'></div>    fn <a href='#tymethod.restrict' class='fnname'>restrict</a>(&amp;mut self, other: Self);
+<div class='item-spacer'></div>    fn <a href='#tymethod.insert' class='fnname'>insert</a>(&amp;mut self, other: Self);
+
+    fn <a href='#method.intersects' class='fnname'>intersects</a>(&amp;self, other: Self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a><br>&nbsp;&nbsp;&nbsp; <span class="where">where<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a></span>,
+    { ... }
+<div class='item-spacer'></div>    fn <a href='#method.is' class='fnname'>is</a>(&amp;self, other: Self) -&gt; <a class="enum" href="../../telamon_utils/enum.Trivalent.html" title="enum telamon_utils::Trivalent">Trivalent</a><br>&nbsp;&nbsp;&nbsp; <span class="where">where<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a></span>,
+    { ... }
+<div class='item-spacer'></div>    fn <a href='#method.eq' class='fnname'>eq</a>(&amp;self, other: Self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> { ... }
+<div class='item-spacer'></div>    fn <a href='#method.neq' class='fnname'>neq</a>(&amp;self, other: Self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> { ... }
+}</pre></div>
+            <h2 id='associated-const' class='small-section-header'>
+              Associated Constants<a href='#associated-const' class='anchor'></a>
+            </h2>
+            <div class='methods'>
+        <h3 id='associatedconstant.FAILED' class='method'><span id='FAILED.v' class='invisible'><code>const <a href='#associatedconstant.FAILED' class="constant"><b>FAILED</b></a>: Self</code></span></h3><h3 id='associatedconstant.ALL' class='method'><span id='ALL.v' class='invisible'><code>const <a href='#associatedconstant.ALL' class="constant"><b>ALL</b></a>: Self</code></span></h3></div>
+            <h2 id='required-methods' class='small-section-header'>
+              Required Methods<a href='#required-methods' class='anchor'></a>
+            </h2>
+            <div class='methods'>
+        <h3 id='tymethod.is_failed' class='method'><span id='is_failed.v' class='invisible'><code>fn <a href='#tymethod.is_failed' class='fnname'>is_failed</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></h3><div class='docblock'><p>Indicates if the domain is empty.</p>
+</div><h3 id='tymethod.is_constrained' class='method'><span id='is_constrained.v' class='invisible'><code>fn <a href='#tymethod.is_constrained' class='fnname'>is_constrained</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></h3><div class='docblock'><p>Indicates if the domain contains a single alternative.</p>
+</div><h3 id='tymethod.contains' class='method'><span id='contains.v' class='invisible'><code>fn <a href='#tymethod.contains' class='fnname'>contains</a>(&amp;self, other: Self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></h3><div class='docblock'><p>Indicates if the domain contains another.</p>
+</div><h3 id='tymethod.restrict' class='method'><span id='restrict.v' class='invisible'><code>fn <a href='#tymethod.restrict' class='fnname'>restrict</a>(&amp;mut self, other: Self)</code></span></h3><div class='docblock'><p>Restricts the domain to the intersection with <code>other</code>.</p>
+</div><h3 id='tymethod.insert' class='method'><span id='insert.v' class='invisible'><code>fn <a href='#tymethod.insert' class='fnname'>insert</a>(&amp;mut self, other: Self)</code></span></h3><div class='docblock'><p>Inserts alternatives into the domain.</p>
+</div></div>
+            <h2 id='provided-methods' class='small-section-header'>
+              Provided Methods<a href='#provided-methods' class='anchor'></a>
+            </h2>
+            <div class='methods'>
+        <h3 id='method.intersects' class='method'><span id='intersects.v' class='invisible'><code>fn <a href='#method.intersects' class='fnname'>intersects</a>(&amp;self, other: Self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,&nbsp;</span></code></span></h3><div class='docblock'><p>Indicates if the domain has an alternatve in common with <code>other</code>.</p>
+</div><h3 id='method.is' class='method'><span id='is.v' class='invisible'><code>fn <a href='#method.is' class='fnname'>is</a>(&amp;self, other: Self) -&gt; <a class="enum" href="../../telamon_utils/enum.Trivalent.html" title="enum telamon_utils::Trivalent">Trivalent</a> <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;Self: <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sized.html" title="trait core::marker::Sized">Sized</a>,&nbsp;</span></code></span></h3><div class='docblock'><p>Indicates if the domain is equal to another domain.</p>
+</div><h3 id='method.eq' class='method'><span id='eq.v' class='invisible'><code>fn <a href='#method.eq' class='fnname'>eq</a>(&amp;self, other: Self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></h3><div class='docblock'><p>Indicates if two choices will have the same value.</p>
+</div><h3 id='method.neq' class='method'><span id='neq.v' class='invisible'><code>fn <a href='#method.neq' class='fnname'>neq</a>(&amp;self, other: Self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></h3><div class='docblock'><p>Indicates if two choices cannot be equal.</p>
+</div></div>
+        <h2 id='implementors' class='small-section-header'>
+          Implementors<a href='#implementors' class='anchor'></a>
+        </h2>
+        <ul class='item-list' id='implementors-list'>
+    <li><table class='table-display'><tbody><tr><td><code>impl Domain for <a class="struct" href="../../telamon/search_space/struct.Bool.html" title="struct telamon::search_space::Bool">Bool</a></code><td><div class='out-of-band'><a class='srclink' href='../../src/telamon/home/travis/build/ulysseB/telamon/target/debug/build/telamon-10fde43cfb263537/out/choices.rs.html#18882-18906' title='goto source code'>[src]</a></div></td></tr></tbody></table></li>
+<li><table class='table-display'><tbody><tr><td><code>impl Domain for <a class="struct" href="../../telamon/search_space/struct.DimKind.html" title="struct telamon::search_space::DimKind">DimKind</a></code><td><div class='out-of-band'><a class='srclink' href='../../src/telamon/home/travis/build/ulysseB/telamon/target/debug/build/telamon-10fde43cfb263537/out/choices.rs.html#19016-19040' title='goto source code'>[src]</a></div></td></tr></tbody></table></li>
+<li><table class='table-display'><tbody><tr><td><code>impl Domain for <a class="struct" href="../../telamon/search_space/struct.InstFlag.html" title="struct telamon::search_space::InstFlag">InstFlag</a></code><td><div class='out-of-band'><a class='srclink' href='../../src/telamon/home/travis/build/ulysseB/telamon/target/debug/build/telamon-10fde43cfb263537/out/choices.rs.html#19260-19284' title='goto source code'>[src]</a></div></td></tr></tbody></table></li>
+<li><table class='table-display'><tbody><tr><td><code>impl Domain for <a class="struct" href="../../telamon/search_space/struct.MemSpace.html" title="struct telamon::search_space::MemSpace">MemSpace</a></code><td><div class='out-of-band'><a class='srclink' href='../../src/telamon/home/travis/build/ulysseB/telamon/target/debug/build/telamon-10fde43cfb263537/out/choices.rs.html#19370-19394' title='goto source code'>[src]</a></div></td></tr></tbody></table></li>
+<li><table class='table-display'><tbody><tr><td><code>impl Domain for <a class="struct" href="../../telamon/search_space/struct.Order.html" title="struct telamon::search_space::Order">Order</a></code><td><div class='out-of-band'><a class='srclink' href='../../src/telamon/home/travis/build/ulysseB/telamon/target/debug/build/telamon-10fde43cfb263537/out/choices.rs.html#19501-19525' title='goto source code'>[src]</a></div></td></tr></tbody></table></li>
+</ul><script type="text/javascript">window.inlined_types=new Set([]);</script><script type="text/javascript" async
+                         src="../../implementors/telamon/search_space/trait.Domain.js">
+                 </script></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt><kbd>?</kbd></dt>
+                    <dd>Show this help dialog</dd>
+                    <dt><kbd>S</kbd></dt>
+                    <dd>Focus the search field</dd>
+                    <dt><kbd>↑</kbd></dt>
+                    <dd>Move up in search results</dd>
+                    <dt><kbd>↓</kbd></dt>
+                    <dd>Move down in search results</dd>
+                    <dt><kbd>↹</kbd></dt>
+                    <dd>Switch tab</dd>
+                    <dt><kbd>&#9166;</kbd></dt>
+                    <dd>Go to active search result</dd>
+                    <dt><kbd>+</kbd></dt>
+                    <dd>Expand all sections</dd>
+                    <dt><kbd>-</kbd></dt>
+                    <dd>Collapse all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "telamon";
+    </script>
+    <script src="../../main.js"></script>
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

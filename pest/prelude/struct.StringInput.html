@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `StringInput` struct in crate `pest`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, StringInput">
+
+    <title>pest::prelude::StringInput - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css"
+          id="mainThemeStyle">
+    
+    <link rel="stylesheet" type="text/css" href="../../dark.css">
+    <link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle">
+    <script src="../../storage.js"></script>
+    
+
+    
+    
+</head>
+<body class="rustdoc struct">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        <div class="sidebar-menu">&#9776;</div>
+        
+        <p class='location'>Struct StringInput</p><div class="sidebar-elems"><div class="block items"><a class="sidebar-title" href="#methods">Methods</a><div class="sidebar-links"><a href="#method.new">new</a></div><a class="sidebar-title" href="#implementations">Trait Implementations</a><div class="sidebar-links"><a href="#impl-Input%3C%27a%3E">Input&lt;&#39;a&gt;</a></div><a class="sidebar-title" href="#synthetic-implementations">Auto Trait Implementations</a><div class="sidebar-links"><a href="#impl-Send">Send</a><a href="#impl-Sync">Sync</a></div></div><p class='location'><a href='../index.html'>pest</a>::<wbr><a href='index.html'>prelude</a></p><script>window.sidebarCurrent = {name: 'StringInput', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script></div>
+    </nav>
+
+    <div class="theme-picker">
+        <button id="theme-picker" aria-label="Pick another theme!">
+            <img src="../../brush.svg" width="18" alt="Pick another theme!">
+        </button>
+        <div id="theme-choices"></div>
+    </div>
+    <script src="../../theme.js"></script>
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Struct <a href='../index.html'>pest</a>::<wbr><a href='index.html'>prelude</a>::<wbr><a class="struct" href=''>StringInput</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../../src/pest/inputs/string_input.rs.html#25-28' title='goto source code'>[src]</a></span></h1><div class="docblock type-decl"><pre class='rust struct'>pub struct StringInput&lt;'a&gt; { /* fields omitted */ }</pre></div><div class='docblock'><p>A <code>struct</code> useful for matching in-memory <code>String</code>s.</p>
+<h1 id="examples" class="section-header"><a href="#examples">Examples</a></h1>
+<pre class="rust rust-example-rendered">
+<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input</span> <span class="op">=</span> <span class="ident">StringInput</span>::<span class="ident">new</span>(<span class="string">&quot;asdasdf&quot;</span>);
+
+<span class="macro">assert</span><span class="macro">!</span>(<span class="ident">input</span>.<span class="ident">match_string</span>(<span class="string">&quot;asd&quot;</span>));
+<span class="macro">assert</span><span class="macro">!</span>(<span class="ident">input</span>.<span class="ident">match_string</span>(<span class="string">&quot;asdf&quot;</span>));
+<span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">input</span>.<span class="ident">match_string</span>(<span class="string">&quot;nope&quot;</span>));</pre>
+</div>
+                    <h2 id='methods' class='small-section-header'>
+                      Methods<a href='#methods' class='anchor'></a>
+                    </h2>
+                <h3 id='impl' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'a&gt; <a class="struct" href="../../pest/struct.StringInput.html" title="struct pest::StringInput">StringInput</a>&lt;'a&gt;</code><a href='#impl' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/pest/inputs/string_input.rs.html#30-48' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'><h4 id='method.new' class="method"><span id='new.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.new' class='fnname'>new</a>(string: &amp;'a <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>) -&gt; <a class="struct" href="../../pest/struct.StringInput.html" title="struct pest::StringInput">StringInput</a>&lt;'a&gt;</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/pest/inputs/string_input.rs.html#42-47' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Creates a new <code>StringInput</code> from a <code>&amp;str</code>.</p>
+<h1 id="examples-1" class="section-header"><a href="#examples-1">Examples</a></h1>
+<pre class="rust rust-example-rendered">
+<span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input</span> <span class="op">=</span> <span class="ident">StringInput</span>::<span class="ident">new</span>(<span class="string">&quot;asd&quot;</span>);
+
+<span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">input</span>.<span class="ident">len</span>(), <span class="number">3</span>);</pre>
+</div></div>
+            <h2 id='implementations' class='small-section-header'>
+              Trait Implementations<a href='#implementations' class='anchor'></a>
+            </h2>
+            <div id='implementations-list'>
+        <h3 id='impl-Input%3C%27a%3E' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'a&gt; <a class="trait" href="../../pest/prelude/trait.Input.html" title="trait pest::prelude::Input">Input</a>&lt;'a&gt; for <a class="struct" href="../../pest/struct.StringInput.html" title="struct pest::StringInput">StringInput</a>&lt;'a&gt;</code><a href='#impl-Input%3C%27a%3E' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/pest/inputs/string_input.rs.html#50-167' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'><h4 id='method.len' class="method"><span id='len.v' class='invisible'><table class='table-display'><tbody><tr><td><code>fn <a href='../../pest/prelude/trait.Input.html#tymethod.len' class='fnname'>len</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/pest/inputs/string_input.rs.html#52-54' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Returns length of an <code>Input</code>.</p>
+</div><h4 id='method.is_empty' class="method"><span id='is_empty.v' class='invisible'><table class='table-display'><tbody><tr><td><code>fn <a href='../../pest/prelude/trait.Input.html#tymethod.is_empty' class='fnname'>is_empty</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/pest/inputs/string_input.rs.html#57-59' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Returns whether an <code>Input</code> is empty.</p>
+</div><h4 id='method.pos' class="method"><span id='pos.v' class='invisible'><table class='table-display'><tbody><tr><td><code>fn <a href='../../pest/prelude/trait.Input.html#tymethod.pos' class='fnname'>pos</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/pest/inputs/string_input.rs.html#62-64' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Returns current position of an <code>Input</code>.</p>
+</div><h4 id='method.set_pos' class="method"><span id='set_pos.v' class='invisible'><table class='table-display'><tbody><tr><td><code>fn <a href='../../pest/prelude/trait.Input.html#tymethod.set_pos' class='fnname'>set_pos</a>(&amp;mut self, pos: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/pest/inputs/string_input.rs.html#67-69' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Set current position of an <code>Input</code>.</p>
+</div><h4 id='method.slice' class="method"><span id='slice.v' class='invisible'><table class='table-display'><tbody><tr><td><code>fn <a href='../../pest/prelude/trait.Input.html#tymethod.slice' class='fnname'>slice</a>(&amp;self, start: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, end: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>) -&gt; &amp;'a <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/pest/inputs/string_input.rs.html#72-74' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Slices an <code>Input</code>.</p>
+</div><h4 id='method.line_col' class="method"><span id='line_col.v' class='invisible'><table class='table-display'><tbody><tr><td><code>fn <a href='../../pest/prelude/trait.Input.html#tymethod.line_col' class='fnname'>line_col</a>(&amp;self, pos: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">(</a><a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a><a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">)</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/pest/inputs/string_input.rs.html#77-119' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Returns the line and column of a position for an <code>Input</code>.</p>
+</div><h4 id='method.match_string' class="method"><span id='match_string.v' class='invisible'><table class='table-display'><tbody><tr><td><code>fn <a href='../../pest/prelude/trait.Input.html#tymethod.match_string' class='fnname'>match_string</a>(&amp;mut self, string: &amp;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/pest/inputs/string_input.rs.html#122-137' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Matches <code>string</code> to an <code>Input</code>, returns whether it matched, and advances the position with <code>string.len()</code> in case it did. <a href="../../pest/prelude/trait.Input.html#tymethod.match_string">Read more</a></p>
+</div><h4 id='method.match_range' class="method"><span id='match_range.v' class='invisible'><table class='table-display'><tbody><tr><td><code>fn <a href='../../pest/prelude/trait.Input.html#tymethod.match_range' class='fnname'>match_range</a>(&amp;mut self, left: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.char.html">char</a>, right: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.char.html">char</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/pest/inputs/string_input.rs.html#140-166' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Matches if an <code>Input</code>'s current <code>char</code> is between <code>left</code> and <code>right</code>, and advances the position with one <code>char</code> in case it did. <a href="../../pest/prelude/trait.Input.html#tymethod.match_range">Read more</a></p>
+</div></div></div>
+                <h2 id='synthetic-implementations' class='small-section-header'>
+                  Auto Trait Implementations<a href='#synthetic-implementations' class='anchor'></a>
+                </h2>
+                <div id='synthetic-implementations-list'>
+            <h3 id='impl-Send' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'a&gt; <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> for <a class="struct" href="../../pest/struct.StringInput.html" title="struct pest::StringInput">StringInput</a>&lt;'a&gt;</code><a href='#impl-Send' class='anchor'></a></span></td><td><span class='out-of-band'></span></td></tr></tbody></table></h3><div class='impl-items'></div><h3 id='impl-Sync' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'a&gt; <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> for <a class="struct" href="../../pest/struct.StringInput.html" title="struct pest::StringInput">StringInput</a>&lt;'a&gt;</code><a href='#impl-Sync' class='anchor'></a></span></td><td><span class='out-of-band'></span></td></tr></tbody></table></h3><div class='impl-items'></div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt><kbd>?</kbd></dt>
+                    <dd>Show this help dialog</dd>
+                    <dt><kbd>S</kbd></dt>
+                    <dd>Focus the search field</dd>
+                    <dt><kbd>↑</kbd></dt>
+                    <dd>Move up in search results</dd>
+                    <dt><kbd>↓</kbd></dt>
+                    <dd>Move down in search results</dd>
+                    <dt><kbd>↹</kbd></dt>
+                    <dd>Switch tab</dd>
+                    <dt><kbd>&#9166;</kbd></dt>
+                    <dd>Go to active search result</dd>
+                    <dt><kbd>+</kbd></dt>
+                    <dd>Expand all sections</dd>
+                    <dt><kbd>-</kbd></dt>
+                    <dd>Collapse all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "pest";
+    </script>
+    <script src="../../main.js"></script>
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

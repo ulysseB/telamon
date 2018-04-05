@@ -1,0 +1,1 @@
+initSidebarItems({"mod":[["lev_distance",""],["move_map",""],["node_count",""],["parser",""],["small_vector",""]],"struct":[["RcSlice",""],["ThinVec","A vector type optimized for cases where this size is usually 0 (c.f. `SmallVector`). The `Option<Box<..>>` wrapping allows us to represent a zero sized vector with `None`, which uses only a single (null) pointer."]]});

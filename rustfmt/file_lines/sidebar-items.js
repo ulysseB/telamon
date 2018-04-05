@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["FileLines","A set of lines in files."],["Files","FileLines files iterator."]]});

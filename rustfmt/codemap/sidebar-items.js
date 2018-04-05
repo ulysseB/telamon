@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["LineRange","A range of lines in a file, inclusive of both ends."]],"trait":[["LineRangeUtils",""],["SpanUtils",""]]});

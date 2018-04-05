@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Expansion` enum in crate `syntex_syntax`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Expansion">
+
+    <title>syntex_syntax::ext::expand::Expansion - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../../rustdoc.css"
+          id="mainThemeStyle">
+    
+    <link rel="stylesheet" type="text/css" href="../../../dark.css">
+    <link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle">
+    <script src="../../../storage.js"></script>
+    
+
+    <link rel="shortcut icon" href="https://doc.rust-lang.org/favicon.ico">
+    
+</head>
+<body class="rustdoc enum">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        <div class="sidebar-menu">&#9776;</div>
+        <a href='../../../syntex_syntax/index.html'><img src='https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png' alt='logo' width='100'></a>
+        <p class='location'>Enum Expansion</p><div class="sidebar-elems"><div class="block items"><a class="sidebar-title" href="#variants">Variants</a><div class="sidebar-links"><a href="#variant.OptExpr">OptExpr</a><a href="#variant.Expr">Expr</a><a href="#variant.Pat">Pat</a><a href="#variant.Ty">Ty</a><a href="#variant.Stmts">Stmts</a><a href="#variant.Items">Items</a><a href="#variant.TraitItems">TraitItems</a><a href="#variant.ImplItems">ImplItems</a></div><a class="sidebar-title" href="#methods">Methods</a><div class="sidebar-links"><a href="#method.make_opt_expr">make_opt_expr</a><a href="#method.make_expr">make_expr</a><a href="#method.make_pat">make_pat</a><a href="#method.make_ty">make_ty</a><a href="#method.make_stmts">make_stmts</a><a href="#method.make_items">make_items</a><a href="#method.make_trait_items">make_trait_items</a><a href="#method.make_impl_items">make_impl_items</a><a href="#method.fold_with">fold_with</a><a href="#method.visit_with">visit_with</a></div><a class="sidebar-title" href="#synthetic-implementations">Auto Trait Implementations</a><div class="sidebar-links"><a href="#impl-Send">!Send</a><a href="#impl-Sync">!Sync</a></div></div><p class='location'><a href='../../index.html'>syntex_syntax</a>::<wbr><a href='../index.html'>ext</a>::<wbr><a href='index.html'>expand</a></p><script>window.sidebarCurrent = {name: 'Expansion', ty: 'enum', relpath: ''};</script><script defer src="sidebar-items.js"></script></div>
+    </nav>
+
+    <div class="theme-picker">
+        <button id="theme-picker" aria-label="Pick another theme!">
+            <img src="../../../brush.svg" width="18" alt="Pick another theme!">
+        </button>
+        <div id="theme-choices"></div>
+    </div>
+    <script src="../../../theme.js"></script>
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Enum <a href='../../index.html'>syntex_syntax</a>::<wbr><a href='../index.html'>ext</a>::<wbr><a href='index.html'>expand</a>::<wbr><a class="enum" href=''>Expansion</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#47' title='goto source code'>[src]</a></span></h1><div class="docblock type-decl"><pre class='rust enum'>pub enum Expansion {
+    OptExpr(<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Expr.html" title="struct syntex_syntax::ast::Expr">Expr</a>&gt;&gt;),
+    Expr(<a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Expr.html" title="struct syntex_syntax::ast::Expr">Expr</a>&gt;),
+    Pat(<a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Pat.html" title="struct syntex_syntax::ast::Pat">Pat</a>&gt;),
+    Ty(<a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Ty.html" title="struct syntex_syntax::ast::Ty">Ty</a>&gt;),
+    Stmts(<a class="struct" href="../../../syntex_syntax/util/small_vector/struct.SmallVector.html" title="struct syntex_syntax::util::small_vector::SmallVector">SmallVector</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Stmt.html" title="struct syntex_syntax::ast::Stmt">Stmt</a>&gt;),
+    Items(<a class="struct" href="../../../syntex_syntax/util/small_vector/struct.SmallVector.html" title="struct syntex_syntax::util::small_vector::SmallVector">SmallVector</a>&lt;<a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Item.html" title="struct syntex_syntax::ast::Item">Item</a>&gt;&gt;),
+    TraitItems(<a class="struct" href="../../../syntex_syntax/util/small_vector/struct.SmallVector.html" title="struct syntex_syntax::util::small_vector::SmallVector">SmallVector</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.TraitItem.html" title="struct syntex_syntax::ast::TraitItem">TraitItem</a>&gt;),
+    ImplItems(<a class="struct" href="../../../syntex_syntax/util/small_vector/struct.SmallVector.html" title="struct syntex_syntax::util::small_vector::SmallVector">SmallVector</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.ImplItem.html" title="struct syntex_syntax::ast::ImplItem">ImplItem</a>&gt;),
+}</pre></div><h2 id='variants' class='variants small-section-header'>
+                   Variants<a href='#variants' class='anchor'></a></h2>
+<span id="variant.OptExpr" class="variant small-section-header"><a href="#variant.OptExpr" class="anchor field"></a><span id='OptExpr.v' class='invisible'><code>OptExpr(<a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Expr.html" title="struct syntex_syntax::ast::Expr">Expr</a>&gt;&gt;)</code></span></span><span id="variant.Expr" class="variant small-section-header"><a href="#variant.Expr" class="anchor field"></a><span id='Expr.v' class='invisible'><code>Expr(<a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Expr.html" title="struct syntex_syntax::ast::Expr">Expr</a>&gt;)</code></span></span><span id="variant.Pat" class="variant small-section-header"><a href="#variant.Pat" class="anchor field"></a><span id='Pat.v' class='invisible'><code>Pat(<a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Pat.html" title="struct syntex_syntax::ast::Pat">Pat</a>&gt;)</code></span></span><span id="variant.Ty" class="variant small-section-header"><a href="#variant.Ty" class="anchor field"></a><span id='Ty.v' class='invisible'><code>Ty(<a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Ty.html" title="struct syntex_syntax::ast::Ty">Ty</a>&gt;)</code></span></span><span id="variant.Stmts" class="variant small-section-header"><a href="#variant.Stmts" class="anchor field"></a><span id='Stmts.v' class='invisible'><code>Stmts(<a class="struct" href="../../../syntex_syntax/util/small_vector/struct.SmallVector.html" title="struct syntex_syntax::util::small_vector::SmallVector">SmallVector</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Stmt.html" title="struct syntex_syntax::ast::Stmt">Stmt</a>&gt;)</code></span></span><span id="variant.Items" class="variant small-section-header"><a href="#variant.Items" class="anchor field"></a><span id='Items.v' class='invisible'><code>Items(<a class="struct" href="../../../syntex_syntax/util/small_vector/struct.SmallVector.html" title="struct syntex_syntax::util::small_vector::SmallVector">SmallVector</a>&lt;<a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Item.html" title="struct syntex_syntax::ast::Item">Item</a>&gt;&gt;)</code></span></span><span id="variant.TraitItems" class="variant small-section-header"><a href="#variant.TraitItems" class="anchor field"></a><span id='TraitItems.v' class='invisible'><code>TraitItems(<a class="struct" href="../../../syntex_syntax/util/small_vector/struct.SmallVector.html" title="struct syntex_syntax::util::small_vector::SmallVector">SmallVector</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.TraitItem.html" title="struct syntex_syntax::ast::TraitItem">TraitItem</a>&gt;)</code></span></span><span id="variant.ImplItems" class="variant small-section-header"><a href="#variant.ImplItems" class="anchor field"></a><span id='ImplItems.v' class='invisible'><code>ImplItems(<a class="struct" href="../../../syntex_syntax/util/small_vector/struct.SmallVector.html" title="struct syntex_syntax::util::small_vector::SmallVector">SmallVector</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.ImplItem.html" title="struct syntex_syntax::ast::ImplItem">ImplItem</a>&gt;)</code></span></span>
+                    <h2 id='methods' class='small-section-header'>
+                      Methods<a href='#methods' class='anchor'></a>
+                    </h2>
+                <h3 id='impl' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl <a class="enum" href="../../../syntex_syntax/ext/expand/enum.Expansion.html" title="enum syntex_syntax::ext::expand::Expansion">Expansion</a></code><a href='#impl' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#65-100' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'><h4 id='method.make_opt_expr' class="method"><span id='make_opt_expr.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.make_opt_expr' class='fnname'>make_opt_expr</a>(self) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Expr.html" title="struct syntex_syntax::ast::Expr">Expr</a>&gt;&gt;</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#66-71' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.make_expr' class="method"><span id='make_expr.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.make_expr' class='fnname'>make_expr</a>(self) -&gt; <a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Expr.html" title="struct syntex_syntax::ast::Expr">Expr</a>&gt;</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#72-77' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.make_pat' class="method"><span id='make_pat.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.make_pat' class='fnname'>make_pat</a>(self) -&gt; <a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Pat.html" title="struct syntex_syntax::ast::Pat">Pat</a>&gt;</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#72-77' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.make_ty' class="method"><span id='make_ty.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.make_ty' class='fnname'>make_ty</a>(self) -&gt; <a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Ty.html" title="struct syntex_syntax::ast::Ty">Ty</a>&gt;</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#72-77' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.make_stmts' class="method"><span id='make_stmts.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.make_stmts' class='fnname'>make_stmts</a>(self) -&gt; <a class="struct" href="../../../syntex_syntax/util/small_vector/struct.SmallVector.html" title="struct syntex_syntax::util::small_vector::SmallVector">SmallVector</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Stmt.html" title="struct syntex_syntax::ast::Stmt">Stmt</a>&gt;</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#72-77' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.make_items' class="method"><span id='make_items.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.make_items' class='fnname'>make_items</a>(self) -&gt; <a class="struct" href="../../../syntex_syntax/util/small_vector/struct.SmallVector.html" title="struct syntex_syntax::util::small_vector::SmallVector">SmallVector</a>&lt;<a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Item.html" title="struct syntex_syntax::ast::Item">Item</a>&gt;&gt;</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#72-77' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.make_trait_items' class="method"><span id='make_trait_items.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.make_trait_items' class='fnname'>make_trait_items</a>(self) -&gt; <a class="struct" href="../../../syntex_syntax/util/small_vector/struct.SmallVector.html" title="struct syntex_syntax::util::small_vector::SmallVector">SmallVector</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.TraitItem.html" title="struct syntex_syntax::ast::TraitItem">TraitItem</a>&gt;</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#72-77' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.make_impl_items' class="method"><span id='make_impl_items.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.make_impl_items' class='fnname'>make_impl_items</a>(self) -&gt; <a class="struct" href="../../../syntex_syntax/util/small_vector/struct.SmallVector.html" title="struct syntex_syntax::util::small_vector::SmallVector">SmallVector</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.ImplItem.html" title="struct syntex_syntax::ast::ImplItem">ImplItem</a>&gt;</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#72-77' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.fold_with' class="method"><span id='fold_with.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.fold_with' class='fnname'>fold_with</a>&lt;F:&nbsp;<a class="trait" href="../../../syntex_syntax/fold/trait.Folder.html" title="trait syntex_syntax::fold::Folder">Folder</a>&gt;(self, folder: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;mut </a>F) -&gt; Self</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#79-88' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.visit_with' class="method"><span id='visit_with.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.visit_with' class='fnname'>visit_with</a>&lt;'a, V:&nbsp;<a class="trait" href="../../../syntex_syntax/visit/trait.Visitor.html" title="trait syntex_syntax::visit::Visitor">Visitor</a>&lt;'a&gt;&gt;(&amp;'a self, visitor: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;mut </a>V)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#90-99' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4></div>
+            <h2 id='implementations' class='small-section-header'>
+              Trait Implementations<a href='#implementations' class='anchor'></a>
+            </h2>
+            <div id='implementations-list'>
+        </div>
+                <h2 id='synthetic-implementations' class='small-section-header'>
+                  Auto Trait Implementations<a href='#synthetic-implementations' class='anchor'></a>
+                </h2>
+                <div id='synthetic-implementations-list'>
+            <h3 id='impl-Send' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl !<a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> for <a class="enum" href="../../../syntex_syntax/ext/expand/enum.Expansion.html" title="enum syntex_syntax::ext::expand::Expansion">Expansion</a></code><a href='#impl-Send' class='anchor'></a></span></td><td><span class='out-of-band'></span></td></tr></tbody></table></h3><div class='impl-items'></div><h3 id='impl-Sync' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl !<a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> for <a class="enum" href="../../../syntex_syntax/ext/expand/enum.Expansion.html" title="enum syntex_syntax::ext::expand::Expansion">Expansion</a></code><a href='#impl-Sync' class='anchor'></a></span></td><td><span class='out-of-band'></span></td></tr></tbody></table></h3><div class='impl-items'></div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt><kbd>?</kbd></dt>
+                    <dd>Show this help dialog</dd>
+                    <dt><kbd>S</kbd></dt>
+                    <dd>Focus the search field</dd>
+                    <dt><kbd>↑</kbd></dt>
+                    <dd>Move up in search results</dd>
+                    <dt><kbd>↓</kbd></dt>
+                    <dd>Move down in search results</dd>
+                    <dt><kbd>↹</kbd></dt>
+                    <dd>Switch tab</dd>
+                    <dt><kbd>&#9166;</kbd></dt>
+                    <dd>Go to active search result</dd>
+                    <dt><kbd>+</kbd></dt>
+                    <dd>Expand all sections</dd>
+                    <dt><kbd>-</kbd></dt>
+                    <dd>Collapse all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../../";
+        window.currentCrate = "syntex_syntax";
+    </script>
+    <script src="../../../main.js"></script>
+    <script defer src="../../../search-index.js"></script>
+</body>
+</html>

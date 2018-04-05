@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `MacResult` trait in crate `syntex_syntax`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, MacResult">
+
+    <title>syntex_syntax::ext::base::MacResult - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../../rustdoc.css"
+          id="mainThemeStyle">
+    
+    <link rel="stylesheet" type="text/css" href="../../../dark.css">
+    <link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle">
+    <script src="../../../storage.js"></script>
+    
+
+    <link rel="shortcut icon" href="https://doc.rust-lang.org/favicon.ico">
+    
+</head>
+<body class="rustdoc trait">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        <div class="sidebar-menu">&#9776;</div>
+        <a href='../../../syntex_syntax/index.html'><img src='https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png' alt='logo' width='100'></a>
+        <p class='location'>Trait MacResult</p><div class="sidebar-elems"><div class="block items"><a class="sidebar-title" href="#provided-methods">Provided Methods</a><div class="sidebar-links"><a href="#method.make_expr">make_expr</a><a href="#method.make_items">make_items</a><a href="#method.make_impl_items">make_impl_items</a><a href="#method.make_trait_items">make_trait_items</a><a href="#method.make_pat">make_pat</a><a href="#method.make_stmts">make_stmts</a><a href="#method.make_ty">make_ty</a></div><a class="sidebar-title" href="#implementors">Implementors</a></div><p class='location'><a href='../../index.html'>syntex_syntax</a>::<wbr><a href='../index.html'>ext</a>::<wbr><a href='index.html'>base</a></p><script>window.sidebarCurrent = {name: 'MacResult', ty: 'trait', relpath: ''};</script><script defer src="sidebar-items.js"></script></div>
+    </nav>
+
+    <div class="theme-picker">
+        <button id="theme-picker" aria-label="Pick another theme!">
+            <img src="../../../brush.svg" width="18" alt="Pick another theme!">
+        </button>
+        <div id="theme-choices"></div>
+    </div>
+    <script src="../../../theme.js"></script>
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Trait <a href='../../index.html'>syntex_syntax</a>::<wbr><a href='../index.html'>ext</a>::<wbr><a href='index.html'>base</a>::<wbr><a class="trait" href=''>MacResult</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../../../src/syntex_syntax/ext/base.rs.html#277-313' title='goto source code'>[src]</a></span></h1><div class="docblock type-decl"><pre class='rust trait'>pub trait MacResult {
+    fn <a href='#method.make_expr' class='fnname'>make_expr</a>(self: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;Self&gt;) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Expr.html" title="struct syntex_syntax::ast::Expr">Expr</a>&gt;&gt; { ... }
+<div class='item-spacer'></div>    fn <a href='#method.make_items' class='fnname'>make_items</a>(self: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;Self&gt;) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../syntex_syntax/util/small_vector/struct.SmallVector.html" title="struct syntex_syntax::util::small_vector::SmallVector">SmallVector</a>&lt;<a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Item.html" title="struct syntex_syntax::ast::Item">Item</a>&gt;&gt;&gt; { ... }
+<div class='item-spacer'></div>    fn <a href='#method.make_impl_items' class='fnname'>make_impl_items</a>(self: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;Self&gt;) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../syntex_syntax/util/small_vector/struct.SmallVector.html" title="struct syntex_syntax::util::small_vector::SmallVector">SmallVector</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.ImplItem.html" title="struct syntex_syntax::ast::ImplItem">ImplItem</a>&gt;&gt; { ... }
+<div class='item-spacer'></div>    fn <a href='#method.make_trait_items' class='fnname'>make_trait_items</a>(self: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;Self&gt;) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../syntex_syntax/util/small_vector/struct.SmallVector.html" title="struct syntex_syntax::util::small_vector::SmallVector">SmallVector</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.TraitItem.html" title="struct syntex_syntax::ast::TraitItem">TraitItem</a>&gt;&gt; { ... }
+<div class='item-spacer'></div>    fn <a href='#method.make_pat' class='fnname'>make_pat</a>(self: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;Self&gt;) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Pat.html" title="struct syntex_syntax::ast::Pat">Pat</a>&gt;&gt; { ... }
+<div class='item-spacer'></div>    fn <a href='#method.make_stmts' class='fnname'>make_stmts</a>(self: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;Self&gt;) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../syntex_syntax/util/small_vector/struct.SmallVector.html" title="struct syntex_syntax::util::small_vector::SmallVector">SmallVector</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Stmt.html" title="struct syntex_syntax::ast::Stmt">Stmt</a>&gt;&gt; { ... }
+<div class='item-spacer'></div>    fn <a href='#method.make_ty' class='fnname'>make_ty</a>(self: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;Self&gt;) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Ty.html" title="struct syntex_syntax::ast::Ty">Ty</a>&gt;&gt; { ... }
+}</pre></div><div class='docblock'><p>The result of a macro expansion. The return values of the various
+methods are spliced into the AST at the callsite of the macro.</p>
+</div>
+            <h2 id='provided-methods' class='small-section-header'>
+              Provided Methods<a href='#provided-methods' class='anchor'></a>
+            </h2>
+            <div class='methods'>
+        <h3 id='method.make_expr' class='method'><span id='make_expr.v' class='invisible'><code>fn <a href='#method.make_expr' class='fnname'>make_expr</a>(self: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;Self&gt;) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Expr.html" title="struct syntex_syntax::ast::Expr">Expr</a>&gt;&gt;</code></span></h3><div class='docblock'><p>Create an expression.</p>
+</div><h3 id='method.make_items' class='method'><span id='make_items.v' class='invisible'><code>fn <a href='#method.make_items' class='fnname'>make_items</a>(self: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;Self&gt;) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../syntex_syntax/util/small_vector/struct.SmallVector.html" title="struct syntex_syntax::util::small_vector::SmallVector">SmallVector</a>&lt;<a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Item.html" title="struct syntex_syntax::ast::Item">Item</a>&gt;&gt;&gt;</code></span></h3><div class='docblock'><p>Create zero or more items.</p>
+</div><h3 id='method.make_impl_items' class='method'><span id='make_impl_items.v' class='invisible'><code>fn <a href='#method.make_impl_items' class='fnname'>make_impl_items</a>(self: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;Self&gt;) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../syntex_syntax/util/small_vector/struct.SmallVector.html" title="struct syntex_syntax::util::small_vector::SmallVector">SmallVector</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.ImplItem.html" title="struct syntex_syntax::ast::ImplItem">ImplItem</a>&gt;&gt;</code></span></h3><div class='docblock'><p>Create zero or more impl items.</p>
+</div><h3 id='method.make_trait_items' class='method'><span id='make_trait_items.v' class='invisible'><code>fn <a href='#method.make_trait_items' class='fnname'>make_trait_items</a>(self: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;Self&gt;) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../syntex_syntax/util/small_vector/struct.SmallVector.html" title="struct syntex_syntax::util::small_vector::SmallVector">SmallVector</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.TraitItem.html" title="struct syntex_syntax::ast::TraitItem">TraitItem</a>&gt;&gt;</code></span></h3><div class='docblock'><p>Create zero or more trait items.</p>
+</div><h3 id='method.make_pat' class='method'><span id='make_pat.v' class='invisible'><code>fn <a href='#method.make_pat' class='fnname'>make_pat</a>(self: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;Self&gt;) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Pat.html" title="struct syntex_syntax::ast::Pat">Pat</a>&gt;&gt;</code></span></h3><div class='docblock'><p>Create a pattern.</p>
+</div><h3 id='method.make_stmts' class='method'><span id='make_stmts.v' class='invisible'><code>fn <a href='#method.make_stmts' class='fnname'>make_stmts</a>(self: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;Self&gt;) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../syntex_syntax/util/small_vector/struct.SmallVector.html" title="struct syntex_syntax::util::small_vector::SmallVector">SmallVector</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Stmt.html" title="struct syntex_syntax::ast::Stmt">Stmt</a>&gt;&gt;</code></span></h3><div class='docblock'><p>Create zero or more statements.</p>
+<p>By default this attempts to create an expression statement,
+returning None if that fails.</p>
+</div><h3 id='method.make_ty' class='method'><span id='make_ty.v' class='invisible'><code>fn <a href='#method.make_ty' class='fnname'>make_ty</a>(self: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;Self&gt;) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../../syntex_syntax/ast/struct.Ty.html" title="struct syntex_syntax::ast::Ty">Ty</a>&gt;&gt;</code></span></h3></div>
+        <h2 id='implementors' class='small-section-header'>
+          Implementors<a href='#implementors' class='anchor'></a>
+        </h2>
+        <ul class='item-list' id='implementors-list'>
+    <li><table class='table-display'><tbody><tr><td><code>impl MacResult for <a class="struct" href="../../../syntex_syntax/ext/base/struct.MacEager.html" title="struct syntex_syntax::ext::base::MacEager">MacEager</a></code><td><div class='out-of-band'><a class='srclink' href='../../../src/syntex_syntax/ext/base.rs.html#349-392' title='goto source code'>[src]</a></div></td></tr></tbody></table></li>
+<li><table class='table-display'><tbody><tr><td><code>impl MacResult for <a class="struct" href="../../../syntex_syntax/ext/base/struct.DummyResult.html" title="struct syntex_syntax::ext::base::DummyResult">DummyResult</a></code><td><div class='out-of-band'><a class='srclink' href='../../../src/syntex_syntax/ext/base.rs.html#448-493' title='goto source code'>[src]</a></div></td></tr></tbody></table></li>
+<li><table class='table-display'><tbody><tr><td><code>impl&lt;'a&gt; MacResult for <a class="struct" href="../../../syntex_syntax/ext/tt/macro_rules/struct.ParserAnyMacro.html" title="struct syntex_syntax::ext::tt::macro_rules::ParserAnyMacro">ParserAnyMacro</a>&lt;'a&gt;</code><td><div class='out-of-band'><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#114-118' title='goto source code'>[src]</a></div></td></tr></tbody></table></li>
+</ul><script type="text/javascript">window.inlined_types=new Set([]);</script><script type="text/javascript" async
+                         src="../../../implementors/syntex_syntax/ext/base/trait.MacResult.js">
+                 </script></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt><kbd>?</kbd></dt>
+                    <dd>Show this help dialog</dd>
+                    <dt><kbd>S</kbd></dt>
+                    <dd>Focus the search field</dd>
+                    <dt><kbd>↑</kbd></dt>
+                    <dd>Move up in search results</dd>
+                    <dt><kbd>↓</kbd></dt>
+                    <dd>Move down in search results</dd>
+                    <dt><kbd>↹</kbd></dt>
+                    <dd>Switch tab</dd>
+                    <dt><kbd>&#9166;</kbd></dt>
+                    <dd>Go to active search result</dd>
+                    <dt><kbd>+</kbd></dt>
+                    <dd>Expand all sections</dd>
+                    <dt><kbd>-</kbd></dt>
+                    <dd>Collapse all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../../";
+        window.currentCrate = "syntex_syntax";
+    </script>
+    <script src="../../../main.js"></script>
+    <script defer src="../../../search-index.js"></script>
+</body>
+</html>

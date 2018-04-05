@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `StringReader` struct in crate `syntex_syntax`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, StringReader">
+
+    <title>syntex_syntax::parse::lexer::StringReader - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../../rustdoc.css"
+          id="mainThemeStyle">
+    
+    <link rel="stylesheet" type="text/css" href="../../../dark.css">
+    <link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle">
+    <script src="../../../storage.js"></script>
+    
+
+    <link rel="shortcut icon" href="https://doc.rust-lang.org/favicon.ico">
+    
+</head>
+<body class="rustdoc struct">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        <div class="sidebar-menu">&#9776;</div>
+        <a href='../../../syntex_syntax/index.html'><img src='https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png' alt='logo' width='100'></a>
+        <p class='location'>Struct StringReader</p><div class="sidebar-elems"><div class="block items"><a class="sidebar-title" href="#fields">Fields</a><div class="sidebar-links"><a href="#structfield.sess">sess</a><a href="#structfield.next_pos">next_pos</a><a href="#structfield.pos">pos</a><a href="#structfield.col">col</a><a href="#structfield.ch">ch</a><a href="#structfield.filemap">filemap</a><a href="#structfield.terminator">terminator</a><a href="#structfield.save_new_lines_and_multibyte">save_new_lines_and_multibyte</a><a href="#structfield.peek_tok">peek_tok</a><a href="#structfield.peek_span">peek_span</a><a href="#structfield.fatal_errs">fatal_errs</a></div><a class="sidebar-title" href="#methods">Methods</a><div class="sidebar-links"><a href="#method.parse_all_token_trees">parse_all_token_trees</a><a href="#method.real_token">real_token</a><a href="#method.try_next_token">try_next_token</a><a href="#method.emit_fatal_errors">emit_fatal_errors</a><a href="#method.peek">peek</a><a href="#method.new_raw">new_raw</a><a href="#method.new">new</a><a href="#method.retokenize">retokenize</a><a href="#method.ch_is">ch_is</a><a href="#method.fatal_span">fatal_span</a><a href="#method.err_span">err_span</a><a href="#method.with_str_from">with_str_from</a><a href="#method.name_from">name_from</a><a href="#method.name_from_to">name_from_to</a><a href="#method.bump">bump</a><a href="#method.nextch">nextch</a><a href="#method.nextch_is">nextch_is</a><a href="#method.nextnextch">nextnextch</a><a href="#method.nextnextch_is">nextnextch_is</a></div><a class="sidebar-title" href="#synthetic-implementations">Auto Trait Implementations</a><div class="sidebar-links"><a href="#impl-Send">!Send</a><a href="#impl-Sync">!Sync</a></div></div><p class='location'><a href='../../index.html'>syntex_syntax</a>::<wbr><a href='../index.html'>parse</a>::<wbr><a href='index.html'>lexer</a></p><script>window.sidebarCurrent = {name: 'StringReader', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script></div>
+    </nav>
+
+    <div class="theme-picker">
+        <button id="theme-picker" aria-label="Pick another theme!">
+            <img src="../../../brush.svg" width="18" alt="Pick another theme!">
+        </button>
+        <div id="theme-choices"></div>
+    </div>
+    <script src="../../../theme.js"></script>
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Struct <a href='../../index.html'>syntex_syntax</a>::<wbr><a href='../index.html'>parse</a>::<wbr><a href='index.html'>lexer</a>::<wbr><a class="struct" href=''>StringReader</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/mod.rs.html#42-70' title='goto source code'>[src]</a></span></h1><div class="docblock type-decl"><pre class='rust struct'>pub struct StringReader&lt;'a&gt; {
+    pub sess: &amp;'a <a class="struct" href="../../../syntex_syntax/parse/struct.ParseSess.html" title="struct syntex_syntax::parse::ParseSess">ParseSess</a>,
+    pub next_pos: <a class="struct" href="../../../syntex_syntax/ext/quote/rt/struct.BytePos.html" title="struct syntex_syntax::ext::quote::rt::BytePos">BytePos</a>,
+    pub pos: <a class="struct" href="../../../syntex_syntax/ext/quote/rt/struct.BytePos.html" title="struct syntex_syntax::ext::quote::rt::BytePos">BytePos</a>,
+    pub col: <a class="struct" href="../../../syntex_pos/struct.CharPos.html" title="struct syntex_pos::CharPos">CharPos</a>,
+    pub ch: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.char.html">char</a>&gt;,
+    pub filemap: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html" title="struct alloc::rc::Rc">Rc</a>&lt;<a class="struct" href="../../../syntex_pos/struct.FileMap.html" title="struct syntex_pos::FileMap">FileMap</a>&gt;,
+    pub terminator: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../syntex_syntax/ext/quote/rt/struct.BytePos.html" title="struct syntex_syntax::ext::quote::rt::BytePos">BytePos</a>&gt;,
+    pub save_new_lines_and_multibyte: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub peek_tok: <a class="enum" href="../../../syntex_syntax/parse/token/enum.Token.html" title="enum syntex_syntax::parse::token::Token">Token</a>,
+    pub peek_span: <a class="struct" href="../../../syntex_syntax/ext/quote/rt/struct.Span.html" title="struct syntex_syntax::ext::quote::rt::Span">Span</a>,
+    pub fatal_errs: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="struct" href="../../../syntex_errors/diagnostic_builder/struct.DiagnosticBuilder.html" title="struct syntex_errors::diagnostic_builder::DiagnosticBuilder">DiagnosticBuilder</a>&lt;'a&gt;&gt;,
+    // some fields omitted
+}</pre></div><h2 id='fields' class='fields small-section-header'>
+                       Fields<a href='#fields' class='anchor'></a></h2><span id="structfield.sess" class="structfield small-section-header">
+                           <a href="#structfield.sess" class="anchor field"></a>
+                           <span id="sess.v" class='invisible'>
+                           <code>sess: &amp;'a <a class="struct" href="../../../syntex_syntax/parse/struct.ParseSess.html" title="struct syntex_syntax::parse::ParseSess">ParseSess</a></code>
+                           </span></span><span id="structfield.next_pos" class="structfield small-section-header">
+                           <a href="#structfield.next_pos" class="anchor field"></a>
+                           <span id="next_pos.v" class='invisible'>
+                           <code>next_pos: <a class="struct" href="../../../syntex_syntax/ext/quote/rt/struct.BytePos.html" title="struct syntex_syntax::ext::quote::rt::BytePos">BytePos</a></code>
+                           </span></span><div class='docblock'><p>The absolute offset within the codemap of the next character to read</p>
+</div><span id="structfield.pos" class="structfield small-section-header">
+                           <a href="#structfield.pos" class="anchor field"></a>
+                           <span id="pos.v" class='invisible'>
+                           <code>pos: <a class="struct" href="../../../syntex_syntax/ext/quote/rt/struct.BytePos.html" title="struct syntex_syntax::ext::quote::rt::BytePos">BytePos</a></code>
+                           </span></span><div class='docblock'><p>The absolute offset within the codemap of the current character</p>
+</div><span id="structfield.col" class="structfield small-section-header">
+                           <a href="#structfield.col" class="anchor field"></a>
+                           <span id="col.v" class='invisible'>
+                           <code>col: <a class="struct" href="../../../syntex_pos/struct.CharPos.html" title="struct syntex_pos::CharPos">CharPos</a></code>
+                           </span></span><div class='docblock'><p>The column of the next character to read</p>
+</div><span id="structfield.ch" class="structfield small-section-header">
+                           <a href="#structfield.ch" class="anchor field"></a>
+                           <span id="ch.v" class='invisible'>
+                           <code>ch: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.char.html">char</a>&gt;</code>
+                           </span></span><div class='docblock'><p>The current character (which has been read from self.pos)</p>
+</div><span id="structfield.filemap" class="structfield small-section-header">
+                           <a href="#structfield.filemap" class="anchor field"></a>
+                           <span id="filemap.v" class='invisible'>
+                           <code>filemap: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html" title="struct alloc::rc::Rc">Rc</a>&lt;<a class="struct" href="../../../syntex_pos/struct.FileMap.html" title="struct syntex_pos::FileMap">FileMap</a>&gt;</code>
+                           </span></span><span id="structfield.terminator" class="structfield small-section-header">
+                           <a href="#structfield.terminator" class="anchor field"></a>
+                           <span id="terminator.v" class='invisible'>
+                           <code>terminator: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../syntex_syntax/ext/quote/rt/struct.BytePos.html" title="struct syntex_syntax::ext::quote::rt::BytePos">BytePos</a>&gt;</code>
+                           </span></span><div class='docblock'><p>If Some, stop reading the source at this position (inclusive).</p>
+</div><span id="structfield.save_new_lines_and_multibyte" class="structfield small-section-header">
+                           <a href="#structfield.save_new_lines_and_multibyte" class="anchor field"></a>
+                           <span id="save_new_lines_and_multibyte.v" class='invisible'>
+                           <code>save_new_lines_and_multibyte: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><div class='docblock'><p>Whether to record new-lines and multibyte chars in filemap.
+This is only necessary the first time a filemap is lexed.
+If part of a filemap is being re-lexed, this should be set to false.</p>
+</div><span id="structfield.peek_tok" class="structfield small-section-header">
+                           <a href="#structfield.peek_tok" class="anchor field"></a>
+                           <span id="peek_tok.v" class='invisible'>
+                           <code>peek_tok: <a class="enum" href="../../../syntex_syntax/parse/token/enum.Token.html" title="enum syntex_syntax::parse::token::Token">Token</a></code>
+                           </span></span><span id="structfield.peek_span" class="structfield small-section-header">
+                           <a href="#structfield.peek_span" class="anchor field"></a>
+                           <span id="peek_span.v" class='invisible'>
+                           <code>peek_span: <a class="struct" href="../../../syntex_syntax/ext/quote/rt/struct.Span.html" title="struct syntex_syntax::ext::quote::rt::Span">Span</a></code>
+                           </span></span><span id="structfield.fatal_errs" class="structfield small-section-header">
+                           <a href="#structfield.fatal_errs" class="anchor field"></a>
+                           <span id="fatal_errs.v" class='invisible'>
+                           <code>fatal_errs: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="struct" href="../../../syntex_errors/diagnostic_builder/struct.DiagnosticBuilder.html" title="struct syntex_errors::diagnostic_builder::DiagnosticBuilder">DiagnosticBuilder</a>&lt;'a&gt;&gt;</code>
+                           </span></span>
+                    <h2 id='methods' class='small-section-header'>
+                      Methods<a href='#methods' class='anchor'></a>
+                    </h2>
+                <h3 id='impl' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'a&gt; <a class="struct" href="../../../syntex_syntax/parse/lexer/struct.StringReader.html" title="struct syntex_syntax::parse::lexer::StringReader">StringReader</a>&lt;'a&gt;</code><a href='#impl' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/tokentrees.rs.html#17-132' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'><h4 id='method.parse_all_token_trees' class="method"><span id='parse_all_token_trees.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.parse_all_token_trees' class='fnname'>parse_all_token_trees</a>(&amp;mut self) -&gt; <a class="type" href="../../../syntex_syntax/parse/type.PResult.html" title="type syntex_syntax::parse::PResult">PResult</a>&lt;'a, <a class="struct" href="../../../syntex_syntax/tokenstream/struct.TokenStream.html" title="struct syntex_syntax::tokenstream::TokenStream">TokenStream</a>&gt;</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/tokentrees.rs.html#19-25' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4></div><h3 id='impl-1' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'a&gt; <a class="struct" href="../../../syntex_syntax/parse/lexer/struct.StringReader.html" title="struct syntex_syntax::parse::lexer::StringReader">StringReader</a>&lt;'a&gt;</code><a href='#impl-1' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/mod.rs.html#76-144' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'><h4 id='method.real_token' class="method"><span id='real_token.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.real_token' class='fnname'>real_token</a>(&amp;mut self) -&gt; <a class="struct" href="../../../syntex_syntax/parse/lexer/struct.TokenAndSpan.html" title="struct syntex_syntax::parse::lexer::TokenAndSpan">TokenAndSpan</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/mod.rs.html#104-107' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.try_next_token' class="method"><span id='try_next_token.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.try_next_token' class='fnname'>try_next_token</a>(&amp;mut self) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="../../../syntex_syntax/parse/lexer/struct.TokenAndSpan.html" title="struct syntex_syntax::parse::lexer::TokenAndSpan">TokenAndSpan</a>, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.unit.html">()</a>&gt;</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/mod.rs.html#119-127' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Return the next token. EFFECT: advances the string_reader.</p>
+</div><h4 id='method.emit_fatal_errors' class="method"><span id='emit_fatal_errors.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.emit_fatal_errors' class='fnname'>emit_fatal_errors</a>(&amp;mut self)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/mod.rs.html#131-136' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.peek' class="method"><span id='peek.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.peek' class='fnname'>peek</a>(&amp;self) -&gt; <a class="struct" href="../../../syntex_syntax/parse/lexer/struct.TokenAndSpan.html" title="struct syntex_syntax::parse::lexer::TokenAndSpan">TokenAndSpan</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/mod.rs.html#137-143' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4></div><h3 id='impl-2' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'a&gt; <a class="struct" href="../../../syntex_syntax/parse/lexer/struct.StringReader.html" title="struct syntex_syntax::parse::lexer::StringReader">StringReader</a>&lt;'a&gt;</code><a href='#impl-2' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/mod.rs.html#146-1634' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'><h4 id='method.new_raw' class="method"><span id='new_raw.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.new_raw' class='fnname'>new_raw</a>(sess: &amp;'a <a class="struct" href="../../../syntex_syntax/parse/struct.ParseSess.html" title="struct syntex_syntax::parse::ParseSess">ParseSess</a>, filemap: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html" title="struct alloc::rc::Rc">Rc</a>&lt;<a class="struct" href="../../../syntex_pos/struct.FileMap.html" title="struct syntex_pos::FileMap">FileMap</a>&gt;) -&gt; Self</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/mod.rs.html#148-152' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>For comments.rs, which hackily pokes into next_pos and ch</p>
+</div><h4 id='method.new' class="method"><span id='new.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.new' class='fnname'>new</a>(sess: &amp;'a <a class="struct" href="../../../syntex_syntax/parse/struct.ParseSess.html" title="struct syntex_syntax::parse::ParseSess">ParseSess</a>, filemap: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html" title="struct alloc::rc::Rc">Rc</a>&lt;<a class="struct" href="../../../syntex_pos/struct.FileMap.html" title="struct syntex_pos::FileMap">FileMap</a>&gt;) -&gt; Self</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/mod.rs.html#182-189' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.retokenize' class="method"><span id='retokenize.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.retokenize' class='fnname'>retokenize</a>(sess: &amp;'a <a class="struct" href="../../../syntex_syntax/parse/struct.ParseSess.html" title="struct syntex_syntax::parse::ParseSess">ParseSess</a>, span: <a class="struct" href="../../../syntex_syntax/ext/quote/rt/struct.Span.html" title="struct syntex_syntax::ext::quote::rt::Span">Span</a>) -&gt; Self</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/mod.rs.html#191-214' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.ch_is' class="method"><span id='ch_is.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.ch_is' class='fnname'>ch_is</a>(&amp;self, c: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.char.html">char</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/mod.rs.html#216-218' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.fatal_span' class="method"><span id='fatal_span.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.fatal_span' class='fnname'>fatal_span</a>(&amp;self, sp: <a class="struct" href="../../../syntex_syntax/ext/quote/rt/struct.Span.html" title="struct syntex_syntax::ext::quote::rt::Span">Span</a>, m: &amp;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>) -&gt; <a class="struct" href="../../../syntex_errors/struct.FatalError.html" title="struct syntex_errors::FatalError">FatalError</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/mod.rs.html#221-223' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Report a fatal lexical error with a given span.</p>
+</div><h4 id='method.err_span' class="method"><span id='err_span.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.err_span' class='fnname'>err_span</a>(&amp;self, sp: <a class="struct" href="../../../syntex_syntax/ext/quote/rt/struct.Span.html" title="struct syntex_syntax::ext::quote::rt::Span">Span</a>, m: &amp;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/mod.rs.html#226-228' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Report a lexical error with a given span.</p>
+</div><h4 id='method.with_str_from' class="method"><span id='with_str_from.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.with_str_from' class='fnname'>with_str_from</a>&lt;T, F&gt;(&amp;self, start: <a class="struct" href="../../../syntex_syntax/ext/quote/rt/struct.BytePos.html" title="struct syntex_syntax::ext::quote::rt::BytePos">BytePos</a>, f: F) -&gt; T <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnOnce.html" title="trait core::ops::function::FnOnce">FnOnce</a>(&amp;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>) -&gt; T,&nbsp;</span></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/mod.rs.html#328-332' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Calls <code>f</code> with a string slice of the source text spanning from <code>start</code>
+up to but excluding <code>self.pos</code>, meaning the slice does not include
+the character <code>self.ch</code>.</p>
+</div><h4 id='method.name_from' class="method"><span id='name_from.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.name_from' class='fnname'>name_from</a>(&amp;self, start: <a class="struct" href="../../../syntex_syntax/ext/quote/rt/struct.BytePos.html" title="struct syntex_syntax::ext::quote::rt::BytePos">BytePos</a>) -&gt; <a class="struct" href="../../../syntex_syntax/ast/struct.Name.html" title="struct syntex_syntax::ast::Name">Name</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/mod.rs.html#337-340' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Create a Name from a given offset to the current offset, each
+adjusted 1 towards each other (assumes that on either side there is a
+single-byte delimiter).</p>
+</div><h4 id='method.name_from_to' class="method"><span id='name_from_to.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.name_from_to' class='fnname'>name_from_to</a>(&amp;self, start: <a class="struct" href="../../../syntex_syntax/ext/quote/rt/struct.BytePos.html" title="struct syntex_syntax::ext::quote::rt::BytePos">BytePos</a>, end: <a class="struct" href="../../../syntex_syntax/ext/quote/rt/struct.BytePos.html" title="struct syntex_syntax::ext::quote::rt::BytePos">BytePos</a>) -&gt; <a class="struct" href="../../../syntex_syntax/ast/struct.Name.html" title="struct syntex_syntax::ast::Name">Name</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/mod.rs.html#343-346' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>As name_from, with an explicit endpoint.</p>
+</div><h4 id='method.bump' class="method"><span id='bump.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.bump' class='fnname'>bump</a>(&amp;mut self)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/mod.rs.html#408-439' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Advance the StringReader by one character. If a newline is
+discovered, add it to the FileMap's list of line start offsets.</p>
+</div><h4 id='method.nextch' class="method"><span id='nextch.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.nextch' class='fnname'>nextch</a>(&amp;self) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.char.html">char</a>&gt;</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/mod.rs.html#441-448' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.nextch_is' class="method"><span id='nextch_is.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.nextch_is' class='fnname'>nextch_is</a>(&amp;self, c: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.char.html">char</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/mod.rs.html#450-452' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.nextnextch' class="method"><span id='nextnextch.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.nextnextch' class='fnname'>nextnextch</a>(&amp;self) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.char.html">char</a>&gt;</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/mod.rs.html#454-466' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.nextnextch_is' class="method"><span id='nextnextch_is.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.nextnextch_is' class='fnname'>nextnextch_is</a>(&amp;self, c: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.char.html">char</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/parse/lexer/mod.rs.html#468-470' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4></div>
+            <h2 id='implementations' class='small-section-header'>
+              Trait Implementations<a href='#implementations' class='anchor'></a>
+            </h2>
+            <div id='implementations-list'>
+        </div>
+                <h2 id='synthetic-implementations' class='small-section-header'>
+                  Auto Trait Implementations<a href='#synthetic-implementations' class='anchor'></a>
+                </h2>
+                <div id='synthetic-implementations-list'>
+            <h3 id='impl-Send' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'a&gt; !<a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> for <a class="struct" href="../../../syntex_syntax/parse/lexer/struct.StringReader.html" title="struct syntex_syntax::parse::lexer::StringReader">StringReader</a>&lt;'a&gt;</code><a href='#impl-Send' class='anchor'></a></span></td><td><span class='out-of-band'></span></td></tr></tbody></table></h3><div class='impl-items'></div><h3 id='impl-Sync' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'a&gt; !<a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> for <a class="struct" href="../../../syntex_syntax/parse/lexer/struct.StringReader.html" title="struct syntex_syntax::parse::lexer::StringReader">StringReader</a>&lt;'a&gt;</code><a href='#impl-Sync' class='anchor'></a></span></td><td><span class='out-of-band'></span></td></tr></tbody></table></h3><div class='impl-items'></div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt><kbd>?</kbd></dt>
+                    <dd>Show this help dialog</dd>
+                    <dt><kbd>S</kbd></dt>
+                    <dd>Focus the search field</dd>
+                    <dt><kbd>↑</kbd></dt>
+                    <dd>Move up in search results</dd>
+                    <dt><kbd>↓</kbd></dt>
+                    <dd>Move down in search results</dd>
+                    <dt><kbd>↹</kbd></dt>
+                    <dd>Switch tab</dd>
+                    <dt><kbd>&#9166;</kbd></dt>
+                    <dd>Go to active search result</dd>
+                    <dt><kbd>+</kbd></dt>
+                    <dd>Expand all sections</dd>
+                    <dt><kbd>-</kbd></dt>
+                    <dd>Collapse all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../../";
+        window.currentCrate = "syntex_syntax";
+    </script>
+    <script src="../../../main.js"></script>
+    <script defer src="../../../search-index.js"></script>
+</body>
+</html>

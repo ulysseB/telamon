@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `rt` mod in crate `syntex_syntax`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, rt">
+
+    <title>syntex_syntax::ext::quote::rt - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../../../rustdoc.css"
+          id="mainThemeStyle">
+    
+    <link rel="stylesheet" type="text/css" href="../../../../dark.css">
+    <link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle">
+    <script src="../../../../storage.js"></script>
+    
+
+    <link rel="shortcut icon" href="https://doc.rust-lang.org/favicon.ico">
+    
+</head>
+<body class="rustdoc mod">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        <div class="sidebar-menu">&#9776;</div>
+        <a href='../../../../syntex_syntax/index.html'><img src='https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png' alt='logo' width='100'></a>
+        <p class='location'>Module rt</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#reexports">Re-exports</a></li><li><a href="#structs">Structs</a></li><li><a href="#constants">Constants</a></li><li><a href="#traits">Traits</a></li></ul></div><p class='location'><a href='../../../index.html'>syntex_syntax</a>::<wbr><a href='../../index.html'>ext</a>::<wbr><a href='../index.html'>quote</a></p><script>window.sidebarCurrent = {name: 'rt', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script></div>
+    </nav>
+
+    <div class="theme-picker">
+        <button id="theme-picker" aria-label="Pick another theme!">
+            <img src="../../../../brush.svg" width="18" alt="Pick another theme!">
+        </button>
+        <div id="theme-choices"></div>
+    </div>
+    <script src="../../../../theme.js"></script>
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Module <a href='../../../index.html'>syntex_syntax</a>::<wbr><a href='../../index.html'>ext</a>::<wbr><a href='../index.html'>quote</a>::<wbr><a class="mod" href=''>rt</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../../../../src/syntex_syntax/ext/quote.rs.html#28-373' title='goto source code'>[src]</a></span></h1><div class='docblock'><p>Quasiquoting works via token trees.</p>
+<p>This is registered as a set of expression syntax extension called quote!
+that lifts its argument token-tree to an AST representing the
+construction of the same token tree, with <code>token::SubstNt</code> interpreted
+as antiquotes (splices).</p>
+</div><h2 id='reexports' class='section-header'><a href="#reexports">Re-exports</a></h2>
+<table><tr><td><code>pub use parse::<a class="fn" href="../../../../syntex_syntax/parse/fn.new_parser_from_tts.html" title="fn syntex_syntax::parse::new_parser_from_tts">new_parser_from_tts</a>;</code></td></tr><tr><td><code>pub use codemap::<a class="fn" href="../../../../syntex_syntax/codemap/fn.dummy_spanned.html" title="fn syntex_syntax::codemap::dummy_spanned">dummy_spanned</a>;</code></td></tr></table><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.BytePos.html"
+                                  title='struct syntex_syntax::ext::quote::rt::BytePos'>BytePos</a></td>
+                           <td class='docblock-short'>
+                                <p>A byte offset. Keep this small (currently 32-bits), as AST contains
+a lot of them.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Span.html"
+                                  title='struct syntex_syntax::ext::quote::rt::Span'>Span</a></td>
+                           <td class='docblock-short'>
+                                <p>Spans represent a region of code, used for error reporting. Positions in spans
+are <em>absolute</em> positions from the beginning of the codemap, not positions
+relative to FileMaps. Methods on the CodeMap can be used to relate spans back
+to the original source.
+You must be careful if the span crosses more than one file - you will not be
+able to use many of the functions on spans in codemap and you cannot assume
+that the length of the span = hi - lo; there may be space in the BytePos
+range between files.</p>
+
+                           </td>
+                       </tr></table><h2 id='constants' class='section-header'><a href="#constants">Constants</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="constant" href="constant.DUMMY_SP.html"
+                                  title='constant syntex_syntax::ext::quote::rt::DUMMY_SP'>DUMMY_SP</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr></table><h2 id='traits' class='section-header'><a href="#traits">Traits</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="trait" href="trait.ExtParseUtils.html"
+                                  title='trait syntex_syntax::ext::quote::rt::ExtParseUtils'>ExtParseUtils</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="trait" href="trait.ToTokens.html"
+                                  title='trait syntex_syntax::ext::quote::rt::ToTokens'>ToTokens</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr></table></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt><kbd>?</kbd></dt>
+                    <dd>Show this help dialog</dd>
+                    <dt><kbd>S</kbd></dt>
+                    <dd>Focus the search field</dd>
+                    <dt><kbd>↑</kbd></dt>
+                    <dd>Move up in search results</dd>
+                    <dt><kbd>↓</kbd></dt>
+                    <dd>Move down in search results</dd>
+                    <dt><kbd>↹</kbd></dt>
+                    <dd>Switch tab</dd>
+                    <dt><kbd>&#9166;</kbd></dt>
+                    <dd>Go to active search result</dd>
+                    <dt><kbd>+</kbd></dt>
+                    <dd>Expand all sections</dd>
+                    <dt><kbd>-</kbd></dt>
+                    <dd>Collapse all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../../../";
+        window.currentCrate = "syntex_syntax";
+    </script>
+    <script src="../../../../main.js"></script>
+    <script defer src="../../../../search-index.js"></script>
+</body>
+</html>

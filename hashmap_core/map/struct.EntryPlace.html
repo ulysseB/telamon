@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `EntryPlace` struct in crate `hashmap_core`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, EntryPlace">
+
+    <title>hashmap_core::map::EntryPlace - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css"
+          id="mainThemeStyle">
+    
+    <link rel="stylesheet" type="text/css" href="../../dark.css">
+    <link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle">
+    <script src="../../storage.js"></script>
+    
+
+    
+    
+</head>
+<body class="rustdoc struct">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        <div class="sidebar-menu">&#9776;</div>
+        
+        <p class='location'>Struct EntryPlace</p><div class="sidebar-elems"><div class="block items"><a class="sidebar-title" href="#implementations">Trait Implementations</a><div class="sidebar-links"><a href="#impl-Debug">Debug</a><a href="#impl-Drop">Drop</a><a href="#impl-Place%3CV%3E">Place&lt;V&gt;</a><a href="#impl-InPlace%3CV%3E">InPlace&lt;V&gt;</a></div><a class="sidebar-title" href="#synthetic-implementations">Auto Trait Implementations</a><div class="sidebar-links"><a href="#impl-Send">!Send</a><a href="#impl-Sync">!Sync</a></div></div><p class='location'><a href='../index.html'>hashmap_core</a>::<wbr><a href='index.html'>map</a></p><script>window.sidebarCurrent = {name: 'EntryPlace', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script></div>
+    </nav>
+
+    <div class="theme-picker">
+        <button id="theme-picker" aria-label="Pick another theme!">
+            <img src="../../brush.svg" width="18" alt="Pick another theme!">
+        </button>
+        <div id="theme-choices"></div>
+    </div>
+    <script src="../../theme.js"></script>
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Struct <a href='../index.html'>hashmap_core</a>::<wbr><a href='index.html'>map</a>::<wbr><a class="struct" href=''>EntryPlace</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../../src/hashmap_core/map.rs.html#1858-1860' title='goto source code'>[src]</a></span></h1><div class="docblock type-decl"><pre class='rust struct'><div class="docblock attributes">#[must_use = "places do nothing unless written to with `<-` syntax"]
+</div>pub struct EntryPlace&lt;'a, K:&nbsp;'a, V:&nbsp;'a&gt; { /* fields omitted */ }</pre></div><div class='docblock'><p>A place for insertion to a <code>Entry</code>.</p>
+<p>See <a href="struct.HashMap.html#method.entry"><code>HashMap::entry</code></a> for details.</p>
+</div>
+            <h2 id='implementations' class='small-section-header'>
+              Trait Implementations<a href='#implementations' class='anchor'></a>
+            </h2>
+            <div id='implementations-list'>
+        <h3 id='impl-Debug' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'a, K:&nbsp;'a + <a class="trait" href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html" title="trait core::fmt::Debug">Debug</a>, V:&nbsp;'a + <a class="trait" href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html" title="trait core::fmt::Debug">Debug</a>&gt; <a class="trait" href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html" title="trait core::fmt::Debug">Debug</a> for <a class="struct" href="../../hashmap_core/map/struct.EntryPlace.html" title="struct hashmap_core::map::EntryPlace">EntryPlace</a>&lt;'a, K, V&gt;</code><a href='#impl-Debug' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/hashmap_core/map.rs.html#1862-1869' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'><h4 id='method.fmt' class="method"><span id='fmt.v' class='invisible'><table class='table-display'><tbody><tr><td><code>fn <a href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html#tymethod.fmt' class='fnname'>fmt</a>(&amp;self, f: &amp;mut <a class="struct" href="https://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html" title="struct core::fmt::Formatter">Formatter</a>) -&gt; <a class="type" href="https://doc.rust-lang.org/nightly/core/fmt/type.Result.html" title="type core::fmt::Result">Result</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/hashmap_core/map.rs.html#1863-1868' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Formats the value using the given formatter. <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html#tymethod.fmt">Read more</a></p>
+</div></div><h3 id='impl-Drop' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'a, K, V&gt; <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/drop/trait.Drop.html" title="trait core::ops::drop::Drop">Drop</a> for <a class="struct" href="../../hashmap_core/map/struct.EntryPlace.html" title="struct hashmap_core::map::EntryPlace">EntryPlace</a>&lt;'a, K, V&gt;</code><a href='#impl-Drop' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/hashmap_core/map.rs.html#1871-1877' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'><h4 id='method.drop' class="method"><span id='drop.v' class='invisible'><table class='table-display'><tbody><tr><td><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/drop/trait.Drop.html#tymethod.drop' class='fnname'>drop</a>(&amp;mut self)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/hashmap_core/map.rs.html#1872-1876' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Executes the destructor for this type. <a href="https://doc.rust-lang.org/nightly/core/ops/drop/trait.Drop.html#tymethod.drop">Read more</a></p>
+</div></div><h3 id='impl-Place%3CV%3E' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'a, K, V&gt; <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/place/trait.Place.html" title="trait core::ops::place::Place">Place</a>&lt;V&gt; for <a class="struct" href="../../hashmap_core/map/struct.EntryPlace.html" title="struct hashmap_core::map::EntryPlace">EntryPlace</a>&lt;'a, K, V&gt;</code><a href='#impl-Place%3CV%3E' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/hashmap_core/map.rs.html#1896-1900' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'><h4 id='method.pointer' class="method"><span id='pointer.v' class='invisible'><table class='table-display'><tbody><tr><td><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/place/trait.Place.html#tymethod.pointer' class='fnname'>pointer</a>(&amp;mut self) -&gt; *mut V</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/hashmap_core/map.rs.html#1897-1899' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='stability'><div class='stab unstable'><span class=microscope>🔬</span> This is a nightly-only experimental API.  (<code>placement_new_protocol</code>)</div></div><div class='docblock'><p>Returns the address where the input value will be written. Note that the data at this address is generally uninitialized, and thus one should use <code>ptr::write</code> for initializing it. <a href="https://doc.rust-lang.org/nightly/core/ops/place/trait.Place.html#tymethod.pointer">Read more</a></p>
+</div></div><h3 id='impl-InPlace%3CV%3E' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'a, K, V&gt; <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/place/trait.InPlace.html" title="trait core::ops::place::InPlace">InPlace</a>&lt;V&gt; for <a class="struct" href="../../hashmap_core/map/struct.EntryPlace.html" title="struct hashmap_core::map::EntryPlace">EntryPlace</a>&lt;'a, K, V&gt;</code><a href='#impl-InPlace%3CV%3E' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/hashmap_core/map.rs.html#1902-1908' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'><h4 id='associatedtype.Owner' class="type"><span id='Owner.t' class='invisible'><code>type <a href='https://doc.rust-lang.org/nightly/core/ops/place/trait.InPlace.html#associatedtype.Owner' class="type">Owner</a> = ()</code></span></h4>
+<div class='stability'><div class='stab unstable'><span class=microscope>🔬</span> This is a nightly-only experimental API.  (<code>placement_new_protocol</code>)</div></div><div class='docblock'><p><code>Owner</code> is the type of the end value of <code>PLACE &lt;- EXPR</code> <a href="https://doc.rust-lang.org/nightly/core/ops/place/trait.InPlace.html#associatedtype.Owner">Read more</a></p>
+</div><h4 id='method.finalize' class="method"><span id='finalize.v' class='invisible'><table class='table-display'><tbody><tr><td><code>unsafe fn <a href='https://doc.rust-lang.org/nightly/core/ops/place/trait.InPlace.html#tymethod.finalize' class='fnname'>finalize</a>(self)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/hashmap_core/map.rs.html#1905-1907' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='stability'><div class='stab unstable'><span class=microscope>🔬</span> This is a nightly-only experimental API.  (<code>placement_new_protocol</code>)</div></div><div class='docblock'><p>Converts self into the final value, shifting deallocation/cleanup responsibilities (if any remain), over to the returned instance of <code>Owner</code> and forgetting self. <a href="https://doc.rust-lang.org/nightly/core/ops/place/trait.InPlace.html#tymethod.finalize">Read more</a></p>
+</div></div></div>
+                <h2 id='synthetic-implementations' class='small-section-header'>
+                  Auto Trait Implementations<a href='#synthetic-implementations' class='anchor'></a>
+                </h2>
+                <div id='synthetic-implementations-list'>
+            <h3 id='impl-Send' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'a, K, V&gt; !<a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> for <a class="struct" href="../../hashmap_core/map/struct.EntryPlace.html" title="struct hashmap_core::map::EntryPlace">EntryPlace</a>&lt;'a, K, V&gt;</code><a href='#impl-Send' class='anchor'></a></span></td><td><span class='out-of-band'></span></td></tr></tbody></table></h3><div class='impl-items'></div><h3 id='impl-Sync' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'a, K, V&gt; !<a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> for <a class="struct" href="../../hashmap_core/map/struct.EntryPlace.html" title="struct hashmap_core::map::EntryPlace">EntryPlace</a>&lt;'a, K, V&gt;</code><a href='#impl-Sync' class='anchor'></a></span></td><td><span class='out-of-band'></span></td></tr></tbody></table></h3><div class='impl-items'></div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt><kbd>?</kbd></dt>
+                    <dd>Show this help dialog</dd>
+                    <dt><kbd>S</kbd></dt>
+                    <dd>Focus the search field</dd>
+                    <dt><kbd>↑</kbd></dt>
+                    <dd>Move up in search results</dd>
+                    <dt><kbd>↓</kbd></dt>
+                    <dd>Move down in search results</dd>
+                    <dt><kbd>↹</kbd></dt>
+                    <dd>Switch tab</dd>
+                    <dt><kbd>&#9166;</kbd></dt>
+                    <dd>Go to active search result</dd>
+                    <dt><kbd>+</kbd></dt>
+                    <dd>Expand all sections</dd>
+                    <dt><kbd>-</kbd></dt>
+                    <dd>Collapse all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "hashmap_core";
+    </script>
+    <script src="../../main.js"></script>
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

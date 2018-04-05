@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["DimSize","A dimension size, before tiling."]],"struct":[["Tensor","A tensor allocated in main memory."],["VirtualTensor","A tensor loaded in registers."]]});

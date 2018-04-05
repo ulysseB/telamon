@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `FileMap` struct in crate `syntex_pos`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, FileMap">
+
+    <title>syntex_pos::FileMap - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../rustdoc.css"
+          id="mainThemeStyle">
+    
+    <link rel="stylesheet" type="text/css" href="../dark.css">
+    <link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle">
+    <script src="../storage.js"></script>
+    
+
+    <link rel="shortcut icon" href="https://doc.rust-lang.org/favicon.ico">
+    
+</head>
+<body class="rustdoc struct">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        <div class="sidebar-menu">&#9776;</div>
+        <a href='../syntex_pos/index.html'><img src='https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png' alt='logo' width='100'></a>
+        <p class='location'>Struct FileMap</p><div class="sidebar-elems"><div class="block items"><a class="sidebar-title" href="#fields">Fields</a><div class="sidebar-links"><a href="#structfield.name">name</a><a href="#structfield.name_was_remapped">name_was_remapped</a><a href="#structfield.crate_of_origin">crate_of_origin</a><a href="#structfield.src">src</a><a href="#structfield.start_pos">start_pos</a><a href="#structfield.end_pos">end_pos</a><a href="#structfield.lines">lines</a><a href="#structfield.multibyte_chars">multibyte_chars</a></div><a class="sidebar-title" href="#methods">Methods</a><div class="sidebar-links"><a href="#method.next_line">next_line</a><a href="#method.get_line">get_line</a><a href="#method.record_multibyte_char">record_multibyte_char</a><a href="#method.is_real_file">is_real_file</a><a href="#method.is_imported">is_imported</a><a href="#method.byte_length">byte_length</a><a href="#method.count_lines">count_lines</a><a href="#method.lookup_line">lookup_line</a><a href="#method.line_bounds">line_bounds</a></div><a class="sidebar-title" href="#implementations">Trait Implementations</a><div class="sidebar-links"><a href="#impl-Clone">Clone</a><a href="#impl-Debug">Debug</a></div><a class="sidebar-title" href="#synthetic-implementations">Auto Trait Implementations</a><div class="sidebar-links"><a href="#impl-Send">!Send</a><a href="#impl-Sync">!Sync</a></div></div><p class='location'><a href='index.html'>syntex_pos</a></p><script>window.sidebarCurrent = {name: 'FileMap', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script></div>
+    </nav>
+
+    <div class="theme-picker">
+        <button id="theme-picker" aria-label="Pick another theme!">
+            <img src="../brush.svg" width="18" alt="Pick another theme!">
+        </button>
+        <div id="theme-choices"></div>
+    </div>
+    <script src="../theme.js"></script>
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Struct <a href='index.html'>syntex_pos</a>::<wbr><a class="struct" href=''>FileMap</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../src/syntex_pos/lib.rs.html#339-361' title='goto source code'>[src]</a></span></h1><div class="docblock type-decl"><pre class='rust struct'>pub struct FileMap {
+    pub name: <a class="type" href="../syntex_pos/type.FileName.html" title="type syntex_pos::FileName">FileName</a>,
+    pub name_was_remapped: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub crate_of_origin: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>,
+    pub src: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html" title="struct alloc::rc::Rc">Rc</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;&gt;,
+    pub start_pos: <a class="struct" href="../syntex_pos/struct.BytePos.html" title="struct syntex_pos::BytePos">BytePos</a>,
+    pub end_pos: <a class="struct" href="../syntex_pos/struct.BytePos.html" title="struct syntex_pos::BytePos">BytePos</a>,
+    pub lines: <a class="struct" href="https://doc.rust-lang.org/nightly/core/cell/struct.RefCell.html" title="struct core::cell::RefCell">RefCell</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="struct" href="../syntex_pos/struct.BytePos.html" title="struct syntex_pos::BytePos">BytePos</a>&gt;&gt;,
+    pub multibyte_chars: <a class="struct" href="https://doc.rust-lang.org/nightly/core/cell/struct.RefCell.html" title="struct core::cell::RefCell">RefCell</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="struct" href="../syntex_pos/struct.MultiByteChar.html" title="struct syntex_pos::MultiByteChar">MultiByteChar</a>&gt;&gt;,
+}</pre></div><div class='docblock'><p>A single source in the CodeMap.</p>
+</div><h2 id='fields' class='fields small-section-header'>
+                       Fields<a href='#fields' class='anchor'></a></h2><span id="structfield.name" class="structfield small-section-header">
+                           <a href="#structfield.name" class="anchor field"></a>
+                           <span id="name.v" class='invisible'>
+                           <code>name: <a class="type" href="../syntex_pos/type.FileName.html" title="type syntex_pos::FileName">FileName</a></code>
+                           </span></span><div class='docblock'><p>The name of the file that the source came from, source that doesn't
+originate from files has names between angle brackets by convention,
+e.g. <code>&lt;anon&gt;</code></p>
+</div><span id="structfield.name_was_remapped" class="structfield small-section-header">
+                           <a href="#structfield.name_was_remapped" class="anchor field"></a>
+                           <span id="name_was_remapped.v" class='invisible'>
+                           <code>name_was_remapped: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><div class='docblock'><p>True if the <code>name</code> field above has been modified by -Zremap-path-prefix</p>
+</div><span id="structfield.crate_of_origin" class="structfield small-section-header">
+                           <a href="#structfield.crate_of_origin" class="anchor field"></a>
+                           <span id="crate_of_origin.v" class='invisible'>
+                           <code>crate_of_origin: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a></code>
+                           </span></span><div class='docblock'><p>Indicates which crate this FileMap was imported from.</p>
+</div><span id="structfield.src" class="structfield small-section-header">
+                           <a href="#structfield.src" class="anchor field"></a>
+                           <span id="src.v" class='invisible'>
+                           <code>src: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/rc/struct.Rc.html" title="struct alloc::rc::Rc">Rc</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;&gt;</code>
+                           </span></span><div class='docblock'><p>The complete source code</p>
+</div><span id="structfield.start_pos" class="structfield small-section-header">
+                           <a href="#structfield.start_pos" class="anchor field"></a>
+                           <span id="start_pos.v" class='invisible'>
+                           <code>start_pos: <a class="struct" href="../syntex_pos/struct.BytePos.html" title="struct syntex_pos::BytePos">BytePos</a></code>
+                           </span></span><div class='docblock'><p>The start position of this source in the CodeMap</p>
+</div><span id="structfield.end_pos" class="structfield small-section-header">
+                           <a href="#structfield.end_pos" class="anchor field"></a>
+                           <span id="end_pos.v" class='invisible'>
+                           <code>end_pos: <a class="struct" href="../syntex_pos/struct.BytePos.html" title="struct syntex_pos::BytePos">BytePos</a></code>
+                           </span></span><div class='docblock'><p>The end position of this source in the CodeMap</p>
+</div><span id="structfield.lines" class="structfield small-section-header">
+                           <a href="#structfield.lines" class="anchor field"></a>
+                           <span id="lines.v" class='invisible'>
+                           <code>lines: <a class="struct" href="https://doc.rust-lang.org/nightly/core/cell/struct.RefCell.html" title="struct core::cell::RefCell">RefCell</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="struct" href="../syntex_pos/struct.BytePos.html" title="struct syntex_pos::BytePos">BytePos</a>&gt;&gt;</code>
+                           </span></span><div class='docblock'><p>Locations of lines beginnings in the source code</p>
+</div><span id="structfield.multibyte_chars" class="structfield small-section-header">
+                           <a href="#structfield.multibyte_chars" class="anchor field"></a>
+                           <span id="multibyte_chars.v" class='invisible'>
+                           <code>multibyte_chars: <a class="struct" href="https://doc.rust-lang.org/nightly/core/cell/struct.RefCell.html" title="struct core::cell::RefCell">RefCell</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="struct" href="../syntex_pos/struct.MultiByteChar.html" title="struct syntex_pos::MultiByteChar">MultiByteChar</a>&gt;&gt;</code>
+                           </span></span><div class='docblock'><p>Locations of multi-byte characters in the source code</p>
+</div>
+                    <h2 id='methods' class='small-section-header'>
+                      Methods<a href='#methods' class='anchor'></a>
+                    </h2>
+                <h3 id='impl' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl <a class="struct" href="../syntex_pos/struct.FileMap.html" title="struct syntex_pos::FileMap">FileMap</a></code><a href='#impl' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/syntex_pos/lib.rs.html#473-571' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'><h4 id='method.next_line' class="method"><span id='next_line.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.next_line' class='fnname'>next_line</a>(&amp;self, pos: <a class="struct" href="../syntex_pos/struct.BytePos.html" title="struct syntex_pos::BytePos">BytePos</a>)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/syntex_pos/lib.rs.html#483-489' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>EFFECT: register a start-of-line offset in the
+table of line-beginnings.
+UNCHECKED INVARIANT: these offsets must be added in the right
+order and must be in the right places; there is shared knowledge
+about what ends a line between this file and parse.rs
+WARNING: pos param here is the offset relative to start of CodeMap,
+and CodeMap will append a newline when adding a filemap without a newline at the end,
+so the safe way to call this is with value calculated as
+filemap.start_pos + newline_offset_relative_to_the_start_of_filemap.</p>
+</div><h4 id='method.get_line' class="method"><span id='get_line.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.get_line' class='fnname'>get_line</a>(&amp;self, line_number: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/syntex_pos/lib.rs.html#493-512' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>get a line from the list of pre-computed line-beginnings.
+line-number here is 0-based.</p>
+</div><h4 id='method.record_multibyte_char' class="method"><span id='record_multibyte_char.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.record_multibyte_char' class='fnname'>record_multibyte_char</a>(&amp;self, pos: <a class="struct" href="../syntex_pos/struct.BytePos.html" title="struct syntex_pos::BytePos">BytePos</a>, bytes: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/syntex_pos/lib.rs.html#514-521' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.is_real_file' class="method"><span id='is_real_file.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.is_real_file' class='fnname'>is_real_file</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/syntex_pos/lib.rs.html#523-526' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.is_imported' class="method"><span id='is_imported.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.is_imported' class='fnname'>is_imported</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/syntex_pos/lib.rs.html#528-530' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.byte_length' class="method"><span id='byte_length.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.byte_length' class='fnname'>byte_length</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/syntex_pos/lib.rs.html#532-534' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.count_lines' class="method"><span id='count_lines.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.count_lines' class='fnname'>count_lines</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/syntex_pos/lib.rs.html#535-537' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.lookup_line' class="method"><span id='lookup_line.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.lookup_line' class='fnname'>lookup_line</a>(&amp;self, pos: <a class="struct" href="../syntex_pos/struct.BytePos.html" title="struct syntex_pos::BytePos">BytePos</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>&gt;</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/syntex_pos/lib.rs.html#543-556' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Find the line containing the given position. The return value is the
+index into the <code>lines</code> array of this FileMap, not the 1-based line
+number. If the filemap is empty or the position is located before the
+first line, None is returned.</p>
+</div><h4 id='method.line_bounds' class="method"><span id='line_bounds.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.line_bounds' class='fnname'>line_bounds</a>(&amp;self, line_index: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">(</a><a class="struct" href="../syntex_pos/struct.BytePos.html" title="struct syntex_pos::BytePos">BytePos</a>, <a class="struct" href="../syntex_pos/struct.BytePos.html" title="struct syntex_pos::BytePos">BytePos</a><a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">)</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/syntex_pos/lib.rs.html#558-570' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4></div>
+            <h2 id='implementations' class='small-section-header'>
+              Trait Implementations<a href='#implementations' class='anchor'></a>
+            </h2>
+            <div id='implementations-list'>
+        <h3 id='impl-Clone' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl <a class="trait" href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a> for <a class="struct" href="../syntex_pos/struct.FileMap.html" title="struct syntex_pos::FileMap">FileMap</a></code><a href='#impl-Clone' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/syntex_pos/lib.rs.html#338' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'><h4 id='method.clone' class="method"><span id='clone.v' class='invisible'><table class='table-display'><tbody><tr><td><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone' class='fnname'>clone</a>(&amp;self) -&gt; <a class="struct" href="../syntex_pos/struct.FileMap.html" title="struct syntex_pos::FileMap">FileMap</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/syntex_pos/lib.rs.html#338' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Returns a copy of the value. <a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone">Read more</a></p>
+</div><h4 id='method.clone_from' class="method"><span id='clone_from.v' class='invisible'><table class='table-display'><tbody><tr><td><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from' class='fnname'>clone_from</a>(&amp;mut self, source: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;</a>Self)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><div class='since' title='Stable since Rust version 1.0.0'>1.0.0</div><a class='srclink' href='https://doc.rust-lang.org/nightly/src/core/clone.rs.html#117-119' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Performs copy-assignment from <code>source</code>. <a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from">Read more</a></p>
+</div></div><h3 id='impl-Debug' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl <a class="trait" href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html" title="trait core::fmt::Debug">Debug</a> for <a class="struct" href="../syntex_pos/struct.FileMap.html" title="struct syntex_pos::FileMap">FileMap</a></code><a href='#impl-Debug' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/syntex_pos/lib.rs.html#467-471' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'><h4 id='method.fmt' class="method"><span id='fmt.v' class='invisible'><table class='table-display'><tbody><tr><td><code>fn <a href='https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html#tymethod.fmt' class='fnname'>fmt</a>(&amp;self, fmt: &amp;mut <a class="struct" href="https://doc.rust-lang.org/nightly/core/fmt/struct.Formatter.html" title="struct core::fmt::Formatter">Formatter</a>) -&gt; <a class="type" href="https://doc.rust-lang.org/nightly/core/fmt/type.Result.html" title="type core::fmt::Result">Result</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/syntex_pos/lib.rs.html#468-470' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Formats the value using the given formatter. <a href="https://doc.rust-lang.org/nightly/core/fmt/trait.Debug.html#tymethod.fmt">Read more</a></p>
+</div></div></div>
+                <h2 id='synthetic-implementations' class='small-section-header'>
+                  Auto Trait Implementations<a href='#synthetic-implementations' class='anchor'></a>
+                </h2>
+                <div id='synthetic-implementations-list'>
+            <h3 id='impl-Send' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl !<a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> for <a class="struct" href="../syntex_pos/struct.FileMap.html" title="struct syntex_pos::FileMap">FileMap</a></code><a href='#impl-Send' class='anchor'></a></span></td><td><span class='out-of-band'></span></td></tr></tbody></table></h3><div class='impl-items'></div><h3 id='impl-Sync' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl !<a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> for <a class="struct" href="../syntex_pos/struct.FileMap.html" title="struct syntex_pos::FileMap">FileMap</a></code><a href='#impl-Sync' class='anchor'></a></span></td><td><span class='out-of-band'></span></td></tr></tbody></table></h3><div class='impl-items'></div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt><kbd>?</kbd></dt>
+                    <dd>Show this help dialog</dd>
+                    <dt><kbd>S</kbd></dt>
+                    <dd>Focus the search field</dd>
+                    <dt><kbd>↑</kbd></dt>
+                    <dd>Move up in search results</dd>
+                    <dt><kbd>↓</kbd></dt>
+                    <dd>Move down in search results</dd>
+                    <dt><kbd>↹</kbd></dt>
+                    <dd>Switch tab</dd>
+                    <dt><kbd>&#9166;</kbd></dt>
+                    <dd>Go to active search result</dd>
+                    <dt><kbd>+</kbd></dt>
+                    <dd>Expand all sections</dd>
+                    <dt><kbd>-</kbd></dt>
+                    <dd>Collapse all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "syntex_pos";
+    </script>
+    <script src="../main.js"></script>
+    <script defer src="../search-index.js"></script>
+</body>
+</html>

@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `macro_parser` mod in crate `syntex_syntax`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, macro_parser">
+
+    <title>syntex_syntax::ext::tt::macro_parser - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../../../rustdoc.css"
+          id="mainThemeStyle">
+    
+    <link rel="stylesheet" type="text/css" href="../../../../dark.css">
+    <link rel="stylesheet" type="text/css" href="../../../../light.css" id="themeStyle">
+    <script src="../../../../storage.js"></script>
+    
+
+    <link rel="shortcut icon" href="https://doc.rust-lang.org/favicon.ico">
+    
+</head>
+<body class="rustdoc mod">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        <div class="sidebar-menu">&#9776;</div>
+        <a href='../../../../syntex_syntax/index.html'><img src='https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png' alt='logo' width='100'></a>
+        <p class='location'>Module macro_parser</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#reexports">Re-exports</a></li><li><a href="#enums">Enums</a></li><li><a href="#functions">Functions</a></li><li><a href="#types">Type Definitions</a></li></ul></div><p class='location'><a href='../../../index.html'>syntex_syntax</a>::<wbr><a href='../../index.html'>ext</a>::<wbr><a href='../index.html'>tt</a></p><script>window.sidebarCurrent = {name: 'macro_parser', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script></div>
+    </nav>
+
+    <div class="theme-picker">
+        <button id="theme-picker" aria-label="Pick another theme!">
+            <img src="../../../../brush.svg" width="18" alt="Pick another theme!">
+        </button>
+        <div id="theme-choices"></div>
+    </div>
+    <script src="../../../../theme.js"></script>
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Module <a href='../../../index.html'>syntex_syntax</a>::<wbr><a href='../../index.html'>ext</a>::<wbr><a href='../index.html'>tt</a>::<wbr><a class="mod" href=''>macro_parser</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../../../../src/syntex_syntax/ext/tt/macro_parser.rs.html#11-543' title='goto source code'>[src]</a></span></h1><div class='docblock'><p>This is an Earley-like parser, without support for in-grammar nonterminals,
+only by calling out to the main rust parser for named nonterminals (which it
+commits to fully when it hits one in a grammar). This means that there are no
+completer or predictor rules, and therefore no need to store one column per
+token: instead, there's a set of current Earley items and a set of next
+ones. Instead of NTs, we have a special case for Kleene star. The big-O, in
+pathological cases, is worse than traditional Earley parsing, but it's an
+easier fit for Macro-by-Example-style rules, and I think the overhead is
+lower. (In order to prevent the pathological case, we'd need to lazily
+construct the resulting <code>NamedMatch</code>es at the very end. It'd be a pain,
+and require more memory to keep around old items, but it would also save
+overhead)</p>
+<p>Quick intro to how the parser works:</p>
+<p>A 'position' is a dot in the middle of a matcher, usually represented as a
+dot. For example <code>· a $( a )* a b</code> is a position, as is <code>a $( · a )* a b</code>.</p>
+<p>The parser walks through the input a character at a time, maintaining a list
+of items consistent with the current position in the input string: <code>cur_eis</code>.</p>
+<p>As it processes them, it fills up <code>eof_eis</code> with items that would be valid if
+the macro invocation is now over, <code>bb_eis</code> with items that are waiting on
+a Rust nonterminal like <code>$e:expr</code>, and <code>next_eis</code> with items that are waiting
+on a particular token. Most of the logic concerns moving the · through the
+repetitions indicated by Kleene stars. It only advances or calls out to the
+real Rust parser when no <code>cur_eis</code> items remain</p>
+<p>Example:</p>
+<pre><code class="language-text,">Start parsing a a a a b against [· a $( a )* a b].
+
+Remaining input: a a a a b
+next_eis: [· a $( a )* a b]
+
+- - - Advance over an a. - - -
+
+Remaining input: a a a b
+cur: [a · $( a )* a b]
+Descend/Skip (first item).
+next: [a $( · a )* a b]  [a $( a )* · a b].
+
+- - - Advance over an a. - - -
+
+Remaining input: a a b
+cur: [a $( a · )* a b]  next: [a $( a )* a · b]
+Finish/Repeat (first item)
+next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
+
+- - - Advance over an a. - - - (this looks exactly like the last step)
+
+Remaining input: a b
+cur: [a $( a · )* a b]  next: [a $( a )* a · b]
+Finish/Repeat (first item)
+next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
+
+- - - Advance over an a. - - - (this looks exactly like the last step)
+
+Remaining input: b
+cur: [a $( a · )* a b]  next: [a $( a )* a · b]
+Finish/Repeat (first item)
+next: [a $( a )* · a b]  [a $( · a )* a b]
+
+- - - Advance over a b. - - -
+
+Remaining input: ''
+eof: [a $( a )* a b ·]
+</code></pre>
+</div><h2 id='reexports' class='section-header'><a href="#reexports">Re-exports</a></h2>
+<table><tr><td><code>pub use self::<a class="enum" href="../../../../syntex_syntax/ext/tt/macro_parser/enum.NamedMatch.html" title="enum syntex_syntax::ext::tt::macro_parser::NamedMatch">NamedMatch</a>::*;</code></td></tr><tr><td><code>pub use self::<a class="enum" href="../../../../syntex_syntax/ext/tt/macro_parser/enum.ParseResult.html" title="enum syntex_syntax::ext::tt::macro_parser::ParseResult">ParseResult</a>::*;</code></td></tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.NamedMatch.html"
+                                  title='enum syntex_syntax::ext::tt::macro_parser::NamedMatch'>NamedMatch</a></td>
+                           <td class='docblock-short'>
+                                <p><code>NamedMatch</code> is a pattern-match result for a single <code>token::MATCH_NONTERMINAL</code>:
+so it is associated with a single ident in a parse, and all
+<code>MatchedNonterminal</code>s in the <code>NamedMatch</code> have the same nonterminal type
+(expr, item, etc). Each leaf in a single <code>NamedMatch</code> corresponds to a
+single <code>token::MATCH_NONTERMINAL</code> in the <code>TokenTree</code> that produced it.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.ParseResult.html"
+                                  title='enum syntex_syntax::ext::tt::macro_parser::ParseResult'>ParseResult</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.count_names.html"
+                                  title='fn syntex_syntax::ext::tt::macro_parser::count_names'>count_names</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.parse.html"
+                                  title='fn syntex_syntax::ext::tt::macro_parser::parse'>parse</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.parse_failure_msg.html"
+                                  title='fn syntex_syntax::ext::tt::macro_parser::parse_failure_msg'>parse_failure_msg</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr></table><h2 id='types' class='section-header'><a href="#types">Type Definitions</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="type" href="type.NamedParseResult.html"
+                                  title='type syntex_syntax::ext::tt::macro_parser::NamedParseResult'>NamedParseResult</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr></table></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt><kbd>?</kbd></dt>
+                    <dd>Show this help dialog</dd>
+                    <dt><kbd>S</kbd></dt>
+                    <dd>Focus the search field</dd>
+                    <dt><kbd>↑</kbd></dt>
+                    <dd>Move up in search results</dd>
+                    <dt><kbd>↓</kbd></dt>
+                    <dd>Move down in search results</dd>
+                    <dt><kbd>↹</kbd></dt>
+                    <dd>Switch tab</dd>
+                    <dt><kbd>&#9166;</kbd></dt>
+                    <dd>Go to active search result</dd>
+                    <dt><kbd>+</kbd></dt>
+                    <dd>Expand all sections</dd>
+                    <dt><kbd>-</kbd></dt>
+                    <dd>Collapse all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../../../";
+        window.currentCrate = "syntex_syntax";
+    </script>
+    <script src="../../../../main.js"></script>
+    <script defer src="../../../../search-index.js"></script>
+</body>
+</html>

@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Features` struct in crate `syntex_syntax`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Features">
+
+    <title>syntex_syntax::feature_gate::Features - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css"
+          id="mainThemeStyle">
+    
+    <link rel="stylesheet" type="text/css" href="../../dark.css">
+    <link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle">
+    <script src="../../storage.js"></script>
+    
+
+    <link rel="shortcut icon" href="https://doc.rust-lang.org/favicon.ico">
+    
+</head>
+<body class="rustdoc struct">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        <div class="sidebar-menu">&#9776;</div>
+        <a href='../../syntex_syntax/index.html'><img src='https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png' alt='logo' width='100'></a>
+        <p class='location'>Struct Features</p><div class="sidebar-elems"><div class="block items"><a class="sidebar-title" href="#fields">Fields</a><div class="sidebar-links"><a href="#structfield.declared_stable_lang_features">declared_stable_lang_features</a><a href="#structfield.declared_lib_features">declared_lib_features</a><a href="#structfield.asm">asm</a><a href="#structfield.concat_idents">concat_idents</a><a href="#structfield.link_args">link_args</a><a href="#structfield.log_syntax">log_syntax</a><a href="#structfield.non_ascii_idents">non_ascii_idents</a><a href="#structfield.plugin_registrar">plugin_registrar</a><a href="#structfield.thread_local">thread_local</a><a href="#structfield.trace_macros">trace_macros</a><a href="#structfield.intrinsics">intrinsics</a><a href="#structfield.lang_items">lang_items</a><a href="#structfield.link_llvm_intrinsics">link_llvm_intrinsics</a><a href="#structfield.linkage">linkage</a><a href="#structfield.quote">quote</a><a href="#structfield.simd">simd</a><a href="#structfield.rustc_diagnostic_macros">rustc_diagnostic_macros</a><a href="#structfield.advanced_slice_patterns">advanced_slice_patterns</a><a href="#structfield.box_syntax">box_syntax</a><a href="#structfield.placement_in_syntax">placement_in_syntax</a><a href="#structfield.unboxed_closures">unboxed_closures</a><a href="#structfield.allocator">allocator</a><a href="#structfield.fundamental">fundamental</a><a href="#structfield.main">main</a><a href="#structfield.needs_allocator">needs_allocator</a><a href="#structfield.on_unimplemented">on_unimplemented</a><a href="#structfield.plugin">plugin</a><a href="#structfield.simd_ffi">simd_ffi</a><a href="#structfield.start">start</a><a href="#structfield.structural_match">structural_match</a><a href="#structfield.panic_runtime">panic_runtime</a><a href="#structfield.needs_panic_runtime">needs_panic_runtime</a><a href="#structfield.optin_builtin_traits">optin_builtin_traits</a><a href="#structfield.macro_reexport">macro_reexport</a><a href="#structfield.staged_api">staged_api</a><a href="#structfield.no_core">no_core</a><a href="#structfield.box_patterns">box_patterns</a><a href="#structfield.dropck_parametricity">dropck_parametricity</a><a href="#structfield.dropck_eyepatch">dropck_eyepatch</a><a href="#structfield.custom_attribute">custom_attribute</a><a href="#structfield.custom_derive">custom_derive</a><a href="#structfield.rustc_attrs">rustc_attrs</a><a href="#structfield.allow_internal_unstable">allow_internal_unstable</a><a href="#structfield.slice_patterns">slice_patterns</a><a href="#structfield.associated_consts">associated_consts</a><a href="#structfield.const_fn">const_fn</a><a href="#structfield.const_indexing">const_indexing</a><a href="#structfield.prelude_import">prelude_import</a><a href="#structfield.default_type_parameter_fallback">default_type_parameter_fallback</a><a href="#structfield.associated_type_defaults">associated_type_defaults</a><a href="#structfield.repr_simd">repr_simd</a><a href="#structfield.cfg_target_feature">cfg_target_feature</a><a href="#structfield.platform_intrinsics">platform_intrinsics</a><a href="#structfield.unwind_attributes">unwind_attributes</a><a href="#structfield.naked_functions">naked_functions</a><a href="#structfield.no_debug">no_debug</a><a href="#structfield.omit_gdb_pretty_printer_section">omit_gdb_pretty_printer_section</a><a href="#structfield.cfg_target_vendor">cfg_target_vendor</a><a href="#structfield.stmt_expr_attributes">stmt_expr_attributes</a><a href="#structfield.type_ascription">type_ascription</a><a href="#structfield.cfg_target_thread_local">cfg_target_thread_local</a><a href="#structfield.abi_vectorcall">abi_vectorcall</a><a href="#structfield.inclusive_range_syntax">inclusive_range_syntax</a><a href="#structfield.exclusive_range_pattern">exclusive_range_pattern</a><a href="#structfield.specialization">specialization</a><a href="#structfield.drop_types_in_const">drop_types_in_const</a><a href="#structfield.cfg_target_has_atomic">cfg_target_has_atomic</a><a href="#structfield.conservative_impl_trait">conservative_impl_trait</a><a href="#structfield.never_type">never_type</a><a href="#structfield.attr_literals">attr_literals</a><a href="#structfield.abi_sysv64">abi_sysv64</a><a href="#structfield.untagged_unions">untagged_unions</a><a href="#structfield.compiler_builtins">compiler_builtins</a><a href="#structfield.generic_param_attrs">generic_param_attrs</a><a href="#structfield.link_cfg">link_cfg</a><a href="#structfield.use_extern_macros">use_extern_macros</a><a href="#structfield.target_feature">target_feature</a><a href="#structfield.abi_ptx">abi_ptx</a><a href="#structfield.i128_type">i128_type</a><a href="#structfield.abi_unadjusted">abi_unadjusted</a><a href="#structfield.proc_macro">proc_macro</a><a href="#structfield.decl_macro">decl_macro</a><a href="#structfield.struct_field_attributes">struct_field_attributes</a><a href="#structfield.static_nobundle">static_nobundle</a><a href="#structfield.abi_msp430_interrupt">abi_msp430_interrupt</a><a href="#structfield.sanitizer_runtime">sanitizer_runtime</a><a href="#structfield.abi_x86_interrupt">abi_x86_interrupt</a><a href="#structfield.catch_expr">catch_expr</a><a href="#structfield.repr_align">repr_align</a><a href="#structfield.rvalue_static_promotion">rvalue_static_promotion</a><a href="#structfield.used">used</a><a href="#structfield.global_asm">global_asm</a><a href="#structfield.overlapping_marker_traits">overlapping_marker_traits</a><a href="#structfield.macro_vis_matcher">macro_vis_matcher</a><a href="#structfield.abi_thiscall">abi_thiscall</a></div><a class="sidebar-title" href="#methods">Methods</a><div class="sidebar-links"><a href="#method.new">new</a></div><a class="sidebar-title" href="#synthetic-implementations">Auto Trait Implementations</a><div class="sidebar-links"><a href="#impl-Send">Send</a><a href="#impl-Sync">Sync</a></div></div><p class='location'><a href='../index.html'>syntex_syntax</a>::<wbr><a href='index.html'>feature_gate</a></p><script>window.sidebarCurrent = {name: 'Features', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script></div>
+    </nav>
+
+    <div class="theme-picker">
+        <button id="theme-picker" aria-label="Pick another theme!">
+            <img src="../../brush.svg" width="18" alt="Pick another theme!">
+        </button>
+        <div id="theme-choices"></div>
+    </div>
+    <script src="../../theme.js"></script>
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Struct <a href='../index.html'>syntex_syntax</a>::<wbr><a href='index.html'>feature_gate</a>::<wbr><a class="struct" href=''>Features</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../../src/syntex_syntax/feature_gate.rs.html#60-66' title='goto source code'>[src]</a></span></h1><div class="docblock type-decl"><pre class='rust struct'>pub struct Features {
+    pub declared_stable_lang_features: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">(</a><a class="struct" href="../../syntex_syntax/ast/struct.Name.html" title="struct syntex_syntax::ast::Name">Symbol</a>, <a class="struct" href="../../syntex_syntax/ext/quote/rt/struct.Span.html" title="struct syntex_syntax::ext::quote::rt::Span">Span</a><a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">)</a>&gt;,
+    pub declared_lib_features: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">(</a><a class="struct" href="../../syntex_syntax/ast/struct.Name.html" title="struct syntex_syntax::ast::Name">Symbol</a>, <a class="struct" href="../../syntex_syntax/ext/quote/rt/struct.Span.html" title="struct syntex_syntax::ext::quote::rt::Span">Span</a><a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">)</a>&gt;,
+    pub asm: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub concat_idents: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub link_args: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub log_syntax: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub non_ascii_idents: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub plugin_registrar: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub thread_local: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub trace_macros: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub intrinsics: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub lang_items: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub link_llvm_intrinsics: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub linkage: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub quote: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub simd: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub rustc_diagnostic_macros: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub advanced_slice_patterns: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub box_syntax: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub placement_in_syntax: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub unboxed_closures: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub allocator: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub fundamental: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub main: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub needs_allocator: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub on_unimplemented: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub plugin: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub simd_ffi: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub start: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub structural_match: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub panic_runtime: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub needs_panic_runtime: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub optin_builtin_traits: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub macro_reexport: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub staged_api: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub no_core: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub box_patterns: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub dropck_parametricity: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub dropck_eyepatch: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub custom_attribute: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub custom_derive: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub rustc_attrs: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub allow_internal_unstable: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub slice_patterns: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub associated_consts: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub const_fn: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub const_indexing: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub prelude_import: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub default_type_parameter_fallback: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub associated_type_defaults: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub repr_simd: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub cfg_target_feature: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub platform_intrinsics: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub unwind_attributes: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub naked_functions: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub no_debug: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub omit_gdb_pretty_printer_section: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub cfg_target_vendor: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub stmt_expr_attributes: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub type_ascription: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub cfg_target_thread_local: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub abi_vectorcall: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub inclusive_range_syntax: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub exclusive_range_pattern: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub specialization: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub drop_types_in_const: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub cfg_target_has_atomic: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub conservative_impl_trait: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub never_type: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub attr_literals: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub abi_sysv64: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub untagged_unions: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub compiler_builtins: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub generic_param_attrs: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub link_cfg: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub use_extern_macros: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub target_feature: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub abi_ptx: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub i128_type: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub abi_unadjusted: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub proc_macro: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub decl_macro: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub struct_field_attributes: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub static_nobundle: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub abi_msp430_interrupt: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub sanitizer_runtime: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub abi_x86_interrupt: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub catch_expr: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub repr_align: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub rvalue_static_promotion: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub used: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub global_asm: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub overlapping_marker_traits: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub macro_vis_matcher: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub abi_thiscall: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+}</pre></div><div class='docblock'><p>A set of features to be used by later passes.</p>
+</div><h2 id='fields' class='fields small-section-header'>
+                       Fields<a href='#fields' class='anchor'></a></h2><span id="structfield.declared_stable_lang_features" class="structfield small-section-header">
+                           <a href="#structfield.declared_stable_lang_features" class="anchor field"></a>
+                           <span id="declared_stable_lang_features.v" class='invisible'>
+                           <code>declared_stable_lang_features: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">(</a><a class="struct" href="../../syntex_syntax/ast/struct.Name.html" title="struct syntex_syntax::ast::Name">Symbol</a>, <a class="struct" href="../../syntex_syntax/ext/quote/rt/struct.Span.html" title="struct syntex_syntax::ext::quote::rt::Span">Span</a><a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">)</a>&gt;</code>
+                           </span></span><div class='docblock'><p>#![feature] attrs for stable language features, for error reporting</p>
+</div><span id="structfield.declared_lib_features" class="structfield small-section-header">
+                           <a href="#structfield.declared_lib_features" class="anchor field"></a>
+                           <span id="declared_lib_features.v" class='invisible'>
+                           <code>declared_lib_features: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">(</a><a class="struct" href="../../syntex_syntax/ast/struct.Name.html" title="struct syntex_syntax::ast::Name">Symbol</a>, <a class="struct" href="../../syntex_syntax/ext/quote/rt/struct.Span.html" title="struct syntex_syntax::ext::quote::rt::Span">Span</a><a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">)</a>&gt;</code>
+                           </span></span><div class='docblock'><p>#![feature] attrs for non-language (library) features</p>
+</div><span id="structfield.asm" class="structfield small-section-header">
+                           <a href="#structfield.asm" class="anchor field"></a>
+                           <span id="asm.v" class='invisible'>
+                           <code>asm: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.concat_idents" class="structfield small-section-header">
+                           <a href="#structfield.concat_idents" class="anchor field"></a>
+                           <span id="concat_idents.v" class='invisible'>
+                           <code>concat_idents: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.link_args" class="structfield small-section-header">
+                           <a href="#structfield.link_args" class="anchor field"></a>
+                           <span id="link_args.v" class='invisible'>
+                           <code>link_args: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.log_syntax" class="structfield small-section-header">
+                           <a href="#structfield.log_syntax" class="anchor field"></a>
+                           <span id="log_syntax.v" class='invisible'>
+                           <code>log_syntax: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.non_ascii_idents" class="structfield small-section-header">
+                           <a href="#structfield.non_ascii_idents" class="anchor field"></a>
+                           <span id="non_ascii_idents.v" class='invisible'>
+                           <code>non_ascii_idents: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.plugin_registrar" class="structfield small-section-header">
+                           <a href="#structfield.plugin_registrar" class="anchor field"></a>
+                           <span id="plugin_registrar.v" class='invisible'>
+                           <code>plugin_registrar: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.thread_local" class="structfield small-section-header">
+                           <a href="#structfield.thread_local" class="anchor field"></a>
+                           <span id="thread_local.v" class='invisible'>
+                           <code>thread_local: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.trace_macros" class="structfield small-section-header">
+                           <a href="#structfield.trace_macros" class="anchor field"></a>
+                           <span id="trace_macros.v" class='invisible'>
+                           <code>trace_macros: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.intrinsics" class="structfield small-section-header">
+                           <a href="#structfield.intrinsics" class="anchor field"></a>
+                           <span id="intrinsics.v" class='invisible'>
+                           <code>intrinsics: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.lang_items" class="structfield small-section-header">
+                           <a href="#structfield.lang_items" class="anchor field"></a>
+                           <span id="lang_items.v" class='invisible'>
+                           <code>lang_items: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.link_llvm_intrinsics" class="structfield small-section-header">
+                           <a href="#structfield.link_llvm_intrinsics" class="anchor field"></a>
+                           <span id="link_llvm_intrinsics.v" class='invisible'>
+                           <code>link_llvm_intrinsics: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.linkage" class="structfield small-section-header">
+                           <a href="#structfield.linkage" class="anchor field"></a>
+                           <span id="linkage.v" class='invisible'>
+                           <code>linkage: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.quote" class="structfield small-section-header">
+                           <a href="#structfield.quote" class="anchor field"></a>
+                           <span id="quote.v" class='invisible'>
+                           <code>quote: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.simd" class="structfield small-section-header">
+                           <a href="#structfield.simd" class="anchor field"></a>
+                           <span id="simd.v" class='invisible'>
+                           <code>simd: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.rustc_diagnostic_macros" class="structfield small-section-header">
+                           <a href="#structfield.rustc_diagnostic_macros" class="anchor field"></a>
+                           <span id="rustc_diagnostic_macros.v" class='invisible'>
+                           <code>rustc_diagnostic_macros: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.advanced_slice_patterns" class="structfield small-section-header">
+                           <a href="#structfield.advanced_slice_patterns" class="anchor field"></a>
+                           <span id="advanced_slice_patterns.v" class='invisible'>
+                           <code>advanced_slice_patterns: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.box_syntax" class="structfield small-section-header">
+                           <a href="#structfield.box_syntax" class="anchor field"></a>
+                           <span id="box_syntax.v" class='invisible'>
+                           <code>box_syntax: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.placement_in_syntax" class="structfield small-section-header">
+                           <a href="#structfield.placement_in_syntax" class="anchor field"></a>
+                           <span id="placement_in_syntax.v" class='invisible'>
+                           <code>placement_in_syntax: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.unboxed_closures" class="structfield small-section-header">
+                           <a href="#structfield.unboxed_closures" class="anchor field"></a>
+                           <span id="unboxed_closures.v" class='invisible'>
+                           <code>unboxed_closures: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.allocator" class="structfield small-section-header">
+                           <a href="#structfield.allocator" class="anchor field"></a>
+                           <span id="allocator.v" class='invisible'>
+                           <code>allocator: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.fundamental" class="structfield small-section-header">
+                           <a href="#structfield.fundamental" class="anchor field"></a>
+                           <span id="fundamental.v" class='invisible'>
+                           <code>fundamental: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.main" class="structfield small-section-header">
+                           <a href="#structfield.main" class="anchor field"></a>
+                           <span id="main.v" class='invisible'>
+                           <code>main: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.needs_allocator" class="structfield small-section-header">
+                           <a href="#structfield.needs_allocator" class="anchor field"></a>
+                           <span id="needs_allocator.v" class='invisible'>
+                           <code>needs_allocator: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.on_unimplemented" class="structfield small-section-header">
+                           <a href="#structfield.on_unimplemented" class="anchor field"></a>
+                           <span id="on_unimplemented.v" class='invisible'>
+                           <code>on_unimplemented: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.plugin" class="structfield small-section-header">
+                           <a href="#structfield.plugin" class="anchor field"></a>
+                           <span id="plugin.v" class='invisible'>
+                           <code>plugin: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.simd_ffi" class="structfield small-section-header">
+                           <a href="#structfield.simd_ffi" class="anchor field"></a>
+                           <span id="simd_ffi.v" class='invisible'>
+                           <code>simd_ffi: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.start" class="structfield small-section-header">
+                           <a href="#structfield.start" class="anchor field"></a>
+                           <span id="start.v" class='invisible'>
+                           <code>start: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.structural_match" class="structfield small-section-header">
+                           <a href="#structfield.structural_match" class="anchor field"></a>
+                           <span id="structural_match.v" class='invisible'>
+                           <code>structural_match: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.panic_runtime" class="structfield small-section-header">
+                           <a href="#structfield.panic_runtime" class="anchor field"></a>
+                           <span id="panic_runtime.v" class='invisible'>
+                           <code>panic_runtime: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.needs_panic_runtime" class="structfield small-section-header">
+                           <a href="#structfield.needs_panic_runtime" class="anchor field"></a>
+                           <span id="needs_panic_runtime.v" class='invisible'>
+                           <code>needs_panic_runtime: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.optin_builtin_traits" class="structfield small-section-header">
+                           <a href="#structfield.optin_builtin_traits" class="anchor field"></a>
+                           <span id="optin_builtin_traits.v" class='invisible'>
+                           <code>optin_builtin_traits: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.macro_reexport" class="structfield small-section-header">
+                           <a href="#structfield.macro_reexport" class="anchor field"></a>
+                           <span id="macro_reexport.v" class='invisible'>
+                           <code>macro_reexport: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.staged_api" class="structfield small-section-header">
+                           <a href="#structfield.staged_api" class="anchor field"></a>
+                           <span id="staged_api.v" class='invisible'>
+                           <code>staged_api: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.no_core" class="structfield small-section-header">
+                           <a href="#structfield.no_core" class="anchor field"></a>
+                           <span id="no_core.v" class='invisible'>
+                           <code>no_core: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.box_patterns" class="structfield small-section-header">
+                           <a href="#structfield.box_patterns" class="anchor field"></a>
+                           <span id="box_patterns.v" class='invisible'>
+                           <code>box_patterns: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.dropck_parametricity" class="structfield small-section-header">
+                           <a href="#structfield.dropck_parametricity" class="anchor field"></a>
+                           <span id="dropck_parametricity.v" class='invisible'>
+                           <code>dropck_parametricity: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.dropck_eyepatch" class="structfield small-section-header">
+                           <a href="#structfield.dropck_eyepatch" class="anchor field"></a>
+                           <span id="dropck_eyepatch.v" class='invisible'>
+                           <code>dropck_eyepatch: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.custom_attribute" class="structfield small-section-header">
+                           <a href="#structfield.custom_attribute" class="anchor field"></a>
+                           <span id="custom_attribute.v" class='invisible'>
+                           <code>custom_attribute: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.custom_derive" class="structfield small-section-header">
+                           <a href="#structfield.custom_derive" class="anchor field"></a>
+                           <span id="custom_derive.v" class='invisible'>
+                           <code>custom_derive: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.rustc_attrs" class="structfield small-section-header">
+                           <a href="#structfield.rustc_attrs" class="anchor field"></a>
+                           <span id="rustc_attrs.v" class='invisible'>
+                           <code>rustc_attrs: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.allow_internal_unstable" class="structfield small-section-header">
+                           <a href="#structfield.allow_internal_unstable" class="anchor field"></a>
+                           <span id="allow_internal_unstable.v" class='invisible'>
+                           <code>allow_internal_unstable: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.slice_patterns" class="structfield small-section-header">
+                           <a href="#structfield.slice_patterns" class="anchor field"></a>
+                           <span id="slice_patterns.v" class='invisible'>
+                           <code>slice_patterns: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.associated_consts" class="structfield small-section-header">
+                           <a href="#structfield.associated_consts" class="anchor field"></a>
+                           <span id="associated_consts.v" class='invisible'>
+                           <code>associated_consts: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.const_fn" class="structfield small-section-header">
+                           <a href="#structfield.const_fn" class="anchor field"></a>
+                           <span id="const_fn.v" class='invisible'>
+                           <code>const_fn: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.const_indexing" class="structfield small-section-header">
+                           <a href="#structfield.const_indexing" class="anchor field"></a>
+                           <span id="const_indexing.v" class='invisible'>
+                           <code>const_indexing: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.prelude_import" class="structfield small-section-header">
+                           <a href="#structfield.prelude_import" class="anchor field"></a>
+                           <span id="prelude_import.v" class='invisible'>
+                           <code>prelude_import: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.default_type_parameter_fallback" class="structfield small-section-header">
+                           <a href="#structfield.default_type_parameter_fallback" class="anchor field"></a>
+                           <span id="default_type_parameter_fallback.v" class='invisible'>
+                           <code>default_type_parameter_fallback: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.associated_type_defaults" class="structfield small-section-header">
+                           <a href="#structfield.associated_type_defaults" class="anchor field"></a>
+                           <span id="associated_type_defaults.v" class='invisible'>
+                           <code>associated_type_defaults: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.repr_simd" class="structfield small-section-header">
+                           <a href="#structfield.repr_simd" class="anchor field"></a>
+                           <span id="repr_simd.v" class='invisible'>
+                           <code>repr_simd: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.cfg_target_feature" class="structfield small-section-header">
+                           <a href="#structfield.cfg_target_feature" class="anchor field"></a>
+                           <span id="cfg_target_feature.v" class='invisible'>
+                           <code>cfg_target_feature: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.platform_intrinsics" class="structfield small-section-header">
+                           <a href="#structfield.platform_intrinsics" class="anchor field"></a>
+                           <span id="platform_intrinsics.v" class='invisible'>
+                           <code>platform_intrinsics: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.unwind_attributes" class="structfield small-section-header">
+                           <a href="#structfield.unwind_attributes" class="anchor field"></a>
+                           <span id="unwind_attributes.v" class='invisible'>
+                           <code>unwind_attributes: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.naked_functions" class="structfield small-section-header">
+                           <a href="#structfield.naked_functions" class="anchor field"></a>
+                           <span id="naked_functions.v" class='invisible'>
+                           <code>naked_functions: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.no_debug" class="structfield small-section-header">
+                           <a href="#structfield.no_debug" class="anchor field"></a>
+                           <span id="no_debug.v" class='invisible'>
+                           <code>no_debug: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.omit_gdb_pretty_printer_section" class="structfield small-section-header">
+                           <a href="#structfield.omit_gdb_pretty_printer_section" class="anchor field"></a>
+                           <span id="omit_gdb_pretty_printer_section.v" class='invisible'>
+                           <code>omit_gdb_pretty_printer_section: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.cfg_target_vendor" class="structfield small-section-header">
+                           <a href="#structfield.cfg_target_vendor" class="anchor field"></a>
+                           <span id="cfg_target_vendor.v" class='invisible'>
+                           <code>cfg_target_vendor: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.stmt_expr_attributes" class="structfield small-section-header">
+                           <a href="#structfield.stmt_expr_attributes" class="anchor field"></a>
+                           <span id="stmt_expr_attributes.v" class='invisible'>
+                           <code>stmt_expr_attributes: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.type_ascription" class="structfield small-section-header">
+                           <a href="#structfield.type_ascription" class="anchor field"></a>
+                           <span id="type_ascription.v" class='invisible'>
+                           <code>type_ascription: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.cfg_target_thread_local" class="structfield small-section-header">
+                           <a href="#structfield.cfg_target_thread_local" class="anchor field"></a>
+                           <span id="cfg_target_thread_local.v" class='invisible'>
+                           <code>cfg_target_thread_local: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.abi_vectorcall" class="structfield small-section-header">
+                           <a href="#structfield.abi_vectorcall" class="anchor field"></a>
+                           <span id="abi_vectorcall.v" class='invisible'>
+                           <code>abi_vectorcall: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.inclusive_range_syntax" class="structfield small-section-header">
+                           <a href="#structfield.inclusive_range_syntax" class="anchor field"></a>
+                           <span id="inclusive_range_syntax.v" class='invisible'>
+                           <code>inclusive_range_syntax: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.exclusive_range_pattern" class="structfield small-section-header">
+                           <a href="#structfield.exclusive_range_pattern" class="anchor field"></a>
+                           <span id="exclusive_range_pattern.v" class='invisible'>
+                           <code>exclusive_range_pattern: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.specialization" class="structfield small-section-header">
+                           <a href="#structfield.specialization" class="anchor field"></a>
+                           <span id="specialization.v" class='invisible'>
+                           <code>specialization: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.drop_types_in_const" class="structfield small-section-header">
+                           <a href="#structfield.drop_types_in_const" class="anchor field"></a>
+                           <span id="drop_types_in_const.v" class='invisible'>
+                           <code>drop_types_in_const: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.cfg_target_has_atomic" class="structfield small-section-header">
+                           <a href="#structfield.cfg_target_has_atomic" class="anchor field"></a>
+                           <span id="cfg_target_has_atomic.v" class='invisible'>
+                           <code>cfg_target_has_atomic: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.conservative_impl_trait" class="structfield small-section-header">
+                           <a href="#structfield.conservative_impl_trait" class="anchor field"></a>
+                           <span id="conservative_impl_trait.v" class='invisible'>
+                           <code>conservative_impl_trait: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.never_type" class="structfield small-section-header">
+                           <a href="#structfield.never_type" class="anchor field"></a>
+                           <span id="never_type.v" class='invisible'>
+                           <code>never_type: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.attr_literals" class="structfield small-section-header">
+                           <a href="#structfield.attr_literals" class="anchor field"></a>
+                           <span id="attr_literals.v" class='invisible'>
+                           <code>attr_literals: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.abi_sysv64" class="structfield small-section-header">
+                           <a href="#structfield.abi_sysv64" class="anchor field"></a>
+                           <span id="abi_sysv64.v" class='invisible'>
+                           <code>abi_sysv64: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.untagged_unions" class="structfield small-section-header">
+                           <a href="#structfield.untagged_unions" class="anchor field"></a>
+                           <span id="untagged_unions.v" class='invisible'>
+                           <code>untagged_unions: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.compiler_builtins" class="structfield small-section-header">
+                           <a href="#structfield.compiler_builtins" class="anchor field"></a>
+                           <span id="compiler_builtins.v" class='invisible'>
+                           <code>compiler_builtins: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.generic_param_attrs" class="structfield small-section-header">
+                           <a href="#structfield.generic_param_attrs" class="anchor field"></a>
+                           <span id="generic_param_attrs.v" class='invisible'>
+                           <code>generic_param_attrs: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.link_cfg" class="structfield small-section-header">
+                           <a href="#structfield.link_cfg" class="anchor field"></a>
+                           <span id="link_cfg.v" class='invisible'>
+                           <code>link_cfg: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.use_extern_macros" class="structfield small-section-header">
+                           <a href="#structfield.use_extern_macros" class="anchor field"></a>
+                           <span id="use_extern_macros.v" class='invisible'>
+                           <code>use_extern_macros: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.target_feature" class="structfield small-section-header">
+                           <a href="#structfield.target_feature" class="anchor field"></a>
+                           <span id="target_feature.v" class='invisible'>
+                           <code>target_feature: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.abi_ptx" class="structfield small-section-header">
+                           <a href="#structfield.abi_ptx" class="anchor field"></a>
+                           <span id="abi_ptx.v" class='invisible'>
+                           <code>abi_ptx: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.i128_type" class="structfield small-section-header">
+                           <a href="#structfield.i128_type" class="anchor field"></a>
+                           <span id="i128_type.v" class='invisible'>
+                           <code>i128_type: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.abi_unadjusted" class="structfield small-section-header">
+                           <a href="#structfield.abi_unadjusted" class="anchor field"></a>
+                           <span id="abi_unadjusted.v" class='invisible'>
+                           <code>abi_unadjusted: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.proc_macro" class="structfield small-section-header">
+                           <a href="#structfield.proc_macro" class="anchor field"></a>
+                           <span id="proc_macro.v" class='invisible'>
+                           <code>proc_macro: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.decl_macro" class="structfield small-section-header">
+                           <a href="#structfield.decl_macro" class="anchor field"></a>
+                           <span id="decl_macro.v" class='invisible'>
+                           <code>decl_macro: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.struct_field_attributes" class="structfield small-section-header">
+                           <a href="#structfield.struct_field_attributes" class="anchor field"></a>
+                           <span id="struct_field_attributes.v" class='invisible'>
+                           <code>struct_field_attributes: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.static_nobundle" class="structfield small-section-header">
+                           <a href="#structfield.static_nobundle" class="anchor field"></a>
+                           <span id="static_nobundle.v" class='invisible'>
+                           <code>static_nobundle: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.abi_msp430_interrupt" class="structfield small-section-header">
+                           <a href="#structfield.abi_msp430_interrupt" class="anchor field"></a>
+                           <span id="abi_msp430_interrupt.v" class='invisible'>
+                           <code>abi_msp430_interrupt: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.sanitizer_runtime" class="structfield small-section-header">
+                           <a href="#structfield.sanitizer_runtime" class="anchor field"></a>
+                           <span id="sanitizer_runtime.v" class='invisible'>
+                           <code>sanitizer_runtime: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.abi_x86_interrupt" class="structfield small-section-header">
+                           <a href="#structfield.abi_x86_interrupt" class="anchor field"></a>
+                           <span id="abi_x86_interrupt.v" class='invisible'>
+                           <code>abi_x86_interrupt: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.catch_expr" class="structfield small-section-header">
+                           <a href="#structfield.catch_expr" class="anchor field"></a>
+                           <span id="catch_expr.v" class='invisible'>
+                           <code>catch_expr: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.repr_align" class="structfield small-section-header">
+                           <a href="#structfield.repr_align" class="anchor field"></a>
+                           <span id="repr_align.v" class='invisible'>
+                           <code>repr_align: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.rvalue_static_promotion" class="structfield small-section-header">
+                           <a href="#structfield.rvalue_static_promotion" class="anchor field"></a>
+                           <span id="rvalue_static_promotion.v" class='invisible'>
+                           <code>rvalue_static_promotion: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.used" class="structfield small-section-header">
+                           <a href="#structfield.used" class="anchor field"></a>
+                           <span id="used.v" class='invisible'>
+                           <code>used: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.global_asm" class="structfield small-section-header">
+                           <a href="#structfield.global_asm" class="anchor field"></a>
+                           <span id="global_asm.v" class='invisible'>
+                           <code>global_asm: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.overlapping_marker_traits" class="structfield small-section-header">
+                           <a href="#structfield.overlapping_marker_traits" class="anchor field"></a>
+                           <span id="overlapping_marker_traits.v" class='invisible'>
+                           <code>overlapping_marker_traits: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.macro_vis_matcher" class="structfield small-section-header">
+                           <a href="#structfield.macro_vis_matcher" class="anchor field"></a>
+                           <span id="macro_vis_matcher.v" class='invisible'>
+                           <code>macro_vis_matcher: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.abi_thiscall" class="structfield small-section-header">
+                           <a href="#structfield.abi_thiscall" class="anchor field"></a>
+                           <span id="abi_thiscall.v" class='invisible'>
+                           <code>abi_thiscall: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span>
+                    <h2 id='methods' class='small-section-header'>
+                      Methods<a href='#methods' class='anchor'></a>
+                    </h2>
+                <h3 id='impl' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl <a class="struct" href="../../syntex_syntax/feature_gate/struct.Features.html" title="struct syntex_syntax::feature_gate::Features">Features</a></code><a href='#impl' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/syntex_syntax/feature_gate.rs.html#68-76' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'><h4 id='method.new' class="method"><span id='new.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.new' class='fnname'>new</a>() -&gt; <a class="struct" href="../../syntex_syntax/feature_gate/struct.Features.html" title="struct syntex_syntax::feature_gate::Features">Features</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/syntex_syntax/feature_gate.rs.html#69-75' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4></div>
+            <h2 id='implementations' class='small-section-header'>
+              Trait Implementations<a href='#implementations' class='anchor'></a>
+            </h2>
+            <div id='implementations-list'>
+        </div>
+                <h2 id='synthetic-implementations' class='small-section-header'>
+                  Auto Trait Implementations<a href='#synthetic-implementations' class='anchor'></a>
+                </h2>
+                <div id='synthetic-implementations-list'>
+            <h3 id='impl-Send' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> for <a class="struct" href="../../syntex_syntax/feature_gate/struct.Features.html" title="struct syntex_syntax::feature_gate::Features">Features</a></code><a href='#impl-Send' class='anchor'></a></span></td><td><span class='out-of-band'></span></td></tr></tbody></table></h3><div class='impl-items'></div><h3 id='impl-Sync' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> for <a class="struct" href="../../syntex_syntax/feature_gate/struct.Features.html" title="struct syntex_syntax::feature_gate::Features">Features</a></code><a href='#impl-Sync' class='anchor'></a></span></td><td><span class='out-of-band'></span></td></tr></tbody></table></h3><div class='impl-items'></div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt><kbd>?</kbd></dt>
+                    <dd>Show this help dialog</dd>
+                    <dt><kbd>S</kbd></dt>
+                    <dd>Focus the search field</dd>
+                    <dt><kbd>↑</kbd></dt>
+                    <dd>Move up in search results</dd>
+                    <dt><kbd>↓</kbd></dt>
+                    <dd>Move down in search results</dd>
+                    <dt><kbd>↹</kbd></dt>
+                    <dd>Switch tab</dd>
+                    <dt><kbd>&#9166;</kbd></dt>
+                    <dd>Go to active search result</dd>
+                    <dt><kbd>+</kbd></dt>
+                    <dd>Expand all sections</dd>
+                    <dt><kbd>-</kbd></dt>
+                    <dd>Collapse all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "syntex_syntax";
+    </script>
+    <script src="../../main.js"></script>
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

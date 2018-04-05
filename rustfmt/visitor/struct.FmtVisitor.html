@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `FmtVisitor` struct in crate `rustfmt`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, FmtVisitor">
+
+    <title>rustfmt::visitor::FmtVisitor - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css"
+          id="mainThemeStyle">
+    
+    <link rel="stylesheet" type="text/css" href="../../dark.css">
+    <link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle">
+    <script src="../../storage.js"></script>
+    
+
+    
+    
+</head>
+<body class="rustdoc struct">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        <div class="sidebar-menu">&#9776;</div>
+        
+        <p class='location'>Struct FmtVisitor</p><div class="sidebar-elems"><div class="block items"><a class="sidebar-title" href="#fields">Fields</a><div class="sidebar-links"><a href="#structfield.parse_session">parse_session</a><a href="#structfield.codemap">codemap</a><a href="#structfield.buffer">buffer</a><a href="#structfield.last_pos">last_pos</a><a href="#structfield.block_indent">block_indent</a><a href="#structfield.config">config</a><a href="#structfield.failed">failed</a><a href="#structfield.is_if_else_block">is_if_else_block</a></div><a class="sidebar-title" href="#methods">Methods</a><div class="sidebar-links"><a href="#method.visit_block">visit_block</a><a href="#method.visit_item">visit_item</a><a href="#method.visit_trait_item">visit_trait_item</a><a href="#method.visit_impl_item">visit_impl_item</a><a href="#method.from_codemap">from_codemap</a><a href="#method.snippet">snippet</a><a href="#method.visit_attrs">visit_attrs</a><a href="#method.format_separate_mod">format_separate_mod</a><a href="#method.get_context">get_context</a><a href="#method.format_foreign_mod">format_foreign_mod</a><a href="#method.rewrite_fn">rewrite_fn</a><a href="#method.rewrite_required_fn">rewrite_required_fn</a><a href="#method.visit_enum">visit_enum</a><a href="#method.format_missing">format_missing</a><a href="#method.format_missing_with_indent">format_missing_with_indent</a><a href="#method.format_missing_no_indent">format_missing_no_indent</a><a href="#method.format_imports">format_imports</a><a href="#method.format_import">format_import</a></div><a class="sidebar-title" href="#synthetic-implementations">Auto Trait Implementations</a><div class="sidebar-links"><a href="#impl-Send">!Send</a><a href="#impl-Sync">!Sync</a></div></div><p class='location'><a href='../index.html'>rustfmt</a>::<wbr><a href='index.html'>visitor</a></p><script>window.sidebarCurrent = {name: 'FmtVisitor', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script></div>
+    </nav>
+
+    <div class="theme-picker">
+        <button id="theme-picker" aria-label="Pick another theme!">
+            <img src="../../brush.svg" width="18" alt="Pick another theme!">
+        </button>
+        <div id="theme-choices"></div>
+    </div>
+    <script src="../../theme.js"></script>
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Struct <a href='../index.html'>rustfmt</a>::<wbr><a href='index.html'>visitor</a>::<wbr><a class="struct" href=''>FmtVisitor</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../../src/rustfmt/visitor.rs.html#51-61' title='goto source code'>[src]</a></span></h1><div class="docblock type-decl"><pre class='rust struct'>pub struct FmtVisitor&lt;'a&gt; {
+    pub parse_session: &amp;'a ParseSess,
+    pub codemap: &amp;'a <a class="struct" href="../../syntex_syntax/codemap/struct.CodeMap.html" title="struct syntex_syntax::codemap::CodeMap">CodeMap</a>,
+    pub buffer: <a class="struct" href="../../strings/string_buffer/struct.StringBuffer.html" title="struct strings::string_buffer::StringBuffer">StringBuffer</a>,
+    pub last_pos: <a class="struct" href="../../syntex_pos/struct.BytePos.html" title="struct syntex_pos::BytePos">BytePos</a>,
+    pub block_indent: <a class="struct" href="../../rustfmt/struct.Indent.html" title="struct rustfmt::Indent">Indent</a>,
+    pub config: &amp;'a <a class="struct" href="../../rustfmt/config/struct.Config.html" title="struct rustfmt::config::Config">Config</a>,
+    pub failed: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub is_if_else_block: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+}</pre></div><h2 id='fields' class='fields small-section-header'>
+                       Fields<a href='#fields' class='anchor'></a></h2><span id="structfield.parse_session" class="structfield small-section-header">
+                           <a href="#structfield.parse_session" class="anchor field"></a>
+                           <span id="parse_session.v" class='invisible'>
+                           <code>parse_session: &amp;'a ParseSess</code>
+                           </span></span><span id="structfield.codemap" class="structfield small-section-header">
+                           <a href="#structfield.codemap" class="anchor field"></a>
+                           <span id="codemap.v" class='invisible'>
+                           <code>codemap: &amp;'a <a class="struct" href="../../syntex_syntax/codemap/struct.CodeMap.html" title="struct syntex_syntax::codemap::CodeMap">CodeMap</a></code>
+                           </span></span><span id="structfield.buffer" class="structfield small-section-header">
+                           <a href="#structfield.buffer" class="anchor field"></a>
+                           <span id="buffer.v" class='invisible'>
+                           <code>buffer: <a class="struct" href="../../strings/string_buffer/struct.StringBuffer.html" title="struct strings::string_buffer::StringBuffer">StringBuffer</a></code>
+                           </span></span><span id="structfield.last_pos" class="structfield small-section-header">
+                           <a href="#structfield.last_pos" class="anchor field"></a>
+                           <span id="last_pos.v" class='invisible'>
+                           <code>last_pos: <a class="struct" href="../../syntex_pos/struct.BytePos.html" title="struct syntex_pos::BytePos">BytePos</a></code>
+                           </span></span><span id="structfield.block_indent" class="structfield small-section-header">
+                           <a href="#structfield.block_indent" class="anchor field"></a>
+                           <span id="block_indent.v" class='invisible'>
+                           <code>block_indent: <a class="struct" href="../../rustfmt/struct.Indent.html" title="struct rustfmt::Indent">Indent</a></code>
+                           </span></span><span id="structfield.config" class="structfield small-section-header">
+                           <a href="#structfield.config" class="anchor field"></a>
+                           <span id="config.v" class='invisible'>
+                           <code>config: &amp;'a <a class="struct" href="../../rustfmt/config/struct.Config.html" title="struct rustfmt::config::Config">Config</a></code>
+                           </span></span><span id="structfield.failed" class="structfield small-section-header">
+                           <a href="#structfield.failed" class="anchor field"></a>
+                           <span id="failed.v" class='invisible'>
+                           <code>failed: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.is_if_else_block" class="structfield small-section-header">
+                           <a href="#structfield.is_if_else_block" class="anchor field"></a>
+                           <span id="is_if_else_block.v" class='invisible'>
+                           <code>is_if_else_block: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span>
+                    <h2 id='methods' class='small-section-header'>
+                      Methods<a href='#methods' class='anchor'></a>
+                    </h2>
+                <h3 id='impl' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'a&gt; <a class="struct" href="../../rustfmt/visitor/struct.FmtVisitor.html" title="struct rustfmt::visitor::FmtVisitor">FmtVisitor</a>&lt;'a&gt;</code><a href='#impl' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/visitor.rs.html#63-706' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'><h4 id='method.visit_block' class="method"><span id='visit_block.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.visit_block' class='fnname'>visit_block</a>(&amp;mut self, b: &amp;<a class="struct" href="../../syntex_syntax/ast/struct.Block.html" title="struct syntex_syntax::ast::Block">Block</a>)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/visitor.rs.html#113-157' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.visit_item' class="method"><span id='visit_item.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.visit_item' class='fnname'>visit_item</a>(&amp;mut self, item: &amp;<a class="struct" href="../../syntex_syntax/ast/struct.Item.html" title="struct syntex_syntax::ast::Item">Item</a>)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/visitor.rs.html#242-437' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.visit_trait_item' class="method"><span id='visit_trait_item.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.visit_trait_item' class='fnname'>visit_trait_item</a>(&amp;mut self, ti: &amp;<a class="struct" href="../../syntex_syntax/ast/struct.TraitItem.html" title="struct syntex_syntax::ast::TraitItem">TraitItem</a>)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/visitor.rs.html#439-488' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.visit_impl_item' class="method"><span id='visit_impl_item.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.visit_impl_item' class='fnname'>visit_impl_item</a>(&amp;mut self, ii: &amp;<a class="struct" href="../../syntex_syntax/ast/struct.ImplItem.html" title="struct syntex_syntax::ast::ImplItem">ImplItem</a>)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/visitor.rs.html#490-535' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.from_codemap' class="method"><span id='from_codemap.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.from_codemap' class='fnname'>from_codemap</a>(<br>&nbsp;&nbsp;&nbsp;&nbsp;parse_session: &amp;'a ParseSess, <br>&nbsp;&nbsp;&nbsp;&nbsp;config: &amp;'a <a class="struct" href="../../rustfmt/config/struct.Config.html" title="struct rustfmt::config::Config">Config</a><br>) -&gt; <a class="struct" href="../../rustfmt/visitor/struct.FmtVisitor.html" title="struct rustfmt::visitor::FmtVisitor">FmtVisitor</a>&lt;'a&gt;</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/visitor.rs.html#562-573' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.snippet' class="method"><span id='snippet.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.snippet' class='fnname'>snippet</a>(&amp;self, span: <a class="struct" href="../../syntex_pos/struct.Span.html" title="struct syntex_pos::Span">Span</a>) -&gt; <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html" title="struct alloc::string::String">String</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/visitor.rs.html#575-587' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.visit_attrs' class="method"><span id='visit_attrs.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.visit_attrs' class='fnname'>visit_attrs</a>(&amp;mut self, attrs: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.slice.html">&amp;[</a><a class="struct" href="../../syntex_syntax/ast/struct.Attribute.html" title="struct syntex_syntax::ast::Attribute">Attribute</a><a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.slice.html">]</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/visitor.rs.html#590-617' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.format_separate_mod' class="method"><span id='format_separate_mod.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.format_separate_mod' class='fnname'>format_separate_mod</a>(&amp;mut self, m: &amp;<a class="struct" href="../../syntex_syntax/ast/struct.Mod.html" title="struct syntex_syntax::ast::Mod">Mod</a>)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/visitor.rs.html#687-693' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.get_context' class="method"><span id='get_context.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.get_context' class='fnname'>get_context</a>(&amp;self) -&gt; RewriteContext</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/visitor.rs.html#695-705' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4></div><h3 id='impl-1' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'a&gt; <a class="struct" href="../../rustfmt/visitor/struct.FmtVisitor.html" title="struct rustfmt::visitor::FmtVisitor">FmtVisitor</a>&lt;'a&gt;</code><a href='#impl-1' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/items.rs.html#133-551' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'><h4 id='method.format_foreign_mod' class="method"><span id='format_foreign_mod.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.format_foreign_mod' class='fnname'>format_foreign_mod</a>(&amp;mut self, fm: &amp;<a class="struct" href="../../syntex_syntax/ast/struct.ForeignMod.html" title="struct syntex_syntax::ast::ForeignMod">ForeignMod</a>, span: <a class="struct" href="../../syntex_pos/struct.Span.html" title="struct syntex_pos::Span">Span</a>)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/items.rs.html#175-178' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.rewrite_fn' class="method"><span id='rewrite_fn.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.rewrite_fn' class='fnname'>rewrite_fn</a>(<br>&nbsp;&nbsp;&nbsp;&nbsp;&amp;mut self, <br>&nbsp;&nbsp;&nbsp;&nbsp;indent: <a class="struct" href="../../rustfmt/struct.Indent.html" title="struct rustfmt::Indent">Indent</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;ident: <a class="struct" href="../../syntex_pos/symbol/struct.Ident.html" title="struct syntex_pos::symbol::Ident">Ident</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;fd: &amp;<a class="struct" href="../../syntex_syntax/ast/struct.FnDecl.html" title="struct syntex_syntax::ast::FnDecl">FnDecl</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;generics: &amp;<a class="struct" href="../../syntex_syntax/ast/struct.Generics.html" title="struct syntex_syntax::ast::Generics">Generics</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;unsafety: <a class="enum" href="../../syntex_syntax/ast/enum.Unsafety.html" title="enum syntex_syntax::ast::Unsafety">Unsafety</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;constness: <a class="enum" href="../../syntex_syntax/ast/enum.Constness.html" title="enum syntex_syntax::ast::Constness">Constness</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;defaultness: <a class="enum" href="../../syntex_syntax/ast/enum.Defaultness.html" title="enum syntex_syntax::ast::Defaultness">Defaultness</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;abi: <a class="enum" href="../../syntex_syntax/abi/enum.Abi.html" title="enum syntex_syntax::abi::Abi">Abi</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;vis: &amp;<a class="enum" href="../../syntex_syntax/ast/enum.Visibility.html" title="enum syntex_syntax::ast::Visibility">Visibility</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;span: <a class="struct" href="../../syntex_pos/struct.Span.html" title="struct syntex_pos::Span">Span</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;block: &amp;<a class="struct" href="../../syntex_syntax/ast/struct.Block.html" title="struct syntex_syntax::ast::Block">Block</a><br>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/items.rs.html#241-300' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.rewrite_required_fn' class="method"><span id='rewrite_required_fn.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.rewrite_required_fn' class='fnname'>rewrite_required_fn</a>(<br>&nbsp;&nbsp;&nbsp;&nbsp;&amp;mut self, <br>&nbsp;&nbsp;&nbsp;&nbsp;indent: <a class="struct" href="../../rustfmt/struct.Indent.html" title="struct rustfmt::Indent">Indent</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;ident: <a class="struct" href="../../syntex_pos/symbol/struct.Ident.html" title="struct syntex_pos::symbol::Ident">Ident</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;sig: &amp;<a class="struct" href="../../syntex_syntax/ast/struct.MethodSig.html" title="struct syntex_syntax::ast::MethodSig">MethodSig</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;span: <a class="struct" href="../../syntex_pos/struct.Span.html" title="struct syntex_pos::Span">Span</a><br>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>&gt;</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/items.rs.html#302-334' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.visit_enum' class="method"><span id='visit_enum.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.visit_enum' class='fnname'>visit_enum</a>(<br>&nbsp;&nbsp;&nbsp;&nbsp;&amp;mut self, <br>&nbsp;&nbsp;&nbsp;&nbsp;ident: <a class="struct" href="../../syntex_pos/symbol/struct.Ident.html" title="struct syntex_pos::symbol::Ident">Ident</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;vis: &amp;<a class="enum" href="../../syntex_syntax/ast/enum.Visibility.html" title="enum syntex_syntax::ast::Visibility">Visibility</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;enum_def: &amp;<a class="struct" href="../../syntex_syntax/ast/struct.EnumDef.html" title="struct syntex_syntax::ast::EnumDef">EnumDef</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;generics: &amp;<a class="struct" href="../../syntex_syntax/ast/struct.Generics.html" title="struct syntex_syntax::ast::Generics">Generics</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;span: <a class="struct" href="../../syntex_pos/struct.Span.html" title="struct syntex_pos::Span">Span</a><br>)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/items.rs.html#385-433' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4></div><h3 id='impl-2' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'a&gt; <a class="struct" href="../../rustfmt/visitor/struct.FmtVisitor.html" title="struct rustfmt::visitor::FmtVisitor">FmtVisitor</a>&lt;'a&gt;</code><a href='#impl-2' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/missed_spans.rs.html#18-255' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'><h4 id='method.format_missing' class="method"><span id='format_missing.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.format_missing' class='fnname'>format_missing</a>(&amp;mut self, end: <a class="struct" href="../../syntex_pos/struct.BytePos.html" title="struct syntex_pos::BytePos">BytePos</a>)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/missed_spans.rs.html#25-29' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.format_missing_with_indent' class="method"><span id='format_missing_with_indent.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.format_missing_with_indent' class='fnname'>format_missing_with_indent</a>(&amp;mut self, end: <a class="struct" href="../../syntex_pos/struct.BytePos.html" title="struct syntex_pos::BytePos">BytePos</a>)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/missed_spans.rs.html#31-42' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.format_missing_no_indent' class="method"><span id='format_missing_no_indent.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.format_missing_no_indent' class='fnname'>format_missing_no_indent</a>(&amp;mut self, end: <a class="struct" href="../../syntex_pos/struct.BytePos.html" title="struct syntex_pos::BytePos">BytePos</a>)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/missed_spans.rs.html#44-48' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4></div><h3 id='impl-3' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'a&gt; <a class="struct" href="../../rustfmt/visitor/struct.FmtVisitor.html" title="struct rustfmt::visitor::FmtVisitor">FmtVisitor</a>&lt;'a&gt;</code><a href='#impl-3' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/imports.rs.html#190-281' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'><h4 id='method.format_imports' class="method"><span id='format_imports.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.format_imports' class='fnname'>format_imports</a>(&amp;mut self, use_items: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.slice.html">&amp;[</a><a class="struct" href="../../syntex_syntax/ptr/struct.P.html" title="struct syntex_syntax::ptr::P">P</a>&lt;<a class="struct" href="../../syntex_syntax/ast/struct.Item.html" title="struct syntex_syntax::ast::Item">Item</a>&gt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.slice.html">]</a>)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/imports.rs.html#191-248' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.format_import' class="method"><span id='format_import.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.format_import' class='fnname'>format_import</a>(&amp;mut self, vis: &amp;<a class="enum" href="../../syntex_syntax/ast/enum.Visibility.html" title="enum syntex_syntax::ast::Visibility">Visibility</a>, vp: &amp;<a class="type" href="../../syntex_syntax/ast/type.ViewPath.html" title="type syntex_syntax::ast::ViewPath">ViewPath</a>, span: <a class="struct" href="../../syntex_pos/struct.Span.html" title="struct syntex_pos::Span">Span</a>)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/rustfmt/imports.rs.html#250-280' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4></div>
+            <h2 id='implementations' class='small-section-header'>
+              Trait Implementations<a href='#implementations' class='anchor'></a>
+            </h2>
+            <div id='implementations-list'>
+        </div>
+                <h2 id='synthetic-implementations' class='small-section-header'>
+                  Auto Trait Implementations<a href='#synthetic-implementations' class='anchor'></a>
+                </h2>
+                <div id='synthetic-implementations-list'>
+            <h3 id='impl-Send' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'a&gt; !<a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> for <a class="struct" href="../../rustfmt/visitor/struct.FmtVisitor.html" title="struct rustfmt::visitor::FmtVisitor">FmtVisitor</a>&lt;'a&gt;</code><a href='#impl-Send' class='anchor'></a></span></td><td><span class='out-of-band'></span></td></tr></tbody></table></h3><div class='impl-items'></div><h3 id='impl-Sync' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'a&gt; !<a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> for <a class="struct" href="../../rustfmt/visitor/struct.FmtVisitor.html" title="struct rustfmt::visitor::FmtVisitor">FmtVisitor</a>&lt;'a&gt;</code><a href='#impl-Sync' class='anchor'></a></span></td><td><span class='out-of-band'></span></td></tr></tbody></table></h3><div class='impl-items'></div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt><kbd>?</kbd></dt>
+                    <dd>Show this help dialog</dd>
+                    <dt><kbd>S</kbd></dt>
+                    <dd>Focus the search field</dd>
+                    <dt><kbd>↑</kbd></dt>
+                    <dd>Move up in search results</dd>
+                    <dt><kbd>↓</kbd></dt>
+                    <dd>Move down in search results</dd>
+                    <dt><kbd>↹</kbd></dt>
+                    <dd>Switch tab</dd>
+                    <dt><kbd>&#9166;</kbd></dt>
+                    <dd>Go to active search result</dd>
+                    <dt><kbd>+</kbd></dt>
+                    <dd>Expand all sections</dd>
+                    <dt><kbd>-</kbd></dt>
+                    <dd>Collapse all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "rustfmt";
+    </script>
+    <script src="../../main.js"></script>
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

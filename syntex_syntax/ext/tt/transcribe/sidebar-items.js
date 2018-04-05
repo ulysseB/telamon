@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["transcribe","This can do Macro-By-Example transcription. On the other hand, if `src` contains no `TokenTree::{Sequence, Match}`s, or `SubstNt`s, `interp` can (and should) be None."]]});

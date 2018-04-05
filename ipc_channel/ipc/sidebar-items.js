@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["IpcSelectionResult",""]],"fn":[["bytes_channel",""],["channel",""]],"struct":[["IpcBytesReceiver",""],["IpcBytesSender",""],["IpcOneShotServer",""],["IpcReceiver",""],["IpcReceiverSet",""],["IpcSender",""],["IpcSharedMemory",""],["OpaqueIpcMessage",""],["OpaqueIpcReceiver",""],["OpaqueIpcSender",""]]});

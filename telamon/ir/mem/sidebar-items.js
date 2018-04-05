@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["Id","Uniquely identifies a block."]],"struct":[["BlockMap","Holds the blocks of memory to allocate on the device."],["ExternalBlock","A memory block allocated by the user."],["InternalBlock","A block of memory allocated on the device by the kernel."],["InternalId",""]],"trait":[["Block","Represents a memory block."]]});

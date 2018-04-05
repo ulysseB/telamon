@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `attr` mod in crate `syntex_syntax`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, attr">
+
+    <title>syntex_syntax::attr - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css"
+          id="mainThemeStyle">
+    
+    <link rel="stylesheet" type="text/css" href="../../dark.css">
+    <link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle">
+    <script src="../../storage.js"></script>
+    
+
+    <link rel="shortcut icon" href="https://doc.rust-lang.org/favicon.ico">
+    
+</head>
+<body class="rustdoc mod">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        <div class="sidebar-menu">&#9776;</div>
+        <a href='../../syntex_syntax/index.html'><img src='https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png' alt='logo' width='100'></a>
+        <p class='location'>Module attr</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#reexports">Re-exports</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li></ul></div><p class='location'><a href='../index.html'>syntex_syntax</a></p><script>window.sidebarCurrent = {name: 'attr', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script></div>
+    </nav>
+
+    <div class="theme-picker">
+        <button id="theme-picker" aria-label="Pick another theme!">
+            <img src="../../brush.svg" width="18" alt="Pick another theme!">
+        </button>
+        <div id="theme-choices"></div>
+    </div>
+    <script src="../../theme.js"></script>
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Module <a href='../index.html'>syntex_syntax</a>::<wbr><a class="mod" href=''>attr</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../../src/syntex_syntax/attr.rs.html#13-1345' title='goto source code'>[src]</a></span></h1><h2 id='reexports' class='section-header'><a href="#reexports">Re-exports</a></h2>
+<table><tr><td><code>pub use self::<a class="enum" href="../../syntex_syntax/attr/enum.StabilityLevel.html" title="enum syntex_syntax::attr::StabilityLevel">StabilityLevel</a>::*;</code></td></tr><tr><td><code>pub use self::<a class="enum" href="../../syntex_syntax/attr/enum.ReprAttr.html" title="enum syntex_syntax::attr::ReprAttr">ReprAttr</a>::*;</code></td></tr><tr><td><code>pub use self::<a class="enum" href="../../syntex_syntax/attr/enum.IntType.html" title="enum syntex_syntax::attr::IntType">IntType</a>::*;</code></td></tr></table><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Deprecation.html"
+                                  title='struct syntex_syntax::attr::Deprecation'>Deprecation</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.RustcDeprecation.html"
+                                  title='struct syntex_syntax::attr::RustcDeprecation'>RustcDeprecation</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Stability.html"
+                                  title='struct syntex_syntax::attr::Stability'>Stability</a></td>
+                           <td class='docblock-short'>
+                                <p>Represents the #[stable], #[unstable] and #[rustc_deprecated] attributes.</p>
+
+                           </td>
+                       </tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.InlineAttr.html"
+                                  title='enum syntex_syntax::attr::InlineAttr'>InlineAttr</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.IntType.html"
+                                  title='enum syntex_syntax::attr::IntType'>IntType</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.ReprAttr.html"
+                                  title='enum syntex_syntax::attr::ReprAttr'>ReprAttr</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.StabilityLevel.html"
+                                  title='enum syntex_syntax::attr::StabilityLevel'>StabilityLevel</a></td>
+                           <td class='docblock-short'>
+                                <p>The available stability levels.</p>
+
+                           </td>
+                       </tr></table><h2 id='traits' class='section-header'><a href="#traits">Traits</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="trait" href="trait.HasAttrs.html"
+                                  title='trait syntex_syntax::attr::HasAttrs'>HasAttrs</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.cfg_matches.html"
+                                  title='fn syntex_syntax::attr::cfg_matches'>cfg_matches</a></td>
+                           <td class='docblock-short'>
+                                <p>Tests if a cfg-pattern matches the cfg set</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.contains_extern_indicator.html"
+                                  title='fn syntex_syntax::attr::contains_extern_indicator'>contains_extern_indicator</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.contains_name.html"
+                                  title='fn syntex_syntax::attr::contains_name'>contains_name</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.find_crate_name.html"
+                                  title='fn syntex_syntax::attr::find_crate_name'>find_crate_name</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.find_deprecation.html"
+                                  title='fn syntex_syntax::attr::find_deprecation'>find_deprecation</a></td>
+                           <td class='docblock-short'>
+                                <p>Find the deprecation attribute. <code>None</code> if none exists.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.find_export_name_attr.html"
+                                  title='fn syntex_syntax::attr::find_export_name_attr'>find_export_name_attr</a></td>
+                           <td class='docblock-short'>
+                                <p>Find the value of #[export_name=*] attribute and check its validity.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.find_inline_attr.html"
+                                  title='fn syntex_syntax::attr::find_inline_attr'>find_inline_attr</a></td>
+                           <td class='docblock-short'>
+                                <p>Determine what <code>#[inline]</code> attribute is present in <code>attrs</code>, if any.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.find_repr_attrs.html"
+                                  title='fn syntex_syntax::attr::find_repr_attrs'>find_repr_attrs</a></td>
+                           <td class='docblock-short'>
+                                <p>Parse #[repr(...)] forms.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.find_stability.html"
+                                  title='fn syntex_syntax::attr::find_stability'>find_stability</a></td>
+                           <td class='docblock-short'>
+                                <p>Find the first stability attribute. <code>None</code> if none exists.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.first_attr_value_str_by_name.html"
+                                  title='fn syntex_syntax::attr::first_attr_value_str_by_name'>first_attr_value_str_by_name</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.is_known.html"
+                                  title='fn syntex_syntax::attr::is_known'>is_known</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.is_used.html"
+                                  title='fn syntex_syntax::attr::is_used'>is_used</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.list_contains_name.html"
+                                  title='fn syntex_syntax::attr::list_contains_name'>list_contains_name</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.mark_known.html"
+                                  title='fn syntex_syntax::attr::mark_known'>mark_known</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.mark_used.html"
+                                  title='fn syntex_syntax::attr::mark_used'>mark_used</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.mk_attr_id.html"
+                                  title='fn syntex_syntax::attr::mk_attr_id'>mk_attr_id</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.mk_attr_inner.html"
+                                  title='fn syntex_syntax::attr::mk_attr_inner'>mk_attr_inner</a></td>
+                           <td class='docblock-short'>
+                                <p>Returns an inner attribute with the given value.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.mk_attr_outer.html"
+                                  title='fn syntex_syntax::attr::mk_attr_outer'>mk_attr_outer</a></td>
+                           <td class='docblock-short'>
+                                <p>Returns an outer attribute with the given value.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.mk_list_item.html"
+                                  title='fn syntex_syntax::attr::mk_list_item'>mk_list_item</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.mk_list_word_item.html"
+                                  title='fn syntex_syntax::attr::mk_list_word_item'>mk_list_word_item</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.mk_name_value_item.html"
+                                  title='fn syntex_syntax::attr::mk_name_value_item'>mk_name_value_item</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.mk_name_value_item_str.html"
+                                  title='fn syntex_syntax::attr::mk_name_value_item_str'>mk_name_value_item_str</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.mk_spanned_attr_inner.html"
+                                  title='fn syntex_syntax::attr::mk_spanned_attr_inner'>mk_spanned_attr_inner</a></td>
+                           <td class='docblock-short'>
+                                <p>Returns an innter attribute with the given value and span.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.mk_spanned_attr_outer.html"
+                                  title='fn syntex_syntax::attr::mk_spanned_attr_outer'>mk_spanned_attr_outer</a></td>
+                           <td class='docblock-short'>
+                                <p>Returns an outer attribute with the given value and span.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.mk_spanned_list_item.html"
+                                  title='fn syntex_syntax::attr::mk_spanned_list_item'>mk_spanned_list_item</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.mk_spanned_name_value_item.html"
+                                  title='fn syntex_syntax::attr::mk_spanned_name_value_item'>mk_spanned_name_value_item</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.mk_spanned_word_item.html"
+                                  title='fn syntex_syntax::attr::mk_spanned_word_item'>mk_spanned_word_item</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.mk_sugared_doc_attr.html"
+                                  title='fn syntex_syntax::attr::mk_sugared_doc_attr'>mk_sugared_doc_attr</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.mk_word_item.html"
+                                  title='fn syntex_syntax::attr::mk_word_item'>mk_word_item</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.requests_inline.html"
+                                  title='fn syntex_syntax::attr::requests_inline'>requests_inline</a></td>
+                           <td class='docblock-short'>
+                                <p>True if <code>#[inline]</code> or <code>#[inline(always)]</code> is present in <code>attrs</code>.</p>
+
+                           </td>
+                       </tr></table></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt><kbd>?</kbd></dt>
+                    <dd>Show this help dialog</dd>
+                    <dt><kbd>S</kbd></dt>
+                    <dd>Focus the search field</dd>
+                    <dt><kbd>↑</kbd></dt>
+                    <dd>Move up in search results</dd>
+                    <dt><kbd>↓</kbd></dt>
+                    <dd>Move down in search results</dd>
+                    <dt><kbd>↹</kbd></dt>
+                    <dd>Switch tab</dd>
+                    <dt><kbd>&#9166;</kbd></dt>
+                    <dd>Go to active search result</dd>
+                    <dt><kbd>+</kbd></dt>
+                    <dd>Expand all sections</dd>
+                    <dt><kbd>-</kbd></dt>
+                    <dd>Collapse all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "syntex_syntax";
+    </script>
+    <script src="../../main.js"></script>
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

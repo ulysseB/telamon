@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `codegen` mod in crate `telamon`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, codegen">
+
+    <title>telamon::codegen - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css"
+          id="mainThemeStyle">
+    
+    <link rel="stylesheet" type="text/css" href="../../dark.css">
+    <link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle">
+    <script src="../../storage.js"></script>
+    
+
+    
+    
+</head>
+<body class="rustdoc mod">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        <div class="sidebar-menu">&#9776;</div>
+        
+        <p class='location'>Module codegen</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li></ul></div><p class='location'><a href='../index.html'>telamon</a></p><script>window.sidebarCurrent = {name: 'codegen', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script></div>
+    </nav>
+
+    <div class="theme-picker">
+        <button id="theme-picker" aria-label="Pick another theme!">
+            <img src="../../brush.svg" width="18" alt="Pick another theme!">
+        </button>
+        <div id="theme-choices"></div>
+    </div>
+    <script src="../../theme.js"></script>
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Module <a href='../index.html'>telamon</a>::<wbr><a class="mod" href=''>codegen</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../../src/telamon/codegen/mod.rs.html#1-10' title='goto source code'>[src]</a></span></h1><div class='docblock'><p>Helpers to generate code from an IR instance and fully specified decisions.</p>
+</div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Dimension.html"
+                                  title='struct telamon::codegen::Dimension'>Dimension</a></td>
+                           <td class='docblock-short'>
+                                <p>An iteration dimension composed of one or mure fused dimensions.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Function.html"
+                                  title='struct telamon::codegen::Function'>Function</a></td>
+                           <td class='docblock-short'>
+                                <p>A function ready to execute on a device, derived from a constrained IR instance.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.InductionLevel.html"
+                                  title='struct telamon::codegen::InductionLevel'>InductionLevel</a></td>
+                           <td class='docblock-short'>
+                                <p>An induction level associated to a dimension.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.InductionVar.html"
+                                  title='struct telamon::codegen::InductionVar'>InductionVar</a></td>
+                           <td class='docblock-short'>
+                                <p>An induction variable, composed of multiple induction variable levels.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Instruction.html"
+                                  title='struct telamon::codegen::Instruction'>Instruction</a></td>
+                           <td class='docblock-short'>
+                                <p>An instruction to execute.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.InternalMemBlock.html"
+                                  title='struct telamon::codegen::InternalMemBlock'>InternalMemBlock</a></td>
+                           <td class='docblock-short'>
+                                <p>A memory block allocated by the kernel.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.NameMap.html"
+                                  title='struct telamon::codegen::NameMap'>NameMap</a></td>
+                           <td class='docblock-short'>
+                                <p>Maps variables to names.</p>
+
+                           </td>
+                       </tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.AllocationScheme.html"
+                                  title='enum telamon::codegen::AllocationScheme'>AllocationScheme</a></td>
+                           <td class='docblock-short'>
+                                <p>Indicates how is a memory block allocated.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.Cfg.html"
+                                  title='enum telamon::codegen::Cfg'>Cfg</a></td>
+                           <td class='docblock-short'>
+                                <p>Represents a CFG of the targeted device.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.ParamVal.html"
+                                  title='enum telamon::codegen::ParamVal'>ParamVal</a></td>
+                           <td class='docblock-short'>
+                                <p>Represents the value of a parameter passed to the kernel by the host.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.ParamValKey.html"
+                                  title='enum telamon::codegen::ParamValKey'>ParamValKey</a></td>
+                           <td class='docblock-short'>
+                                <p>Uniquely identifies a <code>ParamVal</code>.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.Value.html"
+                                  title='enum telamon::codegen::Value'>Value</a></td>
+                           <td class='docblock-short'>
+                                <p>A value that can be named.</p>
+
+                           </td>
+                       </tr></table><h2 id='traits' class='section-header'><a href="#traits">Traits</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="trait" href="trait.Namer.html"
+                                  title='trait telamon::codegen::Namer'>Namer</a></td>
+                           <td class='docblock-short'>
+                                <p>Assign names to variables.</p>
+
+                           </td>
+                       </tr></table></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt><kbd>?</kbd></dt>
+                    <dd>Show this help dialog</dd>
+                    <dt><kbd>S</kbd></dt>
+                    <dd>Focus the search field</dd>
+                    <dt><kbd>↑</kbd></dt>
+                    <dd>Move up in search results</dd>
+                    <dt><kbd>↓</kbd></dt>
+                    <dd>Move down in search results</dd>
+                    <dt><kbd>↹</kbd></dt>
+                    <dd>Switch tab</dd>
+                    <dt><kbd>&#9166;</kbd></dt>
+                    <dd>Go to active search result</dd>
+                    <dt><kbd>+</kbd></dt>
+                    <dd>Expand all sections</dd>
+                    <dt><kbd>-</kbd></dt>
+                    <dd>Collapse all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "telamon";
+    </script>
+    <script src="../../main.js"></script>
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["append_newline",""],["write_all_files",""],["write_file",""],["write_system_newlines",""]],"type":[["FileMap",""],["FileRecord",""]]});

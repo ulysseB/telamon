@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `BUILTIN_ATTRIBUTES` constant in crate `syntex_syntax`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, BUILTIN_ATTRIBUTES">
+
+    <title>syntex_syntax::feature_gate::BUILTIN_ATTRIBUTES - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css"
+          id="mainThemeStyle">
+    
+    <link rel="stylesheet" type="text/css" href="../../dark.css">
+    <link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle">
+    <script src="../../storage.js"></script>
+    
+
+    <link rel="shortcut icon" href="https://doc.rust-lang.org/favicon.ico">
+    
+</head>
+<body class="rustdoc constant">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        <div class="sidebar-menu">&#9776;</div>
+        <a href='../../syntex_syntax/index.html'><img src='https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png' alt='logo' width='100'></a>
+        <div class="sidebar-elems"><p class='location'><a href='../index.html'>syntex_syntax</a>::<wbr><a href='index.html'>feature_gate</a></p><script>window.sidebarCurrent = {name: 'BUILTIN_ATTRIBUTES', ty: 'constant', relpath: ''};</script><script defer src="sidebar-items.js"></script></div>
+    </nav>
+
+    <div class="theme-picker">
+        <button id="theme-picker" aria-label="Pick another theme!">
+            <img src="../../brush.svg" width="18" alt="Pick another theme!">
+        </button>
+        <div id="theme-choices"></div>
+    </div>
+    <script src="../../theme.js"></script>
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Constant <a href='../index.html'>syntex_syntax</a>::<wbr><a href='index.html'>feature_gate</a>::<wbr><a class="constant" href=''>BUILTIN_ATTRIBUTES</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../../src/syntex_syntax/feature_gate.rs.html#504-814' title='goto source code'>[src]</a></span></h1><pre class='rust const'>pub const BUILTIN_ATTRIBUTES: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.slice.html">&amp;'static [</a><a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">(</a>&amp;'static <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>, <a class="enum" href="../../syntex_syntax/feature_gate/enum.AttributeType.html" title="enum syntex_syntax::feature_gate::AttributeType">AttributeType</a>, <a class="enum" href="../../syntex_syntax/feature_gate/enum.AttributeGate.html" title="enum syntex_syntax::feature_gate::AttributeGate">AttributeGate</a><a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">)</a><a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.slice.html">]</a><code> = </code><code>&amp;[(&quot;warn&quot;, Normal, Ungated), (&quot;allow&quot;, Normal, Ungated),
+  (&quot;forbid&quot;, Normal, Ungated), (&quot;deny&quot;, Normal, Ungated),
+  (&quot;macro_reexport&quot;, Normal, Ungated), (&quot;macro_use&quot;, Normal, Ungated),
+  (&quot;macro_export&quot;, Normal, Ungated), (&quot;plugin_registrar&quot;, Normal, Ungated),
+  (&quot;cfg&quot;, Normal, Ungated), (&quot;cfg_attr&quot;, Normal, Ungated),
+  (&quot;main&quot;, Normal, Ungated), (&quot;start&quot;, Normal, Ungated),
+  (&quot;test&quot;, Normal, Ungated), (&quot;bench&quot;, Normal, Ungated),
+  (&quot;simd&quot;, Normal, Ungated), (&quot;repr&quot;, Normal, Ungated),
+  (&quot;path&quot;, Normal, Ungated), (&quot;abi&quot;, Normal, Ungated),
+  (&quot;automatically_derived&quot;, Normal, Ungated), (&quot;no_mangle&quot;, Normal, Ungated),
+  (&quot;no_link&quot;, Normal, Ungated), (&quot;derive&quot;, Normal, Ungated),
+  (&quot;should_panic&quot;, Normal, Ungated), (&quot;ignore&quot;, Normal, Ungated),
+  (&quot;no_implicit_prelude&quot;, Normal, Ungated),
+  (&quot;reexport_test_harness_main&quot;, Normal, Ungated),
+  (&quot;link_args&quot;, Normal, Ungated), (&quot;macro_escape&quot;, Normal, Ungated),
+  (&quot;structural_match&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;structural_match&quot;,
+         &quot;the semantics of constant patterns is not yet settled&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;plugin&quot;, CrateLevel,
+   Gated(Stability::Unstable, &quot;plugin&quot;,
+         &quot;compiler plugins are experimental and possibly buggy&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })), (&quot;no_std&quot;, CrateLevel, Ungated),
+  (&quot;no_core&quot;, CrateLevel,
+   Gated(Stability::Unstable, &quot;no_core&quot;, &quot;no_core is experimental&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;lang&quot;, Normal,
+   Gated(Stability::Unstable, &quot;lang_items&quot;,
+         &quot;language items are subject to change&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;linkage&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;linkage&quot;,
+         &quot;the `linkage` attribute is experimental and not portable across platforms&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;thread_local&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;thread_local&quot;,
+         &quot;`#[thread_local]` is an experimental feature, and does not currently handle destructors. There is no corresponding `#[task_local]` mapping to the task model&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;rustc_on_unimplemented&quot;, Normal,
+   Gated(Stability::Unstable, &quot;on_unimplemented&quot;,
+         &quot;the `#[rustc_on_unimplemented]` attribute is an experimental feature&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;allocator&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;allocator&quot;,
+         &quot;the `#[allocator]` attribute is an experimental feature&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;needs_allocator&quot;, Normal,
+   Gated(Stability::Unstable, &quot;needs_allocator&quot;,
+         &quot;the `#[needs_allocator]` attribute is an experimental feature&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;panic_runtime&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;panic_runtime&quot;,
+         &quot;the `#[panic_runtime]` attribute is an experimental feature&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;needs_panic_runtime&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;needs_panic_runtime&quot;,
+         &quot;the `#[needs_panic_runtime]` attribute is an experimental feature&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;rustc_variance&quot;, Normal,
+   Gated(Stability::Unstable, &quot;rustc_attrs&quot;,
+         &quot;the `#[rustc_variance]` attribute is just used for rustc unit tests and will never be stable&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;rustc_error&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;rustc_attrs&quot;,
+         &quot;the `#[rustc_error]` attribute is just used for rustc unit tests and will never be stable&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;rustc_if_this_changed&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;rustc_attrs&quot;,
+         &quot;the `#[rustc_if_this_changed]` attribute is just used for rustc unit tests and will never be stable&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;rustc_then_this_would_need&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;rustc_attrs&quot;,
+         &quot;the `#[rustc_if_this_changed]` attribute is just used for rustc unit tests and will never be stable&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;rustc_dirty&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;rustc_attrs&quot;,
+         &quot;the `#[rustc_dirty]` attribute is just used for rustc unit tests and will never be stable&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;rustc_clean&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;rustc_attrs&quot;,
+         &quot;the `#[rustc_clean]` attribute is just used for rustc unit tests and will never be stable&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;rustc_metadata_dirty&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;rustc_attrs&quot;,
+         &quot;the `#[rustc_metadata_dirty]` attribute is just used for rustc unit tests and will never be stable&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;rustc_metadata_clean&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;rustc_attrs&quot;,
+         &quot;the `#[rustc_metadata_clean]` attribute is just used for rustc unit tests and will never be stable&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;rustc_partition_reused&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;rustc_attrs&quot;,
+         &quot;this attribute is just used for rustc unit tests and will never be stable&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;rustc_partition_translated&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;rustc_attrs&quot;,
+         &quot;this attribute is just used for rustc unit tests and will never be stable&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;rustc_symbol_name&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;rustc_attrs&quot;,
+         &quot;internal rustc attributes will never be stable&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;rustc_item_path&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;rustc_attrs&quot;,
+         &quot;internal rustc attributes will never be stable&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;rustc_mir&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;rustc_attrs&quot;,
+         &quot;the `#[rustc_mir]` attribute is just used for rustc unit tests and will never be stable&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;rustc_inherit_overflow_checks&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;rustc_attrs&quot;,
+         &quot;the `#[rustc_inherit_overflow_checks]` attribute is just used to control overflow checking behavior of several libcore functions that are inlined across crates and will never be stable&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;compiler_builtins&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;compiler_builtins&quot;,
+         &quot;the `#[compiler_builtins]` attribute is used to identify the `compiler_builtins` crate which contains compiler-rt intrinsics and will never be stable&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;sanitizer_runtime&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;sanitizer_runtime&quot;,
+         &quot;the `#[sanitizer_runtime]` attribute is used to identify crates that contain the runtime of a sanitizer and will never be stable&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;allow_internal_unstable&quot;, Normal,
+   Gated(Stability::Unstable, &quot;allow_internal_unstable&quot;,
+         EXPLAIN_ALLOW_INTERNAL_UNSTABLE,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;fundamental&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;fundamental&quot;,
+         &quot;the `#[fundamental]` attribute is an experimental feature&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })), (&quot;proc_macro_derive&quot;, Normal, Ungated),
+  (&quot;rustc_copy_clone_marker&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;rustc_attrs&quot;, &quot;internal implementation detail&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })), (&quot;doc&quot;, Whitelisted, Ungated), (&quot;cold&quot;, Whitelisted, Ungated),
+  (&quot;naked&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;naked_functions&quot;,
+         &quot;the `#[naked]` attribute is an experimental feature&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;target_feature&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;target_feature&quot;,
+         &quot;the `#[target_feature]` attribute is an experimental feature&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })), (&quot;export_name&quot;, Whitelisted, Ungated),
+  (&quot;inline&quot;, Whitelisted, Ungated), (&quot;link&quot;, Whitelisted, Ungated),
+  (&quot;link_name&quot;, Whitelisted, Ungated), (&quot;link_section&quot;, Whitelisted, Ungated),
+  (&quot;no_builtins&quot;, Whitelisted, Ungated), (&quot;no_mangle&quot;, Whitelisted, Ungated),
+  (&quot;no_debug&quot;, Whitelisted,
+   Gated(Stability::Deprecated(&quot;https://github.com/rust-lang/rust/issues/29721&quot;),
+         &quot;no_debug&quot;, &quot;the `#[no_debug]` attribute is an experimental feature&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;omit_gdb_pretty_printer_section&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;omit_gdb_pretty_printer_section&quot;,
+         &quot;the `#[omit_gdb_pretty_printer_section]` attribute is just used for the Rust test suite&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;unsafe_destructor_blind_to_params&quot;, Normal,
+   Gated(Stability::Deprecated(&quot;https://github.com/rust-lang/rust/issues/34761&quot;),
+         &quot;dropck_parametricity&quot;,
+         &quot;unsafe_destructor_blind_to_params has been replaced by may_dangle and will be removed in the future&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;may_dangle&quot;, Normal,
+   Gated(Stability::Unstable, &quot;dropck_eyepatch&quot;,
+         &quot;may_dangle has unstable semantics and may be removed in the future&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;unwind&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;unwind_attributes&quot;,
+         &quot;#[unwind] is experimental&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;used&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;used&quot;,
+         &quot;the `#[used]` attribute is an experimental feature&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;prelude_import&quot;, Whitelisted,
+   Gated(Stability::Unstable, &quot;prelude_import&quot;,
+         &quot;`#[prelude_import]` is for use by rustc only&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })), (&quot;rustc_deprecated&quot;, Whitelisted, Ungated),
+  (&quot;must_use&quot;, Whitelisted, Ungated), (&quot;stable&quot;, Whitelisted, Ungated),
+  (&quot;unstable&quot;, Whitelisted, Ungated), (&quot;deprecated&quot;, Normal, Ungated),
+  (&quot;rustc_paren_sugar&quot;, Normal,
+   Gated(Stability::Unstable, &quot;unboxed_closures&quot;,
+         &quot;unboxed_closures are still evolving&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })), (&quot;windows_subsystem&quot;, Whitelisted, Ungated),
+  (&quot;proc_macro_attribute&quot;, Normal,
+   Gated(Stability::Unstable, &quot;proc_macro&quot;,
+         &quot;attribute proc macros are currently unstable&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;proc_macro&quot;, Normal,
+   Gated(Stability::Unstable, &quot;proc_macro&quot;,
+         &quot;function-like proc macros are currently unstable&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })),
+  (&quot;rustc_derive_registrar&quot;, Normal,
+   Gated(Stability::Unstable, &quot;rustc_derive_registrar&quot;,
+         &quot;used internally by rustc&quot;,
+         {
+             fn f(features: &amp;Features) -&gt; bool { loop  { } }
+             f as fn(: &amp;Features) -&gt; bool
+         })), (&quot;crate_name&quot;, CrateLevel, Ungated),
+  (&quot;crate_type&quot;, CrateLevel, Ungated), (&quot;crate_id&quot;, CrateLevel, Ungated),
+  (&quot;feature&quot;, CrateLevel, Ungated), (&quot;no_start&quot;, CrateLevel, Ungated),
+  (&quot;no_main&quot;, CrateLevel, Ungated), (&quot;no_builtins&quot;, CrateLevel, Ungated),
+  (&quot;recursion_limit&quot;, CrateLevel, Ungated),
+  (&quot;type_length_limit&quot;, CrateLevel, Ungated)]</code></pre></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt><kbd>?</kbd></dt>
+                    <dd>Show this help dialog</dd>
+                    <dt><kbd>S</kbd></dt>
+                    <dd>Focus the search field</dd>
+                    <dt><kbd>↑</kbd></dt>
+                    <dd>Move up in search results</dd>
+                    <dt><kbd>↓</kbd></dt>
+                    <dd>Move down in search results</dd>
+                    <dt><kbd>↹</kbd></dt>
+                    <dd>Switch tab</dd>
+                    <dt><kbd>&#9166;</kbd></dt>
+                    <dd>Go to active search result</dd>
+                    <dt><kbd>+</kbd></dt>
+                    <dd>Expand all sections</dd>
+                    <dt><kbd>-</kbd></dt>
+                    <dd>Collapse all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "syntex_syntax";
+    </script>
+    <script src="../../main.js"></script>
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

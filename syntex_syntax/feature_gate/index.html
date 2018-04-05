@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `feature_gate` mod in crate `syntex_syntax`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, feature_gate">
+
+    <title>syntex_syntax::feature_gate - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css"
+          id="mainThemeStyle">
+    
+    <link rel="stylesheet" type="text/css" href="../../dark.css">
+    <link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle">
+    <script src="../../storage.js"></script>
+    
+
+    <link rel="shortcut icon" href="https://doc.rust-lang.org/favicon.ico">
+    
+</head>
+<body class="rustdoc mod">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        <div class="sidebar-menu">&#9776;</div>
+        <a href='../../syntex_syntax/index.html'><img src='https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png' alt='logo' width='100'></a>
+        <p class='location'>Module feature_gate</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#constants">Constants</a></li><li><a href="#functions">Functions</a></li></ul></div><p class='location'><a href='../index.html'>syntex_syntax</a></p><script>window.sidebarCurrent = {name: 'feature_gate', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script></div>
+    </nav>
+
+    <div class="theme-picker">
+        <button id="theme-picker" aria-label="Pick another theme!">
+            <img src="../../brush.svg" width="18" alt="Pick another theme!">
+        </button>
+        <div id="theme-choices"></div>
+    </div>
+    <script src="../../theme.js"></script>
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Module <a href='../index.html'>syntex_syntax</a>::<wbr><a class="mod" href=''>feature_gate</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../../src/syntex_syntax/feature_gate.rs.html#11-1580' title='goto source code'>[src]</a></span></h1><div class='docblock'><p>Feature gating</p>
+<p>This module implements the gating necessary for preventing certain compiler
+features from being used by default. This module will crawl a pre-expanded
+AST to ensure that there are no features which are used that are not
+enabled.</p>
+<p>Features are enabled in programs via the crate-level attributes of
+<code>#![feature(...)]</code> with a comma-separated list of features.</p>
+<p>For the purpose of future feature-tracking, once code for detection of feature
+gate usage is added, <em>do not remove it again</em> even once the feature
+becomes stable.</p>
+</div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Features.html"
+                                  title='struct syntex_syntax::feature_gate::Features'>Features</a></td>
+                           <td class='docblock-short'>
+                                <p>A set of features to be used by later passes.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.GatedCfg.html"
+                                  title='struct syntex_syntax::feature_gate::GatedCfg'>GatedCfg</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.AttributeGate.html"
+                                  title='enum syntex_syntax::feature_gate::AttributeGate'>AttributeGate</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.AttributeType.html"
+                                  title='enum syntex_syntax::feature_gate::AttributeType'>AttributeType</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.GateIssue.html"
+                                  title='enum syntex_syntax::feature_gate::GateIssue'>GateIssue</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.Stability.html"
+                                  title='enum syntex_syntax::feature_gate::Stability'>Stability</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.UnstableFeatures.html"
+                                  title='enum syntex_syntax::feature_gate::UnstableFeatures'>UnstableFeatures</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr></table><h2 id='constants' class='section-header'><a href="#constants">Constants</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="constant" href="constant.BUILTIN_ATTRIBUTES.html"
+                                  title='constant syntex_syntax::feature_gate::BUILTIN_ATTRIBUTES'>BUILTIN_ATTRIBUTES</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="constant" href="constant.EXPLAIN_ALLOW_INTERNAL_UNSTABLE.html"
+                                  title='constant syntex_syntax::feature_gate::EXPLAIN_ALLOW_INTERNAL_UNSTABLE'>EXPLAIN_ALLOW_INTERNAL_UNSTABLE</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="constant" href="constant.EXPLAIN_ASM.html"
+                                  title='constant syntex_syntax::feature_gate::EXPLAIN_ASM'>EXPLAIN_ASM</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="constant" href="constant.EXPLAIN_CONCAT_IDENTS.html"
+                                  title='constant syntex_syntax::feature_gate::EXPLAIN_CONCAT_IDENTS'>EXPLAIN_CONCAT_IDENTS</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="constant" href="constant.EXPLAIN_CUSTOM_DERIVE.html"
+                                  title='constant syntex_syntax::feature_gate::EXPLAIN_CUSTOM_DERIVE'>EXPLAIN_CUSTOM_DERIVE</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="constant" href="constant.EXPLAIN_DEPR_CUSTOM_DERIVE.html"
+                                  title='constant syntex_syntax::feature_gate::EXPLAIN_DEPR_CUSTOM_DERIVE'>EXPLAIN_DEPR_CUSTOM_DERIVE</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="constant" href="constant.EXPLAIN_DERIVE_UNDERSCORE.html"
+                                  title='constant syntex_syntax::feature_gate::EXPLAIN_DERIVE_UNDERSCORE'>EXPLAIN_DERIVE_UNDERSCORE</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="constant" href="constant.EXPLAIN_GLOBAL_ASM.html"
+                                  title='constant syntex_syntax::feature_gate::EXPLAIN_GLOBAL_ASM'>EXPLAIN_GLOBAL_ASM</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="constant" href="constant.EXPLAIN_LOG_SYNTAX.html"
+                                  title='constant syntex_syntax::feature_gate::EXPLAIN_LOG_SYNTAX'>EXPLAIN_LOG_SYNTAX</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="constant" href="constant.EXPLAIN_PLACEMENT_IN.html"
+                                  title='constant syntex_syntax::feature_gate::EXPLAIN_PLACEMENT_IN'>EXPLAIN_PLACEMENT_IN</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="constant" href="constant.EXPLAIN_STMT_ATTR_SYNTAX.html"
+                                  title='constant syntex_syntax::feature_gate::EXPLAIN_STMT_ATTR_SYNTAX'>EXPLAIN_STMT_ATTR_SYNTAX</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="constant" href="constant.EXPLAIN_TRACE_MACROS.html"
+                                  title='constant syntex_syntax::feature_gate::EXPLAIN_TRACE_MACROS'>EXPLAIN_TRACE_MACROS</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="constant" href="constant.EXPLAIN_VIS_MATCHER.html"
+                                  title='constant syntex_syntax::feature_gate::EXPLAIN_VIS_MATCHER'>EXPLAIN_VIS_MATCHER</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.check_attribute.html"
+                                  title='fn syntex_syntax::feature_gate::check_attribute'>check_attribute</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.check_crate.html"
+                                  title='fn syntex_syntax::feature_gate::check_crate'>check_crate</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.deprecated_attributes.html"
+                                  title='fn syntex_syntax::feature_gate::deprecated_attributes'>deprecated_attributes</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.emit_feature_err.html"
+                                  title='fn syntex_syntax::feature_gate::emit_feature_err'>emit_feature_err</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.feature_err.html"
+                                  title='fn syntex_syntax::feature_gate::feature_err'>feature_err</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.find_lang_feature_accepted_version.html"
+                                  title='fn syntex_syntax::feature_gate::find_lang_feature_accepted_version'>find_lang_feature_accepted_version</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.get_features.html"
+                                  title='fn syntex_syntax::feature_gate::get_features'>get_features</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.is_builtin_attr.html"
+                                  title='fn syntex_syntax::feature_gate::is_builtin_attr'>is_builtin_attr</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr></table></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt><kbd>?</kbd></dt>
+                    <dd>Show this help dialog</dd>
+                    <dt><kbd>S</kbd></dt>
+                    <dd>Focus the search field</dd>
+                    <dt><kbd>↑</kbd></dt>
+                    <dd>Move up in search results</dd>
+                    <dt><kbd>↓</kbd></dt>
+                    <dd>Move down in search results</dd>
+                    <dt><kbd>↹</kbd></dt>
+                    <dd>Switch tab</dd>
+                    <dt><kbd>&#9166;</kbd></dt>
+                    <dd>Go to active search result</dd>
+                    <dt><kbd>+</kbd></dt>
+                    <dd>Expand all sections</dd>
+                    <dt><kbd>-</kbd></dt>
+                    <dd>Collapse all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "syntex_syntax";
+    </script>
+    <script src="../../main.js"></script>
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

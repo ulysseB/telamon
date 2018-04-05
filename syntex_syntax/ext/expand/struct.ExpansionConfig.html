@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `ExpansionConfig` struct in crate `syntex_syntax`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, ExpansionConfig">
+
+    <title>syntex_syntax::ext::expand::ExpansionConfig - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../../rustdoc.css"
+          id="mainThemeStyle">
+    
+    <link rel="stylesheet" type="text/css" href="../../../dark.css">
+    <link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle">
+    <script src="../../../storage.js"></script>
+    
+
+    <link rel="shortcut icon" href="https://doc.rust-lang.org/favicon.ico">
+    
+</head>
+<body class="rustdoc struct">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        <div class="sidebar-menu">&#9776;</div>
+        <a href='../../../syntex_syntax/index.html'><img src='https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png' alt='logo' width='100'></a>
+        <p class='location'>Struct ExpansionConfig</p><div class="sidebar-elems"><div class="block items"><a class="sidebar-title" href="#fields">Fields</a><div class="sidebar-links"><a href="#structfield.crate_name">crate_name</a><a href="#structfield.features">features</a><a href="#structfield.recursion_limit">recursion_limit</a><a href="#structfield.trace_mac">trace_mac</a><a href="#structfield.should_test">should_test</a><a href="#structfield.single_step">single_step</a><a href="#structfield.keep_macs">keep_macs</a></div><a class="sidebar-title" href="#methods">Methods</a><div class="sidebar-links"><a href="#method.default">default</a><a href="#method.enable_quotes">enable_quotes</a><a href="#method.enable_asm">enable_asm</a><a href="#method.enable_global_asm">enable_global_asm</a><a href="#method.enable_log_syntax">enable_log_syntax</a><a href="#method.enable_concat_idents">enable_concat_idents</a><a href="#method.enable_trace_macros">enable_trace_macros</a><a href="#method.enable_allow_internal_unstable">enable_allow_internal_unstable</a><a href="#method.enable_custom_derive">enable_custom_derive</a><a href="#method.proc_macro_enabled">proc_macro_enabled</a></div><a class="sidebar-title" href="#synthetic-implementations">Auto Trait Implementations</a><div class="sidebar-links"><a href="#impl-Send">Send</a><a href="#impl-Sync">Sync</a></div></div><p class='location'><a href='../../index.html'>syntex_syntax</a>::<wbr><a href='../index.html'>ext</a>::<wbr><a href='index.html'>expand</a></p><script>window.sidebarCurrent = {name: 'ExpansionConfig', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script></div>
+    </nav>
+
+    <div class="theme-picker">
+        <button id="theme-picker" aria-label="Pick another theme!">
+            <img src="../../../brush.svg" width="18" alt="Pick another theme!">
+        </button>
+        <div id="theme-choices"></div>
+    </div>
+    <script src="../../../theme.js"></script>
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Struct <a href='../../index.html'>syntex_syntax</a>::<wbr><a href='../index.html'>ext</a>::<wbr><a href='index.html'>expand</a>::<wbr><a class="struct" href=''>ExpansionConfig</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#1021-1029' title='goto source code'>[src]</a></span></h1><div class="docblock type-decl"><pre class='rust struct'>pub struct ExpansionConfig&lt;'feat&gt; {
+    pub crate_name: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>,
+    pub features: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;'feat <a class="struct" href="../../../syntex_syntax/feature_gate/struct.Features.html" title="struct syntex_syntax::feature_gate::Features">Features</a>&gt;,
+    pub recursion_limit: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>,
+    pub trace_mac: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub should_test: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub single_step: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+    pub keep_macs: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,
+}</pre></div><h2 id='fields' class='fields small-section-header'>
+                       Fields<a href='#fields' class='anchor'></a></h2><span id="structfield.crate_name" class="structfield small-section-header">
+                           <a href="#structfield.crate_name" class="anchor field"></a>
+                           <span id="crate_name.v" class='invisible'>
+                           <code>crate_name: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html" title="struct alloc::string::String">String</a></code>
+                           </span></span><span id="structfield.features" class="structfield small-section-header">
+                           <a href="#structfield.features" class="anchor field"></a>
+                           <span id="features.v" class='invisible'>
+                           <code>features: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;'feat <a class="struct" href="../../../syntex_syntax/feature_gate/struct.Features.html" title="struct syntex_syntax::feature_gate::Features">Features</a>&gt;</code>
+                           </span></span><span id="structfield.recursion_limit" class="structfield small-section-header">
+                           <a href="#structfield.recursion_limit" class="anchor field"></a>
+                           <span id="recursion_limit.v" class='invisible'>
+                           <code>recursion_limit: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a></code>
+                           </span></span><span id="structfield.trace_mac" class="structfield small-section-header">
+                           <a href="#structfield.trace_mac" class="anchor field"></a>
+                           <span id="trace_mac.v" class='invisible'>
+                           <code>trace_mac: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.should_test" class="structfield small-section-header">
+                           <a href="#structfield.should_test" class="anchor field"></a>
+                           <span id="should_test.v" class='invisible'>
+                           <code>should_test: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.single_step" class="structfield small-section-header">
+                           <a href="#structfield.single_step" class="anchor field"></a>
+                           <span id="single_step.v" class='invisible'>
+                           <code>single_step: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span><span id="structfield.keep_macs" class="structfield small-section-header">
+                           <a href="#structfield.keep_macs" class="anchor field"></a>
+                           <span id="keep_macs.v" class='invisible'>
+                           <code>keep_macs: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code>
+                           </span></span>
+                    <h2 id='methods' class='small-section-header'>
+                      Methods<a href='#methods' class='anchor'></a>
+                    </h2>
+                <h3 id='impl' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'feat&gt; <a class="struct" href="../../../syntex_syntax/ext/expand/struct.ExpansionConfig.html" title="struct syntex_syntax::ext::expand::ExpansionConfig">ExpansionConfig</a>&lt;'feat&gt;</code><a href='#impl' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#1044-1068' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'><h4 id='method.default' class="method"><span id='default.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.default' class='fnname'>default</a>(crate_name: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/string/struct.String.html" title="struct alloc::string::String">String</a>) -&gt; <a class="struct" href="../../../syntex_syntax/ext/expand/struct.ExpansionConfig.html" title="struct syntex_syntax::ext::expand::ExpansionConfig">ExpansionConfig</a>&lt;'static&gt;</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#1045-1055' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.enable_quotes' class="method"><span id='enable_quotes.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.enable_quotes' class='fnname'>enable_quotes</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#1034-1039' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.enable_asm' class="method"><span id='enable_asm.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.enable_asm' class='fnname'>enable_asm</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#1034-1039' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.enable_global_asm' class="method"><span id='enable_global_asm.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.enable_global_asm' class='fnname'>enable_global_asm</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#1034-1039' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.enable_log_syntax' class="method"><span id='enable_log_syntax.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.enable_log_syntax' class='fnname'>enable_log_syntax</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#1034-1039' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.enable_concat_idents' class="method"><span id='enable_concat_idents.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.enable_concat_idents' class='fnname'>enable_concat_idents</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#1034-1039' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.enable_trace_macros' class="method"><span id='enable_trace_macros.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.enable_trace_macros' class='fnname'>enable_trace_macros</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#1034-1039' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.enable_allow_internal_unstable' class="method"><span id='enable_allow_internal_unstable.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.enable_allow_internal_unstable' class='fnname'>enable_allow_internal_unstable</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#1034-1039' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.enable_custom_derive' class="method"><span id='enable_custom_derive.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.enable_custom_derive' class='fnname'>enable_custom_derive</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#1034-1039' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><h4 id='method.proc_macro_enabled' class="method"><span id='proc_macro_enabled.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.proc_macro_enabled' class='fnname'>proc_macro_enabled</a>(&amp;self) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../../src/syntex_syntax/ext/expand.rs.html#1034-1039' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4></div>
+            <h2 id='implementations' class='small-section-header'>
+              Trait Implementations<a href='#implementations' class='anchor'></a>
+            </h2>
+            <div id='implementations-list'>
+        </div>
+                <h2 id='synthetic-implementations' class='small-section-header'>
+                  Auto Trait Implementations<a href='#synthetic-implementations' class='anchor'></a>
+                </h2>
+                <div id='synthetic-implementations-list'>
+            <h3 id='impl-Send' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'feat&gt; <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> for <a class="struct" href="../../../syntex_syntax/ext/expand/struct.ExpansionConfig.html" title="struct syntex_syntax::ext::expand::ExpansionConfig">ExpansionConfig</a>&lt;'feat&gt;</code><a href='#impl-Send' class='anchor'></a></span></td><td><span class='out-of-band'></span></td></tr></tbody></table></h3><div class='impl-items'></div><h3 id='impl-Sync' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl&lt;'feat&gt; <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> for <a class="struct" href="../../../syntex_syntax/ext/expand/struct.ExpansionConfig.html" title="struct syntex_syntax::ext::expand::ExpansionConfig">ExpansionConfig</a>&lt;'feat&gt;</code><a href='#impl-Sync' class='anchor'></a></span></td><td><span class='out-of-band'></span></td></tr></tbody></table></h3><div class='impl-items'></div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt><kbd>?</kbd></dt>
+                    <dd>Show this help dialog</dd>
+                    <dt><kbd>S</kbd></dt>
+                    <dd>Focus the search field</dd>
+                    <dt><kbd>↑</kbd></dt>
+                    <dd>Move up in search results</dd>
+                    <dt><kbd>↓</kbd></dt>
+                    <dd>Move down in search results</dd>
+                    <dt><kbd>↹</kbd></dt>
+                    <dd>Switch tab</dd>
+                    <dt><kbd>&#9166;</kbd></dt>
+                    <dd>Go to active search result</dd>
+                    <dt><kbd>+</kbd></dt>
+                    <dd>Expand all sections</dd>
+                    <dt><kbd>-</kbd></dt>
+                    <dd>Collapse all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../../";
+        window.currentCrate = "syntex_syntax";
+    </script>
+    <script src="../../../main.js"></script>
+    <script defer src="../../../search-index.js"></script>
+</body>
+</html>

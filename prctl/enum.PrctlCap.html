@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `PrctlCap` enum in crate `prctl`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, PrctlCap">
+
+    <title>prctl::PrctlCap - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../rustdoc.css"
+          id="mainThemeStyle">
+    
+    <link rel="stylesheet" type="text/css" href="../dark.css">
+    <link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle">
+    <script src="../storage.js"></script>
+    
+
+    
+    
+</head>
+<body class="rustdoc enum">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        <div class="sidebar-menu">&#9776;</div>
+        
+        <p class='location'>Enum PrctlCap</p><div class="sidebar-elems"><div class="block items"><a class="sidebar-title" href="#variants">Variants</a><div class="sidebar-links"><a href="#variant.CAP_CHOWN">CAP_CHOWN</a><a href="#variant.CAP_DAC_OVERRIDE">CAP_DAC_OVERRIDE</a><a href="#variant.CAP_DAC_READ_SEARCH">CAP_DAC_READ_SEARCH</a><a href="#variant.CAP_FOWNER">CAP_FOWNER</a><a href="#variant.CAP_FSETID">CAP_FSETID</a><a href="#variant.CAP_KILL">CAP_KILL</a><a href="#variant.CAP_SETGID">CAP_SETGID</a><a href="#variant.CAP_SETUID">CAP_SETUID</a><a href="#variant.CAP_SETPCAP">CAP_SETPCAP</a><a href="#variant.CAP_LINUX_IMMUTABLE">CAP_LINUX_IMMUTABLE</a><a href="#variant.CAP_NET_BIND_SERVICE">CAP_NET_BIND_SERVICE</a><a href="#variant.CAP_NET_BROADCAST">CAP_NET_BROADCAST</a><a href="#variant.CAP_NET_ADMIN">CAP_NET_ADMIN</a><a href="#variant.CAP_NET_RAW">CAP_NET_RAW</a><a href="#variant.CAP_IPC_LOCK">CAP_IPC_LOCK</a><a href="#variant.CAP_IPC_OWNER">CAP_IPC_OWNER</a><a href="#variant.CAP_SYS_MODULE">CAP_SYS_MODULE</a><a href="#variant.CAP_SYS_RAWIO">CAP_SYS_RAWIO</a><a href="#variant.CAP_SYS_CHROOT">CAP_SYS_CHROOT</a><a href="#variant.CAP_SYS_PTRACE">CAP_SYS_PTRACE</a><a href="#variant.CAP_SYS_PACCT">CAP_SYS_PACCT</a><a href="#variant.CAP_SYS_ADMIN">CAP_SYS_ADMIN</a><a href="#variant.CAP_SYS_BOOT">CAP_SYS_BOOT</a><a href="#variant.CAP_SYS_NICE">CAP_SYS_NICE</a><a href="#variant.CAP_SYS_RESOURCE">CAP_SYS_RESOURCE</a><a href="#variant.CAP_SYS_TIME">CAP_SYS_TIME</a><a href="#variant.CAP_SYS_TTY_CONFIG">CAP_SYS_TTY_CONFIG</a><a href="#variant.CAP_MKNOD">CAP_MKNOD</a><a href="#variant.CAP_LEASE">CAP_LEASE</a><a href="#variant.CAP_AUDIT_WRITE">CAP_AUDIT_WRITE</a><a href="#variant.CAP_AUDIT_CONTROL">CAP_AUDIT_CONTROL</a><a href="#variant.CAP_SETFCAP">CAP_SETFCAP</a><a href="#variant.CAP_MAC_OVERRIDE">CAP_MAC_OVERRIDE</a><a href="#variant.CAP_MAC_ADMIN">CAP_MAC_ADMIN</a><a href="#variant.CAP_SYSLOG">CAP_SYSLOG</a><a href="#variant.CAP_WAKE_ALARM">CAP_WAKE_ALARM</a><a href="#variant.CAP_BLOCK_SUSPEND">CAP_BLOCK_SUSPEND</a><a href="#variant.CAP_AUDIT_READ">CAP_AUDIT_READ</a></div><a class="sidebar-title" href="#implementations">Trait Implementations</a><div class="sidebar-links"><a href="#impl-Copy">Copy</a><a href="#impl-Clone">Clone</a></div><a class="sidebar-title" href="#synthetic-implementations">Auto Trait Implementations</a><div class="sidebar-links"><a href="#impl-Send">Send</a><a href="#impl-Sync">Sync</a></div></div><p class='location'><a href='index.html'>prctl</a></p><script>window.sidebarCurrent = {name: 'PrctlCap', ty: 'enum', relpath: ''};</script><script defer src="sidebar-items.js"></script></div>
+    </nav>
+
+    <div class="theme-picker">
+        <button id="theme-picker" aria-label="Pick another theme!">
+            <img src="../brush.svg" width="18" alt="Pick another theme!">
+        </button>
+        <div id="theme-choices"></div>
+    </div>
+    <script src="../theme.js"></script>
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Enum <a href='index.html'>prctl</a>::<wbr><a class="enum" href=''>PrctlCap</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a class='srclink' href='../src/prctl/lib.rs.html#135-174' title='goto source code'>[src]</a></span></h1><div class="docblock type-decl"><pre class='rust enum'>pub enum PrctlCap {
+    CAP_CHOWN,
+    CAP_DAC_OVERRIDE,
+    CAP_DAC_READ_SEARCH,
+    CAP_FOWNER,
+    CAP_FSETID,
+    CAP_KILL,
+    CAP_SETGID,
+    CAP_SETUID,
+    CAP_SETPCAP,
+    CAP_LINUX_IMMUTABLE,
+    CAP_NET_BIND_SERVICE,
+    CAP_NET_BROADCAST,
+    CAP_NET_ADMIN,
+    CAP_NET_RAW,
+    CAP_IPC_LOCK,
+    CAP_IPC_OWNER,
+    CAP_SYS_MODULE,
+    CAP_SYS_RAWIO,
+    CAP_SYS_CHROOT,
+    CAP_SYS_PTRACE,
+    CAP_SYS_PACCT,
+    CAP_SYS_ADMIN,
+    CAP_SYS_BOOT,
+    CAP_SYS_NICE,
+    CAP_SYS_RESOURCE,
+    CAP_SYS_TIME,
+    CAP_SYS_TTY_CONFIG,
+    CAP_MKNOD,
+    CAP_LEASE,
+    CAP_AUDIT_WRITE,
+    CAP_AUDIT_CONTROL,
+    CAP_SETFCAP,
+    CAP_MAC_OVERRIDE,
+    CAP_MAC_ADMIN,
+    CAP_SYSLOG,
+    CAP_WAKE_ALARM,
+    CAP_BLOCK_SUSPEND,
+    CAP_AUDIT_READ,
+}</pre></div><h2 id='variants' class='variants small-section-header'>
+                   Variants<a href='#variants' class='anchor'></a></h2>
+<span id="variant.CAP_CHOWN" class="variant small-section-header"><a href="#variant.CAP_CHOWN" class="anchor field"></a><span id='CAP_CHOWN.v' class='invisible'><code>CAP_CHOWN</code></span></span><span id="variant.CAP_DAC_OVERRIDE" class="variant small-section-header"><a href="#variant.CAP_DAC_OVERRIDE" class="anchor field"></a><span id='CAP_DAC_OVERRIDE.v' class='invisible'><code>CAP_DAC_OVERRIDE</code></span></span><span id="variant.CAP_DAC_READ_SEARCH" class="variant small-section-header"><a href="#variant.CAP_DAC_READ_SEARCH" class="anchor field"></a><span id='CAP_DAC_READ_SEARCH.v' class='invisible'><code>CAP_DAC_READ_SEARCH</code></span></span><span id="variant.CAP_FOWNER" class="variant small-section-header"><a href="#variant.CAP_FOWNER" class="anchor field"></a><span id='CAP_FOWNER.v' class='invisible'><code>CAP_FOWNER</code></span></span><span id="variant.CAP_FSETID" class="variant small-section-header"><a href="#variant.CAP_FSETID" class="anchor field"></a><span id='CAP_FSETID.v' class='invisible'><code>CAP_FSETID</code></span></span><span id="variant.CAP_KILL" class="variant small-section-header"><a href="#variant.CAP_KILL" class="anchor field"></a><span id='CAP_KILL.v' class='invisible'><code>CAP_KILL</code></span></span><span id="variant.CAP_SETGID" class="variant small-section-header"><a href="#variant.CAP_SETGID" class="anchor field"></a><span id='CAP_SETGID.v' class='invisible'><code>CAP_SETGID</code></span></span><span id="variant.CAP_SETUID" class="variant small-section-header"><a href="#variant.CAP_SETUID" class="anchor field"></a><span id='CAP_SETUID.v' class='invisible'><code>CAP_SETUID</code></span></span><span id="variant.CAP_SETPCAP" class="variant small-section-header"><a href="#variant.CAP_SETPCAP" class="anchor field"></a><span id='CAP_SETPCAP.v' class='invisible'><code>CAP_SETPCAP</code></span></span><span id="variant.CAP_LINUX_IMMUTABLE" class="variant small-section-header"><a href="#variant.CAP_LINUX_IMMUTABLE" class="anchor field"></a><span id='CAP_LINUX_IMMUTABLE.v' class='invisible'><code>CAP_LINUX_IMMUTABLE</code></span></span><span id="variant.CAP_NET_BIND_SERVICE" class="variant small-section-header"><a href="#variant.CAP_NET_BIND_SERVICE" class="anchor field"></a><span id='CAP_NET_BIND_SERVICE.v' class='invisible'><code>CAP_NET_BIND_SERVICE</code></span></span><span id="variant.CAP_NET_BROADCAST" class="variant small-section-header"><a href="#variant.CAP_NET_BROADCAST" class="anchor field"></a><span id='CAP_NET_BROADCAST.v' class='invisible'><code>CAP_NET_BROADCAST</code></span></span><span id="variant.CAP_NET_ADMIN" class="variant small-section-header"><a href="#variant.CAP_NET_ADMIN" class="anchor field"></a><span id='CAP_NET_ADMIN.v' class='invisible'><code>CAP_NET_ADMIN</code></span></span><span id="variant.CAP_NET_RAW" class="variant small-section-header"><a href="#variant.CAP_NET_RAW" class="anchor field"></a><span id='CAP_NET_RAW.v' class='invisible'><code>CAP_NET_RAW</code></span></span><span id="variant.CAP_IPC_LOCK" class="variant small-section-header"><a href="#variant.CAP_IPC_LOCK" class="anchor field"></a><span id='CAP_IPC_LOCK.v' class='invisible'><code>CAP_IPC_LOCK</code></span></span><span id="variant.CAP_IPC_OWNER" class="variant small-section-header"><a href="#variant.CAP_IPC_OWNER" class="anchor field"></a><span id='CAP_IPC_OWNER.v' class='invisible'><code>CAP_IPC_OWNER</code></span></span><span id="variant.CAP_SYS_MODULE" class="variant small-section-header"><a href="#variant.CAP_SYS_MODULE" class="anchor field"></a><span id='CAP_SYS_MODULE.v' class='invisible'><code>CAP_SYS_MODULE</code></span></span><span id="variant.CAP_SYS_RAWIO" class="variant small-section-header"><a href="#variant.CAP_SYS_RAWIO" class="anchor field"></a><span id='CAP_SYS_RAWIO.v' class='invisible'><code>CAP_SYS_RAWIO</code></span></span><span id="variant.CAP_SYS_CHROOT" class="variant small-section-header"><a href="#variant.CAP_SYS_CHROOT" class="anchor field"></a><span id='CAP_SYS_CHROOT.v' class='invisible'><code>CAP_SYS_CHROOT</code></span></span><span id="variant.CAP_SYS_PTRACE" class="variant small-section-header"><a href="#variant.CAP_SYS_PTRACE" class="anchor field"></a><span id='CAP_SYS_PTRACE.v' class='invisible'><code>CAP_SYS_PTRACE</code></span></span><span id="variant.CAP_SYS_PACCT" class="variant small-section-header"><a href="#variant.CAP_SYS_PACCT" class="anchor field"></a><span id='CAP_SYS_PACCT.v' class='invisible'><code>CAP_SYS_PACCT</code></span></span><span id="variant.CAP_SYS_ADMIN" class="variant small-section-header"><a href="#variant.CAP_SYS_ADMIN" class="anchor field"></a><span id='CAP_SYS_ADMIN.v' class='invisible'><code>CAP_SYS_ADMIN</code></span></span><span id="variant.CAP_SYS_BOOT" class="variant small-section-header"><a href="#variant.CAP_SYS_BOOT" class="anchor field"></a><span id='CAP_SYS_BOOT.v' class='invisible'><code>CAP_SYS_BOOT</code></span></span><span id="variant.CAP_SYS_NICE" class="variant small-section-header"><a href="#variant.CAP_SYS_NICE" class="anchor field"></a><span id='CAP_SYS_NICE.v' class='invisible'><code>CAP_SYS_NICE</code></span></span><span id="variant.CAP_SYS_RESOURCE" class="variant small-section-header"><a href="#variant.CAP_SYS_RESOURCE" class="anchor field"></a><span id='CAP_SYS_RESOURCE.v' class='invisible'><code>CAP_SYS_RESOURCE</code></span></span><span id="variant.CAP_SYS_TIME" class="variant small-section-header"><a href="#variant.CAP_SYS_TIME" class="anchor field"></a><span id='CAP_SYS_TIME.v' class='invisible'><code>CAP_SYS_TIME</code></span></span><span id="variant.CAP_SYS_TTY_CONFIG" class="variant small-section-header"><a href="#variant.CAP_SYS_TTY_CONFIG" class="anchor field"></a><span id='CAP_SYS_TTY_CONFIG.v' class='invisible'><code>CAP_SYS_TTY_CONFIG</code></span></span><span id="variant.CAP_MKNOD" class="variant small-section-header"><a href="#variant.CAP_MKNOD" class="anchor field"></a><span id='CAP_MKNOD.v' class='invisible'><code>CAP_MKNOD</code></span></span><span id="variant.CAP_LEASE" class="variant small-section-header"><a href="#variant.CAP_LEASE" class="anchor field"></a><span id='CAP_LEASE.v' class='invisible'><code>CAP_LEASE</code></span></span><span id="variant.CAP_AUDIT_WRITE" class="variant small-section-header"><a href="#variant.CAP_AUDIT_WRITE" class="anchor field"></a><span id='CAP_AUDIT_WRITE.v' class='invisible'><code>CAP_AUDIT_WRITE</code></span></span><span id="variant.CAP_AUDIT_CONTROL" class="variant small-section-header"><a href="#variant.CAP_AUDIT_CONTROL" class="anchor field"></a><span id='CAP_AUDIT_CONTROL.v' class='invisible'><code>CAP_AUDIT_CONTROL</code></span></span><span id="variant.CAP_SETFCAP" class="variant small-section-header"><a href="#variant.CAP_SETFCAP" class="anchor field"></a><span id='CAP_SETFCAP.v' class='invisible'><code>CAP_SETFCAP</code></span></span><span id="variant.CAP_MAC_OVERRIDE" class="variant small-section-header"><a href="#variant.CAP_MAC_OVERRIDE" class="anchor field"></a><span id='CAP_MAC_OVERRIDE.v' class='invisible'><code>CAP_MAC_OVERRIDE</code></span></span><span id="variant.CAP_MAC_ADMIN" class="variant small-section-header"><a href="#variant.CAP_MAC_ADMIN" class="anchor field"></a><span id='CAP_MAC_ADMIN.v' class='invisible'><code>CAP_MAC_ADMIN</code></span></span><span id="variant.CAP_SYSLOG" class="variant small-section-header"><a href="#variant.CAP_SYSLOG" class="anchor field"></a><span id='CAP_SYSLOG.v' class='invisible'><code>CAP_SYSLOG</code></span></span><span id="variant.CAP_WAKE_ALARM" class="variant small-section-header"><a href="#variant.CAP_WAKE_ALARM" class="anchor field"></a><span id='CAP_WAKE_ALARM.v' class='invisible'><code>CAP_WAKE_ALARM</code></span></span><span id="variant.CAP_BLOCK_SUSPEND" class="variant small-section-header"><a href="#variant.CAP_BLOCK_SUSPEND" class="anchor field"></a><span id='CAP_BLOCK_SUSPEND.v' class='invisible'><code>CAP_BLOCK_SUSPEND</code></span></span><span id="variant.CAP_AUDIT_READ" class="variant small-section-header"><a href="#variant.CAP_AUDIT_READ" class="anchor field"></a><span id='CAP_AUDIT_READ.v' class='invisible'><code>CAP_AUDIT_READ</code></span></span>
+            <h2 id='implementations' class='small-section-header'>
+              Trait Implementations<a href='#implementations' class='anchor'></a>
+            </h2>
+            <div id='implementations-list'>
+        <h3 id='impl-Copy' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Copy.html" title="trait core::marker::Copy">Copy</a> for <a class="enum" href="../prctl/enum.PrctlCap.html" title="enum prctl::PrctlCap">PrctlCap</a></code><a href='#impl-Copy' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/prctl/lib.rs.html#134' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'></div><h3 id='impl-Clone' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl <a class="trait" href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html" title="trait core::clone::Clone">Clone</a> for <a class="enum" href="../prctl/enum.PrctlCap.html" title="enum prctl::PrctlCap">PrctlCap</a></code><a href='#impl-Clone' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/prctl/lib.rs.html#134' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'><h4 id='method.clone' class="method"><span id='clone.v' class='invisible'><table class='table-display'><tbody><tr><td><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone' class='fnname'>clone</a>(&amp;self) -&gt; <a class="enum" href="../prctl/enum.PrctlCap.html" title="enum prctl::PrctlCap">PrctlCap</a></code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../src/prctl/lib.rs.html#134' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Returns a copy of the value. <a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#tymethod.clone">Read more</a></p>
+</div><h4 id='method.clone_from' class="method"><span id='clone_from.v' class='invisible'><table class='table-display'><tbody><tr><td><code>fn <a href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from' class='fnname'>clone_from</a>(&amp;mut self, source: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.reference.html">&amp;</a>Self)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><div class='since' title='Stable since Rust version 1.0.0'>1.0.0</div><a class='srclink' href='https://doc.rust-lang.org/nightly/src/core/clone.rs.html#117-119' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Performs copy-assignment from <code>source</code>. <a href="https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html#method.clone_from">Read more</a></p>
+</div></div></div>
+                <h2 id='synthetic-implementations' class='small-section-header'>
+                  Auto Trait Implementations<a href='#synthetic-implementations' class='anchor'></a>
+                </h2>
+                <div id='synthetic-implementations-list'>
+            <h3 id='impl-Send' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> for <a class="enum" href="../prctl/enum.PrctlCap.html" title="enum prctl::PrctlCap">PrctlCap</a></code><a href='#impl-Send' class='anchor'></a></span></td><td><span class='out-of-band'></span></td></tr></tbody></table></h3><div class='impl-items'></div><h3 id='impl-Sync' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> for <a class="enum" href="../prctl/enum.PrctlCap.html" title="enum prctl::PrctlCap">PrctlCap</a></code><a href='#impl-Sync' class='anchor'></a></span></td><td><span class='out-of-band'></span></td></tr></tbody></table></h3><div class='impl-items'></div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt><kbd>?</kbd></dt>
+                    <dd>Show this help dialog</dd>
+                    <dt><kbd>S</kbd></dt>
+                    <dd>Focus the search field</dd>
+                    <dt><kbd>↑</kbd></dt>
+                    <dd>Move up in search results</dd>
+                    <dt><kbd>↓</kbd></dt>
+                    <dd>Move down in search results</dd>
+                    <dt><kbd>↹</kbd></dt>
+                    <dd>Switch tab</dd>
+                    <dt><kbd>&#9166;</kbd></dt>
+                    <dd>Go to active search result</dd>
+                    <dt><kbd>+</kbd></dt>
+                    <dd>Expand all sections</dd>
+                    <dt><kbd>-</kbd></dt>
+                    <dd>Collapse all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../";
+        window.currentCrate = "prctl";
+    </script>
+    <script src="../main.js"></script>
+    <script defer src="../search-index.js"></script>
+</body>
+</html>
