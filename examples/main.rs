@@ -13,7 +13,7 @@ mod common;
 use common::*;
 use rayon::prelude::*;
 use telamon::helper;
-use telamon::helper::tensor::{Tensor, VirtualTensor};
+use telamon::helper::tensor::VirtualTensor;
 use telamon::device::cuda;
 use telamon::device::Context;
 use telamon::{ir, search_space};
@@ -29,15 +29,15 @@ fn main() {
     // Enable logging.
     env_logger::init();
     let executor = cuda::Executor::init();
-    // axpy(1 << 26, ir::Type::F(32), true, &executor);
-     mv(1 << 18, 1 << 10, ir::Type::F(32), true, &executor); 
-    //gesummv(1 << 18, 1 << 10, ir::Type::F(32), true, &executor);
-    // mm(1024, 1024, 1024, ir::Type::F(32), true, &executor);
-    // doitgen(256, 256, 256, ir::Type::F(32), true, &executor);
+    // axpy(1 << 26, true, &executor);
+     mv(1 << 18, 1 << 10, true, &executor);
+    //gesummv(1 << 18, 1 << 10, true, &executor);
+    // mm(1024, 1024, 1024, true, &executor);
+    // doitgen(256, 256, 256, true, &executor);
 }
 
 /// Generates code for `y = _a*x+y`.
-fn axpy(n: i32, data_type: ir::Type,  generic: bool, executor: &cuda::Executor) {
+fn axpy(n: i32, generic: bool, executor: &cuda::Executor) {
     // Initializes the evaluation context.
     let mut context = cuda::Context::new(&executor);
     // Declares the function signature and the arguments to use for the evaluation.
@@ -46,10 +46,10 @@ fn axpy(n: i32, data_type: ir::Type,  generic: bool, executor: &cuda::Executor) 
         let mut builder = helper::SignatureBuilder::new("axpy", &mut context);
         // Create two scalar parameters, with the values N and A used for the evaluation.
         let n = create_size(n, "n", generic, &mut builder);
-        builder.param("a", 0.0);
+        builder.scalar("a", 0.0);
         // Allocates two arrays of size N.
-        x = Tensor::new("x", vec![n], data_type, true, &mut builder);
-        y = Tensor::new("y", vec![n], data_type, false, &mut builder);
+        x = builder.tensor::<f32>("x", vec![n], true);
+        y = builder.tensor::<f32>("y", vec![n], false);
         builder.get()
     };
     // Declares the bofy of the function.
@@ -68,20 +68,20 @@ fn axpy(n: i32, data_type: ir::Type,  generic: bool, executor: &cuda::Executor) 
         builder.get()
     };
     // Explore the search space.
-    gen_best(vec![function], &context, &file_name("axpy", data_type, &[n], generic));
+    gen_best(vec![function], &context, &file_name("axpy", ir::Type::F(32), &[n], generic));
 }
 
 /// Generates code for `y = A.x`.
-fn mv(m: i32, n: i32, data_type: ir::Type, generic: bool, executor: &cuda::Executor) {
+fn mv(m: i32, n: i32, generic: bool, executor: &cuda::Executor) {
     let (a, x, y);
     let mut context = cuda::Context::new(&executor);
     let signature = {
         let mut builder = helper::SignatureBuilder::new("mv", &mut context);
         let m = create_size(m, "m", generic, &mut builder);
         let n = create_size(n, "n", generic, &mut builder);
-        a = Tensor::new("a", vec![m, n], data_type, true, &mut builder);
-        x = Tensor::new("x", vec![n], data_type, true, &mut builder);
-        y = Tensor::new("y", vec![m], data_type, false, &mut builder);
+        a = builder.tensor::<f32>("a", vec![m, n], true);
+        x = builder.tensor::<f32>("x", vec![n], true);
+        y = builder.tensor::<f32>("y", vec![m], false);
         builder.get()
     };
     assert!(m >= (1 << 13));
@@ -114,23 +114,23 @@ fn mv(m: i32, n: i32, data_type: ir::Type, generic: bool, executor: &cuda::Execu
         builder.action(Action::InstFlag(st_y.inst(), search_space::InstFlag::MEM_CS));
         builder.get()
     }).collect();
-    gen_best(candidates, &context, &file_name("mv", data_type, &[m, n], generic));
+    gen_best(candidates, &context, &file_name("mv", ir::Type::F(32), &[m, n], generic));
 }
 
 /// Generates code for "y = (_alpha.A + _beta.B).x"
-fn gesummv(m: i32, n: i32, data_type: ir::Type, generic: bool, executor: &cuda::Executor) {
+fn gesummv(m: i32, n: i32, generic: bool, executor: &cuda::Executor) {
     let (a, b, x, y);
     let mut context = cuda::Context::new(&executor);
     let signature = {
         let mut builder = helper::SignatureBuilder::new("gesummv", &mut context);
-        builder.param("alpha", 0f32);
-        builder.param("beta", 0f32);
+        builder.scalar("alpha", 0f32);
+        builder.scalar("beta", 0f32);
         let m = create_size(m, "m", generic, &mut builder);
         let n = create_size(n, "n", generic, &mut builder);
-        a = Tensor::new("a", vec![m, n], data_type, true, &mut builder);
-        b = Tensor::new("b", vec![m, n], data_type, true, &mut builder);
-        x = Tensor::new("x", vec![n], data_type, true, &mut builder);
-        y = Tensor::new("y", vec![m], data_type, false, &mut builder);
+        a = builder.tensor::<f32>("a", vec![m, n], true);
+        b = builder.tensor::<f32>("b", vec![m, n], true);
+        x = builder.tensor::<f32>("x", vec![n], true);
+        y = builder.tensor::<f32>("y", vec![m], false);
         builder.get()
     };
 
@@ -162,7 +162,7 @@ fn gesummv(m: i32, n: i32, data_type: ir::Type, generic: bool, executor: &cuda::
         let sum = builder.mad(&acc_b, &"beta", &y_a);
         let sum = VirtualTensor::new(sum, vec![acc_dim_m]);
         let st_y = sum.store(&y, &mut builder);
-        
+
         builder.order(&acc_dim_n, &y_a, search_space::Order::BEFORE);
         // TODO(search_space): explore inst flags
         builder.action(Action::InstFlag(ld_x.inst(), search_space::InstFlag::MEM_CG));
@@ -171,11 +171,10 @@ fn gesummv(m: i32, n: i32, data_type: ir::Type, generic: bool, executor: &cuda::
         builder.action(Action::InstFlag(st_y.inst(), search_space::InstFlag::MEM_CS));
         builder.get()
     }).collect();
-    gen_best(candidates, &context, &file_name("gesummv", data_type, &[m, n], generic));
+    gen_best(candidates, &context, &file_name("gesummv", ir::Type::F(32), &[m, n], generic));
 }
 
 fn mm(m: i32, n: i32, k: i32,
-      data_type: ir::Type,
       generic: bool,
       executor: &cuda::Executor) {
     let mut context = cuda::Context::new(&executor);
@@ -185,9 +184,9 @@ fn mm(m: i32, n: i32, k: i32,
         let m = create_size(m, "m", generic, &mut builder);
         let n = create_size(n, "n", generic, &mut builder);
         let k = create_size(k, "k", generic, &mut builder);
-        a = Tensor::new("a", vec![m, k], data_type, true, &mut builder);
-        b = Tensor::new("b", vec![k, n], data_type, true, &mut builder);
-        c = Tensor::new("c", vec![m, n], data_type, false, &mut builder);
+        a = builder.tensor::<f32>("a", vec![m, k], true);
+        b = builder.tensor::<f32>("b", vec![k, n], true);
+        c = builder.tensor::<f32>("c", vec![m, n], false);
         builder.get()
     };
 
@@ -231,12 +230,11 @@ fn mm(m: i32, n: i32, k: i32,
         builder.action(Action::DimKind(init_dim_m[0], DimKind::BLOCK));
         builder.get()
     }).collect();
-    gen_best(candidates, &context, &file_name("mm", data_type, &[m, n, k], generic));
+    gen_best(candidates, &context, &file_name("mm", ir::Type::F(32), &[m, n, k], generic));
 }
 
 /// Computes "B[r] = A[r].transpose(X)" where A, B are 3D tensors.
 fn doitgen(p: i32, q: i32, r: i32,
-           data_type: ir::Type,
            generic: bool,
            executor: &cuda::Executor) {
     let mut context = cuda::Context::new(&executor);
@@ -246,9 +244,9 @@ fn doitgen(p: i32, q: i32, r: i32,
         let p = create_size(p, "p", generic, &mut builder);
         let q = create_size(q, "q", generic, &mut builder);
         let r = create_size(r, "r", generic, &mut builder);
-        a = Tensor::new("a", vec![r, q, p], data_type, true, &mut builder);
-        b = Tensor::new("b", vec![r, q, p], data_type, false, &mut builder);
-        x = Tensor::new("x", vec![p, p], data_type, true, &mut builder);
+        a = builder.tensor::<f32>("a", vec![r, q, p], true);
+        b = builder.tensor::<f32>("b", vec![r, q, p], false);
+        x = builder.tensor::<f32>("x", vec![p, p], true);
         builder.get()
     };
     // TODO(search_space): explore more tilings
@@ -287,7 +285,7 @@ fn doitgen(p: i32, q: i32, r: i32,
 
         builder.get()
     }).collect();
-    gen_best(candidates, &context, &file_name("doitgen", data_type, &[p, q, r], generic));
+    gen_best(candidates, &context, &file_name("doitgen", ir::Type::F(32), &[p, q, r], generic));
 }
 
 /*

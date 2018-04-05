@@ -1,7 +1,7 @@
 /// Function shared among examples.
 use rayon::prelude::*;
 use itertools::Itertools;
-use telamon::device::Context;
+use telamon::device::{ArgMap, Context};
 use telamon::{explorer, ir};
 use telamon::helper::SignatureBuilder;
 use telamon::helper::tensor::DimSize;
@@ -9,9 +9,9 @@ use telamon::search_space::SearchSpace;
 use std;
 
 /// Generates the code for the best candidate in the search space.
-pub fn gen_best<'a, T>(search_space: Vec<SearchSpace>,
-                       context: &'a T,
-                       out: &str) where T: Context<'a> {
+pub fn gen_best<'a>(search_space: Vec<SearchSpace>,
+                    context: &'a Context,
+                    out: &str) {
     let conf = explorer::Config::read();
     let begin_time = std::time::Instant::now();
     let best_opt = explorer::find_best(&conf, context, search_space);
@@ -28,11 +28,13 @@ pub fn gen_best<'a, T>(search_space: Vec<SearchSpace>,
 
 /// Creates a `DimSize`. If the instantiate flag is true, it uses a constant size,
 /// otherwise it creates a parameter with the given name.
-pub fn create_size<'a>(value: i32, name: &'a str,
-                       is_generic: bool,
-                       builder: &mut SignatureBuilder) -> DimSize<'a> {
+pub fn create_size<'a, AM>(value: i32, name: &'a str,
+                           is_generic: bool,
+                           builder: &mut SignatureBuilder<AM>)
+    -> DimSize<'a> where AM: ArgMap + Context
+{
     if is_generic {
-        builder.param(name, value);
+        builder.scalar(name, value);
         DimSize::Param(name)
     } else { DimSize::Const(value as u32) }
 }

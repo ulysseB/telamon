@@ -1,4 +1,5 @@
 //! Tests the latency model.
+use telamon::device::{ArgMap, Context};
 use telamon::helper::{SignatureBuilder, Builder, DimGroup, Reduce};
 use telamon::ir;
 use telamon::search_space::{Action, DimKind, InstFlag, Order};
@@ -10,8 +11,8 @@ pub struct EmptyLoop;
 impl PerfModelTest for EmptyLoop {
     fn name() -> &'static str { "latency_empty_loop" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 1_000_000i32);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 1_000_000i32);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -28,8 +29,8 @@ pub struct TwoEmptyLoop { d0: ir::dim::Id,  d1: ir::dim::Id }
 impl PerfModelTest for TwoEmptyLoop {
     fn name() -> &'static str { "latency_two_empty_loop" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 1000i32);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 1000i32);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -53,10 +54,10 @@ pub struct InstChain;
 impl PerfModelTest for InstChain {
     fn name() -> &'static str { "inst_chain" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 1_000_000i32);
-        builder.param("x", 1i32);
-        builder.array("out", 8);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 1_000_000i32);
+        builder.scalar("x", 1i32);
+        builder.array::<i64>("out", 1);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -78,10 +79,10 @@ pub struct LongInstChain;
 impl PerfModelTest for LongInstChain {
     fn name() -> &'static str { "long_inst_chain" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 10000i32);
-        builder.param("x", 1i64);
-        builder.array("out", 8);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 10000i32);
+        builder.scalar("x", 1i64);
+        builder.array::<i64>("out", 1);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -104,10 +105,10 @@ pub struct UnrollReduction { d0: ir::dim::Id, d1: ir::dim::Id }
 impl PerfModelTest for UnrollReduction {
     fn name() -> &'static str { "unroll_reduction" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 10000i32);
-        builder.param("x", 1i32);
-        builder.array("out", 4);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 10000i32);
+        builder.scalar("x", 1i32);
+        builder.array::<i32>("out", 1);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -137,10 +138,10 @@ pub struct OrderedLoops;
 impl PerfModelTest for OrderedLoops {
     fn name() -> &'static str { "ordered_loops" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 1000i32);
-        builder.param("k", 1000i32);
-        builder.param("m", 1000i32);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 1000i32);
+        builder.scalar("k", 1000i32);
+        builder.scalar("m", 1000i32);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -164,11 +165,11 @@ pub struct OrderedThreadDims;
 impl PerfModelTest for OrderedThreadDims {
     fn name() -> &'static str { "ordered_thread_dims" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 1000i32);
-        builder.param("k", 100i32);
-        builder.param("x", 1i32);
-        builder.array("out", 4);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 1000i32);
+        builder.scalar("k", 100i32);
+        builder.scalar("x", 1i32);
+        builder.array::<i32>("out", 1);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -206,10 +207,10 @@ pub struct DimMap;
 impl PerfModelTest for DimMap {
     fn name() -> &'static str { "dim_map" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 10000i32);
-        builder.param("x", 1i64);
-        builder.array("out", 8);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 10000i32);
+        builder.scalar("x", 1i64);
+        builder.array::<i64>("out", 1);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -239,10 +240,10 @@ pub struct OperandPositionSlow;
 impl PerfModelTest for OperandPositionSlow {
     fn name() -> &'static str { "operand_position_slow" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 10000i32);
-        builder.param("x", 1i64);
-        builder.array("out", 8);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 10000i32);
+        builder.scalar("x", 1i64);
+        builder.array::<i64>("out", 1);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -267,10 +268,10 @@ pub struct OperandPositionFast;
 impl PerfModelTest for OperandPositionFast {
     fn name() -> &'static str { "operand_position_fast" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 10000i32);
-        builder.param("x", 1i64);
-        builder.array("out", 8);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 10000i32);
+        builder.scalar("x", 1i64);
+        builder.array::<i64>("out", 1);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {

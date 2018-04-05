@@ -7,10 +7,10 @@ mod module;
 mod wrapper;
 mod jit_daemon;
 
-pub use self::array::{Array, ArrayArg};
+pub use self::array::Array;
 pub use self::executor::*;
 pub use self::counter::{PerfCounter, PerfCounterSet};
-pub use self::module::{Module, Kernel};
+pub use self::module::{Module, Kernel, Argument};
 pub use self::jit_daemon::JITDaemon;
 
 use self::jit_daemon::DaemonSpawner;
@@ -19,7 +19,6 @@ use self::jit_daemon::DaemonSpawner;
 mod tests {
     use super::*;
     use super::array;
-    use ir;
 
     /// Tries to initialize a CUDA execution context.
     #[test]
@@ -74,10 +73,8 @@ mod tests {
         let block_dim: u32 = 16;
         let executor = Executor::init();
         let mut src = executor.allocate_array::<f32>(block_dim as usize);
-        let dst = executor.allocate_array::<f32>(block_dim as usize);
+        let mut dst = executor.allocate_array::<f32>(block_dim as usize);
         array::randomize_f32(&mut src);
-        let mut src = ArrayArg(src, ir::mem::Id::External(0));
-        let mut dst = ArrayArg(dst, ir::mem::Id::External(1));
         let module = executor.compile_ptx(
             ".version 3.0\n.target sm_30\n.address_size 64\n
             .entry copy(
@@ -97,7 +94,8 @@ mod tests {
                 ret;
             }");
         let kernel = module.kernel("copy");
-        let _ = kernel.execute(&[block_dim, 1, 1], &[1, 1, 1], &mut [&mut src, &mut dst]);
-        assert!(array::compare_f32(&src.0, &dst.0) < 1e-5);
+        unwrap!(kernel.execute(&[block_dim, 1, 1], &[1, 1, 1],
+                               &mut [&mut src, &mut dst]));
+        assert!(array::compare_f32(&src, &dst) < 1e-5);
     }
 }

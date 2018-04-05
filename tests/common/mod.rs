@@ -19,9 +19,7 @@ pub fn empty_signature(num_block: u32) -> ir::Signature {
 }
 
 /// Find the best candidate for a function and outputs it.
-pub fn gen_best<'a, 'b, T>(context: &'a T, space: SearchSpace<'b>)
-    where T: Context<'a>
-{
+pub fn gen_best(context: &Context, space: SearchSpace) {
     let mut config = explorer::Config::read();
     config.num_workers = 1;
     let best = explorer::find_best(&config, context, vec![space]).unwrap();

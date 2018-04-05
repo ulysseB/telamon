@@ -1,5 +1,5 @@
 //! Utilities to allocate and operate on tensors.
-use helper::{Builder, DimGroup, SignatureBuilder, MetaDimension};
+use helper::{Builder, DimGroup, MetaDimension};
 use ir;
 use itertools::Itertools;
 use search_space::{Domain, InstFlag};
@@ -42,11 +42,7 @@ impl<'a> Tensor<'a> {
                dim_sizes: Vec<DimSize<'a>>,
                data_type: ir::Type,
                read_only: bool,
-               builder: &mut SignatureBuilder) -> Self {
-        let type_len = unwrap!(data_type.len_byte());
-        let size = dim_sizes.iter().map(|&s| builder.eval_size(s) as usize)
-            .product::<usize>() * type_len as usize;
-        let mem_id = builder.array(name, size);
+               mem_id: ir::mem::Id) -> Self {
         Tensor { name, mem_id, dim_sizes, read_only, data_type }
     }
 

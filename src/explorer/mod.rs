@@ -41,7 +41,7 @@ use futures::executor::block_on;
 /// the given time (or at whatever point we decided to stop the search - potentially after an
 /// exhaustive search)
 pub fn find_best<'a, 'b>(config: &Config, 
-                         context: &'b Context<'b>, 
+                         context: &'b Context,
                          search_space: Vec<SearchSpace<'a>>) -> Option<SearchSpace<'a>> { 
     match config.algorithm {
         config::SearchAlgorithm::MultiArmedBandit(ref band_config) => {
