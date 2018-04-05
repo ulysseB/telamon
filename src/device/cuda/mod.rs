@@ -6,7 +6,7 @@ mod gpu;
 mod mem_model;
 mod printer;
 
-pub use self::api::{Array, ArrayArg, Executor, PerfCounter, PerfCounterSet, JITDaemon};
+pub use self::api::{Array, Executor, PerfCounter, PerfCounterSet, JITDaemon};
 pub use self::api::DeviceAttribute;
 pub use self::context::Context;
 pub use self::gpu::{Gpu, InstDesc};

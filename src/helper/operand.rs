@@ -1,9 +1,7 @@
 //! Provides helpers to create instruction operands.
+use device::ScalarArgument;
 use ir::{self, dim, Function, InstId, mem, Operand};
 use ir::Operand::*;
-use num::bigint::BigInt;
-use num::rational::Ratio;
-use num::traits::FromPrimitive;
 use utils::*;
 
 /// Represents values that can be turned into an `Operand`.
@@ -45,45 +43,10 @@ impl<'a> AutoOperand<'a> for Operand<'a> {
     }
 }
 
-impl<'a> AutoOperand<'a> for i8 {
+impl<'a, T> AutoOperand<'a> for T where T: ScalarArgument {
     fn get<'b>(&self, _: &Function<'b>, _: &HashMap<dim::Id, dim::Id>)
             -> Operand<'b> where 'a: 'b {
-        Operand::new_int(BigInt::from_i8(*self).unwrap(), 8)
-    }
-}
-
-impl<'a> AutoOperand<'a> for i16 {
-    fn get<'b>(&self, _: &Function<'b>, _: &HashMap<dim::Id, dim::Id>)
-            -> Operand<'b> where 'a: 'b {
-        Operand::new_int(BigInt::from_i16(*self).unwrap(), 16)
-    }
-}
-
-impl<'a> AutoOperand<'a> for i32 {
-    fn get<'b>(&self, _: &Function<'b>, _: &HashMap<dim::Id, dim::Id>)
-            -> Operand<'b> where 'a: 'b {
-        Operand::new_int(BigInt::from_i32(*self).unwrap(), 32)
-    }
-}
-
-impl<'a> AutoOperand<'a> for i64 {
-    fn get<'b>(&self, _: &Function<'b>, _: &HashMap<dim::Id, dim::Id>)
-            -> Operand<'b> where 'a: 'b {
-        Operand::new_int(BigInt::from_i64(*self).unwrap(), 64)
-    }
-}
-
-impl<'a> AutoOperand<'a> for f32 {
-    fn get<'b>(&self, _: &Function<'b>, _: &HashMap<dim::Id, dim::Id>)
-            -> Operand<'b> where 'a: 'b {
-        Operand::new_float(Ratio::from_float(*self).unwrap(), 32)
-    }
-}
-
-impl<'a> AutoOperand<'a> for f64 {
-    fn get<'b>(&self, _: &Function<'b>, _: &HashMap<dim::Id, dim::Id>)
-            -> Operand<'b> where 'a: 'b {
-        Operand::new_float(Ratio::from_float(*self).unwrap(), 64)
+        self.as_operand()
     }
 }
 

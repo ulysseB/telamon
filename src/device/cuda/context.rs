@@ -1,19 +1,17 @@
 ///! Defines the CUDA evaluation context.
 use crossbeam;
-use device;
-use device::{Device, Argument};
-use device::cuda::{ArrayArg, Executor, Gpu, Kernel, JITDaemon};
+use device::{self, Device, ScalarArgument};
+use device::cuda::{Executor, Gpu, Kernel, JITDaemon};
+use device::cuda::api::{self, Argument};
 use device::cuda::kernel::Thunk;
 use explorer;
 use ir;
 use std;
 use std::f64;
-use std::sync::{atomic, mpsc};
+use std::sync::{atomic, mpsc, Arc};
 use utils::*;
 use device::context::AsyncCallback;
 
-
-//use std::boxed::FnBox;
 /// Max number of candidates waiting to be evaluated.
 const EVAL_BUFFER_SIZE: usize = 100;
 
@@ -21,7 +19,7 @@ const EVAL_BUFFER_SIZE: usize = 100;
 pub struct Context<'a> {
     gpu_model: Gpu,
     executor: &'a Executor,
-    parameters: HashMap<String, Box<device::Argument + 'a>>,
+    parameters: HashMap<String, Arc<Argument + 'a>>,
 }
 
 impl<'a> Context<'a> {
@@ -50,21 +48,39 @@ impl<'a> Context<'a> {
 
     /// Returns the execution queue.
     pub fn executor(&self) -> &'a Executor { self.executor }
+
+    /// Returns a parameter given its name.
+    pub fn get_param(&self, name: &str) -> &Argument { self.parameters[name].as_ref() }
+
+    /// Binds a parameter to the gien name.
+    pub fn bind_param(&mut self, name: String, arg: Arc<Argument + 'a>) {
+        self.parameters.insert(name, arg);
+    }
 }
 
-impl<'a> device::Context<'a> for Context<'a> {
+
+impl<'a> device::ArgMap for Context<'a> {
+    type Array = api::Array<'a, i8>;
+
+    fn bind_scalar<S: ScalarArgument>(&mut self, param: &ir::Parameter, value: S) {
+        assert_eq!(param.t, S::t());
+        self.bind_param(param.name.clone(), Arc::new(value));
+    }
+
+    fn bind_array<S: ScalarArgument>(&mut self, param: &ir::Parameter, len: usize)
+        -> Arc<Self::Array>
+    {
+        let size = len * std::mem::size_of::<S>();
+        let array = Arc::new(self.executor.allocate_array::<i8>(size));
+        self.bind_param(param.name.clone(), array.clone());
+        array
+    }
+}
+
+impl<'a> device::Context for Context<'a> {
     fn device(&self) -> &Device { &self.gpu_model }
 
-    fn bind_param(&mut self, param: &ir::Parameter, value: Box<Argument + 'a>) {
-        assert_eq!(param.t, value.t());
-        self.parameters.insert(param.name.clone(), value);
-    }
-
-    fn allocate_array(&mut self, id: ir::mem::Id, size: usize) -> Box<Argument + 'a> {
-        Box::new(ArrayArg(self.executor.allocate_array::<u8>(size), id))
-    }
-
-    fn get_param(&self, name: &str) -> &Argument { self.parameters[name].as_ref() }
+    fn param_as_size(&self, name: &str) -> Option<u32> { self.get_param(name).as_size() }
 
     fn evaluate(&self, function: &device::Function) -> Result<f64, ()> {
         let kernel = Kernel::compile(function, &self.gpu_model, self.executor);

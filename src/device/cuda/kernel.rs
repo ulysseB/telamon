@@ -2,9 +2,8 @@
 use codegen;
 use device;
 use device::Context as ContextTrait;
-use device::cuda::{api, ArrayArg, Context, Gpu, PerfCounterSet, JITDaemon};
+use device::cuda::{api, Context, Gpu, PerfCounterSet, JITDaemon};
 use codegen::ParamVal;
-use ir;
 use itertools::Itertools;
 use std;
 
@@ -73,8 +72,8 @@ impl<'a, 'b> Kernel<'a, 'b> {
         let params = self.function.device_code_args().map(|x| match *x {
             ParamVal::External(p, _) => ThunkArg::ArgRef(args.get_param(&p.name)),
             ParamVal::Size(s) => ThunkArg::Size(args.eval_size(s) as i32),
-            ParamVal::GlobalMem(block, ref size, _) => {
-                tmp_arrays.push((args.eval_size(size) as usize, block));
+            ParamVal::GlobalMem(_, ref size, _) => {
+                tmp_arrays.push(args.eval_size(size) as usize);
                 ThunkArg::TmpArray(tmp_arrays.len() - 1)
             },
         }).collect_vec();
@@ -130,7 +129,7 @@ impl<'a> std::fmt::Debug for Thunk<'a> {
 struct ThunkArgs<'a> {
     blocks: [u32; 3],
     threads: [u32; 3],
-    tmp_arrays: Vec<(usize, ir::mem::InternalId)>,
+    tmp_arrays: Vec<usize>,
     args: Vec<ThunkArg<'a>>,
     expected_blocks_per_smx: u32,
 }
@@ -141,8 +140,8 @@ impl<'a> ThunkArgs<'a> {
         -> Result<u64, ()>
     {
         self.check_blocks_per_smx(cuda_kernel);
-        let tmp_arrays = self.tmp_arrays.iter().map(|&(size, id)| {
-            ArrayArg(executor.allocate_array::<i8>(size), id.into())
+        let tmp_arrays = self.tmp_arrays.iter().map(|&size| {
+            executor.allocate_array::<i8>(size)
         }).collect_vec();
         let params = self.args.iter().map(|x| match *x {
             ThunkArg::ArgRef(arg) => arg,
@@ -156,8 +155,8 @@ impl<'a> ThunkArgs<'a> {
     pub fn instrument(&self, cuda_kernel: &api::Kernel, counters: &PerfCounterSet,
                       executor: &api::Executor) -> Vec<u64> {
         self.check_blocks_per_smx(cuda_kernel);
-        let tmp_arrays = self.tmp_arrays.iter().map(|&(size, id)| {
-            ArrayArg(executor.allocate_array::<i8>(size) , id.into())
+        let tmp_arrays = self.tmp_arrays.iter().map(|&size| {
+            executor.allocate_array::<i8>(size)
         }).collect_vec();
         let params = self.args.iter().map(|x| match *x {
             ThunkArg::ArgRef(arg) => arg,
@@ -185,7 +184,7 @@ impl<'a> std::fmt::Debug for ThunkArgs<'a> {
 }
 
 /// An argument of a kernel ready to evaluate.
-enum ThunkArg<'a> { ArgRef(&'a device::Argument), Size(i32), TmpArray(usize) }
+enum ThunkArg<'a> { ArgRef(&'a api::Argument), Size(i32), TmpArray(usize) }
 
 impl<'a> std::fmt::Debug for ThunkArg<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

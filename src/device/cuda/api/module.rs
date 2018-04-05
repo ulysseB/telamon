@@ -1,5 +1,5 @@
 //! Interface with CUDA Modules and Kernels.
-use device::Argument;
+use device;
 use device::cuda::api::PerfCounterSet;
 use device::cuda::api::wrapper::*;
 use itertools::Itertools;
@@ -93,3 +93,21 @@ impl<'a> Drop for Kernel<'a> {
 
 unsafe impl<'a> Sync for Kernel<'a> {}
 unsafe impl<'a> Send for Kernel<'a> {}
+
+/// An object that can be passed to a CUDA kernel.
+pub trait Argument: Sync + Send {
+    /// Returns a pointer to the object.
+    fn raw_ptr(&self) -> *const libc::c_void;
+    /// Returns the argument value if it can represent a size.
+    fn as_size(&self) -> Option<u32> { None }
+}
+
+impl<T> Argument for T where T: device::ScalarArgument {
+    fn raw_ptr(&self) -> *const libc::c_void {
+        device::ScalarArgument::raw_ptr(self)
+    }
+
+    fn as_size(&self) -> Option<u32> {
+        device::ScalarArgument::as_size(self)
+    }
+}

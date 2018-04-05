@@ -119,7 +119,7 @@ pub enum EnumTree<'a, 'b> {
 }
 
 const THRESHOLD : usize = 10;
-pub struct SearchTree<'a, 'b> { pub tree: EnumTree<'a, 'b>,  context: &'b Context<'b> }
+pub struct SearchTree<'a, 'b> { pub tree: EnumTree<'a, 'b>,  context: &'b Context }
 
 type NodeStack<'a, 'b> = Vec<(Weak<RwLock<Node<'a, 'b>>>, Option<usize>)>;
 
@@ -802,7 +802,7 @@ impl<'a, 'b> Node<'a, 'b> {
 
 
 impl<'a, 'b> SearchTree<'a, 'b> {
-    pub fn new(candidates: Vec<Candidate<'a>>, context: &'b Context<'b>) -> Self {
+    pub fn new(candidates: Vec<Candidate<'a>>, context: &'b Context) -> Self {
         SearchTree::create_node(candidates, context, 0.0, String::from("0"))
     }
 
@@ -854,7 +854,7 @@ impl<'a, 'b> SearchTree<'a, 'b> {
 
     /// Given a list of candidates, create a Node which has these candidates as children
     /// children being created as unexpanded nodes
-    fn create_node(new_nodes: Vec<Candidate<'a>>, context: &'b Context<'b>,
+    fn create_node(new_nodes: Vec<Candidate<'a>>, context: &'b Context,
                    bound: f64, id_node: String) -> SearchTree<'a, 'b> {
         let mut rew_vec = vec![];
         let mut arc_nodes: Vec<SearchTree<'a, 'b>> = vec![];

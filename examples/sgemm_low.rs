@@ -46,14 +46,14 @@ fn main() {
     let (a, b, c);
     let signature = &{
         let mut builder = helper::SignatureBuilder::new("sgemm", &mut context);
-        builder.param("m", M);
-        builder.param("n", N);
-        builder.param("k", K);
-        builder.param("alpha", 1f32);
-        a = builder.array("a", 4*(M*K) as usize);
-        b = builder.array("b", 4*(K*N) as usize);
-        builder.param("beta", 1f32);
-        c = builder.array("c", 4*(M*N) as usize);
+        builder.scalar("m", M);
+        builder.scalar("n", N);
+        builder.scalar("k", K);
+        builder.scalar("alpha", 1f32);
+        a = builder.array::<f32>("a", (M*K) as usize).0;
+        b = builder.array::<f32>("b", (K*N) as usize).0;
+        builder.scalar("beta", 1f32);
+        c = builder.array::<f32>("c", (M*N) as usize).0;
         builder.get()
     };
     let device = context.device();

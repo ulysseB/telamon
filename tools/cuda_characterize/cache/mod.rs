@@ -1,6 +1,6 @@
 mod cgen;
 
-use telamon::device::cuda::{ArrayArg, Context, Executor, Gpu, PerfCounter};
+use telamon::device::cuda::{Context, Executor, Gpu, PerfCounter};
 use telamon::ir;
 use telamon::search_space::InstFlag;
 use gen;
@@ -40,9 +40,8 @@ pub fn gen_raw_data(gpu: &Gpu,
     let max_stride = strides.iter().cloned().max().unwrap_or(0);
     let max_loop_size = inner_loop_sizes.iter().cloned().max().unwrap_or(0);
     let array_size = max_loop_size * (max_stride + 1) + 1;
-    let array = executor.allocate_array::<f32>(array_size as usize);
     let mut context = Context::from_gpu(gpu.clone(), executor);
-    gen::bind("tab", ArrayArg(array, mem_ids[0]), &mut context);
+    gen::bind_array::<f32>("tab", array_size as usize, &mut context);
     let arg_ranges = [
         ("stride", &strides[..]),
         ("n", &inner_loop_sizes[..]),
