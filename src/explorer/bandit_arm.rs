@@ -512,7 +512,7 @@ impl<'a, 'b> Node<'a, 'b> {
             .map(|x| x.1.bound()).unwrap();
         for (ind, x) in node_list {
             if best_score.is_infinite() {
-                let x_weight = (10f64 * max_bound / x.bound()).floor() as u32 ;
+                let x_weight = std::cmp::max(1, (10f64 * max_bound / x.bound()).floor() as u32);
                 weighted_items.push(Weighted{weight: x_weight, item: ind});
             } else {
                 assert!(x.bound() <= best_score);
