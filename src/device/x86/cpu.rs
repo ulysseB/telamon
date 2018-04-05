@@ -248,6 +248,7 @@ impl device::Device for Cpu {
         }
     }
 
+    // TODO(search_space) block dimensions do not make sense on cpu
     fn max_block_dims(&self) -> u32 { 1 }
 
     fn max_threads(&self) -> u32 { 24 }
@@ -265,43 +266,54 @@ impl device::Device for Cpu {
     fn name(&self) -> &str { &self.name }
 
     fn lower_type(&self, t: ir::Type, space: &SearchSpace) -> Option<ir::Type> {
-        unimplemented!()
+        match t {
+            ir::Type::PtrTo(_) => Some(Type::I(64)),
+            t => Some(t),
+        }
     }
 
     fn hw_pressure(&self, space: &SearchSpace,
                    dim_sizes: &HashMap<ir::dim::Id, u32>,
                    _nesting: &HashMap<ir::BBId, model::Nesting>,
                    bb: &ir::BasicBlock) -> model::HwPressure {
-        unimplemented!()
+        // TODO(model): implement model
+        model::HwPressure::zero(self)
     }
 
     fn loop_iter_pressure(&self, kind: DimKind) -> (HwPressure, HwPressure) {
-        unimplemented!()
+        //TODO(model): implement minimal model
+        (model::HwPressure::zero(self), model::HwPressure::zero(self))
     }
 
-    fn thread_rates(&self) -> HwPressure {unimplemented!()}
+    fn thread_rates(&self) -> HwPressure {
+        //TODO(model): implement minimal model
+        model::HwPressure::new(1.0, vec![]) }
 
     fn block_rates(&self, max_num_threads: u64) -> HwPressure {
-        unimplemented!()
+        //TODO(model): implement minimal model
+        model::HwPressure::new(1.0, vec![]) 
     }
 
     fn total_rates(&self, max_num_threads: u64) -> HwPressure {
-        unimplemented!()
+        //TODO(model): implement minimal model
+        model::HwPressure::new(1.0, vec![]) 
     }
 
     fn bottlenecks(&self) -> &[&'static str] {
-        unimplemented!()
+        &[]
     }
 
     fn block_parallelism(&self, space: &SearchSpace) -> u32 {
-        unimplemented!()
+        1
     }
 
     fn additive_indvar_pressure(&self, t: &ir::Type) -> HwPressure {
-        unimplemented!()
+        //TODO(model): implement minimal model
+        model::HwPressure::zero(self) 
     }
 
     fn multiplicative_indvar_pressure(&self, t: &ir::Type) -> HwPressure {
-        unimplemented!()
+        //TODO(model): implement minimal model
+        model::HwPressure::zero(self) 
     }
 }

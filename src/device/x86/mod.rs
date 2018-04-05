@@ -4,7 +4,9 @@ mod cpu;
 //mod mem_model;
 mod printer;
 mod compile;
+mod api;
 
+pub use self::api::ArrayArg;
 pub use self::context::Context;
 
 use codegen;

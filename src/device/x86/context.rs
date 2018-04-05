@@ -11,12 +11,13 @@ use utils::*;
 use device::context::AsyncCallback;
 use device::x86::compile;
 use device::x86::cpu::Cpu;
+use device::x86::api::ArrayArg;
 
 
 /// Max number of candidates waiting to be evaluated.
 const EVAL_BUFFER_SIZE: usize = 100;
 
-/// A CUDA evaluation context.
+/// A CPU evaluation context.
 pub struct Context<'a> {
     cpu_model: Cpu,
     parameters: HashMap<String, Box<device::Argument + 'a>>,
@@ -48,11 +49,12 @@ impl<'a> device::Context<'a> for Context<'a> {
     fn device(&self) -> &Device { &self.cpu_model }
 
     fn bind_param(&mut self, param: &ir::Parameter, value: Box<Argument + 'a>) {
-        unimplemented!()
+        assert_eq!(param.t, value.t());
+        self.parameters.insert(param.name.clone(), value);
     }
 
     fn allocate_array(&mut self, id: ir::mem::Id, size: usize) -> Box<Argument + 'a> {
-        unimplemented!()
+        Box::new(ArrayArg::<i8>::new(id, vec![0; size]))
     }
 
     fn get_param(&self, name: &str) -> &Argument { self.parameters[name].as_ref() }
@@ -72,8 +74,40 @@ impl<'a> device::Context<'a> for Context<'a> {
 
     fn async_eval<'b, 'c>(&self, num_workers: usize,
                           inner: &(Fn(&mut device::AsyncEvaluator<'b, 'c>) + Sync)){
-        unimplemented!()
+        let (send, recv) = mpsc::sync_channel(EVAL_BUFFER_SIZE);
+        crossbeam::scope(move |scope| {
+            // Start the explorer threads.
+            for _ in 0..num_workers {
+                let mut evaluator = AsyncEvaluator {
+                    context: self,
+                    sender: send.clone(),
+                };
+                unwrap!(scope.builder().name("Telamon - Explorer Thread".to_string())
+                        .spawn(move || inner(&mut evaluator)));
+            }
+            // Start the evaluation thread.
+            let eval_thread_name = "Telamon - GPU Evaluation Thread".to_string();
+            let res = scope.builder().name(eval_thread_name).spawn(move || {
+                let mut cpt_candidate = 0;
+                while let Ok((candidate, callback)) = recv.recv() {
+                    cpt_candidate += 1;
+                    let eval = dummy_evaluate().unwrap();
+                    callback.call(candidate, eval, cpt_candidate);
+                }
+            });
+        });
     }
+}
+
+fn dummy_evaluate() -> Result<f64, ()> {
+    let libname = String::from("hello");
+    let libpath = String::from("/tmp/");
+    let mut complete_lib_path = libpath.clone();
+    complete_lib_path.push_str(&libname);
+    let source_path = String::from("template/hello_world.c");
+    compile::compile(libname, source_path, libpath);
+    let time = compile::link_and_exec(complete_lib_path, String::from("hello"));
+    Ok(time)
 }
 
 type AsyncPayload<'a, 'b> = (explorer::Candidate<'a>, AsyncCallback<'a, 'b>);
@@ -81,13 +115,12 @@ type AsyncPayload<'a, 'b> = (explorer::Candidate<'a>, AsyncCallback<'a, 'b>);
 pub struct AsyncEvaluator<'a, 'b> where 'a: 'b {
     context: &'b Context<'b>,
     sender: mpsc::SyncSender<AsyncPayload<'a, 'b>>,
-    blocked_time: &'b atomic::AtomicUsize
 }
 
 impl<'a, 'b, 'c> device::AsyncEvaluator<'a, 'c> for AsyncEvaluator<'a, 'b>
     where 'a: 'b, 'c: 'b
 {
     fn add_kernel(&mut self, candidate: explorer::Candidate<'a>, callback: device::AsyncCallback<'a, 'c> ) {
-        unimplemented!()
+        self.sender.send((candidate, callback));
     }
 }
