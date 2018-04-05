@@ -1,5 +1,7 @@
 # Telamon
 
+[![Build Status](https://travis-ci.org/ulysseB/telamon.svg?branch=master)](https://travis-ci.org/ulysseB/telamon)
+
 Telamon is a framework to find the best implementation of a basic dense linear
 algebra function. It takes a description of the set of possible implementations
 and evaluates them on a given input to find the optimal implementation.
