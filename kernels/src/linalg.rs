@@ -18,11 +18,14 @@ impl<'a> Kernel for Axpy<'a> {
 
     fn name() -> &'static str { "axpy" }
 
-    fn build_signature(n: i32, generic: bool, builder: &mut SignatureBuilder) -> Self {
+    fn build_signature<AM>(n: i32, generic: bool,
+                           builder: &mut SignatureBuilder<AM>) -> Self
+        where AM: device::ArgMap + device::Context
+    {
         let n_size = create_size(n, "n", generic, builder);
-        builder.param("alpha", 1.0);
-        let x = Tensor::new("x", vec![n_size], ir::Type::F(32), true, builder);
-        let y = Tensor::new("y", vec![n_size], ir::Type::F(32), false, builder);
+        builder.scalar("alpha", 1.0);
+        let x = builder.tensor::<f32>("x", vec![n_size], true);
+        let y = builder.tensor::<f32>("y", vec![n_size], false);
         Axpy { n, x, y }
     }
 
