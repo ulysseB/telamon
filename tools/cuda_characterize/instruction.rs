@@ -1,5 +1,6 @@
 //! Microbenchmarks to get the description of each instruction.
 use create_table;
+use num::Zero;
 use telamon::codegen;
 use telamon::device::{Device, ScalarArgument};
 use telamon::device::cuda::{Context, Executor, Gpu, InstDesc, Kernel, PerfCounter};
@@ -14,13 +15,13 @@ use utils::*;
 /// Instruments a single thread with a loop containing chained instructions.
 fn inst_chain<T>(gpu: &Gpu, executor: &Executor, counters_list: &[PerfCounter], n: u64,
                  range: &[u32], inst_gen: &gen::InstGenerator
-                ) -> Table<u64> where T: ScalarArgument {
+                ) -> Table<u64> where T: ScalarArgument + Zero {
     let args = [("n", ir::Type::I(32)), ("arg", T::t())];
     let base = gen::base(&args, &["out"]).0;
 
     let mut table = create_table(&["n"], counters_list);
     let mut context = Context::from_gpu(gpu.clone(), executor);
-    gen::bind_scalar("arg", T::default(), &mut context);
+    gen::bind_scalar("arg", T::zero(), &mut context);
     gen::bind_array::<f32>("out", 1, &mut context);
     gen::bind_scalar("n", n as i32, &mut context);
     let counters = executor.create_perf_counter_set(counters_list);
@@ -34,7 +35,7 @@ fn inst_chain<T>(gpu: &Gpu, executor: &Executor, counters_list: &[PerfCounter], 
 
 /// Instruments an instruction.
 fn inst<T>(gpu: &Gpu, executor: &Executor, inst_gen: &gen::InstGenerator)
-    -> InstDesc where T: ScalarArgument
+    -> InstDesc where T: ScalarArgument + Zero
 {
     let perf_counters = [
         PerfCounter::InstExecuted,

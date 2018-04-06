@@ -3,17 +3,19 @@ use create_size;
 use kernel::Kernel;
 #[cfg(feature="cuda")]
 use kernel::CudaKernel;
+use num::One;
 use telamon::{device, ir};
 use telamon::helper::{Builder, SignatureBuilder};
 use telamon::helper::tensor::{Tensor, VirtualTensor};
 use telamon::search_space::SearchSpace;
+use std::marker::PhantomData;
 
 use telamon::ir::DimMapScope::Global as GlobalScope;
 
 /// Computes `y = alpha*x+y`.
-struct Axpy<'a> { n: i32, x: Tensor<'a>, y: Tensor<'a> }
+struct Axpy<'a, S> { n: i32, x: Tensor<'a>, y: Tensor<'a>, t: PhantomData<S> }
 
-impl<'a> Kernel for Axpy<'a> {
+impl<'a, S> Kernel for Axpy<'a, S> where S: device::ScalarArgument + One {
     type Parameters = i32;
 
     fn name() -> &'static str { "axpy" }
@@ -23,10 +25,10 @@ impl<'a> Kernel for Axpy<'a> {
         where AM: device::ArgMap + device::Context
     {
         let n_size = create_size(n, "n", generic, builder);
-        builder.scalar("alpha", 1.0);
-        let x = builder.tensor::<f32>("x", vec![n_size], true);
-        let y = builder.tensor::<f32>("y", vec![n_size], false);
-        Axpy { n, x, y }
+        builder.scalar("alpha", S::one());
+        let x = builder.tensor::<S>("x", vec![n_size], true);
+        let y = builder.tensor::<S>("y", vec![n_size], false);
+        Axpy { n, x, y, t: PhantomData }
     }
 
     fn build_body<'b>(&self, signature: &'b ir::Signature, device: &'b device::Device)
@@ -53,7 +55,7 @@ impl<'a> Kernel for Axpy<'a> {
 }
 
 #[cfg(feature="cuda")]
-impl<'a> CudaKernel for Axpy<'a> {
+impl<'a, S> CudaKernel for Axpy<'a, S> {
     fn benchmark_fast(&self) -> f64 {
         // FIXME: need to allocate events. Should we reuse arrays ?
         unimplemented!()
