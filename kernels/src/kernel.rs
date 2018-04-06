@@ -20,9 +20,10 @@ pub trait Kernel: Sized {
     /// Builds the signature of the kernel in the builder and returns an object that
     /// stores enough information to later build the kernel body and check its result.
     /// The `is_generic` flag indicates if th sizes should be instantiated.
-    fn build_signature(parameters: Self::Parameters,
-                       is_generic: bool,
-                       builder: &mut SignatureBuilder) -> Self;
+    fn build_signature<AM>(parameters: Self::Parameters,
+                           is_generic: bool,
+                           builder: &mut SignatureBuilder<AM>) -> Self
+        where AM: device::ArgMap + device::Context;
 
     /// Builder the kernel body in the given builder. This builder should be based on the
     /// signature created by `build_signature`.
@@ -33,8 +34,12 @@ pub trait Kernel: Sized {
     fn check_result(&self, context: &device::Context) -> Result<(), String>;
 
     /// Generates, executes and tests the output of candidates for the kernel.
-    fn test(test_kind: TestKind, params: Self::Parameters, num_descend: usize,
-            context: &mut device::Context) {
+    fn test<AM>(test_kind: TestKind,
+                params: Self::Parameters,
+                num_descend: usize,
+                context: &mut AM)
+        where AM: device::ArgMap + device::Context
+    {
         let kernel;
         let signature = {
             let mut builder = SignatureBuilder::new(Self::name(), context);
