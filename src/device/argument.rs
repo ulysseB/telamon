@@ -9,7 +9,7 @@ use std;
 
 /// Represents a value that can be used as a `Function` argument. Must ensures the type
 /// is a scalar and does not contains any reference.
-pub unsafe trait ScalarArgument: Sync + Send + Copy + Default + 'static {
+pub unsafe trait ScalarArgument: Sync + Send + Copy + 'static {
     /// Returns the argument interpreted as an iteration dimension size, if applicable.
     fn as_size(&self) -> Option<u32> { None }
     /// Returns the type of the argument.
@@ -101,7 +101,7 @@ unsafe impl ScalarArgument for i64 {
 }
 
 /// Represents an array on the device.
-pub trait ArrayArgument {
+pub trait ArrayArgument: Send + Sync {
     // TODO(cc_perf): return a `Cow` instead of a `Vec` to avoid copying when testing
     // on a local CPU.
     // TODO(cleanup): use a type parameter instead of casting objects into bytes. For
@@ -114,7 +114,7 @@ pub trait ArrayArgument {
     fn write_i8(&self, bytes: &[i8]);
 
     /// Copies the array to the host, interpreting it as an array of `T`.
-    fn read<T: ScalarArgument>(&self) -> Vec<T> {
+    fn read<T: ScalarArgument>(&self) -> Vec<T> where Self: Sized {
         let mut bytes_vec = self.read_i8();
         bytes_vec.shrink_to_fit();
         let (len, rem) = div_rem(bytes_vec.len(), std::mem::size_of::<T>());
@@ -127,7 +127,7 @@ pub trait ArrayArgument {
     }
 
     /// Copies an values to the device array from the host array given as argument.
-    fn write<T: ScalarArgument>(&self, from: &[T]) {
+    fn write<T: ScalarArgument>(&self, from: &[T]) where Self: Sized {
         let bytes_len = from.len()*std::mem::size_of::<T>();
         let bytes_ptr = from.as_ptr() as *const i8;
         let bytes = unsafe { std::slice::from_raw_parts(bytes_ptr, bytes_len) };

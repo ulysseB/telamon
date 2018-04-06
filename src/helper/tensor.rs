@@ -1,4 +1,5 @@
 //! Utilities to allocate and operate on tensors.
+use device::ArrayArgument;
 use helper::{Builder, DimGroup, MetaDimension};
 use ir;
 use itertools::Itertools;
@@ -31,6 +32,7 @@ impl<'a> From<&'a str> for DimSize<'a> {
 pub struct Tensor<'a> {
     name: &'a str,
     mem_id: ir::mem::Id,
+    array: std::sync::Arc<ArrayArgument + 'a>,
     dim_sizes: Vec<DimSize<'a>>,
     data_type: ir::Type,
     read_only: bool,
@@ -42,8 +44,9 @@ impl<'a> Tensor<'a> {
                dim_sizes: Vec<DimSize<'a>>,
                data_type: ir::Type,
                read_only: bool,
-               mem_id: ir::mem::Id) -> Self {
-        Tensor { name, mem_id, dim_sizes, read_only, data_type }
+               mem_id: ir::mem::Id,
+               array: std::sync::Arc<ArrayArgument + 'a>) -> Self {
+        Tensor { name, mem_id, dim_sizes, read_only, data_type, array }
     }
 
     /// Creates a `VirtualTensor` that contains the values of `self`, loaded in registers.

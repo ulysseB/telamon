@@ -1,5 +1,6 @@
 //! Defines common kernels used to test and benchmark Telamon.
 extern crate itertools;
+extern crate num;
 extern crate telamon;
 #[macro_use]
 extern crate telamon_utils as utils;

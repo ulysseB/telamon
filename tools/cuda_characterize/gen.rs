@@ -1,4 +1,5 @@
 //! Builds code for micro benchmarks.
+use num::Zero;
 use telamon::codegen;
 use telamon::device::{ArgMap, ScalarArgument, Device};
 use telamon::device::cuda::{Gpu, Context, Kernel, PerfCounterSet};
@@ -91,9 +92,9 @@ pub type InstGenerator = Fn(&AutoOperand<'static>, &&str, &mut Builder) -> ir::I
 pub fn inst_chain<'a, T>(signature: &'a Signature, device: &'a Device,
                          inst_gen: &InstGenerator,
                          n_iter: &str, n_chained: u32, arg: &str, out: &str
-                        ) -> SearchSpace<'a> where T: ScalarArgument {
+                        ) -> SearchSpace<'a> where T: ScalarArgument + Zero {
     let mut builder = Builder::new(signature, device);
-    let init = builder.mov(&T::default());
+    let init = builder.mov(&T::zero());
     let loop_size = builder.param_size(n_iter);
     let unroll_size = builder.cst_size(n_chained);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
