@@ -6,6 +6,7 @@ use libloading;
 pub fn compile(libname: String, source_path: String, lib_path: String) {
     Command::new("gcc")
         .arg("-shared")
+        .arg("-fPIC")
         .arg("-o")
         .arg(format!("{}lib{}.so", lib_path, libname))
         .arg(source_path)

@@ -100,11 +100,19 @@ impl<'a> device::Context<'a> for Context<'a> {
 }
 
 fn dummy_evaluate() -> Result<f64, ()> {
+    // Does not look like a very reliable way to do this...
+    // Directory from which we launched the binary, assuming it's telamon for now
+    let mut telamon_path = String::from(std::env::current_dir().unwrap().to_str().unwrap());
+    telamon_path.push_str("/");
     let libname = String::from("hello");
     let libpath = String::from("/tmp/");
     let mut complete_lib_path = libpath.clone();
+    complete_lib_path.push_str("lib");
     complete_lib_path.push_str(&libname);
-    let source_path = String::from("template/hello_world.c");
+    complete_lib_path.push_str(".so");
+    let mut source_path = telamon_path.clone();
+    source_path.push_str("src/device/x86/template/hello_world.c");
+    //let source_path = String::from("template/hello_world.c");
     compile::compile(libname, source_path, libpath);
     let time = compile::link_and_exec(complete_lib_path, String::from("hello"));
     Ok(time)
