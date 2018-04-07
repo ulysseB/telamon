@@ -1,5 +1,5 @@
 //! Utilities to allocate and operate on tensors.
-use device::ArrayArgument;
+use device::{ScalarArgument, ArrayArgument};
 use helper::{Builder, DimGroup, MetaDimension};
 use ir;
 use itertools::Itertools;
@@ -29,24 +29,23 @@ impl<'a> From<&'a str> for DimSize<'a> {
 }
 
 /// A tensor allocated in main memory.
-pub struct Tensor<'a> {
+pub struct Tensor<'a, S: ScalarArgument> {
     name: &'a str,
     mem_id: ir::mem::Id,
     array: std::sync::Arc<ArrayArgument + 'a>,
     dim_sizes: Vec<DimSize<'a>>,
-    data_type: ir::Type,
     read_only: bool,
+    s: std::marker::PhantomData<S>,
 }
 
-impl<'a> Tensor<'a> {
+impl<'a, S> Tensor<'a, S> where S: ScalarArgument {
     /// Allocates a new `Tensor` in the context.
     pub fn new(name: &'a str,
                dim_sizes: Vec<DimSize<'a>>,
-               data_type: ir::Type,
                read_only: bool,
                mem_id: ir::mem::Id,
                array: std::sync::Arc<ArrayArgument + 'a>) -> Self {
-        Tensor { name, mem_id, dim_sizes, read_only, data_type, array }
+        Tensor { name, mem_id, dim_sizes, read_only, array, s: std::marker::PhantomData }
     }
 
     /// Creates a `VirtualTensor` that contains the values of `self`, loaded in registers.
@@ -57,10 +56,10 @@ impl<'a> Tensor<'a> {
         }).collect_vec();
         let (ptr, pat) = {
             let dims = dims.iter().map(|d| d as &MetaDimension).collect_vec();
-            builder.tensor_access(&self.name, self.mem_id, &self.data_type, &dims)
+            builder.tensor_access(&self.name, self.mem_id, &S::t(), &dims)
         };
         let flag = if self.read_only { InstFlag::ALL } else { InstFlag::MEM_COHERENT };
-        let inst = builder.ld_ex(self.data_type, &ptr, pat, flag);
+        let inst = builder.ld_ex(S::t(), &ptr, pat, flag);
         for dim in &dims { builder.close_dim(dim); }
         VirtualTensor { inst, dims }
     }
@@ -90,13 +89,15 @@ impl VirtualTensor {
     }
 
     /// Stores the `VirtualTensor` in memory.
-    pub fn store(&self, tensor: &Tensor, builder: &mut Builder) -> VirtualTensor {
+    pub fn store<S>(&self, tensor: &Tensor<S>, builder: &mut Builder) -> VirtualTensor
+        where S: ScalarArgument
+    {
         assert!(!tensor.read_only);
         let new_dims = self.dims.iter().map(|dim| builder.open_mapped_dim(dim))
             .collect_vec();
         let (ptr, pat) = {
-            let dims = new_dims.iter().map(|d| d as &MetaDimension).collect_vec(); 
-            builder.tensor_access(&tensor.name, tensor.mem_id, &tensor.data_type, &dims)
+            let dims = new_dims.iter().map(|d| d as &MetaDimension).collect_vec();
+            builder.tensor_access(&tensor.name, tensor.mem_id, &S::t(), &dims)
         };
         let inst = builder.st(&ptr, &self.inst, pat);
         for dim in &new_dims { builder.close_dim(dim); }

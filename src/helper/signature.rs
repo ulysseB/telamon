@@ -42,13 +42,13 @@ impl<'a, AM> Builder<'a, AM> where AM: device::ArgMap + device::Context + 'a {
     /// Allocates an n-dimensional array.
     pub fn tensor<'b, S: ScalarArgument>(&mut self, name: &'b str,
                                          dim_sizes: Vec<DimSize<'b>>,
-                                         read_only: bool) -> Tensor<'b>
+                                         read_only: bool) -> Tensor<'b, S>
         where <AM as device::ArgMap>::Array: 'b
     {
         let len = dim_sizes.iter().map(|&s| self.eval_size(s) as usize)
             .product::<usize>();
         let (mem_id, array) = self.array::<S>(name, len);
-        Tensor::new(name, dim_sizes, S::t(), read_only, mem_id, array)
+        Tensor::new(name, dim_sizes, read_only, mem_id, array)
     }
 
     /// Evaluates a size in the context.

@@ -50,6 +50,7 @@ impl<'a, S> Kernel for Axpy<'a, S> where S: device::ScalarArgument + One {
     }
 
     fn check_result(&self, context: &device::Context) -> Result<(), String> {
+        // get the data back
         unimplemented!() // FIXME
     }
 }
