@@ -206,7 +206,7 @@ fn iter_descend<'a, 'b>(config: &BanditConfig,
     let mut current_pos = None;
     loop {
         let next_node;
-        let mut montecarlo_candidate = None;
+        //let mut montecarlo_candidate = None;
         {
             let mut search_node = search_node_lock.write().unwrap();
             match search_node.descend_node(config, best_val) {
@@ -218,14 +218,17 @@ fn iter_descend<'a, 'b>(config: &BanditConfig,
                 }
                 NodeDescendResult::MonteCarlo(subtree_arc, pos) => {
                     let weak_ref = Arc::downgrade(&search_node_lock);
-                    next_node = Arc::clone(&subtree_arc);
+                    //next_node = Arc::clone(&subtree_arc);
                     parent_stack.push((weak_ref, current_pos));
                     let monte_cand_opt = subtree_arc.write().unwrap()
                         .start_montecarlo(config, context, best_val);
-                    montecarlo_candidate = match monte_cand_opt {
-                        Some(cand) => Some((Some(cand), pos)),
-                        None => Some((None, pos))
-                    };
+                    // We don't need to hold this lock during the montecarlo descend, so we just
+                    // drop it
+                    std::mem::drop(search_node);
+                    if let Some(cand) = monte_cand_opt {
+                        return handle_montecarlo_descend(
+                            config, context, cand, pos, best_val, parent_stack);
+                    } else { return DescendResult::FailedMonteCarlo; }
                 }
                 NodeDescendResult::Leaf(candidate, pos) => {
                     let weak_ref = Arc::downgrade(&search_node_lock);
@@ -254,15 +257,6 @@ fn iter_descend<'a, 'b>(config: &BanditConfig,
             }
         }
         search_node_lock = next_node;
-        // A bit weird, but we do that so we don't have to hold the lock while descending
-        // on candidate. by doing it this way, we do not hold the lock on the node in
-        // which we found the candidate while doing the descend.
-        if let Some((cand_opt, pos)) = montecarlo_candidate {
-            if let Some(cand) = cand_opt {
-                return handle_montecarlo_descend(
-                    config, context, cand, pos, best_val, parent_stack);
-            } else { return DescendResult::FailedMonteCarlo; }
-        }
     }
 }
 
