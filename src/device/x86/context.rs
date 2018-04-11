@@ -118,7 +118,7 @@ fn dummy_evaluate() -> Result<f64, ()> {
     Ok(time)
 }
 
-type AsyncPayload<'a, 'b> = (explorer::Candidate<'a>, AsyncCallback<'a, 'b>);
+type AsyncPayload<'a, 'b> = (explorer::Candidate<'a>,  AsyncCallback<'a, 'b>);
 
 pub struct AsyncEvaluator<'a, 'b> where 'a: 'b {
     context: &'b Context<'b>,
@@ -129,6 +129,7 @@ impl<'a, 'b, 'c> device::AsyncEvaluator<'a, 'c> for AsyncEvaluator<'a, 'b>
     where 'a: 'b, 'c: 'b
 {
     fn add_kernel(&mut self, candidate: explorer::Candidate<'a>, callback: device::AsyncCallback<'a, 'c> ) {
+        //let dev_fun = device::Function::build(&candidate.space);
         self.sender.send((candidate, callback));
     }
 }
