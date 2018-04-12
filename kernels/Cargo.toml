@@ -1,0 +1,16 @@
+[package]
+authors = ["Ulysse Beaugnon <ulysse.beaugnon@ens.fr>"]
+name = "telamon-kernels"
+version = "0.1.0"
+
+[dependencies]
+itertools = "0.7.8"
+
+[dependencies.telamon]
+path = "../"
+
+[dependencies.telamon-utils]
+path = "../telamon-utils"
+
+[features]
+cuda = ["telamon/cuda"]

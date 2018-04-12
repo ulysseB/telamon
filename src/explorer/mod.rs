@@ -1,13 +1,14 @@
-//! Exploration of the search space.
+//! exploration of the search space.
 mod candidate;
 mod parallel_list;
-pub mod choice;
 mod bandit_arm;
-mod config;
 mod store;
 mod monitor;
 mod logger;
-mod montecarlo;
+
+pub mod config;
+pub mod choice;
+pub mod montecarlo;
 
 pub use self::config::{Config, SearchAlgorithm};
 pub use self::candidate::Candidate;

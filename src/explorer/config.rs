@@ -20,10 +20,9 @@ pub struct Config {
     pub stop_bound: Option<f64>,
     /// Indicates the search must be stopped after the given number of minutes.
     pub timeout: Option<u64>,
-    /// A percentage cut
-    /// indicate that we only care to find a candidate that is in a certain range above the best
-    /// Therefore, if cut_under is 20%, we can discard any candidate whose bound is above 80% of
-    /// the current best 
+    /// A percentage cut indicate that we only care to find a candidate that is in a
+    /// certain range above the best Therefore, if cut_under is 20%, we can discard any
+    /// candidate whose bound is above 80% of the current best.
     pub distance_to_best: Option<f64>,
 }
 
@@ -241,7 +240,7 @@ impl std::fmt::Display for BanditConfig {
 
 /// Indicates how to choose between nodes of the search tree when no children have been
 /// evaluated.
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum NewNodeOrder {
     /// Consider the nodes in the order given by the search space API.
     Api,

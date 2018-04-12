@@ -190,6 +190,7 @@ impl FastOrigin {
 }
 
 /// A `CodePoint`, but based on dimension ids rather than level ids.
+#[derive(Clone)]
 pub enum Point { Inst(ir::InstId), Entry(Vec<ir::dim::Id>), Exit(Vec<ir::dim::Id>) }
 
 impl fmt::Display for Point {
@@ -217,6 +218,7 @@ fn convert_point(levels: &[Level], point: CodePoint) -> Point {
 
 /// The justification behind a lower bound. Is slower to handle than `FastOrigin`
 /// but does not refer internal information.
+#[derive(Clone)]
 pub enum Origin {
     /// The bound is caused by the latency between two instructions.
     Latency,
