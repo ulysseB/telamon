@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/futures-0.1.21/src/sync/oneshot.rs`.">
+    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/futures-0.1.18/src/sync/oneshot.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>oneshot.rs.html -- source</title>
@@ -840,7 +840,7 @@
         <span class="comment">// under the hood. If it instead used `Release` / `Acquire` ordering,</span>
         <span class="comment">// then it would not necessarily synchronize with `inner.complete`</span>
         <span class="comment">// and deadlock might be possible, as was observed in</span>
-        <span class="comment">// https://github.com/rust-lang-nursery/futures-rs/pull/219.</span>
+        <span class="comment">// https://github.com/alexcrichton/futures-rs/pull/219.</span>
         <span class="self">self</span>.<span class="ident">complete</span>.<span class="ident">store</span>(<span class="bool-val">true</span>, <span class="ident">SeqCst</span>);
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">mut</span> <span class="ident">slot</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">rx_task</span>.<span class="ident">try_lock</span>() {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">task</span>) <span class="op">=</span> <span class="ident">slot</span>.<span class="ident">take</span>() {

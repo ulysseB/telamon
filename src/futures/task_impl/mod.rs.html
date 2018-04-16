@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/futures-0.1.21/src/task_impl/mod.rs`.">
+    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/futures-0.1.18/src/task_impl/mod.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>mod.rs.html -- source</title>
@@ -856,7 +856,7 @@
     <span class="doccomment">/// Indicate that the task should attempt to poll its future in a timely</span>
     <span class="doccomment">/// fashion.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// It&#39;s typically guaranteed that, after calling `notify`, `poll` will</span>
+    <span class="doccomment">/// It&#39;s typically guaranteed that, for each call to `notify`, `poll` will</span>
     <span class="doccomment">/// be called at least once subsequently (unless the future has terminated).</span>
     <span class="doccomment">/// If the task is currently polling its future when `notify` is called, it</span>
     <span class="doccomment">/// must poll the future *again* afterwards, ensuring that all relevant</span>

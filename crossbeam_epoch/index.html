@@ -59,7 +59,7 @@
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a class='srclink' href='../src/crossbeam_epoch/lib.rs.html#1-103' title='goto source code'>[src]</a></span></h1><div class='docblock'><p>Epoch-based memory reclamation.</p>
+               </span><a class='srclink' href='../src/crossbeam_epoch/lib.rs.html#1-110' title='goto source code'>[src]</a></span></h1><div class='docblock'><p>Epoch-based memory reclamation.</p>
 <p>An interesting problem concurrent collections deal with comes from the remove operation.
 Suppose that a thread removes an element from a lock-free map, while another thread is reading
 that same element at the same time. The first thread must wait until the second thread stops
@@ -163,14 +163,6 @@ want to create your own garbage collector, use the <a href="struct.Collector.htm
                            </td>
                        </tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
 <table>
-                       <tr class=' module-item'>
-                           <td><a class="fn" href="fn.default_collector.html"
-                                  title='fn crossbeam_epoch::default_collector'>default_collector</a></td>
-                           <td class='docblock-short'>
-                                <p>Returns the default handle associated with the current thread.</p>
-
-                           </td>
-                       </tr>
                        <tr class=' module-item'>
                            <td><a class="fn" href="fn.default_handle.html"
                                   title='fn crossbeam_epoch::default_handle'>default_handle</a></td>

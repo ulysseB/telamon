@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/crossbeam-epoch-0.4.1/src/lib.rs`.">
+    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/crossbeam-epoch-0.3.0/src/lib.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>lib.rs.html -- source</title>
@@ -158,6 +158,13 @@
 <span id="101">101</span>
 <span id="102">102</span>
 <span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Epoch-based memory reclamation.</span>
 <span class="doccomment">//!</span>
@@ -219,11 +226,11 @@
 <span class="attribute">#![<span class="ident">cfg_attr</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;nightly&quot;</span>, <span class="ident">feature</span>(<span class="ident">alloc</span>))]</span>
 <span class="attribute">#![<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">test</span>), <span class="ident">no_std</span>)]</span>
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">core</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">all</span>(<span class="ident">not</span>(<span class="ident">test</span>), <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;use_std&quot;</span>))]</span>
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">std</span>;
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">core</span>;
 
 <span class="comment">// Use liballoc on nightly to avoid a dependency on libstd</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;nightly&quot;</span>)]</span>
@@ -235,6 +242,13 @@
     <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">std</span>::<span class="ident">boxed</span>;
     <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">std</span>::<span class="ident">sync</span> <span class="kw">as</span> <span class="ident">arc</span>;
 }
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;manually_drop&quot;</span>)]</span>
+<span class="kw">mod</span> <span class="ident">nodrop</span> {
+    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">ManuallyDrop</span> <span class="kw">as</span> <span class="ident">NoDrop</span>;
+}
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;manually_drop&quot;</span>))]</span>
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">nodrop</span>;
 
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">arrayvec</span>;
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">crossbeam_utils</span>;
@@ -260,7 +274,7 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">atomic</span>::{<span class="ident">Atomic</span>, <span class="ident">CompareAndSetError</span>, <span class="ident">CompareAndSetOrdering</span>, <span class="ident">Owned</span>, <span class="ident">Shared</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">guard</span>::{<span class="ident">unprotected</span>, <span class="ident">Guard</span>};
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;use_std&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">default</span>::{<span class="ident">default_collector</span>, <span class="ident">default_handle</span>, <span class="ident">is_pinned</span>, <span class="ident">pin</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">default</span>::{<span class="ident">default_handle</span>, <span class="ident">is_pinned</span>, <span class="ident">pin</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">collector</span>::{<span class="ident">Collector</span>, <span class="ident">Handle</span>};
 </pre>
 </section>

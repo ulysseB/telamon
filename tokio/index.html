@@ -59,7 +59,7 @@
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a class='srclink' href='../src/tokio/lib.rs.html#1-199' title='goto source code'>[src]</a></span></h1><div class='docblock'><p>A runtime for writing reliable, asynchronous, and slim applications.</p>
+               </span><a class='srclink' href='../src/tokio/lib.rs.html#1-189' title='goto source code'>[src]</a></span></h1><div class='docblock'><p>A runtime for writing reliable, asynchronous, and slim applications.</p>
 <p>Tokio is an event-driven, non-blocking I/O platform for writing asynchronous
 applications with the Rust programming language. At a high level, it
 provides a few major components:</p>
@@ -68,10 +68,9 @@ provides a few major components:</p>
 <li>A <a href="../tokio/reactor/index.html" title="reactor">reactor</a> backed by the operating system's event queue (epoll, kqueue,
 IOCP, etc...).</li>
 <li>Asynchronous <a href="../tokio/net/index.html" title="net">TCP and UDP</a> sockets.</li>
-<li><a href="../tokio/timer/index.html" title="timer">Timer</a> API for scheduling work in the future.</li>
 </ul>
-<p>Tokio is built using <a href="http://docs.rs/futures">futures</a> as the abstraction for managing the
-complexity of asynchronous programming.</p>
+<p>Tokio is built using futures (provided by the <a href="http://docs.rs/futures">futures</a> crate) as the
+abstraction for managing the complexity of asynchronous programming.</p>
 <p>Guide level documentation is found on the <a href="https://tokio.rs/docs/getting-started/hello-world/">website</a>.</p>
 <h1 id="examples" class="section-header"><a href="#examples">Examples</a></h1>
 <p>A simple TCP echo server:</p>
@@ -163,22 +162,6 @@ complexity of asynchronous programming.</p>
                                   title='mod tokio::runtime'>runtime</a></td>
                            <td class='docblock-short'>
                                 <p>A batteries included runtime for applications using Tokio.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="mod" href="timer/index.html"
-                                  title='mod tokio::timer'>timer</a></td>
-                           <td class='docblock-short'>
-                                <p>Utilities for tracking time.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="mod" href="util/index.html"
-                                  title='mod tokio::util'>util</a></td>
-                           <td class='docblock-short'>
-                                <p>Utilities for working with Tokio.</p>
 
                            </td>
                        </tr></table></section>

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/tokio-reactor-0.1.1/src/background.rs`.">
+    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/tokio-reactor-0.1.0/src/background.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>background.rs.html -- source</title>
@@ -271,12 +271,11 @@
 <span id="214">214</span>
 <span id="215">215</span>
 <span id="216">216</span>
-<span id="217">217</span>
 </pre><pre class="rust ">
-<span class="kw">use</span> {<span class="ident">Reactor</span>, <span class="ident">Handle</span>, <span class="ident">Task</span>};
+<span class="kw">use</span> {<span class="ident">Reactor</span>, <span class="ident">Handle</span>};
 <span class="kw">use</span> <span class="ident">atomic_task</span>::<span class="ident">AtomicTask</span>;
 
-<span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">Future</span>, <span class="ident">Async</span>, <span class="ident">Poll</span>, <span class="ident">task</span>};
+<span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">Future</span>, <span class="ident">Async</span>, <span class="ident">Poll</span>};
 
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">thread</span>;
@@ -411,8 +410,7 @@
     <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> ();
 
     <span class="kw">fn</span> <span class="ident">poll</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Poll</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">task</span> <span class="op">=</span> <span class="ident">Task</span>::<span class="ident">Futures1</span>(<span class="ident">task</span>::<span class="ident">current</span>());
-        <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">shared</span>.<span class="ident">shutdown_task</span>.<span class="ident">register_task</span>(<span class="ident">task</span>);
+        <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">shared</span>.<span class="ident">shutdown_task</span>.<span class="ident">register</span>();
 
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">is_shutdown</span>() {
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">Async</span>::<span class="ident">NotReady</span>);

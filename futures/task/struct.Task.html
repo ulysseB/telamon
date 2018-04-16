@@ -71,7 +71,7 @@ the future as notifications arrive, until the future terminates.</p>
                     </h2>
                 <h3 id='impl' class='impl'><span class='in-band'><table class='table-display'><tbody><tr><td><code>impl <a class="struct" href="../../futures/task/struct.Task.html" title="struct futures::task::Task">Task</a></code><a href='#impl' class='anchor'></a></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/futures/task_impl/mod.rs.html#108-194' title='goto source code'>[src]</a></span></td></tr></tbody></table></h3><div class='impl-items'><h4 id='method.notify' class="method"><span id='notify.v' class='invisible'><table class='table-display'><tbody><tr><td><code>pub fn <a href='#method.notify' class='fnname'>notify</a>(&amp;self)</code></span></td><td><span class='out-of-band'><div class='ghost'></div><a class='srclink' href='../../src/futures/task_impl/mod.rs.html#117-120' title='goto source code'>[src]</a></td></tr></tbody></table></span></h4><div class='docblock'><p>Indicate that the task should attempt to poll its future in a timely
 fashion.</p>
-<p>It's typically guaranteed that, after calling <code>notify</code>, <code>poll</code> will
+<p>It's typically guaranteed that, for each call to <code>notify</code>, <code>poll</code> will
 be called at least once subsequently (unless the future has terminated).
 If the task is currently polling its future when <code>notify</code> is called, it
 must poll the future <em>again</em> afterwards, ensuring that all relevant

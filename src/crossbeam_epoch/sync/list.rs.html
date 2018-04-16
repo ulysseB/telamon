@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/crossbeam-epoch-0.4.1/src/sync/list.rs`.">
+    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/crossbeam-epoch-0.3.0/src/sync/list.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>list.rs.html -- source</title>
@@ -661,8 +661,8 @@
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Entry</span> {
     <span class="doccomment">/// Returns the empty entry.</span>
-    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">next</span>: <span class="ident">Atomic</span>::<span class="ident">null</span>() }
+    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="ident">Entry</span> {
+        <span class="ident">Entry</span> { <span class="ident">next</span>: <span class="ident">Atomic</span>::<span class="ident">null</span>() }
     }
 }
 
@@ -681,8 +681,8 @@
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">C</span>: <span class="ident">IsElement</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;&gt;</span> <span class="ident">List</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">C</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Returns a new, empty linked list.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-&gt;</span> <span class="ident">List</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">C</span><span class="op">&gt;</span> {
+        <span class="ident">List</span> {
             <span class="ident">head</span>: <span class="ident">Atomic</span>::<span class="ident">null</span>(),
             <span class="ident">_marker</span>: <span class="ident">PhantomData</span>,
         }
@@ -735,7 +735,7 @@
     <span class="doccomment">///    thread will continue to iterate over the same list.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">iter</span><span class="op">&lt;</span><span class="lifetime">&#39;g</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;g</span> <span class="self">self</span>, <span class="ident">guard</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;g</span> <span class="ident">Guard</span>) <span class="op">-&gt;</span> <span class="ident">Iter</span><span class="op">&lt;</span><span class="lifetime">&#39;g</span>, <span class="ident">T</span>, <span class="ident">C</span><span class="op">&gt;</span> {
         <span class="ident">Iter</span> {
-            <span class="ident">guard</span>,
+            <span class="ident">guard</span>: <span class="ident">guard</span>,
             <span class="ident">pred</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">head</span>,
             <span class="ident">curr</span>: <span class="self">self</span>.<span class="ident">head</span>.<span class="ident">load</span>(<span class="ident">Acquire</span>, <span class="ident">guard</span>),
             <span class="ident">head</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">head</span>,
@@ -820,7 +820,7 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> {<span class="ident">Collector</span>, <span class="ident">Owned</span>};
+    <span class="kw">use</span> {<span class="ident">Collector</span>, <span class="ident">Owned</span>, <span class="ident">Guard</span>};
     <span class="kw">use</span> <span class="ident">crossbeam_utils</span>::<span class="ident">scoped</span>;
     <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Barrier</span>;
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
@@ -844,7 +844,7 @@
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">insert</span>() {
         <span class="kw">let</span> <span class="ident">collector</span> <span class="op">=</span> <span class="ident">Collector</span>::<span class="ident">new</span>();
-        <span class="kw">let</span> <span class="ident">handle</span> <span class="op">=</span> <span class="ident">collector</span>.<span class="ident">register</span>();
+        <span class="kw">let</span> <span class="ident">handle</span> <span class="op">=</span> <span class="ident">collector</span>.<span class="ident">handle</span>();
         <span class="kw">let</span> <span class="ident">guard</span> <span class="op">=</span> <span class="ident">handle</span>.<span class="ident">pin</span>();
 
         <span class="kw">let</span> <span class="ident">l</span>: <span class="ident">List</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">List</span>::<span class="ident">new</span>();
@@ -883,7 +883,7 @@
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">delete</span>() {
         <span class="kw">let</span> <span class="ident">collector</span> <span class="op">=</span> <span class="ident">Collector</span>::<span class="ident">new</span>();
-        <span class="kw">let</span> <span class="ident">handle</span> <span class="op">=</span> <span class="ident">collector</span>.<span class="ident">register</span>();
+        <span class="kw">let</span> <span class="ident">handle</span> <span class="op">=</span> <span class="ident">collector</span>.<span class="ident">handle</span>();
         <span class="kw">let</span> <span class="ident">guard</span> <span class="op">=</span> <span class="ident">handle</span>.<span class="ident">pin</span>();
 
         <span class="kw">let</span> <span class="ident">l</span>: <span class="ident">List</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">List</span>::<span class="ident">new</span>();
@@ -931,7 +931,7 @@
             <span class="ident">s</span>.<span class="ident">spawn</span>(<span class="op">||</span> {
                 <span class="ident">b</span>.<span class="ident">wait</span>();
 
-                <span class="kw">let</span> <span class="ident">handle</span> <span class="op">=</span> <span class="ident">collector</span>.<span class="ident">register</span>();
+                <span class="kw">let</span> <span class="ident">handle</span> <span class="op">=</span> <span class="ident">collector</span>.<span class="ident">handle</span>();
                 <span class="kw">let</span> <span class="ident">guard</span>: <span class="ident">Guard</span> <span class="op">=</span> <span class="ident">handle</span>.<span class="ident">pin</span>();
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">with_capacity</span>(<span class="ident">ITERS</span>);
 
@@ -951,7 +951,7 @@
             });
         });
 
-        <span class="kw">let</span> <span class="ident">handle</span> <span class="op">=</span> <span class="ident">collector</span>.<span class="ident">register</span>();
+        <span class="kw">let</span> <span class="ident">handle</span> <span class="op">=</span> <span class="ident">collector</span>.<span class="ident">handle</span>();
         <span class="kw">let</span> <span class="ident">guard</span> <span class="op">=</span> <span class="ident">handle</span>.<span class="ident">pin</span>();
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">iter</span> <span class="op">=</span> <span class="ident">l</span>.<span class="ident">iter</span>(<span class="kw-2">&amp;</span><span class="ident">guard</span>);
@@ -970,7 +970,7 @@
             <span class="ident">s</span>.<span class="ident">spawn</span>(<span class="op">||</span> {
                 <span class="ident">b</span>.<span class="ident">wait</span>();
 
-                <span class="kw">let</span> <span class="ident">handle</span> <span class="op">=</span> <span class="ident">collector</span>.<span class="ident">register</span>();
+                <span class="kw">let</span> <span class="ident">handle</span> <span class="op">=</span> <span class="ident">collector</span>.<span class="ident">handle</span>();
                 <span class="kw">let</span> <span class="ident">guard</span>: <span class="ident">Guard</span> <span class="op">=</span> <span class="ident">handle</span>.<span class="ident">pin</span>();
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">with_capacity</span>(<span class="ident">ITERS</span>);
 
@@ -995,7 +995,7 @@
             });
         });
 
-        <span class="kw">let</span> <span class="ident">handle</span> <span class="op">=</span> <span class="ident">collector</span>.<span class="ident">register</span>();
+        <span class="kw">let</span> <span class="ident">handle</span> <span class="op">=</span> <span class="ident">collector</span>.<span class="ident">handle</span>();
         <span class="kw">let</span> <span class="ident">guard</span> <span class="op">=</span> <span class="ident">handle</span>.<span class="ident">pin</span>();
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">iter</span> <span class="op">=</span> <span class="ident">l</span>.<span class="ident">iter</span>(<span class="kw-2">&amp;</span><span class="ident">guard</span>);

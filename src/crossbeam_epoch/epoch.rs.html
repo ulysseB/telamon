@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/crossbeam-epoch-0.4.1/src/epoch.rs`.">
+    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/crossbeam-epoch-0.3.0/src/epoch.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>epoch.rs.html -- source</title>
@@ -241,7 +241,7 @@
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">epoch</span>: <span class="ident">Epoch</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">AtomicUsize</span>::<span class="ident">new</span>(<span class="ident">epoch</span>.<span class="ident">data</span>);
-        <span class="ident">AtomicEpoch</span> { <span class="ident">data</span> }
+        <span class="ident">AtomicEpoch</span> { <span class="ident">data</span>: <span class="ident">data</span> }
     }
 
     <span class="doccomment">/// Loads a value from the atomic epoch.</span>
@@ -265,7 +265,7 @@
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">compare_and_swap</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">current</span>: <span class="ident">Epoch</span>, <span class="ident">new</span>: <span class="ident">Epoch</span>, <span class="ident">ord</span>: <span class="ident">Ordering</span>) <span class="op">-&gt;</span> <span class="ident">Epoch</span> {
         <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">compare_and_swap</span>(<span class="ident">current</span>.<span class="ident">data</span>, <span class="ident">new</span>.<span class="ident">data</span>, <span class="ident">ord</span>);
-        <span class="ident">Epoch</span> { <span class="ident">data</span> }
+        <span class="ident">Epoch</span> { <span class="ident">data</span>: <span class="ident">data</span> }
     }
 }
 </pre>

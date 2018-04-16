@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/tokio-0.1.5/src/executor/mod.rs`.">
+    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/tokio-0.1.3/src/executor/mod.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>mod.rs.html -- source</title>
@@ -272,28 +272,6 @@
 <span id="215">215</span>
 <span id="216">216</span>
 <span id="217">217</span>
-<span id="218">218</span>
-<span id="219">219</span>
-<span id="220">220</span>
-<span id="221">221</span>
-<span id="222">222</span>
-<span id="223">223</span>
-<span id="224">224</span>
-<span id="225">225</span>
-<span id="226">226</span>
-<span id="227">227</span>
-<span id="228">228</span>
-<span id="229">229</span>
-<span id="230">230</span>
-<span id="231">231</span>
-<span id="232">232</span>
-<span id="233">233</span>
-<span id="234">234</span>
-<span id="235">235</span>
-<span id="236">236</span>
-<span id="237">237</span>
-<span id="238">238</span>
-<span id="239">239</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Task execution utilities.</span>
 <span class="doccomment">//!</span>
@@ -345,6 +323,7 @@
 <span class="doccomment">//! [`tokio-executor`]: #</span>
 <span class="doccomment">//! [`Executor`]: #</span>
 <span class="doccomment">//! [`spawn`]: #</span>
+
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">current_thread</span>;
 
@@ -433,9 +412,6 @@
 <span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">Future</span>, <span class="ident">IntoFuture</span>};
 <span class="kw">use</span> <span class="ident">futures</span>::<span class="ident">future</span>::{<span class="self">self</span>, <span class="ident">FutureResult</span>};
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;unstable-futures&quot;</span>)]</span>
-<span class="kw">use</span> <span class="ident">futures2</span>;
-
 <span class="doccomment">/// Return value from the `spawn` function.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// Currently this value doesn&#39;t actually provide any functionality. However, it</span>
@@ -497,20 +473,11 @@
 <span class="doccomment">/// onto the default executor returns an error. To avoid the panic, use</span>
 <span class="doccomment">/// [`DefaultExecutor`].</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// [`DefaultExecutor`]: struct.DefaultExecutor.html</span>
+<span class="doccomment">/// [`DefaultExecutor`]: #</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">spawn</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-&gt;</span> <span class="ident">Spawn</span>
 <span class="kw">where</span> <span class="ident">F</span>: <span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> (), <span class="ident">Error</span> <span class="op">=</span> ()<span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span>
 {
     ::<span class="ident">tokio_executor</span>::<span class="ident">spawn</span>(<span class="ident">f</span>);
-    <span class="ident">Spawn</span>(())
-}
-
-<span class="doccomment">/// Like `spawn`, but compatible with futures 0.2</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;unstable-futures&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">spawn2</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-&gt;</span> <span class="ident">Spawn</span>
-    <span class="kw">where</span> <span class="ident">F</span>: <span class="ident">futures2</span>::<span class="ident">Future</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> (), <span class="ident">Error</span> <span class="op">=</span> <span class="ident">futures2</span>::<span class="ident">Never</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;static</span> <span class="op">+</span> <span class="ident">Send</span>
-{
-    ::<span class="ident">tokio_executor</span>::<span class="ident">spawn2</span>(<span class="ident">f</span>);
     <span class="ident">Spawn</span>(())
 }
 
@@ -521,17 +488,6 @@
 
     <span class="kw">fn</span> <span class="ident">into_future</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="self">Self</span>::<span class="ident">Future</span> {
         <span class="ident">future</span>::<span class="ident">ok</span>(())
-    }
-}
-
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;unstable-futures&quot;</span>)]</span>
-<span class="kw">impl</span> <span class="ident">futures2</span>::<span class="ident">IntoFuture</span> <span class="kw">for</span> <span class="ident">Spawn</span> {
-    <span class="kw">type</span> <span class="ident">Future</span> <span class="op">=</span> <span class="ident">futures2</span>::<span class="ident">future</span>::<span class="ident">FutureResult</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span>;
-    <span class="kw">type</span> <span class="ident">Item</span> <span class="op">=</span> ();
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> ();
-
-    <span class="kw">fn</span> <span class="ident">into_future</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="self">Self</span>::<span class="ident">Future</span> {
-        <span class="ident">futures2</span>::<span class="ident">future</span>::<span class="ident">ok</span>(())
     }
 }
 </pre>

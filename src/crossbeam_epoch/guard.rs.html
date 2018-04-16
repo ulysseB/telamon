@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/crossbeam-epoch-0.4.1/src/guard.rs`.">
+    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/crossbeam-epoch-0.3.0/src/guard.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>guard.rs.html -- source</title>
@@ -472,30 +472,12 @@
 <span id="415">415</span>
 <span id="416">416</span>
 <span id="417">417</span>
-<span id="418">418</span>
-<span id="419">419</span>
-<span id="420">420</span>
-<span id="421">421</span>
-<span id="422">422</span>
-<span id="423">423</span>
-<span id="424">424</span>
-<span id="425">425</span>
-<span id="426">426</span>
-<span id="427">427</span>
-<span id="428">428</span>
-<span id="429">429</span>
-<span id="430">430</span>
-<span id="431">431</span>
-<span id="432">432</span>
-<span id="433">433</span>
 </pre><pre class="rust ">
-<span class="kw">use</span> <span class="ident">core</span>::<span class="ident">fmt</span>;
 <span class="kw">use</span> <span class="ident">core</span>::<span class="ident">ptr</span>;
 <span class="kw">use</span> <span class="ident">core</span>::<span class="ident">mem</span>;
 
 <span class="kw">use</span> <span class="ident">garbage</span>::<span class="ident">Garbage</span>;
 <span class="kw">use</span> <span class="ident">internal</span>::<span class="ident">Local</span>;
-<span class="kw">use</span> <span class="ident">collector</span>::<span class="ident">Collector</span>;
 
 <span class="doccomment">/// A guard that keeps the current thread pinned.</span>
 <span class="doccomment">///</span>
@@ -566,10 +548,26 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// [`pin`]: fn.pin.html</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Guard</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">local</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">Local</span>,
+    <span class="ident">local</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">Local</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Guard</span> {
+    <span class="doccomment">/// Creates a new guard from a pointer to `Local`.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Safety</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// The `local` should be a valid pointer created by `Local::register()`.</span>
+    <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">local</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">Local</span>) <span class="op">-&gt;</span> <span class="ident">Guard</span> {
+        <span class="ident">Guard</span> { <span class="ident">local</span>: <span class="ident">local</span> }
+    }
+
+    <span class="doccomment">/// Accesses the internal pointer to `Local`.</span>
+    <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">get_local</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">Local</span> {
+        <span class="self">self</span>.<span class="ident">local</span>
+    }
+
     <span class="doccomment">/// Stores a function so that it can be executed at some point after all currently pinned</span>
     <span class="doccomment">/// threads get unpinned.</span>
     <span class="doccomment">///</span>
@@ -777,28 +775,6 @@
 
         <span class="ident">f</span>()
     }
-
-    <span class="doccomment">/// Returns the `Collector` associated with this guard.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This method is useful when you need to ensure that all guards used with</span>
-    <span class="doccomment">/// a data structure come from the same collector.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// If this method is called from an [`unprotected`] guard, then `None` is returned.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use crossbeam_epoch as epoch;</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let mut guard1 = epoch::pin();</span>
-    <span class="doccomment">/// let mut guard2 = epoch::pin();</span>
-    <span class="doccomment">/// assert!(guard1.collector() == guard2.collector());</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// [`unprotected`]: fn.unprotected.html</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">collector</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Collector</span><span class="op">&gt;</span> {
-        <span class="kw">unsafe</span> { <span class="self">self</span>.<span class="ident">local</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">local</span><span class="op">|</span> <span class="ident">local</span>.<span class="ident">collector</span>()) }
-    }
 }
 
 <span class="kw">impl</span> <span class="ident">Drop</span> <span class="kw">for</span> <span class="ident">Guard</span> {
@@ -817,12 +793,6 @@
             <span class="prelude-val">None</span> <span class="op">=&gt;</span> <span class="ident">Guard</span> { <span class="ident">local</span>: <span class="ident">ptr</span>::<span class="ident">null</span>() },
             <span class="prelude-val">Some</span>(<span class="ident">local</span>) <span class="op">=&gt;</span> <span class="ident">local</span>.<span class="ident">pin</span>(),
         }
-    }
-}
-
-<span class="kw">impl</span> <span class="ident">fmt</span>::<span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">Guard</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
-        <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;Guard&quot;</span>).<span class="ident">finish</span>()
     }
 }
 
@@ -875,19 +845,19 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// ```</span>
 <span class="doccomment">/// use crossbeam_epoch::{self as epoch, Atomic};</span>
-<span class="doccomment">/// use std::mem::ManuallyDrop;</span>
+<span class="doccomment">/// use std::ptr;</span>
 <span class="doccomment">/// use std::sync::atomic::Ordering::Relaxed;</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// struct Stack&lt;T&gt; {</span>
-<span class="doccomment">///     head: Atomic&lt;Node&lt;T&gt;&gt;,</span>
+<span class="doccomment">/// struct Stack {</span>
+<span class="doccomment">///     head: epoch::Atomic&lt;Node&gt;,</span>
 <span class="doccomment">/// }</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// struct Node&lt;T&gt; {</span>
-<span class="doccomment">///     data: ManuallyDrop&lt;T&gt;,</span>
-<span class="doccomment">///     next: Atomic&lt;Node&lt;T&gt;&gt;,</span>
+<span class="doccomment">/// struct Node {</span>
+<span class="doccomment">///     data: u32,</span>
+<span class="doccomment">///     next: epoch::Atomic&lt;Node&gt;,</span>
 <span class="doccomment">/// }</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// impl&lt;T&gt; Drop for Stack&lt;T&gt; {</span>
+<span class="doccomment">/// impl Drop for Stack {</span>
 <span class="doccomment">///     fn drop(&amp;mut self) {</span>
 <span class="doccomment">///         unsafe {</span>
 <span class="doccomment">///             // Unprotected load.</span>
@@ -897,10 +867,8 @@
 <span class="doccomment">///                 // Unprotected load.</span>
 <span class="doccomment">///                 let next = n.next.load(Relaxed, epoch::unprotected());</span>
 <span class="doccomment">///</span>
-<span class="doccomment">///                 // Take ownership of the node, then drop its data and deallocate it.</span>
-<span class="doccomment">///                 let mut o = node.into_owned();</span>
-<span class="doccomment">///                 ManuallyDrop::drop(&amp;mut o.data);</span>
-<span class="doccomment">///                 drop(o);</span>
+<span class="doccomment">///                 // Take ownership of the node, then drop it.</span>
+<span class="doccomment">///                 drop(node.into_owned());</span>
 <span class="doccomment">///</span>
 <span class="doccomment">///                 node = next;</span>
 <span class="doccomment">///             }</span>

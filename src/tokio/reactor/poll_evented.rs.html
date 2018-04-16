@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/tokio-0.1.5/src/reactor/poll_evented.rs`.">
+    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/tokio-0.1.3/src/reactor/poll_evented.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>poll_evented.rs.html -- source</title>
@@ -594,6 +594,16 @@
 <span id="537">537</span>
 <span id="538">538</span>
 <span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Readiness tracking streams, backing I/O objects.</span>
 <span class="doccomment">//!</span>
@@ -1029,6 +1039,16 @@
 <span class="kw">mod</span> <span class="ident">platform</span> {
     <span class="kw">use</span> <span class="ident">mio</span>::<span class="ident">Ready</span>;
     <span class="kw">use</span> <span class="ident">mio</span>::<span class="ident">unix</span>::<span class="ident">UnixReady</span>;
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_os</span> <span class="op">=</span> <span class="string">&quot;dragonfly&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">all</span>() <span class="op">-&gt;</span> <span class="ident">Ready</span> {
+        <span class="ident">hup</span>() <span class="op">|</span> <span class="ident">UnixReady</span>::<span class="ident">aio</span>()
+    }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_os</span> <span class="op">=</span> <span class="string">&quot;freebsd&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">all</span>() <span class="op">-&gt;</span> <span class="ident">Ready</span> {
+        <span class="ident">hup</span>() <span class="op">|</span> <span class="ident">UnixReady</span>::<span class="ident">aio</span>() <span class="op">|</span> <span class="ident">UnixReady</span>::<span class="ident">lio</span>()
+    }
 
     <span class="kw">const</span> <span class="ident">HUP</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1</span> <span class="op">&lt;&lt;</span> <span class="number">2</span>;
     <span class="kw">const</span> <span class="ident">ERROR</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">1</span> <span class="op">&lt;&lt;</span> <span class="number">3</span>;

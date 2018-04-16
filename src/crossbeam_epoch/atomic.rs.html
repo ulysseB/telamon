@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/crossbeam-epoch-0.4.1/src/atomic.rs`.">
+    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/crossbeam-epoch-0.3.0/src/atomic.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>atomic.rs.html -- source</title>
@@ -1152,33 +1152,6 @@
 <span id="1095">1095</span>
 <span id="1096">1096</span>
 <span id="1097">1097</span>
-<span id="1098">1098</span>
-<span id="1099">1099</span>
-<span id="1100">1100</span>
-<span id="1101">1101</span>
-<span id="1102">1102</span>
-<span id="1103">1103</span>
-<span id="1104">1104</span>
-<span id="1105">1105</span>
-<span id="1106">1106</span>
-<span id="1107">1107</span>
-<span id="1108">1108</span>
-<span id="1109">1109</span>
-<span id="1110">1110</span>
-<span id="1111">1111</span>
-<span id="1112">1112</span>
-<span id="1113">1113</span>
-<span id="1114">1114</span>
-<span id="1115">1115</span>
-<span id="1116">1116</span>
-<span id="1117">1117</span>
-<span id="1118">1118</span>
-<span id="1119">1119</span>
-<span id="1120">1120</span>
-<span id="1121">1121</span>
-<span id="1122">1122</span>
-<span id="1123">1123</span>
-<span id="1124">1124</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">core</span>::<span class="ident">borrow</span>::{<span class="ident">Borrow</span>, <span class="ident">BorrowMut</span>};
 <span class="kw">use</span> <span class="ident">core</span>::<span class="ident">cmp</span>;
@@ -1192,17 +1165,15 @@
 <span class="kw">use</span> <span class="ident">alloc</span>::<span class="ident">boxed</span>::<span class="ident">Box</span>;
 
 <span class="kw">use</span> <span class="ident">guard</span>::<span class="ident">Guard</span>;
-<span class="kw">use</span> <span class="ident">crossbeam_utils</span>::<span class="ident">consume</span>::<span class="ident">AtomicConsume</span>;
 
 <span class="doccomment">/// Given ordering for the success case in a compare-exchange operation, returns the strongest</span>
 <span class="doccomment">/// appropriate ordering for the failure case.</span>
 <span class="attribute">#[<span class="ident">inline</span>]</span>
 <span class="kw">fn</span> <span class="ident">strongest_failure_ordering</span>(<span class="ident">ord</span>: <span class="ident">Ordering</span>) <span class="op">-&gt;</span> <span class="ident">Ordering</span> {
-    <span class="kw">use</span> <span class="self">self</span>::<span class="ident">Ordering</span>::<span class="kw-2">*</span>;
     <span class="kw">match</span> <span class="ident">ord</span> {
-        <span class="ident">Relaxed</span> <span class="op">|</span> <span class="ident">Release</span> <span class="op">=&gt;</span> <span class="ident">Relaxed</span>,
-        <span class="ident">Acquire</span> <span class="op">|</span> <span class="ident">AcqRel</span> <span class="op">=&gt;</span> <span class="ident">Acquire</span>,
-        <span class="kw">_</span> <span class="op">=&gt;</span> <span class="ident">SeqCst</span>,
+        <span class="ident">Ordering</span>::<span class="ident">Relaxed</span> <span class="op">|</span> <span class="ident">Ordering</span>::<span class="ident">Release</span> <span class="op">=&gt;</span> <span class="ident">Ordering</span>::<span class="ident">Relaxed</span>,
+        <span class="ident">Ordering</span>::<span class="ident">Acquire</span> <span class="op">|</span> <span class="ident">Ordering</span>::<span class="ident">AcqRel</span> <span class="op">=&gt;</span> <span class="ident">Ordering</span>::<span class="ident">Acquire</span>,
+        <span class="kw">_</span> <span class="op">=&gt;</span> <span class="ident">Ordering</span>::<span class="ident">SeqCst</span>,
     }
 }
 
@@ -1317,8 +1288,8 @@
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Atomic</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Returns a new atomic pointer pointing to the tagged pointer `data`.</span>
-    <span class="kw">fn</span> <span class="ident">from_data</span>(<span class="ident">data</span>: <span class="ident">usize</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">from_data</span>(<span class="ident">data</span>: <span class="ident">usize</span>) <span class="op">-&gt;</span> <span class="ident">Atomic</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
+        <span class="ident">Atomic</span> {
             <span class="ident">data</span>: <span class="ident">AtomicUsize</span>::<span class="ident">new</span>(<span class="ident">data</span>),
             <span class="ident">_marker</span>: <span class="ident">PhantomData</span>,
         }
@@ -1335,7 +1306,7 @@
     <span class="doccomment">/// ```</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;nightly&quot;</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">null</span>() <span class="op">-&gt;</span> <span class="ident">Atomic</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-        <span class="self">Self</span> {
+        <span class="ident">Atomic</span> {
             <span class="ident">data</span>: <span class="ident">ATOMIC_USIZE_INIT</span>,
             <span class="ident">_marker</span>: <span class="ident">PhantomData</span>,
         }
@@ -1390,31 +1361,6 @@
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">load</span><span class="op">&lt;</span><span class="lifetime">&#39;g</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ord</span>: <span class="ident">Ordering</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;g</span> <span class="ident">Guard</span>) <span class="op">-&gt;</span> <span class="ident">Shared</span><span class="op">&lt;</span><span class="lifetime">&#39;g</span>, <span class="ident">T</span><span class="op">&gt;</span> {
         <span class="kw">unsafe</span> { <span class="ident">Shared</span>::<span class="ident">from_data</span>(<span class="self">self</span>.<span class="ident">data</span>.<span class="ident">load</span>(<span class="ident">ord</span>)) }
-    }
-
-    <span class="doccomment">/// Loads a `Shared` from the atomic pointer using a &quot;consume&quot; memory ordering.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// This is similar to the &quot;acquire&quot; ordering, except that an ordering is</span>
-    <span class="doccomment">/// only guaranteed with operations that &quot;depend on&quot; the result of the load.</span>
-    <span class="doccomment">/// However consume loads are usually much faster than acquire loads on</span>
-    <span class="doccomment">/// architectures with a weak memory model since they don&#39;t require memory</span>
-    <span class="doccomment">/// fence instructions.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// The exact definition of &quot;depend on&quot; is a bit vague, but it works as you</span>
-    <span class="doccomment">/// would expect in practice since a lot of software, especially the Linux</span>
-    <span class="doccomment">/// kernel, rely on this behavior.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// # Examples</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// ```</span>
-    <span class="doccomment">/// use crossbeam_epoch::{self as epoch, Atomic};</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// let a = Atomic::new(1234);</span>
-    <span class="doccomment">/// let guard = &amp;epoch::pin();</span>
-    <span class="doccomment">/// let p = a.load_consume(guard);</span>
-    <span class="doccomment">/// ```</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">load_consume</span><span class="op">&lt;</span><span class="lifetime">&#39;g</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;g</span> <span class="ident">Guard</span>) <span class="op">-&gt;</span> <span class="ident">Shared</span><span class="op">&lt;</span><span class="lifetime">&#39;g</span>, <span class="ident">T</span><span class="op">&gt;</span> {
-        <span class="kw">unsafe</span> { <span class="ident">Shared</span>::<span class="ident">from_data</span>(<span class="self">self</span>.<span class="ident">data</span>.<span class="ident">load_consume</span>()) }
     }
 
     <span class="doccomment">/// Stores a `Shared` or `Owned` pointer into the atomic pointer.</span>
@@ -1889,8 +1835,8 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// let o = Owned::new(0u64);</span>
     <span class="doccomment">/// assert_eq!(o.tag(), 0);</span>
-    <span class="doccomment">/// let o = o.with_tag(2);</span>
-    <span class="doccomment">/// assert_eq!(o.tag(), 2);</span>
+    <span class="doccomment">/// let o = o.with_tag(5);</span>
+    <span class="doccomment">/// assert_eq!(o.tag(), 5);</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_tag</span>(<span class="self">self</span>, <span class="ident">tag</span>: <span class="ident">usize</span>) <span class="op">-&gt;</span> <span class="ident">Owned</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">into_data</span>();
@@ -2193,10 +2139,10 @@
     <span class="doccomment">/// use crossbeam_epoch::{self as epoch, Atomic, Owned};</span>
     <span class="doccomment">/// use std::sync::atomic::Ordering::SeqCst;</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// let a = Atomic::&lt;u64&gt;::from(Owned::new(0u64).with_tag(2));</span>
+    <span class="doccomment">/// let a = Atomic::&lt;u64&gt;::from(Owned::new(0u64).with_tag(5));</span>
     <span class="doccomment">/// let guard = &amp;epoch::pin();</span>
     <span class="doccomment">/// let p = a.load(SeqCst, guard);</span>
-    <span class="doccomment">/// assert_eq!(p.tag(), 2);</span>
+    <span class="doccomment">/// assert_eq!(p.tag(), 5);</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">tag</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">usize</span> {
         <span class="kw">let</span> (<span class="kw">_</span>, <span class="ident">tag</span>) <span class="op">=</span> <span class="ident">decompose_data</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="self">self</span>.<span class="ident">data</span>);
@@ -2215,10 +2161,10 @@
     <span class="doccomment">/// let a = Atomic::new(0u64);</span>
     <span class="doccomment">/// let guard = &amp;epoch::pin();</span>
     <span class="doccomment">/// let p1 = a.load(SeqCst, guard);</span>
-    <span class="doccomment">/// let p2 = p1.with_tag(2);</span>
+    <span class="doccomment">/// let p2 = p1.with_tag(5);</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// assert_eq!(p1.tag(), 0);</span>
-    <span class="doccomment">/// assert_eq!(p2.tag(), 2);</span>
+    <span class="doccomment">/// assert_eq!(p2.tag(), 5);</span>
     <span class="doccomment">/// assert_eq!(p1.as_raw(), p2.as_raw());</span>
     <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_tag</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">tag</span>: <span class="ident">usize</span>) <span class="op">-&gt;</span> <span class="ident">Shared</span><span class="op">&lt;</span><span class="lifetime">&#39;g</span>, <span class="ident">T</span><span class="op">&gt;</span> {

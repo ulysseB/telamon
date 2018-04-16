@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/crossbeam-deque-0.3.0/src/lib.rs`.">
+    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/crossbeam-deque-0.2.0/src/lib.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>lib.rs.html -- source</title>
@@ -1093,6 +1093,13 @@
 <span id="1036">1036</span>
 <span id="1037">1037</span>
 <span id="1038">1038</span>
+<span id="1039">1039</span>
+<span id="1040">1040</span>
+<span id="1041">1041</span>
+<span id="1042">1042</span>
+<span id="1043">1043</span>
+<span id="1044">1044</span>
+<span id="1045">1045</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! A concurrent work-stealing deque.</span>
 <span class="doccomment">//!</span>
@@ -1232,7 +1239,10 @@
         <span class="kw">let</span> <span class="ident">ptr</span> <span class="op">=</span> <span class="ident">v</span>.<span class="ident">as_mut_ptr</span>();
         <span class="ident">mem</span>::<span class="ident">forget</span>(<span class="ident">v</span>);
 
-        <span class="ident">Buffer</span> { <span class="ident">ptr</span>, <span class="ident">cap</span> }
+        <span class="ident">Buffer</span> {
+            <span class="ident">ptr</span>: <span class="ident">ptr</span>,
+            <span class="ident">cap</span>: <span class="ident">cap</span>,
+        }
     }
 
     <span class="doccomment">/// Returns a pointer to the element at the specified `index`.</span>
@@ -1624,14 +1634,16 @@
     <span class="doccomment">/// assert_eq!(d.steal(), Steal::Data(1));</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// // Attempt to steal an element, but keep retrying if we get `Retry`.</span>
-    <span class="doccomment">/// let stolen = loop {</span>
+    <span class="doccomment">/// loop {</span>
     <span class="doccomment">///     match d.steal() {</span>
-    <span class="doccomment">///         Steal::Empty =&gt; break None,</span>
-    <span class="doccomment">///         Steal::Data(data) =&gt; break Some(data),</span>
+    <span class="doccomment">///         Steal::Empty =&gt; panic!(&quot;should steal something&quot;),</span>
+    <span class="doccomment">///         Steal::Data(data) =&gt; {</span>
+    <span class="doccomment">///             assert_eq!(data, 2);</span>
+    <span class="doccomment">///             break;</span>
+    <span class="doccomment">///         }</span>
     <span class="doccomment">///         Steal::Retry =&gt; {}</span>
     <span class="doccomment">///     }</span>
-    <span class="doccomment">/// };</span>
-    <span class="doccomment">/// assert_eq!(stolen, Some(2));</span>
+    <span class="doccomment">/// }</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// [`Steal::Retry`]: enum.Steal.html#variant.Retry</span>
@@ -1760,7 +1772,7 @@
         <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">top</span>.<span class="ident">load</span>(<span class="ident">Relaxed</span>);
         <span class="ident">atomic</span>::<span class="ident">fence</span>(<span class="ident">SeqCst</span>);
         <span class="kw">let</span> <span class="ident">b</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">bottom</span>.<span class="ident">load</span>(<span class="ident">Relaxed</span>);
-        <span class="ident">b</span>.<span class="ident">wrapping_sub</span>(<span class="ident">t</span>).<span class="ident">max</span>(<span class="number">0</span>) <span class="kw">as</span> <span class="ident">usize</span>
+        <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">max</span>(<span class="ident">b</span>.<span class="ident">wrapping_sub</span>(<span class="ident">t</span>), <span class="number">0</span>) <span class="kw">as</span> <span class="ident">usize</span>
     }
 
     <span class="doccomment">/// Steals an element from the top of the deque.</span>
@@ -1782,14 +1794,16 @@
     <span class="doccomment">/// d.push(2);</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// // Attempt to steal an element, but keep retrying if we get `Retry`.</span>
-    <span class="doccomment">/// let stolen = loop {</span>
-    <span class="doccomment">///     match s.steal() {</span>
-    <span class="doccomment">///         Steal::Empty =&gt; break None,</span>
-    <span class="doccomment">///         Steal::Data(data) =&gt; break Some(data),</span>
+    <span class="doccomment">/// loop {</span>
+    <span class="doccomment">///     match d.steal() {</span>
+    <span class="doccomment">///         Steal::Empty =&gt; panic!(&quot;should steal something&quot;),</span>
+    <span class="doccomment">///         Steal::Data(data) =&gt; {</span>
+    <span class="doccomment">///             assert_eq!(data, 1);</span>
+    <span class="doccomment">///             break;</span>
+    <span class="doccomment">///         }</span>
     <span class="doccomment">///         Steal::Retry =&gt; {}</span>
     <span class="doccomment">///     }</span>
-    <span class="doccomment">/// };</span>
-    <span class="doccomment">/// assert_eq!(stolen, Some(1));</span>
+    <span class="doccomment">/// }</span>
     <span class="doccomment">/// ```</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// [`Steal::Retry`]: enum.Steal.html#variant.Retry</span>

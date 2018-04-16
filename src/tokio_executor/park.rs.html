@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/tokio-executor-0.1.2/src/park.rs`.">
+    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/tokio-executor-0.1.0/src/park.rs`.">
     <meta name="keywords" content="rust, rustlang, rust-lang">
 
     <title>park.rs.html -- source</title>
@@ -349,12 +349,6 @@
 <span id="292">292</span>
 <span id="293">293</span>
 <span id="294">294</span>
-<span id="295">295</span>
-<span id="296">296</span>
-<span id="297">297</span>
-<span id="298">298</span>
-<span id="299">299</span>
-<span id="300">300</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Abstraction over blocking and unblocking the current thread.</span>
 <span class="doccomment">//!</span>
@@ -483,12 +477,6 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// [mod]: ../index.html</span>
     <span class="kw">fn</span> <span class="ident">unpark</span>(<span class="kw-2">&amp;</span><span class="self">self</span>);
-}
-
-<span class="kw">impl</span> <span class="ident">Unpark</span> <span class="kw">for</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Unpark</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">unpark</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-        (<span class="kw-2">*</span><span class="kw-2">*</span><span class="self">self</span>).<span class="ident">unpark</span>()
-    }
 }
 
 <span class="doccomment">/// Blocks the current thread using a condition variable.</span>
