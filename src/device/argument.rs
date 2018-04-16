@@ -112,25 +112,25 @@ pub trait ArrayArgument: Send + Sync {
 
     /// Copies an array to the device from a slice of bytes.
     fn write_i8(&self, bytes: &[i8]);
+}
 
-    /// Copies the array to the host, interpreting it as an array of `T`.
-    fn read<T: ScalarArgument>(&self) -> Vec<T> where Self: Sized {
-        let mut bytes_vec = self.read_i8();
-        bytes_vec.shrink_to_fit();
-        let (len, rem) = div_rem(bytes_vec.len(), std::mem::size_of::<T>());
-        assert_eq!(rem, 0);
-        unsafe {
-            let bytes = bytes_vec.as_mut_ptr() as *mut T;
-            std::mem::forget(bytes_vec);
-            Vec::from_raw_parts(bytes, len, len)
-        }
+/// Copies the array to the host, interpreting it as an array of `T`.
+pub fn read_array<T: ScalarArgument>(array: &ArrayArgument) -> Vec<T> {
+    let mut bytes_vec = array.read_i8();
+    bytes_vec.shrink_to_fit();
+    let (len, rem) = div_rem(bytes_vec.len(), std::mem::size_of::<T>());
+    assert_eq!(rem, 0);
+    unsafe {
+        let bytes = bytes_vec.as_mut_ptr() as *mut T;
+        std::mem::forget(bytes_vec);
+        Vec::from_raw_parts(bytes, len, len)
     }
+}
 
-    /// Copies an values to the device array from the host array given as argument.
-    fn write<T: ScalarArgument>(&self, from: &[T]) where Self: Sized {
-        let bytes_len = from.len()*std::mem::size_of::<T>();
-        let bytes_ptr = from.as_ptr() as *const i8;
-        let bytes = unsafe { std::slice::from_raw_parts(bytes_ptr, bytes_len) };
-        self.write_i8(bytes)
-    }
+/// Copies an values to the device array from the host array given as argument.
+pub fn write_array<T: ScalarArgument>(array: &ArrayArgument, from: &[T]) {
+    let bytes_len = from.len()*std::mem::size_of::<T>();
+    let bytes_ptr = from.as_ptr() as *const i8;
+    let bytes = unsafe { std::slice::from_raw_parts(bytes_ptr, bytes_len) };
+    array.write_i8(bytes)
 }

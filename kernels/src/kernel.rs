@@ -83,6 +83,7 @@ pub trait Kernel<'a>: Sized {
     // FIXME: check bound method
     // FIXME: benchmark method, that compares against reference implementations,
     // dependending on the features enabled.
+    // * For this we need a benchmark method in the context
 }
 
 /// A kernel that can be compiled on CUDA GPUs.

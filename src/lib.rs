@@ -20,6 +20,7 @@ extern crate linked_list;
 extern crate log;
 #[macro_use]
 extern crate matches;
+extern crate ndarray;
 extern crate num;
 #[cfg(feature="mppa")]
 extern crate parking_lot;

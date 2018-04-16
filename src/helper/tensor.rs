@@ -1,8 +1,9 @@
 //! Utilities to allocate and operate on tensors.
-use device::{ScalarArgument, ArrayArgument};
+use device::{ScalarArgument, ArrayArgument, Context, read_array};
 use helper::{Builder, DimGroup, MetaDimension};
 use ir;
 use itertools::Itertools;
+use ndarray::{self, ArrayD};
 use search_space::{Domain, InstFlag};
 use std;
 
@@ -16,6 +17,14 @@ impl<'a> DimSize<'a> {
         match self {
             DimSize::Const(size) => builder.cst_size(size),
             DimSize::Param(p) => builder.param_size(p),
+        }
+    }
+
+    /// Converts the size into a numerical value for a given context.
+    pub fn into_num(self, context: &Context) -> u32 {
+        match self {
+            DimSize::Const(s) => s,
+            DimSize::Param(p) => unwrap!(context.param_as_size(p)),
         }
     }
 }
@@ -62,6 +71,14 @@ impl<'a, S> Tensor<'a, S> where S: ScalarArgument {
         let inst = builder.ld_ex(S::t(), &ptr, pat, flag);
         for dim in &dims { builder.close_dim(dim); }
         VirtualTensor { inst, dims }
+    }
+
+    /// Reads the tensor value in the context and copies it on the host.
+    pub fn read_to_host(&self, context: &Context) -> ArrayD<S> {
+        let raw = read_array::<S>(self.array.as_ref());
+        let sizes = self.dim_sizes.iter().map(|s| s.into_num(context) as usize)
+            .collect_vec();
+        unwrap!(ndarray::ArrayBase::from_shape_vec(sizes, raw))
     }
 }
 
