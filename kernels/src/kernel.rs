@@ -30,10 +30,11 @@ pub trait Kernel<'a>: Sized {
         -> Vec<SearchSpace<'b>>;
 
     /// Computes the expected output.
-    fn get_expected_output(&self) -> Self::ExpectedOutput;
+    fn get_expected_output(&self, &device::Context) -> Self::ExpectedOutput;
 
     /// Ensures the generated code performs the correct operation.
-    fn check_result(&self, expected: &Self::ExpectedOutput) -> Result<(), String>;
+    fn check_result(&self, expected: &Self::ExpectedOutput, context: &device::Context)
+        -> Result<(), String>;
 
     /// Generates, executes and tests the output of candidates for the kernel.
     fn test_correctness<AM>(params: Self::Parameters,
@@ -47,7 +48,7 @@ pub trait Kernel<'a>: Sized {
             kernel = Self::build_signature(params, false, &mut builder);
             builder.get()
         };
-        let expected_output = kernel.get_expected_output();
+        let expected_output = kernel.get_expected_output(context);
         let candidates = kernel.build_body(&signature, context.device()).into_iter()
             .map(|space| {
                 let bound = model::bound(&space, context);
@@ -66,7 +67,7 @@ pub trait Kernel<'a>: Sized {
                 unwrap!(context.evaluate(&device_fn),
                     "evaluation failed for kernel {}, with actions {:?}",
                     Self::name(), leaf.actions);
-                if let Err(err) = kernel.check_result(&expected_output) {
+                if let Err(err) = kernel.check_result(&expected_output, context) {
                     panic!("incorrect output for kernel {}, with actions {:?}: {}",
                            Self::name(), leaf.actions, err)
                 }
@@ -84,12 +85,4 @@ pub trait Kernel<'a>: Sized {
     // FIXME: benchmark method, that compares against reference implementations,
     // dependending on the features enabled.
     // * For this we need a benchmark method in the context
-}
-
-/// A kernel that can be compiled on CUDA GPUs.
-#[cfg(feature="cuda")]
-pub trait CudaKernel: Kernel {
-    /// Returns the execution time (in nanoseconds) of the kernel using the reference
-    /// implementation on CUDA.
-    fn benchmark_fast(&self) -> f64;
 }

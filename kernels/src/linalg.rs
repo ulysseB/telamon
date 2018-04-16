@@ -1,25 +1,26 @@
 //! Linera algebra kernels.
 use create_size;
 use kernel::Kernel;
-#[cfg(feature="cuda")]
-use kernel::CudaKernel;
-use num::One;
+use ndarray::{self, ArrayD};
 use telamon::{device, ir};
 use telamon::helper::{Builder, SignatureBuilder};
 use telamon::helper::tensor::{Tensor, VirtualTensor};
 use telamon::search_space::SearchSpace;
 use telamon::ir::DimMapScope::Global as GlobalScope;
 
-/// Computes `y = alpha*x+y`.
-struct Axpy<'a, S> where S: device::ScalarArgument {
+/// Computes `z = alpha*x+y`.
+pub struct Axpy<'a, S> where S: device::ScalarArgument {
     n: i32,
     x: Tensor<'a, S>,
     y: Tensor<'a, S>,
+    z: Tensor<'a, S>,
 }
 
-impl<'a, S> Kernel<'a> for Axpy<'a, S> where S: device::ScalarArgument + One {
+impl<'a, S> Kernel<'a> for Axpy<'a, S>
+where S: device::ScalarArgument + ndarray::LinalgScalar
+{
     type Parameters = i32;
-    type ExpectedOutput = Vec<S>;
+    type ExpectedOutput = ArrayD<S>;
 
     fn name() -> &'static str { "axpy" }
 
@@ -30,8 +31,9 @@ impl<'a, S> Kernel<'a> for Axpy<'a, S> where S: device::ScalarArgument + One {
         let n_size = create_size(n, "n", generic, builder);
         builder.scalar("alpha", S::one());
         let x = builder.tensor::<S>("x", vec![n_size], true);
-        let y = builder.tensor::<S>("y", vec![n_size], false);
-        Axpy { n, x, y }
+        let y = builder.tensor::<S>("y", vec![n_size], true);
+        let z = builder.tensor::<S>("z", vec![n_size], false);
+        Axpy { n, x, y, z }
     }
 
     fn build_body<'b>(&self, signature: &'b ir::Signature, device: &'b device::Device)
@@ -47,26 +49,22 @@ impl<'a, S> Kernel<'a> for Axpy<'a, S> where S: device::ScalarArgument + One {
         let x_op = ld_x.dim_map(&[&mad_dim], GlobalScope, &mut builder);
         let y_op = ld_y.dim_map(&[&mad_dim], GlobalScope, &mut builder);
         let mad = VirtualTensor::new(builder.mad(&x_op, &"alpha", &y_op), vec![mad_dim]);
-        mad.store(&self.y, &mut builder);
+        mad.store(&self.z, &mut builder);
 
         vec![builder.get()]
     }
 
-    fn get_expected_output(&self) -> Vec<S> {
-        unimplemented!() // FIXME
+    fn get_expected_output(&self, context: &device::Context) -> ArrayD<S> {
+        self.x.read_to_host(context) + self.y.read_to_host(context)
     }
 
-    fn check_result(&self, expected: &Self::ExpectedOutput) -> Result<(), String> {
-        // get the data back
-        unimplemented!() // FIXME
-    }
-}
-
-#[cfg(feature="cuda")]
-impl<'a, S> CudaKernel for Axpy<'a, S> {
-    fn benchmark_fast(&self) -> f64 {
-        // FIXME: need to allocate events. Should we reuse arrays ?
-        unimplemented!()
+    fn check_result(&self, expected: &Self::ExpectedOutput, context: &device::Context)
+        -> Result<(), String>
+    {
+        let z = self.z.read_to_host(context);
+        if z != *expected {
+            Err(format!("expected: {}, got {}", expected, z))
+        } else { Ok(()) }
     }
 }
 
