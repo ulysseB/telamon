@@ -6,10 +6,11 @@ use num::integer::div_rem;
 use num::rational::Ratio;
 use num::traits::FromPrimitive;
 use std;
+use std::fmt::Display;
 
 /// Represents a value that can be used as a `Function` argument. Must ensures the type
 /// is a scalar and does not contains any reference.
-pub unsafe trait ScalarArgument: Sync + Send + Copy + 'static {
+pub unsafe trait ScalarArgument: Sync + Send + Copy + PartialEq + Display + 'static {
     /// Returns the argument interpreted as an iteration dimension size, if applicable.
     fn as_size(&self) -> Option<u32> { None }
     /// Returns the type of the argument.
