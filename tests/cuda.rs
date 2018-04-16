@@ -8,7 +8,7 @@ extern crate telamon_utils as utils;
 mod common;
 
 use common::*;
-use telamon::device::{ArrayArgument, Context, cuda};
+use telamon::device::{read_array, write_array, Context, cuda};
 use telamon::{ir, helper};
 use telamon::search_space::{Action, DimKind, InstFlag, Order};
 use itertools::Itertools;
@@ -159,7 +159,7 @@ fn induction_var_nested() {
     let _ = builder.st(&"out", &ind_var, pattern);
 
     check_candidates(builder.get(), &context, || {
-       let res = out.1.read::<i32>();
+       let res = read_array::<i32>(out.1.as_ref());
        // 1*(k/4 - 1) + (k/4)*(4 - 1) + k*(5 - 1) = 5*k - 1 = 59
        assert_eq!(res[0], 59);
     });
@@ -186,7 +186,7 @@ fn induction_var_simple() {
     let _ = builder.st(&"out", &ind_var, pattern);
 
     check_candidates(builder.get(), &context, || {
-       let res = out.1.read::<i32>();
+       let res = read_array::<i32>(out.1.as_ref());
        assert_eq!(res[0], 8);
     });
 }
@@ -208,7 +208,7 @@ fn global_vector_load() {
         output = builder.array::<i32>("output", 1);
         builder.get()
     };
-    input.1.as_ref().write(&(0..D0_LEN).map(|i| i as i32+10).collect_vec()[..]);
+    write_array(input.1.as_ref(), &(0..D0_LEN).map(|i| i as i32+10).collect_vec()[..]);
 
     let mut builder = helper::Builder::new(&signature, context.device());
     // Load B from global memory
@@ -224,7 +224,7 @@ fn global_vector_load() {
     builder.st_ex(&"output", &ld, true, output_pattern, InstFlag::MEM_CS);
 
     check_candidates(builder.get(), &context, || {
-        let res = output.1.as_ref().read::<i32>()[0];
+        let res = read_array::<i32>(output.1.as_ref())[0];
         assert_eq!(res, 13);
     });
 }
@@ -250,7 +250,7 @@ fn size_cast() {
     let _ = builder.st(&"out", &ind_var, pattern);
 
     check_candidates(builder.get(), &context, || {
-       let res = out.1.read::<i64>();
+       let res = read_array::<i64>(out.1.as_ref());
        assert_eq!(res[0], 8);
     });
 }
