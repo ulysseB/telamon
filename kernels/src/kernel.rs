@@ -6,13 +6,12 @@ use telamon::explorer::montecarlo;
 use telamon::helper::SignatureBuilder;
 use telamon::search_space::SearchSpace;
 
-/// Indicates what is being tested.
-pub enum TestKind { Functional, Bound }
-
 /// A kernel that can be compiled, benchmarked and used for correctness tests.
-pub trait Kernel: Sized {
+pub trait Kernel<'a>: Sized {
     /// The input parameters of the kernel.
     type Parameters;
+    /// The values to expect as output.
+    type ExpectedOutput;
 
     /// The name of the function computed by the kernel.
     fn name() -> &'static str;
@@ -23,22 +22,24 @@ pub trait Kernel: Sized {
     fn build_signature<AM>(parameters: Self::Parameters,
                            is_generic: bool,
                            builder: &mut SignatureBuilder<AM>) -> Self
-        where AM: device::ArgMap + device::Context;
+        where AM: device::ArgMap + device::Context + 'a;
 
     /// Builder the kernel body in the given builder. This builder should be based on the
     /// signature created by `build_signature`.
-    fn build_body<'a>(&self, signature: &'a ir::Signature, device: &'a device::Device)
-        -> Vec<SearchSpace<'a>>;
+    fn build_body<'b>(&self, signature: &'b ir::Signature, device: &'b device::Device)
+        -> Vec<SearchSpace<'b>>;
+
+    /// Computes the expected output.
+    fn get_expected_output(&self) -> Self::ExpectedOutput;
 
     /// Ensures the generated code performs the correct operation.
-    fn check_result(&self, context: &device::Context) -> Result<(), String>;
+    fn check_result(&self, expected: &Self::ExpectedOutput) -> Result<(), String>;
 
     /// Generates, executes and tests the output of candidates for the kernel.
-    fn test<AM>(test_kind: TestKind,
-                params: Self::Parameters,
-                num_descend: usize,
-                context: &mut AM)
-        where AM: device::ArgMap + device::Context
+    fn test_correctness<AM>(params: Self::Parameters,
+                            num_descend: usize,
+                            context: &mut AM)
+        where AM: device::ArgMap + device::Context + 'a
     {
         let kernel;
         let signature = {
@@ -46,6 +47,7 @@ pub trait Kernel: Sized {
             kernel = Self::build_signature(params, false, &mut builder);
             builder.get()
         };
+        let expected_output = kernel.get_expected_output();
         let candidates = kernel.build_body(&signature, context.device()).into_iter()
             .map(|space| {
                 let bound = model::bound(&space, context);
@@ -61,22 +63,12 @@ pub trait Kernel: Sized {
             let leaf = montecarlo::descend(order, context, candidate, cut);
             if let Some(leaf) = leaf {
                 let device_fn = codegen::Function::build(&leaf.space);
-                let runtime = unwrap!(context.evaluate(&device_fn),
+                unwrap!(context.evaluate(&device_fn),
                     "evaluation failed for kernel {}, with actions {:?}",
                     Self::name(), leaf.actions);
-                match test_kind {
-                    TestKind::Functional => {
-                        if let Err(err) = kernel.check_result(context) {
-                            panic!("incorrect output for kernel {}, with actions {:?}: {}",
-                                   Self::name(), leaf.actions, err)
-                        }
-                    },
-                    TestKind::Bound => {
-                        if leaf.bound.value() > runtime {
-                            panic!("bound {} > {}ns for kernel {} with actions {:?}",
-                                   leaf.bound, runtime, Self::name(), leaf.actions)
-                        }
-                    },
+                if let Err(err) = kernel.check_result(&expected_output) {
+                    panic!("incorrect output for kernel {}, with actions {:?}: {}",
+                           Self::name(), leaf.actions, err)
                 }
                 num_runs += 1;
             } else {
@@ -88,8 +80,9 @@ pub trait Kernel: Sized {
         }
     }
 
-    // FIXME: benchmark method, that compares against reference implementations, dependending on
-    // the features enabled
+    // FIXME: check bound method
+    // FIXME: benchmark method, that compares against reference implementations,
+    // dependending on the features enabled.
 }
 
 /// A kernel that can be compiled on CUDA GPUs.
