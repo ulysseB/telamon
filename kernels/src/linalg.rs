@@ -8,27 +8,30 @@ use telamon::{device, ir};
 use telamon::helper::{Builder, SignatureBuilder};
 use telamon::helper::tensor::{Tensor, VirtualTensor};
 use telamon::search_space::SearchSpace;
-use std::marker::PhantomData;
-
 use telamon::ir::DimMapScope::Global as GlobalScope;
 
 /// Computes `y = alpha*x+y`.
-struct Axpy<'a, S> { n: i32, x: Tensor<'a>, y: Tensor<'a>, t: PhantomData<S> }
+struct Axpy<'a, S> where S: device::ScalarArgument {
+    n: i32,
+    x: Tensor<'a, S>,
+    y: Tensor<'a, S>,
+}
 
-impl<'a, S> Kernel for Axpy<'a, S> where S: device::ScalarArgument + One {
+impl<'a, S> Kernel<'a> for Axpy<'a, S> where S: device::ScalarArgument + One {
     type Parameters = i32;
+    type ExpectedOutput = Vec<S>;
 
     fn name() -> &'static str { "axpy" }
 
     fn build_signature<AM>(n: i32, generic: bool,
                            builder: &mut SignatureBuilder<AM>) -> Self
-        where AM: device::ArgMap + device::Context
+        where AM: device::ArgMap + device::Context + 'a
     {
         let n_size = create_size(n, "n", generic, builder);
         builder.scalar("alpha", S::one());
         let x = builder.tensor::<S>("x", vec![n_size], true);
         let y = builder.tensor::<S>("y", vec![n_size], false);
-        Axpy { n, x, y, t: PhantomData }
+        Axpy { n, x, y }
     }
 
     fn build_body<'b>(&self, signature: &'b ir::Signature, device: &'b device::Device)
@@ -49,7 +52,11 @@ impl<'a, S> Kernel for Axpy<'a, S> where S: device::ScalarArgument + One {
         vec![builder.get()]
     }
 
-    fn check_result(&self, context: &device::Context) -> Result<(), String> {
+    fn get_expected_output(&self) -> Vec<S> {
+        unimplemented!() // FIXME
+    }
+
+    fn check_result(&self, expected: &Self::ExpectedOutput) -> Result<(), String> {
         // get the data back
         unimplemented!() // FIXME
     }
