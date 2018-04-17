@@ -1,10 +1,5 @@
 #![feature(drain_filter)]
 
-#![feature(plugin)]
-#![plugin(rustlex)]
-#![allow(plugin_as_library)]
-extern crate rustlex;
-
 #[cfg(test)] extern crate env_logger;
 extern crate handlebars;
 #[macro_use] extern crate lazy_static;
@@ -18,6 +13,7 @@ extern crate serde_json;
 #[macro_use]
 extern crate telamon_utils as utils;
 extern crate topological_sort;
+extern crate libc;
 
 mod ast;
 mod constraint;

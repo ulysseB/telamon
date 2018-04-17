@@ -2,18 +2,31 @@ language: rust
 cache: cargo
 sudo: false
 rust:
-- nightly-2018-04-03
+  - stable
+  - beta
+  - nightly
+matrix:
+  allow_failures:
+    - rust: nightly
+  fast_finish: true
+addons:
+  apt:
+    packages:
+      - flex
+before_script:
+  - flex --version
 script:
-- cargo build --verbose --all
-- cargo test --verbose --all
-- cargo doc --verbose --all
+  - cd telamon-gen
+  - cargo build --verbose --all
+  - cargo test --verbose --all
+  - cargo doc --verbose --all
 deploy:
-- provider: pages
-  local-dir: target/doc
-  target-branch: gh-pages
-  skip-cleanup: true
-  keep-history: true
-  github-token: "$GITHUB_TOKEN"
+  - provider: pages
+    local-dir: target/doc
+    target-branch: gh-pages
+    skip-cleanup: true
+    keep-history: true
+    github-token: "$GITHUB_TOKEN"
 notifications:
   slack:
     rooms:
