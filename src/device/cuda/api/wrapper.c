@@ -111,8 +111,6 @@ int32_t device_attribute(const CudaContext* context, uint32_t attr) {
 }
 
 #define NUM_JIT_OPTIONS 3
-// TODO(perf): enable optimizations when possible
-#define JIT_OPT_LEVEL 1
 
 CUjit_option jit_options[] = {
   CU_JIT_ERROR_LOG_BUFFER,
@@ -127,13 +125,16 @@ typedef struct CubinObject {
   size_t data_size;
 } CubinObject;
 
-CubinObject compile_ptx_to_cubin(CudaContext* ctx, char* ptx_code, size_t ptx_size) {
+CubinObject compile_ptx_to_cubin(CudaContext* ctx,
+                                 char* ptx_code,
+                                 size_t ptx_size,
+                                 size_t opt_lvl) {
   (void)(ctx);
   char error_buff[ERROR_BUFF_SIZE+1];
   void* option_values[] = {
     (void*)error_buff,
     (void*)ERROR_BUFF_SIZE,
-    (void*)JIT_OPT_LEVEL,
+    (void*)opt_lvl,
   };
   CubinObject object;
   object.state = malloc(sizeof(CUlinkState));
@@ -156,14 +157,14 @@ void free_cubin_object(CubinObject object) {
 // Compiles a PTX file into a CUDA module. The options passed to cuModuleLoadDataEx can
 // be used to set the optimization level and to retreive the number of registers used and
 // the errors encountered.
-CUmodule* compile_ptx(CudaContext* ctx, const char* ptx_code) {
+CUmodule* compile_ptx(CudaContext* ctx, const char* ptx_code, size_t opt_lvl) {
   HARD_CHECK_CUDA(cuCtxSetCurrent(ctx->ctx));
   CUmodule* module = malloc(sizeof(CUmodule));
   char error_buff[ERROR_BUFF_SIZE+1];
   void* option_values[] = {
     (void*)error_buff,
     (void*)ERROR_BUFF_SIZE,
-    (void*)JIT_OPT_LEVEL,
+    (void*)opt_lvl,
   };
   CUresult err = cuModuleLoadDataEx(
     module, ptx_code, NUM_JIT_OPTIONS, jit_options, option_values);
@@ -220,6 +221,29 @@ int32_t launch_kernel(CudaContext* context, CUfunction* function, uint32_t* bloc
   read_events(context->num_cycle_event, 1, 1, &unused, out);
   CHECK_CUPTI(cuptiEventGroupDisable(context->num_cycle_event));
   return 0;
+}
+
+// Time a kernel using events. Returns the time in nanoseconds.
+double time_with_events(CudaContext* context, CUfunction* function, uint32_t* blocks,
+    uint32_t* threads, void** params) {
+  HARD_CHECK_CUDA(cuCtxSetCurrent(context->ctx));
+
+  CUevent start, stop;
+  HARD_CHECK_CUDA(cuEventCreate(&start, CU_EVENT_DEFAULT));
+  HARD_CHECK_CUDA(cuEventCreate(&stop, CU_EVENT_DEFAULT));
+
+  HARD_CHECK_CUDA(cuEventRecord(start, 0));
+  HARD_CHECK_CUDA(cuLaunchKernel(*function, blocks[0], blocks[1], blocks[2], threads[0],
+        threads[1], threads[2], 0, NULL, params, NULL));
+  HARD_CHECK_CUDA(cuEventRecord(stop, 0));
+  HARD_CHECK_CUDA(cuEventSynchronize(stop));
+
+  float ms = -1;
+  HARD_CHECK_CUDA(cuEventElapsedTime(&ms, start, stop));
+  HARD_CHECK_CUDA(cuEventDestroy(start));
+  HARD_CHECK_CUDA(cuEventDestroy(stop));
+
+  return ((double)ms) * 10e6;
 }
 
 // Runs a kernel multiple times to gather a set of performance counter values.

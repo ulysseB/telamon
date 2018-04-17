@@ -14,10 +14,10 @@ pub struct Module<'a> {
 
 impl<'a> Module<'a> {
     /// Creates a new `Module`.
-    pub fn new(context: &'a CudaContext, code: &str) -> Self {
+    pub fn new(context: &'a CudaContext, code: &str, opt_level: usize) -> Self {
         debug!("compiling... {}", code);
         let c_str = unwrap!(CString::new(code));
-        let module = unsafe { compile_ptx(context, c_str.as_ptr()) };
+        let module = unsafe { compile_ptx(context, c_str.as_ptr(), opt_level) };
         Module { module, context }
     }
 
@@ -77,6 +77,22 @@ impl<'a> Kernel<'a> {
                       counters: &PerfCounterSet) -> Vec<u64> {
         counters.instrument( unsafe { &*self.function }, blocks, threads, args)
     }
+
+    /// Runs a kernel and returns the number of nanoseconds it takes to execute,
+    /// measured using cuda event rather than hardware counters.
+    pub fn time_real_conds(&self, blocks: &[u32; 3],
+                           threads: &[u32; 3],
+                           args: &[&Argument]) -> f64 {
+        unsafe {
+            let arg_raw_ptrs = args.iter().map(|x| x.raw_ptr()).collect_vec();
+            time_with_events(self.context,
+                             self.function,
+                             blocks.as_ptr(),
+                             threads.as_ptr(),
+                             arg_raw_ptrs.as_ptr())
+        }
+    }
+
 
     /// Indicates the number of active block of threads per multiprocessors.
     pub fn blocks_per_smx(&self, threads: &[u32; 3]) -> u32 {

@@ -117,7 +117,8 @@ pub trait Kernel<'a>: Sized {
                 } else {
                     let leaf = &candidates[idx];
                     let device_fn = codegen::Function::build(&leaf.space);
-                    let runtime = unwrap!(context.evaluate(&device_fn),
+                    let runtime = context.evaluate(&device_fn);
+                    let runtime = unwrap!(runtime,
                         "evaluation failed for kernel {}, with actions {:?}",
                         Self::name(), leaf.actions);
                     for bound in &bounds {
@@ -132,9 +133,25 @@ pub trait Kernel<'a>: Sized {
         leaves
     }
 
-    // TODO(test): benchmark method, that compares against reference implementations,
-    // dependending on the features enabled.
-    // * For this we need a benchmark method in the context
+    /// Runs the search and benchmarks the resulting candidate.
+    fn benchmark<AM>(config: &explorer::Config,
+                     params: Self::Parameters,
+                     num_samples: usize,
+                     context: &mut AM) -> Vec<f64>
+        where AM: device::ArgMap + device::Context + 'a
+    {
+        let kernel;
+        let signature = {
+            let mut builder = SignatureBuilder::new(Self::name(), context);
+            kernel = Self::build_signature(params, true, &mut builder);
+            builder.get()
+        };
+        let search_space = kernel.build_body(&signature, context.device());
+        let best = unwrap!(explorer::find_best(config, context, search_space),
+                           "no candidates found for kernel {}", Self::name());
+        let best_fn = codegen::Function::build(&best);
+        context.benchmark(&best_fn, num_samples)
+    }
 }
 
 // TODO(test): exploit bounds benchmarks

@@ -17,6 +17,9 @@ pub trait Context: Sync {
     fn device(&self) -> &Device;
     /// Returns the execution time of a fully specified implementation in nanoseconds.
     fn evaluate(&self, space: &Function) -> Result<f64, ()>;
+    /// Compiles and benchmarks a functions. As opposed to `Self::evaluate`, the measured
+    /// time contains potential startup times.
+    fn benchmark(&self, space: &Function, num_samples: usize) -> Vec<f64>;
     /// Calls the `inner` closure in parallel, and gives it a pointer to an `AsyncEvaluator`
     /// to evaluate candidates in the context.
     fn async_eval<'a, 'b>(&self, num_workers: usize,

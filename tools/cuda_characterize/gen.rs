@@ -410,7 +410,7 @@ pub fn run(context: &mut Context, space: &SearchSpace,
         panic!("The benchmark is not completely scheduled!");
     }
     let dev_fun = codegen::Function::build(space);
-    let kernel = Kernel::compile(&dev_fun, context.gpu(), context.executor());
+    let kernel = Kernel::compile(&dev_fun, context.gpu(), context.executor(), 1);
     for &(arg, range) in args_range { bind_scalar(arg, range[0], context); }
     kernel.instrument(context, counters);
     let args_range_len = args_range.iter().map(|&(_, x)| x.len()).collect_vec();

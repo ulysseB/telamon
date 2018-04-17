@@ -85,6 +85,10 @@ impl device::Context for Context {
 
     fn evaluate(&self, _: &codegen::Function) -> Result<f64, ()> { Ok(1.0) }
 
+    fn benchmark(&self, _: &codegen::Function, num_samples: usize) -> Vec<f64> {
+        vec![1.0; num_samples]
+    }
+
     fn param_as_size(&self, _: &str) -> Option<u32> { Some(1) }
 
     fn async_eval<'b, 'c>(&self, _: usize,

@@ -37,7 +37,7 @@ mod tests {
     #[test]
     fn test_empty_module() {
       let executor = Executor::init();
-      let _ = executor.compile_ptx(".version 3.0\n.target sm_30\n.address_size 64\n");
+      let _ = executor.compile_ptx(".version 3.0\n.target sm_30\n.address_size 64\n", 1);
     }
 
     /// Tries to compile an empty PTX kernel and execute it.
@@ -46,7 +46,7 @@ mod tests {
         let executor = Executor::init();
         let module = executor.compile_ptx(
             ".version 3.0\n.target sm_30\n.address_size 64\n
-            .entry empty_fun() { ret; }");
+            .entry empty_fun() { ret; }", 1);
         let kernel = module.kernel("empty_fun");
         let _ = kernel.execute(&[1,1,1], &[1,1,1], &mut []);
     }
@@ -92,7 +92,7 @@ mod tests {
                 ld.global.f32 %f, [%rd2];
                 st.global.f32 [%rd3], %f;
                 ret;
-            }");
+            }", 1);
         let kernel = module.kernel("copy");
         unwrap!(kernel.execute(&[block_dim, 1, 1], &[1, 1, 1],
                                &mut [&mut src, &mut dst]));
