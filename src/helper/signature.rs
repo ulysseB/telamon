@@ -1,11 +1,14 @@
 //! Helper functions to create a function signature and bind parameters.
-use device::{self, ScalarArgument};
+use device::{self, ScalarArgument, write_array};
 use ir::{self, Signature, Parameter, mem};
+use itertools::Itertools;
 use helper::tensor::{DimSize, Tensor};
+use rand;
 use std::sync::Arc;
 
 /// Helper struct to build a `Signature`.
 pub struct Builder<'a, AM> where AM: device::ArgMap + device::Context + 'a {
+    rng: rand::XorShiftRng,
     context: &'a mut AM,
     signature: Signature,
 }
@@ -18,7 +21,8 @@ impl<'a, AM> Builder<'a, AM> where AM: device::ArgMap + device::Context + 'a {
             params: vec![],
             mem_blocks: 0
         };
-        Builder { context, signature }
+        let rng = rand::XorShiftRng::new_unseeded();
+        Builder { context, signature, rng }
     }
 
     /// Creates a new parameter and binds it to the given value.
@@ -35,6 +39,8 @@ impl<'a, AM> Builder<'a, AM> where AM: device::ArgMap + device::Context + 'a {
         let id = self.alloc_array_id();
         let param = Parameter { name: name.to_string(), t: ir::Type::PtrTo(id), };
         let array = self.context.bind_array::<S>(&param, size);
+        let random = (0..size).map(|_| S::gen_random(&mut self.rng)).collect_vec();
+        write_array(array.as_ref(), &random);
         self.signature.params.push(param);
         (id, array)
     }

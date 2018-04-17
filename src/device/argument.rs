@@ -5,6 +5,7 @@ use num::bigint::BigInt;
 use num::integer::div_rem;
 use num::rational::Ratio;
 use num::traits::FromPrimitive;
+use rand::Rng;
 use std;
 use std::fmt::Display;
 
@@ -19,6 +20,8 @@ pub unsafe trait ScalarArgument: Sync + Send + Copy + PartialEq + Display + 'sta
     fn raw_ptr(&self) -> *const libc::c_void;
     /// Returns an operand holding the argument value as a constant.
     fn as_operand(&self) -> ir::Operand<'static>;
+    /// Generates a random instance of the argument type.
+    fn gen_random<R: Rng>(&mut R) -> Self;
 }
 
 unsafe impl ScalarArgument for f32 {
@@ -31,6 +34,8 @@ unsafe impl ScalarArgument for f32 {
     fn as_operand(&self) -> ir::Operand<'static> {
         ir::Operand::new_float(Ratio::from_float(*self).unwrap(), 32)
     }
+
+    fn gen_random<R: Rng>(rng: &mut R) -> Self { rng.gen_range(0., 1.) }
 }
 
 unsafe impl ScalarArgument for f64 {
@@ -43,6 +48,8 @@ unsafe impl ScalarArgument for f64 {
     fn as_operand(&self) -> ir::Operand<'static> {
         ir::Operand::new_float(Ratio::from_float(*self).unwrap(), 64)
     }
+
+    fn gen_random<R: Rng>(rng: &mut R) -> Self { rng.gen_range(0., 1.) }
 }
 
 unsafe impl ScalarArgument for i8 {
@@ -57,6 +64,8 @@ unsafe impl ScalarArgument for i8 {
     fn as_operand(&self) -> ir::Operand<'static> {
         ir::Operand::new_int(BigInt::from_i8(*self).unwrap(), 8)
     }
+
+    fn gen_random<R: Rng>(rng: &mut R) -> Self { rng.gen_range(0, 10) }
 }
 
 unsafe impl ScalarArgument for i16 {
@@ -71,6 +80,8 @@ unsafe impl ScalarArgument for i16 {
     fn as_operand(&self) -> ir::Operand<'static> {
         ir::Operand::new_int(BigInt::from_i16(*self).unwrap(), 16)
     }
+
+    fn gen_random<R: Rng>(rng: &mut R) -> Self { rng.gen_range(0, 100) }
 }
 
 unsafe impl ScalarArgument for i32 {
@@ -85,6 +96,8 @@ unsafe impl ScalarArgument for i32 {
     fn as_operand(&self) -> ir::Operand<'static> {
         ir::Operand::new_int(BigInt::from_i32(*self).unwrap(), 32)
     }
+
+    fn gen_random<R: Rng>(rng: &mut R) -> Self { rng.gen_range(0, 100) }
 }
 
 unsafe impl ScalarArgument for i64 {
@@ -99,6 +112,8 @@ unsafe impl ScalarArgument for i64 {
     fn as_operand(&self) -> ir::Operand<'static> {
         ir::Operand::new_int(BigInt::from_i64(*self).unwrap(), 64)
     }
+
+    fn gen_random<R: Rng>(rng: &mut R) -> Self { rng.gen_range(0, 100) }
 }
 
 /// Represents an array on the device.
