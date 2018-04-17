@@ -3,7 +3,12 @@ use itertools::Itertools;
 use telamon::{codegen, device, explorer, ir, model};
 use telamon::explorer::montecarlo;
 use telamon::helper::SignatureBuilder;
+use telamon::model::Bound;
 use telamon::search_space::SearchSpace;
+use std;
+
+/// Ignore candidates with a too big bound in tests.
+const CUT: f64 = 10e8f64;
 
 /// A kernel that can be compiled, benchmarked and used for correctness tests.
 pub trait Kernel<'a>: Sized {
@@ -36,9 +41,7 @@ pub trait Kernel<'a>: Sized {
         -> Result<(), String>;
 
     /// Generates, executes and tests the output of candidates for the kernel.
-    fn test_correctness<AM>(params: Self::Parameters,
-                            num_descend: usize,
-                            context: &mut AM)
+    fn test_correctness<AM>(params: Self::Parameters, num_tests: usize, context: &mut AM)
         where AM: device::ArgMap + device::Context + 'a
     {
         let kernel;
@@ -55,12 +58,11 @@ pub trait Kernel<'a>: Sized {
             }).collect_vec();
         let mut num_deadends = 0;
         let mut num_runs = 0;
-        while num_runs < num_descend {
+        while num_runs < num_tests {
             let order = explorer::config::NewNodeOrder::WeightedRandom;
-            let cut = 10e8f64;
-            let candidate_idx = montecarlo::next_cand_index(order, &candidates, cut);
+            let candidate_idx = montecarlo::next_cand_index(order, &candidates, CUT);
             let candidate = candidates[unwrap!(candidate_idx)].clone();
-            let leaf = montecarlo::descend(order, context, candidate, cut);
+            let leaf = montecarlo::descend(order, context, candidate, CUT);
             if let Some(leaf) = leaf {
                 let device_fn = codegen::Function::build(&leaf.space);
                 unwrap!(context.evaluate(&device_fn),
@@ -78,13 +80,63 @@ pub trait Kernel<'a>: Sized {
                 }
             }
         }
-        // FIXME: use an epsilon ?
         println!("num_deadends: {}", num_deadends);
     }
 
-    // TODO(test): check bound method
+    /// Tests the correctness of the bound of kernels and returns the list of tested leafs
+    /// along with the actual evaluation time.
+    fn test_bound<AM>(params: Self::Parameters, num_tests: usize, context: &mut AM)
+        -> Vec<(Vec<explorer::choice::ActionEx>, Bound, f64)>
+            where AM: device::ArgMap + device::Context + 'a
+    {
+        let kernel;
+        let signature = {
+            let mut builder = SignatureBuilder::new(Self::name(), context);
+            kernel = Self::build_signature(params, true, &mut builder);
+            builder.get()
+        };
+        let candidates = kernel.build_body(&signature, context.device()).into_iter()
+            .map(|space| {
+                let bound = model::bound(&space, context);
+                explorer::Candidate::new(space, bound)
+            }).collect_vec();
+        let mut leaves = Vec::new();
+        while leaves.len() < num_tests {
+            let order = explorer::config::NewNodeOrder::WeightedRandom;
+            let mut candidates = std::borrow::Cow::Borrowed(&candidates);
+            let mut bounds = Vec::new();
+            loop {
+                let idx = montecarlo::next_cand_index(order, candidates.iter(), CUT);
+                let idx = if let Some(idx) = idx { idx } else { break; };
+                bounds.push(candidates[idx].bound.clone());
+                let choice_opt = explorer::choice::list(&candidates[idx].space).next();
+                if let Some(choice) = choice_opt {
+                    let new_nodes = candidates[idx].apply_choice(context, choice).into_iter()
+                        .filter(|x| x.bound.value() < CUT).collect_vec();
+                    candidates = std::borrow::Cow::Owned(new_nodes);
+                } else {
+                    let leaf = &candidates[idx];
+                    let device_fn = codegen::Function::build(&leaf.space);
+                    let runtime = unwrap!(context.evaluate(&device_fn),
+                        "evaluation failed for kernel {}, with actions {:?}",
+                        Self::name(), leaf.actions);
+                    for bound in &bounds {
+                        assert!(bound.value() < runtime);
+                    }
+                    let actions = leaf.actions.iter().cloned().collect();
+                    leaves.push((actions, leaf.bound.clone(), runtime));
+                    break;
+                }
+            }
+        }
+        leaves
+    }
+
     // TODO(test): benchmark method, that compares against reference implementations,
     // dependending on the features enabled.
     // * For this we need a benchmark method in the context
-    // TODO(test): benchmark the number of deadends
 }
+
+// TODO(test): exploit bounds benchmarks
+// TODO(test): benchmark the number of deadends
+// TODO(test): exploit runtime benchmarks
