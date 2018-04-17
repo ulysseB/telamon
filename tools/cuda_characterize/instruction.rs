@@ -161,7 +161,7 @@ fn load(gpu: &Gpu, executor: &Executor, stride: u32, num_load: u32) -> f64 {
     let init_fun = gen::init_stride_array(
         &init_base, gpu, init_mem_ids[0], "array", num_load, stride as i32);
     let init_dev_fun = codegen::Function::build(&init_fun);
-    let init_dev_kernel = Kernel::compile(&init_dev_fun, gpu, executor);
+    let init_dev_kernel = Kernel::compile(&init_dev_fun, gpu, executor, 1);
 
     let mut context = Context::from_gpu(gpu.clone(), executor);
     gen::bind_array::<i64>("array", array_size as usize, &mut context);

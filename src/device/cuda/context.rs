@@ -14,6 +14,8 @@ use device::context::AsyncCallback;
 
 /// Max number of candidates waiting to be evaluated.
 const EVAL_BUFFER_SIZE: usize = 100;
+// TODO(perf): enable optimizations when possible
+const JIT_OPT_LEVEL: usize = 1;
 
 /// A CUDA evaluation context.
 pub struct Context<'a> {
@@ -83,8 +85,15 @@ impl<'a> device::Context for Context<'a> {
     fn param_as_size(&self, name: &str) -> Option<u32> { self.get_param(name).as_size() }
 
     fn evaluate(&self, function: &device::Function) -> Result<f64, ()> {
-        let kernel = Kernel::compile(function, &self.gpu_model, self.executor);
+        let gpu = &self.gpu_model;
+        let kernel = Kernel::compile(function, gpu, self.executor, JIT_OPT_LEVEL);
         Ok(kernel.evaluate(self)? as f64 / self.gpu_model.smx_clock)
+    }
+
+    fn benchmark(&self, function: &device::Function, num_samples: usize) -> Vec<f64> {
+        let gpu = &self.gpu_model;
+        let kernel = Kernel::compile(function, gpu, self.executor, 4);
+        kernel.evaluate_real(self, num_samples)
     }
 
     fn async_eval<'b, 'c>(&self, num_workers: usize,
@@ -100,7 +109,7 @@ impl<'a> device::Context for Context<'a> {
                 let mut evaluator = AsyncEvaluator {
                     context: self,
                     sender: send.clone(),
-                    ptx_daemon: self.executor.spawn_jit(),
+                    ptx_daemon: self.executor.spawn_jit(JIT_OPT_LEVEL),
                     blocked_time,
                 };
                 unwrap!(scope.builder().name("Telamon - Explorer Thread".to_string())
@@ -113,8 +122,6 @@ impl<'a> device::Context for Context<'a> {
                 let mut best_eval = std::f64::INFINITY;
                 while let Ok((candidate, thunk, callback)) = recv.recv() {
                     cpt_candidate += 1;
-                    debug!("IN EVALUATOR: evaluating candidate for actions {:?}", candidate.actions);
-                    //let eval = thunk.execute() as f64 / clock_rate;
                     let eval = if candidate.bound.value() < best_eval {
                         thunk.execute().map(|t| t as f64 / clock_rate)
                     } else {
@@ -128,8 +135,6 @@ impl<'a> device::Context for Context<'a> {
                     if eval < best_eval {
                         best_eval = eval;
                     }
-                    debug!("IN EVALUATOR: finished evaluating candidate for actions {:?}",
-                           candidate.actions);
                     callback.call(candidate, eval, cpt_candidate);
                 }
             });

@@ -18,11 +18,13 @@ pub struct Kernel<'a, 'b> {
 
 impl<'a, 'b> Kernel<'a, 'b> {
     /// Compiles a device function.
-    pub fn compile(fun: &'b device::Function<'b>, gpu: &Gpu, executor: &'a api::Executor)
-            -> Self {
+    pub fn compile(fun: &'b device::Function<'b>,
+                   gpu: &Gpu,
+                   executor: &'a api::Executor,
+                   opt_level: usize) -> Self {
         let ptx = gpu.print_ptx(fun);
         Kernel {
-            module: executor.compile_ptx(&ptx),
+            module: executor.compile_ptx(&ptx, opt_level),
             executor, ptx,
             function: fun,
             expected_blocks_per_smx: gpu.blocks_per_smx(fun.space()),
@@ -41,10 +43,17 @@ impl<'a, 'b> Kernel<'a, 'b> {
         }
     }
 
-    /// Runs a kernel and returns the number of cycles it takes to execute.
+    /// Runs a kernel and returns the number of cycles it takes to execute in cycles.
     pub fn evaluate(&self, args: &Context) -> Result<u64, ()> {
         let cuda_kernel = self.module.kernel(&self.function.name);
         self.gen_args(args).execute(&cuda_kernel, self.executor)
+    }
+
+    /// Runs a kernel and returns the number of cycles it takes to execute in nanoseconds,
+    /// measured using cuda event rather than hardware counters.
+    pub fn evaluate_real(&self, args: &Context, num_samples: usize) -> Vec<f64> {
+        let cuda_kernel = self.module.kernel(&self.function.name);
+        self.gen_args(args).time_in_real_conds(&cuda_kernel, num_samples, self.executor)
     }
 
     /// Instruments the kernel with the given performance counters.
@@ -164,6 +173,30 @@ impl<'a> ThunkArgs<'a> {
             ThunkArg::TmpArray(id) => &tmp_arrays[id],
         }).collect_vec();
         cuda_kernel.instrument(&self.blocks, &self.threads, &params, counters)
+    }
+
+    /// Evaluates the execution time of the kernel usig events rather than hardware
+    /// counter.
+    fn time_in_real_conds(&self, cuda_kernel: &api::Kernel, num_samples: usize,
+                          executor: &api::Executor)
+        -> Vec<f64>
+    {
+        let tmp_arrays = self.tmp_arrays.iter().map(|&size| {
+            executor.allocate_array::<i8>(size)
+        }).collect_vec();
+        let params = self.args.iter().map(|x| match *x {
+            ThunkArg::ArgRef(arg) => arg,
+            ThunkArg::Size(ref arg) => arg,
+            ThunkArg::TmpArray(id) => &tmp_arrays[id],
+        }).collect_vec();
+        // Heat-up caches.
+        for _ in 0..4 {
+            cuda_kernel.time_real_conds(&self.blocks, &self.threads, &params);
+        }
+        // Generate the samples.
+        (0..num_samples).map(|_| {
+            cuda_kernel.time_real_conds(&self.blocks, &self.threads, &params)
+        }).collect()
     }
 
     fn check_blocks_per_smx(&self, cuda_kernel: &api::Kernel) {
