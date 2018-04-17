@@ -1,6 +1,5 @@
 //! Abstracts kernels so we can build generic methods to test them.
 use itertools::Itertools;
-use std;
 use telamon::{codegen, device, explorer, ir, model};
 use telamon::explorer::montecarlo;
 use telamon::helper::SignatureBuilder;
@@ -58,7 +57,7 @@ pub trait Kernel<'a>: Sized {
         let mut num_runs = 0;
         while num_runs < num_descend {
             let order = explorer::config::NewNodeOrder::WeightedRandom;
-            let cut = std::f64::INFINITY;
+            let cut = 10e8f64;
             let candidate_idx = montecarlo::next_cand_index(order, &candidates, cut);
             let candidate = candidates[unwrap!(candidate_idx)].clone();
             let leaf = montecarlo::descend(order, context, candidate, cut);
@@ -74,15 +73,18 @@ pub trait Kernel<'a>: Sized {
                 num_runs += 1;
             } else {
                 num_deadends += 1;
-                if num_deadends >= 10 * (1+num_runs) {
+                if num_deadends >= 20 * (1+num_runs) {
                     panic!("too many dead-ends for kernel {}", Self::name())
                 }
             }
         }
+        // FIXME: use an epsilon ?
+        println!("num_deadends: {}", num_deadends);
     }
 
-    // FIXME: check bound method
-    // FIXME: benchmark method, that compares against reference implementations,
+    // TODO(test): check bound method
+    // TODO(test): benchmark method, that compares against reference implementations,
     // dependending on the features enabled.
     // * For this we need a benchmark method in the context
+    // TODO(test): benchmark the number of deadends
 }

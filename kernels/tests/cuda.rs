@@ -16,8 +16,6 @@ macro_rules! test_output {
             <$kernel>::test_correctness($params, $num_tests, &mut context);
         }
     }
-
-    // FIXME: generate both fast and slow tests with the same macro
 }
 
-test_output!(axpy_output, linalg::Axpy<f32>, 1000, 1 << 26);
+test_output!(axpy_output, linalg::Axpy<f32>, 100, 1 << 15);

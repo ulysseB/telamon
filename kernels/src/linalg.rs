@@ -63,7 +63,9 @@ where S: device::ScalarArgument + ndarray::LinalgScalar
     {
         let z = self.z.read_to_host(context);
         if z != *expected {
-            Err(format!("expected: {}, got {}", expected, z))
+            let x = self.x.read_to_host(context);
+            let y = self.y.read_to_host(context);
+            Err(format!("expected: {}, got {} with x = {} and y = {}", expected, z, x, y))
         } else { Ok(()) }
     }
 }
