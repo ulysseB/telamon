@@ -44,7 +44,7 @@ pub trait Kernel<'a>: Sized {
         let kernel;
         let signature = {
             let mut builder = SignatureBuilder::new(Self::name(), context);
-            kernel = Self::build_signature(params, false, &mut builder);
+            kernel = Self::build_signature(params, true, &mut builder);
             builder.get()
         };
         let expected_output = kernel.get_expected_output(context);
