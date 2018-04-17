@@ -7,7 +7,8 @@ rust:
   - nightly
 matrix:
   allow_failures:
-    - rust: nightly
+    - stable
+    - beta
   fast_finish: true
 addons:
   apt:
@@ -17,9 +18,9 @@ before_script:
   - flex --version
 script:
   - cd telamon-gen
-  - cargo build --verbose --all
-  - cargo test --verbose --all
-  - cargo doc --verbose --all
+  - cargo build --verbose
+  - cargo test --verbose
+  - cargo doc --verbose
 deploy:
   - provider: pages
     local-dir: target/doc
