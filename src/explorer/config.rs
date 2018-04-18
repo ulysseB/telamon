@@ -5,6 +5,7 @@ use config;
 use std;
 use getopts;
 use itertools::Itertools;
+use num_cpus;
 
 /// Stores the configuration of the exploration.
 #[derive(Clone)]
@@ -53,7 +54,7 @@ impl Config {
     fn setup_config_parser() -> config::Config {
         let mut parser = config::Config::new();
         unwrap!(parser.set_default("log_file", String::from("watch.log")));
-        unwrap!(parser.set_default("num_workers", 1));
+        unwrap!(parser.set_default("num_workers", num_cpus::get() as i64));
         SearchAlgorithm::setup_config_parser(&mut parser);
         parser
     }
@@ -142,7 +143,7 @@ impl SearchAlgorithm {
 
     /// Sets up the parser of the configuration file.
     fn setup_config_parser(parser: &mut config::Config) {
-        unwrap!(parser.set_default("algorithm", String::from("bound_order")));
+        unwrap!(parser.set_default("algorithm", String::from("bandit")));
         BanditConfig::setup_config_parser(parser);
     }
 

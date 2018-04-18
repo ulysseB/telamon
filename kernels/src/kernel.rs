@@ -167,4 +167,3 @@ fn descend_check_bounds<'a>(candidates: &[Candidate<'a>], context: &device::Cont
 
 // TODO(test): exploit bounds benchmarks
 // TODO(test): benchmark the number of deadends
-// TODO(test): exploit runtime benchmarks
