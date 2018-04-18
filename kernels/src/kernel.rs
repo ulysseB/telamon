@@ -1,7 +1,9 @@
 //! Abstracts kernels so we can build generic methods to test them.
 use itertools::Itertools;
+use num_cpus;
+use std::sync::{atomic, Mutex};
 use telamon::{codegen, device, explorer, ir, model};
-use telamon::explorer::montecarlo;
+use telamon::explorer::{Candidate, montecarlo};
 use telamon::helper::SignatureBuilder;
 use telamon::model::Bound;
 use telamon::search_space::SearchSpace;
@@ -54,7 +56,7 @@ pub trait Kernel<'a>: Sized {
         let candidates = kernel.build_body(&signature, context.device()).into_iter()
             .map(|space| {
                 let bound = model::bound(&space, context);
-                explorer::Candidate::new(space, bound)
+                Candidate::new(space, bound)
             }).collect_vec();
         let mut num_deadends = 0;
         let mut num_runs = 0;
@@ -98,39 +100,26 @@ pub trait Kernel<'a>: Sized {
         let candidates = kernel.build_body(&signature, context.device()).into_iter()
             .map(|space| {
                 let bound = model::bound(&space, context);
-                explorer::Candidate::new(space, bound)
+                Candidate::new(space, bound)
             }).collect_vec();
-        let mut leaves = Vec::new();
-        while leaves.len() < num_tests {
-            let order = explorer::config::NewNodeOrder::WeightedRandom;
-            let mut candidates = std::borrow::Cow::Borrowed(&candidates);
-            let mut bounds = Vec::new();
-            loop {
-                let idx = montecarlo::next_cand_index(order, candidates.iter(), CUT);
-                let idx = if let Some(idx) = idx { idx } else { break; };
-                bounds.push(candidates[idx].bound.clone());
-                let choice_opt = explorer::choice::list(&candidates[idx].space).next();
-                if let Some(choice) = choice_opt {
-                    let new_nodes = candidates[idx].apply_choice(context, choice).into_iter()
-                        .filter(|x| x.bound.value() < CUT).collect_vec();
-                    candidates = std::borrow::Cow::Owned(new_nodes);
+        let leaves = Mutex::new(Vec::new());
+        let num_tested = atomic::AtomicUsize::new(0);
+        context.async_eval(num_cpus::get(), &|evaluator| {
+            while num_tested.fetch_add(1, atomic::Ordering::SeqCst) < num_tests {
+                if let Some((leaf, bounds)) = descend_check_bounds(&candidates, context) {
+                    let leaves = &leaves;
+                    evaluator.add_kernel(leaf, (move |leaf: Candidate, runtime: f64, _| {
+                        for bound in &bounds { assert!(bound.value() < runtime); }
+                        let actions = leaf.actions.iter().cloned().collect();
+                        let mut leaves = unwrap!(leaves.lock());
+                        leaves.push((actions, leaf.bound.clone(), runtime));
+                    }).into());
                 } else {
-                    let leaf = &candidates[idx];
-                    let device_fn = codegen::Function::build(&leaf.space);
-                    let runtime = context.evaluate(&device_fn);
-                    let runtime = unwrap!(runtime,
-                        "evaluation failed for kernel {}, with actions {:?}",
-                        Self::name(), leaf.actions);
-                    for bound in &bounds {
-                        assert!(bound.value() < runtime);
-                    }
-                    let actions = leaf.actions.iter().cloned().collect();
-                    leaves.push((actions, leaf.bound.clone(), runtime));
-                    break;
+                    num_tested.fetch_sub(1, atomic::Ordering::SeqCst);
                 }
             }
-        }
-        leaves
+        });
+        unwrap!(leaves.into_inner())
     }
 
     /// Runs the search and benchmarks the resulting candidate.
@@ -151,6 +140,28 @@ pub trait Kernel<'a>: Sized {
                            "no candidates found for kernel {}", Self::name());
         let best_fn = codegen::Function::build(&best);
         context.benchmark(&best_fn, num_samples)
+    }
+}
+
+/// Descend along a path in the search tree and stores the bounds encountered on the way.
+fn descend_check_bounds<'a>(candidates: &[Candidate<'a>], context: &device::Context)
+    -> Option<(Candidate<'a>, Vec<Bound>)>
+{
+    let order = explorer::config::NewNodeOrder::WeightedRandom;
+    let mut candidates = std::borrow::Cow::Borrowed(candidates);
+    let mut bounds = Vec::new();
+    loop {
+        let idx = montecarlo::next_cand_index(order, candidates.iter(), CUT);
+        let idx = if let Some(idx) = idx { idx } else { return None; };
+        bounds.push(candidates[idx].bound.clone());
+        let choice_opt = explorer::choice::list(&candidates[idx].space).next();
+        if let Some(choice) = choice_opt {
+            let new_nodes = candidates[idx].apply_choice(context, choice).into_iter()
+                .filter(|x| x.bound.value() < CUT).collect_vec();
+            candidates = std::borrow::Cow::Owned(new_nodes);
+        } else {
+            return Some((candidates[idx].clone(), bounds));
+        }
     }
 }
 
