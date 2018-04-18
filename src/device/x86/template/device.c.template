@@ -1,0 +1,8 @@
+
+void {name}(
+  {params}
+)
+{{
+  {var_decls}
+  {body}
+}}

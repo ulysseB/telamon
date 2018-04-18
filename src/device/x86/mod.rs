@@ -8,6 +8,7 @@ mod api;
 
 pub use self::api::ArrayArg;
 pub use self::context::Context;
+pub use self::cpu::Cpu;
 
 use codegen;
 use ir;
