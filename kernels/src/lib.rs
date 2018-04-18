@@ -2,6 +2,7 @@
 extern crate itertools;
 extern crate ndarray;
 extern crate num;
+extern crate num_cpus;
 extern crate telamon;
 #[macro_use]
 extern crate telamon_utils as utils;
