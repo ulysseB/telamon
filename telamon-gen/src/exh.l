@@ -2,12 +2,8 @@
 %option noyywrap
 
 %{
-    int lines = 0;
-
     union yylval {
         int val;
-        float fval;
-        char sym;
     } yylval;
 
     enum token {

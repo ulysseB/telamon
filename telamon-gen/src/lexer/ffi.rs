@@ -4,8 +4,13 @@ use ::libc;
 pub type YyScan = *const libc::c_void;
 pub type YyBufferState = *const libc::c_void;
 
+#[repr(C)]
+pub union YyLval {
+    val: libc::c_int,
+}
+
 extern {
-    pub static lines: libc::c_int;
+    pub static yylval: YyLval;
 
     pub fn yylex_init(scanner: *const YyScan) -> libc::c_int;
     pub fn yy_scan_string(yy_str: *const libc::c_char, yyscanner: YyScan) -> YyBufferState;
