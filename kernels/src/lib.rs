@@ -1,5 +1,8 @@
 //! Defines common kernels used to test and benchmark Telamon.
+#[cfg(feature="cuda")]
+extern crate cuda_sys;
 extern crate itertools;
+extern crate libc;
 extern crate ndarray;
 extern crate num;
 extern crate num_cpus;
@@ -10,6 +13,7 @@ extern crate telamon_utils as utils;
 mod kernel;
 
 pub mod linalg;
+pub mod statistics;
 
 pub use kernel::Kernel;
 

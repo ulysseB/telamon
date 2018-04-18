@@ -22,6 +22,7 @@ extern crate log;
 extern crate matches;
 extern crate ndarray;
 extern crate num;
+extern crate num_cpus;
 #[cfg(feature="mppa")]
 extern crate parking_lot;
 #[cfg(feature="cuda")]
