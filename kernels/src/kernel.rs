@@ -11,6 +11,9 @@ use std;
 
 /// Ignore candidates with a too big bound in tests.
 const CUT: f64 = 10e8f64;
+/// Maximal number of deadends to accept before failing.
+// TODO(cleanup): tune MAX_DEADEND_RATIO
+const MAX_DEADEND_RATIO: usize = 20;
 
 /// A kernel that can be compiled, benchmarked and used for correctness tests.
 pub trait Kernel<'a>: Sized {
@@ -77,7 +80,7 @@ pub trait Kernel<'a>: Sized {
                 num_runs += 1;
             } else {
                 num_deadends += 1;
-                if num_deadends >= 20 * (1+num_runs) {
+                if num_deadends >= MAX_DEADEND_RATIO * (1+num_runs) {
                     panic!("too many dead-ends for kernel {}", Self::name())
                 }
             }

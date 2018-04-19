@@ -110,3 +110,14 @@ fn saxpy_reference(handle: &CublasHandle, context: &cuda::Context) -> f64 {
         time_cuda(|| check_cublas(cublasSaxpy_v2(handle.0, n, alpha, x, 1, y, 1)))
     }
 }
+
+/// Reference implementation for the matrix-vector multiplication.
+fn saxpy_reference(handle: &CublasHandle, context: &cuda::Context) -> f64 {
+    let n = unwrap!(context.param_as_size("n")) as libc::c_int;
+    let alpha = context.get_param("alpha").raw_ptr() as *const f32;
+    unsafe {
+        let x = get_array("x", context);
+        let y = get_array("y", context);
+        time_cuda(|| check_cublas(cublasSaxpy_v2(handle.0, n, alpha, x, 1, y, 1)))
+    }
+}

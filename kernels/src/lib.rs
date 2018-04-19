@@ -6,6 +6,7 @@ extern crate libc;
 extern crate ndarray;
 extern crate num;
 extern crate num_cpus;
+extern crate rayon;
 extern crate telamon;
 #[macro_use]
 extern crate telamon_utils as utils;
@@ -17,7 +18,8 @@ pub mod statistics;
 
 pub use kernel::Kernel;
 
-use telamon::device::{ArgMap, Context};
+use rayon::prelude::*;
+use telamon::device::{self, ArgMap, Context};
 use telamon::helper::SignatureBuilder;
 use telamon::helper::tensor::DimSize;
 
@@ -32,4 +34,41 @@ fn create_size<'a, AM>(value: i32, name: &'a str,
         builder.scalar(name, value);
         DimSize::Param(name)
     } else { DimSize::Const(value as u32) }
+}
+
+/// Removes tiles of size 1.
+fn cleanup_tiling(tiling: &[u32]) -> Vec<u32> {
+    tiling.iter().cloned().filter(|&t| t > 1).collect()
+}
+
+fn par_iter_product<I1, I2>(i1: I1, i2: I2)
+    -> impl ParallelIterator<Item=(I1::Item, I2::Item)>
+where
+    I1: IntoParallelIterator, I1::Item: Clone + Sync,
+    I2: IntoParallelIterator + Clone + Send + Sync
+{
+    i1.into_par_iter().flat_map(move |x| {
+        i2.clone().into_par_iter().map(move |y| (x.clone(), y))
+    })
+}
+
+/// A scalar that can be used as the data type for tests.
+pub trait Scalar: device::ScalarArgument + ndarray::LinalgScalar
+                + PartialOrd + std::ops::Neg<Output=Self> {
+    /// Returns the amount of allowed error in tests.
+    fn epsilon() -> Self { Self::zero() }
+
+    /// Indicates if the scalar can be considered as zero in the context of error
+    /// checking.
+    fn is_err_ok(self) -> bool {
+        self > Self::epsilon() || -self > Self::epsilon()
+    }
+}
+
+impl Scalar for f32 {
+    fn epsilon() -> Self { 10e-6 }
+}
+
+impl Scalar for f64 {
+    fn epsilon() -> Self { 10e-6 }
 }
