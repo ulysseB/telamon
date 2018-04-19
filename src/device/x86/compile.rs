@@ -3,18 +3,18 @@ use std::fs::File;
 use std::time::Instant;
 use libloading;
 
-pub fn compile(libname: String, source_path: String, lib_path: String) {
+pub fn compile(source_file: File, lib_path: &String) {
     Command::new("gcc")
+        .stdin(source_file)
         .arg("-shared")
         .arg("-fPIC")
         .arg("-o")
-        .arg(format!("{}lib{}.so", lib_path, libname))
-        .arg(source_path)
+        .arg(lib_path)
         .status()
         .expect("Could not gcc for reasons");
 }
 
-pub fn link_and_exec(lib_path: String, fun_name: String) -> f64 {
+pub fn link_and_exec(lib_path: &String, fun_name: &String) -> f64 {
     let lib = libloading::Library::new(lib_path)
         .expect("Library not found");
     unsafe {

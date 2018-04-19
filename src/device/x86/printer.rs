@@ -73,10 +73,10 @@ fn cfg<'a>(fun: &Function, c: &Cfg<'a>, namer: &mut NameMap) -> String {
     match *c {
         Cfg::Root(ref cfgs) => cfg_vec(fun, cfgs, namer),
         Cfg::Loop(ref dim, ref cfgs) => cpu_loop(fun, dim, cfgs, namer),
-        Cfg::Barrier => unimplemented!(),
+        Cfg::Barrier => String::new(),
         Cfg::Instruction(ref i) => inst(i, namer, fun),
         Cfg::ParallelInductionLevel(ref level) =>
-            unimplemented!()
+            String::new(),
     }
 }
 

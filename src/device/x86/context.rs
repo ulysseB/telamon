@@ -8,6 +8,7 @@ use device::x86::cpu::Cpu;
 use device::x86::printer::function;
 use device::x86::api::ArrayArg;
 use explorer;
+use tempfile;
 use ir;
 use std;
 use std::f64;
@@ -63,16 +64,7 @@ impl<'a> device::Context<'a> for Context<'a> {
     fn get_param(&self, name: &str) -> &Argument { self.parameters[name].as_ref() }
 
     fn evaluate(&self, function: &device::Function) -> Result<f64, ()> {
-        //let kernel = Kernel::compile(function, &self.gpu_model, self.executor);
-        //Ok(kernel.evaluate(self)? as f64 / self.gpu_model.smx_clock)
-        let libname = String::from("hello");
-        let libpath = String::from("/tmp/");
-        let mut complete_lib_path = libpath.clone();
-        complete_lib_path.push_str(&libname);
-        let source_path = String::from("template/hello_world.c");
-        compile::compile(libname, source_path, libpath);
-        let time = compile::link_and_exec(complete_lib_path, String::from("hello"));
-        Ok(time)
+        Ok(1.0)
     }
 
     fn async_eval<'b, 'c>(&self, num_workers: usize,
@@ -92,9 +84,9 @@ impl<'a> device::Context<'a> for Context<'a> {
             let eval_thread_name = "Telamon - GPU Evaluation Thread".to_string();
             let res = scope.builder().name(eval_thread_name).spawn(move || {
                 let mut cpt_candidate = 0;
-                while let Ok((candidate, fun_str, callback)) = recv.recv() {
+                while let Ok((candidate, fun_str, fun_name, callback)) = recv.recv() {
                     cpt_candidate += 1;
-                    let eval = dummy_evaluate().unwrap();
+                    let eval = function_evaluate(fun_str, fun_name).unwrap();
                     callback.call(candidate, eval, cpt_candidate);
                 }
             });
@@ -110,45 +102,39 @@ fn create_file(fun_str: String, fun_name: String, filepath: String)
     Ok(())
 }
 
-fn function_evaluate(fun_str: String) -> Result<f64, ()> {
+fn function_evaluate(fun_str: String, fun_name: String) -> Result<f64, ()> {
     // Does not look like a very reliable way to do this...
     // Directory from which we launched the binary, assuming it's telamon for now
-    let mut telamon_path = String::from(std::env::current_dir().unwrap().to_str().unwrap());
-    telamon_path.push_str("/");
-    let libname = String::from("hello");
-    let libpath = String::from("/tmp/");
-    let mut complete_lib_path = libpath.clone();
-    complete_lib_path.push_str("lib");
-    complete_lib_path.push_str(&libname);
-    complete_lib_path.push_str(".so");
-    let mut source_path = telamon_path.clone();
-    source_path.push_str("src/device/x86/template/hello_world.c");
+    let templib_name = tempfile::tempdir().unwrap().path().join("lib_compute.so").to_string_lossy()
+        .into_owned();
     //let source_path = String::from("template/hello_world.c");
-    compile::compile(libname, source_path, libpath);
-    let time = compile::link_and_exec(complete_lib_path, String::from("hello"));
+    let mut source_file = tempfile::tempfile().unwrap();
+    source_file.write_all(fun_str.as_bytes()).unwrap();
+    compile::compile(source_file, &templib_name);
+    let time = compile::link_and_exec(&templib_name, &fun_name);
     Ok(time)
 }
 
-fn dummy_evaluate() -> Result<f64, ()> {
-    // Does not look like a very reliable way to do this...
-    // Directory from which we launched the binary, assuming it's telamon for now
-    let mut telamon_path = String::from(std::env::current_dir().unwrap().to_str().unwrap());
-    telamon_path.push_str("/");
-    let libname = String::from("hello");
-    let libpath = String::from("/tmp/");
-    let mut complete_lib_path = libpath.clone();
-    complete_lib_path.push_str("lib");
-    complete_lib_path.push_str(&libname);
-    complete_lib_path.push_str(".so");
-    let mut source_path = telamon_path.clone();
-    source_path.push_str("src/device/x86/template/hello_world.c");
-    //let source_path = String::from("template/hello_world.c");
-    compile::compile(libname, source_path, libpath);
-    let time = compile::link_and_exec(complete_lib_path, String::from("hello"));
-    Ok(time)
-}
+//fn dummy_evaluate() -> Result<f64, ()> {
+//    // Does not look like a very reliable way to do this...
+//    // Directory from which we launched the binary, assuming it's telamon for now
+//    let mut telamon_path = String::from(std::env::current_dir().unwrap().to_str().unwrap());
+//    telamon_path.push_str("/");
+//    let libname = String::from("hello");
+//    let libpath = String::from("/tmp/");
+//    let mut complete_lib_path = libpath.clone();
+//    complete_lib_path.push_str("lib");
+//    complete_lib_path.push_str(&libname);
+//    complete_lib_path.push_str(".so");
+//    let mut source_path = telamon_path.clone();
+//    source_path.push_str("src/device/x86/template/hello_world.c");
+//    //let source_path = String::from("template/hello_world.c");
+//    compile::compile(source_path, complete_lib_path.clone());
+//    let time = compile::link_and_exec(complete_lib_path, String::from("hello"));
+//    Ok(time)
+//}
 
-type AsyncPayload<'a, 'b> = (explorer::Candidate<'a>,  String, AsyncCallback<'a, 'b>);
+type AsyncPayload<'a, 'b> = (explorer::Candidate<'a>,  String, String, AsyncCallback<'a, 'b>);
 
 pub struct AsyncEvaluator<'a, 'b> where 'a: 'b {
     context: &'b Context<'b>,
@@ -159,11 +145,12 @@ impl<'a, 'b, 'c> device::AsyncEvaluator<'a, 'c> for AsyncEvaluator<'a, 'b>
     where 'a: 'b, 'c: 'b
 {
     fn add_kernel(&mut self, candidate: explorer::Candidate<'a>, callback: device::AsyncCallback<'a, 'c> ) {
-        let fun_str;
+        let (fun_str, fun_name);
         {
             let dev_fun = device::Function::build(&candidate.space);
+            fun_name = dev_fun.name.clone();
             fun_str = function(&dev_fun);
         }
-        self.sender.send((candidate, fun_str, callback));
+        self.sender.send((candidate, fun_str, fun_name, callback));
     }
 }
