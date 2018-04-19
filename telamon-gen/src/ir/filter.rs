@@ -380,6 +380,7 @@ impl Adaptable for Condition {
 
 /// A compariason operator.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(C)]
 pub enum CmpOp { Lt, Gt, Leq, Geq, Eq, Neq }
 
 impl CmpOp {

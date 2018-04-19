@@ -19,7 +19,7 @@ mod ast;
 mod constraint;
 mod flat_filter;
 mod ir;
-mod lexer;
+pub mod lexer;
 generated_file!(parser);
 mod print;
 mod truth_table;

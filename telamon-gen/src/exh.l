@@ -53,14 +53,20 @@
         DIVIDE,
     };
 
+    // Indicates whether a counter sums or adds.
     enum counter_kind {
         ADD,
         MUL,
     };
 
+    // Indicates how a counter exposes how its maximum value.
+    // The variants are ordered by increasing amount of information available.
     enum counter_visibility {
+        // Only the minimal value is computed and stored.
         NOMAX,
+        // Both the min and max are stored, but only the min is exposed.
         HIDDENMAX,
+        // Both the min and the max value are exposed.
         FULL,
     };
 

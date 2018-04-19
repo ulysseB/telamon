@@ -3,10 +3,13 @@
 mod ffi;
 mod token;
 
-use ir;
 use std::{io,ptr};
 
-pub use self::token::Token;
+pub use self::token::Token;    
+
+use libc;
+
+use std::ffi::CStr;
 
 use self::ffi::{
     YyScan,
@@ -18,8 +21,7 @@ use self::ffi::{
     yylex,
     YyToken,
     yylval,
-
-    CmpOp
+    yyget_text,
 };
 
 pub struct Lexer {
@@ -31,7 +33,13 @@ impl Lexer {
     pub fn new(input: &mut io::Read) -> Self {
         let mut buffer = Vec::new();
 
-        input.read_to_end(&mut buffer);
+        input.read_to_end(&mut buffer).unwrap();
+        Lexer::from(buffer)
+    }
+}
+
+impl From<Vec<u8>> for Lexer {
+    fn from(buffer:Vec<u8>) -> Self {
         unsafe {
             let scanner: YyScan = ptr::null();
 
@@ -59,7 +67,51 @@ impl Iterator for Lexer {
     fn next(&mut self) -> Option<Self::Item> {
         unsafe {
             match yylex(self.scanner) {
-                YyToken::EOF => None,
+                YyToken::InvalidToken => {
+                    let out = ffi::yyget_text(self.scanner);
+
+                    CStr::from_ptr(out)
+                         .to_str().ok()
+                         .and_then(|s: &str| Some(Token::InvalidToken(s.to_owned())))
+                },
+                YyToken::Blank => None,
+                // C_CommentBeg
+                YyToken::ChoiceIdent => {
+                    let out = ffi::yyget_text(self.scanner);
+
+                    CStr::from_ptr(out)
+                         .to_str().ok()
+                         .and_then(|s: &str| Some(Token::ChoiceIdent(s.to_owned())))
+                },
+                YyToken::SetIdent => {
+                    let out = ffi::yyget_text(self.scanner);
+
+                    CStr::from_ptr(out)
+                         .to_str().ok()
+                         .and_then(|s: &str| Some(Token::SetIdent(s.to_owned())))
+                },
+                YyToken::ValueIdent => {
+                    let out = ffi::yyget_text(self.scanner);
+
+                    CStr::from_ptr(out)
+                         .to_str().ok()
+                         .and_then(|s: &str| Some(Token::ValueIdent(s.to_owned())))
+                },
+                YyToken::Var => {
+                    let out = ffi::yyget_text(self.scanner);
+
+                    CStr::from_ptr(out.offset(1))
+                         .to_str().ok()
+                         .and_then(|s: &str| Some(Token::Var(s.to_owned())))
+                },
+                YyToken::Code => {
+                    let out = ffi::yyget_text(self.scanner);
+
+                    *out.offset(libc::strlen(out) as _) = b'\0' as _;
+                    CStr::from_ptr(out.offset(1))
+                         .to_str().ok()
+                         .and_then(|s: &str| Some(Token::Code(s.to_owned())))
+                },
                 YyToken::Alias => Some(Token::Alias),
                 YyToken::Counter => Some(Token::Counter),
                 YyToken::Define => Some(Token::Define),
@@ -68,22 +120,21 @@ impl Iterator for Lexer {
                 YyToken::In => Some(Token::In),
                 YyToken::Is => Some(Token::Is),
                 YyToken::Not => Some(Token::Not),
-//                YyToken::Product => Some(Token::Product),
-//                YyToken::Require => Some(Token::RequireKind),
+                YyToken::Require => Some(Token::Require),
                 YyToken::Requires => Some(Token::Requires),
-//              YyToken::Sum => Some(Token::RequireKind),
+                YyToken::CounterKind => Some(Token::CounterKind(yylval.counter_kind)),
                 YyToken::Value => Some(Token::Value),
                 YyToken::When => Some(Token::When),
                 YyToken::Trigger => Some(Token::Trigger),
-//                YyToken::Half => Some(Token::CounterVisibility),
-//                YyToken::HIDDEN => Some(Token::CounterVisibility),
+                YyToken::CounterVisibility => Some(Token::CounterVisibility(yylval.counter_visibility)),
                 YyToken::Base => Some(Token::Base),
+                YyToken::SetDefkey => Some(Token::SetDefKey(yylval.set_def_key)),
                 YyToken::Set => Some(Token::Set),
                 YyToken::SubsetOf => Some(Token::SubsetOf),
                 YyToken::Disjoint => Some(Token::Disjoint),
                 YyToken::Quotient => Some(Token::Quotient),
                 YyToken::Of => Some(Token::Of),
-
+                YyToken::Bool => Some(Token::Bool(yylval.boolean)),
                 YyToken::Colon => Some(Token::Colon),
                 YyToken::Comma => Some(Token::Comma),
                 YyToken::LParen => Some(Token::LParen),
@@ -91,17 +142,7 @@ impl Iterator for Lexer {
                 YyToken::BitOr => Some(Token::BitOr),
                 YyToken::Or => Some(Token::Or),
                 YyToken::And => Some(Token::And),
-                YyToken::CmpOp => {
-                    match yylval.cmp_op {
-                        CmpOp::Gt => Some(Token::CmpOp(ir::CmpOp::Gt)),
-                        CmpOp::Lt => Some(Token::CmpOp(ir::CmpOp::Lt)),
-                        CmpOp::Geq => Some(Token::CmpOp(ir::CmpOp::Geq)),
-                        CmpOp::Leq => Some(Token::CmpOp(ir::CmpOp::Leq)),
-                        _ => None,
-                    }
-                },
-//                YyToken::Equals => Some(Token::CmpOp(ir::CmpOp::Eq)),
-//                YyToken::NotEquals => Some(Token::CmpOp(ir::CmpOp::Neq)),
+                YyToken::CmpOp => Some(Token::CmpOp(yylval.cmp_op)),
                 YyToken::Equal => Some(Token::Equal),
 //                YyToken::Doc => Some(Token::Doc),
                 YyToken::End => Some(Token::End),
@@ -109,7 +150,10 @@ impl Iterator for Lexer {
                 YyToken::AntiSymmetric => Some(Token::AntiSymmetric),
                 YyToken::Arrow => Some(Token::Arrow),
                 YyToken::Divide => Some(Token::Divide),
-                _ => unimplemented!(),
+                YyToken::EOF => None,
+                YyToken::Doc => {
+                    None
+                },
             }
         }
     }

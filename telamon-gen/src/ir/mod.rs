@@ -247,6 +247,7 @@ impl Default for IrDesc {
 
 /// Indicates whether a counter sums or adds.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[repr(C)]
 pub enum CounterKind { Add, Mul }
 
 impl CounterKind {
