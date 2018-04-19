@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["estimate_mean","Computes the mean and the confidence interval of the data set. The requested degree of confidence must be between 0 and 1."],["mean","Computes the mean of a data set."]],"struct":[["MeanEstimate","Estimates a mean within a confidence interval."]]});

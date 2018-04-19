@@ -227,7 +227,7 @@
 <span class="doccomment">/// the given time (or at whatever point we decided to stop the search - potentially after an</span>
 <span class="doccomment">/// exhaustive search)</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">find_best</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>, 
-                         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>, 
+                         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">Context</span>,
                          <span class="ident">search_space</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> { 
     <span class="kw">match</span> <span class="ident">config</span>.<span class="ident">algorithm</span> {
         <span class="ident">config</span>::<span class="ident">SearchAlgorithm</span>::<span class="ident">MultiArmedBandit</span>(<span class="kw-2">ref</span> <span class="ident">band_config</span>) <span class="op">=&gt;</span> {

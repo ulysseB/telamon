@@ -34,7 +34,7 @@
     <nav class="sidebar">
         <div class="sidebar-menu">&#9776;</div>
         
-        <p class='location'>Module device</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#traits">Traits</a></li><li><a href="#types">Type Definitions</a></li></ul></div><p class='location'><a href='../index.html'>telamon</a></p><script>window.sidebarCurrent = {name: 'device', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script></div>
+        <p class='location'>Module device</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li><li><a href="#types">Type Definitions</a></li></ul></div><p class='location'><a href='../index.html'>telamon</a></p><script>window.sidebarCurrent = {name: 'device', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script></div>
     </nav>
 
     <div class="theme-picker">
@@ -63,10 +63,18 @@
 </div><h2 id='traits' class='section-header'><a href="#traits">Traits</a></h2>
 <table>
                        <tr class=' module-item'>
-                           <td><a class="trait" href="trait.Argument.html"
-                                  title='trait telamon::device::Argument'>Argument</a></td>
+                           <td><a class="trait" href="trait.ArgMap.html"
+                                  title='trait telamon::device::ArgMap'>ArgMap</a></td>
                            <td class='docblock-short'>
-                                <p>Represents a value that can be used as a <code>Function</code> argument.</p>
+                                <p>Binds the argument names to their values.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="trait" href="trait.ArrayArgument.html"
+                                  title='trait telamon::device::ArrayArgument'>ArrayArgument</a></td>
+                           <td class='docblock-short'>
+                                <p>Represents an array on the device.</p>
 
                            </td>
                        </tr>
@@ -91,6 +99,32 @@
                                   title='trait telamon::device::Device'>Device</a></td>
                            <td class='docblock-short'>
                                 <p>Holds the specifications of a target.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="trait" href="trait.ScalarArgument.html"
+                                  title='trait telamon::device::ScalarArgument'>ScalarArgument</a></td>
+                           <td class='docblock-short'>
+                                <p>Represents a value that can be used as a <code>Function</code> argument. Must ensures the type
+is a scalar and does not contains any reference.</p>
+
+                           </td>
+                       </tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.read_array.html"
+                                  title='fn telamon::device::read_array'>read_array</a></td>
+                           <td class='docblock-short'>
+                                <p>Copies the array to the host, interpreting it as an array of <code>T</code>.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.write_array.html"
+                                  title='fn telamon::device::write_array'>write_array</a></td>
+                           <td class='docblock-short'>
+                                <p>Copies an values to the device array from the host array given as argument.</p>
 
                            </td>
                        </tr></table><h2 id='types' class='section-header'><a href="#types">Type Definitions</a></h2>

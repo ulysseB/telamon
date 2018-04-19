@@ -334,33 +334,98 @@
 <span id="277">277</span>
 <span id="278">278</span>
 <span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Linera algebra kernels.</span>
-<span class="kw">use</span> <span class="ident">create_size</span>;
+<span class="kw">use</span> {<span class="ident">Scalar</span>, <span class="ident">create_size</span>, <span class="ident">par_iter_product</span>, <span class="ident">cleanup_tiling</span>};
+<span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">kernel</span>::<span class="ident">Kernel</span>;
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span><span class="op">=</span><span class="string">&quot;cuda&quot;</span>)]</span>
-<span class="kw">use</span> <span class="ident">kernel</span>::<span class="ident">CudaKernel</span>;
+<span class="kw">use</span> <span class="ident">ndarray</span>::{<span class="ident">Array1</span>, <span class="ident">ArrayD</span>};
+<span class="kw">use</span> <span class="ident">rayon</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">std</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::{<span class="ident">device</span>, <span class="ident">ir</span>};
-<span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">helper</span>::{<span class="ident">Builder</span>, <span class="ident">SignatureBuilder</span>};
+<span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">helper</span>::{<span class="self">self</span>, <span class="ident">Builder</span>, <span class="ident">SignatureBuilder</span>};
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">helper</span>::<span class="ident">tensor</span>::{<span class="ident">Tensor</span>, <span class="ident">VirtualTensor</span>};
-<span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">search_space</span>::<span class="ident">SearchSpace</span>;
-
+<span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">search_space</span>::{<span class="self">self</span>, <span class="ident">Action</span>, <span class="ident">SearchSpace</span>};
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">ir</span>::<span class="ident">DimMapScope</span>::<span class="ident">Global</span> <span class="kw">as</span> <span class="ident">GlobalScope</span>;
+<span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
-<span class="doccomment">/// Computes `y = alpha*x+y`.</span>
-<span class="kw">struct</span> <span class="ident">Axpy</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> { <span class="ident">n</span>: <span class="ident">i32</span>, <span class="ident">x</span>: <span class="ident">Tensor</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">y</span>: <span class="ident">Tensor</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> }
+<span class="doccomment">/// Computes `z = alpha*x+y`.</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Axpy</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span><span class="op">&gt;</span> <span class="kw">where</span> <span class="ident">S</span>: <span class="ident">Scalar</span> {
+    <span class="ident">n</span>: <span class="ident">i32</span>,
+    <span class="ident">x</span>: <span class="ident">Tensor</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span><span class="op">&gt;</span>,
+    <span class="ident">y</span>: <span class="ident">Tensor</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span><span class="op">&gt;</span>,
+    <span class="ident">z</span>: <span class="ident">Tensor</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span><span class="op">&gt;</span>,
+}
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Kernel</span> <span class="kw">for</span> <span class="ident">Axpy</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span><span class="op">&gt;</span> <span class="ident">Kernel</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Axpy</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span><span class="op">&gt;</span> <span class="kw">where</span> <span class="ident">S</span>: <span class="ident">Scalar</span> {
     <span class="kw">type</span> <span class="ident">Parameters</span> <span class="op">=</span> <span class="ident">i32</span>;
+    <span class="kw">type</span> <span class="ident">ExpectedOutput</span> <span class="op">=</span> <span class="ident">ArrayD</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>;
 
     <span class="kw">fn</span> <span class="ident">name</span>() <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> { <span class="string">&quot;axpy&quot;</span> }
 
-    <span class="kw">fn</span> <span class="ident">build_signature</span>(<span class="ident">n</span>: <span class="ident">i32</span>, <span class="ident">generic</span>: <span class="ident">bool</span>, <span class="ident">builder</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SignatureBuilder</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">build_signature</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>(<span class="ident">n</span>: <span class="ident">i32</span>, <span class="ident">generic</span>: <span class="ident">bool</span>,
+                           <span class="ident">builder</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SignatureBuilder</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="self">Self</span>
+        <span class="kw">where</span> <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span> <span class="op">+</span> <span class="lifetime">&#39;a</span>
+    {
         <span class="kw">let</span> <span class="ident">n_size</span> <span class="op">=</span> <span class="ident">create_size</span>(<span class="ident">n</span>, <span class="string">&quot;n&quot;</span>, <span class="ident">generic</span>, <span class="ident">builder</span>);
-        <span class="ident">builder</span>.<span class="ident">param</span>(<span class="string">&quot;alpha&quot;</span>, <span class="number">1.0</span>);
-        <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">Tensor</span>::<span class="ident">new</span>(<span class="string">&quot;x&quot;</span>, <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">n_size</span>], <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">32</span>), <span class="bool-val">true</span>, <span class="ident">builder</span>);
-        <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="ident">Tensor</span>::<span class="ident">new</span>(<span class="string">&quot;y&quot;</span>, <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">n_size</span>], <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">32</span>), <span class="bool-val">false</span>, <span class="ident">builder</span>);
-        <span class="ident">Axpy</span> { <span class="ident">n</span>, <span class="ident">x</span>, <span class="ident">y</span> }
+        <span class="ident">builder</span>.<span class="ident">scalar</span>(<span class="string">&quot;alpha&quot;</span>, <span class="ident">S</span>::<span class="ident">one</span>());
+        <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">tensor</span>::<span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="string">&quot;x&quot;</span>, <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">n_size</span>], <span class="bool-val">true</span>);
+        <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">tensor</span>::<span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="string">&quot;y&quot;</span>, <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">n_size</span>], <span class="bool-val">true</span>);
+        <span class="kw">let</span> <span class="ident">z</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">tensor</span>::<span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="string">&quot;z&quot;</span>, <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">n_size</span>], <span class="bool-val">false</span>);
+        <span class="ident">Axpy</span> { <span class="ident">n</span>, <span class="ident">x</span>, <span class="ident">y</span>, <span class="ident">z</span> }
     }
 
     <span class="kw">fn</span> <span class="ident">build_body</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">ir</span>::<span class="ident">Signature</span>, <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">device</span>::<span class="ident">Device</span>)
@@ -376,71 +441,112 @@
         <span class="kw">let</span> <span class="ident">x_op</span> <span class="op">=</span> <span class="ident">ld_x</span>.<span class="ident">dim_map</span>(<span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">mad_dim</span>], <span class="ident">GlobalScope</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
         <span class="kw">let</span> <span class="ident">y_op</span> <span class="op">=</span> <span class="ident">ld_y</span>.<span class="ident">dim_map</span>(<span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">mad_dim</span>], <span class="ident">GlobalScope</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
         <span class="kw">let</span> <span class="ident">mad</span> <span class="op">=</span> <span class="ident">VirtualTensor</span>::<span class="ident">new</span>(<span class="ident">builder</span>.<span class="ident">mad</span>(<span class="kw-2">&amp;</span><span class="ident">x_op</span>, <span class="kw-2">&amp;</span><span class="string">&quot;alpha&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">y_op</span>), <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">mad_dim</span>]);
-        <span class="ident">mad</span>.<span class="ident">store</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">y</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
+        <span class="ident">mad</span>.<span class="ident">store</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">z</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
 
         <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">builder</span>.<span class="ident">get</span>()]
     }
 
-    <span class="kw">fn</span> <span class="ident">check_result</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="macro">unimplemented</span><span class="macro">!</span>() <span class="comment">// FIXME</span>
+    <span class="kw">fn</span> <span class="ident">get_expected_output</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">ArrayD</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">x</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>) <span class="op">+</span> <span class="self">self</span>.<span class="ident">y</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>)
+    }
+
+    <span class="kw">fn</span> <span class="ident">check_result</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">expected</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>::<span class="ident">ExpectedOutput</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>)
+        <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span>
+    {
+        <span class="kw">let</span> <span class="ident">z</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">z</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>);
+        <span class="kw">if</span> <span class="ident">z</span>.<span class="ident">iter</span>().<span class="ident">zip_eq</span>(<span class="ident">expected</span>).<span class="ident">any</span>(<span class="op">|</span>(<span class="kw-2">&amp;</span><span class="ident">z0</span>, <span class="kw-2">&amp;</span><span class="ident">z1</span>)<span class="op">|</span> (<span class="ident">z0</span><span class="op">-</span><span class="ident">z1</span>).<span class="ident">is_err_ok</span>()) {
+            <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">x</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>);
+            <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">y</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>);
+            <span class="prelude-val">Err</span>(<span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;expected: {}, got {} with x = {} and y = {}&quot;</span>, <span class="ident">expected</span>, <span class="ident">z</span>, <span class="ident">x</span>, <span class="ident">y</span>))
+        } <span class="kw">else</span> { <span class="prelude-val">Ok</span>(()) }
     }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span><span class="op">=</span><span class="string">&quot;cuda&quot;</span>)]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">CudaKernel</span> <span class="kw">for</span> <span class="ident">Axpy</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">benchmark_fast</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">f64</span> {
-        <span class="comment">// FIXME: need to allocate events. Should we reuse arrays ?</span>
-        <span class="macro">unimplemented</span><span class="macro">!</span>()
+<span class="doccomment">/// Computes `y = A.x`.</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MatVec</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span><span class="op">&gt;</span> <span class="kw">where</span> <span class="ident">S</span>: <span class="ident">Scalar</span> {
+    <span class="ident">m</span>: <span class="ident">i32</span>,
+    <span class="ident">n</span>: <span class="ident">i32</span>,
+    <span class="ident">x</span>: <span class="ident">Tensor</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span><span class="op">&gt;</span>,
+    <span class="ident">a</span>: <span class="ident">Tensor</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span><span class="op">&gt;</span>,
+    <span class="ident">y</span>: <span class="ident">Tensor</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span><span class="op">&gt;</span>,
+}
+
+<span class="kw">impl</span> <span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span><span class="op">&gt;</span> <span class="ident">Kernel</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MatVec</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span><span class="op">&gt;</span> <span class="kw">where</span> <span class="ident">S</span>: <span class="ident">Scalar</span> {
+    <span class="kw">type</span> <span class="ident">Parameters</span> <span class="op">=</span> (<span class="ident">i32</span>, <span class="ident">i32</span>);
+    <span class="kw">type</span> <span class="ident">ExpectedOutput</span> <span class="op">=</span> <span class="ident">Array1</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>;
+
+    <span class="kw">fn</span> <span class="ident">name</span>() <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> { <span class="string">&quot;mv&quot;</span> }
+
+    <span class="kw">fn</span> <span class="ident">build_signature</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>((<span class="ident">m</span>, <span class="ident">n</span>): (<span class="ident">i32</span>, <span class="ident">i32</span>), <span class="ident">generic</span>: <span class="ident">bool</span>,
+                           <span class="ident">builder</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SignatureBuilder</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="self">Self</span>
+        <span class="kw">where</span> <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span> <span class="op">+</span> <span class="lifetime">&#39;a</span>
+    {
+        <span class="kw">let</span> <span class="ident">m_size</span> <span class="op">=</span> <span class="ident">create_size</span>(<span class="ident">m</span>, <span class="string">&quot;m&quot;</span>, <span class="ident">generic</span>, <span class="ident">builder</span>);
+        <span class="kw">let</span> <span class="ident">n_size</span> <span class="op">=</span> <span class="ident">create_size</span>(<span class="ident">n</span>, <span class="string">&quot;n&quot;</span>, <span class="ident">generic</span>, <span class="ident">builder</span>);
+        <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">tensor</span>::<span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="string">&quot;x&quot;</span>, <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">n_size</span>], <span class="bool-val">true</span>);
+        <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">tensor</span>::<span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="string">&quot;a&quot;</span>, <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">m_size</span>, <span class="ident">n_size</span>], <span class="bool-val">true</span>);
+        <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">tensor</span>::<span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="string">&quot;y&quot;</span>, <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">m_size</span>], <span class="bool-val">false</span>);
+        <span class="ident">MatVec</span> { <span class="ident">m</span>, <span class="ident">n</span>, <span class="ident">x</span>, <span class="ident">a</span>, <span class="ident">y</span> }
+    }
+
+    <span class="kw">fn</span> <span class="ident">build_body</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">ir</span>::<span class="ident">Signature</span>, <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">device</span>::<span class="ident">Device</span>)
+        <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;&gt;</span>
+    {
+        <span class="comment">// Ensure the matrix is big enough for the proposed tiling scheme.</span>
+        <span class="kw">let</span> <span class="ident">m_log2</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">log2_u32</span>(<span class="self">self</span>.<span class="ident">m</span> <span class="kw">as</span> <span class="ident">u32</span>), <span class="string">&quot;`m` is not a power of 2&quot;</span>) <span class="kw">as</span> <span class="ident">i32</span>;
+        <span class="kw">let</span> <span class="ident">n_log2</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">log2_u32</span>(<span class="self">self</span>.<span class="ident">n</span> <span class="kw">as</span> <span class="ident">u32</span>), <span class="string">&quot;`n` is not a power of 2&quot;</span>) <span class="kw">as</span> <span class="ident">i32</span>;
+        <span class="kw">let</span> <span class="ident">max_t2</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">min</span>(<span class="ident">n_log2</span>, <span class="number">5</span>);
+        <span class="kw">let</span> <span class="ident">max_t1</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">min</span>(<span class="ident">m_log2</span><span class="op">-</span><span class="ident">max_t2</span>, <span class="number">8</span>);
+        <span class="comment">// TODO(search_space): try independent tiling on `m` and `n`</span>
+        <span class="kw">let</span> <span class="ident">tilings</span> <span class="op">=</span> <span class="ident">par_iter_product</span>(<span class="number">0</span>..<span class="ident">max_t1</span>, <span class="number">0</span>..<span class="ident">max_t2</span>);
+        <span class="comment">//let tilings = std::iter::once((5, 2));</span>
+        <span class="ident">tilings</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">tile_m</span><span class="op">|</span> {
+            <span class="kw">let</span> <span class="ident">m_tiling</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">cleanup_tiling</span>(<span class="kw-2">&amp;</span>[<span class="number">1</span> <span class="op">&lt;&lt;</span> <span class="ident">tile_m</span>.<span class="number">0</span>, <span class="number">1</span> <span class="op">&lt;&lt;</span> <span class="ident">tile_m</span>.<span class="number">1</span>]);
+            <span class="kw">let</span> <span class="ident">n_tiling</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">cleanup_tiling</span>(<span class="kw-2">&amp;</span>[<span class="number">1</span> <span class="op">&lt;&lt;</span> <span class="ident">tile_m</span>.<span class="number">0</span>]);
+
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">Builder</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">device</span>);
+            <span class="kw">let</span> <span class="ident">ld_x</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">x</span>.<span class="ident">load</span>(<span class="kw-2">&amp;</span>[<span class="ident">n_tiling</span>], <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
+            <span class="kw">let</span> <span class="ident">ld_a</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">a</span>.<span class="ident">load</span>(<span class="kw-2">&amp;</span>[<span class="ident">m_tiling</span>, <span class="ident">n_tiling</span>], <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
+            <span class="kw">let</span> <span class="ident">init_dim_m</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">open_mapped_dim</span>(<span class="kw-2">&amp;</span><span class="ident">ld_a</span>[<span class="number">0</span>]);
+            <span class="kw">let</span> <span class="ident">init</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">mov</span>(<span class="kw-2">&amp;</span><span class="number">0f32</span>);
+            <span class="kw">let</span> <span class="ident">acc_dim_m</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">open_mapped_dim</span>(<span class="kw-2">&amp;</span><span class="ident">init_dim_m</span>);
+            <span class="kw">let</span> <span class="ident">acc_dim_n</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">open_mapped_dim</span>(<span class="kw-2">&amp;</span><span class="ident">ld_x</span>[<span class="number">0</span>]);
+            <span class="kw">let</span> <span class="ident">a_op</span> <span class="op">=</span> <span class="ident">ld_a</span>.<span class="ident">dim_map</span>(<span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">acc_dim_m</span>, <span class="kw-2">&amp;</span><span class="ident">acc_dim_n</span>], <span class="ident">GlobalScope</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
+            <span class="kw">let</span> <span class="ident">x_op</span> <span class="op">=</span> <span class="ident">ld_x</span>.<span class="ident">dim_map</span>(<span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">acc_dim_n</span>], <span class="ident">GlobalScope</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
+            <span class="kw">let</span> <span class="ident">acc</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">mad</span>(<span class="kw-2">&amp;</span><span class="ident">a_op</span>, <span class="kw-2">&amp;</span><span class="ident">x_op</span>, <span class="kw-2">&amp;</span><span class="ident">helper</span>::<span class="ident">Reduce</span>(<span class="ident">init</span>));
+            <span class="ident">builder</span>.<span class="ident">close_dim</span>(<span class="kw-2">&amp;</span><span class="ident">acc_dim_n</span>);
+            <span class="kw">let</span> <span class="ident">sum</span> <span class="op">=</span> <span class="ident">VirtualTensor</span>::<span class="ident">new</span>(<span class="ident">acc</span>, <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">acc_dim_m</span>]);
+            <span class="kw">let</span> <span class="ident">st_y</span> <span class="op">=</span> <span class="ident">sum</span>.<span class="ident">store</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">y</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
+
+            <span class="ident">builder</span>.<span class="ident">order</span>(<span class="kw-2">&amp;</span><span class="ident">acc_dim_n</span>, <span class="kw-2">&amp;</span><span class="ident">st_y</span>.<span class="ident">inst</span>(), <span class="ident">search_space</span>::<span class="ident">Order</span>::<span class="ident">BEFORE</span>);
+            <span class="comment">// TODO(search_space): explore inst flags</span>
+            <span class="ident">builder</span>.<span class="ident">action</span>(<span class="ident">Action</span>::<span class="ident">InstFlag</span>(<span class="ident">ld_x</span>.<span class="ident">inst</span>(), <span class="ident">search_space</span>::<span class="ident">InstFlag</span>::<span class="ident">MEM_CG</span>));
+            <span class="ident">builder</span>.<span class="ident">action</span>(<span class="ident">Action</span>::<span class="ident">InstFlag</span>(<span class="ident">ld_a</span>.<span class="ident">inst</span>(), <span class="ident">search_space</span>::<span class="ident">InstFlag</span>::<span class="ident">MEM_CG</span>));
+            <span class="ident">builder</span>.<span class="ident">action</span>(<span class="ident">Action</span>::<span class="ident">InstFlag</span>(<span class="ident">st_y</span>.<span class="ident">inst</span>(), <span class="ident">search_space</span>::<span class="ident">InstFlag</span>::<span class="ident">MEM_CS</span>));
+            <span class="ident">builder</span>.<span class="ident">get</span>()
+        }).<span class="ident">collect</span>()
+    }
+
+
+    <span class="kw">fn</span> <span class="ident">get_expected_output</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">Array1</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">a_shape</span> <span class="op">=</span> (<span class="self">self</span>.<span class="ident">m</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="self">self</span>.<span class="ident">n</span> <span class="kw">as</span> <span class="ident">usize</span>);
+        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">a</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>).<span class="ident">into_shape</span>(<span class="ident">a_shape</span>))
+            .<span class="ident">dot</span>(<span class="kw-2">&amp;</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">x</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>).<span class="ident">into_shape</span>(<span class="self">self</span>.<span class="ident">n</span> <span class="kw">as</span> <span class="ident">usize</span>)))
+    }
+
+    <span class="kw">fn</span> <span class="ident">check_result</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">expected</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>::<span class="ident">ExpectedOutput</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>)
+        <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span>
+    {
+        <span class="kw">let</span> <span class="ident">y</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">y</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>).<span class="ident">into_shape</span>(<span class="self">self</span>.<span class="ident">m</span> <span class="kw">as</span> <span class="ident">usize</span>));
+        <span class="kw">if</span> <span class="ident">y</span>.<span class="ident">iter</span>().<span class="ident">zip_eq</span>(<span class="ident">expected</span>).<span class="ident">any</span>(<span class="op">|</span>(<span class="kw-2">&amp;</span><span class="ident">y0</span>, <span class="kw-2">&amp;</span><span class="ident">y1</span>)<span class="op">|</span> (<span class="ident">y0</span><span class="op">-</span><span class="ident">y1</span>).<span class="ident">is_err_ok</span>()) {
+            <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">x</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>);
+            <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">a</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>);
+            <span class="prelude-val">Err</span>(<span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;expected: {}, got {} with x = {} and a = {}&quot;</span>, <span class="ident">expected</span>, <span class="ident">y</span>, <span class="ident">x</span>, <span class="ident">a</span>))
+        } <span class="kw">else</span> { <span class="prelude-val">Ok</span>(()) }
     }
 }
 
 <span class="comment">/*
-/// Generates code for `y = A.x`.
-fn mv(m: i32, n: i32, data_type: ir::Type, generic: bool, executor: &amp;cuda::Executor) {
-    let (a, x, y);
-    let mut context = cuda::Context::new(&amp;executor);
-    let signature = {
-        let mut builder = helper::SignatureBuilder::new(&quot;mv&quot;, &amp;mut context);
-        let m = create_size(m, &quot;m&quot;, generic, &amp;mut builder);
-        let n = create_size(n, &quot;n&quot;, generic, &amp;mut builder);
-        a = Tensor::new(&quot;a&quot;, vec![m, n], data_type, true, &amp;mut builder);
-        x = Tensor::new(&quot;x&quot;, vec![n], data_type, true, &amp;mut builder);
-        y = Tensor::new(&quot;y&quot;, vec![m], data_type, false, &amp;mut builder);
-        builder.get()
-    };
-    assert!(m &gt;= (1 &lt;&lt; 13));
-    assert!(n &gt;= (1 &lt;&lt; 4));
-    // TODO(search_space): try independent tiling on `m` and `n`
-    let tilings = par_iter_product(0i32..8, 0i32..5);
-    //let tilings = std::iter::once((5, 2));
-    let candidates = tilings.map(|tile_m| {
-        let m_tiling = &amp;cleanup_tiling(&amp;[1 &lt;&lt; tile_m.0, 1 &lt;&lt; tile_m.1]);
-        let n_tiling = &amp;cleanup_tiling(&amp;[1 &lt;&lt; tile_m.0]);
-
-        let mut builder = helper::Builder::new(&amp;signature, context.device());
-        let ld_x = x.load(&amp;[n_tiling], &amp;mut builder);
-        let ld_a = a.load(&amp;[m_tiling, n_tiling], &amp;mut builder);
-        let init_dim_m = builder.open_mapped_dim(&amp;ld_a[0]);
-        let init = builder.mov(&amp;0f32);
-        let acc_dim_m = builder.open_mapped_dim(&amp;init_dim_m);
-        let acc_dim_n = builder.open_mapped_dim(&amp;ld_x[0]);
-        let a_op = ld_a.dim_map(&amp;[&amp;acc_dim_m, &amp;acc_dim_n], GlobalScope, &amp;mut builder);
-        let x_op = ld_x.dim_map(&amp;[&amp;acc_dim_n], GlobalScope, &amp;mut builder);
-        let acc = builder.mad(&amp;a_op, &amp;x_op, &amp;helper::Reduce(init));
-        builder.close_dim(&amp;acc_dim_n);
-        let sum = VirtualTensor::new(acc, vec![acc_dim_m]);
-        let st_y = sum.store(&amp;y, &amp;mut builder);
-
-        builder.order(&amp;acc_dim_n, &amp;st_y.inst(), search_space::Order::BEFORE);
-        // TODO(search_space): explore inst flags
-        builder.action(Action::InstFlag(ld_x.inst(), search_space::InstFlag::MEM_CG));
-        builder.action(Action::InstFlag(ld_a.inst(), search_space::InstFlag::MEM_CG));
-        builder.action(Action::InstFlag(st_y.inst(), search_space::InstFlag::MEM_CS));
-        builder.get()
-    }).collect();
-    gen_best(candidates, &amp;context, &amp;file_name(&quot;mv&quot;, data_type, &amp;[m, n], generic));
-}
-
 /// Generates code for &quot;y = (_alpha.A + _beta.B).x&quot;
 fn gesummv(m: i32, n: i32, data_type: ir::Type, generic: bool, executor: &amp;cuda::Executor) {
     let (a, b, x, y);

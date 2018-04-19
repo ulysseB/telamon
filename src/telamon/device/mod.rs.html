@@ -157,8 +157,8 @@
 <span class="kw">mod</span> <span class="ident">argument</span>;
 <span class="kw">mod</span> <span class="ident">context</span>;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">argument</span>::<span class="ident">Argument</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">context</span>::{<span class="ident">Context</span>, <span class="ident">AsyncCallback</span>, <span class="ident">AsyncEvaluator</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">argument</span>::{<span class="ident">ScalarArgument</span>, <span class="ident">ArrayArgument</span>, <span class="ident">read_array</span>, <span class="ident">write_array</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">context</span>::{<span class="ident">Context</span>, <span class="ident">ArgMap</span>, <span class="ident">AsyncCallback</span>, <span class="ident">AsyncEvaluator</span>};
 
 <span class="kw">use</span> <span class="ident">codegen</span>::<span class="ident">Function</span>;
 <span class="kw">use</span> <span class="ident">ir</span>;

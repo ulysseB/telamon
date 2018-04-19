@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["linalg","Linera algebra kernels."]],"trait":[["Kernel","A kernel that can be compiled, benchmarked and used for correctness tests."]]});
+initSidebarItems({"mod":[["linalg","Linera algebra kernels."],["statistics","Statistical analysis for benchmarking."]],"trait":[["Kernel","A kernel that can be compiled, benchmarked and used for correctness tests."],["Scalar","A scalar that can be used as the data type for tests."]]});

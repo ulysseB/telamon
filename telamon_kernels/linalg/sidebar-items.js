@@ -1,1 +1,1 @@
-initSidebarItems({});
+initSidebarItems({"struct":[["Axpy","Computes `z = alpha*x+y`."],["MatVec","Computes `y = A.x`."]]});
