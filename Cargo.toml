@@ -88,9 +88,6 @@ cuda = []
 default = []
 format_exh = []
 mppa = []
-[profile.bench]
-
-[profile.release]
 
 [workspace]
 members = [

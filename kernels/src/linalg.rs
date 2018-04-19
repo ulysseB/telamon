@@ -70,8 +70,6 @@ where S: device::ScalarArgument + ndarray::LinalgScalar
     }
 }
 
-// FIXME: must access arrays from the context
-
 /*
 /// Generates code for `y = A.x`.
 fn mv(m: i32, n: i32, data_type: ir::Type, generic: bool, executor: &cuda::Executor) {

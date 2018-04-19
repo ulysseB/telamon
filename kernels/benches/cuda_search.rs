@@ -32,7 +32,7 @@ fn benchmark<'a, K, REF>(params: K::Parameters,
                          mut reference: REF)
     where K: Kernel<'a>, REF: FnMut(&cuda::Context) -> f64
 {
-    let mut config = Config::read();
+    let mut config = Config::default();
     config.timeout.get_or_insert(120);
     config.distance_to_best.get_or_insert(0.2);
 
@@ -42,7 +42,7 @@ fn benchmark<'a, K, REF>(params: K::Parameters,
     let ref_runtime = (0..NUM_CODE_RUNS).map(|_| reference(&context)).collect();
     let mean = estimate_mean(runtime, 0.95);
     let ref_mean = estimate_mean(ref_runtime, 0.95);
-    println!("{} telamon: {}, reference: {}, spedup: {}",
+    println!("{}: {}, reference: {}, speedup: {:.2}",
              K::name(), mean, ref_mean, ref_mean.mean/mean.mean)
 }
 
@@ -78,31 +78,35 @@ impl Drop for CublasHandle {
 }
 
 /// Evaluates the runtime of a cuda function with events.
-fn time_cuda<F: FnOnce()>(f: F) -> f64 {
-    unsafe {
-        let mut start = std::mem::uninitialized();
-        let mut stop = std::mem::uninitialized();
-        check_cuda(cuEventCreate(&mut start, CUevent_flags_enum::CU_EVENT_DEFAULT as _));
-        check_cuda(cuEventCreate(&mut stop, CUevent_flags_enum::CU_EVENT_DEFAULT as _));
-        check_cuda(cuCtxSynchronize());
-        check_cuda(cuEventRecord(start, std::ptr::null_mut()));
-        f();
-        check_cuda(cuEventRecord(stop, std::ptr::null_mut()));
-        let mut time = 0f32;
-        check_cuda(cuEventElapsedTime(&mut time, start, stop));
-        check_cuda(cuEventDestroy_v2(start));
-        check_cuda(cuEventDestroy_v2(stop));
-        time as f64 * 10e6f64
-    }
+unsafe fn time_cuda<F: FnOnce()>(f: F) -> f64 {
+    let mut start = std::mem::uninitialized();
+    let mut stop = std::mem::uninitialized();
+    check_cuda(cuEventCreate(&mut start, CUevent_flags_enum::CU_EVENT_DEFAULT as _));
+    check_cuda(cuEventCreate(&mut stop, CUevent_flags_enum::CU_EVENT_DEFAULT as _));
+    check_cuda(cuCtxSynchronize());
+    check_cuda(cuEventRecord(start, std::ptr::null_mut()));
+    f();
+    check_cuda(cuEventRecord(stop, std::ptr::null_mut()));
+    check_cuda(cuEventSynchronize(stop));
+    let mut time = 0f32;
+    check_cuda(cuEventElapsedTime(&mut time, start, stop));
+    check_cuda(cuEventDestroy_v2(start));
+    check_cuda(cuEventDestroy_v2(stop));
+    time as f64 * 10e6f64
+}
+
+unsafe fn get_array<T>(name: &str, context: &cuda::Context) -> *mut T {
+    let ptr: *const *mut T = std::mem::transmute(context.get_param(name).raw_ptr());
+    *ptr
 }
 
 /// Reference implementation for the `Axpy` kernel.
 fn saxpy_reference(handle: &CublasHandle, context: &cuda::Context) -> f64 {
     let n = unwrap!(context.param_as_size("n")) as libc::c_int;
     let alpha = context.get_param("alpha").raw_ptr() as *const f32;
-    let x = context.get_param("x").raw_ptr() as *const f32;
-    let y = context.get_param("y").raw_ptr() as *mut f32;
-    time_cuda(|| unsafe {
-        check_cublas(cublasSaxpy_v2(handle.0, n, alpha, x, 1, y, 1));
-    })
+    unsafe {
+        let x = get_array("x", context);
+        let y = get_array("y", context);
+        time_cuda(|| check_cublas(cublasSaxpy_v2(handle.0, n, alpha, x, 1, y, 1)))
+    }
 }
