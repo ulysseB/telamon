@@ -41,7 +41,7 @@ impl Config {
             println!("{}", arg_parser.usage(&brief));
             std::process::exit(0);
         }
-        let mut config_parser = Self::setup_config_parser();
+        let mut config_parser = config::Config::new();
         let config_path = std::path::Path::new("Settings.toml");
         if config_path.exists() {
             unwrap!(config_parser.merge(config::File::from(config_path)));
@@ -50,25 +50,16 @@ impl Config {
         Self::parse_config(&config_parser)
     }
 
-    /// Sets up the parser of the configuration file.
-    fn setup_config_parser() -> config::Config {
-        let mut parser = config::Config::new();
-        unwrap!(parser.set_default("log_file", String::from("watch.log")));
-        unwrap!(parser.set_default("num_workers", num_cpus::get() as i64));
-        SearchAlgorithm::setup_config_parser(&mut parser);
-        parser
-    }
-
     /// Extracts the parameters from the configuration file.
     fn parse_config(parser: &config::Config) -> Self {
-        Config {
-            log_file: unwrap!(parser.get_str("log_file")),
-            num_workers: unwrap!(parser.get_int("num_workers")) as usize,
-            algorithm: SearchAlgorithm::parse_config(parser),
-            stop_bound: optional_param(parser.get_float("stop_bound")),
-            timeout: optional_param(parser.get_int("timeout")).map(|x| x as u64),
-            distance_to_best: optional_param(parser.get_float("distance_to_best")),
-        }
+        let mut config = Self::default();
+        opt_param(parser.get_str("log_file")).map(|file| config.log_file = file);
+        opt_param(parser.get_int("num_workers")).map(|n| config.num_workers = n as usize);
+        config.algorithm = SearchAlgorithm::parse_config(parser);
+        opt_param(parser.get_float("stop_bound")).map(|b| config.stop_bound = Some(b));
+        opt_param(parser.get_int("timeout")).map(|t| config.timeout = Some(t as u64));
+        opt_param(parser.get_float("distance_to_best")).map(|d| config.distance_to_best = Some(d));
+        config
     }
 
     /// Sets up the parser of command line arguments.
@@ -97,7 +88,20 @@ impl Config {
     }
 }
 
-fn optional_param<T>(res: Result<T, config::ConfigError>) -> Option<T> {
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            log_file: String::from("watch.log"),
+            num_workers: num_cpus::get(),
+            algorithm: SearchAlgorithm::default(),
+            stop_bound: None,
+            timeout: None,
+            distance_to_best: None,
+        }
+    }
+}
+
+fn opt_param<T>(res: Result<T, config::ConfigError>) -> Option<T> {
     match res {
         Ok(t) => Some(t),
         Err(config::ConfigError::NotFound(_)) => None,
@@ -141,24 +145,24 @@ impl SearchAlgorithm {
         BanditConfig::parse_arguments(arguments, config);
     }
 
-    /// Sets up the parser of the configuration file.
-    fn setup_config_parser(parser: &mut config::Config) {
-        unwrap!(parser.set_default("algorithm", String::from("bandit")));
-        BanditConfig::setup_config_parser(parser);
-    }
-
     /// Extracts the parameters from the configuration file.
     fn parse_config(parser: &config::Config) -> Self {
-        match &unwrap!(parser.get_str("algorithm")) as &str {
-            "bound_order" => SearchAlgorithm::BoundOrder,
-            "bandit" => {
-                let bandit_config = BanditConfig::parse_config(parser);
-                SearchAlgorithm::MultiArmedBandit(bandit_config)
-            },
-            algo => panic!("invalid search algorithm: {}. \
-                           Must be algorithm=bound_order|bandit", algo),
-        }
+        if let Some(algo) = opt_param(parser.get_str("algorithm")) {
+            match &algo as &str {
+                "bound_order" => SearchAlgorithm::BoundOrder,
+                "bandit" => {
+                    let bandit_config = BanditConfig::parse_config(parser);
+                    SearchAlgorithm::MultiArmedBandit(bandit_config)
+                },
+                algo => panic!("invalid search algorithm: {}. \
+                               Must be algorithm=bound_order|bandit", algo),
+            }
+        } else { Self::default() }
     }
+}
+
+impl Default for SearchAlgorithm {
+    fn default() -> Self { SearchAlgorithm::MultiArmedBandit(BanditConfig::default()) }
 }
 
 impl std::fmt::Display for SearchAlgorithm {
@@ -207,23 +211,26 @@ impl BanditConfig {
         }
     }
 
-    /// Sets up the parser of the configuration file.
-    fn setup_config_parser(parser: &mut config::Config) {
-        NewNodeOrder::setup_config_parser(parser);
-        OldNodeOrder::setup_config_parser(parser);
-        unwrap!(parser.set_default("threshold", 10));
-        unwrap!(parser.set_default("delta", 0.001));
-        unwrap!(parser.set_default("monte_carlo", false));
-    }
-
     /// Extracts the parameters from the configuration file.
     fn parse_config(parser: &config::Config) -> Self {
+        let mut config = Self::default();
+        config.new_nodes_order = NewNodeOrder::parse_config(parser);
+        config.old_nodes_order = OldNodeOrder::parse_config(parser);
+        opt_param(parser.get_int("threshold")).map(|t| config.threshold = t as usize);
+        opt_param(parser.get_float("delta")).map(|d| config.delta = d);
+        opt_param(parser.get_bool("monte_carlo")).map(|b| config.monte_carlo = b);
+        config
+    }
+}
+
+impl Default for BanditConfig {
+    fn default() -> Self {
         BanditConfig {
-            new_nodes_order: NewNodeOrder::parse_config(parser),
-            old_nodes_order: OldNodeOrder::parse_config(parser),
-            threshold: unwrap!(parser.get_int("threshold")) as usize,
-            delta: unwrap!(parser.get_float("delta")),
-            monte_carlo: unwrap!(parser.get_bool("monte_carlo")),
+            new_nodes_order: NewNodeOrder::default(),
+            old_nodes_order: OldNodeOrder::default(),
+            threshold: 10,
+            delta: 0.001,
+            monte_carlo: false,
         }
     }
 }
@@ -255,22 +262,23 @@ pub enum NewNodeOrder {
 }
 
 impl NewNodeOrder {
-    /// Sets up the parser of the configuration file.
-    fn setup_config_parser(parser: &mut config::Config) {
-        unwrap!(parser.set_default("new_nodes_order", "weighted_random"));
-    }
-
     /// Extracts the parameters from the configuration file.
     fn parse_config(parser: &config::Config) -> Self {
-        match &unwrap!(parser.get_str("new_nodes_order")) as &str {
-            "api" => NewNodeOrder::Api,
-            "random" => NewNodeOrder::Random,
-            "bound" => NewNodeOrder::Bound,
-            "weighted_random" => NewNodeOrder::WeightedRandom,
-            _ => panic!("Wrong new_nodes_order option, \
-                       must be new_nodes_order = api|random|bound|weighted_random")
-        }
+        if let Some(order) = opt_param(parser.get_str("new_nodes_order")) {
+            match &order as &str {
+                "api" => NewNodeOrder::Api,
+                "random" => NewNodeOrder::Random,
+                "bound" => NewNodeOrder::Bound,
+                "weighted_random" => NewNodeOrder::WeightedRandom,
+                _ => panic!("Wrong new_nodes_order option, \
+                           must be new_nodes_order = api|random|bound|weighted_random")
+            }
+        } else { Self::default() }
     }
+}
+
+impl Default for NewNodeOrder {
+    fn default() -> Self { NewNodeOrder::WeightedRandom }
 }
 
 impl std::fmt::Display for NewNodeOrder {
@@ -298,21 +306,22 @@ pub enum OldNodeOrder {
 }
 
 impl OldNodeOrder {
-    /// Sets up the parser of the configuration file.
-    fn setup_config_parser(parser: &mut config::Config) {
-        unwrap!(parser.set_default("old_nodes_order", "bandit"));
-    }
-
     /// Extracts the parameters from the configuration file.
     fn parse_config(parser: &config::Config) -> Self {
-        match &unwrap!(parser.get_str("old_nodes_order")) as &str {
-            "bandit" => OldNodeOrder::Bandit,
-            "bound" => OldNodeOrder::Bound,
-            "weighted_random" => OldNodeOrder::WeightedRandom,
-            _ =>  panic!("Wrong old_nodes_order option, \
-                         must be old_nodes_order = bound|bandit|weighted_random")
-        }
+        if let Some(order) = opt_param(parser.get_str("old_nodes_order")) {
+            match &order as &str {
+                "bandit" => OldNodeOrder::Bandit,
+                "bound" => OldNodeOrder::Bound,
+                "weighted_random" => OldNodeOrder::WeightedRandom,
+                _ =>  panic!("Wrong old_nodes_order option, \
+                             must be old_nodes_order = bound|bandit|weighted_random")
+            }
+        } else { OldNodeOrder::default() }
     }
+}
+
+impl Default for OldNodeOrder {
+    fn default() -> Self { OldNodeOrder::Bandit }
 }
 
 impl std::fmt::Display for OldNodeOrder {
