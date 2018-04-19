@@ -8,6 +8,7 @@ use device::x86::cpu_argument::{CpuArray, Argument, CpuScalarArg};
 use device::x86::cpu::Cpu;
 use device::x86::printer::wrapper_function;
 use explorer;
+use tempfile;
 use ir;
 use itertools::Itertools;
 use libc;
@@ -180,22 +181,16 @@ fn create_file(fun_str: String, fun_name: String, filepath: String)
     Ok(())
 }
 
-fn function_evaluate(fun_str: String) -> Result<f64, ()> {
+fn function_evaluate(fun_str: String, fun_name: String) -> Result<f64, ()> {
     // Does not look like a very reliable way to do this...
     // Directory from which we launched the binary, assuming it's telamon for now
-    let mut telamon_path = String::from(std::env::current_dir().unwrap().to_str().unwrap());
-    telamon_path.push_str("/");
-    let libname = String::from("hello");
-    let libpath = String::from("/tmp/");
-    let mut complete_lib_path = libpath.clone();
-    complete_lib_path.push_str("lib");
-    complete_lib_path.push_str(&libname);
-    complete_lib_path.push_str(".so");
-    let mut source_path = telamon_path.clone();
-    source_path.push_str("src/device/x86/template/hello_world.c");
+    let templib_name = tempfile::tempdir().unwrap().path().join("lib_compute.so").to_string_lossy()
+        .into_owned();
     //let source_path = String::from("template/hello_world.c");
-    compile::compile(libname, source_path, libpath);
-    let time = compile::link_and_exec(complete_lib_path, String::from("hello"));
+    let mut source_file = tempfile::tempfile().unwrap();
+    source_file.write_all(fun_str.as_bytes()).unwrap();
+    compile::compile(source_file, &templib_name);
+    let time = compile::link_and_exec(&templib_name, &fun_name);
     Ok(time)
 }
 
@@ -219,7 +214,25 @@ fn dummy_evaluate() -> Result<f64, ()> {
 }
 
 type AsyncPayload<'a, 'b> = (explorer::Candidate<'a>,  String, AsyncCallback<'a, 'b>);
->>>>>>> A compiling function string generation
+
+pub struct AsyncEvaluator<'a, 'b> where 'a: 'b {
+    context: &'b Context,
+    sender: mpsc::SyncSender<AsyncPayload<'a, 'b>>,
+}
+
+impl<'a, 'b, 'c> device::AsyncEvaluator<'a, 'c> for AsyncEvaluator<'a, 'b>
+    where 'a: 'b, 'c: 'b
+{
+    fn add_kernel(&mut self, candidate: explorer::Candidate<'a>, callback: device::AsyncCallback<'a, 'c> ) {
+        let (fun_str, code_args);
+        {
+            let dev_fun = device::Function::build(&candidate.space);
+            code_args = self.context.gen_args(&dev_fun);
+            fun_str = wrapper_function(&dev_fun);
+        }
+        unwrap!(self.sender.send((candidate, fun_str, code_args, callback)));
+    }
+}
 
 pub struct AsyncEvaluator<'a, 'b> where 'a: 'b {
     context: &'b Context,
