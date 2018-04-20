@@ -166,8 +166,8 @@ divide "/"
 choice_ident [a-z][a-z_0-9]*
 value_ident [A-Z][A-Z_0-9]*
 set_ident [A-Z][A-Za-z_0-9]*
-var '$' alpha_num+
-code '\"'[^'\n''\"']*'\"'
+var '$'alpha_num+
+code \"[^\n\"]*\"
 doc "///"
 
 /* https://github.com/a-haas/Compilation/blob/6fe46a65d64decdb648feba790bb7b1d2980ca0a/yacc/setparser.l */
@@ -231,6 +231,9 @@ doc "///"
 {antisymmetric} { return ANTISYMMETRIC; }
 {arrow} { return ARROW; }
 {divide} { return DIVIDE; }
+
+{var} { return VAR; }
+{code} { return CODE; }
 {choice_ident} { return CHOICEIDENT; }
 {value_ident} { return VALUEIDENT; }
 {set_ident} { return SETIDENT; }

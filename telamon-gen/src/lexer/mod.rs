@@ -107,8 +107,9 @@ impl Iterator for Lexer {
                 },
                 YyToken::Code => {
                     let out = ffi::yyget_text(self.scanner);
+                    let len = libc::strlen(out)-1;
 
-                    *out.offset(libc::strlen(out) as _) = b'\0' as _;
+                    *out.offset(len as _) = b'\0' as _;
                     CStr::from_ptr(out.offset(1))
                          .to_str().ok()
                          .and_then(|s: &str| Some(Token::Code(s.to_owned())))
