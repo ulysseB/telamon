@@ -1,14 +1,20 @@
 extern crate telamon_gen;
 
-use telamon_gen::lexer::Lexer;
+use telamon_gen::lexer::{Lexer,Token};
 
 #[test]
 fn single_enum() {
-    let mut ll: Lexer = Lexer::from(
+    let ll: Lexer = Lexer::from(
         b"define enum foo():
           end".to_vec());
 
-    while let Some(token) = ll.next() {
-        println!("{:?}", token);
-    }
+    assert_eq!(ll.collect::<Vec<Token>>(), vec![
+                Token::Define,
+                Token::Enum,
+                Token::ChoiceIdent(String::from("foo")),
+                Token::LParen,
+                Token::RParen,
+                Token::Colon,
+                Token::End
+              ]);
 }

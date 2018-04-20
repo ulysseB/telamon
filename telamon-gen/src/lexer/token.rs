@@ -1,6 +1,6 @@
 use ir;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Token {
     ValueIdent(String), ChoiceIdent(String), Var(String), Doc(String), CmpOp(ir::CmpOp),
     InvalidToken(String), Code(String), CounterKind(ir::CounterKind), Bool(bool),

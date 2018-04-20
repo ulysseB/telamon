@@ -67,6 +67,7 @@ impl Iterator for Lexer {
     fn next(&mut self) -> Option<Self::Item> {
         unsafe {
             match yylex(self.scanner) {
+                YyToken::Blank => self.next(),
                 YyToken::InvalidToken => {
                     let out = ffi::yyget_text(self.scanner);
 
