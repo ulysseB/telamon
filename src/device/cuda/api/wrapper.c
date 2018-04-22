@@ -243,7 +243,7 @@ double time_with_events(CudaContext* context, CUfunction* function, uint32_t* bl
   HARD_CHECK_CUDA(cuEventDestroy(start));
   HARD_CHECK_CUDA(cuEventDestroy(stop));
 
-  return ((double)ms) * 10e6;
+  return ((double)ms) * 1e6;
 }
 
 // Runs a kernel multiple times to gather a set of performance counter values.

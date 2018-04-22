@@ -6,6 +6,7 @@ extern crate libc;
 extern crate ndarray;
 extern crate num;
 extern crate num_cpus;
+extern crate rand;
 extern crate rayon;
 extern crate telamon;
 #[macro_use]
@@ -53,7 +54,7 @@ where
 }
 
 /// A scalar that can be used as the data type for tests.
-pub trait Scalar: device::ScalarArgument + ndarray::LinalgScalar
+pub trait Scalar: device::ScalarArgument + ndarray::LinalgScalar + ndarray::ScalarOperand
                 + PartialOrd + std::ops::Neg<Output=Self> {
     /// Returns the amount of allowed error in tests.
     fn epsilon() -> Self { Self::zero() }
@@ -72,3 +73,17 @@ impl Scalar for f32 {
 impl Scalar for f64 {
     fn epsilon() -> Self { 10e-6 }
 }
+
+// FIXME: implement kernels
+// tensor reduction
+// floyd warshall: for a fixed K
+// n_bodies: in n dimensions, need sqrt. Only perform a single step
+// cell: FC+relu
+// pooling: cell + pooling
+// FIXME: extend the IR to support the following kernels 
+// backpropagation ?
+// gemver > might want to load twice separately
+// atax, CNN > need global broadcast
+// dicgi, mvt, dot > need global reduction
+// 2mm, two-level NN > need global bcast or global reduction
+// lstm: too complex for now

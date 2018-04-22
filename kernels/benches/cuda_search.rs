@@ -21,10 +21,25 @@ fn main() {
     benchmark::<linalg::Axpy<f32>, _>(1 << 25, &executor, |context| {
         saxpy_reference(&cublas_handle, context)
     });
+    benchmark::<linalg::MatVec<f32>, _>((1<<13, 1<<13), &executor, |context| {
+        matvec_reference(&cublas_handle, context)
+    });
+    benchmark::<linalg::Gesummv<f32>, _>((1<<13, 1<<13), &executor, |context| {
+        gesummv_reference(&cublas_handle, context)
+    });
+    benchmark::<linalg::MatMul<f32>, _>((1<<10, 1<<10, 1<<10), &executor, |context| {
+        matmul_reference(&cublas_handle, context)
+    });
+    benchmark::<linalg::Doitgen<f32>, _>((1<<7, 1<<7, 1<<7), &executor, |context| {
+        doitgen_reference(&cublas_handle, context)
+    });
+    // FIXME: add more input sizes for benchmarks
 }
 
 /// The number of times to run the generated code to evaluate its performance.
 const NUM_CODE_RUNS: usize = 40;
+/// Search timeout in minutes.
+const TIMEOUT: u64 = 120;
 
 /// Benchamrks a kernel against a reference implementation.
 fn benchmark<'a, K, REF>(params: K::Parameters,
@@ -33,7 +48,7 @@ fn benchmark<'a, K, REF>(params: K::Parameters,
     where K: Kernel<'a>, REF: FnMut(&cuda::Context) -> f64
 {
     let mut config = Config::default();
-    config.timeout.get_or_insert(120);
+    config.timeout.get_or_insert(TIMEOUT);
     config.distance_to_best.get_or_insert(0.2);
 
     let mut context = cuda::Context::new(executor);
@@ -92,7 +107,7 @@ unsafe fn time_cuda<F: FnOnce()>(f: F) -> f64 {
     check_cuda(cuEventElapsedTime(&mut time, start, stop));
     check_cuda(cuEventDestroy_v2(start));
     check_cuda(cuEventDestroy_v2(stop));
-    time as f64 * 10e6f64
+    time as f64 * 1.0e6f64
 }
 
 unsafe fn get_array<T>(name: &str, context: &cuda::Context) -> *mut T {
@@ -112,12 +127,67 @@ fn saxpy_reference(handle: &CublasHandle, context: &cuda::Context) -> f64 {
 }
 
 /// Reference implementation for the matrix-vector multiplication.
-fn saxpy_reference(handle: &CublasHandle, context: &cuda::Context) -> f64 {
+fn matvec_reference(handle: &CublasHandle, context: &cuda::Context) -> f64 {
+    let m = unwrap!(context.param_as_size("m")) as libc::c_int;
     let n = unwrap!(context.param_as_size("n")) as libc::c_int;
-    let alpha = context.get_param("alpha").raw_ptr() as *const f32;
     unsafe {
         let x = get_array("x", context);
+        let a = get_array("a", context);
         let y = get_array("y", context);
-        time_cuda(|| check_cublas(cublasSaxpy_v2(handle.0, n, alpha, x, 1, y, 1)))
+        time_cuda(|| {
+            let op = cublasOperation_t_CUBLAS_OP_T;
+            check_cublas(cublasSgemv_v2(handle.0, op, n, m, &2., a, n, x, 1, &3., y, 1))
+        })
+    }
+}
+
+/// Reference implementation for the matrix-matrix multiplication.
+fn matmul_reference(handle: &CublasHandle, context: &cuda::Context) -> f64 {
+    let m = unwrap!(context.param_as_size("m")) as libc::c_int;
+    let n = unwrap!(context.param_as_size("n")) as libc::c_int;
+    let k = unwrap!(context.param_as_size("k")) as libc::c_int;
+    unsafe {
+        let a = get_array("a", context);
+        let b = get_array("b", context);
+        let c = get_array("c", context);
+        time_cuda(|| {
+            let op = cublasOperation_t_CUBLAS_OP_N;
+            check_cublas(cublasSgemm_v2(
+                    handle.0, op, op, n, m, k, &2., b, n, a, k, &3., c, n));
+        })
+    }
+}
+
+/// Reference implementation for the `Gesummv` kernel.
+fn gesummv_reference(handle: &CublasHandle, context: &cuda::Context) -> f64 {
+    let m = unwrap!(context.param_as_size("m")) as libc::c_int;
+    let n = unwrap!(context.param_as_size("n")) as libc::c_int;
+    unsafe {
+        let a = get_array("a", context);
+        let b = get_array("b", context);
+        let x = get_array("x", context);
+        let y = get_array("y", context);
+        time_cuda(|| {
+            let op = cublasOperation_t_CUBLAS_OP_T;
+            check_cublas(cublasSgemv_v2(handle.0, op, n, m, &3.1, a, n, x, 1, &0., y, 1));
+            check_cublas(cublasSgemv_v2(handle.0, op, n, m, &4.1, b, n, x, 1, &1., y, 1));
+        })
+    }
+}
+
+/// Reference implementation for the `Doitgen` kernel.
+fn doitgen_reference(handle: &CublasHandle, context: &cuda::Context) -> f64 {
+    let p = unwrap!(context.param_as_size("p")) as libc::c_int;
+    let q = unwrap!(context.param_as_size("q")) as libc::c_int;
+    let r = unwrap!(context.param_as_size("r")) as libc::c_int;
+    unsafe {
+        let a = get_array("a", context);
+        let x = get_array("x", context);
+        let b = get_array("b", context);
+        time_cuda(|| {
+            let op = cublasOperation_t_CUBLAS_OP_N;
+            check_cublas(cublasSgemm_v2(
+                    handle.0, op, op, p, r*q, p, &1., x, p, a, p, &0., b, p))
+        })
     }
 }
