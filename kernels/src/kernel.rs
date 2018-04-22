@@ -1,6 +1,7 @@
 //! Abstracts kernels so we can build generic methods to test them.
 use itertools::Itertools;
 use num_cpus;
+use rayon::prelude::*;
 use std::sync::{atomic, Mutex};
 use telamon::{codegen, device, explorer, ir, model};
 use telamon::explorer::{Candidate, montecarlo};
@@ -143,6 +144,34 @@ pub trait Kernel<'a>: Sized {
                            "no candidates found for kernel {}", Self::name());
         let best_fn = codegen::Function::build(&best);
         context.benchmark(&best_fn, num_samples)
+    }
+
+    /// Computes the probability of encountering a dead-end when descending in the search
+    /// tree.
+    fn deadend_ratio<AM>(params: Self::Parameters,
+                         num_samples: usize,
+                         context: &mut AM) -> f64
+        where AM: device::ArgMap + device::Context + 'a
+    {
+        let kernel;
+        let signature = {
+            let mut builder = SignatureBuilder::new(Self::name(), context);
+            kernel = Self::build_signature(params, true, &mut builder);
+            builder.get()
+        };
+        let candidates = kernel.build_body(&signature, context.device()).into_iter()
+            .map(|space| {
+                let bound = model::bound(&space, context);
+                Candidate::new(space, bound)
+            }).collect_vec();
+        let num_deadends = (0..num_samples).into_par_iter().filter(|_| {
+            let order = explorer::config::NewNodeOrder::WeightedRandom;
+            let inf = std::f64::INFINITY;
+            let candidate_idx = montecarlo::next_cand_index(order, &candidates, inf);
+            let candidate = candidates[unwrap!(candidate_idx)].clone();
+            montecarlo::descend(order, context, candidate, inf).is_none()
+        }).count();
+        num_deadends as f64 / num_samples as f64
     }
 }
 

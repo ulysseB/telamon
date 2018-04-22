@@ -34,3 +34,9 @@ name = "cuda-search"
 path = "benches/cuda_search.rs"
 harness = false
 required-features = ["cuda"]
+
+[[bench]]
+name = "cuda-deadend"
+path = "benches/cuda_deadend.rs"
+harness = false
+required-features = ["cuda"]

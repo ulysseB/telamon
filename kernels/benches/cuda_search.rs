@@ -55,10 +55,10 @@ fn benchmark<'a, K, REF>(params: K::Parameters,
     let runtime = K::benchmark(&config, params, NUM_CODE_RUNS, &mut context);
     for _ in 0..4 { reference(&context); }
     let ref_runtime = (0..NUM_CODE_RUNS).map(|_| reference(&context)).collect();
-    let mean = estimate_mean(runtime, 0.95);
-    let ref_mean = estimate_mean(ref_runtime, 0.95);
+    let mean = estimate_mean(runtime, 0.95, "ns");
+    let ref_mean = estimate_mean(ref_runtime, 0.95, "ns");
     println!("{}: {}, reference: {}, speedup: {:.2}",
-             K::name(), mean, ref_mean, ref_mean.mean/mean.mean)
+             K::name(), mean, ref_mean, ref_mean.value/mean.value)
 }
 
 /// Checks the cublas status and panics if an error occured.
