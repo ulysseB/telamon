@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Axpy","Computes `z = alpha*x+y`."],["MatVec","Computes `y = A.x`."]]});
+initSidebarItems({"struct":[["Axpy","Computes `z = alpha*x+y`."],["Doitgen","Computes `B[r] = A[r].transpose(X)` where A, B are 3D tensors and X a matrix. This is in effect a matrix-matrix multiplications, with two two dimensions iterating on the rows of A."],["Gesummv","Computes `y = (alpha*A + beta*B).x`."],["MatMul","Computes `C = A.B`."],["MatVec","Computes `y = A.x`."]]});

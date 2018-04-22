@@ -227,10 +227,40 @@
 <span id="170">170</span>
 <span id="171">171</span>
 <span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Abstracts kernels so we can build generic methods to test them.</span>
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">num_cpus</span>;
+<span class="kw">use</span> <span class="ident">rayon</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{<span class="ident">atomic</span>, <span class="ident">Mutex</span>};
 <span class="kw">use</span> <span class="ident">telamon</span>::{<span class="ident">codegen</span>, <span class="ident">device</span>, <span class="ident">explorer</span>, <span class="ident">ir</span>, <span class="ident">model</span>};
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">explorer</span>::{<span class="ident">Candidate</span>, <span class="ident">montecarlo</span>};
@@ -373,6 +403,34 @@
                            <span class="string">&quot;no candidates found for kernel {}&quot;</span>, <span class="self">Self</span>::<span class="ident">name</span>());
         <span class="kw">let</span> <span class="ident">best_fn</span> <span class="op">=</span> <span class="ident">codegen</span>::<span class="ident">Function</span>::<span class="ident">build</span>(<span class="kw-2">&amp;</span><span class="ident">best</span>);
         <span class="ident">context</span>.<span class="ident">benchmark</span>(<span class="kw-2">&amp;</span><span class="ident">best_fn</span>, <span class="ident">num_samples</span>)
+    }
+
+    <span class="doccomment">/// Computes the probability of encountering a dead-end when descending in the search</span>
+    <span class="doccomment">/// tree.</span>
+    <span class="kw">fn</span> <span class="ident">deadend_ratio</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>(<span class="ident">params</span>: <span class="self">Self</span>::<span class="ident">Parameters</span>,
+                         <span class="ident">num_samples</span>: <span class="ident">usize</span>,
+                         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AM</span>) <span class="op">-&gt;</span> <span class="ident">f64</span>
+        <span class="kw">where</span> <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span> <span class="op">+</span> <span class="lifetime">&#39;a</span>
+    {
+        <span class="kw">let</span> <span class="ident">kernel</span>;
+        <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">SignatureBuilder</span>::<span class="ident">new</span>(<span class="self">Self</span>::<span class="ident">name</span>(), <span class="ident">context</span>);
+            <span class="ident">kernel</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">build_signature</span>(<span class="ident">params</span>, <span class="bool-val">true</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
+            <span class="ident">builder</span>.<span class="ident">get</span>()
+        };
+        <span class="kw">let</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">context</span>.<span class="ident">device</span>()).<span class="ident">into_iter</span>()
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">space</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">bound</span> <span class="op">=</span> <span class="ident">model</span>::<span class="ident">bound</span>(<span class="kw-2">&amp;</span><span class="ident">space</span>, <span class="ident">context</span>);
+                <span class="ident">Candidate</span>::<span class="ident">new</span>(<span class="ident">space</span>, <span class="ident">bound</span>)
+            }).<span class="ident">collect_vec</span>();
+        <span class="kw">let</span> <span class="ident">num_deadends</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">num_samples</span>).<span class="ident">into_par_iter</span>().<span class="ident">filter</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+            <span class="kw">let</span> <span class="ident">order</span> <span class="op">=</span> <span class="ident">explorer</span>::<span class="ident">config</span>::<span class="ident">NewNodeOrder</span>::<span class="ident">WeightedRandom</span>;
+            <span class="kw">let</span> <span class="ident">inf</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span>;
+            <span class="kw">let</span> <span class="ident">candidate_idx</span> <span class="op">=</span> <span class="ident">montecarlo</span>::<span class="ident">next_cand_index</span>(<span class="ident">order</span>, <span class="kw-2">&amp;</span><span class="ident">candidates</span>, <span class="ident">inf</span>);
+            <span class="kw">let</span> <span class="ident">candidate</span> <span class="op">=</span> <span class="ident">candidates</span>[<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">candidate_idx</span>)].<span class="ident">clone</span>();
+            <span class="ident">montecarlo</span>::<span class="ident">descend</span>(<span class="ident">order</span>, <span class="ident">context</span>, <span class="ident">candidate</span>, <span class="ident">inf</span>).<span class="ident">is_none</span>()
+        }).<span class="ident">count</span>();
+        <span class="ident">num_deadends</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">/</span> <span class="ident">num_samples</span> <span class="kw">as</span> <span class="ident">f64</span>
     }
 }
 
