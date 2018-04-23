@@ -2,10 +2,9 @@
 
 use device::Context;
 use explorer::candidate::Candidate;
-use explorer::choice;
-use explorer::montecarlo;
+use explorer::{choice, montecarlo};
 use explorer::config::{Config, BanditConfig, NewNodeOrder, OldNodeOrder};
-use  explorer::store::Store;
+use explorer::store::Store;
 use itertools::Itertools;
 use rand::{Rng, thread_rng};
 use rand::distributions::{ Weighted, WeightedChoice, IndependentSample};
@@ -38,29 +37,22 @@ impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
 
     fn update_cut(&self, new_cut: f64) {
         *unwrap!(self.cut.write()) = new_cut;
+        let root = unwrap!(self.shared_tree.write()).trim(new_cut);
+        let mut stack = root.into_iter().collect_vec();
+        while let Some(node) = stack.pop() {
+            let mut lock = unwrap!(node.write());
+            for subtree in &mut lock.children {
+                stack.extend(subtree.trim(new_cut));
+            }
+        }
+        info!("trimming finished");
+    }
+
 // FIXME: >>>>>>>>>>>>
 // FIXME: reduce the amount of liftetime parameters
 // FIXME: call EnumTree Node or Subtree and call `Node` `Children`
-        let node_root;
-        {
-            let tree = self.shared_tree.read().unwrap();
-            if let EnumTree::NoGoBranch = *tree {
-                return;
-            }
-            node_root = match *tree {
-                EnumTree::Node(ref n, _) => Arc::clone(n),
-                _ => panic!("At this point, root should be a node"),
-            };
-            let root_completed =  node_root.read().unwrap().children.iter()
-                .fold(true, |acc, x| {
-                    if let EnumTree::NoGoBranch = *x {acc && true} else {false}
-                });
-            if root_completed { return;};
-        }
-        warn!("Starting a collection");
-        collect_descend( node_root, new_cut);
-    }
-
+// FIXME: rename NoGoBranch into empty
+// FIXME: add stats on the number of nodes inside the tree
     fn commit_evaluation(&self, mut payload: Self::PayLoad, eval: f64) {
         let parent_opt = payload.path.pop();
         if let Some((weak_node, pos)) = parent_opt {
@@ -82,7 +74,7 @@ impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
             match thread_descend_tree(config, self.config, context, shared_tree, &self.cut) {
                 DescendResult::Finished => { return None; }
                 DescendResult::DeadEnd(pos, parent_stack) => {
-                    // FIXME: is this necessary
+                    // FIXME: This remove the dead branch, ensure it is not called from montecarlo
                     thread_ascend_tree_no_val(pos, parent_stack);
                 }
                 DescendResult::Leaf(cand, leaf_pos, path) => {
@@ -111,6 +103,8 @@ pub struct Payload<'a, 'b> {
     is_complete: bool,
 }
 
+
+// FIXME: >>>>>>>>>>>>>>>..
 type NodeRewards =  Vec<(Vec<f64>, usize)>;
 
 pub struct Node<'a, 'b> {
@@ -122,8 +116,22 @@ pub struct Node<'a, 'b> {
 /// The search tree that will be traversed
 pub enum EnumTree<'a, 'b> {
     Node(Arc<RwLock<Node<'a, 'b>>>, f64 ),
+    // FIXME: the bound field is redundant
     UnexpandedNode(Candidate<'a>, f64),
     NoGoBranch,
+}
+
+impl<'a, 'b> EnumTree<'a, 'b> {
+    /// Trims the branch if it has with an evaluation time guaranteed to be worse than
+    /// `cut`. Returns the childrens to trim if any,
+    fn trim(&mut self, cut: f64) -> Option<Arc<RwLock<Node<'a, 'b>>>> {
+        match *self {
+            EnumTree::NoGoBranch => None,
+            EnumTree::UnexpandedNode(ref cand, _) if cand.bound.value() < cut => None,
+            EnumTree::Node(ref inner, bound) if bound < cut => Some(inner.clone()),
+            ref mut tree => { *tree = EnumTree::NoGoBranch; None }
+        }
+    }
 }
 
 type NodeStack<'a, 'b> = Vec<(Weak<RwLock<Node<'a, 'b>>>, Option<usize>)>;
@@ -271,21 +279,6 @@ fn handle_montecarlo_descend<'a, 'b>(config: &BanditConfig,
     if let Some(cand) = montecarlo::descend(order, context, cand, cut) {
         DescendResult::MonteCarloLeaf(cand, pos, parent_stack)
     } else { DescendResult::FailedMonteCarlo }
-}
-
-///  iter on all nodes in the tree and call node_collect on them
-fn collect_descend<'a, 'b>(node_root: Arc<RwLock<Node<'a, 'b>>>, best_val: f64) {
-    let mut node_stack = vec![node_root];
-    let mut collected_nodes = 0;
-    let mut visited_nodes = 1;
-    while let Some(search_node_lock) = node_stack.pop() {
-        let mut search_node = search_node_lock.write().unwrap();
-        let (node_children, nb_removed) = search_node.node_collect(best_val);
-        collected_nodes += nb_removed;
-        visited_nodes += node_children.len();
-        node_stack.extend(node_children);
-    }
-    warn!("Removed {} nodes, visited {}", collected_nodes, visited_nodes);
 }
 
 
@@ -611,17 +604,6 @@ impl<'a, 'b> Node<'a, 'b> {
                 } else { panic!("We should have a Node here"); }
             }
         }
-    }
-
-
-    /// remove all childrens and returns a vector containing all node children
-    fn node_collect(&mut self, best_val: f64) -> (Vec<Arc<RwLock<Node<'a, 'b>>>>, usize) {
-        let nb_removed = self.remove_children(best_val);
-        (self.children.iter().filter(|x| if let EnumTree::Node(..) = *x {true} else {false})
-            .map(|x| if let EnumTree::Node(ref node, _) = *x {Arc::clone(node)}
-                 else {panic!("We should only have nodes here");})
-            .collect::<Vec<_>>(),
-            nb_removed)
     }
 
     /// pop the stack - which gives the parent of the node self, update the parent
