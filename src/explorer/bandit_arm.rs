@@ -14,42 +14,46 @@ use std::f64;
 use std::sync::{ Weak, Arc, RwLock};
 use utils::*;
 
-
-pub struct SafeTree<'a, 'b, 'c> {
-    shared_tree: Arc<RwLock<SearchTree<'a, 'b>>>,
+/// A search tree to perform a multi-armed bandit search.
+pub struct Tree<'a, 'b> {
+    shared_tree: Arc<RwLock<EnumTree<'a, 'b>>>,
     cut: RwLock<f64>,
-    config: &'c BanditConfig,
+    config: &'b BanditConfig,
 }
 
-impl<'a, 'b, 'c> SafeTree<'a, 'b, 'c> {
-    pub fn new(tree: SearchTree<'a, 'b>, config: &'c BanditConfig) -> Self {
-        SafeTree {
-            shared_tree: Arc::new(RwLock::new(tree)),
+impl<'a, 'b> Tree<'a, 'b> {
+    /// Creates a new search tree containing the given candidates.
+    pub fn new(candidates: Vec<Candidate<'a>>, config: &'b BanditConfig) -> Self {
+        let root = EnumTree::create_node(candidates, 0.0, String::from("0"));
+        Tree {
+            shared_tree: Arc::new(RwLock::new(root)),
             cut: RwLock::new(std::f64::INFINITY),
             config,
         }
     }
 }
 
-impl<'a, 'b, 'c> Store<'a> for SafeTree<'a, 'b, 'c> {
-    type PayLoad = PayLoadType<'a, 'b>;
+impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
+    type PayLoad = Payload<'a, 'b>;
 
     fn update_cut(&self, new_cut: f64) {
-        let mut cut = self.cut.write().unwrap();
-        *cut = new_cut;
+        *unwrap!(self.cut.write()) = new_cut;
+// FIXME: >>>>>>>>>>>>
+// FIXME: reduce the amount of liftetime parameters
+// FIXME: call EnumTree Node or Subtree and call `Node` `Children`
         let node_root;
         {
-            let root = self.shared_tree.read().unwrap();
-            if let EnumTree::NoGoBranch = root.tree {
+            let tree = self.shared_tree.read().unwrap();
+            if let EnumTree::NoGoBranch = *tree {
                 return;
             }
-            node_root = match &root.tree {
-                &EnumTree::Node(ref n, _) => Arc::clone(n),
+            node_root = match *tree {
+                EnumTree::Node(ref n, _) => Arc::clone(n),
                 _ => panic!("At this point, root should be a node"),
             };
             let root_completed =  node_root.read().unwrap().children.iter()
                 .fold(true, |acc, x| {
-                    if let EnumTree::NoGoBranch = x.tree {acc && true} else {false}
+                    if let EnumTree::NoGoBranch = *x {acc && true} else {false}
                 });
             if root_completed { return;};
         }
@@ -57,13 +61,12 @@ impl<'a, 'b, 'c> Store<'a> for SafeTree<'a, 'b, 'c> {
         collect_descend( node_root, new_cut);
     }
 
-    fn commit_evaluation(&self, _config: &Config, payload: Self::PayLoad, eval: f64) {
-        match payload {
-            PayLoadType::Complete(ascend_stack, pos_last_child) => {
-                thread_ascend_tree(eval, pos_last_child, ascend_stack, true);
-            }
-            PayLoadType::MonteCarlo(ascend_stack, pos_last_child) => {
-                thread_ascend_tree(eval, pos_last_child, ascend_stack, false);
+    fn commit_evaluation(&self, mut payload: Self::PayLoad, eval: f64) {
+        let parent_opt = payload.path.pop();
+        if let Some((weak_node, pos)) = parent_opt {
+            if let Some(node_lock) = weak_node.upgrade() {
+                iter_ascend(node_lock, eval, pos, payload.leaf_pos, &mut payload.path,
+                            payload.is_complete)
             }
         }
     }
@@ -75,16 +78,19 @@ impl<'a, 'b, 'c> Store<'a> for SafeTree<'a, 'b, 'c> {
     {
         loop {
             let shared_tree = Arc::clone(&self.shared_tree);
+            // FIXME: get rid of DescendResult
             match thread_descend_tree(config, self.config, context, shared_tree, &self.cut) {
                 DescendResult::Finished => { return None; }
                 DescendResult::DeadEnd(pos, parent_stack) => {
+                    // FIXME: is this necessary
                     thread_ascend_tree_no_val(pos, parent_stack);
                 }
-                DescendResult::Leaf(cand, pos, parent_stack) => {
-                    return Some((cand, PayLoadType::Complete(parent_stack, pos)));
+                DescendResult::Leaf(cand, leaf_pos, path) => {
+                    return Some((cand, Payload { path, leaf_pos, is_complete: true }));
                 }
-                DescendResult::MonteCarloLeaf(cand, pos, parent_stack) => {
-                    return Some((cand, PayLoadType::MonteCarlo(parent_stack, pos)));
+                DescendResult::MonteCarloLeaf(cand, leaf_pos, path) => {
+                    // FIXME: ensure we return complete if the montecarlo has 0 levels
+                    return Some((cand, Payload { path, leaf_pos, is_complete: false }));
                 }
                 // We have no information on where and how the search fail, so we can not
                 // update the tree in any way.
@@ -95,18 +101,20 @@ impl<'a, 'b, 'c> Store<'a> for SafeTree<'a, 'b, 'c> {
 }
 
 
-/// Implements Store::PayLoad. In order to do the correct update of the tree, we need to
-/// know if the leaf was found after a montecarlo descend or after a standard descend.
-/// In the first case, we do not want to cut the branch we are coming from.
-pub enum PayLoadType<'a, 'b> {
-    Complete(NodeStack<'a, 'b>, usize),
-    MonteCarlo(NodeStack<'a, 'b>, usize),
+/// Transmits the information needed to update the tree after an update.
+pub struct Payload<'a, 'b> {
+    /// Path in the tree that lead to the evaluated branch.
+    path: NodeStack<'a, 'b>,
+    /// Indicates the position of the leaf in the last node.
+    leaf_pos: usize,
+    /// Indicates if the branch was fully evaluated and should be cut or not.
+    is_complete: bool,
 }
 
 type NodeRewards =  Vec<(Vec<f64>, usize)>;
 
 pub struct Node<'a, 'b> {
-    children: Vec<SearchTree<'a, 'b>>,
+    children: Vec<EnumTree<'a, 'b>>,
     rewards: NodeRewards,
     id: String
 }
@@ -118,9 +126,6 @@ pub enum EnumTree<'a, 'b> {
     NoGoBranch,
 }
 
-const THRESHOLD : usize = 10;
-pub struct SearchTree<'a, 'b> { pub tree: EnumTree<'a, 'b>,  context: &'b Context }
-
 type NodeStack<'a, 'b> = Vec<(Weak<RwLock<Node<'a, 'b>>>, Option<usize>)>;
 
 
@@ -131,12 +136,6 @@ pub enum DescendResult<'a, 'b> {
     Leaf(Candidate<'a>, usize, NodeStack<'a, 'b>),
     MonteCarloLeaf(Candidate<'a>, usize, NodeStack<'a, 'b>),
     FailedMonteCarlo,
-}
-
-pub enum AscendResult {
-    InvalidParent,
-    TreeUpdated,
-    Root,
 }
 
 enum NodeDescendResult<'a, 'b> {
@@ -151,6 +150,7 @@ pub enum NodeAscendResult<'a, 'b> {
     Node(Arc<RwLock<Node<'a, 'b>>>, Option<usize>),
     NodeNoVal(Arc<RwLock<Node<'a, 'b>>>, Option<usize>),
     NodeNotCompleted(Arc<RwLock<Node<'a, 'b>>>, Option<usize>),
+    // FIXME: can merge some variants
     InvalidParent,
     TreeUpdated,
     Root,
@@ -158,7 +158,7 @@ pub enum NodeAscendResult<'a, 'b> {
 
 enum ExpandRes<'a, 'b> {
     DeadEnd,
-    Node(SearchTree<'a, 'b>),
+    Node(EnumTree<'a, 'b>),
     Leaf(Candidate<'a>),
 }
 
@@ -171,23 +171,23 @@ enum UpdateRes {
 
 /// Call descend_node in a loop until it finds either a DeadEnd or a Leaf
 /// if the deadend is found at the root, then the return value states this fact
-pub fn thread_descend_tree<'a, 'b>(
+fn thread_descend_tree<'a, 'b>(
     // TODO(cleanup): remove the dependency on Config
     _config: &Config,
     bandit_config: &BanditConfig,
     context: &Context,
-    root_lock: Arc<RwLock<SearchTree<'a, 'b>>>,
+    root_lock: Arc<RwLock<EnumTree<'a, 'b>>>,
     best_val: &RwLock<f64>) -> DescendResult<'a, 'b>
 {
     let node_root;
     {
         let root = root_lock.read().unwrap();
-        if let EnumTree::NoGoBranch = root.tree {
+        if let EnumTree::NoGoBranch = *root {
           return DescendResult::Finished;
         }
-        node_root = match &root.tree {
-            &EnumTree::Node(ref n, _) => Arc::clone(n),
-                _ => {panic!("At this point, root should be a node");}
+        node_root = match *root {
+            EnumTree::Node(ref n, _) => Arc::clone(n),
+            _ => {panic!("At this point, root should be a node");}
         };
     }
     let best_val = *best_val.read().unwrap();
@@ -209,7 +209,7 @@ fn iter_descend<'a, 'b>(config: &BanditConfig,
         //let mut montecarlo_candidate = None;
         {
             let mut search_node = search_node_lock.write().unwrap();
-            match search_node.descend_node(config, best_val) {
+            match search_node.descend_node(context, config, best_val) {
                 NodeDescendResult::Node(subtree_arc, pos) => {
                     let weak_ref = Arc::downgrade(&search_node_lock);
                     parent_stack.push((weak_ref, current_pos));
@@ -289,33 +289,14 @@ fn collect_descend<'a, 'b>(node_root: Arc<RwLock<Node<'a, 'b>>>, best_val: f64) 
 }
 
 
-/// Take a node stack and a score as argument and update the tree from leaf to root until
-/// there is no information to be passed.
-pub fn thread_ascend_tree<'a, 'b>(val: f64,
-                                  pos_last_child: usize,
-                                  mut parent_stack: NodeStack<'a, 'b>,
-                                  update_as_complete: bool)
-    -> AscendResult
-{
-    let parent_opt = parent_stack.pop();
-    if let Some((weak_node, pos)) = parent_opt {
-        if let Some(node_lock) = weak_node.upgrade() {
-            iter_ascend(node_lock, val, pos, pos_last_child, &mut parent_stack,
-                        update_as_complete)
-        } else { AscendResult::InvalidParent }
-    } else { AscendResult::Root }
-}
-
-
-
-/// Called by thread_ascend_tree, loop on results retrieved from ascend_node and ascend
+/// Called when commiting an evaluation, loop on results retrieved from ascend_node and ascend
 /// node_no_val call the corresponding function to update the tree.
 fn iter_ascend<'a, 'b>(node_arc: Arc<RwLock<Node<'a, 'b>>>,
                        val: f64,
                        current_pos: Option<usize>,
                        pos_last_child: usize,
                        parent_stack: &mut NodeStack<'a, 'b>,
-                       last_child_completed: bool) -> AscendResult {
+                       last_child_completed: bool) {
     let mut is_val_inserted = true;
     let mut node_arc = node_arc;
     let mut completed = last_child_completed;
@@ -347,15 +328,9 @@ fn iter_ascend<'a, 'b>(node_arc: Arc<RwLock<Node<'a, 'b>>>,
                 pos_parent = pos_opt;
                 node_arc = parent_arc;
             }
-            NodeAscendResult::InvalidParent => {
-                return AscendResult::InvalidParent;
-            }
-            NodeAscendResult::TreeUpdated => {
-                return AscendResult::TreeUpdated;
-            }
-            NodeAscendResult::Root => {
-                return AscendResult::Root;
-            }
+            NodeAscendResult::InvalidParent |
+            NodeAscendResult::TreeUpdated |
+            NodeAscendResult::Root => return,
         }
     }
 }
@@ -363,16 +338,14 @@ fn iter_ascend<'a, 'b>(node_arc: Arc<RwLock<Node<'a, 'b>>>,
 /// We are coming from a deadend, so we did not retrieve any value here
 /// We still want to update the tree for completed children
 /// Takes a parent stack (of weak pointers) and iterates on it
-pub fn thread_ascend_tree_no_val<'a, 'b>(
-    pos_last_child: usize,  mut parent_stack: NodeStack<'a, 'b>) -> AscendResult
-{
+pub fn thread_ascend_tree_no_val<'a, 'b>(pos_last_child: usize, 
+                                         mut parent_stack: NodeStack<'a, 'b>) {
     let parent_opt = parent_stack.pop();
     if let Some((weak_node, pos_opt)) = parent_opt {
         if let Some(node_lock) = weak_node.upgrade() {
             iter_ascend_no_val(node_lock, pos_opt, pos_last_child, &mut parent_stack)
         }
-        else { AscendResult::InvalidParent }
-    } else { AscendResult::Root }
+    }
 }
 
 /// Called by thread_ascend_tree_no_val
@@ -380,7 +353,7 @@ pub fn thread_ascend_tree_no_val<'a, 'b>(
 fn iter_ascend_no_val<'a, 'b>(node_lock: Arc<RwLock<Node<'a, 'b>>>,
                               current_pos: Option<usize>,
                               pos_last_child: usize,
-                              parent_stack: &mut NodeStack<'a, 'b>) -> AscendResult {
+                              parent_stack: &mut NodeStack<'a, 'b>) {
     let mut node_arc = node_lock;
     let mut pos_child = pos_last_child;
     let mut pos_parent = current_pos;
@@ -395,11 +368,8 @@ fn iter_ascend_no_val<'a, 'b>(node_lock: Arc<RwLock<Node<'a, 'b>>>,
                 pos_parent = pos_opt;
                 node_arc = parent_arc;
             }
-            NodeAscendResult::Node(..)  => {panic!("ascend_no_val returned Node");}
-            NodeAscendResult::InvalidParent => { return AscendResult::InvalidParent; }
-            NodeAscendResult::NodeNotCompleted(..) => { return AscendResult::TreeUpdated; }
-            NodeAscendResult::TreeUpdated => { return AscendResult::TreeUpdated; }
-            NodeAscendResult::Root => { return AscendResult::Root; }
+            NodeAscendResult::Node(..)  => { panic!("ascend_no_val returned Node"); }
+            _ => return,
         }
     }
 }
@@ -410,7 +380,7 @@ impl<'a, 'b> Node<'a, 'b> {
     /// Called on a node, returns None if we find a childless node, else returns the next
     /// node to visit. `best_time` is the time of the best candidate at the time this
     /// thread started traversing the tree.
-    fn descend_node(&mut self, config: &BanditConfig, best_time: f64)
+    fn descend_node(&mut self, context: &Context, config: &BanditConfig, best_time: f64)
         -> NodeDescendResult<'a, 'b>
     {
         if self.children.is_empty() {
@@ -419,7 +389,7 @@ impl<'a, 'b> Node<'a, 'b> {
         // removing the children whose bounds are over the current best score
         self.remove_children(best_time);
         if let Some(un_pos) = self.find_unexpanded_node(config, best_time) {
-            self.expand_child(config, un_pos, best_time)
+            self.expand_child(context, config, un_pos, best_time)
         } else { self.descend_expanded_node(config, best_time) }
     }
 
@@ -436,7 +406,7 @@ impl<'a, 'b> Node<'a, 'b> {
     /// Returns the position of an unexpanded node if there is some, else returns None
     fn find_standard_unexpanded_node(&self) -> Option<usize> {
         self.children.iter().enumerate()
-            .find(|&(_, x)| match x.tree {
+            .find(|&(_, x)| match *x {
                 EnumTree::UnexpandedNode(..) =>  {true}
                 _ => {false}})
             .map( |x| x.0)
@@ -446,10 +416,10 @@ impl<'a, 'b> Node<'a, 'b> {
     /// returns None
     fn find_best_unexpanded_node(&self) -> Option<usize> {
         self.children.iter().enumerate()
-            .filter(|&(_, x)| match x.tree {
+            .filter(|&(_, x)| match *x {
                 EnumTree::UnexpandedNode(..) =>  {true}
                 _ => {false}})
-            .min_by(|x1, x2| SearchTree::compare_bound(x1.1, x2.1))
+            .min_by(|x1, x2| EnumTree::compare_bound(x1.1, x2.1))
             .map( |x| x.0)
     }
 
@@ -459,7 +429,7 @@ impl<'a, 'b> Node<'a, 'b> {
     fn find_rand_unexpanded_node(&self) -> Option<usize> {
         let mut rng = thread_rng();
         let unexpanded_index_list = self.children.iter().enumerate()
-            .filter(|&(_, x)| match x.tree {
+            .filter(|&(_, x)| match *x {
                 EnumTree::UnexpandedNode(..) =>  {true}
                 _ => {false}})
             .map( |x| x.0).collect::<Vec<_>>();
@@ -477,7 +447,7 @@ impl<'a, 'b> Node<'a, 'b> {
     /// None
     fn find_mixed_unexpanded_node(&self, best_score: f64) -> Option<usize> {
         let unexpanded_node_list = self.children.iter().enumerate()
-            .filter(|&(_, x)| match x.tree {
+            .filter(|&(_, x)| match *x {
                 EnumTree::UnexpandedNode(..) =>  {true}
                 _ => {false}})
             .collect::<Vec<_>>();
@@ -494,7 +464,7 @@ impl<'a, 'b> Node<'a, 'b> {
     /// time, we choose a node according to a mixed strategy : we make a weighted
     /// random selection (weights are correlated to the distance between the
     /// bound and the best time)
-    fn select_node(node_list: Vec<(usize, &SearchTree)>,
+    fn select_node(node_list: Vec<(usize, &EnumTree)>,
         best_score: f64) -> usize {
         if node_list.is_empty() {
             panic!("not supposed to have an empty vec");
@@ -502,7 +472,7 @@ impl<'a, 'b> Node<'a, 'b> {
         let mut weighted_items = vec![];
         let mut rng = thread_rng();
         let max_bound = node_list.iter().max_by(|x1, x2|
-            SearchTree::compare_bound(x1.1, x2.1))
+            EnumTree::compare_bound(x1.1, x2.1))
             .map(|x| x.1.bound()).unwrap();
         for (ind, x) in node_list {
             if best_score.is_infinite() {
@@ -527,7 +497,7 @@ impl<'a, 'b> Node<'a, 'b> {
         let ind_opt = self.decide_next_child(config, best_time);
         if let Some(index) = ind_opt {
             self.rewards[index].1 += 1;
-            match self.children[index].tree {
+            match self.children[index] {
                 EnumTree::Node(ref arc_node, _) => { NodeDescendResult::Node(
                     Arc::clone(&arc_node), index)}
                 EnumTree::UnexpandedNode(..) => {panic!("Found an unexpanded node");}
@@ -551,8 +521,8 @@ impl<'a, 'b> Node<'a, 'b> {
     /// Returns None if children is empty
     fn decide_next_child_best(&self) -> Option<usize> {
       self.children.iter().enumerate().filter(|&(_, x)| {
-          if let EnumTree::NoGoBranch = x.tree {false} else {true}
-      }).min_by(|x: &(usize, &SearchTree), y:&(usize, &SearchTree)| {
+          if let EnumTree::NoGoBranch = *x {false} else {true}
+      }).min_by(|x: &(usize, &EnumTree), y:&(usize, &EnumTree)| {
           cmp_f64(x.1.bound(), y.1.bound())
       }).map(|x| x.0)
     }
@@ -564,7 +534,7 @@ impl<'a, 'b> Node<'a, 'b> {
         -> Option<usize>
     {
         let node_list = self.children.iter().enumerate()
-            .filter(|&(_, x)| match x.tree {
+            .filter(|&(_, x)| match *x {
                 EnumTree::NoGoBranch =>  {false}
                 _ => {true}})
             .collect::<Vec<_>>();
@@ -585,7 +555,7 @@ impl<'a, 'b> Node<'a, 'b> {
         let nb_tested = self.rewards.iter().fold(0, |acc, ref x| acc + x.1);
         let nb_children = self.rewards.len();
         self.rewards.iter().enumerate()
-            .filter(|&(i, _)| {if let EnumTree::NoGoBranch = self.children[i].tree {false}
+            .filter(|&(i, _)| {if let EnumTree::NoGoBranch = self.children[i] {false}
                 else {true}})
             .map(|(ind, ref x)| (ind, heval(config, x.0.len(), x.1, nb_tested, nb_children)))
             .max_by( |x1:&(usize, f64), x2:&(usize, f64)| cmp_f64(x1.1, x2.1))
@@ -597,7 +567,7 @@ impl<'a, 'b> Node<'a, 'b> {
     fn remove_children(&mut self, best_score: f64) -> usize {
         let mut to_remove = vec![];
         for (ind, child) in self.children.iter().enumerate() {
-            match child.tree {
+            match *child {
                 EnumTree::Node(_, ref bound) => {
                     if *bound >= best_score { to_remove.push(ind); }
                 }
@@ -609,7 +579,7 @@ impl<'a, 'b> Node<'a, 'b> {
         }
         let nb_removed = to_remove.len();
         for ind in to_remove {
-            self.children[ind].tree = EnumTree::NoGoBranch;
+            self.children[ind] = EnumTree::NoGoBranch;
         }
         nb_removed
     }
@@ -617,22 +587,24 @@ impl<'a, 'b> Node<'a, 'b> {
     /// Given a vector of children and pos, which is the position of an unexpanded node, this
     /// function expands the node, remove the child if it is a deadend or replace the
     /// unexpanded child with the expanded one
-    fn expand_child(&mut self, config: &BanditConfig, pos: usize, cut: f64) -> NodeDescendResult<'a, 'b> {
+    fn expand_child(&mut self, context: &Context,
+                    config: &BanditConfig,
+                    pos: usize, cut: f64) -> NodeDescendResult<'a, 'b> {
         let mut id_child = self.id.clone();
         id_child.push_str(&String::from(" "));
         id_child.push_str(&pos.to_string());
-        match self.children[pos].expand_node(id_child, cut) {
+        match self.children[pos].expand_node(context, id_child, cut) {
             ExpandRes::DeadEnd => {
-                self.children[pos].tree = EnumTree::NoGoBranch;
+                self.children[pos] = EnumTree::NoGoBranch;
                 NodeDescendResult::DeadEndFromExpand(pos)
             }
             ExpandRes::Leaf(candidate) => {
-                self.children[pos].tree = EnumTree::NoGoBranch;
+                self.children[pos] = EnumTree::NoGoBranch;
                 NodeDescendResult::Leaf(candidate, pos)
             }
             ExpandRes::Node(node) => {
                 self.children[pos] = node;
-                if let &EnumTree::Node(ref node_arc, _) = &self.children[pos].tree {
+                if let EnumTree::Node(ref node_arc, _) = self.children[pos] {
                     if config.monte_carlo {
                         NodeDescendResult::MonteCarlo(Arc::clone(node_arc), pos)
                     } else {NodeDescendResult::Node(Arc::clone(node_arc), pos)}
@@ -645,8 +617,8 @@ impl<'a, 'b> Node<'a, 'b> {
     /// remove all childrens and returns a vector containing all node children
     fn node_collect(&mut self, best_val: f64) -> (Vec<Arc<RwLock<Node<'a, 'b>>>>, usize) {
         let nb_removed = self.remove_children(best_val);
-        (self.children.iter().filter(|x| if let EnumTree::Node(..) = x.tree {true} else {false})
-            .map(|x| if let EnumTree::Node(ref node, _) = x.tree {Arc::clone(node)}
+        (self.children.iter().filter(|x| if let EnumTree::Node(..) = *x {true} else {false})
+            .map(|x| if let EnumTree::Node(ref node, _) = *x {Arc::clone(node)}
                  else {panic!("We should only have nodes here");})
             .collect::<Vec<_>>(),
             nb_removed)
@@ -669,7 +641,7 @@ impl<'a, 'b> Node<'a, 'b> {
     /// Update rewards in a node with val, also replace child with NoGo if needed
     fn update_as_parent(&mut self, val: f64, pos: usize, completed: bool) -> UpdateRes {
         if completed {
-            self.children[pos].tree = EnumTree::NoGoBranch;
+            self.children[pos] = EnumTree::NoGoBranch;
         }
         let is_val_inserted = self.update_rewards(pos, val);
         match (is_val_inserted, completed) {
@@ -686,7 +658,7 @@ impl<'a, 'b> Node<'a, 'b> {
         -> NodeAscendResult<'a, 'b> {
         // If we call this function, we know that our child is complete (this is this function
         // only purpose)
-        self.children[pos_child].tree = EnumTree::NoGoBranch;
+        self.children[pos_child] = EnumTree::NoGoBranch;
         self.pop_parent(parents_stack, false)
     }
 
@@ -701,7 +673,7 @@ impl<'a, 'b> Node<'a, 'b> {
             if let Some(ref parent_lock) = parent_opt {
                 let completed = self.children.iter().fold(true, |acc, ref x| if let
                                                           EnumTree::NoGoBranch =
-                                                          x.tree {acc && true} else {false});
+                                                          *x {acc && true} else {false});
                 match (val_inserted, completed) {
                     (true, true) => NodeAscendResult::Node(Arc::clone(parent_lock), pos),
                     (false, true) => NodeAscendResult::NodeNoVal(Arc::clone(parent_lock), pos),
@@ -719,14 +691,14 @@ impl<'a, 'b> Node<'a, 'b> {
         let total_trials = self.rewards.iter().map(|x| x.0.len()).sum::<usize>();
         // If total trials is less than THRESHOLD, then we simply push our new value
         // in the node where it was found.
-        if total_trials < THRESHOLD {
+        if total_trials < 10 { // FIXME: use the real threshold
             self.rewards[pos].0.push(val);
             true
         } else {
             // Now we have to find the minimum value of all vectors and the place where
             // we found it.
             let (ind, int_ind, min) = unwrap!(self.find_max_rewards());
-            if val > min {
+            if val < min {
                 self.rewards[ind].0.swap_remove(int_ind);
                 self.rewards[pos].0.push(val);
                 true
@@ -757,7 +729,7 @@ impl<'a, 'b> Node<'a, 'b> {
         let ind;
         {
             let new_nodes = self.children.iter().map(|node| {
-                if let EnumTree::UnexpandedNode(ref cand, _) = node.tree { cand } else {
+                if let EnumTree::UnexpandedNode(ref cand, _) = *node { cand } else {
                     // We must only call this function on a newly expanded node, which
                     // means that there must nothing but unexpandedNode in it.
                     panic!()
@@ -765,8 +737,7 @@ impl<'a, 'b> Node<'a, 'b> {
             });
             ind = unwrap!(montecarlo::next_cand_index(
                     config.new_nodes_order, new_nodes, cut));
-            let cand_ref = if let EnumTree::UnexpandedNode(ref cand, _) =
-                self.children[ind].tree
+            let cand_ref = if let EnumTree::UnexpandedNode(ref cand, _) = self.children[ind]
             {
                 cand
             } else { panic!() };
@@ -783,43 +754,39 @@ impl<'a, 'b> Node<'a, 'b> {
         // as we can only be here if this 'if' branch was not taken - there is a return in
         // each other branches. We need to do that so we can hold a mutable reference on
         // self.children.
-        let node = std::mem::replace(&mut self.children[ind].tree, EnumTree::NoGoBranch);
+        let node = std::mem::replace(&mut self.children[ind], EnumTree::NoGoBranch);
         if let EnumTree::UnexpandedNode(cand, _) = node { Some(cand) } else { panic!() }
     }
 }
 
 
-impl<'a, 'b> SearchTree<'a, 'b> {
-    pub fn new(candidates: Vec<Candidate<'a>>, context: &'b Context) -> Self {
-        SearchTree::create_node(candidates, context, 0.0, String::from("0"))
-    }
-
+impl<'a, 'b> EnumTree<'a, 'b> {
     /// Given an expanded Node, returns a list of candidates corresponding to the choices
     /// applied to this candidate. If the list is empty, it means that no choice can be
     /// applied and this node is therefore a leaf in the tree, it has been completely
     /// constrained and must now be evaluated.
-    fn expand_node(&mut self, id_node: String, cut: f64) -> ExpandRes<'a, 'b>  {
+    fn expand_node(&mut self, context: &Context, id_node: String, cut: f64) -> ExpandRes<'a, 'b>  {
         let node;
         {
-            node = std::mem::replace(&mut self.tree, EnumTree::NoGoBranch);
+            node = std::mem::replace(self, EnumTree::NoGoBranch);
         }
         if let EnumTree::UnexpandedNode(candidate, bound) = node {
             let choice_opt = choice::list(&candidate.space).next();
             if let Some(choice) = choice_opt {
-                let new_nodes = candidate.apply_choice(self.context, choice).into_iter()
+                let new_nodes = candidate.apply_choice(context, choice).into_iter()
                     .filter(|n| n.bound.value() < cut)
                     .collect_vec();
                 if new_nodes.is_empty() {
                     ExpandRes::DeadEnd
                 } else { ExpandRes::Node(
-                        SearchTree::create_node(new_nodes, self.context, bound, id_node))
+                        EnumTree::create_node(new_nodes, bound, id_node))
                 }
             } else { ExpandRes::Leaf(candidate) }
         } else { panic!("Trying to expand an already expanded node !!!");}
     }
 
-    fn compare_bound(tree1: &SearchTree, tree2: &SearchTree) -> std::cmp::Ordering {
-        match (&tree1.tree, &tree2.tree) {
+    fn compare_bound(tree1: &EnumTree, tree2: &EnumTree) -> std::cmp::Ordering {
+        match (tree1, tree2) {
             (&EnumTree::UnexpandedNode(_, b1), &EnumTree::UnexpandedNode(_, b2)) |
             (&EnumTree::UnexpandedNode(_, b1), &EnumTree::Node(_, b2)) |
             (&EnumTree::Node(_, b1), &EnumTree::UnexpandedNode(_, b2)) |
@@ -831,8 +798,8 @@ impl<'a, 'b> SearchTree<'a, 'b> {
     /// If called on an unexpanded or a node variant, returns the value of the bound
     /// Panics otherwise
     fn bound(&self) -> f64 {
-        match &self.tree {
-            &EnumTree::Node(_, bound) | &EnumTree::UnexpandedNode(_, bound) =>
+        match *self {
+            EnumTree::Node(_, bound) | EnumTree::UnexpandedNode(_, bound) =>
                 bound,
                 _ => {
                     panic!("Trying to get bound of an No Go Branch");
@@ -842,19 +809,19 @@ impl<'a, 'b> SearchTree<'a, 'b> {
 
     /// Given a list of candidates, create a Node which has these candidates as children
     /// children being created as unexpanded nodes
-    fn create_node(new_nodes: Vec<Candidate<'a>>, context: &'b Context,
-                   bound: f64, id_node: String) -> SearchTree<'a, 'b> {
+    fn create_node(new_nodes: Vec<Candidate<'a>>, bound: f64, id_node: String)
+        -> EnumTree<'a, 'b>
+    {
         let mut rew_vec = vec![];
-        let mut arc_nodes: Vec<SearchTree<'a, 'b>> = vec![];
+        let mut arc_nodes: Vec<EnumTree<'a, 'b>> = vec![];
         for node in new_nodes {
             let cand_bound = node.bound.value();
             rew_vec.push((vec![], 0));
-            arc_nodes.push(SearchTree{tree: EnumTree::UnexpandedNode(node, cand_bound),
-            context });
+            arc_nodes.push(EnumTree::UnexpandedNode(node, cand_bound));
         }
         let node = Node { children: arc_nodes, rewards: rew_vec, id: id_node };
         let tree = EnumTree::Node(Arc::new(RwLock::new(node)), bound);
-        SearchTree { tree, context }
+        tree
     }
 }
 

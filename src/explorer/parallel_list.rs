@@ -17,7 +17,7 @@ impl<'a> Store<'a> for ParallelCandidateList<'a> {
         self.lock().0.update_cut(new_cut);
     }
 
-    fn commit_evaluation(&self, _: &Config, (): Self::PayLoad, _: f64) { }
+    fn commit_evaluation(&self, (): Self::PayLoad, _: f64) { }
 
     fn explore(&self, _config: &Config, context: &Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
         loop {
