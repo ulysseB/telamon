@@ -23,7 +23,7 @@ pub struct Tree<'a, 'b> {
 impl<'a, 'b> Tree<'a, 'b> {
     /// Creates a new search tree containing the given candidates.
     pub fn new(candidates: Vec<Candidate<'a>>, config: &'b BanditConfig) -> Self {
-        let root = SubTree::create_node(candidates, 0.0);
+        let root = SubTree::from_candidates(candidates, std::f64::INFINITY);
         Tree {
             shared_tree: Arc::new(RwLock::new(root)),
             cut: RwLock::new(std::f64::INFINITY),
@@ -112,6 +112,17 @@ enum SubTree<'a> {
 }
 
 impl<'a> SubTree<'a> {
+    /// Creates a `SubTree` containing the given list of candidates.
+    fn from_candidates(candidates: Vec<Candidate<'a>>, cut: f64) -> SubTree<'a> {
+        let bound = candidates.iter().map(|c| c.bound.value())
+            .max_by(|&lhs, &rhs| cmp_f64(lhs, rhs)).unwrap_or(std::f64::INFINITY);
+        let children = candidates.into_iter().filter(|c| c.bound.value() < cut)
+            .map(SubTree::UnexpandedNode).collect_vec();
+        if children.is_empty() { SubTree::Empty } else {
+            SubTree::InternalNode(Arc::new(RwLock::new(Node::new(children))), bound)
+        }
+    }
+
     /// Trims the branch if it has with an evaluation time guaranteed to be worse than
     /// `cut`. Returns the childrens to trim if any,
     fn trim(&mut self, cut: f64) -> Option<Arc<RwLock<Node<'a>>>> {
@@ -131,12 +142,25 @@ impl<'a> SubTree<'a> {
             SubTree::Empty => std::f64::INFINITY,
         }
     }
+
+    /// Indicates if the `SubTree` is empty.
+    fn is_empty(&self) -> bool {
+        if let SubTree::Empty = *self { true } else { false }
+    }
 }
 
 // FIXME: >>>>>>>>>>>>>>>..
 pub struct Node<'a> {
     children: Vec<SubTree<'a>>,
     rewards: Vec<(Vec<f64>, usize)>,
+}
+
+impl<'a> Node<'a> {
+    /// Creates a new children of a node containing the given `SubTree`s.
+    fn new(children: Vec<SubTree<'a>>) -> Self {
+        let rewards = children.iter().map(|_| (vec![], 0)).collect();
+        Node { children: children, rewards }
+    }
 }
 
 type NodeStack<'a> = Vec<(Weak<RwLock<Node<'a>>>, Option<usize>)>;
@@ -748,42 +772,22 @@ impl<'a> SubTree<'a> {
     /// applied and this node is therefore a leaf in the tree, it has been completely
     /// constrained and must now be evaluated.
     fn expand_node(&mut self, context: &Context, cut: f64) -> ExpandRes<'a>  {
-        let node;
-        {
-            node = std::mem::replace(self, SubTree::Empty);
-        }
+        // FIXME: should reassign inside
+        let node = std::mem::replace(self, SubTree::Empty);
         if let SubTree::UnexpandedNode(candidate) = node {
             let choice_opt = choice::list(&candidate.space).next();
             if let Some(choice) = choice_opt {
-                let new_nodes = candidate.apply_choice(context, choice).into_iter()
-                    .filter(|n| n.bound.value() < cut)
-                    .collect_vec();
-                if new_nodes.is_empty() {
+                let candidates = candidate.apply_choice(context, choice);
+                let new_tree = SubTree::from_candidates(candidates, cut);
+                if new_tree.is_empty() {
                     ExpandRes::DeadEnd
-                } else { ExpandRes::Node(
-                        SubTree::create_node(new_nodes, candidate.bound.value()))
-                }
+                } else { ExpandRes::Node(new_tree) }
             } else { ExpandRes::Leaf(candidate) }
         } else { panic!("Trying to expand an already expanded node !!!");}
     }
-
-    /// Given a list of candidates, create a Node which has these candidates as children
-    /// children being created as unexpanded nodes
-    // FIXME: retrieve the bound from the candidates
-    fn create_node(new_nodes: Vec<Candidate<'a>>, bound: f64) -> SubTree<'a> {
-        let mut rew_vec = vec![];
-        let mut arc_nodes: Vec<SubTree<'a>> = vec![];
-        for node in new_nodes {
-            rew_vec.push((vec![], 0));
-            arc_nodes.push(SubTree::UnexpandedNode(node));
-        }
-        let node = Node { children: arc_nodes, rewards: rew_vec };
-        let tree = SubTree::InternalNode(Arc::new(RwLock::new(node)), bound);
-        tree
-    }
 }
 
-
+// FIXME: <<<<<<<<<<<<<<<<
 
 /// gives a "score" to a branch of the tree at a given node n_successes is the number of
 /// successes of that branch (that is, the number of leaves that belong to the THRESHOLD
@@ -791,12 +795,12 @@ impl<'a> SubTree<'a> {
 /// * `n_branch_trials` is the number of trials of that branch (both failed and succeeded),
 /// * `n_trials` is  the number of trials of the node and k the number of branches in the
 ///   node.
-fn heval(config: &BanditConfig, n_successes: usize, n_branch_trials: usize, n_trials: usize,
+fn heval(config: &BanditConfig,
+         n_successes: usize
+         n_branch_trials: usize,
+         n_trials: usize,
          n_branches: usize) -> f64 {
-    if n_trials == 0 {
-        std::f64::INFINITY
-    }
-    else {
+    if n_trials == 0 { std::f64::INFINITY } else {
         let f = (n_trials * n_branches) as f64;
         let alpha= f.ln() / config.delta;
         let sqrt_body = alpha * (2. * n_successes as f64 + alpha);
