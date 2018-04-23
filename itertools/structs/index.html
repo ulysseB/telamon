@@ -59,7 +59,7 @@
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a class='srclink' href='../../src/itertools/lib.rs.html#32-73' title='goto source code'>[src]</a></span></h1><div class='docblock'><p>The concrete iterator types.</p>
+               </span><a class='srclink' href='../../src/itertools/lib.rs.html#52-104' title='goto source code'>[src]</a></span></h1><div class='docblock'><p>The concrete iterator types.</p>
 </div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
 <table>
                        <tr class=' module-item'>
@@ -256,10 +256,27 @@ If both base iterators are sorted (ascending), the result is sorted.</p>
                            </td>
                        </tr>
                        <tr class=' module-item'>
+                           <td><a class="struct" href="struct.MergeJoinBy.html"
+                                  title='struct itertools::structs::MergeJoinBy'>MergeJoinBy</a></td>
+                           <td class='docblock-short'>
+                                <p>An iterator adaptor that merge-joins items from the two base iterators in ascending order.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
                            <td><a class="struct" href="struct.MultiPeek.html"
                                   title='struct itertools::structs::MultiPeek'>MultiPeek</a></td>
                            <td class='docblock-short'>
                                 <p>See <a href="../fn.multipeek.html"><code>multipeek()</code></a> for more information.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.MultiProduct.html"
+                                  title='struct itertools::structs::MultiProduct'>MultiProduct</a></td>
+                           <td class='docblock-short'>
+                                <p>An iterator adaptor that iterates over the cartesian product of
+multiple iterators of type <code>I</code>.</p>
 
                            </td>
                        </tr>
@@ -428,6 +445,14 @@ of a specific size.</p>
                                   title='struct itertools::structs::UniqueBy'>UniqueBy</a></td>
                            <td class='docblock-short'>
                                 <p>An iterator adapter to filter out duplicate elements.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Update.html"
+                                  title='struct itertools::structs::Update'>Update</a></td>
+                           <td class='docblock-short'>
+                                <p>An iterator adapter to apply a mutating function to each element before yielding it.</p>
 
                            </td>
                        </tr>

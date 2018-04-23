@@ -935,18 +935,6 @@
 <span id="878">878</span>
 <span id="879">879</span>
 <span id="880">880</span>
-<span id="881">881</span>
-<span id="882">882</span>
-<span id="883">883</span>
-<span id="884">884</span>
-<span id="885">885</span>
-<span id="886">886</span>
-<span id="887">887</span>
-<span id="888">888</span>
-<span id="889">889</span>
-<span id="890">890</span>
-<span id="891">891</span>
-<span id="892">892</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Exploration of the search space.</span>
 
@@ -1666,7 +1654,7 @@
     <span class="doccomment">/// Update a rewards list given a new value and the position where it was found</span>
     <span class="doccomment">/// returns true if the value was inserted in the node</span>
     <span class="kw">fn</span> <span class="ident">update_rewards</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">pos</span>: <span class="ident">usize</span>, <span class="ident">val</span>: <span class="ident">f64</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
-        <span class="kw">let</span> <span class="ident">total_trials</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">rewards</span>.<span class="ident">iter</span>().<span class="ident">fold</span>( <span class="number">0</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="ident">acc</span> <span class="op">+</span> <span class="ident">x</span>.<span class="number">1</span>);
+        <span class="kw">let</span> <span class="ident">total_trials</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">rewards</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="number">0</span>.<span class="ident">len</span>()).<span class="ident">sum</span>::<span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>();
         <span class="comment">// If total trials is less than THRESHOLD, then we simply push our new value</span>
         <span class="comment">// in the node where it was found.</span>
         <span class="kw">if</span> <span class="ident">total_trials</span> <span class="op">&lt;</span> <span class="ident">THRESHOLD</span> {
@@ -1674,37 +1662,25 @@
             <span class="bool-val">true</span>
         } <span class="kw">else</span> {
             <span class="comment">// Now we have to find the minimum value of all vectors and the place where</span>
-            <span class="comment">// we found it</span>
-            <span class="comment">// We just iterate on the two level of vect and retain the minimum we find</span>
-            <span class="kw">let</span> <span class="ident">min_elem</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">find_min_rewards</span>();
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">ind</span>, <span class="ident">int_ind</span>, <span class="ident">min</span>)) <span class="op">=</span> <span class="ident">min_elem</span> {
-                <span class="kw">if</span> <span class="ident">val</span> <span class="op">&gt;</span> <span class="ident">min</span> {
-                    <span class="self">self</span>.<span class="ident">rewards</span>[<span class="ident">ind</span>].<span class="number">0</span>.<span class="ident">swap_remove</span>(<span class="ident">int_ind</span>);
-                    <span class="self">self</span>.<span class="ident">rewards</span>[<span class="ident">pos</span>].<span class="number">0</span>.<span class="ident">push</span>(<span class="ident">val</span>);
-                    <span class="bool-val">true</span>
-                } <span class="kw">else</span> { <span class="bool-val">false</span> }
-            } <span class="kw">else</span> {
-                <span class="comment">// Very unlikely, but it is possible that all rewards lists are empty</span>
-                <span class="comment">// in the case that we only encountered deadend in this node</span>
+            <span class="comment">// we found it.</span>
+            <span class="kw">let</span> (<span class="ident">ind</span>, <span class="ident">int_ind</span>, <span class="ident">min</span>) <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">find_max_rewards</span>());
+            <span class="kw">if</span> <span class="ident">val</span> <span class="op">&gt;</span> <span class="ident">min</span> {
+                <span class="self">self</span>.<span class="ident">rewards</span>[<span class="ident">ind</span>].<span class="number">0</span>.<span class="ident">swap_remove</span>(<span class="ident">int_ind</span>);
                 <span class="self">self</span>.<span class="ident">rewards</span>[<span class="ident">pos</span>].<span class="number">0</span>.<span class="ident">push</span>(<span class="ident">val</span>);
                 <span class="bool-val">true</span>
-            }
+            } <span class="kw">else</span> { <span class="bool-val">false</span> }
         }
     }
 
-    <span class="doccomment">/// Returns the tuple (outer_index, int_index, min) which is the minimum value found</span>
+    <span class="doccomment">/// Returns the tuple (outer_index, int_index, max) which is the maximum value found</span>
     <span class="doccomment">/// in rewards with the indexes where we found it - index on outer dimension, then on</span>
     <span class="doccomment">/// inner.</span>
-    <span class="kw">fn</span> <span class="ident">find_min_rewards</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="ident">usize</span>, <span class="ident">f64</span>)<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">rewards</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>().<span class="ident">filter</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="kw">_</span>, <span class="ident">elem</span>)<span class="op">|</span> <span class="op">!</span><span class="ident">elem</span>.<span class="number">0</span>.<span class="ident">is_empty</span>())
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">out_ind</span>, <span class="ident">elem</span>)<span class="op">|</span>
-                 (<span class="ident">out_ind</span>,
-                  <span class="ident">elem</span>.<span class="number">0</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>()
-                  .<span class="ident">min_by</span>(<span class="op">|</span><span class="ident">x1</span>, <span class="ident">x2</span><span class="op">|</span> <span class="ident">cmp_f64</span>(<span class="kw-2">*</span><span class="ident">x1</span>.<span class="number">1</span>, <span class="kw-2">*</span><span class="ident">x2</span>.<span class="number">1</span>))
-                  .<span class="ident">unwrap</span>())
-                )
-            .<span class="ident">map</span>( <span class="op">|</span>(<span class="ident">out_ind</span>, (<span class="ident">in_ind</span>, <span class="ident">min_val</span>))<span class="op">|</span> (<span class="ident">out_ind</span>, <span class="ident">in_ind</span>, <span class="kw-2">*</span><span class="ident">min_val</span>))
-            .<span class="ident">min_by</span>(<span class="op">|</span><span class="ident">x1</span>, <span class="ident">x2</span><span class="op">|</span> <span class="ident">cmp_f64</span>(<span class="ident">x1</span>.<span class="number">2</span>, <span class="ident">x2</span>.<span class="number">2</span>))
+    <span class="kw">fn</span> <span class="ident">find_max_rewards</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="ident">usize</span>, <span class="ident">f64</span>)<span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">rewards</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>().<span class="ident">flat_map</span>(<span class="op">|</span>(<span class="ident">out_idx</span>, <span class="ident">rewards</span>)<span class="op">|</span> {
+            <span class="kw">let</span> <span class="ident">max</span> <span class="op">=</span> <span class="ident">rewards</span>.<span class="number">0</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">enumerate</span>()
+                .<span class="ident">max_by</span>(<span class="op">|</span><span class="ident">lhs</span>, <span class="ident">rhs</span><span class="op">|</span> <span class="ident">cmp_f64</span>(<span class="ident">lhs</span>.<span class="number">1</span>, <span class="ident">rhs</span>.<span class="number">1</span>));
+            <span class="ident">max</span>.<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">idx</span>, <span class="ident">value</span>)<span class="op">|</span> (<span class="ident">out_idx</span>, <span class="ident">idx</span>, <span class="ident">value</span>))
+        }).<span class="ident">max_by</span>(<span class="op">|</span><span class="ident">x1</span>, <span class="ident">x2</span><span class="op">|</span> <span class="ident">cmp_f64</span>(<span class="ident">x1</span>.<span class="number">2</span>, <span class="ident">x2</span>.<span class="number">2</span>))
     }
 
     <span class="doccomment">/// We have a newly expanded node, we want to do a montecarlo descend on it</span>
