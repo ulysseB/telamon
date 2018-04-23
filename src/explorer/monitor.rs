@@ -121,7 +121,7 @@ fn handle_message<'a, T>(config: &Config,
         log_sender.send(log_message).unwrap();
         *best_cand = Some((cand, eval));
     }
-    candidate_store.commit_evaluation(config, payload, eval);
+    candidate_store.commit_evaluation(payload, eval);
 }
 
 /// Builds and returns a timer that suits our needs - that is, which timeout can be set to at least
