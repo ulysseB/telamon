@@ -49,7 +49,7 @@ fn benchmark<'a, K, REF>(params: K::Parameters,
 {
     let mut config = Config::default();
     config.timeout.get_or_insert(TIMEOUT);
-    config.distance_to_best.get_or_insert(0.2);
+    config.distance_to_best.get_or_insert(20.);
 
     let mut context = cuda::Context::new(executor);
     let runtime = K::benchmark(&config, params, NUM_CODE_RUNS, &mut context);

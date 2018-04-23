@@ -58,7 +58,8 @@ impl Config {
         config.algorithm = SearchAlgorithm::parse_config(parser);
         opt_param(parser.get_float("stop_bound")).map(|b| config.stop_bound = Some(b));
         opt_param(parser.get_int("timeout")).map(|t| config.timeout = Some(t as u64));
-        opt_param(parser.get_float("distance_to_best")).map(|d| config.distance_to_best = Some(d));
+        opt_param(parser.get_float("distance_to_best"))
+            .map(|d| config.distance_to_best = Some(d));
         config
     }
 
