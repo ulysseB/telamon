@@ -716,7 +716,7 @@ impl<'a, 'b> Node<'a, 'b> {
     /// Update a rewards list given a new value and the position where it was found
     /// returns true if the value was inserted in the node
     fn update_rewards(&mut self, pos: usize, val: f64) -> bool {
-        let total_trials = self.rewards.iter().fold( 0, |acc, x| acc + x.1);
+        let total_trials = self.rewards.iter().map(|x| x.0.len()).sum::<usize>();
         // If total trials is less than THRESHOLD, then we simply push our new value
         // in the node where it was found.
         if total_trials < THRESHOLD {
@@ -724,37 +724,25 @@ impl<'a, 'b> Node<'a, 'b> {
             true
         } else {
             // Now we have to find the minimum value of all vectors and the place where
-            // we found it
-            // We just iterate on the two level of vect and retain the minimum we find
-            let min_elem = self.find_min_rewards();
-            if let Some((ind, int_ind, min)) = min_elem {
-                if val > min {
-                    self.rewards[ind].0.swap_remove(int_ind);
-                    self.rewards[pos].0.push(val);
-                    true
-                } else { false }
-            } else {
-                // Very unlikely, but it is possible that all rewards lists are empty
-                // in the case that we only encountered deadend in this node
+            // we found it.
+            let (ind, int_ind, min) = unwrap!(self.find_max_rewards());
+            if val > min {
+                self.rewards[ind].0.swap_remove(int_ind);
                 self.rewards[pos].0.push(val);
                 true
-            }
+            } else { false }
         }
     }
 
-    /// Returns the tuple (outer_index, int_index, min) which is the minimum value found
+    /// Returns the tuple (outer_index, int_index, max) which is the maximum value found
     /// in rewards with the indexes where we found it - index on outer dimension, then on
     /// inner.
-    fn find_min_rewards(&self) -> Option<(usize, usize, f64)> {
-        self.rewards.iter().enumerate().filter(|&(_, elem)| !elem.0.is_empty())
-            .map(|(out_ind, elem)|
-                 (out_ind,
-                  elem.0.iter().enumerate()
-                  .min_by(|x1, x2| cmp_f64(*x1.1, *x2.1))
-                  .unwrap())
-                )
-            .map( |(out_ind, (in_ind, min_val))| (out_ind, in_ind, *min_val))
-            .min_by(|x1, x2| cmp_f64(x1.2, x2.2))
+    fn find_max_rewards(&self) -> Option<(usize, usize, f64)> {
+        self.rewards.iter().enumerate().flat_map(|(out_idx, rewards)| {
+            let max = rewards.0.iter().cloned().enumerate()
+                .max_by(|lhs, rhs| cmp_f64(lhs.1, rhs.1));
+            max.map(|(idx, value)| (out_idx, idx, value))
+        }).max_by(|x1, x2| cmp_f64(x1.2, x2.2))
     }
 
     /// We have a newly expanded node, we want to do a montecarlo descend on it
