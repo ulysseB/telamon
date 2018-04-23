@@ -1,6 +1,5 @@
 use explorer::candidate::Candidate;
 use device::Context;
-use explorer::config::Config;
 
 /// A Trait defining a structure containing the candidates, meant to explore the
 /// search space
@@ -13,6 +12,6 @@ pub trait Store<'a> : Sync  {
     /// Commit the result of an evaluation back to Store
     fn commit_evaluation(&self, payload: Self::PayLoad, eval: f64);
     /// Retrieve a Candidate for evaluation
-    fn explore(&self, config: &Config, context: &Context) 
+    fn explore(&self, context: &Context) 
         -> Option<(Candidate<'a>, Self::PayLoad)>;
 }

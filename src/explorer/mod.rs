@@ -87,7 +87,7 @@ fn explore_space<'a, T>(config: &Config,
                         context: &Context) where T: Store<'a> 
 {
     context.async_eval(config.num_workers, &|evaluator| {
-        while let Some((cand, payload)) = candidate_store.explore(config, context) {
+        while let Some((cand, payload)) = candidate_store.explore(context) {
             let space = fix_order(cand.space);
             let eval_sender = eval_sender.clone();
             let callback = move |leaf, eval, cpt| {
