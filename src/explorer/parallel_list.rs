@@ -1,14 +1,12 @@
 //! Exploration of the search space.
+pub use explorer::candidate::Candidate;
 
 use device::Context;
+use explorer::choice;
+use explorer::store::Store;
 use interval_heap::IntervalHeap;
 use std;
 use std::f64;
-
-pub use explorer::candidate::Candidate;
-use explorer::config::Config;
-use explorer::choice;
-use explorer::store::Store;
 
 impl<'a> Store<'a> for ParallelCandidateList<'a> {
     type PayLoad = ();
@@ -19,7 +17,7 @@ impl<'a> Store<'a> for ParallelCandidateList<'a> {
 
     fn commit_evaluation(&self, (): Self::PayLoad, _: f64) { }
 
-    fn explore(&self, _config: &Config, context: &Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
+    fn explore(&self, context: &Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
         loop {
             if let Some(candidate) = self.pop() {
                 let choice_opt = choice::list(&candidate.space).next();
