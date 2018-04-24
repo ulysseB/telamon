@@ -66,7 +66,8 @@ pub trait Kernel<'a>: Sized {
         let mut num_runs = 0;
         while num_runs < num_tests {
             let order = explorer::config::NewNodeOrder::WeightedRandom;
-            let candidate_idx = montecarlo::next_cand_index(order, &candidates, CUT);
+            let bounds = candidates.iter().map(|c| c.bound.value()).enumerate();
+            let candidate_idx = montecarlo::next_cand_index(order, bounds, CUT);
             let candidate = candidates[unwrap!(candidate_idx)].clone();
             let leaf = montecarlo::descend(order, context, candidate, CUT);
             if let Some(leaf) = leaf {
@@ -167,7 +168,8 @@ pub trait Kernel<'a>: Sized {
         let num_deadends = (0..num_samples).into_par_iter().filter(|_| {
             let order = explorer::config::NewNodeOrder::WeightedRandom;
             let inf = std::f64::INFINITY;
-            let candidate_idx = montecarlo::next_cand_index(order, &candidates, inf);
+            let bounds = candidates.iter().map(|c| c.bound.value()).enumerate();
+            let candidate_idx = montecarlo::next_cand_index(order, bounds, inf);
             let candidate = candidates[unwrap!(candidate_idx)].clone();
             montecarlo::descend(order, context, candidate, inf).is_none()
         }).count();
@@ -183,8 +185,10 @@ fn descend_check_bounds<'a>(candidates: &[Candidate<'a>], context: &device::Cont
     let mut candidates = std::borrow::Cow::Borrowed(candidates);
     let mut bounds = Vec::new();
     loop {
-        let idx = montecarlo::next_cand_index(order, candidates.iter(), CUT);
-        let idx = if let Some(idx) = idx { idx } else { return None; };
+        let idx = if let Some(idx) = {
+            let idx_bounds = candidates.iter().map(|c| c.bound.value()).enumerate();
+            montecarlo::next_cand_index(order, idx_bounds, CUT)
+        } { idx } else { return None };
         bounds.push(candidates[idx].bound.clone());
         let choice_opt = explorer::choice::list(&candidates[idx].space).next();
         if let Some(choice) = choice_opt {
