@@ -130,63 +130,9 @@ impl device::Context for Context {
 
 enum HoldThunk {
     Arr(CpuArray),
-    PlaceHolder,
-}
-
-enum ThunkArg { 
-    ArgRef(Arc<Argument>),
-    TmpArray(u32),
-    Size(i32),
-}
-
-// Builds the parameters if needed (for temporary arrays) and call link_and_exec
-fn function_evaluate(fun_str: String, mut args: Vec<ThunkArg>) -> Result<f64, ()> {
-    let temp_dir = tempfile::tempdir().unwrap();
-    let templib_name = temp_dir.path().join("lib_compute.so").to_string_lossy().into_owned();
-    let mut source_file = tempfile::tempfile().unwrap();
-    source_file.write_all(fun_str.as_bytes()).unwrap();
-    let compile_status = compile::compile(source_file, &templib_name);
-    if !compile_status.success() {
-        panic!("Could not compile file");
-    }
-    let thunks = args.iter().map(|arg| match arg {
-        &ThunkArg::ArgRef(_) =>  HoldThunk::PlaceHolder,
-        &ThunkArg::Size(_) => HoldThunk::PlaceHolder,
-        &ThunkArg::TmpArray( size) => {
-            let arr = CpuArray::new(size as usize); 
-            HoldThunk::Arr(arr)
-        },
-    }).collect_vec();
-    let ptrs = args.iter_mut().enumerate() .map(|(ind, arg)| match arg {
-        &mut ThunkArg::ArgRef(ref mut arg_arc) =>  arg_arc.raw_ptr(),
-        &mut ThunkArg::Size(ref mut size) =>  size as *mut _ as *mut libc::c_void,
-        &mut ThunkArg::TmpArray(_) => {
-            if let &HoldThunk::Arr(ref arr) = &thunks[ind] {
-                arr.raw_ptr()
-            } else {panic!("There should be an Arr at this position !")}
-        },
-    }).collect_vec();
-    let time = compile::link_and_exec(&templib_name, &String::from("execute"), ptrs);
-    Ok(time)
-}
-
-
-type AsyncPayload<'a, 'b> = (explorer::Candidate<'a>,  String, Vec<ThunkArg>, AsyncCallback<'a, 'b>);
-=======
-fn create_file(fun_str: String, fun_name: String, filepath: String) 
-    -> Result<(), ()>
-{
-    let mut file = unwrap!(File::create(filepath));
-    file.write_all(fun_str.as_bytes());
-    Ok(())
-}
-
 fn function_evaluate(fun_str: String, fun_name: String) -> Result<f64, ()> {
-    // Does not look like a very reliable way to do this...
-    // Directory from which we launched the binary, assuming it's telamon for now
     let templib_name = tempfile::tempdir().unwrap().path().join("lib_compute.so").to_string_lossy()
         .into_owned();
-    //let source_path = String::from("template/hello_world.c");
     let mut source_file = tempfile::tempfile().unwrap();
     source_file.write_all(fun_str.as_bytes()).unwrap();
     compile::compile(source_file, &templib_name);

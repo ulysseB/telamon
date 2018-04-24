@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 use device::{self, ScalarArgument};
 use libc;
 use std::sync::{ Mutex };

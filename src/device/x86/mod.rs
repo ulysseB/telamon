@@ -6,7 +6,6 @@ mod printer;
 mod compile;
 mod cpu_argument;
 
-pub use self::api::ArrayArg;
 pub use self::context::Context;
 pub use self::cpu::Cpu;
 
