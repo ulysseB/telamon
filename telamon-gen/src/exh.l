@@ -166,7 +166,7 @@ divide "/"
 choice_ident [a-z][a-z_0-9]*
 value_ident [A-Z][A-Z_0-9]*
 set_ident [A-Z][A-Za-z_0-9]*
-var '$'alpha_num+
+var ['$'alpha_num+]
 code \"[^\n\"]*\"
 doc "///"
 
@@ -175,7 +175,6 @@ doc "///"
 /* 6 Patterns § http://westes.github.io/flex/manual/Patterns.html#Patterns */
 %%
 
-    // . { return INVALIDTOKEN; }
 {alias} { return ALIAS; }
 {counter} { return COUNTER; }
 {define} { return DEFINE; }
@@ -206,14 +205,15 @@ doc "///"
 {add_to_set} {yylval.val = ADDTOSET;  return SETDEFKEY; }
 {from_superset} {yylval.val = FROMSUPERSET;  return SETDEFKEY; }
 {set} { return SET; }
+{of} { return OF; }
 {subsetof} { return SUBSETOF; }
 {disjoint} { return DISJOINT; }
 {quotient} { return QUOTIENT; }
-{of} { return OF; }
 {true} {yylval.val = 1;  return BOOL; }
 {false} {yylval.val = 0;  return BOOL; }
 
 {colon} { return COLON; }
+{comma} { return COMMA; }
 {lparen} { return LPAREN; }
 {rparen} { return RPAREN; }
 {bit_or} { return BITOR; }
@@ -225,6 +225,7 @@ doc "///"
 {le} {yylval.val = LEQ;  return CMPOP; }
 {equals} {yylval.val = EQ;  return CMPOP; }
 {not_equals} {yylval.val = NEQ;  return CMPOP; }
+{equal} { return EQUAL; }
 {doc} {}
 {end} { return END; }
 {symmetric} { return SYMMETRIC; }
@@ -239,4 +240,5 @@ doc "///"
 {set_ident} { return SETIDENT; }
 {blank} { return BLANK; }
 <<EOF>> { return EOF; }
+. { return INVALIDTOKEN; }
 %%
