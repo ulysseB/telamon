@@ -15,6 +15,7 @@ use utils::*;
 
 /// A search tree to perform a multi-armed bandit search.
 pub struct Tree<'a, 'b> {
+    // FIXME: replace SubTree by Children
     shared_tree: Arc<RwLock<SubTree<'a>>>,
     cut: RwLock<f64>,
     config: &'b BanditConfig,
@@ -49,10 +50,7 @@ impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
     }
 
     fn commit_evaluation(&self, mut payload: Self::PayLoad, eval: f64) {
-// FIXME: >>>>>>>>>>>>
-// FIXME: call SubTree Node or Subtree and call `Node` `Children`
-// FIXME: add stats on the number of nodes inside the tree
-// FIXME: propagate the bound upward when expanding and deleting branches
+        // FIXME: >>>>>>>>>>>>
         let parent_opt = payload.path.pop();
         if let Some((weak_node, pos)) = parent_opt {
             if let Some(node_lock) = weak_node.upgrade() {
@@ -62,28 +60,32 @@ impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
         }
     }
 
-    /// Here, explore is constantly trying to find a new completely specified candidate by
-    /// calling thread_descend_tree - a thread safe seach in the tree - continuously.
     fn explore(&self, context: &Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
+        // FIXME: >>>>>>>>>>>>
         loop {
-            let shared_tree = Arc::clone(&self.shared_tree);
-            // FIXME: get rid of DescendResult
-            match thread_descend_tree(self.config, context, shared_tree, &self.cut) {
-                DescendResult::Finished => { return None; }
-                DescendResult::DeadEnd(pos, parent_stack) => {
+            let cut: f64 = { *unwrap!(self.cut.read()) };
+            let root_node = match *unwrap!(self.shared_tree.read()) {
+                SubTree::Empty => return None,
+                SubTree::InternalNode(ref n, _) => n.clone(),
+                _ => panic!("the root cannot be unexpanded"),
+            };
+            match iter_descend(self.config, context, root_node, cut) {
+                // FIXME: get rid of OldDescendResult
+                OldDescendResult::Finished => { return None; }
+                OldDescendResult::DeadEnd(pos, parent_stack) => {
                     // FIXME: This remove the dead branch, ensure it is not called from montecarlo
                     thread_ascend_tree_no_val(pos, parent_stack);
                 }
-                DescendResult::Leaf(cand, leaf_pos, path) => {
+                OldDescendResult::Leaf(cand, leaf_pos, path) => {
                     return Some((cand, Payload { path, leaf_pos, is_complete: true }));
                 }
-                DescendResult::MonteCarloLeaf(cand, leaf_pos, path) => {
+                OldDescendResult::MonteCarloLeaf(cand, leaf_pos, path) => {
                     // FIXME: ensure we return complete if the montecarlo has 0 levels
                     return Some((cand, Payload { path, leaf_pos, is_complete: false }));
                 }
                 // We have no information on where and how the search fail, so we can not
                 // update the tree in any way.
-                DescendResult::FailedMonteCarlo => {}
+                OldDescendResult::FailedMonteCarlo => {}
             }
         }
     }
@@ -104,7 +106,7 @@ pub struct Payload<'a> {
 /// The search tree that will be traversed
 enum SubTree<'a> {
     /// The subtree has been expanded and has children.
-    InternalNode(Arc<RwLock<Node<'a>>>, f64),
+    InternalNode(Arc<RwLock<Children<'a>>>, f64),
     /// The subtree has not been expanded yet.
     UnexpandedNode(Candidate<'a>),
     /// The subtree is empty.
@@ -119,13 +121,13 @@ impl<'a> SubTree<'a> {
         let children = candidates.into_iter().filter(|c| c.bound.value() < cut)
             .map(SubTree::UnexpandedNode).collect_vec();
         if children.is_empty() { SubTree::Empty } else {
-            SubTree::InternalNode(Arc::new(RwLock::new(Node::new(children))), bound)
+            SubTree::InternalNode(Arc::new(RwLock::new(Children::new(children))), bound)
         }
     }
 
     /// Trims the branch if it has with an evaluation time guaranteed to be worse than
     /// `cut`. Returns the childrens to trim if any,
-    fn trim(&mut self, cut: f64) -> Option<Arc<RwLock<Node<'a>>>> {
+    fn trim(&mut self, cut: f64) -> Option<Arc<RwLock<Children<'a>>>> {
         if self.bound() >= cut {
             *self = SubTree::Empty;
             None 
@@ -149,93 +151,30 @@ impl<'a> SubTree<'a> {
     }
 }
 
-// FIXME: >>>>>>>>>>>>>>>..
-pub struct Node<'a> {
+/// Holds the children of a `SubTree::InternalNode`.
+pub struct Children<'a> {
     children: Vec<SubTree<'a>>,
     rewards: Vec<(Vec<f64>, usize)>,
 }
 
-impl<'a> Node<'a> {
+impl<'a> Children<'a> {
     /// Creates a new children of a node containing the given `SubTree`s.
     fn new(children: Vec<SubTree<'a>>) -> Self {
         let rewards = children.iter().map(|_| (vec![], 0)).collect();
-        Node { children: children, rewards }
+        Children { children: children, rewards }
     }
 }
 
-type NodeStack<'a> = Vec<(Weak<RwLock<Node<'a>>>, Option<usize>)>;
-
-
-// These types are used as return type for the functions traversing the tree
-pub enum DescendResult<'a> {
-    Finished,
-    DeadEnd(usize, NodeStack<'a>),
-    Leaf(Candidate<'a>, usize, NodeStack<'a>),
-    MonteCarloLeaf(Candidate<'a>, usize, NodeStack<'a>),
-    FailedMonteCarlo,
-}
-
-enum NodeDescendResult<'a> {
-    Node(Arc<RwLock<Node<'a>>>, usize),
-    MonteCarlo(Arc<RwLock<Node<'a>>>, usize),
-    Leaf(Candidate<'a>, usize),
-    DeadEndFromExpand(usize),
-    DeadEnd,
-}
-
-pub enum NodeAscendResult<'a> {
-    Node(Arc<RwLock<Node<'a>>>, Option<usize>),
-    NodeNoVal(Arc<RwLock<Node<'a>>>, Option<usize>),
-    NodeNotCompleted(Arc<RwLock<Node<'a>>>, Option<usize>),
-    // FIXME: can merge some variants
-    InvalidParent,
-    TreeUpdated,
-    Root,
-}
-
-enum ExpandRes<'a> {
-    DeadEnd,
-    Node(SubTree<'a>),
-    Leaf(Candidate<'a>),
-}
-
-enum UpdateRes {
-    KeepGoing,
-    ValNotInserted,
-    TreeUpdated,
-}
-
-
-/// Call descend_node in a loop until it finds either a DeadEnd or a Leaf
-/// if the deadend is found at the root, then the return value states this fact
-fn thread_descend_tree<'a>(
-    bandit_config: &BanditConfig,
-    context: &Context,
-    root_lock: Arc<RwLock<SubTree<'a>>>,
-    best_val: &RwLock<f64>) -> DescendResult<'a>
-{
-    let node_root;
-    {
-        let root = root_lock.read().unwrap();
-        if let SubTree::Empty = *root {
-          return DescendResult::Finished;
-        }
-        node_root = match *root {
-            SubTree::InternalNode(ref n, _) => Arc::clone(n),
-            _ => {panic!("At this point, root should be a node");}
-        };
-    }
-    let best_val = *best_val.read().unwrap();
-    iter_descend(bandit_config, context, node_root, best_val)
-}
-
+// FIXME: >>>>>>>>>>>>>>>..
+// FIXME: add stats on the number of nodes inside the tree
+// FIXME: propagate the bound upward when expanding and deleting branches
 
 /// Called in thread_descend_tree, iter on the value of descend_node
 /// Builds the parents stack and returns an appropriate value at the end
 fn iter_descend<'a>(config: &BanditConfig,
                     context: &Context,
-                    node_root: Arc<RwLock<Node<'a>>>,
-                    best_val: f64) -> DescendResult<'a> {
+                    node_root: Arc<RwLock<Children<'a>>>,
+                    best_val: f64) -> OldDescendResult<'a> {
     let mut parent_stack = vec![];
     let mut search_node_lock = node_root;
     let mut current_pos = None;
@@ -245,7 +184,7 @@ fn iter_descend<'a>(config: &BanditConfig,
         {
             let mut search_node = search_node_lock.write().unwrap();
             match search_node.descend_node(context, config, best_val) {
-                NodeDescendResult::Node(subtree_arc, pos) => {
+                NodeDescendResult::Children(subtree_arc, pos) => {
                     let weak_ref = Arc::downgrade(&search_node_lock);
                     parent_stack.push((weak_ref, current_pos));
                     current_pos = Some(pos);
@@ -263,17 +202,17 @@ fn iter_descend<'a>(config: &BanditConfig,
                     if let Some(cand) = monte_cand_opt {
                         return handle_montecarlo_descend(
                             config, context, cand, pos, best_val, parent_stack);
-                    } else { return DescendResult::FailedMonteCarlo; }
+                    } else { return OldDescendResult::FailedMonteCarlo; }
                 }
                 NodeDescendResult::Leaf(candidate, pos) => {
                     let weak_ref = Arc::downgrade(&search_node_lock);
                     parent_stack.push((weak_ref, current_pos));
-                    return DescendResult::Leaf(candidate, pos, parent_stack);
+                    return OldDescendResult::Leaf(candidate, pos, parent_stack);
                 }
                 NodeDescendResult::DeadEndFromExpand(pos) => {
                     let weak_ref = Arc::downgrade(&search_node_lock);
                     parent_stack.push((weak_ref, current_pos));
-                    return DescendResult::DeadEnd(pos, parent_stack);
+                    return OldDescendResult::DeadEnd(pos, parent_stack);
                 }
                 // We do not want to push the node in DeadEnd in parent_stack as
                 // it is not an interesting node anymore !  We want to start
@@ -286,8 +225,8 @@ fn iter_descend<'a>(config: &BanditConfig,
                     // found the deadend elsewhere and node is necessarily a
                     // child
                     if let Some(pos) = current_pos {
-                        return DescendResult::DeadEnd(pos, parent_stack);
-                    } else {return DescendResult::Finished;}
+                        return OldDescendResult::DeadEnd(pos, parent_stack);
+                    } else {return OldDescendResult::Finished;}
                 }
             }
         }
@@ -295,23 +234,67 @@ fn iter_descend<'a>(config: &BanditConfig,
     }
 }
 
-/// Handles the descend from a candidate and returns an appropriate DescendResult
+type NodeStack<'a> = Vec<(Weak<RwLock<Children<'a>>>, Option<usize>)>;
+
+
+// These types are used as return type for the functions traversing the tree
+pub enum OldDescendResult<'a> {
+    Finished,
+    DeadEnd(usize, NodeStack<'a>),
+    Leaf(Candidate<'a>, usize, NodeStack<'a>),
+    MonteCarloLeaf(Candidate<'a>, usize, NodeStack<'a>),
+    FailedMonteCarlo,
+}
+
+enum NodeDescendResult<'a> {
+    Children(Arc<RwLock<Children<'a>>>, usize),
+    MonteCarlo(Arc<RwLock<Children<'a>>>, usize),
+    Leaf(Candidate<'a>, usize),
+    DeadEndFromExpand(usize),
+    DeadEnd,
+}
+
+pub enum NodeAscendResult<'a> {
+    Children(Arc<RwLock<Children<'a>>>, Option<usize>),
+    NodeNoVal(Arc<RwLock<Children<'a>>>, Option<usize>),
+    NodeNotCompleted(Arc<RwLock<Children<'a>>>, Option<usize>),
+    // FIXME: can merge some variants
+    InvalidParent,
+    TreeUpdated,
+    Root,
+}
+
+enum ExpandRes<'a> {
+    DeadEnd,
+    Children(SubTree<'a>),
+    Leaf(Candidate<'a>),
+}
+
+enum UpdateRes {
+    KeepGoing,
+    ValNotInserted,
+    TreeUpdated,
+}
+
+
+
+/// Handles the descend from a candidate and returns an appropriate OldDescendResult
 fn handle_montecarlo_descend<'a>(config: &BanditConfig,
                                  context: &Context,
                                  cand: Candidate<'a>,
                                  pos: usize,
                                  cut: f64,
-                                 parent_stack: NodeStack<'a>) -> DescendResult<'a> {
+                                 parent_stack: NodeStack<'a>) -> OldDescendResult<'a> {
     let order = config.new_nodes_order;
     if let Some(cand) = montecarlo::descend(order, context, cand, cut) {
-        DescendResult::MonteCarloLeaf(cand, pos, parent_stack)
-    } else { DescendResult::FailedMonteCarlo }
+        OldDescendResult::MonteCarloLeaf(cand, pos, parent_stack)
+    } else { OldDescendResult::FailedMonteCarlo }
 }
 
 
 /// Called when commiting an evaluation, loop on results retrieved from ascend_node and ascend
 /// node_no_val call the corresponding function to update the tree.
-fn iter_ascend<'a>(node_arc: Arc<RwLock<Node<'a>>>,
+fn iter_ascend<'a>(node_arc: Arc<RwLock<Children<'a>>>,
                    val: f64,
                    current_pos: Option<usize>,
                    pos_last_child: usize,
@@ -329,7 +312,7 @@ fn iter_ascend<'a>(node_arc: Arc<RwLock<Node<'a>>>,
             node_arc.write().unwrap().ascend_node_no_val(parent_stack, pos_child)
         };
         match node_res {
-            NodeAscendResult::Node(parent_arc, pos_opt) => {
+            NodeAscendResult::Children(parent_arc, pos_opt) => {
                 // If we are here, then the node we just called ascend_node on
                 // is itself a child, therefore pos_parent should be Some
                 pos_child = pos_parent.expect("parent is not a child 0");
@@ -370,7 +353,7 @@ pub fn thread_ascend_tree_no_val(pos_last_child: usize,
 
 /// Called by thread_ascend_tree_no_val
 /// Iterates on the values retrieved from ascend_node_no_val
-fn iter_ascend_no_val<'a>(node_lock: Arc<RwLock<Node<'a>>>,
+fn iter_ascend_no_val<'a>(node_lock: Arc<RwLock<Children<'a>>>,
                           current_pos: Option<usize>,
                           pos_last_child: usize,
                           parent_stack: &mut NodeStack<'a>) {
@@ -388,7 +371,7 @@ fn iter_ascend_no_val<'a>(node_lock: Arc<RwLock<Node<'a>>>,
                 pos_parent = pos_opt;
                 node_arc = parent_arc;
             }
-            NodeAscendResult::Node(..)  => { panic!("ascend_no_val returned Node"); }
+            NodeAscendResult::Children(..)  => { panic!("ascend_no_val returned Children"); }
             _ => return,
         }
     }
@@ -396,7 +379,7 @@ fn iter_ascend_no_val<'a>(node_lock: Arc<RwLock<Node<'a>>>,
 
 
 
-impl<'a> Node<'a> {
+impl<'a> Children<'a> {
     /// Called on a node, returns None if we find a childless node, else returns the next
     /// node to visit. `best_time` is the time of the best candidate at the time this
     /// thread started traversing the tree.
@@ -475,7 +458,7 @@ impl<'a> Node<'a> {
             None
         }
         else {
-            let ind = Node::select_node(unexpanded_node_list, best_score);
+            let ind = Children::select_node(unexpanded_node_list, best_score);
             Some(ind)
         }
     }
@@ -517,7 +500,7 @@ impl<'a> Node<'a> {
         if let Some(index) = ind_opt {
             self.rewards[index].1 += 1;
             match self.children[index] {
-                SubTree::InternalNode(ref arc_node, _) => { NodeDescendResult::Node(
+                SubTree::InternalNode(ref arc_node, _) => { NodeDescendResult::Children(
                     Arc::clone(&arc_node), index)}
                 SubTree::UnexpandedNode(..) => {panic!("Found an unexpanded node");}
                 SubTree::Empty => {panic!("Found a NoGo");}
@@ -561,7 +544,7 @@ impl<'a> Node<'a> {
             None
         }
         else {
-            let ind = Node::select_node(node_list, best_score);
+            let ind = Children::select_node(node_list, best_score);
             Some(ind)
         }
     }
@@ -619,13 +602,13 @@ impl<'a> Node<'a> {
                 self.children[pos] = SubTree::Empty;
                 NodeDescendResult::Leaf(candidate, pos)
             }
-            ExpandRes::Node(node) => {
+            ExpandRes::Children(node) => {
                 self.children[pos] = node;
                 if let SubTree::InternalNode(ref node_arc, _) = self.children[pos] {
                     if config.monte_carlo {
                         NodeDescendResult::MonteCarlo(Arc::clone(node_arc), pos)
-                    } else {NodeDescendResult::Node(Arc::clone(node_arc), pos)}
-                } else { panic!("We should have a Node here"); }
+                    } else {NodeDescendResult::Children(Arc::clone(node_arc), pos)}
+                } else { panic!("We should have a Children here"); }
             }
         }
     }
@@ -681,7 +664,7 @@ impl<'a> Node<'a> {
                                                           SubTree::Empty =
                                                           *x {acc && true} else {false});
                 match (val_inserted, completed) {
-                    (true, true) => NodeAscendResult::Node(Arc::clone(parent_lock), pos),
+                    (true, true) => NodeAscendResult::Children(Arc::clone(parent_lock), pos),
                     (false, true) => NodeAscendResult::NodeNoVal(Arc::clone(parent_lock), pos),
                     (true, false) => NodeAscendResult::NodeNotCompleted(Arc::clone(parent_lock), pos),
                     (false, false) => NodeAscendResult::TreeUpdated
@@ -767,7 +750,7 @@ impl<'a> Node<'a> {
 
 // FIXME: merge with other impl
 impl<'a> SubTree<'a> {
-    /// Given an expanded Node, returns a list of candidates corresponding to the choices
+    /// Given an expanded Children, returns a list of candidates corresponding to the choices
     /// applied to this candidate. If the list is empty, it means that no choice can be
     /// applied and this node is therefore a leaf in the tree, it has been completely
     /// constrained and must now be evaluated.
@@ -781,7 +764,7 @@ impl<'a> SubTree<'a> {
                 let new_tree = SubTree::from_candidates(candidates, cut);
                 if new_tree.is_empty() {
                     ExpandRes::DeadEnd
-                } else { ExpandRes::Node(new_tree) }
+                } else { ExpandRes::Children(new_tree) }
             } else { ExpandRes::Leaf(candidate) }
         } else { panic!("Trying to expand an already expanded node !!!");}
     }
@@ -796,7 +779,7 @@ impl<'a> SubTree<'a> {
 /// * `n_trials` is  the number of trials of the node and k the number of branches in the
 ///   node.
 fn heval(config: &BanditConfig,
-         n_successes: usize
+         n_successes: usize,
          n_branch_trials: usize,
          n_trials: usize,
          n_branches: usize) -> f64 {
