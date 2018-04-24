@@ -13,7 +13,6 @@ use utils::*;
 
 /// A search tree to perform a multi-armed bandit search.
 pub struct Tree<'a, 'b> {
-    // FIXME: replace SubTree by Children
     shared_tree: Arc<RwLock<SubTree<'a>>>,
     cut: RwLock<f64>,
     config: &'b BanditConfig,
@@ -56,6 +55,51 @@ impl<'a, 'b> Tree<'a, 'b> {
             *lock = SubTree::Empty
         }
     }
+
+    /// Descend in the tree and tries to reach a leaf from the given `DescendState`.
+    fn descend(&self, context: &Context, mut state: DescendState<'a>, cut: f64)
+        -> Option<(Candidate<'a>, Path<'a>)>
+    {
+        let mut path = Path::default();
+        loop {
+            match std::mem::replace(&mut state, DescendState::DeadEnd) {
+                DescendState::DeadEnd => {
+                    self.clean_deadends(path, cut);
+                    return None
+                }
+                DescendState::Leaf(leaf) => {
+                    self.clean_deadends(path.clone(), cut);
+                    return Some((leaf, path))
+                }
+                DescendState::InternalNode(node, is_new) => {
+                    if is_new && self.config.monte_carlo {
+                        let mut lock = unwrap!(node.write());
+                        let res = lock.descend_noexpand(&self.config, context, cut);
+                        std::mem::drop(lock);
+                        // We manually process the first two levels of the search as they
+                        // are still in the tree and thus must be updated if needed.
+                        let (idx, opt) = if let Some(x) = res { x } else { continue };
+                        path.0.push((Arc::downgrade(&node), idx));
+                        let (cand, is_leaf) = if let Some(x) = opt { x } else { continue };
+                        if is_leaf {
+                            state = DescendState::Leaf(cand);
+                        } else {
+                            let order = self.config.new_nodes_order;
+                            return montecarlo::descend(order, context, cand, cut)
+                                .map(|c| (c, path))
+                        }
+                    } else {
+                        let next = unwrap!(node.write())
+                            .descend(&self.config, context, cut);
+                        if let Some((idx, new_state)) = next {
+                            path.0.push((Arc::downgrade(&node), idx));
+                            state = new_state;
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
@@ -87,37 +131,10 @@ impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
     fn explore(&self, context: &Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
         loop {
             let cut: f64 = { *unwrap!(self.cut.read()) };
-            let mut state = unwrap!(self.shared_tree.write()).descend(context, cut);
+            let state = unwrap!(self.shared_tree.write()).descend(context, cut);
             if let DescendState::DeadEnd = state { return None; }
-            // FIXME: >>>>>>>>>>>>
-            // FIXME: match state in a loop
-            match state {
-                DescendState::DeadEnd => {
-                    panic!()
-                    // FIXME: ascend no val and break
-                },
-                DescendState::Leaf(_) => panic!("unexpected leaf"),
-                DescendState::InternalNode(node, is_complete) => {
-                    match iter_descend(self.config, context, node, cut) {
-                        // FIXME: get rid of OldDescendResult
-                        OldDescendResult::Finished => { return None; }
-                        OldDescendResult::DeadEnd(path) => {
-                            self.clean_deadends(path, cut);
-                        }
-                        OldDescendResult::Leaf(cand, path) => {
-                            self.clean_deadends(path.clone(), cut);
-                            return Some((cand, path));
-                        }
-                        OldDescendResult::MonteCarloLeaf(cand, path) => {
-                            // FIXME: ensure we cleanup deadends if the montecarlo has 0 levels
-                            return Some((cand, path));
-                        }
-                        // We have no information on where and how the search fail, so we can not
-                        // update the tree in any way.
-                        OldDescendResult::FailedMonteCarlo => {}
-                    }
-                },
-            }
+            let res = self.descend(context, state, cut);
+            if res.is_some() { return res }
         }
     }
 }
@@ -125,7 +142,7 @@ impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
 
 
 /// Path to follow to reach a leaf in the tree.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Path<'a>(Vec<(Weak<RwLock<Children<'a>>>, usize)>);
 
 /// The search tree that will be traversed
@@ -255,6 +272,33 @@ impl<'a> Children<'a> {
         })
     }
 
+    /// Descends one level in the tree and apply an action on the candidate reached to
+    /// generate a candidate that is not owned by the tree. Assumes all the `Children` are
+    /// either dead-ends or unexpanded nodes. Returns the index of the selected child,
+    /// the generated `Candidate` and indicates if it is a leaf. Returns `None` if a
+    /// dead-end is reached.
+    fn descend_noexpand(&mut self, config: &BanditConfig, context: &Context, cut: f64)
+        -> Option<(usize, Option<(Candidate<'a>, bool)>)>
+    {
+        self.trim(cut);
+        self.pick_child(config, cut).map(|idx| {
+            self.rewards[idx].1 += 1;
+            let node = std::mem::replace(&mut self.children[idx], SubTree::Empty);
+            let cand = if let SubTree::UnexpandedNode(c) = node { c } else {
+                panic!("descend_noexpand assumes children are not expanded")
+            };
+            let choice = choice::list(&cand.space).next();
+            let out = if let Some(choice) = choice {
+                let cands = cand.apply_choice(context, choice);
+                self.children[idx] = SubTree::UnexpandedNode(cand);
+                let order = config.new_nodes_order;
+                montecarlo::choose_next_cand(order, cands, cut).map(|c| (c, false))
+                
+            } else { Some((cand, true)) };
+            (idx, out)
+        })
+    }
+
     /// Picks a child to descend in. Returns `None` if all children are cut.
     fn pick_child(&self, config: &BanditConfig, cut: f64) -> Option<usize> {
         let new_nodes = self.children.iter().map(|c| c.bound()).enumerate()
@@ -306,121 +350,7 @@ impl<'a> Children<'a> {
             max.map(|(idx, value)| (child_idx, idx, value))
         }).max_by(|x1, x2| cmp_f64(x1.2, x2.2))
     }
-
 }
-
-// FIXME: >>>>>>>>>>>>>>>..
-// FIXME: add stats on the number of nodes inside the tree
-// FIXME: propagate the bound upward when expanding and deleting branches
-//  - this should remove the need for is_complete in the payload
-// FIXME: must cut nodes above the bound when exploring the tree
-/// Called in thread_descend_tree, iter on the value of descend_node
-/// Builds the parents stack and returns an appropriate value at the end
-fn iter_descend<'a>(config: &BanditConfig,
-                    context: &Context,
-                    node_root: Arc<RwLock<Children<'a>>>,
-                    cut: f64) -> OldDescendResult<'a> {
-    let mut parent_stack = vec![];
-    let mut search_node_lock = node_root;
-    loop {
-        let next_node;
-        {
-            let mut search_node = search_node_lock.write().unwrap();
-            if let Some((idx, state)) = search_node.descend(config, context, cut) {
-                let weak_ref = Arc::downgrade(&search_node_lock);
-                parent_stack.push((weak_ref, idx));
-                match state {
-                    DescendState::DeadEnd => {
-                        return OldDescendResult::DeadEnd(Path(parent_stack))
-                    },
-                    DescendState::Leaf(candidate) => {
-                        return OldDescendResult::Leaf(candidate, Path(parent_stack))
-                    },
-                    DescendState::InternalNode(children, is_new) => {
-                        if is_new && config.monte_carlo {
-                            std::mem::drop(search_node);
-                            // FIXME: simplify monte-carlo
-                            let monte_cand_opt = unwrap!(children.write())
-                                .start_montecarlo(config, context, cut);
-                            if let Some(cand) = monte_cand_opt {
-                                return handle_montecarlo_descend(
-                                    config, context, cand, cut, Path(parent_stack));
-                            } else { return OldDescendResult::FailedMonteCarlo; }
-                        } else { next_node = children.clone(); }
-                    }
-                }
-            } else {
-                return if parent_stack.is_empty() { OldDescendResult::Finished } else {
-                    OldDescendResult::DeadEnd(Path(parent_stack))
-                }
-            }
-        }
-        search_node_lock = next_node;
-    }
-}
-
-// These types are used as return type for the functions traversing the tree
-pub enum OldDescendResult<'a> {
-    Finished,
-    DeadEnd(Path<'a>),
-    Leaf(Candidate<'a>, Path<'a>),
-    MonteCarloLeaf(Candidate<'a>, Path<'a>),
-    FailedMonteCarlo,
-}
-
-/// Handles the descend from a candidate and returns an appropriate OldDescendResult
-fn handle_montecarlo_descend<'a>(config: &BanditConfig,
-                                 context: &Context,
-                                 cand: Candidate<'a>,
-                                 cut: f64,
-                                 parent_stack: Path<'a>) -> OldDescendResult<'a> {
-    let order = config.new_nodes_order;
-    if let Some(cand) = montecarlo::descend(order, context, cand, cut) {
-        OldDescendResult::MonteCarloLeaf(cand, parent_stack)
-    } else { OldDescendResult::FailedMonteCarlo }
-}
-
-impl<'a> Children<'a> {
-    /// We have a newly expanded node, we want to do a montecarlo descend on it
-    /// As we cannot directly own the original candidate (which must stay in the tree, and
-    /// which we do not want to clone) we have to do this on the freshly expanded node.
-    fn start_montecarlo(&mut self, config: &BanditConfig, context: &Context, cut: f64)
-        -> Option<Candidate<'a>>
-    {
-        if self.children.is_empty() {
-            panic!("called montecarlo on a node with no children")
-        }
-        let ind;
-        {
-            let new_nodes = self.children.iter().map(|node| {
-                if let SubTree::UnexpandedNode(ref cand) = *node { cand } else {
-                    // We must only call this function on a newly expanded node, which
-                    // means that there must nothing but unexpandedNode in it.
-                    panic!()
-                }
-            });
-            let node_bounds = new_nodes.map(|c| c.bound.value()).enumerate();
-            ind = unwrap!(montecarlo::next_cand_index(config.new_nodes_order, node_bounds, cut));
-            let cand_ref = if let SubTree::UnexpandedNode(ref cand) = self.children[ind]
-            {
-                cand
-            } else { panic!() };
-            let choice_opt = choice::list(&cand_ref.space).next();
-            if let Some(choice) = choice_opt {
-                let new_nodes = cand_ref.apply_choice(context, choice);
-                return montecarlo::choose_next_cand(
-                    config.new_nodes_order, new_nodes, cut);
-            }
-        }
-        // This is, logically speaking, the else branch of of the last if let Some(choice)
-        // as we can only be here if this 'if' branch was not taken - there is a return in
-        // each other branches. We need to do that so we can hold a mutable reference on
-        // self.children.
-        let node = std::mem::replace(&mut self.children[ind], SubTree::Empty);
-        if let SubTree::UnexpandedNode(cand) = node { Some(cand) } else { panic!() }
-    }
-}
-// FIXME: <<<<<<<<<<<<<<<<
 
 /// Picks a candidate below the bound following a multi-armed bandit approach.
 fn pick_bandit_arm(config: &BanditConfig,
