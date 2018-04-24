@@ -131,11 +131,22 @@ impl device::Context for Context {
 enum HoldThunk {
     Arr(CpuArray),
 fn function_evaluate(fun_str: String, fun_name: String) -> Result<f64, ()> {
-    let templib_name = tempfile::tempdir().unwrap().path().join("lib_compute.so").to_string_lossy()
-        .into_owned();
+    //let templib_name = tempfile::tempdir().unwrap().path().join("lib_compute.so").to_string_lossy()
+    //    .into_owned();
+    let temp_dir = tempfile::tempdir().unwrap();
+    let templib_name = temp_dir.path().join("lib_compute.so").to_string_lossy().into_owned();
+    println!("{}", fun_str);
+    println!("{}", fun_name);
+    println!("{}", templib_name);
     let mut source_file = tempfile::tempfile().unwrap();
     source_file.write_all(fun_str.as_bytes()).unwrap();
-    compile::compile(source_file, &templib_name);
+    let compile_status = compile::compile(source_file, &templib_name);
+    if let Some(code) = compile_status.code() {
+        println!("gcc exited with code {}", code);
+    }
+    if !compile_status.success() {
+        panic!("Could not compile file");
+    }
     let time = compile::link_and_exec(&templib_name, &fun_name);
     Ok(time)
 }
