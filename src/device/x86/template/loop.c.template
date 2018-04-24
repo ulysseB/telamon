@@ -2,5 +2,5 @@
   {induction_var_init}LOOP_{id}_BEG:
   {body}
   {idx}++;
-{induction_var_step}if {idx} < {size}
+{induction_var_step}if ({idx} < {size})
     goto LOOP_{id}_BEG;

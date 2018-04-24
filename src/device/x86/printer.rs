@@ -32,36 +32,43 @@ fn param_decl(param: &ParamVal, namer: &NameMap) -> String {
 
 /// Prints an instruction.
 fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
-    let assignement = format!("{} =", namer.name_inst(inst).to_string());
+    //let assignement = format!("{} =", namer.name_inst(inst).to_string());
     match *inst.operator() {
         op::Add(ref lhs, ref rhs, _) => {
+            let assignement = format!("{} = ",namer.gen_name(inst.operator().t()));
             format!("{} {} + {};", assignement, namer.name_op(lhs), namer.name_op(rhs))
         },
         op::Sub(ref lhs, ref rhs, _) => {
+            let assignement = format!("{} = ",namer.gen_name(inst.operator().t()));
             format!("{} {} - {};", assignement, namer.name_op(lhs), namer.name_op(rhs))
         },
         op::Mul(ref lhs, ref rhs, _, return_type) => {
+            let assignement = format!("{} = ",namer.gen_name(inst.operator().t()));
             format!("{} {} * {};", assignement, namer.name_op(lhs), namer.name_op(rhs))
         },
         op::Mad(ref mul_lhs, ref mul_rhs, ref add_rhs, _ing) => {
+            let assignement = format!("{} = ",namer.gen_name(inst.operator().t()));
             format!("{} {} * {} + {};", assignement, namer.name_op(mul_lhs), namer.name_op(mul_rhs), namer.name_op(add_rhs))
         },
         op::Div(ref lhs, ref rhs, _) => {
+            let assignement = format!("{} = ",namer.gen_name(inst.operator().t()));
             format!("{} {} / {};", assignement, namer.name_op(lhs), namer.name_op(rhs))
         },
         op::Mov(ref op) => {
+            let assignement = format!("{} = ",namer.gen_name(inst.operator().t()));
             format!("{} {};", assignement, namer.name_op(op).to_string())
         },
         op::Ld(ld_type, ref addr, _) => {
-            format!("{} *({} *){};", assignement, cpu_type(&ld_type), namer.name_op(addr))
+            let assignement = format!("{} = ",namer.gen_name(inst.operator().t()));
+            format!("{} *(uint8_t *){};", assignement, namer.name_op(addr))
         },
         op::St(ref addr, ref val, _,  _) => {
-            format!("*({} *){} = {};", 
-                    cpu_type(&addr.t()), 
+            format!("*(uint8_t *){} = {};", 
                     namer.name_op(addr),
                     namer.name_op(val).to_string())
         },
         op::Cast(ref op, t) => {
+            let assignement = format!("{} = ",namer.gen_name(inst.operator().t()));
             format!("{} ({}) {};", assignement, cpu_type(&t), namer.name_op(op))
         },
         op::TmpLd(..) | op::TmpSt(..) => panic!("non-printable instruction")
@@ -87,9 +94,12 @@ fn cfg_vec(fun: &Function, cfgs: &[Cfg], namer: &mut NameMap) -> String {
 
 
 fn var_decls(namer: &Namer) -> String {
-    let print_decl = |(&t, n)| {
+    let print_decl = |(&t, &n)| {
         let prefix = Namer::gen_prefix(&t);
-        format!("{} {}_{};", cpu_type(&t), prefix, n)
+        let mut s = format!("{} ", cpu_type(&t));
+        s.push_str(&(0..n).map(|i| format!("{}{}", prefix, i)).collect_vec().join(", "));
+        s.push_str(";\n  ");
+        s
     };
     namer.num_var.iter().map(print_decl).collect_vec().join("\n  ")
 }
@@ -132,8 +142,8 @@ fn cpu_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap)
         DimKind::LOOP => {
             standard_loop(fun, dim, cfgs, namer)
         }
-        DimKind::UNROLL => { String::new() }
-        DimKind::VECTOR => { panic!() }
+        DimKind::UNROLL => {standard_loop(fun, dim, cfgs, namer)}
+        DimKind::VECTOR => {standard_loop(fun, dim, cfgs, namer)}
         _ => { unimplemented!() }
     }
 }

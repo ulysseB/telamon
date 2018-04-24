@@ -44,7 +44,7 @@ impl codegen::Namer for Namer {
     fn name(&mut self, t: ir::Type) -> String {
         let prefix = Namer::gen_prefix(&t);
         let entry = self.num_var.entry(t).or_insert(0);
-        let name = format!("%{}{}", prefix, *entry);
+        let name = format!("{}{}", prefix, *entry);
         *entry += 1;
         name
     }

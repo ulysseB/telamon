@@ -28,6 +28,9 @@ cuda = [
     "telamon/cuda",
     "cuda-sys",
 ]
+cpu = [
+  "telamon/cpu"
+]
 
 [[bench]]
 name = "cuda-search"
