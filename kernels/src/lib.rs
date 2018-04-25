@@ -17,7 +17,7 @@ mod kernel;
 pub mod linalg;
 pub mod statistics;
 
-pub use kernel::Kernel;
+pub use kernel::{Kernel, analyze_bounds};
 
 use rayon::prelude::*;
 use telamon::device::{self, ArgMap, Context};

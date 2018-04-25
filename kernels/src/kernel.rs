@@ -8,7 +8,9 @@ use telamon::explorer::{Candidate, local_selection};
 use telamon::helper::SignatureBuilder;
 use telamon::model::Bound;
 use telamon::search_space::SearchSpace;
+use statistics;
 use std;
+use utils::*;
 
 /// Ignore candidates with a too big bound in tests.
 const CUT: f64 = 10e8f64;
@@ -93,7 +95,7 @@ pub trait Kernel<'a>: Sized {
     /// Tests the correctness of the bound of kernels and returns the list of tested leafs
     /// along with the actual evaluation time.
     fn test_bound<AM>(params: Self::Parameters, num_tests: usize, context: &mut AM)
-        -> Vec<(Vec<explorer::choice::ActionEx>, Bound, f64)>
+        -> Vec<BoundSample>
             where AM: device::ArgMap + device::Context + 'a
     {
         let kernel;
@@ -114,10 +116,17 @@ pub trait Kernel<'a>: Sized {
                 if let Some((leaf, bounds)) = descend_check_bounds(&candidates, context) {
                     let leaves = &leaves;
                     evaluator.add_kernel(leaf, (move |leaf: Candidate, runtime: f64, _| {
-                        for bound in &bounds { assert!(bound.value() < runtime); }
-                        let actions = leaf.actions.iter().cloned().collect();
+                        let bound = leaf.bound.clone();
                         let mut leaves = unwrap!(leaves.lock());
-                        leaves.push((actions, leaf.bound.clone(), runtime));
+                        let mut actions = leaf.actions.iter().cloned().collect_vec();
+                        actions.reverse();
+                        for (idx, partial_bound) in bounds.iter().enumerate() {
+                            let actions = &actions[..idx+1];
+                            assert!(*partial_bound <= bound,
+                                    "invalid inner bound: {} < {}, kernel {}, actions {:?}",
+                                    partial_bound, bound, Self::name(), actions);
+                        }
+                        leaves.push(BoundSample { actions, bound, runtime });
                     }).into());
                 } else {
                     num_tested.fetch_sub(1, atomic::Ordering::SeqCst);
@@ -201,5 +210,44 @@ fn descend_check_bounds<'a>(candidates: &[Candidate<'a>], context: &device::Cont
     }
 }
 
-// TODO(test): exploit bounds benchmarks
-// TODO(test): benchmark the number of deadends
+/// A sample of the accuracy of bounds.
+pub struct BoundSample {
+    actions: Vec<explorer::choice::ActionEx>,
+    bound: Bound,
+    runtime: f64,
+}
+
+impl BoundSample {
+    /// Returns the ratio between the bound and the actual evaluation.
+    fn ratio(&self) -> f64 { self.bound.value() / self.runtime }
+}
+
+impl std::fmt::Display for BoundSample {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{} vs {} ({}), for actions {:?}",
+            self.runtime, self.bound, self.ratio(), self.actions)
+    }
+}
+
+/// Prints an analysis of the bounds computed by the lower bound model.
+pub fn analyze_bounds(mut bounds: Vec<BoundSample>) {
+    const NUM_QUANTILES: usize = 5;
+    bounds.sort_by(|x, y| cmp_f64(x.ratio(), y.ratio()));
+    let num_errors = bounds.iter().take_while(|b| b.ratio() < 1.).count();
+    if num_errors > 0 {
+        let error_ratio = num_errors as f64/bounds.len() as f64;
+        let error_ratio = statistics::estimate_ratio(error_ratio, bounds.len());
+        println!("ratio of errors {}, for example: ", error_ratio);
+        let num_printed = std::cmp::min(NUM_QUANTILES, num_errors);
+        for i in 0..num_printed {
+            let index = i*num_errors/num_printed;
+            println!("{}% worst error: {}", i*100/num_printed, bounds[index]);
+        }
+    }
+    if num_errors != bounds.len() {
+        for i in 0..NUM_QUANTILES {
+            let index = (i+1)*(bounds.len()-num_errors)/NUM_QUANTILES - 1;
+            println!("{}% best: {}", i*100/NUM_QUANTILES, bounds[num_errors + index]);
+        }
+    }
+}
