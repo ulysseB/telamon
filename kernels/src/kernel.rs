@@ -4,7 +4,7 @@ use num_cpus;
 use rayon::prelude::*;
 use std::sync::{atomic, Mutex};
 use telamon::{codegen, device, explorer, ir, model};
-use telamon::explorer::{Candidate, montecarlo};
+use telamon::explorer::{Candidate, local_selection};
 use telamon::helper::SignatureBuilder;
 use telamon::model::Bound;
 use telamon::search_space::SearchSpace;
@@ -67,9 +67,9 @@ pub trait Kernel<'a>: Sized {
         while num_runs < num_tests {
             let order = explorer::config::NewNodeOrder::WeightedRandom;
             let bounds = candidates.iter().map(|c| c.bound.value()).enumerate();
-            let candidate_idx = montecarlo::next_cand_index(order, bounds, CUT);
+            let candidate_idx = local_selection::pick_index(order, bounds, CUT);
             let candidate = candidates[unwrap!(candidate_idx)].clone();
-            let leaf = montecarlo::descend(order, context, candidate, CUT);
+            let leaf = local_selection::descend(order, context, candidate, CUT);
             if let Some(leaf) = leaf {
                 let device_fn = codegen::Function::build(&leaf.space);
                 unwrap!(context.evaluate(&device_fn),
@@ -169,9 +169,9 @@ pub trait Kernel<'a>: Sized {
             let order = explorer::config::NewNodeOrder::WeightedRandom;
             let inf = std::f64::INFINITY;
             let bounds = candidates.iter().map(|c| c.bound.value()).enumerate();
-            let candidate_idx = montecarlo::next_cand_index(order, bounds, inf);
+            let candidate_idx = local_selection::pick_index(order, bounds, inf);
             let candidate = candidates[unwrap!(candidate_idx)].clone();
-            montecarlo::descend(order, context, candidate, inf).is_none()
+            local_selection::descend(order, context, candidate, inf).is_none()
         }).count();
         num_deadends as f64 / num_samples as f64
     }
@@ -187,7 +187,7 @@ fn descend_check_bounds<'a>(candidates: &[Candidate<'a>], context: &device::Cont
     loop {
         let idx = if let Some(idx) = {
             let idx_bounds = candidates.iter().map(|c| c.bound.value()).enumerate();
-            montecarlo::next_cand_index(order, idx_bounds, CUT)
+            local_selection::pick_index(order, idx_bounds, CUT)
         } { idx } else { return None };
         bounds.push(candidates[idx].bound.clone());
         let choice_opt = explorer::choice::list(&candidates[idx].space).next();
