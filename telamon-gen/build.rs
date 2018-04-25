@@ -16,7 +16,9 @@ fn main() {
 
     cc::Build::new()
             .file("exh.c")
-            .flag("-Wunused-parameter")
+            .flag("-Wno-unused-parameter")
+            .flag("-Wno-unused-variable")
+            .flag_if_supported("-Wno-unused-function")
             .compile("exh.a");
 
     // Compile the parser.
