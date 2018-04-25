@@ -4,7 +4,7 @@ use telamon_gen::lexer::{Lexer,Token};
 use telamon_gen::ir::{CounterKind, CounterVisibility, SetDefKey, CmpOp};
 
 #[test]
-fn token() {
+fn initial() {
     // Blank
     assert_eq!(Lexer::from(b" ".to_vec()).collect::<Vec<Token>>(), vec![]);
     // Invalid's Token
@@ -243,4 +243,11 @@ fn token() {
     assert_eq!(Lexer::from(b"/".to_vec()).collect::<Vec<Token>>(), vec![
                 Token::Divide
               ]);
+}
+
+#[test]
+fn comment_mode() {
+    // C_COMMENT's Token
+    assert_eq!(Lexer::from(b"/* comment */ ".to_vec()).collect::<Vec<Token>>(), vec![]);
+    assert_eq!(Lexer::from(b"/* comment \n comment */ ".to_vec()).collect::<Vec<Token>>(), vec![]);
 }

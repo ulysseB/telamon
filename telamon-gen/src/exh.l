@@ -1,6 +1,8 @@
 %option reentrant
 %option noyywrap
 
+%x C_COMMENT
+
 %{
     #include <stdio.h>
 
@@ -174,6 +176,10 @@ doc "///"
 
 /* 6 Patterns § http://westes.github.io/flex/manual/Patterns.html#Patterns */
 %%
+
+{c_comment_beg}            {BEGIN(C_COMMENT);}
+<C_COMMENT>{c_comment_end} {BEGIN(INITIAL);}
+<C_COMMENT>.               {}
 
 {alias} { return ALIAS; }
 {counter} { return COUNTER; }
