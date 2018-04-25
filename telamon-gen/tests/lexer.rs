@@ -5,8 +5,6 @@ use telamon_gen::ir::{CounterKind, CounterVisibility, SetDefKey, CmpOp};
 
 #[test]
 fn initial() {
-    // Blank
-    assert_eq!(Lexer::from(b" ".to_vec()).collect::<Vec<Token>>(), vec![]);
     // Invalid's Token
     assert_eq!(Lexer::from(b"!".to_vec()).collect::<Vec<Token>>(), vec![
                 Token::InvalidToken(String::from("!")),

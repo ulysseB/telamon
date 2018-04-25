@@ -11,7 +11,6 @@
     } yylval;
 
     enum token {
-        BLANK,
         VALUEIDENT,
         CHOICEIDENT,
         VAR,
@@ -174,15 +173,16 @@ value_ident [A-Z][A-Z_0-9]*
 set_ident [A-Z][A-Za-z_0-9]*
 var \${alpha_num}+
 code \"[^\n\"]*\"
-doc "///"
 
 /* https://github.com/a-haas/Compilation/blob/6fe46a65d64decdb648feba790bb7b1d2980ca0a/yacc/setparser.l */
 
 /* 6 Patterns § http://westes.github.io/flex/manual/Patterns.html#Patterns */
 %%
 
-{c_comment_beg}            {BEGIN(C_COMMENT);}
-<C_COMMENT>{c_comment_end} {BEGIN(INITIAL);}
+{blank} {}
+
+{c_comment_beg}            { BEGIN(C_COMMENT); }
+<C_COMMENT>{c_comment_end} { BEGIN(INITIAL); }
 <C_COMMENT>.               {}
 
 {outer_line_doc} { yytext += 3;return DOC;}
@@ -239,7 +239,6 @@ doc "///"
 {equals} {yylval.val = EQ; return CMPOP; }
 {not_equals} {yylval.val = NEQ; return CMPOP; }
 {equal} { return EQUAL; }
-{doc} {}
 {end} { return END; }
 {symmetric} { return SYMMETRIC; }
 {antisymmetric} { return ANTISYMMETRIC; }
@@ -251,7 +250,6 @@ doc "///"
 {choice_ident} { return CHOICEIDENT; }
 {value_ident} { return VALUEIDENT; }
 {set_ident} { return SETIDENT; }
-{blank} { return BLANK; }
 <<EOF>> { return EOF; }
 . { return INVALIDTOKEN; }
 %%

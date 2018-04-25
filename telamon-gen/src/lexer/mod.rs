@@ -68,7 +68,6 @@ impl Iterator for Lexer {
     fn next(&mut self) -> Option<Self::Item> {
         unsafe {
             match yylex(self.scanner) {
-                YyToken::Blank => self.next(),
                 YyToken::InvalidToken => {
                     let out = ffi::yyget_text(self.scanner);
 
@@ -76,8 +75,6 @@ impl Iterator for Lexer {
                          .to_str().ok()
                          .and_then(|s: &str| Some(Token::InvalidToken(s.to_owned())))
                 },
-                YyToken::Blank => None,
-                // C_CommentBeg
                 YyToken::ChoiceIdent => {
                     let out = ffi::yyget_text(self.scanner);
 
@@ -114,6 +111,13 @@ impl Iterator for Lexer {
                     CStr::from_ptr(out)
                          .to_str().ok()
                          .and_then(|s: &str| Some(Token::Code(s.to_owned())))
+                },
+                YyToken::Doc => {
+                    let out = ffi::yyget_text(self.scanner);
+
+                    CStr::from_ptr(out)
+                         .to_str().ok()
+                         .and_then(|s: &str| Some(Token::Doc(s.to_owned())))
                 },
                 YyToken::Alias => Some(Token::Alias),
                 YyToken::Counter => Some(Token::Counter),
@@ -153,14 +157,6 @@ impl Iterator for Lexer {
                 YyToken::Arrow => Some(Token::Arrow),
                 YyToken::Divide => Some(Token::Divide),
                 YyToken::EOF => None,
-                YyToken::Doc => {
-                    let out = ffi::yyget_text(self.scanner);
-
-                    CStr::from_ptr(out)
-                         .to_str().ok()
-                         .and_then(|s: &str| Some(Token::Doc(s.to_owned())))
-                },
-
             }
         }
     }

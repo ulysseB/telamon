@@ -20,7 +20,6 @@ pub union YyLval {
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub enum YyToken {
-    Blank,
     ValueIdent,
     ChoiceIdent,
     Var,
