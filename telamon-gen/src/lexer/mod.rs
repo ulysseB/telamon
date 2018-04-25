@@ -102,7 +102,7 @@ impl Iterator for Lexer {
                 YyToken::Var => {
                     let out = ffi::yyget_text(self.scanner);
 
-                    CStr::from_ptr(out.offset(1))
+                    CStr::from_ptr(out)
                          .to_str().ok()
                          .and_then(|s: &str| Some(Token::Var(s.to_owned())))
                 },
@@ -111,7 +111,7 @@ impl Iterator for Lexer {
                     let len = libc::strlen(out)-1;
 
                     *out.offset(len as _) = b'\0' as _;
-                    CStr::from_ptr(out.offset(1))
+                    CStr::from_ptr(out)
                          .to_str().ok()
                          .and_then(|s: &str| Some(Token::Code(s.to_owned())))
                 },
@@ -147,7 +147,6 @@ impl Iterator for Lexer {
                 YyToken::And => Some(Token::And),
                 YyToken::CmpOp => Some(Token::CmpOp(yylval.cmp_op)),
                 YyToken::Equal => Some(Token::Equal),
-//                YyToken::Doc => Some(Token::Doc),
                 YyToken::End => Some(Token::End),
                 YyToken::Symmetric => Some(Token::Symmetric),
                 YyToken::AntiSymmetric => Some(Token::AntiSymmetric),
@@ -155,8 +154,13 @@ impl Iterator for Lexer {
                 YyToken::Divide => Some(Token::Divide),
                 YyToken::EOF => None,
                 YyToken::Doc => {
-                    None
+                    let out = ffi::yyget_text(self.scanner);
+
+                    CStr::from_ptr(out)
+                         .to_str().ok()
+                         .and_then(|s: &str| Some(Token::Doc(s.to_owned())))
                 },
+
             }
         }
     }

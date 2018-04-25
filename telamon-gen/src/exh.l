@@ -105,8 +105,12 @@ alpha_num {alpha}|{num}
 whitespace [ \t\r\n]+
 comment "//"[^/\n][^\n]*|"//"
 blank {whitespace}|{comment}
+
 c_comment_beg "/*"
 c_comment_end "*/"
+
+outer_line_doc "///".*
+line_comment "//".*
 
 alias "alias"
 counter "counter"
@@ -181,6 +185,9 @@ doc "///"
 <C_COMMENT>{c_comment_end} {BEGIN(INITIAL);}
 <C_COMMENT>.               {}
 
+{outer_line_doc} { yytext += 3;return DOC;}
+{line_comment} { yytext += 2;return DOC;}
+
 {alias} { return ALIAS; }
 {counter} { return COUNTER; }
 {define} { return DEFINE; }
@@ -215,8 +222,8 @@ doc "///"
 {subsetof} { return SUBSETOF; }
 {disjoint} { return DISJOINT; }
 {quotient} { return QUOTIENT; }
-{true} {yylval.val = 1;  return BOOL; }
-{false} {yylval.val = 0;  return BOOL; }
+{true} {yylval.val = 1; return BOOL; }
+{false} {yylval.val = 0; return BOOL; }
 
 {colon} { return COLON; }
 {comma} { return COMMA; }
@@ -225,12 +232,12 @@ doc "///"
 {bit_or} { return BITOR; }
 {or} { return OR; }
 {and} { return AND; }
-{gt} {yylval.val = GT;  return CMPOP; }
-{lt} {yylval.val = LT;  return CMPOP; }
-{ge} {yylval.val = GEQ;  return CMPOP; }
-{le} {yylval.val = LEQ;  return CMPOP; }
-{equals} {yylval.val = EQ;  return CMPOP; }
-{not_equals} {yylval.val = NEQ;  return CMPOP; }
+{gt} {yylval.val = GT; return CMPOP; }
+{lt} {yylval.val = LT; return CMPOP; }
+{ge} {yylval.val = GEQ; return CMPOP; }
+{le} {yylval.val = LEQ; return CMPOP; }
+{equals} {yylval.val = EQ; return CMPOP; }
+{not_equals} {yylval.val = NEQ; return CMPOP; }
 {equal} { return EQUAL; }
 {doc} {}
 {end} { return END; }
@@ -239,8 +246,8 @@ doc "///"
 {arrow} { return ARROW; }
 {divide} { return DIVIDE; }
 
-{var} { return VAR; }
-{code} { return CODE; }
+{var} { yytext += 1; return VAR; }
+{code} { yytext += 1; return CODE; }
 {choice_ident} { return CHOICEIDENT; }
 {value_ident} { return VALUEIDENT; }
 {set_ident} { return SETIDENT; }

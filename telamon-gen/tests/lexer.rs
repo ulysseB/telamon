@@ -251,3 +251,11 @@ fn comment_mode() {
     assert_eq!(Lexer::from(b"/* comment */ ".to_vec()).collect::<Vec<Token>>(), vec![]);
     assert_eq!(Lexer::from(b"/* comment \n comment */ ".to_vec()).collect::<Vec<Token>>(), vec![]);
 }
+
+#[test]
+fn doc_mode() {
+    // Doc's Token
+    assert_eq!(Lexer::from(b"/// comment".to_vec()).collect::<Vec<Token>>(), vec![
+                Token::Doc(String::from(" comment"))
+              ]);
+}
