@@ -96,12 +96,12 @@
     };
 %}
 
-num ['0'-'9']
-alpha ['a'-'z''A'-'Z''_']
+num [0-9]
+alpha [a-zA-Z_]
 alpha_num {alpha}|{num}
 
-whitespace [' ''\t''\r''\n']+
-comment "//"[^'/''\n'][^'\n']*|"//"
+whitespace [ \t\r\n]+
+comment "//"[^/\n][^\n]*|"//"
 blank {whitespace}|{comment}
 c_comment_beg "/*"
 c_comment_end "*/"
@@ -166,7 +166,7 @@ divide "/"
 choice_ident [a-z][a-z_0-9]*
 value_ident [A-Z][A-Z_0-9]*
 set_ident [A-Z][A-Za-z_0-9]*
-var ['$'alpha_num+]
+var \${alpha_num}+
 code \"[^\n\"]*\"
 doc "///"
 

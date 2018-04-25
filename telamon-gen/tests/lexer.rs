@@ -24,9 +24,9 @@ fn token() {
                 Token::ValueIdent(String::from("AZ_09"))
               ]);
     // Var's Token
-//    assert_eq!(Lexer::from(b"$v\0".to_vec()).collect::<Vec<Token>>(), vec![
-//                Token::Var(String::from("v")),
-//              ]);
+    assert_eq!(Lexer::from(b"$vV\0".to_vec()).collect::<Vec<Token>>(), vec![
+                Token::Var(String::from("vV")),
+              ]);
     // Code's Token
     assert_eq!(Lexer::from(b"\"ir::...\"\0".to_vec()).collect::<Vec<Token>>(), vec![
                 Token::Code(String::from("ir::...")),
