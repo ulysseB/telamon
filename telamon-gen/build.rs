@@ -16,6 +16,7 @@ fn main() {
 
     cc::Build::new()
             .file("exh.c")
+            .flag("-Wunused-parameter")
             .compile("exh.a");
 
     // Compile the parser.
