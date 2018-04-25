@@ -15,7 +15,8 @@ use self::ffi::{
     YyScan,
     YyBufferState,
     yylex_init,
-    yy_scan_string,
+    yy_scan_buffer,
+    yy_scan_bytes,
     yy_delete_buffer,
     yylex_destroy,
     yylex,
@@ -46,7 +47,7 @@ impl From<Vec<u8>> for Lexer {
             yylex_init(&scanner); // https://westes.github.io/flex/manual/Init-and-Destroy-Functions.html#index-yylex_005finit
             Lexer {
                 scanner: scanner,
-                buffer: yy_scan_string(buffer.as_ptr() as *const _, scanner), // https://westes.github.io/flex/manual/Multiple-Input-Buffers.html
+                buffer: yy_scan_bytes(buffer.as_ptr() as *const _, buffer.len() as _, scanner), // https://westes.github.io/flex/manual/Multiple-Input-Buffers.html
             }
         }
     }
