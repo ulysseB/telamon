@@ -376,8 +376,7 @@ fn heval(config: &BanditConfig,
          n_trials: usize,
          n_branches: usize) -> f64 {
     if n_trials == 0 { std::f64::INFINITY } else {
-        let f = (n_trials * n_branches) as f64;
-        let alpha = f.ln() / config.delta;
+        let alpha = (2.0 * (n_trials * n_branches) as f64 / config.delta).ln();
         let sqrt_body = alpha * (2. * n_successes as f64 + alpha);
         (n_successes as f64 + alpha + sqrt_body.sqrt()) / n_branch_trials as f64
     }

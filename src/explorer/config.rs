@@ -50,6 +50,16 @@ impl Config {
         Self::parse_config(&config_parser)
     }
 
+    /// Extract the configuration from the configuration file, if any.
+    pub fn read_from_file() -> Self {
+        let mut config_parser = config::Config::new();
+        let config_path = std::path::Path::new("Settings.toml");
+        if config_path.exists() {
+            unwrap!(config_parser.merge(config::File::from(config_path)));
+        }
+        Self::parse_config(&config_parser)
+    }
+
     /// Extracts the parameters from the configuration file.
     fn parse_config(parser: &config::Config) -> Self {
         let mut config = Self::default();
@@ -230,8 +240,8 @@ impl Default for BanditConfig {
             new_nodes_order: NewNodeOrder::default(),
             old_nodes_order: OldNodeOrder::default(),
             threshold: 10,
-            delta: 0.001,
-            monte_carlo: false,
+            delta: 1.,
+            monte_carlo: true,
         }
     }
 }
