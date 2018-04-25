@@ -390,6 +390,7 @@
 <span id="333">333</span>
 <span id="334">334</span>
 <span id="335">335</span>
+<span id="336">336</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Defines a structure to store the configuration of the exploration. The configuration</span>
 <span class="doccomment">//! is read from the `Setting.toml` file if it exists. Some parameters can be overridden</span>
@@ -451,7 +452,8 @@
         <span class="ident">config</span>.<span class="ident">algorithm</span> <span class="op">=</span> <span class="ident">SearchAlgorithm</span>::<span class="ident">parse_config</span>(<span class="ident">parser</span>);
         <span class="ident">opt_param</span>(<span class="ident">parser</span>.<span class="ident">get_float</span>(<span class="string">&quot;stop_bound&quot;</span>)).<span class="ident">map</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> <span class="ident">config</span>.<span class="ident">stop_bound</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">b</span>));
         <span class="ident">opt_param</span>(<span class="ident">parser</span>.<span class="ident">get_int</span>(<span class="string">&quot;timeout&quot;</span>)).<span class="ident">map</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="ident">config</span>.<span class="ident">timeout</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">t</span> <span class="kw">as</span> <span class="ident">u64</span>));
-        <span class="ident">opt_param</span>(<span class="ident">parser</span>.<span class="ident">get_float</span>(<span class="string">&quot;distance_to_best&quot;</span>)).<span class="ident">map</span>(<span class="op">|</span><span class="ident">d</span><span class="op">|</span> <span class="ident">config</span>.<span class="ident">distance_to_best</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">d</span>));
+        <span class="ident">opt_param</span>(<span class="ident">parser</span>.<span class="ident">get_float</span>(<span class="string">&quot;distance_to_best&quot;</span>))
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">d</span><span class="op">|</span> <span class="ident">config</span>.<span class="ident">distance_to_best</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">d</span>));
         <span class="ident">config</span>
     }
 
