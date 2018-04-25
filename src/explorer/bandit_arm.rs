@@ -2,7 +2,7 @@
 
 use device::Context;
 use explorer::candidate::Candidate;
-use explorer::{choice, montecarlo};
+use explorer::{choice, local_selection};
 use explorer::config::{BanditConfig, NewNodeOrder, OldNodeOrder};
 use explorer::store::Store;
 use itertools::Itertools;
@@ -85,7 +85,7 @@ impl<'a, 'b> Tree<'a, 'b> {
                             state = DescendState::Leaf(cand);
                         } else {
                             let order = self.config.new_nodes_order;
-                            return montecarlo::descend(order, context, cand, cut)
+                            return local_selection::descend(order, context, cand, cut)
                                 .map(|c| (c, path))
                         }
                     } else {
@@ -292,7 +292,7 @@ impl<'a> Children<'a> {
                 let cands = cand.apply_choice(context, choice);
                 self.children[idx] = SubTree::UnexpandedNode(cand);
                 let order = config.new_nodes_order;
-                montecarlo::choose_next_cand(order, cands, cut).map(|c| (c, false))
+                local_selection::pick_candidate(order, cands, cut).map(|c| (c, false))
                 
             } else { Some((cand, true)) };
             (idx, out)
@@ -303,16 +303,16 @@ impl<'a> Children<'a> {
     fn pick_child(&self, config: &BanditConfig, cut: f64) -> Option<usize> {
         let new_nodes = self.children.iter().map(|c| c.bound()).enumerate()
             .filter(|&(idx, _)| self.rewards[idx].1 == 0);
-        montecarlo::next_cand_index(config.new_nodes_order, new_nodes, cut).or_else(|| {
+        local_selection::pick_index(config.new_nodes_order, new_nodes, cut).or_else(|| {
             match config.old_nodes_order {
                 OldNodeOrder::Bound => {
                     let children = self.children.iter().map(|c| c.bound()).enumerate();
-                    montecarlo::next_cand_index(NewNodeOrder::Bound, children, cut)
+                    local_selection::pick_index(NewNodeOrder::Bound, children, cut)
                 }
                 OldNodeOrder::WeightedRandom => {
                     let children = self.children.iter().map(|c| c.bound()).enumerate();
                     let order = NewNodeOrder::WeightedRandom;
-                    montecarlo::next_cand_index(order, children, cut)
+                    local_selection::pick_index(order, children, cut)
                 }
                 OldNodeOrder::Bandit => {
                     pick_bandit_arm(config, &self.children, &self.rewards, cut)
@@ -375,8 +375,10 @@ fn heval(config: &BanditConfig,
          n_branch_trials: usize,
          n_trials: usize,
          n_branches: usize) -> f64 {
-    if n_trials == 0 { std::f64::INFINITY } else {
-        let alpha = (2.0 * (n_trials * n_branches) as f64 / config.delta).ln();
+    assert!(n_branches > 0);
+    assert!(n_branch_trials <= n_trials);
+    if n_branch_trials == 0 { std::f64::INFINITY } else {
+        let alpha = (2. * (n_trials * n_branches) as f64 / config.delta).ln().max(0.);
         let sqrt_body = alpha * (2. * n_successes as f64 + alpha);
         (n_successes as f64 + alpha + sqrt_body.sqrt()) / n_branch_trials as f64
     }

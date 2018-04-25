@@ -1,4 +1,4 @@
-//! File containing all functions relative to expanding a candidate by a simple montecarlo search
+//! Provides different methods to select a candidate in a list.
 use device::Context;
 use explorer::candidate::Candidate;
 use explorer::choice;
@@ -17,25 +17,25 @@ pub fn descend<'a>(order: NewNodeOrder,
     let choice_opt = choice::list(&candidate.space).next();
     if let Some(choice) = choice_opt {
         let new_nodes = candidate.apply_choice(context, choice);
-        choose_next_cand(order, new_nodes, cut)
+        pick_candidate(order, new_nodes, cut)
             .and_then(|node| descend(order, context, node, cut))
     } else { Some(candidate) }
 }
 
 /// Called in montecarlo_descend, dispatch the choice of the next candidate according to our
 /// configuration
-pub fn choose_next_cand<'a>(order: NewNodeOrder,
-                            mut new_nodes: Vec<Candidate<'a>>,
-                            cut: f64) -> Option<Candidate<'a>> { 
+pub fn pick_candidate<'a>(order: NewNodeOrder,
+                          mut new_nodes: Vec<Candidate<'a>>,
+                          cut: f64) -> Option<Candidate<'a>> { 
     let idx = {
         let items = new_nodes.iter().map(|c| c.bound.value()).enumerate();
-        next_cand_index(order, items, cut)
+        pick_index(order, items, cut)
     };
     idx.map(|idx| new_nodes.remove(idx))
 }
 
 /// Returns the index of the next candidate to consider.
-pub fn next_cand_index<IT>(order: NewNodeOrder, nodes: IT, cut: f64) -> Option<usize>
+pub fn pick_index<IT>(order: NewNodeOrder, nodes: IT, cut: f64) -> Option<usize>
     where IT: IntoIterator<Item=(usize, f64)>, IT::IntoIter: Clone
 {
     let nodes = nodes.into_iter().filter(|&(_, b)| b < cut);

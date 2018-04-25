@@ -8,7 +8,7 @@ mod logger;
 
 pub mod config;
 pub mod choice;
-pub mod montecarlo;
+pub mod local_selection;
 
 pub use self::config::{Config, SearchAlgorithm};
 pub use self::candidate::Candidate;
