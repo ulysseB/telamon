@@ -181,8 +181,6 @@
 <span id="124">124</span>
 <span id="125">125</span>
 <span id="126">126</span>
-<span id="127">127</span>
-<span id="128">128</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! exploration of the search space.</span>
 <span class="kw">mod</span> <span class="ident">candidate</span>;
@@ -194,7 +192,7 @@
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">choice</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">montecarlo</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">local_selection</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">SearchAlgorithm</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">candidate</span>::<span class="ident">Candidate</span>;
@@ -202,7 +200,6 @@
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">choice</span>::<span class="ident">fix_order</span>;
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">monitor</span>::{<span class="ident">monitor</span>, <span class="ident">MonitorMessage</span>};
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">parallel_list</span>::<span class="ident">ParallelCandidateList</span>;
-<span class="kw">use</span> <span class="self">self</span>::<span class="ident">bandit_arm</span>::{<span class="ident">SafeTree</span>, <span class="ident">SearchTree</span>};
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">store</span>::<span class="ident">Store</span>;
 
 <span class="kw">use</span> <span class="ident">boxfnonce</span>::<span class="ident">SendBoxFnOnce</span>;
@@ -226,18 +223,17 @@
 <span class="doccomment">/// Entry point of the exploration. This function returns the best candidate that it has found in</span>
 <span class="doccomment">/// the given time (or at whatever point we decided to stop the search - potentially after an</span>
 <span class="doccomment">/// exhaustive search)</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">find_best</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>, 
-                         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">Context</span>,
-                         <span class="ident">search_space</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> { 
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">find_best</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>, 
+                     <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
+                     <span class="ident">search_space</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> { 
     <span class="kw">match</span> <span class="ident">config</span>.<span class="ident">algorithm</span> {
         <span class="ident">config</span>::<span class="ident">SearchAlgorithm</span>::<span class="ident">MultiArmedBandit</span>(<span class="kw-2">ref</span> <span class="ident">band_config</span>) <span class="op">=&gt;</span> {
-            <span class="kw">let</span> <span class="ident">new_candidates</span> <span class="op">=</span> <span class="ident">search_space</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">space</span><span class="op">|</span> {
+            <span class="kw">let</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">search_space</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">space</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="ident">bound</span> <span class="op">=</span> <span class="ident">bound</span>(<span class="kw-2">&amp;</span><span class="ident">space</span>, <span class="ident">context</span>);
                 <span class="ident">Candidate</span>::<span class="ident">new</span>(<span class="ident">space</span>, <span class="ident">bound</span>)
             }).<span class="ident">collect</span>();
-            <span class="kw">let</span> <span class="ident">root</span> <span class="op">=</span> <span class="ident">SearchTree</span>::<span class="ident">new</span>(<span class="ident">new_candidates</span>, <span class="ident">context</span>);
-            <span class="kw">let</span> <span class="ident">safe_tree</span> <span class="op">=</span> <span class="ident">SafeTree</span>::<span class="ident">new</span>(<span class="ident">root</span>, <span class="ident">band_config</span>);
-            <span class="ident">launch_search</span>(<span class="ident">config</span>, <span class="ident">safe_tree</span>, <span class="ident">context</span>)
+            <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="ident">bandit_arm</span>::<span class="ident">Tree</span>::<span class="ident">new</span>(<span class="ident">candidates</span>, <span class="ident">band_config</span>);
+            <span class="ident">launch_search</span>(<span class="ident">config</span>, <span class="ident">tree</span>, <span class="ident">context</span>)
         }
         <span class="ident">config</span>::<span class="ident">SearchAlgorithm</span>::<span class="ident">BoundOrder</span> <span class="op">=&gt;</span> {
             <span class="kw">let</span> <span class="ident">candidate_list</span> <span class="op">=</span> <span class="ident">ParallelCandidateList</span>::<span class="ident">new</span>(<span class="ident">config</span>.<span class="ident">num_workers</span>);
@@ -275,7 +271,7 @@
                         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>) <span class="kw">where</span> <span class="ident">T</span>: <span class="ident">Store</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> 
 {
     <span class="ident">context</span>.<span class="ident">async_eval</span>(<span class="ident">config</span>.<span class="ident">num_workers</span>, <span class="kw-2">&amp;</span><span class="op">|</span><span class="ident">evaluator</span><span class="op">|</span> {
-        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">cand</span>, <span class="ident">payload</span>)) <span class="op">=</span> <span class="ident">candidate_store</span>.<span class="ident">explore</span>(<span class="ident">config</span>, <span class="ident">context</span>) {
+        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">cand</span>, <span class="ident">payload</span>)) <span class="op">=</span> <span class="ident">candidate_store</span>.<span class="ident">explore</span>(<span class="ident">context</span>) {
             <span class="kw">let</span> <span class="ident">space</span> <span class="op">=</span> <span class="ident">fix_order</span>(<span class="ident">cand</span>.<span class="ident">space</span>);
             <span class="kw">let</span> <span class="ident">eval_sender</span> <span class="op">=</span> <span class="ident">eval_sender</span>.<span class="ident">clone</span>();
             <span class="kw">let</span> <span class="ident">callback</span> <span class="op">=</span> <span class="kw">move</span> <span class="op">|</span><span class="ident">leaf</span>, <span class="ident">eval</span>, <span class="ident">cpt</span><span class="op">|</span> {

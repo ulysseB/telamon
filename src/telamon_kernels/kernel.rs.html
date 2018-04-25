@@ -256,6 +256,10 @@
 <span id="199">199</span>
 <span id="200">200</span>
 <span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Abstracts kernels so we can build generic methods to test them.</span>
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
@@ -263,7 +267,7 @@
 <span class="kw">use</span> <span class="ident">rayon</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{<span class="ident">atomic</span>, <span class="ident">Mutex</span>};
 <span class="kw">use</span> <span class="ident">telamon</span>::{<span class="ident">codegen</span>, <span class="ident">device</span>, <span class="ident">explorer</span>, <span class="ident">ir</span>, <span class="ident">model</span>};
-<span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">explorer</span>::{<span class="ident">Candidate</span>, <span class="ident">montecarlo</span>};
+<span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">explorer</span>::{<span class="ident">Candidate</span>, <span class="ident">local_selection</span>};
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">helper</span>::<span class="ident">SignatureBuilder</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">model</span>::<span class="ident">Bound</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">search_space</span>::<span class="ident">SearchSpace</span>;
@@ -325,9 +329,10 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">num_runs</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">while</span> <span class="ident">num_runs</span> <span class="op">&lt;</span> <span class="ident">num_tests</span> {
             <span class="kw">let</span> <span class="ident">order</span> <span class="op">=</span> <span class="ident">explorer</span>::<span class="ident">config</span>::<span class="ident">NewNodeOrder</span>::<span class="ident">WeightedRandom</span>;
-            <span class="kw">let</span> <span class="ident">candidate_idx</span> <span class="op">=</span> <span class="ident">montecarlo</span>::<span class="ident">next_cand_index</span>(<span class="ident">order</span>, <span class="kw-2">&amp;</span><span class="ident">candidates</span>, <span class="ident">CUT</span>);
+            <span class="kw">let</span> <span class="ident">bounds</span> <span class="op">=</span> <span class="ident">candidates</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">bound</span>.<span class="ident">value</span>()).<span class="ident">enumerate</span>();
+            <span class="kw">let</span> <span class="ident">candidate_idx</span> <span class="op">=</span> <span class="ident">local_selection</span>::<span class="ident">pick_index</span>(<span class="ident">order</span>, <span class="ident">bounds</span>, <span class="ident">CUT</span>);
             <span class="kw">let</span> <span class="ident">candidate</span> <span class="op">=</span> <span class="ident">candidates</span>[<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">candidate_idx</span>)].<span class="ident">clone</span>();
-            <span class="kw">let</span> <span class="ident">leaf</span> <span class="op">=</span> <span class="ident">montecarlo</span>::<span class="ident">descend</span>(<span class="ident">order</span>, <span class="ident">context</span>, <span class="ident">candidate</span>, <span class="ident">CUT</span>);
+            <span class="kw">let</span> <span class="ident">leaf</span> <span class="op">=</span> <span class="ident">local_selection</span>::<span class="ident">descend</span>(<span class="ident">order</span>, <span class="ident">context</span>, <span class="ident">candidate</span>, <span class="ident">CUT</span>);
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">leaf</span>) <span class="op">=</span> <span class="ident">leaf</span> {
                 <span class="kw">let</span> <span class="ident">device_fn</span> <span class="op">=</span> <span class="ident">codegen</span>::<span class="ident">Function</span>::<span class="ident">build</span>(<span class="kw-2">&amp;</span><span class="ident">leaf</span>.<span class="ident">space</span>);
                 <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">context</span>.<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="ident">device_fn</span>),
@@ -426,9 +431,10 @@
         <span class="kw">let</span> <span class="ident">num_deadends</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">num_samples</span>).<span class="ident">into_par_iter</span>().<span class="ident">filter</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">order</span> <span class="op">=</span> <span class="ident">explorer</span>::<span class="ident">config</span>::<span class="ident">NewNodeOrder</span>::<span class="ident">WeightedRandom</span>;
             <span class="kw">let</span> <span class="ident">inf</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span>;
-            <span class="kw">let</span> <span class="ident">candidate_idx</span> <span class="op">=</span> <span class="ident">montecarlo</span>::<span class="ident">next_cand_index</span>(<span class="ident">order</span>, <span class="kw-2">&amp;</span><span class="ident">candidates</span>, <span class="ident">inf</span>);
+            <span class="kw">let</span> <span class="ident">bounds</span> <span class="op">=</span> <span class="ident">candidates</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">bound</span>.<span class="ident">value</span>()).<span class="ident">enumerate</span>();
+            <span class="kw">let</span> <span class="ident">candidate_idx</span> <span class="op">=</span> <span class="ident">local_selection</span>::<span class="ident">pick_index</span>(<span class="ident">order</span>, <span class="ident">bounds</span>, <span class="ident">inf</span>);
             <span class="kw">let</span> <span class="ident">candidate</span> <span class="op">=</span> <span class="ident">candidates</span>[<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">candidate_idx</span>)].<span class="ident">clone</span>();
-            <span class="ident">montecarlo</span>::<span class="ident">descend</span>(<span class="ident">order</span>, <span class="ident">context</span>, <span class="ident">candidate</span>, <span class="ident">inf</span>).<span class="ident">is_none</span>()
+            <span class="ident">local_selection</span>::<span class="ident">descend</span>(<span class="ident">order</span>, <span class="ident">context</span>, <span class="ident">candidate</span>, <span class="ident">inf</span>).<span class="ident">is_none</span>()
         }).<span class="ident">count</span>();
         <span class="ident">num_deadends</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">/</span> <span class="ident">num_samples</span> <span class="kw">as</span> <span class="ident">f64</span>
     }
@@ -442,8 +448,10 @@
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Cow</span>::<span class="ident">Borrowed</span>(<span class="ident">candidates</span>);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bounds</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
     <span class="kw">loop</span> {
-        <span class="kw">let</span> <span class="ident">idx</span> <span class="op">=</span> <span class="ident">montecarlo</span>::<span class="ident">next_cand_index</span>(<span class="ident">order</span>, <span class="ident">candidates</span>.<span class="ident">iter</span>(), <span class="ident">CUT</span>);
-        <span class="kw">let</span> <span class="ident">idx</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">idx</span>) <span class="op">=</span> <span class="ident">idx</span> { <span class="ident">idx</span> } <span class="kw">else</span> { <span class="kw">return</span> <span class="prelude-val">None</span>; };
+        <span class="kw">let</span> <span class="ident">idx</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">idx</span>) <span class="op">=</span> {
+            <span class="kw">let</span> <span class="ident">idx_bounds</span> <span class="op">=</span> <span class="ident">candidates</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">bound</span>.<span class="ident">value</span>()).<span class="ident">enumerate</span>();
+            <span class="ident">local_selection</span>::<span class="ident">pick_index</span>(<span class="ident">order</span>, <span class="ident">idx_bounds</span>, <span class="ident">CUT</span>)
+        } { <span class="ident">idx</span> } <span class="kw">else</span> { <span class="kw">return</span> <span class="prelude-val">None</span> };
         <span class="ident">bounds</span>.<span class="ident">push</span>(<span class="ident">candidates</span>[<span class="ident">idx</span>].<span class="ident">bound</span>.<span class="ident">clone</span>());
         <span class="kw">let</span> <span class="ident">choice_opt</span> <span class="op">=</span> <span class="ident">explorer</span>::<span class="ident">choice</span>::<span class="ident">list</span>(<span class="kw-2">&amp;</span><span class="ident">candidates</span>[<span class="ident">idx</span>].<span class="ident">space</span>).<span class="ident">next</span>();
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">choice</span>) <span class="op">=</span> <span class="ident">choice_opt</span> {

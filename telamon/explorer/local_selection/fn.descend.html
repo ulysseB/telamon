@@ -4,18 +4,18 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="API documentation for the Rust `gen_space` fn in crate `telamon`.">
-    <meta name="keywords" content="rust, rustlang, rust-lang, gen_space">
+    <meta name="description" content="API documentation for the Rust `descend` fn in crate `telamon`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, descend">
 
-    <title>telamon::explorer::gen_space - Rust</title>
+    <title>telamon::explorer::local_selection::descend - Rust</title>
 
-    <link rel="stylesheet" type="text/css" href="../../normalize.css">
-    <link rel="stylesheet" type="text/css" href="../../rustdoc.css"
+    <link rel="stylesheet" type="text/css" href="../../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../../rustdoc.css"
           id="mainThemeStyle">
     
-    <link rel="stylesheet" type="text/css" href="../../dark.css">
-    <link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle">
-    <script src="../../storage.js"></script>
+    <link rel="stylesheet" type="text/css" href="../../../dark.css">
+    <link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle">
+    <script src="../../../storage.js"></script>
     
 
     
@@ -34,16 +34,16 @@
     <nav class="sidebar">
         <div class="sidebar-menu">&#9776;</div>
         
-        <div class="sidebar-elems"><p class='location'><a href='../index.html'>telamon</a>::<wbr><a href='index.html'>explorer</a></p><script>window.sidebarCurrent = {name: 'gen_space', ty: 'fn', relpath: ''};</script><script defer src="sidebar-items.js"></script></div>
+        <div class="sidebar-elems"><p class='location'><a href='../../index.html'>telamon</a>::<wbr><a href='../index.html'>explorer</a>::<wbr><a href='index.html'>local_selection</a></p><script>window.sidebarCurrent = {name: 'descend', ty: 'fn', relpath: ''};</script><script defer src="sidebar-items.js"></script></div>
     </nav>
 
     <div class="theme-picker">
         <button id="theme-picker" aria-label="Pick another theme!">
-            <img src="../../brush.svg" width="18" alt="Pick another theme!">
+            <img src="../../../brush.svg" width="18" alt="Pick another theme!">
         </button>
         <div id="theme-choices"></div>
     </div>
-    <script src="../../theme.js"></script>
+    <script src="../../../theme.js"></script>
     <nav class="sub">
         <form class="search-form js-only">
             <div class="search-container">
@@ -55,11 +55,12 @@
         </form>
     </nav>
 
-    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Function <a href='../index.html'>telamon</a>::<wbr><a href='index.html'>explorer</a>::<wbr><a class="fn" href=''>gen_space</a></span><span class='out-of-band'><span id='render-detail'>
+    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Function <a href='../../index.html'>telamon</a>::<wbr><a href='../index.html'>explorer</a>::<wbr><a href='index.html'>local_selection</a>::<wbr><a class="fn" href=''>descend</a></span><span class='out-of-band'><span id='render-detail'>
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a class='srclink' href='../../src/telamon/explorer/mod.rs.html#106-126' title='goto source code'>[src]</a></span></h1><pre class='rust fn'>pub fn gen_space&lt;F, G&gt;(<br>&nbsp;&nbsp;&nbsp;&nbsp;context: &amp;<a class="trait" href="../../telamon/device/trait.Context.html" title="trait telamon::device::Context">Context</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;space: <a class="struct" href="../../telamon/search_space/struct.SearchSpace.html" title="struct telamon::search_space::SearchSpace">SearchSpace</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;on_node: F, <br>&nbsp;&nbsp;&nbsp;&nbsp;on_leaf: G<br>) <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(&amp;<a class="struct" href="../../telamon/explorer/struct.Candidate.html" title="struct telamon::explorer::Candidate">Candidate</a>),<br>&nbsp;&nbsp;&nbsp;&nbsp;G: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(&amp;<a class="struct" href="../../telamon/explorer/struct.Candidate.html" title="struct telamon::explorer::Candidate">Candidate</a>),&nbsp;</span></pre><div class='docblock'><p>Explores the full search space.</p>
+               </span><a class='srclink' href='../../../src/telamon/explorer/local_selection.rs.html#13-23' title='goto source code'>[src]</a></span></h1><pre class='rust fn'>pub fn descend&lt;'a&gt;(<br>&nbsp;&nbsp;&nbsp;&nbsp;order: <a class="enum" href="../../../telamon/explorer/config/enum.NewNodeOrder.html" title="enum telamon::explorer::config::NewNodeOrder">NewNodeOrder</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;context: &amp;<a class="trait" href="../../../telamon/device/trait.Context.html" title="trait telamon::device::Context">Context</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;candidate: <a class="struct" href="../../../telamon/explorer/struct.Candidate.html" title="struct telamon::explorer::Candidate">Candidate</a>&lt;'a&gt;, <br>&nbsp;&nbsp;&nbsp;&nbsp;cut: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.f64.html">f64</a><br>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../../telamon/explorer/struct.Candidate.html" title="struct telamon::explorer::Candidate">Candidate</a>&lt;'a&gt;&gt;</pre><div class='docblock'><p>A recursive function that takes a candidate and expands it until we have a completely specified
+candidate that we can pass to the evaluator, or we find a dead-end</p>
 </div></section>
     <section id='search' class="content hidden"></section>
 
@@ -118,10 +119,10 @@
     
 
     <script>
-        window.rootPath = "../../";
+        window.rootPath = "../../../";
         window.currentCrate = "telamon";
     </script>
-    <script src="../../main.js"></script>
-    <script defer src="../../search-index.js"></script>
+    <script src="../../../main.js"></script>
+    <script defer src="../../../search-index.js"></script>
 </body>
 </html>
