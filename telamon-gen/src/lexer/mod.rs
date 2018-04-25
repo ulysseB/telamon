@@ -15,7 +15,6 @@ use self::ffi::{
     YyScan,
     YyBufferState,
     yylex_init,
-    yy_scan_buffer,
     yy_scan_bytes,
     yy_delete_buffer,
     yylex_destroy,
@@ -69,42 +68,42 @@ impl Iterator for Lexer {
         unsafe {
             match yylex(self.scanner) {
                 YyToken::InvalidToken => {
-                    let out = ffi::yyget_text(self.scanner);
+                    let out = yyget_text(self.scanner);
 
                     CStr::from_ptr(out)
                          .to_str().ok()
                          .and_then(|s: &str| Some(Token::InvalidToken(s.to_owned())))
                 },
                 YyToken::ChoiceIdent => {
-                    let out = ffi::yyget_text(self.scanner);
+                    let out = yyget_text(self.scanner);
 
                     CStr::from_ptr(out)
                          .to_str().ok()
                          .and_then(|s: &str| Some(Token::ChoiceIdent(s.to_owned())))
                 },
                 YyToken::SetIdent => {
-                    let out = ffi::yyget_text(self.scanner);
+                    let out = yyget_text(self.scanner);
 
                     CStr::from_ptr(out)
                          .to_str().ok()
                          .and_then(|s: &str| Some(Token::SetIdent(s.to_owned())))
                 },
                 YyToken::ValueIdent => {
-                    let out = ffi::yyget_text(self.scanner);
+                    let out = yyget_text(self.scanner);
 
                     CStr::from_ptr(out)
                          .to_str().ok()
                          .and_then(|s: &str| Some(Token::ValueIdent(s.to_owned())))
                 },
                 YyToken::Var => {
-                    let out = ffi::yyget_text(self.scanner);
+                    let out = yyget_text(self.scanner);
 
                     CStr::from_ptr(out)
                          .to_str().ok()
                          .and_then(|s: &str| Some(Token::Var(s.to_owned())))
                 },
                 YyToken::Code => {
-                    let out = ffi::yyget_text(self.scanner);
+                    let out = yyget_text(self.scanner);
                     let len = libc::strlen(out)-1;
 
                     *out.offset(len as _) = b'\0' as _;
@@ -113,7 +112,7 @@ impl Iterator for Lexer {
                          .and_then(|s: &str| Some(Token::Code(s.to_owned())))
                 },
                 YyToken::Doc => {
-                    let out = ffi::yyget_text(self.scanner);
+                    let out = yyget_text(self.scanner);
 
                     CStr::from_ptr(out)
                          .to_str().ok()
