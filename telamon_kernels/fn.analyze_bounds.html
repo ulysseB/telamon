@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="API documentation for the Rust `all` fn in crate `itertools`.">
-    <meta name="keywords" content="rust, rustlang, rust-lang, all">
+    <meta name="description" content="API documentation for the Rust `analyze_bounds` fn in crate `telamon_kernels`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, analyze_bounds">
 
-    <title>itertools::all - Rust</title>
+    <title>telamon_kernels::analyze_bounds - Rust</title>
 
     <link rel="stylesheet" type="text/css" href="../normalize.css">
     <link rel="stylesheet" type="text/css" href="../rustdoc.css"
@@ -34,7 +34,7 @@
     <nav class="sidebar">
         <div class="sidebar-menu">&#9776;</div>
         
-        <div class="sidebar-elems"><p class='location'><a href='index.html'>itertools</a></p><script>window.sidebarCurrent = {name: 'all', ty: 'fn', relpath: ''};</script><script defer src="sidebar-items.js"></script></div>
+        <div class="sidebar-elems"><p class='location'><a href='index.html'>telamon_kernels</a></p><script>window.sidebarCurrent = {name: 'analyze_bounds', ty: 'fn', relpath: ''};</script><script defer src="sidebar-items.js"></script></div>
     </nav>
 
     <div class="theme-picker">
@@ -55,17 +55,11 @@
         </form>
     </nav>
 
-    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Function <a href='index.html'>itertools</a>::<wbr><a class="fn" href=''>all</a></span><span class='out-of-band'><span id='render-detail'>
+    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Function <a href='index.html'>telamon_kernels</a>::<wbr><a class="fn" href=''>analyze_bounds</a></span><span class='out-of-band'><span id='render-detail'>
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a class='srclink' href='../src/itertools/free.rs.html#141-146' title='goto source code'>[src]</a></span></h1><pre class='rust fn'>pub fn all&lt;I, F&gt;(iterable: I, f: F) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a> <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;I: <a class="trait" href="https://doc.rust-lang.org/nightly/core/iter/traits/trait.IntoIterator.html" title="trait core::iter::traits::IntoIterator">IntoIterator</a>,<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(I::<a class="type" href="https://doc.rust-lang.org/nightly/core/iter/traits/trait.IntoIterator.html#associatedtype.Item" title="type core::iter::traits::IntoIterator::Item">Item</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.bool.html">bool</a>,&nbsp;</span></pre><div class='docblock'><p>Test whether the predicate holds for all elements in the iterable.</p>
-<p><code>IntoIterator</code> enabled version of <code>i.all(f)</code></p>
-
-<pre class="rust rust-example-rendered">
-<span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">all</span>;
-
-<span class="macro">assert</span><span class="macro">!</span>(<span class="ident">all</span>(<span class="kw-2">&amp;</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>], <span class="op">|</span><span class="ident">elt</span><span class="op">|</span> <span class="kw-2">*</span><span class="ident">elt</span> <span class="op">&gt;</span> <span class="number">0</span>));</pre>
+               </span><a class='srclink' href='../src/telamon_kernels/kernel.rs.html#233-253' title='goto source code'>[src]</a></span></h1><pre class='rust fn'>pub fn analyze_bounds(bounds: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;BoundSample&gt;)</pre><div class='docblock'><p>Prints an analysis of the bounds computed by the lower bound model.</p>
 </div></section>
     <section id='search' class="content hidden"></section>
 
@@ -125,7 +119,7 @@
 
     <script>
         window.rootPath = "../";
-        window.currentCrate = "itertools";
+        window.currentCrate = "telamon_kernels";
     </script>
     <script src="../main.js"></script>
     <script defer src="../search-index.js"></script>
