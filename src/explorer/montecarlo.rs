@@ -76,7 +76,7 @@ fn choose_cand_weighted<IT>(nodes: IT, cut: f64) -> Option<usize>
     let max_bound = nodes.clone().max_by(|&x1, &x2| cmp_f64(x1.1, x2.1)).map(|x| x.1)?;
     for (ind, x) in nodes {
         if cut.is_infinite() {
-            let x_weight = (10f64 * max_bound / x).floor() as u32 ;
+            let x_weight = 1 + (10f64 * max_bound / x).floor() as u32 ;
             weighted_items.push(Weighted { weight: x_weight, item: ind });
         } else {
             assert!(x <= cut, "Compare bound fail, cut {:.3e}, cand: {:.3e}", cut, x);
