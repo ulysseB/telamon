@@ -21,14 +21,14 @@ fn main() {
     benchmark::<linalg::Axpy<f32>, _>(1 << 25, &executor, |context| {
         saxpy_reference(&cublas_handle, context)
     });
+    benchmark::<linalg::MatMul<f32>, _>((1<<10, 1<<10, 1<<10), &executor, |context| {
+        matmul_reference(&cublas_handle, context)
+    });
     benchmark::<linalg::MatVec<f32>, _>((1<<13, 1<<13), &executor, |context| {
         matvec_reference(&cublas_handle, context)
     });
     benchmark::<linalg::Gesummv<f32>, _>((1<<13, 1<<13), &executor, |context| {
         gesummv_reference(&cublas_handle, context)
-    });
-    benchmark::<linalg::MatMul<f32>, _>((1<<10, 1<<10, 1<<10), &executor, |context| {
-        matmul_reference(&cublas_handle, context)
     });
     benchmark::<linalg::Doitgen<f32>, _>((1<<7, 1<<7, 1<<7), &executor, |context| {
         doitgen_reference(&cublas_handle, context)
