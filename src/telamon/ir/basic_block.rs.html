@@ -80,22 +80,13 @@
 <span id="23">23</span>
 <span id="24">24</span>
 <span id="25">25</span>
-<span id="26">26</span>
-<span id="27">27</span>
-<span id="28">28</span>
-<span id="29">29</span>
-<span id="30">30</span>
-<span id="31">31</span>
-<span id="32">32</span>
-<span id="33">33</span>
-<span id="34">34</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Provides a generic decription of basic blocks.</span>
 <span class="kw">use</span> <span class="ident">ir</span>;
 <span class="kw">use</span> <span class="ident">std</span>;
 
 <span class="doccomment">/// Provides a unique identifer for a basic block.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">Hash</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">Hash</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">BBId</span> { <span class="ident">Inst</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>), <span class="ident">Dim</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>) }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">InstId</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BBId</span> {
@@ -104,15 +95,6 @@
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BBId</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">id</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>) <span class="op">-&gt;</span> <span class="self">Self</span> { <span class="ident">BBId</span>::<span class="ident">Dim</span>(<span class="ident">id</span>) }
-}
-
-<span class="kw">impl</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Debug</span> <span class="kw">for</span> <span class="ident">BBId</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
-        <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
-            <span class="ident">BBId</span>::<span class="ident">Inst</span>(<span class="ident">id</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;inst {}&quot;</span>, <span class="ident">id</span>.<span class="ident">id</span>),
-            <span class="ident">BBId</span>::<span class="ident">Dim</span>(<span class="ident">id</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;dim {}&quot;</span>, <span class="ident">id</span>.<span class="ident">id</span>),
-        }
-    }
 }
 
 <span class="doccomment">/// Represents a basic block in an Exhaust function.</span>

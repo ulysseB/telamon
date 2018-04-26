@@ -650,11 +650,11 @@
 <span class="kw">impl</span> <span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Point</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
         <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
-            <span class="ident">Point</span>::<span class="ident">Inst</span>(<span class="ident">id</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;instruction {}&quot;</span>, <span class="ident">id</span>.<span class="ident">id</span>),
+            <span class="ident">Point</span>::<span class="ident">Inst</span>(<span class="ident">id</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;instruction {}&quot;</span>, <span class="ident">id</span>.<span class="number">0</span>),
             <span class="ident">Point</span>::<span class="ident">Entry</span>(<span class="kw-2">ref</span> <span class="ident">dims</span>) <span class="op">=&gt;</span>
-                <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;the entry of dims [{:?}]&quot;</span>, <span class="ident">dims</span>.<span class="ident">iter</span>().<span class="ident">format</span>(<span class="string">&quot;, &quot;</span>)),
+                <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;the entry of dims [{}]&quot;</span>, <span class="ident">dims</span>.<span class="ident">iter</span>().<span class="ident">format</span>(<span class="string">&quot;, &quot;</span>)),
             <span class="ident">Point</span>::<span class="ident">Exit</span>(<span class="kw-2">ref</span> <span class="ident">dims</span>) <span class="op">=&gt;</span>
-                <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;the exit of dims [{:?}]&quot;</span>, <span class="ident">dims</span>.<span class="ident">iter</span>().<span class="ident">format</span>(<span class="string">&quot;, &quot;</span>)),
+                <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;the exit of dims [{}]&quot;</span>, <span class="ident">dims</span>.<span class="ident">iter</span>().<span class="ident">format</span>(<span class="string">&quot;, &quot;</span>)),
         }
     }
 }
@@ -746,7 +746,7 @@
                 <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;the pressure on {} at the {}&quot;</span>, <span class="ident">name</span>, <span class="ident">level</span>),
             <span class="ident">Origin</span>::<span class="ident">HardwareEvaluation</span> <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;the evaluation on the hardware&quot;</span>),
             <span class="ident">Origin</span>::<span class="ident">Loop</span> { <span class="kw-2">ref</span> <span class="ident">dims</span>, <span class="ident">iterations</span>, <span class="kw-2">ref</span> <span class="ident">inner</span> } <span class="op">=&gt;</span> {
-                <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;{} iterations along dimensions [{:?}] of {}&quot;</span>,
+                <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;{} iterations along dimensions [{}] of {}&quot;</span>,
                     <span class="ident">iterations</span>, <span class="ident">dims</span>.<span class="ident">iter</span>().<span class="ident">format</span>(<span class="string">&quot;, &quot;</span>), <span class="ident">inner</span>)
             },
             <span class="ident">Origin</span>::<span class="ident">Scale</span> { <span class="kw-2">ref</span> <span class="ident">inner</span>, <span class="ident">factor</span> } <span class="op">=&gt;</span>
