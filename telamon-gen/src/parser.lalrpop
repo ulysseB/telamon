@@ -138,6 +138,12 @@ choice_instance: ast::ChoiceInstance = {
     },
 };
 
+doc: String = {
+    <lines: (<doc_line>)+> => {
+        lines.concat()
+    }
+};
+
 #[inline]
 non_empty_list<T, SEP>: Vec<T> = {
     <v: (<T> SEP)*> <e: T> => {
@@ -158,7 +164,7 @@ extern {
         set_ident => Token::SetIdent(<String>),
         var => Token::Var(<String>),
         code => Token::Code(<String>),
-        doc => Token::Doc(<String>),
+        doc_line => Token::Doc(<String>),
         boolean => Token::Bool(<bool>),
         counter_kind => Token::CounterKind(<ir::CounterKind>),
         cmp_op => Token::CmpOp(<ir::CmpOp>),

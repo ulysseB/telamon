@@ -263,11 +263,8 @@ fn doc_mode() {
               ]);
     // Line Comment Doc's Token
     assert_eq!(Lexer::from(b"// comment".to_vec()).collect::<Vec<Token>>(), vec![
-                Token::Doc(String::from(" comment"))
               ]);
     // Line Comment MultiDoc's Token
     assert_eq!(Lexer::from(b"// comment \n // comment".to_vec()).collect::<Vec<Token>>(), vec![
-                Token::Doc(String::from(" comment ")),
-                Token::Doc(String::from(" comment"))
               ]);
 }
