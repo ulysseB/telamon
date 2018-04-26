@@ -308,6 +308,7 @@
 <span id="251">251</span>
 <span id="252">252</span>
 <span id="253">253</span>
+<span id="254">254</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Abstracts kernels so we can build generic methods to test them.</span>
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
@@ -324,7 +325,7 @@
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// Ignore candidates with a too big bound in tests.</span>
-<span class="kw">const</span> <span class="ident">CUT</span>: <span class="ident">f64</span> <span class="op">=</span> <span class="number">10e8f64</span>;
+<span class="kw">const</span> <span class="ident">CUT</span>: <span class="ident">f64</span> <span class="op">=</span> <span class="number">2e8f64</span>;
 <span class="doccomment">/// Maximal number of deadends to accept before failing.</span>
 <span class="comment">// TODO(cleanup): tune MAX_DEADEND_RATIO</span>
 <span class="kw">const</span> <span class="ident">MAX_DEADEND_RATIO</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">20</span>;
@@ -422,7 +423,7 @@
             }).<span class="ident">collect_vec</span>();
         <span class="kw">let</span> <span class="ident">leaves</span> <span class="op">=</span> <span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="ident">Vec</span>::<span class="ident">new</span>());
         <span class="kw">let</span> <span class="ident">num_tested</span> <span class="op">=</span> <span class="ident">atomic</span>::<span class="ident">AtomicUsize</span>::<span class="ident">new</span>(<span class="number">0</span>);
-        <span class="ident">context</span>.<span class="ident">async_eval</span>(<span class="ident">num_cpus</span>::<span class="ident">get</span>(), <span class="kw-2">&amp;</span><span class="op">|</span><span class="ident">evaluator</span><span class="op">|</span> {
+        <span class="ident">context</span>.<span class="ident">async_eval</span>(<span class="ident">num_cpus</span>::<span class="ident">get</span>(), <span class="ident">device</span>::<span class="ident">EvalMode</span>::<span class="ident">TestBound</span>, <span class="kw-2">&amp;</span><span class="op">|</span><span class="ident">evaluator</span><span class="op">|</span> {
             <span class="kw">while</span> <span class="ident">num_tested</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">atomic</span>::<span class="ident">Ordering</span>::<span class="ident">SeqCst</span>) <span class="op">&lt;</span> <span class="ident">num_tests</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">leaf</span>, <span class="ident">bounds</span>)) <span class="op">=</span> <span class="ident">descend_check_bounds</span>(<span class="kw-2">&amp;</span><span class="ident">candidates</span>, <span class="ident">context</span>) {
                     <span class="kw">let</span> <span class="ident">leaves</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">leaves</span>;
@@ -432,10 +433,11 @@
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">actions</span> <span class="op">=</span> <span class="ident">leaf</span>.<span class="ident">actions</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect_vec</span>();
                         <span class="ident">actions</span>.<span class="ident">reverse</span>();
                         <span class="kw">for</span> (<span class="ident">idx</span>, <span class="ident">partial_bound</span>) <span class="kw">in</span> <span class="ident">bounds</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-                            <span class="kw">let</span> <span class="ident">actions</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">actions</span>[..<span class="ident">idx</span><span class="op">+</span><span class="number">1</span>];
-                            <span class="macro">assert</span><span class="macro">!</span>(<span class="kw-2">*</span><span class="ident">partial_bound</span> <span class="op">&lt;=</span> <span class="ident">bound</span>,
-                                    <span class="string">&quot;invalid inner bound: {} &lt; {}, kernel {}, actions {:?}&quot;</span>,
-                                    <span class="ident">partial_bound</span>, <span class="ident">bound</span>, <span class="self">Self</span>::<span class="ident">name</span>(), <span class="ident">actions</span>);
+                            <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">partial_bound</span>.<span class="ident">value</span>() <span class="op">&lt;=</span> <span class="ident">bound</span>.<span class="ident">value</span>() <span class="op">*</span> <span class="number">1.001</span>,
+                                    <span class="string">&quot;invalid inner bound: {} &lt; {}, kernel {}, \
+                                    actions {:?} then {:?}&quot;</span>,
+                                    <span class="ident">partial_bound</span>, <span class="ident">bound</span>, <span class="self">Self</span>::<span class="ident">name</span>(),
+                                    <span class="kw-2">&amp;</span><span class="ident">actions</span>[..<span class="ident">idx</span>], <span class="kw-2">&amp;</span><span class="ident">actions</span>[<span class="ident">idx</span>..]);
                         }
                         <span class="ident">leaves</span>.<span class="ident">push</span>(<span class="ident">BoundSample</span> { <span class="ident">actions</span>, <span class="ident">bound</span>, <span class="ident">runtime</span> });
                     }).<span class="ident">into</span>());
@@ -530,13 +532,13 @@
 
 <span class="kw">impl</span> <span class="ident">BoundSample</span> {
     <span class="doccomment">/// Returns the ratio between the bound and the actual evaluation.</span>
-    <span class="kw">fn</span> <span class="ident">ratio</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">f64</span> { <span class="self">self</span>.<span class="ident">bound</span>.<span class="ident">value</span>() <span class="op">/</span> <span class="self">self</span>.<span class="ident">runtime</span> }
+    <span class="kw">fn</span> <span class="ident">ratio</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">f64</span> { <span class="self">self</span>.<span class="ident">runtime</span> <span class="op">/</span> <span class="self">self</span>.<span class="ident">bound</span>.<span class="ident">value</span>() }
 }
 
 <span class="kw">impl</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">BoundSample</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
-        <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;{} vs {} ({}), for actions {:?}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">runtime</span>, <span class="self">self</span>.<span class="ident">bound</span>, <span class="self">self</span>.<span class="ident">ratio</span>(), <span class="self">self</span>.<span class="ident">actions</span>)
+        <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;{:.2}x, {:.2e}ns vs {}, for actions {:?}&quot;</span>,
+            <span class="self">self</span>.<span class="ident">ratio</span>(), <span class="self">self</span>.<span class="ident">runtime</span>, <span class="self">self</span>.<span class="ident">bound</span>, <span class="self">self</span>.<span class="ident">actions</span>)
     }
 }
 
@@ -558,7 +560,7 @@
     <span class="kw">if</span> <span class="ident">num_errors</span> <span class="op">!=</span> <span class="ident">bounds</span>.<span class="ident">len</span>() {
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">NUM_QUANTILES</span> {
             <span class="kw">let</span> <span class="ident">index</span> <span class="op">=</span> (<span class="ident">i</span><span class="op">+</span><span class="number">1</span>)<span class="kw-2">*</span>(<span class="ident">bounds</span>.<span class="ident">len</span>()<span class="op">-</span><span class="ident">num_errors</span>)<span class="op">/</span><span class="ident">NUM_QUANTILES</span> <span class="op">-</span> <span class="number">1</span>;
-            <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;{}% best: {}&quot;</span>, <span class="ident">i</span><span class="kw-2">*</span><span class="number">100</span><span class="op">/</span><span class="ident">NUM_QUANTILES</span>, <span class="ident">bounds</span>[<span class="ident">num_errors</span> <span class="op">+</span> <span class="ident">index</span>]);
+            <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;{}% worst: {}&quot;</span>, (<span class="ident">i</span><span class="op">+</span><span class="number">1</span>)<span class="kw-2">*</span><span class="number">100</span><span class="op">/</span><span class="ident">NUM_QUANTILES</span>, <span class="ident">bounds</span>[<span class="ident">num_errors</span> <span class="op">+</span> <span class="ident">index</span>]);
         }
     }
 }
