@@ -10,12 +10,10 @@ addons:
 before_script:
   - flex --version
 script:
-  - cd telamon-gen
-  - cargo build --verbose
-  - cargo test --verbose
-  - cargo doc --verbose
-  - cd cc_tests
-  - cargo test --verbose
+  - cargo build --verbose --all
+  - cargo test --verbose --all
+  - cargo doc --verbose --all
+
 deploy:
   - provider: pages
     local-dir: target/doc
