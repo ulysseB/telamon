@@ -1,5 +1,5 @@
 //! Rust script to compile non-rust files.
-extern crate gcc;
+extern crate cc;
 extern crate telamon_gen;
 
 use std::path::Path;
@@ -11,10 +11,10 @@ fn add_dependency(dep: &str) { println!("cargo:rerun-if-changed={}", dep); }
 
 /// Compiles and links the cuda wrapper and libraries.
 fn compile_link_cuda() {
-    gcc::Build::new()
-        .flag("-Werror")
-        .file("src/device/cuda/api/wrapper.c")
-        .compile("libdevice_cuda_wrapper.a");
+    cc::Build::new()
+       .flag("-Werror")
+       .file("src/device/cuda/api/wrapper.c")
+       .compile("libdevice_cuda_wrapper.a");
     add_dependency("src/device/cuda/api/wrapper.c");
     add_lib("cuda");
     add_lib("curand");
