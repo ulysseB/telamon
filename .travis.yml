@@ -2,7 +2,7 @@ language: rust
 cache: cargo
 sudo: false
 rust:
-  - nightly
+    - nightly
 addons:
   apt:
     packages:
@@ -13,7 +13,6 @@ script:
   - cargo build --verbose --all
   - cargo test --verbose --all
   - cargo doc --verbose --all
-
 deploy:
   - provider: pages
     local-dir: target/doc
@@ -25,8 +24,8 @@ notifications:
   slack:
     rooms:
       secure: bhOU59RYPbvA8GXYtL4JTGjKRbrOFyni2wjAV0gWQqwP9lkzYWlYDlsoHOFIR+DLhwN0Or2d5Sw47Ic3NLGrzhPOFcXNBhoRUy4QBUPWaKETEJbqjG/UvYRbfGr7ajosQdL1pDMuem8NFXdNcSCgnHu9Wgtim1EjO82rdc4YGPSCcHkfHpCncM435vXcDhtdz/ks9pF4igmJH0frhXTAkngckggaR2xx1cUAlrc4ztc03goe+uFC3Iti1QAp2DGMFx9hLvV1CjATeqSA4/65idUS0aEWccK2tNwLjp3nL3LAwwymCr4OWS8wCD0p1lk3Fvcc3FTX2fw6TfGciaFNCwAO+0FD5tJD+Uez+QllN4cufKrbwQo9ZlRP0fFsx38QJ1FeK8k/uk0hR7MzqypzkCNwG6NBI98L71P2sFvA15gELuI9sWhx655PwFzmjNwYw/zCeimp9pi+bNbYoWjckkwbN7ArwJjPt47vv/bIJbo/NrmNxFghZm4RTQW45prolMUqGO9AeIMf7oP24pPdEv3v9oH7lF/97tCBLt9Nd7LhwizK6nG/VFFCofwdIfBqlGDwJufN3UoMqVezkHqRuZa+tDgU9SuUrfAe1XnAc1+HbDzza55LM+3tzHn4sPr1jmlLIEHww2Yub4GpxBJYl+8MhusRbGhedqtpqeLk3LE=
-    on_success: change
-    on_failure: change
+     on_success: change
+     on_failure: change
 env:
   global:
     secure: ZLjUSECDu2ewLa2eJ8DepE7b3tuQxR81tbUxFtSBKKj6IVZPppzS7CUcVZxE46Xp+pug9KKApACOfqfqil5hRaSHKtqoVoOf/sYPJs+xA3JdmVBmqVYj0YViCA5WCxVU1J5BIEDVLTqJy7y3zBy8OYP2fNquNLEBUL7r0jn/+tjbuZfrwzN2PUqL/l7YyQVT/UgdpaXzVkvAcjGEL4nXpcSLb+a0g49PSQNcJhoLiYoZziUZH6buKllBzyBszBk4f/yO+wrvs334FaVw0DBbngIyUcQyzJT56eck22AJXlTl88DpJOUPakFTTJ1oa7UG6MTD46QMp2F/LK+ASNXwT5Q1OIsk67/CltZiWLXGBmdaAX2CJXor5vClNX3kEs0jCVCxMAOwfCmbTAz9cklb0rsoHXWYO3E39L3JhcVeZjwIvfI31d1cFrTjEwIVnUBQLmPYJyp9ndjc4kj7X/NUwD9SqrquIoEDW6mtCHlGmIDnkMJYQXNEwnoenFsSA+nbq9f/zoZVYUxmPYmRyHTCSNHVABUKYp3sK7HsRREwYwLm5slADH+K5loNYcxPgVJuH+mP7SAnJ6A8BTe4qxZK/bxjGr3ltSumWN2Ao9eC+PiAxG2QXGXHNeBtnrX0QxGkYZ5hjZndfAovjxjSsQ1kObnOOdwCSw4V93zFNzHthOQ=
