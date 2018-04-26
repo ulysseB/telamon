@@ -64,9 +64,9 @@ impl<'a> Function<'a> {
 
     /// Adds an instruction to the function.
     pub fn add_inst(&mut self, op: Operator<'a>, iter_dims: HashSet<dim::Id>) -> InstId {
-        let id = ir::InstId { id: self.insts.len() as u32 };
+        let id = ir::InstId(self.insts.len() as u32);
         // Register the instruction in iteration dimensions.
-        for dim in &iter_dims { self.dims[dim.id as usize].add_iterated(id.into()); }
+        for dim in &iter_dims { self.dims[dim.0 as usize].add_iterated(id.into()); }
         // Register the memory blocks used.
         if let Some(mem_id) = op.mem_used() {
             self.mem_insts.push(id);
@@ -78,7 +78,7 @@ impl<'a> Function<'a> {
 
     /// Creates a new dimension.
     pub fn add_dim(&mut self, size: Size<'a>) -> dim::Id {
-        let id = dim::Id { id: self.dims.len() as u32 };
+        let id = dim::Id(self.dims.len() as u32);
         self.dims.push(Dimension::new(size, id));
         id
     }
@@ -111,20 +111,20 @@ impl<'a> Function<'a> {
     }
 
     /// Returns an instruction given its id.
-    pub fn inst(&self, id: InstId) -> &Instruction<'a> { &self.insts[id.id as usize] }
+    pub fn inst(&self, id: InstId) -> &Instruction<'a> { &self.insts[id.0 as usize] }
 
     /// Returns a mutable reference to an instruction given its id.
     fn inst_mut(&mut self, id: InstId) -> &mut Instruction<'a> {
-        &mut self.insts[id.id as usize]
+        &mut self.insts[id.0 as usize]
     }
 
     /// Retuns a dimension given its id.
-    pub fn dim(&self, id: dim::Id) -> &Dimension<'a> { &self.dims[id.id as usize] }
+    pub fn dim(&self, id: dim::Id) -> &Dimension<'a> { &self.dims[id.0 as usize] }
 
     /// Returns a `BasicBlock` given its id.
     pub fn block(&self, id: BBId) -> &BasicBlock<'a> {
         match id {
-            BBId::Inst(id) => &self.insts[id.id as usize],
+            BBId::Inst(id) => &self.insts[id.0 as usize],
             BBId::Dim(id) => self.dim(id),
         }
     }
@@ -132,8 +132,8 @@ impl<'a> Function<'a> {
     /// Returns a mutable reference to a basicblock.
     fn block_mut(&mut self, id: BBId) -> &mut BasicBlock<'a> {
         match id {
-            BBId::Inst(id) => &mut self.insts[id.id as usize],
-            BBId::Dim(id) => &mut self.dims[id.id as usize],
+            BBId::Inst(id) => &mut self.insts[id.0 as usize],
+            BBId::Dim(id) => &mut self.dims[id.0 as usize],
         }
     }
 
@@ -176,7 +176,7 @@ impl<'a> Function<'a> {
     /// iteration dimension was not aleady present in the set.
     pub fn set_iteration_dim(&mut self, inst: ir::InstId, dim: ir::dim::Id) -> bool {
         if self.inst_mut(inst).add_iteration_dimension(dim) {
-            self.dims[dim.id as usize].add_iterated(inst);
+            self.dims[dim.0 as usize].add_iterated(inst);
             true
         } else { false }
     }
@@ -199,7 +199,7 @@ impl<'a> Function<'a> {
         let (st_index, st_pattern) = self.gen_internal_index(id, st_dims);
         let (ld_index, ld_pattern) = self.gen_internal_index(id, ld_dims);
         for &mem_use in self.mem_blocks.internal_block(id).uses() {
-            self.insts[mem_use.id as usize].lower_layout(ld_index.clone(),
+            self.insts[mem_use.0 as usize].lower_layout(ld_index.clone(),
                 ld_pattern.clone(), st_index.clone(), st_pattern.clone());
         }
     }
@@ -266,7 +266,7 @@ impl<'a> Function<'a> {
         let ld_dim_map = dim::Map::new(ld_dims.iter().zip_eq(&dst_dims).map(clone_pair));
         let ld_dim_set = ld_dims.iter().cloned().collect();
         let ld = self.add_inst(Operator::TmpLd(data_type, tmp_mem.into()), ld_dim_set);
-        self.insts[dst_inst.id as usize].lower_dim_map(dst_operand_pos, ld, ld_dim_map);
+        self.insts[dst_inst.0 as usize].lower_dim_map(dst_operand_pos, ld, ld_dim_map);
         Ok(ir::LoweredDimMap { mem: tmp_mem, store: st, load: ld, dimensions: dims })
     }
 
@@ -280,7 +280,7 @@ impl<'a> Function<'a> {
 
     /// Trigger to call when two dimensions are not merged.
     pub fn dim_not_merged(&mut self, lhs: dim::Id, rhs: dim::Id) {
-        let to_lower = self.mem_blocks.not_merged(&self.dims[lhs.id as usize], rhs);
+        let to_lower = self.mem_blocks.not_merged(&self.dims[lhs.0 as usize], rhs);
         self.layouts_to_lower.extend(to_lower);
     }
 

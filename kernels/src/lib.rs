@@ -26,7 +26,7 @@ use telamon::helper::tensor::DimSize;
 
 /// Creates a `DimSize`. If the instantiate flag is true, it uses a constant size,
 /// otherwise it creates a parameter with the given name.
-fn create_size<'a, AM>(value: i32, name: &'a str,
+pub fn create_size<'a, AM>(value: i32, name: &'a str,
                        is_generic: bool,
                        builder: &mut SignatureBuilder<AM>) -> DimSize<'a>
     where AM: ArgMap + Context

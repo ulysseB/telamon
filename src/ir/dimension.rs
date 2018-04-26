@@ -5,10 +5,16 @@ use std::hash::{Hash, Hasher};
 
 /// Provides a unique identifier for iteration dimensions.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Id { pub id: u32 }
+pub struct Id(pub u32);
 
 impl fmt::Debug  for Id {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.id.fmt(f) }
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "dim::Id({})", self.0)
+    }
+}
+
+impl fmt::Display for Id {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.0.fmt(f) }
 }
 
 /// Represents an iteration dimension.

@@ -196,11 +196,11 @@ pub enum Point { Inst(ir::InstId), Entry(Vec<ir::dim::Id>), Exit(Vec<ir::dim::Id
 impl fmt::Display for Point {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Point::Inst(id) => write!(f, "instruction {}", id.id),
+            Point::Inst(id) => write!(f, "instruction {}", id.0),
             Point::Entry(ref dims) =>
-                write!(f, "the entry of dims [{:?}]", dims.iter().format(", ")),
+                write!(f, "the entry of dims [{}]", dims.iter().format(", ")),
             Point::Exit(ref dims) =>
-                write!(f, "the exit of dims [{:?}]", dims.iter().format(", ")),
+                write!(f, "the exit of dims [{}]", dims.iter().format(", ")),
         }
     }
 }
@@ -292,7 +292,7 @@ impl fmt::Display for Origin {
                 write!(f, "the pressure on {} at the {}", name, level),
             Origin::HardwareEvaluation => write!(f, "the evaluation on the hardware"),
             Origin::Loop { ref dims, iterations, ref inner } => {
-                write!(f, "{} iterations along dimensions [{:?}] of {}",
+                write!(f, "{} iterations along dimensions [{}] of {}",
                     iterations, dims.iter().format(", "), inner)
             },
             Origin::Scale { ref inner, factor } =>

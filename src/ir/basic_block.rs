@@ -3,7 +3,7 @@ use ir;
 use std;
 
 /// Provides a unique identifer for a basic block.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BBId { Inst(ir::InstId), Dim(ir::dim::Id) }
 
 impl From<ir::InstId> for BBId {
@@ -12,15 +12,6 @@ impl From<ir::InstId> for BBId {
 
 impl From<ir::dim::Id> for BBId {
     fn from(id: ir::dim::Id) -> Self { BBId::Dim(id) }
-}
-
-impl std::fmt::Debug for BBId {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match *self {
-            BBId::Inst(id) => write!(f, "inst {}", id.id),
-            BBId::Dim(id) => write!(f, "dim {}", id.id),
-        }
-    }
 }
 
 /// Represents a basic block in an Exhaust function.
