@@ -282,3 +282,71 @@ fn apply_dim_map(device: &Device,
         level_dag.add_dependency(to_map, pred, dst_point, &latency);
     }
 }
+
+#[test]
+#[cfg(feature="cuda")]
+fn inner_bound_0() {
+    use device::{Context, cuda};
+    use helper;
+    use search_space::{Action, DimKind, Order};
+
+    let _ = ::env_logger::try_init();
+    let executor = cuda::Executor::init();
+    let mut context = cuda::Context::new(&executor);
+    let b;
+    let signature = {
+        let mut builder = helper::SignatureBuilder::new("bound_error", &mut context);
+        builder.scalar("k", 1024);
+        b = builder.array::<f32>("b", 1024*8).0;
+        builder.get()
+    };
+
+    let mut builder = helper::Builder::new(&signature, context.device());
+
+    let size_4 = builder.cst_size(4);
+    let size_2 = builder.cst_size(2);
+
+    let a_dim_0 = builder.open_dim(size_4.clone());
+    let a_dim_1 = builder.open_dim(size_4.clone());
+        builder.mov(&0f32);
+    builder.close_dim(&a_dim_1);
+    builder.close_dim(&a_dim_0);
+
+    let b_dim_0 = builder.open_dim(size_4);
+    let b_dim_1 = builder.open_dim(size_2);
+        let t = ir::Type::F(32);
+        let (addr, pattern) = builder.tensor_access(&"b", b, &t, &[&b_dim_0, &b_dim_1]);
+        let ld_b = builder.ld(t, &addr, pattern);
+    builder.close_dim(&b_dim_0);
+
+    builder.action(Action::DimKind(a_dim_1, DimKind::THREAD_Z));
+    builder.action(Action::DimKind(a_dim_0, DimKind::THREAD_Y));
+    builder.action(Action::DimKind(b_dim_1, DimKind::THREAD_X));
+
+    builder.order(&a_dim_1, &ld_b, Order::OUTER);
+    builder.order(&a_dim_0, &ld_b, Order::OUTER);
+
+    let mut space = builder.get();
+    let partial_pressure = {
+        let local_info = LocalInfo::compute(&space, &context);
+        let min_num_threads = local_info.parallelism.min_num_threads;
+        println!("partial nesting {:?}", local_info.nesting[&ld_b.into()].outer_dims);
+        println!("partial pressure {}", local_info.hw_pressure[&ld_b.into()].get_bottleneck(4));
+        sum_pressure(context.device(), &space, &local_info,
+                     BottleneckLevel::Global, min_num_threads, &[])
+    }.get_bottleneck(4);
+
+    let actions = vec![Action::DimKind(b_dim_0, DimKind::THREAD_Z)];
+    assert!(space.apply_decisions(actions).is_ok());
+    let final_pressure = {
+        let local_info = LocalInfo::compute(&space, &context);
+        let min_num_threads = local_info.parallelism.min_num_threads;
+        println!("final nesting {:?}", local_info.nesting[&ld_b.into()].outer_dims);
+        println!("final pressure {}", local_info.hw_pressure[&ld_b.into()].get_bottleneck(4));
+        sum_pressure(context.device(), &space, &local_info,
+                     BottleneckLevel::Global, min_num_threads, &[])
+    }.get_bottleneck(4);
+
+    assert!(partial_pressure <= final_pressure * 1.001,
+            "{} > {}", partial_pressure, final_pressure);
+}

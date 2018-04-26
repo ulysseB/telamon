@@ -67,7 +67,7 @@ fn add_indvar_pressure(device: &Device,
        } else {
            device.multiplicative_indvar_pressure(&t)
        };
-       // FIXME: do not add the latency if the if it is an additive unrolled dimension that can be
+       // FIXME: do not add the latency for additive unrolled dimension that can be
        // precomputed
        let size = dim_sizes[&dim];
        if dim_kind.intersects(DimKind::THREAD | DimKind::BLOCK) {
@@ -103,7 +103,6 @@ impl Nesting {
     fn compute(space: &SearchSpace, bb: ir::BBId) -> Self {
         let mut inner_dims = Vec::new();
         let mut inner_bbs = Vec::new();
-        let mut outer_dims = Vec::new();
         let mut before_self = Vec::new();
         let mut after_self = Vec::new();
         let mut bigger_merged_dims = Vec::new();
@@ -118,22 +117,37 @@ impl Nesting {
                 if order.intersects(Order::MERGED) && other_bb > bb {
                     bigger_merged_dims.push(id);
                 }
-                if Order::OUTER.contains(order) {
-                    if outer_dims.iter().cloned().all(|outer: ir::dim::Id| {
-                        let ord = space.domain().get_order(id.into(), outer.into());
-                        !ord.contains(Order::MERGED)
-                    }) { outer_dims.push(id); }
-                }
             }
         }
         Nesting {
             inner_dims: VecSet::new(inner_dims),
             inner_bbs: VecSet::new(inner_bbs),
-            outer_dims: VecSet::new(outer_dims),
+            outer_dims: Self::get_iteration_dims(space, bb),
             before_self: VecSet::new(before_self),
             after_self: VecSet::new(after_self),
             bigger_merged_dims: VecSet::new(bigger_merged_dims),
         }
+    }
+
+    /// Computess the list of iteration dimensions of a `BasicBlock`.
+    fn get_iteration_dims(space: &SearchSpace, bb: ir::BBId) -> VecSet<ir::dim::Id> {
+        let dims = if let ir::BBId::Inst(inst) = bb {
+            space.ir_instance().inst(inst).iteration_dims().iter().cloned().collect()
+        } else {
+            let mut outer = Vec::new();
+            for dim in space.ir_instance().dims().map(|d| d.id()) {
+                if bb == dim.into() { continue; }
+                let order = space.domain().get_order(dim.into(), bb);
+                if Order::OUTER.contains(order) {
+                    if outer.iter().cloned().all(|outer: ir::dim::Id| {
+                        let ord = space.domain().get_order(dim.into(), outer.into());
+                        !ord.contains(Order::MERGED)
+                    }) { outer.push(dim); }
+                }
+            }
+            outer
+        };
+        VecSet::new(dims)
     }
 }
 

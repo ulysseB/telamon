@@ -393,4 +393,8 @@ impl HwPressure {
             pressure
         })
     }
+
+    /// Returns the pressure on a bottleneck.
+    #[cfg(test)]
+    pub fn get_bottleneck(&self, index: usize) -> f64 { self.bottlenecks[index] }
 }
