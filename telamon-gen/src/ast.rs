@@ -10,6 +10,7 @@ use std::collections::{BTreeSet, hash_map};
 use utils::*;
 
 /// Syntaxic tree for the constraint description.
+#[derive(Debug)]
 pub struct Ast { pub statements: Vec<Statement> }
 
 impl Ast {
