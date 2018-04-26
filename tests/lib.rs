@@ -28,7 +28,7 @@ fn two_add() {
     let mut context = fake::Context::default();
     let signature = {
         let mut builder = helper::SignatureBuilder::new("two_add", &mut context);
-        builder.param("a", 42);
+        builder.scalar("a", 42);
         builder.get()
     };
     gen_best(&context, {
@@ -128,7 +128,7 @@ fn block_dims() {
     let mut context = fake::Context::default();
     let signature = {
         let mut builder = helper::SignatureBuilder::new("block_dims", &mut context);
-        builder.param("n", 64);
+        builder.scalar("n", 64);
         builder.get()
     };
     let mut builder = helper::Builder::new(&signature, context.device());
@@ -185,7 +185,7 @@ fn unroll_dims() {
     let mut context = fake::Context::default();
     let signature = {
         let mut builder = helper::SignatureBuilder::new("unroll_dims", &mut context);
-        builder.param("n", 64);
+        builder.scalar("n", 64);
         builder.get()
     };
     let mut builder = helper::Builder::new(&signature, context.device());

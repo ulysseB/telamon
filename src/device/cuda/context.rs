@@ -1,27 +1,27 @@
 ///! Defines the CUDA evaluation context.
 use crossbeam;
-use device;
-use device::{Device, Argument};
-use device::cuda::{ArrayArg, Executor, Gpu, Kernel, JITDaemon};
+use device::{self, Device, EvalMode, ScalarArgument};
+use device::cuda::{Executor, Gpu, Kernel, JITDaemon};
+use device::cuda::api::{self, Argument};
 use device::cuda::kernel::Thunk;
 use explorer;
 use ir;
 use std;
 use std::f64;
-use std::sync::{atomic, mpsc};
+use std::sync::{atomic, mpsc, Arc};
 use utils::*;
 use device::context::AsyncCallback;
 
-
-//use std::boxed::FnBox;
 /// Max number of candidates waiting to be evaluated.
 const EVAL_BUFFER_SIZE: usize = 100;
+// TODO(perf): enable optimizations when possible
+const JIT_OPT_LEVEL: usize = 1;
 
 /// A CUDA evaluation context.
 pub struct Context<'a> {
     gpu_model: Gpu,
     executor: &'a Executor,
-    parameters: HashMap<String, Box<device::Argument + 'a>>,
+    parameters: HashMap<String, Arc<Argument + 'a>>,
 }
 
 impl<'a> Context<'a> {
@@ -50,33 +50,59 @@ impl<'a> Context<'a> {
 
     /// Returns the execution queue.
     pub fn executor(&self) -> &'a Executor { self.executor }
+
+    /// Returns a parameter given its name.
+    pub fn get_param(&self, name: &str) -> &Argument { self.parameters[name].as_ref() }
+
+    /// Binds a parameter to the gien name.
+    pub fn bind_param(&mut self, name: String, arg: Arc<Argument + 'a>) {
+        self.parameters.insert(name, arg);
+    }
 }
 
-impl<'a> device::Context<'a> for Context<'a> {
+
+impl<'a> device::ArgMap for Context<'a> {
+    type Array = api::Array<'a, i8>;
+
+    fn bind_scalar<S: ScalarArgument>(&mut self, param: &ir::Parameter, value: S) {
+        assert_eq!(param.t, S::t());
+        self.bind_param(param.name.clone(), Arc::new(value));
+    }
+
+    fn bind_array<S: ScalarArgument>(&mut self, param: &ir::Parameter, len: usize)
+        -> Arc<Self::Array>
+    {
+        let size = len * std::mem::size_of::<S>();
+        let array = Arc::new(self.executor.allocate_array::<i8>(size));
+        self.bind_param(param.name.clone(), array.clone());
+        array
+    }
+}
+
+impl<'a> device::Context for Context<'a> {
     fn device(&self) -> &Device { &self.gpu_model }
 
-    fn bind_param(&mut self, param: &ir::Parameter, value: Box<Argument + 'a>) {
-        assert_eq!(param.t, value.t());
-        self.parameters.insert(param.name.clone(), value);
-    }
-
-    fn allocate_array(&mut self, id: ir::mem::Id, size: usize) -> Box<Argument + 'a> {
-        Box::new(ArrayArg(self.executor.allocate_array::<u8>(size), id))
-    }
-
-    fn get_param(&self, name: &str) -> &Argument { self.parameters[name].as_ref() }
+    fn param_as_size(&self, name: &str) -> Option<u32> { self.get_param(name).as_size() }
 
     fn evaluate(&self, function: &device::Function) -> Result<f64, ()> {
-        let kernel = Kernel::compile(function, &self.gpu_model, self.executor);
+        let gpu = &self.gpu_model;
+        let kernel = Kernel::compile(function, gpu, self.executor, JIT_OPT_LEVEL);
         Ok(kernel.evaluate(self)? as f64 / self.gpu_model.smx_clock)
     }
 
-    fn async_eval<'b, 'c>(&self, num_workers: usize,
+    fn benchmark(&self, function: &device::Function, num_samples: usize) -> Vec<f64> {
+        let gpu = &self.gpu_model;
+        let kernel = Kernel::compile(function, gpu, self.executor, 4);
+        kernel.evaluate_real(self, num_samples)
+    }
+
+    fn async_eval<'b, 'c>(&self, num_workers: usize, mode: EvalMode,
                           inner: &(Fn(&mut device::AsyncEvaluator<'b, 'c>) + Sync)){
         // Setup the evaluator.
         let blocked_time = &atomic::AtomicUsize::new(0);
         let (send, recv) = mpsc::sync_channel(EVAL_BUFFER_SIZE);
         let clock_rate = self.gpu_model.smx_clock;
+        let opt_level = if mode == EvalMode::TestBound { 1 } else { JIT_OPT_LEVEL }; 
         // Correct because the thread handle is not escaped.
         crossbeam::scope(move |scope| {
             // Start the explorer threads.
@@ -84,7 +110,7 @@ impl<'a> device::Context<'a> for Context<'a> {
                 let mut evaluator = AsyncEvaluator {
                     context: self,
                     sender: send.clone(),
-                    ptx_daemon: self.executor.spawn_jit(),
+                    ptx_daemon: self.executor.spawn_jit(opt_level),
                     blocked_time,
                 };
                 unwrap!(scope.builder().name("Telamon - Explorer Thread".to_string())
@@ -97,9 +123,8 @@ impl<'a> device::Context<'a> for Context<'a> {
                 let mut best_eval = std::f64::INFINITY;
                 while let Ok((candidate, thunk, callback)) = recv.recv() {
                     cpt_candidate += 1;
-                    debug!("IN EVALUATOR: evaluating candidate for actions {:?}", candidate.actions);
-                    //let eval = thunk.execute() as f64 / clock_rate;
-                    let eval = if candidate.bound.value() < best_eval {
+                    let bound = candidate.bound.value();
+                    let eval = if best_eval > bound || mode == EvalMode::TestBound {
                         thunk.execute().map(|t| t as f64 / clock_rate)
                     } else {
                         warn!("candidate not evaluated because of bounds");
@@ -112,8 +137,6 @@ impl<'a> device::Context<'a> for Context<'a> {
                     if eval < best_eval {
                         best_eval = eval;
                     }
-                    debug!("IN EVALUATOR: finished evaluating candidate for actions {:?}",
-                           candidate.actions);
                     callback.call(candidate, eval, cpt_candidate);
                 }
             });

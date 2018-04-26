@@ -1,12 +1,12 @@
 #![allow(dead_code)]
 //! Provides a fake implementations of device traits for testing.
-use libc;
 use telamon::codegen;
-use telamon::device;
+use telamon::device::{self, ScalarArgument, ArrayArgument};
 use telamon::ir;
 use telamon::explorer::Candidate;
 use telamon::search_space::{SearchSpace, DimKind};
 use telamon::model::{self, HwPressure};
+use std::sync::Arc;
 use std::f64;
 use std::io::Write;
 use utils::*;
@@ -80,38 +80,43 @@ pub struct Context {
     pub device: Device,
 }
 
-static ONE: i32 = 1;
-
-impl<'a> device::Context<'a> for Context {
+impl device::Context for Context {
     fn device(&self) -> &device::Device { &self.device }
 
     fn evaluate(&self, _: &codegen::Function) -> Result<f64, ()> { Ok(1.0) }
 
-    fn get_param(&self, _: &str) -> &device::Argument { &ONE }
+    fn benchmark(&self, _: &codegen::Function, num_samples: usize) -> Vec<f64> {
+        vec![1.0; num_samples]
+    }
 
-    fn async_eval<'b, 'c>(&self, _: usize,
+    fn param_as_size(&self, _: &str) -> Option<u32> { Some(1) }
+
+    fn async_eval<'b, 'c>(&self, _: usize, _: device::EvalMode,
                           inner: &(Fn(&mut device::AsyncEvaluator<'b, 'c>) + Sync)) {
         inner(&mut Evaluator { phantom: PhantomData });
     }
+}
 
-    fn bind_param(&mut self, param: &ir::Parameter, value: Box<device::Argument + 'a>) {
-        assert_eq!(param.t, value.t());
+impl device::ArgMap for Context {
+    type Array = Array;
+
+    fn bind_scalar<S: ScalarArgument>(&mut self, param: &ir::Parameter, _: S) {
+        assert_eq!(param.t, S::t());
     }
 
-    fn allocate_array(&mut self, id: ir::mem::Id, _: usize) -> Box<device::Argument> {
-        Box::new(FakeArray { id })
+    fn bind_array<S: ScalarArgument>(&mut self, _: &ir::Parameter, _: usize)
+        -> Arc<Self::Array>
+    {
+        Arc::new(Array)
     }
 }
 
-/// A fake array.
-struct FakeArray { id: ir::mem::Id }
+pub struct Array;
 
-impl device::Argument for FakeArray {
-    fn t(&self) -> ir::Type { ir::Type::PtrTo(self.id) }
+impl ArrayArgument for Array {
+    fn read_i8(&self) -> Vec<i8> { vec![] }
 
-    fn raw_ptr(&self) -> *const libc::c_void { panic!() }
-
-    fn size_of(&self) -> usize { 4 }
+    fn write_i8(&self, _: &[i8]) { }
 }
 
 /// A fake asynchronous evaluator.

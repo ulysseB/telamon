@@ -1,7 +1,7 @@
 //! Builds code for micro benchmarks.
+use num::Zero;
 use telamon::codegen;
-use telamon::device::Context as ContextTrait;
-use telamon::device::{self, Argument, Device};
+use telamon::device::{ArgMap, ScalarArgument, Device};
 use telamon::device::cuda::{Gpu, Context, Kernel, PerfCounterSet};
 use telamon::explorer;
 use telamon::helper::{AutoOperand, Builder, DimGroup, Reduce};
@@ -9,6 +9,7 @@ use telamon::ir;
 use telamon::ir::Signature;
 use telamon::search_space::{DimKind, InstFlag, SearchSpace, Order};
 use itertools::Itertools;
+use std;
 use table::Table;
 use utils::*;
 
@@ -34,9 +35,15 @@ pub fn base(params: &[(&str, ir::Type)], arrays: &[&str])
 }
 
 /// Binds a parameter to a value in the given context.
-pub fn bind<'a, T: Argument + 'a>(name: &str, val: T, context: &mut Context<'a>) {
-    let p = ir::Parameter { t: val.t(), name: name.to_string() };
-    context.bind_param(&p, Box::new(val) as Box<Argument>);
+pub fn bind_scalar<T: ScalarArgument>(name: &str, val: T, context: &mut Context) {
+    let p = ir::Parameter { t: T::t(), name: name.to_string() };
+    context.bind_scalar(&p, val);
+}
+
+/// Binds a parameter to a value in the given context.
+pub fn bind_array<'a, T: 'a>(name: &str, len: usize, context: &mut Context<'a>) {
+    let array = std::sync::Arc::new(context.executor().allocate_array::<T>(len));
+    context.bind_param(name.to_string(), array.clone());
 }
 
 /// Generates a kernel with two nested empty loops.
@@ -74,11 +81,6 @@ pub fn loop_chained_adds<'a>(base: &'a Signature, device: &'a Device,
 /// operands. The second argument may be used for other operands.
 pub type InstGenerator = Fn(&AutoOperand<'static>, &&str, &mut Builder) -> ir::InstId;
 
-/// A numerical cuda argument.
-pub trait NumArg: AutoOperand<'static> + device::Argument + Default + 'static {}
-
-impl<T: AutoOperand<'static> + device::Argument + Default + 'static> NumArg for T {}
-
 /// Generates a single thread with a loop containing chained instructions.
 ///
 /// * `T`: the type of the instructions.
@@ -90,9 +92,9 @@ impl<T: AutoOperand<'static> + device::Argument + Default + 'static> NumArg for 
 pub fn inst_chain<'a, T>(signature: &'a Signature, device: &'a Device,
                          inst_gen: &InstGenerator,
                          n_iter: &str, n_chained: u32, arg: &str, out: &str
-                        ) -> SearchSpace<'a> where T: NumArg {
+                        ) -> SearchSpace<'a> where T: ScalarArgument + Zero {
     let mut builder = Builder::new(signature, device);
-    let init = builder.mov(&T::default());
+    let init = builder.mov(&T::zero());
     let loop_size = builder.param_size(n_iter);
     let unroll_size = builder.cst_size(n_chained);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
@@ -408,15 +410,15 @@ pub fn run(context: &mut Context, space: &SearchSpace,
         panic!("The benchmark is not completely scheduled!");
     }
     let dev_fun = codegen::Function::build(space);
-    let kernel = Kernel::compile(&dev_fun, context.gpu(), context.executor());
-    for &(arg, range) in args_range { bind(arg, range[0], context); }
+    let kernel = Kernel::compile(&dev_fun, context.gpu(), context.executor(), 1);
+    for &(arg, range) in args_range { bind_scalar(arg, range[0], context); }
     kernel.instrument(context, counters);
     let args_range_len = args_range.iter().map(|&(_, x)| x.len()).collect_vec();
     for index in NDRange::new(&args_range_len) {
         let mut entry = result_prefix.iter().cloned().collect_vec();
         let mut arg_values = vec![];
         for (i, &(arg, arg_range)) in index.into_iter().zip(args_range.iter()) {
-            bind(arg, arg_range[i], context);
+            bind_scalar(arg, arg_range[i], context);
             entry.push(arg_range[i] as u64);
             arg_values.push(arg_range[i]);
         }

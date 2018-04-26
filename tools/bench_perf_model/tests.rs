@@ -1,3 +1,4 @@
+use telamon::device::{ArgMap, Context};
 use telamon::helper::{SignatureBuilder, Builder, MetaDimension, Reduce};
 use telamon::ir;
 use telamon::search_space::{Action, DimKind, Order, InstFlag};
@@ -8,15 +9,15 @@ pub struct Test0;
 impl PerfModelTest for Test0 {
     fn name() -> &'static str { "test_0" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         const M: i32 = 1024;
         const N: i32 = 1024;
         const K: i32 = 1024;
-        builder.param("m", M);
-        builder.param("n", N);
-        builder.param("k", K);
-        builder.array("a", 4*(M*K) as usize);
-        builder.array("b", 4*(K*N) as usize);
+        builder.scalar("m", M);
+        builder.scalar("n", N);
+        builder.scalar("k", K);
+        builder.array::<f32>("a", (M*K) as usize);
+        builder.array::<f32>("b", (K*N) as usize);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -87,14 +88,14 @@ pub struct Test1;
 impl PerfModelTest for Test1 {
     fn name() -> &'static str { "test_1" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         const M: i32 = 1024;
         const N: i32 = 1024;
         const K: i32 = 1024;
-        builder.param("m", M);
-        builder.param("n", N);
-        builder.param("k", K);
-        builder.array("out", 4*32*32*4*4 as usize);
+        builder.scalar("m", M);
+        builder.scalar("n", N);
+        builder.scalar("k", K);
+        builder.array::<f32>("out", 4*32*32*4 as usize);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -143,14 +144,14 @@ pub struct Test2;
 impl PerfModelTest for Test2 {
     fn name() -> &'static str { "test_2" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         const M: i32 = 1024;
         const N: i32 = 1024;
         const K: i32 = 1024;
-        builder.param("m", M);
-        builder.param("n", N);
-        builder.param("k", K);
-        builder.array("out", 4*32*32*4*4 as usize);
+        builder.scalar("m", M);
+        builder.scalar("n", N);
+        builder.scalar("k", K);
+        builder.array::<f32>("out", 4*32*32*4 as usize);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {

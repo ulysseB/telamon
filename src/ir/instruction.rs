@@ -1,17 +1,12 @@
 //! Describes the instructions.
 use device::Device;
 use ir::{self, BasicBlock, BBId, Operand, Operator, Type, DimMapScope};
-use std::fmt;
 use std::hash::{Hash, Hasher};
 use utils::*;
 
 /// Uniquely identifies an instruction.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct InstId { pub id: u32 }
-
-impl fmt::Debug for InstId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.id.fmt(f) }
-}
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct InstId(pub u32);
 
 /// Represents an instruction.
 #[derive(Clone, Debug)]

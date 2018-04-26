@@ -4,7 +4,18 @@ name = "telamon-kernels"
 version = "0.1.0"
 
 [dependencies]
+env_logger = "0.5.7"
 itertools = "0.7.8"
+libc = "0.2.40"
+ndarray = "0.11.2"
+num = "0.1.42"
+num_cpus = "1.8.0"
+rayon = "1.0.1"
+rand = "0.4.2"
+
+[dependencies.cuda-sys]
+optional = true
+version = "0.1.0"
 
 [dependencies.telamon]
 path = "../"
@@ -13,4 +24,25 @@ path = "../"
 path = "../telamon-utils"
 
 [features]
-cuda = ["telamon/cuda"]
+cuda = [
+    "telamon/cuda",
+    "cuda-sys",
+]
+
+[[bench]]
+name = "cuda-search"
+path = "benches/cuda_search.rs"
+harness = false
+required-features = ["cuda"]
+
+[[bench]]
+name = "cuda-deadend"
+path = "benches/cuda_deadend.rs"
+harness = false
+required-features = ["cuda"]
+
+[[bench]]
+name = "cuda-bound"
+path = "benches/cuda_bound.rs"
+harness = false
+required-features = ["cuda"]

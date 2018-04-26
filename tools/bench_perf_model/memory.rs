@@ -1,4 +1,5 @@
 //! Tests the memory model.
+use telamon::device::{ArgMap, Context};
 use telamon::helper::{SignatureBuilder, Builder, DimGroup, Reduce};
 use telamon::ir;
 use telamon::search_space::{Action, DimKind, InstFlag, Order};
@@ -10,10 +11,10 @@ pub struct L1LinesPressure;
 impl PerfModelTest for L1LinesPressure {
     fn name() -> &'static str { "l1_lines_pressure" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 100i32);
-        builder.array("array", 128*32*32*32*4);
-        builder.array("out", 4);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 100i32);
+        builder.array::<f32>("array", 128*32*32*32);
+        builder.array::<f32>("out", 1);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -68,10 +69,10 @@ pub struct L2LinesPressure;
 impl PerfModelTest for L2LinesPressure {
     fn name() -> &'static str { "l2_lines_pressure" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 100i32);
-        builder.array("array", 128*32*32*8*4);
-        builder.array("out", 4);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 100i32);
+        builder.array::<f32>("array", 128*32*32*8);
+        builder.array::<f32>("out", 1);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -130,10 +131,10 @@ pub struct SharedLoad {
 impl PerfModelTest for SharedLoad {
     fn name() -> &'static str { "shared_load" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 1000i32);
-        builder.param("arg_zero", 0i32);
-        builder.array("out", 4);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 1000i32);
+        builder.scalar("arg_zero", 0i32);
+        builder.array::<f32>("out", 1);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -182,10 +183,10 @@ pub struct VectorSharedLoad {
 impl PerfModelTest for VectorSharedLoad {
     fn name() -> &'static str { "vector_shared_load" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 1000i32);
-        builder.param("arg_zero", 0i32);
-        builder.array("out", 4);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 1000i32);
+        builder.scalar("arg_zero", 0i32);
+        builder.array::<f32>("out", 1);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -224,10 +225,10 @@ pub struct SharedReplay;
 impl PerfModelTest for SharedReplay {
     fn name() -> &'static str { "shared_replay" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 1000i32);
-        builder.param("arg_zero", 0i32);
-        builder.array("out", 4);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 1000i32);
+        builder.scalar("arg_zero", 0i32);
+        builder.array::<f32>("out", 1);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -270,10 +271,10 @@ pub struct VectorSharedReplay;
 impl PerfModelTest for VectorSharedReplay {
     fn name() -> &'static str { "vector_shared_replay" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 1000i32);
-        builder.param("arg_zero", 0i32);
-        builder.array("out", 4);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 1000i32);
+        builder.scalar("arg_zero", 0i32);
+        builder.array::<f32>("out", 1);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {

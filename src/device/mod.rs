@@ -7,8 +7,8 @@ pub mod mppa;
 mod argument;
 mod context;
 
-pub use self::argument::Argument;
-pub use self::context::{Context, AsyncCallback, AsyncEvaluator};
+pub use self::argument::{ScalarArgument, ArrayArgument, read_array, write_array};
+pub use self::context::{Context, EvalMode, ArgMap, AsyncCallback, AsyncEvaluator};
 
 use codegen::Function;
 use ir;

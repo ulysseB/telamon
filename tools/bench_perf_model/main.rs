@@ -12,7 +12,7 @@ mod latency;
 mod memory;
 mod tests;
 
-use telamon::device::Context;
+use telamon::device::{ArgMap, Context};
 use telamon::helper;
 use telamon::model::bound;
 use telamon::search_space::Action;
@@ -29,7 +29,7 @@ trait PerfModelTest {
     fn name() -> &'static str;
 
     /// Generates the base of the function to evaluate.
-    fn gen_signature(builder: &mut helper::SignatureBuilder);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut helper::SignatureBuilder<AM>);
 
     /// Generates the function to evaluate.
     fn gen_function(builder: &mut helper::Builder) -> Self;

@@ -8,7 +8,7 @@ mod logger;
 
 pub mod config;
 pub mod choice;
-pub mod montecarlo;
+pub mod local_selection;
 
 pub use self::config::{Config, SearchAlgorithm};
 pub use self::candidate::Candidate;
@@ -16,12 +16,11 @@ pub use self::candidate::Candidate;
 use self::choice::fix_order;
 use self::monitor::{monitor, MonitorMessage};
 use self::parallel_list::ParallelCandidateList;
-use self::bandit_arm::{SafeTree, SearchTree};
 use self::store::Store;
 
 use boxfnonce::SendBoxFnOnce;
 use crossbeam;
-use device::Context;
+use device::{Context, EvalMode};
 use model::bound;
 use search_space::SearchSpace;
 use std::sync;
@@ -40,18 +39,17 @@ use futures::executor::block_on;
 /// Entry point of the exploration. This function returns the best candidate that it has found in
 /// the given time (or at whatever point we decided to stop the search - potentially after an
 /// exhaustive search)
-pub fn find_best<'a, 'b>(config: &Config, 
-                         context: &'b Context<'b>, 
-                         search_space: Vec<SearchSpace<'a>>) -> Option<SearchSpace<'a>> { 
+pub fn find_best<'a>(config: &Config, 
+                     context: &Context,
+                     search_space: Vec<SearchSpace<'a>>) -> Option<SearchSpace<'a>> { 
     match config.algorithm {
         config::SearchAlgorithm::MultiArmedBandit(ref band_config) => {
-            let new_candidates = search_space.into_iter().map(|space| {
+            let candidates = search_space.into_iter().map(|space| {
                 let bound = bound(&space, context);
                 Candidate::new(space, bound)
             }).collect();
-            let root = SearchTree::new(new_candidates, context);
-            let safe_tree = SafeTree::new(root, band_config);
-            launch_search(config, safe_tree, context)
+            let tree = bandit_arm::Tree::new(candidates, band_config);
+            launch_search(config, tree, context)
         }
         config::SearchAlgorithm::BoundOrder => {
             let candidate_list = ParallelCandidateList::new(config.num_workers);
@@ -88,8 +86,8 @@ fn explore_space<'a, T>(config: &Config,
                         eval_sender: channel::mpsc::Sender<MonitorMessage<'a, T>>, 
                         context: &Context) where T: Store<'a> 
 {
-    context.async_eval(config.num_workers, &|evaluator| {
-        while let Some((cand, payload)) = candidate_store.explore(config, context) {
+    context.async_eval(config.num_workers, EvalMode::FindBest, &|evaluator| {
+        while let Some((cand, payload)) = candidate_store.explore(context) {
             let space = fix_order(cand.space);
             let eval_sender = eval_sender.clone();
             let callback = move |leaf, eval, cpt| {

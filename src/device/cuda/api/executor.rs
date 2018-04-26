@@ -23,18 +23,17 @@ impl Executor {
     }
 
     /// Spawns a `JITDaemon`.
-    pub fn spawn_jit(&self) -> JITDaemon {
-        unwrap!(JIT_SPAWNER.lock()).spawn_jit()
+    pub fn spawn_jit(&self, opt_level: usize) -> JITDaemon {
+        unwrap!(JIT_SPAWNER.lock()).spawn_jit(opt_level)
     }
 
     /// Compiles a PTX module.
-    pub fn compile_ptx<'a>(&'a self, code: &str) -> Module<'a> {
-        Module::new(unsafe { &*self.context as &'a _}, code)
+    pub fn compile_ptx<'a>(&'a self, code: &str, opt_level: usize) -> Module<'a> {
+        Module::new(unsafe { &*self.context as &'a _}, code, opt_level)
     }
 
     /// Compiles a PTX module using a separate process.
     pub fn compile_remote<'a>(&'a self, jit: &mut JITDaemon, code: &str) -> Module<'a> {
-        debug!("IN COMPILE REMOTE");
         jit.compile(unsafe { &*self.context as &'a _}, code)
     }
 

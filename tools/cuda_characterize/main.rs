@@ -5,6 +5,7 @@ extern crate getopts;
 extern crate itertools;
 #[macro_use]
 extern crate log;
+extern crate num;
 extern crate prettytable;
 extern crate rustc_serialize;
 extern crate telamon_utils as utils;

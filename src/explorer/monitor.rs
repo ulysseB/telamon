@@ -93,7 +93,6 @@ fn block_until_timeout<'a, 'b, T>(config: &'b Config,
     let timer = configure_timer();
     //TODO Find a clean way to get a timeout that never returns - or no timeout at all
     let timeout = config.timeout.unwrap_or(10000);
-    println!("TIMEOUT: {}min", timeout);
     let time = Duration::from_secs(timeout as u64 * 60);
     block_on(timer.timeout(receiver.for_each(move |message| {
         handle_message::<T>(config, message, t0, candidate_store, log_sender, best_cand);
@@ -122,7 +121,7 @@ fn handle_message<'a, T>(config: &Config,
         log_sender.send(log_message).unwrap();
         *best_cand = Some((cand, eval));
     }
-    candidate_store.commit_evaluation(config, payload, eval);
+    candidate_store.commit_evaluation(payload, eval);
 }
 
 /// Builds and returns a timer that suits our needs - that is, which timeout can be set to at least

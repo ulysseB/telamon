@@ -1,8 +1,9 @@
 //! Allows the execution of kernels on the GPU.
-use device::Argument;
+use device;
+use device::cuda::api::Argument;
 use device::cuda::api::wrapper::*;
-use ir;
 use libc;
+use num::integer::div_rem;
 use std;
 
 /// An array allocated on a CUDA device.
@@ -92,20 +93,28 @@ pub fn compare_f32(lhs: &Array<f32>, rhs: &Array<f32>) -> f32 {
     }).fold(0.0, f32::max)
 }
 
-pub struct ArrayArg<'a, T>(pub Array<'a, T>, pub ir::mem::Id);
-
-impl<'a, T> Argument for ArrayArg<'a, T> {
-    fn t(&self) -> ir::Type { ir::Type::PtrTo(self.1) }
-
-    fn raw_ptr(&self) -> *const libc::c_void { self.0.array as *const libc::c_void }
-
-    fn size_of(&self) -> usize { std::mem::size_of::<*mut libc::c_void>() }
+impl<'a, T> Argument for Array<'a, T> {
+    fn raw_ptr(&self) -> *const libc::c_void { self.array as *const libc::c_void }
 }
 
-impl<'a, 'b, T> Argument for &'b ArrayArg<'a, T> {
-    fn t(&self) -> ir::Type { (**self).t() }
+impl<'a, T> device::ArrayArgument for Array<'a, T> where T: device::ScalarArgument {
+    fn read_i8(&self) -> Vec<i8> {
+        let mut array = Array::copy_to_host(self);
+        let len = array.len() * std::mem::size_of::<T>();
+        let capacity = array.capacity() * std::mem::size_of::<T>();
+        unsafe {
+            let bytes = array.as_mut_ptr() as *mut i8;
+            let bytes_vec = Vec::from_raw_parts(bytes, len, capacity);
+            std::mem::forget(array);
+            bytes_vec
+        }
+    }
 
-    fn raw_ptr(&self) -> *const libc::c_void { (**self).raw_ptr() }
-
-    fn size_of(&self) -> usize { (**self).size_of() }
+    fn write_i8(&self, bytes: &[i8]) {
+        let (len, rem) = div_rem(bytes.len(), std::mem::size_of::<T>());
+        assert_eq!(rem, 0);
+        let ptr = bytes.as_ptr() as *const T;
+        let bytes = unsafe { std::slice::from_raw_parts(ptr, len) };
+        Array::copy_from_host(self, bytes);
+    }
 }

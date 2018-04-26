@@ -4,6 +4,7 @@ extern crate telamon;
 extern crate itertools;
 #[macro_use]
 extern crate log;
+extern crate num;
 extern crate prettytable;
 extern crate telamon_utils as utils;
 
