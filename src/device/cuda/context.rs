@@ -1,6 +1,6 @@
 ///! Defines the CUDA evaluation context.
 use crossbeam;
-use device::{self, Device, ScalarArgument};
+use device::{self, Device, EvalMode, ScalarArgument};
 use device::cuda::{Executor, Gpu, Kernel, JITDaemon};
 use device::cuda::api::{self, Argument};
 use device::cuda::kernel::Thunk;
@@ -96,12 +96,13 @@ impl<'a> device::Context for Context<'a> {
         kernel.evaluate_real(self, num_samples)
     }
 
-    fn async_eval<'b, 'c>(&self, num_workers: usize,
+    fn async_eval<'b, 'c>(&self, num_workers: usize, mode: EvalMode,
                           inner: &(Fn(&mut device::AsyncEvaluator<'b, 'c>) + Sync)){
         // Setup the evaluator.
         let blocked_time = &atomic::AtomicUsize::new(0);
         let (send, recv) = mpsc::sync_channel(EVAL_BUFFER_SIZE);
         let clock_rate = self.gpu_model.smx_clock;
+        let opt_level = if mode == EvalMode::TestBound { 1 } else { JIT_OPT_LEVEL }; 
         // Correct because the thread handle is not escaped.
         crossbeam::scope(move |scope| {
             // Start the explorer threads.
@@ -109,7 +110,7 @@ impl<'a> device::Context for Context<'a> {
                 let mut evaluator = AsyncEvaluator {
                     context: self,
                     sender: send.clone(),
-                    ptx_daemon: self.executor.spawn_jit(JIT_OPT_LEVEL),
+                    ptx_daemon: self.executor.spawn_jit(opt_level),
                     blocked_time,
                 };
                 unwrap!(scope.builder().name("Telamon - Explorer Thread".to_string())
@@ -122,7 +123,8 @@ impl<'a> device::Context for Context<'a> {
                 let mut best_eval = std::f64::INFINITY;
                 while let Ok((candidate, thunk, callback)) = recv.recv() {
                     cpt_candidate += 1;
-                    let eval = if candidate.bound.value() < best_eval {
+                    let bound = candidate.bound.value();
+                    let eval = if best_eval > bound || mode == EvalMode::TestBound {
                         thunk.execute().map(|t| t as f64 / clock_rate)
                     } else {
                         warn!("candidate not evaluated because of bounds");

@@ -20,7 +20,7 @@ use self::store::Store;
 
 use boxfnonce::SendBoxFnOnce;
 use crossbeam;
-use device::Context;
+use device::{Context, EvalMode};
 use model::bound;
 use search_space::SearchSpace;
 use std::sync;
@@ -86,7 +86,7 @@ fn explore_space<'a, T>(config: &Config,
                         eval_sender: channel::mpsc::Sender<MonitorMessage<'a, T>>, 
                         context: &Context) where T: Store<'a> 
 {
-    context.async_eval(config.num_workers, &|evaluator| {
+    context.async_eval(config.num_workers, EvalMode::FindBest, &|evaluator| {
         while let Some((cand, payload)) = candidate_store.explore(context) {
             let space = fix_order(cand.space);
             let eval_sender = eval_sender.clone();

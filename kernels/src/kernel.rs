@@ -13,7 +13,7 @@ use std;
 use utils::*;
 
 /// Ignore candidates with a too big bound in tests.
-const CUT: f64 = 10e8f64;
+const CUT: f64 = 2e8f64;
 /// Maximal number of deadends to accept before failing.
 // TODO(cleanup): tune MAX_DEADEND_RATIO
 const MAX_DEADEND_RATIO: usize = 20;
@@ -111,7 +111,7 @@ pub trait Kernel<'a>: Sized {
             }).collect_vec();
         let leaves = Mutex::new(Vec::new());
         let num_tested = atomic::AtomicUsize::new(0);
-        context.async_eval(num_cpus::get(), &|evaluator| {
+        context.async_eval(num_cpus::get(), device::EvalMode::TestBound, &|evaluator| {
             while num_tested.fetch_add(1, atomic::Ordering::SeqCst) < num_tests {
                 if let Some((leaf, bounds)) = descend_check_bounds(&candidates, context) {
                     let leaves = &leaves;
@@ -121,10 +121,11 @@ pub trait Kernel<'a>: Sized {
                         let mut actions = leaf.actions.iter().cloned().collect_vec();
                         actions.reverse();
                         for (idx, partial_bound) in bounds.iter().enumerate() {
-                            let actions = &actions[..idx+1];
-                            assert!(*partial_bound <= bound,
-                                    "invalid inner bound: {} < {}, kernel {}, actions {:?}",
-                                    partial_bound, bound, Self::name(), actions);
+                            assert!(partial_bound.value() <= bound.value() * 1.001,
+                                    "invalid inner bound: {} < {}, kernel {}, \
+                                    actions {:?} then {:?}",
+                                    partial_bound, bound, Self::name(),
+                                    &actions[..idx], &actions[idx..]);
                         }
                         leaves.push(BoundSample { actions, bound, runtime });
                     }).into());
@@ -219,13 +220,13 @@ pub struct BoundSample {
 
 impl BoundSample {
     /// Returns the ratio between the bound and the actual evaluation.
-    fn ratio(&self) -> f64 { self.bound.value() / self.runtime }
+    fn ratio(&self) -> f64 { self.runtime / self.bound.value() }
 }
 
 impl std::fmt::Display for BoundSample {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{} vs {} ({}), for actions {:?}",
-            self.runtime, self.bound, self.ratio(), self.actions)
+        write!(f, "{:.2}x, {:.2e}ns vs {}, for actions {:?}",
+            self.ratio(), self.runtime, self.bound, self.actions)
     }
 }
 
@@ -247,7 +248,7 @@ pub fn analyze_bounds(mut bounds: Vec<BoundSample>) {
     if num_errors != bounds.len() {
         for i in 0..NUM_QUANTILES {
             let index = (i+1)*(bounds.len()-num_errors)/NUM_QUANTILES - 1;
-            println!("{}% best: {}", i*100/NUM_QUANTILES, bounds[num_errors + index]);
+            println!("{}% worst: {}", (i+1)*100/NUM_QUANTILES, bounds[num_errors + index]);
         }
     }
 }

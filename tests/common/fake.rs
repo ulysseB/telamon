@@ -91,7 +91,7 @@ impl device::Context for Context {
 
     fn param_as_size(&self, _: &str) -> Option<u32> { Some(1) }
 
-    fn async_eval<'b, 'c>(&self, _: usize,
+    fn async_eval<'b, 'c>(&self, _: usize, _: device::EvalMode,
                           inner: &(Fn(&mut device::AsyncEvaluator<'b, 'c>) + Sync)) {
         inner(&mut Evaluator { phantom: PhantomData });
     }

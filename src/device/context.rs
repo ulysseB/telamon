@@ -21,8 +21,9 @@ pub trait Context: Sync {
     /// time contains potential startup times.
     fn benchmark(&self, space: &Function, num_samples: usize) -> Vec<f64>;
     /// Calls the `inner` closure in parallel, and gives it a pointer to an `AsyncEvaluator`
-    /// to evaluate candidates in the context.
-    fn async_eval<'a, 'b>(&self, num_workers: usize,
+    /// to evaluate candidates in the context. `skip_bad_bounds` indicates than candidates
+    /// whose bound is aboive the best candidate should be skiped.
+    fn async_eval<'a, 'b>(&self, num_workers: usize, mode: EvalMode,
                           inner: &(Fn(&mut AsyncEvaluator<'a, 'b>) + Sync)) ;
     /// Returns a parameter interpreted as a size, if possible.
     fn param_as_size(&self, name: &str) -> Option<u32>;
@@ -56,3 +57,11 @@ pub trait AsyncEvaluator<'a, 'b> {
     fn add_kernel(&mut self, candidate: Candidate<'a>, callback: AsyncCallback<'a, 'b>);
 }
 
+/// Indicates how evaluation should be performed.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum EvalMode {
+    /// Find the best candidate, skip bad candidates and allow optimizations.
+    FindBest,
+    /// Test the performance model, do not skip candidates and do not optimize.
+    TestBound,
+}
