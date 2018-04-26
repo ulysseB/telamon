@@ -1,18 +1,24 @@
 extern crate cc;
 extern crate lalrpop;
 
-use std::process::Command;
 
 /// Adds a dependency to the build script.
 fn add_dependency(dep: &str) { println!("cargo:rerun-if-changed={}", dep); }
 
 fn main() {
-    // Compile the lexer.
-    Command::new("flex")
-            .arg("-oexh.c")
-            .arg("src/exh.l")
-            .status()
-            .expect("failed to execute Flex's process");
+    // Compile the lexer.(`LEX="flex" cargo build --features "lex"`)
+    #[cfg(feature = "lex")]
+    {
+        use std::{env,process::Command};
+
+        let bin = env::var("LEX").unwrap_or(String::from("flex"));
+
+        Command::new(bin)
+                .arg("-oexh.c")
+                .arg("src/exh.l")
+                .status()
+                .expect("failed to execute Flex's process");
+    }
 
     cc::Build::new()
             .file("exh.c")

@@ -86,6 +86,8 @@ cuda = []
 default = []
 format_exh = []
 mppa = []
+lex = []
+
 [profile.bench]
 
 [profile.release]

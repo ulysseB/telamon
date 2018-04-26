@@ -4,6 +4,9 @@ build = "build.rs"
 name = "telamon-gen"
 version = "1.0.0"
 
+[features]
+lex = []
+
 [[bin]]
 doc = false
 name = "cli_gen"
