@@ -103,14 +103,13 @@ alpha [a-zA-Z_]
 alpha_num {alpha}|{num}
 
 whitespace [ \t\r\n]+
-blank {whitespace}
+comment "//"[^/\n][^\n]*|"//"
+blank {comment}|{whitespace}
 
 c_comment_beg "/*"
 c_comment_end "*/"
 
-outer_line_doc "///"
-line_comment "//"
-doc {outer_line_doc}|{line_comment}
+doc "///"
 
 alias "alias"
 counter "counter"
