@@ -2,6 +2,7 @@
 %option noyywrap
 
 %x C_COMMENT
+%x LINE_DOC
 
 %{
     #include <stdio.h>
@@ -102,14 +103,14 @@ alpha [a-zA-Z_]
 alpha_num {alpha}|{num}
 
 whitespace [ \t\r\n]+
-comment "//"[^/\n][^\n]*|"//"
-blank {whitespace}|{comment}
+blank {whitespace}
 
 c_comment_beg "/*"
 c_comment_end "*/"
 
-outer_line_doc "///".*
-line_comment "//".*
+outer_line_doc "///"
+line_comment "//"
+doc {outer_line_doc}|{line_comment}
 
 alias "alias"
 counter "counter"
@@ -179,14 +180,15 @@ code \"[^\n\"]*\"
 /* 6 Patterns § http://westes.github.io/flex/manual/Patterns.html#Patterns */
 %%
 
-{blank} {}
-
 {c_comment_beg}            { BEGIN(C_COMMENT); }
 <C_COMMENT>{c_comment_end} { BEGIN(INITIAL); }
 <C_COMMENT>.               {}
 
-{outer_line_doc} { yytext += 3;return DOC;}
-{line_comment} { yytext += 2;return DOC;}
+{doc}             { BEGIN(LINE_DOC); }
+<LINE_DOC>\n      { BEGIN(INITIAL); }
+<LINE_DOC>[^\n]*  { return DOC; }
+
+{blank} {}
 
 {alias} { return ALIAS; }
 {counter} { return COUNTER; }
@@ -245,8 +247,8 @@ code \"[^\n\"]*\"
 {arrow} { return ARROW; }
 {divide} { return DIVIDE; }
 
-{var} { yytext += 1; return VAR; }
-{code} { yytext += 1; return CODE; }
+{var} { yytext++; return VAR; }
+{code} { yytext++; return CODE; }
 {choice_ident} { return CHOICEIDENT; }
 {value_ident} { return VALUEIDENT; }
 {set_ident} { return SETIDENT; }
