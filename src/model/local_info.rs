@@ -135,7 +135,6 @@ impl Nesting {
         let mut after_self = Vec::new();
         let mut bigger_merged_dims = Vec::new();
         let mut has_inner_thread_dims = false;
-        let mut max_threads_per_block = 1u64;
         for other_bb in space.ir_instance().blocks() {
             if other_bb.bb_id() == bb { continue; }
             let order = space.domain().get_order(other_bb.bb_id(), bb);
@@ -158,16 +157,16 @@ impl Nesting {
             }
         }
         let outer_dims = Self::get_iteration_dims(space, bb);
-        let max_threads_per_block = space.ir_instance().thread_dims().filter(|dim| {
+        let num_unmapped_threads = space.ir_instance().thread_dims().filter(|dim| {
             !outer_dims.iter().any(|&other| {
                 if dim.id() == other { return true; }
                 let mapping = space.domain().get_thread_mapping(dim.id(), other);
                 mapping.intersects(ThreadMapping::MAPPED)
             })
-        }).map(|d| d.id())
-        .chain(outer_dims.iter().cloned().filter(|&d| {
+        }).map(|d| dim_sizes[&d.id()]).product::<u32>();
+        let max_threads_per_block = outer_dims.iter().cloned().filter(|&d| {
             space.domain().get_dim_kind(d).intersects(DimKind::THREAD)
-        }).map(|d| dim_sizes[&d.id()] as u64).product::<u64>();
+        }).map(|d| dim_sizes[&d] as u64).product::<u64>() * num_unmapped_threads as u64;
         Nesting {
             inner_dims: VecSet::new(inner_dims),
             inner_bbs: VecSet::new(inner_bbs),
