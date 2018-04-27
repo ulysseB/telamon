@@ -7,9 +7,6 @@ use std;
 use num::integer;
 use utils::*;
 
-// FIXME: the active thread dims may not correspond to the outer thread dims used later
-// * use iteration dims
-// * take into account the outer dims when computin pressure
 // TODO(model): the pressure changes depending on the list of outer dimensions. Try to
 // take this into account be computing the pressure incrementatly when applying levels.
 
