@@ -189,6 +189,7 @@ pub enum ChoiceDef {
 /// Indicates how a counter exposes how its maximum value. The variants are ordered by
 /// increasing amount of information available.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[repr(C)]
 pub enum CounterVisibility {
     /// Only the minimal value is computed and stored.
     NoMax,

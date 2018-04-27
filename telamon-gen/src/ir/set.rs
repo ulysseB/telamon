@@ -307,7 +307,8 @@ enum ReverseSet {
     None,
 }
 
-#[derive(Debug, Hash, PartialEq, Eq, Serialize)]
+#[derive(Debug, Hash, PartialEq, Eq, Serialize, Copy, Clone)]
+#[repr(C)]
 pub enum SetDefKey {
     ItemType,
     IdType,

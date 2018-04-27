@@ -26,7 +26,7 @@ path = "examples/sgemm_low.rs"
 required-features = ["cuda"]
 
 [build-dependencies]
-gcc = "0.3.54"
+cc = "1.0"
 
 [build-dependencies.telamon-gen]
 path = "telamon-gen"
@@ -78,6 +78,7 @@ cuda = []
 default = []
 format_exh = []
 mppa = []
+lex = []
 
 [workspace]
 members = [
