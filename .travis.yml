@@ -10,7 +10,7 @@ addons:
 before_script:
   - flex --version
 script:
-  - LEX="flex" cargo build --features "lex" --verbose --all
+  - cd telamon-gen && LEX="flex" cargo build --features "lex" --verbose
   - cargo test --verbose --all
   - cargo doc --verbose --all
 deploy:
