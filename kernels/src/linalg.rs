@@ -53,7 +53,6 @@ impl<'a, S> Kernel<'a> for Axpy<'a, S> where S: Scalar {
         let y_op = ld_y.dim_map(&[&mad_dim], GlobalScope, &mut builder);
         let mad = VirtualTensor::new(builder.mad(&x_op, &"alpha", &y_op), vec![mad_dim]);
         mad.store(&self.z, &mut builder);
-
         vec![builder.get()]
     }
 
