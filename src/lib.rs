@@ -1,13 +1,11 @@
 extern crate boxfnonce;
 extern crate config;
 extern crate crossbeam;
-extern crate data_structure_traits;
 #[cfg(test)]
 extern crate env_logger;
 extern crate getopts;
 extern crate errno;
 extern crate interval_heap;
-extern crate immut_list;
 extern crate itertools;
 #[cfg(feature="cuda")]
 extern crate ipc_channel;
@@ -28,6 +26,7 @@ extern crate parking_lot;
 #[cfg(feature="cuda")]
 extern crate prctl;
 extern crate rand;
+extern crate rpds;
 extern crate futures;
 extern crate tokio_timer;
 #[cfg(feature="cuda")]
