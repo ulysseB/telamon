@@ -2,7 +2,7 @@ language: rust
 cache: cargo
 sudo: false
 rust:
-    - nightly
+  - nightly
 addons:
   apt:
     packages:
@@ -15,12 +15,12 @@ script:
   - cargo doc --verbose --all
 
 deploy:
-  - provider: pages
-    local-dir: target/doc
-    target-branch: gh-pages
-    skip-cleanup: true
-    keep-history: true
-    github-token: "$GITHUB_TOKEN"
+  provider: pages
+  local-dir: target/doc
+  target-branch: gh-pages
+  skip-cleanup: true
+  keep-history: true
+  github-token: "$GITHUB_TOKEN"
 notifications:
   slack:
     rooms:
