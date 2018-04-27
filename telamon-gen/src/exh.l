@@ -174,9 +174,7 @@ set_ident [A-Z][A-Za-z_0-9]*
 var \${alpha_num}+
 code \"[^\n\"]*\"
 
-/* https://github.com/a-haas/Compilation/blob/6fe46a65d64decdb648feba790bb7b1d2980ca0a/yacc/setparser.l */
-
-/* 6 Patterns § http://westes.github.io/flex/manual/Patterns.html#Patterns */
+/* Patterns documentation: http://westes.github.io/flex/manual/Patterns.html#Patterns */
 %%
 
 {c_comment_beg}            { BEGIN(C_COMMENT); }
