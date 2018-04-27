@@ -130,7 +130,7 @@ impl<'a> Function<'a> {
 
     /// Returns a mutable reference to a dimension given its ID.
     fn dim_mut(&mut self, id: dim::Id) -> &mut Dimension<'a> {
-        &mut self.dims[id.id as usize]
+        &mut self.dims[id.0 as usize]
     }
 
     /// Returns a `BasicBlock` given its id.
