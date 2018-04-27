@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["RustLexBuffer",""],["RustLexLexer",""],["RustLexPos",""]]});

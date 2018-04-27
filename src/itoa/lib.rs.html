@@ -1,61 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="generator" content="rustdoc">
-    <meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/itoa-0.4.0/src/lib.rs`.">
-    <meta name="keywords" content="rust, rustlang, rust-lang">
-
-    <title>lib.rs.html -- source</title>
-
-    <link rel="stylesheet" type="text/css" href="../../normalize.css">
-    <link rel="stylesheet" type="text/css" href="../../rustdoc.css"
-          id="mainThemeStyle">
-    
-    <link rel="stylesheet" type="text/css" href="../../dark.css">
-    <link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle">
-    <script src="../../storage.js"></script>
-    
-
-    
-    
-</head>
-<body class="rustdoc source">
-    <!--[if lte IE 8]>
-    <div class="warning">
-        This old browser is unsupported and will most likely display funky
-        things.
-    </div>
-    <![endif]-->
-
-    
-
-    <nav class="sidebar">
-        <div class="sidebar-menu">&#9776;</div>
-        
-        
-    </nav>
-
-    <div class="theme-picker">
-        <button id="theme-picker" aria-label="Pick another theme!">
-            <img src="../../brush.svg" width="18" alt="Pick another theme!">
-        </button>
-        <div id="theme-choices"></div>
-    </div>
-    <script src="../../theme.js"></script>
-    <nav class="sub">
-        <form class="search-form js-only">
-            <div class="search-container">
-                <input class="search-input" name="search"
-                       autocomplete="off"
-                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
-                       type="search">
-            </div>
-        </form>
-    </nav>
-
-    <section id='main' class="content"><pre class="line-numbers"><span id="1">  1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `/home/travis/.cargo/registry/src/github.com-1ecc6299db9ec823/itoa-0.4.1/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css"><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script src="../../storage.js"></script></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
 <span id="4">  4</span>
@@ -288,6 +231,34 @@
 <span id="231">231</span>
 <span id="232">232</span>
 <span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
 </pre><pre class="rust ">
 <span class="comment">// Copyright 2016 Itoa Developers</span>
 <span class="comment">//</span>
@@ -297,7 +268,7 @@
 <span class="comment">// option. This file may not be copied, modified, or distributed</span>
 <span class="comment">// except according to those terms.</span>
 
-<span class="attribute">#![<span class="ident">doc</span>(<span class="ident">html_root_url</span> <span class="op">=</span> <span class="string">&quot;https://docs.rs/itoa/0.4.0&quot;</span>)]</span>
+<span class="attribute">#![<span class="ident">doc</span>(<span class="ident">html_root_url</span> <span class="op">=</span> <span class="string">&quot;https://docs.rs/itoa/0.4.1&quot;</span>)]</span>
 
 <span class="attribute">#![<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;std&quot;</span>), <span class="ident">no_std</span>)]</span>
 
@@ -346,8 +317,8 @@
     <span class="kw">fn</span> <span class="ident">fmt</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">fmt</span>::<span class="ident">Write</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">W</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span>;
 }
 
-<span class="kw">trait</span> <span class="ident">IntegerPrivate</span> {
-    <span class="kw">fn</span> <span class="ident">write_to</span>(<span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> [<span class="ident">u8</span>; <span class="ident">MAX_LEN</span>]) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>];
+<span class="kw">trait</span> <span class="ident">IntegerPrivate</span><span class="op">&lt;</span><span class="ident">B</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">write_to</span>(<span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">B</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>];
 }
 
 <span class="kw">const</span> <span class="ident">DEC_DIGITS_LUT</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span>[<span class="ident">u8</span>] <span class="op">=</span>
@@ -357,23 +328,23 @@
       6061626364656667686970717273747576777879\
       8081828384858687888990919293949596979899&quot;</span>;
 
-<span class="kw">const</span> <span class="ident">MAX_LEN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">40</span>; <span class="comment">// i128::MIN (including minus sign)</span>
-
 <span class="comment">// Adaptation of the original implementation at</span>
 <span class="comment">// https://github.com/rust-lang/rust/blob/b8214dc6c6fc20d0a660fb5700dca9ebf51ebe89/src/libcore/fmt/num.rs#L188-L266</span>
 <span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">impl_IntegerCommon</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>:<span class="ident">ident</span>) <span class="op">=&gt;</span> {
+    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">max_len</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>:<span class="ident">ident</span>) <span class="op">=&gt;</span> {
         <span class="kw">impl</span> <span class="ident">Integer</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span> {
             <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;std&quot;</span>)]</span>
+            <span class="attribute">#[<span class="ident">inline</span>]</span>
             <span class="kw">fn</span> <span class="ident">write</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">io</span>::<span class="ident">Write</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">wr</span>: <span class="ident">W</span>) <span class="op">-&gt;</span> <span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">mem</span>::<span class="ident">uninitialized</span>() };
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span>: [<span class="ident">u8</span>; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">max_len</span>] <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">mem</span>::<span class="ident">uninitialized</span>() };
                 <span class="kw">let</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">write_to</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">buf</span>);
                 <span class="macro">try</span><span class="macro">!</span>(<span class="ident">wr</span>.<span class="ident">write_all</span>(<span class="ident">bytes</span>));
                 <span class="prelude-val">Ok</span>(<span class="ident">bytes</span>.<span class="ident">len</span>())
             }
 
+            <span class="attribute">#[<span class="ident">inline</span>]</span>
             <span class="kw">fn</span> <span class="ident">fmt</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">fmt</span>::<span class="ident">Write</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">wr</span>: <span class="ident">W</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">mem</span>::<span class="ident">uninitialized</span>() };
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span>: [<span class="ident">u8</span>; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">max_len</span>] <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">mem</span>::<span class="ident">uninitialized</span>() };
                 <span class="kw">let</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">write_to</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">buf</span>);
                 <span class="ident">wr</span>.<span class="ident">write_str</span>(<span class="kw">unsafe</span> { <span class="ident">str</span>::<span class="ident">from_utf8_unchecked</span>(<span class="ident">bytes</span>) })
             }
@@ -384,12 +355,13 @@
 }
 
 <span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">impl_Integer</span> {
-    ($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>:<span class="ident">ident</span>),<span class="op">*</span> <span class="kw">as</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">conv_fn</span>:<span class="ident">ident</span>) <span class="op">=&gt;</span> {$(
-        <span class="macro">impl_IntegerCommon</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>);
+    ($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">max_len</span>:<span class="ident">expr</span> <span class="op">=&gt;</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>:<span class="ident">ident</span>),<span class="op">*</span> <span class="kw">as</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">conv_fn</span>:<span class="ident">ident</span>) <span class="op">=&gt;</span> {$(
+        <span class="macro">impl_IntegerCommon</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">max_len</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>);
 
-        <span class="kw">impl</span> <span class="ident">IntegerPrivate</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span> {
+        <span class="kw">impl</span> <span class="ident">IntegerPrivate</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">max_len</span>]<span class="op">&gt;</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span> {
             <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_comparisons</span>)]</span>
-            <span class="kw">fn</span> <span class="ident">write_to</span>(<span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> [<span class="ident">u8</span>; <span class="ident">MAX_LEN</span>]) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
+            <span class="attribute">#[<span class="ident">inline</span>]</span>
+            <span class="kw">fn</span> <span class="ident">write_to</span>(<span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> [<span class="ident">u8</span>; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">max_len</span>]) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
                 <span class="kw">let</span> <span class="ident">is_nonnegative</span> <span class="op">=</span> <span class="self">self</span> <span class="op">&gt;=</span> <span class="number">0</span>;
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">n</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">is_nonnegative</span> {
                     <span class="self">self</span> <span class="kw">as</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">conv_fn</span>
@@ -451,23 +423,44 @@
     )<span class="kw-2">*</span>};
 }
 
-<span class="macro">impl_Integer</span><span class="macro">!</span>(<span class="ident">i8</span>, <span class="ident">u8</span>, <span class="ident">i16</span>, <span class="ident">u16</span>, <span class="ident">i32</span>, <span class="ident">u32</span> <span class="kw">as</span> <span class="ident">u32</span>);
-<span class="macro">impl_Integer</span><span class="macro">!</span>(<span class="ident">i64</span>, <span class="ident">u64</span> <span class="kw">as</span> <span class="ident">u64</span>);
+<span class="kw">const</span> <span class="ident">I8_MAX_LEN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">4</span>;
+<span class="kw">const</span> <span class="ident">U8_MAX_LEN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">3</span>;
+<span class="kw">const</span> <span class="ident">I16_MAX_LEN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">6</span>;
+<span class="kw">const</span> <span class="ident">U16_MAX_LEN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">5</span>;
+<span class="kw">const</span> <span class="ident">I32_MAX_LEN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">11</span>;
+<span class="kw">const</span> <span class="ident">U32_MAX_LEN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">10</span>;
+<span class="kw">const</span> <span class="ident">I64_MAX_LEN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">20</span>;
+<span class="kw">const</span> <span class="ident">U64_MAX_LEN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">20</span>;
+
+<span class="macro">impl_Integer</span><span class="macro">!</span>(
+    <span class="ident">I8_MAX_LEN</span> <span class="op">=&gt;</span> <span class="ident">i8</span>,
+    <span class="ident">U8_MAX_LEN</span> <span class="op">=&gt;</span> <span class="ident">u8</span>,
+    <span class="ident">I16_MAX_LEN</span> <span class="op">=&gt;</span> <span class="ident">i16</span>,
+    <span class="ident">U16_MAX_LEN</span> <span class="op">=&gt;</span> <span class="ident">u16</span>,
+    <span class="ident">I32_MAX_LEN</span> <span class="op">=&gt;</span> <span class="ident">i32</span>,
+    <span class="ident">U32_MAX_LEN</span> <span class="op">=&gt;</span> <span class="ident">u32</span> 
+    <span class="kw">as</span> <span class="ident">u32</span>);
+
+<span class="macro">impl_Integer</span><span class="macro">!</span>(<span class="ident">I64_MAX_LEN</span> <span class="op">=&gt;</span> <span class="ident">i64</span>, <span class="ident">U64_MAX_LEN</span> <span class="op">=&gt;</span> <span class="ident">u64</span> <span class="kw">as</span> <span class="ident">u64</span>);
+
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_pointer_width</span> <span class="op">=</span> <span class="string">&quot;16&quot;</span>)]</span>
-<span class="macro">impl_Integer</span><span class="macro">!</span>(<span class="ident">isize</span>, <span class="ident">usize</span> <span class="kw">as</span> <span class="ident">u16</span>);
+<span class="macro">impl_Integer</span><span class="macro">!</span>(<span class="ident">I16_MAX_LEN</span> <span class="op">=&gt;</span> <span class="ident">isize</span>, <span class="ident">U16_MAX_LEN</span> <span class="op">=&gt;</span> <span class="ident">usize</span> <span class="kw">as</span> <span class="ident">u16</span>);
+
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_pointer_width</span> <span class="op">=</span> <span class="string">&quot;32&quot;</span>)]</span>
-<span class="macro">impl_Integer</span><span class="macro">!</span>(<span class="ident">isize</span>, <span class="ident">usize</span> <span class="kw">as</span> <span class="ident">u32</span>);
+<span class="macro">impl_Integer</span><span class="macro">!</span>(<span class="ident">I32_MAX_LEN</span> <span class="op">=&gt;</span> <span class="ident">isize</span>, <span class="ident">U32_MAX_LEN</span> <span class="op">=&gt;</span> <span class="ident">usize</span> <span class="kw">as</span> <span class="ident">u32</span>);
+
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_pointer_width</span> <span class="op">=</span> <span class="string">&quot;64&quot;</span>)]</span>
-<span class="macro">impl_Integer</span><span class="macro">!</span>(<span class="ident">isize</span>, <span class="ident">usize</span> <span class="kw">as</span> <span class="ident">u64</span>);
+<span class="macro">impl_Integer</span><span class="macro">!</span>(<span class="ident">I64_MAX_LEN</span> <span class="op">=&gt;</span> <span class="ident">isize</span>, <span class="ident">U64_MAX_LEN</span> <span class="op">=&gt;</span> <span class="ident">usize</span> <span class="kw">as</span> <span class="ident">u64</span>);
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">all</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;i128&quot;</span>))]</span>
 <span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">impl_Integer128</span> {
-    ($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>:<span class="ident">ident</span>),<span class="kw-2">*</span>) <span class="op">=&gt;</span> {$(
-        <span class="macro">impl_IntegerCommon</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>);
+    ($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">max_len</span>:<span class="ident">expr</span> <span class="op">=&gt;</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>:<span class="ident">ident</span>),<span class="kw-2">*</span>) <span class="op">=&gt;</span> {$(
+        <span class="macro">impl_IntegerCommon</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">max_len</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span>);
 
-        <span class="kw">impl</span> <span class="ident">IntegerPrivate</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span> {
+        <span class="kw">impl</span> <span class="ident">IntegerPrivate</span><span class="op">&lt;</span>[<span class="ident">u8</span>; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">max_len</span>]<span class="op">&gt;</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">t</span> {
             <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_comparisons</span>)]</span>
-            <span class="kw">fn</span> <span class="ident">write_to</span>(<span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> [<span class="ident">u8</span>; <span class="ident">MAX_LEN</span>]) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
+            <span class="attribute">#[<span class="ident">inline</span>]</span>
+            <span class="kw">fn</span> <span class="ident">write_to</span>(<span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> [<span class="ident">u8</span>; <span class="macro-nonterminal">$</span><span class="macro-nonterminal">max_len</span>]) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
                 <span class="kw">let</span> <span class="ident">is_nonnegative</span> <span class="op">=</span> <span class="self">self</span> <span class="op">&gt;=</span> <span class="number">0</span>;
                 <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">is_nonnegative</span> {
                     <span class="self">self</span> <span class="kw">as</span> <span class="ident">u128</span>
@@ -481,7 +474,8 @@
                 <span class="kw">unsafe</span> {
                     <span class="comment">// Divide by 10^19 which is the highest power less than 2^64.</span>
                     <span class="kw">let</span> (<span class="ident">n</span>, <span class="ident">rem</span>) <span class="op">=</span> <span class="ident">udiv128</span>::<span class="ident">udivmod_1e19</span>(<span class="ident">n</span>);
-                    <span class="ident">curr</span> <span class="op">-=</span> <span class="ident">rem</span>.<span class="ident">write_to</span>(<span class="ident">buf</span>).<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">isize</span>;
+                    <span class="kw">let</span> <span class="ident">buf1</span> <span class="op">=</span> <span class="ident">buf_ptr</span>.<span class="ident">offset</span>(<span class="ident">curr</span> <span class="op">-</span> <span class="ident">U64_MAX_LEN</span> <span class="kw">as</span> <span class="ident">isize</span>) <span class="kw">as</span> <span class="kw-2">*</span><span class="kw-2">mut</span> [<span class="ident">u8</span>; <span class="ident">U64_MAX_LEN</span>];
+                    <span class="ident">curr</span> <span class="op">-=</span> <span class="ident">rem</span>.<span class="ident">write_to</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw-2">*</span><span class="ident">buf1</span>).<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">isize</span>;
 
                     <span class="kw">if</span> <span class="ident">n</span> <span class="op">!=</span> <span class="number">0</span> {
                         <span class="comment">// Memset the base10 leading zeros of rem.</span>
@@ -491,7 +485,7 @@
 
                         <span class="comment">// Divide by 10^19 again.</span>
                         <span class="kw">let</span> (<span class="ident">n</span>, <span class="ident">rem</span>) <span class="op">=</span> <span class="ident">udiv128</span>::<span class="ident">udivmod_1e19</span>(<span class="ident">n</span>);
-                        <span class="kw">let</span> <span class="ident">buf2</span> <span class="op">=</span> <span class="ident">buf_ptr</span>.<span class="ident">offset</span>(<span class="ident">curr</span> <span class="op">-</span> <span class="ident">buf</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">isize</span>) <span class="kw">as</span> <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="kw">_</span>;
+                        <span class="kw">let</span> <span class="ident">buf2</span> <span class="op">=</span> <span class="ident">buf_ptr</span>.<span class="ident">offset</span>(<span class="ident">curr</span> <span class="op">-</span> <span class="ident">U64_MAX_LEN</span> <span class="kw">as</span> <span class="ident">isize</span>) <span class="kw">as</span> <span class="kw-2">*</span><span class="kw-2">mut</span> [<span class="ident">u8</span>; <span class="ident">U64_MAX_LEN</span>];
                         <span class="ident">curr</span> <span class="op">-=</span> <span class="ident">rem</span>.<span class="ident">write_to</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw-2">*</span><span class="ident">buf2</span>).<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">isize</span>;
 
                         <span class="kw">if</span> <span class="ident">n</span> <span class="op">!=</span> <span class="number">0</span> {
@@ -521,70 +515,11 @@
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">all</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;i128&quot;</span>))]</span>
-<span class="macro">impl_Integer128</span><span class="macro">!</span>(<span class="ident">i128</span>, <span class="ident">u128</span>);
+<span class="kw">const</span> <span class="ident">U128_MAX_LEN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">39</span>;
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">all</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;i128&quot;</span>))]</span>
+<span class="kw">const</span> <span class="ident">I128_MAX_LEN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">40</span>;
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">all</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;i128&quot;</span>))]</span>
+<span class="macro">impl_Integer128</span><span class="macro">!</span>(<span class="ident">I128_MAX_LEN</span> <span class="op">=&gt;</span> <span class="ident">i128</span>, <span class="ident">U128_MAX_LEN</span> <span class="op">=&gt;</span> <span class="ident">u128</span>);
 </pre>
-</section>
-    <section id='search' class="content hidden"></section>
-
-    <section class="footer"></section>
-
-    <aside id="help" class="hidden">
-        <div>
-            <h1 class="hidden">Help</h1>
-
-            <div class="shortcuts">
-                <h2>Keyboard Shortcuts</h2>
-
-                <dl>
-                    <dt><kbd>?</kbd></dt>
-                    <dd>Show this help dialog</dd>
-                    <dt><kbd>S</kbd></dt>
-                    <dd>Focus the search field</dd>
-                    <dt><kbd>↑</kbd></dt>
-                    <dd>Move up in search results</dd>
-                    <dt><kbd>↓</kbd></dt>
-                    <dd>Move down in search results</dd>
-                    <dt><kbd>↹</kbd></dt>
-                    <dd>Switch tab</dd>
-                    <dt><kbd>&#9166;</kbd></dt>
-                    <dd>Go to active search result</dd>
-                    <dt><kbd>+</kbd></dt>
-                    <dd>Expand all sections</dd>
-                    <dt><kbd>-</kbd></dt>
-                    <dd>Collapse all sections</dd>
-                </dl>
-            </div>
-
-            <div class="infos">
-                <h2>Search Tricks</h2>
-
-                <p>
-                    Prefix searches with a type followed by a colon (e.g.
-                    <code>fn:</code>) to restrict the search to a given type.
-                </p>
-
-                <p>
-                    Accepted types are: <code>fn</code>, <code>mod</code>,
-                    <code>struct</code>, <code>enum</code>,
-                    <code>trait</code>, <code>type</code>, <code>macro</code>,
-                    and <code>const</code>.
-                </p>
-
-                <p>
-                    Search functions by type signature (e.g.
-                    <code>vec -> usize</code> or <code>* -> vec</code>)
-                </p>
-            </div>
-        </div>
-    </aside>
-
-    
-
-    <script>
-        window.rootPath = "../../";
-        window.currentCrate = "itoa";
-    </script>
-    <script src="../../main.js"></script>
-    <script defer src="../../search-index.js"></script>
-</body>
-</html>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g. <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g. <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g. <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../";window.currentCrate = "itoa";</script><script src="../../main.js"></script><script defer src="../../search-index.js"></script><script defer src="../../aliases.js"></script></body></html>

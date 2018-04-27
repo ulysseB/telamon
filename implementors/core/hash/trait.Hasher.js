@@ -1,6 +1,5 @@
 (function() {var implementors = {};
 implementors["fnv"] = [{text:"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/hash/trait.Hasher.html\" title=\"trait core::hash::Hasher\">Hasher</a> for <a class=\"struct\" href=\"fnv/struct.FnvHasher.html\" title=\"struct fnv::FnvHasher\">FnvHasher</a>",synthetic:false,types:["fnv::FnvHasher"]},];
-implementors["hashmap_core"] = [{text:"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/core/hash/trait.Hasher.html\" title=\"trait core::hash::Hasher\">Hasher</a> for <a class=\"struct\" href=\"hashmap_core/fnv/struct.FnvHasher.html\" title=\"struct hashmap_core::fnv::FnvHasher\">FnvHasher</a>",synthetic:false,types:["hashmap_core::fnv::FnvHasher"]},];
 
             if (window.register_implementors) {
                 window.register_implementors(implementors);

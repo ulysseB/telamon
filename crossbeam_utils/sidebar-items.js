@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["cache_padded",""],["consume",""],["scoped",""]]});
+initSidebarItems({"mod":[["atomic_option",""],["cache_padded",""],["scoped",""]]});

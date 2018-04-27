@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["Etrans",""]],"struct":[["Automaton",""]],"trait":[["State",""],["StateData",""]]});

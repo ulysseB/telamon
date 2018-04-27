@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["HashTrieMap","A persistent map with structural sharing.  This implementation uses a hash array mapped trie."],["IterArc",""]],"type":[["Iter",""],["IterKeys",""],["IterValues",""]]});
