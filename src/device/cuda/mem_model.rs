@@ -128,10 +128,8 @@ fn shared_replay_factor(stride: i32,
             size /= div;
             total_size = u64::from(gpu.wrap_size);
         }
-        if !dim_info.is_predicated {
-            let replays = ((size-1) as f64 * dim_info.shared_replay_freq).floor();
-            replay_factor *= 1.0 + replays;
-        }
+        let replays = ((size-1) as f64 * dim_info.shared_replay_freq).floor();
+        replay_factor *= 1.0 + replays;
         if total_size == u64::from(gpu.wrap_size) { break }
     }
     // Handle the case where a single thread must access two banks.
@@ -148,7 +146,6 @@ fn shared_replay_factor(stride: i32,
 fn global_coalescing(thread_dims: &[ThreadDimInfo], space: &SearchSpace, gpu: &cuda::Gpu)
         -> (f64, f64, f64) {
     let mut total_size = 1;
-    let mut effective_size = 1; // Number of threads without predicated dimensions.
     let mut l1_line_accessed = 1;
     let mut l2_line_accessed = 1;
     for dim_info in sort_thread_dims(thread_dims, space, |d| d.stride as f64) {
@@ -160,20 +157,17 @@ fn global_coalescing(thread_dims: &[ThreadDimInfo], space: &SearchSpace, gpu: &c
             size /= div;
             total_size = u64::from(gpu.wrap_size);
         }
-        if !dim_info.is_predicated {
-            effective_size *= size;
-            let l1_line_len = u64::from(gpu.l1_cache_line);
-            let l2_line_len = u64::from(gpu.l2_cache_line);
-            let l1_stride = std::cmp::min(dim_info.stride, l1_line_len);
-            let l2_stride = std::cmp::min(dim_info.stride, l2_line_len);
-            l1_line_accessed *= 1 + ((size-1)*l1_stride)/l1_line_len;
-            l2_line_accessed *= 1 + ((size-1)*l2_stride)/l2_line_len;
-        }
+        let l1_line_len = u64::from(gpu.l1_cache_line);
+        let l2_line_len = u64::from(gpu.l2_cache_line);
+        let l1_stride = std::cmp::min(dim_info.stride, l1_line_len);
+        let l2_stride = std::cmp::min(dim_info.stride, l2_line_len);
+        l1_line_accessed *= 1 + ((size-1)*l1_stride)/l1_line_len;
+        l2_line_accessed *= 1 + ((size-1)*l2_stride)/l2_line_len;
         if total_size == u64::from(gpu.wrap_size) { break }
     }
-    trace!("global_replay: {} (size: {})", l1_line_accessed, effective_size);
-    let l1_coalescing = l1_line_accessed as f64 / effective_size as f64;
-    let l2_coalescing = l2_line_accessed as f64 / effective_size as f64;
+    trace!("global_replay: {} (size: {})", l1_line_accessed, total_size);
+    let l1_coalescing = l1_line_accessed as f64 / total_size as f64;
+    let l2_coalescing = l2_line_accessed as f64 / total_size as f64;
     (l1_coalescing, l2_coalescing, l1_line_accessed as f64)
 }
 
@@ -184,7 +178,6 @@ struct ThreadDimInfo {
     size: u64,
     stride: u64,
     shared_replay_freq: f64,
-    is_predicated: bool,
 }
 
 /// Returns the size and stride of thread dimensions for a tensor access pattern.
@@ -205,10 +198,10 @@ fn tensor_thread_dims(space: &SearchSpace,
     inst.iteration_dims().iter().flat_map(|&dim| {
         match space.domain().get_dim_kind(dim).is(DimKind::THREAD) {
             Trivalent::False => None,
-            Trivalent::Maybe => Some((dim, false, false)),
-            Trivalent::True => Some((dim, true, false)),
+            Trivalent::Maybe => Some((dim, false)),
+            Trivalent::True => Some((dim, true)),
         }
-    }).chain(external_dims).map(|(id, is_active_thread, is_predicated)| {
+    }).chain(external_dims).map(|(id, is_active_thread)| {
         let (size, stride) = non_zero_strides.get(&id).cloned()
             .unwrap_or_else(|| (sizes[&id], 0));
         // TODO(model): handle strides that are not a multiple of the bank_Stride.
@@ -220,7 +213,6 @@ fn tensor_thread_dims(space: &SearchSpace,
         ThreadDimInfo {
             size: u64::from(size),
             stride, shared_replay_freq, id, is_active_thread,
-            is_predicated,
         }
     }).collect_vec()
 }
@@ -229,7 +221,7 @@ fn tensor_thread_dims(space: &SearchSpace,
 /// under this instruction. The returned boolean indicates if the thread dimension cannot
 /// be mapped to an active dimension and if the dimension is predicated.
 fn external_thread_dims<'a>(inst: &'a ir::Instruction, space: &'a SearchSpace)
-    -> impl Iterator<Item=(ir::dim::Id, bool, bool)> + 'a
+    -> impl Iterator<Item=(ir::dim::Id, bool)> + 'a
 {
     space.ir_instance().thread_dims().flat_map(move |dim| {
         let is_mapped = inst.iteration_dims().iter().map(|&other| {
@@ -237,11 +229,10 @@ fn external_thread_dims<'a>(inst: &'a ir::Instruction, space: &'a SearchSpace)
             let mapping = space.domain().get_thread_mapping(dim.id(), other);
             mapping.is(ThreadMapping::MAPPED)
         }).fold(Trivalent::False, |l, r| l | r);
-        let is_predicated = inst.has_side_effects();
         match is_mapped {
             Trivalent::True => None,
-            Trivalent::Maybe => Some((dim.id(), false, is_predicated)),
-            Trivalent::False => Some((dim.id(), true, is_predicated)),
+            Trivalent::Maybe => Some((dim.id(), false)),
+            Trivalent::False => Some((dim.id(), true)),
         }
     })
 }
