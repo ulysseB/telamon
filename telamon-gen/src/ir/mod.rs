@@ -1,5 +1,7 @@
 //! The constraint description for the ir.
 use std;
+use std::ops::Not;
+
 use itertools::Itertools;
 use utils::*;
 
@@ -227,7 +229,7 @@ impl IrDesc {
             if let Some(Variable::Forall(_)) = (&*set).arg() {
                 if let Variable::Arg(arg_id) = var {
                     let given_set = target.arguments().get(arg_id).1;
-                    given_set.is_subset_of_def(set)
+                    given_set.is_subset_of_def(set).not()
                 } else { panic!() }
             } else {
                 true
