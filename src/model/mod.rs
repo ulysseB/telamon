@@ -75,8 +75,8 @@ pub fn bound(space: &SearchSpace, context: &Context) -> Bound {
     // Scale the latency to the block level.
     let block_parallelism = u64::from(context.device().block_parallelism(space));
     let min_num_blocks = local_info.parallelism.min_num_blocks;
-    let max_num_blocks = local_info.parallelism.max_num_blocks;
-    let latency = block_latency.scale(block_parallelism, min_num_blocks, max_num_blocks);
+    let lcm_num_blocks = local_info.parallelism.lcm_num_blocks;
+    let latency = block_latency.scale(block_parallelism, min_num_blocks, lcm_num_blocks);
     // Compute the throughput bound at the whole device level.
     let global_pressure = sum_pressure(context.device(), space, &local_info,
                                        BottleneckLevel::Global, &[]);
@@ -410,6 +410,7 @@ mod tests {
         let mut builder = Builder::new(&signature, context.device());
         let ld_x = x.load(&[&[]], &mut builder);
         let ld_a = a.load(&[m_tiling, &[]], &mut builder);
+
         let init_dim_m = builder.open_mapped_dim(&ld_a[0]);
         let init = builder.mov(&0f32);
         let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
@@ -418,6 +419,7 @@ mod tests {
         let x_op = ld_x.dim_map(&[&acc_dim_n], ir::DimMapScope::Global, &mut builder);
         let acc = builder.mad(&a_op, &x_op, &Reduce(init));
         builder.close_dim(&acc_dim_n);
+
         let sum = tensor::VirtualTensor::new(acc, vec![acc_dim_m.clone()]);
         let st_y = sum.store(&y, &mut builder);
 
