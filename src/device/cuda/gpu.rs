@@ -4,7 +4,7 @@ use device::{self, Device};
 use device::cuda::printer as p;
 use device::cuda::mem_model::{self, MemInfo};
 use ir::{self, Type};
-use model::{self, HwPressure, BottleneckLevel};
+use model::{self, HwPressure};
 use search_space::{DimKind, Domain, InstFlag, MemSpace, SearchSpace};
 use rustc_serialize::json;
 use std;
@@ -31,6 +31,21 @@ pub struct InstDesc {
     pub l2_lines_from_l2: f64,
     /// The ram bandwidth used.
     pub ram_bw: f64,
+}
+
+impl InstDesc {
+    fn wasted_ratio(ratio: f64) -> Self {
+        InstDesc {
+            latency: 1.0,
+            issue: ratio,
+            alu: ratio,
+            sync: ratio,
+            mem: ratio,
+            l1_lines_from_l2: 1.0,
+            l2_lines_from_l2: 1.0,
+            ram_bw: 1.0,
+        }
+    }
 }
 
 impl Into<HwPressure> for InstDesc {
@@ -280,6 +295,19 @@ impl Gpu {
                 shared_mem_used, num_thread);
         block_per_smx
     }
+
+    /// Returns the pressure of an an instruction skipped by a predicate.
+    fn skipped_pressure(&self) -> HwPressure {
+        (InstDesc { issue: 1.0, .. InstDesc::default() }).into()
+    }
+
+    /// Computes the ratio `num_wraps*wrap_size/num_threads`. This ratio may be `>1`
+    /// because the hardware creates additionnal threads to fill the wraps.
+    fn waste_ratio(&self, lcm_threads_per_block: u64) -> f64 {
+        let wrap_size = u64::from(self.wrap_size);
+        let n_wraps = (lcm_threads_per_block + wrap_size - 1)/wrap_size;
+        (n_wraps * wrap_size) as f64/lcm_threads_per_block as f64
+    }
 }
 
 impl device::Device for Gpu {
@@ -333,10 +361,6 @@ impl device::Device for Gpu {
         } else { panic!() }
     }
 
-    fn skipped_pressure(&self) -> HwPressure {
-        (InstDesc { issue: 1.0, .. InstDesc::default() }).into()
-    }
-
     fn loop_iter_pressure(&self, kind: DimKind) -> (HwPressure, HwPressure) {
         if kind == DimKind::LOOP {
             let end_pressure = InstDesc {
@@ -385,24 +409,19 @@ impl device::Device for Gpu {
         }
     }
 
-    fn get_waste_ratio(&self, bound_level: BottleneckLevel, lcm_threads_per_block: u64)
-        -> HwPressure
-    {
-        let ratio = if bound_level <= BottleneckLevel::Block {
-            let wrap_size = u64::from(self.wrap_size);
-            let n_wraps = (lcm_threads_per_block + wrap_size - 1)/wrap_size;
-            (n_wraps * wrap_size) as f64/lcm_threads_per_block as f64
-        } else { 1.0 };
-        (InstDesc {
-            latency: 1.0,
-            issue: ratio,
-            alu: ratio,
-            sync: ratio,
-            mem: ratio,
-            l1_lines_from_l2: 1.0,
-            l2_lines_from_l2: 1.0,
-            ram_bw: 1.0,
-        }).into()
+    fn add_block_overhead(&self, predicated_dims_size: u64,
+                          max_threads_per_blocks: u64,
+                          pressure: &mut HwPressure) {
+        assert!(predicated_dims_size > 0);
+        assert!(max_threads_per_blocks > 0);
+        let active_ratio = self.waste_ratio(max_threads_per_blocks/predicated_dims_size);
+        pressure.multiply(&InstDesc::wasted_ratio(active_ratio).into());
+        if predicated_dims_size > 1 {
+            let full_ratio = self.waste_ratio(max_threads_per_blocks);
+            let num_skipped = full_ratio * predicated_dims_size as f64 - active_ratio;
+            assert!(num_skipped >= 0.);
+            pressure.repeat_and_add_bottlenecks(num_skipped, &self.skipped_pressure());
+        }
     }
 }
 

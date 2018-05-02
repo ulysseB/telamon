@@ -75,8 +75,10 @@ pub fn sum_pressure(device: &Device,
             BottleneckLevel::Block => threads_per_block,
             BottleneckLevel::Thread => 1,
         };
-        let mut init_pressure = device.get_waste_ratio(bound_level, threads_per_block);
-        init_pressure.multiply(&local_info.thread_overhead);
+        let mut init_pressure = local_info.thread_overhead.clone();
+        if bound_level <= BottleneckLevel::Block {
+            device.add_block_overhead(1, num_threads, &mut init_pressure);
+        }
         pressure.repeat_and_add_bottlenecks(num_threads as f64, &init_pressure);
     }
     // Get the list of inner dimensions and inner dimensions on wich the pressure is summed.
@@ -108,9 +110,9 @@ pub fn sum_pressure(device: &Device,
         let mut bb_pressure = if let ir::BBId::Dim(dim) = bb {
             let kind = space.domain().get_dim_kind(dim);
             if !bound_level.accounts_for_dim(kind) {
-                &local_info.dim_overhead[&dim].0
-            } else { &local_info.hw_pressure[&bb] }
-        } else { &local_info.hw_pressure[&bb] };
+                local_info.dim_overhead[&dim].0.clone()
+            } else { local_info.hw_pressure[&bb].clone() }
+        } else { local_info.hw_pressure[&bb].clone() };
         // From parallel levels, we must take into account the thread dimensions that re
         // not mapped to a dimension outside of the block. Predicated instructions require
         // special care as they are only active on the dimensions they are nested on. Other
@@ -118,18 +120,16 @@ pub fn sum_pressure(device: &Device,
         if bound_level <= BottleneckLevel::Block {
             let is_predicated = space.ir_instance().block(bb).as_inst()
                 .map(|i| i.has_side_effects()).unwrap_or(false);
-            let unmapped_threads = nesting.num_unmapped_threads as f64;
-            if is_predicated {
-                let num_skipped = unmapped_threads * (num_instances - 1.0);
-                pressure.repeat_and_add_bottlenecks(num_skipped, &device.skipped_pressure());
+            let predicated_size = if is_predicated {
+                nesting.num_unmapped_threads as u64
             } else {
-                num_instances *= unmapped_threads;
-            }
+                num_instances *= nesting.num_unmapped_threads as f64;
+                1
+            };
+            let max_threads = nesting.max_threads_per_block;
+            device.add_block_overhead(predicated_size, max_threads, &mut bb_pressure);
         }
-        let mut bb_apparent_pressure = device.get_waste_ratio(
-            bound_level, nesting.max_threads_per_block);
-        bb_apparent_pressure.multiply(bb_pressure);
-        pressure.repeat_and_add_bottlenecks(num_instances, &bb_apparent_pressure);
+        pressure.repeat_and_add_bottlenecks(num_instances, &bb_pressure);
     }
     pressure
 }

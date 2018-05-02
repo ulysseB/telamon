@@ -5,7 +5,7 @@ use telamon::device::{self, ScalarArgument, ArrayArgument};
 use telamon::ir;
 use telamon::explorer::Candidate;
 use telamon::search_space::{SearchSpace, DimKind};
-use telamon::model::{self, HwPressure, BottleneckLevel};
+use telamon::model::{self, HwPressure};
 use std::sync::Arc;
 use std::f64;
 use std::io::Write;
@@ -55,8 +55,6 @@ impl device::Device for Device {
         HwPressure::zero(self)
     }
 
-    fn skipped_pressure(&self) -> HwPressure { HwPressure::zero(self) }
-
     fn bottlenecks(&self) -> &[&'static str] { &["issue", "alu", "mem"] }
 
     fn block_parallelism(&self, _: &SearchSpace) -> u32 { 16 }
@@ -75,9 +73,7 @@ impl device::Device for Device {
 
     fn total_rates(&self) -> HwPressure { HwPressure::new(1.0, vec![1.0, 1.0, 1.0]) }
 
-    fn get_waste_ratio(&self, _: BottleneckLevel, _: u64) -> HwPressure {
-        HwPressure::new(1.0, vec![1.0, 1.0, 1.0])
-    }
+    fn add_block_overhead(&self, _: u64, _: u64, _: &mut HwPressure) { }
 }
 
 /// A fake context.
