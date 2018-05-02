@@ -297,7 +297,7 @@ impl fmt::Display for Origin {
                     iterations, dims.iter().format(", "), inner)
             },
             Origin::Scale { ref inner, factor } =>
-                write!(f, "scale by {:.2e}:  {}", factor, inner),
+                write!(f, "scale by {:.2e}: {}", factor, inner),
             Origin::Chain { ref before, ref mid_point, ref after } => {
                 display_inline_chain(before, f)?;
                 write!(f, " to {}, then ", mid_point)?;

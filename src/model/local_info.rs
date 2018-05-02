@@ -1,9 +1,11 @@
 //! Compute and represent local information on the different objects representing of the IR.
 use device::{Context, Device};
 use ir::{self, BasicBlock};
+use itertools::Itertools;
 use model::HwPressure;
-use num::integer::{lcm, gcd};
+use num::integer::lcm;
 use search_space::{DimKind, Domain, Order, SearchSpace, ThreadMapping};
+use std;
 use utils::*;
 
 /// Local information on the different objects.
@@ -208,14 +210,14 @@ pub struct Parallelism {
     /// Minimal number of block of threads.
     pub min_num_blocks: u64,
     /// Maximal number of blocks of threads.
-    pub max_num_blocks: u64,
+    pub lcm_num_blocks: u64,
 }
 
 impl Default for Parallelism {
     fn default() -> Self {
         Parallelism {
             min_num_blocks: 1,
-            max_num_blocks: 1,
+            lcm_num_blocks: 1,
         }
     }
 }
@@ -223,18 +225,17 @@ impl Default for Parallelism {
 /// Computes the minimal and maximal parallelism accross instructions.
 fn parallelism(space: &SearchSpace, nesting: &HashMap<ir::BBId, Nesting>,
                dim_sizes: &HashMap<ir::dim::Id, u32>) -> Parallelism {
-    let par = space.ir_instance().insts().map(|inst| {
+    space.ir_instance().insts().map(|inst| {
         let mut par = Parallelism::default();
         for &dim in &nesting[&inst.bb_id()].outer_dims {
             let kind = space.domain().get_dim_kind(dim);
             let size = u64::from(dim_sizes[&dim]);
             if kind == DimKind::BLOCK { par.min_num_blocks *= size; }
-            if kind.intersects(DimKind::BLOCK) { par.max_num_blocks *= size; }
+            if kind.intersects(DimKind::BLOCK) { par.lcm_num_blocks *= size; }
         }
         par
-    }).fold(Parallelism::default(), |lhs, rhs| Parallelism {
-        min_num_blocks: gcd(lhs.min_num_blocks, rhs.min_num_blocks),
-        max_num_blocks: lcm(lhs.max_num_blocks, rhs.max_num_blocks),
-    });
-    par
+    }).fold1(|lhs, rhs| Parallelism {
+        min_num_blocks: std::cmp::min(lhs.min_num_blocks, rhs.min_num_blocks),
+        lcm_num_blocks: lcm(lhs.lcm_num_blocks, rhs.lcm_num_blocks),
+    }).unwrap_or(Parallelism::default())
 }
