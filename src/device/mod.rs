@@ -15,7 +15,7 @@ use ir;
 use search_space::{SearchSpace, DimKind};
 use std::hash;
 use std::io::Write;
-use model::{BottleneckLevel, HwPressure, Nesting};
+use model::{HwPressure, Nesting};
 use utils::*;
 
 // TODO(perf): in PTX, shared and local pointers can have a 32-bit size, even in 64-bit
@@ -50,8 +50,6 @@ pub trait Device: Sync {
                    dim_sizes: &HashMap<ir::dim::Id, u32>,
                    nesting: &HashMap<ir::BBId, Nesting>,
                    bb: &ir::BasicBlock) -> HwPressure;
-    /// Returns the pressure caused by skipping a predicated instruction.
-    fn skipped_pressure(&self) -> HwPressure;
     /// Returns the pressure produced by a single iteration of a loop and the latency
     /// overhead of iterations.
     fn loop_iter_pressure(&self, kind: DimKind) -> (HwPressure, HwPressure);
@@ -69,10 +67,12 @@ pub trait Device: Sync {
     fn additive_indvar_pressure(&self, t: &ir::Type) -> HwPressure;
     /// Returns the pressure caused by a multiplicative induction variable level.
     fn multiplicative_indvar_pressure(&self, t: &ir::Type) -> HwPressure;
-    /// Returns the ratio of hardware capacities wasted by the parallelism, given the
-    /// least common multiple of the possible numbers of threads per block.
-    fn get_waste_ratio(&self, bound_level: BottleneckLevel, lcm_threads_per_block: u64)
-        -> HwPressure;
+    /// Adds the overhead (per instance) due to partial wraps and predicated dimensions to
+    /// the pressure. If the instruction is not predicated, `predicated_dims_size` should
+    /// be `1`.
+    fn add_block_overhead(&self, predicated_dims_size: u64,
+                          max_threads_per_blocks: u64,
+                          pressure: &mut HwPressure);
 
     /// Lowers a type using the memory space information. Returns `None` if some
     /// information is not yet specified.

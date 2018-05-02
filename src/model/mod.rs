@@ -314,8 +314,7 @@ mod tests {
 
         let dim_z = builder.open_dim_ex(size, DimKind::THREAD);
         let (addr, pattern) = builder.tensor_access(&"z", z, &ir::Type::F(32), &[&dim_z]);
-        builder.st(&addr, &0f32, pattern);
-        // FIXME: works for ld but not st ?
+        let st_z = builder.st(&addr, &0f32, pattern);
 
         builder.order(&dim_x, &dim_z, Order::BEFORE);
         builder.order(&dim_x, &dim_y, Order::OUTER);
@@ -323,6 +322,7 @@ mod tests {
         let partial_pressure = {
             let space = builder.get_clone();
             let local_info = LocalInfo::compute(&space, &context);
+            trace!("partial nesting: {:?}", local_info.nesting[&st_z.into()]);
             sum_pressure(context.device(), &space, &local_info,
                          BottleneckLevel::Global, &[])
         }.get_bottleneck(3);
@@ -331,6 +331,7 @@ mod tests {
         let final_pressure = {
             let space = builder.get_clone();
             let local_info = LocalInfo::compute(&space, &context);
+            trace!("final nesting: {:?}", local_info.nesting[&st_z.into()]);
             sum_pressure(context.device(), &space, &local_info,
                          BottleneckLevel::Global, &[])
         }.get_bottleneck(3);
