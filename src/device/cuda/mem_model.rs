@@ -7,6 +7,9 @@ use std;
 use num::integer;
 use utils::*;
 
+// TODO(model): the pressure changes depending on the list of outer dimensions. Try to
+// take this into account be computing the pressure incrementatly when applying levels.
+
 /// Result of the memory analysis for one instruction. Vector instructions are considered
 /// as one instruction.
 #[derive(Debug)]
@@ -58,7 +61,7 @@ fn info(space: &SearchSpace,
         gpu: &cuda::Gpu,
         sizes: &HashMap<ir::dim::Id, u32>) -> MemInfo {
     // TODO(model): The model can decrease if the maximal number decreases: the replay
-    // assume a full wrap if possible. This is correct as if the wrap is not full, the
+    // assume a full wrap if possible. This is correct as if the wrap is not full the
     // waste ratio will repeat the replay factor to achieve the same number. However,
     // it makes debugging the performance model harder.
     let info = match *pattern {
@@ -71,6 +74,7 @@ fn info(space: &SearchSpace,
             let mut info = NO_ACCESS_INFO;
             let thread_dims = tensor_thread_dims(
                 space, inst, stride, dims, sizes, gpu);
+            trace!("thread dims: {:?}", thread_dims);
             if is_shared_access.maybe_true() {
                 info.replay_factor = shared_replay_factor(
                     stride, &thread_dims, dims, sizes, space, gpu);

@@ -1,8 +1,7 @@
 //! Exploration of the search space.
 use device::Context;
 use explorer::choice::ActionEx;
-use immut_list::ImmutList;
-use data_structure_traits::Create;
+use rpds::List;
 use model::{bound, Bound};
 use search_space::SearchSpace;
 use std::cmp::{Ordering, PartialOrd};
@@ -20,13 +19,13 @@ pub struct Candidate<'a> {
     /// The depth of the candidate in the search tree.
     pub depth: usize,
     /// The list of actions already taken.
-    pub actions: ImmutList<ActionEx>,
+    pub actions: List<ActionEx>,
 }
 
 impl<'a> Candidate<'a> {
     /// Creates a new candidate, with depth 0.
     pub fn new(space: SearchSpace<'a>, bound: Bound) -> Self {
-        Candidate { space, bound, depth: 0, actions: ImmutList::new() }
+        Candidate { space, bound, depth: 0, actions: List::new() }
     }
 
 
@@ -55,7 +54,7 @@ impl<'a> Candidate<'a> {
             debug!("decreasing bound: {} > {}, with actions {:?} when applying {:?}",
                    self.bound, bound, self.actions, action);
         }
-        let actions = self.actions.clone().add_element(action);
+        let actions = self.actions.push_front(action);
         Ok(Candidate { space, bound, depth: self.depth+1, actions })
     }
 }

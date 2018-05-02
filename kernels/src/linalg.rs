@@ -304,7 +304,7 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
             (0..std::cmp::min(mn_log2-t1, t2_max)).into_par_iter()
             .map(move |t2| (1u32 << t1, 1u32 << t2))
         });
-        //let tilings = std::iter::once((32, 4));
+        //let tilings = std::iter::once((4, 2));
         tilings.map(|(tile_1, tile_2)| {
             let full_tiling = cleanup_tiling(&[tile_1, tile_2]);
             let small_tiling = cleanup_tiling(&[tile_1]); 

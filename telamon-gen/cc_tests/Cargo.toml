@@ -5,14 +5,14 @@ name = "telamon-gen-test"
 version = "0.1.0"
 
 [build-dependencies]
-env_logger = "0.5.5"
+env_logger = "0.5.9"
 
 [build-dependencies.telamon-gen]
 path = "../"
 
 [dependencies]
-env_logger = "0.5.5"
-itertools = "0.7.7"
+env_logger = "0.5.9"
+itertools = "0.7.8"
 log = "0.4.1"
 
 [dependencies.telamon-utils]
