@@ -1,5 +1,6 @@
 //! The constraint description for the ir.
 use std;
+
 use itertools::Itertools;
 use utils::*;
 
@@ -207,24 +208,32 @@ impl IrDesc {
         }
         // Reverse the set constraints when the set parameter is defined in the foralls.
         // TODO(cleanup): make the reversing code readable
-        for _ in set_constraints.drain_filter(|&mut (var, ref mut set)| {
+        // TODO(cleanup): reimplemente `drain_filter` when stable rust will be ready.
+        for (var, ref mut set) in set_constraints.iter_mut() {
             // Reverse the set if its parameter if defined after the constraints.
             if let Some(Variable::Forall(forall_id)) = (&*set).arg() {
                 // Assign the reverse set to foralls.
                 let forall = if forall_id < arg_foralls.len() {
                     &mut arg_foralls[forall_id]
                 } else { &mut other_foralls[forall_id-arg_foralls.len()] };
-                let (superset, reverse_set) = set.reverse(var, &forall).unwrap();
+                let (superset, reverse_set) = set.reverse(*var, &forall).unwrap();
                 *forall = reverse_set;
                 // Use the superset as the constraint is enforced by the forall.
                 assert!((&superset).arg().is_none());
                 *set = superset;
+            }
+        }
+        set_constraints.retain(|&(var, ref set)| {
+            if let Some(Variable::Forall(_)) = (&*set).arg() {
                 if let Variable::Arg(arg_id) = var {
                     let given_set = target.arguments().get(arg_id).1;
-                    given_set.is_subset_of_def(set)
+                    !given_set.is_subset_of_def(set)
                 } else { panic!() }
-            } else { false }
-        }) {};
+            } else {
+                true
+            }
+        });
+
         (arg_foralls, other_foralls, SetConstraints::new(set_constraints), adaptator)
     }
 }

@@ -1,5 +1,3 @@
-#![feature(drain_filter)]
-
 #[cfg(test)] extern crate env_logger;
 extern crate handlebars;
 #[macro_use] extern crate lazy_static;
