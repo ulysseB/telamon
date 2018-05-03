@@ -1,3 +1,4 @@
+use codegen;
 use codegen::*;
 use device::x86::Namer;
 use ir::{self, op, Type, Rounding};
