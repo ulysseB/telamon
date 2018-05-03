@@ -4,7 +4,7 @@ extern crate env_logger;
 
 pub mod fake;
 
-use telamon::device::Context;
+use telamon::device::{Context, EvalMode};
 use telamon::{explorer, ir, codegen};
 use telamon::search_space::SearchSpace;
 use std::io::sink;
@@ -31,7 +31,7 @@ pub fn check_candidates<F>(space: SearchSpace, ctx: &Context, mut check: F)
         where F: FnMut() {
     explorer::gen_space(ctx, space, |_| (), |candidate| {
         let fun = codegen::Function::build(&candidate.space);
-        ctx.evaluate(&fun).unwrap();
+        ctx.evaluate(&fun, EvalMode::FindBest).unwrap();
         check();
     });
 }

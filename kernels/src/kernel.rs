@@ -74,7 +74,7 @@ pub trait Kernel<'a>: Sized {
             let leaf = local_selection::descend(order, context, candidate, CUT);
             if let Some(leaf) = leaf {
                 let device_fn = codegen::Function::build(&leaf.space);
-                unwrap!(context.evaluate(&device_fn),
+                unwrap!(context.evaluate(&device_fn, device::EvalMode::FindBest),
                     "evaluation failed for kernel {}, with actions {:?}",
                     Self::name(), leaf.actions);
                 if let Err(err) = kernel.check_result(&expected_output, context) {

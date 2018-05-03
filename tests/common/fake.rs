@@ -85,7 +85,9 @@ pub struct Context {
 impl device::Context for Context {
     fn device(&self) -> &device::Device { &self.device }
 
-    fn evaluate(&self, _: &codegen::Function) -> Result<f64, ()> { Ok(1.0) }
+    fn evaluate(&self, _: &codegen::Function, _: device::EvalMode) -> Result<f64, ()> {
+        Ok(1.0)
+    }
 
     fn benchmark(&self, _: &codegen::Function, num_samples: usize) -> Vec<f64> {
         vec![1.0; num_samples]

@@ -80,6 +80,7 @@ pub fn bound(space: &SearchSpace, context: &Context) -> Bound {
     // Compute the throughput bound at the whole device level.
     let global_pressure = sum_pressure(context.device(), space, &local_info,
                                        BottleneckLevel::Global, &[]);
+    trace!("global pressure {:?}", global_pressure);
     let device_rates = context.device().total_rates();
     let throughput_bound = global_pressure.bound(BottleneckLevel::Global, &device_rates);
     // Return the biggest bound.
@@ -283,7 +284,8 @@ fn apply_dim_map(device: &Device,
 
 #[cfg(test)]
 mod tests {
-    use device::{Context, cuda};
+    use codegen;
+    use device::{Context, cuda, EvalMode};
     use env_logger;
     use helper::*;
     use model;
@@ -415,7 +417,8 @@ mod tests {
         let init = builder.mov(&0f32);
         let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
         let acc_dim_n = builder.open_mapped_dim(&ld_x[0]);
-        let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_n], ir::DimMapScope::Global, &mut builder);
+        let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_n], ir::DimMapScope::Global,
+                                &mut builder);
         let x_op = ld_x.dim_map(&[&acc_dim_n], ir::DimMapScope::Global, &mut builder);
         let acc = builder.mad(&a_op, &x_op, &Reduce(init));
         builder.close_dim(&acc_dim_n);
@@ -443,5 +446,63 @@ mod tests {
         assert!(final_bound.value()*1.001 >= partial_bound.value(), "{} < {}",
                 final_bound, partial_bound);
 
+    }
+
+    #[cfg(feature="cuda")]
+    #[test]
+    fn final_bound_0() {
+        let _ = env_logger::try_init();
+        let executor = cuda::Executor::init();
+        let mut context = cuda::Context::new(&executor); 
+
+        let (x, y, z);
+        let signature = {
+            let mut builder = SignatureBuilder::new("test", &mut context);
+            builder.scalar("n", 1 << 25);
+            let n_size = tensor::DimSize::Param("n");
+            x = builder.tensor::<f32>("x", vec![n_size], true);
+            y = builder.tensor::<f32>("y", vec![n_size], true);
+            z = builder.tensor::<f32>("z", vec![n_size], false);
+            builder.get()
+        };
+
+        let tiling = &[1024, 4];
+        let mut builder = Builder::new(&signature, context.device());
+
+        let ld_x = x.load(&[tiling], &mut builder);
+        let ld_y = y.load(&[tiling], &mut builder);
+        let mad_dim = builder.open_mapped_dim(&ld_x[0]);
+        let x_op = ld_x.dim_map(&[&mad_dim], ir::DimMapScope::Global, &mut builder);
+        let y_op = ld_y.dim_map(&[&mad_dim], ir::DimMapScope::Global, &mut builder);
+        let mad = tensor::VirtualTensor::new(
+            builder.mad(&x_op, &4.33f32, &y_op), vec![mad_dim.clone()]);
+        let st_z = mad.store(&z, &mut builder);
+
+        builder.action(Action::DimKind(ld_x[0][2], DimKind::VECTOR));
+        builder.action(Action::DimKind(ld_x[0][1], DimKind::THREAD));
+        builder.action(Action::DimKind(ld_x[0][0], DimKind::BLOCK));
+        builder.action(Action::DimKind(ld_y[0][2], DimKind::VECTOR));
+        builder.action(Action::DimKind(ld_y[0][1], DimKind::THREAD));
+        builder.action(Action::DimKind(mad_dim[1], DimKind::THREAD));
+        builder.action(Action::DimKind(mad_dim[2], DimKind::UNROLL));
+        builder.action(Action::DimKind(st_z[0][1], DimKind::THREAD));
+        builder.action(Action::DimKind(st_z[0][2], DimKind::VECTOR));
+        builder.order(&ld_x[0][2], &ld_y.inst(), Order::BEFORE);
+        builder.order(&ld_x[0][1], &ld_y.inst(), Order::BEFORE);
+        builder.order(&ld_y[0][1], &mad.inst(), Order::BEFORE);
+        builder.order(&mad_dim[1], &st_z.inst(), Order::OUTER);
+        builder.action(Action::InstFlag(ld_x.inst(), InstFlag::MEM_CS));
+        builder.action(Action::InstFlag(ld_y.inst(), InstFlag::MEM_CG));
+        builder.action(Action::InstFlag(st_z.inst(), InstFlag::MEM_CG));
+        let space = builder.get();
+        let bound = model::bound(&space, &context);
+        let kernel = codegen::Function::build(&space);
+        let eval = unwrap!(context.evaluate(&kernel, EvalMode::TestBound));
+        assert!(eval * 1.001 >= bound.value(), "{:.2e} < {}", eval, bound);
+
+        // FIXME:
+        // * Thread dim accounted twice
+        // * 3 syncthreads/thread instead of 2.
+        // * nested thread dimensions are all accounted for
     }
 }
