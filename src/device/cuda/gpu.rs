@@ -216,9 +216,9 @@ impl Gpu {
             pressure.add_sequential(&self.loop_init_overhead.into());
             pressure
         } else if DimKind::THREAD.contains(kind) {
-            let mut pressure: HwPressure = self.syncthread_inst.into();
-            pressure.repeat_parallel(f64::from(size));
-            pressure
+            // The repetition along the thread is taken into account by
+            // `num_unmapped_thread` as the current thread is accounted as not mapped.
+            self.syncthread_inst.into()
         } else { HwPressure::zero(self) }
     }
 

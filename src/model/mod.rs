@@ -282,8 +282,9 @@ fn apply_dim_map(device: &Device,
     }
 }
 
+#[cfg(feature="cuda")]
 #[cfg(test)]
-mod tests {
+mod cuda_tests {
     use codegen;
     use device::{Context, cuda, EvalMode};
     use env_logger;
@@ -292,12 +293,11 @@ mod tests {
     use search_space::*;
     use super::*;
 
-    #[cfg(feature="cuda")]
     #[test]
     fn partial_bound_0() {
         let _ = env_logger::try_init();
         let executor = cuda::Executor::init();
-        let mut context = cuda::Context::new(&executor); 
+        let mut context = cuda::Context::new(&executor);
         let z;
         let signature = {
             let mut builder = SignatureBuilder::new("test", &mut context);
@@ -342,7 +342,6 @@ mod tests {
                 final_pressure, partial_pressure);
     }
 
-    #[cfg(feature="cuda")]
     #[test]
     fn partial_bound_1() {
         let _ = env_logger::try_init();
@@ -387,7 +386,6 @@ mod tests {
     }
 
 
-    #[cfg(feature="cuda")]
     #[test]
     fn partial_bound_2() {
         let _ = env_logger::try_init();
@@ -448,12 +446,11 @@ mod tests {
 
     }
 
-    #[cfg(feature="cuda")]
     #[test]
     fn final_bound_0() {
         let _ = env_logger::try_init();
         let executor = cuda::Executor::init();
-        let mut context = cuda::Context::new(&executor); 
+        let mut context = cuda::Context::new(&executor);
 
         let (x, y, z);
         let signature = {
@@ -499,10 +496,5 @@ mod tests {
         let kernel = codegen::Function::build(&space);
         let eval = unwrap!(context.evaluate(&kernel, EvalMode::TestBound));
         assert!(eval * 1.001 >= bound.value(), "{:.2e} < {}", eval, bound);
-
-        // FIXME:
-        // * Thread dim accounted twice
-        // * 3 syncthreads/thread instead of 2.
-        // * nested thread dimensions are all accounted for
     }
 }
