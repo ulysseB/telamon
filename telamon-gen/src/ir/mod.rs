@@ -1,6 +1,5 @@
 //! The constraint description for the ir.
 use std;
-use std::ops::Not;
 
 use itertools::Itertools;
 use utils::*;
@@ -210,7 +209,7 @@ impl IrDesc {
         // Reverse the set constraints when the set parameter is defined in the foralls.
         // TODO(cleanup): make the reversing code readable
         // TODO(cleanup): reimplemente `drain_filter` when stable rust will be ready.
-        set_constraints.iter_mut().all(|&mut (var, ref mut set)| {
+        for (var, ref mut set) in set_constraints.iter_mut() {
             // Reverse the set if its parameter if defined after the constraints.
             if let Some(Variable::Forall(forall_id)) = (&*set).arg() {
                 // Assign the reverse set to foralls.
@@ -223,13 +222,12 @@ impl IrDesc {
                 assert!((&superset).arg().is_none());
                 *set = superset;
             }
-            true
-        });
+        }
         set_constraints.retain(|&(var, ref set)| {
             if let Some(Variable::Forall(_)) = (&*set).arg() {
                 if let Variable::Arg(arg_id) = var {
                     let given_set = target.arguments().get(arg_id).1;
-                    given_set.is_subset_of_def(set).not()
+                    !given_set.is_subset_of_def(set)
                 } else { panic!() }
             } else {
                 true
