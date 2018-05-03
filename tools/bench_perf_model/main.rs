@@ -12,7 +12,7 @@ mod latency;
 mod memory;
 mod tests;
 
-use telamon::device::{ArgMap, Context};
+use telamon::device::{self, ArgMap, Context};
 use telamon::helper;
 use telamon::model::bound;
 use telamon::search_space::Action;
@@ -62,7 +62,7 @@ fn run<T: PerfModelTest>(pattern: &Regex) {
     let fun = builder.get();
     let model_perf = bound(&fun, &context);
     let dev_fun = telamon::codegen::Function::build(&fun);
-    let run_perf = unwrap!(context.evaluate(&dev_fun));
+    let run_perf = unwrap!(context.evaluate(&dev_fun, device::EvalMode::TestBound));
 
     if let Some(early_model_perf) = early_model_perf {
         info!("bound: {}", model_perf);

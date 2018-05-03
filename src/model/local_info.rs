@@ -105,11 +105,11 @@ fn add_indvar_pressure(device: &Device,
 /// Nesting of an object.
 #[derive(Debug)]
 pub struct Nesting {
-    /// Dimensions nested outside the current BB.
+    /// Dimensions nested inside the current BB.
     pub inner_dims: VecSet<ir::dim::Id>,
     /// Basic blocks nested inside the current BB.
     pub inner_bbs: VecSet<ir::BBId>,
-    /// Dimensions nested inside the current BB.
+    /// Dimensions nested outsidethe current BB.
     pub outer_dims: VecSet<ir::dim::Id>,
     /// Dimensions to be processed before the current BB.
     pub before_self: VecSet<ir::dim::Id>,
