@@ -1,3 +1,4 @@
+use libc;
 use std::process::{ExitStatus, Command};
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
@@ -19,7 +20,7 @@ pub fn compile(mut source_file: File, lib_path: &String) -> ExitStatus {
         .expect("Could not execute gcc")
 }
 
-pub fn link_and_exec(lib_path: &String, fun_name: &String) -> f64 {
+pub fn link_and_exec(lib_path: &String, fun_name: &String, mut args: Vec<*mut libc::c_void> ) -> f64 {
     Command::new("readelf")
         .arg("-Ws")
         .arg(lib_path)
@@ -27,11 +28,11 @@ pub fn link_and_exec(lib_path: &String, fun_name: &String) -> f64 {
     let lib = libloading::Library::new(lib_path)
         .expect("Library not found");
     unsafe {
-        let func : libloading::Symbol<unsafe extern fn() -> f64> = 
+        let func : libloading::Symbol<unsafe extern fn(*mut *mut libc::c_void) > = 
             lib.get(fun_name.as_bytes())
             .expect("Could not find symbol in library");
         let t0 = Instant::now();
-        func();
+        func((&mut args) as *mut _ as *mut *mut libc::c_void);
         let t = Instant::now() - t0;
         t.subsec_nanos() as f64
     }

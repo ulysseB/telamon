@@ -1,11 +1,8 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-
 void {name}(
   {params}
 )
 {{
   {var_decls}
+  {ld_params}
   {body}
 }}

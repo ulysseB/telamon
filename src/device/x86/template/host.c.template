@@ -1,0 +1,11 @@
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+
+{fun_str}
+
+void execute(void** args) {{
+  {fun_params_cast};
+  {fun_name}({fun_params});
+}}

@@ -266,10 +266,11 @@ impl device::Device for Cpu {
     fn name(&self) -> &str { &self.name }
 
     fn lower_type(&self, t: ir::Type, space: &SearchSpace) -> Option<ir::Type> {
-        match t {
-            ir::Type::PtrTo(_) => Some(Type::I(64)),
-            t => Some(t),
-        }
+        Some(t)
+        //match t {
+        //    ir::Type::PtrTo(_) => Some(Type::I(64)),
+        //    t => Some(t),
+        //}
     }
 
     fn hw_pressure(&self, space: &SearchSpace,

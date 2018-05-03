@@ -21,6 +21,7 @@ use utils::*;
 struct Namer {
     num_var: HashMap<ir::Type, usize>,
     num_sizes: usize,
+    num_glob_ptr: usize,
 }
 
 impl Namer {
@@ -35,7 +36,8 @@ impl Namer {
             ir::Type::F(16) => "h",
             ir::Type::F(32) => "f",
             ir::Type::F(64) => "d",
-            _ => panic!("invalid PTX type"),
+            ir::Type::PtrTo(..) =>  "ptr",
+            _ => panic!("invalid CPU type"),
         }
     }
 }
@@ -43,10 +45,19 @@ impl Namer {
 impl codegen::Namer for Namer {
     fn name(&mut self, t: ir::Type) -> String {
         let prefix = Namer::gen_prefix(&t);
-        let entry = self.num_var.entry(t).or_insert(0);
-        let name = format!("{}{}", prefix, *entry);
-        *entry += 1;
-        name
+        match t {
+            ir::Type::PtrTo(..) => {
+                let name = format!("{}{}", prefix, self.num_glob_ptr);
+                self.num_glob_ptr += 1;
+                name
+            }
+            _ => {
+                let entry = self.num_var.entry(t).or_insert(0);
+                let name = format!("{}{}", prefix, *entry);
+                *entry += 1;
+                name
+            }
+        }
     }
 
     fn name_float(&self, val: &Ratio<BigInt>, len: u16) -> String {
