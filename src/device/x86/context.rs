@@ -8,7 +8,6 @@ use device::x86::cpu_argument::{CpuArray, Argument, CpuScalarArg};
 use device::x86::cpu::Cpu;
 use device::x86::printer::wrapper_function;
 use explorer;
-use tempfile;
 use ir;
 use itertools::Itertools;
 use libc;
@@ -128,8 +127,6 @@ impl device::Context for Context {
 }
 
 
-enum HoldThunk {
-    Arr(CpuArray),
 fn function_evaluate(fun_str: String, fun_name: String) -> Result<f64, ()> {
     //let templib_name = tempfile::tempdir().unwrap().path().join("lib_compute.so").to_string_lossy()
     //    .into_owned();
@@ -138,6 +135,7 @@ fn function_evaluate(fun_str: String, fun_name: String) -> Result<f64, ()> {
     println!("{}", fun_str);
     println!("{}", fun_name);
     println!("{}", templib_name);
+    //panic!();
     let mut source_file = tempfile::tempfile().unwrap();
     source_file.write_all(fun_str.as_bytes()).unwrap();
     let compile_status = compile::compile(source_file, &templib_name);
@@ -147,8 +145,14 @@ fn function_evaluate(fun_str: String, fun_name: String) -> Result<f64, ()> {
     if !compile_status.success() {
         panic!("Could not compile file");
     }
-    let time = compile::link_and_exec(&templib_name, &fun_name);
+    let time = compile::link_and_exec(&templib_name, &String::from("execute"), args);
     Ok(time)
+}
+
+enum ThunkArg { 
+    ArgRef(Arc<Argument>),
+    TmpArray(u32),
+    Size(i32),
 }
 
 fn dummy_evaluate() -> Result<f64, ()> {
@@ -171,25 +175,6 @@ fn dummy_evaluate() -> Result<f64, ()> {
 }
 
 type AsyncPayload<'a, 'b> = (explorer::Candidate<'a>,  String, AsyncCallback<'a, 'b>);
-
-pub struct AsyncEvaluator<'a, 'b> where 'a: 'b {
-    context: &'b Context,
-    sender: mpsc::SyncSender<AsyncPayload<'a, 'b>>,
-}
-
-impl<'a, 'b, 'c> device::AsyncEvaluator<'a, 'c> for AsyncEvaluator<'a, 'b>
-    where 'a: 'b, 'c: 'b
-{
-    fn add_kernel(&mut self, candidate: explorer::Candidate<'a>, callback: device::AsyncCallback<'a, 'c> ) {
-        let (fun_str, code_args);
-        {
-            let dev_fun = device::Function::build(&candidate.space);
-            code_args = self.context.gen_args(&dev_fun);
-            fun_str = wrapper_function(&dev_fun);
-        }
-        unwrap!(self.sender.send((candidate, fun_str, code_args, callback)));
-    }
-}
 
 pub struct AsyncEvaluator<'a, 'b> where 'a: 'b {
     context: &'b Context,
