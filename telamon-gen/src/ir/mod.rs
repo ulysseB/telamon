@@ -216,7 +216,7 @@ impl IrDesc {
                 let forall = if forall_id < arg_foralls.len() {
                     &mut arg_foralls[forall_id]
                 } else { &mut other_foralls[forall_id-arg_foralls.len()] };
-                let (superset, reverse_set) = set.reverse(var, &forall).unwrap();
+                let (superset, reverse_set) = set.reverse(*var, &forall).unwrap();
                 *forall = reverse_set;
                 // Use the superset as the constraint is enforced by the forall.
                 assert!((&superset).arg().is_none());
