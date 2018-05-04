@@ -12,7 +12,8 @@ use std::io::Read;
 fn cpu_type(t: &Type) -> &'static str {
     match *t {
         Type::Void => "void",
-        Type::PtrTo(..) => " uint8_t *",
+        //Type::PtrTo(..) => " uint8_t *",
+        Type::PtrTo(..) => "intptr_t",
         Type::F(32) => "float",
         Type::F(64) => "double",
         Type::I(8) => "int8_t",
@@ -75,10 +76,13 @@ fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
             //let assignement = format!("{} = ",namer.gen_name(inst.operator().t()));
             let assignement = format!("{} = ",namer.name_inst(inst));
             //format!("{} *(uint8_t *){};", assignement, namer.name_op(addr))
-            format!("{} ({})*{};", assignement, cpu_type(&ld_type), namer.name_op(addr))
+            format!("{} ({})*(uint8_t *){};", assignement, cpu_type(&ld_type), namer.name_op(addr))
         },
         op::St(ref addr, ref val, _,  _) => {
-            format!("*(uint8_t *){} = (uint_8 *)&{};", 
+            let op_type = val.t();
+            //format!("*(uint8_t *){} = (uint8_t *)&{};", 
+            format!("*({} *){} = {};", 
+                    cpu_type(&op_type),
                     namer.name_op(addr),
                     namer.name_op(val).to_string())
         },
