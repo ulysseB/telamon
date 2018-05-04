@@ -3,6 +3,8 @@
 extern crate cuda_sys;
 extern crate itertools;
 extern crate libc;
+#[macro_use]
+extern crate log;
 extern crate ndarray;
 extern crate num;
 extern crate num_cpus;

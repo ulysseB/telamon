@@ -112,7 +112,12 @@ pub trait Kernel<'a>: Sized {
         let leaves = Mutex::new(Vec::new());
         let num_tested = atomic::AtomicUsize::new(0);
         context.async_eval(num_cpus::get(), device::EvalMode::TestBound, &|evaluator| {
-            while num_tested.fetch_add(1, atomic::Ordering::SeqCst) < num_tests {
+            loop {
+                if num_tested.fetch_add(1, atomic::Ordering::SeqCst) >= num_tests {
+                    if num_tested.fetch_sub(1, atomic::Ordering::SeqCst) > num_tests {
+                        break;
+                    }
+                }
                 if let Some((leaf, bounds)) = descend_check_bounds(&candidates, context) {
                     let leaves = &leaves;
                     evaluator.add_kernel(leaf, (move |leaf: Candidate, runtime: f64, _| {
@@ -130,7 +135,8 @@ pub trait Kernel<'a>: Sized {
                         leaves.push(BoundSample { actions, bound, runtime });
                     }).into());
                 } else {
-                    num_tested.fetch_sub(1, atomic::Ordering::SeqCst);
+                    let n = num_tested.fetch_sub(1, atomic::Ordering::SeqCst);
+                    error!("{}", n);
                 }
             }
         });
