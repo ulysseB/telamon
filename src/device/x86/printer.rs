@@ -76,7 +76,7 @@ fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
             //let assignement = format!("{} = ",namer.gen_name(inst.operator().t()));
             let assignement = format!("{} = ",namer.name_inst(inst));
             //format!("{} *(uint8_t *){};", assignement, namer.name_op(addr))
-            format!("{} ({})*(uint8_t *){};", assignement, cpu_type(&ld_type), namer.name_op(addr))
+            format!("{} *({} *){};", assignement, cpu_type(&ld_type), namer.name_op(addr))
         },
         op::St(ref addr, ref val, _,  _) => {
             let op_type = val.t();
@@ -126,8 +126,8 @@ fn var_decls(namer: &Namer) -> String {
             }
         }
     };
-    let mut ptr_decl = String::from("uint8_t  ");
-    ptr_decl.push_str(&(0..namer.num_glob_ptr).map( |i| format!("*ptr{}", i)).collect_vec().join(", "));
+    let mut ptr_decl = String::from("intptr_t  ");
+    ptr_decl.push_str(&(0..namer.num_glob_ptr).map( |i| format!("ptr{}", i)).collect_vec().join(", "));
     ptr_decl.push_str(&";\n");
     let other_var_decl = namer.num_var.iter().map(print_decl).collect_vec().join("\n  ");
     ptr_decl.push_str(&other_var_decl);
