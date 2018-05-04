@@ -245,10 +245,12 @@ pub fn analyze_bounds(mut bounds: Vec<BoundSample>) {
             println!("{}% worst error: {}", i*100/num_printed, bounds[index]);
         }
     }
-    if num_errors != bounds.len() {
-        for i in 0..NUM_QUANTILES {
-            let index = (i+1)*(bounds.len()-num_errors)/NUM_QUANTILES - 1;
-            println!("{}% worst: {}", (i+1)*100/NUM_QUANTILES, bounds[num_errors + index]);
+    if num_errors < bounds.len() {
+        let num_bounds = bounds.len() - num_errors;
+        let num_quantiles = std::cmp::min(NUM_QUANTILES, num_bounds);
+        for i in 0..num_quantiles {
+            let index = (i+1)*(num_bounds/num_quantiles) - 1;
+            println!("{}% worst: {}", (i+1)*100/num_quantiles, bounds[num_errors + index]);
         }
     }
 }
