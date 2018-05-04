@@ -242,6 +242,7 @@ impl Origin {
             x @ Origin::Latency |
             x @ Origin::Bottleneck(..) |
             x @ Origin::HardwareEvaluation => (false, x, false),
+            Origin::Loop { iterations: 0, .. } => (true, Origin::Latency, true),
             Origin::Loop { dims, iterations, inner } => {
                 let inner = Box::new(inner.simplify().1);
                 (true, Origin::Loop { dims, iterations, inner }, true)
@@ -292,7 +293,7 @@ impl fmt::Display for Origin {
                 write!(f, "the pressure on {} at the {}", name, level),
             Origin::HardwareEvaluation => write!(f, "the evaluation on the hardware"),
             Origin::Loop { ref dims, iterations, ref inner } => {
-                write!(f, "{} iterations along dimensions [{}] of {}",
+                write!(f, "{} iterations along dimensions [{}] of {{ {} }}",
                     iterations, dims.iter().format(", "), inner)
             },
             Origin::Scale { ref inner, factor } =>
@@ -312,7 +313,7 @@ fn display_inline_chain(bound: &Bound, f: &mut fmt::Formatter) -> fmt::Result {
     if let Origin::Chain { .. } = bound.origin {
         write!(f, "{}", bound.origin)
     } else {
-        write!(f, "{:.2e}ns ({})", bound.value, bound.origin)
+        write!(f, "{:.2e}ns: {}", bound.value, bound.origin)
     }
 }
 
