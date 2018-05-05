@@ -135,8 +135,7 @@ pub trait Kernel<'a>: Sized {
                         leaves.push(BoundSample { actions, bound, runtime });
                     }).into());
                 } else {
-                    let n = num_tested.fetch_sub(1, atomic::Ordering::SeqCst);
-                    error!("{}", n);
+                    num_tested.fetch_sub(1, atomic::Ordering::SeqCst);
                 }
             }
         });

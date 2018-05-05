@@ -298,7 +298,7 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
         // TODO(search_space): more tilings
         let mn_log2 = std::cmp::min(m_log2, n_log2); 
         let t1_max = std::cmp::min(mn_log2, 6);
-        let t2_max = std::cmp::min(k_log2, 5);
+        let t2_max = std::cmp::min(k_log2, 4);
         let tilings = (0..t1_max).into_par_iter().flat_map(|t1| {
             (0..std::cmp::min(mn_log2-t1, t2_max)).into_par_iter()
             .map(move |t2| (1u32 << t1, 1u32 << t2))
@@ -330,16 +330,14 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
             builder.order(&st_c.inst(), &acc_dim_k, Order::AFTER);
             // Arbitrary constrains to reduce the search space
             // TODO(search_space): remove arbitrary decisions.
-            builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CG | InstFlag::MEM_NC));
-            builder.action(Action::InstFlag(ld_b.inst(), InstFlag::MEM_CG | InstFlag::MEM_NC));
-            builder.action(Action::InstFlag(st_c.inst(), InstFlag::MEM_CS));
+            //builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CG | InstFlag::MEM_NC));
+            //builder.action(Action::InstFlag(ld_b.inst(), InstFlag::MEM_CG | InstFlag::MEM_NC));
+            //builder.action(Action::InstFlag(st_c.inst(), InstFlag::MEM_CS));
 
-            builder.action(Action::DimKind(init_dim_n[0], DimKind::BLOCK));
-            builder.action(Action::DimKind(init_dim_m[0], DimKind::BLOCK));
+            //builder.action(Action::DimKind(init_dim_n[0], DimKind::BLOCK));
+            //builder.action(Action::DimKind(init_dim_m[0], DimKind::BLOCK));
             builder.get()
-            /*builder.action(Action::DimKind(thread_dim_0_n, DimKind::THREAD_Y));
-            builder.action(Action::DimKind(thread_dim_0_m, DimKind::THREAD_X));
-            builder.action(Action::DimKind(unroll_dim_0_n, DimKind::UNROLL));
+            /*builder.action(Action::DimKind(unroll_dim_0_n, DimKind::UNROLL));
             builder.action(Action::DimKind(unroll_dim_0_m, DimKind::UNROLL));
             builder.order(unroll_dim_0_n.into(), unroll_dim_0_m.into(), Order::OUTER);
             builder.order(unroll_dim_1_n.into(), unroll_dim_1_m.into(), Order::INNER);
