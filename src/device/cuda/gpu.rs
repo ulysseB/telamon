@@ -229,14 +229,14 @@ impl Gpu {
         use ir::Operator::*;
         let t = self.lower_type(inst.t(), space).unwrap_or_else(|| inst.t());
         match (inst.operator(), t) {
-            (&Add(..), Type::F(32)) |
-            (&Sub(..), Type::F(32)) => self.add_f32_inst.into(),
-            (&Add(..), Type::F(64)) |
-            (&Sub(..), Type::F(64)) => self.add_f64_inst.into(),
-            (&Add(..), Type::I(32)) |
-            (&Sub(..), Type::I(32)) => self.add_i32_inst.into(),
-            (&Add(..), Type::I(64)) |
-            (&Sub(..), Type::I(64)) => self.add_i64_inst.into(),
+            (&BinOp(ir::BinOp::Add, ..), Type::F(32)) |
+            (&BinOp(ir::BinOp::Sub, ..), Type::F(32)) => self.add_f32_inst.into(),
+            (&BinOp(ir::BinOp::Add, ..), Type::F(64)) |
+            (&BinOp(ir::BinOp::Sub, ..), Type::F(64)) => self.add_f64_inst.into(),
+            (&BinOp(ir::BinOp::Add, ..), Type::I(32)) |
+            (&BinOp(ir::BinOp::Sub, ..), Type::I(32)) => self.add_i32_inst.into(),
+            (&BinOp(ir::BinOp::Add, ..), Type::I(64)) |
+            (&BinOp(ir::BinOp::Sub, ..), Type::I(64)) => self.add_i64_inst.into(),
             (&Mul(..), Type::F(32)) => self.mul_f32_inst.into(),
             (&Mul(..), Type::F(64)) => self.mul_f64_inst.into(),
             (&Mul(..), Type::I(32)) |
@@ -261,10 +261,10 @@ impl Gpu {
                     self.mad_wide_inst.into()
                 }
             },
-            (&Div(..), Type::F(32)) => self.div_f32_inst.into(),
-            (&Div(..), Type::F(64)) => self.div_f64_inst.into(),
-            (&Div(..), Type::I(32)) => self.div_i32_inst.into(),
-            (&Div(..), Type::I(64)) => self.div_i64_inst.into(),
+            (&BinOp(ir::BinOp::Div, ..), Type::F(32)) => self.div_f32_inst.into(),
+            (&BinOp(ir::BinOp::Div, ..), Type::F(64)) => self.div_f64_inst.into(),
+            (&BinOp(ir::BinOp::Div, ..), Type::I(32)) => self.div_i32_inst.into(),
+            (&BinOp(ir::BinOp::Div, ..), Type::I(64)) => self.div_i64_inst.into(),
             (&Ld(..), _) | (&TmpLd(..), _) => {
                 let flag = space.domain().get_inst_flag(inst.id());
                 let mem_info = mem_model::analyse(space, self, inst, dim_sizes);

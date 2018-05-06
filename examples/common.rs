@@ -1,10 +1,7 @@
 /// Function shared among examples.
-use rayon::prelude::*;
 use itertools::Itertools;
-use telamon::device::{ArgMap, Context};
+use telamon::device::Context;
 use telamon::{explorer, ir};
-use telamon::helper::SignatureBuilder;
-use telamon::helper::tensor::DimSize;
 use telamon::search_space::SearchSpace;
 use std;
 
@@ -26,24 +23,6 @@ pub fn gen_best<'a>(search_space: Vec<SearchSpace>,
     }
 }
 
-/// Creates a `DimSize`. If the instantiate flag is true, it uses a constant size,
-/// otherwise it creates a parameter with the given name.
-pub fn create_size<'a, AM>(value: i32, name: &'a str,
-                           is_generic: bool,
-                           builder: &mut SignatureBuilder<AM>)
-    -> DimSize<'a> where AM: ArgMap + Context
-{
-    if is_generic {
-        builder.scalar(name, value);
-        DimSize::Param(name)
-    } else { DimSize::Const(value as u32) }
-}
-
-/// Removes tiles of size 1.
-pub fn cleanup_tiling(tiling: &[u32]) -> Vec<u32> {
-    tiling.iter().cloned().filter(|&t| t > 1).collect()
-}
-
 /// Generate a name for the output file.
 pub fn file_name(name: &str,
                  _: ir::Type,
@@ -53,15 +32,4 @@ pub fn file_name(name: &str,
     std::fs::create_dir_all(PATH).unwrap();
     let sizes = sizes.iter().format_with("", |i, f| f(&format_args!("_{}", i)));
     format!("{}{}_{}{}.c", PATH, name, instantiated, sizes)
-}
-
-pub fn par_iter_product<I1, I2>(i1: I1, i2: I2)
-    -> impl ParallelIterator<Item=(I1::Item, I2::Item)>
-where
-    I1: IntoParallelIterator, I1::Item: Clone + Sync,
-    I2: IntoParallelIterator + Clone + Send + Sync
-{
-    i1.into_par_iter().flat_map(move |x| {
-        i2.clone().into_par_iter().map(move |y| (x.clone(), y))
-    })
 }

@@ -138,15 +138,20 @@ fn lower_type(t: ir::Type, fun: &Function) -> ir::Type {
     unwrap!(fun.space().ir_instance().device().lower_type(t, fun.space()))
 }
 
+/// Returns the string representing a binary operator.
+fn binary_op(op: ir::BinOp) -> &'static str {
+    match op {
+        ir::BinOp::Add => "add",
+        ir::BinOp::Sub => "sub",
+        ir::BinOp::Div => "div",
+    }
+}
+
 /// Prints an instruction.
 fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
     match *inst.operator() {
-        op::Add(ref lhs, ref rhs, round) => {
-            let operator = format!("add{}", rounding(round));
-            assemble(&operator, None, inst.t(), &[Inst(inst), Op(lhs), Op(rhs)], namer)
-        },
-        op::Sub(ref lhs, ref rhs, round) => {
-            let operator = format!("sub{}", rounding(round));
+        op::BinOp(op, ref lhs, ref rhs, round) => {
+            let operator = format!("{}{}", binary_op(op), rounding(round));
             assemble(&operator, None, inst.t(), &[Inst(inst), Op(lhs), Op(rhs)], namer)
         },
         op::Mul(ref lhs, ref rhs, rounding, return_type) => {
@@ -166,10 +171,6 @@ fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
             };
             let args = &[Inst(inst), Op(mul_lhs), Op(mul_rhs), Op(add_rhs)];
             assemble(&operator, None, lower_type(mul_lhs.t(), fun), args, namer)
-        },
-        op::Div(ref lhs, ref rhs, round) => {
-            let operator = format!("div{}", rounding(round));
-            assemble(&operator, None, inst.t(), &[Inst(inst), Op(lhs), Op(rhs)], namer)
         },
         op::Mov(ref op) =>
             assemble("mov", None, inst.t(), &[Inst(inst), Op(op)], namer),
