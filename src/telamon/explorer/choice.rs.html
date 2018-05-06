@@ -116,11 +116,6 @@
 <span id="116">116</span>
 <span id="117">117</span>
 <span id="118">118</span>
-<span id="119">119</span>
-<span id="120">120</span>
-<span id="121">121</span>
-<span id="122">122</span>
-<span id="123">123</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Choices that can be applied to split the search space.</span>
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">BasicBlock</span>};
@@ -151,13 +146,18 @@
     }).<span class="ident">chain</span>(<span class="ident">fun</span>.<span class="ident">dims</span>().<span class="ident">flat_map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">dim</span><span class="op">|</span> {
         <span class="kw">let</span> <span class="ident">kinds</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_dim_kind</span>(<span class="ident">dim</span>.<span class="ident">id</span>());
         <span class="ident">gen_choice</span>(<span class="ident">kinds</span>.<span class="ident">list</span>(), <span class="kw-2">&amp;</span><span class="op">|</span><span class="ident">k</span><span class="op">|</span> <span class="ident">Action</span>::<span class="ident">DimKind</span>(<span class="ident">dim</span>.<span class="ident">id</span>(), <span class="ident">k</span>))
+    })).<span class="ident">chain</span>(<span class="ident">fun</span>.<span class="ident">dims</span>().<span class="ident">enumerate</span>().<span class="ident">flat_map</span>(<span class="kw">move</span> <span class="op">|</span>(<span class="ident">i</span>, <span class="ident">lhs</span>)<span class="op">|</span> {
+        <span class="ident">fun</span>.<span class="ident">dims</span>().<span class="ident">take</span>(<span class="ident">i</span>).<span class="ident">flat_map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">rhs</span><span class="op">|</span> {
+            <span class="kw">let</span> <span class="ident">mappings</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_thread_mapping</span>(<span class="ident">lhs</span>.<span class="ident">id</span>(), <span class="ident">rhs</span>.<span class="ident">id</span>());
+            <span class="ident">gen_choice</span>(<span class="ident">mappings</span>.<span class="ident">list</span>(), <span class="kw-2">&amp;</span><span class="op">|</span><span class="ident">m</span><span class="op">|</span> <span class="ident">Action</span>::<span class="ident">ThreadMapping</span>(<span class="ident">lhs</span>.<span class="ident">id</span>(), <span class="ident">rhs</span>.<span class="ident">id</span>(), <span class="ident">m</span>))
+        })
     })).<span class="ident">chain</span>(<span class="ident">fun</span>.<span class="ident">internal_mem_blocks</span>().<span class="ident">flat_map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">block</span><span class="op">|</span> {
         <span class="kw">let</span> <span class="ident">mem_spaces</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_mem_space</span>(<span class="ident">block</span>.<span class="ident">mem_id</span>());
         <span class="ident">gen_choice</span>(<span class="ident">mem_spaces</span>.<span class="ident">list</span>(), <span class="kw-2">&amp;</span><span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">Action</span>::<span class="ident">MemSpace</span>(<span class="ident">block</span>.<span class="ident">mem_id</span>(), <span class="ident">s</span>))
     })).<span class="ident">chain</span>(<span class="ident">fun</span>.<span class="ident">dims</span>().<span class="ident">enumerate</span>().<span class="ident">flat_map</span>(<span class="kw">move</span> <span class="op">|</span>(<span class="ident">i</span>, <span class="ident">lhs</span>)<span class="op">|</span> {
         <span class="comment">// TODO(search_space): avoid picking ordering decisions that have little impact.</span>
         <span class="comment">// For this, we should avoid dimension-instruction and dimension-vector dim</span>
-        <span class="comment">// orderings. The problem is that we do not know wich choice to pick in the end. </span>
+        <span class="comment">// orderings. The problem is that we do not know wich choice to pick in the end.</span>
         <span class="kw">let</span> <span class="ident">lhs</span> <span class="op">=</span> <span class="ident">lhs</span>.<span class="ident">bb_id</span>();
         <span class="kw">let</span> <span class="ident">dims</span> <span class="op">=</span> <span class="ident">fun</span>.<span class="ident">dims</span>().<span class="ident">take</span>(<span class="ident">i</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">bb_id</span>());
         <span class="ident">dims</span>.<span class="ident">chain</span>(<span class="ident">fun</span>.<span class="ident">insts</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">bb_id</span>())).<span class="ident">flat_map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">rhs</span><span class="op">|</span> {
@@ -170,16 +170,6 @@
     }))
 }
 
-<span class="comment">/*
-/// Indicates if two dimensions are worth ordering.
-fn should_order_dims(space: &amp;SearchSpace, lhs: ir::dim::Id, rhs: ir::dim::Id) -&gt; bool {
-    // TODO(search_space): currently ignored ordering decisions may actually
-    // have an impact. We should use a differential model to detect when.
-    let lhs_kind = space.domain().get_dim_kind(lhs);
-    let rhs_kind = space.domain().get_dim_kind(rhs);
-    !(lhs_kind.intersects(DimKind::VECTOR) || rhs_kind.intersects(DimKind::VECTOR))
-}*/</span>
-
 <span class="doccomment">/// Generates a choice from a list of possible values.</span>
 <span class="kw">fn</span> <span class="ident">gen_choice</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">IT</span><span class="op">&gt;</span>(<span class="ident">values</span>: <span class="ident">IT</span>, <span class="ident">action_gen</span>: <span class="kw-2">&amp;</span><span class="ident">Fn</span>(<span class="ident">T</span>) <span class="op">-&gt;</span> <span class="ident">Action</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Choice</span><span class="op">&gt;</span>
         <span class="kw">where</span> <span class="ident">IT</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span><span class="op">=</span><span class="ident">T</span><span class="op">&gt;</span> {
@@ -189,13 +179,13 @@ fn should_order_dims(space: &amp;SearchSpace, lhs: ir::dim::Id, rhs: ir::dim::Id
 
 <span class="doccomment">/// Chooses an order between instructions and dimensions when multiple are possible.</span>
 <span class="doccomment">/// The function assumes the order between dimensions is already fixed.</span>
+<span class="comment">// TODO(search_space): fix order has currently no effect. Should we remove it ?</span>
+<span class="comment">// It is unused because inst-dim and dim-dim decisions are fixed by the explorer. We</span>
+<span class="comment">// cannot make them free as we might end-up in a dead-end.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">fix_order</span>(<span class="kw-2">mut</span> <span class="ident">space</span>: <span class="ident">SearchSpace</span>) <span class="op">-&gt;</span> <span class="ident">SearchSpace</span> {
-    <span class="comment">// FIXME: unused for the moment, need to replace it</span>
     <span class="comment">// TODO(search_space): make fix_order useless with a differential model</span>
     <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;adding arbitrary constraints to the order&quot;</span>);
     <span class="comment">// Fix the order between instructions and dimensions.</span>
-    <span class="comment">// TODO(search_space): put the nesting back into the search space, as it might not</span>
-    <span class="comment">// be avoided by fix_order due to dependencies between orders.</span>
     <span class="kw">let</span> <span class="ident">pairs</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">blocks</span>()
         .<span class="ident">cartesian_product</span>(<span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">dims</span>())
         .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>)<span class="op">|</span> (<span class="ident">lhs</span>.<span class="ident">bb_id</span>(), <span class="ident">rhs</span>.<span class="ident">bb_id</span>()))
@@ -246,4 +236,4 @@ fn should_order_dims(space: &amp;SearchSpace, lhs: ir::dim::Id, rhs: ir::dim::Id
     <span class="ident">actions</span>
 }
 </pre>
-</section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g. <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g. <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g. <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../../";window.currentCrate = "telamon";</script><script src="../../../main.js"></script><script defer src="../../../search-index.js"></script><script defer src="../../../aliases.js"></script></body></html>
+</section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g. <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g. <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g. <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../../";window.currentCrate = "telamon";</script><script src="../../../aliases.js"></script><script src="../../../main.js"></script><script defer src="../../../search-index.js"></script></body></html>
