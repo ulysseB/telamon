@@ -465,7 +465,7 @@ pub fn syncthread(gpu: &Gpu, executor: &Executor) -> InstDesc {
 /// Computes the overhead of a loop iteration.
 pub fn loop_iter_overhead(gpu: &Gpu, executor: &Executor) -> InstDesc {
     const M: u32 = 1024;
-    let n_range = (10..1000).step_by(10).collect_vec();
+    let n_range = (1..100).map(|i| i*10).collect_vec();
     // Setup the table.
     info!("Loop iteration overhead");
     let perf_counters = [
@@ -501,7 +501,7 @@ pub fn loop_iter_overhead(gpu: &Gpu, executor: &Executor) -> InstDesc {
 
 /// Computes the latency overhead at the end of a loop iteration.
 pub fn loop_iter_end_latency(gpu: &Gpu, executor: &Executor, add_latency: f64) -> f64 {
-    let n_range = (100_000..150_000).step_by(100).collect_vec();
+    let n_range = (1000..1500).map(|i| i*100).collect_vec();
     // Setup the table.
     info!("Loop iteration end latency");
     let perf_counters = [
