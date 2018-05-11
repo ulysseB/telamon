@@ -5,6 +5,7 @@ cache: cargo
 sudo: required
 rust:
   - nightly
+  - stable
 addons:
   apt:
     packages:
@@ -25,8 +26,16 @@ before_script:
   - flex --version
 
 script:
-  - cargo test --no-run --all
-  - cargo doc --no-deps --all
+  - |
+    if [ $TRAVIS_RUST_VERSION == "nightly" ];
+      then
+        cargo test --no-run --all
+        cargo doc --no-deps --all
+      else
+        cargo test --all
+        cargo doc --all
+    fi
+     
 
 after_success:
   # Kcov's Building § https://github.com/SimonKagstrom/kcov/blob/master/INSTALL.md#building
@@ -37,7 +46,6 @@ after_success:
   - make
   - make install DESTDIR=../..
   - cd -
-
 
   - |
     for file in target/debug/telamon*[^\.d];
@@ -51,10 +59,14 @@ after_success:
   - mv target/cov target/doc
 
   # Criterion's run Quickstart § https://github.com/japaric/criterion.rs#quickstart
-  - cd telamon-gen
-  - cargo bench
-  - cd -
-  - mv telamon-gen/target/criterion target/doc
+  - |
+    if [ $TRAVIS_RUST_VERSION == "nightly" ];
+      then
+        cd telamon-gen
+        cargo bench
+        cd -
+        mv telamon-gen/target/criterion target/doc
+    fi
 
 deploy:
   - provider: pages
@@ -63,6 +75,8 @@ deploy:
     skip-cleanup: true
     keep-history: false
     github-token: "$GITHUB_TOKEN"
+    on:
+      condition: $TRAVIS_RUST_VERSION = nightly
 
 env:
   global:
