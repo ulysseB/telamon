@@ -48,32 +48,32 @@ fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
             //format!("{} {} + {};", assignement, namer.indexed_op_name(lhs), namer.indexed_op_name(rhs))
         },
         op::Sub(ref lhs, ref rhs, _) => {
-            //let assignement = format!("{} = ",namer.gen_name(inst.operator().t()));
+
             let assignement = format!("{} = ",namer.name_inst(inst));
             format!("{} {} - {};", assignement, namer.name_op(lhs), namer.name_op(rhs))
         },
         op::Mul(ref lhs, ref rhs, _, return_type) => {
-            //let assignement = format!("{} = ",namer.gen_name(inst.operator().t()));
+
             let assignement = format!("{} = ",namer.name_inst(inst));
             format!("{} {} * {};", assignement, namer.name_op(lhs), namer.name_op(rhs))
         },
         op::Mad(ref mul_lhs, ref mul_rhs, ref add_rhs, _ing) => {
-            //let assignement = format!("{} = ",namer.gen_name(inst.operator().t()));
+
             let assignement = format!("{} = ",namer.name_inst(inst));
             format!("{} {} * {} + {};", assignement, namer.name_op(mul_lhs), namer.name_op(mul_rhs), namer.name_op(add_rhs))
         },
         op::Div(ref lhs, ref rhs, _) => {
-            //let assignement = format!("{} = ",namer.gen_name(inst.operator().t()));
+
             let assignement = format!("{} = ",namer.name_inst(inst));
             format!("{} {} / {};", assignement, namer.name_op(lhs), namer.name_op(rhs))
         },
         op::Mov(ref op) => {
-            //let assignement = format!("{} = ",namer.gen_name(inst.operator().t()));
+
             let assignement = format!("{} = ",namer.name_inst(inst));
             format!("{} {};", assignement, namer.name_op(op).to_string())
         },
         op::Ld(ld_type, ref addr, _) => {
-            //let assignement = format!("{} = ",namer.gen_name(inst.operator().t()));
+
             let assignement = format!("{} = ",namer.name_inst(inst));
             //format!("{} *(uint8_t *){};", assignement, namer.name_op(addr))
             format!("{} *({} *){};", assignement, cpu_type(&ld_type), namer.name_op(addr))
@@ -87,7 +87,6 @@ fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
                     namer.name_op(val).to_string())
         },
         op::Cast(ref op, t) => {
-            //let assignement = format!("{} = ",namer.gen_name(inst.operator().t()));
             let assignement = format!("{} = ",namer.name_inst(inst));
             format!("{} ({}) {};", assignement, cpu_type(&t), namer.name_op(op))
         },
