@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["IntervalHeap","A double-ended priority queue implemented with an interval heap."],["IntoIter","A consuming iterator over an `IntervalHeap` in arbitrary order."],["Iter","An iterator over an `IntervalHeap` in arbitrary order."]]});

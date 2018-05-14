@@ -1,1 +1,0 @@
-initSidebarItems({"fn":[["fstat",""],["fstatat",""],["lstat",""],["major",""],["makedev",""],["minor",""],["mknod",""],["stat",""],["umask",""]],"struct":[["FileStat",""],["Mode",""],["SFlag",""]],"type":[["dev_t",""]]});

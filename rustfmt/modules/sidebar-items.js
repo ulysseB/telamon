@@ -1,1 +1,0 @@
-initSidebarItems({"fn":[["list_files","List all the files containing modules of a crate. If a file is used twice in a crate, it appears only once."]]});

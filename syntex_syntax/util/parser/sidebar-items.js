@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["AssocOp","Associative operator with precedence."],["Fixity",""]]});

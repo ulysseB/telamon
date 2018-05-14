@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["IterArc",""],["RedBlackTreeMap","A persistent map with structural sharing.  This implementation uses a red-black tree."]],"type":[["Iter",""],["IterKeys",""],["IterValues",""]]});

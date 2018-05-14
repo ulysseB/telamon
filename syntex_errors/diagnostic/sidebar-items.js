@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["StringPart",""]],"struct":[["Diagnostic",""],["DiagnosticStyledString",""],["SubDiagnostic","For example a note attached to an error."]]});

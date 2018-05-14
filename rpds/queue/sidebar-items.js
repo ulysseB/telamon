@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["LazilyReversedListIter",""]],"struct":[["Queue","A persistent queue with structural sharing."]],"type":[["Iter",""]]});

@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["KleeneOp","A Kleene-style repetition operator for token sequences."],["TokenTree","Similar to `tokenstream::TokenTree`, except that `$i`, `$i:ident`, and `$(...)` are \"first-class\" token trees."]],"fn":[["parse",""]],"struct":[["Delimited",""],["SequenceRepetition",""]]});

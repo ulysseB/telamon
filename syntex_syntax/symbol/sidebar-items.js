@@ -1,1 +1,0 @@
-initSidebarItems({"mod":[["keywords",""]],"struct":[["Ident",""],["InternedString","Represents a string stored in the thread-local interner. Because the interner lives for the life of the thread, this can be safely treated as an immortal string, as long as it never crosses between threads."],["Interner",""],["Symbol","A symbol is an interned or gensymed string."]]});

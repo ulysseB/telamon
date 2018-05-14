@@ -1,1 +1,0 @@
-initSidebarItems({"macro":[["quote","The whole point."],["quote_spanned","Same as `quote!`, but applies a given span to all tokens originating within the macro invocation."]],"struct":[["Tokens","Tokens produced by a [`quote!`] invocation."]],"trait":[["ToTokens","Types that can be interpolated inside a [`quote!`] invocation."]]});

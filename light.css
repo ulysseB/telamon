@@ -356,13 +356,12 @@ kbd {
 	box-shadow-color: #c6cbd1;
 }
 
-#theme-picker, #settings-menu {
+#theme-picker {
 	border-color: #e0e0e0;
 	background-color: #fff;
 }
 
-#theme-picker:hover, #theme-picker:focus,
-#settings-menu:hover, #settings-menu:focus {
+#theme-picker:hover, #theme-picker:focus {
 	border-color: #717171;
 }
 
@@ -383,11 +382,4 @@ kbd {
 	#theme-picker {
 		background: #fff;
 	}
-}
-
-#all-types {
-	background-color: #fff;
-}
-#all-types:hover {
-	background-color: #f9f9f9;
 }

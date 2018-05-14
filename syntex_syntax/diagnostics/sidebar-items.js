@@ -1,1 +1,0 @@
-initSidebarItems({"mod":[["macros",""],["metadata","This module contains utilities for outputting metadata for diagnostic errors."],["plugin",""]]});

@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["ErrorKind","The kind of error that can be produced during a serialization or deserialization."]],"mod":[["ipc",""],["platform",""],["router",""]],"type":[["Error","An error that can be produced during (de)serializing."]]});

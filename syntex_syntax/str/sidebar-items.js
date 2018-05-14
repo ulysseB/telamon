@@ -1,1 +1,0 @@
-initSidebarItems({"fn":[["char_at",""]]});
