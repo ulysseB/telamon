@@ -225,9 +225,6 @@ require forall $lhs in Dimensions:
     // Merge constraitns
     "$lhs.size() == $rhs.size()" || order($lhs, $rhs) is not MERGED
     dim_kind($lhs) == dim_kind($rhs) || order($lhs, $rhs) is not MERGED
-    // Threads mapped to the same slot must have the same size
-    dim_kind($lhs) is not THREAD || dim_kind($lhs) != dim_kind($rhs)
-      || "$lhs.size() == $rhs.size()"
 
 /// Specifies the valid mappings between two dimensions.
 define enum dim_mapping($lhs in Dimensions, $rhs in Dimensions):

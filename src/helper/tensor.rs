@@ -130,3 +130,10 @@ impl std::ops::Index<usize> for VirtualTensor {
 
     fn index(&self, idx: usize) -> &Self::Output { &self.dims[idx] }
 }
+
+impl<'a> IntoIterator for &'a VirtualTensor {
+    type Item = &'a DimGroup;
+    type IntoIter = std::slice::Iter<'a, DimGroup>;
+
+    fn into_iter(self) -> Self::IntoIter { self.dims.iter() }
+}
