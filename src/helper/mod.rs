@@ -25,7 +25,7 @@ impl MetaDimension for ir::dim::Id {
 }
 
 /// A groups of dimensions that act as a single logical dimension.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct DimGroup { dims: Vec<ir::dim::Id> }
 
 impl DimGroup {
