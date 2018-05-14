@@ -2802,6 +2802,7 @@
 <span id="2745">2745</span>
 <span id="2746">2746</span>
 <span id="2747">2747</span>
+<span id="2748">2748</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>;
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
@@ -5020,6 +5021,7 @@
     <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainStore</span>,
     <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">Function</span>,
 ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
+    <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;called init_domain from file {}&quot;</span>, <span class="macro">file</span><span class="macro">!</span>());
     <span class="comment">// Run all the filters once.</span>
     <span class="kw">let</span> <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">diff</span> <span class="op">=</span> <span class="ident">DomainDiff</span>::<span class="ident">default</span>(); <span class="comment">// Pass an empty diff to propagate and triggers.</span>
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">unused_diff</span> <span class="op">=</span> <span class="ident">DomainDiff</span>::<span class="ident">default</span>();
