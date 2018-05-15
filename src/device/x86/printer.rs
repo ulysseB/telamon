@@ -102,13 +102,44 @@ fn cfg<'a>(fun: &Function, c: &Cfg<'a>, namer: &mut NameMap) -> String {
         Cfg::Barrier => String::new(),
         Cfg::Instruction(ref i) => inst(i, namer, fun),
         Cfg::ParallelInductionLevel(ref level) =>
-            String::new(),
+            parallel_induction_level(level, namer),
+            //String::new(),
     }
 }
 
 /// Prints a vector of cfgs.
 fn cfg_vec(fun: &Function, cfgs: &[Cfg], namer: &mut NameMap) -> String {
     cfgs.iter().map(|c| cfg(fun, c, namer)).collect_vec().join("\n  ")
+}
+
+
+/// Prints a multiplicative induction var level.
+fn parallel_induction_level(level: &InductionLevel, namer: &NameMap) -> String {
+    let dim_id = level.increment.map(|(dim, _)| dim);
+    let ind_var = namer.name_induction_var(level.ind_var, dim_id);
+    let base_components =  level.base.components().map(|v| namer.name(v)).collect_vec();
+    if let Some((dim, increment)) = level.increment {
+        let index = namer.name_index(dim);
+        let step = namer.name_size(increment, Type::I(32));
+        match base_components[..] {
+            //[] => format!("mul.{}.s32 {}, {}, {};", mode, ind_var, index, step),
+            [] => format!("{} = {} * {};//Induction initialized", ind_var, index, step),
+            [ref base] =>
+                //format!("mad.{}.s32 {}, {}, {}, {};", mode, ind_var, index, step, base),
+                format!(" {} = {} * {} + {};//Induction initialized", ind_var, index, step, base),
+            _ => panic!()
+        }
+    } else {
+        match base_components[..] {
+            //[] => format!("mov.{} {}, 0;", t, ind_var),
+            [] => format!("{} = 0;//Induction initialized",  ind_var),
+            //[ref base] => format!("mov.{} {}, {};", t, ind_var, base),
+            [ref base] => format!(" {} = {};//Induction initialized", ind_var, base),
+            //[ref lhs, ref rhs] => format!("add.{} {}, {}, {};", t, ind_var, lhs, rhs),
+            [ref lhs, ref rhs] => format!("{} = {} + {};//Induction initialized", ind_var, lhs, rhs),
+            _ => panic!()
+        }
+    }
 }
 
 
@@ -142,7 +173,7 @@ fn standard_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut Name
         let ind_var = namer.name_induction_var(level.ind_var, dim_id);
         let base_components = level.base.components().map(|v| namer.name(v));
         let init = match base_components.collect_vec()[..] {
-            [ref base] => format!("{} = {};\n  ", ind_var, base),
+            [ref base] => format!("{} = {};//Induction variable\n  ", ind_var, base),
             [ref lhs, ref rhs] =>
                 format!(" {} = {} + {};\n  ", ind_var, lhs, rhs),
             _ => panic!(),
@@ -177,26 +208,71 @@ fn cpu_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap)
     }
 }
 
+/// Declares block and thread indexes.
+fn decl_par_indexes(function: &Function, namer: &mut NameMap) -> String {
+    assert!(function.block_dims().is_empty());
+    let mut decls = vec![];
+    // Compute thread indexes.
+    for (dim, dir) in function.thread_dims().iter().rev().zip(&["x", "y", "z"]) {
+        //FIXME: fetch proper thread index
+        decls.push(format!("{} = 442;", namer.name_index(dim.id())));
+    }
+    decls.join("\n  ")
+}
+
+
+fn privatise_global_block(block: &InternalMemBlock, namer: &mut NameMap, fun: &Function
+                          ) -> String {
+    if fun.block_dims().is_empty() { return "".to_string(); }
+    let addr = namer.name_addr(block.id());
+    let size = namer.name_size(block.local_size(), Type::I(32));
+    let d0 = namer.name_index(fun.block_dims()[0].id()).to_string();
+    let (var, mut insts) = fun.block_dims()[1..].iter()
+        .fold((d0, vec![]), |(old_var, mut insts), dim| {
+            let var = namer.gen_name(Type::I(32));
+            let size = namer.name_size(dim.size(), Type::I(32));
+            let idx = namer.name_index(dim.id());
+            //insts.push(format!("mad.lo.s32 {}, {}, {}, {};",
+            insts.push(format!("{} = {} * {} + {};",
+                               var, old_var, size, idx));
+            (var, insts)
+        });
+    //insts.push(format!("mad{}.s32 {}, {}, {}, {};",
+    insts.push(format!("{} = {} * {} + {};",
+                       addr, var, size, addr));
+    insts.join("\n  ")
+}
 
 /// Prints a `Function`.
 pub fn function(function: &Function) -> String {
     let mut namer = Namer::default();
-    let (param_decls, body, ld_params);
+    let (param_decls, body, ld_params, idx_loads, mem_decls);
     {
         let name_map = &mut NameMap::new(function, &mut namer);
         param_decls = function.device_code_args()
             .map(|v| param_decl(v, name_map))
             .collect_vec().join(",\n  ");
         body = cfg(function, function.cfg(), name_map);
+        idx_loads = decl_par_indexes(function, name_map);
         ld_params = function.device_code_args().map(|val| {
             format!("{var_name} = {name};",
                     var_name = name_map.name_param_val(val.key()),
                     name = name_map.name_param(val.key()))
         }).collect_vec().join("\n  ");
+        mem_decls = function.mem_blocks().flat_map(|block| {
+            match block.alloc_scheme() {
+                AllocationScheme::Shared =>
+                    panic!("No shared mem in cpu!!"),
+                AllocationScheme::PrivatisedGlobal =>
+                    Some(privatise_global_block(block, name_map, function)),
+                AllocationScheme::Global => None,
+            }
+        }).format("\n  ").to_string();
     }
     let var_decls = var_decls(&namer);
     format!(include_str!("template/device.c.template"),
             name = function.name,
+            idx_loads = idx_loads,
             ld_params = ld_params,
             params = param_decls,
             var_decls = var_decls,

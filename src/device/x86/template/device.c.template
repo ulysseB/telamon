@@ -3,6 +3,7 @@ void {name}(
 )
 {{
   {var_decls}
+  {idx_loads}
   {ld_params}
   {body}
 }}

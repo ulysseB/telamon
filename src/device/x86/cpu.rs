@@ -249,13 +249,14 @@ impl device::Device for Cpu {
     }
 
     // TODO(search_space) block dimensions do not make sense on cpu
-    fn max_block_dims(&self) -> u32 { 1 }
+    fn max_block_dims(&self) -> u32 { 0 }
 
     fn max_threads(&self) -> u32 { 24 }
 
     fn max_unrolling(&self) -> u32 { 512 }
 
-    fn shared_mem(&self) -> u32 { 2u32.pow(25) }
+    //fn shared_mem(&self) -> u32 { 2u32.pow(25) }
+    fn shared_mem(&self) -> u32 {0}
 
     fn supports_nc_access(&self) -> bool {false}
 
