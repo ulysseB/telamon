@@ -149,6 +149,12 @@ fn function_evaluate(fun_str: String, fun_name: String) -> Result<f64, ()> {
     Ok(time)
 }
 
+enum ThunkArg { 
+    ArgRef(Arc<Argument>),
+    TmpArray(u32),
+    Size(i32),
+}
+
 fn dummy_evaluate() -> Result<f64, ()> {
     // Does not look like a very reliable way to do this...
     // Directory from which we launched the binary, assuming it's telamon for now
