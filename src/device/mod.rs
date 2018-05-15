@@ -6,8 +6,7 @@ pub mod mppa;
 #[cfg(feature="cpu")]
 pub mod x86;
 
-// TODO : make this private again
-pub mod argument;
+mod argument;
 mod context;
 
 pub use self::argument::{ScalarArgument, ArrayArgument, read_array, write_array};

@@ -253,7 +253,7 @@ impl device::Device for Cpu {
 
     fn max_threads(&self) -> u32 { 24 }
 
-    fn max_unrolling(&self) -> u32 { 512 }
+    fn max_unrolling(&self) -> u32 { 1 }
 
     //fn shared_mem(&self) -> u32 { 2u32.pow(25) }
     fn shared_mem(&self) -> u32 {0}

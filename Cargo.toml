@@ -86,6 +86,8 @@ default = []
 format_exh = []
 mppa = []
 lex = []
+cpu = []
+
 
 [workspace]
 members = [

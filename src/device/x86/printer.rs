@@ -1,7 +1,7 @@
 use codegen;
 use codegen::*;
 use device::x86::{Cpu, Namer};
-use ir::{self, dim, op, Operand, Size, Type};
+use ir::{self, dim, op, Operand, Size, Type, Rounding};
 use itertools::Itertools;
 use search_space::{DimKind, Domain, InstFlag};
 use std::fs::File;
@@ -42,28 +42,28 @@ fn param_decl(param: &ParamVal, namer: &NameMap) -> String {
 fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
     //let assignement = format!("{} =", namer.name_inst(inst).to_string());
     match *inst.operator() {
-        op::Add(ref lhs, ref rhs, _) => {
+        op::Add(ref lhs, ref rhs, round) => {
+            assert_eq!(round, Rounding::Nearest);
             let assignement = format!("{} = ",namer.name_inst(inst));
             format!("{} {} + {};", assignement, namer.name_op(lhs), namer.name_op(rhs))
-            //format!("{} {} + {};", assignement, namer.indexed_op_name(lhs), namer.indexed_op_name(rhs))
         },
-        op::Sub(ref lhs, ref rhs, _) => {
-
+        op::Sub(ref lhs, ref rhs, round) => {
+            assert_eq!(round, Rounding::Nearest);
             let assignement = format!("{} = ",namer.name_inst(inst));
             format!("{} {} - {};", assignement, namer.name_op(lhs), namer.name_op(rhs))
         },
-        op::Mul(ref lhs, ref rhs, _, return_type) => {
-
+        op::Mul(ref lhs, ref rhs, round, return_type) => {
+            assert_eq!(round, Rounding::Nearest);
             let assignement = format!("{} = ",namer.name_inst(inst));
             format!("{} {} * {};", assignement, namer.name_op(lhs), namer.name_op(rhs))
         },
-        op::Mad(ref mul_lhs, ref mul_rhs, ref add_rhs, _ing) => {
-
+        op::Mad(ref mul_lhs, ref mul_rhs, ref add_rhs, round) => {
+            assert_eq!(round, Rounding::Nearest);
             let assignement = format!("{} = ",namer.name_inst(inst));
             format!("{} {} * {} + {};", assignement, namer.name_op(mul_lhs), namer.name_op(mul_rhs), namer.name_op(add_rhs))
         },
-        op::Div(ref lhs, ref rhs, _) => {
-
+        op::Div(ref lhs, ref rhs, round) => {
+            assert_eq!(round, Rounding::Nearest);
             let assignement = format!("{} = ",namer.name_inst(inst));
             format!("{} {} / {};", assignement, namer.name_op(lhs), namer.name_op(rhs))
         },
@@ -75,12 +75,10 @@ fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
         op::Ld(ld_type, ref addr, _) => {
 
             let assignement = format!("{} = ",namer.name_inst(inst));
-            //format!("{} *(uint8_t *){};", assignement, namer.name_op(addr))
             format!("{} *({} *){};", assignement, cpu_type(&ld_type), namer.name_op(addr))
         },
         op::St(ref addr, ref val, _,  _) => {
             let op_type = val.t();
-            //format!("*(uint8_t *){} = (uint8_t *)&{};", 
             format!("*({} *){} = {};", 
                     cpu_type(&op_type),
                     namer.name_op(addr),
@@ -99,11 +97,11 @@ fn cfg<'a>(fun: &Function, c: &Cfg<'a>, namer: &mut NameMap) -> String {
     match *c {
         Cfg::Root(ref cfgs) => cfg_vec(fun, cfgs, namer),
         Cfg::Loop(ref dim, ref cfgs) => cpu_loop(fun, dim, cfgs, namer),
+        // FIXME: handle this
         Cfg::Barrier => String::new(),
         Cfg::Instruction(ref i) => inst(i, namer, fun),
         Cfg::ParallelInductionLevel(ref level) =>
             parallel_induction_level(level, namer),
-            //String::new(),
     }
 }
 
@@ -247,6 +245,7 @@ fn privatise_global_block(block: &InternalMemBlock, namer: &mut NameMap, fun: &F
 pub fn function(function: &Function) -> String {
     let mut namer = Namer::default();
     let (param_decls, body, ld_params, idx_loads, mem_decls);
+    let mut init = Vec::new();
     {
         let name_map = &mut NameMap::new(function, &mut namer);
         param_decls = function.device_code_args()
@@ -268,6 +267,20 @@ pub fn function(function: &Function) -> String {
                 AllocationScheme::Global => None,
             }
         }).format("\n  ").to_string();
+        // Compute size casts
+        for dim in function.dimensions() {
+            if !dim.kind().intersects(DimKind::UNROLL | DimKind::LOOP) { continue; }
+            for level in dim.induction_levels() {
+                if let Some((_, incr)) = level.increment {
+                    let name = name_map.declare_size_cast(incr, level.t());
+                    if let Some(name) = name {
+                        let cpu_t = cpu_type(&level.t());
+                        let old_name = name_map.name_size(incr, Type::I(32));
+                        init.push(format!("{} = ({}){};", name, cpu_t, old_name));
+                    }
+                }
+            }
+        }
     }
     let var_decls = var_decls(&namer);
     format!(include_str!("template/device.c.template"),
@@ -284,11 +297,13 @@ fn fun_params_cast(function: &Function) -> String {
     function.device_code_args()
         .enumerate()
         .map(|(i, v)| match v {
+            ParamVal::External(_, par_type) if v.is_pointer() => format!("intptr_t p{i} = (intptr_t)*(args + {i})", 
+                                                        i = i),
             ParamVal::External(_, par_type) => format!("{t} p{i} = *({t}*)*(args + {i})", 
                                                        t = cpu_type(par_type), i = i),
             ParamVal::Size(size) => format!("uint32_t p{i} = *(uint32_t*)*(args + {i})", i = i),
             // Are we sure we know the size at compile time ? I think we do
-            ParamVal::GlobalMem(_, size, par_type) => format!("{t} p{i} = *({t}*)*(args + {i})", 
+            ParamVal::GlobalMem(_, size, par_type) => format!("{t} p{i} = ({t})*(args + {i})", 
                                                               t = cpu_type(par_type), i = i)
         }
         )

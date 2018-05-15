@@ -51,27 +51,21 @@ impl Context {
     }
 
     fn gen_args(&self, func: &device::Function) -> Vec<ThunkArg> {
-        func.device_code_args()
-            .map(|pval| match pval 
-                 {
-                ParamVal::External(par, size) => ThunkArg::ArgRef(Arc::clone(&self.parameters[&par.name])),
-                ParamVal::GlobalMem(_, size, _) => ThunkArg::TmpArray((self as &device::Context).eval_size(size)),
-                ParamVal::Size(size) => ThunkArg::Size((self as &device::Context).eval_size(size) as i32),
-                 }
-                )
-            .collect_vec()
+        func.device_code_args().map(|pval| match pval {
+            ParamVal::External(par, size) => ThunkArg::ArgRef(Arc::clone(&self.parameters[&par.name])),
+            ParamVal::GlobalMem(_, size, _) => ThunkArg::TmpArray((self as &device::Context).eval_size(size)),
+            ParamVal::Size(size) => ThunkArg::Size((self as &device::Context).eval_size(size) as i32),
+        }).collect_vec()
     }
 
     fn build_params_struct<'a, IT>(&self, code_args: IT) -> Vec<*mut libc::c_void> 
         where IT: Iterator<Item = &'a ThunkArg> 
         {
-        code_args
-            .map( |v| match v {
+        code_args .map( |v| match v {
                 &ThunkArg::ArgRef(ref arg_arc) => arg_arc.raw_ptr(),
                 &ThunkArg::Size(mut size) => (&mut size) as *mut _ as *mut libc::c_void,
                 &ThunkArg::TmpArray(size) => CpuArray::new(size as usize).raw_ptr(),
-            }
-            )
+            })
             .collect_vec()
     }
 }
