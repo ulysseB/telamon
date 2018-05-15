@@ -263,17 +263,27 @@ pub fn smx_bandwidth_l1_lines(gpu: &Gpu, executor: &Executor) -> f64 {
     info!("L1 lines SMX bandwidth");
     let wraps = gpu.max_threads()/gpu.wrap_size;
     let strides = (16..33).collect_vec();
-    infer_smx_bandwidth(gpu, executor, wraps, &strides)
+    infer_smx_bandwidth(gpu, executor, wraps, &strides, true)
 }
 
 /// Measures the number of L2 cache lines an SMX can fetch.
-pub fn smx_bandwidth_l2_lines(gpu: &Gpu, executor: &Executor) -> f64 {
-    info!("L2 lines SMX bandwidth");
+pub fn smx_read_bandwidth_l2_lines(gpu: &Gpu, executor: &Executor) -> f64 {
+    info!("L2 lines SMX read bandwidth");
     let wraps = gpu.max_threads()/gpu.wrap_size;
     let line_len = gpu.l2_cache_line/4;
     let strides = (1..line_len+1).collect_vec();
     let access_per_wrap = f64::from(gpu.wrap_size/line_len);
-    infer_smx_bandwidth(gpu, executor, wraps, &strides)*access_per_wrap
+    infer_smx_bandwidth(gpu, executor, wraps, &strides, true)*access_per_wrap
+}
+
+/// Measures the number of L2 cache lines an SMX can fetch.
+pub fn smx_write_bandwidth_l2_lines(gpu: &Gpu, executor: &Executor) -> f64 {
+    info!("L2 lines SMX write bandwidth");
+    let wraps = gpu.max_threads()/gpu.wrap_size;
+    let line_len = gpu.l2_cache_line/4;
+    let strides = (1..line_len+1).collect_vec();
+    let access_per_wrap = f64::from(gpu.wrap_size/line_len);
+    infer_smx_bandwidth(gpu, executor, wraps, &strides, false)*access_per_wrap
 }
 
 /*/// Measures the number of L1 cache lines a thread can fetch.
@@ -284,16 +294,22 @@ pub fn thread_bandwidth_l1_lines(gpu: &Gpu, executor: &Executor) -> f64 {
     infer_smx_bandwidth(gpu, executor, 1, &strides)
 }*/
 
-pub fn infer_smx_bandwidth(gpu: &Gpu, executor: &Executor, wraps: u32, strides: &[u32])
-    -> f64
-{
+pub fn infer_smx_bandwidth(gpu: &Gpu,
+                           executor: &Executor,
+                           wraps: u32,
+                           strides: &[u32],
+                           bench_reads: bool) -> f64 {
     const N: i32 = 100;
     const CHAINED: u32 = 8;
     const UNROLL: u32 = 16;
     let n_values = [10, N+10];
-    let table = smx_bandwidth(
-        gpu, executor, &[1], &n_values, CHAINED, UNROLL, &[wraps], strides);
     // Table: wraps, stride, blocks, n, inst, cycles, replays
+    let table = if bench_reads {
+        smx_bandwidth(gpu, executor, &[1], &n_values, CHAINED, UNROLL, &[wraps], strides)
+    } else {
+        smx_store_bandwidth(
+            gpu, executor, &[1], &n_values, CHAINED, UNROLL, &[wraps], strides)
+    };
     let cycles = table.column(5)
         .batching(|it| it.next().map(|n10| it.next().unwrap() - n10))
         .map(|cycles| cycles as f64/f64::from(gpu.num_smx)).collect_vec();

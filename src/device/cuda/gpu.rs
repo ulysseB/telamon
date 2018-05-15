@@ -12,6 +12,11 @@ use std::fs::File;
 use std::io::{Read, Write};
 use utils::*;
 
+// FIXME: fix performance model
+// - l1_lines constraint for stores ?
+// - test if global pressure is needed
+// - l1_lines per threads ?
+
 /// Specifies the performance parameters of an instruction.
 #[derive(Default, RustcDecodable, RustcEncodable, Clone, Copy, Debug)]
 pub struct InstDesc {
@@ -27,8 +32,10 @@ pub struct InstDesc {
     pub mem: f64,
     /// The number of L1 cache lines that are fetched from the L2.
     pub l1_lines_from_l2: f64,
-    /// The number of L2 cache lines that are fetched from the L2.
-    pub l2_lines_from_l2: f64,
+    /// The number of L2 cache lines read.
+    pub l2_lines_read: f64,
+    /// Number of l2 cache lines stored.
+    pub l2_lines_stored: f64,
     /// The ram bandwidth used.
     pub ram_bw: f64,
 }
@@ -42,7 +49,8 @@ impl InstDesc {
             sync: ratio,
             mem: ratio,
             l1_lines_from_l2: 1.0,
-            l2_lines_from_l2: 1.0,
+            l2_lines_read: 1.0,
+            l2_lines_stored: 1.0,
             ram_bw: 1.0,
         }
     }
@@ -56,7 +64,8 @@ impl Into<HwPressure> for InstDesc {
             self.sync,
             self.mem,
             self.l1_lines_from_l2,
-            self.l2_lines_from_l2,
+            self.l2_lines_read,
+            self.l2_lines_stored,
             self.ram_bw,
         ];
         HwPressure::new(self.latency, vec)
@@ -177,14 +186,14 @@ impl Gpu {
         let l1_lines_from_l2 = if flags.intersects(InstFlag::MEM_SHARED) {
             0.0
         } else { mem_info.l1_coalescing };
-        let l2_lines_from_l2 = if flags.intersects(InstFlag::MEM_SHARED) {
+        let l2_lines_read = if flags.intersects(InstFlag::MEM_SHARED) {
             0.0
         } else { mem_info.l2_coalescing };
         InstDesc {
             latency: f64::min(gbl_latency, shared_latency),
             issue: mem_info.replay_factor,
             mem: mem_info.replay_factor,
-            l1_lines_from_l2, l2_lines_from_l2,
+            l1_lines_from_l2, l2_lines_read,
             ram_bw: mem_info.l2_miss_ratio * f64::from(self.l2_cache_line),
             .. InstDesc::default()
         }
@@ -195,14 +204,14 @@ impl Gpu {
         // TODO(search_space,model): support CA flags.
         // TODO(model): understand how writes use the BW.
         assert!(InstFlag::MEM_COHERENT.contains(flags));
-        let l2_lines_from_l2 = if flags.intersects(InstFlag::MEM_SHARED) {
+        let l2_lines_stored = if flags.intersects(InstFlag::MEM_SHARED) {
             0.0
         } else { mem_info.l2_coalescing };
         // L1 lines per L2 is not limiting.
         InstDesc {
             issue: mem_info.replay_factor,
             mem: mem_info.replay_factor,
-            l2_lines_from_l2,
+            l2_lines_stored,
             ram_bw: 2.0 * mem_info.l2_miss_ratio * f64::from(self.l2_cache_line),
             .. InstDesc::default()
         }
@@ -385,7 +394,8 @@ impl device::Device for Gpu {
           "syncthread",
           "mem_units",
           "l1_lines_from_l2",
-          "l2_lines_from_l2",
+          "l2_lines_read",
+          "l2_lines_stored",
           "bandwidth"]
     }
 

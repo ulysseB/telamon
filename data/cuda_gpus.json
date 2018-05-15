@@ -27,8 +27,9 @@
       "alu": 4.8629999999999995,
       "sync": 3.242,
       "mem": 0.8105,
-      "l1_lines_from_l2": 0.3266707434457142,
-      "l2_lines_from_l2": 0.8120779631268731,
+      "l1_lines_from_l2": 0.3266707434457143,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 134.784
     },
     "smx_rates": {
@@ -37,8 +38,9 @@
       "alu": 155.61599999999999,
       "sync": 103.744,
       "mem": 25.936,
-      "l1_lines_from_l2": 0.3266707434457142,
-      "l2_lines_from_l2": 0.8120779631268731,
+      "l1_lines_from_l2": 0.3266707434457143,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 134.784
     },
     "gpu_rates": {
@@ -47,8 +49,9 @@
       "alu": 622.4639999999999,
       "sync": 414.976,
       "mem": 103.744,
-      "l1_lines_from_l2": 1.3066829737828567,
-      "l2_lines_from_l2": 3.2483118525074923,
+      "l1_lines_from_l2": 1.306682973782857,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 134.784
     },
     "add_f32_inst": {
@@ -58,7 +61,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 0.0
     },
     "add_f64_inst": {
@@ -68,7 +72,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 0.0
     },
     "add_i32_inst": {
@@ -78,7 +83,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 0.0
     },
     "add_i64_inst": {
@@ -88,7 +94,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 0.0
     },
     "mul_f32_inst": {
@@ -98,7 +105,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 0.0
     },
     "mul_f64_inst": {
@@ -108,7 +116,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 0.0
     },
     "mul_i32_inst": {
@@ -118,7 +127,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 0.0
     },
     "mul_i64_inst": {
@@ -128,7 +138,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 0.0
     },
     "mul_wide_inst": {
@@ -138,7 +149,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 0.0
     },
     "mad_f32_inst": {
@@ -148,7 +160,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 0.0
     },
     "mad_f64_inst": {
@@ -158,7 +171,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 0.0
     },
     "mad_i32_inst": {
@@ -168,7 +182,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 0.0
     },
     "mad_i64_inst": {
@@ -178,7 +193,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 0.0
     },
     "mad_wide_inst": {
@@ -188,7 +204,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 0.0
     },
     "div_f32_inst": {
@@ -198,7 +215,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 0.0
     },
     "div_f64_inst": {
@@ -208,7 +226,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 0.0
     },
     "div_i32_inst": {
@@ -218,7 +237,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 0.0
     },
     "div_i64_inst": {
@@ -228,7 +248,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 0.0
     },
     "syncthread_inst": {
@@ -238,7 +259,8 @@
       "sync": 1.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 0.0
     },
     "loop_init_overhead": {
@@ -248,7 +270,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 0.0
     },
     "loop_iter_overhead": {
@@ -258,7 +281,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": null,
+      "l2_lines_stored": null,
       "ram_bw": 0.0
     },
     "loop_end_latency": 22.0
@@ -278,7 +302,7 @@
     "l1_cache_line": 128,
     "l2_cache_size": 393216,
     "l2_cache_line": 32,
-    "load_l2_latency": 164.0,
+    "load_l2_latency": 167.0,
     "load_ram_latency": 275.0,
     "shared_bank_stride": 8,
     "load_shared_latency": 24.0,
@@ -291,8 +315,9 @@
       "alu": 4.8629999999999995,
       "sync": 3.242,
       "mem": 0.8105,
-      "l1_lines_from_l2": 0.3266707434457142,
-      "l2_lines_from_l2": 0.8120779631268731,
+      "l1_lines_from_l2": 0.32718730035484433,
+      "l2_lines_read": 0.8133942139141441,
+      "l2_lines_stored": 0.8100633049430036,
       "ram_bw": 134.784
     },
     "smx_rates": {
@@ -301,8 +326,9 @@
       "alu": 155.61599999999999,
       "sync": 103.744,
       "mem": 25.936,
-      "l1_lines_from_l2": 0.3266707434457142,
-      "l2_lines_from_l2": 0.8120779631268731,
+      "l1_lines_from_l2": 0.32718730035484433,
+      "l2_lines_read": 0.8133942139141441,
+      "l2_lines_stored": 0.8100633049430036,
       "ram_bw": 134.784
     },
     "gpu_rates": {
@@ -311,8 +337,9 @@
       "alu": 622.4639999999999,
       "sync": 414.976,
       "mem": 103.744,
-      "l1_lines_from_l2": 1.3066829737828567,
-      "l2_lines_from_l2": 3.2483118525074923,
+      "l1_lines_from_l2": 1.3087492014193773,
+      "l2_lines_read": 3.2535768556565765,
+      "l2_lines_stored": 3.2402532197720144,
       "ram_bw": 134.784
     },
     "add_f32_inst": {
@@ -322,7 +349,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": 0.0,
+      "l2_lines_stored": 0.0,
       "ram_bw": 0.0
     },
     "add_f64_inst": {
@@ -332,7 +360,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": 0.0,
+      "l2_lines_stored": 0.0,
       "ram_bw": 0.0
     },
     "add_i32_inst": {
@@ -342,7 +371,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": 0.0,
+      "l2_lines_stored": 0.0,
       "ram_bw": 0.0
     },
     "add_i64_inst": {
@@ -352,7 +382,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": 0.0,
+      "l2_lines_stored": 0.0,
       "ram_bw": 0.0
     },
     "mul_f32_inst": {
@@ -362,7 +393,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": 0.0,
+      "l2_lines_stored": 0.0,
       "ram_bw": 0.0
     },
     "mul_f64_inst": {
@@ -372,7 +404,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": 0.0,
+      "l2_lines_stored": 0.0,
       "ram_bw": 0.0
     },
     "mul_i32_inst": {
@@ -382,7 +415,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": 0.0,
+      "l2_lines_stored": 0.0,
       "ram_bw": 0.0
     },
     "mul_i64_inst": {
@@ -392,7 +426,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": 0.0,
+      "l2_lines_stored": 0.0,
       "ram_bw": 0.0
     },
     "mul_wide_inst": {
@@ -402,7 +437,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": 0.0,
+      "l2_lines_stored": 0.0,
       "ram_bw": 0.0
     },
     "mad_f32_inst": {
@@ -412,7 +448,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": 0.0,
+      "l2_lines_stored": 0.0,
       "ram_bw": 0.0
     },
     "mad_f64_inst": {
@@ -422,7 +459,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": 0.0,
+      "l2_lines_stored": 0.0,
       "ram_bw": 0.0
     },
     "mad_i32_inst": {
@@ -432,7 +470,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": 0.0,
+      "l2_lines_stored": 0.0,
       "ram_bw": 0.0
     },
     "mad_i64_inst": {
@@ -442,7 +481,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": 0.0,
+      "l2_lines_stored": 0.0,
       "ram_bw": 0.0
     },
     "mad_wide_inst": {
@@ -452,7 +492,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": 0.0,
+      "l2_lines_stored": 0.0,
       "ram_bw": 0.0
     },
     "div_f32_inst": {
@@ -462,7 +503,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": 0.0,
+      "l2_lines_stored": 0.0,
       "ram_bw": 0.0
     },
     "div_f64_inst": {
@@ -472,7 +514,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": 0.0,
+      "l2_lines_stored": 0.0,
       "ram_bw": 0.0
     },
     "div_i32_inst": {
@@ -482,7 +525,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": 0.0,
+      "l2_lines_stored": 0.0,
       "ram_bw": 0.0
     },
     "div_i64_inst": {
@@ -492,7 +536,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": 0.0,
+      "l2_lines_stored": 0.0,
       "ram_bw": 0.0
     },
     "syncthread_inst": {
@@ -502,7 +547,8 @@
       "sync": 1.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": 0.0,
+      "l2_lines_stored": 0.0,
       "ram_bw": 0.0
     },
     "loop_init_overhead": {
@@ -512,7 +558,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": 0.0,
+      "l2_lines_stored": 0.0,
       "ram_bw": 0.0
     },
     "loop_iter_overhead": {
@@ -522,7 +569,8 @@
       "sync": 0.0,
       "mem": 0.0,
       "l1_lines_from_l2": 0.0,
-      "l2_lines_from_l2": 0.0,
+      "l2_lines_read": 0.0,
+      "l2_lines_stored": 0.0,
       "ram_bw": 0.0
     },
     "loop_end_latency": 22.0
