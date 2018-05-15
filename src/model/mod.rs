@@ -447,6 +447,88 @@ mod cuda_tests {
     }
 
     #[test]
+    fn partial_bound_3() {
+        let _ = env_logger::try_init();
+        let executor = cuda::Executor::init();
+        let mut context = cuda::Context::new(&executor); 
+
+        let (a, b, c);
+        let signature = {
+            let mut builder = SignatureBuilder::new("test", &mut context);
+
+            builder.scalar("m", 1024i32);
+            builder.scalar("n", 1024i32);
+            builder.scalar("k", 1024i32);
+            let m_size = tensor::DimSize::Param("m");
+            let n_size = tensor::DimSize::Param("n");
+            let k_size = tensor::DimSize::Param("k");
+            a = builder.tensor::<f32>("a", vec![m_size, k_size], true);
+            b = builder.tensor::<f32>("b", vec![k_size, n_size], true);
+            c = builder.tensor::<f32>("c", vec![m_size, n_size], false);
+            builder.get()
+        };
+
+        let full_tiling = vec![64, 4];
+        let small_tiling = vec![64]; 
+        let mut builder = Builder::new(&signature, context.device());
+
+        let ld_a = a.load(&[&full_tiling, &small_tiling], &mut builder);
+        let ld_b = b.load(&[&small_tiling, &full_tiling], &mut builder);
+
+        let init_dim_m = builder.open_mapped_dim(&ld_a[0]);
+        let init_dim_n = builder.open_mapped_dim(&ld_b[1]);
+        let acc_init = builder.mov(&0f32);
+        let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
+        let acc_dim_n = builder.open_mapped_dim(&init_dim_n);
+        let acc_dim_k = builder.open_mapped_dim(&ld_a[1]);
+        let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_k], ir::DimMapScope::Global, &mut builder);
+        let b_op = ld_b.dim_map(&[&acc_dim_k, &acc_dim_n], ir::DimMapScope::Global, &mut builder);
+        let acc = builder.mad(&a_op, &b_op, &Reduce(acc_init));
+        builder.close_dim(&acc_dim_k);
+
+        builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CG));
+        builder.action(Action::InstFlag(ld_b.inst(), InstFlag::MEM_CG));
+
+        builder.action(Action::DimKind(ld_a[0][0], DimKind::BLOCK));
+        builder.action(Action::DimKind(ld_a[0][1], DimKind::THREAD));
+        builder.action(Action::DimKind(ld_a[0][2], DimKind::UNROLL));
+        builder.action(Action::DimKind(ld_a[1][1], DimKind::LOOP));
+
+        builder.action(Action::DimKind(ld_b[0][1], DimKind::LOOP));
+        builder.action(Action::DimKind(ld_b[1][0], DimKind::BLOCK));
+        builder.action(Action::DimKind(ld_b[1][1], DimKind::UNROLL));
+        builder.action(Action::DimKind(ld_b[1][2], DimKind::VECTOR));
+
+        builder.action(Action::DimKind(init_dim_m[1], DimKind::THREAD));
+        builder.action(Action::DimKind(init_dim_m[2], DimKind::THREAD));
+        builder.action(Action::ThreadMapping(ld_a[0][1], init_dim_m[1], ThreadMapping::MAPPED));
+        builder.action(Action::ThreadMapping(
+                init_dim_m[1], init_dim_m[2], ThreadMapping::MAPPED_IN));
+        builder.order(&ld_a[0][0], &ld_b[1][0], Order::OUTER);
+        builder.action(Action::DimKind(init_dim_n[2], DimKind::THREAD));
+
+        let partial_pressure = {
+            let space = builder.get_clone();
+            let local_info = LocalInfo::compute(&space, &context);
+            sum_pressure(context.device(), &space, &local_info,
+                         BottleneckLevel::Global, &[])
+        }.get_bottleneck(4);
+
+        builder.action(Action::ThreadMapping(init_dim_n[2], ld_a[0][1], ThreadMapping::MAPPED_IN));
+
+        let final_pressure = {
+            let space = builder.get();
+            let local_info = LocalInfo::compute(&space, &context);
+            sum_pressure(context.device(), &space, &local_info,
+                         BottleneckLevel::Global, &[])
+        }.get_bottleneck(4);
+ 
+
+        assert!(final_pressure*1.001 >= partial_pressure, "{} < {}",
+                final_pressure, partial_pressure);
+    }
+
+    #[test]
     fn final_bound_0() {
         let _ = env_logger::try_init();
         let executor = cuda::Executor::init();
