@@ -325,6 +325,40 @@ fn decl_par_indexes(function: &Function, namer: &mut NameMap) -> String {
     decls.join("\n  ")
 }
 
+/// Declares block and thread indexes.
+fn decl_par_indexes(function: &Function, namer: &mut NameMap) -> String {
+    assert!(function.block_dims().is_empty());
+    let mut decls = vec![];
+    // Compute thread indexes.
+    for (dim, dir) in function.thread_dims().iter().rev().zip(&["x", "y", "z"]) {
+        //FIXME: fetch proper thread index
+        decls.push(format!("{} = 442;", namer.name_index(dim.id())));
+    }
+    decls.join("\n  ")
+}
+
+
+fn privatise_global_block(block: &InternalMemBlock, namer: &mut NameMap, fun: &Function
+                          ) -> String {
+    if fun.block_dims().is_empty() { return "".to_string(); }
+    let addr = namer.name_addr(block.id());
+    let size = namer.name_size(block.local_size(), Type::I(32));
+    let d0 = namer.name_index(fun.block_dims()[0].id()).to_string();
+    let (var, mut insts) = fun.block_dims()[1..].iter()
+        .fold((d0, vec![]), |(old_var, mut insts), dim| {
+            let var = namer.gen_name(Type::I(32));
+            let size = namer.name_size(dim.size(), Type::I(32));
+            let idx = namer.name_index(dim.id());
+            //insts.push(format!("mad.lo.s32 {}, {}, {}, {};",
+            insts.push(format!("{} = {} * {} + {};",
+                               var, old_var, size, idx));
+            (var, insts)
+        });
+    //insts.push(format!("mad{}.s32 {}, {}, {}, {};",
+    insts.push(format!("{} = {} * {} + {};",
+                       addr, var, size, addr));
+    insts.join("\n  ")
+}
 
 fn privatise_global_block(block: &InternalMemBlock, namer: &mut NameMap, fun: &Function
                           ) -> String {
