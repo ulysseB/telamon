@@ -135,7 +135,7 @@ fn function_evaluate(fun_str: String, fun_name: String) -> Result<f64, ()> {
     println!("{}", fun_str);
     println!("{}", fun_name);
     println!("{}", templib_name);
-    //panic!();
+    panic!();
     let mut source_file = tempfile::tempfile().unwrap();
     source_file.write_all(fun_str.as_bytes()).unwrap();
     let compile_status = compile::compile(source_file, &templib_name);

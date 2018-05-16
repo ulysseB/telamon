@@ -1,4 +1,3 @@
-use codegen;
 use codegen::*;
 use device::x86::Namer;
 use ir::{self, op, Type, Rounding};
@@ -191,44 +190,6 @@ fn var_decls(namer: &Namer) -> String {
     ptr_decl
 }
 
-/// Prints an instruction.
-fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
-    let assignement = format!("{} =", namer.name_inst(inst).to_string());
-    match *inst.operator() {
-        op::Add(ref lhs, ref rhs, _) => {
-            format!("{} {} + {};", assignement, namer.name_op(lhs), namer.name_op(rhs))
-        },
-        op::Sub(ref lhs, ref rhs, _) => {
-            format!("{} {} - {};", assignement, namer.name_op(lhs), namer.name_op(rhs))
-        },
-        op::Mul(ref lhs, ref rhs, _, return_type) => {
-            format!("{} {} * {};", assignement, namer.name_op(lhs), namer.name_op(rhs))
-        },
-        op::Mad(ref mul_lhs, ref mul_rhs, ref add_rhs, _ing) => {
-            format!("{} {} * {} + {};", assignement, namer.name_op(mul_lhs), namer.name_op(mul_rhs), namer.name_op(add_rhs))
-        },
-        op::Div(ref lhs, ref rhs, _) => {
-            format!("{} {} / {};", assignement, namer.name_op(lhs), namer.name_op(rhs))
-        },
-        op::Mov(ref op) => {
-            format!("{} {};", assignement, namer.name_op(op).to_string())
-        },
-        op::Ld(ld_type, ref addr, _) => {
-            format!("{} *({} *){}", assignement, cpu_type(&ld_type), namer.name_op(addr))
-        },
-        op::St(ref addr, ref val, _,  _) => {
-            format!("*({} *){} = {}", 
-                    cpu_type(&addr.t()), 
-                    namer.name_op(addr),
-                    namer.name_op(val).to_string())
-        },
-        op::Cast(ref op, t) => {
-            format!("{} ({}) {}", assignement, cpu_type(&t), namer.name_op(op))
-        },
-        op::TmpLd(..) | op::TmpSt(..) => panic!("non-printable instruction")
-    }
-}
-
 fn cpu_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap)
     -> String
 {
@@ -311,18 +272,6 @@ fn unroll_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMa
     }
     namer.unset_current_index(dim);
     body.join("\n  ")
-}
-
-/// Declares block and thread indexes.
-fn decl_par_indexes(function: &Function, namer: &mut NameMap) -> String {
-    assert!(function.block_dims().is_empty());
-    let mut decls = vec![];
-    // Compute thread indexes.
-    for (dim, _dir) in function.thread_dims().iter().rev().zip(&["x", "y", "z"]) {
-        //FIXME: fetch proper thread index
-        decls.push(format!("{} = 442;", namer.name_index(dim.id())));
-    }
-    decls.join("\n  ")
 }
 
 /// Declares block and thread indexes.
