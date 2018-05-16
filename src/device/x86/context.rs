@@ -1,7 +1,7 @@
 ///! Defines the CPU evaluation context.
 use codegen::ParamVal;
 use crossbeam;
-use device::{self, Device, ScalarArgument};
+use device::{self, Device, ScalarArgument, EvalMode};
 use device::context::AsyncCallback;
 use device::x86::compile;
 use device::x86::cpu_argument::{CpuArray, Argument, CpuScalarArg};
@@ -96,7 +96,7 @@ impl device::Context for Context {
     fn param_as_size(&self, name: &str) -> Option<u32> { self.get_param(name).size() }
 
 
-    fn evaluate(&self, func: &device::Function) -> Result<f64, ()> {
+    fn evaluate(&self, func: &device::Function, mode: EvalMode) -> Result<f64, ()> {
         let fun_name = func.name.clone();
         let fun_str = wrapper_function(&func);
         let a  = func.device_code_args();
@@ -112,7 +112,7 @@ impl device::Context for Context {
         vec![]
     }
 
-    fn async_eval<'b, 'c>(&self, num_workers: usize,
+    fn async_eval<'b, 'c>(&self, num_workers: usize, mode: EvalMode,
                           inner: &(Fn(&mut device::AsyncEvaluator<'b, 'c>) + Sync)){
         let (send, recv) = mpsc::sync_channel(EVAL_BUFFER_SIZE);
         crossbeam::scope(move |scope| {

@@ -4,8 +4,10 @@ use device::x86::{Cpu, Namer};
 use ir::{self, dim, op, Operand, Size, Type, Rounding};
 use itertools::Itertools;
 use search_space::{DimKind, Domain, InstFlag};
+use std::fmt::Write as WriteFmt;
 use std::fs::File;
 use std::io::Read;
+use utils::*;
 // TODO(cc_perf): avoid concatenating strings.
 
 /// Prints a `Type` for the host.
@@ -38,20 +40,24 @@ fn param_decl(param: &ParamVal, namer: &NameMap) -> String {
     //    )
 }
 
+/// Returns the string representing a binary operator.
+fn binary_op(op: ir::BinOp) -> &'static str {
+    match op {
+        ir::BinOp::Add => "+",
+        ir::BinOp::Sub => "-",
+        ir::BinOp::Div => "/",
+    }
+}
+
 /// Prints an instruction.
 fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
     //let assignement = format!("{} =", namer.name_inst(inst).to_string());
     match *inst.operator() {
-        op::Add(ref lhs, ref rhs, round) => {
+        op::BinOp(op, ref lhs, ref rhs, round) => {
             assert_eq!(round, Rounding::Nearest);
             let assignement = format!("{} = ",namer.name_inst(inst));
-            format!("{} {} + {};", assignement, namer.name_op(lhs), namer.name_op(rhs))
-        },
-        op::Sub(ref lhs, ref rhs, round) => {
-            assert_eq!(round, Rounding::Nearest);
-            let assignement = format!("{} = ",namer.name_inst(inst));
-            format!("{} {} - {};", assignement, namer.name_op(lhs), namer.name_op(rhs))
-        },
+            format!("{} {} {} {};", assignement, namer.name_op(lhs), binary_op(op), namer.name_op(rhs))
+        }
         op::Mul(ref lhs, ref rhs, round, return_type) => {
             assert_eq!(round, Rounding::Nearest);
             let assignement = format!("{} = ",namer.name_inst(inst));
@@ -61,11 +67,6 @@ fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
             assert_eq!(round, Rounding::Nearest);
             let assignement = format!("{} = ",namer.name_inst(inst));
             format!("{} {} * {} + {};", assignement, namer.name_op(mul_lhs), namer.name_op(mul_rhs), namer.name_op(add_rhs))
-        },
-        op::Div(ref lhs, ref rhs, round) => {
-            assert_eq!(round, Rounding::Nearest);
-            let assignement = format!("{} = ",namer.name_inst(inst));
-            format!("{} {} / {};", assignement, namer.name_op(lhs), namer.name_op(rhs))
         },
         op::Mov(ref op) => {
 
@@ -79,7 +80,14 @@ fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
         },
         op::St(ref addr, ref val, _,  _) => {
             let op_type = val.t();
-            format!("*({} *){} = {};", 
+            let guard = if inst.has_side_effects() {
+                namer.side_effect_guard()
+            } else { None };
+            let pred = if let Some(ref pred) = guard {
+                format!("if({}) ", pred)
+            } else { String::new() };
+            format!("{}*({} *){} = {};", 
+                    pred,
                     cpu_type(&op_type),
                     namer.name_op(addr),
                     namer.name_op(val).to_string())
@@ -100,10 +108,33 @@ fn cfg<'a>(fun: &Function, c: &Cfg<'a>, namer: &mut NameMap) -> String {
         // FIXME: handle this
         Cfg::Barrier => String::new(),
         Cfg::Instruction(ref i) => inst(i, namer, fun),
+        Cfg::EnableThreads(ref threads) => enable_threads(fun, threads, namer),
         Cfg::ParallelInductionLevel(ref level) =>
             parallel_induction_level(level, namer),
     }
 }
+
+/// Change the side-effect guards so that only thre specified threads are enabled.
+fn enable_threads(fun: &Function, threads: &[bool], namer: &mut NameMap) -> String {
+    let mut ops = String::new();
+    let mut guard = None;
+    for (&is_active, dim) in threads.iter().zip_eq(fun.thread_dims().iter()) {
+        if is_active { continue; }
+        let new_guard = namer.gen_name(ir::Type::I(1));
+        let index = namer.name_index(dim.id());
+        //unwrap!(writeln!(ops, "  setp.eq.s32 {}, {}, 0;", new_guard, index));
+        unwrap!(writeln!(ops, "   {} = ({} == 0);", new_guard, index));
+        if let Some(ref guard) = guard {
+            //unwrap!(writeln!(ops, "  and.pred {}, {}, {};", guard, guard, new_guard));
+            unwrap!(writeln!(ops, "   {} = {} && {};", guard, guard, new_guard));
+        } else {
+            guard = Some(new_guard);
+        };
+    }
+    namer.set_side_effect_guard(guard.map(RcStr::new));
+    ops
+}
+
 
 /// Prints a vector of cfgs.
 fn cfg_vec(fun: &Function, cfgs: &[Cfg], namer: &mut NameMap) -> String {

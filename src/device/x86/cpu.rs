@@ -266,6 +266,11 @@ impl device::Device for Cpu {
 
     fn name(&self) -> &str { &self.name }
 
+    fn add_block_overhead(&self, predicated_dims_size: u64,
+                          max_threads_per_blocks: u64,
+                          pressure: &mut HwPressure) {
+    }
+
     fn lower_type(&self, t: ir::Type, space: &SearchSpace) -> Option<ir::Type> {
         Some(t)
         //match t {
@@ -291,12 +296,12 @@ impl device::Device for Cpu {
         //TODO(model): implement minimal model
         model::HwPressure::new(1.0, vec![]) }
 
-    fn block_rates(&self, max_num_threads: u64) -> HwPressure {
+    fn block_rates(&self) -> HwPressure {
         //TODO(model): implement minimal model
         model::HwPressure::new(1.0, vec![]) 
     }
 
-    fn total_rates(&self, max_num_threads: u64) -> HwPressure {
+    fn total_rates(&self) -> HwPressure {
         //TODO(model): implement minimal model
         model::HwPressure::new(1.0, vec![]) 
     }
