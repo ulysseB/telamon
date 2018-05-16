@@ -162,6 +162,19 @@ fn var_decls(namer: &Namer) -> String {
     ptr_decl
 }
 
+fn cpu_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap)
+    -> String
+{
+    match dim.kind() {
+        DimKind::LOOP => {
+            standard_loop(fun, dim, cfgs, namer)
+        }
+        DimKind::UNROLL => {unroll_loop(fun, dim, cfgs, namer)}
+        DimKind::VECTOR => {standard_loop(fun, dim, cfgs, namer)}
+        _ => { unimplemented!() }
+    }
+}
+
 fn standard_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap) -> String {
     let idx = namer.name_index(dim.id()).to_string();
     let ind_levels = dim.induction_levels().iter();
@@ -193,17 +206,45 @@ fn standard_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut Name
     )
 }
 
-fn cpu_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap)
-    -> String
-{
-    match dim.kind() {
-        DimKind::LOOP => {
-            standard_loop(fun, dim, cfgs, namer)
+fn unroll_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap)-> String {
+    let mut body = Vec::new();
+    let mut incr_levels = Vec::new();
+    for level in dim.induction_levels() {
+        let t = cpu_type(&level.t());
+        let dim_id = level.increment.map(|(dim, _)| dim);
+        let ind_var = namer.name_induction_var(level.ind_var, dim_id).to_string();
+        let base_components = level.base.components().map(|v| namer.name(v));
+        let base = match base_components.collect_vec()[..] {
+            [ref base] => base.to_string(),
+            [ref lhs, ref rhs] => {
+                let tmp = namer.gen_name(level.t());
+                body.push(format!(" {} = {} + {};", tmp, lhs, rhs));
+                tmp
+            },
+            _ => panic!(),
+        };
+        body.push(format!("{} = {};", ind_var, base));
+        if let Some((_, incr)) = level.increment {
+            incr_levels.push((level, ind_var, t, incr, base));
         }
-        DimKind::UNROLL => {standard_loop(fun, dim, cfgs, namer)}
-        DimKind::VECTOR => {standard_loop(fun, dim, cfgs, namer)}
-        _ => { unimplemented!() }
     }
+    for i in 0..unwrap!(dim.size().as_int()) {
+        namer.set_current_index(dim, i);
+        if i > 0 {
+            for &(level, ref ind_var, ref t, incr, ref base) in &incr_levels {
+                let incr =  if let Some(step) = incr.as_int() {
+                    format!(" {} = {} + {};", ind_var, step*i, base)
+                } else {
+                    let step = namer.name_size(incr, level.t());
+                    format!(" {} = {} + {};", ind_var, step, ind_var)
+                };
+                body.push(incr);
+            }
+        }
+        body.push(cfg_vec(fun, cfgs, namer));
+    }
+    namer.unset_current_index(dim);
+    body.join("\n  ")
 }
 
 /// Declares block and thread indexes.
