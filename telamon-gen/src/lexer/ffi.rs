@@ -18,6 +18,23 @@ pub union YyLval {
     pub set_def_key: ir::SetDefKey,
 }
 
+#[derive(Default, Copy, Clone, Debug, PartialEq)]
+#[repr(C)]
+pub struct Position {
+    pub line: libc::c_uint,
+    pub column: libc::c_uint,
+}
+
+#[derive(Copy, Clone, Debug)]
+#[repr(C)]
+pub struct Span<Y> {
+    pub leg: Position,
+    pub end: Position,
+    pub data: Y,
+}
+
+pub type YyExtraType = Span<YyLval>;
+
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub enum YyToken {
@@ -69,12 +86,11 @@ pub enum YyToken {
 }
 
 extern {
-    pub static yylval: YyLval;
-
     pub fn yylex_init(scanner: *const YyScan) -> libc::c_int;
     pub fn yy_scan_string(yy_str: *const libc::c_char, yyscanner: YyScan) -> YyBufferState;
     pub fn yy_scan_buffer(base: *const libc::c_char, size: YySize, yyscanner: YyScan) -> YyBufferState;
     pub fn yy_scan_bytes(base: *const libc::c_char, len: libc::c_int, yyscanner: YyScan) -> YyBufferState;
+    pub fn yyget_extra(yyscanner: YyScan) -> YyExtraType;
     pub fn yylex(yyscanner: YyScan) -> YyToken;
     pub fn yyget_text(yyscanner: YyScan) -> *mut libc::c_char;
     pub fn yy_delete_buffer(b: YyBufferState, yyscanner: YyScan);

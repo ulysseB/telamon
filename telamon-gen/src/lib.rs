@@ -57,7 +57,7 @@ pub fn process_file(input_path: &path::Path, output_path: &path::Path, format: b
 pub fn process<T: io::Write>(input: &mut io::Read, output: &mut T, format: bool) {
     // Parse and check the input.
     let tokens = lexer::Lexer::new(input);
-    let ast = parser::parse_ast(tokens).unwrap();
+    let ast = parser::parse_ast(tokens).ok().unwrap();
     let (mut ir_desc, constraints) = ast.type_check();
     debug!("constraints: {:?}", constraints);
     // Generate flat filters.

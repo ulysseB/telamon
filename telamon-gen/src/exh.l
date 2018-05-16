@@ -1,5 +1,9 @@
+/* 19 Reentrant C Scanners § https://westes.github.io/flex/manual/Reentrant.html#Reentrant */
 %option reentrant
+/* https://westes.github.io/flex/manual/I-get-an-error-about-undefined-yywrap_0028_0029_002e.html#I-get-an-error-about-undefined-yywrap_0028_0029_002e */
 %option noyywrap
+/* number of the current line § https://westes.github.io/flex/manual/Options-Affecting-Scanner-Behavior.html#index-yylineno */
+%option yylineno
 
 %x C_COMMENT
 %x LINE_DOC
@@ -7,9 +11,25 @@
 %{
     #include <stdio.h>
 
-    union yylval {
-        int val;
-    } yylval;
+    typedef struct Pos {
+        unsigned int line;
+        unsigned int column;
+    } Pos;
+
+    typedef int Data;
+
+    typedef struct Span {
+        Pos leg;
+        Pos end;
+        Data data;
+    } Span;
+
+    #define YY_EXTRA_TYPE Span
+    #define YY_USER_ACTION { \
+        yyextra.leg = yyextra.end; \
+        yyextra.end.line = yylineno; \
+        yyextra.end.column += yyleng; \
+    }
 
     enum token {
         VALUEIDENT,
@@ -102,7 +122,7 @@ num [0-9]
 alpha [a-zA-Z_]
 alpha_num {alpha}|{num}
 
-whitespace [ \t\r\n]+
+whitespace [ \t\r]+
 comment "//"[^/\n][^\n]*|"//"
 blank {comment}|{whitespace}
 
@@ -183,7 +203,9 @@ code \"[^\n\"]*\"
 
 {doc}             { BEGIN(LINE_DOC); }
 <LINE_DOC>\n      { BEGIN(INITIAL); }
-<LINE_DOC>[^\n]*  { return DOC; }
+<LINE_DOC>[^\n]*  { yyextra.end.column = 0; return DOC; }
+
+[\n] { yyextra.end.column = 0; }
 
 {blank} {}
 
@@ -195,34 +217,34 @@ code \"[^\n\"]*\"
 {in} { return IN; }
 {is} { return IS; }
 {not} { return NOT; }
-{product} {yylval.val = MUL;  return COUNTERKIND; }
+{product} { yyextra.data = MUL;  return COUNTERKIND; }
 {require} { return REQUIRE; }
 {requires} { return REQUIRES; }
-{sum} {yylval.val = ADD;  return COUNTERKIND; }
+{sum} { yyextra.data = ADD;  return COUNTERKIND; }
 {value} { return VALUE; }
 {when} { return WHEN; }
 {trigger} { return TRIGGER; }
-{half} {yylval.val = NOMAX;  return COUNTERVISIBILITY; }
-{hidden} {yylval.val = HIDDENMAX;  return COUNTERVISIBILITY; }
+{half} { yyextra.data = NOMAX;  return COUNTERVISIBILITY; }
+{hidden} { yyextra.data = HIDDENMAX;  return COUNTERVISIBILITY; }
 {base} { return BASE; }
 
-{item_type} {yylval.val = ITEMTYPE;  return SETDEFKEY; }
-{new_objs} {yylval.val = NEWOBJS;  return SETDEFKEY; }
-{id_type} {yylval.val = IDTYPE;  return SETDEFKEY; }
-{item_getter} {yylval.val = ITEMGETTER;  return SETDEFKEY; }
-{id_getter} {yylval.val = IDGETTER;  return SETDEFKEY; }
-{iter} {yylval.val = ITER;  return SETDEFKEY; }
-{prefix} {yylval.val = PREFIX;  return SETDEFKEY; }
-{reverse} {yylval.val = REVERSE;  return SETDEFKEY; }
-{add_to_set} {yylval.val = ADDTOSET;  return SETDEFKEY; }
-{from_superset} {yylval.val = FROMSUPERSET;  return SETDEFKEY; }
+{item_type} { yyextra.data = ITEMTYPE;  return SETDEFKEY; }
+{new_objs} { yyextra.data = NEWOBJS;  return SETDEFKEY; }
+{id_type} { yyextra.data = IDTYPE;  return SETDEFKEY; }
+{item_getter} { yyextra.data = ITEMGETTER;  return SETDEFKEY; }
+{id_getter} { yyextra.data = IDGETTER;  return SETDEFKEY; }
+{iter} { yyextra.data = ITER;  return SETDEFKEY; }
+{prefix} { yyextra.data = PREFIX;  return SETDEFKEY; }
+{reverse} { yyextra.data = REVERSE;  return SETDEFKEY; }
+{add_to_set} { yyextra.data = ADDTOSET;  return SETDEFKEY; }
+{from_superset} { yyextra.data = FROMSUPERSET;  return SETDEFKEY; }
 {set} { return SET; }
 {of} { return OF; }
 {subsetof} { return SUBSETOF; }
 {disjoint} { return DISJOINT; }
 {quotient} { return QUOTIENT; }
-{true} {yylval.val = 1; return BOOL; }
-{false} {yylval.val = 0; return BOOL; }
+{true} { yyextra.data = 1; return BOOL; }
+{false} { yyextra.data = 0; return BOOL; }
 
 {colon} { return COLON; }
 {comma} { return COMMA; }
@@ -231,12 +253,12 @@ code \"[^\n\"]*\"
 {bit_or} { return BITOR; }
 {or} { return OR; }
 {and} { return AND; }
-{gt} {yylval.val = GT; return CMPOP; }
-{lt} {yylval.val = LT; return CMPOP; }
-{ge} {yylval.val = GEQ; return CMPOP; }
-{le} {yylval.val = LEQ; return CMPOP; }
-{equals} {yylval.val = EQ; return CMPOP; }
-{not_equals} {yylval.val = NEQ; return CMPOP; }
+{gt} { yyextra.data = GT; return CMPOP; }
+{lt} { yyextra.data = LT; return CMPOP; }
+{ge} { yyextra.data = GEQ; return CMPOP; }
+{le} { yyextra.data = LEQ; return CMPOP; }
+{equals} { yyextra.data = EQ; return CMPOP; }
+{not_equals} { yyextra.data = NEQ; return CMPOP; }
 {equal} { return EQUAL; }
 {end} { return END; }
 {symmetric} { return SYMMETRIC; }
