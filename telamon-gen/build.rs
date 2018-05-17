@@ -25,6 +25,7 @@ fn main() {
     // Compile the lexer .             
     cc::Build::new()
             .file("exh.c")
+            .include("src")
             .flag("-Wno-unused-parameter")
             .flag("-Wno-unused-variable")
             .flag_if_supported("-Wno-unused-function")
