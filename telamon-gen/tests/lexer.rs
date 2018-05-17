@@ -426,27 +426,53 @@ fn comment_mode() {
     // C_COMMENT's Token
     assert_eq!(Lexer::from(b"/* comment */ ".to_vec()).collect::<Vec<_>>(), vec![]);
     assert_eq!(Lexer::from(b"/* comment \n comment */ ".to_vec()).collect::<Vec<_>>(), vec![]);
-}
 
+    assert_eq!(Lexer::from(b"| /* comment */ |".to_vec()).collect::<Vec<_>>(), vec![
+                Ok((Position::default(),
+                   Token::BitOr,
+                   Position { column: 1, ..Default::default() } 
+                )),
+                Ok((Position { column: 16, ..Default::default() },
+                   Token::BitOr,
+                   Position { column: 17, ..Default::default() } 
+                )),
+               ]);
+    assert_eq!(Lexer::from(b"| /* comment \n comment */ |".to_vec()).collect::<Vec<_>>(), vec![
+                Ok((Position::default(),
+                   Token::BitOr,
+                   Position { column: 1, ..Default::default() } 
+                )),
+                Ok((Position { column: 26, line: 1 },
+                   Token::BitOr,
+                   Position { column: 27, line: 1 } 
+                )),
+               ]);
+}
 
 #[test]
 fn doc_mode() {
     // Outer Line Doc's Token
-    assert_eq!(Lexer::from(b"/// comment".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position { column: 3, ..Default::default() },
-                    Token::Doc(String::from(" comment")),
-                    Position { column: 0, ..Default::default() } 
+    assert_eq!(Lexer::from(b"/// comment ".to_vec()).collect::<Vec<_>>(), vec![
+                Ok((Position { column: 0, ..Default::default() },
+                    Token::Doc(String::from(" comment ")),
+                    Position { column: 12, ..Default::default() } 
+                )),
+              ]);
+    assert_eq!(Lexer::from(b" /// comment ".to_vec()).collect::<Vec<_>>(), vec![
+                Ok((Position { column: 1, ..Default::default() },
+                    Token::Doc(String::from(" comment ")),
+                    Position { column: 13, ..Default::default() } 
                 )),
               ]);
     // Outer Line MultiDoc's Token
-    assert_eq!(Lexer::from(b"/// comment \n /// comment".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position { column: 3, ..Default::default() },
+    assert_eq!(Lexer::from(b"/// comment \n /// comment ".to_vec()).collect::<Vec<_>>(), vec![
+                Ok((Position { column: 0, ..Default::default() },
                     Token::Doc(String::from(" comment ")),
-                    Position::default()
+                    Position { column: 12, ..Default::default() },
                 )),
-                Ok((Position { column: 5, line: 1 },
-                    Token::Doc(String::from(" comment")),
-                    Position { line: 1, ..Default::default() } 
+                Ok((Position { column: 1, line: 1 },
+                    Token::Doc(String::from(" comment ")),
+                    Position { column: 13, line: 1 }
                 )),
               ]);
     // Line Comment Doc's Token
