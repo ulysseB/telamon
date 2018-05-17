@@ -4,6 +4,8 @@
 %option noyywrap
 /* number of the current line § https://westes.github.io/flex/manual/Options-Affecting-Scanner-Behavior.html#index-yylineno */
 %option yylineno
+/* 19.4.6 Extra Data § https://westes.github.io/flex/manual/Extra-Data.html */
+%option extra-type="Span"
 
 %x C_COMMENT
 %x LINE_DOC
@@ -25,7 +27,6 @@
         Data data;
     } Span;
 
-    #define YY_EXTRA_TYPE Span
     #define YY_USER_ACTION { \
         yyextra.leg = yyextra.end; \
         yyextra.end.line = yylineno; \
@@ -114,12 +115,13 @@ code \"[^\n\"]*\"
 %%
 
 {c_comment_beg}            { BEGIN(C_COMMENT); }
+<C_COMMENT>[\n]            { yyextra.end.line += 1; }
 <C_COMMENT>{c_comment_end} { BEGIN(INITIAL); }
-<C_COMMENT>.               {}
+<C_COMMENT>.               { }
 
-{doc}             { BEGIN(LINE_DOC); }
-<LINE_DOC>\n      { BEGIN(INITIAL); }
-<LINE_DOC>[^\n]*  { yyextra.end.column = 0; return DOC; }
+{doc}             { yyextra.end.column -= 3; BEGIN(LINE_DOC); }
+<LINE_DOC>\n      { yyextra.end.column = 0; BEGIN(INITIAL); }
+<LINE_DOC>[^\n]*  { yyextra.end.column += 3; return DOC; }
 
 [\n] { yyextra.end.column = 0; }
 
