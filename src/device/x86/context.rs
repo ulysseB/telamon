@@ -128,16 +128,11 @@ impl device::Context for Context {
 
 
 fn function_evaluate(fun_str: String, mut args: Vec<ThunkArg>) -> Result<f64, ()> {
-    //let templib_name = tempfile::tempdir().unwrap().path().join("lib_compute.so").to_string_lossy()
-    //    .into_owned();
     let temp_dir = tempfile::tempdir().unwrap();
     let templib_name = temp_dir.path().join("lib_compute.so").to_string_lossy().into_owned();
     let mut source_file = tempfile::tempfile().unwrap();
     source_file.write_all(fun_str.as_bytes()).unwrap();
     let compile_status = compile::compile(source_file, &templib_name);
-    if let Some(code) = compile_status.code() {
-        println!("gcc exited with code {}", code);
-    }
     if !compile_status.success() {
         panic!("Could not compile file");
     }
@@ -149,10 +144,9 @@ fn function_evaluate(fun_str: String, mut args: Vec<ThunkArg>) -> Result<f64, ()
             HoldThunk::Arr(arr)
         },
     }).collect_vec();
-    let mut int_ind = vec![];
     let ptrs = args.iter_mut().enumerate() .map(|(ind, arg)| match arg {
         &mut ThunkArg::ArgRef(ref mut arg_arc) =>  arg_arc.raw_ptr(),
-        &mut ThunkArg::Size(ref mut size) =>{int_ind.push(ind);  size as *mut _ as *mut libc::c_void},
+        &mut ThunkArg::Size(ref mut size) =>  size as *mut _ as *mut libc::c_void,
         &mut ThunkArg::TmpArray(_) => {
             if let &HoldThunk::Arr(ref arr) = &thunks[ind] {
                 arr.raw_ptr()
@@ -163,19 +157,8 @@ fn function_evaluate(fun_str: String, mut args: Vec<ThunkArg>) -> Result<f64, ()
     Ok(time)
 }
 
-enum HoldThunk {
-    Arr(CpuArray),
-    PlaceHolder,
-}
 
-enum ThunkArg { 
-    ArgRef(Arc<Argument>),
-    TmpArray(u32),
-    Size(i32),
-}
-
-
-type AsyncPayload<'a, 'b> = (explorer::Candidate<'a>,  String, AsyncCallback<'a, 'b>);
+type AsyncPayload<'a, 'b> = (explorer::Candidate<'a>,  String, Vec<ThunkArg>, AsyncCallback<'a, 'b>);
 
 pub struct AsyncEvaluator<'a, 'b> where 'a: 'b {
     context: &'b Context,
