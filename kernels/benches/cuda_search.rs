@@ -24,12 +24,15 @@ fn main() {
     benchmark::<linalg::MatMul<f32>, _>((1<<10, 1<<10, 1<<10), &executor, |context| {
         matmul_reference(&cublas_handle, context)
     });
+    // FIXME: 0.5 perf, with exhaustive search
     benchmark::<linalg::MatVec<f32>, _>((1<<13, 1<<13), &executor, |context| {
         matvec_reference(&cublas_handle, context)
     });
+    // FIXME: 0.28 perf, with exhaustive search
     benchmark::<linalg::Gesummv<f32>, _>((1<<13, 1<<13), &executor, |context| {
         gesummv_reference(&cublas_handle, context)
     });
+    // FIXME: a bit too fast, increase problem size ?
     benchmark::<linalg::Doitgen<f32>, _>((1<<7, 1<<7, 1<<7), &executor, |context| {
         doitgen_reference(&cublas_handle, context)
     });
