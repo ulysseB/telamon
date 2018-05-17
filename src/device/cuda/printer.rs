@@ -239,11 +239,14 @@ fn cfg<'a>(fun: &Function, c: &Cfg<'a>, namer: &mut NameMap) -> String {
     match *c {
         Cfg::Root(ref cfgs) => cfg_vec(fun, cfgs, namer),
         Cfg::Loop(ref dim, ref cfgs) => ptx_loop(fun, dim, cfgs, namer),
-        Cfg::Barrier => "bar.sync 0;".to_string(),
+        Cfg::Threads(ref dims, ref inner) => {
+                enable_threads(fun, dims, namer) +
+                &cfg_vec(fun, inner, namer) + 
+                "\n  bar.sync 0;"
+        }
         Cfg::Instruction(ref i) => inst(i, namer, fun),
         Cfg::ParallelInductionLevel(ref level) =>
             parallel_induction_level(level, namer),
-        Cfg::EnableThreads(ref threads) => enable_threads(fun, threads, namer),
     }
 }
 
