@@ -74,8 +74,10 @@ impl<'a> Function<'a> {
 
     /// Returns all the induction levels in the function.
     pub fn induction_levels(&self) -> impl Iterator<Item=&InductionLevel> {
-        self.dimensions().flat_map(|d| d.induction_levels())
+        self.block_dims.iter().chain(&self.thread_dims)
+            .flat_map(|d| d.induction_levels())
             .chain(self.cfg.induction_levels())
+            .chain(self.init_induction_levels())
     }
 
     /// Returns the memory blocks allocated by the function.
