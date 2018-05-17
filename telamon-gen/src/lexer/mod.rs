@@ -28,8 +28,9 @@ use self::ffi::{
 
 pub use self::ffi::Position;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum LexicalError {
+    UnexpectedToken(Position, Token, Position),
 }
 
 pub type Spanned<T, P, E> = Result<(P, T, P), E>;
@@ -101,7 +102,7 @@ impl Iterator for Lexer {
 
                     CStr::from_ptr(out)
                          .to_str().ok()
-                         .and_then(|s: &str| Some(Ok((extra.leg, Token::InvalidToken(s.to_owned()), extra.end))))
+                         .and_then(|s: &str| Some(Err(LexicalError::UnexpectedToken(extra.leg, Token::InvalidToken(s.to_owned()), extra.end))))
                 },
                 YyToken::ChoiceIdent => {
                     let out = yyget_text(self.scanner);

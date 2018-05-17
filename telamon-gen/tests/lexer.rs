@@ -7,7 +7,8 @@ use telamon_gen::ir::{CounterKind, CounterVisibility, SetDefKey, CmpOp};
 fn initial() {
     // Invalid's Token
     assert_eq!(Lexer::from(b"!".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Err(LexicalError::UnexpectedToken(
+                   Position::default(),
                    Token::InvalidToken(String::from("!")),
                    Position { column: 1, ..Default::default() } 
                 )),
