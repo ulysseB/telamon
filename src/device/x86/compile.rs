@@ -12,6 +12,7 @@ pub fn compile(mut source_file: File, lib_path: &String) -> ExitStatus {
         .stdin(source_file)
         .arg("-shared")
         .arg("-fPIC")
+        .arg("-g")
         .arg("-o")
         .arg(lib_path)
         .arg("-xc")
@@ -21,10 +22,6 @@ pub fn compile(mut source_file: File, lib_path: &String) -> ExitStatus {
 }
 
 pub fn link_and_exec(lib_path: &String, fun_name: &String, mut args: Vec<*mut libc::c_void> ) -> f64 {
-    Command::new("readelf")
-        .arg("-Ws")
-        .arg(lib_path)
-        .status();
     let lib = libloading::Library::new(lib_path)
         .expect("Library not found");
     unsafe {

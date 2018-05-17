@@ -22,11 +22,6 @@ impl CpuArray {
     }
 }
 
-pub trait CpuScalarArg: Sync + Send {
-    fn as_size(&self) -> Option<u32>;
-    fn scal_raw_ptr(&self) -> *mut libc::c_void;
-}
-
 impl Argument for CpuArray {
     fn size(&self) -> Option<u32> {
         Some(self.size())
@@ -52,6 +47,11 @@ impl device::ArrayArgument for CpuArray {
     }
 }
 
+pub trait CpuScalarArg: Sync + Send {
+    fn as_size(&self) -> Option<u32>;
+    fn scal_raw_ptr(&self) -> *mut libc::c_void;
+}
+
 impl<T> CpuScalarArg for T where T: ScalarArgument {
     fn as_size(&self) -> Option<u32> {
         //<Self as ScalarArgument>::as_size(self)
@@ -72,6 +72,4 @@ impl Argument for Box<CpuScalarArg> {
     fn raw_ptr(&self) -> *mut libc::c_void {
         self.scal_raw_ptr()
     }
-
-
 }
