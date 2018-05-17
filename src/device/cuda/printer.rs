@@ -474,6 +474,9 @@ pub fn function(function: &Function, gpu: &Gpu) -> String {
                 }
             }
         }
+        let ind_levels = function.init_induction_levels().into_iter()
+            .chain(function.block_dims().iter().flat_map(|d| d.induction_levels()));
+        init.extend(ind_levels.map(|level| parallel_induction_level(level, name_map)));
         body = cfg(function, function.cfg(), name_map);
     }
     let var_decls = var_decls(&namer);

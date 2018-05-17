@@ -14,6 +14,7 @@ pub struct Function<'a> {
     device_code_args: Vec<ParamVal<'a>>,
     induction_vars: Vec<InductionVar<'a>>,
     mem_blocks: Vec<InternalMemBlock<'a>>,
+    init_induction_levels: Vec<InductionLevel<'a>>,
     // TODO(cleanup): remove dependency on the search space
     space: &'a SearchSpace<'a>,
 }
@@ -22,7 +23,7 @@ impl<'a> Function<'a> {
     /// Creates a device `Function` from an IR instance.
     pub fn build(space: &'a SearchSpace<'a>) -> Function<'a> {
         let mut dims = dimension::group_merged_dimensions(space);
-        let (induction_vars, precomputed_indvar_levels) =
+        let (induction_vars, init_induction_levels) =
             dimension::register_induction_vars(&mut dims, space);
         trace!("dims = {:?}", dims);
         let insts = space.ir_instance().insts()
@@ -30,10 +31,9 @@ impl<'a> Function<'a> {
         let device_code_args = dims.iter().flat_map(|d| d.host_values(space))
             .chain(induction_vars.iter().flat_map(|v| v.host_values(space)))
             .chain(insts.iter().flat_map(|i| i.host_values(space)))
-            .chain(precomputed_indvar_levels.iter().flat_map(|l| l.host_values(space)))
+            .chain(init_induction_levels.iter().flat_map(|l| l.host_values(space)))
             .collect_vec();
-        let (block_dims, thread_dims, cfg) = cfg::build(
-            space, insts, dims, precomputed_indvar_levels);
+        let (block_dims, thread_dims, cfg) = cfg::build(space, insts, dims);
         let mem_blocks = register_mem_blocks(space, &block_dims);
         let device_code_args = device_code_args.into_iter()
             .chain(mem_blocks.iter().flat_map(|x| x.host_values(space)))
@@ -41,7 +41,7 @@ impl<'a> Function<'a> {
         debug!("compiling cfg {:?}", cfg);
         Function {
             cfg, thread_dims, block_dims, induction_vars, device_code_args, space,
-            mem_blocks,
+            mem_blocks, init_induction_levels,
         }
     }
 
@@ -86,6 +86,12 @@ impl<'a> Function<'a> {
     /// Returns the underlying implementation space.
     // TODO(cleanup): prefer access to the space from individual wrappers on ir objects.
     pub fn space(&self) -> &SearchSpace { self.space }
+
+    /// Returns the induction levels computed at the beginning of the kernel. Levels must
+    /// be computed in the provided order.
+    pub fn init_induction_levels(&self) -> &[InductionLevel] {
+        &self.init_induction_levels
+    }
 }
 
 impl<'a> std::ops::Deref for Function<'a> {
