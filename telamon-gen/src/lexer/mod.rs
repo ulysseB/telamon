@@ -53,10 +53,14 @@ impl From<Vec<u8>> for Lexer {
         unsafe {
             let scanner: YyScan = ptr::null();
 
-            yylex_init(&scanner); // https://westes.github.io/flex/manual/Init-and-Destroy-Functions.html#index-yylex_005finit
+            // The function [yylex_init](https://westes.github.io/flex/manual/Init-and-Destroy-Functions.html#index-yylex_005finit)
+            // innitializes the scanner.
+            yylex_init(&scanner);
             Lexer {
                 scanner: scanner,
-                buffer: yy_scan_bytes(buffer.as_ptr() as *const _, buffer.len() as _, scanner), // https://westes.github.io/flex/manual/Multiple-Input-Buffers.html
+                // The function  [yy_scan_bytes](https://westes.github.io/flex/manual/Multiple-Input-Buffers.html)
+                // scans len bytes starting at location bytes. 
+                buffer: yy_scan_bytes(buffer.as_ptr() as *const _, buffer.len() as _, scanner),
             }
         }
     }
@@ -65,8 +69,12 @@ impl From<Vec<u8>> for Lexer {
 impl Drop for Lexer {
     fn drop(&mut self) {
         unsafe {
-            yy_delete_buffer(self.buffer, self.scanner); // https://westes.github.io/flex/manual/Multiple-Input-Buffers.html
-            yylex_destroy(self.scanner); // https://westes.github.io/flex/manual/Init-and-Destroy-Functions.html#index-yylex_005finit
+            // The function [yy_delete_buffer](https://westes.github.io/flex/manual/Multiple-Input-Buffers.html)
+            // clears the current contents of a buffer using.
+            yy_delete_buffer(self.buffer, self.scanner);
+            // The function [yylex_destroy](https://westes.github.io/flex/manual/Init-and-Destroy-Functions.html#index-yylex_005finit)
+            // frees the resources used by the scanner.
+            yylex_destroy(self.scanner);
         }
     }
 }   
@@ -76,7 +84,12 @@ impl Iterator for Lexer {
 
     fn next(&mut self) -> Option<Self::Item> {
         unsafe {
+            // The function [yylex](https://westes.github.io/flex/manual/Generated-Scanner.html)
+            // returns statement in one of the actions, the scanner may then
+            // be called again and it will resume scanning where it left off. 
             let code: YyToken = yylex(self.scanner);
+            // The accessor function [yyget_extra](https://westes.github.io/flex/manual/Extra-Data.html)
+            // returns a extra copy.
             let extra: YyExtraType = yyget_extra(self.scanner);
 
             match code {

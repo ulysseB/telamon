@@ -2,22 +2,29 @@
 use ::libc;
 use ::ir;
 
-/// https://westes.github.io/flex/manual/About-yyscan_005ft.html
+/// A [yyscan](https://westes.github.io/flex/manual/About-yyscan_005ft.html) type is the internal
+/// representation of a [yylex_init](https://westes.github.io/flex/manual/Init-and-Destroy-Functions.html) structure.
 pub type YyScan = *const libc::c_void;
+/// State per character.
 pub type YyBufferState = *const libc::c_void;
+/// Unsigned integer type used to represent the sizes f/lex.
 pub type YySize = libc::size_t;
 
+/// A sequence's row/column position
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub union YyLval {
-    pub val: libc::c_int,
+    /// Indicate a comparison operators.
     pub cmp_op: ir::CmpOp,
     pub boolean: bool,
+    /// Indicates whether a counter sums or adds.
     pub counter_kind: ir::CounterKind,
+    /// Indicates how a counter exposes how its maximum value.
     pub counter_visibility: ir::CounterVisibility,
     pub set_def_key: ir::SetDefKey,
 }
 
+/// A sequence's row/column position
 #[derive(Default, Copy, Clone, Debug, PartialEq)]
 #[repr(C)]
 pub struct Position {
@@ -25,11 +32,13 @@ pub struct Position {
     pub column: libc::c_uint,
 }
 
+/// A F/lex's token with a span.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct Span<Y> {
     pub leg: Position,
     pub end: Position,
+    /// Spanned data
     pub data: Y,
 }
 
@@ -82,6 +91,7 @@ pub enum YyToken {
     Quotient,
     Of,
     Divide,
+    /// End-of-File
     EOF = libc::EOF as _,
 }
 
