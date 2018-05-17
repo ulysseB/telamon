@@ -17,13 +17,13 @@ use self::ffi::{
     YyExtraType,
     yylex_init,
     yy_scan_bytes,
+    yyset_lineno,
     yy_delete_buffer,
     yylex_destroy,
     yylex,
     YyToken,
     yyget_text,
     yyget_extra,
-
 };
 
 pub use self::ffi::Position;
@@ -69,6 +69,9 @@ impl From<Vec<u8>> for Lexer {
 impl Drop for Lexer {
     fn drop(&mut self) {
         unsafe {
+            // The function [yyset_lineno](https://westes.github.io/flex/manual/Reentrant-Functions.html#index-yyset_005flineno)
+            // clears the current line number.
+            yyset_lineno(0, self.scanner);
             // The function [yy_delete_buffer](https://westes.github.io/flex/manual/Multiple-Input-Buffers.html)
             // clears the current contents of a buffer using.
             yy_delete_buffer(self.buffer, self.scanner);

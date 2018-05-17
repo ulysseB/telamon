@@ -103,6 +103,7 @@ extern {
     pub fn yyget_extra(yyscanner: YyScan) -> YyExtraType;
     pub fn yylex(yyscanner: YyScan) -> YyToken;
     pub fn yyget_text(yyscanner: YyScan) -> *mut libc::c_char;
+    pub fn yyset_lineno(line_number: libc::c_int, yyscanner: YyScan) -> libc::c_int;
     pub fn yy_delete_buffer(b: YyBufferState, yyscanner: YyScan);
     pub fn yylex_destroy(yyscanner: YyScan) -> libc::c_int;
 }
