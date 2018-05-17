@@ -14,7 +14,7 @@ use libc;
 use std;
 use std::f64;
 use std::io::Write;
-use std::sync::{mpsc, Mutex, Arc};
+use std::sync::{mpsc, Arc};
 use tempfile;
 use utils::*;
 
@@ -52,24 +52,12 @@ impl Context {
 
     fn gen_args(&self, func: &device::Function) -> Vec<ThunkArg> {
         func.device_code_args().map(|pval| match pval {
-            ParamVal::External(par, size) => ThunkArg::ArgRef(Arc::clone(&self.parameters[&par.name])),
+            ParamVal::External(par, _) => ThunkArg::ArgRef(Arc::clone(&self.parameters[&par.name])),
             ParamVal::GlobalMem(_, size, _) => ThunkArg::TmpArray((self as &device::Context).eval_size(size)),
             //ParamVal::GlobalMem(_, size, _) => ThunkArg::TmpArray(
             //    CpuArray::new((self as &device::Context).eval_size(size)as usize)),
             ParamVal::Size(size) => ThunkArg::Size((self as &device::Context).eval_size(size) as i32),
         }).collect_vec()
-    }
-
-    fn build_params_struct<'a, IT>(&self, code_args: IT) -> Vec<*mut libc::c_void> 
-        where IT: Iterator<Item = &'a ThunkArg> 
-        {
-        code_args .map( |v| match v {
-                &ThunkArg::ArgRef(ref arg_arc) => arg_arc.raw_ptr(),
-                &ThunkArg::Size(mut size) => (&mut size) as *mut _ as *mut libc::c_void,
-                &ThunkArg::TmpArray(size) => CpuArray::new(size as usize).raw_ptr(),
-                //&ThunkArg::TmpArray(ref arr) => arr.raw_ptr(),
-            })
-            .collect_vec()
     }
 }
 
@@ -99,24 +87,19 @@ impl device::Context for Context {
     fn param_as_size(&self, name: &str) -> Option<u32> { self.get_param(name).size() }
 
 
-    fn evaluate(&self, func: &device::Function, mode: EvalMode) -> Result<f64, ()> {
-        let fun_name = func.name.clone();
+    fn evaluate(&self, func: &device::Function, _mode: EvalMode) -> Result<f64, ()> {
         let fun_str = wrapper_function(&func);
-        let a  = func.device_code_args();
-        //let args = self.build_params_struct(self.gen_args(func).iter());
-        //let args = self.build_params_struct(a);
-        //function_evaluate(fun_str, fun_name, args)
-        function_evaluate(fun_str, fun_name, self.gen_args(func))
+        function_evaluate(fun_str, self.gen_args(func))
     }
 
-    fn benchmark(&self, function: &device::Function, num_samples: usize) -> Vec<f64> {
+    fn benchmark(&self, _function: &device::Function, _num_samples: usize) -> Vec<f64> {
         //let gpu = &self.gpu_model;
         //let kernel = Kernel::compile(function, gpu, self.executor, 4);
         //kernel.evaluate_real(self, num_samples)
         vec![]
     }
 
-    fn async_eval<'b, 'c>(&self, num_workers: usize, mode: EvalMode,
+    fn async_eval<'b, 'c>(&self, num_workers: usize, _mode: EvalMode,
                           inner: &(Fn(&mut device::AsyncEvaluator<'b, 'c>) + Sync)){
         let (send, recv) = mpsc::sync_channel(EVAL_BUFFER_SIZE);
         crossbeam::scope(move |scope| {
@@ -131,57 +114,18 @@ impl device::Context for Context {
             }
             // Start the evaluation thread.
             let eval_thread_name = "Telamon - GPU Evaluation Thread".to_string();
-            let res = scope.builder().name(eval_thread_name).spawn(move || {
+            unwrap!(scope.builder().name(eval_thread_name).spawn(move || {
                 let mut cpt_candidate = 0;
-                while let Ok((candidate, fun_str, fun_name, code_args, callback)) = recv.recv() {
+                while let Ok((candidate, fun_str, code_args, callback)) = recv.recv() {
                     cpt_candidate += 1;
-                    //let args = self.build_params_struct(code_args.iter());
-                    //let eval = function_evaluate(fun_str, fun_name, args).unwrap();
-                    let eval = function_evaluate(fun_str, fun_name, code_args).unwrap();
+                    let eval = function_evaluate(fun_str, code_args).unwrap();
                     callback.call(candidate, eval, cpt_candidate);
                 }
-            });
+            }));
         });
     }
 }
 
-
-//fn function_evaluate(fun_str: String, fun_name: String, args: Vec<*mut libc::c_void>) -> Result<f64, ()> {
-fn function_evaluate(fun_str: String, fun_name: String, mut args: Vec<ThunkArg>) -> Result<f64, ()> {
-    //let templib_name = tempfile::tempdir().unwrap().path().join("lib_compute.so").to_string_lossy()
-    //    .into_owned();
-    let temp_dir = tempfile::tempdir().unwrap();
-    let templib_name = temp_dir.path().join("lib_compute.so").to_string_lossy().into_owned();
-    let mut source_file = tempfile::tempfile().unwrap();
-    source_file.write_all(fun_str.as_bytes()).unwrap();
-    let compile_status = compile::compile(source_file, &templib_name);
-    if let Some(code) = compile_status.code() {
-        println!("gcc exited with code {}", code);
-    }
-    if !compile_status.success() {
-        panic!("Could not compile file");
-    }
-    let thunks = args.iter().map(|arg| match arg {
-        &ThunkArg::ArgRef(_) =>  HoldThunk::PlaceHolder,
-        &ThunkArg::Size(_) => HoldThunk::PlaceHolder,
-        &ThunkArg::TmpArray( size) => {
-            let arr = CpuArray::new(size as usize); 
-            HoldThunk::Arr(arr)
-        },
-    }).collect_vec();
-    let mut int_ind = vec![];
-    let ptrs = args.iter_mut().enumerate() .map(|(ind, arg)| match arg {
-        &mut ThunkArg::ArgRef(ref mut arg_arc) =>  arg_arc.raw_ptr(),
-        &mut ThunkArg::Size(ref mut size) =>{int_ind.push(ind);  size as *mut _ as *mut libc::c_void},
-        &mut ThunkArg::TmpArray(_) => {
-            if let &HoldThunk::Arr(ref arr) = &thunks[ind] {
-                arr.raw_ptr()
-            } else {panic!("There should be an Arr at this position !")}
-        },
-    }).collect_vec();
-    let time = compile::link_and_exec(&templib_name, &String::from("execute"), ptrs);
-    Ok(time)
-}
 
 enum HoldThunk {
     Arr(CpuArray),
@@ -194,8 +138,39 @@ enum ThunkArg {
     Size(i32),
 }
 
+// Builds the parameters if needed (for temporary arrays) and call link_and_exec
+fn function_evaluate(fun_str: String, mut args: Vec<ThunkArg>) -> Result<f64, ()> {
+    let temp_dir = tempfile::tempdir().unwrap();
+    let templib_name = temp_dir.path().join("lib_compute.so").to_string_lossy().into_owned();
+    let mut source_file = tempfile::tempfile().unwrap();
+    source_file.write_all(fun_str.as_bytes()).unwrap();
+    let compile_status = compile::compile(source_file, &templib_name);
+    if !compile_status.success() {
+        panic!("Could not compile file");
+    }
+    let thunks = args.iter().map(|arg| match arg {
+        &ThunkArg::ArgRef(_) =>  HoldThunk::PlaceHolder,
+        &ThunkArg::Size(_) => HoldThunk::PlaceHolder,
+        &ThunkArg::TmpArray( size) => {
+            let arr = CpuArray::new(size as usize); 
+            HoldThunk::Arr(arr)
+        },
+    }).collect_vec();
+    let ptrs = args.iter_mut().enumerate() .map(|(ind, arg)| match arg {
+        &mut ThunkArg::ArgRef(ref mut arg_arc) =>  arg_arc.raw_ptr(),
+        &mut ThunkArg::Size(ref mut size) =>  size as *mut _ as *mut libc::c_void,
+        &mut ThunkArg::TmpArray(_) => {
+            if let &HoldThunk::Arr(ref arr) = &thunks[ind] {
+                arr.raw_ptr()
+            } else {panic!("There should be an Arr at this position !")}
+        },
+    }).collect_vec();
+    let time = compile::link_and_exec(&templib_name, &String::from("execute"), ptrs);
+    Ok(time)
+}
 
-type AsyncPayload<'a, 'b> = (explorer::Candidate<'a>,  String, String, Vec<ThunkArg>, AsyncCallback<'a, 'b>);
+
+type AsyncPayload<'a, 'b> = (explorer::Candidate<'a>,  String, Vec<ThunkArg>, AsyncCallback<'a, 'b>);
 
 pub struct AsyncEvaluator<'a, 'b> where 'a: 'b {
     context: &'b Context,
@@ -206,15 +181,12 @@ impl<'a, 'b, 'c> device::AsyncEvaluator<'a, 'c> for AsyncEvaluator<'a, 'b>
     where 'a: 'b, 'c: 'b
 {
     fn add_kernel(&mut self, candidate: explorer::Candidate<'a>, callback: device::AsyncCallback<'a, 'c> ) {
-        let (fun_str, fun_name, code_args);
+        let (fun_str, code_args);
         {
             let dev_fun = device::Function::build(&candidate.space);
-            //code_args = dev_fun.device_code_args().map(|x| x.clone()).collect_vec();
-            //code_args = vec![];
             code_args = self.context.gen_args(&dev_fun);
-            fun_name = dev_fun.name.clone();
             fun_str = wrapper_function(&dev_fun);
         }
-        self.sender.send((candidate, fun_str, fun_name, code_args, callback));
+        unwrap!(self.sender.send((candidate, fun_str, code_args, callback)));
     }
 }

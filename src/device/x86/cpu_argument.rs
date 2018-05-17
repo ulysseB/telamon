@@ -1,4 +1,4 @@
-use device::{self, Device, ScalarArgument};
+use device::{self, ScalarArgument};
 use libc;
 use std::sync::{ Mutex };
 

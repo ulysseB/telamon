@@ -1,18 +1,16 @@
 use libc;
 use std::process::{ExitStatus, Command};
 use std::fs::File;
-use std::io::{Read, Seek, SeekFrom};
+use std::io::{Seek, SeekFrom};
 use std::time::Instant;
-use std;
 use libloading;
 
 pub fn compile(mut source_file: File, lib_path: &String) -> ExitStatus {
-    source_file.seek(SeekFrom::Start(0));
+    unwrap!(source_file.seek(SeekFrom::Start(0)));
     Command::new("gcc")
         .stdin(source_file)
         .arg("-shared")
         .arg("-fPIC")
-        .arg("-g")
         .arg("-o")
         .arg(lib_path)
         .arg("-xc")

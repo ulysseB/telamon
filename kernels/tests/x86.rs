@@ -1,4 +1,3 @@
-#![cfg(feature="cpu")]
 extern crate env_logger;
 extern crate telamon;
 extern crate telamon_kernels;

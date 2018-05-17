@@ -1,12 +1,9 @@
-use codegen;
 use codegen::*;
-use device::x86::{Cpu, Namer};
-use ir::{self, dim, op, Operand, Size, Type, Rounding};
+use device::x86::Namer;
+use ir::{self, op, Type, Rounding};
 use itertools::Itertools;
-use search_space::{DimKind, Domain, InstFlag};
+use search_space::{DimKind, Domain};
 use std::fmt::Write as WriteFmt;
-use std::fs::File;
-use std::io::Read;
 use utils::*;
 // TODO(cc_perf): avoid concatenating strings.
 
@@ -29,7 +26,7 @@ fn cpu_type(t: &Type) -> &'static str {
 fn param_decl(param: &ParamVal, namer: &NameMap) -> String {
     let name = namer.name_param(param.key());
     match param {
-        ParamVal::External(par, par_type) => format!("{} {}", cpu_type(par_type), name),
+        ParamVal::External(_, par_type) => format!("{} {}", cpu_type(par_type), name),
         ParamVal::Size(_) => format!("uint32_t {}", name),
         ParamVal::GlobalMem(_, _, par_type) => format!("{} {}", cpu_type(par_type), name),
     }
@@ -50,7 +47,7 @@ fn binary_op(op: ir::BinOp) -> &'static str {
 }
 
 /// Prints an instruction.
-fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
+fn inst(inst: &Instruction, namer: &mut NameMap ) -> String {
     //let assignement = format!("{} =", namer.name_inst(inst).to_string());
     match *inst.operator() {
         op::BinOp(op, ref lhs, ref rhs, round) => {
@@ -58,7 +55,7 @@ fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
             let assignement = format!("{} = ",namer.name_inst(inst));
             format!("{} {} {} {};", assignement, namer.name_op(lhs), binary_op(op), namer.name_op(rhs))
         }
-        op::Mul(ref lhs, ref rhs, round, return_type) => {
+        op::Mul(ref lhs, ref rhs, round, _) => {
             assert_eq!(round, Rounding::Nearest);
             let assignement = format!("{} = ",namer.name_inst(inst));
             format!("{} {} * {};", assignement, namer.name_op(lhs), namer.name_op(rhs))
@@ -107,7 +104,7 @@ fn cfg<'a>(fun: &Function, c: &Cfg<'a>, namer: &mut NameMap) -> String {
         Cfg::Loop(ref dim, ref cfgs) => cpu_loop(fun, dim, cfgs, namer),
         // FIXME: handle this
         Cfg::Barrier => String::new(),
-        Cfg::Instruction(ref i) => inst(i, namer, fun),
+        Cfg::Instruction(ref i) => inst(i, namer),
         Cfg::EnableThreads(ref threads) => enable_threads(fun, threads, namer),
         Cfg::ParallelInductionLevel(ref level) =>
             parallel_induction_level(level, namer),
@@ -210,7 +207,6 @@ fn standard_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut Name
     let idx = namer.name_index(dim.id()).to_string();
     let ind_levels = dim.induction_levels().iter();
     let (var_init, var_step): (String, String) = ind_levels.map(|level| {
-        let t = cpu_type(&level.t());
         let dim_id = level.increment.map(|(dim, _)| dim);
         let ind_var = namer.name_induction_var(level.ind_var, dim_id);
         let base_components = level.base.components().map(|v| namer.name(v));
@@ -262,7 +258,7 @@ fn unroll_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMa
     for i in 0..unwrap!(dim.size().as_int()) {
         namer.set_current_index(dim, i);
         if i > 0 {
-            for &(level, ref ind_var, ref t, incr, ref base) in &incr_levels {
+            for &(level, ref ind_var, _, incr, ref base) in &incr_levels {
                 let incr =  if let Some(step) = incr.as_int() {
                     format!(" {} = {} + {};", ind_var, step*i, base)
                 } else {
@@ -283,7 +279,7 @@ fn decl_par_indexes(function: &Function, namer: &mut NameMap) -> String {
     assert!(function.block_dims().is_empty());
     let mut decls = vec![];
     // Compute thread indexes.
-    for (dim, dir) in function.thread_dims().iter().rev().zip(&["x", "y", "z"]) {
+    for (dim, _dir) in function.thread_dims().iter().rev().zip(&["x", "y", "z"]) {
         //FIXME: fetch proper thread index
         decls.push(format!("{} = 442;", namer.name_index(dim.id())));
     }
@@ -302,12 +298,10 @@ fn privatise_global_block(block: &InternalMemBlock, namer: &mut NameMap, fun: &F
             let var = namer.gen_name(Type::I(32));
             let size = namer.name_size(dim.size(), Type::I(32));
             let idx = namer.name_index(dim.id());
-            //insts.push(format!("mad.lo.s32 {}, {}, {}, {};",
             insts.push(format!("{} = {} * {} + {};",
                                var, old_var, size, idx));
             (var, insts)
         });
-    //insts.push(format!("mad{}.s32 {}, {}, {}, {};",
     insts.push(format!("{} = {} * {} + {};",
                        addr, var, size, addr));
     insts.join("\n  ")
@@ -361,6 +355,7 @@ pub fn function(function: &Function) -> String {
             ld_params = ld_params,
             params = param_decls,
             var_decls = var_decls,
+            mem_decls = mem_decls,
             body = body
            )
 }
@@ -369,13 +364,13 @@ fn fun_params_cast(function: &Function) -> String {
     function.device_code_args()
         .enumerate()
         .map(|(i, v)| match v {
-            ParamVal::External(_, par_type) if v.is_pointer() => format!("intptr_t p{i} = (intptr_t)*(args + {i})", 
+            ParamVal::External(..) if v.is_pointer() => format!("intptr_t p{i} = (intptr_t)*(args + {i})", 
                                                         i = i),
             ParamVal::External(_, par_type) => format!("{t} p{i} = *({t}*)*(args + {i})", 
                                                        t = cpu_type(par_type), i = i),
-            ParamVal::Size(size) => format!("uint32_t p{i} = *(uint32_t*)*(args + {i})", i = i),
+            ParamVal::Size(_) => format!("uint32_t p{i} = *(uint32_t*)*(args + {i})", i = i),
             // Are we sure we know the size at compile time ? I think we do
-            ParamVal::GlobalMem(_, size, par_type) => format!("{t} p{i} = ({t})*(args + {i})", 
+            ParamVal::GlobalMem(_, _, par_type) => format!("{t} p{i} = ({t})*(args + {i})", 
                                                               t = cpu_type(par_type), i = i)
         }
         )
