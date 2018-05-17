@@ -152,10 +152,6 @@ fn function_evaluate(fun_str: String, fun_name: String, mut args: Vec<ThunkArg>)
     //    .into_owned();
     let temp_dir = tempfile::tempdir().unwrap();
     let templib_name = temp_dir.path().join("lib_compute.so").to_string_lossy().into_owned();
-    println!("{}", fun_str);
-    println!("{}", fun_name);
-    println!("{}", templib_name);
-    //panic!();
     let mut source_file = tempfile::tempfile().unwrap();
     source_file.write_all(fun_str.as_bytes()).unwrap();
     let compile_status = compile::compile(source_file, &templib_name);
@@ -183,16 +179,7 @@ fn function_evaluate(fun_str: String, fun_name: String, mut args: Vec<ThunkArg>)
             } else {panic!("There should be an Arr at this position !")}
         },
     }).collect_vec();
-    for ind in int_ind {
-        println!("int at {}, *ptr[ind] = {}", ind, unsafe{*(ptrs[ind] as *mut u32)});
-    }
-    println!(" *ptr[4] = {}",  unsafe{*(ptrs[4] as *mut f32)});
-    println!(" *(ptr[0] + 8) = {}",  unsafe{*(ptrs[0].offset(8) as *mut f32)});
-    panic!();
-    //let time = compile::link_and_exec(&templib_name, &String::from("execute"), args);
-    println!("BLA");
     let time = compile::link_and_exec(&templib_name, &String::from("execute"), ptrs);
-    println!("BLA");
     Ok(time)
 }
 

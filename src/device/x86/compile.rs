@@ -29,7 +29,7 @@ pub fn link_and_exec(lib_path: &String, fun_name: &String, mut args: Vec<*mut li
             lib.get(fun_name.as_bytes())
             .expect("Could not find symbol in library");
         let t0 = Instant::now();
-        func((&mut args) as *mut _ as *mut *mut libc::c_void);
+        func(args.as_mut_ptr());
         let t = Instant::now() - t0;
         t.subsec_nanos() as f64
     }
