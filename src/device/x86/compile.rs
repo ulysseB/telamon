@@ -3,7 +3,6 @@ use std::process::{ExitStatus, Command};
 use std::fs::File;
 use std::io::{Seek, SeekFrom};
 use std::time::Instant;
-use std;
 use libloading;
 
 pub fn compile(mut source_file: File, lib_path: &String) -> ExitStatus {
@@ -12,7 +11,6 @@ pub fn compile(mut source_file: File, lib_path: &String) -> ExitStatus {
         .stdin(source_file)
         .arg("-shared")
         .arg("-fPIC")
-        .arg("-g")
         .arg("-o")
         .arg(lib_path)
         .arg("-xc")

@@ -279,7 +279,7 @@ fn decl_par_indexes(function: &Function, namer: &mut NameMap) -> String {
     assert!(function.block_dims().is_empty());
     let mut decls = vec![];
     // Compute thread indexes.
-    for (dim, dir) in function.thread_dims().iter().rev().zip(&["x", "y", "z"]) {
+    for (dim, _dir) in function.thread_dims().iter().rev().zip(&["x", "y", "z"]) {
         //FIXME: fetch proper thread index
         decls.push(format!("{} = 442;", namer.name_index(dim.id())));
     }
@@ -298,12 +298,10 @@ fn privatise_global_block(block: &InternalMemBlock, namer: &mut NameMap, fun: &F
             let var = namer.gen_name(Type::I(32));
             let size = namer.name_size(dim.size(), Type::I(32));
             let idx = namer.name_index(dim.id());
-            //insts.push(format!("mad.lo.s32 {}, {}, {}, {};",
             insts.push(format!("{} = {} * {} + {};",
                                var, old_var, size, idx));
             (var, insts)
         });
-    //insts.push(format!("mad{}.s32 {}, {}, {}, {};",
     insts.push(format!("{} = {} * {} + {};",
                        addr, var, size, addr));
     insts.join("\n  ")

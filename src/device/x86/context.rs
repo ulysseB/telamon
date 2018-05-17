@@ -113,7 +113,7 @@ impl device::Context for Context {
                         .spawn(move || inner(&mut evaluator)));
             }
             // Start the evaluation thread.
-            let eval_thread_name = "Telamon - GPU Evaluation Thread".to_string();
+            let eval_thread_name = "Telamon - CPU Evaluation Thread".to_string();
             unwrap!(scope.builder().name(eval_thread_name).spawn(move || {
                 let mut cpt_candidate = 0;
                 while let Ok((candidate, fun_str, code_args, callback)) = recv.recv() {
@@ -128,20 +128,11 @@ impl device::Context for Context {
 
 
 fn function_evaluate(fun_str: String, mut args: Vec<ThunkArg>) -> Result<f64, ()> {
-    //let templib_name = tempfile::tempdir().unwrap().path().join("lib_compute.so").to_string_lossy()
-    //    .into_owned();
     let temp_dir = tempfile::tempdir().unwrap();
     let templib_name = temp_dir.path().join("lib_compute.so").to_string_lossy().into_owned();
-    println!("{}", fun_str);
-    println!("{}", fun_name);
-    println!("{}", templib_name);
-    //panic!();
     let mut source_file = tempfile::tempfile().unwrap();
     source_file.write_all(fun_str.as_bytes()).unwrap();
     let compile_status = compile::compile(source_file, &templib_name);
-    if let Some(code) = compile_status.code() {
-        println!("gcc exited with code {}", code);
-    }
     if !compile_status.success() {
         panic!("Could not compile file");
     }
@@ -153,42 +144,21 @@ fn function_evaluate(fun_str: String, mut args: Vec<ThunkArg>) -> Result<f64, ()
             HoldThunk::Arr(arr)
         },
     }).collect_vec();
-    let mut int_ind = vec![];
     let ptrs = args.iter_mut().enumerate() .map(|(ind, arg)| match arg {
         &mut ThunkArg::ArgRef(ref mut arg_arc) =>  arg_arc.raw_ptr(),
-        &mut ThunkArg::Size(ref mut size) =>{int_ind.push(ind);  size as *mut _ as *mut libc::c_void},
+        &mut ThunkArg::Size(ref mut size) =>  size as *mut _ as *mut libc::c_void,
         &mut ThunkArg::TmpArray(_) => {
             if let &HoldThunk::Arr(ref arr) = &thunks[ind] {
                 arr.raw_ptr()
             } else {panic!("There should be an Arr at this position !")}
         },
     }).collect_vec();
-    for ind in int_ind {
-        println!("int at {}, *ptr[ind] = {}", ind, unsafe{*(ptrs[ind] as *mut u32)});
-    }
-    println!(" *ptr[4] = {}",  unsafe{*(ptrs[4] as *mut f32)});
-    println!(" *(ptr[0] + 8) = {}",  unsafe{*(ptrs[0].offset(8) as *mut f32)});
-    panic!();
-    //let time = compile::link_and_exec(&templib_name, &String::from("execute"), args);
-    println!("BLA");
     let time = compile::link_and_exec(&templib_name, &String::from("execute"), ptrs);
-    println!("BLA");
     Ok(time)
 }
 
-enum HoldThunk {
-    Arr(CpuArray),
-    PlaceHolder,
-}
 
-enum ThunkArg { 
-    ArgRef(Arc<Argument>),
-    TmpArray(u32),
-    Size(i32),
-}
-
-
-type AsyncPayload<'a, 'b> = (explorer::Candidate<'a>,  String, AsyncCallback<'a, 'b>);
+type AsyncPayload<'a, 'b> = (explorer::Candidate<'a>,  String, Vec<ThunkArg>, AsyncCallback<'a, 'b>);
 
 pub struct AsyncEvaluator<'a, 'b> where 'a: 'b {
     context: &'b Context,
