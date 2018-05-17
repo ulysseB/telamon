@@ -12,6 +12,7 @@ pub fn compile(mut source_file: File, lib_path: &String) -> ExitStatus {
         .stdin(source_file)
         .arg("-shared")
         .arg("-fPIC")
+        .arg("-g")
         .arg("-o")
         .arg(lib_path)
         .arg("-xc")
