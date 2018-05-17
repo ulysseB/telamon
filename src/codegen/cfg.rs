@@ -94,10 +94,9 @@ impl<'a> Cfg<'a> {
     }
 
     /// Builds a CFG from a list of `CfgEvent`.
-    fn from_events<IT>(mut events: IT, num_thread_dims: usize) -> Cfg<'a>
-        where IT: Iterator<Item=CfgEvent<'a>>
-    {
+    fn from_events(events: Vec<CfgEvent<'a>>, num_thread_dims: usize) -> Cfg<'a> {
         let mut thread_mask = vec![true; num_thread_dims];
+        let mut events = events.into_iter();
         let body = Cfg::body_from_events(&mut events, &mut thread_mask);
         assert!(events.next().is_none());
         let body = Self::add_empty_threads(body, num_thread_dims);
@@ -107,6 +106,7 @@ impl<'a> Cfg<'a> {
     /// Ensure every instruction is nested in a thread dimension.
     fn add_empty_threads(body: Vec<Cfg>, num_thread_dims: usize) -> Vec<Cfg> {
         // FIXME: some parallel induction levels are going to be predicated while they should not
+        // * move parallel induction levels inside the thread dimensions or in precomputed.
         let groups = body.into_iter().group_by(|cfg| cfg.handle_threads());
         let mut new_body = Vec::new();
         for (handle_threads, cfgs) in &groups {
@@ -159,17 +159,11 @@ impl<'a> fmt::Debug for Cfg<'a> {
 /// thread and block dimensions.
 pub fn build<'a>(space: &'a SearchSpace<'a>,
                  insts: Vec<Instruction<'a>>,
-                 dims: Vec<Dimension<'a>>,
-                 precomputed_ind_levels: Vec<InductionLevel<'a>>)
+                 dims: Vec<Dimension<'a>>)
     -> (Vec<Dimension<'a>>, Vec<Dimension<'a>>, Cfg<'a>)
 {
-    let precomputed_ind_levels = precomputed_ind_levels.into_iter().map(|level| {
-        let dim = unwrap!(level.increment).0;
-        CfgEvent::Enter(dim, EntryEvent::ParallelInductionLevel(level))
-    });
     let (block_dims, thread_dims, mut events) = gen_events(space, insts, dims);
     events.sort_by(|lhs, rhs| lhs.cmp(rhs, space));
-    let events = precomputed_ind_levels.chain(events);
     let cfg = Cfg::from_events(events, thread_dims.len());
     (block_dims, thread_dims, cfg)
 }
@@ -272,7 +266,7 @@ fn gen_events<'a>(space: &'a SearchSpace<'a>,
         }
     }
     // Register thread and block induction levels.
-    for dim in block_dims.iter_mut().chain(&mut thread_dims) {
+    for dim in &mut thread_dims {
         for level in dim.drain_induction_levels() {
             let event = EntryEvent::ParallelInductionLevel(level);
             events.push(CfgEvent::Enter(dim.id(), event));
