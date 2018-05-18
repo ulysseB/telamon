@@ -103,11 +103,17 @@ fn cfg<'a>(fun: &Function, c: &Cfg<'a>, namer: &mut NameMap) -> String {
         Cfg::Root(ref cfgs) => cfg_vec(fun, cfgs, namer),
         Cfg::Loop(ref dim, ref cfgs) => cpu_loop(fun, dim, cfgs, namer),
         // FIXME: handle this
-        Cfg::Barrier => String::new(),
+        Cfg::Threads(ref dims, ref ind_levels, ref inner) => {
+            let mut res = enable_threads(fun, dims, namer);
+            for level in ind_levels {
+                res.push_str(&parallel_induction_level(level, namer));
+                res.push_str("\n  ");
+            }
+            res.push_str(&cfg_vec(fun, inner, namer));
+            res.push_str("\n  ;");
+            res
+        }
         Cfg::Instruction(ref i) => inst(i, namer),
-        Cfg::EnableThreads(ref threads) => enable_threads(fun, threads, namer),
-        Cfg::ParallelInductionLevel(ref level) =>
-            parallel_induction_level(level, namer),
     }
 }
 
@@ -122,7 +128,6 @@ fn enable_threads(fun: &Function, threads: &[bool], namer: &mut NameMap) -> Stri
         //unwrap!(writeln!(ops, "  setp.eq.s32 {}, {}, 0;", new_guard, index));
         unwrap!(writeln!(ops, "   {} = ({} == 0);", new_guard, index));
         if let Some(ref guard) = guard {
-            //unwrap!(writeln!(ops, "  and.pred {}, {}, {};", guard, guard, new_guard));
             unwrap!(writeln!(ops, "   {} = {} && {};", guard, guard, new_guard));
         } else {
             guard = Some(new_guard);
@@ -337,7 +342,6 @@ pub fn function(function: &Function) -> String {
         param_decls = function.device_code_args()
             .map(|v| param_decl(v, name_map))
             .collect_vec().join(",\n  ");
-        body = cfg(function, function.cfg(), name_map);
         idx_loads = decl_par_indexes(function, name_map);
         ld_params = function.device_code_args().map(|val| {
             format!("{var_name} = {name};",
@@ -367,6 +371,10 @@ pub fn function(function: &Function) -> String {
                 }
             }
         }
+        let ind_levels = function.init_induction_levels().into_iter()
+            .chain(function.block_dims().iter().flat_map(|d| d.induction_levels()));
+        init.extend(ind_levels.map(|level| parallel_induction_level(level, name_map)));
+        body = cfg(function, function.cfg(), name_map);
     }
     let var_decls = var_decls(&namer);
     format!(include_str!("template/device.c.template"),
@@ -376,6 +384,7 @@ pub fn function(function: &Function) -> String {
             params = param_decls,
             var_decls = var_decls,
             mem_decls = mem_decls,
+            init = init.join("\n  "),
             body = body
            )
 }

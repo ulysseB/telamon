@@ -4,6 +4,7 @@ void {name}(
 {{
   {var_decls}
   {mem_decls}
+  {init}
   {idx_loads}
   {ld_params}
   {body}
