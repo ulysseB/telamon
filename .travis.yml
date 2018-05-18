@@ -11,7 +11,11 @@ before_script:
   - flex --version
 script:
   - cd telamon-gen && LEX="flex" cargo build --features "lex" --verbose
-  - cargo test --verbose --all
+  - cargo test --verbose
+  - cd telamon-utils && cargo test --verbose
+  - cd telamon-gen && cargo test --verbose
+  - cd telamon-gen/cc_test && cargo test --verbose
+  - cd kernels && cargo test --release --verbose
   - cargo doc --no-deps --verbose --all
 deploy:
   provider: pages
