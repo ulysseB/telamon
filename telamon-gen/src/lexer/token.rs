@@ -3,7 +3,7 @@ use ir;
 #[derive(Debug, PartialEq)]
 pub enum Token {
     ValueIdent(String), ChoiceIdent(String), Var(String), Doc(String), CmpOp(ir::CmpOp),
-    InvalidToken(String), Code(String), CounterKind(ir::CounterKind), Bool(bool),
+    Code(String), CounterKind(ir::CounterKind), Bool(bool),
     CounterVisibility(ir::CounterVisibility),
     And, Trigger, When, Alias, Counter, Define, Enum, Equal, Forall, In, Is, Not, Require,
     Requires, Value, End, Symmetric, AntiSymmetric, Arrow, Colon, Comma, LParen, RParen,

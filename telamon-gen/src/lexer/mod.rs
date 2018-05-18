@@ -30,6 +30,7 @@ pub use self::ffi::Position;
 
 #[derive(Debug, PartialEq)]
 pub enum LexicalError {
+    InvalidToken(Position, String, Position),
     UnexpectedToken(Position, Token, Position),
 }
 
@@ -102,7 +103,7 @@ impl Iterator for Lexer {
 
                     CStr::from_ptr(out)
                          .to_str().ok()
-                         .and_then(|s: &str| Some(Err(LexicalError::UnexpectedToken(extra.leg, Token::InvalidToken(s.to_owned()), extra.end))))
+                         .and_then(|s: &str| Some(Err(LexicalError::InvalidToken(extra.leg, s.to_owned(), extra.end))))
                 },
                 YyToken::ChoiceIdent => {
                     let out = yyget_text(self.scanner);
