@@ -35,14 +35,14 @@ pub struct Position {
 /// A F/lex's token with a span.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub struct Span<Y> {
+pub struct Spanned<Y> {
     pub leg: Position,
     pub end: Position,
     /// Spanned data
     pub data: Y,
 }
 
-pub type YyExtraType = Span<YyLval>;
+pub type YyExtraType = Spanned<YyLval>;
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
