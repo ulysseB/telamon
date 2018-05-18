@@ -1,108 +1,45 @@
+/* 19 Reentrant C Scanners § https://westes.github.io/flex/manual/Reentrant.html#Reentrant */
 %option reentrant
+/* https://westes.github.io/flex/manual/I-get-an-error-about-undefined-yywrap_0028_0029_002e.html#I-get-an-error-about-undefined-yywrap_0028_0029_002e */
 %option noyywrap
+/* number of the current line § https://westes.github.io/flex/manual/Options-Affecting-Scanner-Behavior.html#index-yylineno */
+%option yylineno
+/* 19.4.6 Extra Data § https://westes.github.io/flex/manual/Extra-Data.html */
+%option extra-type="Span"
 
 %x C_COMMENT
 %x LINE_DOC
 
 %{
-    #include <stdio.h>
+    #include "expression.h"
 
-    union yylval {
-        int val;
-    } yylval;
+    typedef struct Pos {
+        unsigned int line;
+        unsigned int column;
+    } Pos;
 
-    enum token {
-        VALUEIDENT,
-        CHOICEIDENT,
-        VAR,
-        DOC,
-        CMPOP,
-        INVALIDTOKEN,
-        CODE,
-        COUNTERKIND,
-        BOOL,
-        COUNTERVISIBILITY,
-        AND,
-        TRIGGER,
-        WHEN,
-        ALIAS,
-        COUNTER,
-        DEFINE,
-        ENUM,
-        EQUAL,
-        FORALL,
-        IN,
-        IS,
-        NOT,
-        REQUIRE,
-        REQUIRES,
-        VALUE,
-        END,
-        SYMMETRIC,
-        ANTISYMMETRIC,
-        ARROW,
-        COLON,
-        COMMA,
-        LPAREN,
-        RPAREN,
-        BITOR,
-        OR,
-        SETDEFKEY,
-        SET,
-        SUBSETOF,
-        SETIDENT,
-        BASE,
-        DISJOINT,
-        QUOTIENT,
-        OF,
-        DIVIDE,
-    };
+    typedef int Data;
 
-    // Indicates whether a counter sums or adds.
-    enum counter_kind {
-        ADD,
-        MUL,
-    };
+    // 
+    typedef struct Span {
+        Pos leg;
+        Pos end;
+        Data data;
+    } Span;
 
-    // Indicates how a counter exposes how its maximum value.
-    // The variants are ordered by increasing amount of information available.
-    enum counter_visibility {
-        // Only the minimal value is computed and stored.
-        NOMAX,
-        // Both the min and max are stored, but only the min is exposed.
-        HIDDENMAX,
-        // Both the min and the max value are exposed.
-        FULL,
-    };
+    #define YY_USER_ACTION { \
+        yyextra.leg = yyextra.end; \
+        yyextra.end.line = yylineno; \
+        yyextra.end.column += yyleng; \
+    }
 
-    enum cmp_op {
-        LT,
-        GT,
-        LEQ,
-        GEQ,
-        EQ,
-        NEQ,
-    };
-
-    enum set_def_key {
-        ITEMTYPE,
-        IDTYPE,
-        ITEMGETTER,
-        IDGETTER,
-        ITER,
-        FROMSUPERSET,
-        PREFIX,
-        NEWOBJS,
-        REVERSE,
-        ADDTOSET,
-    };
 %}
 
 num [0-9]
 alpha [a-zA-Z_]
 alpha_num {alpha}|{num}
 
-whitespace [ \t\r\n]+
+whitespace [ \t\r]+
 comment "//"[^/\n][^\n]*|"//"
 blank {comment}|{whitespace}
 
@@ -178,12 +115,15 @@ code \"[^\n\"]*\"
 %%
 
 {c_comment_beg}            { BEGIN(C_COMMENT); }
+<C_COMMENT>[\n]            { yyextra.end.line += 1; }
 <C_COMMENT>{c_comment_end} { BEGIN(INITIAL); }
-<C_COMMENT>.               {}
+<C_COMMENT>.               { }
 
-{doc}             { BEGIN(LINE_DOC); }
-<LINE_DOC>\n      { BEGIN(INITIAL); }
-<LINE_DOC>[^\n]*  { return DOC; }
+{doc}             { yyextra.end.column -= 3; BEGIN(LINE_DOC); }
+<LINE_DOC>\n      { yyextra.end.column = 0; BEGIN(INITIAL); }
+<LINE_DOC>[^\n]*  { yyextra.end.column += 3; return DOC; }
+
+[\n] { yyextra.end.column = 0; }
 
 {blank} {}
 
@@ -195,34 +135,34 @@ code \"[^\n\"]*\"
 {in} { return IN; }
 {is} { return IS; }
 {not} { return NOT; }
-{product} {yylval.val = MUL;  return COUNTERKIND; }
+{product} { yyextra.data = MUL;  return COUNTERKIND; }
 {require} { return REQUIRE; }
 {requires} { return REQUIRES; }
-{sum} {yylval.val = ADD;  return COUNTERKIND; }
+{sum} { yyextra.data = ADD;  return COUNTERKIND; }
 {value} { return VALUE; }
 {when} { return WHEN; }
 {trigger} { return TRIGGER; }
-{half} {yylval.val = NOMAX;  return COUNTERVISIBILITY; }
-{hidden} {yylval.val = HIDDENMAX;  return COUNTERVISIBILITY; }
+{half} { yyextra.data = NOMAX;  return COUNTERVISIBILITY; }
+{hidden} { yyextra.data = HIDDENMAX;  return COUNTERVISIBILITY; }
 {base} { return BASE; }
 
-{item_type} {yylval.val = ITEMTYPE;  return SETDEFKEY; }
-{new_objs} {yylval.val = NEWOBJS;  return SETDEFKEY; }
-{id_type} {yylval.val = IDTYPE;  return SETDEFKEY; }
-{item_getter} {yylval.val = ITEMGETTER;  return SETDEFKEY; }
-{id_getter} {yylval.val = IDGETTER;  return SETDEFKEY; }
-{iter} {yylval.val = ITER;  return SETDEFKEY; }
-{prefix} {yylval.val = PREFIX;  return SETDEFKEY; }
-{reverse} {yylval.val = REVERSE;  return SETDEFKEY; }
-{add_to_set} {yylval.val = ADDTOSET;  return SETDEFKEY; }
-{from_superset} {yylval.val = FROMSUPERSET;  return SETDEFKEY; }
+{item_type} { yyextra.data = ITEMTYPE;  return SETDEFKEY; }
+{new_objs} { yyextra.data = NEWOBJS;  return SETDEFKEY; }
+{id_type} { yyextra.data = IDTYPE;  return SETDEFKEY; }
+{item_getter} { yyextra.data = ITEMGETTER;  return SETDEFKEY; }
+{id_getter} { yyextra.data = IDGETTER;  return SETDEFKEY; }
+{iter} { yyextra.data = ITER;  return SETDEFKEY; }
+{prefix} { yyextra.data = PREFIX;  return SETDEFKEY; }
+{reverse} { yyextra.data = REVERSE;  return SETDEFKEY; }
+{add_to_set} { yyextra.data = ADDTOSET;  return SETDEFKEY; }
+{from_superset} { yyextra.data = FROMSUPERSET;  return SETDEFKEY; }
 {set} { return SET; }
 {of} { return OF; }
 {subsetof} { return SUBSETOF; }
 {disjoint} { return DISJOINT; }
 {quotient} { return QUOTIENT; }
-{true} {yylval.val = 1; return BOOL; }
-{false} {yylval.val = 0; return BOOL; }
+{true} { yyextra.data = 1; return BOOL; }
+{false} { yyextra.data = 0; return BOOL; }
 
 {colon} { return COLON; }
 {comma} { return COMMA; }
@@ -231,12 +171,12 @@ code \"[^\n\"]*\"
 {bit_or} { return BITOR; }
 {or} { return OR; }
 {and} { return AND; }
-{gt} {yylval.val = GT; return CMPOP; }
-{lt} {yylval.val = LT; return CMPOP; }
-{ge} {yylval.val = GEQ; return CMPOP; }
-{le} {yylval.val = LEQ; return CMPOP; }
-{equals} {yylval.val = EQ; return CMPOP; }
-{not_equals} {yylval.val = NEQ; return CMPOP; }
+{gt} { yyextra.data = GT; return CMPOP; }
+{lt} { yyextra.data = LT; return CMPOP; }
+{ge} { yyextra.data = GEQ; return CMPOP; }
+{le} { yyextra.data = LEQ; return CMPOP; }
+{equals} { yyextra.data = EQ; return CMPOP; }
+{not_equals} { yyextra.data = NEQ; return CMPOP; }
 {equal} { return EQUAL; }
 {end} { return END; }
 {symmetric} { return SYMMETRIC; }

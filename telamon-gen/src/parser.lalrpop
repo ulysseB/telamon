@@ -1,7 +1,9 @@
 //! Lalrpop parser for constraints description.
 use ast;
 use ir;
-use lexer::Token;
+
+use lexer::*;
+
 use utils::*;
 
 grammar;
@@ -158,6 +160,9 @@ list<T, SEP>: Vec<T> = {
 };
 
 extern {
+    type Location = Position;
+    type Error = LexicalError;
+
     enum Token {
         choice_ident => Token::ChoiceIdent(<String>),
         val_ident => Token::ValueIdent(<String>),
