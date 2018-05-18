@@ -176,6 +176,17 @@ macro_rules! generated_file {
     }
 }
 
+/// Pulbic includes a generates file into the current file.
+#[macro_export]
+macro_rules! pub_generated_file {
+    ($name:ident) => {
+        #[cfg_attr(feature = "cargo-clippy", allow(clippy))]
+        pub mod $name {
+            include!(concat!(env!("OUT_DIR"), "/", stringify!($name), ".rs"));
+        }
+    }
+}
+
 /// Clones a pair of reference.
 pub fn clone_pair<T1: Clone, T2: Clone>(p: (&T1, &T2)) -> (T1, T2) {
     (p.0.clone(), p.1.clone())
