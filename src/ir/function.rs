@@ -34,6 +34,7 @@ pub struct Function<'a> {
     device: &'a Device,
     insts: Vec<Instruction<'a>>,
     dims: Vec<Dimension<'a>>,
+    thread_dims: VecSet<ir::dim::Id>,
     mem_insts: Vec<ir::InstId>,
     mem_blocks: mem::BlockMap<'a>,
     layouts_to_lower: Vec<ir::mem::InternalId>,
@@ -50,6 +51,7 @@ impl<'a> Function<'a> {
             insts: vec![],
             mem_insts: vec![],
             dims: vec![],
+            thread_dims: VecSet::default(),
             mem_blocks,
             layouts_to_lower: Vec::new(),
             induction_vars: Vec::new(),
@@ -110,6 +112,11 @@ impl<'a> Function<'a> {
         self.insts.iter().map(|x| x as _).chain(self.dims.iter().map(|x| x as _))
     }
 
+    /// Returns the list of thread dimensions.
+    pub fn thread_dims(&self) -> impl Iterator<Item=&Dimension<'a>> {
+        self.thread_dims.iter().map(move |&d| self.dim(d))
+    }
+
     /// Returns an instruction given its id.
     pub fn inst(&self, id: InstId) -> &Instruction<'a> { &self.insts[id.0 as usize] }
 
@@ -121,19 +128,16 @@ impl<'a> Function<'a> {
     /// Retuns a dimension given its id.
     pub fn dim(&self, id: dim::Id) -> &Dimension<'a> { &self.dims[id.0 as usize] }
 
+    /// Returns a mutable reference to a dimension given its ID.
+    fn dim_mut(&mut self, id: dim::Id) -> &mut Dimension<'a> {
+        &mut self.dims[id.0 as usize]
+    }
+
     /// Returns a `BasicBlock` given its id.
     pub fn block(&self, id: BBId) -> &BasicBlock<'a> {
         match id {
             BBId::Inst(id) => &self.insts[id.0 as usize],
             BBId::Dim(id) => self.dim(id),
-        }
-    }
-
-    /// Returns a mutable reference to a basicblock.
-    fn block_mut(&mut self, id: BBId) -> &mut BasicBlock<'a> {
-        match id {
-            BBId::Inst(id) => &mut self.insts[id.0 as usize],
-            BBId::Dim(id) => &mut self.dims[id.0 as usize],
         }
     }
 
@@ -176,9 +180,16 @@ impl<'a> Function<'a> {
     /// iteration dimension was not aleady present in the set.
     pub fn set_iteration_dim(&mut self, inst: ir::InstId, dim: ir::dim::Id) -> bool {
         if self.inst_mut(inst).add_iteration_dimension(dim) {
-            self.dims[dim.0 as usize].add_iterated(inst);
+            self.dim_mut(dim).add_iterated(inst);
             true
         } else { false }
+    }
+
+    /// Adds a thread dimension. Indicates if the the dimension was not already present
+    /// in the set.
+    pub fn add_thread_dim(&mut self, dim: ir::dim::Id) -> bool {
+        self.dim_mut(dim).set_thread_dim();
+        self.thread_dims.insert(dim)
     }
 
     /// Trigger to call when two dimensions are merged.

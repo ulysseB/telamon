@@ -135,7 +135,7 @@ pub enum FastOrigin {
 }
 
 /// The level at which a bottleneck is computed.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BottleneckLevel { Global, Block, Thread }
 
 impl BottleneckLevel {
@@ -242,6 +242,7 @@ impl Origin {
             x @ Origin::Latency |
             x @ Origin::Bottleneck(..) |
             x @ Origin::HardwareEvaluation => (false, x, false),
+            Origin::Loop { iterations: 0, .. } => (true, Origin::Latency, true),
             Origin::Loop { dims, iterations, inner } => {
                 let inner = Box::new(inner.simplify().1);
                 (true, Origin::Loop { dims, iterations, inner }, true)
@@ -292,11 +293,11 @@ impl fmt::Display for Origin {
                 write!(f, "the pressure on {} at the {}", name, level),
             Origin::HardwareEvaluation => write!(f, "the evaluation on the hardware"),
             Origin::Loop { ref dims, iterations, ref inner } => {
-                write!(f, "{} iterations along dimensions [{}] of {}",
+                write!(f, "{} iterations along dimensions [{}] of {{ {} }}",
                     iterations, dims.iter().format(", "), inner)
             },
             Origin::Scale { ref inner, factor } =>
-                write!(f, "scale by {:.2e}:  {}", factor, inner),
+                write!(f, "scale by {:.2e}: {}", factor, inner),
             Origin::Chain { ref before, ref mid_point, ref after } => {
                 display_inline_chain(before, f)?;
                 write!(f, " to {}, then ", mid_point)?;
@@ -312,7 +313,7 @@ fn display_inline_chain(bound: &Bound, f: &mut fmt::Formatter) -> fmt::Result {
     if let Origin::Chain { .. } = bound.origin {
         write!(f, "{}", bound.origin)
     } else {
-        write!(f, "{:.2e}ns ({})", bound.value, bound.origin)
+        write!(f, "{:.2e}ns: {}", bound.value, bound.origin)
     }
 }
 
@@ -397,4 +398,12 @@ impl HwPressure {
     /// Returns the pressure on a bottleneck.
     #[cfg(test)]
     pub fn get_bottleneck(&self, index: usize) -> f64 { self.bottlenecks[index] }
+
+    /// Pointwise multiplication of the pressure on each resource.
+    pub fn multiply(&mut self, other: &HwPressure) {
+        self.latency *= other.latency;
+        for (b, &other_b) in self.bottlenecks.iter_mut().zip_eq(&other.bottlenecks) {
+            *b *= other_b;
+        }
+    }
 }

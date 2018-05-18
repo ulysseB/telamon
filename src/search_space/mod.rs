@@ -6,12 +6,10 @@ mod operand;
 generated_file!(choices);
 
 pub use self::choices::{Action, Bool, DimKind, Domain, DomainStore, InstFlag, Order,
-                        MemSpace};
+                        MemSpace, ThreadMapping};
 
 use self::choices::{apply_action, DomainDiff, init_domain};
 use std::sync::Arc;
-
-// FIXME: unrolled loops of size 1 should not be allowed
 
 /// A partially specified implementation.
 #[derive(Clone)]
@@ -95,5 +93,13 @@ fn add_iteration_dim(ir_instance: &mut ir::Function,
     if ir_instance.set_iteration_dim(inst, dim) {
         new_objs.add_iteration_dim(inst, dim);
     }
+    new_objs
+}
+
+/// Adds a dimension to the list of thread dimensions.
+fn add_thread_dim(ir_instance: &mut ir::Function, dim: ir::dim::Id) -> ir::NewObjs {
+    debug!("set {:?} as a thread dimension", dim);
+    let mut new_objs = ir::NewObjs::default();
+    if ir_instance.add_thread_dim(dim) { new_objs.add_thread_dim(dim); }
     new_objs
 }

@@ -55,6 +55,8 @@ pub struct NameMap<'a, 'b> {
     induction_levels: HashMap<(ir::IndVarId, ir::dim::Id), String>,
     /// Casted sizes.
     size_casts: HashMap<(&'a ir::Size<'a>, ir::Type), String>,
+    /// Guard to use in front of instructions with side effects.
+    side_effect_guard: Option<RcStr>,
 }
 
 impl<'a, 'b> NameMap<'a, 'b> {
@@ -105,6 +107,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
             total_num_threads: function.num_threads(),
             size_casts: HashMap::default(),
             indexes, params, mem_blocks, induction_vars, induction_levels,
+            side_effect_guard: None,
         };
         // Setup induction variables.
         for var in function.induction_vars() {
@@ -324,5 +327,15 @@ impl<'a, 'b> NameMap<'a, 'b> {
                 Cow::Borrowed(size)
             },
         }
+    }
+
+    /// Returns the side-effect guard, if any is set.
+    pub fn side_effect_guard(&self) -> Option<RcStr> {
+        self.side_effect_guard.clone()
+    }
+
+    /// Sets the predicate to use in front of side-effect instruction.
+    pub fn set_side_effect_guard(&mut self, guard: Option<RcStr>) {
+        self.side_effect_guard = guard;
     }
 }

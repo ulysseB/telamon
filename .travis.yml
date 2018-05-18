@@ -1,84 +1,33 @@
----
 language: rust
 cache: cargo
-# kcov currently broken on travis for non-sudo builds § https://github.com/roblabla/cargo-travis/issues/32
-sudo: required
+sudo: false
 rust:
-  - nightly
   - stable
 addons:
   apt:
     packages:
-      # F/lex depedencies (needed by telamon-gen) § https://github.com/ulysseB/telamon/blob/989621f5cf1099fda6ba14b4eda18b1cd9d4660a/telamon-gen/build.rs#L14
       - flex
-
-      # Criterion's dependency Quickstart § https://github.com/japaric/criterion.rs#quickstart
-      - gnuplot
-
-      # Kcov's Installing dependencies § https://github.com/SimonKagstrom/kcov/blob/master/INSTALL.md#ubuntu
-      - binutils-dev
-      - libcurl4-openssl-dev
-      - zlib1g-dev
-      - libdw-dev
-      - libiberty-dev
-
 before_script:
   - flex --version
-
 script:
-  - |
-    if [ $TRAVIS_RUST_VERSION == "nightly" ];
-      then
-        cargo test --no-run --all
-        cargo doc --no-deps --all
-      else
-        cargo test --all
-        cargo doc --all
-    fi
-     
-
-after_success:
-  # Kcov's Building § https://github.com/SimonKagstrom/kcov/blob/master/INSTALL.md#building
-  - git clone https://github.com/SimonKagstrom/kcov.git
-  - mkdir kcov/build
-  - cd kcov/build
-  - cmake ..
-  - make
-  - make install DESTDIR=../..
-  - cd -
-
-  - |
-    for file in target/debug/telamon*[^\.d];
-      do
-        mkdir -p "target/cov/$(basename $file)";
-
-        # Kcov's Travis-ci / coveralls integration § https://github.com/SimonKagstrom/kcov/blob/master/doc/coveralls.md#travis-ci--coveralls-integration
-        ./usr/local/bin/kcov --coveralls-id=$TRAVIS_JOB_ID --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file";
-    done
-
-  - mv target/cov target/doc
-
-  # Criterion's run Quickstart § https://github.com/japaric/criterion.rs#quickstart
-  - |
-    if [ $TRAVIS_RUST_VERSION == "nightly" ];
-      then
-        cd telamon-gen
-        cargo bench
-        cd -
-        mv telamon-gen/target/criterion target/doc
-    fi
-
+  - cd telamon-gen && LEX="flex" cargo build --features "lex" --verbose
+  - cargo test --verbose --all
+  - cargo doc --no-deps --verbose --all
 deploy:
-  - provider: pages
-    local-dir: target/doc
-    target-branch: gh-pages
-    skip-cleanup: true
-    keep-history: false
-    github-token: "$GITHUB_TOKEN"
-    on:
-      condition: $TRAVIS_RUST_VERSION = nightly
-
+  provider: pages
+  local-dir: target/doc
+  target-branch: gh-pages
+  skip-cleanup: true
+  keep-history: true
+  github-token: "$GITHUB_TOKEN"
+  on:
+    branch: master
+notifications:
+  slack:
+    rooms:
+      secure: bhOU59RYPbvA8GXYtL4JTGjKRbrOFyni2wjAV0gWQqwP9lkzYWlYDlsoHOFIR+DLhwN0Or2d5Sw47Ic3NLGrzhPOFcXNBhoRUy4QBUPWaKETEJbqjG/UvYRbfGr7ajosQdL1pDMuem8NFXdNcSCgnHu9Wgtim1EjO82rdc4YGPSCcHkfHpCncM435vXcDhtdz/ks9pF4igmJH0frhXTAkngckggaR2xx1cUAlrc4ztc03goe+uFC3Iti1QAp2DGMFx9hLvV1CjATeqSA4/65idUS0aEWccK2tNwLjp3nL3LAwwymCr4OWS8wCD0p1lk3Fvcc3FTX2fw6TfGciaFNCwAO+0FD5tJD+Uez+QllN4cufKrbwQo9ZlRP0fFsx38QJ1FeK8k/uk0hR7MzqypzkCNwG6NBI98L71P2sFvA15gELuI9sWhx655PwFzmjNwYw/zCeimp9pi+bNbYoWjckkwbN7ArwJjPt47vv/bIJbo/NrmNxFghZm4RTQW45prolMUqGO9AeIMf7oP24pPdEv3v9oH7lF/97tCBLt9Nd7LhwizK6nG/VFFCofwdIfBqlGDwJufN3UoMqVezkHqRuZa+tDgU9SuUrfAe1XnAc1+HbDzza55LM+3tzHn4sPr1jmlLIEHww2Yub4GpxBJYl+8MhusRbGhedqtpqeLk3LE=
+    on_success: change
+    on_failure: change
 env:
   global:
-    - TRAVIS_CARGO_NIGHTLY_FEATURE="nightly"
-    - secure: T7ao3Xly60lrporBe0RChgoqLAQ8OGegUHYmQ6ZQJJqRwKansrJkd0S4w6ZtLYMqzwX03ycI+B9euPY0km3uSxysssBNJamqLyw2my9+zIOR31+6rP/+MeH1/GPcvJF5foGZAoLwxxIp+wF/5FvsqhgpfoIT1GHDylMKFGuq9lleWc1i03xAV341avjRMi9O23fEpAHEixlXl0rIGl1k6PeUy0nP0bktxk+0Z1pFdi89w3EfCSE5GESWQhylB+vI2CHFDj7rTAMRO1J5KYEcXjpKGPpdYdmJz7Egp3qimIzdNUiIJxEJOdXUtys2thuf/R8r/neGiP757OX/MDJ0DT7sxqmKeF85BTc8X2KjPgRcjOsSXL5xEmkgRm9UaR2qiBrvpCxCM0EIoIUADMwDbMUCpNzWrPGFCL6SxR8zDc9/aSUWr2Mt41MX7oNWxViQLQACIuh5xnved8c01gsseBCUkyMXybisiZtNts/AolBS5Ayu/qAp0ocZn9xKy7pCxSmLNfl7EVozEjDI8qegv23apqdseGNv2QtR5vM7t4SYsNnBsQosoC5DIICy7BiX0fboKP1qKHFMhJGekka3ky9/wCHbaZb205PLZ9GxEkHVfuOxsFOdszglGZtknvKqdwnxt04gqs33iL6o/1GGOcRiEdvOqhWWrbz+nMUQqV8=
+    secure: ZLjUSECDu2ewLa2eJ8DepE7b3tuQxR81tbUxFtSBKKj6IVZPppzS7CUcVZxE46Xp+pug9KKApACOfqfqil5hRaSHKtqoVoOf/sYPJs+xA3JdmVBmqVYj0YViCA5WCxVU1J5BIEDVLTqJy7y3zBy8OYP2fNquNLEBUL7r0jn/+tjbuZfrwzN2PUqL/l7YyQVT/UgdpaXzVkvAcjGEL4nXpcSLb+a0g49PSQNcJhoLiYoZziUZH6buKllBzyBszBk4f/yO+wrvs334FaVw0DBbngIyUcQyzJT56eck22AJXlTl88DpJOUPakFTTJ1oa7UG6MTD46QMp2F/LK+ASNXwT5Q1OIsk67/CltZiWLXGBmdaAX2CJXor5vClNX3kEs0jCVCxMAOwfCmbTAz9cklb0rsoHXWYO3E39L3JhcVeZjwIvfI31d1cFrTjEwIVnUBQLmPYJyp9ndjc4kj7X/NUwD9SqrquIoEDW6mtCHlGmIDnkMJYQXNEwnoenFsSA+nbq9f/zoZVYUxmPYmRyHTCSNHVABUKYp3sK7HsRREwYwLm5slADH+K5loNYcxPgVJuH+mP7SAnJ6A8BTe4qxZK/bxjGr3ltSumWN2Ao9eC+PiAxG2QXGXHNeBtnrX0QxGkYZ5hjZndfAovjxjSsQ1kObnOOdwCSw4V93zFNzHthOQ=

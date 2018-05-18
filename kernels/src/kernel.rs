@@ -74,7 +74,7 @@ pub trait Kernel<'a>: Sized {
             let leaf = local_selection::descend(order, context, candidate, CUT);
             if let Some(leaf) = leaf {
                 let device_fn = codegen::Function::build(&leaf.space);
-                unwrap!(context.evaluate(&device_fn),
+                unwrap!(context.evaluate(&device_fn, device::EvalMode::FindBest),
                     "evaluation failed for kernel {}, with actions {:?}",
                     Self::name(), leaf.actions);
                 if let Err(err) = kernel.check_result(&expected_output, context) {
@@ -112,7 +112,12 @@ pub trait Kernel<'a>: Sized {
         let leaves = Mutex::new(Vec::new());
         let num_tested = atomic::AtomicUsize::new(0);
         context.async_eval(num_cpus::get(), device::EvalMode::TestBound, &|evaluator| {
-            while num_tested.fetch_add(1, atomic::Ordering::SeqCst) < num_tests {
+            loop {
+                if num_tested.fetch_add(1, atomic::Ordering::SeqCst) >= num_tests {
+                    if num_tested.fetch_sub(1, atomic::Ordering::SeqCst) > num_tests {
+                        break;
+                    }
+                }
                 if let Some((leaf, bounds)) = descend_check_bounds(&candidates, context) {
                     let leaves = &leaves;
                     evaluator.add_kernel(leaf, (move |leaf: Candidate, runtime: f64, _| {
@@ -245,10 +250,12 @@ pub fn analyze_bounds(mut bounds: Vec<BoundSample>) {
             println!("{}% worst error: {}", i*100/num_printed, bounds[index]);
         }
     }
-    if num_errors != bounds.len() {
-        for i in 0..NUM_QUANTILES {
-            let index = (i+1)*(bounds.len()-num_errors)/NUM_QUANTILES - 1;
-            println!("{}% worst: {}", (i+1)*100/NUM_QUANTILES, bounds[num_errors + index]);
+    if num_errors < bounds.len() {
+        let num_bounds = bounds.len() - num_errors;
+        let num_quantiles = std::cmp::min(NUM_QUANTILES, num_bounds);
+        for i in 0..num_quantiles {
+            let index = (i+1)*(num_bounds/num_quantiles) - 1;
+            println!("{}% worst: {}", (i+1)*100/num_quantiles, bounds[num_errors + index]);
         }
     }
 }

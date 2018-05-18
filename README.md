@@ -10,11 +10,11 @@ performance model is guaranteed to never drop good candidates.
 
 ## Building
 
-Telamon requires a nightly version of the rust toolchain. It can be installed with the
+Telamon requires vesion 1.26 or higher of the rust toolchain. It can be installed with the
 following command:
 
 ```bash
-$ curl -s https://static.rust-lang.org/rustup.sh | sh -s -- --channel=nightly
+$ curl -s https://static.rust-lang.org/rustup.sh | sh -s
 ```
 
 You can build Telamon using Rust package manager:

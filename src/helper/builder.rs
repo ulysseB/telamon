@@ -42,22 +42,28 @@ impl<'a> Builder<'a> {
         op.get(&self.function, &self.open_dims)
     }
 
-    /// Adds an `Add` instruction to the fuction.
-    pub fn add<'b: 'a>(&mut self, lhs: &AutoOperand<'b>, rhs: &AutoOperand<'b>
-                      ) -> InstId {
+    /// Creates a binary operator.
+    pub fn binop<'b: 'a>(&mut self,
+                         op: ir::BinOp,
+                         lhs: &AutoOperand<'b>,
+                         rhs: &AutoOperand<'b>) -> InstId {
         let lhs_op = self.get_op(lhs);
         let rhs_op = self.get_op(rhs);
         let rounding = default_rounding(&lhs_op.t());
-        self.inst(op::Add(lhs_op, rhs_op, rounding))
+        self.inst(op::BinOp(op, lhs_op, rhs_op, rounding))
+    }
+
+    /// Adds an `Add` instruction to the fuction.
+    pub fn add<'b: 'a>(&mut self, lhs: &AutoOperand<'b>, rhs: &AutoOperand<'b>)
+        -> InstId
+    {
+        self.binop(ir::BinOp::Add, lhs, rhs)
     }
 
     /// Adds a `Sub` instruction to the function.
     pub fn sub<'b: 'a>(&mut self, lhs: &AutoOperand<'b>, rhs: &AutoOperand<'b>
                       ) -> InstId {
-        let lhs_op = self.get_op(lhs);
-        let rhs_op = self.get_op(rhs);
-        let rounding = default_rounding(&lhs_op.t());
-        self.inst(op::Sub(lhs_op, rhs_op, rounding))
+        self.binop(ir::BinOp::Sub, lhs, rhs)
     }
 
     /// Adds a `Mul` instruction to the function. Defaults to low mode.
@@ -95,10 +101,7 @@ impl<'a> Builder<'a> {
     /// Adds a `Div` instruction to the fuction.
     pub fn div<'b: 'a>(&mut self, lhs: &AutoOperand<'b>, rhs: &AutoOperand<'b>
                       ) -> InstId {
-        let lhs_op = self.get_op(lhs);
-        let rhs_op = self.get_op(rhs);
-        let rounding = default_rounding(&lhs_op.t());
-        self.inst(op::Div(lhs_op, rhs_op, rounding))
+        self.binop(ir::BinOp::Div, lhs, rhs)
     }
 
     /// Adds a `Mov` instruction to the function.

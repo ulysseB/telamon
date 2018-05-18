@@ -81,6 +81,19 @@ quotient IterationDims($inst in Instructions) of $dim in Dimensions:
   add_to_set = "::search_space::add_iteration_dim($fun, $inst, $item)"
 end
 
+quotient ThreadDims of $dim in Dimensions:
+  is_thread_dim = dim_kind($dim) is THREAD / thread_mapping is MAPPED
+  item_type = "ir::Dimension"
+  id_type = "ir::dim::Id"
+  item_getter = "$fun.dim($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.thread_dims()"
+  var_prefix = "thread_dim"
+  new_objs = "$objs.thread_dims"
+  from_superset = "(if $item.is_thread_dim() { Some($item) } else { None })"
+  add_to_set = "::search_space::add_thread_dim($fun, $item)"
+end
+
 /// Specifies how iteration dimensions are implemented.
 define enum dim_kind($dim in Dimensions):
   /// The dimension is implemented as a regular loop.
@@ -104,22 +117,8 @@ define enum dim_kind($dim in Dimensions):
       dim_kind($other_dim) is BLOCK || order($dim, $other_dim) is OUTER
     requires forall $other in BasicBlocks:
       order($dim, $other) is NESTED | MERGED
-  /// Outermost thread dimension (reverse CUDA convention).
-  value THREAD_X:
-    requires forall $other in Dimensions:
-      order($dim, $other) is not INNER || dim_kind($other) is not THREAD
-  /// Middle thread dimension.
-  value THREAD_Y:
-    requires num_thread_x($dim) > "0"
-    requires forall $other in Dimensions:
-      order($dim, $other) is not INNER || dim_kind($other) is not THREAD_Y | THREAD_Z
-  /// Innermost thread dimension (reverse CUDA convention).
-  value THREAD_Z:
-    requires num_thread_y($dim) > "0"
-    requires forall $other in Dimensions:
-      order($dim, $other) is not INNER || dim_kind($other) is not THREAD_Z
   /// The dimension is mapped to a thread dimension on the device.
-  alias THREAD = THREAD_X | THREAD_Y | THREAD_Z:
+  value THREAD:
     requires "$dim.size().as_int().is_some()"
   /// The dimension is parallel.
   alias PARALLEL = BLOCK | THREAD | VECTOR:
@@ -226,42 +225,6 @@ require forall $lhs in Dimensions:
     // Merge constraitns
     "$lhs.size() == $rhs.size()" || order($lhs, $rhs) is not MERGED
     dim_kind($lhs) == dim_kind($rhs) || order($lhs, $rhs) is not MERGED
-    // Threads mapped to the same slot must have the same size
-    dim_kind($lhs) is not THREAD || dim_kind($lhs) != dim_kind($rhs)
-      || "$lhs.size() == $rhs.size()"
-
-/// Counts the number of thread dimensions.
-// TODO(cc_perf): try to rely exclusively on the counter instead of thread slots.
-
-// FIXME: replace with a late counter
-define internal counter num_thread_x($bb in BasicBlocks):
-  forall $dim in Dimensions:
-    sum "1" when:
-      order($dim, $bb) is OUTER
-      dim_kind($dim) is THREAD_X
-end
-
-// FIXME: replace with a late counter
-define internal counter num_thread_y($bb in BasicBlocks):
-  forall $dim in Dimensions:
-    sum "1" when:
-      order($dim, $bb) is OUTER
-      dim_kind($dim) is THREAD_Y
-end
-
-// FIXME: replace with a late counter
-define internal counter num_thread_z($bb in BasicBlocks):
-  forall $dim in Dimensions:
-    sum "1" when:
-      order($dim, $bb) is OUTER
-      dim_kind($dim) is THREAD_Z
-end
-
-require forall $lhs in Instructions:
-  forall $rhs in Instructions:
-    num_thread_x($lhs) <= "0" || num_thread_x($rhs) > "0"
-    num_thread_y($lhs) <= "0" || num_thread_y($rhs) > "0"
-    num_thread_z($lhs) <= "0" || num_thread_z($rhs) > "0"
 
 /// Specifies the valid mappings between two dimensions.
 define enum dim_mapping($lhs in Dimensions, $rhs in Dimensions):
@@ -273,12 +236,46 @@ define enum dim_mapping($lhs in Dimensions, $rhs in Dimensions):
     requires dim_kind($lhs) is UNROLL | VECTOR || order($lhs, $rhs) is MERGED
   /// Values may be transmitted using one register for each thread.
   value THREAD_MAP:
-    requires dim_kind($lhs) is THREAD
-    requires dim_kind($lhs) == dim_kind($rhs)
+    requires thread_mapping($lhs, $rhs) is MAPPED
   /// Values are transmitted through registers.
   alias MAPPED = UNROLL_MAP | THREAD_MAP:
     requires "$lhs.size() == $rhs.size()"
 end
+
+/// Indicates how are thread dimensions mapped on the GPU.
+define enum thread_mapping($lhs in Dimensions, $rhs in Dimensions):
+  antisymmetric:
+    MAPPED_OUT -> MAPPED_IN
+  /// One of the dimensions is a not thread.
+  value NOT_THREADS:
+    requires dim_kind($lhs) is not THREAD || dim_kind($rhs) is not THREAD
+  /// The two dimensions are threads mapped to the same dimension on the GPU.
+  value MAPPED:
+    requires dim_kind($lhs) is THREAD
+    requires dim_kind($rhs) is THREAD
+    requires order($lhs, $rhs) is MERGED | ORDERED
+    requires "$lhs.size() == $rhs.size()"
+  /// The two dimensions are threads, but `lhs` is mapped to a dimension outside of `rhs`.
+  value MAPPED_OUT:
+    requires dim_kind($lhs) is THREAD
+    requires dim_kind($rhs) is THREAD
+    requires order($lhs, $rhs) is OUTER | ORDERED
+  /// The two dimensions are threads, but `lhs` is mapped to a dimension inside of `rhs`.
+  value MAPPED_IN:
+    requires dim_kind($lhs) is THREAD
+    requires dim_kind($rhs) is THREAD
+    requires order($lhs, $rhs) is INNER | ORDERED
+end
+
+// Enforce coherence between threads activations.
+require forall $lhs in Dimensions:
+  forall $rhs in Dimensions:
+    forall $other in Dimensions:
+      thread_mapping($lhs, $rhs) is not MAPPED ||
+        thread_mapping($lhs, $other) == thread_mapping($rhs, $other)
+      thread_mapping($lhs, $other) is not MAPPED_OUT ||
+        thread_mapping($other, $rhs) is not MAPPED_OUT ||
+        thread_mapping($lhs, $rhs) is MAPPED_OUT
 
 // Thread dimensions are grouped together
 require forall $outer in Dimensions:
@@ -286,7 +283,7 @@ require forall $outer in Dimensions:
     forall $mid in Dimensions:
       order($outer, $mid) is not OUTER || order($mid, $inner) is not OUTER
         || dim_kind($outer) is not THREAD || dim_kind($inner) is not THREAD
-        || dim_kind($mid) is THREAD_Y
+        || dim_kind($mid) is THREAD
 
 // A basic block nested with a thread dimension is nested or merged with the other
 require forall $bb in BasicBlocks:
@@ -296,6 +293,23 @@ require forall $bb in BasicBlocks:
         || order($other_thread, $nested_thread) is not NESTED
         || dim_kind($other_thread) is not THREAD
         || order($bb, $other_thread) is not ORDERED
+
+/// Limits the number of threads.
+define half counter num_threads():
+  forall $dim in Dimensions:
+    mul "$dim.size().as_int().unwrap_or(1)" when:
+      is_thread_dim($dim) is TRUE
+end
+
+require num_threads() <= "$fun.device().max_threads()"
+
+/// Limits the number of thread dimensions.
+define half counter num_thread_dims():
+  forall $dim in Dimensions:
+    sum "1" when: is_thread_dim($dim) is TRUE
+end
+
+require num_thread_dims() <= "3"
 
 /// Limits the number of nested unrolled loop.
 define half counter unroll_factor($inst in Instructions):
@@ -313,18 +327,9 @@ define half counter num_block_dims($inst in Instructions):
       dim_kind($dim) is BLOCK
 end
 
-/// Limits the number of threads.
-define half counter num_threads($inst in Instructions):
-  forall $dim in Dimensions:
-    mul "$dim.size().as_int().unwrap_or(1)" when:
-      is_iteration_dim($inst, $dim) is TRUE
-      dim_kind($dim) is THREAD
-end
-
 require forall $inst in Instructions:
   unroll_factor($inst) <= "$fun.device().max_unrolling()"
   num_block_dims($inst) <= "$fun.device().max_block_dims()"
-  num_threads($inst) <= "$fun.device().max_threads()"
 
 /// Counts the number on instructions nested in each dimension.
 define half counter num_nested_inst($dim in Dimensions):

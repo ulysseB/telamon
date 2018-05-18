@@ -5,7 +5,7 @@ mod hw_pressure;
 mod level;
 mod local_info;
 
-pub use self::hw_pressure::{Bound, HwPressure};
+pub use self::hw_pressure::{Bound, HwPressure, BottleneckLevel};
 pub use self::local_info::Nesting;
 
 // TODO(model): One some instruction, the latency dependens on the operand position.
@@ -34,7 +34,7 @@ use model::code_point::{CodePoint, CodePointDag};
 use model::dependency_map::DependencyMap;
 use model::level::{Level, RepeatLevel, LevelDag, sum_pressure};
 use model::local_info::LocalInfo;
-use model::hw_pressure::{FastBound, BottleneckLevel};
+use model::hw_pressure::{FastBound};
 use search_space::SearchSpace;
 use std::cmp;
 use utils::*;
@@ -75,14 +75,13 @@ pub fn bound(space: &SearchSpace, context: &Context) -> Bound {
     // Scale the latency to the block level.
     let block_parallelism = u64::from(context.device().block_parallelism(space));
     let min_num_blocks = local_info.parallelism.min_num_blocks;
-    let max_num_blocks = local_info.parallelism.max_num_blocks;
-    let latency = block_latency.scale(block_parallelism, min_num_blocks, max_num_blocks);
+    let lcm_num_blocks = local_info.parallelism.lcm_num_blocks;
+    let latency = block_latency.scale(block_parallelism, min_num_blocks, lcm_num_blocks);
     // Compute the throughput bound at the whole device level.
-    let min_num_threads = local_info.parallelism.min_num_threads;
-    let max_num_threads = local_info.parallelism.max_num_threads_per_block;
     let global_pressure = sum_pressure(context.device(), space, &local_info,
-                                       BottleneckLevel::Global, min_num_threads, &[]);
-    let device_rates = context.device().total_rates(max_num_threads);
+                                       BottleneckLevel::Global, &[]);
+    trace!("global pressure {:?}", global_pressure);
+    let device_rates = context.device().total_rates();
     let throughput_bound = global_pressure.bound(BottleneckLevel::Global, &device_rates);
     // Return the biggest bound.
     debug!("full block lat: {}", unwrap!(levels[0].repeated_latency.as_ref()).value());
@@ -283,70 +282,301 @@ fn apply_dim_map(device: &Device,
     }
 }
 
-#[test]
 #[cfg(feature="cuda")]
-fn inner_bound_0() {
-    use device::{Context, cuda};
-    use helper;
-    use search_space::{Action, DimKind, Order};
+#[cfg(test)]
+mod cuda_tests {
+    use codegen;
+    use device::{Context, cuda, EvalMode};
+    use env_logger;
+    use helper::*;
+    use model;
+    use search_space::*;
+    use super::*;
 
-    let _ = ::env_logger::try_init();
-    let executor = cuda::Executor::init();
-    let mut context = cuda::Context::new(&executor);
-    let b;
-    let signature = {
-        let mut builder = helper::SignatureBuilder::new("bound_error", &mut context);
-        builder.scalar("k", 1024);
-        b = builder.array::<f32>("b", 1024*8).0;
-        builder.get()
-    };
+    #[test]
+    fn partial_bound_0() {
+        let _ = env_logger::try_init();
+        let executor = cuda::Executor::init();
+        let mut context = cuda::Context::new(&executor);
+        let z;
+        let signature = {
+            let mut builder = SignatureBuilder::new("test", &mut context);
+            z = builder.array::<f32>("z", 16).0;
+            builder.get()
+        };
 
-    let mut builder = helper::Builder::new(&signature, context.device());
+        let mut builder = Builder::new(&signature, context.device());
+        let size = builder.cst_size(4);
 
-    let size_4 = builder.cst_size(4);
-    let size_2 = builder.cst_size(2);
+        let dim_x = builder.open_dim_ex(size.clone(), DimKind::THREAD);
+        let dim_y = builder.open_dim_ex(size.clone(), DimKind::THREAD);
+            builder.mov(&0f32);
+        builder.close_dim(&dim_y);
+        builder.close_dim(&dim_x);
 
-    let a_dim_0 = builder.open_dim(size_4.clone());
-    let a_dim_1 = builder.open_dim(size_4.clone());
-        builder.mov(&0f32);
-    builder.close_dim(&a_dim_1);
-    builder.close_dim(&a_dim_0);
+        let dim_z = builder.open_dim_ex(size, DimKind::THREAD);
+        let (addr, pattern) = builder.tensor_access(&"z", z, &ir::Type::F(32), &[&dim_z]);
+        let st_z = builder.st(&addr, &0f32, pattern);
 
-    let b_dim_0 = builder.open_dim(size_4);
-    let b_dim_1 = builder.open_dim(size_2);
-        let t = ir::Type::F(32);
-        let (addr, pattern) = builder.tensor_access(&"b", b, &t, &[&b_dim_0, &b_dim_1]);
-        let ld_b = builder.ld(t, &addr, pattern);
-    builder.close_dim(&b_dim_0);
+        builder.order(&dim_x, &dim_z, Order::BEFORE);
+        builder.order(&dim_x, &dim_y, Order::OUTER);
 
-    builder.action(Action::DimKind(a_dim_1, DimKind::THREAD_Z));
-    builder.action(Action::DimKind(a_dim_0, DimKind::THREAD_Y));
-    builder.action(Action::DimKind(b_dim_1, DimKind::THREAD_X));
+        let partial_pressure = {
+            let space = builder.get_clone();
+            let local_info = LocalInfo::compute(&space, &context);
+            trace!("partial nesting: {:?}", local_info.nesting[&st_z.into()]);
+            sum_pressure(context.device(), &space, &local_info,
+                         BottleneckLevel::Global, &[])
+        }.get_bottleneck(3);
 
-    builder.order(&a_dim_1, &ld_b, Order::OUTER);
-    builder.order(&a_dim_0, &ld_b, Order::OUTER);
+        builder.action(Action::ThreadMapping(dim_z, dim_x, ThreadMapping::MAPPED_OUT));
+        let final_pressure = {
+            let space = builder.get_clone();
+            let local_info = LocalInfo::compute(&space, &context);
+            trace!("final nesting: {:?}", local_info.nesting[&st_z.into()]);
+            sum_pressure(context.device(), &space, &local_info,
+                         BottleneckLevel::Global, &[])
+        }.get_bottleneck(3);
 
-    let mut space = builder.get();
-    let partial_pressure = {
-        let local_info = LocalInfo::compute(&space, &context);
-        let min_num_threads = local_info.parallelism.min_num_threads;
-        println!("partial nesting {:?}", local_info.nesting[&ld_b.into()].outer_dims);
-        println!("partial pressure {}", local_info.hw_pressure[&ld_b.into()].get_bottleneck(4));
-        sum_pressure(context.device(), &space, &local_info,
-                     BottleneckLevel::Global, min_num_threads, &[])
-    }.get_bottleneck(4);
+        assert!(final_pressure*1.001 >= partial_pressure, "{} < {}",
+                final_pressure, partial_pressure);
+    }
 
-    let actions = vec![Action::DimKind(b_dim_0, DimKind::THREAD_Z)];
-    assert!(space.apply_decisions(actions).is_ok());
-    let final_pressure = {
-        let local_info = LocalInfo::compute(&space, &context);
-        let min_num_threads = local_info.parallelism.min_num_threads;
-        println!("final nesting {:?}", local_info.nesting[&ld_b.into()].outer_dims);
-        println!("final pressure {}", local_info.hw_pressure[&ld_b.into()].get_bottleneck(4));
-        sum_pressure(context.device(), &space, &local_info,
-                     BottleneckLevel::Global, min_num_threads, &[])
-    }.get_bottleneck(4);
+    #[test]
+    fn partial_bound_1() {
+        let _ = env_logger::try_init();
+        let executor = cuda::Executor::init();
+        let mut context = cuda::Context::new(&executor); 
+        let z;
+        let signature = {
+            let mut builder = SignatureBuilder::new("test", &mut context);
+            z = builder.array::<f32>("z", 256).0;
+            builder.get()
+        };
 
-    assert!(partial_pressure <= final_pressure * 1.001,
-            "{} > {}", partial_pressure, final_pressure);
+        let mut builder = Builder::new(&signature, context.device());
+        let size = builder.cst_size(256);
+        let dim_x = builder.open_dim_ex(size.clone(), DimKind::THREAD);
+            builder.mov(&0f32);
+        builder.close_dim(&dim_x);
+
+        let dim_z = builder.open_dim(size);
+        let (addr, pattern) = builder.tensor_access(&"z", z, &ir::Type::F(32), &[&dim_z]);
+        let st_z = builder.st(&addr, &0f32, pattern);
+
+        let partial_pressure = {
+            let space = builder.get_clone();
+            let local_info = LocalInfo::compute(&space, &context);
+            trace!("partial nesting: {:?}", local_info.nesting[&st_z.into()]);
+            sum_pressure(context.device(), &space, &local_info,
+                         BottleneckLevel::Global, &[])
+        }.get_bottleneck(5);
+
+        builder.action(Action::DimKind(dim_z, DimKind::THREAD));
+        let final_pressure = {
+            let space = builder.get();
+            let local_info = LocalInfo::compute(&space, &context);
+            trace!("final nesting: {:?}", local_info.nesting[&st_z.into()]);
+            sum_pressure(context.device(), &space, &local_info,
+                         BottleneckLevel::Global, &[])
+        }.get_bottleneck(5);
+
+        assert!(final_pressure*1.001 >= partial_pressure, "{} < {}",
+                final_pressure, partial_pressure);
+    }
+
+
+    #[test]
+    fn partial_bound_2() {
+        let _ = env_logger::try_init();
+        let executor = cuda::Executor::init();
+        let mut context = cuda::Context::new(&executor); 
+
+        let (x, y, a);
+        let signature = {
+            let mut builder = SignatureBuilder::new("test", &mut context);
+            builder.scalar("m", 1i32 << 13);
+            builder.scalar("n", 1i32 << 13);
+            let m_size = tensor::DimSize::Param("m");
+            let n_size = tensor::DimSize::Param("n");
+            x = builder.tensor::<f32>("x", vec![n_size], true);
+            a = builder.tensor::<f32>("a", vec![m_size, n_size], true);
+            y = builder.tensor::<f32>("y", vec![m_size], false);
+            builder.get()
+        };
+
+        let m_tiling = &[2];
+
+        let mut builder = Builder::new(&signature, context.device());
+        let ld_x = x.load(&[&[]], &mut builder);
+        let ld_a = a.load(&[m_tiling, &[]], &mut builder);
+
+        let init_dim_m = builder.open_mapped_dim(&ld_a[0]);
+        let init = builder.mov(&0f32);
+        let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
+        let acc_dim_n = builder.open_mapped_dim(&ld_x[0]);
+        let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_n], ir::DimMapScope::Global,
+                                &mut builder);
+        let x_op = ld_x.dim_map(&[&acc_dim_n], ir::DimMapScope::Global, &mut builder);
+        let acc = builder.mad(&a_op, &x_op, &Reduce(init));
+        builder.close_dim(&acc_dim_n);
+
+        let sum = tensor::VirtualTensor::new(acc, vec![acc_dim_m.clone()]);
+        let st_y = sum.store(&y, &mut builder);
+
+        builder.action(Action::DimKind(ld_a[0][1], DimKind::UNROLL));
+        builder.action(Action::DimKind(init_dim_m[1], DimKind::UNROLL));
+        builder.action(Action::DimKind(st_y[0][1], DimKind::UNROLL));
+
+        builder.order(&acc_dim_n, &st_y.inst(), Order::BEFORE);
+        builder.order(&ld_a[0][1], &ld_x.inst(), Order::BEFORE);
+        builder.order(&acc_dim_m[1], &ld_x.inst(), Order::AFTER);
+
+        builder.action(Action::InstFlag(ld_x.inst(), InstFlag::MEM_CG));
+        builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CG));
+        builder.action(Action::InstFlag(st_y.inst(), InstFlag::MEM_CS));
+
+        let partial_bound = model::bound(&builder.get_clone(), &context);
+        builder.action(Action::DimKind(ld_a[0][0], DimKind::BLOCK));
+
+        let final_bound = model::bound(&builder.get(), &context);
+
+        assert!(final_bound.value()*1.001 >= partial_bound.value(), "{} < {}",
+                final_bound, partial_bound);
+
+    }
+
+    #[test]
+    fn partial_bound_3() {
+        let _ = env_logger::try_init();
+        let executor = cuda::Executor::init();
+        let mut context = cuda::Context::new(&executor); 
+
+        let (a, b, c);
+        let signature = {
+            let mut builder = SignatureBuilder::new("test", &mut context);
+
+            builder.scalar("m", 1024i32);
+            builder.scalar("n", 1024i32);
+            builder.scalar("k", 1024i32);
+            let m_size = tensor::DimSize::Param("m");
+            let n_size = tensor::DimSize::Param("n");
+            let k_size = tensor::DimSize::Param("k");
+            a = builder.tensor::<f32>("a", vec![m_size, k_size], true);
+            b = builder.tensor::<f32>("b", vec![k_size, n_size], true);
+            c = builder.tensor::<f32>("c", vec![m_size, n_size], false);
+            builder.get()
+        };
+
+        let full_tiling = vec![64, 4];
+        let small_tiling = vec![64]; 
+        let mut builder = Builder::new(&signature, context.device());
+
+        let ld_a = a.load(&[&full_tiling, &small_tiling], &mut builder);
+        let ld_b = b.load(&[&small_tiling, &full_tiling], &mut builder);
+
+        let init_dim_m = builder.open_mapped_dim(&ld_a[0]);
+        let init_dim_n = builder.open_mapped_dim(&ld_b[1]);
+        let acc_init = builder.mov(&0f32);
+        let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
+        let acc_dim_n = builder.open_mapped_dim(&init_dim_n);
+        let acc_dim_k = builder.open_mapped_dim(&ld_a[1]);
+        let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_k], ir::DimMapScope::Global, &mut builder);
+        let b_op = ld_b.dim_map(&[&acc_dim_k, &acc_dim_n], ir::DimMapScope::Global, &mut builder);
+        let acc = builder.mad(&a_op, &b_op, &Reduce(acc_init));
+        builder.close_dim(&acc_dim_k);
+
+        builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CG));
+        builder.action(Action::InstFlag(ld_b.inst(), InstFlag::MEM_CG));
+
+        builder.action(Action::DimKind(ld_a[0][0], DimKind::BLOCK));
+        builder.action(Action::DimKind(ld_a[0][1], DimKind::THREAD));
+        builder.action(Action::DimKind(ld_a[0][2], DimKind::UNROLL));
+        builder.action(Action::DimKind(ld_a[1][1], DimKind::LOOP));
+
+        builder.action(Action::DimKind(ld_b[0][1], DimKind::LOOP));
+        builder.action(Action::DimKind(ld_b[1][0], DimKind::BLOCK));
+        builder.action(Action::DimKind(ld_b[1][1], DimKind::UNROLL));
+        builder.action(Action::DimKind(ld_b[1][2], DimKind::VECTOR));
+
+        builder.action(Action::DimKind(init_dim_m[1], DimKind::THREAD));
+        builder.action(Action::DimKind(init_dim_m[2], DimKind::THREAD));
+        builder.action(Action::ThreadMapping(ld_a[0][1], init_dim_m[1], ThreadMapping::MAPPED));
+        builder.action(Action::ThreadMapping(
+                init_dim_m[1], init_dim_m[2], ThreadMapping::MAPPED_IN));
+        builder.order(&ld_a[0][0], &ld_b[1][0], Order::OUTER);
+        builder.action(Action::DimKind(init_dim_n[2], DimKind::THREAD));
+
+        let partial_pressure = {
+            let space = builder.get_clone();
+            let local_info = LocalInfo::compute(&space, &context);
+            sum_pressure(context.device(), &space, &local_info,
+                         BottleneckLevel::Global, &[])
+        }.get_bottleneck(4);
+
+        builder.action(Action::ThreadMapping(init_dim_n[2], ld_a[0][1], ThreadMapping::MAPPED_IN));
+
+        let final_pressure = {
+            let space = builder.get();
+            let local_info = LocalInfo::compute(&space, &context);
+            sum_pressure(context.device(), &space, &local_info,
+                         BottleneckLevel::Global, &[])
+        }.get_bottleneck(4);
+ 
+
+        assert!(final_pressure*1.001 >= partial_pressure, "{} < {}",
+                final_pressure, partial_pressure);
+    }
+
+    #[test]
+    fn final_bound_0() {
+        let _ = env_logger::try_init();
+        let executor = cuda::Executor::init();
+        let mut context = cuda::Context::new(&executor);
+
+        let (x, y, z);
+        let signature = {
+            let mut builder = SignatureBuilder::new("test", &mut context);
+            builder.scalar("n", 1 << 25);
+            let n_size = tensor::DimSize::Param("n");
+            x = builder.tensor::<f32>("x", vec![n_size], true);
+            y = builder.tensor::<f32>("y", vec![n_size], true);
+            z = builder.tensor::<f32>("z", vec![n_size], false);
+            builder.get()
+        };
+
+        let tiling = &[1024, 4];
+        let mut builder = Builder::new(&signature, context.device());
+
+        let ld_x = x.load(&[tiling], &mut builder);
+        let ld_y = y.load(&[tiling], &mut builder);
+        let mad_dim = builder.open_mapped_dim(&ld_x[0]);
+        let x_op = ld_x.dim_map(&[&mad_dim], ir::DimMapScope::Global, &mut builder);
+        let y_op = ld_y.dim_map(&[&mad_dim], ir::DimMapScope::Global, &mut builder);
+        let mad = tensor::VirtualTensor::new(
+            builder.mad(&x_op, &4.33f32, &y_op), vec![mad_dim.clone()]);
+        let st_z = mad.store(&z, &mut builder);
+
+        builder.action(Action::DimKind(ld_x[0][2], DimKind::VECTOR));
+        builder.action(Action::DimKind(ld_x[0][1], DimKind::THREAD));
+        builder.action(Action::DimKind(ld_x[0][0], DimKind::BLOCK));
+        builder.action(Action::DimKind(ld_y[0][2], DimKind::VECTOR));
+        builder.action(Action::DimKind(ld_y[0][1], DimKind::THREAD));
+        builder.action(Action::DimKind(mad_dim[1], DimKind::THREAD));
+        builder.action(Action::DimKind(mad_dim[2], DimKind::UNROLL));
+        builder.action(Action::DimKind(st_z[0][1], DimKind::THREAD));
+        builder.action(Action::DimKind(st_z[0][2], DimKind::VECTOR));
+        builder.order(&ld_x[0][2], &ld_y.inst(), Order::BEFORE);
+        builder.order(&ld_x[0][1], &ld_y.inst(), Order::BEFORE);
+        builder.order(&ld_y[0][1], &mad.inst(), Order::BEFORE);
+        builder.order(&mad_dim[1], &st_z.inst(), Order::OUTER);
+        builder.action(Action::InstFlag(ld_x.inst(), InstFlag::MEM_CS));
+        builder.action(Action::InstFlag(ld_y.inst(), InstFlag::MEM_CG));
+        builder.action(Action::InstFlag(st_z.inst(), InstFlag::MEM_CG));
+        let space = builder.get();
+        let bound = model::bound(&space, &context);
+        let kernel = codegen::Function::build(&space);
+        let eval = unwrap!(context.evaluate(&kernel, EvalMode::TestBound));
+        assert!(eval * 1.001 >= bound.value(), "{:.2e} < {}", eval, bound);
+    }
 }

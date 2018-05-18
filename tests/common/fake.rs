@@ -69,9 +69,11 @@ impl device::Device for Device {
 
     fn thread_rates(&self) -> HwPressure { HwPressure::new(1.0, vec![1.0, 1.0, 1.0]) }
 
-    fn block_rates(&self, _: u64) -> HwPressure { HwPressure::new(1.0, vec![1.0, 1.0, 1.0]) }
+    fn block_rates(&self) -> HwPressure { HwPressure::new(1.0, vec![1.0, 1.0, 1.0]) }
 
-    fn total_rates(&self, _: u64) -> HwPressure { HwPressure::new(1.0, vec![1.0, 1.0, 1.0]) }
+    fn total_rates(&self) -> HwPressure { HwPressure::new(1.0, vec![1.0, 1.0, 1.0]) }
+
+    fn add_block_overhead(&self, _: u64, _: u64, _: &mut HwPressure) { }
 }
 
 /// A fake context.
@@ -83,7 +85,9 @@ pub struct Context {
 impl device::Context for Context {
     fn device(&self) -> &device::Device { &self.device }
 
-    fn evaluate(&self, _: &codegen::Function) -> Result<f64, ()> { Ok(1.0) }
+    fn evaluate(&self, _: &codegen::Function, _: device::EvalMode) -> Result<f64, ()> {
+        Ok(1.0)
+    }
 
     fn benchmark(&self, _: &codegen::Function, num_samples: usize) -> Vec<f64> {
         vec![1.0; num_samples]

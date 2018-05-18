@@ -5,7 +5,9 @@ use ir::{self, dim, op, Operand, Size, Type};
 use itertools::Itertools;
 use search_space::{DimKind, Domain, InstFlag};
 use std::io::Write;
+use std::fmt::Write as WriteFmt;
 use self::InstArg::*;
+use utils::*;
 // TODO(cc_perf): avoid concatenating strings.
 
 /// Prints a rounding mode selector.
@@ -118,9 +120,16 @@ fn inst_arg(arg: &InstArg, namer: &mut NameMap) -> String {
 }
 
 /// Assembles the different parts of an instruction in a single string.
-fn assemble(operator: &str, t: Type, args: &[InstArg], namer: &mut NameMap) -> String {
+fn assemble(operator: &str,
+            predicate: Option<RcStr>,
+            t: Type,
+            args: &[InstArg],
+            namer: &mut NameMap) -> String {
     let args_str = args.iter().map(|x| inst_arg(x, namer)).collect_vec().join(", ");
-    format!("{}.{} {};", operator, ptx_type(t), args_str)
+    let pred = if let Some(ref pred) = predicate {
+        format!("@{} ", pred)
+    } else { String::new() };
+    format!("{}{}.{} {};", pred, operator, ptx_type(t), args_str)
 }
 
 // TODO(cleanup): remove this function once values are preprocessed by codegen. If values
@@ -129,16 +138,21 @@ fn lower_type(t: ir::Type, fun: &Function) -> ir::Type {
     unwrap!(fun.space().ir_instance().device().lower_type(t, fun.space()))
 }
 
+/// Returns the string representing a binary operator.
+fn binary_op(op: ir::BinOp) -> &'static str {
+    match op {
+        ir::BinOp::Add => "add",
+        ir::BinOp::Sub => "sub",
+        ir::BinOp::Div => "div",
+    }
+}
+
 /// Prints an instruction.
 fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
     match *inst.operator() {
-        op::Add(ref lhs, ref rhs, round) => {
-            let operator = format!("add{}", rounding(round));
-            assemble(&operator, inst.t(), &[Inst(inst), Op(lhs), Op(rhs)], namer)
-        },
-        op::Sub(ref lhs, ref rhs, round) => {
-            let operator = format!("sub{}", rounding(round));
-            assemble(&operator, inst.t(), &[Inst(inst), Op(lhs), Op(rhs)], namer)
+        op::BinOp(op, ref lhs, ref rhs, round) => {
+            let operator = format!("{}{}", binary_op(op), rounding(round));
+            assemble(&operator, None, inst.t(), &[Inst(inst), Op(lhs), Op(rhs)], namer)
         },
         op::Mul(ref lhs, ref rhs, rounding, return_type) => {
             let operator = if rounding == op::Rounding::Exact {
@@ -146,7 +160,8 @@ fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
             } else {
                 format!("mul{}", self::rounding(rounding))
             };
-            assemble(&operator, lower_type(lhs.t(), fun), &[Inst(inst), Op(lhs), Op(rhs)], namer)
+            let t = lower_type(lhs.t(), fun);
+            assemble(&operator, None, t, &[Inst(inst), Op(lhs), Op(rhs)], namer)
         },
         op::Mad(ref mul_lhs, ref mul_rhs, ref add_rhs, rounding) => {
             let operator = if rounding == op::Rounding::Exact {
@@ -155,21 +170,21 @@ fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
                 format!("fma{}", self::rounding(rounding))
             };
             let args = &[Inst(inst), Op(mul_lhs), Op(mul_rhs), Op(add_rhs)];
-            assemble(&operator, lower_type(mul_lhs.t(), fun), args, namer)
-        },
-        op::Div(ref lhs, ref rhs, round) => {
-            let operator = format!("div{}", rounding(round));
-            assemble(&operator, inst.t(), &[Inst(inst), Op(lhs), Op(rhs)], namer)
+            assemble(&operator, None, lower_type(mul_lhs.t(), fun), args, namer)
         },
         op::Mov(ref op) =>
-            assemble("mov", inst.t(), &[Inst(inst), Op(op)], namer),
+            assemble("mov", None, inst.t(), &[Inst(inst), Op(op)], namer),
         op::Ld(_, ref addr, _) => {
             let operator = ld_operator(unwrap!(inst.mem_flag()));
-            assemble(operator, inst.t(), &[Inst(inst), Addr(addr)], namer)
+            assemble(operator, None, inst.t(), &[Inst(inst), Addr(addr)], namer)
         },
         op::St(ref addr, ref val, _,  _) => {
             let operator = st_operator(unwrap!(inst.mem_flag()));
-            assemble(operator, lower_type(val.t(), fun), &[Addr(addr), Op(val)], namer)
+            let t = lower_type(val.t(), fun);
+            let guard = if inst.has_side_effects() {
+                namer.side_effect_guard()
+            } else { None };
+            assemble(operator, guard, t, &[Addr(addr), Op(val)], namer)
         },
         op::Cast(ref op, t) => {
             let rounding = match (op.t(), t) {
@@ -179,7 +194,8 @@ fn inst(inst: &Instruction, namer: &mut NameMap, fun: &Function) -> String {
                 _ => "",
             };
             let operator = format!("cvt{}.{}", rounding, ptx_type(lower_type(t, fun)));
-            assemble(&operator, lower_type(op.t(), fun), &[Inst(inst), Op(op)], namer)
+            let t = lower_type(op.t(), fun);
+            assemble(&operator, None, t, &[Inst(inst), Op(op)], namer)
         },
         op::TmpLd(..) | op::TmpSt(..) => panic!("non-printable instruction")
     }
@@ -195,12 +211,15 @@ fn vector_inst(inst: &Instruction, dim: &Dimension, namer: &mut NameMap, fun: &F
         op::Ld(_, ref addr, _) => {
             let operator = format!("{}.v{}", ld_operator(flag), size);
             let args = [VecInst(inst, dim.id(), size), Addr(addr)];
-            assemble(&operator, inst.t(), &args, namer)
+            assemble(&operator, None, inst.t(), &args, namer)
         },
         op::St(ref addr, ref val, _, _) => {
             let operator = format!("{}.v{}", st_operator(flag), size);
             let operands = [Addr(addr), VecOp(val, dim.id(), size)];
-            assemble(&operator, lower_type(val.t(), fun), &operands, namer)
+            let guard = if inst.has_side_effects() {
+                namer.side_effect_guard()
+            } else { None };
+            assemble(&operator, guard, lower_type(val.t(), fun), &operands, namer)
         },
         _ => panic!("non-vectorizable instruction"),
     }
@@ -220,11 +239,37 @@ fn cfg<'a>(fun: &Function, c: &Cfg<'a>, namer: &mut NameMap) -> String {
     match *c {
         Cfg::Root(ref cfgs) => cfg_vec(fun, cfgs, namer),
         Cfg::Loop(ref dim, ref cfgs) => ptx_loop(fun, dim, cfgs, namer),
-        Cfg::Barrier => "bar.sync 0;".to_string(),
+        Cfg::Threads(ref dims, ref ind_levels, ref inner) => {
+                let mut res = enable_threads(fun, dims, namer);
+                for level in ind_levels {
+                    res.push_str(&parallel_induction_level(level, namer));
+                    res.push_str("\n  ");
+                }
+                res.push_str(&cfg_vec(fun, inner, namer));
+                res.push_str("\n  bar.sync 0;");
+                res
+        }
         Cfg::Instruction(ref i) => inst(i, namer, fun),
-        Cfg::ParallelInductionLevel(ref level) =>
-            parallel_induction_level(level, namer)
     }
+}
+
+/// Change the side-effect guards so that only thre specified threads are enabled.
+fn enable_threads(fun: &Function, threads: &[bool], namer: &mut NameMap) -> String {
+    let mut ops = String::new();
+    let mut guard = None;
+    for (&is_active, dim) in threads.iter().zip_eq(fun.thread_dims().iter()) {
+        if is_active { continue; }
+        let new_guard = namer.gen_name(ir::Type::I(1));
+        let index = namer.name_index(dim.id());
+        unwrap!(writeln!(ops, "  setp.eq.s32 {}, {}, 0;", new_guard, index));
+        if let Some(ref guard) = guard {
+            unwrap!(writeln!(ops, "  and.pred {}, {}, {};", guard, guard, new_guard));
+        } else {
+            guard = Some(new_guard);
+        };
+    }
+    namer.set_side_effect_guard(guard.map(RcStr::new));
+    ops
 }
 
 /// Prints a multiplicative induction var level.
@@ -337,9 +382,9 @@ fn ptx_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap)
         },
         DimKind::VECTOR => match *cfgs {
             [Cfg::Instruction(ref inst)] => vector_inst(inst, dim, namer, fun),
-            _ => panic!("Invalid vector dimension body"),
+            ref body => panic!("invalid vector dimension body: {:?}", body),
         },
-        kind => panic!("Invalid loop kind for ptx printing: {:?}", kind)
+        kind => panic!("invalid loop kind for ptx printing: {:?}", kind)
     }
 }
 
@@ -432,6 +477,9 @@ pub fn function(function: &Function, gpu: &Gpu) -> String {
                 }
             }
         }
+        let ind_levels = function.init_induction_levels().into_iter()
+            .chain(function.block_dims().iter().flat_map(|d| d.induction_levels()));
+        init.extend(ind_levels.map(|level| parallel_induction_level(level, name_map)));
         body = cfg(function, function.cfg(), name_map);
     }
     let var_decls = var_decls(&namer);

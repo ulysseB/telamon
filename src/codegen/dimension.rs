@@ -250,8 +250,7 @@ fn get_ind_var_levels<'a>(ind_var: &'a ir::InductionVar<'a>, space: &SearchSpace
         match space.domain().get_dim_kind(dim) {
             DimKind::VECTOR => (),
             DimKind::LOOP | DimKind::UNROLL => mut_levels.push((dim, size)),
-            DimKind::BLOCK | DimKind::THREAD_X | DimKind::THREAD_Y | DimKind::THREAD_Z =>
-                const_levels.push((dim, size)),
+            DimKind::BLOCK | DimKind::THREAD => const_levels.push((dim, size)),
             x => panic!("unspecified dim kind {:?}", x),
         }
     }

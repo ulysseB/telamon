@@ -1,8 +1,8 @@
 //! Memory accesses analysis.
 use device::cuda;
-use ir::{self, BasicBlock};
+use ir;
 use itertools::Itertools;
-use search_space::{DimKind, Domain, InstFlag, Order, SearchSpace};
+use search_space::{DimKind, Domain, InstFlag, ThreadMapping, SearchSpace};
 use std;
 use num::integer;
 use utils::*;
@@ -11,7 +11,8 @@ use utils::*;
 // take this into account be computing the pressure incrementatly when applying levels.
 
 /// Result of the memory analysis for one instruction. Vector instructions are considered
-/// as one instruction.
+/// as a single instance and predicated dimensions are not considered to compute the
+/// average pressure.
 #[derive(Debug)]
 pub struct MemInfo {
     /// The proportion of instruction that produce a L2 miss.
@@ -74,7 +75,6 @@ fn info(space: &SearchSpace,
             let mut info = NO_ACCESS_INFO;
             let thread_dims = tensor_thread_dims(
                 space, inst, stride, dims, sizes, gpu);
-            trace!("thread dims: {:?}", thread_dims);
             if is_shared_access.maybe_true() {
                 info.replay_factor = shared_replay_factor(
                     stride, &thread_dims, dims, sizes, space, gpu);
@@ -114,7 +114,7 @@ fn unknown_info(is_shared_access: Trivalent, gpu: &cuda::Gpu) -> MemInfo {
 
 /// Computes the replay factor for a shared memory access.
 fn shared_replay_factor(stride: i32,
-                        thread_dims: &[ThreadDimInfo], 
+                        thread_dims: &[ThreadDimInfo],
                         tensor_dims: &[ir::dim::Id],
                         dim_sizes: &HashMap<ir::dim::Id, u32>,
                         space: &SearchSpace, gpu: &cuda::Gpu) -> f64 {
@@ -149,6 +149,7 @@ fn global_coalescing(thread_dims: &[ThreadDimInfo], space: &SearchSpace, gpu: &c
     let mut l1_line_accessed = 1;
     let mut l2_line_accessed = 1;
     for dim_info in sort_thread_dims(thread_dims, space, |d| d.stride as f64) {
+        trace!("glb dim info: {:?}", dim_info);
         let mut size = dim_info.size;
         total_size *= size;
         if total_size > u64::from(gpu.wrap_size) {
@@ -193,13 +194,14 @@ fn tensor_thread_dims(space: &SearchSpace,
         *stride *= u64::from(size);
         Some((dim, (size, current_stride)))
     }).collect::<HashMap<_, _>>();
+    let external_dims = external_thread_dims(inst, space);
     inst.iteration_dims().iter().flat_map(|&dim| {
         match space.domain().get_dim_kind(dim).is(DimKind::THREAD) {
             Trivalent::False => None,
             Trivalent::Maybe => Some((dim, false)),
             Trivalent::True => Some((dim, true)),
         }
-    }).map(|(id, is_active_thread)| {
+    }).chain(external_dims).map(|(id, is_active_thread)| {
         let (size, stride) = non_zero_strides.get(&id).cloned()
             .unwrap_or_else(|| (sizes[&id], 0));
         // TODO(model): handle strides that are not a multiple of the bank_Stride.
@@ -215,13 +217,33 @@ fn tensor_thread_dims(space: &SearchSpace,
     }).collect_vec()
 }
 
+/// Returns the thread dimensions that are mapped outside an instruction but not active
+/// under this instruction. The returned boolean indicates if the thread dimension cannot
+/// be mapped to an active dimension and if the dimension is predicated.
+fn external_thread_dims<'a>(inst: &'a ir::Instruction, space: &'a SearchSpace)
+    -> impl Iterator<Item=(ir::dim::Id, bool)> + 'a
+{
+    space.ir_instance().thread_dims().flat_map(move |dim| {
+        let is_mapped = inst.iteration_dims().iter().map(|&other| {
+            if dim.id() == other { return Trivalent::True; }
+            let mapping = space.domain().get_thread_mapping(dim.id(), other);
+            mapping.is(ThreadMapping::MAPPED)
+        }).fold(Trivalent::False, |l, r| l | r);
+        match is_mapped {
+            Trivalent::True => None,
+            Trivalent::Maybe => Some((dim.id(), false)),
+            Trivalent::False => Some((dim.id(), true)),
+        }
+    })
+}
+
 fn sort_thread_dims<'a, F>(dims: &'a [ThreadDimInfo], space: &SearchSpace, cost: F)
         -> Vec<&'a ThreadDimInfo> where F: Fn(&ThreadDimInfo) -> f64 {
     dims.iter().sorted_by(|lhs, rhs| {
         if lhs.id == rhs.id { return std::cmp::Ordering::Equal; }
-        let nest_order = space.domain().get_order(lhs.id.into(), rhs.id.into());
-        let maybe_out = nest_order.intersects(Order::OUTER);
-        let maybe_in = nest_order.intersects(Order::INNER);
+        let mapping = space.domain().get_thread_mapping(lhs.id, rhs.id);
+        let maybe_out = mapping.intersects(ThreadMapping::MAPPED_OUT);
+        let maybe_in = mapping.intersects(ThreadMapping::MAPPED_IN);
         let (lhs_cost, rhs_cost) = (cost(lhs), cost(rhs));
         match (maybe_in, maybe_out, lhs.is_active_thread, rhs.is_active_thread) {
             (true, false, true, _) => std::cmp::Ordering::Less,
@@ -365,6 +387,7 @@ mod tests {
     use helper;
     use ir;
     use env_logger;
+    use search_space::Order;
 
     /// Generates function with a load in two thread dimensions, with non-coalesced
     /// accessed on the first one.

@@ -30,7 +30,7 @@ impl Drop for JITDaemon {
         unwrap!(self.ptx_sender.send(&[]));
         unsafe {
             if libc::waitpid(self.daemon, std::ptr::null_mut(), 0) == -1 {
-                panic!("unable to kill jit process: {}", errno());
+                info!("unable to kill jit process: {}", errno());
             }
         }
     }

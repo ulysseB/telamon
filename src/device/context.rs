@@ -16,7 +16,7 @@ pub trait Context: Sync {
     /// Returns the description of the device the code runs on.
     fn device(&self) -> &Device;
     /// Returns the execution time of a fully specified implementation in nanoseconds.
-    fn evaluate(&self, space: &Function) -> Result<f64, ()>;
+    fn evaluate(&self, space: &Function, mode: EvalMode) -> Result<f64, ()>;
     /// Compiles and benchmarks a functions. As opposed to `Self::evaluate`, the measured
     /// time contains potential startup times.
     fn benchmark(&self, space: &Function, num_samples: usize) -> Vec<f64>;

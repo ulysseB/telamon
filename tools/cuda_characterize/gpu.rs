@@ -10,7 +10,8 @@ const EMPTY_INST_DESC: InstDesc = InstDesc {
     alu: 0.0,
     mem: 0.0,
     l1_lines_from_l2: 0.0,
-    l2_lines_from_l2: 0.0,
+    l2_lines_read: 0.0,
+    l2_lines_stored: 0.0,
     sync: 0.0,
     ram_bw: 0.0,
 };
@@ -138,7 +139,8 @@ fn smx_rates(gpu: &cuda::Gpu, executor: &Executor) -> InstDesc {
         (major, minor) => panic!("Unkown compute capability: {}.{}", major, minor)
     };
     let l1_lines_bw = instruction::smx_bandwidth_l1_lines(gpu, executor);
-    let l2_lines_bw = instruction::smx_bandwidth_l2_lines(gpu, executor);
+    let l2_lines_read_bw = instruction::smx_read_bandwidth_l2_lines(gpu, executor);
+    let l2_lines_store_bw = instruction::smx_write_bandwidth_l2_lines(gpu, executor);
     InstDesc {
         latency: gpu.smx_clock,
         issue: f64::from(issue) * gpu.smx_clock,
@@ -146,7 +148,8 @@ fn smx_rates(gpu: &cuda::Gpu, executor: &Executor) -> InstDesc {
         mem: f64::from(mem) * gpu.smx_clock,
         sync: f64::from(sync) * gpu.smx_clock,
         l1_lines_from_l2: l1_lines_bw * gpu.smx_clock,
-        l2_lines_from_l2: l2_lines_bw * gpu.smx_clock,
+        l2_lines_read: l2_lines_read_bw * gpu.smx_clock,
+        l2_lines_stored: l2_lines_store_bw * gpu.smx_clock,
         ram_bw: ram_bandwidth(executor),
     }
 }
@@ -162,7 +165,8 @@ fn thread_rates(gpu: &cuda::Gpu, smx_rates: &InstDesc) -> InstDesc {
         mem: smx_rates.mem / wrap_size,
         sync: smx_rates.sync / wrap_size,
         l1_lines_from_l2: smx_rates.l1_lines_from_l2, // FIXME: actually smaller
-        l2_lines_from_l2: smx_rates.l2_lines_from_l2,
+        l2_lines_read: smx_rates.l2_lines_read,
+        l2_lines_stored: smx_rates.l2_lines_stored,
         ram_bw: smx_rates.ram_bw,
     }
 }
@@ -177,7 +181,8 @@ fn gpu_rates(gpu: &cuda::Gpu, smx_rates: &InstDesc) -> InstDesc {
         mem: smx_rates.mem * num_smx,
         sync: smx_rates.sync * num_smx,
         l1_lines_from_l2: smx_rates.l1_lines_from_l2 * num_smx,
-        l2_lines_from_l2: smx_rates.l2_lines_from_l2 * num_smx,
+        l2_lines_read: smx_rates.l2_lines_read * num_smx,
+        l2_lines_stored: smx_rates.l2_lines_stored * num_smx,
         ram_bw: smx_rates.ram_bw,
     }
 }
