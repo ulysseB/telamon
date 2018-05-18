@@ -113,7 +113,7 @@ impl device::Context for Context {
                         .spawn(move || inner(&mut evaluator)));
             }
             // Start the evaluation thread.
-            let eval_thread_name = "Telamon - GPU Evaluation Thread".to_string();
+            let eval_thread_name = "Telamon - CPU Evaluation Thread".to_string();
             unwrap!(scope.builder().name(eval_thread_name).spawn(move || {
                 let mut cpt_candidate = 0;
                 while let Ok((candidate, fun_str, code_args, callback)) = recv.recv() {
