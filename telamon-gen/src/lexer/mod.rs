@@ -58,11 +58,20 @@ impl From<Vec<u8>> for Lexer {
             // The function [yylex_init](https://westes.github.io/flex/manual/Init-and-Destroy-Functions.html#index-yylex_005finit)
             // innitializes the scanner.
             yylex_init(&scanner);
+
+            // scans len bytes starting at location bytes. 
+            let buffer: YyBufferState = yy_scan_bytes(buffer.as_ptr() as *const _, buffer.len() as _, scanner);
+
+            // Issue [flex/60](https://github.com/westes/flex/issues/60)
+            // yylineno should be set.
+            // The function [yyset_lineno](https://westes.github.io/flex/manual/Reentrant-Functions.html#index-yyset_005flineno)
+            // sets the current line number.
+            yyset_lineno(0, scanner);
             Lexer {
                 scanner: scanner,
                 // The function  [yy_scan_bytes](https://westes.github.io/flex/manual/Multiple-Input-Buffers.html)
                 // scans len bytes starting at location bytes. 
-                buffer: yy_scan_bytes(buffer.as_ptr() as *const _, buffer.len() as _, scanner),
+                buffer: buffer,
             }
         }
     }
@@ -71,9 +80,6 @@ impl From<Vec<u8>> for Lexer {
 impl Drop for Lexer {
     fn drop(&mut self) {
         unsafe {
-            // The function [yyset_lineno](https://westes.github.io/flex/manual/Reentrant-Functions.html#index-yyset_005flineno)
-            // clears the current line number.
-            yyset_lineno(0, self.scanner);
             // The function [yy_delete_buffer](https://westes.github.io/flex/manual/Multiple-Input-Buffers.html)
             // clears the current contents of a buffer using.
             yy_delete_buffer(self.buffer, self.scanner);
