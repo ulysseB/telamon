@@ -15,6 +15,7 @@ pub fn compile(mut source_file: File, lib_path: &String) -> ExitStatus {
         .arg(lib_path)
         .arg("-xc")
         .arg("-")
+        .arg("-lpthread")
         .status()
         .expect("Could not execute gcc")
 }

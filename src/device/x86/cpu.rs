@@ -3,6 +3,7 @@ use device;
 use codegen::Function;
 use ir::{self, Type};
 use model::{self, HwPressure};
+use num_cpus;
 use search_space::{DimKind, SearchSpace};
 use std::io::Write;
 use utils::*;
@@ -37,7 +38,8 @@ impl device::Device for Cpu {
     // TODO(search_space) block dimensions do not make sense on cpu
     fn max_block_dims(&self) -> u32 { 0 }
 
-    fn max_threads(&self) -> u32 { 24 }
+    //fn max_threads(&self) -> u32 { (num_cpus::get() ) as u32 }
+    fn max_threads(&self) -> u32 {1}
 
     fn max_unrolling(&self) -> u32 { 512 }
 
@@ -58,10 +60,6 @@ impl device::Device for Cpu {
 
     fn lower_type(&self, t: ir::Type, _space: &SearchSpace) -> Option<ir::Type> {
         Some(t)
-        //match t {
-        //    ir::Type::PtrTo(_) => Some(Type::I(64)),
-        //    t => Some(t),
-        //}
     }
 
     fn hw_pressure(&self, _space: &SearchSpace,
