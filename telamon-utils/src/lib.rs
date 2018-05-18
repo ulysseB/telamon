@@ -12,7 +12,7 @@ mod cache;
 mod dag;
 pub mod ndarray;
 mod iterator;
-mod multimap;
+pub mod multimap;
 mod vec_set;
 #[macro_use]
 pub mod unwrap;
