@@ -13,16 +13,22 @@ extern crate telamon_utils as utils;
 extern crate topological_sort;
 extern crate libc;
 
+extern crate lalrpop_util;
+
 mod ast;
 mod constraint;
 mod flat_filter;
 pub mod ir;
 pub mod lexer;
-generated_file!(parser);
+pub_generated_file!(parser);
 mod print;
 mod truth_table;
 
 use std::{fs, io, path};
+use std::ffi::OsString;
+
+use lalrpop_util::ParseError;
+
 use utils::*;
 
 /// Converts a choice name to a rust type name.
@@ -45,19 +51,24 @@ fn to_type_name(name: &str) -> String {
 }
 
 /// Process a file and stores the result in an other file.
-pub fn process_file(input_path: &path::Path, output_path: &path::Path, format: bool) {
+pub fn process_file(input_path: &path::Path, output_path: &path::Path,
+    format: bool) -> Result<(), (ParseError<lexer::Position,                                                                        lexer::Token,                                                                           lexer::LexicalError>, OsString)> {
     let mut input = fs::File::open(path::Path::new(input_path)).unwrap();
     let mut output = fs::File::create(path::Path::new(output_path)).unwrap();
     let input_path_str = input_path.to_string_lossy();
     info!("compiling {} to {}", input_path_str, output_path.to_string_lossy());
-    process(&mut input, &mut output, format);
+    process(&mut input, &mut output, format)
+        .map_err(|e| (e, input_path.file_name().unwrap().to_os_string()))
 }
 
 /// Parses a constraint description file.
-pub fn process<T: io::Write>(input: &mut io::Read, output: &mut T, format: bool) {
+pub fn process<T: io::Write>(input: &mut io::Read, output: &mut T,
+    format: bool) -> Result<(), ParseError<lexer::Position,
+                                           lexer::Token,
+                                           lexer::LexicalError>> {
     // Parse and check the input.
     let tokens = lexer::Lexer::new(input);
-    let ast = parser::parse_ast(tokens).ok().unwrap();
+    let ast: ast::Ast = parser::parse_ast(tokens)?;
     let (mut ir_desc, constraints) = ast.type_check();
     debug!("constraints: {:?}", constraints);
     // Generate flat filters.
@@ -106,6 +117,7 @@ pub fn process<T: io::Write>(input: &mut io::Read, output: &mut T, format: bool)
     } else {
         write!(output, "{}", code).unwrap();
     }
+    Ok(())
 }
 
 // TODO(cleanup): avoid name conflicts in the printer
