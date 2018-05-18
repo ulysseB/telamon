@@ -1,4 +1,5 @@
 //! Memory accesses analysis.
+use binary_heap_plus::BinaryHeap;
 use device::cuda;
 use ir;
 use itertools::Itertools;
@@ -237,24 +238,31 @@ fn external_thread_dims<'a>(inst: &'a ir::Instruction, space: &'a SearchSpace)
     })
 }
 
+/// Sort thread dimensions in an optimal or better-than-optimal order. The order may not
+/// respect dependencies since we don't know the exact order and it would be too costly to
+/// explore all of them (exponential). Instead we compute the minimal number of inner
+/// thread dimension for each dimension and ensure this amount is respected.
 fn sort_thread_dims<'a, F>(dims: &'a [ThreadDimInfo], space: &SearchSpace, cost: F)
         -> Vec<&'a ThreadDimInfo> where F: Fn(&ThreadDimInfo) -> f64 {
-    dims.iter().sorted_by(|lhs, rhs| {
-        if lhs.id == rhs.id { return std::cmp::Ordering::Equal; }
-        let mapping = space.domain().get_thread_mapping(lhs.id, rhs.id);
-        let maybe_out = mapping.intersects(ThreadMapping::MAPPED_OUT);
-        let maybe_in = mapping.intersects(ThreadMapping::MAPPED_IN);
-        let (lhs_cost, rhs_cost) = (cost(lhs), cost(rhs));
-        match (maybe_in, maybe_out, lhs.is_active_thread, rhs.is_active_thread) {
-            (true, false, true, _) => std::cmp::Ordering::Less,
-            (false, true, _, true) => std::cmp::Ordering::Greater,
-            _ if lhs_cost < rhs_cost => std::cmp::Ordering::Less,
-            _ if lhs_cost > rhs_cost => std::cmp::Ordering::Greater,
-            _ if lhs.id < rhs.id => std::cmp::Ordering::Less,
-            _ if lhs.id > rhs.id => std::cmp::Ordering::Greater,
-            _ => { panic!() }
-        }
-    })
+    let sure_thread_dims = dims.iter().filter(|d| d.is_active_thread).collect_vec();
+    let mut dim_groups: MultiHashMap<_, _> = dims.iter().map(|d| {
+        let num_inner = sure_thread_dims.iter().filter(|other| {
+            if other.id == d.id { return false; }
+            let mapping = space.domain().get_thread_mapping(d.id, other.id);
+            mapping.is(ThreadMapping::MAPPED_IN).is_true()
+        }).count();
+        (num_inner, d)
+    }).collect();
+    let mut heap = BinaryHeap::with_capacity_by(
+        dims.len(), |&x, &y| cmp_f64(cost(x), cost(y)).reverse());
+    heap.extend(dim_groups.remove(&0));
+    let mut out = Vec::new();
+    while let Some(d) = heap.pop() {
+        out.push(d);
+        heap.extend(dim_groups.remove(&out.len()));
+    }
+    assert!(dim_groups.is_empty());
+    out
 }
 
 /*
@@ -426,7 +434,7 @@ mod tests {
         let _ = env_logger::try_init();
         let gpu = unwrap!(Gpu::from_name("dummy_cuda_gpu"));
         let base = gen_signature();
-        let (space, inst, size_map) = gen_function(&base, &gpu, Order::OUTER);
+        let (space, inst, size_map) = gen_function(&base, &gpu, Order::INNER);
         let inst = space.ir_instance().inst(inst);
         let inst_info = analyse(&space, &gpu, &inst, &size_map);
         assert_eq!(inst_info.l1_coalescing, 1.0/gpu.wrap_size as f64);
@@ -440,7 +448,7 @@ mod tests {
         let _ = env_logger::try_init();
         let gpu = unwrap!(Gpu::from_name("dummy_cuda_gpu"));
         let base = gen_signature();
-        let (space, inst, size_map) = gen_function(&base, &gpu, Order::INNER);
+        let (space, inst, size_map) = gen_function(&base, &gpu, Order::OUTER);
         let inst = space.ir_instance().inst(inst);
         let inst_info = analyse(&space, &gpu, &inst, &size_map);
         assert_eq!(inst_info.l1_coalescing, 1.0);

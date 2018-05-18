@@ -231,6 +231,18 @@ where
     fn into_iter(self) -> Self::IntoIter { self.map.into_iter() }
 }
 
+impl<K, V, S> std::iter::FromIterator<(K, V)> for MultiHashMap<K, V, S>
+where
+    K: Eq + Hash,
+    S: BuildHasher + Default,
+{
+    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
+        let mut map = MultiHashMap::default();
+        for (k, v) in iter { map.insert(k, v); }
+        map
+    }
+}
+
 impl<K, V, S> std::iter::FromIterator<(K, Vec<V>)> for MultiHashMap<K, V, S>
 where
     K: Eq + Hash,
