@@ -1,3 +1,4 @@
+/// Tokens from the textual representation of constraints.
 use ir;
 
 #[derive(Debug, PartialEq)]

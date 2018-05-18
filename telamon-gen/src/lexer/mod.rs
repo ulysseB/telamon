@@ -1,5 +1,6 @@
-/// Tokens from the textual representation of constraints.
-
+/// This lexer is a application of 
+/// [Writing a custom lexer](https://github.com/lalrpop/lalrpop/blob/master/doc/src/lexer_tutorial/index.md)'s
+/// documentation. This includes a Spanned definition and a Iterator.
 mod ffi;
 mod token;
 
@@ -34,7 +35,10 @@ pub enum LexicalError {
     UnexpectedToken(Position, Token, Position),
 }
 
-pub type Spanned<T, P, E> = Result<(P, T, P), E>;
+/// The alias Spanned is a definition of the stream format.
+/// The parser will accept an iterator where each item
+/// in the stream has the following structure.
+pub type Spanned<Tok, Pos, Err> = Result<(Pos, Tok, Pos), Err>;
 
 pub struct Lexer {
     scanner: YyScan,
@@ -90,6 +94,7 @@ impl Drop for Lexer {
     }
 }   
 
+/// the Lalrpop Iterator is a exh implementation:for lexer.
 impl Iterator for Lexer {
     type Item = Spanned<Token, Position, LexicalError>;
 
@@ -192,6 +197,7 @@ impl Iterator for Lexer {
                 YyToken::AntiSymmetric => Some(Ok((extra.leg, Token::AntiSymmetric, extra.end))),
                 YyToken::Arrow => Some(Ok((extra.leg, Token::Arrow, extra.end))),
                 YyToken::Divide => Some(Ok((extra.leg, Token::Divide, extra.end))),
+                // Return None to signal EOF.for a reached end of the string.
                 YyToken::EOF => None,
             }
         }
