@@ -1,6 +1,6 @@
-#line 2 "exh.c"
+#line 2 "src/exh.c"
 
-#line 4 "exh.c"
+#line 4 "src/exh.c"
 
 #define  YY_INT_ALIGNED short int
 
@@ -646,7 +646,7 @@ static yyconst flex_int32_t yy_rule_can_match_eol[71] =
     }
 
 /* Patterns documentation: http://westes.github.io/flex/manual/Patterns.html#Patterns */
-#line 650 "exh.c"
+#line 650 "src/exh.c"
 
 #define INITIAL 0
 #define C_COMMENT 1
@@ -901,7 +901,7 @@ YY_DECL
 #line 115 "src/exh.l"
 
 
-#line 905 "exh.c"
+#line 905 "src/exh.c"
 
 	while ( 1 )		/* loops until end-of-file is reached */
 		{
@@ -1329,7 +1329,7 @@ YY_RULE_SETUP
 #line 194 "src/exh.l"
 ECHO;
 	YY_BREAK
-#line 1333 "exh.c"
+#line 1333 "src/exh.c"
 
 	case YY_END_OF_BUFFER:
 		{
