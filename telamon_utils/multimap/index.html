@@ -4,10 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="API documentation for the Rust `model` mod in crate `telamon`.">
-    <meta name="keywords" content="rust, rustlang, rust-lang, model">
+    <meta name="description" content="API documentation for the Rust `multimap` mod in crate `telamon_utils`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, multimap">
 
-    <title>telamon::model - Rust</title>
+    <title>telamon_utils::multimap - Rust</title>
 
     <link rel="stylesheet" type="text/css" href="../../normalize.css">
     <link rel="stylesheet" type="text/css" href="../../rustdoc.css"
@@ -34,7 +34,7 @@
     <nav class="sidebar">
         <div class="sidebar-menu">&#9776;</div>
         
-        <p class='location'>Module model</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#functions">Functions</a></li><li><a href="#types">Type Definitions</a></li></ul></div><p class='location'><a href='../index.html'>telamon</a></p><script>window.sidebarCurrent = {name: 'model', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script></div>
+        <p class='location'>Module multimap</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#structs">Structs</a></li></ul></div><p class='location'><a href='../index.html'>telamon_utils</a></p><script>window.sidebarCurrent = {name: 'multimap', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script></div>
     </nav>
 
     <div class="theme-picker">
@@ -55,55 +55,18 @@
         </form>
     </nav>
 
-    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Module <a href='../index.html'>telamon</a>::<wbr><a class="mod" href=''>model</a></span><span class='out-of-band'><span id='render-detail'>
+    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Module <a href='../index.html'>telamon_utils</a>::<wbr><a class="mod" href=''>multimap</a></span><span class='out-of-band'><span id='render-detail'>
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a class='srclink' href='../../src/telamon/model/mod.rs.html#1-557' title='goto source code'>[src]</a></span></h1><div class='docblock'><p>Building Blocks for lower bound performance models.</p>
+               </span><a class='srclink' href='../../src/telamon_utils/multimap.rs.html#1-246' title='goto source code'>[src]</a></span></h1><div class='docblock'><p>A <code>HashMap</code> with mutiple values for each key.</p>
 </div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
 <table>
                        <tr class=' module-item'>
-                           <td><a class="struct" href="struct.HwPressure.html"
-                                  title='struct telamon::model::HwPressure'>HwPressure</a></td>
+                           <td><a class="struct" href="struct.MultiHashMap.html"
+                                  title='struct telamon_utils::multimap::MultiHashMap'>MultiHashMap</a></td>
                            <td class='docblock-short'>
-                                <p>The pressure on the hardware induced by a computation.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.Nesting.html"
-                                  title='struct telamon::model::Nesting'>Nesting</a></td>
-                           <td class='docblock-short'>
-                                <p>Nesting of an object.</p>
-
-                           </td>
-                       </tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
-<table>
-                       <tr class=' module-item'>
-                           <td><a class="enum" href="enum.BottleneckLevel.html"
-                                  title='enum telamon::model::BottleneckLevel'>BottleneckLevel</a></td>
-                           <td class='docblock-short'>
-                                <p>The level at which a bottleneck is computed.</p>
-
-                           </td>
-                       </tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
-<table>
-                       <tr class=' module-item'>
-                           <td><a class="fn" href="fn.bound.html"
-                                  title='fn telamon::model::bound'>bound</a></td>
-                           <td class='docblock-short'>
-                                <p>Returns a lower bound on the execution time of all the implementation candidates in
-<code>space</code>, when executed in <code>context</code>.</p>
-
-                           </td>
-                       </tr></table><h2 id='types' class='section-header'><a href="#types">Type Definitions</a></h2>
-<table>
-                       <tr class=' module-item'>
-                           <td><a class="type" href="type.Bound.html"
-                                  title='type telamon::model::Bound'>Bound</a></td>
-                           <td class='docblock-short'>
-                                <p>A lower bound on the execution time, with a detailed explanation of the origin of the
-bound.</p>
+                                <p>A <code>HashMap</code> with mutiple values for each key.</p>
 
                            </td>
                        </tr></table></section>
@@ -165,7 +128,7 @@ bound.</p>
 
     <script>
         window.rootPath = "../../";
-        window.currentCrate = "telamon";
+        window.currentCrate = "telamon_utils";
     </script>
     <script src="../../main.js"></script>
     <script defer src="../../search-index.js"></script>
