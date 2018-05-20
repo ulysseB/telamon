@@ -20,7 +20,7 @@ mod constraint;
 mod flat_filter;
 pub mod ir;
 pub mod lexer;
-pub_generated_file!(parser);
+generated_file!(pub parser);
 mod print;
 mod truth_table;
 
