@@ -176,7 +176,7 @@ macro_rules! generated_file {
     };
     (pub $name:ident) => {
         #[cfg_attr(feature = "cargo-clippy", allow(clippy))]
-        mod $name {
+        pub mod $name {
             include!(concat!(env!("OUT_DIR"), "/", stringify!($name), ".rs"));
         }
     }
