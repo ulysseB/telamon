@@ -173,15 +173,10 @@ macro_rules! generated_file {
         mod $name {
             include!(concat!(env!("OUT_DIR"), "/", stringify!($name), ".rs"));
         }
-    }
-}
-
-/// Pulbic includes a generates file into the current file.
-#[macro_export]
-macro_rules! pub_generated_file {
-    ($name:ident) => {
+    };
+    (pub $name:ident) => {
         #[cfg_attr(feature = "cargo-clippy", allow(clippy))]
-        pub mod $name {
+        mod $name {
             include!(concat!(env!("OUT_DIR"), "/", stringify!($name), ".rs"));
         }
     }
