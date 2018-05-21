@@ -301,6 +301,18 @@
 <span id="244">244</span>
 <span id="245">245</span>
 <span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! A `HashMap` with mutiple values for each key.</span>
 <span class="kw">use</span> <span class="ident">serde</span>::<span class="ident">ser</span>::{<span class="ident">Serialize</span>, <span class="ident">Serializer</span>};
@@ -533,6 +545,18 @@
     <span class="kw">type</span> <span class="ident">IntoIter</span> <span class="op">=</span> <span class="ident">hash_map</span>::<span class="ident">IntoIter</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;&gt;</span>;
 
     <span class="kw">fn</span> <span class="ident">into_iter</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="self">Self</span>::<span class="ident">IntoIter</span> { <span class="self">self</span>.<span class="ident">map</span>.<span class="ident">into_iter</span>() }
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">V</span>, <span class="ident">S</span><span class="op">&gt;</span> <span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">FromIterator</span><span class="op">&lt;</span>(<span class="ident">K</span>, <span class="ident">V</span>)<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MultiHashMap</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">V</span>, <span class="ident">S</span><span class="op">&gt;</span>
+<span class="kw">where</span>
+    <span class="ident">K</span>: <span class="ident">Eq</span> <span class="op">+</span> <span class="ident">Hash</span>,
+    <span class="ident">S</span>: <span class="ident">BuildHasher</span> <span class="op">+</span> <span class="ident">Default</span>,
+{
+    <span class="kw">fn</span> <span class="ident">from_iter</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> (<span class="ident">K</span>, <span class="ident">V</span>)<span class="op">&gt;&gt;</span>(<span class="ident">iter</span>: <span class="ident">T</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">map</span> <span class="op">=</span> <span class="ident">MultiHashMap</span>::<span class="ident">default</span>();
+        <span class="kw">for</span> (<span class="ident">k</span>, <span class="ident">v</span>) <span class="kw">in</span> <span class="ident">iter</span> { <span class="ident">map</span>.<span class="ident">insert</span>(<span class="ident">k</span>, <span class="ident">v</span>); }
+        <span class="ident">map</span>
+    }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">V</span>, <span class="ident">S</span><span class="op">&gt;</span> <span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">FromIterator</span><span class="op">&lt;</span>(<span class="ident">K</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span>)<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MultiHashMap</span><span class="op">&lt;</span><span class="ident">K</span>, <span class="ident">V</span>, <span class="ident">S</span><span class="op">&gt;</span>
