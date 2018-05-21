@@ -36,7 +36,7 @@ impl<'a> Function<'a> {
         let (block_dims, thread_dims, cfg) = cfg::build(space, insts, dims);
         let mem_blocks = register_mem_blocks(space, &block_dims);
         let device_code_args = device_code_args.into_iter()
-            .chain(mem_blocks.iter().flat_map(|x| x.host_values(space)))
+            .chain(mem_blocks.iter().flat_map(|x| x.host_values(space, &block_dims)))
             .unique_by(|x| x.key()).collect();
         debug!("compiling cfg {:?}", cfg);
         Function {
@@ -202,8 +202,8 @@ pub enum AllocationScheme { Global, PrivatisedGlobal, Shared }
 impl<'a> InternalMemBlock<'a> {
     /// Creates a new InternalMemBlock from an `ir::mem::Internal`.
     pub fn new(block: &'a ir::mem::InternalBlock<'a>,
-           num_threads_groups: &Option<ir::Size<'a>>,
-           space: &'a SearchSpace<'a>) -> Self {
+               num_threads_groups: &Option<ir::Size<'a>>,
+               space: &'a SearchSpace<'a>) -> Self {
         let mem_space = space.domain().get_mem_space(block.mem_id());
         assert!(mem_space.is_constrained());
         let size = block.size();
@@ -216,16 +216,19 @@ impl<'a> InternalMemBlock<'a> {
     }
 
     /// Returns the value to pass from the host to the device to implement `self`.
-    pub fn host_values(&self, space: &SearchSpace) -> impl Iterator<Item=ParamVal<'a>> {
-        let ptr = if self.mem_space == MemSpace::GLOBAL {
+    pub fn host_values(&self, space: &SearchSpace,
+                       block_dims: &[Dimension<'a>]) -> Vec<ParamVal<'a>> {
+        let mut out = if self.mem_space == MemSpace::GLOBAL {
             let t = ir::Type::PtrTo(self.id.into());
             let t = unwrap!(space.ir_instance().device().lower_type(t, space));
-            Some(ParamVal::GlobalMem(self.id, self.alloc_size(), t))
-        } else { None };
+            vec![ParamVal::GlobalMem(self.id, self.alloc_size(), t)]
+        } else { vec![] };
         let size = if self.num_private_copies.is_some() {
-            Some(ParamVal::Size(self.size))
+            Some(block_dims[1..].iter().map(|d| d.size()).chain(std::iter::once(self.size))
+                .map(ParamVal::Size))
         } else { None };
-        ptr.into_iter().chain(size)
+        out.extend(size.into_iter().flat_map(|x| x));
+        out
     }
 
     /// Returns the memory ID.

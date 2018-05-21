@@ -149,6 +149,7 @@ fn global_coalescing(thread_dims: &[ThreadDimInfo], space: &SearchSpace, gpu: &c
     let mut total_size = 1;
     let mut l1_line_accessed = 1;
     let mut l2_line_accessed = 1;
+    trace!("thread_dims {:?}", thread_dims);
     for dim_info in sort_thread_dims(thread_dims, space, |d| d.stride as f64) {
         trace!("glb dim info: {:?}", dim_info);
         let mut size = dim_info.size;
@@ -249,7 +250,7 @@ fn sort_thread_dims<'a, F>(dims: &'a [ThreadDimInfo], space: &SearchSpace, cost:
         let num_inner = sure_thread_dims.iter().filter(|other| {
             if other.id == d.id { return false; }
             let mapping = space.domain().get_thread_mapping(d.id, other.id);
-            mapping.is(ThreadMapping::MAPPED_IN).is_true()
+            mapping.is(ThreadMapping::MAPPED_OUT).is_true()
         }).count();
         (num_inner, d)
     }).collect();
@@ -434,7 +435,7 @@ mod tests {
         let _ = env_logger::try_init();
         let gpu = unwrap!(Gpu::from_name("dummy_cuda_gpu"));
         let base = gen_signature();
-        let (space, inst, size_map) = gen_function(&base, &gpu, Order::INNER);
+        let (space, inst, size_map) = gen_function(&base, &gpu, Order::OUTER);
         let inst = space.ir_instance().inst(inst);
         let inst_info = analyse(&space, &gpu, &inst, &size_map);
         assert_eq!(inst_info.l1_coalescing, 1.0/gpu.wrap_size as f64);
@@ -448,7 +449,7 @@ mod tests {
         let _ = env_logger::try_init();
         let gpu = unwrap!(Gpu::from_name("dummy_cuda_gpu"));
         let base = gen_signature();
-        let (space, inst, size_map) = gen_function(&base, &gpu, Order::OUTER);
+        let (space, inst, size_map) = gen_function(&base, &gpu, Order::INNER);
         let inst = space.ir_instance().inst(inst);
         let inst_info = analyse(&space, &gpu, &inst, &size_map);
         assert_eq!(inst_info.l1_coalescing, 1.0);
