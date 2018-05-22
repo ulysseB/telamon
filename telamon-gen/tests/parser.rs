@@ -1,7 +1,7 @@
 extern crate telamon_gen;
 extern crate lalrpop_util;
 
-use telamon_gen::lexer::{Lexer, LexicalError, Position};
+use telamon_gen::lexer::{Lexer, Token, LexicalError, Position};
 use telamon_gen::parser;
 
 use lalrpop_util::ParseError;
@@ -12,7 +12,7 @@ fn invalid_token() {
                   ParseError::User {
                       error: LexicalError::InvalidToken(
                           Position::default(),
-                          String::from("!"),
+                          Token::InvalidToken(String::from("!")),
                           Position { column: 1, ..Default::default() }
                       ),
                   }

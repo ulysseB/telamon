@@ -5,6 +5,8 @@ mod ffi;
 mod token;
 
 use std::{io,ptr};
+use std::error::Error;
+use std::fmt;
 
 pub use self::token::Token;    
 
@@ -31,8 +33,40 @@ pub use self::ffi::Position;
 
 #[derive(Debug, PartialEq)]
 pub enum LexicalError {
-    InvalidToken(Position, String, Position),
+    InvalidToken(Position, Token, Position),
     UnexpectedToken(Position, Token, Position),
+}
+
+impl Error for LexicalError {
+    fn description(&self) -> &str {
+        match self {
+            LexicalError::InvalidToken(..) => "invalid token",
+            LexicalError::UnexpectedToken(..) => "expected expression",
+        }
+    }
+}
+
+impl fmt::Display for LexicalError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            LexicalError::UnexpectedToken(leg, tok, end) => {
+                write!(f, "{}, found '{:?}' between {}:{}",
+                          self.description(),
+                          tok,
+                          leg,
+                          end
+                )
+            },
+            LexicalError::InvalidToken(leg, tok, end) => {
+                write!(f, "{}, found '{:?}' between {}:{}",
+                          self.description(),
+                          tok,
+                          leg,
+                          end
+                )
+            },
+        }
+    }
 }
 
 /// The alias Spanned is a definition of the stream format.
@@ -114,7 +148,7 @@ impl Iterator for Lexer {
 
                     CStr::from_ptr(out)
                          .to_str().ok()
-                         .and_then(|s: &str| Some(Err(LexicalError::InvalidToken(extra.leg, s.to_owned(), extra.end))))
+                         .and_then(|s: &str| Some(Err(LexicalError::InvalidToken(extra.leg, Token::InvalidToken(s.to_owned()), extra.end))))
                 },
                 YyToken::ChoiceIdent => {
                     let out = yyget_text(self.scanner);
