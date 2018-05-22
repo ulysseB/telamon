@@ -262,9 +262,9 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
 
 /// Computes `C = A.B`.
 pub struct MatMul<'a, S: Scalar> {
-    m: usize,
-    n: usize,
-    k: usize,
+    pub m: usize,
+    pub n: usize,
+    pub k: usize,
     a: Tensor<'a, S>,
     b: Tensor<'a, S>,
     c: Tensor<'a, S>,
@@ -491,5 +491,3 @@ impl<'a, S: Scalar> Kernel<'a> for Doitgen<'a, S> {
         } else { Ok(()) }
     }
 }
-
-// FIXME: add sgemm_low

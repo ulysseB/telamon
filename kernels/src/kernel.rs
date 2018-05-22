@@ -21,7 +21,7 @@ const MAX_DEADEND_RATIO: usize = 20;
 /// A kernel that can be compiled, benchmarked and used for correctness tests.
 pub trait Kernel<'a>: Sized {
     /// The input parameters of the kernel.
-    type Parameters;
+    type Parameters: Copy;
     /// The values to expect as output.
     type ExpectedOutput;
 
@@ -146,13 +146,14 @@ pub trait Kernel<'a>: Sized {
     fn benchmark<AM>(config: &explorer::Config,
                      params: Self::Parameters,
                      num_samples: usize,
+                     is_generic: bool,
                      context: &mut AM) -> Vec<f64>
         where AM: device::ArgMap + device::Context + 'a
     {
         let kernel;
         let signature = {
             let mut builder = SignatureBuilder::new(Self::name(), context);
-            kernel = Self::build_signature(params, true, &mut builder);
+            kernel = Self::build_signature(params, is_generic, &mut builder);
             builder.get()
         };
         let search_space = kernel.build_body(&signature, context.device());
