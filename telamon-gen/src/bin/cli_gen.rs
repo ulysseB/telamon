@@ -4,16 +4,19 @@ extern crate lalrpop_util;
 extern crate env_logger;
 
 use lalrpop_util::ParseError;
+
 use std::process;
+use std::path::Path;
 
 fn main() {
     env_logger::init();
-    if let Err(ParseError::User { error }) = telamon_gen::process(
+    if let Err((ParseError::User { error }, filename)) = telamon_gen::process(
         &mut std::io::stdin(),
         &mut std::io::stdout(),
-        true
+        true,
+        &Path::new("std")
     ) {
-        eprintln!("{}", error);
+        eprintln!("{}: {}", filename, error);
         process::exit(-1);
     }
 }
