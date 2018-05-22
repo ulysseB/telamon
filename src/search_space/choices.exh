@@ -284,6 +284,13 @@ require forall $outer in Dimensions:
       order($outer, $mid) is not OUTER || order($mid, $inner) is not OUTER
         || dim_kind($outer) is not THREAD || dim_kind($inner) is not THREAD
         || dim_kind($mid) is THREAD
+// outer thread dimensions are limited to a size of 64.
+require forall $outer in Dimensions:
+  forall $inner in Dimensions:
+    order($outer, $inner) is not OUTER
+      || dim_kind($outer) is not THREAD
+      || dim_kind($inner) is not THREAD
+      || "$outer.size().as_int().unwrap_or(1) <= 64"
 
 // A basic block nested with a thread dimension is nested or merged with the other
 require forall $bb in BasicBlocks:
