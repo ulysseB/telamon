@@ -175,33 +175,6 @@ impl<'a> Operator<'a> {
         }
     }
 
-    /// Returns true if the operator is vectorizable on the given dimension.
-    pub fn is_vectorizable(&self, dim: &Dimension) -> bool {
-        // TODO(search_space): compute vectorizable info for tmp Ld/St. On vectorization,
-        // the layout must be constrained.
-        match *self {
-            St(_, ref operand, _, ref pattern) => {
-                if let Some(type_len) = operand.t().len_byte() {
-                    dim.size().as_int().into_iter().any(|x| x == 2 || x == 4) &&
-                        pattern.stride(dim.id()) == Stride::Int(type_len as i32)
-                } else { false }
-            },
-            Ld(ref t, _, ref pattern) => {
-                if let Some(type_len) = t.len_byte() {
-                    dim.size().as_int().into_iter().any(|x| x == 2 || x == 4) &&
-                        pattern.stride(dim.id()) == Stride::Int(type_len as i32)
-                } else { false }
-            },
-            BinOp(..) |
-            Mul(..) |
-            Mad(..) |
-            Mov(..) |
-            Cast(..) => false,
-            TmpLd(..) |
-            TmpSt(..) => dim.size().as_int().into_iter().any(|x| x == 2 || x == 4),
-        }
-    }
-
     /// Renames a basic block.
     pub fn merge_dims(&mut self, lhs: ir::dim::Id, rhs: ir::dim::Id) {
         self.operands_mut().iter_mut().foreach(|x| x.merge_dims(lhs, rhs));
