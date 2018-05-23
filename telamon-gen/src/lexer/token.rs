@@ -1,7 +1,7 @@
 /// Tokens from the textual representation of constraints.
 use ir;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     InvalidToken(String), ValueIdent(String), ChoiceIdent(String), Var(String), Doc(String), CmpOp(ir::CmpOp),
     Code(String), CounterKind(ir::CounterKind), Bool(bool),

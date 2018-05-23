@@ -40,6 +40,20 @@ impl fmt::Display for Position {
     }
 }
 
+/// A double sequence's row/column position
+#[derive(Default, Copy, Clone, Debug, PartialEq)]
+#[repr(C)]
+pub struct Span {
+    pub leg: Position,
+    pub end: Position,
+}
+
+impl fmt::Display for Span {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}:{}", self.leg, self.end)
+    }
+}
+
 /// A F/lex's token with a span.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
