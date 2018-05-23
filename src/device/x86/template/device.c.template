@@ -1,11 +1,12 @@
 void {name}(
+    int tid,
   {params}
 )
 {{
   {var_decls}
   {mem_decls}
-  {init}
   {idx_loads}
+  {init}
   {ld_params}
   {body}
 }}

@@ -15,6 +15,7 @@ fn cpu_type(t: &Type) -> &'static str {
         Type::PtrTo(..) => "intptr_t",
         Type::F(32) => "float",
         Type::F(64) => "double",
+        Type::I(1) => "int8_t",
         Type::I(8) => "int8_t",
         Type::I(16) => "int16_t",
         Type::I(32) => "int32_t",
@@ -281,7 +282,7 @@ fn decl_par_indexes(function: &Function, namer: &mut NameMap) -> String {
     // Compute thread indexes.
     for (dim, _dir) in function.thread_dims().iter().rev().zip(&["x", "y", "z"]) {
         //FIXME: fetch proper thread index
-        decls.push(format!("{} = pthread_self();", namer.name_index(dim.id())));
+        decls.push(format!("{} = tid;", namer.name_index(dim.id())));
     }
     decls.join("\n  ")
 }
@@ -416,8 +417,7 @@ fn thread_gen(func: &Function) -> String {
     }
     let mut ret = format!("pthread_t thr_ids[{}];\n", func.num_threads());
     let mut ind_var_decl = String::from("int ");
-    let mut build_struct = format!("thread_arg_t thread_args;\n");
-    build_struct.push_str(&format!(" thread_args.args = args;\n"));
+    let build_struct = format!("thread_arg_t thread_args[{}];\n", func.num_threads());
     let mut loop_decl = String::new();
     let mut ind_vec = Vec::new();
     let mut loop_jmp = String::new();
@@ -432,12 +432,14 @@ fn thread_gen(func: &Function) -> String {
     ind_var_decl.push_str(&";\n");
     let mut ind_zeros = ind_vec.into_iter().map(|var| format!("{} = 0;", var)).collect_vec().join(" ");
     ind_zeros.push_str(&"\n");
-    let tid_struct = format!("thread_args.tid = {};\n",  build_index_call(func) );
-    let create_call = format!("pthread_create(&thr_ids[{}], NULL, exec_wrap, (void *)&thread_args);\n",  build_index_call(func) );
+    let arg_struct = format!("thread_args[{ind}].args = args;\n",  ind = build_index_call(func) );
+    let tid_struct = format!("thread_args[{ind}].tid = {ind};\n",  ind = build_index_call(func) );
+    let create_call = format!("pthread_create(&thr_ids[{}], NULL, exec_wrap, (void *)&thread_args[{ind}]);\n",  ind = build_index_call(func) );
     ret.push_str(&ind_var_decl);
     ret.push_str(&build_struct);
     ret.push_str(&ind_zeros);
     ret.push_str(&loop_decl);
+    ret.push_str(&arg_struct);
     ret.push_str(&tid_struct);
     ret.push_str(&create_call);
     ret.push_str(&loop_jmp);
