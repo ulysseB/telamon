@@ -128,6 +128,8 @@ impl device::Context for Context {
 
 
 fn function_evaluate(fun_str: String, mut args: Vec<ThunkArg>) -> Result<f64, ()> {
+    println!("{}", fun_str);
+    panic!();
     let temp_dir = tempfile::tempdir().unwrap();
     let templib_name = temp_dir.path().join("lib_compute.so").to_string_lossy().into_owned();
     let mut source_file = tempfile::tempfile().unwrap();
@@ -153,7 +155,7 @@ fn function_evaluate(fun_str: String, mut args: Vec<ThunkArg>) -> Result<f64, ()
             } else {panic!("There should be an Arr at this position !")}
         },
     }).collect_vec();
-    let time = compile::link_and_exec(&templib_name, &String::from("execute"), ptrs);
+    let time = compile::link_and_exec(&templib_name, &String::from("entry_point"), ptrs);
     Ok(time)
 }
 

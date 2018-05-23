@@ -153,20 +153,15 @@ fn parallel_induction_level(level: &InductionLevel, namer: &NameMap) -> String {
         let index = namer.name_index(dim);
         let step = namer.name_size(increment, Type::I(32));
         match base_components[..] {
-            //[] => format!("mul.{}.s32 {}, {}, {};", mode, ind_var, index, step),
             [] => format!("{} = {} * {};//Induction initialized", ind_var, index, step),
             [ref base] =>
-                //format!("mad.{}.s32 {}, {}, {}, {};", mode, ind_var, index, step, base),
                 format!(" {} = {} * {} + {};//Induction initialized", ind_var, index, step, base),
             _ => panic!()
         }
     } else {
         match base_components[..] {
-            //[] => format!("mov.{} {}, 0;", t, ind_var),
             [] => format!("{} = 0;//Induction initialized",  ind_var),
-            //[ref base] => format!("mov.{} {}, {};", t, ind_var, base),
             [ref base] => format!(" {} = {};//Induction initialized", ind_var, base),
-            //[ref lhs, ref rhs] => format!("add.{} {}, {}, {};", t, ind_var, lhs, rhs),
             [ref lhs, ref rhs] => format!("{} = {} + {};//Induction initialized", ind_var, lhs, rhs),
             _ => panic!()
         }
@@ -286,7 +281,7 @@ fn decl_par_indexes(function: &Function, namer: &mut NameMap) -> String {
     // Compute thread indexes.
     for (dim, _dir) in function.thread_dims().iter().rev().zip(&["x", "y", "z"]) {
         //FIXME: fetch proper thread index
-        decls.push(format!("{} = 442;", namer.name_index(dim.id())));
+        decls.push(format!("{} = pthread_self();", namer.name_index(dim.id())));
     }
     decls.join("\n  ")
 }
@@ -415,13 +410,97 @@ fn params_call(function: &Function) -> String {
         .join(", ")
 }
 
+// Build the right call for a nested loop on dimensions
+fn build_index_call(func: &Function) -> String {
+    let mut vec_ret = vec![];
+    let dims = func.thread_dims();
+    let n = dims.len();
+    for i in 0..n {
+        let start = format!("d{}", i);
+        let mut vec_str = vec![start];
+        for j in 0.. i  {
+            vec_str.push(format!("{}", unwrap!(dims[j].size().as_int())));
+        }
+        vec_ret.push(vec_str.join(" * "));
+    }
+    vec_ret.join(" + ")
+}
+
+fn thread_gen(func: &Function) -> String {
+    if func.num_threads() == 1 {
+        let mut ret = format!("thread_arg_t thread_args;\n");
+        ret.push_str(&format!(" thread_args.args = args;\n"));
+        ret.push_str(&format!(" thread_args.tid = 0;\n"));
+        ret.push_str(&format!("exec_wrap((void *)&thread_args);\n"));
+        return ret;
+    }
+    let mut ret = format!("pthread_t thr_ids[{}];\n", func.num_threads());
+    let mut ind_var_decl = String::from("int ");
+    let mut build_struct = format!("thread_arg_t thread_args;\n");
+    build_struct.push_str(&format!(" thread_args.args = args;\n"));
+    let mut loop_decl = String::new();
+    let mut ind_vec = Vec::new();
+    let mut loop_jmp = String::new();
+    for (ind, dim) in func.thread_dims().iter().enumerate() {
+        ind_var_decl.push_str(&format!("d{}", ind));
+        ind_vec.push(format!("d{}", ind));
+        loop_decl.push_str(&format!("LOOP_BEGIN_{}:\n", ind));
+        loop_jmp.push_str(&format!("d{}++;\n", ind));
+        loop_jmp.push_str(&format!("if (d{} < {})\n", ind, unwrap!(dim.size().as_int())));
+        loop_jmp.push_str(&format!("    goto LOOP_BEGIN_{};\n", ind));
+    }
+    ind_var_decl.push_str(&";\n");
+    let mut ind_zeros = ind_vec.into_iter().map(|var| format!("{} = 0;", var)).collect_vec().join(" ");
+    ind_zeros.push_str(&"\n");
+    let tid_struct = format!("thread_args.tid = {};\n",  build_index_call(func) );
+    let create_call = format!("pthread_create(&thr_ids[{}], NULL, exec_wrap, (void *)&thread_args);\n",  build_index_call(func) );
+    ret.push_str(&ind_var_decl);
+    ret.push_str(&build_struct);
+    ret.push_str(&ind_zeros);
+    ret.push_str(&loop_decl);
+    ret.push_str(&tid_struct);
+    ret.push_str(&create_call);
+    ret.push_str(&loop_jmp);
+    ret
+}
+
+fn thread_join(func: &Function) -> String {
+    if func.num_threads() == 1 {
+        return String::new();
+    }
+    let mut ret = String::new();
+    let mut loop_decl = String::new();
+    let mut ind_vec = Vec::new();
+    let mut loop_jmp = String::new();
+    for (ind, dim) in func.thread_dims().iter().enumerate() {
+        ind_vec.push(format!("d{}", ind));
+        loop_decl.push_str(&format!("JOIN_LOOP_BEGIN_{}:\n", ind));
+        loop_jmp.push_str(&format!("d{}++;\n", ind));
+        loop_jmp.push_str(&format!("if (d{} < {})\n", ind, unwrap!(dim.size().as_int())));
+        loop_jmp.push_str(&format!("    goto JOIN_LOOP_BEGIN_{};\n", ind));
+    }
+    let mut ind_zeros = ind_vec.into_iter().map(|var| format!("{} = 0;", var)).collect_vec().join(" ");
+    ind_zeros.push_str(&"\n");
+    let join_call = format!("pthread_join(thr_ids[{}], NULL);\n", build_index_call(func) );
+    ret.push_str(&ind_zeros);
+    ret.push_str(&loop_decl);
+    ret.push_str(&join_call);
+    ret.push_str(&loop_jmp);
+    ret
+
+}
+
 pub fn wrapper_function(func: &Function) -> String {
     let fun_str = function(func);
     let fun_params = params_call(func);
+    //let thr_number = func.num_threads();
     format!(include_str!("template/host.c.template"),
+            //thr_number = thr_number,
             fun_name = func.name,
+            gen_threads = thread_gen(func),
             fun_str = fun_str,
             fun_params_cast = fun_params_cast(func),
             fun_params = fun_params,
+            thread_join = thread_join(func),
            )
 }

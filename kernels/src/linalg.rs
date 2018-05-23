@@ -10,7 +10,7 @@ use telamon::{device, ir};
 use telamon::helper::{self, Builder, SignatureBuilder};
 use telamon::helper::tensor::{Tensor, VirtualTensor};
 use telamon::search_space::{self, Action, DimKind, InstFlag, Order, SearchSpace};
-use telamon::ir::DimMapScope::Global as GlobalScope;
+use telamon::ir::DimMapScope::Thread as GlobalScope;
 use utils::*;
 
 /// Computes `z = alpha*x+y`.
@@ -54,7 +54,7 @@ impl<'a, S> Kernel<'a> for Axpy<'a, S> where S: Scalar {
         let mad = VirtualTensor::new(builder.mad(&x_op, &"alpha", &y_op), vec![mad_dim]);
         mad.store(&self.z, &mut builder);
 
-        builder.action(Action::DimKind(ld_x[0][2], DimKind::LOOP));
+        //builder.action(Action::DimKind(ld_x[0][2], DimKind::THREAD));
         //builder.action(DimKind(ld_y[0][2], DimKind::LOOP));
         vec![builder.get()]
     }
