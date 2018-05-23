@@ -27,5 +27,5 @@ fn invalid_token() {
                                error::ProcessError::from(
                                    (Path::new("exh").display(), c)))
                           .err().unwrap()),
-               "InvalidToken(\"!\") at [0; 0]:[0; 1] -> exh");
+               "InvalidToken(\"!\"), between line 0, column 0 and line 0, column 1 -> exh");
 }

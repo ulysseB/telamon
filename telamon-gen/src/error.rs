@@ -5,12 +5,22 @@ use std::{path, fmt};
 use std::error::Error;
 
 #[derive(Debug)]
+pub enum Cause {
+    /// Lalrpop
+    Parse(ParseError<lexer::Position,
+                     lexer::Token,
+                     lexer::LexicalError>),
+    /// Will be remplaced by field for Ast [...]
+    Other,
+}
+
+#[derive(Debug)]
 pub struct ProcessError<'a> {
+    /// Display of filename.
     pub path: path::Display<'a>,
+    /// Position of lexeme.
     pub span: Option<lexer::Span>,
-    cause: ParseError<lexer::Position,
-                      lexer::Token,
-                      lexer::LexicalError>
+    cause: Cause,
 }
 
 impl <'a>From<(path::Display<'a>,
@@ -28,13 +38,13 @@ impl <'a>From<(path::Display<'a>,
                 => ProcessError {
                     path: path,
                     span: Some(lexer::Span { leg: location, ..Default::default() }),
-                    cause: parse,
+                    cause: Cause::Parse(parse),
                 },
             ParseError::UnrecognizedToken { token: None, .. }
                 => ProcessError {
                     path: path,
                     span: None,
-                    cause: parse,
+                    cause: Cause::Parse(parse),
                 }, 
            ParseError::UnrecognizedToken { token: Some((l, .., e)), .. } |
            ParseError::ExtraToken { token: (l, .., e) } |
@@ -43,7 +53,7 @@ impl <'a>From<(path::Display<'a>,
                 => ProcessError {
                     path: path,
                     span: Some(lexer::Span { leg: l, end: Some(e) }),
-                    cause: parse,
+                    cause: Cause::Parse(parse),
                 },
         }
     }
@@ -52,19 +62,26 @@ impl <'a>From<(path::Display<'a>,
 impl <'a> fmt::Display for ProcessError<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-           ProcessError { path, span, cause: ParseError::UnrecognizedToken {
-               token: Some((_, ref token, _)), .. }, ..} |
-           ProcessError { path, span, cause: ParseError::ExtraToken {
-               token: (_, ref token, _) }, ..} |
-           ProcessError { path, span, cause: ParseError::User {
-               error: lexer::LexicalError::UnexpectedToken(_, ref token, _) }, ..} |
-           ProcessError { path, span, cause: ParseError::User {
-               error: lexer::LexicalError::InvalidToken(_, ref token, _) }, ..} => {
-               if let Some(span) = span {
-                   write!(f, "{} at {} -> {}", token, span, path)
-               } else {
-                   write!(f, "{} -> {}", token, path)
-               }
+           ProcessError { path, span, cause: Cause::Parse(
+                ParseError::UnrecognizedToken {
+                    token: Some((_, ref token, _)), ..
+                }), ..} |
+           ProcessError { path, span, cause: Cause::Parse(ParseError::ExtraToken {
+                    token: (_, ref token, _)
+                }), ..} |
+           ProcessError { path, span, cause: Cause::Parse(
+                ParseError::User {
+                    error: lexer::LexicalError::UnexpectedToken(_, ref token, _)
+                }), ..} |
+           ProcessError { path, span, cause: Cause::Parse(
+                ParseError::User {
+                    error: lexer::LexicalError::InvalidToken(_, ref token, _)
+                }), ..} => {
+                if let Some(span) = span {
+                    write!(f, "{}, {} -> {}", token, span, path)
+                } else {
+                    write!(f, "{} -> {}", token, path)
+                }
            },
            _ => Ok(()),
         }
@@ -77,6 +94,10 @@ impl <'a>Error for ProcessError<'a> {
     }
 
     fn cause(&self) -> Option<&Error> {
-        Some(&self.cause)
+        if let Cause::Parse(ref parse) = self.cause {
+            parse.cause()
+        } else {
+            None
+        }
     }
 }
