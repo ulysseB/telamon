@@ -103,6 +103,7 @@ impl<'a> std::ops::Deref for Function<'a> {
 }
 
 /// Represents the value of a parameter passed to the kernel by the host.
+#[derive(Clone)]
 pub enum ParamVal<'a> {
     /// A parameter given by the caller.
     External(&'a ir::Parameter, ir::Type),

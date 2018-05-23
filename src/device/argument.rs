@@ -15,13 +15,13 @@ pub unsafe trait ScalarArgument: Sync + Send + Copy + PartialEq + Display + 'sta
     /// Returns the argument interpreted as an iteration dimension size, if applicable.
     fn as_size(&self) -> Option<u32> { None }
     /// Returns the type of the argument.
-    fn t() -> ir::Type;
+    fn t() -> ir::Type where Self: Sized;
     /// Returns a raw pointer to the object.
     fn raw_ptr(&self) -> *const libc::c_void;
     /// Returns an operand holding the argument value as a constant.
     fn as_operand(&self) -> ir::Operand<'static>;
     /// Generates a random instance of the argument type.
-    fn gen_random<R: Rng>(&mut R) -> Self;
+    fn gen_random<R: Rng>(&mut R) -> Self where Self: Sized;
 }
 
 unsafe impl ScalarArgument for f32 {

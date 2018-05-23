@@ -43,7 +43,6 @@ pub struct NameMap<'a, 'b> {
     /// Keeps track of memory block address names.
     mem_blocks: HashMap<mem::InternalId, String>,
     /// Keeps track of the next fresh ID that can be assigned to a loop.
-    #[cfg(feature = "cuda")]
     num_loop: u32,
     /// Tracks the current index on expanded dimensions.
     current_indexes: HashMap<dim::Id, u32>,
@@ -100,7 +99,6 @@ impl<'a, 'b> NameMap<'a, 'b> {
         let mut name_map = NameMap {
             namer: std::cell::RefCell::new(namer),
             insts: HashMap::default(),
-            #[cfg(feature = "cuda")]
             num_loop: 0,
             current_indexes: HashMap::default(),
             #[cfg(feature="mppa")]
@@ -141,7 +139,6 @@ impl<'a, 'b> NameMap<'a, 'b> {
     pub fn gen_name(&self, t: Type) -> String { self.namer.borrow_mut().name(t) }
 
     /// Generates an ID for a loop.
-    #[cfg(feature = "cuda")]
     pub fn gen_loop_id(&mut self) -> u32 {
         let id = self.num_loop;
         self.num_loop += 1;
@@ -149,7 +146,6 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     /// Allocate a predicate name.
-    #[cfg(feature = "cuda")]
     pub fn allocate_pred(&self) -> String { self.namer.borrow_mut().name(Type::I(1)) }
 
     pub fn name(&self, value: Value) -> Cow<str> {

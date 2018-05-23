@@ -79,7 +79,7 @@ fn host_type(t: &Type) -> &'static str {
     }
 }
 
-/// Prints a parameter decalartion.
+/// Prints a parameter declaration.
 fn param_decl(param: &ParamVal, namer: &NameMap) -> String {
     format!(
         ".param .{t}{attr} {name}",

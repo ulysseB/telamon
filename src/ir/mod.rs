@@ -19,7 +19,7 @@ pub use self::function::{Function, Signature, Parameter};
 pub use self::instruction::{InstId, Instruction};
 pub use self::induction_var::{IndVarId, InductionVar};
 pub use self::operand::{Operand, DimMapScope};
-pub use self::operator::{BinOp, Operator};
+pub use self::operator::{BinOp, Rounding, Operator};
 pub use self::size::Size;
 pub use self::types::Type;
 
