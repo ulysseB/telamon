@@ -42,15 +42,18 @@ impl fmt::Display for Position {
 
 /// A double sequence's row/column position
 #[derive(Default, Copy, Clone, Debug, PartialEq)]
-#[repr(C)]
 pub struct Span {
     pub leg: Position,
-    pub end: Position,
+    pub end: Option<Position>,
 }
 
 impl fmt::Display for Span {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}:{}", self.leg, self.end)
+        if let Some(end) = self.end {
+            write!(f, "{}:{}", self.leg, end)
+        } else {
+            write!(f, "{}", self.leg)
+        }
     }
 }
 

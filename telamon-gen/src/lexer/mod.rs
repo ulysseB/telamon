@@ -29,7 +29,7 @@ use self::ffi::{
     yyget_extra,
 };
 
-pub use self::ffi::Position;
+pub use self::ffi::{Position, Span};
 
 #[derive(Debug, PartialEq)]
 pub enum LexicalError {
@@ -49,14 +49,7 @@ impl Error for LexicalError {
 impl fmt::Display for LexicalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            LexicalError::UnexpectedToken(leg, tok, end) => {
-                write!(f, "{}, found '{:?}' between {}:{}",
-                          self.description(),
-                          tok,
-                          leg,
-                          end
-                )
-            },
+            LexicalError::UnexpectedToken(leg, tok, end) |
             LexicalError::InvalidToken(leg, tok, end) => {
                 write!(f, "{}, found '{:?}' between {}:{}",
                           self.description(),

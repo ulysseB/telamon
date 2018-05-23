@@ -23,10 +23,9 @@ pub mod lexer;
 generated_file!(pub parser);
 mod print;
 mod truth_table;
+pub mod error;
 
 use std::{fs, io, path};
-
-use lalrpop_util::ParseError;
 
 use utils::*;
 
@@ -50,11 +49,11 @@ fn to_type_name(name: &str) -> String {
 }
 
 /// Process a file and stores the result in an other file.
-pub fn process_file<'a>(input_path: &'a path::Path, output_path: &path::Path,
-    format: bool) -> Result<(), (ParseError<lexer::Position,
-                                           lexer::Token,
-                                           lexer::LexicalError>,
-                                 path::Display<'a>)> {
+pub fn process_file<'a>(
+    input_path: &'a path::Path,
+    output_path: &path::Path,
+    format: bool
+) -> Result<(), error::ProcessError<'a>> {
     let mut input = fs::File::open(path::Path::new(input_path)).unwrap();
     let mut output = fs::File::create(path::Path::new(output_path)).unwrap();
     let input_path_str = input_path.to_string_lossy();
@@ -63,14 +62,17 @@ pub fn process_file<'a>(input_path: &'a path::Path, output_path: &path::Path,
 }
 
 /// Parses a constraint description file.
-pub fn process<'a, T: io::Write>(input: &mut io::Read, output: &mut T,
-    format: bool, input_path: &'a path::Path) -> Result<(), (ParseError<lexer::Position,
-                                           lexer::Token,
-                                           lexer::LexicalError>,
-                                           path::Display<'a>)> {
+pub fn process<'a, T: io::Write>(
+    input: &mut io::Read,
+    output: &mut T,
+    format: bool,
+    input_path: &'a path::Path
+) -> Result<(), error::ProcessError<'a>> {
     // Parse and check the input.
     let tokens = lexer::Lexer::new(input);
-    let ast: ast::Ast = parser::parse_ast(tokens).map_err(|e| (e, input_path.display()))?;
+    let ast: ast::Ast =
+        parser::parse_ast(tokens)
+               .map_err(|c| error::ProcessError::from((input_path.display(), c)))?;
     let (mut ir_desc, constraints) = ast.type_check();
     debug!("constraints: {:?}", constraints);
     // Generate flat filters.
