@@ -34,7 +34,7 @@
     <nav class="sidebar">
         <div class="sidebar-menu">&#9776;</div>
         
-        <p class='location'>Module lexer</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li></ul></div><p class='location'><a href='../index.html'>telamon_gen</a></p><script>window.sidebarCurrent = {name: 'lexer', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script></div>
+        <p class='location'>Module lexer</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#types">Type Definitions</a></li></ul></div><p class='location'><a href='../index.html'>telamon_gen</a></p><script>window.sidebarCurrent = {name: 'lexer', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script></div>
     </nav>
 
     <div class="theme-picker">
@@ -59,7 +59,7 @@
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a class='srclink' href='../../src/telamon_gen/lexer/mod.rs.html#1-162' title='goto source code'>[src]</a></span></h1><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+               </span><a class='srclink' href='../../src/telamon_gen/lexer/mod.rs.html#1-232' title='goto source code'>[src]</a></span></h1><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
 <table>
                        <tr class=' module-item'>
                            <td><a class="struct" href="struct.Lexer.html"
@@ -67,13 +67,47 @@
                            <td class='docblock-short'>
                                 
                            </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Position.html"
+                                  title='struct telamon_gen::lexer::Position'>Position</a></td>
+                           <td class='docblock-short'>
+                                <p>A sequence's row/column position</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Span.html"
+                                  title='struct telamon_gen::lexer::Span'>Span</a></td>
+                           <td class='docblock-short'>
+                                <p>A double sequence's row/column position</p>
+
+                           </td>
                        </tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
 <table>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.LexicalError.html"
+                                  title='enum telamon_gen::lexer::LexicalError'>LexicalError</a></td>
+                           <td class='docblock-short'>
+                                
+                           </td>
+                       </tr>
                        <tr class=' module-item'>
                            <td><a class="enum" href="enum.Token.html"
                                   title='enum telamon_gen::lexer::Token'>Token</a></td>
                            <td class='docblock-short'>
                                 
+                           </td>
+                       </tr></table><h2 id='types' class='section-header'><a href="#types">Type Definitions</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="type" href="type.Spanned.html"
+                                  title='type telamon_gen::lexer::Spanned'>Spanned</a></td>
+                           <td class='docblock-short'>
+                                <p>The alias Spanned is a definition of the stream format.
+The parser will accept an iterator where each item
+in the stream has the following structure.</p>
+
                            </td>
                        </tr></table></section>
     <section id='search' class="content hidden"></section>

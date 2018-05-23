@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["Token",""]],"struct":[["Lexer",""]]});
+initSidebarItems({"enum":[["LexicalError",""],["Token",""]],"struct":[["Lexer",""],["Position","A sequence's row/column position"],["Span","A double sequence's row/column position"]],"type":[["Spanned","The alias Spanned is a definition of the stream format. The parser will accept an iterator where each item in the stream has the following structure."]]});

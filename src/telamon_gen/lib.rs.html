@@ -193,6 +193,22 @@
 <span id="136">136</span>
 <span id="137">137</span>
 <span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
 </pre><pre class="rust ">
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span> <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">env_logger</span>;
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">handlebars</span>;
@@ -209,16 +225,20 @@
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">topological_sort</span>;
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">libc</span>;
 
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">lalrpop_util</span>;
+
 <span class="kw">mod</span> <span class="ident">ast</span>;
 <span class="kw">mod</span> <span class="ident">constraint</span>;
 <span class="kw">mod</span> <span class="ident">flat_filter</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">ir</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">lexer</span>;
-<span class="macro">generated_file</span><span class="macro">!</span>(<span class="ident">parser</span>);
+<span class="macro">generated_file</span><span class="macro">!</span>(<span class="kw">pub</span> <span class="ident">parser</span>);
 <span class="kw">mod</span> <span class="ident">print</span>;
 <span class="kw">mod</span> <span class="ident">truth_table</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">error</span>;
 
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">fs</span>, <span class="ident">io</span>, <span class="ident">path</span>};
+
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// Converts a choice name to a rust type name.</span>
@@ -241,19 +261,30 @@
 }
 
 <span class="doccomment">/// Process a file and stores the result in an other file.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">process_file</span>(<span class="ident">input_path</span>: <span class="kw-2">&amp;</span><span class="ident">path</span>::<span class="ident">Path</span>, <span class="ident">output_path</span>: <span class="kw-2">&amp;</span><span class="ident">path</span>::<span class="ident">Path</span>, <span class="ident">format</span>: <span class="ident">bool</span>) {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">process_file</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+    <span class="ident">input_path</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">path</span>::<span class="ident">Path</span>,
+    <span class="ident">output_path</span>: <span class="kw-2">&amp;</span><span class="ident">path</span>::<span class="ident">Path</span>,
+    <span class="ident">format</span>: <span class="ident">bool</span>
+) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">error</span>::<span class="ident">ProcessError</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">input</span> <span class="op">=</span> <span class="ident">fs</span>::<span class="ident">File</span>::<span class="ident">open</span>(<span class="ident">path</span>::<span class="ident">Path</span>::<span class="ident">new</span>(<span class="ident">input_path</span>)).<span class="ident">unwrap</span>();
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output</span> <span class="op">=</span> <span class="ident">fs</span>::<span class="ident">File</span>::<span class="ident">create</span>(<span class="ident">path</span>::<span class="ident">Path</span>::<span class="ident">new</span>(<span class="ident">output_path</span>)).<span class="ident">unwrap</span>();
     <span class="kw">let</span> <span class="ident">input_path_str</span> <span class="op">=</span> <span class="ident">input_path</span>.<span class="ident">to_string_lossy</span>();
     <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;compiling {} to {}&quot;</span>, <span class="ident">input_path_str</span>, <span class="ident">output_path</span>.<span class="ident">to_string_lossy</span>());
-    <span class="ident">process</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">input</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">output</span>, <span class="ident">format</span>);
+    <span class="ident">process</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">input</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">output</span>, <span class="ident">format</span>, <span class="ident">input_path</span>)
 }
 
 <span class="doccomment">/// Parses a constraint description file.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">process</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">io</span>::<span class="ident">Write</span><span class="op">&gt;</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">io</span>::<span class="ident">Read</span>, <span class="ident">output</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">T</span>, <span class="ident">format</span>: <span class="ident">bool</span>) {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">process</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span>: <span class="ident">io</span>::<span class="ident">Write</span><span class="op">&gt;</span>(
+    <span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">io</span>::<span class="ident">Read</span>,
+    <span class="ident">output</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">T</span>,
+    <span class="ident">format</span>: <span class="ident">bool</span>,
+    <span class="ident">input_path</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">path</span>::<span class="ident">Path</span>
+) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">error</span>::<span class="ident">ProcessError</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
     <span class="comment">// Parse and check the input.</span>
     <span class="kw">let</span> <span class="ident">tokens</span> <span class="op">=</span> <span class="ident">lexer</span>::<span class="ident">Lexer</span>::<span class="ident">new</span>(<span class="ident">input</span>);
-    <span class="kw">let</span> <span class="ident">ast</span> <span class="op">=</span> <span class="ident">parser</span>::<span class="ident">parse_ast</span>(<span class="ident">tokens</span>).<span class="ident">unwrap</span>();
+    <span class="kw">let</span> <span class="ident">ast</span>: <span class="ident">ast</span>::<span class="ident">Ast</span> <span class="op">=</span>
+        <span class="ident">parser</span>::<span class="ident">parse_ast</span>(<span class="ident">tokens</span>)
+               .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">error</span>::<span class="ident">ProcessError</span>::<span class="ident">from</span>((<span class="ident">input_path</span>.<span class="ident">display</span>(), <span class="ident">c</span>)))<span class="question-mark">?</span>;
     <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">ir_desc</span>, <span class="ident">constraints</span>) <span class="op">=</span> <span class="ident">ast</span>.<span class="ident">type_check</span>();
     <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;constraints: {:?}&quot;</span>, <span class="ident">constraints</span>);
     <span class="comment">// Generate flat filters.</span>
@@ -302,6 +333,7 @@
     } <span class="kw">else</span> {
         <span class="macro">write</span><span class="macro">!</span>(<span class="ident">output</span>, <span class="string">&quot;{}&quot;</span>, <span class="ident">code</span>).<span class="ident">unwrap</span>();
     }
+    <span class="prelude-val">Ok</span>(())
 }
 
 <span class="comment">// TODO(cleanup): avoid name conflicts in the printer</span>
