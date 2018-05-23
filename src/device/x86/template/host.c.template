@@ -12,7 +12,7 @@ typedef struct thread_args {{
 
 void execute(int tid, void** args) {{
   {fun_params_cast};
-  {fun_name}({fun_params});
+  {fun_name}(tid, {fun_params});
 }}
 
 void * exec_wrap(void * args) {{

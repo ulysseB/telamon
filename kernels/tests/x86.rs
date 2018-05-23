@@ -16,5 +16,5 @@ macro_rules! test_output {
     }
 }
 
-test_output!(axpy, linalg::Axpy<f32>, 100, 1 << 15);
-//test_output!(mv, linalg::MatVec<f32>, 100, (1<<4, 1<<2));
+test_output!(axpy, linalg::Axpy<f32>, 100, 1 << 5);
+test_output!(mv, linalg::MatVec<f32>, 100, (1<<4, 1<<2));
