@@ -3,7 +3,7 @@ use codegen::Function;
 use device::{self, Device};
 use device::cuda::printer as p;
 use device::cuda::mem_model::{self, MemInfo};
-use ir::{self, Type};
+use ir::{self, Type, Operator};
 use model::{self, HwPressure};
 use search_space::{DimKind, Domain, InstFlag, MemSpace, SearchSpace};
 use rustc_serialize::json;
@@ -334,6 +334,32 @@ impl device::Device for Gpu {
     fn max_threads(&self) -> u32 { 1024 }
 
     fn max_unrolling(&self) -> u32 { 512 }
+
+    fn can_vectorize(&self, dim: &ir::Dimension, op: &ir::Operator) -> bool {
+        // TODO(search_space): compute vectorizable info for tmp Ld/St. On vectorization,
+        // the layout must be constrained.
+        match *op {
+            Operator::St(_, ref operand, _, ref pattern) => {
+                if let Some(type_len) = operand.t().len_byte() {
+                    dim.size().as_int().into_iter().any(|x| x == 2 || x == 4) &&
+                        pattern.stride(dim.id()) == ir::Stride::Int(type_len as i32)
+                } else { false }
+            },
+            Operator::Ld(ref t, _, ref pattern) => {
+                if let Some(type_len) = t.len_byte() {
+                    dim.size().as_int().into_iter().any(|x| x == 2 || x == 4) &&
+                        pattern.stride(dim.id()) == ir::Stride::Int(type_len as i32)
+                } else { false }
+            },
+            Operator::BinOp(..) |
+                Operator::Mul(..) |
+                Operator::Mad(..) |
+                Operator::Mov(..) |
+                Operator::Cast(..) => false,
+                Operator::TmpLd(..) |
+                    Operator::TmpSt(..) => dim.size().as_int().into_iter().any(|x| x == 2 || x == 4),
+        }
+    }
 
     fn shared_mem(&self) -> u32 { self.shared_mem_per_block }
 

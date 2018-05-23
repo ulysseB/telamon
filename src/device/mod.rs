@@ -33,6 +33,8 @@ pub trait Device: Sync {
     fn max_threads(&self) -> u32;
     /// Returns the maximal unrolling factor.
     fn max_unrolling(&self) -> u32;
+    /// Indicates if vectorization is possible on a loop with size Size on this instruction.
+    fn can_vectorize(&self, dim: &ir::Dimension, op: &ir::Operator) -> bool;
     /// Returns the amount of shared memory available for each thread block.
     fn shared_mem(&self) -> u32;
     /// Indicates if the device supports non-coherent memory accesses.
