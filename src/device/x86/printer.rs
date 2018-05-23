@@ -198,7 +198,7 @@ fn cpu_loop(fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap)
             standard_loop(fun, dim, cfgs, namer)
         }
         DimKind::UNROLL => {unroll_loop(fun, dim, cfgs, namer)}
-        DimKind::VECTOR => {standard_loop(fun, dim, cfgs, namer)}
+        DimKind::VECTOR => {unroll_loop(fun, dim, cfgs, namer)}
         _ => { unimplemented!() }
     }
 }

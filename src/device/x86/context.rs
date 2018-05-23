@@ -129,7 +129,7 @@ impl device::Context for Context {
 
 fn function_evaluate(fun_str: String, mut args: Vec<ThunkArg>) -> Result<f64, ()> {
     println!("{}", fun_str);
-    panic!();
+    //panic!();
     let temp_dir = tempfile::tempdir().unwrap();
     let templib_name = temp_dir.path().join("lib_compute.so").to_string_lossy().into_owned();
     let mut source_file = tempfile::tempfile().unwrap();
