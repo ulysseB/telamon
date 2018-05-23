@@ -164,7 +164,7 @@
         <span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">operand</span>::<span class="ident">inst_invariants</span>(<span class="ident">fun</span>, <span class="ident">inst</span>));
         <span class="comment">// TODO(automate): vectorization disabled -&gt; express as an additional constraint</span>
         <span class="kw">for</span> <span class="ident">d</span> <span class="kw">in</span> <span class="ident">fun</span>.<span class="ident">dims</span>() {
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">inst</span>.<span class="ident">is_vectorizable</span>(<span class="ident">d</span>) {
+            <span class="kw">if</span> <span class="op">!</span><span class="ident">fun</span>.<span class="ident">device</span>().<span class="ident">can_vectorize</span>(<span class="ident">d</span>, <span class="ident">inst</span>.<span class="ident">operator</span>()) {
                 <span class="kw">let</span> <span class="ident">order</span> <span class="op">=</span> <span class="ident">domain</span>.<span class="ident">get_order</span>(<span class="ident">inst</span>.<span class="ident">bb_id</span>(), <span class="ident">d</span>.<span class="ident">bb_id</span>());
                 <span class="kw">if</span> <span class="ident">domain</span>.<span class="ident">get_dim_kind</span>(<span class="ident">d</span>.<span class="ident">id</span>()) <span class="op">==</span> <span class="ident">DimKind</span>::<span class="ident">VECTOR</span> {
                     <span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">order</span>::<span class="ident">restrict_delayed</span>(
