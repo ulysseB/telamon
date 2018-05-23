@@ -307,26 +307,6 @@ fn privatise_global_block(block: &InternalMemBlock, namer: &mut NameMap, fun: &F
     insts.join("\n  ")
 }
 
-fn privatise_global_block(block: &InternalMemBlock, namer: &mut NameMap, fun: &Function
-                          ) -> String {
-    if fun.block_dims().is_empty() { return "".to_string(); }
-    let addr = namer.name_addr(block.id());
-    let size = namer.name_size(block.local_size(), Type::I(32));
-    let d0 = namer.name_index(fun.block_dims()[0].id()).to_string();
-    let (var, mut insts) = fun.block_dims()[1..].iter()
-        .fold((d0, vec![]), |(old_var, mut insts), dim| {
-            let var = namer.gen_name(Type::I(32));
-            let size = namer.name_size(dim.size(), Type::I(32));
-            let idx = namer.name_index(dim.id());
-            insts.push(format!("{} = {} * {} + {};",
-                               var, old_var, size, idx));
-            (var, insts)
-        });
-    insts.push(format!("{} = {} * {} + {};",
-                       addr, var, size, addr));
-    insts.join("\n  ")
-}
-
 /// Prints a `Function`.
 pub fn function(function: &Function) -> String {
     let mut namer = Namer::default();
