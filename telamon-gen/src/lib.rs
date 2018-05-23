@@ -13,16 +13,20 @@ extern crate telamon_utils as utils;
 extern crate topological_sort;
 extern crate libc;
 
+extern crate lalrpop_util;
+
 mod ast;
 mod constraint;
 mod flat_filter;
 pub mod ir;
 pub mod lexer;
-generated_file!(parser);
+generated_file!(pub parser);
 mod print;
 mod truth_table;
+pub mod error;
 
 use std::{fs, io, path};
+
 use utils::*;
 
 /// Converts a choice name to a rust type name.
@@ -45,19 +49,30 @@ fn to_type_name(name: &str) -> String {
 }
 
 /// Process a file and stores the result in an other file.
-pub fn process_file(input_path: &path::Path, output_path: &path::Path, format: bool) {
+pub fn process_file<'a>(
+    input_path: &'a path::Path,
+    output_path: &path::Path,
+    format: bool
+) -> Result<(), error::ProcessError<'a>> {
     let mut input = fs::File::open(path::Path::new(input_path)).unwrap();
     let mut output = fs::File::create(path::Path::new(output_path)).unwrap();
     let input_path_str = input_path.to_string_lossy();
     info!("compiling {} to {}", input_path_str, output_path.to_string_lossy());
-    process(&mut input, &mut output, format);
+    process(&mut input, &mut output, format, input_path)
 }
 
 /// Parses a constraint description file.
-pub fn process<T: io::Write>(input: &mut io::Read, output: &mut T, format: bool) {
+pub fn process<'a, T: io::Write>(
+    input: &mut io::Read,
+    output: &mut T,
+    format: bool,
+    input_path: &'a path::Path
+) -> Result<(), error::ProcessError<'a>> {
     // Parse and check the input.
     let tokens = lexer::Lexer::new(input);
-    let ast = parser::parse_ast(tokens).unwrap();
+    let ast: ast::Ast =
+        parser::parse_ast(tokens)
+               .map_err(|c| error::ProcessError::from((input_path.display(), c)))?;
     let (mut ir_desc, constraints) = ast.type_check();
     debug!("constraints: {:?}", constraints);
     // Generate flat filters.
@@ -106,6 +121,7 @@ pub fn process<T: io::Write>(input: &mut io::Read, output: &mut T, format: bool)
     } else {
         write!(output, "{}", code).unwrap();
     }
+    Ok(())
 }
 
 // TODO(cleanup): avoid name conflicts in the printer

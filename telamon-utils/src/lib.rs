@@ -173,6 +173,12 @@ macro_rules! generated_file {
         mod $name {
             include!(concat!(env!("OUT_DIR"), "/", stringify!($name), ".rs"));
         }
+    };
+    (pub $name:ident) => {
+        #[cfg_attr(feature = "cargo-clippy", allow(clippy))]
+        pub mod $name {
+            include!(concat!(env!("OUT_DIR"), "/", stringify!($name), ".rs"));
+        }
     }
 }
 

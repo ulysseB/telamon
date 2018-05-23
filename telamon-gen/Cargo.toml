@@ -11,6 +11,13 @@ lex = []
 doc = false
 name = "cli_gen"
 
+[[bench]]
+name = "lexer"
+harness = false
+
+[dev-dependencies]
+criterion = "0.2"
+
 [build-dependencies]
 lalrpop = "0.14"
 cc = "1.0.12"
