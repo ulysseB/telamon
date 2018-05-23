@@ -127,6 +127,17 @@ impl device::Context for Context {
 }
 
 
+enum HoldThunk {
+    PlaceHolder,
+    Arr(CpuArray),
+}
+
+enum ThunkArg {
+    ArgRef(Arc<Argument>),
+    Size(i32),
+    TmpArray(u32),
+}
+
 fn function_evaluate(fun_str: String, mut args: Vec<ThunkArg>) -> Result<f64, ()> {
     println!("{}", fun_str);
     //panic!();
