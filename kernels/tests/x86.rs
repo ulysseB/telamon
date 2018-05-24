@@ -16,5 +16,8 @@ macro_rules! test_output {
     }
 }
 
-test_output!(axpy, linalg::Axpy<f32>, 100, 1 << 5);
-test_output!(mv, linalg::MatVec<f32>, 100, (1<<4, 1<<2));
+//test_output!(axpy, linalg::Axpy<f32>, 100, 1 << 5);
+//test_output!(mv, linalg::MatVec<f32>, 100, (1<<4, 1<<2));
+test_output!(gesummv, linalg::Gesummv<f32>, 100, (1<<4, 1<<4));
+test_output!(matmul, linalg::MatMul<f32>, 100, (1<<4, 1<<4, 1<<4));
+test_output!(doitgen, linalg::Doitgen<f32>, 100, (1<<4, 1<<4, 1<<4));
