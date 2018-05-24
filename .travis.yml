@@ -36,7 +36,6 @@ script:
         cargo doc --all
     fi
      
-
 after_success:
   # Kcov's Building § https://github.com/SimonKagstrom/kcov/blob/master/INSTALL.md#building
   - git clone https://github.com/SimonKagstrom/kcov.git
@@ -51,11 +50,9 @@ after_success:
     for file in target/debug/telamon*[^\.d];
       do
         mkdir -p "target/cov/$(basename $file)";
-
         # Kcov's Travis-ci / coveralls integration § https://github.com/SimonKagstrom/kcov/blob/master/doc/coveralls.md#travis-ci--coveralls-integration
         ./usr/local/bin/kcov --coveralls-id=$TRAVIS_JOB_ID --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file";
     done
-
   - mv target/cov target/doc
 
   # Criterion's run Quickstart § https://github.com/japaric/criterion.rs#quickstart
@@ -67,7 +64,6 @@ after_success:
         cd -
         mv telamon-gen/target/criterion target/doc
     fi
-
 deploy:
   - provider: pages
     local-dir: target/doc
