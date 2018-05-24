@@ -35,11 +35,10 @@ impl device::Device for Cpu {
         }
     }
 
-    // TODO(search_space) block dimensions do not make sense on cpu
+    // block dimensions do not make sense on cpu
     fn max_block_dims(&self) -> u32 { 0 }
 
     fn max_threads(&self) -> u32 { (num_cpus::get() ) as u32 }
-    //fn max_threads(&self) -> u32 {1}
 
     fn max_unrolling(&self) -> u32 { 512 }
 

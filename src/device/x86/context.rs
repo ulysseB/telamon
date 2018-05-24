@@ -4,7 +4,7 @@ use crossbeam;
 use device::{self, Device, ScalarArgument, EvalMode};
 use device::context::AsyncCallback;
 use device::x86::compile;
-use device::x86::cpu_argument::{CpuArray, Argument, CpuScalarArg};
+use device::x86::cpu_argument::{CpuArray, Argument, CpuScalarArg, ArgLock};
 use device::x86::cpu::Cpu;
 use device::x86::printer::wrapper_function;
 use explorer;
@@ -14,7 +14,7 @@ use libc;
 use std;
 use std::f64;
 use std::io::Write;
-use std::sync::{mpsc, Arc};
+use std::sync::{mpsc, Arc, MutexGuard};
 use tempfile;
 use utils::*;
 
@@ -127,9 +127,11 @@ impl device::Context for Context {
 }
 
 
-enum HoldThunk {
-    PlaceHolder,
-    Arr(CpuArray),
+enum HoldThunk<'a> {
+    Scalar(*mut libc::c_void),
+    ArrRef(MutexGuard<'a, Vec<i8>>),
+    Size(i32),
+    Arr(Vec<i8>),
 }
 
 enum ThunkArg {
@@ -138,9 +140,7 @@ enum ThunkArg {
     TmpArray(u32),
 }
 
-fn function_evaluate(fun_str: String, mut args: Vec<ThunkArg>) -> Result<f64, ()> {
-    //println!("{}", fun_str);
-    //panic!();
+fn function_evaluate(fun_str: String, args: Vec<ThunkArg>) -> Result<f64, ()> {
     let temp_dir = tempfile::tempdir().unwrap();
     let templib_name = temp_dir.path().join("lib_compute.so").to_string_lossy().into_owned();
     let mut source_file = tempfile::tempfile().unwrap();
@@ -149,22 +149,23 @@ fn function_evaluate(fun_str: String, mut args: Vec<ThunkArg>) -> Result<f64, ()
     if !compile_status.success() {
         panic!("Could not compile file");
     }
-    let thunks = args.iter().map(|arg| match arg {
-        &ThunkArg::ArgRef(_) =>  HoldThunk::PlaceHolder,
-        &ThunkArg::Size(_) => HoldThunk::PlaceHolder,
-        &ThunkArg::TmpArray( size) => {
-            let arr = CpuArray::new(size as usize); 
+    let mut thunks = args.iter().map(|arg| match arg {
+        ThunkArg::ArgRef(arg_ref) => match arg_ref.arg_lock() {
+            ArgLock::Scalar(ptr) => HoldThunk::Scalar(ptr),
+            ArgLock::Arr(guard) => HoldThunk::ArrRef(guard),
+        },
+        ThunkArg::Size(size) => HoldThunk::Size(*size),
+        ThunkArg::TmpArray( size) => {
+            //let arr = CpuArray::new(*size as usize); 
+            let arr = vec![0; *size as usize];
             HoldThunk::Arr(arr)
         },
     }).collect_vec();
-    let ptrs = args.iter_mut().enumerate() .map(|(ind, arg)| match arg {
-        &mut ThunkArg::ArgRef(ref mut arg_arc) =>  arg_arc.raw_ptr(),
-        &mut ThunkArg::Size(ref mut size) =>  size as *mut _ as *mut libc::c_void,
-        &mut ThunkArg::TmpArray(_) => {
-            if let &HoldThunk::Arr(ref arr) = &thunks[ind] {
-                arr.raw_ptr()
-            } else {panic!("There should be an Arr at this position !")}
-        },
+    let ptrs = thunks.iter_mut().map(|arg| match arg {
+        HoldThunk::ArrRef(arg) => arg.as_mut_ptr() as *mut libc::c_void,
+        HoldThunk::Scalar(ptr) => *ptr,
+        HoldThunk::Size(size) =>  size as *mut _ as *mut libc::c_void,
+        HoldThunk::Arr(array) =>  array.as_mut_ptr() as *mut libc::c_void,
     }).collect_vec();
     let time = compile::link_and_exec(&templib_name, &String::from("entry_point"), ptrs);
     Ok(time)
