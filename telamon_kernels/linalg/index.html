@@ -59,7 +59,7 @@
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a class='srclink' href='../../src/telamon_kernels/linalg.rs.html#1-493' title='goto source code'>[src]</a></span></h1><div class='docblock'><p>Linera algebra kernels.</p>
+               </span><a class='srclink' href='../../src/telamon_kernels/linalg.rs.html#1-458' title='goto source code'>[src]</a></span></h1><div class='docblock'><p>Linera algebra kernels.</p>
 </div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
 <table>
                        <tr class=' module-item'>
@@ -67,16 +67,6 @@
                                   title='struct telamon_kernels::linalg::Axpy'>Axpy</a></td>
                            <td class='docblock-short'>
                                 <p>Computes <code>z = alpha*x+y</code>.</p>
-
-                           </td>
-                       </tr>
-                       <tr class=' module-item'>
-                           <td><a class="struct" href="struct.Doitgen.html"
-                                  title='struct telamon_kernels::linalg::Doitgen'>Doitgen</a></td>
-                           <td class='docblock-short'>
-                                <p>Computes <code>B[r] = A[r].transpose(X)</code> where A, B are 3D tensors and X a matrix. This is
-in effect a matrix-matrix multiplications, with two two dimensions iterating on the
-rows of A.</p>
 
                            </td>
                        </tr>
@@ -102,6 +92,21 @@ rows of A.</p>
                            <td class='docblock-short'>
                                 <p>Computes <code>y = A.x</code>.</p>
 
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Tbmm.html"
+                                  title='struct telamon_kernels::linalg::Tbmm'>Tbmm</a></td>
+                           <td class='docblock-short'>
+                                <p>Batch transposed matrix-matrix multiplication.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.TbmmParams.html"
+                                  title='struct telamon_kernels::linalg::TbmmParams'>TbmmParams</a></td>
+                           <td class='docblock-short'>
+                                
                            </td>
                        </tr></table></section>
     <section id='search' class="content hidden"></section>

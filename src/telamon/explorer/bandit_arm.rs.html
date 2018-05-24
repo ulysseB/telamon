@@ -440,6 +440,11 @@
 <span id="383">383</span>
 <span id="384">384</span>
 <span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Exploration of the search space.</span>
 
@@ -521,15 +526,15 @@
                         <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">drop</span>(<span class="ident">lock</span>);
                         <span class="comment">// We manually process the first two levels of the search as they</span>
                         <span class="comment">// are still in the tree and thus must be updated if needed.</span>
-                        <span class="kw">let</span> (<span class="ident">idx</span>, <span class="ident">opt</span>) <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">x</span>) <span class="op">=</span> <span class="ident">res</span> { <span class="ident">x</span> } <span class="kw">else</span> { <span class="kw">continue</span> };
+                        <span class="kw">let</span> (<span class="ident">idx</span>, <span class="ident">res2</span>) <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">x</span>) <span class="op">=</span> <span class="ident">res</span> { <span class="ident">x</span> } <span class="kw">else</span> { <span class="kw">continue</span> };
                         <span class="ident">path</span>.<span class="number">0</span>.<span class="ident">push</span>((<span class="ident">Arc</span>::<span class="ident">downgrade</span>(<span class="kw-2">&amp;</span><span class="ident">node</span>), <span class="ident">idx</span>));
-                        <span class="kw">let</span> (<span class="ident">cand</span>, <span class="ident">is_leaf</span>) <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">x</span>) <span class="op">=</span> <span class="ident">opt</span> { <span class="ident">x</span> } <span class="kw">else</span> { <span class="kw">continue</span> };
-                        <span class="kw">if</span> <span class="ident">is_leaf</span> {
-                            <span class="ident">state</span> <span class="op">=</span> <span class="ident">DescendState</span>::<span class="ident">Leaf</span>(<span class="ident">cand</span>);
-                        } <span class="kw">else</span> {
-                            <span class="kw">let</span> <span class="ident">order</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">new_nodes_order</span>;
-                            <span class="kw">return</span> <span class="ident">local_selection</span>::<span class="ident">descend</span>(<span class="ident">order</span>, <span class="ident">context</span>, <span class="ident">cand</span>, <span class="ident">cut</span>)
-                                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> (<span class="ident">c</span>, <span class="ident">path</span>))
+                        <span class="kw">match</span> <span class="ident">res2</span> {
+                            <span class="prelude-val">Ok</span>(<span class="ident">candidate</span>) <span class="op">=&gt;</span> {
+                                <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">local_selection</span>::<span class="ident">descend</span>(
+                                    <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">new_nodes_order</span>, <span class="ident">context</span>, <span class="ident">candidate</span>, <span class="ident">cut</span>);
+                                <span class="kw">return</span> <span class="ident">res</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> (<span class="ident">c</span>, <span class="ident">path</span>));
+                            }
+                            <span class="prelude-val">Err</span>(<span class="ident">new_state</span>) <span class="op">=&gt;</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">new_state</span>,
                         }
                     } <span class="kw">else</span> {
                         <span class="kw">let</span> <span class="ident">next</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">node</span>.<span class="ident">write</span>())
@@ -718,26 +723,31 @@
     <span class="doccomment">/// Descends one level in the tree and apply an action on the candidate reached to</span>
     <span class="doccomment">/// generate a candidate that is not owned by the tree. Assumes all the `Children` are</span>
     <span class="doccomment">/// either dead-ends or unexpanded nodes. Returns the index of the selected child,</span>
-    <span class="doccomment">/// the generated `Candidate` and indicates if it is a leaf. Returns `None` if a</span>
-    <span class="doccomment">/// dead-end is reached.</span>
+    <span class="doccomment">/// the generated `Candidate` or the current state of the exploration if the candidate</span>
+    <span class="doccomment">/// could not be generated. Returns `None` if a dead-end is reached before we could</span>
+    <span class="doccomment">/// descend.</span>
     <span class="kw">fn</span> <span class="ident">descend_noexpand</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">BanditConfig</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>, <span class="ident">cut</span>: <span class="ident">f64</span>)
-        <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">bool</span>)<span class="op">&gt;</span>)<span class="op">&gt;</span>
+        <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">DescendState</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>)<span class="op">&gt;</span>
     {
         <span class="self">self</span>.<span class="ident">trim</span>(<span class="ident">cut</span>);
         <span class="self">self</span>.<span class="ident">pick_child</span>(<span class="ident">config</span>, <span class="ident">cut</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">idx</span><span class="op">|</span> {
             <span class="self">self</span>.<span class="ident">rewards</span>[<span class="ident">idx</span>].<span class="number">1</span> <span class="op">+=</span> <span class="number">1</span>;
             <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">replace</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">children</span>[<span class="ident">idx</span>], <span class="ident">SubTree</span>::<span class="ident">Empty</span>);
-            <span class="kw">let</span> <span class="ident">cand</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="ident">SubTree</span>::<span class="ident">UnexpandedNode</span>(<span class="ident">c</span>) <span class="op">=</span> <span class="ident">node</span> { <span class="ident">c</span> } <span class="kw">else</span> {
-                <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;descend_noexpand assumes children are not expanded&quot;</span>)
+            <span class="kw">let</span> <span class="ident">cand</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">node</span> {
+                <span class="ident">SubTree</span>::<span class="ident">UnexpandedNode</span>(<span class="ident">c</span>) <span class="op">=&gt;</span> <span class="ident">c</span>,
+                <span class="ident">SubTree</span>::<span class="ident">Empty</span> <span class="op">=&gt;</span> <span class="kw">return</span> (<span class="ident">idx</span>, <span class="prelude-val">Err</span>(<span class="ident">DescendState</span>::<span class="ident">DeadEnd</span>)),
+                <span class="ident">SubTree</span>::<span class="ident">InternalNode</span>(<span class="kw-2">ref</span> <span class="ident">node</span>, <span class="kw">_</span>) <span class="op">=&gt;</span>
+                    <span class="kw">return</span> (<span class="ident">idx</span>, <span class="prelude-val">Err</span>(<span class="ident">DescendState</span>::<span class="ident">InternalNode</span>(<span class="ident">node</span>.<span class="ident">clone</span>(), <span class="bool-val">true</span>))),
             };
             <span class="kw">let</span> <span class="ident">choice</span> <span class="op">=</span> <span class="ident">choice</span>::<span class="ident">list</span>(<span class="kw-2">&amp;</span><span class="ident">cand</span>.<span class="ident">space</span>).<span class="ident">next</span>();
             <span class="kw">let</span> <span class="ident">out</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">choice</span>) <span class="op">=</span> <span class="ident">choice</span> {
                 <span class="kw">let</span> <span class="ident">cands</span> <span class="op">=</span> <span class="ident">cand</span>.<span class="ident">apply_choice</span>(<span class="ident">context</span>, <span class="ident">choice</span>);
                 <span class="self">self</span>.<span class="ident">children</span>[<span class="ident">idx</span>] <span class="op">=</span> <span class="ident">SubTree</span>::<span class="ident">UnexpandedNode</span>(<span class="ident">cand</span>);
                 <span class="kw">let</span> <span class="ident">order</span> <span class="op">=</span> <span class="ident">config</span>.<span class="ident">new_nodes_order</span>;
-                <span class="ident">local_selection</span>::<span class="ident">pick_candidate</span>(<span class="ident">order</span>, <span class="ident">cands</span>, <span class="ident">cut</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> (<span class="ident">c</span>, <span class="bool-val">false</span>))
-                
-            } <span class="kw">else</span> { <span class="prelude-val">Some</span>((<span class="ident">cand</span>, <span class="bool-val">true</span>)) };
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cand</span>) <span class="op">=</span> <span class="ident">local_selection</span>::<span class="ident">pick_candidate</span>(<span class="ident">order</span>, <span class="ident">cands</span>, <span class="ident">cut</span>) {
+                    <span class="prelude-val">Ok</span>(<span class="ident">cand</span>)
+                } <span class="kw">else</span> { <span class="prelude-val">Err</span>(<span class="ident">DescendState</span>::<span class="ident">DeadEnd</span>) }
+            } <span class="kw">else</span> { <span class="prelude-val">Err</span>(<span class="ident">DescendState</span>::<span class="ident">Leaf</span>(<span class="ident">cand</span>)) };
             (<span class="ident">idx</span>, <span class="ident">out</span>)
         })
     }
