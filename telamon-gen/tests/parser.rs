@@ -1,10 +1,13 @@
 extern crate telamon_gen;
 extern crate lalrpop_util;
 
-use telamon_gen::lexer::{Lexer, LexicalError, Position};
+use telamon_gen::lexer::{Lexer, Token, LexicalError, Position};
 use telamon_gen::parser;
+use telamon_gen::error;
 
 use lalrpop_util::ParseError;
+
+use std::path::Path;
 
 #[test]
 fn invalid_token() {
@@ -12,9 +15,17 @@ fn invalid_token() {
                   ParseError::User {
                       error: LexicalError::InvalidToken(
                           Position::default(),
-                          String::from("!"),
+                          Token::InvalidToken(String::from("!")),
                           Position { column: 1, ..Default::default() }
                       ),
                   }
               ));
+
+    assert_eq!(format!("{}",
+                   parser::parse_ast(Lexer::from(b"!".to_vec()))
+                          .map_err(|c|
+                               error::ProcessError::from(
+                                   (Path::new("exh").display(), c)))
+                          .err().unwrap()),
+               "InvalidToken(\"!\"), between line 0, column 0 and line 0, column 1 -> exh");
 }

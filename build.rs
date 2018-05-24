@@ -27,7 +27,7 @@ fn main() {
 
     add_dependency(exh_file);
     let exh_out = Path::new(&out_dir).join("choices.rs");
-    telamon_gen::process_file(&Path::new(exh_file), &exh_out, cfg!(feature="format_exh"));
+    telamon_gen::process_file(&Path::new(exh_file), &exh_out, cfg!(feature="format_exh")).unwrap();
     if cfg!(feature="cuda") { compile_link_cuda(); }
 
     if cfg!(feature = "mppa") {

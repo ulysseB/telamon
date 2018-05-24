@@ -1,4 +1,3 @@
-#![feature(iterator_step_by)]
 extern crate env_logger;
 extern crate telamon;
 extern crate getopts;

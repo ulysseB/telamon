@@ -21,20 +21,38 @@ pub enum Rounding {
     Negative,
 }
 
+/// Represents binary arithmetic operators.
+#[derive(Clone, Copy, Debug)]
+pub enum BinOp {
+    /// Adds two operands.
+    Add,
+    /// Substracts two operands.
+    Sub,
+    /// Divides two operands,
+    Div,
+}
+
+impl BinOp {
+    /// Returns a string representing the operator.
+    fn as_str(&self) -> &'static str {
+        match *self {
+            BinOp::Add => "add",
+            BinOp::Sub => "sub",
+            BinOp::Div => "div",
+        }
+    }
+}
+
 /// The operation performed by an instruction.
 #[derive(Clone, Debug)]
 pub enum Operator<'a> {
-    /// Adds two operands.
-    Add(Operand<'a>, Operand<'a>, Rounding),
-    /// Substracts two operands.
-    Sub(Operand<'a>, Operand<'a>, Rounding),
+    /// A binary arithmetic operator.
+    BinOp(BinOp, Operand<'a>, Operand<'a>, Rounding),
     /// Performs a multiplication with the given return type.
     Mul(Operand<'a>, Operand<'a>, Rounding, Type),
     /// Performs s multiplication between the first two operands and adds the
     /// result to the third.
     Mad(Operand<'a>, Operand<'a>, Operand<'a>, Rounding),
-    /// Performs a division.
-    Div(Operand<'a>, Operand<'a>, Rounding),
     /// Moves a value into a register.
     Mov(Operand<'a>),
     /// Loads a value of the given type from the given address.
@@ -62,9 +80,7 @@ impl<'a> Operator<'a> {
             assert!(device.is_valid_type(&t));
         }
         match *self {
-            Add(ref lhs, ref rhs, rounding) |
-            Sub(ref lhs, ref rhs, rounding) |
-            Div(ref lhs, ref rhs, rounding) => {
+            BinOp(_, ref lhs, ref rhs, rounding) => {
                 assert!(lhs.t().is_float() ^ (rounding == Rounding::Exact));
                 assert_eq!(lhs.t(), rhs.t());
             },
@@ -104,11 +120,9 @@ impl<'a> Operator<'a> {
     /// Returns the type of the value produced.
     pub fn t(&self) -> Type {
         match *self {
-            Add(ref op, _, _) |
-            Sub(ref op, _, _) |
+            BinOp(_, ref op, ..) |
             Mov(ref op) |
-            Mad(_, _, ref op, _) |
-            Div(ref op, _, _) => op.t(),
+            Mad(_, _, ref op, _) => op.t(),
             Ld(t, ..) | TmpLd(t, _) | Cast(_, t) | Mul(.., t) => t,
             St(..) | TmpSt(..) => Type::Void,
         }
@@ -117,10 +131,8 @@ impl<'a> Operator<'a> {
     /// Retruns the list of operands.
     pub fn operands(&self) -> Vec<&Operand<'a>> {
         match *self {
-            Add(ref lhs, ref rhs, _) |
-            Sub(ref lhs, ref rhs, _) |
+            BinOp(_, ref lhs, ref rhs, _) |
             Mul(ref lhs, ref rhs, _, _) |
-            Div(ref lhs, ref rhs, _) |
             St(ref lhs, ref rhs, _, _) => vec![lhs, rhs],
             Mad(ref mul_lhs, ref mul_rhs, ref add_rhs, _) =>
                 vec![mul_lhs, mul_rhs, add_rhs],
@@ -135,10 +147,8 @@ impl<'a> Operator<'a> {
     /// Retruns the list of mutable references to operands.
     pub fn operands_mut<'b>(&'b mut self) -> Vec<&'b mut Operand<'a>> {
         match *self {
-            Add(ref mut lhs, ref mut rhs, _) |
-            Sub(ref mut lhs, ref mut rhs, _) |
+            BinOp(_, ref mut lhs, ref mut rhs, _) |
             Mul(ref mut lhs, ref mut rhs, _, _) |
-            Div(ref mut lhs, ref mut rhs, _) |
             St(ref mut lhs, ref mut rhs, _, _) => vec![lhs, rhs],
             Mad(ref mut mul_lhs, ref mut mul_rhs, ref mut add_rhs, _) =>
                 vec![mul_lhs, mul_rhs, add_rhs],
@@ -154,45 +164,14 @@ impl<'a> Operator<'a> {
     pub fn has_side_effects(&self) -> bool {
         match *self {
             St(_, _, b, _) => b,
-            Add(..) |
-            Sub(..) |
+            BinOp(..) |
             Mul(..) |
             Mad(..) |
             Mov(..) |
-            Div(..) |
             Ld(..) |
             TmpLd(..) |
             TmpSt(..) |
             Cast(..) => false
-        }
-    }
-
-    /// Returns true if the operator is vectorizable on the given dimension.
-    pub fn is_vectorizable(&self, dim: &Dimension) -> bool {
-        // TODO(search_space): compute vectorizable info for tmp Ld/St. On vectorization,
-        // the layout must be constrained.
-        match *self {
-            St(_, ref operand, _, ref pattern) => {
-                if let Some(type_len) = operand.t().len_byte() {
-                    dim.size().as_int().into_iter().any(|x| x == 2 || x == 4) &&
-                        pattern.stride(dim.id()) == Stride::Int(type_len as i32)
-                } else { false }
-            },
-            Ld(ref t, _, ref pattern) => {
-                if let Some(type_len) = t.len_byte() {
-                    dim.size().as_int().into_iter().any(|x| x == 2 || x == 4) &&
-                        pattern.stride(dim.id()) == Stride::Int(type_len as i32)
-                } else { false }
-            },
-            Add(..) |
-            Sub(..) |
-            Mul(..) |
-            Mad(..) |
-            Div(..) |
-            Mov(..) |
-            Cast(..) => false,
-            TmpLd(..) |
-            TmpSt(..) => dim.size().as_int().into_iter().any(|x| x == 2 || x == 4),
         }
     }
 
@@ -228,12 +207,10 @@ impl<'a> Operator<'a> {
 impl<'a> fmt::Display for Operator<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let name = match *self {
-            Add(..) => "add",
-            Sub(..) => "sub",
+            BinOp(op, ..) => op.as_str(),
             Mul(..) => "mul",
             Mad(..) => "mad",
             Mov(..) => "mov",
-            Div(..) => "div",
             Ld(..) => "ld",
             St(..) => "st",
             TmpLd(..) => "tmp_ld",

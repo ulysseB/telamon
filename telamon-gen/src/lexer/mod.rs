@@ -1,9 +1,12 @@
-/// Tokens from the textual representation of constraints.
-
+/// This lexer is a application of 
+/// [Writing a custom lexer](https://github.com/lalrpop/lalrpop/blob/master/doc/src/lexer_tutorial/index.md)'s
+/// documentation. This includes a Spanned definition and a Iterator.
 mod ffi;
 mod token;
 
 use std::{io,ptr};
+use std::error::Error;
+use std::fmt;
 
 pub use self::token::Token;    
 
@@ -26,15 +29,43 @@ use self::ffi::{
     yyget_extra,
 };
 
-pub use self::ffi::Position;
+pub use self::ffi::{Position, Span};
 
 #[derive(Debug, PartialEq)]
 pub enum LexicalError {
-    InvalidToken(Position, String, Position),
+    InvalidToken(Position, Token, Position),
     UnexpectedToken(Position, Token, Position),
 }
 
-pub type Spanned<T, P, E> = Result<(P, T, P), E>;
+impl Error for LexicalError {
+    fn description(&self) -> &str {
+        match self {
+            LexicalError::InvalidToken(..) => "invalid token",
+            LexicalError::UnexpectedToken(..) => "expected expression",
+        }
+    }
+}
+
+impl fmt::Display for LexicalError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            LexicalError::UnexpectedToken(leg, tok, end) |
+            LexicalError::InvalidToken(leg, tok, end) => {
+                write!(f, "{}, found '{:?}' between {}:{}",
+                          self.description(),
+                          tok,
+                          leg,
+                          end
+                )
+            },
+        }
+    }
+}
+
+/// The alias Spanned is a definition of the stream format.
+/// The parser will accept an iterator where each item
+/// in the stream has the following structure.
+pub type Spanned<Tok, Pos, Err> = Result<(Pos, Tok, Pos), Err>;
 
 pub struct Lexer {
     scanner: YyScan,
@@ -58,11 +89,20 @@ impl From<Vec<u8>> for Lexer {
             // The function [yylex_init](https://westes.github.io/flex/manual/Init-and-Destroy-Functions.html#index-yylex_005finit)
             // innitializes the scanner.
             yylex_init(&scanner);
+
+            // scans len bytes starting at location bytes. 
+            let buffer: YyBufferState = yy_scan_bytes(buffer.as_ptr() as *const _, buffer.len() as _, scanner);
+
+            // Issue [flex/60](https://github.com/westes/flex/issues/60)
+            // yylineno should be set.
+            // The function [yyset_lineno](https://westes.github.io/flex/manual/Reentrant-Functions.html#index-yyset_005flineno)
+            // sets the current line number.
+            yyset_lineno(0, scanner);
             Lexer {
                 scanner: scanner,
                 // The function  [yy_scan_bytes](https://westes.github.io/flex/manual/Multiple-Input-Buffers.html)
                 // scans len bytes starting at location bytes. 
-                buffer: yy_scan_bytes(buffer.as_ptr() as *const _, buffer.len() as _, scanner),
+                buffer: buffer,
             }
         }
     }
@@ -71,9 +111,6 @@ impl From<Vec<u8>> for Lexer {
 impl Drop for Lexer {
     fn drop(&mut self) {
         unsafe {
-            // The function [yyset_lineno](https://westes.github.io/flex/manual/Reentrant-Functions.html#index-yyset_005flineno)
-            // clears the current line number.
-            yyset_lineno(0, self.scanner);
             // The function [yy_delete_buffer](https://westes.github.io/flex/manual/Multiple-Input-Buffers.html)
             // clears the current contents of a buffer using.
             yy_delete_buffer(self.buffer, self.scanner);
@@ -84,6 +121,7 @@ impl Drop for Lexer {
     }
 }   
 
+/// the Lalrpop Iterator is a exh implementation:for lexer.
 impl Iterator for Lexer {
     type Item = Spanned<Token, Position, LexicalError>;
 
@@ -103,7 +141,7 @@ impl Iterator for Lexer {
 
                     CStr::from_ptr(out)
                          .to_str().ok()
-                         .and_then(|s: &str| Some(Err(LexicalError::InvalidToken(extra.leg, s.to_owned(), extra.end))))
+                         .and_then(|s: &str| Some(Err(LexicalError::InvalidToken(extra.leg, Token::InvalidToken(s.to_owned()), extra.end))))
                 },
                 YyToken::ChoiceIdent => {
                     let out = yyget_text(self.scanner);
@@ -186,6 +224,7 @@ impl Iterator for Lexer {
                 YyToken::AntiSymmetric => Some(Ok((extra.leg, Token::AntiSymmetric, extra.end))),
                 YyToken::Arrow => Some(Ok((extra.leg, Token::Arrow, extra.end))),
                 YyToken::Divide => Some(Ok((extra.leg, Token::Divide, extra.end))),
+                // Return None to signal EOF.for a reached end of the string.
                 YyToken::EOF => None,
             }
         }

@@ -23,7 +23,7 @@ impl<'a> Dimension<'a> {
     pub fn kind(&self) -> DimKind { self.kind }
 
     /// Returns the size of the dimensions.
-    pub fn size(&self) -> &ir::Size<'a> { self.size }
+    pub fn size(&self) -> &'a ir::Size<'a> { self.size }
 
     /// Returns the ids of the `ir::Dimensions` represented by this dimension.
     pub fn dim_ids(&self) -> impl Iterator<Item=ir::dim::Id> {
@@ -250,8 +250,7 @@ fn get_ind_var_levels<'a>(ind_var: &'a ir::InductionVar<'a>, space: &SearchSpace
         match space.domain().get_dim_kind(dim) {
             DimKind::VECTOR => (),
             DimKind::LOOP | DimKind::UNROLL => mut_levels.push((dim, size)),
-            DimKind::BLOCK | DimKind::THREAD_X | DimKind::THREAD_Y | DimKind::THREAD_Z =>
-                const_levels.push((dim, size)),
+            DimKind::BLOCK | DimKind::THREAD => const_levels.push((dim, size)),
             x => panic!("unspecified dim kind {:?}", x),
         }
     }

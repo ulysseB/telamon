@@ -78,15 +78,15 @@ impl<'a, 'b> Tree<'a, 'b> {
                         std::mem::drop(lock);
                         // We manually process the first two levels of the search as they
                         // are still in the tree and thus must be updated if needed.
-                        let (idx, opt) = if let Some(x) = res { x } else { continue };
+                        let (idx, res2) = if let Some(x) = res { x } else { continue };
                         path.0.push((Arc::downgrade(&node), idx));
-                        let (cand, is_leaf) = if let Some(x) = opt { x } else { continue };
-                        if is_leaf {
-                            state = DescendState::Leaf(cand);
-                        } else {
-                            let order = self.config.new_nodes_order;
-                            return local_selection::descend(order, context, cand, cut)
-                                .map(|c| (c, path))
+                        match res2 {
+                            Ok(candidate) => {
+                                let res = local_selection::descend(
+                                    self.config.new_nodes_order, context, candidate, cut);
+                                return res.map(|c| (c, path));
+                            }
+                            Err(new_state) => state = new_state,
                         }
                     } else {
                         let next = unwrap!(node.write())
@@ -275,26 +275,31 @@ impl<'a> Children<'a> {
     /// Descends one level in the tree and apply an action on the candidate reached to
     /// generate a candidate that is not owned by the tree. Assumes all the `Children` are
     /// either dead-ends or unexpanded nodes. Returns the index of the selected child,
-    /// the generated `Candidate` and indicates if it is a leaf. Returns `None` if a
-    /// dead-end is reached.
+    /// the generated `Candidate` or the current state of the exploration if the candidate
+    /// could not be generated. Returns `None` if a dead-end is reached before we could
+    /// descend.
     fn descend_noexpand(&mut self, config: &BanditConfig, context: &Context, cut: f64)
-        -> Option<(usize, Option<(Candidate<'a>, bool)>)>
+        -> Option<(usize, Result<Candidate<'a>, DescendState<'a>>)>
     {
         self.trim(cut);
         self.pick_child(config, cut).map(|idx| {
             self.rewards[idx].1 += 1;
             let node = std::mem::replace(&mut self.children[idx], SubTree::Empty);
-            let cand = if let SubTree::UnexpandedNode(c) = node { c } else {
-                panic!("descend_noexpand assumes children are not expanded")
+            let cand = match node {
+                SubTree::UnexpandedNode(c) => c,
+                SubTree::Empty => return (idx, Err(DescendState::DeadEnd)),
+                SubTree::InternalNode(ref node, _) =>
+                    return (idx, Err(DescendState::InternalNode(node.clone(), true))),
             };
             let choice = choice::list(&cand.space).next();
             let out = if let Some(choice) = choice {
                 let cands = cand.apply_choice(context, choice);
                 self.children[idx] = SubTree::UnexpandedNode(cand);
                 let order = config.new_nodes_order;
-                local_selection::pick_candidate(order, cands, cut).map(|c| (c, false))
-                
-            } else { Some((cand, true)) };
+                if let Some(cand) = local_selection::pick_candidate(order, cands, cut) {
+                    Ok(cand)
+                } else { Err(DescendState::DeadEnd) }
+            } else { Err(DescendState::Leaf(cand)) };
             (idx, out)
         })
     }

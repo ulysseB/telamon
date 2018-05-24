@@ -25,12 +25,17 @@ impl MetaDimension for ir::dim::Id {
 }
 
 /// A groups of dimensions that act as a single logical dimension.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct DimGroup { dims: Vec<ir::dim::Id> }
 
 impl DimGroup {
     /// Creates a dimension group containing the given dimensions.
     pub fn new(dims: Vec<ir::dim::Id>) -> Self { DimGroup { dims } }
+
+    /// Iterates over the sub-dimensions of the group.
+    pub fn iter(&self) -> std::iter::Cloned<std::slice::Iter<ir::dim::Id>> {
+        self.into_iter()
+    }
 }
 
 impl MetaDimension for DimGroup {
@@ -43,6 +48,13 @@ impl std::ops::Index<usize> for DimGroup {
     type Output = ir::dim::Id;
 
     fn index(&self, index: usize) -> &ir::dim::Id { &self.dims[index] }
+}
+
+impl<'a> IntoIterator for &'a DimGroup {
+    type Item = ir::dim::Id;
+    type IntoIter = std::iter::Cloned<std::slice::Iter<'a, ir::dim::Id>>;
+
+    fn into_iter(self) -> Self::IntoIter { self.dims.iter().cloned() }
 }
 
 /// A logical basic block, that can actually be implemented by multiple ones.

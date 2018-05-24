@@ -23,11 +23,9 @@ pub mod lexer;
 generated_file!(pub parser);
 mod print;
 mod truth_table;
+pub mod error;
 
 use std::{fs, io, path};
-use std::ffi::OsString;
-
-use lalrpop_util::ParseError;
 
 use utils::*;
 
@@ -51,24 +49,30 @@ fn to_type_name(name: &str) -> String {
 }
 
 /// Process a file and stores the result in an other file.
-pub fn process_file(input_path: &path::Path, output_path: &path::Path,
-    format: bool) -> Result<(), (ParseError<lexer::Position,                                                                        lexer::Token,                                                                           lexer::LexicalError>, OsString)> {
+pub fn process_file<'a>(
+    input_path: &'a path::Path,
+    output_path: &path::Path,
+    format: bool
+) -> Result<(), error::ProcessError<'a>> {
     let mut input = fs::File::open(path::Path::new(input_path)).unwrap();
     let mut output = fs::File::create(path::Path::new(output_path)).unwrap();
     let input_path_str = input_path.to_string_lossy();
     info!("compiling {} to {}", input_path_str, output_path.to_string_lossy());
-    process(&mut input, &mut output, format)
-        .map_err(|e| (e, input_path.file_name().unwrap().to_os_string()))
+    process(&mut input, &mut output, format, input_path)
 }
 
 /// Parses a constraint description file.
-pub fn process<T: io::Write>(input: &mut io::Read, output: &mut T,
-    format: bool) -> Result<(), ParseError<lexer::Position,
-                                           lexer::Token,
-                                           lexer::LexicalError>> {
+pub fn process<'a, T: io::Write>(
+    input: &mut io::Read,
+    output: &mut T,
+    format: bool,
+    input_path: &'a path::Path
+) -> Result<(), error::ProcessError<'a>> {
     // Parse and check the input.
     let tokens = lexer::Lexer::new(input);
-    let ast: ast::Ast = parser::parse_ast(tokens)?;
+    let ast: ast::Ast =
+        parser::parse_ast(tokens)
+               .map_err(|c| error::ProcessError::from((input_path.display(), c)))?;
     let (mut ir_desc, constraints) = ast.type_check();
     debug!("constraints: {:?}", constraints);
     // Generate flat filters.

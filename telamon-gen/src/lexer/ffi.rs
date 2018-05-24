@@ -2,6 +2,8 @@
 use ::libc;
 use ::ir;
 
+use std::fmt;
+
 /// A [yyscan](https://westes.github.io/flex/manual/About-yyscan_005ft.html) type is the internal
 /// representation of a [yylex_init](https://westes.github.io/flex/manual/Init-and-Destroy-Functions.html) structure.
 pub type YyScan = *const libc::c_void;
@@ -32,17 +34,40 @@ pub struct Position {
     pub column: libc::c_uint,
 }
 
+impl fmt::Display for Position {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "line {}, column {}", self.line, self.column)
+    }
+}
+
+/// A double sequence's row/column position
+#[derive(Default, Copy, Clone, Debug, PartialEq)]
+pub struct Span {
+    pub leg: Position,
+    pub end: Option<Position>,
+}
+
+impl fmt::Display for Span {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(end) = self.end {
+            write!(f, "between {} and {}", self.leg, end)
+        } else {
+            write!(f, "at {}", self.leg)
+        }
+    }
+}
+
 /// A F/lex's token with a span.
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
-pub struct Span<Y> {
+pub struct Spanned<Y> {
     pub leg: Position,
     pub end: Position,
     /// Spanned data
     pub data: Y,
 }
 
-pub type YyExtraType = Span<YyLval>;
+pub type YyExtraType = Spanned<YyLval>;
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]

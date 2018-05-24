@@ -33,6 +33,8 @@ pub trait Device: Sync {
     fn max_threads(&self) -> u32;
     /// Returns the maximal unrolling factor.
     fn max_unrolling(&self) -> u32;
+    /// Indicates if vectorization is possible on a loop with size Size on this instruction.
+    fn can_vectorize(&self, dim: &ir::Dimension, op: &ir::Operator) -> bool;
     /// Returns the amount of shared memory available for each thread block.
     fn shared_mem(&self) -> u32;
     /// Indicates if the device supports non-coherent memory accesses.
@@ -56,9 +58,9 @@ pub trait Device: Sync {
     /// Returns the processing rates of a single thread, in units/ns
     fn thread_rates(&self) -> HwPressure;
     /// Returns the processing rates of a single block, in units/ns.
-    fn block_rates(&self, max_num_threads: u64) -> HwPressure;
+    fn block_rates(&self,) -> HwPressure;
     /// Returns the processing rates of the whole accelerator un units/ns.
-    fn total_rates(&self, max_num_threads: u64) -> HwPressure;
+    fn total_rates(&self) -> HwPressure;
     /// Returns the names of potential bottlenecks.
     fn bottlenecks(&self) -> &[&'static str];
     /// Returns the number of blocks that can be executed in parallel on the device.
@@ -67,6 +69,12 @@ pub trait Device: Sync {
     fn additive_indvar_pressure(&self, t: &ir::Type) -> HwPressure;
     /// Returns the pressure caused by a multiplicative induction variable level.
     fn multiplicative_indvar_pressure(&self, t: &ir::Type) -> HwPressure;
+    /// Adds the overhead (per instance) due to partial wraps and predicated dimensions to
+    /// the pressure. If the instruction is not predicated, `predicated_dims_size` should
+    /// be `1`.
+    fn add_block_overhead(&self, predicated_dims_size: u64,
+                          max_threads_per_blocks: u64,
+                          pressure: &mut HwPressure);
 
     /// Lowers a type using the memory space information. Returns `None` if some
     /// information is not yet specified.

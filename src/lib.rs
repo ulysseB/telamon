@@ -1,3 +1,4 @@
+extern crate binary_heap_plus;
 extern crate boxfnonce;
 extern crate config;
 extern crate crossbeam;

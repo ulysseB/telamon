@@ -1,9 +1,9 @@
 //! Describes CUDA-enabled GPUs.
-use device::{self, Device};
 use codegen::Function;
+use device::{self, Device};
 use device::cuda::printer as p;
 use device::cuda::mem_model::{self, MemInfo};
-use ir::{self, Type};
+use ir::{self, Type, Operator};
 use model::{self, HwPressure};
 use search_space::{DimKind, Domain, InstFlag, MemSpace, SearchSpace};
 use rustc_serialize::json;
@@ -11,6 +11,11 @@ use std;
 use std::fs::File;
 use std::io::{Read, Write};
 use utils::*;
+
+// FIXME: fix performance model
+// - l1_lines constraint for stores ?
+// - test if global pressure is needed
+// - l1_lines per threads ?
 
 /// Specifies the performance parameters of an instruction.
 #[derive(Default, RustcDecodable, RustcEncodable, Clone, Copy, Debug)]
@@ -27,21 +32,26 @@ pub struct InstDesc {
     pub mem: f64,
     /// The number of L1 cache lines that are fetched from the L2.
     pub l1_lines_from_l2: f64,
-    /// The number of L2 cache lines that are fetched from the L2.
-    pub l2_lines_from_l2: f64,
+    /// The number of L2 cache lines read.
+    pub l2_lines_read: f64,
+    /// Number of l2 cache lines stored.
+    pub l2_lines_stored: f64,
     /// The ram bandwidth used.
     pub ram_bw: f64,
 }
 
 impl InstDesc {
-    /// Multiplies concerned bottlenecks by the wrap use ratio.
-    fn apply_use_ratio(self, ratio: f64) -> Self {
+    fn wasted_ratio(ratio: f64) -> Self {
         InstDesc {
-            issue: self.issue * ratio,
-            alu: self.alu * ratio,
-            sync: self.sync * ratio,
-            mem: self.mem * ratio,
-            .. self
+            latency: 1.0,
+            issue: ratio,
+            alu: ratio,
+            sync: ratio,
+            mem: ratio,
+            l1_lines_from_l2: 1.0,
+            l2_lines_read: 1.0,
+            l2_lines_stored: 1.0,
+            ram_bw: 1.0,
         }
     }
 }
@@ -54,7 +64,8 @@ impl Into<HwPressure> for InstDesc {
             self.sync,
             self.mem,
             self.l1_lines_from_l2,
-            self.l2_lines_from_l2,
+            self.l2_lines_read,
+            self.l2_lines_stored,
             self.ram_bw,
         ];
         HwPressure::new(self.latency, vec)
@@ -159,13 +170,6 @@ impl Gpu {
         p::function(fun, self)
     }
 
-    /// Returns the ratio of threads actually used per wrap.
-    fn wrap_use_ratio(&self, max_num_threads: u64) -> f64 {
-        let wrap_size = u64::from(self.wrap_size);
-        let n_wraps = (max_num_threads + wrap_size - 1)/wrap_size;
-        max_num_threads as f64 / (n_wraps * wrap_size) as f64
-    }
-
     /// Returns the description of a load instruction.
     fn load_desc(&self, mem_info: &MemInfo, flags: InstFlag) -> InstDesc {
         // TODO(search_space,model): support CA and NC flags.
@@ -182,14 +186,14 @@ impl Gpu {
         let l1_lines_from_l2 = if flags.intersects(InstFlag::MEM_SHARED) {
             0.0
         } else { mem_info.l1_coalescing };
-        let l2_lines_from_l2 = if flags.intersects(InstFlag::MEM_SHARED) {
+        let l2_lines_read = if flags.intersects(InstFlag::MEM_SHARED) {
             0.0
         } else { mem_info.l2_coalescing };
         InstDesc {
             latency: f64::min(gbl_latency, shared_latency),
             issue: mem_info.replay_factor,
             mem: mem_info.replay_factor,
-            l1_lines_from_l2, l2_lines_from_l2,
+            l1_lines_from_l2, l2_lines_read,
             ram_bw: mem_info.l2_miss_ratio * f64::from(self.l2_cache_line),
             .. InstDesc::default()
         }
@@ -200,14 +204,14 @@ impl Gpu {
         // TODO(search_space,model): support CA flags.
         // TODO(model): understand how writes use the BW.
         assert!(InstFlag::MEM_COHERENT.contains(flags));
-        let l2_lines_from_l2 = if flags.intersects(InstFlag::MEM_SHARED) {
+        let l2_lines_stored = if flags.intersects(InstFlag::MEM_SHARED) {
             0.0
         } else { mem_info.l2_coalescing };
         // L1 lines per L2 is not limiting.
         InstDesc {
             issue: mem_info.replay_factor,
             mem: mem_info.replay_factor,
-            l2_lines_from_l2,
+            l2_lines_stored,
             ram_bw: 2.0 * mem_info.l2_miss_ratio * f64::from(self.l2_cache_line),
             .. InstDesc::default()
         }
@@ -220,10 +224,10 @@ impl Gpu {
             pressure.repeat_sequential(f64::from(size));
             pressure.add_sequential(&self.loop_init_overhead.into());
             pressure
-        } else if kind == DimKind::THREAD_X {
-            let mut pressure: HwPressure = self.syncthread_inst.into();
-            pressure.repeat_parallel(f64::from(size));
-            pressure
+        } else if DimKind::THREAD.contains(kind) {
+            // The repetition along the thread is taken into account by
+            // `num_unmapped_thread` as the current thread is accounted as not mapped.
+            self.syncthread_inst.into()
         } else { HwPressure::zero(self) }
     }
 
@@ -234,14 +238,14 @@ impl Gpu {
         use ir::Operator::*;
         let t = self.lower_type(inst.t(), space).unwrap_or_else(|| inst.t());
         match (inst.operator(), t) {
-            (&Add(..), Type::F(32)) |
-            (&Sub(..), Type::F(32)) => self.add_f32_inst.into(),
-            (&Add(..), Type::F(64)) |
-            (&Sub(..), Type::F(64)) => self.add_f64_inst.into(),
-            (&Add(..), Type::I(32)) |
-            (&Sub(..), Type::I(32)) => self.add_i32_inst.into(),
-            (&Add(..), Type::I(64)) |
-            (&Sub(..), Type::I(64)) => self.add_i64_inst.into(),
+            (&BinOp(ir::BinOp::Add, ..), Type::F(32)) |
+            (&BinOp(ir::BinOp::Sub, ..), Type::F(32)) => self.add_f32_inst.into(),
+            (&BinOp(ir::BinOp::Add, ..), Type::F(64)) |
+            (&BinOp(ir::BinOp::Sub, ..), Type::F(64)) => self.add_f64_inst.into(),
+            (&BinOp(ir::BinOp::Add, ..), Type::I(32)) |
+            (&BinOp(ir::BinOp::Sub, ..), Type::I(32)) => self.add_i32_inst.into(),
+            (&BinOp(ir::BinOp::Add, ..), Type::I(64)) |
+            (&BinOp(ir::BinOp::Sub, ..), Type::I(64)) => self.add_i64_inst.into(),
             (&Mul(..), Type::F(32)) => self.mul_f32_inst.into(),
             (&Mul(..), Type::F(64)) => self.mul_f64_inst.into(),
             (&Mul(..), Type::I(32)) |
@@ -266,10 +270,10 @@ impl Gpu {
                     self.mad_wide_inst.into()
                 }
             },
-            (&Div(..), Type::F(32)) => self.div_f32_inst.into(),
-            (&Div(..), Type::F(64)) => self.div_f64_inst.into(),
-            (&Div(..), Type::I(32)) => self.div_i32_inst.into(),
-            (&Div(..), Type::I(64)) => self.div_i64_inst.into(),
+            (&BinOp(ir::BinOp::Div, ..), Type::F(32)) => self.div_f32_inst.into(),
+            (&BinOp(ir::BinOp::Div, ..), Type::F(64)) => self.div_f64_inst.into(),
+            (&BinOp(ir::BinOp::Div, ..), Type::I(32)) => self.div_i32_inst.into(),
+            (&BinOp(ir::BinOp::Div, ..), Type::I(64)) => self.div_i64_inst.into(),
             (&Ld(..), _) | (&TmpLd(..), _) => {
                 let flag = space.domain().get_inst_flag(inst.id());
                 let mem_info = mem_model::analyse(space, self, inst, dim_sizes);
@@ -289,8 +293,7 @@ impl Gpu {
     /// Computes the number of blocks that can fit in an smx.
     pub fn blocks_per_smx(&self, space: &SearchSpace) -> u32 {
         let mut block_per_smx = self.max_block_per_smx;
-        let num_thread = space.ir_instance().insts()
-            .map(|inst| space.domain().get_num_threads(inst.id()).min).max().unwrap_or(1);
+        let num_thread = space.domain().get_num_threads().min;
         min_assign(&mut block_per_smx, self.thread_per_smx/num_thread);
         let shared_mem_used = space.domain().get_shared_mem_used().min;
         if shared_mem_used != 0 {
@@ -300,6 +303,19 @@ impl Gpu {
                 "not enough resources per block: shared mem used = {}, num threads = {}",
                 shared_mem_used, num_thread);
         block_per_smx
+    }
+
+    /// Returns the pressure of an an instruction skipped by a predicate.
+    fn skipped_pressure(&self) -> HwPressure {
+        (InstDesc { issue: 1.0, .. InstDesc::default() }).into()
+    }
+
+    /// Computes the ratio `num_wraps*wrap_size/num_threads`. This ratio may be `>1`
+    /// because the hardware creates additionnal threads to fill the wraps.
+    fn waste_ratio(&self, lcm_threads_per_block: u64) -> f64 {
+        let wrap_size = u64::from(self.wrap_size);
+        let n_wraps = (lcm_threads_per_block + wrap_size - 1)/wrap_size;
+        (n_wraps * wrap_size) as f64/lcm_threads_per_block as f64
     }
 }
 
@@ -318,6 +334,32 @@ impl device::Device for Gpu {
     fn max_threads(&self) -> u32 { 1024 }
 
     fn max_unrolling(&self) -> u32 { 512 }
+
+    fn can_vectorize(&self, dim: &ir::Dimension, op: &ir::Operator) -> bool {
+        // TODO(search_space): compute vectorizable info for tmp Ld/St. On vectorization,
+        // the layout must be constrained.
+        match *op {
+            Operator::St(_, ref operand, _, ref pattern) => {
+                if let Some(type_len) = operand.t().len_byte() {
+                    dim.size().as_int().into_iter().any(|x| x == 2 || x == 4) &&
+                        pattern.stride(dim.id()) == ir::Stride::Int(type_len as i32)
+                } else { false }
+            },
+            Operator::Ld(ref t, _, ref pattern) => {
+                if let Some(type_len) = t.len_byte() {
+                    dim.size().as_int().into_iter().any(|x| x == 2 || x == 4) &&
+                        pattern.stride(dim.id()) == ir::Stride::Int(type_len as i32)
+                } else { false }
+            },
+            Operator::BinOp(..) |
+                Operator::Mul(..) |
+                Operator::Mad(..) |
+                Operator::Mov(..) |
+                Operator::Cast(..) => false,
+                Operator::TmpLd(..) |
+                    Operator::TmpSt(..) => dim.size().as_int().into_iter().any(|x| x == 2 || x == 4),
+        }
+    }
 
     fn shared_mem(&self) -> u32 { self.shared_mem_per_block }
 
@@ -348,11 +390,10 @@ impl device::Device for Gpu {
                    bb: &ir::BasicBlock) -> model::HwPressure {
         if let Some(inst) = bb.as_inst() {
             self.inst_pressure(space, dim_sizes, inst)
-        } else {
-            let dim = unwrap!(bb.as_dim());
+        } else if let Some(dim) = bb.as_dim() {
             let kind = space.domain().get_dim_kind(dim.id());
             self.dim_pressure(kind, dim_sizes[&dim.id()])
-        }
+        } else { panic!() }
     }
 
     fn loop_iter_pressure(&self, kind: DimKind) -> (HwPressure, HwPressure) {
@@ -362,20 +403,16 @@ impl device::Device for Gpu {
                 .. InstDesc::default()
             };
             (self.loop_iter_overhead.into(), end_pressure.into())
-        } else if kind == DimKind::THREAD_X {
+        } else if DimKind::THREAD.contains(kind) {
             (self.syncthread_inst.into(), HwPressure::zero(self))
         } else { (HwPressure::zero(self), HwPressure::zero(self)) }
     }
 
     fn thread_rates(&self) -> HwPressure { self.thread_rates.into() }
 
-    fn block_rates(&self, max_num_threads: u64) -> HwPressure {
-        self.smx_rates.apply_use_ratio(self.wrap_use_ratio(max_num_threads)).into()
-    }
+    fn block_rates(&self) -> HwPressure { self.smx_rates.into() }
 
-    fn total_rates(&self, max_num_threads: u64) -> HwPressure {
-        self.gpu_rates.apply_use_ratio(self.wrap_use_ratio(max_num_threads)).into()
-    }
+    fn total_rates(&self) -> HwPressure { self.gpu_rates.into() }
 
     fn bottlenecks(&self) -> &[&'static str] {
         &["issue",
@@ -383,7 +420,8 @@ impl device::Device for Gpu {
           "syncthread",
           "mem_units",
           "l1_lines_from_l2",
-          "l2_lines_from_l2",
+          "l2_lines_read",
+          "l2_lines_stored",
           "bandwidth"]
     }
 
@@ -404,6 +442,21 @@ impl device::Device for Gpu {
             ir::Type::I(32) => self.mad_i32_inst.into(),
             ir::Type::I(64) => self.mad_i64_inst.into(),
             _ => panic!(),
+        }
+    }
+
+    fn add_block_overhead(&self, predicated_dims_size: u64,
+                          max_threads_per_blocks: u64,
+                          pressure: &mut HwPressure) {
+        assert!(predicated_dims_size > 0);
+        assert!(max_threads_per_blocks > 0);
+        let active_ratio = self.waste_ratio(max_threads_per_blocks/predicated_dims_size);
+        pressure.multiply(&InstDesc::wasted_ratio(active_ratio).into());
+        if predicated_dims_size > 1 {
+            let full_ratio = self.waste_ratio(max_threads_per_blocks);
+            let num_skipped = full_ratio * predicated_dims_size as f64 - active_ratio;
+            assert!(num_skipped >= 0.);
+            pressure.repeat_and_add_bottlenecks(num_skipped, &self.skipped_pressure());
         }
     }
 }

@@ -17,7 +17,7 @@ pub fn lower_layout(fun: &mut ir::Function, mem: ir::mem::InternalId,
         actions.extend(operand::inst_invariants(fun, inst));
         // TODO(automate): vectorization disabled -> express as an additional constraint
         for d in fun.dims() {
-            if !inst.is_vectorizable(d) {
+            if !fun.device().can_vectorize(d, inst.operator()) {
                 let order = domain.get_order(inst.bb_id(), d.bb_id());
                 if domain.get_dim_kind(d.id()) == DimKind::VECTOR {
                     actions.extend(order::restrict_delayed(

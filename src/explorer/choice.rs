@@ -27,13 +27,18 @@ pub fn list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item=Choice> + 'a {
     }).chain(fun.dims().flat_map(move |dim| {
         let kinds = space.domain().get_dim_kind(dim.id());
         gen_choice(kinds.list(), &|k| Action::DimKind(dim.id(), k))
+    })).chain(fun.dims().enumerate().flat_map(move |(i, lhs)| {
+        fun.dims().take(i).flat_map(move |rhs| {
+            let mappings = space.domain().get_thread_mapping(lhs.id(), rhs.id());
+            gen_choice(mappings.list(), &|m| Action::ThreadMapping(lhs.id(), rhs.id(), m))
+        })
     })).chain(fun.internal_mem_blocks().flat_map(move |block| {
         let mem_spaces = space.domain().get_mem_space(block.mem_id());
         gen_choice(mem_spaces.list(), &|s| Action::MemSpace(block.mem_id(), s))
     })).chain(fun.dims().enumerate().flat_map(move |(i, lhs)| {
         // TODO(search_space): avoid picking ordering decisions that have little impact.
         // For this, we should avoid dimension-instruction and dimension-vector dim
-        // orderings. The problem is that we do not know wich choice to pick in the end. 
+        // orderings. The problem is that we do not know wich choice to pick in the end.
         let lhs = lhs.bb_id();
         let dims = fun.dims().take(i).map(|x| x.bb_id());
         dims.chain(fun.insts().map(|x| x.bb_id())).flat_map(move |rhs| {
@@ -46,16 +51,6 @@ pub fn list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item=Choice> + 'a {
     }))
 }
 
-/*
-/// Indicates if two dimensions are worth ordering.
-fn should_order_dims(space: &SearchSpace, lhs: ir::dim::Id, rhs: ir::dim::Id) -> bool {
-    // TODO(search_space): currently ignored ordering decisions may actually
-    // have an impact. We should use a differential model to detect when.
-    let lhs_kind = space.domain().get_dim_kind(lhs);
-    let rhs_kind = space.domain().get_dim_kind(rhs);
-    !(lhs_kind.intersects(DimKind::VECTOR) || rhs_kind.intersects(DimKind::VECTOR))
-}*/
-
 /// Generates a choice from a list of possible values.
 fn gen_choice<T, IT>(values: IT, action_gen: &Fn(T) -> Action) -> Option<Choice>
         where IT: IntoIterator<Item=T> {
@@ -65,13 +60,13 @@ fn gen_choice<T, IT>(values: IT, action_gen: &Fn(T) -> Action) -> Option<Choice>
 
 /// Chooses an order between instructions and dimensions when multiple are possible.
 /// The function assumes the order between dimensions is already fixed.
+// TODO(search_space): fix order has currently no effect. Should we remove it ?
+// It is unused because inst-dim and dim-dim decisions are fixed by the explorer. We
+// cannot make them free as we might end-up in a dead-end.
 pub fn fix_order(mut space: SearchSpace) -> SearchSpace {
-    // FIXME: unused for the moment, need to replace it
     // TODO(search_space): make fix_order useless with a differential model
     trace!("adding arbitrary constraints to the order");
     // Fix the order between instructions and dimensions.
-    // TODO(search_space): put the nesting back into the search space, as it might not
-    // be avoided by fix_order due to dependencies between orders.
     let pairs = space.ir_instance().blocks()
         .cartesian_product(space.ir_instance().dims())
         .map(|(lhs, rhs)| (lhs.bb_id(), rhs.bb_id()))

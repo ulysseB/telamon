@@ -78,11 +78,6 @@ impl<'a> Instruction<'a> {
             .map(|(id, _)| id).collect()
     }
 
-    /// Returns `true` if `self` can be vectorized on a dimension of size `size`.
-    pub fn is_vectorizable(&self, dim: &ir::Dimension) -> bool {
-        self.operator.is_vectorizable(dim)
-    }
-
     /// Returns 'self' if it is a memory instruction.
     pub fn as_mem_inst(&self) -> Option<&Instruction> {
         self.operator.mem_used().map(|_| self)

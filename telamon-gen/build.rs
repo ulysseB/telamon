@@ -16,7 +16,7 @@ fn main() {
         let bin = env::var("LEX").unwrap_or(String::from("flex"));
 
         Command::new(bin)
-                .arg("-oexh.c")
+                .arg("-osrc/exh.c")
                 .arg("src/exh.l")
                 .status()
                 .expect("failed to execute Flex's process");
@@ -24,7 +24,7 @@ fn main() {
 
     // Compile the lexer .             
     cc::Build::new()
-            .file("exh.c")
+            .file("src/exh.c")
             .include("src")
             .flag("-Wno-unused-parameter")
             .flag("-Wno-unused-variable")

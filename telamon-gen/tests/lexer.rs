@@ -9,7 +9,7 @@ fn initial() {
     assert_eq!(Lexer::from(b"!".to_vec()).collect::<Vec<_>>(), vec![
                 Err(LexicalError::InvalidToken(
                    Position::default(),
-                   String::from("!"),
+                   Token::InvalidToken(String::from("!")),
                    Position { column: 1, ..Default::default() } 
                 )),
               ]);

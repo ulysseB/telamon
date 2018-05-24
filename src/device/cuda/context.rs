@@ -15,7 +15,7 @@ use device::context::AsyncCallback;
 /// Max number of candidates waiting to be evaluated.
 const EVAL_BUFFER_SIZE: usize = 100;
 // TODO(perf): enable optimizations when possible
-const JIT_OPT_LEVEL: usize = 1;
+const JIT_OPT_LEVEL: usize = 2;
 
 /// A CUDA evaluation context.
 pub struct Context<'a> {
@@ -58,6 +58,14 @@ impl<'a> Context<'a> {
     pub fn bind_param(&mut self, name: String, arg: Arc<Argument + 'a>) {
         self.parameters.insert(name, arg);
     }
+
+    /// Returns the optimization level to use.
+    fn opt_level(mode: EvalMode) -> usize {
+        match mode {
+            EvalMode::TestBound => 1,
+            EvalMode::FindBest => JIT_OPT_LEVEL,
+        }
+    }
 }
 
 
@@ -84,9 +92,9 @@ impl<'a> device::Context for Context<'a> {
 
     fn param_as_size(&self, name: &str) -> Option<u32> { self.get_param(name).as_size() }
 
-    fn evaluate(&self, function: &device::Function) -> Result<f64, ()> {
+    fn evaluate(&self, function: &device::Function, mode: EvalMode) -> Result<f64, ()> {
         let gpu = &self.gpu_model;
-        let kernel = Kernel::compile(function, gpu, self.executor, JIT_OPT_LEVEL);
+        let kernel = Kernel::compile(function, gpu, self.executor, Self::opt_level(mode));
         Ok(kernel.evaluate(self)? as f64 / self.gpu_model.smx_clock)
     }
 
@@ -102,7 +110,6 @@ impl<'a> device::Context for Context<'a> {
         let blocked_time = &atomic::AtomicUsize::new(0);
         let (send, recv) = mpsc::sync_channel(EVAL_BUFFER_SIZE);
         let clock_rate = self.gpu_model.smx_clock;
-        let opt_level = if mode == EvalMode::TestBound { 1 } else { JIT_OPT_LEVEL }; 
         // Correct because the thread handle is not escaped.
         crossbeam::scope(move |scope| {
             // Start the explorer threads.
@@ -110,7 +117,7 @@ impl<'a> device::Context for Context<'a> {
                 let mut evaluator = AsyncEvaluator {
                     context: self,
                     sender: send.clone(),
-                    ptx_daemon: self.executor.spawn_jit(opt_level),
+                    ptx_daemon: self.executor.spawn_jit(Self::opt_level(mode)),
                     blocked_time,
                 };
                 unwrap!(scope.builder().name("Telamon - Explorer Thread".to_string())
@@ -160,7 +167,8 @@ pub struct AsyncEvaluator<'a, 'b> where 'a: 'b {
 impl<'a, 'b, 'c> device::AsyncEvaluator<'a, 'c> for AsyncEvaluator<'a, 'b>
     where 'a: 'b, 'c: 'b
 {
-    fn add_kernel(&mut self, candidate: explorer::Candidate<'a>, callback: device::AsyncCallback<'a, 'c> ) {
+    fn add_kernel(&mut self, candidate: explorer::Candidate<'a>,
+                  callback: device::AsyncCallback<'a, 'c> ) {
         let thunk = {
             let dev_fun = device::Function::build(&candidate.space);
             let gpu = &self.context.gpu();

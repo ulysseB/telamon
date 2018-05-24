@@ -14,6 +14,7 @@ pub struct Function<'a> {
     device_code_args: Vec<ParamVal<'a>>,
     induction_vars: Vec<InductionVar<'a>>,
     mem_blocks: Vec<InternalMemBlock<'a>>,
+    init_induction_levels: Vec<InductionLevel<'a>>,
     // TODO(cleanup): remove dependency on the search space
     space: &'a SearchSpace<'a>,
 }
@@ -22,7 +23,7 @@ impl<'a> Function<'a> {
     /// Creates a device `Function` from an IR instance.
     pub fn build(space: &'a SearchSpace<'a>) -> Function<'a> {
         let mut dims = dimension::group_merged_dimensions(space);
-        let (induction_vars, precomputed_indvar_levels) =
+        let (induction_vars, init_induction_levels) =
             dimension::register_induction_vars(&mut dims, space);
         trace!("dims = {:?}", dims);
         let insts = space.ir_instance().insts()
@@ -30,18 +31,17 @@ impl<'a> Function<'a> {
         let device_code_args = dims.iter().flat_map(|d| d.host_values(space))
             .chain(induction_vars.iter().flat_map(|v| v.host_values(space)))
             .chain(insts.iter().flat_map(|i| i.host_values(space)))
-            .chain(precomputed_indvar_levels.iter().flat_map(|l| l.host_values(space)))
+            .chain(init_induction_levels.iter().flat_map(|l| l.host_values(space)))
             .collect_vec();
-        let (block_dims, thread_dims, cfg) = cfg::build(
-            space, insts, dims, precomputed_indvar_levels);
+        let (block_dims, thread_dims, cfg) = cfg::build(space, insts, dims);
         let mem_blocks = register_mem_blocks(space, &block_dims);
         let device_code_args = device_code_args.into_iter()
-            .chain(mem_blocks.iter().flat_map(|x| x.host_values(space)))
+            .chain(mem_blocks.iter().flat_map(|x| x.host_values(space, &block_dims)))
             .unique_by(|x| x.key()).collect();
         debug!("compiling cfg {:?}", cfg);
         Function {
             cfg, thread_dims, block_dims, induction_vars, device_code_args, space,
-            mem_blocks,
+            mem_blocks, init_induction_levels,
         }
     }
 
@@ -74,8 +74,10 @@ impl<'a> Function<'a> {
 
     /// Returns all the induction levels in the function.
     pub fn induction_levels(&self) -> impl Iterator<Item=&InductionLevel> {
-        self.dimensions().flat_map(|d| d.induction_levels())
+        self.block_dims.iter().chain(&self.thread_dims)
+            .flat_map(|d| d.induction_levels())
             .chain(self.cfg.induction_levels())
+            .chain(self.init_induction_levels())
     }
 
     /// Returns the memory blocks allocated by the function.
@@ -86,6 +88,12 @@ impl<'a> Function<'a> {
     /// Returns the underlying implementation space.
     // TODO(cleanup): prefer access to the space from individual wrappers on ir objects.
     pub fn space(&self) -> &SearchSpace { self.space }
+
+    /// Returns the induction levels computed at the beginning of the kernel. Levels must
+    /// be computed in the provided order.
+    pub fn init_induction_levels(&self) -> &[InductionLevel] {
+        &self.init_induction_levels
+    }
 }
 
 impl<'a> std::ops::Deref for Function<'a> {
@@ -194,8 +202,8 @@ pub enum AllocationScheme { Global, PrivatisedGlobal, Shared }
 impl<'a> InternalMemBlock<'a> {
     /// Creates a new InternalMemBlock from an `ir::mem::Internal`.
     pub fn new(block: &'a ir::mem::InternalBlock<'a>,
-           num_threads_groups: &Option<ir::Size<'a>>,
-           space: &'a SearchSpace<'a>) -> Self {
+               num_threads_groups: &Option<ir::Size<'a>>,
+               space: &'a SearchSpace<'a>) -> Self {
         let mem_space = space.domain().get_mem_space(block.mem_id());
         assert!(mem_space.is_constrained());
         let size = block.size();
@@ -208,16 +216,19 @@ impl<'a> InternalMemBlock<'a> {
     }
 
     /// Returns the value to pass from the host to the device to implement `self`.
-    pub fn host_values(&self, space: &SearchSpace) -> impl Iterator<Item=ParamVal<'a>> {
-        let ptr = if self.mem_space == MemSpace::GLOBAL {
+    pub fn host_values(&self, space: &SearchSpace,
+                       block_dims: &[Dimension<'a>]) -> Vec<ParamVal<'a>> {
+        let mut out = if self.mem_space == MemSpace::GLOBAL {
             let t = ir::Type::PtrTo(self.id.into());
             let t = unwrap!(space.ir_instance().device().lower_type(t, space));
-            Some(ParamVal::GlobalMem(self.id, self.alloc_size(), t))
-        } else { None };
+            vec![ParamVal::GlobalMem(self.id, self.alloc_size(), t)]
+        } else { vec![] };
         let size = if self.num_private_copies.is_some() {
-            Some(ParamVal::Size(self.size))
+            Some(block_dims[1..].iter().map(|d| d.size()).chain(std::iter::once(self.size))
+                .map(ParamVal::Size))
         } else { None };
-        ptr.into_iter().chain(size)
+        out.extend(size.into_iter().flat_map(|x| x));
+        out
     }
 
     /// Returns the memory ID.
@@ -303,4 +314,7 @@ impl<'a> Instruction<'a> {
 
     /// Returns the memory flag of the intruction, if any.
     pub fn mem_flag(&self) -> Option<search_space::InstFlag> { self.mem_flag }
+
+    /// Indicates if the instruction has observable side effects.
+    pub fn has_side_effects(&self) -> bool { self.instruction.has_side_effects() }
 }

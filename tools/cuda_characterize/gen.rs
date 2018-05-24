@@ -7,7 +7,7 @@ use telamon::explorer;
 use telamon::helper::{AutoOperand, Builder, DimGroup, Reduce};
 use telamon::ir;
 use telamon::ir::Signature;
-use telamon::search_space::{DimKind, InstFlag, SearchSpace, Order};
+use telamon::search_space::{Action, DimKind, InstFlag, SearchSpace, ThreadMapping, Order};
 use itertools::Itertools;
 use std;
 use table::Table;
@@ -116,9 +116,11 @@ pub fn init_stride_array<'a>(signature: &'a Signature, device: &'a Device,
     let byte_stride = stride * 8;
     let mut builder = Builder::new(signature, device);
     let size = builder.cst_size(n);
-    let kind = if n == 1 { DimKind::UNROLL } else { DimKind::LOOP };
-    let dim = builder.open_dim_ex(size, kind);
-    let addr = builder.mad(&dim, &byte_stride, &array);
+    let (dim, addr) = if n > 1 {
+        let dim = builder.open_dim_ex(size, DimKind::LOOP);
+        let addr = builder.mad(&dim, &byte_stride, &array);
+        (DimGroup::new(vec![dim]), addr)
+    } else { (DimGroup::default(), builder.mov(&array)) };
     let next_addr = builder.mad(&byte_stride, &1i32, &addr);
     let pattern0 = builder.unknown_access_pattern(mem_id);
     builder.st_ex(&addr, &next_addr, true, pattern0, InstFlag::MEM_CG);
@@ -203,50 +205,45 @@ pub fn parallel_load<'a>(signature: &'a Signature, gpu: &'a Gpu, num_blocks: &st
     let block_size = builder.param_size(num_blocks);
     let _ = builder.open_dim_ex(block_size, DimKind::BLOCK);
     // Initialize the result
-    let d1_kind = if num_wraps == 1 { DimKind::UNROLL } else { DimKind::THREAD };
-    let d1_0 = builder.open_dim_ex(ir::Size::new(num_wraps, vec![], 1), d1_kind);
-    let wrap_size = builder.cst_size(gpu.wrap_size);
-    let d2_0 = builder.open_dim_ex(wrap_size, DimKind::THREAD);
+    let init_size = builder.cst_size(num_wraps * gpu.wrap_size);
+    let thread_tilling = if num_wraps == 1 { vec![] } else { vec![gpu.wrap_size] };
+    let d1_0 = builder.open_tiled_dim(init_size, &thread_tilling);
+    for d in &d1_0 { builder.action(Action::DimKind(d, DimKind::THREAD)); }
+    for (x, y) in d1_0.iter().tuple_windows() { builder.order(&x, &y, Order::OUTER); }
     let init = builder.mov(&0f32);
     // Sum in the result.
     let loop_size = builder.param_size(n);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1_1 = builder.open_mapped_dim(&d1_0);
-    let d2_1 = builder.open_mapped_dim(&d2_0);
+    for (x, y) in d1_1.iter().tuple_windows() { builder.order(&x, &y, Order::OUTER); }
     let d3 = builder.open_dim_ex(ir::Size::new(n_chained, vec![], 1), DimKind::UNROLL);
     let d4_0 = builder.open_dim_ex(ir::Size::new(n_unroll, vec![], 1), DimKind::UNROLL);
     let pattern = builder.unknown_access_pattern(mem_id);
-    let addr = if stride != 0 {
-        builder.induction_var(&array, vec![
-            (d3, ir::Size::new(n_unroll*num_wraps*gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
-            (d4_0, ir::Size::new(num_wraps*gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
-            (d1_1[0], ir::Size::new(gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
-            (d2_1[0], ir::Size::new(stride*4, vec![], 1)),
-        ])
-    } else {
-        builder.induction_var(&array, vec![
-            (d3, ir::Size::new(n_unroll*num_wraps*gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
-            (d4_0, ir::Size::new(num_wraps*gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
-            (d1_1[0], ir::Size::new(gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
-        ])
+    let mut strides = vec![
+        (d3, ir::Size::new(n_unroll*num_wraps*gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
+        (d4_0, ir::Size::new(num_wraps*gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
+    ];
+    if stride != 0 {
+        let i = if num_wraps == 1 { 0 } else {
+            strides.push((d1_1[0], ir::Size::new(gpu.wrap_size*gpu.l1_cache_line, vec![], 1)));
+            1
+        };
+        strides.push((d1_1[i], ir::Size::new(stride*4, vec![], 1)));
     };
+    let addr = builder.induction_var(&array, strides);
     let val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_CG);
     let d4_1 = builder.open_mapped_dim(&d4_0)[0];
     let acc = builder.add(&val, &Reduce(init));
     builder.close_dim(&DimGroup::new(vec![d0, d3, d4_1]));
     // Write the result
     let d1_2 = builder.open_mapped_dim(&d1_1);
-    let d2_2 = builder.open_mapped_dim(&d2_1);
+    for (x, y) in d1_2.iter().tuple_windows() { builder.order(&x, &y, Order::OUTER); }
     let out_pattern = builder.unknown_access_pattern(out_id);
     builder.st_ex(&out, &acc, true, out_pattern, InstFlag::MEM_CS);
 
-    builder.order(&d1_0, &d2_0, Order::OUTER);
     builder.order(&d1_0, &d0, Order::BEFORE);
     builder.order(&d0, &d1_1, Order::OUTER);
-    builder.order(&d1_1, &d2_1, Order::OUTER);
-    builder.order(&d2_1, &d3, Order::OUTER);
     builder.order(&d0, &d1_2, Order::BEFORE);
-    builder.order(&d1_2, &d2_2, Order::OUTER);
     builder.order(&d3, &d4_0, Order::OUTER);
     builder.order(&d3, &d4_1, Order::OUTER);
     builder.order(&d4_0, &d4_1, Order::BEFORE);
@@ -263,38 +260,35 @@ pub fn parallel_store<'a>(signature: &'a Signature, gpu: &'a Gpu, num_blocks: &s
     let mut builder = Builder::new(signature, gpu);
     let block_size = builder.param_size(num_blocks);
     let _ = builder.open_dim_ex(block_size, DimKind::BLOCK);
-    // Initialize the result
-    let wrap_size = builder.cst_size(gpu.wrap_size);
-    // Sum in the result.
     let loop_size = builder.param_size(n);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
-    let d1_kind = if num_wraps == 1 { DimKind::UNROLL } else { DimKind::THREAD };
-    let d1 = builder.open_dim_ex(ir::Size::new(num_wraps, vec![], 1), d1_kind);
-    let d2 = builder.open_dim_ex(wrap_size, DimKind::THREAD);
+
+    let thread_tilling = if num_wraps == 1 { vec![] } else { vec![gpu.wrap_size] };
+    let thread_size = builder.cst_size(num_wraps * gpu.wrap_size);
+    let d1 = builder.open_tiled_dim(thread_size, &thread_tilling);
+    for d in &d1 { builder.action(Action::DimKind(d, DimKind::THREAD)); }
+    for (x, y) in d1.iter().tuple_windows() { builder.order(&x, &y, Order::OUTER); }
+
     let d3 = builder.open_dim_ex(ir::Size::new(n_chained, vec![], 1), DimKind::UNROLL);
     let d4 = builder.open_dim_ex(ir::Size::new(n_unroll, vec![], 1), DimKind::UNROLL);
     let pattern = builder.unknown_access_pattern(mem_id);
-    let d3_incr = n_unroll*num_wraps*gpu.wrap_size*gpu.l1_cache_line;
-    let addr = if stride != 0 {
-        builder.induction_var(&array, vec![
-            (d3, ir::Size::new(d3_incr, vec![], 1)),
-            (d4, ir::Size::new(num_wraps*gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
-            (d1, ir::Size::new(gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
-            (d2, ir::Size::new(stride*4, vec![], 1)),
-        ])
-    } else {
-        builder.induction_var(&array, vec![
-            (d3, ir::Size::new(d3_incr, vec![], 1)),
-            (d4, ir::Size::new(num_wraps*gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
-            (d1, ir::Size::new(gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
-        ])
+    let mut strides = vec![
+        (d3, ir::Size::new(n_unroll*num_wraps*gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
+        (d4, ir::Size::new(num_wraps*gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
+    ];
+    if stride != 0 {
+        let i = if num_wraps == 1 { 0 } else {
+            strides.push((d1[0], ir::Size::new(gpu.wrap_size*gpu.l1_cache_line, vec![], 1)));
+            1
+        };
+        strides.push((d1[i], ir::Size::new(stride*4, vec![], 1)));
     };
+    let addr = builder.induction_var(&array, strides);
     builder.st_ex(&addr, &42f32, true, pattern, InstFlag::MEM_CG);
     builder.close_dim(&DimGroup::new(vec![d0, d3, d4]));
 
     builder.order(&d0, &d1, Order::OUTER);
-    builder.order(&d1, &d2, Order::OUTER);
-    builder.order(&d2, &d3, Order::OUTER);
+    builder.order(&d1, &d3, Order::OUTER);
     builder.order(&d3, &d4, Order::OUTER);
 
     builder.get()
@@ -351,6 +345,8 @@ pub fn chain_in_syncthread<'a>(signature: &'a Signature, device: &'a Device, n_i
     builder.order(&d2, &d4, Order::OUTER);
     builder.order(&d0, &d1, Order::BEFORE);
     builder.order(&d1, &d5, Order::BEFORE);
+    builder.action(Action::ThreadMapping(d0, d3, ThreadMapping::MAPPED));
+    builder.action(Action::ThreadMapping(d0, d5, ThreadMapping::MAPPED));
 
     let mut kernel = builder.get();
     kernel.domain_mut().set_order(d1.into(), d2.into(), Order::OUTER);
@@ -406,8 +402,8 @@ pub fn run(context: &mut Context, space: &SearchSpace,
            args_range: &[(&str, &[i32])], counters: &PerfCounterSet,
            result_prefix: &[u64], result: &mut Table<u64>
           ) {
-    if explorer::choice::list(space).next() != None {
-        panic!("The benchmark is not completely scheduled!");
+    if let Some(choice) = explorer::choice::list(space).next() {
+        panic!("The benchmark is not completely scheduled: {:?}", choice);
     }
     let dev_fun = codegen::Function::build(space);
     let kernel = Kernel::compile(&dev_fun, context.gpu(), context.executor(), 1);

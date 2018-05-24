@@ -61,6 +61,7 @@ use super::process_lowering;
 #[allow(unused_variables, unused_mut)]
 pub fn init_domain(store: &mut DomainStore,
                    ir_instance: &mut ir::Function) -> Result<Vec<Action>, ()> {
+    trace!("called init_domain from file {}", file!());
     // Run all the filters once.
     let ref mut diff = DomainDiff::default(); // Pass an empty diff to propagate and triggers.
     let mut unused_diff = DomainDiff::default();

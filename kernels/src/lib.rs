@@ -19,6 +19,7 @@ pub mod statistics;
 
 pub use kernel::{Kernel, analyze_bounds};
 
+use num::Integer;
 use rayon::prelude::*;
 use telamon::device::{self, ArgMap, Context};
 use telamon::helper::SignatureBuilder;
@@ -37,9 +38,26 @@ fn create_size<'a, AM>(value: i32, name: &'a str,
     } else { DimSize::Const(value as u32) }
 }
 
-/// Removes tiles of size 1.
-fn cleanup_tiling(tiling: &[u32]) -> Vec<u32> {
-    tiling.iter().cloned().filter(|&t| t > 1).collect()
+fn generate_tile_sizes(size: u32, max_tiles: &[u32])
+    -> impl ParallelIterator<Item=Vec<u32>>
+{
+    let mut tiles = vec![(size, vec![])];
+    for &max_tile in max_tiles.into_iter().rev() {
+        let old_tiles = std::mem::replace(&mut tiles, vec![(size, vec![])]);
+        for (len, old_tile) in old_tiles {
+            for i in 2..std::cmp::min(max_tile, len/2) {
+                if let (new_len, 0) = len.div_rem(&i) {
+                    let mut tile = old_tile.clone();
+                    tile.push(i);
+                    tiles.push((new_len, tile));
+                }
+            }
+        }
+    }
+    tiles.into_par_iter().map(|(_, mut tiling)| {
+        tiling.reverse();
+        tiling
+    })
 }
 
 fn par_iter_product<I1, I2>(i1: I1, i2: I2)

@@ -19,7 +19,7 @@ pub use self::function::{Function, Signature, Parameter};
 pub use self::instruction::{InstId, Instruction};
 pub use self::induction_var::{IndVarId, InductionVar};
 pub use self::operand::{Operand, DimMapScope};
-pub use self::operator::Operator;
+pub use self::operator::{BinOp, Operator};
 pub use self::size::Size;
 pub use self::types::Type;
 
@@ -53,6 +53,7 @@ pub struct NewObjs {
     pub internal_mem_blocks: Vec<mem::InternalId>,
     pub mem_insts: Vec<InstId>,
     pub iteration_dims: Vec<(InstId, dim::Id)>,
+    pub thread_dims: Vec<dim::Id>,
 }
 
 impl NewObjs {
@@ -73,6 +74,7 @@ impl NewObjs {
     pub fn add_dimension(&mut self, dim: &Dimension) {
         self.add_bb(dim);
         self.dimensions.push(dim.id());
+        if dim.is_thread_dim() { self.add_thread_dim(dim.id()); }
     }
 
     /// Registers a new basic block.
@@ -84,6 +86,9 @@ impl NewObjs {
     pub fn add_iteration_dim(&mut self, inst: InstId, dim: dim::Id) {
         self.iteration_dims.push((inst, dim));
     }
+
+    /// Sets a dimension as a new thread dimension.
+    pub fn add_thread_dim(&mut self, dim: dim::Id) { self.thread_dims.push(dim) }
 
     /// Registers a new memory block.
     pub fn add_mem_block(&mut self, id: mem::InternalId) {
