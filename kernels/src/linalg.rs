@@ -52,7 +52,7 @@ impl<'a, S> Kernel<'a> for Axpy<'a, S> where S: Scalar {
         let y_op = ld_y.dim_map(&[&mad_dim], GlobalScope, &mut builder);
         let mad = VirtualTensor::new(builder.mad(&x_op, &"alpha", &y_op), vec![mad_dim]);
         mad.store(&self.z, &mut builder);
-        
+
         vec![builder.get()]
     }
 
@@ -316,7 +316,7 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
             //builder.action(Action::InstFlag(ld_b.inst(), InstFlag::MEM_CG | InstFlag::MEM_NC));
             //builder.action(Action::InstFlag(st_c.inst(), InstFlag::MEM_CS));
 
-            builder.action(Action::DimKind(init_dim_n[0], DimKind::BLOCK));
+            //builder.action(Action::DimKind(init_dim_n[0], DimKind::BLOCK));
             //builder.action(Action::DimKind(init_dim_m[0], DimKind::BLOCK));
             builder.get()
             /*builder.action(Action::DimKind(unroll_dim_0_n, DimKind::UNROLL));
