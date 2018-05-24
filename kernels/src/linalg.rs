@@ -1,17 +1,16 @@
 //! Linera algebra kernels.
-use {Scalar, create_size, par_iter_product, cleanup_tiling};
+use {Scalar, create_size};
 use itertools::Itertools;
 use kernel::Kernel;
 use ndarray::{Array1, Array2, Array3, ArrayD};
+use num;
 use rand;
 use rayon::prelude::*;
-use std;
 use telamon::{device, ir};
 use telamon::helper::{self, Builder, SignatureBuilder};
 use telamon::helper::tensor::{Tensor, VirtualTensor};
-use telamon::search_space::{self, Action, DimKind, InstFlag, Order, SearchSpace};
+use telamon::search_space::*;
 use telamon::ir::DimMapScope::Global as GlobalScope;
-use utils::*;
 
 /// Computes `z = alpha*x+y`.
 pub struct Axpy<'a, S> where S: Scalar {
@@ -42,7 +41,7 @@ impl<'a, S> Kernel<'a> for Axpy<'a, S> where S: Scalar {
     fn build_body<'b>(&self, signature: &'b ir::Signature, device: &'b device::Device)
         -> Vec<SearchSpace<'b>>
     {
-        let tiling = &[1024, 4]; // TODO(search_space): try more tile sizes.
+        let tiling = &[1024, 4]; // FIXME: try more tile sizes.
         assert!(self.n as u32 >= tiling.iter().product::<u32>());
         let mut builder = Builder::new(signature, device);
 
@@ -53,6 +52,7 @@ impl<'a, S> Kernel<'a> for Axpy<'a, S> where S: Scalar {
         let y_op = ld_y.dim_map(&[&mad_dim], GlobalScope, &mut builder);
         let mad = VirtualTensor::new(builder.mad(&x_op, &"alpha", &y_op), vec![mad_dim]);
         mad.store(&self.z, &mut builder);
+        
         vec![builder.get()]
     }
 
@@ -103,20 +103,15 @@ impl <'a, S> Kernel<'a> for MatVec<'a, S> where S: Scalar {
         -> Vec<SearchSpace<'b>>
     {
         // Ensure the matrix is big enough for the proposed tiling scheme.
-        let m_log2 = unwrap!(log2_u32(self.m as u32), "`m` is not a power of 2") as i32;
-        let n_log2 = unwrap!(log2_u32(self.n as u32), "`n` is not a power of 2") as i32;
-        let max_t2 = std::cmp::min(n_log2, 5);
-        let max_t1 = std::cmp::min(m_log2-max_t2, 8);
+        let gcd = num::integer::gcd(self.m, self.n) as u32;
+        let tilings = ::generate_tile_sizes(gcd, &[128, 16]);
         // TODO(search_space): try independent tiling on `m` and `n`
-        let tilings = par_iter_product(0..max_t1, 0..max_t2);
         //let tilings = std::iter::once((5, 2));
-        tilings.map(|tile_m| {
-            let m_tiling = &cleanup_tiling(&[1 << tile_m.0, 1 << tile_m.1]);
-            let n_tiling = &cleanup_tiling(&[1 << tile_m.0]);
-
+        tilings.map(|m_tiling| {
+            let n_tiling = if m_tiling.len() > 0 { vec![m_tiling[0]] } else { vec![] };
             let mut builder = Builder::new(&signature, device);
-            let ld_x = self.x.load(&[n_tiling], &mut builder);
-            let ld_a = self.a.load(&[m_tiling, n_tiling], &mut builder);
+            let ld_x = self.x.load(&[&n_tiling], &mut builder);
+            let ld_a = self.a.load(&[&m_tiling, &n_tiling], &mut builder);
             let init_dim_m = builder.open_mapped_dim(&ld_a[0]);
             let init = builder.mov(&0f32);
             let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
@@ -128,11 +123,11 @@ impl <'a, S> Kernel<'a> for MatVec<'a, S> where S: Scalar {
             let sum = VirtualTensor::new(acc, vec![acc_dim_m]);
             let st_y = sum.store(&self.y, &mut builder);
 
-            builder.order(&acc_dim_n, &st_y.inst(), search_space::Order::BEFORE);
+            builder.order(&acc_dim_n, &st_y.inst(), Order::BEFORE);
             // TODO(search_space): explore inst flags
-            builder.action(Action::InstFlag(ld_x.inst(), search_space::InstFlag::MEM_CG));
-            builder.action(Action::InstFlag(ld_a.inst(), search_space::InstFlag::MEM_CG));
-            builder.action(Action::InstFlag(st_y.inst(), search_space::InstFlag::MEM_CS));
+            builder.action(Action::InstFlag(ld_x.inst(), InstFlag::MEM_CG));
+            builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CG));
+            builder.action(Action::InstFlag(st_y.inst(), InstFlag::MEM_CS));
             builder.get()
         }).collect()
     }
@@ -197,21 +192,16 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
         -> Vec<SearchSpace<'b>>
     {
         // Ensure the matrix is big enough for the proposed tiling scheme.
-        let m_log2 = unwrap!(log2_u32(self.m as u32), "`m` is not a power of 2") as i32;
-        let n_log2 = unwrap!(log2_u32(self.n as u32), "`n` is not a power of 2") as i32;
-        let max_t2 = std::cmp::min(n_log2, 5);
-        let max_t1 = std::cmp::min(m_log2-max_t2, 8);
+        let gcd = num::integer::gcd(self.m, self.n) as u32;
+        let tilings = ::generate_tile_sizes(gcd, &[128, 16]);
         // TODO(search_space): try independent tiling on `m` and `n`
-        let tilings = par_iter_product(0..max_t1, 0..max_t2);
         //let tilings = std::iter::once(((0, 0), 0));
-        tilings.map(|tile_m| {
-            let m_tiling = &cleanup_tiling(&[1 << tile_m.0, 1 << tile_m.1]);
-            let n_tiling = &cleanup_tiling(&[1 << tile_m.0]);
-
+        tilings.map(|m_tiling| {
+            let n_tiling = if m_tiling.len() > 0 { vec![m_tiling[0]] } else { vec![] };
             let mut builder = helper::Builder::new(&signature, device);
-            let ld_x = self.x.load(&[n_tiling], &mut builder);
-            let ld_a = self.a.load(&[m_tiling, n_tiling], &mut builder);
-            let ld_b = self.b.load(&[m_tiling, n_tiling], &mut builder);
+            let ld_x = self.x.load(&[&n_tiling], &mut builder);
+            let ld_a = self.a.load(&[&m_tiling, &n_tiling], &mut builder);
+            let ld_b = self.b.load(&[&m_tiling, &n_tiling], &mut builder);
             let init_dim_m = builder.open_mapped_dim(&ld_a[0]);
             let init_a = builder.mov(&0f32);
             let init_b = builder.mov(&0f32);
@@ -228,12 +218,12 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
             let sum = VirtualTensor::new(sum, vec![acc_dim_m]);
             let st_y = sum.store(&self.y, &mut builder);
             
-            builder.order(&acc_dim_n, &y_a, search_space::Order::BEFORE);
+            builder.order(&acc_dim_n, &y_a, Order::BEFORE);
             // TODO(search_space): explore inst flags
-            builder.action(Action::InstFlag(ld_x.inst(), search_space::InstFlag::MEM_CG));
-            builder.action(Action::InstFlag(ld_a.inst(), search_space::InstFlag::MEM_CG));
-            builder.action(Action::InstFlag(ld_b.inst(), search_space::InstFlag::MEM_CG));
-            builder.action(Action::InstFlag(st_y.inst(), search_space::InstFlag::MEM_CS));
+            builder.action(Action::InstFlag(ld_x.inst(), InstFlag::MEM_CG));
+            builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CG));
+            builder.action(Action::InstFlag(ld_b.inst(), InstFlag::MEM_CG));
+            builder.action(Action::InstFlag(st_y.inst(), InstFlag::MEM_CS));
             builder.get()
         }).collect()
     }
@@ -292,21 +282,13 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
     fn build_body<'b>(&self, signature: &'b ir::Signature, device: &'b device::Device)
         -> Vec<SearchSpace<'b>>
     {
-        let m_log2 = unwrap!(log2_u32(self.m as u32), "`m` is not a power of 2") as i32;
-        let n_log2 = unwrap!(log2_u32(self.n as u32), "`n` is not a power of 2") as i32;
-        let k_log2 = unwrap!(log2_u32(self.k as u32), "`n` is not a power of 2") as i32;
-        // TODO(search_space): more tilings
-        let mn_log2 = std::cmp::min(m_log2, n_log2); 
-        let t1_max = std::cmp::min(mn_log2, 6);
-        let t2_max = std::cmp::min(k_log2, 4);
-        let tilings = (0..t1_max).into_par_iter().flat_map(|t1| {
-            (0..std::cmp::min(mn_log2-t1, t2_max)).into_par_iter()
-            .map(move |t2| (1u32 << t1, 1u32 << t2))
-        });
+        let gcd = num::integer::gcd(num::integer::gcd(self.m, self.n), self.k) as u32;
+        let tilings = ::generate_tile_sizes(gcd, &[64, 8]);
         //let tilings = std::iter::once((4, 2));
-        tilings.map(|(tile_1, tile_2)| {
-            let full_tiling = cleanup_tiling(&[tile_1, tile_2]);
-            let small_tiling = cleanup_tiling(&[tile_1]); 
+        tilings.map(|full_tiling| {
+            let small_tiling = if full_tiling.len() > 0 {
+                vec![full_tiling[0]]
+            } else { vec![] };
             let mut builder = helper::Builder::new(signature, device);
 
             let ld_a = self.a.load(&[&full_tiling, &small_tiling], &mut builder);
@@ -334,7 +316,7 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
             //builder.action(Action::InstFlag(ld_b.inst(), InstFlag::MEM_CG | InstFlag::MEM_NC));
             //builder.action(Action::InstFlag(st_c.inst(), InstFlag::MEM_CS));
 
-            //builder.action(Action::DimKind(init_dim_n[0], DimKind::BLOCK));
+            builder.action(Action::DimKind(init_dim_n[0], DimKind::BLOCK));
             //builder.action(Action::DimKind(init_dim_m[0], DimKind::BLOCK));
             builder.get()
             /*builder.action(Action::DimKind(unroll_dim_0_n, DimKind::UNROLL));
@@ -393,101 +375,84 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
     }
 }
 
-/// Computes `B[r] = A[r].transpose(X)` where A, B are 3D tensors and X a matrix. This is
-/// in effect a matrix-matrix multiplications, with two two dimensions iterating on the
-/// rows of A.
-pub struct Doitgen<'a, S: Scalar> {
-    p: usize,
-    q: usize,
-    r: usize,
+/// Batch transposed matrix-matrix multiplication.
+pub struct Tbmm<'a, S> where S: Scalar {
+    params: TbmmParams,
     a: Tensor<'a, S>,
     b: Tensor<'a, S>,
-    x: Tensor<'a, S>,
+    c: Tensor<'a, S>,
 }
 
-impl<'a, S: Scalar> Kernel<'a> for Doitgen<'a, S> {
-    type Parameters = (i32, i32, i32);
+#[derive(Copy, Clone)]
+pub struct TbmmParams { m: i32, n: i32, k: i32, batch: i32 }
+
+impl<'a, S: Scalar> Kernel<'a> for Tbmm<'a, S> {
+    type Parameters = TbmmParams;
     type ExpectedOutput = Array3<S>;
 
-    fn name() -> &'static str { "doitgen" }
+    fn name() -> &'static str { "tbmv" }
 
-    fn build_signature<AM>((p, q, r): (i32, i32, i32), generic: bool,
+    fn build_signature<AM>(params: TbmmParams,
+                           generic: bool,
                            builder: &mut SignatureBuilder<AM>) -> Self
         where AM: device::ArgMap + device::Context + 'a
     {
-        let pp = create_size(p, "p", generic, builder);
-        let qq = create_size(q, "q", generic, builder);
-        let rr = create_size(r, "r", generic, builder);
-        let a = builder.tensor::<S>("a", vec![rr, qq, pp], true);
-        let b = builder.tensor::<S>("b", vec![rr, qq, pp], false);
-        let x = builder.tensor::<S>("x", vec![pp, pp], true);
-        Doitgen { p: p as usize, q: q as usize, r: r as usize, a, b, x }
+        let m_size = create_size(params.m, "m", generic, builder);
+        let n_size = create_size(params.n, "n", generic, builder);
+        let k_size = create_size(params.n, "k", generic, builder);
+        let batch_size = create_size(params.batch, "b", true, builder);
+        let a = builder.tensor::<S>("a", vec![batch_size, k_size, m_size], true);
+        let b = builder.tensor::<S>("b", vec![k_size, n_size], true);
+        let c = builder.tensor::<S>("c", vec![m_size, n_size], false);
+        Tbmm { params, a, b, c }
     }
 
     fn build_body<'b>(&self, signature: &'b ir::Signature, device: &'b device::Device)
         -> Vec<SearchSpace<'b>>
     {
-        let p_log2 = unwrap!(log2_u32(self.p as u32), "`p` is not a power of 2") as i32;
-        let q_log2 = unwrap!(log2_u32(self.q as u32), "`q` is not a power of 2") as i32;
-        let r_log2 = unwrap!(log2_u32(self.r as u32), "`r` is not a power of 2") as i32;
-        let tile_p = 2; // TODO(search_space): explore tile_p
-        assert!(p_log2 > tile_p && q_log2 > tile_p); // TODO(search_space): adapt tile_p instead
-        let max_tile_s = std::cmp::min(std::cmp::min(p_log2, q_log2) - tile_p, 5);
-        let max_tile_r = std::cmp::min(r_log2, 5);
-
-        // TODO(search_space): consider r and q as a single dimension for the tiling scheme
-        // TODO(search_space): explore more tilings
-        let tilings = par_iter_product(0..max_tile_s, 0..max_tile_r);
-        //let tilings = std::iter::once((4, 4));
-        tilings.map(|(tile_s, tile_r)| {
+        let gcd = num::integer::gcd(num::integer::gcd(
+                self.params.m, self.params.n), self.params.k) as u32;
+        let tilings = ::generate_tile_sizes(gcd, &[32, 8]);
+        //let tilings = std::iter::once((4, 2));
+        tilings.map(|full_tiling| {
+            let small_tiling = if full_tiling.len() > 0 {
+                vec![full_tiling[0]]
+            } else { vec![] };
             let mut builder = helper::Builder::new(signature, device);
-            let p_tiling = &cleanup_tiling(&[1u32 << tile_s, 1u32 << tile_p]);
-            let q_tiling = &cleanup_tiling(&[1u32 << tile_s, 1u32 << tile_p]);
-            let r_tiling = &cleanup_tiling(&[1u32 << tile_r]);
-            let s_tiling = &cleanup_tiling(&[1u32 << tile_s]);
-            let ld_a = self.a.load(&[r_tiling, q_tiling, s_tiling], &mut builder);
-            let ld_x = self.x.load(&[p_tiling, s_tiling], &mut builder);
 
-            let init_dim_r = builder.open_mapped_dim(&ld_a[0]);
-            let init_dim_q = builder.open_mapped_dim(&ld_a[1]);
-            let init_dim_p = builder.open_mapped_dim(&ld_x[0]);
-            let init = builder.mov(&0f32);
-            let acc_dim_r = builder.open_mapped_dim(&init_dim_r);
-            let acc_dim_q = builder.open_mapped_dim(&init_dim_q);
-            let acc_dim_p = builder.open_mapped_dim(&init_dim_p);
-            let acc_dim_s = builder.open_mapped_dim(&ld_x[1]);
-            let a_op = ld_a.dim_map(&[&acc_dim_r, &acc_dim_q, &acc_dim_s],
-                                    GlobalScope, &mut builder);
-            let x_op = ld_x.dim_map(&[&acc_dim_p, &acc_dim_s], GlobalScope, &mut builder);
-            let acc = builder.mad(&a_op, &x_op, &helper::Reduce(init));
-            builder.close_dim(&acc_dim_s);
+            // FIXME: try independent tiling
+            let ld_a = self.a.load(&[&full_tiling, &[], &small_tiling], &mut builder);
+            let ld_b = self.b.load(&[&small_tiling, &full_tiling], &mut builder);
 
-            let res = VirtualTensor::new(acc, vec![acc_dim_r, acc_dim_q, acc_dim_p]);
-            let st_b = res.store(&self.b, &mut builder);
-            builder.order(&acc, &st_b.inst(), Order::BEFORE);
-            // TODO(search_space): remove arbitrary decisions.
-            builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CG));
-            builder.action(Action::InstFlag(ld_x.inst(), InstFlag::MEM_CG));
-            builder.action(Action::InstFlag(st_b.inst(), InstFlag::MEM_CS));
+            let init_batch = builder.open_mapped_dim(&ld_a[0]);
+            let init_dim_m = builder.open_mapped_dim(&ld_a[2]);
+            let init_dim_n = builder.open_mapped_dim(&ld_b[2]);
+            let acc_init = builder.mov(&0f32);
+            let acc_batch = builder.open_mapped_dim(&init_batch);
+            let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
+            let acc_dim_n = builder.open_mapped_dim(&init_dim_n);
+            let acc_dim_k = builder.open_mapped_dim(&ld_a[1]);
+            let a_op = ld_a.dim_map(&[&acc_batch, &acc_dim_k, &acc_dim_m], GlobalScope, &mut builder);
+            let b_op = ld_b.dim_map(&[&acc_dim_k, &acc_dim_n], GlobalScope, &mut builder);
+            let acc = builder.mad(&a_op, &b_op, &helper::Reduce(acc_init));
+            builder.close_dim(&acc_dim_k);
 
+            let acc = VirtualTensor::new(acc, vec![acc_batch, acc_dim_m, acc_dim_n]);
+            let st_c = acc.store(&self.c, &mut builder);
+
+            // Order for correctness.
+            builder.order(&st_c.inst(), &acc_dim_k, Order::AFTER);
             builder.get()
         }).collect()
     }
 
     fn get_expected_output(&self, context: &device::Context) -> Array3<S> {
-        let a = unwrap!(self.a.read_to_host(context).into_shape((self.r*self.q, self.p)));
-        let x = unwrap!(self.x.read_to_host(context).into_shape((self.p, self.p)));
-        unwrap!(a.dot(&x).into_shape((self.r, self.q, self.p)))
+        unimplemented!() // FIXME
     }
 
     fn check_result(&self, expected: &Self::ExpectedOutput, context: &device::Context)
         -> Result<(), String>
     {
-        let b = unwrap!(self.b.read_to_host(context).into_shape((self.r, self.q, self.p)));
-        if b.iter().zip_eq(expected).any(|(&b0, &b1)| (b0-b1).is_err_ok()) {
-            let x = self.x.read_to_host(context);
-            let a = self.a.read_to_host(context);
-            Err(format!("expected: {}, got {} with a = {} and x = {}", expected, b, a, x))
-        } else { Ok(()) }
+        unimplemented!() // FIXME
     }
 }

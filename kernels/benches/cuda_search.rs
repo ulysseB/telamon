@@ -2,6 +2,7 @@
 extern crate env_logger;
 extern crate cuda_sys;
 extern crate libc;
+extern crate num;
 extern crate telamon;
 extern crate telamon_kernels;
 #[macro_use]
@@ -10,7 +11,7 @@ extern crate telamon_utils as utils;
 use cuda_sys::cublas::*;
 use cuda_sys::cuda::*;
 use telamon::explorer::config::Config;
-use telamon::device::{Context, cuda};
+use telamon::device::cuda;
 use telamon_kernels::{linalg, Kernel};
 use telamon_kernels::statistics::estimate_mean;
 
@@ -24,7 +25,7 @@ fn main() {
     benchmark::<linalg::MatMul<f32>, _>((1<<10, 1<<10, 1<<10), &executor, |params, ctx| {
         matmul_reference(&cublas_handle, params, ctx)
     });
-    // FIXME: 0.5 perf, with exhaustive search
+    // FIXME: 0.55 perf, with exhaustive search
     benchmark::<linalg::MatVec<f32>, _>((1<<13, 1<<13), &executor, |params, ctx| {
         matvec_reference(&cublas_handle, params, ctx)
     });
@@ -32,17 +33,13 @@ fn main() {
     benchmark::<linalg::Gesummv<f32>, _>((1<<13, 1<<13), &executor, |params, ctx| {
         gesummv_reference(&cublas_handle, params, ctx)
     });
-    // FIXME: a bit too fast, increase problem size ?
-    benchmark::<linalg::Doitgen<f32>, _>((1<<7, 1<<7, 1<<7), &executor, |params, ctx| {
-        doitgen_reference(&cublas_handle, params, ctx)
-    });
     // FIXME: add more input sizes for benchmarks
 }
 
 /// The number of times to run the generated code to evaluate its performance.
 const NUM_CODE_RUNS: usize = 40;
 /// Search timeout in minutes.
-const TIMEOUT: u64 = 120;
+const TIMEOUT: u64 = 240;
 
 /// Benchamrks a kernel against a reference implementation.
 fn benchmark<'a, K, REF>(params: K::Parameters,
@@ -55,7 +52,7 @@ fn benchmark<'a, K, REF>(params: K::Parameters,
     config.distance_to_best.get_or_insert(20.);
 
     let mut context = cuda::Context::new(executor);
-    let runtime = K::benchmark(&config, params, NUM_CODE_RUNS, false, &mut context);
+    let runtime = K::benchmark(&config, params, NUM_CODE_RUNS, true, &mut context);
     for _ in 0..4 { reference(params, &context); }
     let ref_runtime = (0..NUM_CODE_RUNS).map(|_| reference(params, &context)).collect();
     let mean = estimate_mean(runtime, 0.95, "ns");
@@ -183,25 +180,6 @@ fn gesummv_reference(handle: &CublasHandle,
             let op = cublasOperation_t_CUBLAS_OP_T;
             check_cublas(cublasSgemv_v2(handle.0, op, n, m, &3.1, a, n, x, 1, &0., y, 1));
             check_cublas(cublasSgemv_v2(handle.0, op, n, m, &4.1, b, n, x, 1, &1., y, 1));
-        })
-    }
-}
-
-/// Reference implementation for the `Doitgen` params.
-fn doitgen_reference(handle: &CublasHandle,
-                     (p, q, r): (i32, i32, i32),
-                     context: &cuda::Context) -> f64 {
-    let p = p as libc::c_int;
-    let q = q as libc::c_int;
-    let r = r as libc::c_int;
-    unsafe {
-        let a = get_array("a", context);
-        let x = get_array("x", context);
-        let b = get_array("b", context);
-        time_cuda(|| {
-            let op = cublasOperation_t_CUBLAS_OP_N;
-            check_cublas(cublasSgemm_v2(
-                    handle.0, op, op, p, r*q, p, &1., x, p, a, p, &0., b, p))
         })
     }
 }
