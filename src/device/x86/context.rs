@@ -139,7 +139,7 @@ enum ThunkArg {
 }
 
 fn function_evaluate(fun_str: String, mut args: Vec<ThunkArg>) -> Result<f64, ()> {
-    println!("{}", fun_str);
+    //println!("{}", fun_str);
     //panic!();
     let temp_dir = tempfile::tempdir().unwrap();
     let templib_name = temp_dir.path().join("lib_compute.so").to_string_lossy().into_owned();

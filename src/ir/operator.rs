@@ -1,6 +1,6 @@
 //! Defines operators.
 use device::Device;
-use ir::{self, AccessPattern, Dimension, mem, Operand, Stride, Type};
+use ir::{self, AccessPattern,  mem, Operand, Type};
 use itertools::Itertools;
 use std::borrow::Cow;
 use std::fmt;

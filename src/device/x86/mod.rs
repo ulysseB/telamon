@@ -1,4 +1,4 @@
-//! Defines the CUDA target.
+//! Defines the CPU target.
 mod context;
 mod cpu;
 //mod mem_model;
@@ -14,7 +14,6 @@ use ir;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::ToPrimitive;
-use std;
 use utils::*;
 
 #[derive(Default)]
@@ -64,7 +63,7 @@ impl codegen::Namer for Namer {
         assert!(len <= 64);
         let f = unwrap!(val.numer().to_f64()) / unwrap!(val.denom().to_f64());
         //let binary = unsafe { std::mem::transmute::<f64, u64>(f) };
-        format!("VAR_F{:.5e}", f )
+        format!("{:.5e}", f )
     }
 
     fn name_int(&self, val: &BigInt, len: u16) -> String {

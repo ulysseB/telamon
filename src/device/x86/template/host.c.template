@@ -3,17 +3,23 @@
 #include <stdint.h>
 #include <pthread.h>
 
-{fun_str}
+typedef struct thread_dim_id {{
+{dim_decl} }} thread_dim_id_t;
 
 typedef struct thread_args {{
-  int tid;
+  thread_dim_id_t tid;
   void ** args;
 }} thread_arg_t;
 
-void execute(int tid, void** args) {{
+{fun_str}
+
+
+void execute(thread_dim_id_t tid, void** args) {{
   {fun_params_cast};
   {fun_name}(tid, {fun_params});
 }}
+
+
 
 void * exec_wrap(void * args) {{
   thread_arg_t thr_args = *(thread_arg_t *) args;
