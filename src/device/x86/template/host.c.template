@@ -4,6 +4,7 @@
 #include <pthread.h>
 
 typedef struct thread_dim_id {{
+pthread_barrier_t * barrier;
 {dim_decl} }} thread_dim_id_t;
 
 typedef struct thread_args {{
@@ -28,6 +29,7 @@ void * exec_wrap(void * args) {{
 }}
 
 void entry_point(void** args) {{
+  pthread_barrier_t barrier;
   {gen_threads}
   {thread_join}
 }}

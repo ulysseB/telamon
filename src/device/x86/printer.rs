@@ -111,7 +111,7 @@ fn cfg<'a>(fun: &Function, c: &Cfg<'a>, namer: &mut NameMap) -> String {
                 res.push_str("\n  ");
             }
             res.push_str(&cfg_vec(fun, inner, namer));
-            res.push_str("\n  ;");
+            res.push_str("pthread_barrier_wait(tid.barrier);\n");
             res
         }
         Cfg::Instruction(ref i) => inst(i, namer),
@@ -423,6 +423,8 @@ fn thread_gen(func: &Function) -> String {
         let mut ret = format!("thread_arg_t thread_args;\n");
         ret.push_str(&format!(" thread_args.args = args;\n"));
         ret.push_str(&format!(" thread_args.tid.t0 = 0;\n"));
+        ret.push_str(&format!(" thread_args.tid.barrier = &barrier;\n"));
+        ret.push_str(&format!("pthread_barrier_init(&barrier, NULL,{});\n",   func.num_threads()));
         ret.push_str(&format!("exec_wrap((void *)&thread_args);\n"));
         return ret;
     }
@@ -430,6 +432,7 @@ fn thread_gen(func: &Function) -> String {
     let mut ind_var_decl = String::from("int ");
     let build_struct = format!("thread_arg_t thread_args[{}];\n", func.num_threads());
     let dim_tid_struct = format!("thread_dim_id_t thread_tids[{}];\n", func.num_threads());
+    let barrier_init = format!("pthread_barrier_init(&barrier, NULL,{});\n",   func.num_threads() );
     let mut loop_decl = String::new();
     let mut ind_vec = Vec::new();
     let mut jmp_stack = Vec::new();
@@ -455,13 +458,16 @@ fn thread_gen(func: &Function) -> String {
     for (ind, _) in func.thread_dims().iter().enumerate() {
         tid_struct.push_str(&format!("thread_args[{index}].tid.t{dim_id} = d{dim_id};\n",  index = build_index_call(func), dim_id = ind));
     }
+    let barrier_str = format!("thread_args[{}].tid.barrier = &barrier;\n",  build_index_call(func) );
     let create_call = format!("pthread_create(&thr_ids[{}], NULL, exec_wrap, (void *)&thread_args[{ind}]);\n",  ind = build_index_call(func) );
     ret.push_str(&ind_var_decl);
     ret.push_str(&build_struct);
     ret.push_str(&dim_tid_struct);
+    ret.push_str(&barrier_init);
     ret.push_str(&loop_decl);
     ret.push_str(&arg_struct);
     ret.push_str(&tid_struct);
+    ret.push_str(&barrier_str);
     ret.push_str(&create_call);
     ret.push_str(&loop_jmp);
     ret
@@ -488,9 +494,11 @@ fn thread_join(func: &Function) -> String {
         loop_jmp.push_str(&j_str);
     }
     let join_call = format!("pthread_join(thr_ids[{}], NULL);\n", build_index_call(func) );
+    let barrier_destroy = format!("pthread_barrier_destroy(&barrier);\n");
     ret.push_str(&loop_decl);
     ret.push_str(&join_call);
     ret.push_str(&loop_jmp);
+    ret.push_str(&barrier_destroy);
     ret
 
 }
