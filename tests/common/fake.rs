@@ -2,7 +2,7 @@
 //! Provides a fake implementations of device traits for testing.
 use telamon::codegen;
 use telamon::device::{self, ScalarArgument, ArrayArgument};
-use telamon::ir::{self, Type, Operator};
+use telamon::ir::{self, Operator};
 use telamon::explorer::Candidate;
 use telamon::search_space::{SearchSpace, DimKind};
 use telamon::model::{self, HwPressure};
@@ -78,7 +78,8 @@ impl device::Device for Device {
     fn hw_pressure(&self, _: &SearchSpace,
                    _: &HashMap<ir::dim::Id, u32>,
                    _: &HashMap<ir::BBId, model::Nesting>,
-                   _: &ir::BasicBlock) -> HwPressure {
+                   _: &ir::BasicBlock,
+                   _: &device::Context) -> HwPressure {
         HwPressure::zero(self)
     }
 

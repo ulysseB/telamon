@@ -32,8 +32,8 @@ impl<'a, S> Kernel<'a> for Axpy<'a, S> where S: Scalar {
     {
         let n_size = create_size(n, "n", generic, builder);
         builder.scalar("alpha", S::one());
-        let x = builder.tensor::<S>("x", vec![n_size], true);
-        let y = builder.tensor::<S>("y", vec![n_size], true);
+        let x = builder.tensor::<S>("x", vec![n_size.clone()], true);
+        let y = builder.tensor::<S>("y", vec![n_size.clone()], true);
         let z = builder.tensor::<S>("z", vec![n_size], false);
         Axpy { n, x, y, z }
     }
@@ -93,8 +93,8 @@ impl <'a, S> Kernel<'a> for MatVec<'a, S> where S: Scalar {
     {
         let m_size = create_size(m, "m", generic, builder);
         let n_size = create_size(n, "n", generic, builder);
-        let x = builder.tensor::<S>("x", vec![n_size], true);
-        let a = builder.tensor::<S>("a", vec![m_size, n_size], true);
+        let x = builder.tensor::<S>("x", vec![n_size.clone()], true);
+        let a = builder.tensor::<S>("a", vec![m_size.clone(), n_size], true);
         let y = builder.tensor::<S>("y", vec![m_size], false);
         MatVec { m, n, x, a, y }
     }
@@ -107,7 +107,7 @@ impl <'a, S> Kernel<'a> for MatVec<'a, S> where S: Scalar {
         let tilings = ::generate_tile_sizes(gcd, &[128, 16]);
         // TODO(search_space): try independent tiling on `m` and `n`
         //let tilings = std::iter::once((5, 2));
-        tilings.map(|m_tiling| {
+        tilings.into_iter().map(|m_tiling| {
             let n_tiling = if m_tiling.len() > 0 { vec![m_tiling[0]] } else { vec![] };
             let mut builder = Builder::new(&signature, device);
             let ld_x = self.x.load(&[&n_tiling], &mut builder);
@@ -181,9 +181,9 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
         let beta = S::gen_random(&mut rng);
         builder.scalar("alpha", alpha);
         builder.scalar("beta", beta);
-        let x = builder.tensor::<S>("x", vec![n_size], true);
-        let a = builder.tensor::<S>("a", vec![m_size, n_size], true);
-        let b = builder.tensor::<S>("b", vec![m_size, n_size], true);
+        let x = builder.tensor::<S>("x", vec![n_size.clone()], true);
+        let a = builder.tensor::<S>("a", vec![m_size.clone(), n_size.clone()], true);
+        let b = builder.tensor::<S>("b", vec![m_size.clone(), n_size], true);
         let y = builder.tensor::<S>("y", vec![m_size], false);
         Gesummv { m, n, alpha, beta, a, b, x, y }
     }
@@ -196,7 +196,7 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
         let tilings = ::generate_tile_sizes(gcd, &[128, 16]);
         // TODO(search_space): try independent tiling on `m` and `n`
         //let tilings = std::iter::once(((0, 0), 0));
-        tilings.map(|m_tiling| {
+        tilings.into_iter().map(|m_tiling| {
             let n_tiling = if m_tiling.len() > 0 { vec![m_tiling[0]] } else { vec![] };
             let mut builder = helper::Builder::new(&signature, device);
             let ld_x = self.x.load(&[&n_tiling], &mut builder);
@@ -273,8 +273,8 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
         let m_size = create_size(m, "m", generic, builder);
         let n_size = create_size(n, "n", generic, builder);
         let k_size = create_size(n, "k", generic, builder);
-        let a = builder.tensor::<S>("a", vec![m_size, k_size], true);
-        let b = builder.tensor::<S>("b", vec![k_size, n_size], true);
+        let a = builder.tensor::<S>("a", vec![m_size.clone(), k_size.clone()], true);
+        let b = builder.tensor::<S>("b", vec![k_size, n_size.clone()], true);
         let c = builder.tensor::<S>("c", vec![m_size, n_size], false);
         MatMul { m: m as usize, n: n as usize, k: k as usize, a, b, c }
     }
@@ -282,17 +282,25 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
     fn build_body<'b>(&self, signature: &'b ir::Signature, device: &'b device::Device)
         -> Vec<SearchSpace<'b>>
     {
+        /*let k_tiles = ::generate_tile_sizes(self.k as u32, &[64]);
+        let m_tiles = ::generate_tile_sizes(self.m as u32, &[64, 8]);
+        let n_tiles = ::generate_tile_sizes(self.n as u32, &[64, 8]);
+        let tilings = ::par_iter_product(::par_iter_product(m_tiles, n_tiles), k_tiles);*/
+
         let gcd = num::integer::gcd(num::integer::gcd(self.m, self.n), self.k) as u32;
         let tilings = ::generate_tile_sizes(gcd, &[64, 8]);
-        //let tilings = std::iter::once((4, 2));
-        tilings.map(|full_tiling| {
+        let tilings = tilings.into_par_iter().map(|full_tiling| {
             let small_tiling = if full_tiling.len() > 0 {
                 vec![full_tiling[0]]
             } else { vec![] };
+            ((full_tiling.clone(), full_tiling), small_tiling)
+        });
+        //let tilings = std::iter::once((4, 2));
+        tilings.map(|((m_tiling, n_tiling), k_tiling)| {
             let mut builder = helper::Builder::new(signature, device);
 
-            let ld_a = self.a.load(&[&full_tiling, &small_tiling], &mut builder);
-            let ld_b = self.b.load(&[&small_tiling, &full_tiling], &mut builder);
+            let ld_a = self.a.load(&[&m_tiling, &k_tiling], &mut builder);
+            let ld_b = self.b.load(&[&k_tiling, &n_tiling], &mut builder);
 
             let init_dim_m = builder.open_mapped_dim(&ld_a[0]);
             let init_dim_n = builder.open_mapped_dim(&ld_b[1]);
@@ -400,9 +408,9 @@ impl<'a, S: Scalar> Kernel<'a> for Tbmm<'a, S> {
         let m_size = create_size(params.m, "m", generic, builder);
         let n_size = create_size(params.n, "n", generic, builder);
         let k_size = create_size(params.n, "k", generic, builder);
-        let batch_size = create_size(params.batch, "b", true, builder);
-        let a = builder.tensor::<S>("a", vec![batch_size, k_size, m_size], true);
-        let b = builder.tensor::<S>("b", vec![k_size, n_size], true);
+        let batch = create_size(params.batch, "b", true, builder);
+        let a = builder.tensor::<S>("a", vec![batch, k_size.clone(), m_size.clone()], true);
+        let b = builder.tensor::<S>("b", vec![k_size, n_size.clone()], true);
         let c = builder.tensor::<S>("c", vec![m_size, n_size], false);
         Tbmm { params, a, b, c }
     }
@@ -414,7 +422,7 @@ impl<'a, S: Scalar> Kernel<'a> for Tbmm<'a, S> {
                 self.params.m, self.params.n), self.params.k) as u32;
         let tilings = ::generate_tile_sizes(gcd, &[32, 8]);
         //let tilings = std::iter::once((4, 2));
-        tilings.map(|full_tiling| {
+        tilings.into_iter().map(|full_tiling| {
             let small_tiling = if full_tiling.len() > 0 {
                 vec![full_tiling[0]]
             } else { vec![] };

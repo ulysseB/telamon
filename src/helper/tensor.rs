@@ -1,6 +1,6 @@
 //! Utilities to allocate and operate on tensors.
-use device::{ScalarArgument, ArrayArgument, Context, read_array};
-use helper::{Builder, DimGroup, MetaDimension};
+use device::{ArgMap, ScalarArgument, ArrayArgument, Context, read_array};
+use helper::{Builder, DimGroup, MetaDimension, SignatureBuilder};
 use ir;
 use itertools::Itertools;
 use ndarray::{self, ArrayD};
@@ -8,33 +8,97 @@ use search_space::{Domain, InstFlag};
 use std;
 
 /// A dimension size, before tiling.
-#[derive(Copy, Clone)]
-pub enum DimSize<'a> { Const(u32), Param(&'a str) }
+#[derive(Clone)]
+pub struct DimSize<'a> {
+    factor: u32,
+    params: Vec<&'a str>,
+}
 
 impl<'a> DimSize<'a> {
     /// Convert the size into the size type used by the IR.
-    pub fn into_ir_size<'b>(self, builder: &Builder<'b>) -> ir::Size<'b> {
-        match self {
-            DimSize::Const(size) => builder.cst_size(size),
-            DimSize::Param(p) => builder.param_size(p),
-        }
+    pub fn into_ir_size<'b>(&self, builder: &Builder<'b>) -> ir::Size<'b> {
+        let params = self.params.iter().map(|p| builder.find_param(p)).collect();
+        ir::Size::new(self.factor, params, 1)
     }
 
     /// Converts the size into a numerical value for a given context.
-    pub fn into_num(self, context: &Context) -> u32 {
-        match self {
-            DimSize::Const(s) => s,
-            DimSize::Param(p) => unwrap!(context.param_as_size(p)),
-        }
+    pub fn eval(&self, context: &Context) -> u32 {
+        self.params.iter().map(|p| unwrap!(context.param_as_size(p)))
+            .product::<u32>() * self.factor
     }
 }
 
 impl<'a> From<u32> for DimSize<'a> {
-    fn from(size: u32) -> Self { DimSize::Const(size) }
+    fn from(size: u32) -> Self { DimSize { factor: size, params: vec![] } }
 }
 
 impl<'a> From<&'a str> for DimSize<'a> {
-    fn from(param: &'a str) -> Self { DimSize::Param(param) }
+    fn from(param: &'a str) -> Self { DimSize { factor: 1, params: vec![param] } }
+}
+
+/// An helper to build a tensor.
+pub struct TensorBuilder<'a> {
+    name: &'a str,
+    read_only: bool,
+    storage_dims: Vec<DimSize<'a>>,
+    exposed_dims: Vec<usize>,
+}
+
+impl<'a> TensorBuilder<'a> {
+    /// Start building a `Tensor` with the given logical layout.
+    pub fn new(name: &'a str, storage_dims: Vec<DimSize<'a>>) -> Self {
+        let exposed_dims = (0..storage_dims.len()).collect();
+        TensorBuilder { 
+            name, storage_dims, exposed_dims,
+            read_only: true,
+        }
+    }
+
+    /// Swap two dimensions in the memory layout of the tensor. Keeps the logical layout
+    /// untouched.
+    pub fn translate(&mut self, lhs: usize, rhs: usize) -> &mut Self {
+        self.storage_dims.swap(self.exposed_dims[lhs], self.exposed_dims[rhs]);
+        self.exposed_dims.swap(lhs, rhs);
+        self
+    }
+
+    /// Removes a logical dimension but keeps it in the storage.
+    pub fn stride_dim(&mut self, dim: usize) -> &mut Self {
+        self.exposed_dims.remove(dim);
+        self
+    }
+
+    /// Allows writing to the tensor.
+    pub fn enable_writes(&mut self) -> &mut Self {
+        self.read_only = false;
+        self
+    }
+
+    /// Builds the `Tensor`.
+    pub fn finish<S, AM>(&self, builder: &mut SignatureBuilder<AM>) -> Tensor<'a, S>
+        where S: ScalarArgument, AM: ArgMap + Context + 'a,
+    {
+        let size = self.storage_dims.iter().map(|s| s.eval(builder.context()) as usize)
+            .product::<usize>();
+        let (mem_id, array) = builder.array::<S>(self.name, size);
+        let mut stride: DimSize = unwrap!(S::t().len_byte()).into();
+        let mut strides = self.storage_dims.iter().rev().map(|s| {
+            let cur_stride = stride.clone();
+            stride.factor *= s.factor;
+            stride.params.extend(s.params.iter().cloned());
+            cur_stride
+        }).collect_vec();
+        strides.reverse();
+        let iter_dims = self.exposed_dims.iter().map(|&i| {
+            (self.storage_dims[i].clone(), strides[i].clone())
+        }).collect();
+        Tensor {
+            mem_id, array, iter_dims,
+            read_only: self.read_only,
+            name: self.name,
+            s: std::marker::PhantomData,
+        }
+    }
 }
 
 /// A tensor allocated in main memory.
@@ -42,7 +106,7 @@ pub struct Tensor<'a, S: ScalarArgument> {
     name: &'a str,
     mem_id: ir::mem::Id,
     array: std::sync::Arc<ArrayArgument + 'a>,
-    dim_sizes: Vec<DimSize<'a>>,
+    iter_dims: Vec<(DimSize<'a>, DimSize<'a>)>,
     read_only: bool,
     s: std::marker::PhantomData<S>,
 }
@@ -54,19 +118,37 @@ impl<'a, S> Tensor<'a, S> where S: ScalarArgument {
                read_only: bool,
                mem_id: ir::mem::Id,
                array: std::sync::Arc<ArrayArgument + 'a>) -> Self {
-        Tensor { name, mem_id, dim_sizes, read_only, array, s: std::marker::PhantomData }
+        let mut incr: DimSize = unwrap!(S::t().len_byte()).into(); 
+        let mut iter_dims = dim_sizes.into_iter().rev().map(|s| {
+            let cur_incr = incr.clone();
+            incr.factor *= s.factor;
+            incr.params.extend(s.params.iter().cloned());
+            (s, cur_incr)
+        }).collect_vec();
+        iter_dims.reverse();
+        Tensor { name, mem_id, iter_dims, read_only, array, s: std::marker::PhantomData }
     }
 
     /// Creates a `VirtualTensor` that contains the values of `self`, loaded in registers.
     pub fn load(&self, tiling: &[&[u32]], builder: &mut Builder) -> VirtualTensor {
-        let dims = self.dim_sizes.iter().zip_eq(tiling).map(|(&size, &tiling)| {
+        let mut dims = Vec::new();
+        let mut induction_levels = Vec::new();
+        for (&(ref size, ref stride), tiling) in self.iter_dims.iter().zip_eq(tiling) {
             let size = size.into_ir_size(builder);
-            builder.open_tiled_dim(size, tiling)
-        }).collect_vec();
-        let (ptr, pat) = {
-            let dims = dims.iter().map(|d| d as &MetaDimension).collect_vec();
-            builder.tensor_access(&self.name, self.mem_id, &S::t(), &dims)
+            let dim = builder.open_tiled_dim(size, tiling);
+            let mut stride = stride.into_ir_size(builder);
+            for (d, &t) in dim.ids().rev().zip(tiling.iter().rev()) {
+                induction_levels.push((d, stride.clone())); 
+                stride.mul_factor(t);
+            }
+            induction_levels.push((dim[0], stride));
+            dims.push(dim);
+        }
+        let pat = ir::AccessPattern::Tensor {
+            mem_id: self.mem_id,
+            dims: induction_levels.iter().cloned().collect(),
         };
+        let ptr = builder.induction_var(&self.name, induction_levels);
         let flag = if self.read_only { InstFlag::ALL } else { InstFlag::MEM_COHERENT };
         let inst = builder.ld_ex(S::t(), &ptr, pat, flag);
         for dim in &dims { builder.close_dim(dim); }
@@ -75,10 +157,15 @@ impl<'a, S> Tensor<'a, S> where S: ScalarArgument {
 
     /// Reads the tensor value in the context and copies it on the host.
     pub fn read_to_host(&self, context: &Context) -> ArrayD<S> {
-        let raw = read_array::<S>(self.array.as_ref());
-        let sizes = self.dim_sizes.iter().map(|s| s.into_num(context) as usize)
-            .collect_vec();
-        unwrap!(ndarray::ArrayBase::from_shape_vec(sizes, raw))
+        use ndarray::ShapeBuilder;
+        let mut raw = read_array::<S>(self.array.as_ref());
+        let (sizes, strides): (Vec<_>, _) = self.iter_dims.iter().map(|(l, s)| {
+            let s_len = unwrap!(S::t().len_byte());
+            (l.eval(context) as usize, (s.eval(context)/s_len) as usize)
+        }).unzip();
+        let len = unwrap!(sizes.iter().zip_eq(&strides).map(|(&l, &s)| l*s).max());
+        raw.split_off(len);
+        unwrap!(ndarray::ArrayBase::from_shape_vec(sizes.strides(strides), raw))
     }
 }
 

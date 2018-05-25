@@ -33,16 +33,16 @@ impl PerfModelTest for L1LinesPressure {
         let d1_1 = builder.open_mapped_dim(&d1_0)[0];
         let d2_1 = builder.open_mapped_dim(&d2_0)[0];
         let d3 = builder.open_dim_ex(ir::Size::new(UNROLL, vec![], 1), DimKind::UNROLL);
-        let pattern = ir::AccessPattern::Tensor {
-            mem_id: ir::mem::Id::External(0),
-            stride: STRIDE as i32*4,
-            dims: vec![d3, d1_1, d2_1]
-        };
-        let addr = builder.induction_var(&"array", vec![
+        let strides = vec![
             (d3, ir::Size::new(THREAD_Y*THREAD_X*32*4, vec![], 1)),
             (d1_1, ir::Size::new(THREAD_X*32*4, vec![], 1)),
             (d2_1, ir::Size::new(STRIDE*4, vec![], 1)),
-        ]);
+        ];
+        let pattern = ir::AccessPattern::Tensor {
+            mem_id: ir::mem::Id::External(0),
+            dims: strides.iter().cloned().collect(),
+        };
+        let addr = builder.induction_var(&"array", strides);
         let val = builder.ld_ex(t, &addr, pattern, InstFlag::MEM_CG);
         let acc = builder.add(&val, &Reduce(init));
         builder.close_dim(&d0);
@@ -91,16 +91,16 @@ impl PerfModelTest for L2LinesPressure {
         let d1_1 = builder.open_mapped_dim(&d1_0)[0];
         let d2_1 = builder.open_mapped_dim(&d2_0)[0];
         let d3 = builder.open_dim_ex(ir::Size::new(UNROLL, vec![], 1), DimKind::UNROLL);
-        let pattern = ir::AccessPattern::Tensor {
-            mem_id: ir::mem::Id::External(0),
-            stride: STRIDE as i32*4,
-            dims: vec![d3, d1_1, d2_1]
-        };
-        let addr = builder.induction_var(&"array", vec![
+        let strides = vec![
             (d3, ir::Size::new(THREAD_Y*THREAD_X*8*4, vec![], 1)),
             (d1_1, ir::Size::new(THREAD_X*8*4, vec![], 1)),
             (d2_1, ir::Size::new(STRIDE*4, vec![], 1)),
-        ]);
+        ];
+        let pattern = ir::AccessPattern::Tensor {
+            mem_id: ir::mem::Id::External(0),
+            dims: strides.iter().cloned().collect(),
+        };
+        let addr = builder.induction_var(&"array", strides);
         let val = builder.ld_ex(t, &addr, pattern, InstFlag::MEM_CG);
         let acc = builder.add(&val, &Reduce(init));
         builder.close_dim(&d0);

@@ -51,22 +51,17 @@ impl<'a, AM> Builder<'a, AM> where AM: device::ArgMap + device::Context + 'a {
                                          read_only: bool) -> Tensor<'b, S>
         where <AM as device::ArgMap>::Array: 'b
     {
-        let len = dim_sizes.iter().map(|&s| self.eval_size(s) as usize)
+        let len = dim_sizes.iter().map(|s| s.eval(self.context) as usize)
             .product::<usize>();
         let (mem_id, array) = self.array::<S>(name, len);
         Tensor::new(name, dim_sizes, read_only, mem_id, array)
     }
 
-    /// Evaluates a size in the context.
-    pub fn eval_size(&self, size: DimSize) -> u32 {
-        match size {
-            DimSize::Const(s) => s,
-            DimSize::Param(p) => unwrap!(self.context.param_as_size(p)),
-        }
-    }
-
     /// Returns the `Signature` created by the builder.
     pub fn get(self) -> Signature { self.signature }
+
+    /// Returns the underlying context.
+    pub fn context(&self) -> &AM { self.context }
 
     /// Allocates an array ID.
     fn alloc_array_id(&mut self) -> mem::Id {
