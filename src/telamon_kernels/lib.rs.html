@@ -160,8 +160,6 @@
 <span id="103">103</span>
 <span id="104">104</span>
 <span id="105">105</span>
-<span id="106">106</span>
-<span id="107">107</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Defines common kernels used to test and benchmark Telamon.</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span><span class="op">=</span><span class="string">&quot;cuda&quot;</span>)]</span>
@@ -199,13 +197,11 @@
 {
     <span class="kw">if</span> <span class="ident">is_generic</span> {
         <span class="ident">builder</span>.<span class="ident">scalar</span>(<span class="ident">name</span>, <span class="ident">value</span>);
-        <span class="ident">DimSize</span>::<span class="ident">Param</span>(<span class="ident">name</span>)
-    } <span class="kw">else</span> { <span class="ident">DimSize</span>::<span class="ident">Const</span>(<span class="ident">value</span> <span class="kw">as</span> <span class="ident">u32</span>) }
+        <span class="ident">name</span>.<span class="ident">into</span>()
+    } <span class="kw">else</span> { (<span class="ident">value</span> <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">into</span>() }
 }
 
-<span class="kw">fn</span> <span class="ident">generate_tile_sizes</span>(<span class="ident">size</span>: <span class="ident">u32</span>, <span class="ident">max_tiles</span>: <span class="kw-2">&amp;</span>[<span class="ident">u32</span>])
-    <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">ParallelIterator</span><span class="op">&lt;</span><span class="ident">Item</span><span class="op">=</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;&gt;</span>
-{
+<span class="kw">fn</span> <span class="ident">generate_tile_sizes</span>(<span class="ident">size</span>: <span class="ident">u32</span>, <span class="ident">max_tiles</span>: <span class="kw-2">&amp;</span>[<span class="ident">u32</span>]) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;&gt;</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tiles</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[(<span class="ident">size</span>, <span class="macro">vec</span><span class="macro">!</span>[])];
     <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">max_tile</span> <span class="kw">in</span> <span class="ident">max_tiles</span>.<span class="ident">into_iter</span>().<span class="ident">rev</span>() {
         <span class="kw">let</span> <span class="ident">old_tiles</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">replace</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tiles</span>, <span class="macro">vec</span><span class="macro">!</span>[(<span class="ident">size</span>, <span class="macro">vec</span><span class="macro">!</span>[])]);
@@ -222,7 +218,7 @@
     <span class="ident">tiles</span>.<span class="ident">into_par_iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="kw-2">mut</span> <span class="ident">tiling</span>)<span class="op">|</span> {
         <span class="ident">tiling</span>.<span class="ident">reverse</span>();
         <span class="ident">tiling</span>
-    })
+    }).<span class="ident">collect</span>()
 }
 
 <span class="kw">fn</span> <span class="ident">par_iter_product</span><span class="op">&lt;</span><span class="ident">I1</span>, <span class="ident">I2</span><span class="op">&gt;</span>(<span class="ident">i1</span>: <span class="ident">I1</span>, <span class="ident">i2</span>: <span class="ident">I2</span>)

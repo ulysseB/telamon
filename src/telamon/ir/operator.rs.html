@@ -280,7 +280,7 @@
 </pre><pre class="rust ">
 <span class="doccomment">//! Defines operators.</span>
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">Device</span>;
-<span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">AccessPattern</span>, <span class="ident">Dimension</span>, <span class="ident">mem</span>, <span class="ident">Operand</span>, <span class="ident">Stride</span>, <span class="ident">Type</span>};
+<span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">AccessPattern</span>, <span class="ident">mem</span>, <span class="ident">Operand</span>, <span class="ident">Type</span>};
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Cow</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>;
@@ -336,11 +336,11 @@
     <span class="doccomment">/// Moves a value into a register.</span>
     <span class="ident">Mov</span>(<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Loads a value of the given type from the given address.</span>
-    <span class="ident">Ld</span>(<span class="ident">Type</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">AccessPattern</span>),
+    <span class="ident">Ld</span>(<span class="ident">Type</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Stores the second operand at the address given by the first.</span>
     <span class="doccomment">/// The boolean specifies if the instruction has side effects. A store has no side</span>
     <span class="doccomment">/// effects when it writes into a cell that previously had an undefined value.</span>
-    <span class="ident">St</span>(<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">bool</span>, <span class="ident">AccessPattern</span>),
+    <span class="ident">St</span>(<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">bool</span>, <span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Represents a load from a temporary memory that is not fully defined yet.</span>
     <span class="ident">TmpLd</span>(<span class="ident">Type</span>, <span class="ident">mem</span>::<span class="ident">Id</span>),
     <span class="doccomment">/// Represents a store to a temporary memory that is not fully defined yet.</span>
