@@ -29,7 +29,7 @@ pub struct Context {
 }
 
 impl Context {
-    /// Create a new evaluation context. The GPU model if infered.
+    /// Create a new evaluation context.
     pub fn new() -> Context {
         let default_cpu = Cpu::dummy_cpu();
         Context {
@@ -50,12 +50,11 @@ impl Context {
         CpuArray::new(size)
     }
 
+    /// Generates a structure holding parameters for function call
     fn gen_args(&self, func: &device::Function) -> Vec<ThunkArg> {
         func.device_code_args().map(|pval| match pval {
             ParamVal::External(par, _) => ThunkArg::ArgRef(Arc::clone(&self.parameters[&par.name])),
             ParamVal::GlobalMem(_, size, _) => ThunkArg::TmpArray((self as &device::Context).eval_size(size)),
-            //ParamVal::GlobalMem(_, size, _) => ThunkArg::TmpArray(
-            //    CpuArray::new((self as &device::Context).eval_size(size)as usize)),
             ParamVal::Size(size) => ThunkArg::Size((self as &device::Context).eval_size(size) as i32),
         }).collect_vec()
     }
@@ -87,16 +86,21 @@ impl device::Context for Context {
     fn param_as_size(&self, name: &str) -> Option<u32> { self.get_param(name).size() }
 
 
+    /// Evaluation in sequential mode
     fn evaluate(&self, func: &device::Function, _mode: EvalMode) -> Result<f64, ()> {
-        let fun_str = wrapper_function(&func);
-        function_evaluate(fun_str, self.gen_args(func))
+        let fun_str = wrapper_function(func);
+        function_evaluate(&fun_str, &self.gen_args(func))
     }
 
-    fn benchmark(&self, _function: &device::Function, _num_samples: usize) -> Vec<f64> {
-        //let gpu = &self.gpu_model;
-        //let kernel = Kernel::compile(function, gpu, self.executor, 4);
-        //kernel.evaluate_real(self, num_samples)
-        vec![]
+    /// returns a vec containing num_sample runs of function_evaluate
+    fn benchmark(&self, func: &device::Function, num_samples: usize) -> Vec<f64> {
+        let fun_str = wrapper_function(func);
+        let args =  self.gen_args(func);
+        let mut res = vec![];
+        for i in 0..num_samples {
+            res.push(function_evaluate(&fun_str, &args).unwrap_or(std::f64::INFINITY));
+        }
+        res
     }
 
     fn async_eval<'b, 'c>(&self, num_workers: usize, _mode: EvalMode,
@@ -118,7 +122,7 @@ impl device::Context for Context {
                 let mut cpt_candidate = 0;
                 while let Ok((candidate, fun_str, code_args, callback)) = recv.recv() {
                     cpt_candidate += 1;
-                    let eval = function_evaluate(fun_str, code_args).unwrap();
+                    let eval = function_evaluate(&fun_str, &code_args).unwrap();
                     callback.call(candidate, eval, cpt_candidate);
                 }
             }));
@@ -140,7 +144,10 @@ enum ThunkArg {
     TmpArray(u32),
 }
 
-fn function_evaluate(fun_str: String, args: Vec<ThunkArg>) -> Result<f64, ()> {
+/// Given a function string and its arguments as ThunkArg, compile to a binary, executes it and
+/// returns the time elapsed. Converts ThunkArgs to HoldTHunk as we want to allocate memory for
+/// temporary arrays at the last possible moment
+fn function_evaluate(fun_str: &String, args: &Vec<ThunkArg>) -> Result<f64, ()> {
     let temp_dir = tempfile::tempdir().unwrap();
     let templib_name = temp_dir.path().join("lib_compute.so").to_string_lossy().into_owned();
     let mut source_file = tempfile::tempfile().unwrap();
@@ -156,7 +163,6 @@ fn function_evaluate(fun_str: String, args: Vec<ThunkArg>) -> Result<f64, ()> {
         },
         ThunkArg::Size(size) => HoldThunk::Size(*size),
         ThunkArg::TmpArray( size) => {
-            //let arr = CpuArray::new(*size as usize); 
             let arr = vec![0; *size as usize];
             HoldThunk::Arr(arr)
         },
