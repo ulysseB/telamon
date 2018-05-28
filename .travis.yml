@@ -9,8 +9,11 @@ addons:
       - flex
 before_script:
   - flex --version
+stages:
+  - tests
+  - documentation
 jobs:
-  - stage: test
+  - stage: tests
     script: cargo test --release --verbose
   - script: cd telamon-utils && cargo test --verbose
   - script: cd telamon-gen && cargo test --verbose
