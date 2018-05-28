@@ -12,7 +12,7 @@ before_script:
 jobs:
   include:
     - stage: test
-      script: cargo test --release
+      script: cargo test
     - script: cd telamon-utils && cargo test
     - script: cd telamon-gen && cargo test
     - script: cd telamon-gen/cc_tests && cargo test
