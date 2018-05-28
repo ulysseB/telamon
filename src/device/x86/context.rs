@@ -97,7 +97,7 @@ impl device::Context for Context {
         let fun_str = wrapper_function(func);
         let args =  self.gen_args(func);
         let mut res = vec![];
-        for i in 0..num_samples {
+        for _ in 0..num_samples {
             res.push(function_evaluate(&fun_str, &args).unwrap_or(std::f64::INFINITY));
         }
         res

@@ -66,7 +66,8 @@ impl device::Device for Cpu {
     fn hw_pressure(&self, _space: &SearchSpace,
                    _dim_sizes: &HashMap<ir::dim::Id, u32>,
                    _nesting: &HashMap<ir::BBId, model::Nesting>,
-                   _bb: &ir::BasicBlock) -> model::HwPressure {
+                   _bb: &ir::BasicBlock,
+                   _: &device::Context) -> model::HwPressure {
         // TODO(model): implement model
         model::HwPressure::zero(self)
     }
