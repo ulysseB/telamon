@@ -46,35 +46,31 @@ can remove the `Void` type.
 
 ## Production dimensions
 
-The iteration dimensions of a value are the dimensions of the loop nest in which the
+The production dimensions of a value are the dimensions of the loop nest in which the
 value is defined.
-- The iteration dimensions of `inst i0` value are the iteration dimensions of `i0`.
-- The iterations dimensions of `v0 fby v1 on [d0, .., dn]` are the iteration dimensions of
+- The production dimensions of `inst i0` value are the production dimensions of `i0`.
+- The productions dimensions of `v0 fby v1 on [d0, .., dn]` are the production dimensions of
   `v1`. We require that `iter_dims(v0) + [d0, .., dn] = iter_dims(v1)`.
-- The iterations dimensions of `last v0 on [d0, .., dn]` are the iteration dimensions of
+- The productions dimensions of `last v0 on [d0, .., dn]` are the production dimensions of
   `v0` minus `d0, .., dn`.
-- The iteration dimensions of `map v0 on dims [(d0, d0'), .., (dn, dn')]` are the iteration
+- The production dimensions of `map v0 on dims [(d0, d0'), .., (dn, dn')]` are the production
   dimensions of `v0`, where `di` is replaced by `di'`, forall i in 0..n.
 
 A value can only be used by an instruction if the instruction is nested in all the
-iteration dimensions of the value.
+production dimensions of the value.
 
-TODO: what if we want to broadcast before applying a forall ?
-- we could define the iteration dims of `v0 fby v1` as the iteration dims of `v1` and
-  rely on lowering to insert the broadcasts as necessary ?
-TODO: fby production dimensions do not reflect on which dimensions do we need to broadcast
-the init value. Indeed it may be nested in more dimensions during exploration.
-- We could have the notion of values nested in a dimension (but this is quadratic, and
-  will require a quotient in the search space).
-TODO: are iteration dimensions fixed during exploration ?
-- con: fby values behave as if iteration dimensions are added when nested outside
+TODO: are production dimensions fixed during exploration ?
+- con: fby values behave as if production dimensions are added when nested outside
 - con: the production dimensions of instructions vary, so why not the dimensions of values ?.
 - pro: if we change the production dimensions, we might need to add last operators on the
   fly.
+  - this is not the case if we can use a value without being nested in the production
+    dimensions (i.e. if you do not care if you are in or after some dimensions).
+    - need to differenciate between production and repetition dims
 
 ## Data Dependencies
 
-Alongside iteration dimensions constraints, instruction consuming values must respect data
+Alongside production dimensions constraints, instruction consuming values must respect data
 dependencies. Four kinds of events can happen on values:
 - a value can be produced,
 - a value can be read,
@@ -112,7 +108,7 @@ We need to track:
   > can be done statically (if clones are static) with a flag
 - where are the values mapped
 
-TODO: who is this encoded in the search space
+TODO: how is this encoded in the search space
 
 ## Broadcasting
 
