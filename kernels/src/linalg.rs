@@ -9,9 +9,8 @@ use rayon::prelude::*;
 use telamon::{device, ir};
 use telamon::helper::{self, Builder, SignatureBuilder};
 use telamon::helper::tensor::{Tensor, VirtualTensor};
-use telamon::search_space::{self, Action, DimKind, InstFlag, Order, SearchSpace};
+use telamon::search_space::*;
 use telamon::ir::DimMapScope::Global as GlobalScope;
-use utils::*;
 
 /// Computes `z = alpha*x+y`.
 pub struct Axpy<'a, S> where S: Scalar {
