@@ -38,6 +38,7 @@ for other backends.
 
 ```rust
 use telamon::device::cuda;
+use telamon::helper;
 
 let _ = env_logger::init(); // Enable logging
 let executor = cuda::Executor::init(); // Setup the interface with the device.
@@ -55,15 +56,29 @@ let signature = {
 };
 ```
 
-We can now describe the body of the kernel itself.
+We can now describe the body of the kernel itself. For that we use a builder that creates
+the loops and the instructions for us. The builder keeps the list of open loops and nest
+new instructions in them.
 
 ```rust
-let search_space:
+let mut builder = helper::Builder::new(&signature, context.device());
 
+// Open a loop of size n.
+let size = builder.param_size("n");
+let dim0 = builder.open_dim(size);
+// Compute `x = 2*i` where `i` is the index on loop `dim0`.
+let x = builder.mul(&dim0, &2i32);
+// Store `x` in `a[i]. For that, we first compute the address of `a[i]` and build a
+// that describes the access patern for the performance model.
+let (addr, access_pattern) = builder.tensor_access(&"a", a, &ir::Type::I(32), &[&dim0]);
+builder.st(&addr, x, access_pattern);
+
+// Close the loop.
+builder.close_dim(&dim0);
+
+let search_space = builder.get();
 ```
 
-
-FIXME: how to create a candidate
 FIXME: how to run the explorer
 FIXME: how to run characterization
 
