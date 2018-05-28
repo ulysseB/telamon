@@ -12,7 +12,8 @@ fn main() {
     benchmark::<linalg::Axpy<f32>>(1<<25, 1000, executor);
     benchmark::<linalg::MatVec<f32>>((1<<13, 1<<13), 1000, executor);
     benchmark::<linalg::Gesummv<f32>>((1<<13, 1<<13), 1000, executor);
-    benchmark::<linalg::MatMul<f32>>((1<<10, 1<<10, 1<<10), 500, executor);
+    let params = linalg::MatMulP::new(1024, 1024, 1024);
+    benchmark::<linalg::MatMul<f32>>(params, 500, executor);
 }
 
 fn benchmark<'a, K: Kernel<'a>>(params: K::Parameters,

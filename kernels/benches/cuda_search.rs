@@ -22,7 +22,8 @@ fn main() {
     benchmark::<linalg::Axpy<f32>, _>(1 << 25, &executor, |params, ctx| {
         saxpy_reference(&cublas_handle, params, ctx)
     });
-    benchmark::<linalg::MatMul<f32>, _>((1<<10, 1<<10, 1<<10), &executor, |params, ctx| {
+    let params = linalg::MatMulP::new(1024, 1024, 1024);
+    benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
         matmul_reference(&cublas_handle, params, ctx)
     });
     // FIXME: 0.55 perf, with exhaustive search
@@ -148,11 +149,11 @@ fn matvec_reference(handle: &CublasHandle,
 
 /// Reference implementation for the matrix-matrix multiplication.
 fn matmul_reference(handle: &CublasHandle,
-                    (m, n, k): (i32, i32, i32),
+                    params: linalg::MatMulP,
                     context: &cuda::Context) -> f64 {
-    let m = m as libc::c_int;
-    let n = n as libc::c_int;
-    let k = k as libc::c_int;
+    let m = params.m as libc::c_int;
+    let n = params.n as libc::c_int;
+    let k = params.k as libc::c_int;
     unsafe {
         let a = get_array("a", context);
         let b = get_array("b", context);

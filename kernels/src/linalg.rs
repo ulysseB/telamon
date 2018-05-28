@@ -11,6 +11,7 @@ use telamon::helper::{self, Builder, SignatureBuilder};
 use telamon::helper::tensor::{Tensor, VirtualTensor};
 use telamon::search_space::*;
 use telamon::ir::DimMapScope::Global as GlobalScope;
+use std;
 
 /// Computes `z = alpha*x+y`.
 pub struct Axpy<'a, S> where S: Scalar {
@@ -195,7 +196,7 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
         let gcd = num::integer::gcd(self.m, self.n) as u32;
         let tilings = ::generate_tile_sizes(gcd, &[128, 16]);
         // TODO(search_space): try independent tiling on `m` and `n`
-        //let tilings = std::iter::once(((0, 0), 0));
+        //let tilings = std::iter::once(vec![2]);
         tilings.into_iter().map(|m_tiling| {
             let n_tiling = if m_tiling.len() > 0 { vec![m_tiling[0]] } else { vec![] };
             let mut builder = helper::Builder::new(&signature, device);
@@ -252,31 +253,41 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
 
 /// Computes `C = A.B`.
 pub struct MatMul<'a, S: Scalar> {
-    pub m: usize,
-    pub n: usize,
-    pub k: usize,
+    pub params: MatMulP,
     a: Tensor<'a, S>,
     b: Tensor<'a, S>,
     c: Tensor<'a, S>,
 }
 
+#[derive(Clone, Copy)]
+pub struct MatMulP {
+    pub m: i32,
+    pub n: i32,
+    pub k: i32,
+}
+
+impl MatMulP {
+    pub fn new(m: i32, n: i32, k: i32) -> Self { MatMulP { m, n, k } }
+}
+
 impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
-    type Parameters = (i32, i32, i32);
+    type Parameters = MatMulP;
     type ExpectedOutput = Array2<S>;
 
     fn name() -> &'static str { "matmul" }
 
-    fn build_signature<AM>((m, n, k): (i32, i32, i32), generic: bool,
+    fn build_signature<AM>(params: MatMulP,
+                           generic: bool,
                            builder: &mut SignatureBuilder<AM>) -> Self
         where AM: device::ArgMap + device::Context + 'a
     {
-        let m_size = create_size(m, "m", generic, builder);
-        let n_size = create_size(n, "n", generic, builder);
-        let k_size = create_size(n, "k", generic, builder);
+        let m_size = create_size(params.m, "m", generic, builder);
+        let n_size = create_size(params.n, "n", generic, builder);
+        let k_size = create_size(params.k, "k", generic, builder);
         let a = builder.tensor::<S>("a", vec![m_size.clone(), k_size.clone()], true);
         let b = builder.tensor::<S>("b", vec![k_size, n_size.clone()], true);
         let c = builder.tensor::<S>("c", vec![m_size, n_size], false);
-        MatMul { m: m as usize, n: n as usize, k: k as usize, a, b, c }
+        MatMul { params, a, b, c }
     }
 
     fn build_body<'b>(&self, signature: &'b ir::Signature, device: &'b device::Device)
@@ -287,7 +298,8 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
         let n_tiles = ::generate_tile_sizes(self.n as u32, &[64, 8]);
         let tilings = ::par_iter_product(::par_iter_product(m_tiles, n_tiles), k_tiles);*/
 
-        let gcd = num::integer::gcd(num::integer::gcd(self.m, self.n), self.k) as u32;
+        let mn_gcd = num::integer::gcd(self.params.m, self.params.n);
+        let gcd = num::integer::gcd(mn_gcd, self.params.k) as u32;
         let tilings = ::generate_tile_sizes(gcd, &[64, 8]);
         let tilings = tilings.into_par_iter().map(|full_tiling| {
             let small_tiling = if full_tiling.len() > 0 {
@@ -366,15 +378,18 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
     }
 
     fn get_expected_output(&self, context: &device::Context) -> Array2<S> {
-        let a = unwrap!(self.a.read_to_host(context).into_shape((self.m, self.k)));
-        let b = unwrap!(self.b.read_to_host(context).into_shape((self.k, self.n)));
+        let a_shape = (self.params.m as usize, self.params.k as usize);
+        let b_shape = (self.params.k as usize, self.params.n as usize);
+        let a = unwrap!(self.a.read_to_host(context).into_shape(a_shape));
+        let b = unwrap!(self.b.read_to_host(context).into_shape(b_shape));
         a.dot(&b)
     }
 
     fn check_result(&self, expected: &Self::ExpectedOutput, context: &device::Context)
         -> Result<(), String>
     {
-        let c = unwrap!(self.c.read_to_host(context).into_shape((self.m, self.n)));
+        let c_shape = (self.params.m as usize, self.params.n as usize);
+        let c = unwrap!(self.c.read_to_host(context).into_shape(c_shape));
         if c.iter().zip_eq(expected).any(|(&c0, &c1)| (c0-c1).is_err_ok()) {
             let a = self.a.read_to_host(context);
             let b = self.b.read_to_host(context);
@@ -440,7 +455,8 @@ impl<'a, S: Scalar> Kernel<'a> for Tbmm<'a, S> {
             let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
             let acc_dim_n = builder.open_mapped_dim(&init_dim_n);
             let acc_dim_k = builder.open_mapped_dim(&ld_a[1]);
-            let a_op = ld_a.dim_map(&[&acc_batch, &acc_dim_k, &acc_dim_m], GlobalScope, &mut builder);
+            let a_op = ld_a.dim_map(&[&acc_batch, &acc_dim_k, &acc_dim_m],
+                                      GlobalScope, &mut builder);
             let b_op = ld_b.dim_map(&[&acc_dim_k, &acc_dim_n], GlobalScope, &mut builder);
             let acc = builder.mad(&a_op, &b_op, &helper::Reduce(acc_init));
             builder.close_dim(&acc_dim_k);
