@@ -9,9 +9,6 @@ addons:
       - flex
 before_script:
   - flex --version
-stages:
-  - tests
-  - documentation
 jobs:
   include:
     - stage: test
