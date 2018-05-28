@@ -6,6 +6,7 @@ use itertools::Itertools;
 use ndarray::{self, ArrayD};
 use search_space::{Domain, InstFlag};
 use std;
+use utils::*;
 
 /// A dimension size, before tiling.
 #[derive(Clone)]
@@ -44,6 +45,8 @@ pub struct TensorBuilder<'a> {
     exposed_dims: Vec<usize>,
 }
 
+impl<'a> BuilderTrait for TensorBuilder<'a> { }
+
 impl<'a> TensorBuilder<'a> {
     /// Start building a `Tensor` with the given logical layout.
     pub fn new(name: &'a str, storage_dims: Vec<DimSize<'a>>) -> Self {
@@ -56,7 +59,7 @@ impl<'a> TensorBuilder<'a> {
 
     /// Swap two dimensions in the memory layout of the tensor. Keeps the logical layout
     /// untouched.
-    pub fn translate(&mut self, lhs: usize, rhs: usize) -> &mut Self {
+    pub fn transpose(&mut self, lhs: usize, rhs: usize) -> &mut Self {
         self.storage_dims.swap(self.exposed_dims[lhs], self.exposed_dims[rhs]);
         self.exposed_dims.swap(lhs, rhs);
         self

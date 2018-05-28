@@ -8,10 +8,10 @@ use rand;
 use rayon::prelude::*;
 use telamon::{device, ir};
 use telamon::helper::{self, Builder, SignatureBuilder};
-use telamon::helper::tensor::{Tensor, VirtualTensor};
+use telamon::helper::tensor::*;
 use telamon::search_space::*;
 use telamon::ir::DimMapScope::Global as GlobalScope;
-use std;
+use utils::*;
 
 /// Computes `z = alpha*x+y`.
 pub struct Axpy<'a, S> where S: Scalar {
@@ -264,10 +264,24 @@ pub struct MatMulP {
     pub m: i32,
     pub n: i32,
     pub k: i32,
+    pub a_stride: u32,
+    pub transpose_a: bool,
 }
 
 impl MatMulP {
-    pub fn new(m: i32, n: i32, k: i32) -> Self { MatMulP { m, n, k } }
+    pub fn new(m: i32, n: i32, k: i32) -> Self {
+        MatMulP { m, n, k, a_stride: 1, transpose_a: false }
+    }
+
+    pub fn transpose_a(mut self) -> Self {
+        self.transpose_a = true;
+        self
+    }
+
+    pub fn stride_a(mut self, stride: u32) -> Self {
+        self.a_stride = stride;
+        self
+    }
 }
 
 impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
@@ -284,7 +298,11 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
         let m_size = create_size(params.m, "m", generic, builder);
         let n_size = create_size(params.n, "n", generic, builder);
         let k_size = create_size(params.k, "k", generic, builder);
-        let a = builder.tensor::<S>("a", vec![m_size.clone(), k_size.clone()], true);
+        let a_dims = vec![m_size.clone(), k_size.clone(), params.a_stride.into()];
+        let a = TensorBuilder::new("a", a_dims)
+            .doif(params.transpose_a, |b| b.transpose(0, 1))
+            .stride_dim(2)
+            .finish(builder);
         let b = builder.tensor::<S>("b", vec![k_size, n_size.clone()], true);
         let c = builder.tensor::<S>("c", vec![m_size, n_size], false);
         MatMul { params, a, b, c }
