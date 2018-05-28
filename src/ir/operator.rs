@@ -1,6 +1,6 @@
 //! Defines operators.
 use device::Device;
-use ir::{self, AccessPattern,  mem, Operand, Type};
+use ir::{self, AccessPattern, mem, Operand, Type};
 use itertools::Itertools;
 use std::borrow::Cow;
 use std::fmt;
@@ -56,11 +56,11 @@ pub enum Operator<'a> {
     /// Moves a value into a register.
     Mov(Operand<'a>),
     /// Loads a value of the given type from the given address.
-    Ld(Type, Operand<'a>, AccessPattern),
+    Ld(Type, Operand<'a>, AccessPattern<'a>),
     /// Stores the second operand at the address given by the first.
     /// The boolean specifies if the instruction has side effects. A store has no side
     /// effects when it writes into a cell that previously had an undefined value.
-    St(Operand<'a>, Operand<'a>, bool, AccessPattern),
+    St(Operand<'a>, Operand<'a>, bool, AccessPattern<'a>),
     /// Represents a load from a temporary memory that is not fully defined yet.
     TmpLd(Type, mem::Id),
     /// Represents a store to a temporary memory that is not fully defined yet.

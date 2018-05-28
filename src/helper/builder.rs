@@ -112,13 +112,13 @@ impl<'a> Builder<'a> {
 
     /// Adds a coherent load from global memory instruction to the function.
     pub fn ld<'b: 'a>(&mut self, ret_type: Type, addr: &AutoOperand<'b>,
-                      pattern: AccessPattern) -> InstId {
+                      pattern: AccessPattern<'a>) -> InstId {
         self.ld_ex(ret_type, addr, pattern, InstFlag::MEM_COHERENT)
     }
 
     /// Adds a non-coherent load from global memory instruction to the function.
     pub fn ld_nc<'b: 'a>(&mut self, ret_type: Type, addr: &AutoOperand<'b>,
-                        pattern: AccessPattern) -> InstId {
+                        pattern: AccessPattern<'a>) -> InstId {
         self.ld_ex(ret_type, addr, pattern, InstFlag::ALL)
     }
 
@@ -126,7 +126,7 @@ impl<'a> Builder<'a> {
     pub fn ld_ex<'b: 'a>(&mut self,
                          ret_type: Type,
                          addr: &AutoOperand<'b>,
-                         pattern: AccessPattern,
+                         pattern: AccessPattern<'a>,
                          flags: InstFlag) -> InstId {
         let addr_op = self.get_op(addr);
         let inst_id = self.inst(op::Ld(ret_type, addr_op, pattern));
@@ -136,7 +136,7 @@ impl<'a> Builder<'a> {
 
     /// Adds a store instruction.
     pub fn st<'b: 'a>(&mut self, addr: &AutoOperand<'b>, val: &AutoOperand<'b>,
-                      pattern: AccessPattern) -> InstId {
+                      pattern: AccessPattern<'a>) -> InstId {
         self.st_ex(addr, val, true, pattern, InstFlag::ALL)
     }
 
@@ -145,7 +145,7 @@ impl<'a> Builder<'a> {
                          addr: &AutoOperand<'b>,
                          val: &AutoOperand<'b>,
                          side_effect: bool,
-                         pattern: AccessPattern,
+                         pattern: AccessPattern<'a>,
                          flags: InstFlag,
                         ) -> InstId {
         let addr_op = self.get_op(addr);
@@ -186,7 +186,9 @@ impl<'a> Builder<'a> {
     pub fn tensor_access(&mut self, addr: &AutoOperand<'a>,
                          mem: ir::mem::Id,
                          t: &ir::Type,
-                         dims: &[&MetaDimension]) -> (ir::IndVarId, ir::AccessPattern) {
+                         dims: &[&MetaDimension])
+        -> (ir::IndVarId, ir::AccessPattern<'a>)
+    {
         let data_size = self.cst_size(t.len_byte().unwrap());
         let induction_dims = dims.iter().flat_map(|d| d.ids()).rev()
             .scan(data_size, |size, dim| {
@@ -295,7 +297,7 @@ impl<'a> Builder<'a> {
     }
 
     /// Generates an access paterns with all the strides unknown on the opened dimensions.
-    pub fn unknown_access_pattern(&self, mem: mem::Id) -> AccessPattern {
+    pub fn unknown_access_pattern(&self, mem: mem::Id) -> AccessPattern<'static> {
         AccessPattern::Unknown { mem_id: mem }
     }
 
@@ -303,10 +305,14 @@ impl<'a> Builder<'a> {
     /// type. The data is assumed to be laid out contiguously in the order given by dimensions.
     /// The last dimension is the major order.
     pub fn tensor_access_pattern(&self, mem: mem::Id, t: &Type, dims: &[&MetaDimension])
-            -> AccessPattern {
-        let type_len = t.len_byte().unwrap() as i32;
-        let dims = dims.iter().flat_map(|d| d.ids()).collect();
-        AccessPattern::Tensor { mem_id: mem, stride: type_len, dims }
+            -> AccessPattern<'a> {
+        let data_size = self.cst_size(t.len_byte().unwrap());
+        let dims = dims.iter().flat_map(|d| d.ids()).rev().scan(data_size, |size, dim| {
+            let increment = size.clone();
+            *size *= self.function.dim(dim).size();
+            Some((dim, increment))
+        }).collect();
+        AccessPattern::Tensor { mem_id: mem, dims }
     }
 
     /// Builds an induction variable.
@@ -326,7 +332,7 @@ impl<'a> Builder<'a> {
     }
 
     /// Finds a paramter given its name.
-    fn find_param(&self, param: &str) -> &'a Parameter {
+    pub fn find_param(&self, param: &str) -> &'a Parameter {
         self.function.signature().params.iter().find(|p| p.name == param).unwrap()
     }
 }
