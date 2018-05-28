@@ -16,7 +16,7 @@ jobs:
     - script: cd telamon-utils && cargo test
     - script: cd telamon-gen && cargo test
     - script: cd telamon-gen/cc_tests && cargo test
-    - script: cd kernels && cargo test --release --verbose
+    - script: cd kernels && cargo test --release
     - script: cd telamon-gen && LEX="flex" cargo build --features "lex"
     - stage: documentation
       script: cargo doc --no-deps --all
