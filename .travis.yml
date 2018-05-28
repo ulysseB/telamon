@@ -9,19 +9,25 @@ addons:
       - flex
 before_script:
   - flex --version
-script:
-  - cd telamon-gen && LEX="flex" cargo build --features "lex" --verbose
-  - cargo test --release --verbose --all
-  - cargo doc --no-deps --verbose --all
-deploy:
-  provider: pages
-  local-dir: target/doc
-  target-branch: gh-pages
-  skip-cleanup: true
-  keep-history: true
-  github-token: "$GITHUB_TOKEN"
-  on:
-    branch: master
+jobs:
+  - stage: test
+    script: cargo test --release --verbose
+    script: cd telamon-utils && cargo test --verbose
+    script: cd telamon-gen && cargo test --verbose
+    script: cd telamon-gen/cc_tests && cargo test --verbose
+    script: cd kernels && cargo test --relase --verbose
+    script: cd telamon-gen && LEX="flex" cargo build --features "lex" --verbose
+  - stage: documentation
+    script: cargo doc --no-deps --verbose --all
+    deploy:
+      provider: pages
+      local-dir: target/doc
+      target-branch: gh-pages
+      skip-cleanup: true
+      keep-history: true
+      github-token: "$GITHUB_TOKEN"
+      on:
+        branch: master
 notifications:
   slack:
     rooms:
