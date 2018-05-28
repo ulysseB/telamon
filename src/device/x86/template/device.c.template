@@ -1,0 +1,18 @@
+void {name}(
+    thread_dim_id_t tid,
+  {params}
+)
+{{
+  // VAR DECL
+  {var_decls}
+  // MEM DECL
+  {mem_decls}
+  // IDX LOADS
+  {idx_loads}
+  // LD PARAMS
+  {ld_params}
+  // INIT
+  {init}
+  // BODY
+  {body}
+}}

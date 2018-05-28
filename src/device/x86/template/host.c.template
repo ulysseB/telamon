@@ -1,0 +1,35 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <pthread.h>
+
+typedef struct thread_dim_id {{
+pthread_barrier_t * barrier;
+{dim_decl} }} thread_dim_id_t;
+
+typedef struct thread_args {{
+  thread_dim_id_t tid;
+  void ** args;
+}} thread_arg_t;
+
+{fun_str}
+
+
+void execute(thread_dim_id_t tid, void** args) {{
+  {fun_params_cast};
+  {fun_name}(tid, {fun_params});
+}}
+
+
+
+void * exec_wrap(void * args) {{
+  thread_arg_t thr_args = *(thread_arg_t *) args;
+  execute(thr_args.tid,  thr_args.args);
+  return NULL;
+}}
+
+void entry_point(void** args) {{
+  pthread_barrier_t barrier;
+  {gen_threads}
+  {thread_join}
+}}

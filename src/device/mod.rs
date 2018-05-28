@@ -3,6 +3,7 @@
 pub mod cuda;
 #[cfg(feature="mppa")]
 pub mod mppa;
+pub mod x86;
 
 mod argument;
 mod context;
