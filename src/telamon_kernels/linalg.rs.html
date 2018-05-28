@@ -521,6 +521,40 @@
 <span id="464">464</span>
 <span id="465">465</span>
 <span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Linera algebra kernels.</span>
 <span class="kw">use</span> {<span class="ident">Scalar</span>, <span class="ident">create_size</span>};
@@ -532,9 +566,10 @@
 <span class="kw">use</span> <span class="ident">rayon</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::{<span class="ident">device</span>, <span class="ident">ir</span>};
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">helper</span>::{<span class="self">self</span>, <span class="ident">Builder</span>, <span class="ident">SignatureBuilder</span>};
-<span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">helper</span>::<span class="ident">tensor</span>::{<span class="ident">Tensor</span>, <span class="ident">VirtualTensor</span>};
+<span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">helper</span>::<span class="ident">tensor</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">search_space</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">ir</span>::<span class="ident">DimMapScope</span>::<span class="ident">Global</span> <span class="kw">as</span> <span class="ident">GlobalScope</span>;
+<span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// Computes `z = alpha*x+y`.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Axpy</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span><span class="op">&gt;</span> <span class="kw">where</span> <span class="ident">S</span>: <span class="ident">Scalar</span> {
@@ -719,7 +754,7 @@
         <span class="kw">let</span> <span class="ident">gcd</span> <span class="op">=</span> <span class="ident">num</span>::<span class="ident">integer</span>::<span class="ident">gcd</span>(<span class="self">self</span>.<span class="ident">m</span>, <span class="self">self</span>.<span class="ident">n</span>) <span class="kw">as</span> <span class="ident">u32</span>;
         <span class="kw">let</span> <span class="ident">tilings</span> <span class="op">=</span> ::<span class="ident">generate_tile_sizes</span>(<span class="ident">gcd</span>, <span class="kw-2">&amp;</span>[<span class="number">128</span>, <span class="number">16</span>]);
         <span class="comment">// TODO(search_space): try independent tiling on `m` and `n`</span>
-        <span class="comment">//let tilings = std::iter::once(((0, 0), 0));</span>
+        <span class="comment">//let tilings = std::iter::once(vec![2]);</span>
         <span class="ident">tilings</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">m_tiling</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">n_tiling</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">m_tiling</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">0</span> { <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">m_tiling</span>[<span class="number">0</span>]] } <span class="kw">else</span> { <span class="macro">vec</span><span class="macro">!</span>[] };
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">helper</span>::<span class="ident">Builder</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">device</span>);
@@ -776,31 +811,59 @@
 
 <span class="doccomment">/// Computes `C = A.B`.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MatMul</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span>: <span class="ident">Scalar</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="ident">m</span>: <span class="ident">usize</span>,
-    <span class="kw">pub</span> <span class="ident">n</span>: <span class="ident">usize</span>,
-    <span class="kw">pub</span> <span class="ident">k</span>: <span class="ident">usize</span>,
+    <span class="kw">pub</span> <span class="ident">params</span>: <span class="ident">MatMulP</span>,
     <span class="ident">a</span>: <span class="ident">Tensor</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span><span class="op">&gt;</span>,
     <span class="ident">b</span>: <span class="ident">Tensor</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span><span class="op">&gt;</span>,
     <span class="ident">c</span>: <span class="ident">Tensor</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span><span class="op">&gt;</span>,
 }
 
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MatMulP</span> {
+    <span class="kw">pub</span> <span class="ident">m</span>: <span class="ident">i32</span>,
+    <span class="kw">pub</span> <span class="ident">n</span>: <span class="ident">i32</span>,
+    <span class="kw">pub</span> <span class="ident">k</span>: <span class="ident">i32</span>,
+    <span class="kw">pub</span> <span class="ident">a_stride</span>: <span class="ident">u32</span>,
+    <span class="kw">pub</span> <span class="ident">transpose_a</span>: <span class="ident">bool</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">MatMulP</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">m</span>: <span class="ident">i32</span>, <span class="ident">n</span>: <span class="ident">i32</span>, <span class="ident">k</span>: <span class="ident">i32</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="ident">MatMulP</span> { <span class="ident">m</span>, <span class="ident">n</span>, <span class="ident">k</span>, <span class="ident">a_stride</span>: <span class="number">1</span>, <span class="ident">transpose_a</span>: <span class="bool-val">false</span> }
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">transpose_a</span>(<span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="self">self</span>.<span class="ident">transpose_a</span> <span class="op">=</span> <span class="bool-val">true</span>;
+        <span class="self">self</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">stride_a</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">stride</span>: <span class="ident">u32</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="self">self</span>.<span class="ident">a_stride</span> <span class="op">=</span> <span class="ident">stride</span>;
+        <span class="self">self</span>
+    }
+}
+
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span>: <span class="ident">Scalar</span><span class="op">&gt;</span> <span class="ident">Kernel</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MatMul</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span><span class="op">&gt;</span> {
-    <span class="kw">type</span> <span class="ident">Parameters</span> <span class="op">=</span> (<span class="ident">i32</span>, <span class="ident">i32</span>, <span class="ident">i32</span>);
+    <span class="kw">type</span> <span class="ident">Parameters</span> <span class="op">=</span> <span class="ident">MatMulP</span>;
     <span class="kw">type</span> <span class="ident">ExpectedOutput</span> <span class="op">=</span> <span class="ident">Array2</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>;
 
     <span class="kw">fn</span> <span class="ident">name</span>() <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> { <span class="string">&quot;matmul&quot;</span> }
 
-    <span class="kw">fn</span> <span class="ident">build_signature</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>((<span class="ident">m</span>, <span class="ident">n</span>, <span class="ident">k</span>): (<span class="ident">i32</span>, <span class="ident">i32</span>, <span class="ident">i32</span>), <span class="ident">generic</span>: <span class="ident">bool</span>,
+    <span class="kw">fn</span> <span class="ident">build_signature</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>(<span class="ident">params</span>: <span class="ident">MatMulP</span>,
+                           <span class="ident">generic</span>: <span class="ident">bool</span>,
                            <span class="ident">builder</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SignatureBuilder</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="self">Self</span>
         <span class="kw">where</span> <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span> <span class="op">+</span> <span class="lifetime">&#39;a</span>
     {
-        <span class="kw">let</span> <span class="ident">m_size</span> <span class="op">=</span> <span class="ident">create_size</span>(<span class="ident">m</span>, <span class="string">&quot;m&quot;</span>, <span class="ident">generic</span>, <span class="ident">builder</span>);
-        <span class="kw">let</span> <span class="ident">n_size</span> <span class="op">=</span> <span class="ident">create_size</span>(<span class="ident">n</span>, <span class="string">&quot;n&quot;</span>, <span class="ident">generic</span>, <span class="ident">builder</span>);
-        <span class="kw">let</span> <span class="ident">k_size</span> <span class="op">=</span> <span class="ident">create_size</span>(<span class="ident">n</span>, <span class="string">&quot;k&quot;</span>, <span class="ident">generic</span>, <span class="ident">builder</span>);
-        <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">tensor</span>::<span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="string">&quot;a&quot;</span>, <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">m_size</span>.<span class="ident">clone</span>(), <span class="ident">k_size</span>.<span class="ident">clone</span>()], <span class="bool-val">true</span>);
+        <span class="kw">let</span> <span class="ident">m_size</span> <span class="op">=</span> <span class="ident">create_size</span>(<span class="ident">params</span>.<span class="ident">m</span>, <span class="string">&quot;m&quot;</span>, <span class="ident">generic</span>, <span class="ident">builder</span>);
+        <span class="kw">let</span> <span class="ident">n_size</span> <span class="op">=</span> <span class="ident">create_size</span>(<span class="ident">params</span>.<span class="ident">n</span>, <span class="string">&quot;n&quot;</span>, <span class="ident">generic</span>, <span class="ident">builder</span>);
+        <span class="kw">let</span> <span class="ident">k_size</span> <span class="op">=</span> <span class="ident">create_size</span>(<span class="ident">params</span>.<span class="ident">k</span>, <span class="string">&quot;k&quot;</span>, <span class="ident">generic</span>, <span class="ident">builder</span>);
+        <span class="kw">let</span> <span class="ident">a_dims</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">m_size</span>.<span class="ident">clone</span>(), <span class="ident">k_size</span>.<span class="ident">clone</span>(), <span class="ident">params</span>.<span class="ident">a_stride</span>.<span class="ident">into</span>()];
+        <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="ident">TensorBuilder</span>::<span class="ident">new</span>(<span class="string">&quot;a&quot;</span>, <span class="ident">a_dims</span>)
+            .<span class="ident">doif</span>(<span class="ident">params</span>.<span class="ident">transpose_a</span>, <span class="op">|</span><span class="ident">b</span><span class="op">|</span> <span class="ident">b</span>.<span class="ident">transpose</span>(<span class="number">0</span>, <span class="number">1</span>))
+            .<span class="ident">stride_dim</span>(<span class="number">2</span>)
+            .<span class="ident">finish</span>(<span class="ident">builder</span>);
         <span class="kw">let</span> <span class="ident">b</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">tensor</span>::<span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="string">&quot;b&quot;</span>, <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">k_size</span>, <span class="ident">n_size</span>.<span class="ident">clone</span>()], <span class="bool-val">true</span>);
         <span class="kw">let</span> <span class="ident">c</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">tensor</span>::<span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="string">&quot;c&quot;</span>, <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">m_size</span>, <span class="ident">n_size</span>], <span class="bool-val">false</span>);
-        <span class="ident">MatMul</span> { <span class="ident">m</span>: <span class="ident">m</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">n</span>: <span class="ident">n</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">k</span>: <span class="ident">k</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span> }
+        <span class="ident">MatMul</span> { <span class="ident">params</span>, <span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span> }
     }
 
     <span class="kw">fn</span> <span class="ident">build_body</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">ir</span>::<span class="ident">Signature</span>, <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">device</span>::<span class="ident">Device</span>)
@@ -811,7 +874,8 @@
         let n_tiles = ::generate_tile_sizes(self.n as u32, &amp;[64, 8]);
         let tilings = ::par_iter_product(::par_iter_product(m_tiles, n_tiles), k_tiles);*/</span>
 
-        <span class="kw">let</span> <span class="ident">gcd</span> <span class="op">=</span> <span class="ident">num</span>::<span class="ident">integer</span>::<span class="ident">gcd</span>(<span class="ident">num</span>::<span class="ident">integer</span>::<span class="ident">gcd</span>(<span class="self">self</span>.<span class="ident">m</span>, <span class="self">self</span>.<span class="ident">n</span>), <span class="self">self</span>.<span class="ident">k</span>) <span class="kw">as</span> <span class="ident">u32</span>;
+        <span class="kw">let</span> <span class="ident">mn_gcd</span> <span class="op">=</span> <span class="ident">num</span>::<span class="ident">integer</span>::<span class="ident">gcd</span>(<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">m</span>, <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">n</span>);
+        <span class="kw">let</span> <span class="ident">gcd</span> <span class="op">=</span> <span class="ident">num</span>::<span class="ident">integer</span>::<span class="ident">gcd</span>(<span class="ident">mn_gcd</span>, <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">k</span>) <span class="kw">as</span> <span class="ident">u32</span>;
         <span class="kw">let</span> <span class="ident">tilings</span> <span class="op">=</span> ::<span class="ident">generate_tile_sizes</span>(<span class="ident">gcd</span>, <span class="kw-2">&amp;</span>[<span class="number">64</span>, <span class="number">8</span>]);
         <span class="kw">let</span> <span class="ident">tilings</span> <span class="op">=</span> <span class="ident">tilings</span>.<span class="ident">into_par_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">full_tiling</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">small_tiling</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">full_tiling</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">0</span> {
@@ -890,15 +954,18 @@
     }
 
     <span class="kw">fn</span> <span class="ident">get_expected_output</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">Array2</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">a</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>).<span class="ident">into_shape</span>((<span class="self">self</span>.<span class="ident">m</span>, <span class="self">self</span>.<span class="ident">k</span>)));
-        <span class="kw">let</span> <span class="ident">b</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">b</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>).<span class="ident">into_shape</span>((<span class="self">self</span>.<span class="ident">k</span>, <span class="self">self</span>.<span class="ident">n</span>)));
+        <span class="kw">let</span> <span class="ident">a_shape</span> <span class="op">=</span> (<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">m</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">k</span> <span class="kw">as</span> <span class="ident">usize</span>);
+        <span class="kw">let</span> <span class="ident">b_shape</span> <span class="op">=</span> (<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">k</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">n</span> <span class="kw">as</span> <span class="ident">usize</span>);
+        <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">a</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>).<span class="ident">into_shape</span>(<span class="ident">a_shape</span>));
+        <span class="kw">let</span> <span class="ident">b</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">b</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>).<span class="ident">into_shape</span>(<span class="ident">b_shape</span>));
         <span class="ident">a</span>.<span class="ident">dot</span>(<span class="kw-2">&amp;</span><span class="ident">b</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">check_result</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">expected</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>::<span class="ident">ExpectedOutput</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>)
         <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">String</span><span class="op">&gt;</span>
     {
-        <span class="kw">let</span> <span class="ident">c</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">c</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>).<span class="ident">into_shape</span>((<span class="self">self</span>.<span class="ident">m</span>, <span class="self">self</span>.<span class="ident">n</span>)));
+        <span class="kw">let</span> <span class="ident">c_shape</span> <span class="op">=</span> (<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">m</span> <span class="kw">as</span> <span class="ident">usize</span>, <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">n</span> <span class="kw">as</span> <span class="ident">usize</span>);
+        <span class="kw">let</span> <span class="ident">c</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">c</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>).<span class="ident">into_shape</span>(<span class="ident">c_shape</span>));
         <span class="kw">if</span> <span class="ident">c</span>.<span class="ident">iter</span>().<span class="ident">zip_eq</span>(<span class="ident">expected</span>).<span class="ident">any</span>(<span class="op">|</span>(<span class="kw-2">&amp;</span><span class="ident">c0</span>, <span class="kw-2">&amp;</span><span class="ident">c1</span>)<span class="op">|</span> (<span class="ident">c0</span><span class="op">-</span><span class="ident">c1</span>).<span class="ident">is_err_ok</span>()) {
             <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">a</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>);
             <span class="kw">let</span> <span class="ident">b</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">b</span>.<span class="ident">read_to_host</span>(<span class="ident">context</span>);
@@ -964,7 +1031,8 @@
             <span class="kw">let</span> <span class="ident">acc_dim_m</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">open_mapped_dim</span>(<span class="kw-2">&amp;</span><span class="ident">init_dim_m</span>);
             <span class="kw">let</span> <span class="ident">acc_dim_n</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">open_mapped_dim</span>(<span class="kw-2">&amp;</span><span class="ident">init_dim_n</span>);
             <span class="kw">let</span> <span class="ident">acc_dim_k</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">open_mapped_dim</span>(<span class="kw-2">&amp;</span><span class="ident">ld_a</span>[<span class="number">1</span>]);
-            <span class="kw">let</span> <span class="ident">a_op</span> <span class="op">=</span> <span class="ident">ld_a</span>.<span class="ident">dim_map</span>(<span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">acc_batch</span>, <span class="kw-2">&amp;</span><span class="ident">acc_dim_k</span>, <span class="kw-2">&amp;</span><span class="ident">acc_dim_m</span>], <span class="ident">GlobalScope</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
+            <span class="kw">let</span> <span class="ident">a_op</span> <span class="op">=</span> <span class="ident">ld_a</span>.<span class="ident">dim_map</span>(<span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">acc_batch</span>, <span class="kw-2">&amp;</span><span class="ident">acc_dim_k</span>, <span class="kw-2">&amp;</span><span class="ident">acc_dim_m</span>],
+                                      <span class="ident">GlobalScope</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
             <span class="kw">let</span> <span class="ident">b_op</span> <span class="op">=</span> <span class="ident">ld_b</span>.<span class="ident">dim_map</span>(<span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">acc_dim_k</span>, <span class="kw-2">&amp;</span><span class="ident">acc_dim_n</span>], <span class="ident">GlobalScope</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
             <span class="kw">let</span> <span class="ident">acc</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">mad</span>(<span class="kw-2">&amp;</span><span class="ident">a_op</span>, <span class="kw-2">&amp;</span><span class="ident">b_op</span>, <span class="kw-2">&amp;</span><span class="ident">helper</span>::<span class="ident">Reduce</span>(<span class="ident">acc_init</span>));
             <span class="ident">builder</span>.<span class="ident">close_dim</span>(<span class="kw-2">&amp;</span><span class="ident">acc_dim_k</span>);
