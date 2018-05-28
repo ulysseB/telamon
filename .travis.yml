@@ -12,11 +12,11 @@ before_script:
 jobs:
   - stage: test
     script: cargo test --release --verbose
-    script: cd telamon-utils && cargo test --verbose
-    script: cd telamon-gen && cargo test --verbose
-    script: cd telamon-gen/cc_tests && cargo test --verbose
-    script: cd kernels && cargo test --relase --verbose
-    script: cd telamon-gen && LEX="flex" cargo build --features "lex" --verbose
+  - script: cd telamon-utils && cargo test --verbose
+  - script: cd telamon-gen && cargo test --verbose
+  - script: cd telamon-gen/cc_tests && cargo test --verbose
+  - script: cd kernels && cargo test --relase --verbose
+  - script: cd telamon-gen && LEX="flex" cargo build --features "lex" --verbose
   - stage: documentation
     script: cargo doc --no-deps --verbose --all
     deploy:
