@@ -393,9 +393,6 @@
 <span id="336">336</span>
 <span id="337">337</span>
 <span id="338">338</span>
-<span id="339">339</span>
-<span id="340">340</span>
-<span id="341">341</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">codegen</span>::{<span class="ident">Dimension</span>, <span class="ident">Function</span>, <span class="ident">ParamValKey</span>, <span class="ident">AllocationScheme</span>, <span class="ident">Instruction</span>};
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">dim</span>, <span class="ident">DimMap</span>, <span class="ident">InstId</span>, <span class="ident">mem</span>, <span class="ident">Operand</span>, <span class="ident">Size</span>, <span class="ident">Type</span>};
@@ -442,7 +439,6 @@
     <span class="doccomment">/// Keeps track of memory block address names.</span>
     <span class="ident">mem_blocks</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">mem</span>::<span class="ident">InternalId</span>, <span class="ident">String</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Keeps track of the next fresh ID that can be assigned to a loop.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cuda&quot;</span>)]</span>
     <span class="ident">num_loop</span>: <span class="ident">u32</span>,
     <span class="doccomment">/// Tracks the current index on expanded dimensions.</span>
     <span class="ident">current_indexes</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
@@ -499,7 +495,6 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">name_map</span> <span class="op">=</span> <span class="ident">NameMap</span> {
             <span class="ident">namer</span>: <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="ident">namer</span>),
             <span class="ident">insts</span>: <span class="ident">HashMap</span>::<span class="ident">default</span>(),
-            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cuda&quot;</span>)]</span>
             <span class="ident">num_loop</span>: <span class="number">0</span>,
             <span class="ident">current_indexes</span>: <span class="ident">HashMap</span>::<span class="ident">default</span>(),
             <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span><span class="op">=</span><span class="string">&quot;mppa&quot;</span>)]</span>
@@ -540,7 +535,6 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gen_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">t</span>: <span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="ident">String</span> { <span class="self">self</span>.<span class="ident">namer</span>.<span class="ident">borrow_mut</span>().<span class="ident">name</span>(<span class="ident">t</span>) }
 
     <span class="doccomment">/// Generates an ID for a loop.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cuda&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gen_loop_id</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
         <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">num_loop</span>;
         <span class="self">self</span>.<span class="ident">num_loop</span> <span class="op">+=</span> <span class="number">1</span>;

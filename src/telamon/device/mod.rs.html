@@ -156,12 +156,14 @@
 <span id="99"> 99</span>
 <span id="100">100</span>
 <span id="101">101</span>
+<span id="102">102</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Code generation and candidate evaluation for specific targets.</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span><span class="op">=</span><span class="string">&quot;cuda&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">cuda</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span><span class="op">=</span><span class="string">&quot;mppa&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">mppa</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">x86</span>;
 
 <span class="kw">mod</span> <span class="ident">argument</span>;
 <span class="kw">mod</span> <span class="ident">context</span>;
