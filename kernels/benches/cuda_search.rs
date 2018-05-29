@@ -69,7 +69,7 @@ fn benchmark<'a, K, REF>(params: K::Parameters,
     config.distance_to_best.get_or_insert(20.);
 
     let mut context = cuda::Context::new(executor);
-    let runtime = K::benchmark(&config, params, NUM_CODE_RUNS, true, &mut context);
+    let runtime = K::benchmark(&config, params, NUM_CODE_RUNS, &mut context);
     for _ in 0..4 { reference(params, &context); }
     let ref_runtime = (0..NUM_CODE_RUNS).map(|_| reference(params, &context)).collect();
     let mean = estimate_mean(runtime, 0.95, "ns");
@@ -137,7 +137,7 @@ const CUBLAS_T: cublasOperation_t = cublasOperation_t_CUBLAS_OP_T;
 
 /// Reference implementation for the `Axpy` kernel.
 fn saxpy_reference(handle: &CublasHandle,
-                   n: i32,
+                   (n, _): (i32, bool),
                    context: &cuda::Context) -> f64 {
     let n = n as libc::c_int;
     let alpha = context.get_param("alpha").raw_ptr() as *const f32;
@@ -150,7 +150,7 @@ fn saxpy_reference(handle: &CublasHandle,
 
 /// Reference implementation for the matrix-vector multiplication.
 fn matvec_reference(handle: &CublasHandle,
-                    (m, n): (i32, i32),
+                    (m, n, _): (i32, i32, bool),
                     context: &cuda::Context) -> f64 {
 
     let m = m as libc::c_int;
@@ -210,7 +210,7 @@ fn batchmm_reference(handle: &CublasHandle,
 
 /// Reference implementation for the `Gesummv` params.
 fn gesummv_reference(handle: &CublasHandle,
-                     (m, n): (i32, i32),
+                     (m, n, _): (i32, i32, bool),
                      context: &cuda::Context) -> f64 {
     let m = m as libc::c_int;
     let n = n as libc::c_int;
