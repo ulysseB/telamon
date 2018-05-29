@@ -56,9 +56,10 @@ let signature = {
 };
 ```
 
-We can now describe the body of the kernel itself. For that we use a builder that creates
-the loops and the instructions for us. The builder keeps the list of open loops and nest
-new instructions in them.
+We can now describe the body of the kernel itself. Here we create a kernel that computes
+`x[i] = 2*i` for each `i in 0..n` For that we use a builder that creates the loops and the
+instructions for us. The builder keeps the list of open loops and nest new instructions in
+them.
 
 ```rust
 let mut builder = helper::Builder::new(&signature, context.device());
@@ -79,8 +80,13 @@ builder.close_dim(&dim0);
 let search_space = builder.get();
 ```
 
-FIXME: how to run the explorer
-FIXME: how to run characterization
+We are now ready to start the search space exploration to find the best candidate.
+```rust
+use telamon::explorer;
+
+let best = explorer::find_best(explorer::config::read(), &context, search_space).unwrap();
+context.device().gen_code(&best, &mut std::io::stdout());
+```
 
 [rust-install]:(https://www.rust-lang.org/en-US/install.html)
 [cc17]:(https://stratoss.fr/ulysse/papers/telamon_cc17.pdf)
