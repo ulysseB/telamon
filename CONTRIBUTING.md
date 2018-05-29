@@ -14,7 +14,7 @@ The core Telamon library provides:
 - a performance model to help prune the search space in `src/model`.
 
 The search space is described in a custom language that exposes decisions and the
-constraint between them. This desription is then compiled with telamon-gen to generate
+constraint between them. This description is then compiled with telamon-gen to generate
 rust code to store and manipulate the search space. Integration tests for telamon-gen
 itself are located in `telamon-gen/cc_tests`.
 

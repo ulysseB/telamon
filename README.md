@@ -30,10 +30,10 @@ cargo bench --features=cuda --bench=cuda-search
 in the `kernel/` directory. To see the progress of the exploration, append
 `RUST_LOG=telamon::explorer=warn` to the command.
 
-## Writting a Kernel
+## Writing a Kernel
 
-To write a kernel, you must first define the inputs of the kernel and the context in which
-to optimize for. Here, we assume we optimize for a Cuda GPU, but the process is the same
+To write a kernel, you must first define the inputs of the kernel and the context we
+optimize for. Here, we assume we optimize for a Cuda GPU, but the process is the same
 for other backends.
 
 ```rust
