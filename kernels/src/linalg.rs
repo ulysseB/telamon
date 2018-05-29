@@ -22,12 +22,12 @@ pub struct Axpy<'a, S> where S: Scalar {
 }
 
 impl<'a, S> Kernel<'a> for Axpy<'a, S> where S: Scalar {
-    type Parameters = i32;
+    type Parameters = (i32, bool);
     type ExpectedOutput = ArrayD<S>;
 
     fn name() -> &'static str { "axpy" }
 
-    fn build_signature<AM>(n: i32, generic: bool,
+    fn build_signature<AM>((n, generic): (i32, bool),
                            builder: &mut SignatureBuilder<AM>) -> Self
         where AM: device::ArgMap + device::Context + 'a
     {
@@ -83,12 +83,12 @@ pub struct MatVec<'a, S> where S: Scalar {
 }
 
 impl <'a, S> Kernel<'a> for MatVec<'a, S> where S: Scalar {
-    type Parameters = (i32, i32);
+    type Parameters = (i32, i32, bool);
     type ExpectedOutput = Array1<S>;
 
     fn name() -> &'static str { "mv" }
 
-    fn build_signature<AM>((m, n): (i32, i32), generic: bool,
+    fn build_signature<AM>((m, n, generic): (i32, i32, bool),
                            builder: &mut SignatureBuilder<AM>) -> Self
         where AM: device::ArgMap + device::Context + 'a
     {
@@ -165,13 +165,13 @@ pub struct Gesummv<'a, S: Scalar> {
 }
 
 impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
-    type Parameters = (i32, i32);
+    type Parameters = (i32, i32, bool);
     type ExpectedOutput = Array1<S>;
 
     fn name() -> &'static str { "gesummv" }
 
 
-    fn build_signature<AM>((m, n): (i32, i32), generic: bool,
+    fn build_signature<AM>((m, n, generic): (i32, i32, bool),
                            builder: &mut SignatureBuilder<AM>) -> Self
         where AM: device::ArgMap + device::Context + 'a
     {
@@ -266,11 +266,19 @@ pub struct MatMulP {
     pub k: i32,
     pub a_stride: u32,
     pub transpose_a: bool,
+    pub transpose_b: bool,
+    pub generic: bool,
 }
 
 impl MatMulP {
     pub fn new(m: i32, n: i32, k: i32) -> Self {
-        MatMulP { m, n, k, a_stride: 1, transpose_a: false }
+        MatMulP {
+            m, n, k,
+            a_stride: 1,
+            transpose_a: false,
+            transpose_b: false,
+            generic: true,
+        }
     }
 
     pub fn transpose_a(mut self) -> Self {
@@ -278,8 +286,19 @@ impl MatMulP {
         self
     }
 
+    pub fn transpose_b(mut self) -> Self {
+        self.transpose_b = true;
+        self
+    }
+
     pub fn stride_a(mut self, stride: u32) -> Self {
         self.a_stride = stride;
+        self
+    }
+
+    /// Inline the sizes in the generated code.
+    pub fn static_sizes(mut self) -> Self {
+        self.generic = false;
         self
     }
 }
@@ -290,20 +309,20 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
 
     fn name() -> &'static str { "matmul" }
 
-    fn build_signature<AM>(params: MatMulP,
-                           generic: bool,
-                           builder: &mut SignatureBuilder<AM>) -> Self
+    fn build_signature<AM>(params: MatMulP, builder: &mut SignatureBuilder<AM>) -> Self
         where AM: device::ArgMap + device::Context + 'a
     {
-        let m_size = create_size(params.m, "m", generic, builder);
-        let n_size = create_size(params.n, "n", generic, builder);
-        let k_size = create_size(params.k, "k", generic, builder);
+        let m_size = create_size(params.m, "m", params.generic, builder);
+        let n_size = create_size(params.n, "n", params.generic, builder);
+        let k_size = create_size(params.k, "k", params.generic, builder);
         let a_dims = vec![m_size.clone(), k_size.clone(), params.a_stride.into()];
         let a = TensorBuilder::new("a", a_dims)
             .doif(params.transpose_a, |b| b.transpose(0, 1))
             .stride_dim(2)
             .finish(builder);
-        let b = builder.tensor::<S>("b", vec![k_size, n_size.clone()], true);
+        let b = TensorBuilder::new("b", vec![k_size, n_size.clone()])
+            .doif(params.transpose_b, |b| b.transpose(0, 1))
+            .finish(builder);
         let c = builder.tensor::<S>("c", vec![m_size, n_size], false);
         MatMul { params, a, b, c }
     }
@@ -311,12 +330,12 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
     fn build_body<'b>(&self, signature: &'b ir::Signature, device: &'b device::Device)
         -> Vec<SearchSpace<'b>>
     {
-        /*let k_tiles = ::generate_tile_sizes(self.k as u32, &[64]);
-        let m_tiles = ::generate_tile_sizes(self.m as u32, &[64, 8]);
-        let n_tiles = ::generate_tile_sizes(self.n as u32, &[64, 8]);
-        let tilings = ::par_iter_product(::par_iter_product(m_tiles, n_tiles), k_tiles);*/
+        let k_tiles = ::generate_tile_sizes(self.params.k as u32, &[64]);
+        let m_tiles = ::generate_tile_sizes(self.params.m as u32, &[64, 8]);
+        let n_tiles = ::generate_tile_sizes(self.params.n as u32, &[64, 8]);
+        let tilings = ::par_iter_product(::par_iter_product(m_tiles, n_tiles), k_tiles);
 
-        let mn_gcd = num::integer::gcd(self.params.m, self.params.n);
+        /*let mn_gcd = num::integer::gcd(self.params.m, self.params.n);
         let gcd = num::integer::gcd(mn_gcd, self.params.k) as u32;
         let tilings = ::generate_tile_sizes(gcd, &[64, 8]);
         let tilings = tilings.into_par_iter().map(|full_tiling| {
@@ -324,7 +343,7 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
                 vec![full_tiling[0]]
             } else { vec![] };
             ((full_tiling.clone(), full_tiling), small_tiling)
-        });
+        });*/
         //let tilings = std::iter::once((4, 2));
         tilings.map(|((m_tiling, n_tiling), k_tiling)| {
             let mut builder = helper::Builder::new(signature, device);
@@ -417,53 +436,90 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
 }
 
 /// Batch transposed matrix-matrix multiplication.
-pub struct Tbmm<'a, S> where S: Scalar {
-    params: TbmmParams,
+pub struct BatchMM<'a, S> where S: Scalar {
+    params: BatchMMP,
     a: Tensor<'a, S>,
     b: Tensor<'a, S>,
     c: Tensor<'a, S>,
 }
 
 #[derive(Copy, Clone)]
-pub struct TbmmParams { m: i32, n: i32, k: i32, batch: i32 }
+pub struct BatchMMP {
+    pub m: i32,
+    pub n: i32,
+    pub k: i32,
+    pub batch: i32,
+    pub transpose_a: bool,
+    pub transpose_b: bool,
+    pub generic: bool,
+}
 
-impl<'a, S: Scalar> Kernel<'a> for Tbmm<'a, S> {
-    type Parameters = TbmmParams;
+impl BatchMMP {
+    pub fn new(m: i32, n: i32, k: i32, batch: i32) -> Self {
+        BatchMMP {
+            m, n, k, batch,
+            transpose_a: false,
+            transpose_b: false,
+            generic: true,
+        }
+    }
+
+    pub fn transpose_a(mut self) -> Self {
+        self.transpose_a = true;
+        self
+    }
+
+    pub fn transpose_b(mut self) -> Self {
+        self.transpose_b = true;
+        self
+    }
+
+    /// Generate code that is onyl valid for the given sizes. The batch size is still
+    /// generic.
+    pub fn static_sizes(mut self) -> Self {
+        self.generic = false;
+        self
+    }
+}
+
+impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
+    type Parameters = BatchMMP;
     type ExpectedOutput = Array3<S>;
 
     fn name() -> &'static str { "tbmv" }
 
-    fn build_signature<AM>(params: TbmmParams,
-                           generic: bool,
-                           builder: &mut SignatureBuilder<AM>) -> Self
+    fn build_signature<AM>(params: BatchMMP, builder: &mut SignatureBuilder<AM>) -> Self
         where AM: device::ArgMap + device::Context + 'a
     {
-        let m_size = create_size(params.m, "m", generic, builder);
-        let n_size = create_size(params.n, "n", generic, builder);
-        let k_size = create_size(params.n, "k", generic, builder);
+        let m_size = create_size(params.m, "m", params.generic, builder);
+        let n_size = create_size(params.n, "n", params.generic, builder);
+        let k_size = create_size(params.n, "k", params.generic, builder);
         let batch = create_size(params.batch, "b", true, builder);
-        let a = builder.tensor::<S>("a", vec![batch, k_size.clone(), m_size.clone()], true);
-        let b = builder.tensor::<S>("b", vec![k_size, n_size.clone()], true);
-        let c = builder.tensor::<S>("c", vec![m_size, n_size], false);
-        Tbmm { params, a, b, c }
+        let a_dims = vec![batch.clone(), m_size.clone(), k_size.clone()];
+        let a = TensorBuilder::new("a", a_dims)
+            .doif(params.transpose_a, |b| b.transpose(1, 2))
+            .finish(builder);
+        let b = TensorBuilder::new("b", vec![batch.clone(), k_size, n_size.clone()])
+            .doif(params.transpose_b, |b| b.transpose(1, 2))
+            .finish(builder);
+        let c = builder.tensor::<S>("c", vec![batch, m_size, n_size], false);
+        BatchMM { params, a, b, c }
     }
 
     fn build_body<'b>(&self, signature: &'b ir::Signature, device: &'b device::Device)
         -> Vec<SearchSpace<'b>>
     {
-        let gcd = num::integer::gcd(num::integer::gcd(
-                self.params.m, self.params.n), self.params.k) as u32;
-        let tilings = ::generate_tile_sizes(gcd, &[32, 8]);
-        //let tilings = std::iter::once((4, 2));
-        tilings.into_iter().map(|full_tiling| {
-            let small_tiling = if full_tiling.len() > 0 {
-                vec![full_tiling[0]]
-            } else { vec![] };
+        let m_tilings = ::generate_tile_sizes(self.params.m as u32, &[64]);
+        let n_tilings = ::generate_tile_sizes(self.params.n as u32, &[64]);
+        let k_tilings = ::generate_tile_sizes(self.params.k as u32, &[64]);
+        let batch_tilings = ::generate_tile_sizes(self.params.m as u32, &[128]);
+        let tilings = ::par_iter_product(::par_iter_product(::par_iter_product(
+                    m_tilings, n_tilings), k_tilings), batch_tilings)
+            .map(|(((m, n), k), b)| (m, n, k, b));
+        tilings.map(|(m_tile, n_tile, k_tile, batch_tile)| {
             let mut builder = helper::Builder::new(signature, device);
-
-            // FIXME: try independent tiling
-            let ld_a = self.a.load(&[&full_tiling, &[], &small_tiling], &mut builder);
-            let ld_b = self.b.load(&[&small_tiling, &full_tiling], &mut builder);
+            let ld_a = self.a.load(&[&batch_tile, &m_tile, &k_tile], &mut builder);
+            let ld_b = self.b.load(&[&batch_tile, &k_tile, &n_tile], &mut builder);
 
             let init_batch = builder.open_mapped_dim(&ld_a[0]);
             let init_dim_m = builder.open_mapped_dim(&ld_a[2]);
@@ -473,9 +529,10 @@ impl<'a, S: Scalar> Kernel<'a> for Tbmm<'a, S> {
             let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
             let acc_dim_n = builder.open_mapped_dim(&init_dim_n);
             let acc_dim_k = builder.open_mapped_dim(&ld_a[1]);
-            let a_op = ld_a.dim_map(&[&acc_batch, &acc_dim_k, &acc_dim_m],
-                                      GlobalScope, &mut builder);
-            let b_op = ld_b.dim_map(&[&acc_dim_k, &acc_dim_n], GlobalScope, &mut builder);
+            let a_op = ld_a.dim_map(&[&acc_batch, &acc_dim_m, &acc_dim_k],
+                                    GlobalScope, &mut builder);
+            let b_op = ld_b.dim_map(&[&acc_batch, &acc_dim_k, &acc_dim_n],
+                                    GlobalScope, &mut builder);
             let acc = builder.mad(&a_op, &b_op, &helper::Reduce(acc_init));
             builder.close_dim(&acc_dim_k);
 
@@ -489,12 +546,29 @@ impl<'a, S: Scalar> Kernel<'a> for Tbmm<'a, S> {
     }
 
     fn get_expected_output(&self, context: &device::Context) -> Array3<S> {
-        unimplemented!() // FIXME
+        let batch = self.params.batch as usize;
+        let m = self.params.m as usize;
+        let n = self.params.n as usize;
+        let k = self.params.k as usize;
+        let a = unwrap!(self.a.read_to_host(context).into_shape((batch, m, k)));
+        let b = unwrap!(self.b.read_to_host(context).into_shape((batch, k, n)));
+        let mut c = Array3::zeros((batch, m, n));
+        for (mut c, (a, b)) in c.outer_iter_mut().zip(a.outer_iter().zip(b.outer_iter())) {
+            c.assign(&a.dot(&b));
+        }
+        c
     }
 
     fn check_result(&self, expected: &Self::ExpectedOutput, context: &device::Context)
         -> Result<(), String>
     {
-        unimplemented!() // FIXME
+        let batch = self.params.batch as usize;
+        let c_shape = (batch, self.params.m as usize, self.params.n as usize);
+        let c = unwrap!(self.c.read_to_host(context).into_shape(c_shape));
+        if c.iter().zip_eq(expected).any(|(&c0, &c1)| (c0-c1).is_err_ok()) {
+            let a = self.a.read_to_host(context);
+            let b = self.b.read_to_host(context);
+            Err(format!("expected: {}, got {} with a = {} and b = {}", expected, c, a, b))
+        } else { Ok(()) }
     }
 }

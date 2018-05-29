@@ -9,9 +9,9 @@ use telamon_kernels::{Kernel, analyze_bounds, linalg};
 fn main() {
     env_logger::init();
     let executor = &cuda::Executor::init();
-    benchmark::<linalg::Axpy<f32>>(1<<25, 500, executor);
-    benchmark::<linalg::MatVec<f32>>((1<<13, 1<<13), 500, executor);
-    benchmark::<linalg::Gesummv<f32>>((1<<13, 1<<13), 500, executor);
+    benchmark::<linalg::Axpy<f32>>()1<<25, true), 500, executor);
+    benchmark::<linalg::MatVec<f32>>((1<<13, 1<<13, true), 500, executor);
+    benchmark::<linalg::Gesummv<f32>>((1<<13, 1<<13, true), 500, executor);
     let params = linalg::MatMulP::new(1024, 1024, 1024);
     benchmark::<linalg::MatMul<f32>>(params, 500, executor);
 }
