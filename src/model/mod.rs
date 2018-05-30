@@ -498,6 +498,87 @@ mod cuda_tests {
                          BottleneckLevel::Global, &[])
         }.get_bottleneck(4);
  
+        assert!(final_pressure*1.001 >= partial_pressure, "{} < {}",
+                final_pressure, partial_pressure);
+    }
+
+    #[test]
+    fn partial_bound_4() {
+        let _ = env_logger::try_init();
+        let executor = cuda::Executor::init();
+        let mut context = cuda::Context::new(&executor); 
+
+        let (a, b, c): (tensor::Tensor<f32>, tensor::Tensor<f32>, _);
+        let signature = {
+            let mut builder = SignatureBuilder::new("test", &mut context);
+            let (m, n, k) = (26, 26, 72);
+            let batch = 500;
+            a = builder.tensor::<f32>("a", vec![batch.into(), m.into(), k.into()], true);
+            b = tensor::TensorBuilder::new("b", vec![batch.into(), k.into(), n.into()])
+                .transpose(1, 2).finish(&mut builder);
+            c = builder.tensor::<f32>("c", vec![batch.into(), m.into(), n.into()], false);
+            builder.get()
+        };
+
+        let mut builder = Builder::new(&signature, context.device());
+        let ld_a = a.load(&[&vec![25], &vec![], &vec![]], &mut builder);
+        let ld_b = b.load(&[&vec![25], &vec![], &vec![]], &mut builder);
+
+        let init_batch = builder.open_mapped_dim(&ld_a[0]);
+        let init_dim_m = builder.open_mapped_dim(&ld_a[1]);
+        let init_dim_n = builder.open_mapped_dim(&ld_b[2]);
+        let acc_init = builder.mov(&0f32);
+        let acc_batch = builder.open_mapped_dim(&init_batch);
+        let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
+        let acc_dim_n = builder.open_mapped_dim(&init_dim_n);
+        let acc_dim_k = builder.open_mapped_dim(&ld_a[2]);
+        let b_op = ld_b.dim_map(&[&acc_batch, &acc_dim_k, &acc_dim_n],
+                                ir::DimMapScope::Global, &mut builder);
+        let acc = builder.mad(&0f32, &b_op, &Reduce(acc_init));
+        builder.close_dim(&acc_dim_k);
+
+        let acc = tensor::VirtualTensor::new(acc, vec![acc_batch.clone(), acc_dim_m.clone(), acc_dim_n]);
+        let st_c = acc.store(&c, &mut builder);
+
+        // Order for correctness.
+        builder.order(&st_c.inst(), &acc_dim_k, Order::AFTER);
+
+        builder.action(Action::DimKind(ld_a[0][0], DimKind::BLOCK));
+        builder.action(Action::DimKind(ld_a[0][1], DimKind::THREAD));
+        builder.action(Action::DimKind(ld_a[1][0], DimKind::THREAD));
+        builder.action(Action::DimKind(ld_a[2][0], DimKind::LOOP));
+
+        builder.order(&ld_a[0][0], &ld_b[0][0], Order::MERGED);
+        builder.order(&ld_a[0][1], &ld_b[0][1], Order::MERGED);
+        builder.order(&ld_a[2][0], &ld_b[1][0], Order::MERGED);
+        builder.action(Action::DimKind(ld_b[2][0], DimKind::THREAD));
+
+        builder.action(Action::ThreadMapping(ld_a[0][1], init_batch[1], ThreadMapping::MAPPED));
+        builder.action(Action::ThreadMapping(ld_a[1][0], init_dim_m[0], ThreadMapping::MAPPED));
+        builder.action(Action::DimKind(init_dim_n[0], DimKind::UNROLL));
+
+        builder.action(Action::ThreadMapping(init_batch[1], acc_batch[1], ThreadMapping::MAPPED));
+        builder.action(Action::ThreadMapping(init_dim_m[0], acc_dim_m[0], ThreadMapping::MAPPED));
+
+        builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CS));
+        builder.action(Action::InstFlag(ld_b.inst(), InstFlag::MEM_CS));
+        builder.action(Action::InstFlag(st_c.inst(), InstFlag::MEM_CS));
+
+        let partial_pressure = {
+            let space = builder.get_clone();
+            let local_info = LocalInfo::compute(&space, &context);
+            sum_pressure(context.device(), &space, &local_info,
+                         BottleneckLevel::Global, &[])
+        }.get_bottleneck(3);
+
+        builder.action(Action::ThreadMapping(ld_a[0][1], ld_a[1][0], ThreadMapping::MAPPED_IN));
+
+        let final_pressure = {
+            let space = builder.get();
+            let local_info = LocalInfo::compute(&space, &context);
+            sum_pressure(context.device(), &space, &local_info,
+                         BottleneckLevel::Global, &[])
+        }.get_bottleneck(3);
 
         assert!(final_pressure*1.001 >= partial_pressure, "{} < {}",
                 final_pressure, partial_pressure);
