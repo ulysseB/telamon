@@ -229,16 +229,15 @@ impl SetDef {
 
     /// Creates a new set definition.
     fn build(name: RcStr,
-                 arg: Option<ir::Set>,
-                 superset: Option<Set>,
-                 reverse: ReverseSet,
-                 keys: HashMap<SetDefKey, String>,
-                 disjoints: Vec<String>) -> Self {
+             arg: Option<ir::Set>,
+             superset: Option<Set>,
+             reverse: ReverseSet,
+             keys: HashMap<SetDefKey, String>,
+             disjoints: Vec<String>) -> Self {
         let depth = superset.as_ref().map(|s| s.def.depth + 1).unwrap_or(0);
         let def_order = arg.as_ref().map(|s| s.def.def_order + 1).unwrap_or(0);
         SetDef { name, arg, superset, keys, disjoints, depth, def_order, reverse }
     }
-
 
     /// The name of the set.
     pub fn name(&self) -> &RcStr { &self.name }

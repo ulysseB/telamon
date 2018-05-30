@@ -15,7 +15,7 @@ extern crate libc;
 
 extern crate lalrpop_util;
 
-mod ast;
+pub mod ast;
 mod constraint;
 mod flat_filter;
 pub mod ir;
@@ -73,7 +73,7 @@ pub fn process<'a, T: io::Write>(
     let ast: ast::Ast =
         parser::parse_ast(tokens)
                .map_err(|c| error::ProcessError::from((input_path.display(), c)))?;
-    let (mut ir_desc, constraints) = ast.type_check();
+    let (mut ir_desc, constraints) = ast.type_check().unwrap();
     debug!("constraints: {:?}", constraints);
     // Generate flat filters.
     let mut filters = MultiHashMap::default();

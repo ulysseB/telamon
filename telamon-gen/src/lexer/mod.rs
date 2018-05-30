@@ -29,7 +29,7 @@ use self::ffi::{
     yyget_extra,
 };
 
-pub use self::ffi::{Position, Span};
+pub use self::ffi::{Position, Spanned, Span};
 
 #[derive(Debug, PartialEq)]
 pub enum LexicalError {
@@ -65,7 +65,7 @@ impl fmt::Display for LexicalError {
 /// The alias Spanned is a definition of the stream format.
 /// The parser will accept an iterator where each item
 /// in the stream has the following structure.
-pub type Spanned<Tok, Pos, Err> = Result<(Pos, Tok, Pos), Err>;
+pub type SpannedLex<Tok, Pos, Err> = Result<(Pos, Tok, Pos), Err>;
 
 pub struct Lexer {
     scanner: YyScan,
@@ -123,7 +123,7 @@ impl Drop for Lexer {
 
 /// the Lalrpop Iterator is a exh implementation:for lexer.
 impl Iterator for Lexer {
-    type Item = Spanned<Token, Position, LexicalError>;
+    type Item = SpannedLex<Token, Position, LexicalError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         unsafe {
