@@ -9,62 +9,112 @@ use std;
 use std::collections::{BTreeSet, hash_map};
 use utils::*;
 
+pub mod statement;
+
+pub use self::statement::*;
+pub use super::lexer::Spanned;
+
+#[derive(Debug)]
+pub enum TypeError {
+    EnumNameMulti,
+}
+
 /// Syntaxic tree for the constraint description.
 #[derive(Debug)]
-pub struct Ast { pub statements: Vec<Statement> }
+pub struct Ast { pub statements: Vec<Spanned<Statement>> }
 
 impl Ast {
     /// Generate the defintion of choices and the list of constraints.
-    pub fn type_check(self) -> (ir::IrDesc, Vec<TypedConstraint>) {
+    pub fn type_check(self) -> Result<(ir::IrDesc, Vec<TypedConstraint>), Spanned<TypeError>> {
         let mut context = TypingContext::default();
-        for statement in self.statements { context.add_statement(statement); }
-        context.finalize()
+        for statement in self.statements { context.add_statement(statement)? }
+        Ok(context.finalize())
     }
 }
 
 #[derive(Default)]
 struct TypingContext {
     ir_desc: ir::IrDesc,
-    set_defs: Vec<Statement>,
-    choice_defs: Vec<Statement>,
-    triggers: Vec<Statement>,
+    set_defs: Vec<SetDef>,
+    choice_defs: Vec<ChoiceDef>,
+    triggers: Vec<TriggerDef>,
     constraints: Vec<Constraint>,
     checks: Vec<Check>,
 }
 
 impl TypingContext {
     /// Adds a statement to the typing context.
-    fn add_statement(&mut self, statement: Statement) {
+    fn add_statement(&mut self, statement: Spanned<Statement>) -> Result<(), Spanned<TypeError>> {
         match statement {
-            c @ Statement::SetDef { .. } => self.set_defs.push(c),
-            c @ Statement::EnumDef { .. } |
-            c @ Statement::CounterDef  { .. } => self.choice_defs.push(c),
-            t @ Statement::TriggerDef { .. } => self.triggers.push(t),
-            Statement::Require(constraint) => self.constraints.push(constraint),
+            Spanned { leg, end,
+                data: Statement::SetDef { name, doc, arg, superset, disjoint, keys, quotient }
+            } => {
+                Ok(self.set_defs.push(SetDef {
+                    name: name,
+                    doc: doc,
+                    arg: arg,
+                    superset: superset,
+                    disjoint: disjoint,
+                    keys: keys,
+                    quotient: quotient,
+                }))
+            },
+            Spanned { leg, end,
+                data: Statement::EnumDef { name, doc, variables, statements }
+            } => {
+                let choice_def = ChoiceDef::EnumDef(EnumDef {
+                    name: name,
+                    doc: doc,
+                    variables: variables,
+                    statements: statements,
+                });
+                if self.choice_defs.contains(&choice_def) {
+                    Err(Spanned { leg: leg, end: end, data: TypeError::EnumNameMulti })
+                } else {
+                    Ok(self.choice_defs.push(choice_def))
+                }
+            },
+            Spanned { leg, end,
+                data: Statement::CounterDef { name, doc, visibility, vars, body }
+            } => {
+                Ok(self.choice_defs.push(ChoiceDef::CounterDef(CounterDef {
+                    name: name,
+                    doc: doc,
+                    visibility: visibility,
+                    vars: vars,
+                    body: body,
+                })))
+            },
+            Spanned { leg, end,
+                data: Statement::TriggerDef { foralls, conditions, code }
+            } => {
+                Ok(self.triggers.push(TriggerDef {
+                    foralls: foralls,
+                    conditions: conditions,
+                    code: code,
+                }))
+            },
+            Spanned { leg, end,
+                data: Statement::Require(constraint)
+            } => Ok(self.constraints.push(constraint)),
         }
     }
 
     /// Type-checks the statements in the correct order.
     fn finalize(mut self) -> (ir::IrDesc, Vec<TypedConstraint>) {
-        use self::Statement::*;
         for def in std::mem::replace(&mut self.set_defs, vec![]) {
-            if let SetDef { name, arg, superset, keys, doc: _, disjoint, quotient } = def {
-                self.type_set_def(name, arg, superset, keys, disjoint, quotient);
-            } else { panic!() }
+            self.type_set_def(def.name, def.arg, def.superset, def.keys, def.disjoint, def.quotient);
         }
         for choice_def in std::mem::replace(&mut self.choice_defs, vec![]) {
             match choice_def {
-                EnumDef { name, doc, variables, statements } =>
+                ChoiceDef::EnumDef(EnumDef { name, doc, variables, statements }) =>
                     self.register_enum(name, doc, variables, statements),
-                CounterDef { name, doc, visibility, vars, body, } =>
+                ChoiceDef::CounterDef(CounterDef { name, doc, visibility, vars, body, }) =>
                     self.register_counter(name, doc, visibility, vars, body),
-                _ => panic!(),
             }
         }
         for trigger in std::mem::replace(&mut self.triggers, vec![]) {
-            if let TriggerDef { foralls, conditions, code } = trigger {
-                self.register_trigger(foralls, conditions, code);
-            } else { panic!() }
+            self.register_trigger(trigger.foralls, trigger.conditions, trigger.code);
         }
         let constraints = {
             let ir_desc = &self.ir_desc;
@@ -198,7 +248,7 @@ impl TypingContext {
         // Generate the trigger that sets the repr to TRUE and add the item to the set.
         let mut trigger_conds = quotient.conditions;
         trigger_conds.push(counter_leq_zero);
-        self.triggers.push(Statement::TriggerDef {
+        self.triggers.push(TriggerDef {
             foralls: forall_vars, conditions: trigger_conds, code: trigger_code,
         });
     }
@@ -255,9 +305,9 @@ impl TypingContext {
             kind: ir::CounterKind::Add,
             value: CounterVal::Code("1".to_string()),
         };
-        self.choice_defs.push(Statement::CounterDef {
+        self.choice_defs.push(ChoiceDef::CounterDef(CounterDef {
             name: name.clone(), doc: None, visibility, vars, body,
-        });
+        }));
         name
     }
 
