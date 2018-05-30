@@ -486,7 +486,7 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
     type Parameters = BatchMMP;
     type ExpectedOutput = Array3<S>;
 
-    fn name() -> &'static str { "tbmv" }
+    fn name() -> &'static str { "batch_mm" }
 
     fn build_signature<AM>(params: BatchMMP, builder: &mut SignatureBuilder<AM>) -> Self
         where AM: device::ArgMap + device::Context + 'a
