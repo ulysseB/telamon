@@ -5,7 +5,7 @@ use ir;
 use itertools::Itertools;
 use search_space::{DimKind, Domain, InstFlag, ThreadMapping, SearchSpace};
 use std;
-use num::integer;
+use num::Integer;
 use utils::*;
 
 // TODO(model): the pressure changes depending on the list of outer dimensions. Try to
@@ -78,7 +78,7 @@ fn info(space: &SearchSpace,
         // If the pattern is a tensor, we can analyse memory accesses
         ir::AccessPattern::Tensor { ref dims, .. } => {
             let mut info = NO_ACCESS_INFO;
-            let thread_dims = tensor_thread_dims(space, inst, dims, sizes, gpu, ctx);
+            let thread_dims = tensor_thread_dims(space, inst, dims, sizes, ctx);
             if is_shared_access.maybe_true() {
                 info.replay_factor = shared_replay_factor(
                     &thread_dims, dims, sizes, space, gpu);
@@ -121,51 +121,75 @@ fn shared_replay_factor(thread_dims: &[ThreadDimInfo],
                         tensor_dims: &HashMap<ir::dim::Id, ir::Size>,
                         dim_sizes: &HashMap<ir::dim::Id, u32>,
                         space: &SearchSpace, gpu: &cuda::Gpu) -> f64 {
+    // Because we only support tensor accesses, bigger strides are multiples of smaller
+    // strides. Thus smaller stride will lead to less replays. For the same reason, we
+    // only need to account for hits on the first bank. Other banks will have a smaller
+    // replay factor.
+    let thread_dims = sort_thread_dims(thread_dims, space, |d| d.stride as f64);
     let mut total_size = 1;
-    let mut replay_factor = 1.0;
-    for dim_info in sort_thread_dims(thread_dims, space, |d| d.shared_replay_freq) {
-        let rem_size = (gpu.wrap_size as f32 / total_size as f32).ceil() as u64;
-        let size = std::cmp::min(dim_info.size, rem_size);
-        total_size *= dim_info.size;
-        let replays = ((size-1) as f64 * dim_info.shared_replay_freq).floor();
-        replay_factor *= 1.0 + replays;
-        if total_size == u64::from(gpu.wrap_size) { break }
+    let mut indexes = vec![0; thread_dims.len()];
+    let mut hits: HashSet<_> = std::iter::once(0).collect();
+    // TODO(cc_perf): we might be able to find an analytic algorithm rather than iterating
+    // on the thread ids.
+    while total_size < gpu.wrap_size {
+        let mut incr = true;
+        let mut offset = 0;
+        for (idx, dim) in indexes.iter_mut().zip_eq(&thread_dims) {
+            if incr {
+                *idx += 1;
+                if *idx == dim.size { *idx = 0; } else { incr = false; }
+            }
+            offset += *idx * dim.stride;
+        }
+        if incr { break; } // We reached the end of all loops.
+        let num_bank_stride = offset / gpu.shared_bank_stride as u64;
+        let (hit_id, rem) = num_bank_stride.div_rem(&(gpu.wrap_size as u64));
+        if rem == 0 { hits.insert(hit_id); }
+        total_size += 1;
     }
     // Handle the case where a single thread must access two banks.
     let vector_replay = tensor_dims.iter()
         .flat_map(|(&d, stride)| stride.as_int().map(|s| (d, s)))
         .filter(|&(d, _)| space.domain().get_dim_kind(d).intersects(DimKind::VECTOR))
         .map(|(d, stride)| div_ceil(dim_sizes[&d]*stride as u32, gpu.shared_bank_stride))
-        .min().unwrap_or(1) as f64;
-    replay_factor = f64::max(replay_factor, f64::from(vector_replay));
+        .min().unwrap_or(1);
+    let replay_factor = std::cmp::max(hits.len() as u32, vector_replay);
     trace!("shared_replay: {}", replay_factor);
-    replay_factor
+    replay_factor as f64
 }
 
 /// Computes the L1, L2 coalescing and replay factor for a global memory access.
 fn global_coalescing(thread_dims: &[ThreadDimInfo], space: &SearchSpace, gpu: &cuda::Gpu)
         -> (f64, f64, f64) {
-    let mut total_size = 1;
-    let mut l1_line_accessed = 1;
-    let mut l2_line_accessed = 1;
     trace!("thread_dims {:?}", thread_dims);
-    for dim_info in sort_thread_dims(thread_dims, space, |d| d.stride as f64) {
-        trace!("glb dim info: {:?}", dim_info);
-        let rem_size = (gpu.wrap_size as f32 / total_size as f32).ceil() as u64;
-        let size = std::cmp::min(dim_info.size, rem_size);
-        total_size *= dim_info.size;
-        let l1_line_len = u64::from(gpu.l1_cache_line);
-        let l2_line_len = u64::from(gpu.l2_cache_line);
-        let l1_stride = std::cmp::min(dim_info.stride, l1_line_len);
-        let l2_stride = std::cmp::min(dim_info.stride, l2_line_len);
-        l1_line_accessed *= 1 + ((size-1)*l1_stride)/l1_line_len;
-        l2_line_accessed *= 1 + ((size-1)*l2_stride)/l2_line_len;
-        if total_size == u64::from(gpu.wrap_size) { break }
+    // Because their is no overlap, it is always better to take the dimension with
+    // the smallest stride.
+    let thread_dims = sort_thread_dims(thread_dims, space, |d| d.stride as f64);
+    trace!("glb dims info: {:?}", thread_dims);
+    let mut total_size = 1;
+    let mut indexes = vec![0; thread_dims.len()];
+    let mut l1_lines: HashSet<_> = std::iter::once(0).collect();
+    let mut l2_lines: HashSet<_> = std::iter::once(0).collect();
+    // Compute the lines accessed by each tread in a wrap.
+    while total_size < gpu.wrap_size {
+        let mut incr = true;
+        let mut offset = 0;
+        for (idx, dim) in indexes.iter_mut().zip_eq(&thread_dims) {
+            if incr {
+                *idx += 1;
+                if *idx == dim.size { *idx = 0; } else { incr = false; }
+            }
+            offset += *idx * dim.stride;
+        }
+        if incr { break; } // We reached the end of all loops.
+        l1_lines.insert(offset/gpu.l1_cache_line as u64);
+        l2_lines.insert(offset/gpu.l2_cache_line as u64);
+        total_size += 1;
     }
-    trace!("global_replay: {} (size: {})", l1_line_accessed, total_size);
-    let l1_coalescing = l1_line_accessed as f64 / total_size as f64;
-    let l2_coalescing = l2_line_accessed as f64 / total_size as f64;
-    (l1_coalescing, l2_coalescing, l1_line_accessed as f64)
+    trace!("global_replay: {} (size: {})", l1_lines.len(), total_size);
+    let l1_coalescing = l1_lines.len() as f64 / total_size as f64;
+    let l2_coalescing = l2_lines.len() as f64 / total_size as f64;
+    (l1_coalescing, l2_coalescing, l1_lines.len() as f64)
 }
 
 #[derive(Debug)]
@@ -174,7 +198,6 @@ struct ThreadDimInfo {
     is_active_thread: bool,
     size: u64,
     stride: u64,
-    shared_replay_freq: f64,
 }
 
 /// Returns the size and stride of thread dimensions for a tensor access pattern.
@@ -182,7 +205,6 @@ fn tensor_thread_dims(space: &SearchSpace,
                       inst: &ir::Instruction,
                       tensor_dims: &HashMap<ir::dim::Id, ir::Size>,
                       sizes: &HashMap<ir::dim::Id, u32>,
-                      gpu: &cuda::Gpu,
                       ctx: &Context) -> Vec<ThreadDimInfo> {
     let external_dims = external_thread_dims(inst, space);
     inst.iteration_dims().iter().flat_map(|&dim| {
@@ -194,16 +216,9 @@ fn tensor_thread_dims(space: &SearchSpace,
     }).chain(external_dims).map(|(id, is_active_thread)| {
         let size = sizes[&id];
         let stride = tensor_dims.get(&id).map(|s| ctx.eval_size(s) as u64).unwrap_or(0);
-        let shared_replay_freq = if stride == 0 { 0.0 } else {
-            let byte_replay_distance = u64::from(gpu.shared_bank_stride * gpu.wrap_size);
-            let hop_replay_distance = integer::lcm(stride, byte_replay_distance);
-            // TODO(model): underestimated if the same bank is hit multiple times with
-            // different offsets.
-            stride as f64 / hop_replay_distance as f64
-        };
         ThreadDimInfo {
             size: u64::from(size),
-            stride, shared_replay_freq, id, is_active_thread,
+            stride, id, is_active_thread,
         }
     }).collect_vec()
 }
