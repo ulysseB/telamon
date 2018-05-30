@@ -455,7 +455,7 @@ pub struct BatchMMP {
 }
 
 impl BatchMMP {
-    pub fn new(m: i32, n: i32, k: i32, batch: i32) -> Self {
+    pub fn new(batch: i32, m: i32, n: i32, k: i32) -> Self {
         BatchMMP {
             m, n, k, batch,
             transpose_a: false,
@@ -493,8 +493,8 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
     {
         let m_size = create_size(params.m, "m", params.generic, builder);
         let n_size = create_size(params.n, "n", params.generic, builder);
-        let k_size = create_size(params.n, "k", params.generic, builder);
-        let batch = create_size(params.batch, "b", true, builder);
+        let k_size = create_size(params.k, "k", params.generic, builder);
+        let batch = create_size(params.batch, "batch", true, builder);
         let a_dims = vec![batch.clone(), m_size.clone(), k_size.clone()];
         let a = TensorBuilder::new("a", a_dims)
             .doif(params.transpose_a, |b| b.transpose(1, 2))
@@ -512,23 +512,24 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
         let m_tilings = ::generate_tile_sizes(self.params.m as u32, &[64]);
         let n_tilings = ::generate_tile_sizes(self.params.n as u32, &[64]);
         let k_tilings = ::generate_tile_sizes(self.params.k as u32, &[64]);
-        let batch_tilings = ::generate_tile_sizes(self.params.m as u32, &[128]);
+        let batch_tilings = ::generate_tile_sizes(self.params.batch as u32, &[128]);
         let tilings = ::par_iter_product(::par_iter_product(::par_iter_product(
                     m_tilings, n_tilings), k_tilings), batch_tilings)
             .map(|(((m, n), k), b)| (m, n, k, b));
+        //let tilings = ::std::iter::once((vec![], vec![], vec![], vec![]));
         tilings.map(|(m_tile, n_tile, k_tile, batch_tile)| {
             let mut builder = helper::Builder::new(signature, device);
             let ld_a = self.a.load(&[&batch_tile, &m_tile, &k_tile], &mut builder);
             let ld_b = self.b.load(&[&batch_tile, &k_tile, &n_tile], &mut builder);
 
             let init_batch = builder.open_mapped_dim(&ld_a[0]);
-            let init_dim_m = builder.open_mapped_dim(&ld_a[2]);
+            let init_dim_m = builder.open_mapped_dim(&ld_a[1]);
             let init_dim_n = builder.open_mapped_dim(&ld_b[2]);
             let acc_init = builder.mov(&0f32);
             let acc_batch = builder.open_mapped_dim(&init_batch);
             let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
             let acc_dim_n = builder.open_mapped_dim(&init_dim_n);
-            let acc_dim_k = builder.open_mapped_dim(&ld_a[1]);
+            let acc_dim_k = builder.open_mapped_dim(&ld_a[2]);
             let a_op = ld_a.dim_map(&[&acc_batch, &acc_dim_m, &acc_dim_k],
                                     GlobalScope, &mut builder);
             let b_op = ld_b.dim_map(&[&acc_batch, &acc_dim_k, &acc_dim_n],

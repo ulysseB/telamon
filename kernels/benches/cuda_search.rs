@@ -19,21 +19,26 @@ fn main() {
     env_logger::init();
     let executor = cuda::Executor::init();
     let cublas_handle = CublasHandle::new();
-    /*benchmark::<linalg::Axpy<f32>, _>((1 << 25, true), &executor, |params, ctx| {
+    // 1.5
+    benchmark::<linalg::Axpy<f32>, _>((1 << 25, true), &executor, |params, ctx| {
         saxpy_reference(&cublas_handle, params, ctx)
-    });*/
+    });
+    // 1.56
     let params = linalg::MatMulP::new(128, 256, 32).transpose_b();
     benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
         matmul_reference(&cublas_handle, params, ctx)
     });
+    // 0.39
     let params = linalg::MatMulP::new(128, 1024, 1024).transpose_b();
     benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
         matmul_reference(&cublas_handle, params, ctx)
     });
+    // 0.33
     let params = linalg::MatMulP::new(128, 16384, 4096).transpose_b();
     benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
         matmul_reference(&cublas_handle, params, ctx)
     });
+    // 0.82 in 2.38 hours/4H
     let params = linalg::MatMulP::new(1024, 1024, 1024);
     benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
         matmul_reference(&cublas_handle, params, ctx)
@@ -42,11 +47,11 @@ fn main() {
     benchmark::<linalg::BatchMM<f32>, _>(params, &executor, |params, ctx| {
         batchmm_reference(&cublas_handle, params, ctx)
     });
-    // FIXME: 0.55 perf, with exhaustive search
+    // 0.55 perf, with exhaustive search
     benchmark::<linalg::MatVec<f32>, _>((1<<13, 1<<13, true), &executor, |params, ctx| {
         matvec_reference(&cublas_handle, params, ctx)
     });
-    // FIXME: 0.28 perf, with exhaustive search
+    // 0.31 perf, with exhaustive search
     benchmark::<linalg::Gesummv<f32>, _>((1<<13, 1<<13, true), &executor, |params, ctx| {
         gesummv_reference(&cublas_handle, params, ctx)
     });
@@ -56,7 +61,7 @@ fn main() {
 /// The number of times to run the generated code to evaluate its performance.
 const NUM_CODE_RUNS: usize = 40;
 /// Search timeout in minutes.
-const TIMEOUT: u64 = 240;
+const TIMEOUT: u64 = 120;
 
 /// Benchamrks a kernel against a reference implementation.
 fn benchmark<'a, K, REF>(params: K::Parameters,
@@ -201,9 +206,15 @@ fn batchmm_reference(handle: &CublasHandle,
         let c = get_array("c", context);
         let (op_a, lda) = if params.transpose_a { (CUBLAS_T, m) } else { (CUBLAS_N, k) };
         let (op_b, ldb) = if params.transpose_b { (CUBLAS_T, k) } else { (CUBLAS_N, n) };
+        let stride_a = (m*k) as libc::c_long;
+        let stride_b = (n*k) as libc::c_long;
+        let stride_c = (m*n) as libc::c_long;
         time_cuda(|| {
-            check_cublas(cublasSgemmBatched(
-                    handle.0, op_b, op_a, n, m, k, &2., b, ldb, a, lda, &3., c, n, batch));
+            check_cublas(cublasSgemmStridedBatched(
+                    handle.0, op_b, op_a, n, m, k, &2.,
+                    b, ldb, stride_b,
+                    a, lda, stride_a, &3.,
+                    c, n, stride_c, batch));
         })
     }
 }
