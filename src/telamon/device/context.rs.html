@@ -155,12 +155,12 @@
 
     <span class="doccomment">/// Evaluate a size.</span>
     <span class="kw">fn</span> <span class="ident">eval_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">size</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Size</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">result</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">size</span>.<span class="ident">factor</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dividend</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">size</span>.<span class="ident">factor</span>();
         <span class="kw">for</span> <span class="ident">p</span> <span class="kw">in</span> <span class="ident">size</span>.<span class="ident">dividend</span>() {
-            <span class="ident">result</span> <span class="op">*=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">param_as_size</span>(<span class="kw-2">&amp;</span><span class="ident">p</span>.<span class="ident">name</span>));
+            <span class="ident">dividend</span> <span class="op">*=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">param_as_size</span>(<span class="kw-2">&amp;</span><span class="ident">p</span>.<span class="ident">name</span>));
         };
-        <span class="kw">let</span> (<span class="ident">result</span>, <span class="ident">remider</span>) <span class="op">=</span> <span class="ident">num</span>::<span class="ident">integer</span>::<span class="ident">div_rem</span>(<span class="ident">result</span>, <span class="ident">size</span>.<span class="ident">divisor</span>());
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">remider</span>, <span class="number">0</span>, <span class="string">&quot;invalid size: {:?}&quot;</span>, <span class="ident">size</span>);
+        <span class="kw">let</span> (<span class="ident">result</span>, <span class="ident">remider</span>) <span class="op">=</span> <span class="ident">num</span>::<span class="ident">integer</span>::<span class="ident">div_rem</span>(<span class="ident">dividend</span>, <span class="ident">size</span>.<span class="ident">divisor</span>());
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">remider</span>, <span class="number">0</span>, <span class="string">&quot;invalid size: {:?} (dividend = {})&quot;</span>, <span class="ident">size</span>, <span class="ident">dividend</span>);
         <span class="ident">result</span>
     }
 }
