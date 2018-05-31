@@ -32,7 +32,6 @@ pub trait Kernel<'a>: Sized {
     /// stores enough information to later build the kernel body and check its result.
     /// The `is_generic` flag indicates if th sizes should be instantiated.
     fn build_signature<AM>(parameters: Self::Parameters,
-                           is_generic: bool,
                            builder: &mut SignatureBuilder<AM>) -> Self
         where AM: device::ArgMap + device::Context + 'a;
 
@@ -55,7 +54,7 @@ pub trait Kernel<'a>: Sized {
         let kernel;
         let signature = {
             let mut builder = SignatureBuilder::new(Self::name(), context);
-            kernel = Self::build_signature(params, true, &mut builder);
+            kernel = Self::build_signature(params, &mut builder);
             builder.get()
         };
         let expected_output = kernel.get_expected_output(context);
@@ -101,7 +100,7 @@ pub trait Kernel<'a>: Sized {
         let kernel;
         let signature = {
             let mut builder = SignatureBuilder::new(Self::name(), context);
-            kernel = Self::build_signature(params, true, &mut builder);
+            kernel = Self::build_signature(params, &mut builder);
             builder.get()
         };
         let candidates = kernel.build_body(&signature, context.device()).into_iter()
@@ -146,14 +145,13 @@ pub trait Kernel<'a>: Sized {
     fn benchmark<AM>(config: &explorer::Config,
                      params: Self::Parameters,
                      num_samples: usize,
-                     is_generic: bool,
                      context: &mut AM) -> Vec<f64>
         where AM: device::ArgMap + device::Context + 'a
     {
         let kernel;
         let signature = {
             let mut builder = SignatureBuilder::new(Self::name(), context);
-            kernel = Self::build_signature(params, is_generic, &mut builder);
+            kernel = Self::build_signature(params, &mut builder);
             builder.get()
         };
         let search_space = kernel.build_body(&signature, context.device());
@@ -173,7 +171,7 @@ pub trait Kernel<'a>: Sized {
         let kernel;
         let signature = {
             let mut builder = SignatureBuilder::new(Self::name(), context);
-            kernel = Self::build_signature(params, true, &mut builder);
+            kernel = Self::build_signature(params, &mut builder);
             builder.get()
         };
         let candidates = kernel.build_body(&signature, context.device()).into_iter()

@@ -30,12 +30,12 @@ pub trait Context: Sync {
 
     /// Evaluate a size.
     fn eval_size(&self, size: &ir::Size) -> u32 {
-        let mut result: u32 = size.factor();
+        let mut dividend: u32 = size.factor();
         for p in size.dividend() {
-            result *= unwrap!(self.param_as_size(&p.name));
+            dividend *= unwrap!(self.param_as_size(&p.name));
         };
-        let (result, remider) = num::integer::div_rem(result, size.divisor());
-        assert_eq!(remider, 0, "invalid size: {:?}", size);
+        let (result, remider) = num::integer::div_rem(dividend, size.divisor());
+        assert_eq!(remider, 0, "invalid size: {:?} (dividend = {})", size, dividend);
         result
     }
 }

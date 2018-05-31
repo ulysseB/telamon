@@ -217,7 +217,7 @@ impl<'a> Function<'a> {
 
     /// Generates an operand repesenting a pointer to a cell of a memory block.
     fn gen_internal_index(&mut self, id: mem::InternalId, dims: Vec<dim::Id>)
-            -> (Operand<'a>, AccessPattern) {
+            -> (Operand<'a>, AccessPattern<'a>) {
         let ty_len = unwrap!(self.mem_blocks.internal_block(id).base_size());
         self.gen_index(id.into(), ty_len, Operand::Addr(id), dims)
     }
@@ -225,21 +225,20 @@ impl<'a> Function<'a> {
     /// Generates an access pattern and the corresponding induction variable to access a
     /// memory block.
     pub fn gen_index(&mut self, mem: mem::Id, base_incr: u32, base_addr: Operand<'a>,
-                     dims: Vec<dim::Id>) -> (Operand<'a>, AccessPattern) {
+                     dims: Vec<dim::Id>) -> (Operand<'a>, AccessPattern<'a>) {
         let var_type = base_addr.t();
         let base_size = ir::Size::new(base_incr, vec![], 1);
         let increments = dims.iter().rev().scan(base_size, |size, &dim| {
             let old_size = size.clone();
             *size *= self.dim(dim).size();
             Some((dim, old_size))
-        }).collect();
-        let ind_var = self.add_ind_var(ir::InductionVar::new(increments, base_addr));
-        let addr = ir::Operand::InductionVar(ind_var, var_type);
+        }).collect_vec();
         let pattern = ir::AccessPattern::Tensor {
             mem_id: mem,
-            stride: base_incr as i32,
-            dims,
+            dims: increments.iter().cloned().collect(),
         };
+        let ind_var = self.add_ind_var(ir::InductionVar::new(increments, base_addr));
+        let addr = ir::Operand::InductionVar(ind_var, var_type);
         (addr, pattern)
     }
 

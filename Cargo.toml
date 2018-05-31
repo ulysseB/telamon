@@ -4,7 +4,6 @@ build = "build.rs"
 name = "telamon"
 readme = "README.md"
 version = "0.2.0"
-autoexamples = true
 
 [[bin]]
 name = "cuda-characterize"
@@ -19,11 +18,6 @@ required-features = ["cuda"]
 [[bin]]
 name = "bench-perf-model"
 path = "tools/bench_perf_model/main.rs"
-required-features = ["cuda"]
-
-[[example]]
-name = "sgemm_low"
-path = "examples/sgemm_low.rs"
 required-features = ["cuda"]
 
 [build-dependencies]
@@ -45,6 +39,7 @@ ipc-channel = "0.10.0"
 itertools = "0.7.8"
 lazy_static = "1.0.0"
 libc = "0.2.40"
+libloading = "0.5.0"
 linked-list = "0.0.3"
 log = "0.4.1"
 matches = "0.1.6"
@@ -62,6 +57,7 @@ rustc-serialize = "0.3.24"
 std-semaphore = "0.1.0"
 rpds = "0.5.0"
 binary-heap-plus = "0.1.4"
+tempfile = "3.0.1"
 
 [dependencies.telamon-utils]
 path = "telamon-utils"
@@ -79,6 +75,7 @@ default = []
 format_exh = []
 mppa = []
 lex = []
+
 
 [workspace]
 members = [

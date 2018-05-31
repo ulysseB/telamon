@@ -1,3 +1,5 @@
+#![allow(unused_variables)]
+
 //! Syntaxic tree for the constraint description.
 use constraint::Constraint as TypedConstraint;
 use constraint::dedup_inputs;

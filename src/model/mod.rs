@@ -397,10 +397,10 @@ mod cuda_tests {
             let mut builder = SignatureBuilder::new("test", &mut context);
             builder.scalar("m", 1i32 << 13);
             builder.scalar("n", 1i32 << 13);
-            let m_size = tensor::DimSize::Param("m");
-            let n_size = tensor::DimSize::Param("n");
-            x = builder.tensor::<f32>("x", vec![n_size], true);
-            a = builder.tensor::<f32>("a", vec![m_size, n_size], true);
+            let m_size: tensor::DimSize = "m".into();
+            let n_size: tensor::DimSize = "n".into();
+            x = builder.tensor::<f32>("x", vec![n_size.clone()], true);
+            a = builder.tensor::<f32>("a", vec![m_size.clone(), n_size], true);
             y = builder.tensor::<f32>("y", vec![m_size], false);
             builder.get()
         };
@@ -513,9 +513,9 @@ mod cuda_tests {
         let signature = {
             let mut builder = SignatureBuilder::new("test", &mut context);
             builder.scalar("n", 1 << 25);
-            let n_size = tensor::DimSize::Param("n");
-            x = builder.tensor::<f32>("x", vec![n_size], true);
-            y = builder.tensor::<f32>("y", vec![n_size], true);
+            let n_size: tensor::DimSize = "n".into();
+            x = builder.tensor::<f32>("x", vec![n_size.clone()], true);
+            y = builder.tensor::<f32>("y", vec![n_size.clone()], true);
             z = builder.tensor::<f32>("z", vec![n_size], false);
             builder.get()
         };

@@ -1,5 +1,6 @@
 /// Provides a way to represent the stride of a given variable.
 use ir;
+use utils::*;
 
 /// A stride on a given dimensions.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
@@ -21,36 +22,24 @@ impl Stride {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum AccessPattern {
+pub enum AccessPattern<'a> {
     /// Unknown access pattern.
     Unknown { mem_id: ir::mem::Id },
-    /// Corresponds to accessing a tensor stored in a contiguous array in memory.
-    Tensor { mem_id: ir::mem::Id, stride: i32, dims: Vec<ir::dim::Id> },
+    /// Access with a fixed stride on each dimensions. Accesses on two different
+    /// dimensions should not overlap.
+    Tensor { mem_id: ir::mem::Id, dims: HashMap<ir::dim::Id, ir::Size<'a>> },
 }
 
-impl AccessPattern {
+impl<'a> AccessPattern<'a> {
     /// Returns the stride on a given dimension.
     pub fn stride(&self, dim: ir::dim::Id) -> Stride {
         match *self {
             AccessPattern::Unknown { .. } => Stride::Unknown,
-            AccessPattern::Tensor { stride, ref dims, .. } => {
-                if dims.last() == Some(&dim) {
-                    Stride::Int(stride)
-                } else if dims.iter().any(|x| *x == dim) {
-                    Stride::Unknown
-                } else {
-                    Stride::Int(0)
-                }
+            AccessPattern::Tensor { ref dims, .. } => {
+                dims.get(&dim).map(|s| {
+                    s.as_int().map(|x| Stride::Int(x as i32)).unwrap_or(Stride::Unknown)
+                }).unwrap_or(Stride::Int(0))
             },
-        }
-    }
-
-    /// Renames a basic block in the stride map.
-    pub fn rename(&mut self, old: ir::dim::Id, new: ir::dim::Id) {
-        match *self {
-            AccessPattern::Unknown { .. } => (),
-            AccessPattern::Tensor { ref mut dims, .. } =>
-                for dim in dims { if *dim == old { *dim = new; } },
         }
     }
 

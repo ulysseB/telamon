@@ -227,3 +227,13 @@ pub fn cmp_f64(a: f64, b: f64) -> std::cmp::Ordering {
         std::cmp::Ordering::Greater
     }
 }
+
+/// A trait that implements useful methods on builders.
+pub trait BuilderTrait: Sized {
+    /// Runs the closure if the bool is true.
+    fn doif<F>(&mut self, flag: bool, f: F) -> &mut Self
+        where F: FnOnce(&mut Self) -> &mut Self
+    {
+        if flag { f(self) } else { self }
+    }
+}
