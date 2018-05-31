@@ -3,6 +3,7 @@
 extern crate cuda_sys;
 extern crate itertools;
 extern crate libc;
+#[macro_use]
 extern crate ndarray;
 extern crate num;
 extern crate num_cpus;
@@ -34,13 +35,11 @@ fn create_size<'a, AM>(value: i32, name: &'a str,
 {
     if is_generic {
         builder.scalar(name, value);
-        DimSize::Param(name)
-    } else { DimSize::Const(value as u32) }
+        name.into()
+    } else { (value as u32).into() }
 }
 
-fn generate_tile_sizes(size: u32, max_tiles: &[u32])
-    -> impl ParallelIterator<Item=Vec<u32>>
-{
+fn generate_tile_sizes(size: u32, max_tiles: &[u32]) -> Vec<Vec<u32>> {
     let mut tiles = vec![(size, vec![])];
     for &max_tile in max_tiles.into_iter().rev() {
         let old_tiles = std::mem::replace(&mut tiles, vec![(size, vec![])]);
@@ -57,7 +56,7 @@ fn generate_tile_sizes(size: u32, max_tiles: &[u32])
     tiles.into_par_iter().map(|(_, mut tiling)| {
         tiling.reverse();
         tiling
-    })
+    }).collect()
 }
 
 fn par_iter_product<I1, I2>(i1: I1, i2: I2)

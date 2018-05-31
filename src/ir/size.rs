@@ -46,6 +46,13 @@ impl<'a> Size<'a> {
         self.simplify();
     }
 
+    /// Multiplies the factor by the given factor.
+    pub fn mul_factor(&mut self, d: u32) {
+        assert_ne!(d, 0);
+        self.factor *= d;
+        self.simplify();
+    }
+
     /// Simplifies the fraction factor/divisor.
     fn simplify(&mut self) {
         let gcd = num::integer::gcd(self.factor, self.divisor);

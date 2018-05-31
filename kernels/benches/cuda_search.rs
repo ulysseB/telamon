@@ -19,18 +19,40 @@ fn main() {
     env_logger::init();
     let executor = cuda::Executor::init();
     let cublas_handle = CublasHandle::new();
-    benchmark::<linalg::Axpy<f32>, _>(1 << 25, &executor, |params, ctx| {
+    // 1.5
+    benchmark::<linalg::Axpy<f32>, _>((1 << 25, true), &executor, |params, ctx| {
         saxpy_reference(&cublas_handle, params, ctx)
     });
-    benchmark::<linalg::MatMul<f32>, _>((1<<10, 1<<10, 1<<10), &executor, |params, ctx| {
+    // 1.56
+    let params = linalg::MatMulP::new(128, 256, 32).transpose_b();
+    benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
         matmul_reference(&cublas_handle, params, ctx)
     });
-    // FIXME: 0.55 perf, with exhaustive search
-    benchmark::<linalg::MatVec<f32>, _>((1<<13, 1<<13), &executor, |params, ctx| {
+    // 0.39
+    let params = linalg::MatMulP::new(128, 1024, 1024).transpose_b();
+    benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
+        matmul_reference(&cublas_handle, params, ctx)
+    });
+    // 0.33
+    let params = linalg::MatMulP::new(128, 16384, 4096).transpose_b();
+    benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
+        matmul_reference(&cublas_handle, params, ctx)
+    });
+    // 0.82 in 2.38 hours/4H
+    let params = linalg::MatMulP::new(1024, 1024, 1024);
+    benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
+        matmul_reference(&cublas_handle, params, ctx)
+    });
+    let params = linalg::BatchMMP::new(500, 26, 26, 72).transpose_b();
+    benchmark::<linalg::BatchMM<f32>, _>(params, &executor, |params, ctx| {
+        batchmm_reference(&cublas_handle, params, ctx)
+    });
+    // 0.55 perf, with exhaustive search
+    benchmark::<linalg::MatVec<f32>, _>((1<<13, 1<<13, true), &executor, |params, ctx| {
         matvec_reference(&cublas_handle, params, ctx)
     });
-    // FIXME: 0.28 perf, with exhaustive search
-    benchmark::<linalg::Gesummv<f32>, _>((1<<13, 1<<13), &executor, |params, ctx| {
+    // 0.31 perf, with exhaustive search
+    benchmark::<linalg::Gesummv<f32>, _>((1<<13, 1<<13, true), &executor, |params, ctx| {
         gesummv_reference(&cublas_handle, params, ctx)
     });
     // FIXME: add more input sizes for benchmarks
@@ -39,7 +61,7 @@ fn main() {
 /// The number of times to run the generated code to evaluate its performance.
 const NUM_CODE_RUNS: usize = 40;
 /// Search timeout in minutes.
-const TIMEOUT: u64 = 240;
+const TIMEOUT: u64 = 120;
 
 /// Benchamrks a kernel against a reference implementation.
 fn benchmark<'a, K, REF>(params: K::Parameters,
@@ -52,7 +74,7 @@ fn benchmark<'a, K, REF>(params: K::Parameters,
     config.distance_to_best.get_or_insert(20.);
 
     let mut context = cuda::Context::new(executor);
-    let runtime = K::benchmark(&config, params, NUM_CODE_RUNS, true, &mut context);
+    let runtime = K::benchmark(&config, params, NUM_CODE_RUNS, &mut context);
     for _ in 0..4 { reference(params, &context); }
     let ref_runtime = (0..NUM_CODE_RUNS).map(|_| reference(params, &context)).collect();
     let mean = estimate_mean(runtime, 0.95, "ns");
@@ -115,9 +137,12 @@ unsafe fn get_array<T>(name: &str, context: &cuda::Context) -> *mut T {
     *ptr
 }
 
+const CUBLAS_N: cublasOperation_t = cublasOperation_t_CUBLAS_OP_N; 
+const CUBLAS_T: cublasOperation_t = cublasOperation_t_CUBLAS_OP_T; 
+
 /// Reference implementation for the `Axpy` kernel.
 fn saxpy_reference(handle: &CublasHandle,
-                   n: i32,
+                   (n, _): (i32, bool),
                    context: &cuda::Context) -> f64 {
     let n = n as libc::c_int;
     let alpha = context.get_param("alpha").raw_ptr() as *const f32;
@@ -130,7 +155,7 @@ fn saxpy_reference(handle: &CublasHandle,
 
 /// Reference implementation for the matrix-vector multiplication.
 fn matvec_reference(handle: &CublasHandle,
-                    (m, n): (i32, i32),
+                    (m, n, _): (i32, i32, bool),
                     context: &cuda::Context) -> f64 {
 
     let m = m as libc::c_int;
@@ -148,26 +173,55 @@ fn matvec_reference(handle: &CublasHandle,
 
 /// Reference implementation for the matrix-matrix multiplication.
 fn matmul_reference(handle: &CublasHandle,
-                    (m, n, k): (i32, i32, i32),
+                    params: linalg::MatMulP,
                     context: &cuda::Context) -> f64 {
-    let m = m as libc::c_int;
-    let n = n as libc::c_int;
-    let k = k as libc::c_int;
+    let m = params.m as libc::c_int;
+    let n = params.n as libc::c_int;
+    let k = params.k as libc::c_int;
+    assert!(params.a_stride == 1);
     unsafe {
         let a = get_array("a", context);
         let b = get_array("b", context);
         let c = get_array("c", context);
+        let (op_a, lda) = if params.transpose_a { (CUBLAS_T, m) } else { (CUBLAS_N, k) };
+        let (op_b, ldb) = if params.transpose_b { (CUBLAS_T, k) } else { (CUBLAS_N, n) };
         time_cuda(|| {
-            let op = cublasOperation_t_CUBLAS_OP_N;
             check_cublas(cublasSgemm_v2(
-                    handle.0, op, op, n, m, k, &2., b, n, a, k, &3., c, n));
+                    handle.0, op_b, op_a, n, m, k, &2., b, ldb, a, lda, &3., c, n));
+        })
+    }
+}
+
+/// Reference implementation for the matrix-matrix multiplication.
+fn batchmm_reference(handle: &CublasHandle,
+                     params: linalg::BatchMMP,
+                     context: &cuda::Context) -> f64 {
+    let m = params.m as libc::c_int;
+    let n = params.n as libc::c_int;
+    let k = params.k as libc::c_int;
+    let batch = params.batch as libc::c_int;
+    unsafe {
+        let a = get_array("a", context);
+        let b = get_array("b", context);
+        let c = get_array("c", context);
+        let (op_a, lda) = if params.transpose_a { (CUBLAS_T, m) } else { (CUBLAS_N, k) };
+        let (op_b, ldb) = if params.transpose_b { (CUBLAS_T, k) } else { (CUBLAS_N, n) };
+        let stride_a = (m*k) as libc::c_long;
+        let stride_b = (n*k) as libc::c_long;
+        let stride_c = (m*n) as libc::c_long;
+        time_cuda(|| {
+            check_cublas(cublasSgemmStridedBatched(
+                    handle.0, op_b, op_a, n, m, k, &2.,
+                    b, ldb, stride_b,
+                    a, lda, stride_a, &3.,
+                    c, n, stride_c, batch));
         })
     }
 }
 
 /// Reference implementation for the `Gesummv` params.
 fn gesummv_reference(handle: &CublasHandle,
-                     (m, n): (i32, i32),
+                     (m, n, _): (i32, i32, bool),
                      context: &cuda::Context) -> f64 {
     let m = m as libc::c_int;
     let n = n as libc::c_int;

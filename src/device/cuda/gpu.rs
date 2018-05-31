@@ -233,8 +233,9 @@ impl Gpu {
 
     /// Retruns the overhead for a single instance of the instruction.
     fn inst_pressure(&self, space: &SearchSpace,
-                         dim_sizes: &HashMap<ir::dim::Id, u32>,
-                         inst: &ir::Instruction) -> HwPressure {
+                     dim_sizes: &HashMap<ir::dim::Id, u32>,
+                     inst: &ir::Instruction,
+                     ctx: &device::Context) -> HwPressure {
         use ir::Operator::*;
         let t = self.lower_type(inst.t(), space).unwrap_or_else(|| inst.t());
         match (inst.operator(), t) {
@@ -276,12 +277,12 @@ impl Gpu {
             (&BinOp(ir::BinOp::Div, ..), Type::I(64)) => self.div_i64_inst.into(),
             (&Ld(..), _) | (&TmpLd(..), _) => {
                 let flag = space.domain().get_inst_flag(inst.id());
-                let mem_info = mem_model::analyse(space, self, inst, dim_sizes);
+                let mem_info = mem_model::analyse(space, self, inst, dim_sizes, ctx);
                 self.load_desc(&mem_info, flag).into()
             },
             (&St(..), _) | (&TmpSt(..), _) => {
                 let flag = space.domain().get_inst_flag(inst.id());
-                let mem_info = mem_model::analyse(space, self, inst, dim_sizes);
+                let mem_info = mem_model::analyse(space, self, inst, dim_sizes, ctx);
                 self.store_desc(&mem_info, flag).into()
             },
             // TODO(model): Instruction description for mov and cast.
@@ -387,9 +388,10 @@ impl device::Device for Gpu {
     fn hw_pressure(&self, space: &SearchSpace,
                    dim_sizes: &HashMap<ir::dim::Id, u32>,
                    _nesting: &HashMap<ir::BBId, model::Nesting>,
-                   bb: &ir::BasicBlock) -> model::HwPressure {
+                   bb: &ir::BasicBlock,
+                   ctx: &device::Context) -> model::HwPressure {
         if let Some(inst) = bb.as_inst() {
-            self.inst_pressure(space, dim_sizes, inst)
+            self.inst_pressure(space, dim_sizes, inst, ctx)
         } else if let Some(dim) = bb.as_dim() {
             let kind = space.domain().get_dim_kind(dim.id());
             self.dim_pressure(kind, dim_sizes[&dim.id()])

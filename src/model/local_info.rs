@@ -42,7 +42,9 @@ impl LocalInfo {
             // will be taken multiple times into account.
             let pressure = if is_thread && nesting[&bb.bb_id()].has_inner_thread_dims {
                 HwPressure::zero(context.device())
-            } else { context.device().hw_pressure(space, &dim_sizes, &nesting, bb) };
+            } else {
+                context.device().hw_pressure(space, &dim_sizes, &nesting, bb, context)
+            };
             (bb.bb_id(), pressure)
         }).collect();
         let mut dim_overhead = space.ir_instance().dims().map(|d| {

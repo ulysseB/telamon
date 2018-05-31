@@ -41,8 +41,8 @@ impl<'a> Instruction<'a> {
 
     /// Applies the lowering of a layout to the instruction.
     pub fn lower_layout(&mut self,
-                        ld_idx: Operand<'a>, ld_pattern: ir::AccessPattern,
-                        st_idx: Operand<'a>, st_pattern: ir::AccessPattern) {
+                        ld_idx: Operand<'a>, ld_pattern: ir::AccessPattern<'a>,
+                        st_idx: Operand<'a>, st_pattern: ir::AccessPattern<'a>) {
         self.operator = match self.operator.clone() {
             Operator::TmpLd(t, id2) => {
                 assert_eq!(ld_pattern.mem_block(), id2);
