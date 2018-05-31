@@ -44,6 +44,34 @@ pub enum ChoiceDef {
     EnumDef(EnumDef),
 }
 
+impl From<Statement> for Result<ChoiceDef, TypeError> {
+    fn from(stmt: Statement) -> Self {
+        match stmt {
+            Statement::CounterDef { name, doc, visibility, vars, body } => {
+                Ok(ChoiceDef::CounterDef(CounterDef {
+                    name, doc, visibility, vars, body
+                }))
+            },
+            Statement::EnumDef { name, doc, variables, statements } => {
+                if let Some(variable) =
+                    variables.into_iter()
+                             .find(|ref item|
+                                 variables.iter()
+                                     .skip_while(|ref subitem| subitem != &item)
+                                     .skip(1)
+                                     .any(|ref subitem| subitem == item)) {
+                    Err(TypeError::EnumMultipleNameField(variable.clone()))
+                } else {
+                    Ok(ChoiceDef::EnumDef(EnumDef {
+                        name, doc, variables, statements
+                    }))
+                }
+            },
+            _ => unreachable!(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct SetDef {
     pub name: String,

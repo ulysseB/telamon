@@ -19,6 +19,7 @@ pub use super::lexer::Spanned;
 #[derive(Debug)]
 pub enum TypeError {
     EnumNameMulti,
+    EnumMultipleNameField(VarDef),
 }
 
 /// Syntaxic tree for the constraint description.
@@ -46,7 +47,8 @@ struct TypingContext {
 
 impl TypingContext {
     /// Adds a statement to the typing context.
-    fn add_statement(&mut self, statement: Spanned<Statement>) -> Result<(), Spanned<TypeError>> {
+    fn add_statement(&mut self, statement: Spanned<Statement>)
+        -> Result<(), Spanned<TypeError>> {
         match statement {
             Spanned { leg, end,
                 data: Statement::SetDef { name, doc, arg, superset, disjoint, keys, quotient }
@@ -61,31 +63,17 @@ impl TypingContext {
                     quotient: quotient,
                 }))
             },
-            Spanned { leg, end,
-                data: Statement::EnumDef { name, doc, variables, statements }
-            } => {
-                let choice_def = ChoiceDef::EnumDef(EnumDef {
-                    name: name,
-                    doc: doc,
-                    variables: variables,
-                    statements: statements,
-                });
+            Spanned { leg, end, data: d @ Statement::EnumDef { .. } } |
+            Spanned { leg, end, data: d @ Statement::CounterDef { .. } } => {
+                let d: Statement = d;
+                let choice_def: ChoiceDef =
+                    Result::<ChoiceDef, TypeError>::from(d)
+                           .map_err(|e| Spanned { leg, end, data: e })?;
                 if self.choice_defs.contains(&choice_def) {
                     Err(Spanned { leg: leg, end: end, data: TypeError::EnumNameMulti })
                 } else {
                     Ok(self.choice_defs.push(choice_def))
                 }
-            },
-            Spanned { leg, end,
-                data: Statement::CounterDef { name, doc, visibility, vars, body }
-            } => {
-                Ok(self.choice_defs.push(ChoiceDef::CounterDef(CounterDef {
-                    name: name,
-                    doc: doc,
-                    visibility: visibility,
-                    vars: vars,
-                    body: body,
-                })))
             },
             Spanned { leg, end,
                 data: Statement::TriggerDef { foralls, conditions, code }
@@ -767,6 +755,12 @@ impl SetRef {
 pub struct VarDef {
     pub name: RcStr,
     pub set: SetRef,
+}
+
+impl PartialEq for VarDef {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.name == rhs.name
+    }
 }
 
 /// Maps variables to their set and position.
