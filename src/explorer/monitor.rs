@@ -7,7 +7,6 @@ use explorer::store::Store;
 use futures::channel;
 use futures::prelude::*;
 use futures::executor::block_on;
-use search_space::SearchSpace;
 use std::time::{Duration, Instant};
 use std;
 use std::sync;
@@ -28,7 +27,7 @@ impl<T> From<TimeoutError<T>> for CommEnd {
 pub fn monitor<'a, T>(config: &Config, candidate_store: &T,
                       recv: channel::mpsc::Receiver<MonitorMessage<'a, T>>,
                      log_sender: sync::mpsc::SyncSender<LogMessage>)
-    -> Option<SearchSpace<'a>> where T: Store<'a>
+    -> Option<Candidate<'a>> where T: Store<'a>
 {
     warn!("Monitor waiting for evaluation results");
     let t0 = Instant::now();
@@ -49,7 +48,7 @@ pub fn monitor<'a, T>(config: &Config, candidate_store: &T,
             panic!("an error occured in the monitor while witing for nes candidates"),
         Ok(_) => warn!("No candidates to try anymore"),
     }
-    best_cand.map(|x| x.0.space)
+    best_cand.map(|x| x.0)
 }
 
 /// Depending on the value of the evaluation we just did, computes the new cut value for the store
@@ -115,7 +114,7 @@ fn handle_message<'a, T>(config: &Config,
                                                               &(Candidate, f64)| best.1 ));
     let change = best_cand.as_ref().map(|&(_, time)| time > eval).unwrap_or(true);
     if change {
-        warn!("Got a new best candidate, score: {:.3e}", eval);
+        warn!("Got a new best candidate, score: {:.3e}, {}", eval, cand);
         candidate_store.update_cut(get_new_cut(config, eval));
         let log_message = LogMessage::NewBest{score: eval, cpt, timestamp:t};
         log_sender.send(log_message).unwrap();

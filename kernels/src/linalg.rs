@@ -1,5 +1,5 @@
 //! Linera algebra kernels.
-use {Scalar, create_size};
+use {build_candidate, Scalar, create_size};
 use itertools::Itertools;
 use kernel::Kernel;
 use ndarray::{Array1, Array2, Array3, ArrayD};
@@ -7,6 +7,7 @@ use num;
 use rand;
 use rayon::prelude::*;
 use telamon::{device, ir};
+use telamon::explorer::Candidate;
 use telamon::helper::{self, Builder, SignatureBuilder};
 use telamon::helper::tensor::*;
 use telamon::search_space::*;
@@ -39,12 +40,12 @@ impl<'a, S> Kernel<'a> for Axpy<'a, S> where S: Scalar {
         Axpy { n, x, y, z }
     }
 
-    fn build_body<'b>(&self, signature: &'b ir::Signature, device: &'b device::Device)
-        -> Vec<SearchSpace<'b>>
+    fn build_body<'b>(&self, signature: &'b ir::Signature, ctx: &'b device::Context)
+        -> Vec<Candidate<'b>>
     {
         let tiling = &[1024, 4]; // FIXME: try more tile sizes.
         assert!(self.n as u32 >= tiling.iter().product::<u32>());
-        let mut builder = Builder::new(signature, device);
+        let mut builder = Builder::new(signature, ctx.device());
 
         let ld_x = self.x.load(&[tiling], &mut builder);
         let ld_y = self.y.load(&[tiling], &mut builder);
@@ -53,8 +54,7 @@ impl<'a, S> Kernel<'a> for Axpy<'a, S> where S: Scalar {
         let y_op = ld_y.dim_map(&[&mad_dim], GlobalScope, &mut builder);
         let mad = VirtualTensor::new(builder.mad(&x_op, &"alpha", &y_op), vec![mad_dim]);
         mad.store(&self.z, &mut builder);
-
-        vec![builder.get()]
+        vec![build_candidate(builder.get(), ctx, vec![])]
     }
 
     fn get_expected_output(&self, context: &device::Context) -> ArrayD<S> {
@@ -100,8 +100,8 @@ impl <'a, S> Kernel<'a> for MatVec<'a, S> where S: Scalar {
         MatVec { m, n, x, a, y }
     }
 
-    fn build_body<'b>(&self, signature: &'b ir::Signature, device: &'b device::Device)
-        -> Vec<SearchSpace<'b>>
+    fn build_body<'b>(&self, signature: &'b ir::Signature, ctx: &'b device::Context)
+        -> Vec<Candidate<'b>>
     {
         // Ensure the matrix is big enough for the proposed tiling scheme.
         let gcd = num::integer::gcd(self.m, self.n) as u32;
@@ -110,7 +110,7 @@ impl <'a, S> Kernel<'a> for MatVec<'a, S> where S: Scalar {
         //let tilings = std::iter::once((5, 2));
         tilings.into_iter().map(|m_tiling| {
             let n_tiling = if m_tiling.len() > 0 { vec![m_tiling[0]] } else { vec![] };
-            let mut builder = Builder::new(&signature, device);
+            let mut builder = Builder::new(&signature, ctx.device());
             let ld_x = self.x.load(&[&n_tiling], &mut builder);
             let ld_a = self.a.load(&[&m_tiling, &n_tiling], &mut builder);
             let init_dim_m = builder.open_mapped_dim(&ld_a[0]);
@@ -129,7 +129,7 @@ impl <'a, S> Kernel<'a> for MatVec<'a, S> where S: Scalar {
             builder.action(Action::InstFlag(ld_x.inst(), InstFlag::MEM_CG));
             builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CG));
             builder.action(Action::InstFlag(st_y.inst(), InstFlag::MEM_CS));
-            builder.get()
+            build_candidate(builder.get(), ctx, vec![m_tiling])
         }).collect()
     }
 
@@ -189,8 +189,8 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
         Gesummv { m, n, alpha, beta, a, b, x, y }
     }
 
-    fn build_body<'b>(&self, signature: &'b ir::Signature, device: &'b device::Device)
-        -> Vec<SearchSpace<'b>>
+    fn build_body<'b>(&self, signature: &'b ir::Signature, ctx: &'b device::Context)
+        -> Vec<Candidate<'b>>
     {
         // Ensure the matrix is big enough for the proposed tiling scheme.
         let gcd = num::integer::gcd(self.m, self.n) as u32;
@@ -199,7 +199,7 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
         //let tilings = std::iter::once(vec![2]);
         tilings.into_iter().map(|m_tiling| {
             let n_tiling = if m_tiling.len() > 0 { vec![m_tiling[0]] } else { vec![] };
-            let mut builder = helper::Builder::new(&signature, device);
+            let mut builder = helper::Builder::new(&signature, ctx.device());
             let ld_x = self.x.load(&[&n_tiling], &mut builder);
             let ld_a = self.a.load(&[&m_tiling, &n_tiling], &mut builder);
             let ld_b = self.b.load(&[&m_tiling, &n_tiling], &mut builder);
@@ -225,7 +225,7 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
             builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CG));
             builder.action(Action::InstFlag(ld_b.inst(), InstFlag::MEM_CG));
             builder.action(Action::InstFlag(st_y.inst(), InstFlag::MEM_CS));
-            builder.get()
+            build_candidate(builder.get(), ctx, vec![m_tiling])
         }).collect()
     }
 
@@ -327,8 +327,8 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
         MatMul { params, a, b, c }
     }
 
-    fn build_body<'b>(&self, signature: &'b ir::Signature, device: &'b device::Device)
-        -> Vec<SearchSpace<'b>>
+    fn build_body<'b>(&self, signature: &'b ir::Signature, ctx: &'b device::Context)
+        -> Vec<Candidate<'b>>
     {
         let k_tiles = ::generate_tile_sizes(self.params.k as u32, &[64]);
         let m_tiles = ::generate_tile_sizes(self.params.m as u32, &[64, 8]);
@@ -346,7 +346,7 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
         });*/
         //let tilings = std::iter::once((4, 2));
         tilings.map(|((m_tiling, n_tiling), k_tiling)| {
-            let mut builder = helper::Builder::new(signature, device);
+            let mut builder = helper::Builder::new(signature, ctx.device());
 
             let ld_a = self.a.load(&[&m_tiling, &k_tiling], &mut builder);
             let ld_b = self.b.load(&[&k_tiling, &n_tiling], &mut builder);
@@ -367,6 +367,8 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
 
             // Order for correctness.
             builder.order(&st_c.inst(), &acc_dim_k, Order::AFTER);
+            build_candidate(builder.get(), ctx, vec![m_tiling, n_tiling, k_tiling])
+
             // Arbitrary constrains to reduce the search space
             // TODO(search_space): remove arbitrary decisions.
             //builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CG | InstFlag::MEM_NC));
@@ -375,7 +377,6 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
 
             //builder.action(Action::DimKind(init_dim_n[0], DimKind::BLOCK));
             //builder.action(Action::DimKind(init_dim_m[0], DimKind::BLOCK));
-            builder.get()
             /*builder.action(Action::DimKind(unroll_dim_0_n, DimKind::UNROLL));
             builder.action(Action::DimKind(unroll_dim_0_m, DimKind::UNROLL));
             builder.order(unroll_dim_0_n.into(), unroll_dim_0_m.into(), Order::OUTER);
@@ -506,8 +507,8 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
         BatchMM { params, a, b, c }
     }
 
-    fn build_body<'b>(&self, signature: &'b ir::Signature, device: &'b device::Device)
-        -> Vec<SearchSpace<'b>>
+    fn build_body<'b>(&self, signature: &'b ir::Signature, ctx: &'b device::Context)
+        -> Vec<Candidate<'b>>
     {
         let m_tilings = ::generate_tile_sizes(self.params.m as u32, &[64]);
         let n_tilings = ::generate_tile_sizes(self.params.n as u32, &[64]);
@@ -518,7 +519,7 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
             .map(|(((m, n), k), b)| (m, n, k, b));
         //let tilings = ::std::iter::once((vec![], vec![], vec![], vec![]));
         tilings.map(|(m_tile, n_tile, k_tile, batch_tile)| {
-            let mut builder = helper::Builder::new(signature, device);
+            let mut builder = helper::Builder::new(signature, ctx.device());
             let ld_a = self.a.load(&[&batch_tile, &m_tile, &k_tile], &mut builder);
             let ld_b = self.b.load(&[&batch_tile, &k_tile, &n_tile], &mut builder);
 
@@ -542,7 +543,7 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
 
             // Order for correctness.
             builder.order(&st_c.inst(), &acc_dim_k, Order::AFTER);
-            builder.get()
+            build_candidate(builder.get(), ctx, vec![m_tile, n_tile, k_tile, batch_tile])
         }).collect()
     }
 

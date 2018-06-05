@@ -22,9 +22,21 @@ pub use kernel::{Kernel, analyze_bounds};
 
 use num::Integer;
 use rayon::prelude::*;
+use telamon::{explorer, model, search_space};
 use telamon::device::{self, ArgMap, Context};
 use telamon::helper::SignatureBuilder;
 use telamon::helper::tensor::DimSize;
+
+/// Creates a candidate from the search space and registers the tile sizes in it.
+fn build_candidate<'a>(space: search_space::SearchSpace<'a>,
+                       ctx: &device::Context,
+                       tile_sizes: Vec<Vec<u32>>) -> explorer::Candidate<'a> {
+    let bound = model::bound(&space, ctx);
+    let mut cand = explorer::Candidate::new(space, bound);
+    let acts = cand.actions.push_front(explorer::choice::ActionEx::TileSizes(tile_sizes));
+    cand.actions = acts;
+    cand
+}
 
 /// Creates a `DimSize`. If the instantiate flag is true, it uses a constant size,
 /// otherwise it creates a parameter with the given name.

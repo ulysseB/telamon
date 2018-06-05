@@ -11,6 +11,7 @@ pub type Choice = Vec<ActionEx>;
 /// Either a regular action or a manually applied action.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ActionEx {
+    TileSizes(Vec<Vec<u32>>),
     Action(Action),
     LowerLayout {
         mem: ir::mem::InternalId,

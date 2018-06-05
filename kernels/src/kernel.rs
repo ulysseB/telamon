@@ -3,11 +3,10 @@ use itertools::Itertools;
 use num_cpus;
 use rayon::prelude::*;
 use std::sync::{atomic, Mutex};
-use telamon::{codegen, device, explorer, ir, model};
+use telamon::{codegen, device, explorer, ir};
 use telamon::explorer::{Candidate, local_selection};
 use telamon::helper::SignatureBuilder;
 use telamon::model::Bound;
-use telamon::search_space::SearchSpace;
 use statistics;
 use std;
 use utils::*;
@@ -37,8 +36,8 @@ pub trait Kernel<'a>: Sized {
 
     /// Builder the kernel body in the given builder. This builder should be based on the
     /// signature created by `build_signature`.
-    fn build_body<'b>(&self, signature: &'b ir::Signature, device: &'b device::Device)
-        -> Vec<SearchSpace<'b>>;
+    fn build_body<'b>(&self, signature: &'b ir::Signature, ctx: &'b device::Context)
+        -> Vec<Candidate<'b>>;
 
     /// Computes the expected output.
     fn get_expected_output(&self, &device::Context) -> Self::ExpectedOutput;
@@ -58,11 +57,7 @@ pub trait Kernel<'a>: Sized {
             builder.get()
         };
         let expected_output = kernel.get_expected_output(context);
-        let candidates = kernel.build_body(&signature, context.device()).into_iter()
-            .map(|space| {
-                let bound = model::bound(&space, context);
-                Candidate::new(space, bound)
-            }).collect_vec();
+        let candidates = kernel.build_body(&signature, context);
         let mut num_deadends = 0;
         let mut num_runs = 0;
         while num_runs < num_tests {
@@ -103,11 +98,7 @@ pub trait Kernel<'a>: Sized {
             kernel = Self::build_signature(params, &mut builder);
             builder.get()
         };
-        let candidates = kernel.build_body(&signature, context.device()).into_iter()
-            .map(|space| {
-                let bound = model::bound(&space, context);
-                Candidate::new(space, bound)
-            }).collect_vec();
+        let candidates = kernel.build_body(&signature, context);
         let leaves = Mutex::new(Vec::new());
         let num_tested = atomic::AtomicUsize::new(0);
         context.async_eval(num_cpus::get(), device::EvalMode::TestBound, &|evaluator| {
@@ -125,7 +116,7 @@ pub trait Kernel<'a>: Sized {
                         let mut actions = leaf.actions.iter().cloned().collect_vec();
                         actions.reverse();
                         for (idx, partial_bound) in bounds.iter().enumerate() {
-                            assert!(partial_bound.value() <= bound.value() * 1.001,
+                            assert!(partial_bound.value() <= bound.value() * 1.01,
                                     "invalid inner bound: {} < {}, kernel {}, \
                                     actions {:?} then {:?}",
                                     partial_bound, bound, Self::name(),
@@ -154,10 +145,10 @@ pub trait Kernel<'a>: Sized {
             kernel = Self::build_signature(params, &mut builder);
             builder.get()
         };
-        let search_space = kernel.build_body(&signature, context.device());
-        let best = unwrap!(explorer::find_best(config, context, search_space),
+        let search_space = kernel.build_body(&signature, context);
+        let best = unwrap!(explorer::find_best_ex(config, context, search_space),
                            "no candidates found for kernel {}", Self::name());
-        let best_fn = codegen::Function::build(&best);
+        let best_fn = codegen::Function::build(&best.space);
         context.benchmark(&best_fn, num_samples)
     }
 
@@ -174,11 +165,7 @@ pub trait Kernel<'a>: Sized {
             kernel = Self::build_signature(params, &mut builder);
             builder.get()
         };
-        let candidates = kernel.build_body(&signature, context.device()).into_iter()
-            .map(|space| {
-                let bound = model::bound(&space, context);
-                Candidate::new(space, bound)
-            }).collect_vec();
+        let candidates = kernel.build_body(&signature, context);
         let num_deadends = (0..num_samples).into_par_iter().filter(|_| {
             let order = explorer::config::NewNodeOrder::WeightedRandom;
             let inf = std::f64::INFINITY;
