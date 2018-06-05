@@ -12,14 +12,17 @@ use std::collections::{BTreeSet, hash_map};
 use utils::*;
 
 pub mod statement;
+pub mod enum_stmt;
 
 pub use self::statement::*;
+pub use self::enum_stmt::*;
+
 pub use super::lexer::Spanned;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum TypeError {
     EnumNameMulti,
-    EnumMultipleNameField(VarDef),
+    EnumMultipleNameField(EnumStatement),
 }
 
 /// Syntaxic tree for the constraint description.
@@ -51,7 +54,9 @@ impl TypingContext {
         -> Result<(), Spanned<TypeError>> {
         match statement {
             Spanned { leg, end,
-                data: Statement::SetDef { name, doc, arg, superset, disjoint, keys, quotient }
+                data: Statement::SetDef {
+                    name, doc, arg, superset, disjoint, keys, quotient
+                }
             } => {
                 Ok(self.set_defs.push(SetDef {
                     name: name,
@@ -65,7 +70,6 @@ impl TypingContext {
             },
             Spanned { leg, end, data: d @ Statement::EnumDef { .. } } |
             Spanned { leg, end, data: d @ Statement::CounterDef { .. } } => {
-                let d: Statement = d;
                 let choice_def: ChoiceDef =
                     Result::<ChoiceDef, TypeError>::from(d)
                            .map_err(|e| Spanned { leg, end, data: e })?;
@@ -675,60 +679,6 @@ pub struct CounterBody {
 #[derive(Debug)]
 pub enum Symmetry { Symmetric, AntiSymmetric(Vec<(RcStr, RcStr)>) }
 
-/// A statement in an enum definition.
-#[derive(Debug)]
-pub enum EnumStatement {
-    /// Defines a possible decision for th enum.
-    Value(String, Option<String>, Vec<Constraint>),
-    /// Defines a set of possible decisions for the enum.
-    Alias(String, Option<String>, Vec<String>, Vec<Constraint>),
-    /// Specifies that the enum is symmetric.
-    Symmetric,
-    /// Specifies that the enum is antisymmetric and given the inverse function.
-    AntiSymmetric(Vec<(String, String)>),
-}
-
-/// Gathers the different statements of an enum.
-#[derive(Debug, Default)]
-struct EnumStatements {
-    /// The values the enum can take, with the atached documentation.
-    values: HashMap<RcStr, Option<String>>,
-    /// Aliases mapped to the corresponding documentation and value set.
-    aliases: HashMap<RcStr, (Option<String>, HashSet<RcStr>)>,
-    /// Symmetry information.
-    symmetry: Option<Symmetry>,
-    /// Constraints on a value.
-    constraints: Vec<(RcStr, Constraint)>,
-}
-
-impl EnumStatements {
-    /// Registers an `EnumStatement`.
-    fn add_statement(&mut self, statement: EnumStatement) {
-        match statement {
-            EnumStatement::Value(name, doc, constraints) => {
-                let name = RcStr::new(name);
-                assert!(self.values.insert(name.clone(), doc).is_none());
-                for c in constraints { self.constraints.push((name.clone(), c)); }
-            },
-            EnumStatement::Alias(name, doc, values, constraints) => {
-                let name = RcStr::new(name);
-                let values = values.into_iter().map(RcStr::new).collect();
-                assert!(self.aliases.insert(name.clone(), (doc, values)).is_none());
-                for c in constraints { self.constraints.push((name.clone(), c)); }
-            },
-            EnumStatement::Symmetric => {
-                assert!(self.symmetry.is_none());
-                self.symmetry = Some(Symmetry::Symmetric);
-            },
-            EnumStatement::AntiSymmetric(mapping) => {
-                assert!(self.symmetry.is_none());
-                let mapping = mapping.into_iter()
-                    .map(|(x, y)| (RcStr::new(x), RcStr::new(y))).collect();
-                self.symmetry = Some(Symmetry::AntiSymmetric(mapping));
-            },
-        }
-    }
-}
 
 /// References a set.
 #[derive(Clone, Debug)]
@@ -822,7 +772,7 @@ impl VarMap {
 }
 
 /// A constraint that must be enforced by the IR.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Constraint {
     /// Variables for which the conditions must be respected.
     pub forall_vars: Vec<VarDef>,
