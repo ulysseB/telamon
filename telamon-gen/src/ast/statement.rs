@@ -53,19 +53,19 @@ impl From<Statement> for Result<ChoiceDef, TypeError> {
                 }))
             },
             Statement::EnumDef { name, doc, variables, statements } => {
-                if let Some(variable) =
-                    variables.into_iter()
-                             .find(|ref item|
-                                 variables.iter()
-                                     .skip_while(|ref subitem| subitem != &item)
+                    if let Some(statement) = statements.iter()
+                             .find(|item|
+                                 statements.iter()
+                                     .skip_while(|subitem| subitem != item)
                                      .skip(1)
-                                     .any(|ref subitem| subitem == item)) {
-                    Err(TypeError::EnumMultipleNameField(variable.clone()))
-                } else {
-                    Ok(ChoiceDef::EnumDef(EnumDef {
-                        name, doc, variables, statements
-                    }))
-                }
+                                     .any(|ref subitem| subitem == item))
+                             .and_then(|item: &EnumStatement| Some(item.clone())) {
+                       Err(TypeError::EnumMultipleNameField(statement))
+                    } else {
+                       Ok(ChoiceDef::EnumDef(EnumDef {
+                           name, doc, variables, statements
+                       }))
+                    }
             },
             _ => unreachable!(),
         }
