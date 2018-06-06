@@ -147,10 +147,6 @@ pub fn init_domain_partial(store: &mut DomainStore,
 // TODO(cleanup): generate (IrInstance, Domain) pair here.
 
 pub trait Domain: Copy + Eq {
-    const FAILED: Self;
-
-    const ALL: Self;
-
     /// Indicates if the domain is empty.
     fn is_failed(&self) -> bool;
     /// Indicates if the domain contains a single alternative.
@@ -200,6 +196,14 @@ pub struct Range {
 
 #[allow(dead_code)]
 impl Range {
+    const ALL: Range = Range { min: 0, max: std::u32::MAX };
+
+    /// Returns the empty `Range`.
+    pub fn failed() -> Self { Range { min: 1, max: 0 } }
+
+    /// Returns the full range.
+    pub fn all() -> Self { Self::ALL }
+
     /// Creates a range that only contains the given value.
     pub fn new_eq(val: u32) -> Self { Range { min: val, max: val } }
 
@@ -275,10 +279,6 @@ impl Range {
 }
 
 impl Domain for Range {
-    const FAILED: Range = Range { min: 1, max: 0 };
-
-    const ALL: Range = Range { min: 0, max: std::u32::MAX };
-
     fn is_failed(&self) -> bool { self.min > self.max }
 
     fn is_constrained(&self) -> bool { self.min == self.max }
@@ -304,6 +304,11 @@ pub struct HalfRange { pub min: u32 }
 
 #[allow(dead_code)]
 impl HalfRange {
+    const ALL: HalfRange = HalfRange { min: 0 };
+
+    /// Returns the full `HalfRange`.
+    pub fn all() -> Self { Self::ALL }
+
     /// Returns the range of all the integers greater than 'val'
     pub fn new_gt(val: u32) -> Self {
         HalfRange { min: val.saturating_add(1) }
@@ -350,11 +355,7 @@ impl HalfRange {
 }
 
 impl Domain for HalfRange {
-    const FAILED: HalfRange = HalfRange { min: std::u32::MAX };
-
-    const ALL: HalfRange = HalfRange { min: 0 };
-
-    fn is_failed(&self) -> bool { self.min == std::u32::MAX }
+    fn is_failed(&self) -> bool { false }
 
     fn is_constrained(&self) -> bool { false }
 

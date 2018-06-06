@@ -21,6 +21,22 @@ For that we need to:
 - update the constraints representation to manipulate integer decisions
 - update the printer to print integer decisions
 
+## Integer Domain Representation
+
+TODO: what is ALL
+- depends on the particular instance
+- ideas
+  - have a special `all` flag
+TODO: how to make it cheap to manipulate
+- should be copy
+  - use a bitset + reference a list of values
+  - use a perfect hashing function to map values to indexes ?
+
+TODO: how to implement operations
+- contains
+- restrict
+- insert -> for positive filters
+
 # Changes to the search space decision.
 
 To handle tile sizes, we need to answer to explore two decisons:
