@@ -23,6 +23,8 @@ impl PartialEq for EnumStatement {
              EnumStatement::Value(rhs_name, .. )) => {
                 name.eq(rhs_name)
             },
+            (EnumStatement::Symmetric,
+             EnumStatement::Symmetric) => true,
             _ => false,
         }
     }

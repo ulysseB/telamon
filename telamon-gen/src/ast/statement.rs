@@ -10,6 +10,40 @@ pub struct EnumDef {
     pub statements: Vec<EnumStatement>
 }
 
+impl EnumDef {
+    pub fn check_field_name_multi(&self) -> Result<(), TypeError> {
+        if let Some(statement) = 
+            self.statements.iter()
+                .find(|item|
+                    self.statements.iter()
+                        .skip_while(|subitem| subitem != item).skip(1)
+                        .any(|ref subitem| subitem == item))
+                        .and_then(|item: &EnumStatement| Some(item.clone())) {
+            Err(TypeError::EnumFieldNameMulti(statement))?
+        }
+        Ok(())
+    }
+
+    pub fn check_symmetric(&self) -> Result<(), TypeError> {
+        if self.statements.contains(&EnumStatement::Symmetric) {
+            match self.variables.len() {
+                2 => {
+                    if let Some((left, right)) =
+                        self.variables.windows(2)
+                            .find(|vars: &&[VarDef]| vars[0] != vars[1])
+                            .and_then(|vars: &[VarDef]|
+                                Some((vars[0].clone(), vars[1].clone()))) {
+                        Err(TypeError::EnumSymmetricSameParametric(
+                                left, right))?
+                    }
+                },
+                n => Err(TypeError::EnumSymmetricTwoParametric(n))?,
+            }
+        }
+        Ok(())
+    }
+}
+
 impl PartialEq for EnumDef {
     fn eq(&self, rhs: &Self) -> bool {
         self.name == rhs.name
@@ -53,19 +87,13 @@ impl From<Statement> for Result<ChoiceDef, TypeError> {
                 }))
             },
             Statement::EnumDef { name, doc, variables, statements } => {
-                    if let Some(statement) = statements.iter()
-                             .find(|item|
-                                 statements.iter()
-                                     .skip_while(|subitem| subitem != item)
-                                     .skip(1)
-                                     .any(|ref subitem| subitem == item))
-                             .and_then(|item: &EnumStatement| Some(item.clone())) {
-                       Err(TypeError::EnumMultipleNameField(statement))
-                    } else {
-                       Ok(ChoiceDef::EnumDef(EnumDef {
-                           name, doc, variables, statements
-                       }))
-                    }
+                let enum_def: EnumDef = EnumDef {
+                    name, doc, variables, statements
+                };
+
+                enum_def.check_field_name_multi()?;
+                enum_def.check_symmetric()?;
+                Ok(ChoiceDef::EnumDef(enum_def))
             },
             _ => unreachable!(),
         }

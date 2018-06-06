@@ -22,7 +22,9 @@ pub use super::lexer::Spanned;
 #[derive(Debug, PartialEq)]
 pub enum TypeError {
     EnumNameMulti,
-    EnumMultipleNameField(EnumStatement),
+    EnumFieldNameMulti(EnumStatement),
+    EnumSymmetricTwoParametric(usize),
+    EnumSymmetricSameParametric(VarDef, VarDef),
 }
 
 /// Syntaxic tree for the constraint description.
@@ -687,6 +689,12 @@ pub struct SetRef {
     pub var: Option<RcStr>,
 }
 
+impl PartialEq for SetRef {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.name == rhs.name
+    }
+}
+
 impl SetRef {
     fn type_check(&self, ir_desc: &ir::IrDesc, var_map: &VarMap) -> ir::Set {
         let set_def = ir_desc.get_set_def(&self.name);
@@ -709,7 +717,7 @@ pub struct VarDef {
 
 impl PartialEq for VarDef {
     fn eq(&self, rhs: &Self) -> bool {
-        self.name == rhs.name
+        self.set == rhs.set
     }
 }
 
