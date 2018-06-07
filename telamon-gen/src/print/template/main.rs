@@ -390,11 +390,11 @@ impl NumericSet {
     }
 
     /// Inserts alternatives into the domain.
-    pub fn insert(&mut self, other: NumericSet, univers: &VecSet<u16>) {
-        debug_assert!(univers.len() < NumericSet::MAX_LEN);
+    pub fn insert(&mut self, other: NumericSet, universe: &VecSet<u16>) {
+        debug_assert!(universe.len() < NumericSet::MAX_LEN);
         let mut values = [0; NumericSet::MAX_LEN];
         let (mut idx, mut idx_self, mut idx_other) = (0, 0, 0);
-        for &item in univers {
+        for &item in universe {
             if idx_self < self.len && item == self.values[idx_self] {
                 idx_self += 1;
                 values[idx] = item;

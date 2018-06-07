@@ -468,7 +468,7 @@ pub enum ValueSet {
         is_full: bool,
         cmp_inputs: BTreeSet<(CmpOp, usize)>,
         cmp_code: BTreeSet<(CmpOp, Code)>,
-    }
+    },
 }
 
 impl ValueSet {
@@ -489,6 +489,7 @@ impl ValueSet {
                     cmp_code: BTreeSet::default(),
                 }
             },
+            ir::ValueType::NumericSet => unimplemented!() // FIXME
         }
 
     }
@@ -517,6 +518,7 @@ impl ValueSet {
                     }
                 } else { ValueSet::empty(t) }
             },
+            ir::ValueType::NumericSet => unimplemented!() // FIXME
         }
     }
 
@@ -541,6 +543,7 @@ impl ValueSet {
                     cmp_code: BTreeSet::default(),
                 }
             },
+            ir::ValueType::NumericSet => unimplemented!(), // FIXME
             ir::ValueType::HalfRange => panic!("Cannot compare HalfRanges to inputs"),
         }
     }

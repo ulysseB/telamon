@@ -92,6 +92,7 @@ impl ChoiceDef {
         match *def {
             ir::ChoiceDef::Enum(..) => ChoiceDef::Enum,
             ir::ChoiceDef::Counter { kind, .. } => ChoiceDef::Counter { kind },
+            ir::ChoiceDef::Number { .. } => unimplemented!() // FIXME
         }
     }
 }

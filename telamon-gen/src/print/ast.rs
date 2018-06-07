@@ -275,6 +275,7 @@ impl Display for ir::ValueType {
             ir::ValueType::Enum(ref name) => name,
             ir::ValueType::Range => "Range",
             ir::ValueType::HalfRange => "HalfRange",
+            ir::ValueType::NumericSet => "NumericSet",
         }.fmt(f)
     }
 }
