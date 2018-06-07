@@ -155,8 +155,6 @@ pub trait Domain: Copy + Eq {
     fn contains(&self, other: Self) -> bool;
     /// Restricts the domain to the intersection with `other`.
     fn restrict(&mut self, other: Self);
-    /// Inserts alternatives into the domain.
-    fn insert(&mut self, other: Self);
 
     /// Indicates if the domain has an alternatve in common with `other`.
     fn intersects(&self, mut other: Self) -> bool where Self: Sized {
@@ -203,6 +201,12 @@ impl Range {
 
     /// Returns the full range.
     pub fn all() -> Self { Self::ALL }
+
+    /// Inserts alternatives into the domain.
+    pub fn insert(&mut self, other: Range) {
+        self.min = std::cmp::min(self.min, other.min);
+        self.max = std::cmp::max(self.max, other.max);
+    }
 
     /// Creates a range that only contains the given value.
     pub fn new_eq(val: u32) -> Self { Range { min: val, max: val } }
@@ -291,11 +295,6 @@ impl Domain for Range {
         self.min = std::cmp::max(self.min, other.min);
         self.max = std::cmp::min(self.max, other.max);
     }
-
-    fn insert(&mut self, other: Range) {
-        self.min = std::cmp::min(self.min, other.min);
-        self.max = std::cmp::max(self.max, other.max);
-    }
 }
 
 /// Abstracts integer choices by a range, but only store `min`.
@@ -308,6 +307,11 @@ impl HalfRange {
 
     /// Returns the full `HalfRange`.
     pub fn all() -> Self { Self::ALL }
+
+    /// Inserts alternatives into the domain.
+    pub fn insert(&mut self, other: HalfRange) {
+        self.min = std::cmp::min(self.min, other.min);
+    }
 
     /// Returns the range of all the integers greater than 'val'
     pub fn new_gt(val: u32) -> Self {
@@ -366,10 +370,6 @@ impl Domain for HalfRange {
     fn restrict(&mut self, other: HalfRange) {
         self.min = std::cmp::max(self.min, other.min);
     }
-
-    fn insert(&mut self, other: HalfRange) {
-        self.min = std::cmp::min(self.min, other.min);
-    }
 }
 
 #[derive(Copy, Clone)]
@@ -382,11 +382,35 @@ impl NumericSet {
     const MAX_LEN: usize = 32;
 
     /// Returns the set containing all the possibilities.
-    fn all(univers: &VecSet<u16>) -> Self {
+    pub fn all(univers: &VecSet<u16>) -> Self {
         assert!(univers.len() <= NumericSet::MAX_LEN);
         let mut values = [0; NumericSet::MAX_LEN];
         for (v, dst) in univers.iter().cloned().zip(&mut values) { *dst = v; }
         NumericSet { len: univers.len(), values }
+    }
+
+    /// Inserts alternatives into the domain.
+    pub fn insert(&mut self, other: NumericSet, univers: &VecSet<u16>) {
+        debug_assert!(univers.len() < NumericSet::MAX_LEN);
+        let mut values = [0; NumericSet::MAX_LEN];
+        let (mut idx, mut idx_self, mut idx_other) = (0, 0, 0);
+        for &item in univers {
+            if idx_self < self.len && item == self.values[idx_self] {
+                idx_self += 1;
+                values[idx] = item;
+                idx += 1;
+            } else {
+                while idx_other < other.len && item > other.values[idx_other] {
+                    idx_other += 1;
+                }
+                if idx_other < other.len && item == other.values[idx_other] {
+                    values[idx] = item;
+                    idx += 1;
+                }
+            }
+        }
+        self.values = values;
+        self.len = idx;
     }
 }
 
@@ -421,8 +445,6 @@ impl Domain for NumericSet {
         }
         self.len = new_lhs;
     }
-
-    fn insert(&mut self, _: NumericSet) { } // FIXME
 }
 
 impl PartialEq for NumericSet {

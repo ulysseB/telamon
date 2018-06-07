@@ -17,7 +17,7 @@ mod single_enum {
     generated_file!(single_enum);
     use self::single_enum::*;
 
-    /// Ensures basic operations on domains are working.
+    /// Ensures basic operations on enum domains are working.
     #[test]
     fn enum_operations() {
         let _ = ::env_logger::try_init();
@@ -57,6 +57,14 @@ mod single_enum {
         let fun = ir::Function::default();
         let store = DomainStore::default();
         assert_eq!(foo::filter(&fun, &store), Foo::ALL);
+    }
+
+    /// Ensures baisc operations on numeric domains are working.
+    #[test]
+    fn numeric_operation() {
+        let _ = env_logger::try_init();
+
+        // FIXME
     }
 }
 
