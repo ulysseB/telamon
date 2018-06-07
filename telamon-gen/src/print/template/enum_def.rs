@@ -13,6 +13,11 @@ impl {type_name} {{
     /// Returns the full domain.
     pub fn all() -> Self {{ Self::ALL }}
 
+    /// Insert values in the domain.
+    pub fn insert(&mut self, alternatives: Self) {{
+        self.bits |= alternatives.bits
+    }}
+
     /// Lists the alternatives contained in the domain.
     pub fn list<'a>(&self) -> impl Iterator<Item=Self> + 'static {{
         let bits = self.bits;
@@ -39,10 +44,6 @@ impl Domain for {type_name} {{
 
     fn restrict(&mut self, alternatives: Self) {{
         self.bits &= alternatives.bits
-    }}
-
-    fn insert(&mut self, alternatives: Self) {{
-        self.bits |= alternatives.bits
     }}
 }}
 
