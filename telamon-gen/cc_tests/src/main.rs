@@ -63,6 +63,12 @@ mod single_enum {
     #[test]
     fn numeric_operation() {
         let _ = env_logger::try_init();
+        let env0 = VecSet::new(vec![1, 2, 4, 8]);
+        let env1 = VecSet::new(vec![2, 3, 4]);
+
+        let all0 = NumericSet::all(env0);
+        let all1 = NumericSet::all(env1);
+        assert!(all0 != all1);
 
         // FIXME
     }

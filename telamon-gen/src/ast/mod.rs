@@ -597,6 +597,7 @@ impl TypingContext {
                         "Counters cannot sum on counters that expose less information");
                 visibility == ir::CounterVisibility::NoMax && caller_visibility > visibility
             },
+            ir::ChoiceDef::Number { .. } => unimplemented!(), // FIXME
             ir::ChoiceDef::Enum { .. } => panic!("Enum as a counter value"),
         };
         // Type the increment counter value in the calling counter context.

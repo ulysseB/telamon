@@ -184,6 +184,8 @@ pub enum ChoiceDef {
         visibility: CounterVisibility,
         base: ir::Code,
     },
+    /// The `Choice` can take a small set of dynamically defined numeric values.
+    Number { universe: ir::Code },
 }
 
 /// Indicates how a counter exposes how its maximum value. The variants are ordered by
@@ -207,6 +209,7 @@ impl ChoiceDef {
             ChoiceDef::Counter { visibility: CounterVisibility::NoMax, .. } =>
                 ValueType::HalfRange,
             ChoiceDef::Counter { .. } => ValueType::Range,
+            ChoiceDef::Number { .. } => ValueType::NumericSet,
         }
     }
 
@@ -226,6 +229,7 @@ impl ChoiceDef {
             ChoiceDef::Enum(..) => op == ir::CmpOp::Eq || op == ir::CmpOp::Neq,
             ChoiceDef::Counter { visibility: CounterVisibility::Full, .. } => true,
             ChoiceDef::Counter { .. } => op == ir::CmpOp::Lt || op == ir::CmpOp::Leq,
+            ChoiceDef::Number { .. } => unimplemented!(), // FIXME
         }
     }
 }
@@ -246,7 +250,7 @@ impl Adaptable for CounterVal {
 
 /// Specifies the type of the values a choice can take.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ValueType { Enum(RcStr), Range, HalfRange }
+pub enum ValueType { Enum(RcStr), Range, HalfRange, NumericSet }
 
 impl ValueType {
     /// Returns the full type, instead of a the trimmed one.

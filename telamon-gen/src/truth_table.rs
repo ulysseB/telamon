@@ -27,7 +27,8 @@ impl TruthTable {
                     }).collect_vec();
                     Some((id, sets))
                 },
-                ir::ChoiceDef::Counter { .. } => None,
+                ir::ChoiceDef::Counter { .. } |
+                ir::ChoiceDef::Number { .. } => None,
             }
         }).collect_vec();
         let sizes = values.iter().map(|&(_, ref v)| v.len()).collect_vec();
