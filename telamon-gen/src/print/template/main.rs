@@ -371,3 +371,67 @@ impl Domain for HalfRange {
         self.min = std::cmp::min(self.min, other.min);
     }
 }
+
+#[derive(Copy, Clone)]
+struct NumericSet {
+    len: usize,
+    values: [u16; NumericSet::MAX_LEN],
+}
+
+impl NumericSet {
+    const MAX_LEN: usize = 32;
+
+    /// Returns the set containing all the possibilities.
+    fn all(univers: &VecSet<u16>) -> Self {
+        let mut values = [0; NumericSet::MAX_LEN];
+        for (v, dst) in univers.iter().cloned().zip(&mut values) { *dst = v; }
+        NumericSet { len: univers.len(), values }
+    }
+}
+
+impl Domain for NumericSet {
+    fn is_failed(&self) -> bool { self.len == 0 }
+
+    fn is_constrained(&self) -> bool { self.len == 1 }
+
+    fn contains(&self, other: NumericSet) -> bool {
+        let (mut lhs, mut rhs) = (0, 0);
+        while lhs < self.len && rhs < other.len {
+            if self.values[lhs] > other.values[rhs] { return false; }
+            if self.values[lhs] == other.values[rhs] { rhs += 1; }
+            lhs += 1;
+        }
+        rhs == other.len
+    }
+
+    fn restrict(&mut self, other: NumericSet) {
+        let (mut new_lhs, mut old_lhs, mut rhs) = (0, 0, 0);
+        while old_lhs < self.len && rhs < self.len {
+            if self.values[old_lhs] > other.values[rhs] {
+                rhs += 1;
+            } else if self.values[old_lhs] < other.values[rhs] {
+                old_lhs += 1;
+            } else {
+                self.values[new_lhs] = self.values[old_lhs];
+                old_lhs += 1;
+                new_lhs += 1;
+                rhs += 1;
+            }
+        }
+        self.len = new_lhs;
+    }
+
+    fn insert(&mut self, other: NumericSet) { } // FIXME
+}
+
+impl PartialEq for NumericSet {
+    fn eq(&self, other: &NumericSet) -> bool {
+        if self.len != other.len { return false; }
+        for i in 0..self.len {
+            if self.values[i] != other.values[i] { return false; }
+        }
+        true
+    }
+}
+
+impl Eq for NumericSet { }
