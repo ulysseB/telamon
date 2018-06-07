@@ -23,7 +23,9 @@ fn enum_name_multi() {
         Some(Spanned {
             leg: Position { line: 6, column: 10},
             end: Position { line: 6, column: 28},
-            data: telamon_gen::ast::TypeError::EnumNameMulti
+            data: telamon_gen::ast::TypeError::EnumNameMulti(
+                String::from("foo")
+            )
         })
     );
     assert!(parser::parse_ast(Lexer::from(
