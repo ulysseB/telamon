@@ -21,7 +21,9 @@ pub use super::lexer::Spanned;
 
 #[derive(Debug, PartialEq)]
 pub enum TypeError {
-    EnumNameMulti,
+    SetMissingKey(ir::SetDefKey),
+    SetNameMulti(String),
+    EnumNameMulti(String),
     EnumFieldNameMulti(EnumStatement),
     EnumSymmetricTwoParametric(usize),
     EnumSymmetricSameParametric(VarDef, VarDef),
@@ -62,23 +64,28 @@ impl TypingContext {
                     name, doc, arg, superset, disjoint, keys, quotient
                 }
             } => {
-                Ok(self.set_defs.push(SetDef {
-                    name,
-                    doc,
-                    arg,
-                    superset,
-                    disjoint,
-                    keys,
-                    quotient,
-                }))
+                let set_def: SetDef =
+                    SetDef { name, doc, arg, superset, disjoint, keys,
+                        quotient };
+
+                set_def.check_missing_key()
+                       .map_err(|e| Spanned { leg, end, data: e })?;
+                if self.set_defs.contains(&set_def) {
+                    Err(Spanned { leg, end, data:
+                        TypeError::SetNameMulti(set_def.name.clone()) })
+                } else {
+                    Ok(self.set_defs.push(set_def))
+                }
             },
             Spanned { leg, end, data: d @ Statement::EnumDef { .. } } |
             Spanned { leg, end, data: d @ Statement::CounterDef { .. } } => {
                 let choice_def: ChoiceDef =
                     Result::<ChoiceDef, TypeError>::from(d)
                            .map_err(|e| Spanned { leg, end, data: e })?;
+
                 if self.choice_defs.contains(&choice_def) {
-                    Err(Spanned { leg, end, data: TypeError::EnumNameMulti })
+                    Err(Spanned { leg, end, data:
+                        TypeError::EnumNameMulti(choice_def.get_name().clone()) })
                 } else {
                     Ok(self.choice_defs.push(choice_def))
                 }

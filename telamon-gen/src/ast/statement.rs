@@ -100,6 +100,19 @@ pub enum ChoiceDef {
     EnumDef(EnumDef),
 }
 
+impl ChoiceDef {
+    pub fn get_name(&self) -> &String {
+        match self {
+            ChoiceDef::CounterDef(counter_def) => {
+                &counter_def.name
+            },
+            ChoiceDef::EnumDef(enum_def) => {
+                &enum_def.name
+            },
+        }
+    }
+}
+
 impl From<Statement> for Result<ChoiceDef, TypeError> {
     fn from(stmt: Statement) -> Self {
         match stmt {
@@ -109,7 +122,6 @@ impl From<Statement> for Result<ChoiceDef, TypeError> {
                 }))
             },
             Statement::EnumDef { name, doc, variables, statements } => {
-                println!("> {} {:?} {:?}", name, doc, statements);
                 let enum_def: EnumDef = EnumDef {
                     name, doc, variables, statements
                 };
@@ -136,7 +148,28 @@ pub struct SetDef {
 }
 
 impl SetDef {
+    /// A set should always have the keys: type, id_type, id_getter, iterator, getter.
     pub fn check_missing_key(&self) -> Result<(), TypeError> {
+        let keys = self.keys.iter().map(|(k, _, _)| k).collect::<Vec<&ir::SetDefKey>>();
+
+        if !keys.contains(&&ir::SetDefKey::ItemType) {
+            Err(TypeError::SetMissingKey(ir::SetDefKey::ItemType))?
+        }
+        if !keys.contains(&&ir::SetDefKey::IdType) {
+            Err(TypeError::SetMissingKey(ir::SetDefKey::IdType))?
+        }
+        if !keys.contains(&&ir::SetDefKey::ItemGetter) {
+            Err(TypeError::SetMissingKey(ir::SetDefKey::ItemGetter))?
+        }
+        if !keys.contains(&&ir::SetDefKey::Iter) {
+            Err(TypeError::SetMissingKey(ir::SetDefKey::Iter))?
+        }
         Ok(())
+    }
+}
+
+impl PartialEq for SetDef {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.name == rhs.name
     }
 }
