@@ -353,6 +353,9 @@
 <span id="296">296</span>
 <span id="297">297</span>
 <span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Sets backed by ordered vectors.</span>
 <span class="kw">use</span> <span class="ident">std</span>;
@@ -376,6 +379,9 @@
 
     <span class="doccomment">/// Indicates if the `VecSet` is empty.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_empty</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> { <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">is_empty</span>() }
+
+    <span class="doccomment">/// Returns the number of elements in the set.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">usize</span> { <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">len</span>() }
 
     <span class="doccomment">/// Iterates over the set, in order.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">std</span>::<span class="ident">slice</span>::<span class="ident">Iter</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> { <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">iter</span>() }

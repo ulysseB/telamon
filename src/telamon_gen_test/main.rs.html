@@ -1149,7 +1149,7 @@
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">x</span>, <span class="ident">Foo</span>::<span class="ident">B</span>);
 
         <span class="comment">// Ensure `failed`, `all` and `is_failed` are working.</span>
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">Foo</span>::<span class="ident">FAILED</span>.<span class="ident">is_failed</span>());
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">Foo</span>::<span class="ident">failed</span>().<span class="ident">is_failed</span>());
         <span class="macro">assert</span><span class="macro">!</span>((<span class="op">!</span><span class="ident">Foo</span>::<span class="ident">ALL</span>).<span class="ident">is_failed</span>());
         <span class="comment">// Ensure is_constrained is working.</span>
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">Foo</span>::<span class="ident">A</span>.<span class="ident">is_constrained</span>());
@@ -1158,7 +1158,7 @@
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">Foo</span>::<span class="ident">AB</span>.<span class="ident">intersects</span>(<span class="ident">Foo</span>::<span class="ident">BC</span>));
         <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">Foo</span>::<span class="ident">A</span>.<span class="ident">intersects</span>(<span class="ident">Foo</span>::<span class="ident">BC</span>));
         <span class="comment">// Ensure contains is working.</span>
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">Foo</span>::<span class="ident">AB</span>.<span class="ident">contains</span>(<span class="ident">Foo</span>::<span class="ident">FAILED</span>));
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">Foo</span>::<span class="ident">AB</span>.<span class="ident">contains</span>(<span class="ident">Foo</span>::<span class="ident">failed</span>()));
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">Foo</span>::<span class="ident">AB</span>.<span class="ident">contains</span>(<span class="ident">Foo</span>::<span class="ident">A</span>));
         <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">Foo</span>::<span class="ident">AB</span>.<span class="ident">contains</span>(<span class="ident">Foo</span>::<span class="ident">BC</span>));
         <span class="comment">// Ensure list is working correctly.</span>
@@ -1396,7 +1396,7 @@
         <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> ::<span class="ident">env_logger</span>::<span class="ident">try_init</span>();
 
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">Enum2</span>::<span class="ident">ALL</span>.<span class="ident">inverse</span>(), <span class="ident">Enum2</span>::<span class="ident">ALL</span>);
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">Enum2</span>::<span class="ident">FAILED</span>.<span class="ident">inverse</span>(), <span class="ident">Enum2</span>::<span class="ident">FAILED</span>);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">Enum2</span>::<span class="ident">failed</span>().<span class="ident">inverse</span>(), <span class="ident">Enum2</span>::<span class="ident">failed</span>());
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">Enum2</span>::<span class="ident">BEFORE</span>.<span class="ident">inverse</span>(), <span class="ident">Enum2</span>::<span class="ident">AFTER</span>);
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">Enum2</span>::<span class="ident">AFTER</span>.<span class="ident">inverse</span>(), <span class="ident">Enum2</span>::<span class="ident">BEFORE</span>);
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">Enum2</span>::<span class="ident">INNER</span>.<span class="ident">inverse</span>(), <span class="ident">Enum2</span>::<span class="ident">OUTER</span>);
