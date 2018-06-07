@@ -12,13 +12,20 @@ use std::collections::{BTreeSet, hash_map};
 use utils::*;
 
 pub mod statement;
+pub mod enum_stmt;
 
 pub use self::statement::*;
+pub use self::enum_stmt::*;
+
 pub use super::lexer::Spanned;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum TypeError {
     EnumNameMulti,
+    EnumFieldNameMulti(EnumStatement),
+    EnumSymmetricTwoParametric(usize),
+    EnumSymmetricSameParametric(VarDef, VarDef),
+    EnumAliasValueMissing(String),
 }
 
 /// Syntaxic tree for the constraint description.
@@ -27,7 +34,8 @@ pub struct Ast { pub statements: Vec<Spanned<Statement>> }
 
 impl Ast {
     /// Generate the defintion of choices and the list of constraints.
-    pub fn type_check(self) -> Result<(ir::IrDesc, Vec<TypedConstraint>), Spanned<TypeError>> {
+    pub fn type_check(self)
+        -> Result<(ir::IrDesc, Vec<TypedConstraint>), Spanned<TypeError>> {
         let mut context = TypingContext::default();
         for statement in self.statements { context.add_statement(statement)? }
         Ok(context.finalize())
@@ -46,46 +54,34 @@ struct TypingContext {
 
 impl TypingContext {
     /// Adds a statement to the typing context.
-    fn add_statement(&mut self, statement: Spanned<Statement>) -> Result<(), Spanned<TypeError>> {
+    fn add_statement(&mut self, statement: Spanned<Statement>)
+        -> Result<(), Spanned<TypeError>> {
         match statement {
             Spanned { leg, end,
-                data: Statement::SetDef { name, doc, arg, superset, disjoint, keys, quotient }
+                data: Statement::SetDef {
+                    name, doc, arg, superset, disjoint, keys, quotient
+                }
             } => {
                 Ok(self.set_defs.push(SetDef {
-                    name: name,
-                    doc: doc,
-                    arg: arg,
-                    superset: superset,
-                    disjoint: disjoint,
-                    keys: keys,
-                    quotient: quotient,
+                    name,
+                    doc,
+                    arg,
+                    superset,
+                    disjoint,
+                    keys,
+                    quotient,
                 }))
             },
-            Spanned { leg, end,
-                data: Statement::EnumDef { name, doc, variables, statements }
-            } => {
-                let choice_def = ChoiceDef::EnumDef(EnumDef {
-                    name: name,
-                    doc: doc,
-                    variables: variables,
-                    statements: statements,
-                });
+            Spanned { leg, end, data: d @ Statement::EnumDef { .. } } |
+            Spanned { leg, end, data: d @ Statement::CounterDef { .. } } => {
+                let choice_def: ChoiceDef =
+                    Result::<ChoiceDef, TypeError>::from(d)
+                           .map_err(|e| Spanned { leg, end, data: e })?;
                 if self.choice_defs.contains(&choice_def) {
-                    Err(Spanned { leg: leg, end: end, data: TypeError::EnumNameMulti })
+                    Err(Spanned { leg, end, data: TypeError::EnumNameMulti })
                 } else {
                     Ok(self.choice_defs.push(choice_def))
                 }
-            },
-            Spanned { leg, end,
-                data: Statement::CounterDef { name, doc, visibility, vars, body }
-            } => {
-                Ok(self.choice_defs.push(ChoiceDef::CounterDef(CounterDef {
-                    name: name,
-                    doc: doc,
-                    visibility: visibility,
-                    vars: vars,
-                    body: body,
-                })))
             },
             Spanned { leg, end,
                 data: Statement::TriggerDef { foralls, conditions, code }
@@ -687,66 +683,18 @@ pub struct CounterBody {
 #[derive(Debug)]
 pub enum Symmetry { Symmetric, AntiSymmetric(Vec<(RcStr, RcStr)>) }
 
-/// A statement in an enum definition.
-#[derive(Debug)]
-pub enum EnumStatement {
-    /// Defines a possible decision for th enum.
-    Value(String, Option<String>, Vec<Constraint>),
-    /// Defines a set of possible decisions for the enum.
-    Alias(String, Option<String>, Vec<String>, Vec<Constraint>),
-    /// Specifies that the enum is symmetric.
-    Symmetric,
-    /// Specifies that the enum is antisymmetric and given the inverse function.
-    AntiSymmetric(Vec<(String, String)>),
-}
-
-/// Gathers the different statements of an enum.
-#[derive(Debug, Default)]
-struct EnumStatements {
-    /// The values the enum can take, with the atached documentation.
-    values: HashMap<RcStr, Option<String>>,
-    /// Aliases mapped to the corresponding documentation and value set.
-    aliases: HashMap<RcStr, (Option<String>, HashSet<RcStr>)>,
-    /// Symmetry information.
-    symmetry: Option<Symmetry>,
-    /// Constraints on a value.
-    constraints: Vec<(RcStr, Constraint)>,
-}
-
-impl EnumStatements {
-    /// Registers an `EnumStatement`.
-    fn add_statement(&mut self, statement: EnumStatement) {
-        match statement {
-            EnumStatement::Value(name, doc, constraints) => {
-                let name = RcStr::new(name);
-                assert!(self.values.insert(name.clone(), doc).is_none());
-                for c in constraints { self.constraints.push((name.clone(), c)); }
-            },
-            EnumStatement::Alias(name, doc, values, constraints) => {
-                let name = RcStr::new(name);
-                let values = values.into_iter().map(RcStr::new).collect();
-                assert!(self.aliases.insert(name.clone(), (doc, values)).is_none());
-                for c in constraints { self.constraints.push((name.clone(), c)); }
-            },
-            EnumStatement::Symmetric => {
-                assert!(self.symmetry.is_none());
-                self.symmetry = Some(Symmetry::Symmetric);
-            },
-            EnumStatement::AntiSymmetric(mapping) => {
-                assert!(self.symmetry.is_none());
-                let mapping = mapping.into_iter()
-                    .map(|(x, y)| (RcStr::new(x), RcStr::new(y))).collect();
-                self.symmetry = Some(Symmetry::AntiSymmetric(mapping));
-            },
-        }
-    }
-}
 
 /// References a set.
 #[derive(Clone, Debug)]
 pub struct SetRef {
     pub name: RcStr,
     pub var: Option<RcStr>,
+}
+
+impl PartialEq for SetRef {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.name == rhs.name
+    }
 }
 
 impl SetRef {
@@ -767,6 +715,12 @@ impl SetRef {
 pub struct VarDef {
     pub name: RcStr,
     pub set: SetRef,
+}
+
+impl PartialEq for VarDef {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.set == rhs.set
+    }
 }
 
 /// Maps variables to their set and position.
@@ -828,7 +782,7 @@ impl VarMap {
 }
 
 /// A constraint that must be enforced by the IR.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Constraint {
     /// Variables for which the conditions must be respected.
     pub forall_vars: Vec<VarDef>,
