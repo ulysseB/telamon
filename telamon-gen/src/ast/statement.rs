@@ -11,19 +11,21 @@ pub struct EnumDef {
 }
 
 impl EnumDef {
+    /// A field from a enum should be unique.
     pub fn check_field_name_multi(&self) -> Result<(), TypeError> {
-        if let Some(statement) = 
-            self.statements.iter()
-                .find(|item|
-                    self.statements.iter()
-                        .skip_while(|subitem| subitem != item).skip(1)
-                        .any(|ref subitem| subitem == item))
-                        .and_then(|item: &EnumStatement| Some(item.clone())) {
-            Err(TypeError::EnumFieldNameMulti(statement))?
+        for item in self.statements.iter() {
+            for subitem in self.statements.iter()
+                               .skip_while(|subitem| subitem != &item)
+                               .skip(1) {
+                if subitem == item {
+                    Err(TypeError::EnumFieldNameMulti(item.clone()))?
+                }
+            }
         }
         Ok(())
     }
 
+    /// An antisymmetric should refers to two same parametric.
     pub fn check_symmetric(&self) -> Result<(), TypeError> {
         if self.statements.contains(&EnumStatement::Symmetric) {
             match self.variables.len() {
@@ -38,6 +40,26 @@ impl EnumDef {
                     }
                 },
                 n => Err(TypeError::EnumSymmetricTwoParametric(n))?,
+            }
+        }
+        Ok(())
+    }
+
+    /// An Alias' value should exists.
+    pub fn check_missing_alias_value(&self) -> Result<(), TypeError> {
+        for item in self.statements.iter() {
+            if let EnumStatement::Alias(_, _, values, ..) = item {
+                for value in values {
+                    if self.statements.iter().all(|ref subitem| {
+                        if let EnumStatement::Value(subvalue, ..) = subitem {
+                            value != subvalue
+                        } else {
+                            true
+                        }
+                    }) {
+                        Err(TypeError::EnumAliasValueMissing(value.clone()))?
+                    }
+                }
             }
         }
         Ok(())
@@ -87,12 +109,14 @@ impl From<Statement> for Result<ChoiceDef, TypeError> {
                 }))
             },
             Statement::EnumDef { name, doc, variables, statements } => {
+                println!("> {} {:?} {:?}", name, doc, statements);
                 let enum_def: EnumDef = EnumDef {
                     name, doc, variables, statements
                 };
 
                 enum_def.check_field_name_multi()?;
                 enum_def.check_symmetric()?;
+                enum_def.check_missing_alias_value()?;
                 Ok(ChoiceDef::EnumDef(enum_def))
             },
             _ => unreachable!(),
@@ -109,4 +133,10 @@ pub struct SetDef {
     pub disjoint: Vec<String>,
     pub keys: Vec<(ir::SetDefKey, Option<VarDef>, String)>,
     pub quotient: Option<Quotient>,
+}
+
+impl SetDef {
+    pub fn check_missing_key(&self) -> Result<(), TypeError> {
+        Ok(())
+    }
 }

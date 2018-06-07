@@ -20,7 +20,9 @@ impl PartialEq for EnumStatement {
     fn eq(&self, rhs: &Self) -> bool {
         match (self, rhs) {
             (EnumStatement::Value(name, .. ),
-             EnumStatement::Value(rhs_name, .. )) => {
+             EnumStatement::Value(rhs_name, .. )) |
+            (EnumStatement::Alias(name, .. ),
+             EnumStatement::Alias(rhs_name, .. )) => {
                 name.eq(rhs_name)
             },
             (EnumStatement::Symmetric,

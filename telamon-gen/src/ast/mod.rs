@@ -25,6 +25,7 @@ pub enum TypeError {
     EnumFieldNameMulti(EnumStatement),
     EnumSymmetricTwoParametric(usize),
     EnumSymmetricSameParametric(VarDef, VarDef),
+    EnumAliasValueMissing(String),
 }
 
 /// Syntaxic tree for the constraint description.
@@ -33,7 +34,8 @@ pub struct Ast { pub statements: Vec<Spanned<Statement>> }
 
 impl Ast {
     /// Generate the defintion of choices and the list of constraints.
-    pub fn type_check(self) -> Result<(ir::IrDesc, Vec<TypedConstraint>), Spanned<TypeError>> {
+    pub fn type_check(self)
+        -> Result<(ir::IrDesc, Vec<TypedConstraint>), Spanned<TypeError>> {
         let mut context = TypingContext::default();
         for statement in self.statements { context.add_statement(statement)? }
         Ok(context.finalize())
@@ -61,13 +63,13 @@ impl TypingContext {
                 }
             } => {
                 Ok(self.set_defs.push(SetDef {
-                    name: name,
-                    doc: doc,
-                    arg: arg,
-                    superset: superset,
-                    disjoint: disjoint,
-                    keys: keys,
-                    quotient: quotient,
+                    name,
+                    doc,
+                    arg,
+                    superset,
+                    disjoint,
+                    keys,
+                    quotient,
                 }))
             },
             Spanned { leg, end, data: d @ Statement::EnumDef { .. } } |
@@ -76,7 +78,7 @@ impl TypingContext {
                     Result::<ChoiceDef, TypeError>::from(d)
                            .map_err(|e| Spanned { leg, end, data: e })?;
                 if self.choice_defs.contains(&choice_def) {
-                    Err(Spanned { leg: leg, end: end, data: TypeError::EnumNameMulti })
+                    Err(Spanned { leg, end, data: TypeError::EnumNameMulti })
                 } else {
                     Ok(self.choice_defs.push(choice_def))
                 }

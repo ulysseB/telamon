@@ -42,6 +42,36 @@ fn enum_name_multi() {
 #[test]
 fn enum_field_name_multi() {
     assert_eq!(parser::parse_ast(Lexer::from(
+        b"define enum foo():
+            value A:
+            value B:
+            value C:
+            alias AB = A | B:
+            alias AB = A | B:
+          end".to_vec())).unwrap().type_check().err(),
+        Some(Spanned {
+            leg: Position { line: 0, column: 0},
+            end: Position { line: 0, column: 18},
+            data: telamon_gen::ast::TypeError::EnumFieldNameMulti(
+                EnumStatement::Alias(
+                    String::from("AB"),
+                    None,
+                    vec![String::from("A"), String::from("B")],
+                    vec![]
+                )
+            ),
+        })
+    );
+    assert!(parser::parse_ast(Lexer::from(
+        b"define enum foo():
+            value A:
+            value B:
+            value C:
+            alias AB = A | B:
+            alias BC = B | C:
+          end".to_vec())).unwrap().type_check().is_ok()
+    );
+    assert_eq!(parser::parse_ast(Lexer::from(
         b"define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
             symmetric
             symmetric
@@ -238,13 +268,24 @@ fn enum_symmetric_same_parametric() {
 
 #[test]
 fn enum_alias_multi() {
+    assert_eq!(parser::parse_ast(Lexer::from(
+        b"define enum foo():
+            value A:
+            alias AB = A | B:
+          end".to_vec())).unwrap().type_check().err(),
+        Some(Spanned {
+            leg: Position { line: 0, column: 0},
+            end: Position { line: 0, column: 18},
+            data: telamon_gen::ast::TypeError::EnumAliasValueMissing(
+                String::from("B")
+            )
+        })
+    );
     assert!(parser::parse_ast(Lexer::from(
         b"define enum foo():
             value A:
             value B:
-            value C:
             alias AB = A | B:
-            alias BC = B | C:
           end".to_vec())).unwrap().type_check().is_ok()
     );
 }
