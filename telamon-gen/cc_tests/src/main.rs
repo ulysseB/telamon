@@ -16,6 +16,7 @@ mod single_enum {
     define_ir!();
     generated_file!(single_enum);
     use self::single_enum::*;
+    use utils::*;
 
     /// Ensures basic operations on enum domains are working.
     #[test]
@@ -62,12 +63,12 @@ mod single_enum {
     /// Ensures baisc operations on numeric domains are working.
     #[test]
     fn numeric_operation() {
-        let _ = env_logger::try_init();
+        let _ = ::env_logger::try_init();
         let env0 = VecSet::new(vec![1, 2, 4, 8]);
         let env1 = VecSet::new(vec![2, 3, 4]);
 
-        let all0 = NumericSet::all(env0);
-        let all1 = NumericSet::all(env1);
+        let all0 = NumericSet::all(&env0);
+        let all1 = NumericSet::all(&env1);
         assert!(all0 != all1);
 
         // FIXME
