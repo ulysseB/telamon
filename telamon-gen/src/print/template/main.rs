@@ -383,6 +383,7 @@ impl NumericSet {
 
     /// Returns the set containing all the possibilities.
     fn all(univers: &VecSet<u16>) -> Self {
+        assert!(univers.len() <= NumericSet::MAX_LEN);
         let mut values = [0; NumericSet::MAX_LEN];
         for (v, dst) in univers.iter().cloned().zip(&mut values) { *dst = v; }
         NumericSet { len: univers.len(), values }
@@ -421,7 +422,7 @@ impl Domain for NumericSet {
         self.len = new_lhs;
     }
 
-    fn insert(&mut self, other: NumericSet) { } // FIXME
+    fn insert(&mut self, _: NumericSet) { } // FIXME
 }
 
 impl PartialEq for NumericSet {
