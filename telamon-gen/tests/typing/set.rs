@@ -1,13 +1,12 @@
-extern crate telamon_utils as utils;
-extern crate telamon_gen;
-extern crate lalrpop_util;
+pub use super::utils::RcStr;
 
-use telamon_gen::lexer::{Lexer, Spanned, Position};
-use telamon_gen::parser;
-use telamon_gen::ir;
+pub use super::telamon_gen::lexer::{Lexer, Spanned, Position};
+pub use super::telamon_gen::parser;
+pub use super::telamon_gen::ir;
+pub use super::telamon_gen::ast::*;
 
 #[test]
-fn enum_name_multi() {
+fn enum_name_redefinition() {
     assert_eq!(parser::parse_ast(Lexer::from(
         b"set Foo:
             item_type = \"ir::inst::Obj\"
@@ -31,8 +30,11 @@ fn enum_name_multi() {
         Some(Spanned {
             leg: Position { line: 10, column: 10},
             end: Position { line: 10, column: 18},
-            data: telamon_gen::ast::TypeError::SetNameMulti(
-                String::from("Foo")
+            data: TypeError::SetRedefinition(
+                SetDef {
+                    name: String::from("Foo"),
+                    ..Default::default()
+                }
             )
         })
     );
@@ -52,7 +54,7 @@ fn set_missing_key() {
         Some(Spanned {
             leg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 16},
-            data: telamon_gen::ast::TypeError::SetMissingKey(ir::SetDefKey::ItemType)
+            data: TypeError::SetMissingKey(ir::SetDefKey::ItemType)
         })
     );
     assert!(parser::parse_ast(Lexer::from(
