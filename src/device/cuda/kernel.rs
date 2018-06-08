@@ -190,7 +190,7 @@ impl<'a> ThunkArgs<'a> {
             ThunkArg::TmpArray(id) => &tmp_arrays[id],
         }).collect_vec();
         // Heat-up caches.
-        for _ in 0..4 {
+        for _ in 0..100 {
             cuda_kernel.time_real_conds(&self.blocks, &self.threads, &params);
         }
         // Generate the samples.

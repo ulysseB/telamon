@@ -43,18 +43,19 @@ impl<'a, S> Kernel<'a> for Axpy<'a, S> where S: Scalar {
     fn build_body<'b>(&self, signature: &'b ir::Signature, ctx: &'b device::Context)
         -> Vec<Candidate<'b>>
     {
-        let tiling = &[1024, 4]; // FIXME: try more tile sizes.
-        assert!(self.n as u32 >= tiling.iter().product::<u32>());
-        let mut builder = Builder::new(signature, ctx.device());
+        let tilings = ::generate_tile_sizes(self.n as u32, &[1024, 4]);
+        tilings.into_iter().map(|tiling| {
+            let mut builder = Builder::new(signature, ctx.device());
 
-        let ld_x = self.x.load(&[tiling], &mut builder);
-        let ld_y = self.y.load(&[tiling], &mut builder);
-        let mad_dim = builder.open_mapped_dim(&ld_x[0]);
-        let x_op = ld_x.dim_map(&[&mad_dim], GlobalScope, &mut builder);
-        let y_op = ld_y.dim_map(&[&mad_dim], GlobalScope, &mut builder);
-        let mad = VirtualTensor::new(builder.mad(&x_op, &"alpha", &y_op), vec![mad_dim]);
-        mad.store(&self.z, &mut builder);
-        vec![build_candidate(builder.get(), ctx, vec![])]
+            let ld_x = self.x.load(&[&tiling], &mut builder);
+            let ld_y = self.y.load(&[&tiling], &mut builder);
+            let mad_dim = builder.open_mapped_dim(&ld_x[0]);
+            let x_op = ld_x.dim_map(&[&mad_dim], GlobalScope, &mut builder);
+            let y_op = ld_y.dim_map(&[&mad_dim], GlobalScope, &mut builder);
+            let mad = VirtualTensor::new(builder.mad(&x_op, &"alpha", &y_op), vec![mad_dim]);
+            mad.store(&self.z, &mut builder);
+            build_candidate(builder.get(), ctx, vec![tiling])
+        }).collect()
     }
 
     fn get_expected_output(&self, context: &device::Context) -> ArrayD<S> {
@@ -335,16 +336,6 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
         let n_tiles = ::generate_tile_sizes(self.params.n as u32, &[64, 8]);
         let tilings = ::par_iter_product(::par_iter_product(m_tiles, n_tiles), k_tiles);
 
-        /*let mn_gcd = num::integer::gcd(self.params.m, self.params.n);
-        let gcd = num::integer::gcd(mn_gcd, self.params.k) as u32;
-        let tilings = ::generate_tile_sizes(gcd, &[64, 8]);
-        let tilings = tilings.into_par_iter().map(|full_tiling| {
-            let small_tiling = if full_tiling.len() > 0 {
-                vec![full_tiling[0]]
-            } else { vec![] };
-            ((full_tiling.clone(), full_tiling), small_tiling)
-        });*/
-        //let tilings = std::iter::once((4, 2));
         tilings.map(|((m_tiling, n_tiling), k_tiling)| {
             let mut builder = helper::Builder::new(signature, ctx.device());
 
