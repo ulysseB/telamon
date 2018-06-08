@@ -186,6 +186,9 @@ impl SetDef {
         if !keys.contains(&&ir::SetDefKey::ItemGetter) {
             Err(TypeError::SetMissingKey(ir::SetDefKey::ItemGetter))?
         }
+        if !keys.contains(&&ir::SetDefKey::IdGetter) {
+            Err(TypeError::SetMissingKey(ir::SetDefKey::IdGetter))?
+        }
         if !keys.contains(&&ir::SetDefKey::Iter) {
             Err(TypeError::SetMissingKey(ir::SetDefKey::Iter))?
         }
