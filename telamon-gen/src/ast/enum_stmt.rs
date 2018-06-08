@@ -16,6 +16,32 @@ pub enum EnumStatement {
     AntiSymmetric(Vec<(String, String)>),
 }
 
+impl EnumStatement {
+    pub fn get_value(&self) -> Option<&String> {
+        if let EnumStatement::Value(value, ..) = self {
+            Some(value)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_alias(&self) -> Option<&String> {
+        if let EnumStatement::Alias(value, ..) = self {
+            Some(value)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_alias_decisions(&self) -> Option<&Vec<String>> {
+        if let EnumStatement::Alias(_, _, decisions, ..) = self {
+            Some(decisions)
+        } else {
+            None
+        }
+    }
+}
+
 impl PartialEq for EnumStatement {
     fn eq(&self, rhs: &Self) -> bool {
         match (self, rhs) {

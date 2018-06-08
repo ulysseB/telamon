@@ -57,19 +57,17 @@ impl EnumDef {
     }
 
     /// An Alias' value should exists.
-    pub fn check_missing_alias_value(&self) -> Result<(), TypeError> {
-        for item in self.statements.iter() {
-            if let EnumStatement::Alias(_, _, values, ..) = item {
-                for value in values {
-                    if self.statements.iter().all(|ref subitem| {
-                        if let EnumStatement::Value(subvalue, ..) = subitem {
-                            value != subvalue
-                        } else {
-                            true
-                        }
-                    }) {
-                        Err(TypeError::EnumAliasValueMissing(value.clone()))?
-                    }
+    pub fn check_missing_value(&self) -> Result<(), TypeError> {
+        let values: Vec<&String> =
+            self.statements.iter()
+                           .filter_map(|item| item.get_value().or(item.get_alias()))
+                           .collect::<Vec<&String>>();
+
+        for decisions in self.statements.iter()
+                                        .filter_map(|item| item.get_alias_decisions()) {
+            for value in decisions {
+                if !values.contains(&value) {
+                    Err(TypeError::EnumUndefinedValue(value.clone()))?
                 }
             }
         }
@@ -139,7 +137,7 @@ impl From<Statement> for Result<ChoiceDef, TypeError> {
 
                 enum_def.check_field_name_multi()?;
                 enum_def.check_symmetric()?;
-                enum_def.check_missing_alias_value()?;
+                enum_def.check_missing_value()?;
                 Ok(ChoiceDef::EnumDef(enum_def))
             },
             _ => unreachable!(),

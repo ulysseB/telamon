@@ -136,6 +136,16 @@ fn enum_field_redefinition() {
             value B:
           end".to_vec())).unwrap().type_check().is_ok()
     );
+    assert!(parser::parse_ast(Lexer::from(
+        b"define enum foo():
+            value A:
+            value B:
+            value C:
+            alias AB = A | B:
+            alias BC = B | C:
+            alias ABBC = AB | BC:
+          end".to_vec())).unwrap().type_check().is_ok()
+    );
 }
 
 #[test]
@@ -280,7 +290,7 @@ fn enum_symmetric_same_parametric() {
 }
 
 #[test]
-fn enum_alias_multi() {
+fn enum_undefined_value() {
     assert_eq!(parser::parse_ast(Lexer::from(
         b"define enum foo():
             value A:
@@ -289,7 +299,7 @@ fn enum_alias_multi() {
         Some(Spanned {
             leg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 18},
-            data: TypeError::EnumAliasValueMissing(
+            data: TypeError::EnumUndefinedValue(
                 String::from("B")
             )
         })
@@ -299,6 +309,15 @@ fn enum_alias_multi() {
             value A:
             value B:
             alias AB = A | B:
+          end".to_vec())).unwrap().type_check().is_ok()
+    );
+    assert!(parser::parse_ast(Lexer::from(
+        b"define enum foo():
+            value A:
+            value B:
+            value C:
+            alias AB = A | B:
+            alias ABC = AB | C: 
           end".to_vec())).unwrap().type_check().is_ok()
     );
 }

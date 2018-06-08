@@ -27,7 +27,7 @@ pub enum TypeError {
     EnumFieldRedefinition(EnumDef, EnumStatement),
     EnumSymmetricTwoParametric(usize),
     EnumSymmetricSameParametric(VarDef, VarDef),
-    EnumAliasValueMissing(String),
+    EnumUndefinedValue(String),
 }
 
 /// Syntaxic tree for the constraint description.
