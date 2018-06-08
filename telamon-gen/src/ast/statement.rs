@@ -2,12 +2,23 @@ use ast::*;
 use ir;
 
 /// A toplevel definition or constraint.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct EnumDef {
     pub name: String,
     pub doc: Option<String>,
     pub variables: Vec<VarDef>,
     pub statements: Vec<EnumStatement>
+}
+
+impl Default for EnumDef {
+    fn default() -> EnumDef {
+        EnumDef {
+            name: String::default(),
+            doc: None,
+            variables: vec![],
+            statements: vec![],
+        }
+    }
 }
 
 impl EnumDef {
@@ -18,7 +29,7 @@ impl EnumDef {
                                .skip_while(|subitem| subitem != &item)
                                .skip(1) {
                 if subitem == item {
-                    Err(TypeError::EnumFieldNameMulti(item.clone()))?
+                    Err(TypeError::EnumFieldRedefinition(self.clone(), item.clone()))?
                 }
             }
         }
@@ -79,7 +90,7 @@ pub struct TriggerDef {
     pub code: String,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct CounterDef {
     pub name: RcStr,
     pub doc: Option<String>,
@@ -94,7 +105,7 @@ impl PartialEq for CounterDef {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ChoiceDef {
     CounterDef(CounterDef),
     EnumDef(EnumDef),
@@ -136,7 +147,7 @@ impl From<Statement> for Result<ChoiceDef, TypeError> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SetDef {
     pub name: String,
     pub doc: Option<String>,
@@ -145,6 +156,20 @@ pub struct SetDef {
     pub disjoint: Vec<String>,
     pub keys: Vec<(ir::SetDefKey, Option<VarDef>, String)>,
     pub quotient: Option<Quotient>,
+}
+
+impl Default for SetDef {
+    fn default() -> SetDef {
+        SetDef {
+            name: Default::default(),
+            doc: None,
+            arg: None,
+            superset: None,
+            disjoint: vec![],
+            keys: vec![],
+            quotient: None,
+        }
+    }
 }
 
 impl SetDef {

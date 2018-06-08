@@ -175,6 +175,7 @@ impl<'a> SetRef<'a> for SetRefImpl<'a> {
 }
 
 /// Defines a set of objects.
+#[derive(Clone)]
 pub struct SetDef {
     name: RcStr,
     arg: Option<ir::Set>,
@@ -297,6 +298,7 @@ impl Ord for SetDef {
 }
 
 /// A set that lists the arguments of another set.
+#[derive(Clone)]
 enum ReverseSet {
     /// The reverse relation was defined in the source code.
     Explicit(std::cell::RefCell<std::rc::Rc<SetDef>>),

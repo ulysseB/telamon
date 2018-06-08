@@ -22,9 +22,9 @@ pub use super::lexer::Spanned;
 #[derive(Debug, PartialEq)]
 pub enum TypeError {
     SetMissingKey(ir::SetDefKey),
-    SetNameMulti(String),
-    EnumNameMulti(String),
-    EnumFieldNameMulti(EnumStatement),
+    SetRedefinition(SetDef),
+    EnumRedefinition(ChoiceDef),
+    EnumFieldRedefinition(EnumDef, EnumStatement),
     EnumSymmetricTwoParametric(usize),
     EnumSymmetricSameParametric(VarDef, VarDef),
     EnumAliasValueMissing(String),
@@ -72,7 +72,7 @@ impl TypingContext {
                        .map_err(|e| Spanned { leg, end, data: e })?;
                 if self.set_defs.contains(&set_def) {
                     Err(Spanned { leg, end, data:
-                        TypeError::SetNameMulti(set_def.name.clone()) })
+                        TypeError::SetRedefinition(set_def.clone()) })
                 } else {
                     Ok(self.set_defs.push(set_def))
                 }
@@ -85,7 +85,7 @@ impl TypingContext {
 
                 if self.choice_defs.contains(&choice_def) {
                     Err(Spanned { leg, end, data:
-                        TypeError::EnumNameMulti(choice_def.get_name().clone()) })
+                        TypeError::EnumRedefinition(choice_def.clone()) })
                 } else {
                     Ok(self.choice_defs.push(choice_def))
                 }
@@ -642,7 +642,7 @@ pub enum Statement {
     Require(Constraint),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Quotient {
     pub item: VarDef,
     pub representant: RcStr,
@@ -677,7 +677,7 @@ impl Check {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct CounterBody {
     pub base: String,
     pub kind: ir::CounterKind,
@@ -952,5 +952,5 @@ fn type_check_enum_values(enum_: &ir::Enum, values: Vec<RcStr>) -> BTreeSet<RcSt
 }
 
 /// The value of a counter increment.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum CounterVal { Code(String), Counter(ChoiceInstance) }
