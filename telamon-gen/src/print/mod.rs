@@ -187,6 +187,7 @@ mod ast;
 mod choice;
 mod filter;
 mod store;
+mod value_set;
 
 use self::store::PartialIterator;
 

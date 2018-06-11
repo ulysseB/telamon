@@ -1,7 +1,7 @@
 //! Prints the definition of a choice.
 use ir;
 use itertools::Itertools;
-use print::{ast, filter};
+use print::{ast, filter, value_set};
 
 #[derive(Serialize)]
 pub struct Ast<'a> {
@@ -152,7 +152,7 @@ impl<'a> ComputeCounter<'a> {
             Some(ComputeCounter {
                 base: ast::code(base, &ctx),
                 incr: ast::ChoiceInstance::new(incr, &ctx),
-                incr_condition: ast::value_set(incr_condition, &ctx),
+                incr_condition: value_set::print(incr_condition, &ctx),
                 nest: nest_builder,
                 value: CounterValue::new(value, &ctx),
                 op: kind.to_string(),
@@ -261,7 +261,7 @@ impl<'a> ChoiceAction<'a> {
                 } = *counter_choice.choice_def() {
                     ChoiceAction::IncrCounter {
                         counter_name: &counter.choice,
-                        incr_condition: ast::value_set(incr_condition, ctx),
+                        incr_condition: value_set::print(incr_condition, ctx),
                         arguments,
                         value: CounterValue::new(value, ctx),
                         is_half: visibility == ir::CounterVisibility::NoMax,
@@ -281,7 +281,7 @@ impl<'a> ChoiceAction<'a> {
                     ChoiceAction::UpdateCounter {
                         name: &counter.choice,
                         incr_name: &incr.choice,
-                        incr_condition: ast::value_set(incr_condition, ctx),
+                        incr_condition: value_set::print(incr_condition, ctx),
                         is_half: visibility == ir::CounterVisibility::NoMax,
                         zero: kind.zero(),
                         incr_args, arguments, to_half,
@@ -309,7 +309,7 @@ impl<'a> ChoiceAction<'a> {
                 trigger_calls.push(TriggerCall { id, code, arguments: arguments.clone() });
                 ChoiceAction::Trigger {
                     call_id, others_conditions, inputs, arguments,
-                    self_condition: ast::value_set(&self_condition, ctx),
+                    self_condition: value_set::print(&self_condition, ctx),
                 }
             },
         }
@@ -399,7 +399,7 @@ impl<'a> RestrictCounter<'a> {
                 amount: CounterValue::new(value, &ctx),
                 incr, incr_iter,
                 incr_type: incr_condition.t(),
-                incr_condition: ast::value_set(&incr_condition, &ctx),
+                incr_condition: value_set::print(&incr_condition, &ctx),
                 is_half: visibility == ir::CounterVisibility::NoMax,
                 op: kind.to_string(),
                 neg_op: match kind {

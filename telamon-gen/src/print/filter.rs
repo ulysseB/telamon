@@ -1,6 +1,7 @@
 ///! Filter code generation.
 use ir;
 use print::ast::{self, Context};
+use print::value_set;
 use std::fmt::{Display, Formatter, Result};
 
 /// Ast for a filtering funtion.
@@ -62,7 +63,7 @@ impl<'a> PositiveFilter<'a> {
                 if r.alternatives.is_empty() {
                     PositiveFilter::Empty
                 } else {
-                    let values = ast::value_set(&r.alternatives, ctx);
+                    let values = value_set::print(&r.alternatives, ctx);
                     PositiveFilter::AllowValues { var, values }
                 }
             },
@@ -85,7 +86,7 @@ impl<'a> PositiveFilter<'a> {
                 let cases = cases.iter().map(|&(ref values, ref sub_filter)| {
                     let sub_filter = PositiveFilter::new(
                         sub_filter, choice, ctx, set.clone());
-                    (ast::value_set(values, ctx), sub_filter)
+                    (value_set::print(values, ctx), sub_filter)
                 }).collect();
                 PositiveFilter::Switch { var: ctx.input_name(switch), cases }
             },
@@ -103,7 +104,7 @@ pub struct Rule<'a> {
 
 impl<'a> Rule<'a> {
     pub fn new(var: ast::Variable<'a>, rule: &'a ir::Rule, ctx: &Context<'a>) -> Rule<'a> {
-        let values = ast::value_set(&rule.alternatives, ctx);
+        let values = value_set::print(&rule.alternatives, ctx);
         let conditions = rule.conditions.iter().map(|c| condition(c, ctx)).collect();
         let set_conditions = ast::SetConstraint::new(&rule.set_constraints, ctx);
         Rule { var, conditions, set_conditions, values }
@@ -126,7 +127,7 @@ pub fn condition<'a>(cond: &'a ir::Condition, ctx: &Context<'a>) -> String {
             let input_type = ctx.ir_desc.get_enum(enum_name);
             let name = ctx.input_name(input);
             let set = ir::normalized_enum_set(values, !negate, inverse, input_type);
-            let set = ast::value_set(&set, ctx);
+            let set = value_set::print(&set, ctx);
             format!("!{}.intersects({})", name, set)
         },
         ir::Condition::CmpCode { lhs, ref rhs, op } => {
