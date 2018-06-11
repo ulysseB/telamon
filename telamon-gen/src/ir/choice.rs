@@ -209,7 +209,8 @@ impl ChoiceDef {
             ChoiceDef::Counter { visibility: CounterVisibility::NoMax, .. } =>
                 ValueType::HalfRange,
             ChoiceDef::Counter { .. } => ValueType::Range,
-            ChoiceDef::Number { .. } => ValueType::NumericSet,
+            ChoiceDef::Number { ref universe, .. } =>
+                ValueType::NumericSet(universe.clone()),
         }
     }
 
@@ -248,14 +249,26 @@ impl Adaptable for CounterVal {
     }
 }
 
-/// Specifies the type of the values a choice can take.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ValueType { Enum(RcStr), Range, HalfRange, NumericSet }
-
 impl ValueType {
     /// Returns the full type, instead of a the trimmed one.
     pub fn full_type(self) -> Self {
         if self == ValueType::HalfRange { ValueType::Range } else { self }
+    }
+}
+
+/// Specifies the type of the values a choice can take.
+#[derive(Clone, Debug, PartialEq, Eq)]
+// FIXME: unimplemented must adapt the value type everywhere
+pub enum ValueType { Enum(RcStr), Range, HalfRange, NumericSet(ir::Code) }
+
+impl Adaptable for ValueType {
+    fn adapt(&self, adaptator: &ir::Adaptator) -> Self {
+        match *self {
+            ref t @ ValueType::Enum(..) |
+            ref t @ ValueType::Range |
+            ref t @ ValueType::HalfRange => t.clone(),
+            ValueType::NumericSet(ref uni) => ValueType::NumericSet(uni.adapt(adaptator)),
+        }
     }
 }
 

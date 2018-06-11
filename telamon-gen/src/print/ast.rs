@@ -275,7 +275,7 @@ impl Display for ir::ValueType {
             ir::ValueType::Enum(ref name) => name,
             ir::ValueType::Range => "Range",
             ir::ValueType::HalfRange => "HalfRange",
-            ir::ValueType::NumericSet => "NumericSet",
+            ir::ValueType::NumericSet(..) => "NumericSet",
         }.fmt(f)
     }
 }
@@ -296,10 +296,11 @@ impl Display for ir::CounterKind {
 }
 
 /// Prints a `ValueSet`.
-// FIXME: two possibilities:
+// FIXME: unimplemented!() two possibilities:
 // 1) cast the set to the target each time it is referenced
 // 2) iteratiely interact with the target with dedicated methods
-pub fn value_set(set: &ir::ValueSet, universe: &str, ctx: &Context) -> String {
+// FIXME: re-add the failed const to domains.
+pub fn value_set(set: &ir::ValueSet, ctx: &Context) -> String {
     if set.is_empty() {
         format!("{}::FAILED", set.t())
     } else {
@@ -316,8 +317,9 @@ pub fn value_set(set: &ir::ValueSet, universe: &str, ctx: &Context) -> String {
                 }).collect_vec();
                 values.into_iter().chain(inputs).format("|").to_string()
             },
-            ir::ValueSet::Range { is_full: true, .. } => "Range::all()".to_string(),
-            ir::ValueSet::Range { ref cmp_inputs, ref cmp_code, .. } => {
+            ir::ValueSet::Integer { is_full: true, ref universe, .. } =>
+                    "Range::all()".to_string(),
+            ir::ValueSet::Integer { ref cmp_inputs, ref cmp_code, ref universe, .. } => {
                 let inputs = cmp_inputs.iter().map(|&(op, input)| {
                     (op, ctx.input_name(input).to_string())
                 }).collect_vec();

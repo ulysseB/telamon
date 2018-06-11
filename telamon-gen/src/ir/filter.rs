@@ -249,7 +249,9 @@ impl Condition {
             Condition::CmpCode { lhs, op, ref rhs } if lhs == input_id => {
                 let cmp_code = std::iter::once((op, rhs.clone())).collect();
                 let cmp_inputs = BTreeSet::default();
-                Some(ValueSet::Integer { is_full: false, cmp_inputs, cmp_code })
+                // FIXME: unimplemeted!: adapt the value type
+                let universe = choice.value_type().full_type();
+                Some(ValueSet::Integer { is_full: false, cmp_inputs, cmp_code, universe })
             },
             Condition::CmpCode { .. } => None,
             Condition::CmpInput { lhs, rhs, op, inverse } => {
@@ -452,7 +454,7 @@ pub fn normalized_enum_set<'a, IT>(values: IT, negate: bool, inverse: bool,
 }
 
 /// Represents a set of values a choice can take.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ValueSet {
     // TODO(cc_perf): detect when an input and its negation are included.
     Enum {
@@ -468,6 +470,7 @@ pub enum ValueSet {
         is_full: bool,
         cmp_inputs: BTreeSet<(CmpOp, usize)>,
         cmp_code: BTreeSet<(CmpOp, Code)>,
+        universe: ir::ValueType,
     },
 }
 
@@ -482,13 +485,14 @@ impl ValueSet {
                     inputs: BTreeSet::default()
                 }
             },
-            ir::ValueType::Range |
-            ir::ValueType::HalfRange |
-            ir::ValueType::NumericSet => {
+            t @ ir::ValueType::Range |
+            t @ ir::ValueType::HalfRange |
+            t @ ir::ValueType::NumericSet(..) => {
                 ValueSet::Integer {
                     is_full: false,
                     cmp_inputs: BTreeSet::default(),
                     cmp_code: BTreeSet::default(),
+                    universe: t.full_type(),
                 }
             },
         }
@@ -509,15 +513,16 @@ impl ValueSet {
                     normalized_enum_set(vec![], is_eq, false, enum_)
                 }
             },
-            ir::ValueType::Range |
-            ir::ValueType::HalfRange |
-            ir::ValueType::NumericSet => {
+            t @ ir::ValueType::Range |
+            t @ ir::ValueType::HalfRange |
+            t @ ir::ValueType::NumericSet(..) => {
                 assert!(!is_inv);
                 if is_eq {
                     ValueSet::Integer {
                         is_full: true,
                         cmp_inputs: BTreeSet::default(),
                         cmp_code: BTreeSet::default(),
+                        universe: t.full_type(),
                     }
                 } else { ValueSet::empty(t) }
             },
@@ -537,12 +542,13 @@ impl ValueSet {
                 values: Default::default(),
                 inputs: std::iter::once((input, op == CmpOp::Neq, inverse)).collect(),
             },
-            ir::ValueType::Range | ir::ValueType::NumericSet => {
+            t @ ir::ValueType::Range | t @ ir::ValueType::NumericSet(..) => {
                 assert!(!inverse);
                 ValueSet::Integer {
                     is_full: false,
                     cmp_inputs: std::iter::once((op, input)).collect(),
                     cmp_code: BTreeSet::default(),
+                    universe: t.full_type(),
                 }
             },
             ir::ValueType::HalfRange => panic!("Cannot compare HalfRanges to inputs"),
@@ -554,7 +560,7 @@ impl ValueSet {
         match *self {
             ValueSet::Enum { ref values, ref inputs, .. } =>
                 values.is_empty() && inputs.is_empty(),
-            ValueSet::Integer { is_full, ref cmp_inputs, ref cmp_code } =>
+            ValueSet::Integer { is_full, ref cmp_inputs, ref cmp_code, universe: _ } =>
                 !is_full && cmp_inputs.is_empty() && cmp_code.is_empty()
         }
     }
@@ -592,9 +598,18 @@ impl ValueSet {
                 },
                 ValueSet::Integer { .. } => panic!(),
             },
-            ValueSet::Integer { ref mut is_full, ref mut cmp_inputs, ref mut cmp_code } => {
-                if let ValueSet::Integer { is_full: other_full, cmp_inputs: other_inputs,
-                                         cmp_code: other_code } = other {
+            ValueSet::Integer {
+                ref mut is_full,
+                ref mut cmp_inputs,
+                ref mut cmp_code,
+                universe: _,
+            } => {
+                if let ValueSet::Integer {
+                    is_full: other_full,
+                    cmp_inputs: other_inputs,
+                    cmp_code: other_code,
+                    universe: _,
+                } = other {
                     if *is_full || other_full { *is_full = true } else {
                         cmp_inputs.extend(other_inputs);
                         cmp_code.extend(other_code);
@@ -710,8 +725,8 @@ impl ValueSet {
     /// Returns the type of the values.
     pub fn t(&self) -> ir::ValueType {
         match *self {
-            ValueSet::Enum { ref enum_name, .. } =>ir::ValueType::Enum(enum_name.clone()),
-            ValueSet::Range {..} => ir::ValueType::Range, // FIXME: not always a Range
+            ValueSet::Enum { ref enum_name, .. } => ir::ValueType::Enum(enum_name.clone()),
+            ValueSet::Integer { ref universe, ..} => universe.clone(),
         }
     }
 }
@@ -727,13 +742,17 @@ impl Adaptable for ValueSet {
                 }).collect();
                 ValueSet::Enum { inputs, enum_name: enum_name.clone(), values }
             },
-            ValueSet::Integer { ref cmp_inputs, ref cmp_code, is_full } => {
+            ValueSet::Integer { ref cmp_inputs, ref cmp_code, is_full, ref universe } => {
                 let cmp_inputs = cmp_inputs.iter().cloned().map(|(op, input)| {
                     let (new_input, inversed) = adaptator.input(input);
                     assert!(!inversed);
                     (op, new_input)
                 }).collect();
-                ValueSet::Integer { cmp_inputs, cmp_code: cmp_code.clone(), is_full }
+                ValueSet::Integer {
+                    is_full, cmp_inputs,
+                    cmp_code: cmp_code.clone(),
+                    universe: universe.adapt(adaptator),
+                }
             },
         }
     }
