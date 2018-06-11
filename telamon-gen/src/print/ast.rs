@@ -296,7 +296,10 @@ impl Display for ir::CounterKind {
 }
 
 /// Prints a `ValueSet`.
-pub fn value_set(set: &ir::ValueSet, ctx: &Context) -> String {
+// FIXME: two possibilities:
+// 1) cast the set to the target each time it is referenced
+// 2) iteratiely interact with the target with dedicated methods
+pub fn value_set(set: &ir::ValueSet, universe: &str, ctx: &Context) -> String {
     if set.is_empty() {
         format!("{}::FAILED", set.t())
     } else {
@@ -313,7 +316,7 @@ pub fn value_set(set: &ir::ValueSet, ctx: &Context) -> String {
                 }).collect_vec();
                 values.into_iter().chain(inputs).format("|").to_string()
             },
-            ir::ValueSet::Range { is_full: true, .. } => "Range::ALL".to_string(),
+            ir::ValueSet::Range { is_full: true, .. } => "Range::all()".to_string(),
             ir::ValueSet::Range { ref cmp_inputs, ref cmp_code, .. } => {
                 let inputs = cmp_inputs.iter().map(|&(op, input)| {
                     (op, ctx.input_name(input).to_string())
@@ -339,6 +342,7 @@ pub fn value_set(set: &ir::ValueSet, ctx: &Context) -> String {
                     ir::CmpOp::Eq => format!("Range::new_eq({})", val),
                     ir::CmpOp::Neq => format!("Range::ALL"), // FIXME: may not restrict enough
                 })).format("|").to_string()
+                // FIXME: Is Or defined ?
             },
         }
     }

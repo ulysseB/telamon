@@ -381,6 +381,8 @@ pub struct NumericSet {
 impl NumericSet {
     const MAX_LEN: usize = 32;
 
+    const FAILED: Self = NumericSet { len: 0, values: Default::default() };
+
     /// Returns the set containing all the possibilities.
     pub fn all(univers: &VecSet<u16>) -> Self {
         assert!(univers.len() <= NumericSet::MAX_LEN);
