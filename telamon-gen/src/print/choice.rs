@@ -411,7 +411,6 @@ impl<'a> RestrictCounter<'a> {
     }
 }
 
-
 #[derive(Serialize)]
 pub enum CounterValue<'a> {
     Code(String),
