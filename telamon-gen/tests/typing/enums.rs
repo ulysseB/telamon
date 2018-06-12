@@ -159,7 +159,7 @@ fn enum_symmetric_two_parametric() {
         Some(Spanned {
             leg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 18},
-            data: TypeError::EnumSymmetricTwoParametric(0)
+            data: TypeError::EnumSymmetricUntwoParametric(vec![])
         })
     );
     assert_eq!(parser::parse_ast(Lexer::from(
@@ -180,7 +180,15 @@ fn enum_symmetric_two_parametric() {
         Some(Spanned {
             leg: Position { line: 9, column: 10},
             end: Position { line: 9, column: 46},
-            data: TypeError::EnumSymmetricTwoParametric(1)
+            data: TypeError::EnumSymmetricUntwoParametric(vec![
+                VarDef {
+                    name: RcStr::new(String::from("lhs")),
+                    set: SetRef {
+                        name: RcStr::new(String::from("BasicBlock")),
+                        var: None
+                    }
+                },
+            ])
         })
     );
     assert!(parser::parse_ast(Lexer::from(
@@ -219,7 +227,29 @@ fn enum_symmetric_two_parametric() {
         Some(Spanned {
             leg: Position { line: 9, column: 10},
             end: Position { line: 11, column: 46},
-            data: TypeError::EnumSymmetricTwoParametric(3)
+            data: TypeError::EnumSymmetricUntwoParametric(vec![
+                VarDef {
+                    name: RcStr::new(String::from("lhs")),
+                    set: SetRef {
+                        name: RcStr::new(String::from("BasicBlock")),
+                        var: None
+                    }
+                },
+                VarDef {
+                    name: RcStr::new(String::from("chs")),
+                    set: SetRef {
+                        name: RcStr::new(String::from("BasicBlock")),
+                        var: None
+                    }
+                },
+                VarDef {
+                    name: RcStr::new(String::from("rhs")),
+                    set: SetRef {
+                        name: RcStr::new(String::from("BasicBlock")),
+                        var: None
+                    }
+                },
+            ])
         })
     );
 }
@@ -253,7 +283,7 @@ fn enum_symmetric_same_parametric() {
         Some(Spanned {
             leg: Position { line: 18, column: 10},
             end: Position { line: 18, column: 67},
-            data: TypeError::EnumSymmetricSameParametric(
+            data: TypeError::EnumSymmetricUnsameParametric(
                 VarDef {
                     name: RcStr::new(String::from("lhs")),
                     set: SetRef {
@@ -319,5 +349,26 @@ fn enum_undefined_value() {
             alias AB = A | B:
             alias ABC = AB | C: 
           end".to_vec())).unwrap().type_check().is_ok()
+    );
+}
+ 
+#[test]
+fn enum_undefined_parametric() {
+    assert_eq!(parser::parse_ast(Lexer::from(
+            b"define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
+                symmetric
+                value A:
+                value B:
+          end".to_vec())).unwrap().type_check().err(),
+        Some(Spanned {
+            leg: Position { line: 0, column: 0},
+            end: Position { line: 0, column: 56},
+            data: TypeError::EnumUndefinedParametric(
+                SetDef {
+                    name: String::from("BasicBlock"),
+                    ..Default::default()
+                }
+            )
+        })
     );
 }

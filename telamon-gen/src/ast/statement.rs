@@ -46,11 +46,13 @@ impl EnumDef {
                             .find(|vars: &&[VarDef]| vars[0] != vars[1])
                             .and_then(|vars: &[VarDef]|
                                 Some((vars[0].clone(), vars[1].clone()))) {
-                        Err(TypeError::EnumSymmetricSameParametric(
+                        Err(TypeError::EnumSymmetricUnsameParametric(
                                 left, right))?
                     }
                 },
-                n => Err(TypeError::EnumSymmetricTwoParametric(n))?,
+                _ => Err(
+                    TypeError::EnumSymmetricUntwoParametric(self.variables.clone())
+                )?,
             }
         }
         Ok(())
@@ -176,19 +178,19 @@ impl SetDef {
         let keys = self.keys.iter().map(|(k, _, _)| k).collect::<Vec<&ir::SetDefKey>>();
 
         if !keys.contains(&&ir::SetDefKey::ItemType) {
-            Err(TypeError::SetMissingKey(ir::SetDefKey::ItemType))?
+            Err(TypeError::SetUndefinedKey(ir::SetDefKey::ItemType))?
         }
         if !keys.contains(&&ir::SetDefKey::IdType) {
-            Err(TypeError::SetMissingKey(ir::SetDefKey::IdType))?
+            Err(TypeError::SetUndefinedKey(ir::SetDefKey::IdType))?
         }
         if !keys.contains(&&ir::SetDefKey::ItemGetter) {
-            Err(TypeError::SetMissingKey(ir::SetDefKey::ItemGetter))?
+            Err(TypeError::SetUndefinedKey(ir::SetDefKey::ItemGetter))?
         }
         if !keys.contains(&&ir::SetDefKey::IdGetter) {
-            Err(TypeError::SetMissingKey(ir::SetDefKey::IdGetter))?
+            Err(TypeError::SetUndefinedKey(ir::SetDefKey::IdGetter))?
         }
         if !keys.contains(&&ir::SetDefKey::Iter) {
-            Err(TypeError::SetMissingKey(ir::SetDefKey::Iter))?
+            Err(TypeError::SetUndefinedKey(ir::SetDefKey::Iter))?
         }
         Ok(())
     }

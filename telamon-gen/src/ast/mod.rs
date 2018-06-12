@@ -9,6 +9,7 @@ use print;
 use regex::Regex;
 use std;
 use std::collections::{BTreeSet, hash_map};
+use std::ops::Deref;
 use utils::*;
 
 pub mod statement;
@@ -21,13 +22,15 @@ pub use super::lexer::Spanned;
 
 #[derive(Debug, PartialEq)]
 pub enum TypeError {
-    SetMissingKey(ir::SetDefKey),
+    SetUndefinedKey(ir::SetDefKey),
+    SetUndefinedParametric(SetDef),
     SetRedefinition(SetDef),
     EnumRedefinition(EnumDef),
     EnumFieldRedefinition(EnumDef, EnumStatement),
-    EnumSymmetricTwoParametric(usize),
-    EnumSymmetricSameParametric(VarDef, VarDef),
+    EnumSymmetricUntwoParametric(Vec<VarDef>),
+    EnumSymmetricUnsameParametric(VarDef, VarDef),
     EnumUndefinedValue(String),
+    EnumUndefinedParametric(SetDef),
 }
 
 /// Syntaxic tree for the constraint description.
@@ -57,7 +60,7 @@ struct TypingContext {
 impl TypingContext {
 
     /// A Set's name is unique.
-    pub fn set_redefinition(
+    pub fn check_set_redefinition(
         &self, set_def: &SetDef
     ) -> Result<(), TypeError> {
         if self.set_defs.contains(set_def) {
@@ -66,13 +69,45 @@ impl TypingContext {
         Ok(())
     }
 
-    /// A Enum'smame is unique.
-    pub fn enum_redefinition(
+    /// A Enum's name is unique.
+    pub fn check_enum_redefinition(
         &self, choice_def: &ChoiceDef
     ) -> Result<(), TypeError> {
         if self.choice_defs.contains(choice_def) {
             if let ChoiceDef::EnumDef(enum_def) = choice_def {
                 Err(TypeError::EnumRedefinition(enum_def.clone()))?
+            }
+        }
+        Ok(())
+    }
+
+    /// A Enum parametric set should be defined
+    pub fn check_set_parametric(
+        &self, set_def: &SetDef
+    ) -> Result<(), TypeError> {
+        if let Some(VarDef { name: _, ref set }) = set_def.arg {
+            let name: &String = set.name.deref();
+            if self.set_defs.iter().find(|set| set.name.eq(name)).is_none() {
+                Err(TypeError::SetUndefinedParametric(
+                    SetDef { name: name.clone(), ..Default::default() }
+                ))?
+            }
+        }
+        Ok(())
+    }
+
+    /// A Enum parametric set should be defined
+    pub fn check_enum_parametric(
+        &self, choice_def: &ChoiceDef
+    ) -> Result<(), TypeError> {
+        if let ChoiceDef::EnumDef(enum_def) = choice_def {
+            for VarDef { name: _, set } in enum_def.variables.iter() {
+                let name: &String = set.name.deref();
+                if self.set_defs.iter().find(|set| set.name.eq(name)).is_none() {
+                    Err(TypeError::EnumUndefinedParametric(
+                        SetDef { name: name.clone(), ..Default::default() }
+                    ))?
+                }
             }
         }
         Ok(())
@@ -89,7 +124,9 @@ impl TypingContext {
                     Result::<SetDef, TypeError>::from(d)
                            .map_err(|e| Spanned { leg, end, data: e })?;
 
-                self.set_redefinition(&set_def)
+                self.check_set_redefinition(&set_def)
+                       .map_err(|e| Spanned { leg, end, data: e })?;
+                self.check_set_parametric(&set_def)
                        .map_err(|e| Spanned { leg, end, data: e })?;
                 Ok(self.set_defs.push(set_def))
             },
@@ -99,7 +136,9 @@ impl TypingContext {
                     Result::<ChoiceDef, TypeError>::from(d)
                            .map_err(|e| Spanned { leg, end, data: e })?;
 
-               self.enum_redefinition(&choice_def)
+               self.check_enum_redefinition(&choice_def)
+                       .map_err(|e| Spanned { leg, end, data: e })?;
+               self.check_enum_parametric(&choice_def)
                        .map_err(|e| Spanned { leg, end, data: e })?;
                Ok(self.choice_defs.push(choice_def))
             },
@@ -121,7 +160,9 @@ impl TypingContext {
     /// Type-checks the statements in the correct order.
     fn finalize(mut self) -> (ir::IrDesc, Vec<TypedConstraint>) {
         for def in std::mem::replace(&mut self.set_defs, vec![]) {
-            self.type_set_def(def.name, def.arg, def.superset, def.keys, def.disjoint, def.quotient);
+            self.type_set_def(
+                def.name, def.arg, def.superset, def.keys, def.disjoint, def.quotient
+            );
         }
         for choice_def in std::mem::replace(&mut self.choice_defs, vec![]) {
             match choice_def {
