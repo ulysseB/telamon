@@ -26,6 +26,16 @@ impl {type_name} {{
             .map(|x| {type_name} {{ bits: x }})
     }}
 
+    /// Indicates if two choices will have the same value.
+    fn eq(&self, other: Self) -> bool {{
+        self.is_constrained() && *self == other
+    }}
+
+    /// Indicates if two choices cannot be equal.
+    fn neq(&self, other: Self) -> bool {{
+        !self.intersects(other)
+    }}
+
     {inverse}
 }}
 

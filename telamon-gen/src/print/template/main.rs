@@ -173,16 +173,6 @@ pub trait Domain: Copy + Eq {
             Trivalent::Maybe
         }
     }
-
-    /// Indicates if two choices will have the same value.
-    fn eq(&self, other: Self) -> bool {
-        self.is_constrained() && *self == other
-    }
-
-    /// Indicates if two choices cannot be equal.
-    fn neq(&self, other: Self) -> bool {
-        !self.intersects(other)
-    }
 }
 
 /// Abstracts integer choices by a range.
@@ -249,14 +239,6 @@ impl Range {
         self.min /= diff.min;
         self.max /= diff.max;
     }
-
-    pub fn lt(&self, other: Range) -> bool { self.max < other.min }
-
-    pub fn gt(&self, other: Range) -> bool { self.min > other.max }
-
-    pub fn leq(&self, other: Range) -> bool { self.max <= other.min }
-
-    pub fn geq(&self, other: Range) -> bool { self.min >= other.max }
 
     pub fn as_fixed(&self) -> Option<u32> {
         if self.min == self.max { Some(self.min) } else { None }
@@ -325,10 +307,6 @@ impl HalfRange {
     fn sub_mul(&mut self, diff: HalfRange) {
         self.min /= diff.min;
     }
-
-    fn gt(&self, other: Range) -> bool { self.min > other.max }
-
-    fn geq(&self, other: Range) -> bool { self.min >= other.max }
 }
 
 impl Domain for HalfRange {
@@ -459,6 +437,23 @@ trait NumDomain {
     fn new_leq<D: NumDomain>(universe: &Self::Universe, min: D) -> Self;
     /// Returns the domain containing the values of `eq` that are also in the universe.
     fn new_eq<D: NumDomain>(universe: &Self::Universe, eq: D) -> Self;
+
+    fn lt<D: NumDomain>(&self, other: D) -> bool { self.max() < other.min() }
+
+    fn gt<D: NumDomain>(&self, other: D) -> bool { self.min() > other.max() }
+
+    fn leq<D: NumDomain>(&self, other: D) -> bool { self.max() <= other.min() }
+
+    fn geq<D: NumDomain>(&self, other: D) -> bool { self.min() >= other.max() }
+
+    fn eq<D: NumDomain>(&self, other: D) -> bool {
+        self.min() == other.max() && self.max() == other.min()
+    }
+
+    // TODO(unimplemented): specialize for NumericSet
+    fn neq<D: NumDomain>(&self, other: D) -> bool {
+        self.min() > other.max() || self.max() < other.min()
+    }
 }
 
 impl NumDomain for Range {
