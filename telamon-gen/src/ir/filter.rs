@@ -474,6 +474,7 @@ pub enum ValueSet {
     },
 }
 
+// FIXME(unimplemented): should we use the full type ?
 impl ValueSet {
     /// Creates an enmpty `ValueSet` of the given type.
     pub fn empty(t: ir::ValueType) -> Self {

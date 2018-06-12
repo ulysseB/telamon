@@ -2,30 +2,22 @@
 use ir;
 use itertools::Itertools;
 use print::ast::{self, Context};
+use std::collections::BTreeSet;
+use utils::*;
 
 /// Prints a `ValueSet`.
 // FIXME: unimplemented!() two possibilities:
 // 1) cast the set to the target each time it is referenced
-// 2) iteratiely interact with the target with dedicated methods
+// FIXME: unimplemented!() limit the universe to the existing domain
 pub fn print(set: &ir::ValueSet, ctx: &Context) -> String {
     if set.is_empty() {
         format!("{}::FAILED", set.t())
     } else {
         match *set {
-            ir::ValueSet::Enum { ref enum_name, ref values, ref inputs } => {
-                let values = values.iter().map(|x| {
-                    format!("{}::{}", enum_name, x)
-                }).collect_vec();
-                let inputs = inputs.iter().map(|&(input, negate, inverse)| {
-                    let neg_str = if negate { "!" } else { "" };
-                    let inv_str = if inverse { ".inverse()" } else { "" };
-                    let var = ctx.input_name(input);
-                    format!("{}{}{}", neg_str, var, inv_str)
-                }).collect_vec();
-                values.into_iter().chain(inputs).format("|").to_string()
-            },
+            ir::ValueSet::Enum { ref enum_name, ref values, ref inputs } =>
+                enum_set(enum_name, values, inputs, ctx),
             ir::ValueSet::Integer { is_full: true, ref universe, .. } =>
-                    "Range::all()".to_string(),
+                universe_fun(universe, "all", ctx),
             ir::ValueSet::Integer { ref cmp_inputs, ref cmp_code, ref universe, .. } => {
                 let inputs = cmp_inputs.iter().map(|&(op, input)| {
                     (op, ctx.input_name(input).to_string())
@@ -55,4 +47,30 @@ pub fn print(set: &ir::ValueSet, ctx: &Context) -> String {
             },
         }
     }
+}
+
+/// Prints a set of enum values.
+fn enum_set(name: &str,
+            values: &BTreeSet<RcStr>,
+            inputs: &BTreeSet<(usize, bool, bool)>,
+            ctx: &Context) -> String {
+    let values = values.iter().map(|x| {
+        format!("{}::{}", name, x)
+    }).collect_vec();
+    let inputs = inputs.iter().map(|&(input, negate, inverse)| {
+        let neg_str = if negate { "!" } else { "" };
+        let inv_str = if inverse { ".inverse()" } else { "" };
+        let var = ctx.input_name(input);
+        format!("{}{}{}", neg_str, var, inv_str)
+    }).collect_vec();
+    values.into_iter().chain(inputs).format("|").to_string()
+}
+
+fn universe_fun(t: &ir::ValueType, fun: &str, ctx: &Context) -> String {
+    let universe = match *t {
+        ir::ValueType::NumericSet(ref universe) =>
+            format!("{}, ", ast::code(universe, ctx)),
+        _ => String::new(),
+    };
+    format!("{}::{}({})", t, fun, universe)
 }
