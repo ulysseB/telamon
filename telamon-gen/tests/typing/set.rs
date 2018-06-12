@@ -6,7 +6,7 @@ pub use super::telamon_gen::ir;
 pub use super::telamon_gen::ast::*;
 
 #[test]
-fn enum_name_redefinition() {
+fn set_name_redefinition() {
     assert_eq!(parser::parse_ast(Lexer::from(
         b"set Foo:
             item_type = \"ir::inst::Obj\"
