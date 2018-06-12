@@ -2,7 +2,7 @@ use codegen::*;
 use device::x86::Namer;
 use ir::{self, op, Type};
 use itertools::Itertools;
-use search_space::{DimKind, Domain};
+use search_space::DimKind;
 use std::fmt::Write as WriteFmt;
 use utils::*;
 // TODO(cc_perf): avoid concatenating strings.
