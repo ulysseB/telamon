@@ -1,7 +1,7 @@
 let incr = diff.{{incr_name}}.get(&({{>choice.arg_ids arguments=incr_args}})).map(|x| x.1)
     .unwrap_or_else(||store.get_{{incr_name}}({{>choice.arg_ids arguments=incr_args}}));
 let (mut old_incr, mut new_incr) = {{#if to_half~}}
-    (HalfRange::new_geq(old.min), HalfRange::new_geq(new.min))
+    (HalfRange::new_geq(&HalfRange::ALL, old), HalfRange::new_geq(&HalfRange::ALL, new))
 {{~else~}}
     (old, new)
 {{/if}};

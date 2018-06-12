@@ -1,5 +1,6 @@
 {{#with Counter~}}
     {{>choice.getter use_old=../use_old}}
 {{~else~}}
-    Range::new_eq({{Code}})
+    // FIXME(unimplemented): handle NumericSet values
+    Range::new_eq(&Range::ALL, {{Code}})
 {{~/with~}}
