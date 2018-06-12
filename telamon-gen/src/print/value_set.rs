@@ -15,7 +15,7 @@ pub fn print(set: &ir::ValueSet, ctx: &Context) -> String {
             ir::ValueSet::Enum { ref enum_name, ref values, ref inputs } =>
                 enum_set(enum_name, values, inputs, ctx),
             ir::ValueSet::Integer { is_full: true, ref universe, .. } => {
-                // FIXME: take current domain into account
+                // FIXME(unimplemented): take current domain into account
                 full_universe(universe, ctx)
             },
             ir::ValueSet::Integer { ref cmp_inputs, ref cmp_code, .. } => {
@@ -24,7 +24,7 @@ pub fn print(set: &ir::ValueSet, ctx: &Context) -> String {
                 }).chain(cmp_code.iter().map(|&(op, ref code)| {
                     (op, ast::code(code, ctx))
                 })).map(|(op, val)| {
-                    // FIXME: take current domain into account
+                    // FIXME(unimplemented): take current domain into account
                     universe_fun(&set.t(), cmp_op_fun_name(op), &val, ctx)
                 }).format("|").to_string()
             },
