@@ -20,10 +20,10 @@ fn enum_redefinition() {
             leg: Position { line: 6, column: 10},
             end: Position { line: 6, column: 28},
             data: TypeError::EnumRedefinition(
-                ChoiceDef::EnumDef(EnumDef {
+                EnumDef {
                     name: String::from("foo"),
                     ..Default::default()
-                }),
+                },
             )
         })
     );
