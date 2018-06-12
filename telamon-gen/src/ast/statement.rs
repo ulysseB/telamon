@@ -199,3 +199,21 @@ impl PartialEq for SetDef {
         self.name == rhs.name
     }
 }
+
+impl From<Statement> for Result<SetDef, TypeError> {
+    fn from(stmt: Statement) -> Self {
+        match stmt {
+            Statement::SetDef {
+                name, doc, arg, superset, disjoint, keys, quotient
+            } => {
+                let set_def: SetDef = SetDef {
+                    name, doc, arg, superset, disjoint, keys, quotient
+                };
+                
+                set_def.check_missing_key()?;
+                Ok(set_def)
+            },
+            _ => unreachable!(),
+        }
+    }
+}

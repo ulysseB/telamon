@@ -23,7 +23,7 @@ pub use super::lexer::Spanned;
 pub enum TypeError {
     SetMissingKey(ir::SetDefKey),
     SetRedefinition(SetDef),
-    EnumRedefinition(ChoiceDef),
+    EnumRedefinition(EnumDef),
     EnumFieldRedefinition(EnumDef, EnumStatement),
     EnumSymmetricTwoParametric(usize),
     EnumSymmetricSameParametric(VarDef, VarDef),
@@ -55,27 +55,43 @@ struct TypingContext {
 }
 
 impl TypingContext {
+
+    /// A Set's name is unique.
+    pub fn set_redefinition(
+        &self, set_def: &SetDef
+    ) -> Result<(), TypeError> {
+        if self.set_defs.contains(set_def) {
+            Err(TypeError::SetRedefinition(set_def.clone()))?
+        }
+        Ok(())
+    }
+
+    /// A Enum'smame is unique.
+    pub fn enum_redefinition(
+        &self, choice_def: &ChoiceDef
+    ) -> Result<(), TypeError> {
+        if self.choice_defs.contains(choice_def) {
+            if let ChoiceDef::EnumDef(enum_def) = choice_def {
+                Err(TypeError::EnumRedefinition(enum_def.clone()))?
+            }
+        }
+        Ok(())
+    }
+}
+
+impl TypingContext {
     /// Adds a statement to the typing context.
     fn add_statement(&mut self, statement: Spanned<Statement>)
         -> Result<(), Spanned<TypeError>> {
         match statement {
-            Spanned { leg, end,
-                data: Statement::SetDef {
-                    name, doc, arg, superset, disjoint, keys, quotient
-                }
-            } => {
+            Spanned { leg, end, data: d @ Statement::SetDef { .. } } => {
                 let set_def: SetDef =
-                    SetDef { name, doc, arg, superset, disjoint, keys,
-                        quotient };
+                    Result::<SetDef, TypeError>::from(d)
+                           .map_err(|e| Spanned { leg, end, data: e })?;
 
-                set_def.check_missing_key()
+                self.set_redefinition(&set_def)
                        .map_err(|e| Spanned { leg, end, data: e })?;
-                if self.set_defs.contains(&set_def) {
-                    Err(Spanned { leg, end, data:
-                        TypeError::SetRedefinition(set_def.clone()) })
-                } else {
-                    Ok(self.set_defs.push(set_def))
-                }
+                Ok(self.set_defs.push(set_def))
             },
             Spanned { leg, end, data: d @ Statement::EnumDef { .. } } |
             Spanned { leg, end, data: d @ Statement::CounterDef { .. } } => {
@@ -83,12 +99,9 @@ impl TypingContext {
                     Result::<ChoiceDef, TypeError>::from(d)
                            .map_err(|e| Spanned { leg, end, data: e })?;
 
-                if self.choice_defs.contains(&choice_def) {
-                    Err(Spanned { leg, end, data:
-                        TypeError::EnumRedefinition(choice_def.clone()) })
-                } else {
-                    Ok(self.choice_defs.push(choice_def))
-                }
+               self.enum_redefinition(&choice_def)
+                       .map_err(|e| Spanned { leg, end, data: e })?;
+               Ok(self.choice_defs.push(choice_def))
             },
             Spanned { leg, end,
                 data: Statement::TriggerDef { foralls, conditions, code }
