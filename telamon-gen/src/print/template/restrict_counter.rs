@@ -25,7 +25,7 @@ if incr_status.is_maybe() {
 }
 {{~#if amount.Counter~}}
     else if incr_status.is_true() {
-        let val = Range::new_leq(new_values.max{{neg_op}}current.min{{op}}incr_amount.min);
+        let val = Range::new_leq(&Range::ALL, new_values.max{{neg_op}}current.min{{op}}incr_amount.min);
         {{#if delayed~}}
             actions.extend({{amount.Counter.name}}::restrict_delayed(
                     {{~>choice.arg_ids amount.Counter~}} ir_instance, store, val)?);

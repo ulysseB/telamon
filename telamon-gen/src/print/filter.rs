@@ -132,8 +132,9 @@ pub fn condition<'a>(cond: &'a ir::Condition, ctx: &Context<'a>) -> String {
         },
         ir::Condition::CmpCode { lhs, ref rhs, op } => {
             let mut rhs = ast::code(rhs, ctx);
+            // FIXME(unimplemented): comparison between 
             if ctx.input_choice_def(lhs).is_counter() {
-                rhs = format!("Range::new_eq({})", rhs);
+                rhs = format!("Range::new_eq(&Range::ALL, {})", rhs);
             }
             let lhs = ctx.input_name(lhs);
             format!("{lhs}.{op}({rhs})", lhs = lhs, rhs = rhs, op = op)

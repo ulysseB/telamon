@@ -208,25 +208,6 @@ impl Range {
         self.max = std::cmp::max(self.max, other.max);
     }
 
-    /// Creates a range that only contains the given value.
-    pub fn new_eq(val: u32) -> Self { Range { min: val, max: val } }
-
-    /// Returns the range of all the integers greater than 'val'
-    pub fn new_gt(val: u32) -> Self {
-        Range { min: val.saturating_add(1), .. Range::ALL }
-    }
-
-    /// Returns the range of all the integers lower than 'val'
-    pub fn new_lt(val: u32) -> Self {
-        Range { max: val.saturating_sub(1), .. Range::ALL }
-    }
-
-    /// Returns the range of all the integers greater or equal to 'val'
-    pub fn new_geq(val: u32) -> Self { Range { min: val, .. Range::ALL } }
-
-    /// Returns the range of all the integers lesser or equal to 'val'
-    pub fn new_leq(val: u32) -> Self { Range { max: val, .. Range::ALL } }
-
     /// Returns the difference between the min and max of two ranges.
     fn get_diff_add(&self, other: Range) -> Range {
         Range { min: other.min - self.min, max: self.max - other.max }
@@ -312,14 +293,6 @@ impl HalfRange {
     pub fn insert(&mut self, other: HalfRange) {
         self.min = std::cmp::min(self.min, other.min);
     }
-
-    /// Returns the range of all the integers greater than 'val'
-    pub fn new_gt(val: u32) -> Self {
-        HalfRange { min: val.saturating_add(1) }
-    }
-
-    /// Returns the range of all the integers greater or equal to 'val'
-    pub fn new_geq(val: u32) -> Self { HalfRange { min: val } }
 
     /// Returns the difference between the min and max of two ranges.
     fn get_diff_add(&self, other: HalfRange) -> HalfRange {
@@ -518,6 +491,31 @@ impl NumDomain for Range {
             max: std::cmp::min(eq.max(), universe.max),
             min: std::cmp::max(eq.min(), universe.min),
         }
+    }
+}
+
+impl NumDomain for HalfRange {
+    type Universe = HalfRange;
+
+    fn min(&self) -> u32 { self.min }
+
+    fn max(&self) -> u32 { std::u32::MAX }
+
+    fn new_gt<D: NumDomain>(universe: &HalfRange, min: D) -> Self {
+        let min = min.min().saturating_add(1);
+        HalfRange { min: std::cmp::max(min, universe.min) }
+    }
+
+    fn new_lt<D: NumDomain>(universe: &HalfRange, _: D) -> Self { *universe }
+
+    fn new_geq<D: NumDomain>(universe: &HalfRange, min: D) -> Self {
+        HalfRange { min: std::cmp::max(min.min(), universe.min) }
+    }
+
+    fn new_leq<D: NumDomain>(universe: &HalfRange, _: D) -> Self { *universe }
+
+    fn new_eq<D: NumDomain>(universe: &HalfRange, eq: D) -> Self {
+        HalfRange { min: std::cmp::max(eq.min(), universe.min) }
     }
 }
 

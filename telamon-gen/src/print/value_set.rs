@@ -6,44 +6,27 @@ use std::collections::BTreeSet;
 use utils::*;
 
 /// Prints a `ValueSet`.
-// FIXME: unimplemented!() two possibilities:
-// 1) cast the set to the target each time it is referenced
-// FIXME: unimplemented!() limit the universe to the existing domain
 pub fn print(set: &ir::ValueSet, ctx: &Context) -> String {
     if set.is_empty() {
         format!("{}::FAILED", set.t())
     } else {
+        // FIXME: May not restrict enough, mut rerun in some cases
         match *set {
             ir::ValueSet::Enum { ref enum_name, ref values, ref inputs } =>
                 enum_set(enum_name, values, inputs, ctx),
-            ir::ValueSet::Integer { is_full: true, ref universe, .. } =>
-                universe_fun(universe, "all", ctx),
-            ir::ValueSet::Integer { ref cmp_inputs, ref cmp_code, ref universe, .. } => {
-                let inputs = cmp_inputs.iter().map(|&(op, input)| {
+            ir::ValueSet::Integer { is_full: true, ref universe, .. } => {
+                // FIXME: take current domain into account
+                full_universe(universe, ctx)
+            },
+            ir::ValueSet::Integer { ref cmp_inputs, ref cmp_code, .. } => {
+                cmp_inputs.iter().map(|&(op, input)| {
                     (op, ctx.input_name(input).to_string())
-                }).collect_vec();
-                let code = cmp_code.iter().map(|&(op, ref code)| {
+                }).chain(cmp_code.iter().map(|&(op, ref code)| {
                     (op, ast::code(code, ctx))
-                }).collect_vec();
-                // FIXME: May not restrict enough
-                // -> must intersect each component of the range with he current set ?
-                //    - not enough, must rerun in some cases
-                inputs.into_iter().map(|(op, val)| match op {
-                    ir::CmpOp::Lt => format!("Range::new_lt({}.max)", val),
-                    ir::CmpOp::Gt => format!("Range::new_gt({}.min)", val),
-                    ir::CmpOp::Leq => format!("Range::new_leq({}.max)", val),
-                    ir::CmpOp::Geq => format!("Range::new_geq({}.min)", val),
-                    ir::CmpOp::Eq => format!("{}", val),
-                    ir::CmpOp::Neq => format!("Range::ALL"), // FIXME: may not restrict enough
-                }).chain(code.into_iter().map(|(op, val)| match op {
-                    ir::CmpOp::Lt => format!("Range::new_lt({})", val),
-                    ir::CmpOp::Gt => format!("Range::new_gt({})", val),
-                    ir::CmpOp::Leq => format!("Range::new_leq({})", val),
-                    ir::CmpOp::Geq => format!("Range::new_geq({})", val),
-                    ir::CmpOp::Eq => format!("Range::new_eq({})", val),
-                    ir::CmpOp::Neq => format!("Range::ALL"), // FIXME: may not restrict enough
-                })).format("|").to_string()
-                // FIXME: Is Or defined ?
+                })).map(|(op, val)| {
+                    // FIXME: take current domain into account
+                    universe_fun(&set.t(), cmp_op_fun_name(op), &val, ctx)
+                }).format("|").to_string()
             },
         }
     }
@@ -66,11 +49,30 @@ fn enum_set(name: &str,
     values.into_iter().chain(inputs).format("|").to_string()
 }
 
-fn universe_fun(t: &ir::ValueType, fun: &str, ctx: &Context) -> String {
+/// Returns the function to call to implement the given operator.
+fn cmp_op_fun_name(op: ir::CmpOp) -> &'static str {
+    match op {
+        ir::CmpOp::Lt => "new_lt",
+        ir::CmpOp::Gt => "new_gt",
+        ir::CmpOp::Leq => "new_leq",
+        ir::CmpOp::Geq => "new_geq",
+        ir::CmpOp::Eq => "new_eq",
+        ir::CmpOp::Neq => panic!("neq operations on numeric domains are not supported"),
+    }
+}
+
+fn universe_fun(t: &ir::ValueType, fun: &str, arg: &str, ctx: &Context) -> String {
     let universe = match *t {
-        ir::ValueType::NumericSet(ref universe) =>
-            format!("{}, ", ast::code(universe, ctx)),
-        _ => String::new(),
+        ir::ValueType::NumericSet(ref universe) => ast::code(universe, ctx),
+        _ => format!("&{}::ALL", t),
     };
-    format!("{}::{}({})", t, fun, universe)
+    format!("{}::{}({},{})", t, fun, universe, arg)
+}
+
+fn full_universe(t: &ir::ValueType, ctx: &Context) -> String {
+    match *t {
+        ir::ValueType::NumericSet(ref universe) =>
+            format!("NumericSet::all({})", ast::code(universe, ctx)),
+        _ => format!("{}::all()", t),
+    }
 }
