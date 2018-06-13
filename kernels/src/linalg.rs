@@ -8,7 +8,7 @@ use rand;
 use rayon::prelude::*;
 use telamon::{device, ir};
 use telamon::explorer::Candidate;
-use telamon::helper::{self, Builder, SignatureBuilder};
+use telamon::helper::{self, Builder, MetaDimension, SignatureBuilder};
 use telamon::helper::tensor::*;
 use telamon::search_space::*;
 use telamon::ir::DimMapScope::Global as GlobalScope;
@@ -443,6 +443,7 @@ pub struct BatchMMP {
     pub batch: i32,
     pub transpose_a: bool,
     pub transpose_b: bool,
+    pub batch_b: bool,
     pub generic: bool,
 }
 
@@ -452,6 +453,7 @@ impl BatchMMP {
             m, n, k, batch,
             transpose_a: false,
             transpose_b: false,
+            batch_b: true,
             generic: true,
         }
     }
@@ -470,6 +472,12 @@ impl BatchMMP {
     /// generic.
     pub fn static_sizes(mut self) -> Self {
         self.generic = false;
+        self
+    }
+
+    /// Reuse the `B` matrix across the batch.
+    pub fn reuse_b(mut self) -> Self {
+        self.batch_b = false;
         self
     }
 }
@@ -493,6 +501,7 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
             .finish(builder);
         let b = TensorBuilder::new("b", vec![batch.clone(), k_size, n_size.clone()])
             .doif(params.transpose_b, |b| b.transpose(1, 2))
+            .doif(!params.batch_b, |b| b.stride_dim(0))
             .finish(builder);
         let c = builder.tensor::<S>("c", vec![batch, m_size, n_size], false);
         BatchMM { params, a, b, c }
@@ -512,11 +521,16 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
         tilings.map(|(m_tile, n_tile, k_tile, batch_tile)| {
             let mut builder = helper::Builder::new(signature, ctx.device());
             let ld_a = self.a.load(&[&batch_tile, &m_tile, &k_tile], &mut builder);
-            let ld_b = self.b.load(&[&batch_tile, &k_tile, &n_tile], &mut builder);
+            let ld_b = {
+                let b_tiles = [&batch_tile[..], &k_tile, &n_tile];
+                let b_tiles = if self.params.batch_b { &b_tiles } else { &b_tiles[1..] };
+                self.b.load(b_tiles, &mut builder)
+            };
 
             let init_batch = builder.open_mapped_dim(&ld_a[0]);
             let init_dim_m = builder.open_mapped_dim(&ld_a[1]);
-            let init_dim_n = builder.open_mapped_dim(&ld_b[2]);
+            let dim_n = &ld_b[if self.params.batch_b { 2 } else { 1 }];
+            let init_dim_n = builder.open_mapped_dim(dim_n);
             let acc_init = builder.mov(&0f32);
             let acc_batch = builder.open_mapped_dim(&init_batch);
             let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
@@ -524,8 +538,11 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
             let acc_dim_k = builder.open_mapped_dim(&ld_a[2]);
             let a_op = ld_a.dim_map(&[&acc_batch, &acc_dim_m, &acc_dim_k],
                                     GlobalScope, &mut builder);
-            let b_op = ld_b.dim_map(&[&acc_batch, &acc_dim_k, &acc_dim_n],
-                                    GlobalScope, &mut builder);
+            let b_op = {
+                let b_dims = [&acc_batch as &MetaDimension, &acc_dim_k, &acc_dim_n];
+                let b_dims = if self.params.batch_b { &b_dims } else { &b_dims[1..] };
+                ld_b.dim_map(b_dims, GlobalScope, &mut builder)
+            };
             let acc = builder.mad(&a_op, &b_op, &helper::Reduce(acc_init));
             builder.close_dim(&acc_dim_k);
 
