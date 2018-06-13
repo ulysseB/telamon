@@ -24,7 +24,9 @@ pub use super::lexer::Spanned;
 pub enum TypeError {
     SetUndefinedKey(ir::SetDefKey),
     SetUndefinedParametric(SetDef),
+    SetUndefinedVariable(SetDef),
     SetRedefinition(SetDef),
+    SetUndefinedSubsetof(SetDef),
     EnumRedefinition(EnumDef),
     EnumFieldRedefinition(EnumDef, EnumStatement),
     EnumSymmetricUntwoParametric(Vec<VarDef>),
@@ -91,7 +93,7 @@ impl TypingContext {
         if let Some(SetRef { ref name, .. }) = set_def.superset {
             let name: &String = name.deref();
             if self.set_defs.iter().find(|set| set.name.eq(name)).is_none() {
-                Err(TypeError::SetUndefinedParametric(
+                Err(TypeError::SetUndefinedSubsetof(
                     SetDef { name: name.clone(), ..Default::default() }
                 ))?
             }

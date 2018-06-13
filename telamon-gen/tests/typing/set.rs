@@ -131,7 +131,7 @@ fn set_undefined_key() {
 }
 
 #[test]
-fn set_undefined_parametric_set() {
+fn set_undefined_parametric() {
     assert_eq!(parser::parse_ast(Lexer::from(
         b"set Operand($inst in Instruction):
             item_type = \"ir::operand::Obj\"
@@ -177,7 +177,7 @@ fn set_undefined_parametric_set() {
 }
 
 #[test]
-fn set_undefined_parametric_superset() {
+fn set_undefined_subsetof() {
     assert_eq!(parser::parse_ast(Lexer::from(
         b"set Instruction subsetof BasicBlock:
             item_type = \"ir::inst::Obj\"
@@ -192,7 +192,7 @@ fn set_undefined_parametric_superset() {
         Some(Spanned {
             leg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 36},
-            data: TypeError::SetUndefinedParametric(SetDef {
+            data: TypeError::SetUndefinedSubsetof(SetDef {
                 name: String::from("BasicBlock"),
                 ..Default::default()
             })
