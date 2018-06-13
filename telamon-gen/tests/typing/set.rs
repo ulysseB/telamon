@@ -131,7 +131,7 @@ fn set_undefined_key() {
 }
 
 #[test]
-fn set_undefined_parametric() {
+fn set_undefined_parametric_set() {
     assert_eq!(parser::parse_ast(Lexer::from(
         b"set Operand($inst in Instruction):
             item_type = \"ir::operand::Obj\"
@@ -173,6 +173,52 @@ fn set_undefined_parametric() {
             var_prefix = \"op\"
             new_objs = \"$objs.operand\"
           end".to_vec())).unwrap().type_check().is_ok()
+    );
+}
+
+#[test]
+fn set_undefined_parametric_superset() {
+    assert_eq!(parser::parse_ast(Lexer::from(
+        b"set Instruction subsetof BasicBlock:
+            item_type = \"ir::inst::Obj\"
+            id_type = \"ir::inst::Id\"
+            item_getter = \"ir::inst::get($fun, $id)\"
+            id_getter = \"ir::inst::Obj::id($item)\"
+            iterator = \"ir::inst::iter($fun)\"
+            var_prefix = \"inst\"
+            new_objs = \"$objs.inst\"
+            from_superset = \"ir::inst::from_superset($fun, $item)\"
+         end".to_vec())).unwrap().type_check().err(),
+        Some(Spanned {
+            leg: Position { line: 0, column: 0},
+            end: Position { line: 0, column: 36},
+            data: TypeError::SetUndefinedParametric(SetDef {
+                name: String::from("BasicBlock"),
+                ..Default::default()
+            })
+        })
+    );
+    assert!(parser::parse_ast(Lexer::from(
+        b"set BasicBlock:
+            item_type = \"ir::basic_block::Obj\"
+            id_type = \"ir::basic_block::Id\"
+            item_getter = \"ir::basic_block::get($fun, $id)\"
+            id_getter = \"ir::basic_block::Obj::id($item)\"
+            iterator = \"ir::basic_block::iter($fun)\"
+            var_prefix = \"bb\"
+            new_objs = \"$objs.basic_block\"
+          end
+          
+          set Instruction subsetof BasicBlock:
+            item_type = \"ir::inst::Obj\"
+            id_type = \"ir::inst::Id\"
+            item_getter = \"ir::inst::get($fun, $id)\"
+            id_getter = \"ir::inst::Obj::id($item)\"
+            iterator = \"ir::inst::iter($fun)\"
+            var_prefix = \"inst\"
+            new_objs = \"$objs.inst\"
+            from_superset = \"ir::inst::from_superset($fun, $item)\"
+         end".to_vec())).unwrap().type_check().is_ok()
     );
 }
 

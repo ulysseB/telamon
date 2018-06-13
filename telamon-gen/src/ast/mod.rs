@@ -69,19 +69,7 @@ impl TypingContext {
         Ok(())
     }
 
-    /// A Enum's name is unique.
-    pub fn check_enum_redefinition(
-        &self, choice_def: &ChoiceDef
-    ) -> Result<(), TypeError> {
-        if self.choice_defs.contains(choice_def) {
-            if let ChoiceDef::EnumDef(enum_def) = choice_def {
-                Err(TypeError::EnumRedefinition(enum_def.clone()))?
-            }
-        }
-        Ok(())
-    }
-
-    /// A Enum parametric set should be defined
+    /// A Set parametric set should be defined
     pub fn check_set_parametric(
         &self, set_def: &SetDef
     ) -> Result<(), TypeError> {
@@ -91,6 +79,33 @@ impl TypingContext {
                 Err(TypeError::SetUndefinedParametric(
                     SetDef { name: name.clone(), ..Default::default() }
                 ))?
+            }
+        }
+        Ok(())
+    }
+
+    /// A Set superset attribut should be defined
+    pub fn check_superset_parametric(
+        &self, set_def: &SetDef
+    ) -> Result<(), TypeError> {
+        if let Some(SetRef { ref name, .. }) = set_def.superset {
+            let name: &String = name.deref();
+            if self.set_defs.iter().find(|set| set.name.eq(name)).is_none() {
+                Err(TypeError::SetUndefinedParametric(
+                    SetDef { name: name.clone(), ..Default::default() }
+                ))?
+            }
+        }
+        Ok(())
+    }
+
+    /// A Enum's name is unique.
+    pub fn check_enum_redefinition(
+        &self, choice_def: &ChoiceDef
+    ) -> Result<(), TypeError> {
+        if self.choice_defs.contains(choice_def) {
+            if let ChoiceDef::EnumDef(enum_def) = choice_def {
+                Err(TypeError::EnumRedefinition(enum_def.clone()))?
             }
         }
         Ok(())
@@ -127,6 +142,8 @@ impl TypingContext {
                 self.check_set_redefinition(&set_def)
                        .map_err(|e| Spanned { leg, end, data: e })?;
                 self.check_set_parametric(&set_def)
+                       .map_err(|e| Spanned { leg, end, data: e })?;
+                self.check_superset_parametric(&set_def)
                        .map_err(|e| Spanned { leg, end, data: e })?;
                 Ok(self.set_defs.push(set_def))
             },
