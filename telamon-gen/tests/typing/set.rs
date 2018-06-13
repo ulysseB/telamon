@@ -178,6 +178,32 @@ fn set_undefined_parametric() {
 
 #[test]
 fn set_from_superset_key() {
+    assert_eq!(parser::parse_ast(Lexer::from(
+        b"set BasicBlock:
+            item_type = \"ir::basic_block::Obj\"
+            id_type = \"ir::basic_block::Id\"
+            item_getter = \"ir::basic_block::get($fun, $id)\"
+            id_getter = \"ir::basic_block::Obj::id($item)\"
+            iterator = \"ir::basic_block::iter($fun)\"
+            var_prefix = \"bb\"
+            new_objs = \"$objs.basic_block\"
+          end
+          
+          set Instruction subsetof BasicBlock:
+            item_type = \"ir::inst::Obj\"
+            id_type = \"ir::inst::Id\"
+            item_getter = \"ir::inst::get($fun, $id)\"
+            id_getter = \"ir::inst::Obj::id($item)\"
+            iterator = \"ir::inst::iter($fun)\"
+            var_prefix = \"inst\"
+            new_objs = \"$objs.inst\"
+         end".to_vec())).unwrap().type_check().err(),
+        Some(Spanned {
+            leg: Position { line: 10, column: 10},
+            end: Position { line: 10, column: 46},
+            data: TypeError::SetUndefinedKey(ir::SetDefKey::FromSuperset)
+        })
+    );
     assert!(parser::parse_ast(Lexer::from(
         b"set BasicBlock:
             item_type = \"ir::basic_block::Obj\"

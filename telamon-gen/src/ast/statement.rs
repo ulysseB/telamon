@@ -59,7 +59,7 @@ impl EnumDef {
     }
 
     /// An Alias' value should exists.
-    pub fn check_missing_value(&self) -> Result<(), TypeError> {
+    pub fn check_undefined_value(&self) -> Result<(), TypeError> {
         let values: Vec<&String> =
             self.statements.iter()
                            .filter_map(|item| item.get_value().or(item.get_alias()))
@@ -139,7 +139,7 @@ impl From<Statement> for Result<ChoiceDef, TypeError> {
 
                 enum_def.check_field_name_multi()?;
                 enum_def.check_symmetric()?;
-                enum_def.check_missing_value()?;
+                enum_def.check_undefined_value()?;
                 Ok(ChoiceDef::EnumDef(enum_def))
             },
             _ => unreachable!(),
@@ -174,7 +174,7 @@ impl Default for SetDef {
 
 impl SetDef {
     /// A set should always have the keys: type, id_type, id_getter, iterator, getter.
-    pub fn check_missing_key(&self) -> Result<(), TypeError> {
+    pub fn check_undefined_key(&self) -> Result<(), TypeError> {
         let keys = self.keys.iter().map(|(k, _, _)| k).collect::<Vec<&ir::SetDefKey>>();
 
         if !keys.contains(&&ir::SetDefKey::ItemType) {
@@ -191,6 +191,16 @@ impl SetDef {
         }
         if !keys.contains(&&ir::SetDefKey::Iter) {
             Err(TypeError::SetUndefinedKey(ir::SetDefKey::Iter))?
+        }
+        Ok(())
+    }
+
+    pub fn check_undefined_superset_key(&self) -> Result<(), TypeError> {
+        if self.superset.is_some() {
+            if self.keys.iter().find(|(k, _, _)| k == &ir::SetDefKey::FromSuperset)
+                               .is_none() {
+                Err(TypeError::SetUndefinedKey(ir::SetDefKey::FromSuperset))?
+            }
         }
         Ok(())
     }
@@ -212,7 +222,8 @@ impl From<Statement> for Result<SetDef, TypeError> {
                     name, doc, arg, superset, disjoint, keys, quotient
                 };
                 
-                set_def.check_missing_key()?;
+                set_def.check_undefined_key()?;
+                set_def.check_undefined_superset_key()?;
                 Ok(set_def)
             },
             _ => unreachable!(),
