@@ -450,7 +450,6 @@ trait NumDomain {
         self.min() == other.max() && self.max() == other.min()
     }
 
-    // TODO(unimplemented): specialize for NumericSet
     fn neq<D: NumDomain>(&self, other: D) -> bool {
         self.min() > other.max() || self.max() < other.min()
     }
@@ -575,6 +574,24 @@ impl NumDomain for NumericSet {
             let len = universe.binary_search(&max).unwrap_or_else(|x| x) - start;
             for i in 0..len { values[i] = universe[start+i]; }
             NumericSet { values, len }
+        }
+    }
+
+    fn neq<D: NumDomain>(&self, other: D) -> bool {
+        if let Some(other) = other.as_num_set() {
+            let (mut self_idx, mut other_idx) = (0, 0);
+            while self_idx < self.len && other_idx < other.len {
+                if self.values[self_idx] < other.values[other_idx] {
+                    self_idx += 1;
+                } else if self.values[self_idx] > other.values[other_idx] {
+                    other_idx += 1
+                } else {
+                    return false;
+                }
+            }
+            true
+        } else {
+            self.min() > other.max() || self.max() < other.min()
         }
     }
 }
