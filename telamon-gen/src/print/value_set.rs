@@ -10,12 +10,14 @@ pub fn print(set: &ir::ValueSet, ctx: &Context) -> String {
     if set.is_empty() {
         format!("{}::FAILED", set.t())
     } else {
-        // FIXME: May not restrict enough, mut rerun in some cases
+        // FIXME: The set might not be restriceted enough when combining range sets.
+        // - should limit to the current domain.
+        // TODO(cc_perf): might be faster to limit to the current domain rather than the
+        // full universe.
         match *set {
             ir::ValueSet::Enum { ref enum_name, ref values, ref inputs } =>
                 enum_set(enum_name, values, inputs, ctx),
             ir::ValueSet::Integer { is_full: true, ref universe, .. } => {
-                // FIXME(unimplemented): take current domain into account
                 full_universe(universe, ctx)
             },
             ir::ValueSet::Integer { ref cmp_inputs, ref cmp_code, .. } => {
@@ -24,7 +26,6 @@ pub fn print(set: &ir::ValueSet, ctx: &Context) -> String {
                 }).chain(cmp_code.iter().map(|&(op, ref code)| {
                     (op, ast::code(code, ctx))
                 })).map(|(op, val)| {
-                    // FIXME(unimplemented): take current domain into account
                     universe_fun(&set.t(), cmp_op_fun_name(op), &val, ctx)
                 }).format("|").to_string()
             },
