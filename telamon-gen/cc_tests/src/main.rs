@@ -38,7 +38,7 @@ mod single_enum {
         assert_eq!(x, Foo::B);
 
         // Ensure `failed`, `all` and `is_failed` are working.
-        assert!(Foo::FAILED.is_failed());
+        assert!(Foo::failed().is_failed());
         assert!((!Foo::ALL).is_failed());
         // Ensure is_constrained is working.
         assert!(Foo::A.is_constrained());
@@ -47,7 +47,7 @@ mod single_enum {
         assert!(Foo::AB.intersects(Foo::BC));
         assert!(!Foo::A.intersects(Foo::BC));
         // Ensure contains is working.
-        assert!(Foo::AB.contains(Foo::FAILED));
+        assert!(Foo::AB.contains(Foo::failed()));
         assert!(Foo::AB.contains(Foo::A));
         assert!(!Foo::AB.contains(Foo::BC));
         // Ensure list is working correctly.
@@ -285,7 +285,7 @@ mod symmetry {
         let _ = ::env_logger::try_init();
 
         assert_eq!(Enum2::ALL.inverse(), Enum2::ALL);
-        assert_eq!(Enum2::FAILED.inverse(), Enum2::FAILED);
+        assert_eq!(Enum2::failed().inverse(), Enum2::failed());
         assert_eq!(Enum2::BEFORE.inverse(), Enum2::AFTER);
         assert_eq!(Enum2::AFTER.inverse(), Enum2::BEFORE);
         assert_eq!(Enum2::INNER.inverse(), Enum2::OUTER);

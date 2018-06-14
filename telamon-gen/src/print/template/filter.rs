@@ -2,7 +2,7 @@
 #[allow(unused_variables, unused_mut, unused_parens)]
 pub fn filter_{{id}}({{>choice.arg_defs}}ir_instance: &ir::Function,
                      store: &DomainStore) -> {{type_name}} {
-    let mut values = {{type_name}}::FAILED;
+    let mut values = {{type_name}}::failed();
     {{#each bindings~}}
         let {{this.[0]}} = {{>choice.getter this.[1]}};
     {{/each~}}

@@ -4,7 +4,7 @@ use ir::{AccessPattern, Function, Signature, InstId, Operand, Operator};
 use ir::{self, Parameter, Size, Type, dim, mem, op};
 use itertools::Itertools;
 use helper::{AutoOperand, DimGroup, MetaDimension, MetaBasicBlock};
-use search_space::{Action, Order, DimKind, Domain, InstFlag, MemSpace, SearchSpace};
+use search_space::{Action, Order, DimKind, InstFlag, MemSpace, SearchSpace};
 use std::borrow::Borrow;
 use utils::*;
 

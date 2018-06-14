@@ -21,6 +21,9 @@ where T: Ord
     /// Indicates if the `VecSet` is empty.
     pub fn is_empty(&self) -> bool { self.data.is_empty() }
 
+    /// Returns the number of elements in the set.
+    pub fn len(&self) -> usize { self.data.len() }
+
     /// Iterates over the set, in order.
     pub fn iter(&self) -> std::slice::Iter<T> { self.data.iter() }
 
