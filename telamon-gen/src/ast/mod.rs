@@ -142,6 +142,21 @@ impl TypingContext {
         }
         Ok(())
     }
+
+    /// A Integer's parametric set should be defined
+    pub fn check_integer_parametric(
+        &self, integer_def: &IntegerDef
+    ) -> Result<(), TypeError> {
+        for VarDef { name: _, set } in integer_def.variables.iter() {
+            let name: &String = set.name.deref();
+            if self.set_defs.iter().find(|set| set.name.eq(name)).is_none() {
+                Err(TypeError::Undefined(name.to_owned()))?
+            }
+        }
+        Ok(())
+    }
+
+
 }
 
 impl TypingContext {
@@ -155,6 +170,8 @@ impl TypingContext {
                            .map_err(|e| Spanned { beg, end, data: e })?;
 
                 self.check_integer_redefinition(&integer_def)
+                       .map_err(|e| Spanned { beg, end, data: e })?;
+                self.check_integer_parametric(&integer_def)
                        .map_err(|e| Spanned { beg, end, data: e })?;
                 Ok(self.integer_defs.push(integer_def))
             },
@@ -1170,7 +1187,7 @@ impl EnumStatements {
 pub struct IntegerDef {
     pub name: String,
     pub doc: Option<String>,
-    pub variables: Vec<VarDef>, // varset check
+    pub variables: Vec<VarDef>,
     pub code: String, // varmap, type_check_code
 }
 
