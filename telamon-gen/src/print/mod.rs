@@ -377,7 +377,7 @@ mod test {
                 let choice = self.ir_desc.get_choice(&input.choice);
                 let ctx = print::ast::Context::new(self.ir_desc, choice, &[],
                                                    self.inputs_def);
-                let values = print::ast::value_set(values, &ctx);
+                let values = print::value_set::print(values, &ctx);
                 write!(f, " {} = {},", input.choice, values)?;
             }
             for (cond, value) in &self.static_conds {
