@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["process","Parses a constraint description file."],["process_file","Process a file and stores the result in an other file."]],"mod":[["error",""],["ir","The constraint description for the ir."],["lexer",""],["parser",""]]});
+initSidebarItems({"fn":[["process","Parses a constraint description file."],["process_file","Process a file and stores the result in an other file."]],"mod":[["ast","Syntaxic tree for the constraint description."],["error",""],["ir","The constraint description for the ir."],["lexer",""],["parser",""]]});
