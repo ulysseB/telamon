@@ -22,13 +22,13 @@
 
     // 
     typedef struct Span {
-        Pos leg;
+        Pos beg;
         Pos end;
         Data data;
     } Span;
 
     #define YY_USER_ACTION { \
-        yyextra.leg = yyextra.end; \
+        yyextra.beg = yyextra.end; \
         yyextra.end.line = yylineno; \
         yyextra.end.column += yyleng; \
     }

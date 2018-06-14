@@ -17,7 +17,7 @@ fn enum_redefinition() {
             value A:
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            leg: Position { line: 6, column: 10},
+            beg: Position { line: 6, column: 10},
             end: Position { line: 6, column: 28},
             data: TypeError::Redefinition(
                 String::from("foo"),
@@ -49,7 +49,7 @@ fn enum_field_redefinition() {
             alias AB = A | B:
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            leg: Position { line: 0, column: 0},
+            beg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 18},
             data: TypeError::Redefinition(
                 String::from("AB"),
@@ -74,7 +74,7 @@ fn enum_field_redefinition() {
             value B:
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            leg: Position { line: 0, column: 0},
+            beg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 56},
             data: TypeError::Redefinition(
                 String::from("Symmetric"),
@@ -106,7 +106,7 @@ fn enum_field_redefinition() {
             value A:
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            leg: Position { line: 0, column: 0},
+            beg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 18},
             data: TypeError::Redefinition(
                 String::from("A"),
@@ -141,7 +141,7 @@ fn enum_symmetric_two_parametric() {
             value B:
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            leg: Position { line: 0, column: 0},
+            beg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 18},
             data: TypeError::BadSymmetricArg(vec![])
         })
@@ -162,7 +162,7 @@ fn enum_symmetric_two_parametric() {
             value B:
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            leg: Position { line: 9, column: 10},
+            beg: Position { line: 9, column: 10},
             end: Position { line: 9, column: 46},
             data: TypeError::BadSymmetricArg(vec![
                 VarDef {
@@ -209,7 +209,7 @@ fn enum_symmetric_two_parametric() {
             value B:
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            leg: Position { line: 9, column: 10},
+            beg: Position { line: 9, column: 10},
             end: Position { line: 11, column: 46},
             data: TypeError::BadSymmetricArg(vec![
                 VarDef {
@@ -265,7 +265,7 @@ fn enum_symmetric_same_parametric() {
             value B:
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            leg: Position { line: 18, column: 10},
+            beg: Position { line: 18, column: 10},
             end: Position { line: 18, column: 67},
             data: TypeError::BadSymmetricArg(vec![
                 VarDef {
@@ -312,7 +312,7 @@ fn enum_undefined_value() {
             alias AB = A | B:
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            leg: Position { line: 0, column: 0},
+            beg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 18},
             data: TypeError::Undefined(String::from("B"))
         })
@@ -344,7 +344,7 @@ fn enum_undefined_parametric() {
                 value B:
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            leg: Position { line: 0, column: 0},
+            beg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 56},
             data: TypeError::Undefined(String::from("BasicBlock"))
         })
