@@ -63,15 +63,33 @@ mod single_enum {
     /// Ensures baisc operations on numeric domains are working.
     #[test]
     fn numeric_operation() {
-        let _ = ::env_logger::try_init();
-        let env0 = VecSet::new(vec![1, 2, 4, 8]);
-        let env1 = VecSet::new(vec![2, 3, 4]);
+        let all0 = NumericSet::all(&[1, 2, 4, 8]);
+        let all1 = NumericSet::all(&[2, 3, 4]);
+        let inter01 = NumericSet::all(&[2, 4]);
+        let empty = NumericSet::all(&[]);
 
-        let all0 = NumericSet::all(&env0);
-        let all1 = NumericSet::all(&env1);
+        // Test set operations.
         assert!(all0 != all1);
+        assert!(!(all0.contains(all1)));
+        assert!(all0.contains(inter01));
+        assert!(empty.is_failed());
 
-        // FIXME
+        let mut restrict = all0;
+        restrict.restrict(all1);
+        assert_eq!(restrict, inter01);
+
+        // Test comparison operators.
+        assert!(all0.lt(Range::new_eq(&Range::ALL, 9)));
+        assert!(!all0.lt(Range::new_eq(&Range::ALL, 8)));
+        assert!(all0.gt(Range::new_eq(&Range::ALL, 0)));
+        assert!(!all0.gt(Range::new_eq(&Range::ALL, 1)));
+        assert!(all0.leq(Range::new_eq(&Range::ALL, 8)));
+        assert!(!all0.leq(Range::new_eq(&Range::ALL, 7)));
+        assert!(all0.geq(Range::new_eq(&Range::ALL, 1)));
+        assert!(!all0.geq(Range::new_eq(&Range::ALL, 2)));
+
+        assert!(all0.neq(NumericSet::all(&[5, 7])));
+        assert!(!all0.neq(NumericSet::all(&[4, 7])));
     }
 }
 

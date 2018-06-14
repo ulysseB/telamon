@@ -184,7 +184,7 @@ pub struct Range {
 
 #[allow(dead_code)]
 impl Range {
-    const ALL: Range = Range { min: 0, max: std::u32::MAX };
+    pub const ALL: Range = Range { min: 0, max: std::u32::MAX };
 
     /// Returns the empty `Range`.
     pub fn failed() -> Self { Range { min: 1, max: 0 } }
@@ -266,7 +266,7 @@ pub struct HalfRange { pub min: u32 }
 
 #[allow(dead_code)]
 impl HalfRange {
-    const ALL: HalfRange = HalfRange { min: 0 };
+    pub const ALL: HalfRange = HalfRange { min: 0 };
 
     /// Returns the full `HalfRange`.
     pub fn all() -> Self { Self::ALL }
@@ -414,10 +414,16 @@ impl PartialEq for NumericSet {
     }
 }
 
+impl std::fmt::Debug for NumericSet {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:?}", &self.values[..self.len])
+    }
+}
+
 impl Eq for NumericSet { }
 
 /// A domain containing integers.
-trait NumDomain {
+pub trait NumDomain {
     type Universe: ?Sized;
 
     /// Returns the maximum value in the domain.
