@@ -230,7 +230,7 @@ impl ChoiceDef {
             ChoiceDef::Enum(..) => op == ir::CmpOp::Eq || op == ir::CmpOp::Neq,
             ChoiceDef::Counter { visibility: CounterVisibility::Full, .. } => true,
             ChoiceDef::Counter { .. } => op == ir::CmpOp::Lt || op == ir::CmpOp::Leq,
-            ChoiceDef::Number { .. } => unimplemented!(), // FIXME(unimplemented)
+            ChoiceDef::Number { .. } => true,
         }
     }
 }
