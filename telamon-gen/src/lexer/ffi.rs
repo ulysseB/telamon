@@ -58,7 +58,7 @@ impl fmt::Display for Span {
 }
 
 /// A F/lex's token with a span.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(C)]
 pub struct Spanned<Y> {
     pub leg: Position,

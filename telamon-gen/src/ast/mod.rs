@@ -1,3 +1,5 @@
+#![allow(unused_variables)]
+
 //! Syntaxic tree for the constraint description.
 use constraint::Constraint as TypedConstraint;
 use constraint::dedup_inputs;
@@ -6,65 +8,180 @@ use itertools::Itertools;
 use print;
 use regex::Regex;
 use std;
+use std::fmt;
 use std::collections::{BTreeSet, hash_map};
+use std::ops::Deref;
 use utils::*;
+
+pub use super::lexer::Spanned;
+
+#[derive(Debug, PartialEq)]
+pub enum Hint {
+    Set,
+    SetAttribute,
+    Enum,
+    EnumAttribute,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum TypeError {
+    Redefinition(String, Hint),
+    Undefined(String),
+    BadSymmetricArg(Vec<VarDef>),
+}
 
 /// Syntaxic tree for the constraint description.
 #[derive(Debug)]
-pub struct Ast { pub statements: Vec<Statement> }
+pub struct Ast { pub statements: Vec<Spanned<Statement>> }
 
 impl Ast {
     /// Generate the defintion of choices and the list of constraints.
-    pub fn type_check(self) -> (ir::IrDesc, Vec<TypedConstraint>) {
+    pub fn type_check(self)
+        -> Result<(ir::IrDesc, Vec<TypedConstraint>), Spanned<TypeError>> {
         let mut context = TypingContext::default();
-        for statement in self.statements { context.add_statement(statement); }
-        context.finalize()
+        for statement in self.statements { context.add_statement(statement)? }
+        Ok(context.finalize())
     }
 }
 
 #[derive(Default)]
 struct TypingContext {
     ir_desc: ir::IrDesc,
-    set_defs: Vec<Statement>,
-    choice_defs: Vec<Statement>,
-    triggers: Vec<Statement>,
+    set_defs: Vec<SetDef>,
+    choice_defs: Vec<ChoiceDef>,
+    triggers: Vec<TriggerDef>,
     constraints: Vec<Constraint>,
     checks: Vec<Check>,
 }
 
 impl TypingContext {
+
+    /// A Set's name is unique.
+    pub fn check_set_redefinition(
+        &self, set_def: &SetDef
+    ) -> Result<(), TypeError> {
+        if self.set_defs.contains(set_def) {
+            Err(TypeError::Redefinition(set_def.name.to_owned(), Hint::Set))?
+        }
+        Ok(())
+    }
+
+    /// A Set parametric set should be defined
+    pub fn check_set_parametric(
+        &self, set_def: &SetDef
+    ) -> Result<(), TypeError> {
+        if let Some(VarDef { name: _, ref set }) = set_def.arg {
+            let name: &String = set.name.deref();
+            if self.set_defs.iter().find(|set| set.name.eq(name)).is_none() {
+                Err(TypeError::Undefined(name.to_owned()))?
+            }
+        }
+        Ok(())
+    }
+
+    /// A Set superset attribut should be defined
+    pub fn check_superset_parametric(
+        &self, set_def: &SetDef
+    ) -> Result<(), TypeError> {
+        if let Some(SetRef { ref name, .. }) = set_def.superset {
+            let name: &String = name.deref();
+            if self.set_defs.iter().find(|set| set.name.eq(name)).is_none() {
+                Err(TypeError::Undefined(name.to_owned()))?
+            }
+        }
+        Ok(())
+    }
+
+    /// A Enum's name is unique.
+    pub fn check_enum_redefinition(
+        &self, choice_def: &ChoiceDef
+    ) -> Result<(), TypeError> {
+        if self.choice_defs.contains(choice_def) {
+            if let ChoiceDef::EnumDef(enum_def) = choice_def {
+                Err(TypeError::Redefinition(enum_def.name.to_owned(), Hint::Enum))?
+            }
+        }
+        Ok(())
+    }
+
+    /// A Enum parametric set should be defined
+    pub fn check_enum_parametric(
+        &self, choice_def: &ChoiceDef
+    ) -> Result<(), TypeError> {
+        if let ChoiceDef::EnumDef(enum_def) = choice_def {
+            for VarDef { name: _, set } in enum_def.variables.iter() {
+                let name: &String = set.name.deref();
+                if self.set_defs.iter().find(|set| set.name.eq(name)).is_none() {
+                    Err(TypeError::Undefined(name.to_owned()))?
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl TypingContext {
     /// Adds a statement to the typing context.
-    fn add_statement(&mut self, statement: Statement) {
+    fn add_statement(&mut self, statement: Spanned<Statement>)
+        -> Result<(), Spanned<TypeError>> {
         match statement {
-            c @ Statement::SetDef { .. } => self.set_defs.push(c),
-            c @ Statement::EnumDef { .. } |
-            c @ Statement::CounterDef  { .. } => self.choice_defs.push(c),
-            t @ Statement::TriggerDef { .. } => self.triggers.push(t),
-            Statement::Require(constraint) => self.constraints.push(constraint),
+            Spanned { leg, end, data: d @ Statement::SetDef { .. } } => {
+                let set_def: SetDef =
+                    Result::<SetDef, TypeError>::from(d)
+                           .map_err(|e| Spanned { leg, end, data: e })?;
+
+                self.check_set_redefinition(&set_def)
+                       .map_err(|e| Spanned { leg, end, data: e })?;
+                self.check_set_parametric(&set_def)
+                       .map_err(|e| Spanned { leg, end, data: e })?;
+                self.check_superset_parametric(&set_def)
+                       .map_err(|e| Spanned { leg, end, data: e })?;
+                Ok(self.set_defs.push(set_def))
+            },
+            Spanned { leg, end, data: d @ Statement::EnumDef { .. } } |
+            Spanned { leg, end, data: d @ Statement::CounterDef { .. } } => {
+                let choice_def: ChoiceDef =
+                    Result::<ChoiceDef, TypeError>::from(d)
+                           .map_err(|e| Spanned { leg, end, data: e })?;
+
+               self.check_enum_redefinition(&choice_def)
+                       .map_err(|e| Spanned { leg, end, data: e })?;
+               self.check_enum_parametric(&choice_def)
+                       .map_err(|e| Spanned { leg, end, data: e })?;
+               Ok(self.choice_defs.push(choice_def))
+            },
+            Spanned { leg, end,
+                data: Statement::TriggerDef { foralls, conditions, code }
+            } => {
+                Ok(self.triggers.push(TriggerDef {
+                    foralls: foralls,
+                    conditions: conditions,
+                    code: code,
+                }))
+            },
+            Spanned { leg, end,
+                data: Statement::Require(constraint)
+            } => Ok(self.constraints.push(constraint)),
         }
     }
 
     /// Type-checks the statements in the correct order.
     fn finalize(mut self) -> (ir::IrDesc, Vec<TypedConstraint>) {
-        use self::Statement::*;
         for def in std::mem::replace(&mut self.set_defs, vec![]) {
-            if let SetDef { name, arg, superset, keys, doc: _, disjoint, quotient } = def {
-                self.type_set_def(name, arg, superset, keys, disjoint, quotient);
-            } else { panic!() }
+            self.type_set_def(
+                def.name, def.arg, def.superset, def.keys, def.disjoint, def.quotient
+            );
         }
         for choice_def in std::mem::replace(&mut self.choice_defs, vec![]) {
             match choice_def {
-                EnumDef { name, doc, variables, statements } =>
+                ChoiceDef::EnumDef(EnumDef { name, doc, variables, statements }) =>
                     self.register_enum(name, doc, variables, statements),
-                CounterDef { name, doc, visibility, vars, body, } =>
+                ChoiceDef::CounterDef(CounterDef { name, doc, visibility, vars, body, }) =>
                     self.register_counter(name, doc, visibility, vars, body),
-                _ => panic!(),
             }
         }
         for trigger in std::mem::replace(&mut self.triggers, vec![]) {
-            if let TriggerDef { foralls, conditions, code } = trigger {
-                self.register_trigger(foralls, conditions, code);
-            } else { panic!() }
+            self.register_trigger(trigger.foralls, trigger.conditions, trigger.code);
         }
         let constraints = {
             let ir_desc = &self.ir_desc;
@@ -198,7 +315,7 @@ impl TypingContext {
         // Generate the trigger that sets the repr to TRUE and add the item to the set.
         let mut trigger_conds = quotient.conditions;
         trigger_conds.push(counter_leq_zero);
-        self.triggers.push(Statement::TriggerDef {
+        self.triggers.push(TriggerDef {
             foralls: forall_vars, conditions: trigger_conds, code: trigger_code,
         });
     }
@@ -255,9 +372,9 @@ impl TypingContext {
             kind: ir::CounterKind::Add,
             value: CounterVal::Code("1".to_string()),
         };
-        self.choice_defs.push(Statement::CounterDef {
+        self.choice_defs.push(ChoiceDef::CounterDef(CounterDef {
             name: name.clone(), doc: None, visibility, vars, body,
-        });
+        }));
         name
     }
 
@@ -587,7 +704,7 @@ pub enum Statement {
     Require(Constraint),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Quotient {
     pub item: VarDef,
     pub representant: RcStr,
@@ -622,7 +739,7 @@ impl Check {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct CounterBody {
     pub base: String,
     pub kind: ir::CounterKind,
@@ -635,66 +752,18 @@ pub struct CounterBody {
 #[derive(Debug)]
 pub enum Symmetry { Symmetric, AntiSymmetric(Vec<(RcStr, RcStr)>) }
 
-/// A statement in an enum definition.
-#[derive(Debug)]
-pub enum EnumStatement {
-    /// Defines a possible decision for th enum.
-    Value(String, Option<String>, Vec<Constraint>),
-    /// Defines a set of possible decisions for the enum.
-    Alias(String, Option<String>, Vec<String>, Vec<Constraint>),
-    /// Specifies that the enum is symmetric.
-    Symmetric,
-    /// Specifies that the enum is antisymmetric and given the inverse function.
-    AntiSymmetric(Vec<(String, String)>),
-}
-
-/// Gathers the different statements of an enum.
-#[derive(Debug, Default)]
-struct EnumStatements {
-    /// The values the enum can take, with the atached documentation.
-    values: HashMap<RcStr, Option<String>>,
-    /// Aliases mapped to the corresponding documentation and value set.
-    aliases: HashMap<RcStr, (Option<String>, HashSet<RcStr>)>,
-    /// Symmetry information.
-    symmetry: Option<Symmetry>,
-    /// Constraints on a value.
-    constraints: Vec<(RcStr, Constraint)>,
-}
-
-impl EnumStatements {
-    /// Registers an `EnumStatement`.
-    fn add_statement(&mut self, statement: EnumStatement) {
-        match statement {
-            EnumStatement::Value(name, doc, constraints) => {
-                let name = RcStr::new(name);
-                assert!(self.values.insert(name.clone(), doc).is_none());
-                for c in constraints { self.constraints.push((name.clone(), c)); }
-            },
-            EnumStatement::Alias(name, doc, values, constraints) => {
-                let name = RcStr::new(name);
-                let values = values.into_iter().map(RcStr::new).collect();
-                assert!(self.aliases.insert(name.clone(), (doc, values)).is_none());
-                for c in constraints { self.constraints.push((name.clone(), c)); }
-            },
-            EnumStatement::Symmetric => {
-                assert!(self.symmetry.is_none());
-                self.symmetry = Some(Symmetry::Symmetric);
-            },
-            EnumStatement::AntiSymmetric(mapping) => {
-                assert!(self.symmetry.is_none());
-                let mapping = mapping.into_iter()
-                    .map(|(x, y)| (RcStr::new(x), RcStr::new(y))).collect();
-                self.symmetry = Some(Symmetry::AntiSymmetric(mapping));
-            },
-        }
-    }
-}
 
 /// References a set.
 #[derive(Clone, Debug)]
 pub struct SetRef {
     pub name: RcStr,
     pub var: Option<RcStr>,
+}
+
+impl PartialEq for SetRef {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.name == rhs.name
+    }
 }
 
 impl SetRef {
@@ -715,6 +784,12 @@ impl SetRef {
 pub struct VarDef {
     pub name: RcStr,
     pub set: SetRef,
+}
+
+impl PartialEq for VarDef {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.set == rhs.set
+    }
 }
 
 /// Maps variables to their set and position.
@@ -776,7 +851,7 @@ impl VarMap {
 }
 
 /// A constraint that must be enforced by the IR.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Constraint {
     /// Variables for which the conditions must be respected.
     pub forall_vars: Vec<VarDef>,
@@ -939,5 +1014,359 @@ fn type_check_enum_values(enum_: &ir::Enum, values: Vec<RcStr>) -> BTreeSet<RcSt
 }
 
 /// The value of a counter increment.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum CounterVal { Code(String), Counter(ChoiceInstance) }
+
+/// A statement in an enum definition.
+#[derive(Clone, Debug)]
+pub enum EnumStatement {
+    /// Defines a possible decision for th enum.
+    Value(String, Option<String>, Vec<Constraint>),
+    /// Defines a set of possible decisions for the enum.
+    Alias(String, Option<String>, Vec<String>, Vec<Constraint>),
+    /// Specifies that the enum is symmetric.
+    Symmetric,
+    /// Specifies that the enum is antisymmetric and given the inverse function.
+    AntiSymmetric(Vec<(String, String)>),
+}
+
+impl fmt::Display for EnumStatement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            EnumStatement::Alias(name, ..) => write!(f, "{}", name),
+            EnumStatement::Value(name, ..) => write!(f, "{}", name),
+            EnumStatement::Symmetric => write!(f, "Symmetric"),
+            EnumStatement::AntiSymmetric(..) => write!(f, "AntiSymmetric"),
+        }
+    }
+}
+
+impl EnumStatement {
+    pub fn get_value(&self) -> Option<&String> {
+        if let EnumStatement::Value(value, ..) = self {
+            Some(value)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_alias(&self) -> Option<&String> {
+        if let EnumStatement::Alias(value, ..) = self {
+            Some(value)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_alias_decisions(&self) -> Option<&Vec<String>> {
+        if let EnumStatement::Alias(_, _, decisions, ..) = self {
+            Some(decisions)
+        } else {
+            None
+        }
+    }
+}
+
+impl PartialEq for EnumStatement {
+    fn eq(&self, rhs: &Self) -> bool {
+        match (self, rhs) {
+            (EnumStatement::Value(name, .. ),
+             EnumStatement::Value(rhs_name, .. )) |
+            (EnumStatement::Alias(name, .. ),
+             EnumStatement::Alias(rhs_name, .. )) => {
+                name.eq(rhs_name)
+            },
+            (EnumStatement::Symmetric,
+             EnumStatement::Symmetric) => true,
+            _ => false,
+        }
+    }
+}
+
+/// Gathers the different statements of an enum.
+#[derive(Debug, Default)]
+pub struct EnumStatements {
+    /// The values the enum can take, with the atached documentation.
+    pub values: HashMap<RcStr, Option<String>>,
+    /// Aliases mapped to the corresponding documentation and value set.
+    pub aliases: HashMap<RcStr, (Option<String>, HashSet<RcStr>)>,
+    /// Symmetry information.
+    pub symmetry: Option<Symmetry>,
+    /// Constraints on a value.
+    pub constraints: Vec<(RcStr, Constraint)>,
+}
+
+impl EnumStatements {
+    /// Registers an `EnumStatement`.
+    pub fn add_statement(&mut self, statement: EnumStatement) {
+        match statement {
+            EnumStatement::Value(name, doc, constraints) => {
+                let name = RcStr::new(name);
+                assert!(self.values.insert(name.clone(), doc).is_none());
+                for c in constraints { self.constraints.push((name.clone(), c)); }
+            },
+            EnumStatement::Alias(name, doc, values, constraints) => {
+                let name = RcStr::new(name);
+                let values = values.into_iter().map(RcStr::new).collect();
+                assert!(self.aliases.insert(name.clone(), (doc, values)).is_none());
+                for c in constraints { self.constraints.push((name.clone(), c)); }
+            },
+            EnumStatement::Symmetric => {
+                assert!(self.symmetry.is_none());
+                self.symmetry = Some(Symmetry::Symmetric);
+            },
+            EnumStatement::AntiSymmetric(mapping) => {
+                assert!(self.symmetry.is_none());
+                let mapping = mapping.into_iter()
+                    .map(|(x, y)| (RcStr::new(x), RcStr::new(y))).collect();
+                self.symmetry = Some(Symmetry::AntiSymmetric(mapping));
+            },
+        }
+    }
+}
+
+/// A toplevel definition or constraint.
+#[derive(Clone, Debug)]
+pub struct EnumDef {
+    pub name: String,
+    pub doc: Option<String>,
+    pub variables: Vec<VarDef>,
+    pub statements: Vec<EnumStatement>
+}
+
+impl Default for EnumDef {
+    fn default() -> EnumDef {
+        EnumDef {
+            name: String::default(),
+            doc: None,
+            variables: vec![],
+            statements: vec![],
+        }
+    }
+}
+
+impl EnumDef {
+    /// A field from a enum should be unique.
+    pub fn check_field_name_redefinition(&self) -> Result<(), TypeError> {
+        for item in self.statements.iter() {
+            for subitem in self.statements.iter()
+                               .skip_while(|subitem| subitem != &item)
+                               .skip(1) {
+                if subitem == item {
+                    Err(TypeError::Redefinition(item.to_string(), Hint::EnumAttribute))?
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// An antisymmetric should refers to two same parametric.
+    pub fn check_symmetric(&self) -> Result<(), TypeError> {
+        if self.statements.contains(&EnumStatement::Symmetric) {
+            match self.variables.len() {
+                2 => {
+                    if let Some((left, right)) =
+                        self.variables.windows(2)
+                            .find(|vars: &&[VarDef]| vars[0] != vars[1])
+                            .and_then(|vars: &[VarDef]|
+                                Some((vars[0].clone(), vars[1].clone()))) {
+                        Err(TypeError::BadSymmetricArg(vec![left, right]))?
+                    }
+                },
+                _ => Err(
+                    TypeError::BadSymmetricArg(self.variables.to_owned())
+                )?,
+            }
+        }
+        Ok(())
+    }
+
+    /// An Alias' value should exists.
+    pub fn check_undefined_value(&self) -> Result<(), TypeError> {
+        let values: Vec<&String> =
+            self.statements.iter()
+                           .filter_map(|item| item.get_value().or(item.get_alias()))
+                           .collect::<Vec<&String>>();
+
+        for decisions in self.statements.iter()
+                                        .filter_map(|item| item.get_alias_decisions()) {
+            for value in decisions {
+                if !values.contains(&value) {
+                    Err(TypeError::Undefined(value.to_owned()))?
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl PartialEq for EnumDef {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.name == rhs.name
+    }
+}
+
+#[derive(Debug)]
+pub struct TriggerDef {
+    pub foralls: Vec<VarDef>,
+    pub conditions: Vec<Condition>,
+    pub code: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct CounterDef {
+    pub name: RcStr,
+    pub doc: Option<String>,
+    pub visibility: ir::CounterVisibility,
+    pub vars: Vec<VarDef>,
+    pub body: CounterBody,
+}
+
+impl PartialEq for CounterDef {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.name == rhs.name
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ChoiceDef {
+    CounterDef(CounterDef),
+    EnumDef(EnumDef),
+}
+
+impl ChoiceDef {
+    pub fn get_name(&self) -> &String {
+        match self {
+            ChoiceDef::CounterDef(counter_def) => {
+                &counter_def.name
+            },
+            ChoiceDef::EnumDef(enum_def) => {
+                &enum_def.name
+            },
+        }
+    }
+}
+
+impl From<Statement> for Result<ChoiceDef, TypeError> {
+    fn from(stmt: Statement) -> Self {
+        match stmt {
+            Statement::CounterDef { name, doc, visibility, vars, body } => {
+                Ok(ChoiceDef::CounterDef(CounterDef {
+                    name, doc, visibility, vars, body
+                }))
+            },
+            Statement::EnumDef { name, doc, variables, statements } => {
+                let enum_def: EnumDef = EnumDef {
+                    name, doc, variables, statements
+                };
+
+                enum_def.check_field_name_redefinition()?;
+                enum_def.check_symmetric()?;
+                enum_def.check_undefined_value()?;
+                Ok(ChoiceDef::EnumDef(enum_def))
+            },
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SetDef {
+    pub name: String,
+    pub doc: Option<String>,
+    pub arg: Option<VarDef>,
+    pub superset: Option<SetRef>,
+    pub disjoint: Vec<String>,
+    pub keys: Vec<(ir::SetDefKey, Option<VarDef>, String)>,
+    pub quotient: Option<Quotient>,
+}
+
+impl Default for SetDef {
+    fn default() -> SetDef {
+        SetDef {
+            name: Default::default(),
+            doc: None,
+            arg: None,
+            superset: None,
+            disjoint: vec![],
+            keys: vec![],
+            quotient: None,
+        }
+    }
+}
+
+impl SetDef {
+
+    /// A field from a set should be unique.
+    pub fn check_field_name_redefinition(&self) -> Result<(), TypeError> {
+        for (item, ..) in self.keys.iter() {
+            for (subitem, ..) in self.keys.iter()
+                               .skip_while(|(subitem, ..)| subitem != item)
+                               .skip(1) {
+                if subitem == item {
+                    Err(TypeError::Redefinition(
+                            item.to_string(), Hint::SetAttribute))?
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// A set should always have the keys: type, id_type, id_getter, iterator, getter.
+    pub fn check_undefined_key(&self) -> Result<(), TypeError> {
+        let keys = self.keys.iter().map(|(k, _, _)| k).collect::<Vec<&ir::SetDefKey>>();
+
+        if !keys.contains(&&ir::SetDefKey::ItemType) {
+            Err(TypeError::Undefined(ir::SetDefKey::ItemType.to_string()))?
+        }
+        if !keys.contains(&&ir::SetDefKey::IdType) {
+            Err(TypeError::Undefined(ir::SetDefKey::IdType.to_string()))?
+        }
+        if !keys.contains(&&ir::SetDefKey::ItemGetter) {
+            Err(TypeError::Undefined(ir::SetDefKey::ItemGetter.to_string()))?
+        }
+        if !keys.contains(&&ir::SetDefKey::IdGetter) {
+            Err(TypeError::Undefined(ir::SetDefKey::IdGetter.to_string()))?
+        }
+        if !keys.contains(&&ir::SetDefKey::Iter) {
+            Err(TypeError::Undefined(ir::SetDefKey::Iter.to_string()))?
+        }
+        Ok(())
+    }
+
+    pub fn check_undefined_superset_key(&self) -> Result<(), TypeError> {
+        if self.superset.is_some() {
+            if self.keys.iter().find(|(k, _, _)| k == &ir::SetDefKey::FromSuperset)
+                               .is_none() {
+                Err(TypeError::Undefined(ir::SetDefKey::FromSuperset.to_string()))?
+            }
+        }
+        Ok(())
+    }
+}
+
+impl PartialEq for SetDef {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.name == rhs.name
+    }
+}
+
+impl From<Statement> for Result<SetDef, TypeError> {
+    fn from(stmt: Statement) -> Self {
+        match stmt {
+            Statement::SetDef {
+                name, doc, arg, superset, disjoint, keys, quotient
+            } => {
+                let set_def: SetDef = SetDef {
+                    name, doc, arg, superset, disjoint, keys, quotient
+                };
+                
+                set_def.check_undefined_key()?;
+                set_def.check_undefined_superset_key()?;
+                set_def.check_field_name_redefinition()?;
+                Ok(set_def)
+            },
+            _ => unreachable!(),
+        }
+    }
+}

@@ -1,5 +1,6 @@
 use ir::{self, Adaptable};
 use std;
+use std::fmt;
 use std::borrow::Borrow;
 use utils::*;
 
@@ -175,6 +176,7 @@ impl<'a> SetRef<'a> for SetRefImpl<'a> {
 }
 
 /// Defines a set of objects.
+#[derive(Clone)]
 pub struct SetDef {
     name: RcStr,
     arg: Option<ir::Set>,
@@ -229,16 +231,15 @@ impl SetDef {
 
     /// Creates a new set definition.
     fn build(name: RcStr,
-                 arg: Option<ir::Set>,
-                 superset: Option<Set>,
-                 reverse: ReverseSet,
-                 keys: HashMap<SetDefKey, String>,
-                 disjoints: Vec<String>) -> Self {
+             arg: Option<ir::Set>,
+             superset: Option<Set>,
+             reverse: ReverseSet,
+             keys: HashMap<SetDefKey, String>,
+             disjoints: Vec<String>) -> Self {
         let depth = superset.as_ref().map(|s| s.def.depth + 1).unwrap_or(0);
         let def_order = arg.as_ref().map(|s| s.def.def_order + 1).unwrap_or(0);
         SetDef { name, arg, superset, keys, disjoints, depth, def_order, reverse }
     }
-
 
     /// The name of the set.
     pub fn name(&self) -> &RcStr { &self.name }
@@ -298,6 +299,7 @@ impl Ord for SetDef {
 }
 
 /// A set that lists the arguments of another set.
+#[derive(Clone)]
 enum ReverseSet {
     /// The reverse relation was defined in the source code.
     Explicit(std::cell::RefCell<std::rc::Rc<SetDef>>),
@@ -358,3 +360,10 @@ impl SetDefKey {
         SetDefKey::NewObjs,
     ];
 }
+
+impl fmt::Display for SetDefKey {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+            
