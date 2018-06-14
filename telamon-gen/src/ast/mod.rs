@@ -15,18 +15,27 @@ use utils::*;
 
 pub use super::lexer::Spanned;
 
+/// Hint is a token representation.
 #[derive(Debug, PartialEq)]
 pub enum Hint {
+    /// Set interface.
     Set,
+    /// Set attribute.
     SetAttribute,
+    /// Enum interface.
     Enum,
+    /// Enum attribute.
     EnumAttribute,
 }
 
+/// TypeEror is the error representation of telamon's interfaces.
 #[derive(Debug, PartialEq)]
 pub enum TypeError {
+    /// Redefinition of a name and hint..
     Redefinition(String, Hint),
+    /// Undefinition of set, enum or field.
     Undefined(String),
+    /// Unvalid arguments of a symmetric enum.
     BadSymmetricArg(Vec<VarDef>),
 }
 
