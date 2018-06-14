@@ -27,7 +27,7 @@ pub enum Hint {
 pub enum TypeError {
     Redefinition(String, Hint),
     Undefined(String),
-    Symmetric(Vec<VarDef>),
+    BadSymmetricArg(Vec<VarDef>),
 }
 
 /// Syntaxic tree for the constraint description.
@@ -1170,11 +1170,11 @@ impl EnumDef {
                             .find(|vars: &&[VarDef]| vars[0] != vars[1])
                             .and_then(|vars: &[VarDef]|
                                 Some((vars[0].clone(), vars[1].clone()))) {
-                        Err(TypeError::Symmetric(vec![left, right]))?
+                        Err(TypeError::BadSymmetricArg(vec![left, right]))?
                     }
                 },
                 _ => Err(
-                    TypeError::Symmetric(self.variables.to_owned())
+                    TypeError::BadSymmetricArg(self.variables.to_owned())
                 )?,
             }
         }

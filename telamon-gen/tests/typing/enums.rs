@@ -143,7 +143,7 @@ fn enum_symmetric_two_parametric() {
         Some(Spanned {
             leg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 18},
-            data: TypeError::Symmetric(vec![])
+            data: TypeError::BadSymmetricArg(vec![])
         })
     );
     assert_eq!(parser::parse_ast(Lexer::from(
@@ -164,7 +164,7 @@ fn enum_symmetric_two_parametric() {
         Some(Spanned {
             leg: Position { line: 9, column: 10},
             end: Position { line: 9, column: 46},
-            data: TypeError::Symmetric(vec![
+            data: TypeError::BadSymmetricArg(vec![
                 VarDef {
                     name: RcStr::new(String::from("lhs")),
                     set: SetRef {
@@ -211,7 +211,7 @@ fn enum_symmetric_two_parametric() {
         Some(Spanned {
             leg: Position { line: 9, column: 10},
             end: Position { line: 11, column: 46},
-            data: TypeError::Symmetric(vec![
+            data: TypeError::BadSymmetricArg(vec![
                 VarDef {
                     name: RcStr::new(String::from("lhs")),
                     set: SetRef {
@@ -267,7 +267,7 @@ fn enum_symmetric_same_parametric() {
         Some(Spanned {
             leg: Position { line: 18, column: 10},
             end: Position { line: 18, column: 67},
-            data: TypeError::Symmetric(vec![
+            data: TypeError::BadSymmetricArg(vec![
                 VarDef {
                     name: RcStr::new(String::from("lhs")),
                     set: SetRef {
