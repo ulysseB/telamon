@@ -26,6 +26,8 @@ pub enum Hint {
     Enum,
     /// Enum attribute.
     EnumAttribute,
+    /// Integer interface.
+    Integer,
 }
 
 /// TypeEror is the error representation of telamon's
@@ -58,6 +60,7 @@ struct TypingContext {
     ir_desc: ir::IrDesc,
     set_defs: Vec<SetDef>,
     choice_defs: Vec<ChoiceDef>,
+    integer_defs: Vec<IntegerDef>,
     triggers: Vec<TriggerDef>,
     constraints: Vec<Constraint>,
     checks: Vec<Check>,
@@ -127,6 +130,16 @@ impl TypingContext {
         }
         Ok(())
     }
+
+    /// A Integer's name is unique.
+    pub fn check_integer_redefinition(
+        &self, integer_def: &IntegerDef
+    ) -> Result<(), TypeError> {
+        if self.integer_defs.contains(integer_def) {
+            Err(TypeError::Redefinition(integer_def.name.to_owned(), Hint::Integer))?
+        }
+        Ok(())
+    }
 }
 
 impl TypingContext {
@@ -135,7 +148,13 @@ impl TypingContext {
         -> Result<(), Spanned<TypeError>> {
         match statement {
             Spanned { beg, end, data: d @ Statement::IntegerDef { .. } } => {
-                unimplemented!()
+                let integer_def: IntegerDef =
+                    Result::<IntegerDef, TypeError>::from(d)
+                           .map_err(|e| Spanned { beg, end, data: e })?;
+
+                self.check_integer_redefinition(&integer_def)
+                       .map_err(|e| Spanned { beg, end, data: e })?;
+                Ok(self.integer_defs.push(integer_def))
             },
             Spanned { beg, end, data: d @ Statement::SetDef { .. } } => {
                 let set_def: SetDef =
@@ -1149,10 +1168,31 @@ impl EnumStatements {
 pub struct IntegerDef {
     pub name: String,
     pub doc: Option<String>,
-    pub variables: Vec<VarDef>,
-    pub code: String,
+    pub variables: Vec<VarDef>, // voir check enums
+    pub code: String, // varmap -- voir fonction deja presente dans ast
 }
 
+impl From<Statement> for Result<IntegerDef, TypeError> {
+    fn from(stmt: Statement) -> Self {
+        match stmt {
+            Statement::IntegerDef { name, doc, variables, code } => {
+                let integer_def: IntegerDef = IntegerDef {
+                    name, doc, variables, code
+                };
+
+                Ok(integer_def)
+            },
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl PartialEq for IntegerDef {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.name == rhs.name
+    }
+}
+ 
 /// A toplevel definition or constraint.
 #[derive(Clone, Debug)]
 pub struct EnumDef {

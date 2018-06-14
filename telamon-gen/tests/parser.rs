@@ -32,8 +32,8 @@ fn invalid_token() {
 
 #[test]
 fn integer_token() {
-    assert!(parser::parse_ast(
-            Lexer::from(b"define
-                            integer mychoice($myarg in MySet) in \"mycode\"
-                          end".to_vec())).is_ok());
+    assert!(parser::parse_ast(Lexer::from(
+        b"define integer mychoice($myarg in MySet) in \"mycode\"
+          end".to_vec())).is_ok()
+    );
 }
