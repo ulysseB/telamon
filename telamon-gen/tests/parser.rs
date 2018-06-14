@@ -29,3 +29,11 @@ fn invalid_token() {
                           .err().unwrap()),
                "InvalidToken(\"!\"), between line 0, column 0 and line 0, column 1 -> exh");
 }
+
+#[test]
+fn integer_token() {
+    assert!(parser::parse_ast(
+            Lexer::from(b"define
+                            integer mychoice($myarg in MySet) in \"mycode\"
+                          end".to_vec())).is_ok());
+}
