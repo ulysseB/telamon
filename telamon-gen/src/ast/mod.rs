@@ -15,18 +15,27 @@ use utils::*;
 
 pub use super::lexer::Spanned;
 
+/// Hint is a token representation.
 #[derive(Debug, PartialEq)]
 pub enum Hint {
+    /// Set interface.
     Set,
+    /// Set attribute.
     SetAttribute,
+    /// Enum interface.
     Enum,
+    /// Enum attribute.
     EnumAttribute,
 }
 
+/// TypeEror is the error representation of telamon's
 #[derive(Debug, PartialEq)]
 pub enum TypeError {
+    /// Redefinition of a name and hint..
     Redefinition(String, Hint),
+    /// Undefinition of set, enum or field.
     Undefined(String),
+    /// Unvalid arguments of a symmetric enum.
     BadSymmetricArg(Vec<VarDef>),
 }
 
@@ -125,6 +134,9 @@ impl TypingContext {
     fn add_statement(&mut self, statement: Spanned<Statement>)
         -> Result<(), Spanned<TypeError>> {
         match statement {
+            Spanned { leg, end, data: d @ Statement::IntegerDef { .. } } => {
+                unimplemented!()
+            },
             Spanned { leg, end, data: d @ Statement::SetDef { .. } } => {
                 let set_def: SetDef =
                     Result::<SetDef, TypeError>::from(d)
@@ -674,6 +686,12 @@ impl TypingContext {
 /// A toplevel definition or constraint.
 #[derive(Debug)]
 pub enum Statement {
+    IntegerDef {
+        name: String,
+        doc: Option<String>,
+        variables: Vec<VarDef>,
+        code: String,
+    },
     /// Defines an enum.
     EnumDef {
         name: String,
@@ -1124,6 +1142,15 @@ impl EnumStatements {
             },
         }
     }
+}
+
+/// A toplevel integer
+#[derive(Clone, Debug)]
+pub struct IntegerDef {
+    pub name: String,
+    pub doc: Option<String>,
+    pub variables: Vec<VarDef>,
+    pub code: String,
 }
 
 /// A toplevel definition or constraint.

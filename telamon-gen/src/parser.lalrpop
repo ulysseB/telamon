@@ -46,6 +46,19 @@ statement: Spanned<ast::Statement> = {
             }
         }
     },
+    <doc: doc?> <leg: @L> define integer <name: choice_ident> "("
+                <vars: choice_vars> ")" in_ <universe: code> end
+                <end: @R> => {
+        Spanned {
+            leg: leg, end: end,
+            data: ast::Statement::IntegerDef {
+                name: name,
+                doc: doc,
+                variables: vars,
+                code: universe,
+            }
+        }
+    },
     <doc: doc?> <leg: @L> define enum_ <name: choice_ident> "(" <vars: choice_vars> ")" ":"
                 <end: @R> <stmts: enum_stmt*> end => {
         Spanned {
@@ -222,6 +235,7 @@ extern {
         and => Token::And,
         of => Token::Of,
         quotient => Token::Quotient,
+        integer => Token::Integer,
 
         ":" => Token::Colon,
         "," => Token::Comma,
