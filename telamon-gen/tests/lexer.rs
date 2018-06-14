@@ -420,6 +420,13 @@ fn initial() {
                    Position { column: 1, ..Default::default() } 
                 )),
               ]);
+    // Integer's Token
+    assert_eq!(Lexer::from(b"integer".to_vec()).collect::<Vec<_>>(), vec![
+                Ok((Position::default(),
+                   Token::Integer,
+                   Position { column: 7, ..Default::default() } 
+                )),
+              ]);
 }
 
 #[test]
