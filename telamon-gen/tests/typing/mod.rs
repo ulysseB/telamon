@@ -4,3 +4,4 @@ extern crate lalrpop_util;
 
 pub mod enums;
 pub mod set;
+pub mod integer;
