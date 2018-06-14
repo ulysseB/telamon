@@ -135,6 +135,7 @@ impl Iterator for Lexer {
             // returns a extra copy.
             let extra: YyExtraType = yyget_extra(self.scanner);
 
+
             match code {
                 YyToken::InvalidToken => {
                     let out = yyget_text(self.scanner);
@@ -224,6 +225,7 @@ impl Iterator for Lexer {
                 YyToken::AntiSymmetric => Some(Ok((extra.leg, Token::AntiSymmetric, extra.end))),
                 YyToken::Arrow => Some(Ok((extra.leg, Token::Arrow, extra.end))),
                 YyToken::Divide => Some(Ok((extra.leg, Token::Divide, extra.end))),
+                YyToken::Integer => Some(Ok((extra.leg, Token::Integer, extra.end))),
                 // Return None to signal EOF.for a reached end of the string.
                 YyToken::EOF => None,
             }

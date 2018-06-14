@@ -116,6 +116,7 @@ pub enum YyToken {
     Quotient,
     Of,
     Divide,
+    Integer,
     /// End-of-File
     EOF = libc::EOF as _,
 }

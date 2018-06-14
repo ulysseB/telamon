@@ -46,6 +46,7 @@ enum token {
     QUOTIENT,
     OF,
     DIVIDE,
+    INTEGER,
 };
 
 // Indicates whether a counter sums or adds.
