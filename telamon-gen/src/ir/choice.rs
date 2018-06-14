@@ -36,7 +36,7 @@ impl Choice {
             on_change: Vec::new(),
             filter_actions: Vec::new(),
             filters: Vec::new(),
-            no_propagate_values: ir::ValueSet::empty(value_type),
+            no_propagate_values: ir::ValueSet::empty(&value_type),
         }
     }
 
@@ -230,7 +230,7 @@ impl ChoiceDef {
             ChoiceDef::Enum(..) => op == ir::CmpOp::Eq || op == ir::CmpOp::Neq,
             ChoiceDef::Counter { visibility: CounterVisibility::Full, .. } => true,
             ChoiceDef::Counter { .. } => op == ir::CmpOp::Lt || op == ir::CmpOp::Leq,
-            ChoiceDef::Number { .. } => unimplemented!(), // FIXME
+            ChoiceDef::Number { .. } => unimplemented!(), // FIXME(unimplemented)
         }
     }
 }
@@ -254,11 +254,15 @@ impl ValueType {
     pub fn full_type(self) -> Self {
         if self == ValueType::HalfRange { ValueType::Range } else { self }
     }
+
+    /// Returns the enum name, if applicable.
+    pub fn as_enum(&self) -> Option<&RcStr> {
+        if let ValueType::Enum(ref name) = *self { Some(name) } else { None }
+    }
 }
 
 /// Specifies the type of the values a choice can take.
 #[derive(Clone, Debug, PartialEq, Eq)]
-// FIXME: unimplemented must adapt the value type everywhere
 pub enum ValueType { Enum(RcStr), Range, HalfRange, NumericSet(ir::Code) }
 
 impl Adaptable for ValueType {
@@ -417,7 +421,6 @@ impl Adaptable for ChoiceAction {
                 to_half
             },
             Trigger { id, ref condition, ref code, inverse_self_cond } => Trigger {
-                // FIXME: must inverse self condition
                 condition: condition.adapt(adaptator),
                 code: code.adapt(adaptator),
                 id, inverse_self_cond,
@@ -437,7 +440,8 @@ pub struct ChoiceCondition {
 impl ChoiceCondition {
     /// Adapt the list of conditions to be from the point of view of the given choice.
    pub fn new(ir_desc: &ir::IrDesc,
-              mut inputs: Vec<ir::ChoiceInstance>, self_id: usize,
+              mut inputs: Vec<ir::ChoiceInstance>,
+              self_id: usize,
               conditions: &[ir::Condition],
               env: HashMap<ir::Variable, ir::Set>)
         -> (Vec<ir::Set>, ir::SetConstraints, Self, ir::Adaptator)
@@ -450,9 +454,10 @@ impl ChoiceCondition {
         let inputs = inputs.into_iter().map(|i| i.adapt(&adaptator)).collect();
         // Extract the constraints on the considered input.
         let choice = ir_desc.get_choice(&choice);
-        let mut self_condition = ir::ValueSet::empty(choice.value_type());
+        let value_type = choice.value_type().adapt(&adaptator);
+        let mut self_condition = ir::ValueSet::empty(&value_type);
         let others_conditions = conditions.iter().flat_map(|condition| {
-            let alternatives = condition.alternatives_of(self_id, choice, ir_desc);
+            let alternatives = condition.alternatives_of(self_id, &value_type, ir_desc);
             if let Some(alternatives) = alternatives {
                 self_condition.extend(alternatives.adapt(&adaptator));
                 None
