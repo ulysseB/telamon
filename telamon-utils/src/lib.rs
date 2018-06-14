@@ -76,6 +76,10 @@ impl PartialEq<str> for RcStr {
     fn eq(&self, other: &str) -> bool { self.0.as_ref().eq(other) }
 }
 
+impl From<String> for RcStr {
+    fn from(s: String) -> RcStr { RcStr::new(s) }
+}
+
 /// Booleans enhanced with a third `Maybe` value.
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Serialize)]
 pub enum Trivalent {
