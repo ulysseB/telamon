@@ -8,6 +8,7 @@ use itertools::Itertools;
 use print;
 use regex::Regex;
 use std;
+use std::fmt;
 use std::collections::{BTreeSet, hash_map};
 use std::ops::Deref;
 use utils::*;
@@ -15,18 +16,18 @@ use utils::*;
 pub use super::lexer::Spanned;
 
 #[derive(Debug, PartialEq)]
+pub enum Hint {
+    Set,
+    SetAttribute,
+    Enum,
+    EnumAttribute,
+}
+
+#[derive(Debug, PartialEq)]
 pub enum TypeError {
-    SetUndefinedKey(ir::SetDefKey),
-    SetUndefinedParametric(SetDef),
-    SetUndefinedVariable(SetDef),
-    SetRedefinition(SetDef),
-    SetUndefinedSubsetof(SetDef),
-    EnumRedefinition(EnumDef),
-    EnumFieldRedefinition(EnumDef, EnumStatement),
-    EnumSymmetricUntwoParametric(Vec<VarDef>),
-    EnumSymmetricUnsameParametric(VarDef, VarDef),
-    EnumUndefinedValue(String),
-    EnumUndefinedParametric(SetDef),
+    Redefinition(String, Hint),
+    Undefined(String),
+    Symmetric(Vec<VarDef>),
 }
 
 /// Syntaxic tree for the constraint description.
@@ -60,7 +61,7 @@ impl TypingContext {
         &self, set_def: &SetDef
     ) -> Result<(), TypeError> {
         if self.set_defs.contains(set_def) {
-            Err(TypeError::SetRedefinition(set_def.clone()))?
+            Err(TypeError::Redefinition(set_def.name.to_owned(), Hint::Set))?
         }
         Ok(())
     }
@@ -72,9 +73,7 @@ impl TypingContext {
         if let Some(VarDef { name: _, ref set }) = set_def.arg {
             let name: &String = set.name.deref();
             if self.set_defs.iter().find(|set| set.name.eq(name)).is_none() {
-                Err(TypeError::SetUndefinedParametric(
-                    SetDef { name: name.clone(), ..Default::default() }
-                ))?
+                Err(TypeError::Undefined(name.to_owned()))?
             }
         }
         Ok(())
@@ -87,9 +86,7 @@ impl TypingContext {
         if let Some(SetRef { ref name, .. }) = set_def.superset {
             let name: &String = name.deref();
             if self.set_defs.iter().find(|set| set.name.eq(name)).is_none() {
-                Err(TypeError::SetUndefinedSubsetof(
-                    SetDef { name: name.clone(), ..Default::default() }
-                ))?
+                Err(TypeError::Undefined(name.to_owned()))?
             }
         }
         Ok(())
@@ -101,7 +98,7 @@ impl TypingContext {
     ) -> Result<(), TypeError> {
         if self.choice_defs.contains(choice_def) {
             if let ChoiceDef::EnumDef(enum_def) = choice_def {
-                Err(TypeError::EnumRedefinition(enum_def.clone()))?
+                Err(TypeError::Redefinition(enum_def.name.to_owned(), Hint::Enum))?
             }
         }
         Ok(())
@@ -115,9 +112,7 @@ impl TypingContext {
             for VarDef { name: _, set } in enum_def.variables.iter() {
                 let name: &String = set.name.deref();
                 if self.set_defs.iter().find(|set| set.name.eq(name)).is_none() {
-                    Err(TypeError::EnumUndefinedParametric(
-                        SetDef { name: name.clone(), ..Default::default() }
-                    ))?
+                    Err(TypeError::Undefined(name.to_owned()))?
                 }
             }
         }
@@ -1035,6 +1030,17 @@ pub enum EnumStatement {
     AntiSymmetric(Vec<(String, String)>),
 }
 
+impl fmt::Display for EnumStatement {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            EnumStatement::Alias(name, ..) => write!(f, "{}", name),
+            EnumStatement::Value(name, ..) => write!(f, "{}", name),
+            EnumStatement::Symmetric => write!(f, "Symmetric"),
+            EnumStatement::AntiSymmetric(..) => write!(f, "AntiSymmetric"),
+        }
+    }
+}
+
 impl EnumStatement {
     pub fn get_value(&self) -> Option<&String> {
         if let EnumStatement::Value(value, ..) = self {
@@ -1141,13 +1147,13 @@ impl Default for EnumDef {
 
 impl EnumDef {
     /// A field from a enum should be unique.
-    pub fn check_field_name_multi(&self) -> Result<(), TypeError> {
+    pub fn check_field_name_redefinition(&self) -> Result<(), TypeError> {
         for item in self.statements.iter() {
             for subitem in self.statements.iter()
                                .skip_while(|subitem| subitem != &item)
                                .skip(1) {
                 if subitem == item {
-                    Err(TypeError::EnumFieldRedefinition(self.clone(), item.clone()))?
+                    Err(TypeError::Redefinition(item.to_string(), Hint::EnumAttribute))?
                 }
             }
         }
@@ -1164,12 +1170,11 @@ impl EnumDef {
                             .find(|vars: &&[VarDef]| vars[0] != vars[1])
                             .and_then(|vars: &[VarDef]|
                                 Some((vars[0].clone(), vars[1].clone()))) {
-                        Err(TypeError::EnumSymmetricUnsameParametric(
-                                left, right))?
+                        Err(TypeError::Symmetric(vec![left, right]))?
                     }
                 },
                 _ => Err(
-                    TypeError::EnumSymmetricUntwoParametric(self.variables.clone())
+                    TypeError::Symmetric(self.variables.to_owned())
                 )?,
             }
         }
@@ -1187,7 +1192,7 @@ impl EnumDef {
                                         .filter_map(|item| item.get_alias_decisions()) {
             for value in decisions {
                 if !values.contains(&value) {
-                    Err(TypeError::EnumUndefinedValue(value.clone()))?
+                    Err(TypeError::Undefined(value.to_owned()))?
                 }
             }
         }
@@ -1255,7 +1260,7 @@ impl From<Statement> for Result<ChoiceDef, TypeError> {
                     name, doc, variables, statements
                 };
 
-                enum_def.check_field_name_multi()?;
+                enum_def.check_field_name_redefinition()?;
                 enum_def.check_symmetric()?;
                 enum_def.check_undefined_value()?;
                 Ok(ChoiceDef::EnumDef(enum_def))
@@ -1291,24 +1296,39 @@ impl Default for SetDef {
 }
 
 impl SetDef {
+
+    /// A field from a set should be unique.
+    pub fn check_field_name_redefinition(&self) -> Result<(), TypeError> {
+        for (item, ..) in self.keys.iter() {
+            for (subitem, ..) in self.keys.iter()
+                               .skip_while(|(subitem, ..)| subitem != item)
+                               .skip(1) {
+                if subitem == item {
+                    Err(TypeError::Redefinition(self.name.to_owned(), Hint::SetAttribute))?
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// A set should always have the keys: type, id_type, id_getter, iterator, getter.
     pub fn check_undefined_key(&self) -> Result<(), TypeError> {
         let keys = self.keys.iter().map(|(k, _, _)| k).collect::<Vec<&ir::SetDefKey>>();
 
         if !keys.contains(&&ir::SetDefKey::ItemType) {
-            Err(TypeError::SetUndefinedKey(ir::SetDefKey::ItemType))?
+            Err(TypeError::Undefined(ir::SetDefKey::ItemType.to_string()))?
         }
         if !keys.contains(&&ir::SetDefKey::IdType) {
-            Err(TypeError::SetUndefinedKey(ir::SetDefKey::IdType))?
+            Err(TypeError::Undefined(ir::SetDefKey::IdType.to_string()))?
         }
         if !keys.contains(&&ir::SetDefKey::ItemGetter) {
-            Err(TypeError::SetUndefinedKey(ir::SetDefKey::ItemGetter))?
+            Err(TypeError::Undefined(ir::SetDefKey::ItemGetter.to_string()))?
         }
         if !keys.contains(&&ir::SetDefKey::IdGetter) {
-            Err(TypeError::SetUndefinedKey(ir::SetDefKey::IdGetter))?
+            Err(TypeError::Undefined(ir::SetDefKey::IdGetter.to_string()))?
         }
         if !keys.contains(&&ir::SetDefKey::Iter) {
-            Err(TypeError::SetUndefinedKey(ir::SetDefKey::Iter))?
+            Err(TypeError::Undefined(ir::SetDefKey::Iter.to_string()))?
         }
         Ok(())
     }
@@ -1317,7 +1337,7 @@ impl SetDef {
         if self.superset.is_some() {
             if self.keys.iter().find(|(k, _, _)| k == &ir::SetDefKey::FromSuperset)
                                .is_none() {
-                Err(TypeError::SetUndefinedKey(ir::SetDefKey::FromSuperset))?
+                Err(TypeError::Undefined(ir::SetDefKey::FromSuperset.to_string()))?
             }
         }
         Ok(())
@@ -1342,6 +1362,7 @@ impl From<Statement> for Result<SetDef, TypeError> {
                 
                 set_def.check_undefined_key()?;
                 set_def.check_undefined_superset_key()?;
+                set_def.check_field_name_redefinition()?;
                 Ok(set_def)
             },
             _ => unreachable!(),

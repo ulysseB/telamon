@@ -30,11 +30,9 @@ fn set_name_redefinition() {
         Some(Spanned {
             leg: Position { line: 10, column: 10},
             end: Position { line: 10, column: 18},
-            data: TypeError::SetRedefinition(
-                SetDef {
-                    name: String::from("Foo"),
-                    ..Default::default()
-                }
+            data: TypeError::Redefinition(
+                String::from("Foo"),
+                Hint::Set,
             )
         })
     );
@@ -54,7 +52,7 @@ fn set_undefined_key() {
         Some(Spanned {
             leg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 16},
-            data: TypeError::SetUndefinedKey(ir::SetDefKey::ItemType)
+            data: TypeError::Undefined(ir::SetDefKey::ItemType.to_string())
         })
     );
     assert_eq!(parser::parse_ast(Lexer::from(
@@ -69,7 +67,7 @@ fn set_undefined_key() {
         Some(Spanned {
             leg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 16},
-            data: TypeError::SetUndefinedKey(ir::SetDefKey::IdType)
+            data: TypeError::Undefined(ir::SetDefKey::IdType.to_string())
         })
     );
     assert_eq!(parser::parse_ast(Lexer::from(
@@ -84,7 +82,7 @@ fn set_undefined_key() {
         Some(Spanned {
             leg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 16},
-            data: TypeError::SetUndefinedKey(ir::SetDefKey::ItemGetter)
+            data: TypeError::Undefined(ir::SetDefKey::ItemGetter.to_string())
         })
     );
     assert_eq!(parser::parse_ast(Lexer::from(
@@ -99,7 +97,7 @@ fn set_undefined_key() {
         Some(Spanned {
             leg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 16},
-            data: TypeError::SetUndefinedKey(ir::SetDefKey::IdGetter)
+            data: TypeError::Undefined(ir::SetDefKey::IdGetter.to_string())
         })
     );
     assert_eq!(parser::parse_ast(Lexer::from(
@@ -114,7 +112,7 @@ fn set_undefined_key() {
         Some(Spanned {
             leg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 16},
-            data: TypeError::SetUndefinedKey(ir::SetDefKey::Iter)
+            data: TypeError::Undefined(ir::SetDefKey::Iter.to_string())
         })
     );
     assert!(parser::parse_ast(Lexer::from(
@@ -145,12 +143,7 @@ fn set_undefined_parametric() {
         Some(Spanned {
             leg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 34},
-            data: TypeError::SetUndefinedParametric(
-                SetDef {
-                    name: String::from("Instruction"),
-                    ..Default::default()
-                }
-            )
+            data: TypeError::Undefined(String::from("Instruction"))
         })
     );
     assert!(parser::parse_ast(Lexer::from(
@@ -192,10 +185,7 @@ fn set_undefined_subsetof() {
         Some(Spanned {
             leg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 36},
-            data: TypeError::SetUndefinedSubsetof(SetDef {
-                name: String::from("BasicBlock"),
-                ..Default::default()
-            })
+            data: TypeError::Undefined(String::from("BasicBlock")),
         })
     );
     assert!(parser::parse_ast(Lexer::from(
@@ -247,7 +237,7 @@ fn set_from_superset_key() {
         Some(Spanned {
             leg: Position { line: 10, column: 10},
             end: Position { line: 10, column: 46},
-            data: TypeError::SetUndefinedKey(ir::SetDefKey::FromSuperset)
+            data: TypeError::Undefined(ir::SetDefKey::FromSuperset.to_string())
         })
     );
     assert!(parser::parse_ast(Lexer::from(
@@ -273,3 +263,4 @@ fn set_from_superset_key() {
          end".to_vec())).unwrap().type_check().is_ok()
     );
 }
+

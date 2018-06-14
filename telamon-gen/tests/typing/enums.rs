@@ -19,12 +19,10 @@ fn enum_redefinition() {
         Some(Spanned {
             leg: Position { line: 6, column: 10},
             end: Position { line: 6, column: 28},
-            data: TypeError::EnumRedefinition(
-                EnumDef {
-                    name: String::from("foo"),
-                    ..Default::default()
-                },
-            )
+            data: TypeError::Redefinition(
+                String::from("foo"),
+                Hint::Enum
+            ),
         })
     );
     assert!(parser::parse_ast(Lexer::from(
@@ -53,17 +51,9 @@ fn enum_field_redefinition() {
         Some(Spanned {
             leg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 18},
-            data: TypeError::EnumFieldRedefinition(
-                EnumDef {
-                    name: String::from("foo"),
-                    ..Default::default()
-                },
-                EnumStatement::Alias(
-                    String::from("AB"),
-                    Default::default(),
-                    vec![String::from("A"), String::from("B")],
-                    Default::default(),
-                )
+            data: TypeError::Redefinition(
+                String::from("AB"),
+                Hint::EnumAttribute,
             ),
         })
     );
@@ -86,12 +76,9 @@ fn enum_field_redefinition() {
         Some(Spanned {
             leg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 56},
-            data: TypeError::EnumFieldRedefinition(
-                EnumDef {
-                    name: String::from("foo"),
-                    ..Default::default()
-                },
-                EnumStatement::Symmetric
+            data: TypeError::Redefinition(
+                String::from("Symmetric"),
+                Hint::EnumAttribute
             ),
         })
     );
@@ -121,12 +108,9 @@ fn enum_field_redefinition() {
         Some(Spanned {
             leg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 18},
-            data: TypeError::EnumFieldRedefinition(
-                EnumDef {
-                    name: String::from("foo"),
-                    ..Default::default()
-                },
-                EnumStatement::Value(String::from("A"), None, vec![])
+            data: TypeError::Redefinition(
+                String::from("A"),
+                Hint::EnumAttribute
             ),
         })
     );
@@ -159,7 +143,7 @@ fn enum_symmetric_two_parametric() {
         Some(Spanned {
             leg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 18},
-            data: TypeError::EnumSymmetricUntwoParametric(vec![])
+            data: TypeError::Symmetric(vec![])
         })
     );
     assert_eq!(parser::parse_ast(Lexer::from(
@@ -180,7 +164,7 @@ fn enum_symmetric_two_parametric() {
         Some(Spanned {
             leg: Position { line: 9, column: 10},
             end: Position { line: 9, column: 46},
-            data: TypeError::EnumSymmetricUntwoParametric(vec![
+            data: TypeError::Symmetric(vec![
                 VarDef {
                     name: RcStr::new(String::from("lhs")),
                     set: SetRef {
@@ -227,7 +211,7 @@ fn enum_symmetric_two_parametric() {
         Some(Spanned {
             leg: Position { line: 9, column: 10},
             end: Position { line: 11, column: 46},
-            data: TypeError::EnumSymmetricUntwoParametric(vec![
+            data: TypeError::Symmetric(vec![
                 VarDef {
                     name: RcStr::new(String::from("lhs")),
                     set: SetRef {
@@ -283,7 +267,7 @@ fn enum_symmetric_same_parametric() {
         Some(Spanned {
             leg: Position { line: 18, column: 10},
             end: Position { line: 18, column: 67},
-            data: TypeError::EnumSymmetricUnsameParametric(
+            data: TypeError::Symmetric(vec![
                 VarDef {
                     name: RcStr::new(String::from("lhs")),
                     set: SetRef {
@@ -298,7 +282,7 @@ fn enum_symmetric_same_parametric() {
                         var: None
                     }
                 }
-            )
+                ])
         })
     );
     assert!(parser::parse_ast(Lexer::from(
@@ -319,6 +303,7 @@ fn enum_symmetric_same_parametric() {
     );
 }
 
+
 #[test]
 fn enum_undefined_value() {
     assert_eq!(parser::parse_ast(Lexer::from(
@@ -329,9 +314,7 @@ fn enum_undefined_value() {
         Some(Spanned {
             leg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 18},
-            data: TypeError::EnumUndefinedValue(
-                String::from("B")
-            )
+            data: TypeError::Undefined(String::from("B"))
         })
     );
     assert!(parser::parse_ast(Lexer::from(
@@ -363,12 +346,7 @@ fn enum_undefined_parametric() {
         Some(Spanned {
             leg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 56},
-            data: TypeError::EnumUndefinedParametric(
-                SetDef {
-                    name: String::from("BasicBlock"),
-                    ..Default::default()
-                }
-            )
+            data: TypeError::Undefined(String::from("BasicBlock"))
         })
     );
 }

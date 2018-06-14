@@ -1,5 +1,6 @@
 use ir::{self, Adaptable};
 use std;
+use std::fmt;
 use std::borrow::Borrow;
 use utils::*;
 
@@ -359,3 +360,10 @@ impl SetDefKey {
         SetDefKey::NewObjs,
     ];
 }
+
+impl fmt::Display for SetDefKey {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+            
