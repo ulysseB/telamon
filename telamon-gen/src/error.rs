@@ -37,7 +37,7 @@ impl <'a>From<(path::Display<'a>,
             ParseError::InvalidToken { location }
                 => ProcessError {
                     path: path,
-                    span: Some(lexer::Span { leg: location, ..Default::default() }),
+                    span: Some(lexer::Span { beg: location, ..Default::default() }),
                     cause: Cause::Parse(parse),
                 },
             ParseError::UnrecognizedToken { token: None, .. }
@@ -52,7 +52,7 @@ impl <'a>From<(path::Display<'a>,
            ParseError::User { error: lexer::LexicalError::InvalidToken(l, .., e) } 
                 => ProcessError {
                     path: path,
-                    span: Some(lexer::Span { leg: l, end: Some(e) }),
+                    span: Some(lexer::Span { beg: l, end: Some(e) }),
                     cause: Cause::Parse(parse),
                 },
         }

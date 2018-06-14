@@ -134,35 +134,35 @@ impl TypingContext {
     fn add_statement(&mut self, statement: Spanned<Statement>)
         -> Result<(), Spanned<TypeError>> {
         match statement {
-            Spanned { leg, end, data: d @ Statement::IntegerDef { .. } } => {
+            Spanned { beg, end, data: d @ Statement::IntegerDef { .. } } => {
                 unimplemented!()
             },
-            Spanned { leg, end, data: d @ Statement::SetDef { .. } } => {
+            Spanned { beg, end, data: d @ Statement::SetDef { .. } } => {
                 let set_def: SetDef =
                     Result::<SetDef, TypeError>::from(d)
-                           .map_err(|e| Spanned { leg, end, data: e })?;
+                           .map_err(|e| Spanned { beg, end, data: e })?;
 
                 self.check_set_redefinition(&set_def)
-                       .map_err(|e| Spanned { leg, end, data: e })?;
+                       .map_err(|e| Spanned { beg, end, data: e })?;
                 self.check_set_parametric(&set_def)
-                       .map_err(|e| Spanned { leg, end, data: e })?;
+                       .map_err(|e| Spanned { beg, end, data: e })?;
                 self.check_superset_parametric(&set_def)
-                       .map_err(|e| Spanned { leg, end, data: e })?;
+                       .map_err(|e| Spanned { beg, end, data: e })?;
                 Ok(self.set_defs.push(set_def))
             },
-            Spanned { leg, end, data: d @ Statement::EnumDef { .. } } |
-            Spanned { leg, end, data: d @ Statement::CounterDef { .. } } => {
+            Spanned { beg, end, data: d @ Statement::EnumDef { .. } } |
+            Spanned { beg, end, data: d @ Statement::CounterDef { .. } } => {
                 let choice_def: ChoiceDef =
                     Result::<ChoiceDef, TypeError>::from(d)
-                           .map_err(|e| Spanned { leg, end, data: e })?;
+                           .map_err(|e| Spanned { beg, end, data: e })?;
 
                self.check_enum_redefinition(&choice_def)
-                       .map_err(|e| Spanned { leg, end, data: e })?;
+                       .map_err(|e| Spanned { beg, end, data: e })?;
                self.check_enum_parametric(&choice_def)
-                       .map_err(|e| Spanned { leg, end, data: e })?;
+                       .map_err(|e| Spanned { beg, end, data: e })?;
                Ok(self.choice_defs.push(choice_def))
             },
-            Spanned { leg, end,
+            Spanned { beg, end,
                 data: Statement::TriggerDef { foralls, conditions, code }
             } => {
                 Ok(self.triggers.push(TriggerDef {
@@ -171,7 +171,7 @@ impl TypingContext {
                     code: code,
                 }))
             },
-            Spanned { leg, end,
+            Spanned { beg, end,
                 data: Statement::Require(constraint)
             } => Ok(self.constraints.push(constraint)),
         }

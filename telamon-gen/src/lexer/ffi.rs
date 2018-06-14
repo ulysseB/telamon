@@ -43,16 +43,16 @@ impl fmt::Display for Position {
 /// A double sequence's row/column position
 #[derive(Default, Copy, Clone, Debug, PartialEq)]
 pub struct Span {
-    pub leg: Position,
+    pub beg: Position,
     pub end: Option<Position>,
 }
 
 impl fmt::Display for Span {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(end) = self.end {
-            write!(f, "between {} and {}", self.leg, end)
+            write!(f, "between {} and {}", self.beg, end)
         } else {
-            write!(f, "at {}", self.leg)
+            write!(f, "at {}", self.beg)
         }
     }
 }
@@ -61,7 +61,7 @@ impl fmt::Display for Span {
 #[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(C)]
 pub struct Spanned<Y> {
-    pub leg: Position,
+    pub beg: Position,
     pub end: Position,
     /// Spanned data
     pub data: Y,
