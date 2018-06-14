@@ -26,3 +26,19 @@ fn integer_redefinition() {
     );
 
 }
+
+#[test]
+fn integer_field_redefinition() {
+    assert_eq!(parser::parse_ast(Lexer::from(
+        b"define integer foo($arg in MySet, $arg in MySet) in \"mycode\"
+          end".to_vec())).unwrap().type_check().err(),
+        Some(Spanned {
+            beg: Position { line: 0, column: 0},
+            end: Position { line: 1, column: 13},
+            data: TypeError::Redefinition(
+                String::from("arg"),
+                Hint::IntegerAttribute,
+            )
+        })
+    );
+}
