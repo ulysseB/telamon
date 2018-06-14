@@ -6,7 +6,7 @@ pub use super::telamon_gen::ir;
 pub use super::telamon_gen::ast::*;
 
 #[test]
-fn set_name_redefinition() {
+fn set_redefinition() {
     assert_eq!(parser::parse_ast(Lexer::from(
         b"set Foo:
             item_type = \"ir::inst::Obj\"
@@ -33,6 +33,30 @@ fn set_name_redefinition() {
             data: TypeError::Redefinition(
                 String::from("Foo"),
                 Hint::Set,
+            )
+        })
+    );
+}
+
+#[test]
+fn set_field_redefinition() {
+    assert_eq!(parser::parse_ast(Lexer::from(
+        b"set Foo:
+            item_type = \"ir::inst::Obj\"
+            item_type = \"ir::inst::Obj\"
+            id_type = \"ir::inst::Id\"
+            item_getter = \"ir::inst::get($fun, $id)\"
+            id_getter = \"ir::inst::Obj::id($item)\"
+            iterator = \"ir::inst::iter($fun)\"
+            var_prefix = \"inst\"
+            new_objs = \"$objs.inst\"
+          end".to_vec())).unwrap().type_check().err(),
+        Some(Spanned {
+            leg: Position { line: 0, column: 0},
+            end: Position { line: 0, column: 8},
+            data: TypeError::Redefinition(
+                String::from("ItemType"),
+                Hint::SetAttribute,
             )
         })
     );

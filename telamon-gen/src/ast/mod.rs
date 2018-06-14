@@ -1304,7 +1304,8 @@ impl SetDef {
                                .skip_while(|(subitem, ..)| subitem != item)
                                .skip(1) {
                 if subitem == item {
-                    Err(TypeError::Redefinition(self.name.to_owned(), Hint::SetAttribute))?
+                    Err(TypeError::Redefinition(
+                            item.to_string(), Hint::SetAttribute))?
                 }
             }
         }
