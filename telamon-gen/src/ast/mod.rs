@@ -28,6 +28,8 @@ pub enum Hint {
     EnumAttribute,
     /// Integer interface.
     Integer,
+    /// Integer attribute.
+    IntegerAttribute,
 }
 
 /// TypeEror is the error representation of telamon's
@@ -1168,8 +1170,26 @@ impl EnumStatements {
 pub struct IntegerDef {
     pub name: String,
     pub doc: Option<String>,
-    pub variables: Vec<VarDef>, // voir check enums
-    pub code: String, // varmap -- voir fonction deja presente dans ast
+    pub variables: Vec<VarDef>, // varset check
+    pub code: String, // varmap, type_check_code
+}
+
+impl IntegerDef {
+    pub fn get_variables(&self) -> Result<(), TypeError> {
+        for item in self.variables.iter() {
+            for subitem in self.variables.iter()
+                               .skip_while(|subitem| subitem != &item)
+                               .skip(1) {
+                if subitem == item {
+                    Err(TypeError::Redefinition(
+                            item.name.to_owned().to_string(),
+                            Hint::IntegerAttribute
+                    ))?
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 impl From<Statement> for Result<IntegerDef, TypeError> {
@@ -1179,7 +1199,8 @@ impl From<Statement> for Result<IntegerDef, TypeError> {
                 let integer_def: IntegerDef = IntegerDef {
                     name, doc, variables, code
                 };
-
+    
+                integer_def.get_variables()?;
                 Ok(integer_def)
             },
             _ => unreachable!(),
@@ -1221,7 +1242,10 @@ impl EnumDef {
                                .skip_while(|subitem| subitem != &item)
                                .skip(1) {
                 if subitem == item {
-                    Err(TypeError::Redefinition(item.to_string(), Hint::EnumAttribute))?
+                    Err(TypeError::Redefinition(
+                            item.to_string(),
+                            Hint::EnumAttribute
+                    ))?
                 }
             }
         }
