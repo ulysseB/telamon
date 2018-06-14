@@ -147,10 +147,6 @@ pub fn init_domain_partial(store: &mut DomainStore,
 // TODO(cleanup): generate (IrInstance, Domain) pair here.
 
 pub trait Domain: Copy + Eq {
-    const FAILED: Self;
-
-    const ALL: Self;
-
     /// Indicates if the domain is empty.
     fn is_failed(&self) -> bool;
     /// Indicates if the domain contains a single alternative.
@@ -200,6 +196,14 @@ pub struct Range {
 
 #[allow(dead_code)]
 impl Range {
+    const ALL: Range = Range { min: 0, max: std::u32::MAX };
+
+    /// Returns the empty `Range`.
+    pub fn failed() -> Self { Range { min: 1, max: 0 } }
+
+    /// Returns the full range.
+    pub fn all() -> Self { Self::ALL }
+
     /// Creates a range that only contains the given value.
     pub fn new_eq(val: u32) -> Self { Range { min: val, max: val } }
 
@@ -275,10 +279,6 @@ impl Range {
 }
 
 impl Domain for Range {
-    const FAILED: Range = Range { min: 1, max: 0 };
-
-    const ALL: Range = Range { min: 0, max: std::u32::MAX };
-
     fn is_failed(&self) -> bool { self.min > self.max }
 
     fn is_constrained(&self) -> bool { self.min == self.max }
@@ -304,6 +304,11 @@ pub struct HalfRange { pub min: u32 }
 
 #[allow(dead_code)]
 impl HalfRange {
+    const ALL: HalfRange = HalfRange { min: 0 };
+
+    /// Returns the full `HalfRange`.
+    pub fn all() -> Self { Self::ALL }
+
     /// Returns the range of all the integers greater than 'val'
     pub fn new_gt(val: u32) -> Self {
         HalfRange { min: val.saturating_add(1) }
@@ -350,11 +355,7 @@ impl HalfRange {
 }
 
 impl Domain for HalfRange {
-    const FAILED: HalfRange = HalfRange { min: std::u32::MAX };
-
-    const ALL: HalfRange = HalfRange { min: 0 };
-
-    fn is_failed(&self) -> bool { self.min == std::u32::MAX }
+    fn is_failed(&self) -> bool { false }
 
     fn is_constrained(&self) -> bool { false }
 
@@ -370,3 +371,68 @@ impl Domain for HalfRange {
         self.min = std::cmp::min(self.min, other.min);
     }
 }
+
+#[derive(Copy, Clone)]
+struct NumericSet {
+    len: usize,
+    values: [u16; NumericSet::MAX_LEN],
+}
+
+impl NumericSet {
+    const MAX_LEN: usize = 32;
+
+    /// Returns the set containing all the possibilities.
+    fn all(univers: &VecSet<u16>) -> Self {
+        assert!(univers.len() <= NumericSet::MAX_LEN);
+        let mut values = [0; NumericSet::MAX_LEN];
+        for (v, dst) in univers.iter().cloned().zip(&mut values) { *dst = v; }
+        NumericSet { len: univers.len(), values }
+    }
+}
+
+impl Domain for NumericSet {
+    fn is_failed(&self) -> bool { self.len == 0 }
+
+    fn is_constrained(&self) -> bool { self.len == 1 }
+
+    fn contains(&self, other: NumericSet) -> bool {
+        let (mut lhs, mut rhs) = (0, 0);
+        while lhs < self.len && rhs < other.len {
+            if self.values[lhs] > other.values[rhs] { return false; }
+            if self.values[lhs] == other.values[rhs] { rhs += 1; }
+            lhs += 1;
+        }
+        rhs == other.len
+    }
+
+    fn restrict(&mut self, other: NumericSet) {
+        let (mut new_lhs, mut old_lhs, mut rhs) = (0, 0, 0);
+        while old_lhs < self.len && rhs < self.len {
+            if self.values[old_lhs] > other.values[rhs] {
+                rhs += 1;
+            } else if self.values[old_lhs] < other.values[rhs] {
+                old_lhs += 1;
+            } else {
+                self.values[new_lhs] = self.values[old_lhs];
+                old_lhs += 1;
+                new_lhs += 1;
+                rhs += 1;
+            }
+        }
+        self.len = new_lhs;
+    }
+
+    fn insert(&mut self, _: NumericSet) { } // FIXME
+}
+
+impl PartialEq for NumericSet {
+    fn eq(&self, other: &NumericSet) -> bool {
+        if self.len != other.len { return false; }
+        for i in 0..self.len {
+            if self.values[i] != other.values[i] { return false; }
+        }
+        true
+    }
+}
+
+impl Eq for NumericSet { }

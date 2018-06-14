@@ -4,7 +4,7 @@ use helper::{Builder, DimGroup, MetaDimension, SignatureBuilder};
 use ir;
 use itertools::Itertools;
 use ndarray::{self, ArrayD};
-use search_space::{Domain, InstFlag};
+use search_space::InstFlag;
 use std;
 use utils::*;
 

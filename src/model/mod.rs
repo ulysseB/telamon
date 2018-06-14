@@ -477,7 +477,8 @@ mod cuda_tests {
 
         builder.action(Action::DimKind(init_dim_m[0], DimKind::THREAD));
         //builder.action(Action::DimKind(init_dim_m[1], DimKind::THREAD));
-        builder.action(Action::ThreadMapping(ld_a_dim[0], init_dim_m[0], ThreadMapping::MAPPED));
+        builder.action(Action::ThreadMapping(ld_a_dim[0], init_dim_m[0],
+                                             ThreadMapping::MAPPED));
         builder.action(Action::ThreadMapping(
                 init_dim_m[0], init_dim_m[1], ThreadMapping::MAPPED_IN));
         builder.action(Action::DimKind(init_dim_n, DimKind::THREAD));
@@ -489,7 +490,8 @@ mod cuda_tests {
                          BottleneckLevel::Global, &[])
         }.get_bottleneck(4);
 
-        builder.action(Action::ThreadMapping(init_dim_n, ld_a_dim[0], ThreadMapping::MAPPED_IN));
+        builder.action(Action::ThreadMapping(init_dim_n, ld_a_dim[0],
+                                             ThreadMapping::MAPPED_IN));
 
         let final_pressure = {
             let space = builder.get();
@@ -498,6 +500,89 @@ mod cuda_tests {
                          BottleneckLevel::Global, &[])
         }.get_bottleneck(4);
  
+        assert!(final_pressure*1.001 >= partial_pressure, "{} < {}",
+                final_pressure, partial_pressure);
+    }
+
+    #[test]
+    fn partial_bound_4() {
+        let _ = env_logger::try_init();
+        let executor = cuda::Executor::init();
+        let mut context = cuda::Context::new(&executor); 
+
+        let a: tensor::Tensor<f32>;
+        let signature = {
+            let mut builder = SignatureBuilder::new("test", &mut context);
+            a = builder.tensor::<f32>("a", vec![25.into(), 26.into(), 32.into()], true);
+            builder.get()
+        };
+
+        let mut builder = Builder::new(&signature, context.device());
+        let ld_a = a.load(&[&[], &[], &[]], &mut builder);
+
+        builder.action(Action::DimKind(ld_a[0][0], DimKind::THREAD));
+        builder.action(Action::DimKind(ld_a[1][0], DimKind::THREAD));
+        builder.action(Action::DimKind(ld_a[2][0], DimKind::LOOP));
+
+        builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CS));
+
+        let partial_pressure = {
+            let space = builder.get_clone();
+            let local_info = LocalInfo::compute(&space, &context);
+            sum_pressure(context.device(), &space, &local_info,
+                         BottleneckLevel::Global, &[])
+        }.get_bottleneck(3);
+
+        builder.action(Action::ThreadMapping(ld_a[0][0], ld_a[1][0],
+                                             ThreadMapping::MAPPED_IN));
+
+        let final_pressure = {
+            let space = builder.get();
+            let local_info = LocalInfo::compute(&space, &context);
+            sum_pressure(context.device(), &space, &local_info,
+                         BottleneckLevel::Global, &[])
+        }.get_bottleneck(3);
+
+        assert!(final_pressure*1.001 >= partial_pressure, "{} < {}",
+                final_pressure, partial_pressure);
+    }
+
+    #[test]
+    fn partial_bound_5() {
+        let _ = env_logger::try_init();
+        let executor = cuda::Executor::init();
+        let mut context = cuda::Context::new(&executor); 
+
+        let (signature, a) = {
+            let mut builder = SignatureBuilder::new("test", &mut context);
+            let a = tensor::TensorBuilder::new("a", vec![13.into(), 32.into()])
+                .stride_dim(1).finish::<f32, _>(&mut builder);
+            (builder.get(), a)
+        };
+
+        let mut builder = Builder::new(&signature, context.device());
+
+        let ld_a = a.load(&[&[]], &mut builder);
+        let dim1 = builder.open_dim_ex(ir::Size::new(26, vec![], 1), DimKind::THREAD);
+        let _ = builder.mov(&0f32);
+
+        builder.order(&ld_a.inst(), &dim1, Order::AFTER);
+
+        let partial_pressure = {
+            let space = builder.get_clone();
+            let local_info = LocalInfo::compute(&space, &context);
+            sum_pressure(context.device(), &space, &local_info,
+                         BottleneckLevel::Global, &[])
+        }.get_bottleneck(4);
+
+        builder.action(Action::DimKind(ld_a[0][0], DimKind::UNROLL));
+
+        let final_pressure = {
+            let space = builder.get();
+            let local_info = LocalInfo::compute(&space, &context);
+            sum_pressure(context.device(), &space, &local_info,
+                         BottleneckLevel::Global, &[])
+        }.get_bottleneck(4);
 
         assert!(final_pressure*1.001 >= partial_pressure, "{} < {}",
                 final_pressure, partial_pressure);
