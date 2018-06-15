@@ -39,7 +39,7 @@ mod single_enum {
         assert_eq!(x, Foo::B);
 
         // Ensure `failed`, `all` and `is_failed` are working.
-        assert!(Foo::failed().is_failed());
+        assert!(Foo::FAILED.is_failed());
         assert!((!Foo::ALL).is_failed());
         // Ensure is_constrained is working.
         assert!(Foo::A.is_constrained());
@@ -48,7 +48,7 @@ mod single_enum {
         assert!(Foo::AB.intersects(Foo::BC));
         assert!(!Foo::A.intersects(Foo::BC));
         // Ensure contains is working.
-        assert!(Foo::AB.contains(Foo::failed()));
+        assert!(Foo::AB.contains(Foo::FAILED));
         assert!(Foo::AB.contains(Foo::A));
         assert!(!Foo::AB.contains(Foo::BC));
         // Ensure list is working correctly.
@@ -63,6 +63,7 @@ mod single_enum {
     /// Ensures baisc operations on numeric domains are working.
     #[test]
     fn numeric_operation() {
+        let _ = ::env_logger::try_init();
         let all0 = NumericSet::all(&[1, 2, 4, 8]);
         let all1 = NumericSet::all(&[2, 3, 4]);
         let inter01 = NumericSet::all(&[2, 4]);
@@ -77,6 +78,10 @@ mod single_enum {
         let mut restrict = all0;
         restrict.restrict(all1);
         assert_eq!(restrict, inter01);
+
+        let mut all0_2 = all0;
+        all0_2.insert(all0);
+        assert_eq!(all0_2, all0);
 
         // Test comparison operators.
         assert!(all0.lt(Range::new_eq(&Range::ALL, 9)));
@@ -318,7 +323,7 @@ mod symmetry {
         let _ = ::env_logger::try_init();
 
         assert_eq!(Enum2::ALL.inverse(), Enum2::ALL);
-        assert_eq!(Enum2::failed().inverse(), Enum2::failed());
+        assert_eq!(Enum2::FAILED.inverse(), Enum2::FAILED);
         assert_eq!(Enum2::BEFORE.inverse(), Enum2::AFTER);
         assert_eq!(Enum2::AFTER.inverse(), Enum2::BEFORE);
         assert_eq!(Enum2::INNER.inverse(), Enum2::OUTER);
@@ -1088,11 +1093,31 @@ mod quotient_set {
 mod integer_set {
     define_ir! { struct set0; }
     generated_file!(integer_set);
+    use self::integer_set::*;
+    use std::sync::Arc;
 
-    const INT0_DOMAIN: [u16; 4] = [2, 4, 5, 7];
+    const INT0_DOMAIN: [u16; 3] = [2, 4, 6];
 
-    fn int1_domain<'a>(_: &ir::Function, arg: &'a ir::set0::Obj) -> &'a [u16] {
-        unimplemented!() // FIXME
+    const INT1_DOMAIN: [u16; 3] = [3, 4, 5];
+
+    fn int1_domain<'a>(_: &ir::Function, _: &'a ir::set0::Obj) -> &'a [u16] {
+        &INT1_DOMAIN
     }
-    // FIXME: write tests
+
+    #[test]
+    fn domain() {
+        let _ = ::env_logger::try_init();
+        let mut fun = ir::Function::default();
+        let obj0 = ir::set0::create(&mut fun, false);
+        let obj1 = ir::set0::create(&mut fun, false);
+
+        let store = &mut DomainStore::new(&fun);
+        store.set_int1(obj0, NumericSet::all(&[4]));
+        let actions = init_domain(store, &mut fun).unwrap();
+        let fun = &mut Arc::new(fun);
+        assert!(apply_decisions(actions, fun, store).is_ok());
+
+        assert_eq!(store.get_int0(), NumericSet::all(&[2, 4]));
+        assert_eq!(store.get_int1(obj1), NumericSet::all(&[4]));
+    }
 }

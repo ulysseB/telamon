@@ -43,6 +43,12 @@ macro_rules! render {
             let template = concat_sep!(".", $(stringify!($tmpl)),*);
             ::print::ENGINE.render(template, &data).unwrap()
         }
+    };
+    ($($tmpl:ident)/+, $data:expr) => {
+        {
+            let template = concat_sep!(".", $(stringify!($tmpl)),*);
+            ::print::ENGINE.render(template, &$data).unwrap()
+        }
     }
 }
 
@@ -72,6 +78,8 @@ lazy_static! {
         register_template!(engine, filter_action);
         register_template!(engine, filter_call);
         register_template!(engine, filter_self);
+        register_template!(engine, value_type/full_domain);
+        register_template!(engine, value_type/name);
         register_template!(engine, getter);
         register_template!(engine, incr_counter);
         register_template!(engine, iter_new_objects);

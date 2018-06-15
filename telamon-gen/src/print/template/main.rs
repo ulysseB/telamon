@@ -186,8 +186,7 @@ pub struct Range {
 impl Range {
     pub const ALL: Range = Range { min: 0, max: std::u32::MAX };
 
-    /// Returns the empty `Range`.
-    pub fn failed() -> Self { Range { min: 1, max: 0 } }
+    pub const FAILED: Range = Range { min: 1, max: 0 };
 
     /// Returns the full range.
     pub fn all() -> Self { Self::ALL }
@@ -342,25 +341,28 @@ impl NumericSet {
         NumericSet { len: univers.len(), values }
     }
 
-    /// Inserts alternatives into the domain.
-    pub fn insert(&mut self, other: NumericSet, universe: &VecSet<u16>) {
-        debug_assert!(universe.len() < NumericSet::MAX_LEN);
+    /// Inserts alternatives into the domain. Both domains should be from the same
+    /// universe.
+    pub fn insert(&mut self, other: NumericSet) {
         let mut values = [0; NumericSet::MAX_LEN];
         let (mut idx, mut idx_self, mut idx_other) = (0, 0, 0);
-        for &item in universe {
-            if idx_self < self.len && item == self.values[idx_self] {
-                idx_self += 1;
-                values[idx] = item;
-                idx += 1;
-            } else {
-                while idx_other < other.len && item > other.values[idx_other] {
-                    idx_other += 1;
-                }
-                if idx_other < other.len && item == other.values[idx_other] {
-                    values[idx] = item;
-                    idx += 1;
-                }
+        while idx_self < self.len && idx_other < other.len {
+            let mut v = self.values[idx_self];
+            if v <= other.values[idx_other] { idx_self += 1; }
+            if v >= other.values[idx_other] {
+                v = other.values[idx_other];
+                idx_other += 1;
             }
+            values[idx] = v;
+            idx += 1;
+        }
+        for &item in &self.values[idx_self..self.len] {
+            values[idx] = item;
+            idx += 1;
+        }
+        for &item in &other.values[idx_other..other.len] {
+            values[idx] = item;
+            idx += 1;
         }
         self.values = values;
         self.len = idx;

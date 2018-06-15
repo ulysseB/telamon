@@ -22,8 +22,9 @@ pub fn partial_iterators<'a>(choices: &'a [ChoiceAst<'a>], ir_desc: &'a ir::IrDe
         let iters = PartialIterator::generate(&args, is_symmetric, ir_desc, ctx);
         iters.into_iter().map(move |(iter, ctx)| {
             let arg_names = args.iter().map(|&(v, _)| ctx.var_name(v)).collect();
-            let universe = ctx.choice.choice_def().universe().map(|u| ast::code(u, &ctx));
-            (iter, NewChoice { choice: choice_ast, arg_names, universe })
+            let value_type = ctx.choice.choice_def().value_type();
+            let value_type = ast::ValueType::new(value_type, &ctx);
+            (iter, NewChoice { choice: choice_ast, arg_names, value_type })
         })
     }).collect()
 }
@@ -33,7 +34,7 @@ pub fn partial_iterators<'a>(choices: &'a [ChoiceAst<'a>], ir_desc: &'a ir::IrDe
 pub struct NewChoice<'a> {
     pub arg_names: Vec<Variable<'a>>,
     pub choice: &'a ChoiceAst<'a>,
-    pub universe: Option<String>,
+    pub value_type: ast::ValueType,
 }
 
 /// Returns the partitial iterators for increment on existing counters.

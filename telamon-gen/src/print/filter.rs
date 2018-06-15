@@ -9,7 +9,7 @@ use std::fmt::{Display, Formatter, Result};
 pub struct Filter<'a> {
     id: usize,
     arguments: Vec<(ast::Variable<'a>, ast::Set<'a>)>,
-    type_name: ir::ValueType,
+    type_name: ast::ValueType,
     bindings: Vec<(ast::Variable<'a>, ast::ChoiceInstance<'a>)>,
     body: PositiveFilter<'a>,
 }
@@ -32,7 +32,7 @@ impl<'a> Filter<'a> {
         }).collect();
         let values_var = ast::Variable::with_name("values");
         let body = PositiveFilter::new(&filter.rules, choice, &ctx, values_var.clone());
-        let type_name = choice.value_type().full_type();
+        let type_name = ast::ValueType::new(choice.value_type().full_type(), ctx);
         Filter { id, arguments, body, bindings, type_name }
     }
 }
@@ -42,9 +42,9 @@ impl<'a> Filter<'a> {
 enum PositiveFilter<'a> {
     Switch { var: ast::Variable<'a>, cases: Vec<(String, PositiveFilter<'a>)> },
     AllowValues { var: ast::Variable<'a>, values: String },
-    AllowAll { var: ast::Variable<'a>, value_type: ir::ValueType },
+    AllowAll { var: ast::Variable<'a>, value_type: ast::ValueType },
     Rules {
-        value_type: ir::ValueType,
+        value_type: ast::ValueType,
         old_var: ast::Variable<'a>,
         new_var: ast::Variable<'a>,
         rules: Vec<Rule<'a>>,
@@ -56,7 +56,7 @@ impl<'a> PositiveFilter<'a> {
     /// Creates a `PositiveFilter` enforcing a set of rules.
     fn rules(rules: &'a [ir::Rule], choice: &'a ir::Choice, ctx: &Context<'a>,
              var: ast::Variable<'a>) -> Self {
-        let value_type = choice.value_type().full_type();
+        let value_type = ast::ValueType::new(choice.value_type().full_type(), ctx);
         match *rules {
             [] => PositiveFilter::AllowAll { var, value_type },
             [ref r] if r.conditions.is_empty() && r.set_constraints.is_empty() => {

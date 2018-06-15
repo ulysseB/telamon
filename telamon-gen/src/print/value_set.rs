@@ -7,8 +7,9 @@ use utils::*;
 
 /// Prints a `ValueSet`.
 pub fn print(set: &ir::ValueSet, ctx: &Context) -> String {
+    let t = ast::ValueType::new(set.t(), ctx);
     if set.is_empty() {
-        format!("{}::FAILED", set.t())
+        format!("{}::FAILED", t)
     } else {
         // FIXME: The set might not be restriceted enough when combining range sets.
         // - should limit to the current domain.
@@ -17,8 +18,8 @@ pub fn print(set: &ir::ValueSet, ctx: &Context) -> String {
         match *set {
             ir::ValueSet::Enum { ref enum_name, ref values, ref inputs } =>
                 enum_set(enum_name, values, inputs, ctx),
-            ir::ValueSet::Integer { is_full: true, ref universe, .. } => {
-                full_universe(universe, ctx)
+            ir::ValueSet::Integer { is_full: true, .. } => {
+                render!(value_type/full_domain, t)
             },
             ir::ValueSet::Integer { ref cmp_inputs, ref cmp_code, .. } => {
                 cmp_inputs.iter().map(|&(op, input)| {
@@ -26,7 +27,7 @@ pub fn print(set: &ir::ValueSet, ctx: &Context) -> String {
                 }).chain(cmp_code.iter().map(|&(op, ref code)| {
                     (op, ast::code(code, ctx))
                 })).map(|(op, val)| {
-                    universe_fun(&set.t(), cmp_op_fun_name(op), &val, ctx)
+                    universe_fun(&t, cmp_op_fun_name(op), &val)
                 }).format("|").to_string()
             },
         }
@@ -62,18 +63,10 @@ fn cmp_op_fun_name(op: ir::CmpOp) -> &'static str {
     }
 }
 
-fn universe_fun(t: &ir::ValueType, fun: &str, arg: &str, ctx: &Context) -> String {
-    let universe = match *t {
-        ir::ValueType::NumericSet(ref universe) => ast::code(universe, ctx),
-        _ => format!("&{}::ALL", t),
-    };
-    format!("{}::{}({},{})", t, fun, universe, arg)
-}
-
-fn full_universe(t: &ir::ValueType, ctx: &Context) -> String {
-    match *t {
-        ir::ValueType::NumericSet(ref universe) =>
-            format!("NumericSet::all({})", ast::code(universe, ctx)),
-        _ => format!("{}::all()", t),
+fn universe_fun(t: &ast::ValueType, fun: &str, arg: &str,) -> String {
+    match t {
+        ast::ValueType::NumericSet(universe) =>
+            format!("{}::{}({},{})", t, fun, universe, arg),
+        t => format!("{}::{}(&{}::ALL,{})", t, fun, t, arg),
     }
 }

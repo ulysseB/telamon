@@ -14,15 +14,15 @@ pub mod {{name}} {
     /// Returns the values a `{{name}}` can take.
     #[allow(unused_variables, unused_mut, unused_parens)]
     pub fn filter({{>choice.arg_defs}}ir_instance: &ir::Function,
-                  store: &DomainStore) -> {{full_value_type}} {
-        let mut values = {{full_value_type}}::all({{universe}});
+                  store: &DomainStore) -> {{>value_type.name full_value_type}} {
+        let mut values = {{>value_type.full_domain full_value_type}};
         {{#each filter_actions}}{{>filter_action}}{{/each}}
         values
     }
 
     /// Triggers the required actions after the domain is updated.
     #[allow(unused_variables, unused_mut, unused_parens)]
-    pub fn on_change(old: {{value_type}}, new: {{value_type}},
+    pub fn on_change(old: {{>value_type.name value_type}}, new: {{>value_type.name value_type}},
                      {{>ids_decl}}ir_instance: &mut Arc<ir::Function>,
                      store: &mut DomainStore,
                      diff: &mut DomainDiff) -> Result<(), ()> {
@@ -45,7 +45,8 @@ pub mod {{name}} {
     #[allow(unused_variables, unused_mut, unused_parens)]
     pub fn restrict_delayed({{>ids_decl}}ir_instance: &ir::Function,
                             store: &DomainStore,
-                            mut new_values: {{full_value_type}}) -> Result<Vec<Action>, ()> {
+                            mut new_values: {{>value_type.name full_value_type~}}
+                            ) -> Result<Vec<Action>, ()> {
         let current = store.get_{{name}}({{>choice.arg_names}});
         {{#if restrict_counter.is_half~}}
             new_values.min = ::std::cmp::max(new_values.min, current.min);
@@ -69,7 +70,7 @@ pub mod {{name}} {
     #[allow(unused_variables, unused_mut, unused_parens)]
     pub fn restrict({{>ids_decl}}ir_instance: &ir::Function,
                     store: &mut DomainStore,
-                    mut new_values: {{full_value_type}},
+                    mut new_values: {{>value_type.name full_value_type}},
                     diff: &mut DomainDiff) -> Result<(), ()> {
         {{#if restrict_counter~}}
             let current = store.get_{{name}}({{>choice.arg_names}});

@@ -4,7 +4,7 @@ pub enum Action {
     {{~#each choices}}
         {{to_type_name name}}(
         {{~#each arguments}}{{this.[1].def.keys.IdType}},{{/each~}}
-        {{value_type}}),
+        {{>value_type.name value_type}}),
     {{/each~}}
 }
 
