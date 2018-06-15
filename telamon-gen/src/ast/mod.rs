@@ -62,7 +62,6 @@ struct TypingContext {
     ir_desc: ir::IrDesc,
     set_defs: Vec<SetDef>,
     choice_defs: Vec<ChoiceDef>,
-    integer_defs: Vec<IntegerDef>,
     triggers: Vec<TriggerDef>,
     constraints: Vec<Constraint>,
     checks: Vec<Check>,
@@ -132,31 +131,6 @@ impl TypingContext {
         }
         Ok(())
     }
-
-    /// A Integer's name is unique.
-    pub fn check_integer_redefinition(
-        &self, integer_def: &IntegerDef
-    ) -> Result<(), TypeError> {
-        if self.integer_defs.contains(integer_def) {
-            Err(TypeError::Redefinition(integer_def.name.to_owned(), Hint::Integer))?
-        }
-        Ok(())
-    }
-
-    /// A Integer's parametric set should be defined
-    pub fn check_integer_parametric(
-        &self, integer_def: &IntegerDef
-    ) -> Result<(), TypeError> {
-        for VarDef { name: _, set } in integer_def.variables.iter() {
-            let name: &String = set.name.deref();
-            if self.set_defs.iter().find(|set| set.name.eq(name)).is_none() {
-                Err(TypeError::Undefined(name.to_owned()))?
-            }
-        }
-        Ok(())
-    }
-
-
 }
 
 impl TypingContext {
@@ -164,17 +138,6 @@ impl TypingContext {
     fn add_statement(&mut self, statement: Spanned<Statement>)
         -> Result<(), Spanned<TypeError>> {
         match statement {
-            Spanned { beg, end, data: d @ Statement::IntegerDef { .. } } => {
-                let integer_def: IntegerDef =
-                    Result::<IntegerDef, TypeError>::from(d)
-                           .map_err(|e| Spanned { beg, end, data: e })?;
-
-                self.check_integer_redefinition(&integer_def)
-                       .map_err(|e| Spanned { beg, end, data: e })?;
-                self.check_integer_parametric(&integer_def)
-                       .map_err(|e| Spanned { beg, end, data: e })?;
-                Ok(self.integer_defs.push(integer_def))
-            },
             Spanned { beg, end, data: d @ Statement::SetDef { .. } } => {
                 let set_def: SetDef =
                     Result::<SetDef, TypeError>::from(d)
@@ -189,6 +152,7 @@ impl TypingContext {
                 Ok(self.set_defs.push(set_def))
             },
             Spanned { beg, end, data: d @ Statement::EnumDef { .. } } |
+            Spanned { beg, end, data: d @ Statement::IntegerDef { .. } } |
             Spanned { beg, end, data: d @ Statement::CounterDef { .. } } => {
                 let choice_def: ChoiceDef =
                     Result::<ChoiceDef, TypeError>::from(d)
@@ -228,6 +192,7 @@ impl TypingContext {
                     self.register_enum(name, doc, variables, statements),
                 ChoiceDef::CounterDef(CounterDef { name, doc, visibility, vars, body, }) =>
                     self.register_counter(name, doc, visibility, vars, body),
+                ChoiceDef::IntegerDef(def) => self.define_integer(def),
             }
         }
         for trigger in std::mem::replace(&mut self.triggers, vec![]) {
@@ -491,6 +456,21 @@ impl TypingContext {
         // Register the enum and the choice.
         self.ir_desc.add_enum(enum_);
         let choice_def = ir::ChoiceDef::Enum(enum_name);
+        self.ir_desc.add_choice(ir::Choice::new(choice_name, doc, arguments, choice_def));
+    }
+
+    /// Defines an integer choice.
+    fn define_integer(&mut self, def: IntegerDef) {
+        let choice_name = RcStr::new(def.name);
+        let doc = def.doc.map(RcStr::new);
+        let mut var_map = VarMap::default();
+        let vars = def.variables.into_iter().map(|v| {
+            let name = v.name.clone();
+            (name, var_map.decl_argument(&self.ir_desc, v))
+        }).collect();
+        let arguments = ir::ChoiceArguments::new(vars, false, false);
+        let universe = type_check_code(def.code.into(), &var_map);
+        let choice_def = ir::ChoiceDef::Number { universe };
         self.ir_desc.add_choice(ir::Choice::new(choice_name, doc, arguments, choice_def));
     }
 
@@ -1209,22 +1189,6 @@ impl IntegerDef {
     }
 }
 
-impl From<Statement> for Result<IntegerDef, TypeError> {
-    fn from(stmt: Statement) -> Self {
-        match stmt {
-            Statement::IntegerDef { name, doc, variables, code } => {
-                let integer_def: IntegerDef = IntegerDef {
-                    name, doc, variables, code
-                };
-    
-                integer_def.get_variables()?;
-                Ok(integer_def)
-            },
-            _ => unreachable!(),
-        }
-    }
-}
-
 impl PartialEq for IntegerDef {
     fn eq(&self, rhs: &Self) -> bool {
         self.name == rhs.name
@@ -1341,6 +1305,7 @@ impl PartialEq for CounterDef {
 pub enum ChoiceDef {
     CounterDef(CounterDef),
     EnumDef(EnumDef),
+    IntegerDef(IntegerDef),
 }
 
 impl ChoiceDef {
@@ -1352,6 +1317,7 @@ impl ChoiceDef {
             ChoiceDef::EnumDef(enum_def) => {
                 &enum_def.name
             },
+            ChoiceDef::IntegerDef(def) => &def.name,
         }
     }
 }
@@ -1373,6 +1339,14 @@ impl From<Statement> for Result<ChoiceDef, TypeError> {
                 enum_def.check_symmetric()?;
                 enum_def.check_undefined_value()?;
                 Ok(ChoiceDef::EnumDef(enum_def))
+            },
+            Statement::IntegerDef { name, doc, variables, code } => {
+                let integer_def: IntegerDef = IntegerDef {
+                    name, doc, variables, code
+                };
+
+                integer_def.get_variables()?;
+                Ok(ChoiceDef::IntegerDef(integer_def))
             },
             _ => unreachable!(),
         }
@@ -1405,7 +1379,6 @@ impl Default for SetDef {
 }
 
 impl SetDef {
-
     /// A field from a set should be unique.
     pub fn check_field_name_redefinition(&self) -> Result<(), TypeError> {
         for (item, ..) in self.keys.iter() {
@@ -1469,7 +1442,6 @@ impl From<Statement> for Result<SetDef, TypeError> {
                 let set_def: SetDef = SetDef {
                     name, doc, arg, superset, disjoint, keys, quotient
                 };
-                
                 set_def.check_undefined_key()?;
                 set_def.check_undefined_superset_key()?;
                 set_def.check_field_name_redefinition()?;
