@@ -135,8 +135,9 @@ fn standard_loop<T: Printer>(printer: &T, out: &T::Out, fun: &Function, dim: &Di
 }
 
 fn unroll_loop(printer: &T, out: &T::Out, fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap)-> String {
-    let mut body = Vec::new();
+    //let mut body = Vec::new();
     let mut incr_levels = Vec::new();
+    let mut ind_var_vec = vec![];
     for level in dim.induction_levels() {
         let t = cpu_type(&level.t());
         let dim_id = level.increment.map(|(dim, _)| dim);
@@ -151,7 +152,7 @@ fn unroll_loop(printer: &T, out: &T::Out, fun: &Function, dim: &Dimension, cfgs:
             },
             _ => panic!(),
         };
-        body.push(format!("{} = {};", ind_var, base));
+        //body.push(format!("{} = {};", ind_var, base));
         if let Some((_, incr)) = level.increment {
             incr_levels.push((level, ind_var, t, incr, base));
         }
@@ -177,7 +178,6 @@ fn unroll_loop(printer: &T, out: &T::Out, fun: &Function, dim: &Dimension, cfgs:
 
 /// Prints an instruction.
 fn inst<T: Printer>(printer: T, inst: &Instruction, namer: &mut NameMap ) {
-    //let assignement = format!("{} =", namer.name_inst(inst).to_string());
     match *inst.operator() {
         op::BinOp(op, ref lhs, ref rhs, round) => {
             assert_eq!(round, op::Rounding::Nearest);
