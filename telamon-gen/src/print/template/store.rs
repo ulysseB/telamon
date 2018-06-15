@@ -34,7 +34,7 @@ impl DomainStore {
     pub fn alloc(&mut self, ir_instance: &ir::Function, new_objs: &ir::NewObjs) {
         {{#each partial_iterators~}}
             {{#>iter_new_objects this.[0]~}}
-                {{>alloc this.[1].choice arg_names=this.[1].arg_names}}
+                {{>alloc this.[1].choice arg_names=this.[1].arg_names universe=this.[1].universe}}
             {{/iter_new_objects~}}
         {{/each~}}
     }

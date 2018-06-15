@@ -268,8 +268,11 @@ impl<'a> Trigger<'a> {
         let conditions = trigger.conditions.iter()
             .map(|c| filter::condition(c, ctx)).collect();
         let code = ast::code(&trigger.code, ctx);
-        let vars = foralls.map(|v| (v, ctx.var_def(v).1)).collect();
-        let partial_iterators = PartialIterator::generate(vars, false, ir_desc, ctx);
+        let vars = foralls.map(|v| (v, ctx.var_def(v).1)).collect_vec();
+        let partial_iters = PartialIterator::generate(&vars, false, ir_desc, ctx);
+        let partial_iterators = partial_iters.into_iter().map(|(iter, ctx)| {
+            (iter, vars.iter().map(|&(v, _)| ctx.var_name(v)).collect())
+        }).collect();
         Trigger { id, loop_nest, partial_iterators, arguments, inputs, conditions, code }
     }
 }

@@ -17,12 +17,14 @@ pub fn partial_iterators<'a>(choices: &'a [ChoiceAst<'a>], ir_desc: &'a ir::IrDe
         let choice = ir_desc.get_choice(choice_ast.name());
         let ref ctx = ast::Context::new(ir_desc, choice, &[], &[]);
         let args = choice.arguments().sets().enumerate()
-            .map(|(i, set)| (ir::Variable::Arg(i), set)).collect();
+            .map(|(i, set)| (ir::Variable::Arg(i), set)).collect_vec();
         let is_symmetric = choice.arguments().is_symmetric();
-        PartialIterator::generate(args, is_symmetric, ir_desc, ctx).into_iter()
-            .map(move |(iter, arg_names)| {
-                (iter, NewChoice { choice: choice_ast, arg_names })
-            })
+        let iters = PartialIterator::generate(&args, is_symmetric, ir_desc, ctx);
+        iters.into_iter().map(move |(iter, ctx)| {
+            let arg_names = args.iter().map(|&(v, _)| ctx.var_name(v)).collect();
+            let universe = ctx.choice.choice_def().universe().map(|u| ast::code(u, &ctx));
+            (iter, NewChoice { choice: choice_ast, arg_names, universe })
+        })
     }).collect()
 }
 
@@ -31,6 +33,7 @@ pub fn partial_iterators<'a>(choices: &'a [ChoiceAst<'a>], ir_desc: &'a ir::IrDe
 pub struct NewChoice<'a> {
     pub arg_names: Vec<Variable<'a>>,
     pub choice: &'a ChoiceAst<'a>,
+    pub universe: Option<String>,
 }
 
 /// Returns the partitial iterators for increment on existing counters.
@@ -126,9 +129,9 @@ pub struct PartialIterator<'a> {
 impl<'a> PartialIterator<'a> {
     /// Generates the list of sets of new objects and sets of objects to iterate on to
     /// visit all the new combinations of elements in the given combination of sets.
-    pub fn generate(args: Vec<(ir::Variable, &'a ir::Set)>, is_symmetric: bool,
+    pub fn generate(args: &[(ir::Variable, &'a ir::Set)], is_symmetric: bool,
                     ir_desc: &'a ir::IrDesc, ctx: &ast::Context<'a>)
-        -> Vec<(Self, Vec<Variable<'a>>)>
+        -> Vec<(Self, ast::Context<'a>)>
     {
         let mut output = Vec::new();
         for (pos, &(var, set)) in args.iter().enumerate() {
@@ -139,18 +142,19 @@ impl<'a> PartialIterator<'a> {
                 loop_args.retain(|&v| v != set_arg);
                 ctx.mut_var_name(set_arg, Variable::with_name("obj_var"));
             }
-            let ctx = &ctx;
-            let arg_conflicts = set.def().arg().into_iter().flat_map(move |arg| {
-                PartialIterator::new_objs_conflicts(ir_desc, set)
-                    .flat_map(move |c| c.generate_ast(arg, ctx))
-            }).collect();
-            let arg_names = args.iter().map(|&(v, _)| ctx.var_name(v)).collect();
+            let arg_conflicts = {
+                let ctx = &ctx;
+                set.def().arg().into_iter().flat_map(move |arg| {
+                    PartialIterator::new_objs_conflicts(ir_desc, set)
+                        .flat_map(move |c| c.generate_ast(arg, ctx))
+                }).collect()
+            };
             let mut conflicts = Self::new_objs_conflicts(ir_desc, set)
                 .chain(Self::current_new_obj_conflicts(set)).collect();
-            let loop_nest = LoopNest::new(loop_args, ctx, &mut conflicts, false);
+            let loop_nest = LoopNest::new(loop_args, &ctx, &mut conflicts, false);
             let set_ast = ast::SetDef::new(set.def());
             let iter = PartialIterator { set: set_ast, loop_nest, arg_conflicts };
-            output.push((iter, arg_names));
+            output.push((iter, ctx));
             if is_symmetric { break }
         }
         output

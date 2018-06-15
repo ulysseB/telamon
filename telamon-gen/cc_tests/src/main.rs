@@ -1090,5 +1090,9 @@ mod integer_set {
     generated_file!(integer_set);
 
     const INT0_DOMAIN: [u16; 4] = [2, 4, 5, 7];
+
+    fn int1_domain<'a>(_: &ir::Function, arg: &'a ir::set0::Obj) -> &'a [u16] {
+        unimplemented!() // FIXME
+    }
     // FIXME: write tests
 }

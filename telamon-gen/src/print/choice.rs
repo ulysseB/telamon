@@ -35,6 +35,8 @@ pub struct Ast<'a> {
     filters: Vec<filter::Filter<'a>>,
     /// Compute Counter function AST.
     compute_counter: Option<ComputeCounter<'a>>,
+    /// Limits the values the domain can take.
+    universe: Option<String>,
 }
 
 impl<'a> Ast<'a> {
@@ -54,17 +56,18 @@ impl<'a> Ast<'a> {
         let ref ctx = ast::Context::new(ir_desc, choice, &[], &[]);
         let arguments = choice.arguments().iter()
             .map(|(n, s)| (n as &str, ast::Set::new(s, ctx))).collect();
+        let universe = choice.choice_def().universe().map(|u| ast::code(u, ctx));
         Ast {
             name: choice.name(),
             doc: choice.doc(),
             value_type: choice.value_type().to_string(),
             full_value_type: choice.value_type().full_type().to_string(),
-            choice_def: ChoiceDef::new(choice.choice_def(), ctx),
+            choice_def: ChoiceDef::new(choice.choice_def()),
             restrict_counter: RestrictCounter::new(choice, ir_desc),
             iteration_space: self::iteration_space(ctx),
             compute_counter: ComputeCounter::new(choice, ir_desc),
             arguments, trigger_calls, is_symmetric, is_antisymmetric,
-            on_change, filter_actions, filters,
+            on_change, filter_actions, filters, universe,
         }
     }
 
@@ -85,17 +88,14 @@ fn iteration_space<'a>(ctx: &ast::Context<'a>) -> ast::LoopNest<'a> {
 }
 
 #[derive(Serialize)]
-enum ChoiceDef { Enum, Counter { kind: ir::CounterKind }, Integer { universe: String } }
+enum ChoiceDef { Enum, Counter { kind: ir::CounterKind }, Integer }
 
 impl ChoiceDef {
-    fn new(def: &ir::ChoiceDef, ctx: &ast::Context) -> Self {
+    fn new(def: &ir::ChoiceDef) -> Self {
         match *def {
             ir::ChoiceDef::Enum(..) => ChoiceDef::Enum,
             ir::ChoiceDef::Counter { kind, .. } => ChoiceDef::Counter { kind },
-            ir::ChoiceDef::Number { ref universe } => {
-                let universe = ast::code(universe, ctx);
-                ChoiceDef::Integer { universe }
-            },
+            ir::ChoiceDef::Number { .. } => ChoiceDef::Integer,
         }
     }
 }
