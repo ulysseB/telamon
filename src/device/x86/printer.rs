@@ -126,7 +126,6 @@ fn enable_threads(fun: &Function, threads: &[bool], namer: &mut NameMap) -> Stri
         if is_active { continue; }
         let new_guard = namer.gen_name(ir::Type::I(1));
         let index = namer.name_index(dim.id());
-        //unwrap!(writeln!(ops, "  setp.eq.s32 {}, {}, 0;", new_guard, index));
         unwrap!(writeln!(ops, "   {} = ({} == 0);", new_guard, index));
         if let Some(ref guard) = guard {
             unwrap!(writeln!(ops, "   {} = {} && {};", guard, guard, new_guard));
