@@ -233,14 +233,6 @@ impl ChoiceDef {
             ChoiceDef::Number { .. } => true,
         }
     }
-
-    /// Returns the universe in which the domain take value, if not the whole domain.
-    pub fn universe(&self) -> Option<&ir::Code> {
-        match self {
-            ChoiceDef::Number { universe, .. } => Some(universe),
-            _ => None,
-        }
-    }
 }
 
 /// The value of the increments of a counter.

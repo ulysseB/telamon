@@ -12,9 +12,9 @@ pub struct Ast<'a> {
     /// The arguments for wich the choice is instantiated.
     arguments: Vec<(&'a str, ast::Set<'a>)>,
     /// The type of the values the choice can take.
-    value_type: String,
+    value_type: ast::ValueType,
     /// The type of the full value corresponding to 'value_type'
-    full_value_type: String,
+    full_value_type: ast::ValueType,
     /// The definition of the choice.
     choice_def: ChoiceDef,
     /// Indicates if hte choice is symmetric.
@@ -35,8 +35,6 @@ pub struct Ast<'a> {
     filters: Vec<filter::Filter<'a>>,
     /// Compute Counter function AST.
     compute_counter: Option<ComputeCounter<'a>>,
-    /// Limits the values the domain can take.
-    universe: Option<String>,
 }
 
 impl<'a> Ast<'a> {
@@ -56,18 +54,17 @@ impl<'a> Ast<'a> {
         let ref ctx = ast::Context::new(ir_desc, choice, &[], &[]);
         let arguments = choice.arguments().iter()
             .map(|(n, s)| (n as &str, ast::Set::new(s, ctx))).collect();
-        let universe = choice.choice_def().universe().map(|u| ast::code(u, ctx));
         Ast {
             name: choice.name(),
             doc: choice.doc(),
-            value_type: choice.value_type().to_string(),
-            full_value_type: choice.value_type().full_type().to_string(),
+            value_type: ast::ValueType::new(choice.value_type(), ctx),
+            full_value_type: ast::ValueType::new(choice.value_type().full_type(), ctx),
             choice_def: ChoiceDef::new(choice.choice_def()),
             restrict_counter: RestrictCounter::new(choice, ir_desc),
             iteration_space: self::iteration_space(ctx),
             compute_counter: ComputeCounter::new(choice, ir_desc),
             arguments, trigger_calls, is_symmetric, is_antisymmetric,
-            on_change, filter_actions, filters, universe,
+            on_change, filter_actions, filters
         }
     }
 
@@ -205,7 +202,7 @@ enum ChoiceAction<'a> {
     Filter {
         choice: &'a str,
         filter_call: FilterCall<'a>,
-        choice_full_type: ir::ValueType,
+        choice_full_type: ast::ValueType,
         arguments: Vec<(ast::Variable<'a>, ast::Set<'a>)>,
     },
     IncrCounter {
@@ -250,9 +247,10 @@ impl<'a> ChoiceAction<'a> {
                 let choice = ctx.ir_desc.get_choice(&choice_instance.choice);
                 let filter_call = FilterCall::new(filter, set, conflicts, forall_offset, ctx);
                 let arguments = ast::vars_with_sets(choice, &choice_instance.vars, ctx);
+                let full_type = choice.value_type().full_type();
                 ChoiceAction::Filter {
                     choice: choice.name(),
-                    choice_full_type: choice.value_type().full_type(),
+                    choice_full_type: ast::ValueType::new(full_type, ctx),
                     filter_call, arguments,
                 }
             },
@@ -379,7 +377,7 @@ struct RestrictCounter<'a> {
     amount: CounterValue<'a>,
     incr: ast::ChoiceInstance<'a>,
     incr_iter: ast::LoopNest<'a>,
-    incr_type: ir::ValueType,
+    incr_type: ast::ValueType,
     incr_condition: String,
     is_half: bool,
     op: String,
@@ -401,7 +399,7 @@ impl<'a> RestrictCounter<'a> {
             Some(RestrictCounter {
                 amount: CounterValue::new(value, &ctx),
                 incr, incr_iter,
-                incr_type: incr_condition.t(),
+                incr_type: ast::ValueType::new(incr_condition.t(), &ctx),
                 incr_condition: value_set::print(&incr_condition, &ctx),
                 is_half: visibility == ir::CounterVisibility::NoMax,
                 op: kind.to_string(),

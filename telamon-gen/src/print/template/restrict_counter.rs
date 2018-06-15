@@ -7,7 +7,7 @@ let incr_amount = {{>counter_value amount use_old=false}};
 if incr_status.is_maybe() {
     debug!("restrict incr {{incr.name}}{:?} to {:?} with amount={:?}",
            ({{>choice.arg_ids incr}}), new_values, incr_amount);
-    let mut val = {{incr_type}}::ALL;
+    let mut val = {{>value_type.full_domain incr_type}};
     if current.min {{op}} incr_amount.min > new_values.max {
         val.restrict(!({{incr_condition}}));
     }

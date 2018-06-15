@@ -19,4 +19,4 @@ let ({{>lhs}}, {{>rhs}}) = if {{#if arg_names~}}
 };
 {{/if~}}
 Arc::make_mut(&mut self.{{name}}).insert(({{~>choice.arg_ids}}),
-                                         {{~value_type}}::all({{universe}}));
+                                          {{~>value_type.full_domain value_type}});

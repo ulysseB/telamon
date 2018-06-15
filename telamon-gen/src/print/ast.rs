@@ -269,20 +269,30 @@ impl<'a> Display for Variable<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result { self.name().fmt(f) }
 }
 
-impl Display for ir::ValueType {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match *self {
-            ir::ValueType::Enum(ref name) => name,
-            ir::ValueType::Range => "Range",
-            ir::ValueType::HalfRange => "HalfRange",
-            ir::ValueType::NumericSet(..) => "NumericSet",
-        }.fmt(f)
+/// The type of a value.
+#[derive(Serialize)]
+pub enum ValueType { Enum(RcStr), Range, HalfRange, NumericSet(String) }
+
+impl ValueType {
+    pub fn new(t: ir::ValueType, ctx: &Context) -> Self {
+        match t {
+            ir::ValueType::Enum(name) => ValueType::Enum(name.clone()),
+            ir::ValueType::Range => ValueType::Range,
+            ir::ValueType::HalfRange => ValueType::HalfRange,
+            ir::ValueType::NumericSet(univers) =>
+                ValueType::NumericSet(code(&univers, ctx)),
+        }
     }
 }
 
-impl<'a> Serialize for ir::ValueType {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_str(&self.to_string())
+impl Display for ValueType {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match *self {
+            ValueType::Enum(ref name) => name,
+            ValueType::Range => "Range",
+            ValueType::HalfRange => "HalfRange",
+            ValueType::NumericSet(..) => "NumericSet",
+        }.fmt(f)
     }
 }
 

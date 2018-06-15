@@ -8,7 +8,7 @@ impl {type_name} {{
     pub const ALL: {type_name} = {type_name} {{ bits: {all_bits} }};
 
     /// Returns the empty domain.
-    pub fn failed() -> Self {{ {type_name} {{ bits: 0 }} }}
+    pub const FAILED: {type_name} = {type_name} {{ bits: 0 }};
 
     /// Returns the full domain.
     pub fn all() -> Self {{ Self::ALL }}

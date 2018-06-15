@@ -6,7 +6,7 @@
 #[derive(Clone, Debug, Default)]
 pub struct DomainStore {
     {{#each choices}}
-        {{name}}: Arc<HashMap<{{>choice_ids this}}, {{value_type}}>>,
+        {{name}}: Arc<HashMap<{{>choice_ids this}}, {{>value_type.name value_type}}>>,
     {{/each}}
 }
 
@@ -34,7 +34,7 @@ impl DomainStore {
     pub fn alloc(&mut self, ir_instance: &ir::Function, new_objs: &ir::NewObjs) {
         {{#each partial_iterators~}}
             {{#>iter_new_objects this.[0]~}}
-                {{>alloc this.[1].choice arg_names=this.[1].arg_names universe=this.[1].universe}}
+                {{>alloc this.[1].choice arg_names=this.[1].arg_names value_type=this.[1].value_type}}
             {{/iter_new_objects~}}
         {{/each~}}
     }
@@ -46,7 +46,8 @@ impl DomainStore {
 #[derive(Default)]
 pub struct DomainDiff {
     {{#each choices}}
-        pub {{name}}: HashMap<{{>choice_ids this}}, ({{value_type}}, {{value_type}})>,
+        pub {{name}}: HashMap<{{>choice_ids this}},
+            ({{>value_type.name value_type}}, {{>value_type.name value_type}})>,
     {{/each}}
 }
 
@@ -63,7 +64,8 @@ impl DomainDiff {
     {{#each choices}}
         /// Removes all the modifications of '{name}' and returns them.
         pub fn pop_{{name}}_diff(&mut self)
-            -> Option<(({{>choice_ids}}), {{value_type}}, {{value_type}})> {
+            -> Option<(({{>choice_ids}}),
+                       {{~>value_type.name value_type}}, {{>value_type.name value_type}})> {
             self.{{name}}.keys().cloned().next().map(|k| {
                 let (old, new) = unwrap!(self.{{name}}.remove(&k));
                 (k, old, new)
