@@ -59,7 +59,7 @@ impl<'a> Ast<'a> {
             doc: choice.doc(),
             value_type: choice.value_type().to_string(),
             full_value_type: choice.value_type().full_type().to_string(),
-            choice_def: ChoiceDef::new(choice.choice_def()),
+            choice_def: ChoiceDef::new(choice.choice_def(), ctx),
             restrict_counter: RestrictCounter::new(choice, ir_desc),
             iteration_space: self::iteration_space(ctx),
             compute_counter: ComputeCounter::new(choice, ir_desc),
@@ -85,14 +85,17 @@ fn iteration_space<'a>(ctx: &ast::Context<'a>) -> ast::LoopNest<'a> {
 }
 
 #[derive(Serialize)]
-enum ChoiceDef { Enum, Counter { kind: ir::CounterKind } }
+enum ChoiceDef { Enum, Counter { kind: ir::CounterKind }, Integer { universe: String } }
 
 impl ChoiceDef {
-    fn new(def: &ir::ChoiceDef) -> Self {
+    fn new(def: &ir::ChoiceDef, ctx: &ast::Context) -> Self {
         match *def {
             ir::ChoiceDef::Enum(..) => ChoiceDef::Enum,
             ir::ChoiceDef::Counter { kind, .. } => ChoiceDef::Counter { kind },
-            ir::ChoiceDef::Number { .. } => unimplemented!() // FIXME
+            ir::ChoiceDef::Number { ref universe } => {
+                let universe = ast::code(universe, ctx);
+                ChoiceDef::Integer { universe }
+            },
         }
     }
 }

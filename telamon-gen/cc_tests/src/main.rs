@@ -1084,3 +1084,11 @@ mod quotient_set {
         assert_eq!(store.get_active_dim(inst1, dim1), Bool::TRUE);
     }
 }
+
+mod integer_set {
+    define_ir! { struct set0; }
+    generated_file!(integer_set);
+
+    const INT0_DOMAIN: [u16; 4] = [2, 4, 5, 7];
+    // FIXME: write tests
+}

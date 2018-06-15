@@ -47,7 +47,7 @@ statement: Spanned<ast::Statement> = {
         }
     },
     <doc: doc?> <beg: @L> define integer <name: choice_ident> "("
-                <vars: choice_vars> ")" in_ <universe: code> end
+                <vars: choice_vars> ")" ":" <universe: code> end
                 <end: @R> => {
         Spanned {
             beg: beg, end: end,

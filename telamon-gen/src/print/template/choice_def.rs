@@ -15,7 +15,7 @@ pub mod {{name}} {
     #[allow(unused_variables, unused_mut, unused_parens)]
     pub fn filter({{>choice.arg_defs}}ir_instance: &ir::Function,
                   store: &DomainStore) -> {{full_value_type}} {
-        let mut values = {{full_value_type}}::ALL;
+        let mut values = {{full_value_type}}::all({{choice_def.Integer.universe}});
         {{#each filter_actions}}{{>filter_action}}{{/each}}
         values
     }

@@ -18,4 +18,6 @@ let ({{>lhs}}, {{>rhs}}) = if {{#if arg_names~}}
     ({{>rhs}}, {{>lhs}})
 };
 {{/if~}}
-Arc::make_mut(&mut self.{{name}}).insert(({{>choice.arg_ids}}),{{~value_type}}::ALL);
+Arc::make_mut(&mut self.{{name}}).insert((
+        {{~>choice.arg_ids}}),
+        {{~value_type}}::all({{choice_def.Integer.universe}}));

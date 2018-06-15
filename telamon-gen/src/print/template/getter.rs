@@ -5,10 +5,11 @@
 {{~#*inline "args"}}({{#each arguments}}{{this.[0]}},{{/each}}){{/inline~}}
 
 {{~#*inline "restrict_op"~}}
-    {{~#ifeq choice_def "Enum"}}restrict{{/ifeq~}}
     {{~#with choice_def.Counter~}}
         {{~#ifeq kind "Add"}}apply_diff_add{{/ifeq~}}
         {{~#ifeq kind "Mul"}}apply_diff_mul{{/ifeq~}}
+    {{~else~}}
+        restrict
     {{~/with~}}
 {{~/inline}}
 
