@@ -9,4 +9,6 @@ end
 
 define integer int0(): "&::integer_set::INT0_DOMAIN" end
 
+define integer int1($arg in Set0): "&::integer_set::int1_domain($fun, $arg)" end
+
 // FIXME: constraints, both ways, with integers and sets.
