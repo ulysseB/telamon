@@ -1,0 +1,12 @@
+set Set0:
+  item_type = "ir::set0::Obj"
+  id_type = "ir::set0::Id"
+  item_getter = "ir::set0::get($fun, $id)"
+  id_getter = "ir::set0::Obj::id($item)"
+  iterator = "ir::set0::iter($fun)"
+  new_objs = "$objs.set0"
+end
+
+define integer int0(): "&::integer_set::INT0_DOMAIN" end
+
+// FIXME: constraints, both ways, with integers and sets.

@@ -33,7 +33,6 @@ fn invalid_token() {
 #[test]
 fn integer_token() {
     assert!(parser::parse_ast(Lexer::from(
-        b"define integer mychoice($myarg in MySet) in \"mycode\"
-          end".to_vec())).is_ok()
+        b"define integer mychoice($myarg in MySet): \"mycode\" end".to_vec())).is_ok()
     );
 }
