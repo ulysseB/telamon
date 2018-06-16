@@ -95,6 +95,10 @@ mod single_enum {
 
         assert!(all0.neq(NumericSet::all(&[5, 7])));
         assert!(!all0.neq(NumericSet::all(&[4, 7])));
+
+        // Test constructors.
+        assert_eq!(NumericSet::new_lt(&[2, 4, 6], 5), NumericSet::all(&[2, 4]));
+        assert_eq!(NumericSet::new_gt(&[2, 4, 6], 3), NumericSet::all(&[4, 6]));
     }
 }
 
