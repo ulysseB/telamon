@@ -536,9 +536,8 @@ impl NumDomain for NumericSet {
 
     fn new_gt<D: NumDomain>(universe: &[u16], min: D) -> Self {
         let mut values = [0; NumericSet::MAX_LEN];
-        let min_eq = std::cmp::min(std::u16::MAX as u32, min.min()) as u16;
-        let min = min_eq.saturating_add(1);
-        let start = universe.binary_search(&min).unwrap_or_else(|x| x);
+        let min = std::cmp::min(std::u16::MAX as u32, min.min()) as u16;
+        let start = universe.binary_search(&min).map(|x| x+1).unwrap_or_else(|x| x);
         let len = universe.len() - start;
         for i in 0..len { values[i] = universe[start+i]; }
         NumericSet { values, len }
@@ -546,8 +545,7 @@ impl NumDomain for NumericSet {
 
     fn new_lt<D: NumDomain>(universe: &[u16], max: D) -> Self {
         let mut values = [0; NumericSet::MAX_LEN];
-        let max_eq = std::cmp::min(std::u16::MAX as u32, max.max()) as u16;
-        let max = max_eq.saturating_sub(1);
+        let max = std::cmp::min(std::u16::MAX as u32, max.max()) as u16;
         let len = universe.binary_search(&max).unwrap_or_else(|x| x);
         for i in 0..len { values[i] = universe[i]; }
         NumericSet { values, len }
@@ -565,7 +563,7 @@ impl NumDomain for NumericSet {
     fn new_leq<D: NumDomain>(universe: &[u16], max: D) -> Self {
         let mut values = [0; NumericSet::MAX_LEN];
         let max = std::cmp::min(std::u16::MAX as u32, max.max()) as u16;
-        let len = universe.binary_search(&max).unwrap_or_else(|x| x);
+        let len = universe.binary_search(&max).map(|x| x+1).unwrap_or_else(|x| x);
         for i in 0..len { values[i] = universe[i]; }
         NumericSet { values, len }
     }
