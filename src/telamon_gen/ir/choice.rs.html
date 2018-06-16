@@ -519,6 +519,28 @@
 <span id="462">462</span>
 <span id="463">463</span>
 <span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Describe decisions that must be specified.</span>
 <span class="kw">use</span> <span class="ident">itertools</span>::{<span class="ident">Either</span>, <span class="ident">Itertools</span>};
@@ -558,7 +580,7 @@
             <span class="ident">on_change</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
             <span class="ident">filter_actions</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
             <span class="ident">filters</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
-            <span class="ident">no_propagate_values</span>: <span class="ident">ir</span>::<span class="ident">ValueSet</span>::<span class="ident">empty</span>(<span class="ident">value_type</span>),
+            <span class="ident">no_propagate_values</span>: <span class="ident">ir</span>::<span class="ident">ValueSet</span>::<span class="ident">empty</span>(<span class="kw-2">&amp;</span><span class="ident">value_type</span>),
         }
     }
 
@@ -706,6 +728,8 @@
         <span class="ident">visibility</span>: <span class="ident">CounterVisibility</span>,
         <span class="ident">base</span>: <span class="ident">ir</span>::<span class="ident">Code</span>,
     },
+    <span class="doccomment">/// The `Choice` can take a small set of dynamically defined numeric values.</span>
+    <span class="ident">Number</span> { <span class="ident">universe</span>: <span class="ident">ir</span>::<span class="ident">Code</span> },
 }
 
 <span class="doccomment">/// Indicates how a counter exposes how its maximum value. The variants are ordered by</span>
@@ -729,6 +753,8 @@
             <span class="ident">ChoiceDef</span>::<span class="ident">Counter</span> { <span class="ident">visibility</span>: <span class="ident">CounterVisibility</span>::<span class="ident">NoMax</span>, .. } <span class="op">=&gt;</span>
                 <span class="ident">ValueType</span>::<span class="ident">HalfRange</span>,
             <span class="ident">ChoiceDef</span>::<span class="ident">Counter</span> { .. } <span class="op">=&gt;</span> <span class="ident">ValueType</span>::<span class="ident">Range</span>,
+            <span class="ident">ChoiceDef</span>::<span class="ident">Number</span> { <span class="kw-2">ref</span> <span class="ident">universe</span>, .. } <span class="op">=&gt;</span>
+                <span class="ident">ValueType</span>::<span class="ident">NumericSet</span>(<span class="ident">universe</span>.<span class="ident">clone</span>()),
         }
     }
 
@@ -748,6 +774,7 @@
             <span class="ident">ChoiceDef</span>::<span class="ident">Enum</span>(..) <span class="op">=&gt;</span> <span class="ident">op</span> <span class="op">==</span> <span class="ident">ir</span>::<span class="ident">CmpOp</span>::<span class="ident">Eq</span> <span class="op">||</span> <span class="ident">op</span> <span class="op">==</span> <span class="ident">ir</span>::<span class="ident">CmpOp</span>::<span class="ident">Neq</span>,
             <span class="ident">ChoiceDef</span>::<span class="ident">Counter</span> { <span class="ident">visibility</span>: <span class="ident">CounterVisibility</span>::<span class="ident">Full</span>, .. } <span class="op">=&gt;</span> <span class="bool-val">true</span>,
             <span class="ident">ChoiceDef</span>::<span class="ident">Counter</span> { .. } <span class="op">=&gt;</span> <span class="ident">op</span> <span class="op">==</span> <span class="ident">ir</span>::<span class="ident">CmpOp</span>::<span class="ident">Lt</span> <span class="op">||</span> <span class="ident">op</span> <span class="op">==</span> <span class="ident">ir</span>::<span class="ident">CmpOp</span>::<span class="ident">Leq</span>,
+            <span class="ident">ChoiceDef</span>::<span class="ident">Number</span> { .. } <span class="op">=&gt;</span> <span class="bool-val">true</span>,
         }
     }
 }
@@ -766,14 +793,30 @@
     }
 }
 
-<span class="doccomment">/// Specifies the type of the values a choice can take.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ValueType</span> { <span class="ident">Enum</span>(<span class="ident">RcStr</span>), <span class="ident">Range</span>, <span class="ident">HalfRange</span> }
-
 <span class="kw">impl</span> <span class="ident">ValueType</span> {
     <span class="doccomment">/// Returns the full type, instead of a the trimmed one.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">full_type</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">if</span> <span class="self">self</span> <span class="op">==</span> <span class="ident">ValueType</span>::<span class="ident">HalfRange</span> { <span class="ident">ValueType</span>::<span class="ident">Range</span> } <span class="kw">else</span> { <span class="self">self</span> }
+    }
+
+    <span class="doccomment">/// Returns the enum name, if applicable.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_enum</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">RcStr</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">ValueType</span>::<span class="ident">Enum</span>(<span class="kw-2">ref</span> <span class="ident">name</span>) <span class="op">=</span> <span class="kw-2">*</span><span class="self">self</span> { <span class="prelude-val">Some</span>(<span class="ident">name</span>) } <span class="kw">else</span> { <span class="prelude-val">None</span> }
+    }
+}
+
+<span class="doccomment">/// Specifies the type of the values a choice can take.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ValueType</span> { <span class="ident">Enum</span>(<span class="ident">RcStr</span>), <span class="ident">Range</span>, <span class="ident">HalfRange</span>, <span class="ident">NumericSet</span>(<span class="ident">ir</span>::<span class="ident">Code</span>) }
+
+<span class="kw">impl</span> <span class="ident">Adaptable</span> <span class="kw">for</span> <span class="ident">ValueType</span> {
+    <span class="kw">fn</span> <span class="ident">adapt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">adaptator</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Adaptator</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
+            <span class="kw-2">ref</span> <span class="ident">t</span> @ <span class="ident">ValueType</span>::<span class="ident">Enum</span>(..) <span class="op">|</span>
+            <span class="kw-2">ref</span> <span class="ident">t</span> @ <span class="ident">ValueType</span>::<span class="ident">Range</span> <span class="op">|</span>
+            <span class="kw-2">ref</span> <span class="ident">t</span> @ <span class="ident">ValueType</span>::<span class="ident">HalfRange</span> <span class="op">=&gt;</span> <span class="ident">t</span>.<span class="ident">clone</span>(),
+            <span class="ident">ValueType</span>::<span class="ident">NumericSet</span>(<span class="kw-2">ref</span> <span class="ident">uni</span>) <span class="op">=&gt;</span> <span class="ident">ValueType</span>::<span class="ident">NumericSet</span>(<span class="ident">uni</span>.<span class="ident">adapt</span>(<span class="ident">adaptator</span>)),
+        }
     }
 }
 
@@ -922,7 +965,6 @@
                 <span class="ident">to_half</span>
             },
             <span class="ident">Trigger</span> { <span class="ident">id</span>, <span class="kw-2">ref</span> <span class="ident">condition</span>, <span class="kw-2">ref</span> <span class="ident">code</span>, <span class="ident">inverse_self_cond</span> } <span class="op">=&gt;</span> <span class="ident">Trigger</span> {
-                <span class="comment">// FIXME: must inverse self condition</span>
                 <span class="ident">condition</span>: <span class="ident">condition</span>.<span class="ident">adapt</span>(<span class="ident">adaptator</span>),
                 <span class="ident">code</span>: <span class="ident">code</span>.<span class="ident">adapt</span>(<span class="ident">adaptator</span>),
                 <span class="ident">id</span>, <span class="ident">inverse_self_cond</span>,
@@ -942,7 +984,8 @@
 <span class="kw">impl</span> <span class="ident">ChoiceCondition</span> {
     <span class="doccomment">/// Adapt the list of conditions to be from the point of view of the given choice.</span>
    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ir_desc</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">IrDesc</span>,
-              <span class="kw-2">mut</span> <span class="ident">inputs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">ChoiceInstance</span><span class="op">&gt;</span>, <span class="ident">self_id</span>: <span class="ident">usize</span>,
+              <span class="kw-2">mut</span> <span class="ident">inputs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">ChoiceInstance</span><span class="op">&gt;</span>,
+              <span class="ident">self_id</span>: <span class="ident">usize</span>,
               <span class="ident">conditions</span>: <span class="kw-2">&amp;</span>[<span class="ident">ir</span>::<span class="ident">Condition</span>],
               <span class="ident">env</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Variable</span>, <span class="ident">ir</span>::<span class="ident">Set</span><span class="op">&gt;</span>)
         <span class="op">-&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Set</span><span class="op">&gt;</span>, <span class="ident">ir</span>::<span class="ident">SetConstraints</span>, <span class="self">Self</span>, <span class="ident">ir</span>::<span class="ident">Adaptator</span>)
@@ -955,9 +998,10 @@
         <span class="kw">let</span> <span class="ident">inputs</span> <span class="op">=</span> <span class="ident">inputs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">i</span>.<span class="ident">adapt</span>(<span class="kw-2">&amp;</span><span class="ident">adaptator</span>)).<span class="ident">collect</span>();
         <span class="comment">// Extract the constraints on the considered input.</span>
         <span class="kw">let</span> <span class="ident">choice</span> <span class="op">=</span> <span class="ident">ir_desc</span>.<span class="ident">get_choice</span>(<span class="kw-2">&amp;</span><span class="ident">choice</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">self_condition</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">ValueSet</span>::<span class="ident">empty</span>(<span class="ident">choice</span>.<span class="ident">value_type</span>());
+        <span class="kw">let</span> <span class="ident">value_type</span> <span class="op">=</span> <span class="ident">choice</span>.<span class="ident">value_type</span>().<span class="ident">adapt</span>(<span class="kw-2">&amp;</span><span class="ident">adaptator</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">self_condition</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">ValueSet</span>::<span class="ident">empty</span>(<span class="kw-2">&amp;</span><span class="ident">value_type</span>);
         <span class="kw">let</span> <span class="ident">others_conditions</span> <span class="op">=</span> <span class="ident">conditions</span>.<span class="ident">iter</span>().<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">condition</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">alternatives</span> <span class="op">=</span> <span class="ident">condition</span>.<span class="ident">alternatives_of</span>(<span class="ident">self_id</span>, <span class="ident">choice</span>, <span class="ident">ir_desc</span>);
+            <span class="kw">let</span> <span class="ident">alternatives</span> <span class="op">=</span> <span class="ident">condition</span>.<span class="ident">alternatives_of</span>(<span class="ident">self_id</span>, <span class="kw-2">&amp;</span><span class="ident">value_type</span>, <span class="ident">ir_desc</span>);
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">alternatives</span>) <span class="op">=</span> <span class="ident">alternatives</span> {
                 <span class="ident">self_condition</span>.<span class="ident">extend</span>(<span class="ident">alternatives</span>.<span class="ident">adapt</span>(<span class="kw-2">&amp;</span><span class="ident">adaptator</span>));
                 <span class="prelude-val">None</span>

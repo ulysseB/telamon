@@ -1108,6 +1108,80 @@
 <span id="1051">1051</span>
 <span id="1052">1052</span>
 <span id="1053">1053</span>
+<span id="1054">1054</span>
+<span id="1055">1055</span>
+<span id="1056">1056</span>
+<span id="1057">1057</span>
+<span id="1058">1058</span>
+<span id="1059">1059</span>
+<span id="1060">1060</span>
+<span id="1061">1061</span>
+<span id="1062">1062</span>
+<span id="1063">1063</span>
+<span id="1064">1064</span>
+<span id="1065">1065</span>
+<span id="1066">1066</span>
+<span id="1067">1067</span>
+<span id="1068">1068</span>
+<span id="1069">1069</span>
+<span id="1070">1070</span>
+<span id="1071">1071</span>
+<span id="1072">1072</span>
+<span id="1073">1073</span>
+<span id="1074">1074</span>
+<span id="1075">1075</span>
+<span id="1076">1076</span>
+<span id="1077">1077</span>
+<span id="1078">1078</span>
+<span id="1079">1079</span>
+<span id="1080">1080</span>
+<span id="1081">1081</span>
+<span id="1082">1082</span>
+<span id="1083">1083</span>
+<span id="1084">1084</span>
+<span id="1085">1085</span>
+<span id="1086">1086</span>
+<span id="1087">1087</span>
+<span id="1088">1088</span>
+<span id="1089">1089</span>
+<span id="1090">1090</span>
+<span id="1091">1091</span>
+<span id="1092">1092</span>
+<span id="1093">1093</span>
+<span id="1094">1094</span>
+<span id="1095">1095</span>
+<span id="1096">1096</span>
+<span id="1097">1097</span>
+<span id="1098">1098</span>
+<span id="1099">1099</span>
+<span id="1100">1100</span>
+<span id="1101">1101</span>
+<span id="1102">1102</span>
+<span id="1103">1103</span>
+<span id="1104">1104</span>
+<span id="1105">1105</span>
+<span id="1106">1106</span>
+<span id="1107">1107</span>
+<span id="1108">1108</span>
+<span id="1109">1109</span>
+<span id="1110">1110</span>
+<span id="1111">1111</span>
+<span id="1112">1112</span>
+<span id="1113">1113</span>
+<span id="1114">1114</span>
+<span id="1115">1115</span>
+<span id="1116">1116</span>
+<span id="1117">1117</span>
+<span id="1118">1118</span>
+<span id="1119">1119</span>
+<span id="1120">1120</span>
+<span id="1121">1121</span>
+<span id="1122">1122</span>
+<span id="1123">1123</span>
+<span id="1124">1124</span>
+<span id="1125">1125</span>
+<span id="1126">1126</span>
+<span id="1127">1127</span>
 </pre><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">dead_code</span>, <span class="ident">unused_imports</span>)]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">itertools</span>;
@@ -1127,8 +1201,9 @@
     <span class="macro">define_ir</span><span class="macro">!</span>();
     <span class="macro">generated_file</span><span class="macro">!</span>(<span class="ident">single_enum</span>);
     <span class="kw">use</span> <span class="self">self</span>::<span class="ident">single_enum</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
-    <span class="doccomment">/// Ensures basic operations on domains are working.</span>
+    <span class="doccomment">/// Ensures basic operations on enum domains are working.</span>
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">enum_operations</span>() {
         <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> ::<span class="ident">env_logger</span>::<span class="ident">try_init</span>();
@@ -1149,7 +1224,7 @@
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">x</span>, <span class="ident">Foo</span>::<span class="ident">B</span>);
 
         <span class="comment">// Ensure `failed`, `all` and `is_failed` are working.</span>
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">Foo</span>::<span class="ident">failed</span>().<span class="ident">is_failed</span>());
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">Foo</span>::<span class="ident">FAILED</span>.<span class="ident">is_failed</span>());
         <span class="macro">assert</span><span class="macro">!</span>((<span class="op">!</span><span class="ident">Foo</span>::<span class="ident">ALL</span>).<span class="ident">is_failed</span>());
         <span class="comment">// Ensure is_constrained is working.</span>
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">Foo</span>::<span class="ident">A</span>.<span class="ident">is_constrained</span>());
@@ -1158,7 +1233,7 @@
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">Foo</span>::<span class="ident">AB</span>.<span class="ident">intersects</span>(<span class="ident">Foo</span>::<span class="ident">BC</span>));
         <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">Foo</span>::<span class="ident">A</span>.<span class="ident">intersects</span>(<span class="ident">Foo</span>::<span class="ident">BC</span>));
         <span class="comment">// Ensure contains is working.</span>
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">Foo</span>::<span class="ident">AB</span>.<span class="ident">contains</span>(<span class="ident">Foo</span>::<span class="ident">failed</span>()));
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">Foo</span>::<span class="ident">AB</span>.<span class="ident">contains</span>(<span class="ident">Foo</span>::<span class="ident">FAILED</span>));
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">Foo</span>::<span class="ident">AB</span>.<span class="ident">contains</span>(<span class="ident">Foo</span>::<span class="ident">A</span>));
         <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">Foo</span>::<span class="ident">AB</span>.<span class="ident">contains</span>(<span class="ident">Foo</span>::<span class="ident">BC</span>));
         <span class="comment">// Ensure list is working correctly.</span>
@@ -1168,6 +1243,47 @@
         <span class="kw">let</span> <span class="ident">fun</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">Function</span>::<span class="ident">default</span>();
         <span class="kw">let</span> <span class="ident">store</span> <span class="op">=</span> <span class="ident">DomainStore</span>::<span class="ident">default</span>();
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">foo</span>::<span class="ident">filter</span>(<span class="kw-2">&amp;</span><span class="ident">fun</span>, <span class="kw-2">&amp;</span><span class="ident">store</span>), <span class="ident">Foo</span>::<span class="ident">ALL</span>);
+    }
+
+    <span class="doccomment">/// Ensures baisc operations on numeric domains are working.</span>
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">numeric_operation</span>() {
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> ::<span class="ident">env_logger</span>::<span class="ident">try_init</span>();
+        <span class="kw">let</span> <span class="ident">all0</span> <span class="op">=</span> <span class="ident">NumericSet</span>::<span class="ident">all</span>(<span class="kw-2">&amp;</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">4</span>, <span class="number">8</span>]);
+        <span class="kw">let</span> <span class="ident">all1</span> <span class="op">=</span> <span class="ident">NumericSet</span>::<span class="ident">all</span>(<span class="kw-2">&amp;</span>[<span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]);
+        <span class="kw">let</span> <span class="ident">inter01</span> <span class="op">=</span> <span class="ident">NumericSet</span>::<span class="ident">all</span>(<span class="kw-2">&amp;</span>[<span class="number">2</span>, <span class="number">4</span>]);
+        <span class="kw">let</span> <span class="ident">empty</span> <span class="op">=</span> <span class="ident">NumericSet</span>::<span class="ident">all</span>(<span class="kw-2">&amp;</span>[]);
+
+        <span class="comment">// Test set operations.</span>
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">all0</span> <span class="op">!=</span> <span class="ident">all1</span>);
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span>(<span class="ident">all0</span>.<span class="ident">contains</span>(<span class="ident">all1</span>)));
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">all0</span>.<span class="ident">contains</span>(<span class="ident">inter01</span>));
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">empty</span>.<span class="ident">is_failed</span>());
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">restrict</span> <span class="op">=</span> <span class="ident">all0</span>;
+        <span class="ident">restrict</span>.<span class="ident">restrict</span>(<span class="ident">all1</span>);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">restrict</span>, <span class="ident">inter01</span>);
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">all0_2</span> <span class="op">=</span> <span class="ident">all0</span>;
+        <span class="ident">all0_2</span>.<span class="ident">insert</span>(<span class="ident">all0</span>);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">all0_2</span>, <span class="ident">all0</span>);
+
+        <span class="comment">// Test comparison operators.</span>
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">all0</span>.<span class="ident">lt</span>(<span class="ident">Range</span>::<span class="ident">new_eq</span>(<span class="kw-2">&amp;</span><span class="ident">Range</span>::<span class="ident">ALL</span>, <span class="number">9</span>)));
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">all0</span>.<span class="ident">lt</span>(<span class="ident">Range</span>::<span class="ident">new_eq</span>(<span class="kw-2">&amp;</span><span class="ident">Range</span>::<span class="ident">ALL</span>, <span class="number">8</span>)));
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">all0</span>.<span class="ident">gt</span>(<span class="ident">Range</span>::<span class="ident">new_eq</span>(<span class="kw-2">&amp;</span><span class="ident">Range</span>::<span class="ident">ALL</span>, <span class="number">0</span>)));
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">all0</span>.<span class="ident">gt</span>(<span class="ident">Range</span>::<span class="ident">new_eq</span>(<span class="kw-2">&amp;</span><span class="ident">Range</span>::<span class="ident">ALL</span>, <span class="number">1</span>)));
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">all0</span>.<span class="ident">leq</span>(<span class="ident">Range</span>::<span class="ident">new_eq</span>(<span class="kw-2">&amp;</span><span class="ident">Range</span>::<span class="ident">ALL</span>, <span class="number">8</span>)));
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">all0</span>.<span class="ident">leq</span>(<span class="ident">Range</span>::<span class="ident">new_eq</span>(<span class="kw-2">&amp;</span><span class="ident">Range</span>::<span class="ident">ALL</span>, <span class="number">7</span>)));
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">all0</span>.<span class="ident">geq</span>(<span class="ident">Range</span>::<span class="ident">new_eq</span>(<span class="kw-2">&amp;</span><span class="ident">Range</span>::<span class="ident">ALL</span>, <span class="number">1</span>)));
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">all0</span>.<span class="ident">geq</span>(<span class="ident">Range</span>::<span class="ident">new_eq</span>(<span class="kw-2">&amp;</span><span class="ident">Range</span>::<span class="ident">ALL</span>, <span class="number">2</span>)));
+
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">all0</span>.<span class="ident">neq</span>(<span class="ident">NumericSet</span>::<span class="ident">all</span>(<span class="kw-2">&amp;</span>[<span class="number">5</span>, <span class="number">7</span>])));
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">all0</span>.<span class="ident">neq</span>(<span class="ident">NumericSet</span>::<span class="ident">all</span>(<span class="kw-2">&amp;</span>[<span class="number">4</span>, <span class="number">7</span>])));
+
+        <span class="comment">// Test constructors.</span>
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">NumericSet</span>::<span class="ident">new_lt</span>(<span class="kw-2">&amp;</span>[<span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>], <span class="number">5</span>), <span class="ident">NumericSet</span>::<span class="ident">all</span>(<span class="kw-2">&amp;</span>[<span class="number">2</span>, <span class="number">4</span>]));
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">NumericSet</span>::<span class="ident">new_gt</span>(<span class="kw-2">&amp;</span>[<span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>], <span class="number">3</span>), <span class="ident">NumericSet</span>::<span class="ident">all</span>(<span class="kw-2">&amp;</span>[<span class="number">4</span>, <span class="number">6</span>]));
     }
 }
 
@@ -1396,7 +1512,7 @@
         <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> ::<span class="ident">env_logger</span>::<span class="ident">try_init</span>();
 
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">Enum2</span>::<span class="ident">ALL</span>.<span class="ident">inverse</span>(), <span class="ident">Enum2</span>::<span class="ident">ALL</span>);
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">Enum2</span>::<span class="ident">failed</span>().<span class="ident">inverse</span>(), <span class="ident">Enum2</span>::<span class="ident">failed</span>());
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">Enum2</span>::<span class="ident">FAILED</span>.<span class="ident">inverse</span>(), <span class="ident">Enum2</span>::<span class="ident">FAILED</span>);
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">Enum2</span>::<span class="ident">BEFORE</span>.<span class="ident">inverse</span>(), <span class="ident">Enum2</span>::<span class="ident">AFTER</span>);
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">Enum2</span>::<span class="ident">AFTER</span>.<span class="ident">inverse</span>(), <span class="ident">Enum2</span>::<span class="ident">BEFORE</span>);
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">Enum2</span>::<span class="ident">INNER</span>.<span class="ident">inverse</span>(), <span class="ident">Enum2</span>::<span class="ident">OUTER</span>);
@@ -2160,6 +2276,38 @@
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">store</span>.<span class="ident">get_active_dim</span>(<span class="ident">inst0</span>, <span class="ident">dim1</span>), <span class="ident">Bool</span>::<span class="ident">TRUE</span>);
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">store</span>.<span class="ident">get_active_dim</span>(<span class="ident">inst1</span>, <span class="ident">dim0</span>), <span class="ident">Bool</span>::<span class="ident">TRUE</span>);
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">store</span>.<span class="ident">get_active_dim</span>(<span class="ident">inst1</span>, <span class="ident">dim1</span>), <span class="ident">Bool</span>::<span class="ident">TRUE</span>);
+    }
+}
+
+<span class="kw">mod</span> <span class="ident">integer_set</span> {
+    <span class="macro">define_ir</span><span class="macro">!</span> { <span class="kw">struct</span> <span class="ident">set0</span>; }
+    <span class="macro">generated_file</span><span class="macro">!</span>(<span class="ident">integer_set</span>);
+    <span class="kw">use</span> <span class="self">self</span>::<span class="ident">integer_set</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
+
+    <span class="kw">const</span> <span class="ident">INT0_DOMAIN</span>: [<span class="ident">u16</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">2</span>, <span class="number">4</span>, <span class="number">6</span>];
+
+    <span class="kw">const</span> <span class="ident">INT1_DOMAIN</span>: [<span class="ident">u16</span>; <span class="number">3</span>] <span class="op">=</span> [<span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>];
+
+    <span class="kw">fn</span> <span class="ident">int1_domain</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">set0</span>::<span class="ident">Obj</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u16</span>] {
+        <span class="kw-2">&amp;</span><span class="ident">INT1_DOMAIN</span>
+    }
+
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">domain</span>() {
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> ::<span class="ident">env_logger</span>::<span class="ident">try_init</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fun</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">Function</span>::<span class="ident">default</span>();
+        <span class="kw">let</span> <span class="ident">obj0</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">set0</span>::<span class="ident">create</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fun</span>, <span class="bool-val">false</span>);
+        <span class="kw">let</span> <span class="ident">obj1</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">set0</span>::<span class="ident">create</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fun</span>, <span class="bool-val">false</span>);
+
+        <span class="kw">let</span> <span class="ident">store</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainStore</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">fun</span>);
+        <span class="ident">store</span>.<span class="ident">set_int1</span>(<span class="ident">obj0</span>, <span class="ident">NumericSet</span>::<span class="ident">all</span>(<span class="kw-2">&amp;</span>[<span class="number">4</span>]));
+        <span class="kw">let</span> <span class="ident">actions</span> <span class="op">=</span> <span class="ident">init_domain</span>(<span class="ident">store</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fun</span>).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">fun</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">fun</span>);
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">apply_decisions</span>(<span class="ident">actions</span>, <span class="ident">fun</span>, <span class="ident">store</span>).<span class="ident">is_ok</span>());
+
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">store</span>.<span class="ident">get_int0</span>(), <span class="ident">NumericSet</span>::<span class="ident">all</span>(<span class="kw-2">&amp;</span>[<span class="number">2</span>, <span class="number">4</span>]));
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">store</span>.<span class="ident">get_int1</span>(<span class="ident">obj1</span>), <span class="ident">NumericSet</span>::<span class="ident">all</span>(<span class="kw-2">&amp;</span>[<span class="number">4</span>]));
     }
 }
 </pre>

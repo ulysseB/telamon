@@ -294,6 +294,10 @@
 <span id="237">237</span>
 <span id="238">238</span>
 <span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Generic helper functions.</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">fnv</span>;
@@ -371,6 +375,10 @@
 
 <span class="kw">impl</span> <span class="ident">PartialEq</span><span class="op">&lt;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">RcStr</span> {
     <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> { <span class="self">self</span>.<span class="number">0</span>.<span class="ident">as_ref</span>().<span class="ident">eq</span>(<span class="ident">other</span>) }
+}
+
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">RcStr</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">s</span>: <span class="ident">String</span>) <span class="op">-&gt;</span> <span class="ident">RcStr</span> { <span class="ident">RcStr</span>::<span class="ident">new</span>(<span class="ident">s</span>) }
 }
 
 <span class="doccomment">/// Booleans enhanced with a third `Maybe` value.</span>

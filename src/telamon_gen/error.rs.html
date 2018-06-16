@@ -198,7 +198,7 @@
             <span class="ident">ParseError</span>::<span class="ident">InvalidToken</span> { <span class="ident">location</span> }
                 <span class="op">=&gt;</span> <span class="ident">ProcessError</span> {
                     <span class="ident">path</span>: <span class="ident">path</span>,
-                    <span class="ident">span</span>: <span class="prelude-val">Some</span>(<span class="ident">lexer</span>::<span class="ident">Span</span> { <span class="ident">leg</span>: <span class="ident">location</span>, ..<span class="ident">Default</span>::<span class="ident">default</span>() }),
+                    <span class="ident">span</span>: <span class="prelude-val">Some</span>(<span class="ident">lexer</span>::<span class="ident">Span</span> { <span class="ident">beg</span>: <span class="ident">location</span>, ..<span class="ident">Default</span>::<span class="ident">default</span>() }),
                     <span class="ident">cause</span>: <span class="ident">Cause</span>::<span class="ident">Parse</span>(<span class="ident">parse</span>),
                 },
             <span class="ident">ParseError</span>::<span class="ident">UnrecognizedToken</span> { <span class="ident">token</span>: <span class="prelude-val">None</span>, .. }
@@ -213,7 +213,7 @@
            <span class="ident">ParseError</span>::<span class="ident">User</span> { <span class="ident">error</span>: <span class="ident">lexer</span>::<span class="ident">LexicalError</span>::<span class="ident">InvalidToken</span>(<span class="ident">l</span>, .., <span class="ident">e</span>) } 
                 <span class="op">=&gt;</span> <span class="ident">ProcessError</span> {
                     <span class="ident">path</span>: <span class="ident">path</span>,
-                    <span class="ident">span</span>: <span class="prelude-val">Some</span>(<span class="ident">lexer</span>::<span class="ident">Span</span> { <span class="ident">leg</span>: <span class="ident">l</span>, <span class="ident">end</span>: <span class="prelude-val">Some</span>(<span class="ident">e</span>) }),
+                    <span class="ident">span</span>: <span class="prelude-val">Some</span>(<span class="ident">lexer</span>::<span class="ident">Span</span> { <span class="ident">beg</span>: <span class="ident">l</span>, <span class="ident">end</span>: <span class="prelude-val">Some</span>(<span class="ident">e</span>) }),
                     <span class="ident">cause</span>: <span class="ident">Cause</span>::<span class="ident">Parse</span>(<span class="ident">parse</span>),
                 },
         }
