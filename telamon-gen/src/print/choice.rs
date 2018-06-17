@@ -219,6 +219,7 @@ enum ChoiceAction<'a> {
         incr_args: Vec<(ast::Variable<'a>, ast::Set<'a>)>,
         incr_condition: String,
         arguments: Vec<(ast::Variable<'a>, ast::Set<'a>)>,
+        value_type: ast::ValueType,
         is_half: bool,
         to_half: bool,
         zero: u32,
@@ -275,6 +276,7 @@ impl<'a> ChoiceAction<'a> {
                 let incr_choice = ctx.ir_desc.get_choice(&incr.choice);
                 let arguments = ast::vars_with_sets(counter_choice, &counter.vars, ctx);
                 let incr_args = ast::vars_with_sets(incr_choice, &incr.vars, ctx);
+                let value_type = counter_choice.choice_def().value_type();
                 use ir::ChoiceDef;
                 if let ChoiceDef::Counter {
                     kind, visibility, ref incr_condition, ..
@@ -285,6 +287,7 @@ impl<'a> ChoiceAction<'a> {
                         incr_condition: value_set::print(incr_condition, ctx),
                         is_half: visibility == ir::CounterVisibility::NoMax,
                         zero: kind.zero(),
+                        value_type: ast::ValueType::new(value_type, ctx),
                         incr_args, arguments, to_half,
                     }
                 } else { panic!() }
