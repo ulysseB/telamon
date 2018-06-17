@@ -4,16 +4,16 @@ if old.is({{incr_condition}}).is_maybe() {
         let value = {{>counter_value value use_old=true}};
         store.restrict_{{counter_name}}({{>choice.arg_ids}}
             {{~#if is_half~}}
-                HalfRange { min: value.min }
+                HalfRange { min: NumDomain::min(&value) }
             {{~else~}}
-                Range { min: value.min, max: {{zero}} }
+                Range { min: NumDomain::min(&value), max: {{zero}} }
             {{~/if}}, diff)?;
     }
     {{~#unless is_half~}}
     else if new_status.is_false() {
         let value = {{>counter_value value use_old=true}};
         store.restrict_{{counter_name}}(
-            {{>choice.arg_ids}}Range { min: {{zero}}, max: value.max }, diff)?;
+            {{>choice.arg_ids}}Range { min: {{zero}}, max: NumDomain::max(&value) }, diff)?;
     }
     {{~/unless}}
 }

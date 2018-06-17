@@ -4,16 +4,16 @@
     if incr.is_true() {
         actions.push(Action::{{to_type_name counter.name}}({{>choice.arg_ids counter}}
             {{~#ifeq visibility "NoMax"~}}
-                HalfRange { min: incr_value.min }
+                HalfRange { min: NumDomain::min(&incr_value) }
             {{~else~}}
-                Range { min: incr_value.min, max: {{zero}} }
+                Range { min: NumDomain::min(&incr_value), max: {{zero}} }
             {{~/ifeq~}}
         ));
     }
     {{~#ifeq visibility "HiddenMax"~}}
         else if incr.is_false() {
             actions.push(Action::{{to_type_name counter.name}}({{>choice.arg_ids counter}}
-                Range { min: {{zero}}, max: incr_value.max }
+                Range { min: {{zero}}, max: NumDomain::max(&incr_value) }
             ));
         }
     {{/ifeq}}

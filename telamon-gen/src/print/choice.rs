@@ -210,6 +210,7 @@ enum ChoiceAction<'a> {
         arguments: Vec<(ast::Variable<'a>, ast::Set<'a>)>,
         incr_condition: String,
         value: CounterValue<'a>,
+        counter_type: ast::ValueType,
         is_half: bool,
         zero: u32,
     },
@@ -257,12 +258,14 @@ impl<'a> ChoiceAction<'a> {
             ir::ChoiceAction::IncrCounter { choice: ref counter, ref value } => {
                 let counter_choice = ctx.ir_desc.get_choice(&counter.choice);
                 let arguments = ast::vars_with_sets(counter_choice, &counter.vars, ctx);
+                let counter_type = counter_choice.choice_def().value_type();
                 if let ir::ChoiceDef::Counter {
                     kind, visibility, ref incr_condition, ..
                 } = *counter_choice.choice_def() {
                     ChoiceAction::IncrCounter {
                         counter_name: &counter.choice,
                         incr_condition: value_set::print(incr_condition, ctx),
+                        counter_type: ast::ValueType::new(counter_type, ctx),
                         arguments,
                         value: CounterValue::new(value, ctx),
                         is_half: visibility == ir::CounterVisibility::NoMax,
