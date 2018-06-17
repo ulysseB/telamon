@@ -617,7 +617,7 @@ impl TypingContext {
                            var_map: &VarMap) -> (ir::CounterVal, ir::OnChangeAction) {
         // TODO(cleanup): do not force an ordering on counter declaration.
         let value_choice = self.ir_desc.get_choice(&counter.name);
-        let to_half = match *value_choice.choice_def() {
+        match *value_choice.choice_def() {
             ir::ChoiceDef::Counter { visibility, kind: value_kind, .. } => {
                 // TODO(cleanup): allow mul of sums. The problem is that you can multiply
                 // and/or divide by zero when doing this.
@@ -627,7 +627,7 @@ impl TypingContext {
                         "Counters cannot sum on counters that expose less information");
                 visibility == ir::CounterVisibility::NoMax && caller_visibility > visibility
             },
-            ir::ChoiceDef::Number { .. } => unimplemented!(), // FIXME
+            ir::ChoiceDef::Number { .. } => (),
             ir::ChoiceDef::Enum { .. } => panic!("Enum as a counter value"),
         };
         // Type the increment counter value in the calling counter context.
@@ -640,7 +640,6 @@ impl TypingContext {
         let action = ir::ChoiceAction::UpdateCounter {
             counter: ir::ChoiceInstance { choice: caller, vars: caller_vars },
             incr: incr.adapt(&adaptator),
-            to_half
         };
         let update_action = ir::OnChangeAction { forall_vars, set_constraints, action };
         (ir::CounterVal::Counter(instance), update_action)

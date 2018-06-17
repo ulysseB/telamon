@@ -221,7 +221,6 @@ enum ChoiceAction<'a> {
         arguments: Vec<(ast::Variable<'a>, ast::Set<'a>)>,
         value_type: ast::ValueType,
         is_half: bool,
-        to_half: bool,
         zero: u32,
     },
     Trigger {
@@ -271,7 +270,7 @@ impl<'a> ChoiceAction<'a> {
                     }
                 } else { panic!() }
             },
-            ir::ChoiceAction::UpdateCounter { ref counter, ref incr, to_half } => {
+            ir::ChoiceAction::UpdateCounter { ref counter, ref incr } => {
                 let counter_choice = ctx.ir_desc.get_choice(&counter.choice);
                 let incr_choice = ctx.ir_desc.get_choice(&incr.choice);
                 let arguments = ast::vars_with_sets(counter_choice, &counter.vars, ctx);
@@ -288,7 +287,7 @@ impl<'a> ChoiceAction<'a> {
                         is_half: visibility == ir::CounterVisibility::NoMax,
                         zero: kind.zero(),
                         value_type: ast::ValueType::new(value_type, ctx),
-                        incr_args, arguments, to_half,
+                        incr_args, arguments,
                     }
                 } else { panic!() }
             },
