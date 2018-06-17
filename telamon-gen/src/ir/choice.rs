@@ -352,7 +352,7 @@ pub enum ChoiceAction {
     FilterSelf,
     Filter { choice: ir::ChoiceInstance, filter: FilterCall },
     IncrCounter { choice: ir::ChoiceInstance, value: ir::CounterVal, },
-    UpdateCounter { counter: ir::ChoiceInstance, incr: ir::ChoiceInstance, to_half: bool },
+    UpdateCounter { counter: ir::ChoiceInstance, incr: ir::ChoiceInstance },
     Trigger {
         id: usize,
         condition: ir::ChoiceCondition,
@@ -415,10 +415,9 @@ impl Adaptable for ChoiceAction {
                 choice: choice.adapt(adaptator),
                 value: value.adapt(adaptator),
             },
-            UpdateCounter { ref counter, ref incr, to_half } => UpdateCounter {
+            UpdateCounter { ref counter, ref incr } => UpdateCounter {
                 counter: counter.adapt(adaptator),
                 incr: incr.adapt(adaptator),
-                to_half
             },
             Trigger { id, ref condition, ref code, inverse_self_cond } => Trigger {
                 condition: condition.adapt(adaptator),
