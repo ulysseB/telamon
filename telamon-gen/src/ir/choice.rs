@@ -237,14 +237,14 @@ impl ChoiceDef {
 
 /// The value of the increments of a counter.
 #[derive(Clone, Debug)]
-pub enum CounterVal { Code(ir::Code), Counter(ir::ChoiceInstance) }
+pub enum CounterVal { Code(ir::Code), Choice(ir::ChoiceInstance) }
 
 impl Adaptable for CounterVal {
     fn adapt(&self, adaptator: &ir::Adaptator) -> Self {
         match *self {
             CounterVal::Code(ref code) => CounterVal::Code(code.adapt(adaptator)),
-            CounterVal::Counter(ref choice_instance) =>
-                CounterVal::Counter(choice_instance.adapt(adaptator)),
+            CounterVal::Choice(ref choice_instance) =>
+                CounterVal::Choice(choice_instance.adapt(adaptator)),
         }
     }
 }

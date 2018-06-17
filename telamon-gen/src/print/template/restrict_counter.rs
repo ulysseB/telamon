@@ -23,14 +23,17 @@ if incr_status.is_maybe() {
         store.restrict_{{incr.name}}({{>choice.arg_ids incr}}val, diff)?;
     {{~/if}}
 }
-{{~#if amount.Counter~}}
+{{~#if amount.Choice~}}
     else if incr_status.is_true() {
-        let val = Range::new_leq(&Range::ALL, new_values.max{{neg_op}}current.min{{op}}incr_amount.min);
+        // FIXME(unimplemented): get the right type
+        let max_val = new_values.max{{neg_op}}current.min{{op}}incr_amount.min;
+        let val = {{>value_type.num_constructor t=amount.Choice.full_type
+                    fun="new_leq" value="max_val"}};
         {{#if delayed~}}
-            actions.extend({{amount.Counter.name}}::restrict_delayed(
-                    {{~>choice.arg_ids amount.Counter~}} ir_instance, store, val)?);
+            actions.extend({{amount.Choice.name}}::restrict_delayed(
+                    {{~>choice.arg_ids amount.Choice~}} ir_instance, store, val)?);
         {{else~}}
-            {{amount.Counter.name}}::restrict({{>choice.arg_ids amount.Counter~}}
+            {{amount.Choice.name}}::restrict({{>choice.arg_ids amount.Choice~}}
                                               ir_instance, store, val, diff)?;
         {{/if~}}
     }

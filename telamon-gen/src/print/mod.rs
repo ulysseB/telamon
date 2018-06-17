@@ -244,7 +244,7 @@ fn order_choices<'a>(ir_desc: &'a ir::IrDesc) -> impl Iterator<Item=&'a ir::Choi
     let mut sort: TopologicalSort<_> = ir_desc.choices().map(|c| c.name()).collect();
     for choice in ir_desc.choices() {
         if let ir::ChoiceDef::Counter { ref value, .. } = *choice.choice_def() {
-            if let ir::CounterVal::Counter(ref counter) = *value {
+            if let ir::CounterVal::Choice(ref counter) = *value {
                 sort.add_dependency(&counter.choice, choice.name());
             }
         }
