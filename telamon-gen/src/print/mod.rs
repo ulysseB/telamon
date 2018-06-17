@@ -80,6 +80,8 @@ lazy_static! {
         register_template!(engine, filter_self);
         register_template!(engine, value_type/full_domain);
         register_template!(engine, value_type/name);
+        register_template!(engine, value_type/num_constructor);
+        register_template!(engine, value_type/univers);
         register_template!(engine, getter);
         register_template!(engine, incr_counter);
         register_template!(engine, iter_new_objects);
