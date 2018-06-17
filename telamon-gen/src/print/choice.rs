@@ -417,17 +417,23 @@ impl<'a> RestrictCounter<'a> {
 #[derive(Serialize)]
 pub enum CounterValue<'a> {
     Code(String),
-    Counter { name: &'a str, arguments:  Vec<(ast::Variable<'a>, ast::Set<'a>)> }
+    Choice {
+        name: &'a str,
+        arguments:  Vec<(ast::Variable<'a>, ast::Set<'a>)>,
+        full_type: ast::ValueType,
+    }
 }
 
 impl<'a> CounterValue<'a> {
     pub fn new(value: &'a ir::CounterVal, ctx: &ast::Context<'a>) -> Self {
         match *value {
             ir::CounterVal::Code(ref code) => CounterValue::Code(ast::code(code, ctx)),
-            ir::CounterVal::Counter(ref counter) => {
+            ir::CounterVal::Choice(ref counter) => {
                 let choice = ctx.ir_desc.get_choice(&counter.choice);
                 let arguments = ast::vars_with_sets(choice, &counter.vars, ctx);
-                CounterValue::Counter { arguments, name: choice.name() }
+                let full_type = choice.choice_def().value_type().full_type();
+                let full_type = ast::ValueType::new(full_type, ctx);
+                CounterValue::Choice { arguments, full_type, name: choice.name() }
             },
         }
     }

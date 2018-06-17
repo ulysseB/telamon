@@ -514,9 +514,9 @@ impl TypingContext {
         let value = match body.value {
             CounterVal::Code(code) =>
                 ir::CounterVal::Code(type_check_code(RcStr::new(code), &var_map)),
-            CounterVal::Counter(counter) => {
+            CounterVal::Choice(counter) => {
                 let counter_name = counter_name.clone();
-                let (value, action) = self.counter_counter_val(
+                let (value, action) = self.counter_val_choice(
                     &counter, visibility, counter_name, &incr, kind, vars.len(), &var_map);
                 self.ir_desc.add_onchange(&counter.name, action);
                 value
@@ -605,16 +605,16 @@ impl TypingContext {
         (ir::ChoiceInstance { choice: name, vars }, condition)
     }
 
-    /// Returns the `CounterVal` referencing a counter. Registers the UpdateCounter action
+    /// Returns the `CounterVal` referencing a choice. Registers the UpdateCounter action
     /// so that the referencing counter is updated when the referenced counter is changed.
-    fn counter_counter_val(&mut self,
-                           counter: &ChoiceInstance,
-                           caller_visibility: ir::CounterVisibility,
-                           caller: RcStr,
-                           incr: &ir::ChoiceInstance,
-                           kind: ir::CounterKind,
-                           num_caller_vars: usize,
-                           var_map: &VarMap) -> (ir::CounterVal, ir::OnChangeAction) {
+    fn counter_val_choice(&mut self,
+                          counter: &ChoiceInstance,
+                          caller_visibility: ir::CounterVisibility,
+                          caller: RcStr,
+                          incr: &ir::ChoiceInstance,
+                          kind: ir::CounterKind,
+                          num_caller_vars: usize,
+                          var_map: &VarMap) -> (ir::CounterVal, ir::OnChangeAction) {
         // TODO(cleanup): do not force an ordering on counter declaration.
         let value_choice = self.ir_desc.get_choice(&counter.name);
         match *value_choice.choice_def() {
@@ -625,7 +625,6 @@ impl TypingContext {
                 assert!(!(kind == CounterKind::Mul && value_kind == CounterKind::Add));
                 assert!(caller_visibility >= visibility,
                         "Counters cannot sum on counters that expose less information");
-                visibility == ir::CounterVisibility::NoMax && caller_visibility > visibility
             },
             ir::ChoiceDef::Number { .. } => (),
             ir::ChoiceDef::Enum { .. } => panic!("Enum as a counter value"),
@@ -642,7 +641,7 @@ impl TypingContext {
             incr: incr.adapt(&adaptator),
         };
         let update_action = ir::OnChangeAction { forall_vars, set_constraints, action };
-        (ir::CounterVal::Counter(instance), update_action)
+        (ir::CounterVal::Choice(instance), update_action)
     }
 
     /// Typecheck and registers a trigger.
@@ -1051,7 +1050,7 @@ fn type_check_enum_values(enum_: &ir::Enum, values: Vec<RcStr>) -> BTreeSet<RcSt
 
 /// The value of a counter increment.
 #[derive(Clone, Debug)]
-pub enum CounterVal { Code(String), Counter(ChoiceInstance) }
+pub enum CounterVal { Code(String), Choice(ChoiceInstance) }
 
 /// A statement in an enum definition.
 #[derive(Clone, Debug)]
