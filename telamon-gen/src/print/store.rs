@@ -49,6 +49,7 @@ pub fn incr_iterators<'a>(ir_desc: &'a ir::IrDesc) -> Vec<IncrIterator<'a>> {
                 choice: choice.name().clone(),
                 vars: (0..choice.arguments().len()).map(ir::Variable::Arg).collect(),
             };
+            let counter_type = choice.choice_def().value_type();
             for (pos, set) in incr_iter.iter().enumerate() {
                 // Setup the context.
                 let obj = ast::Variable::with_name("obj");
@@ -98,6 +99,7 @@ pub fn incr_iterators<'a>(ir_desc: &'a ir::IrDesc) -> Vec<IncrIterator<'a>> {
                     zero: kind.zero(),
                     value: CounterValue::new(value, ctx),
                     counter: ast::ChoiceInstance::new(counter, ctx),
+                    counter_type: ast::ValueType::new(counter_type.clone(), ctx),
                 };
                 out.push(incr_iterator);
             }
@@ -116,6 +118,7 @@ pub struct IncrIterator<'a> {
     zero: u32,
     incr: ast::ChoiceInstance<'a>,
     visibility: ir::CounterVisibility,
+    counter_type: ast::ValueType,
     incr_condition: RcStr,
 }
 
