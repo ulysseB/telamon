@@ -273,7 +273,7 @@ define enum thread_mapping($lhs in StaticDims, $rhs in StaticDims):
     requires dim_kind($lhs) is THREAD
     requires dim_kind($rhs) is THREAD
     requires order($lhs, $rhs) is MERGED | ORDERED
-    requires "$lhs.size() == $rhs.size()"
+    requires size($lhs) == size($rhs)
   /// The two dimensions are threads, but `lhs` is mapped to a dimension outside of `rhs`.
   value MAPPED_OUT:
     requires dim_kind($lhs) is THREAD
@@ -308,7 +308,7 @@ require forall $outer in Dimensions:
 require forall $outer in StaticDims:
   forall $inner in StaticDims:
     thread_mapping($outer, $inner) is not MAPPED_OUT
-      || "unwrap!($outer.size().as_int()) <= 64"
+      || size($outer) <= "64"
 
 // A basic block nested with a thread dimension is nested or merged with the other
 require forall $bb in BasicBlocks:
@@ -322,7 +322,7 @@ require forall $bb in BasicBlocks:
 /// Limits the number of threads.
 define half counter num_threads():
   forall $dim in StaticDims:
-    mul "$dim.size().as_int().unwrap()" when:
+    mul size($dim) when:
       is_thread_dim($dim) is TRUE
 end
 
@@ -339,7 +339,7 @@ require num_thread_dims() <= "3"
 /// Limits the number of nested unrolled loop.
 define half counter unroll_factor($inst in Instructions):
   forall $dim in StaticDims:
-    mul "unwrap!($dim.size().as_int())" when:
+    mul size($dim) when:
       is_iteration_dim($inst, $dim) is TRUE
       dim_kind($dim) is UNROLL
 end
@@ -397,7 +397,7 @@ define half counter mem_size($mem in InternalMemBlocks):
   base "$mem.base_size().unwrap_or(1)"
   forall $lhs in StaticDims:
     forall $rhs in StaticDims:
-      mul "unwrap!($lhs.size().as_int())" when:
+      mul size($lhs) when:
         "$mem.maps_dims($lhs.id(), $rhs.id())"
         order($lhs, $rhs) is not MERGED
 end
