@@ -164,6 +164,10 @@ fn external_thread_dims<'a>(inst: &'a ir::Instruction, space: &'a SearchSpace)
     space.ir_instance().thread_dims().flat_map(move |dim| {
         let is_mapped = inst.iteration_dims().iter().map(|&other| {
             if dim.id() == other { return Trivalent::True; }
+            // TODO(cc_perf): directly iterate on static dims
+            if space.ir_instance().dim(other).size().as_int().is_none() {
+                return Trivalent::False;
+            }
             let mapping = space.domain().get_thread_mapping(dim.id(), other);
             mapping.is(ThreadMapping::MAPPED)
         }).fold(Trivalent::False, |l, r| l | r);
