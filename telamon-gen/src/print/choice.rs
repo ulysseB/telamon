@@ -1,5 +1,6 @@
 //! Prints the definition of a choice.
 use ir;
+use ir::Adaptable;
 use itertools::Itertools;
 use print::{ast, filter, value_set};
 
@@ -435,7 +436,8 @@ impl<'a> CounterValue<'a> {
                 let choice = ctx.ir_desc.get_choice(&counter.choice);
                 let arguments = ast::vars_with_sets(choice, &counter.vars, ctx);
                 let full_type = choice.choice_def().value_type().full_type();
-                let full_type = ast::ValueType::new(full_type, ctx);
+                let adaptator = ir::Adaptator::from_arguments(&counter.vars);
+                let full_type = ast::ValueType::new(full_type.adapt(&adaptator), ctx);
                 CounterValue::Choice { arguments, full_type, name: choice.name() }
             },
         }

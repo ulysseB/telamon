@@ -16,3 +16,12 @@ require int0() < "5"
 require forall $lhs in Set0:
   forall $rhs in Set0:
     int1($lhs) == int1($rhs)
+
+define integer int2($arg in Set0): "&::integer_set::int1_domain($fun, $arg)" end
+
+define counter sum_int2():
+  forall $arg in Set0:
+    sum int2($arg) when:
+end
+
+require sum_int2() <= "12"
