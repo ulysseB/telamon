@@ -328,6 +328,7 @@ pub struct NumericSet {
     values: [u16; NumericSet::MAX_LEN],
 }
 
+#[allow(dead_code)]
 impl NumericSet {
     const MAX_LEN: usize = 32;
 
