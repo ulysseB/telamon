@@ -1506,8 +1506,6 @@
 <span id="1449">1449</span>
 <span id="1450">1450</span>
 <span id="1451">1451</span>
-<span id="1452">1452</span>
-<span id="1453">1453</span>
 </pre><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">unused_variables</span>)]</span>
 
@@ -2025,9 +2023,9 @@
         <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">body</span>.<span class="ident">value</span> {
             <span class="ident">CounterVal</span>::<span class="ident">Code</span>(<span class="ident">code</span>) <span class="op">=&gt;</span>
                 <span class="ident">ir</span>::<span class="ident">CounterVal</span>::<span class="ident">Code</span>(<span class="ident">type_check_code</span>(<span class="ident">RcStr</span>::<span class="ident">new</span>(<span class="ident">code</span>), <span class="kw-2">&amp;</span><span class="ident">var_map</span>)),
-            <span class="ident">CounterVal</span>::<span class="ident">Counter</span>(<span class="ident">counter</span>) <span class="op">=&gt;</span> {
+            <span class="ident">CounterVal</span>::<span class="ident">Choice</span>(<span class="ident">counter</span>) <span class="op">=&gt;</span> {
                 <span class="kw">let</span> <span class="ident">counter_name</span> <span class="op">=</span> <span class="ident">counter_name</span>.<span class="ident">clone</span>();
-                <span class="kw">let</span> (<span class="ident">value</span>, <span class="ident">action</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">counter_counter_val</span>(
+                <span class="kw">let</span> (<span class="ident">value</span>, <span class="ident">action</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">counter_val_choice</span>(
                     <span class="kw-2">&amp;</span><span class="ident">counter</span>, <span class="ident">visibility</span>, <span class="ident">counter_name</span>, <span class="kw-2">&amp;</span><span class="ident">incr</span>, <span class="ident">kind</span>, <span class="ident">vars</span>.<span class="ident">len</span>(), <span class="kw-2">&amp;</span><span class="ident">var_map</span>);
                 <span class="self">self</span>.<span class="ident">ir_desc</span>.<span class="ident">add_onchange</span>(<span class="kw-2">&amp;</span><span class="ident">counter</span>.<span class="ident">name</span>, <span class="ident">action</span>);
                 <span class="ident">value</span>
@@ -2116,19 +2114,19 @@
         (<span class="ident">ir</span>::<span class="ident">ChoiceInstance</span> { <span class="ident">choice</span>: <span class="ident">name</span>, <span class="ident">vars</span> }, <span class="ident">condition</span>)
     }
 
-    <span class="doccomment">/// Returns the `CounterVal` referencing a counter. Registers the UpdateCounter action</span>
+    <span class="doccomment">/// Returns the `CounterVal` referencing a choice. Registers the UpdateCounter action</span>
     <span class="doccomment">/// so that the referencing counter is updated when the referenced counter is changed.</span>
-    <span class="kw">fn</span> <span class="ident">counter_counter_val</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-                           <span class="ident">counter</span>: <span class="kw-2">&amp;</span><span class="ident">ChoiceInstance</span>,
-                           <span class="ident">caller_visibility</span>: <span class="ident">ir</span>::<span class="ident">CounterVisibility</span>,
-                           <span class="ident">caller</span>: <span class="ident">RcStr</span>,
-                           <span class="ident">incr</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">ChoiceInstance</span>,
-                           <span class="ident">kind</span>: <span class="ident">ir</span>::<span class="ident">CounterKind</span>,
-                           <span class="ident">num_caller_vars</span>: <span class="ident">usize</span>,
-                           <span class="ident">var_map</span>: <span class="kw-2">&amp;</span><span class="ident">VarMap</span>) <span class="op">-&gt;</span> (<span class="ident">ir</span>::<span class="ident">CounterVal</span>, <span class="ident">ir</span>::<span class="ident">OnChangeAction</span>) {
+    <span class="kw">fn</span> <span class="ident">counter_val_choice</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+                          <span class="ident">counter</span>: <span class="kw-2">&amp;</span><span class="ident">ChoiceInstance</span>,
+                          <span class="ident">caller_visibility</span>: <span class="ident">ir</span>::<span class="ident">CounterVisibility</span>,
+                          <span class="ident">caller</span>: <span class="ident">RcStr</span>,
+                          <span class="ident">incr</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">ChoiceInstance</span>,
+                          <span class="ident">kind</span>: <span class="ident">ir</span>::<span class="ident">CounterKind</span>,
+                          <span class="ident">num_caller_vars</span>: <span class="ident">usize</span>,
+                          <span class="ident">var_map</span>: <span class="kw-2">&amp;</span><span class="ident">VarMap</span>) <span class="op">-&gt;</span> (<span class="ident">ir</span>::<span class="ident">CounterVal</span>, <span class="ident">ir</span>::<span class="ident">OnChangeAction</span>) {
         <span class="comment">// TODO(cleanup): do not force an ordering on counter declaration.</span>
         <span class="kw">let</span> <span class="ident">value_choice</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ir_desc</span>.<span class="ident">get_choice</span>(<span class="kw-2">&amp;</span><span class="ident">counter</span>.<span class="ident">name</span>);
-        <span class="kw">let</span> <span class="ident">to_half</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">value_choice</span>.<span class="ident">choice_def</span>() {
+        <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">value_choice</span>.<span class="ident">choice_def</span>() {
             <span class="ident">ir</span>::<span class="ident">ChoiceDef</span>::<span class="ident">Counter</span> { <span class="ident">visibility</span>, <span class="ident">kind</span>: <span class="ident">value_kind</span>, .. } <span class="op">=&gt;</span> {
                 <span class="comment">// TODO(cleanup): allow mul of sums. The problem is that you can multiply</span>
                 <span class="comment">// and/or divide by zero when doing this.</span>
@@ -2136,9 +2134,8 @@
                 <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span>(<span class="ident">kind</span> <span class="op">==</span> <span class="ident">CounterKind</span>::<span class="ident">Mul</span> <span class="op">&amp;&amp;</span> <span class="ident">value_kind</span> <span class="op">==</span> <span class="ident">CounterKind</span>::<span class="ident">Add</span>));
                 <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">caller_visibility</span> <span class="op">&gt;=</span> <span class="ident">visibility</span>,
                         <span class="string">&quot;Counters cannot sum on counters that expose less information&quot;</span>);
-                <span class="ident">visibility</span> <span class="op">==</span> <span class="ident">ir</span>::<span class="ident">CounterVisibility</span>::<span class="ident">NoMax</span> <span class="op">&amp;&amp;</span> <span class="ident">caller_visibility</span> <span class="op">&gt;</span> <span class="ident">visibility</span>
             },
-            <span class="ident">ir</span>::<span class="ident">ChoiceDef</span>::<span class="ident">Number</span> { .. } <span class="op">=&gt;</span> <span class="macro">unimplemented</span><span class="macro">!</span>(), <span class="comment">// FIXME</span>
+            <span class="ident">ir</span>::<span class="ident">ChoiceDef</span>::<span class="ident">Number</span> { .. } <span class="op">=&gt;</span> (),
             <span class="ident">ir</span>::<span class="ident">ChoiceDef</span>::<span class="ident">Enum</span> { .. } <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Enum as a counter value&quot;</span>),
         };
         <span class="comment">// Type the increment counter value in the calling counter context.</span>
@@ -2151,10 +2148,9 @@
         <span class="kw">let</span> <span class="ident">action</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">ChoiceAction</span>::<span class="ident">UpdateCounter</span> {
             <span class="ident">counter</span>: <span class="ident">ir</span>::<span class="ident">ChoiceInstance</span> { <span class="ident">choice</span>: <span class="ident">caller</span>, <span class="ident">vars</span>: <span class="ident">caller_vars</span> },
             <span class="ident">incr</span>: <span class="ident">incr</span>.<span class="ident">adapt</span>(<span class="kw-2">&amp;</span><span class="ident">adaptator</span>),
-            <span class="ident">to_half</span>
         };
         <span class="kw">let</span> <span class="ident">update_action</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">OnChangeAction</span> { <span class="ident">forall_vars</span>, <span class="ident">set_constraints</span>, <span class="ident">action</span> };
-        (<span class="ident">ir</span>::<span class="ident">CounterVal</span>::<span class="ident">Counter</span>(<span class="ident">instance</span>), <span class="ident">update_action</span>)
+        (<span class="ident">ir</span>::<span class="ident">CounterVal</span>::<span class="ident">Choice</span>(<span class="ident">instance</span>), <span class="ident">update_action</span>)
     }
 
     <span class="doccomment">/// Typecheck and registers a trigger.</span>
@@ -2563,7 +2559,7 @@
 
 <span class="doccomment">/// The value of a counter increment.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CounterVal</span> { <span class="ident">Code</span>(<span class="ident">String</span>), <span class="ident">Counter</span>(<span class="ident">ChoiceInstance</span>) }
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CounterVal</span> { <span class="ident">Code</span>(<span class="ident">String</span>), <span class="ident">Choice</span>(<span class="ident">ChoiceInstance</span>) }
 
 <span class="doccomment">/// A statement in an enum definition.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>

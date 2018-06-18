@@ -243,6 +243,9 @@
 <span id="186">186</span>
 <span id="187">187</span>
 <span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Prints the domain store definition.</span>
 <span class="kw">use</span> <span class="ident">ir</span>;
@@ -295,6 +298,7 @@
                 <span class="ident">choice</span>: <span class="ident">choice</span>.<span class="ident">name</span>().<span class="ident">clone</span>(),
                 <span class="ident">vars</span>: (<span class="number">0</span>..<span class="ident">choice</span>.<span class="ident">arguments</span>().<span class="ident">len</span>()).<span class="ident">map</span>(<span class="ident">ir</span>::<span class="ident">Variable</span>::<span class="ident">Arg</span>).<span class="ident">collect</span>(),
             };
+            <span class="kw">let</span> <span class="ident">counter_type</span> <span class="op">=</span> <span class="ident">choice</span>.<span class="ident">choice_def</span>().<span class="ident">value_type</span>();
             <span class="kw">for</span> (<span class="ident">pos</span>, <span class="ident">set</span>) <span class="kw">in</span> <span class="ident">incr_iter</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
                 <span class="comment">// Setup the context.</span>
                 <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ast</span>::<span class="ident">Variable</span>::<span class="ident">with_name</span>(<span class="string">&quot;obj&quot;</span>);
@@ -344,6 +348,7 @@
                     <span class="ident">zero</span>: <span class="ident">kind</span>.<span class="ident">zero</span>(),
                     <span class="ident">value</span>: <span class="ident">CounterValue</span>::<span class="ident">new</span>(<span class="ident">value</span>, <span class="ident">ctx</span>),
                     <span class="ident">counter</span>: <span class="ident">ast</span>::<span class="ident">ChoiceInstance</span>::<span class="ident">new</span>(<span class="ident">counter</span>, <span class="ident">ctx</span>),
+                    <span class="ident">counter_type</span>: <span class="ident">ast</span>::<span class="ident">ValueType</span>::<span class="ident">new</span>(<span class="ident">counter_type</span>.<span class="ident">clone</span>(), <span class="ident">ctx</span>),
                 };
                 <span class="ident">out</span>.<span class="ident">push</span>(<span class="ident">incr_iterator</span>);
             }
@@ -362,6 +367,7 @@
     <span class="ident">zero</span>: <span class="ident">u32</span>,
     <span class="ident">incr</span>: <span class="ident">ast</span>::<span class="ident">ChoiceInstance</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
     <span class="ident">visibility</span>: <span class="ident">ir</span>::<span class="ident">CounterVisibility</span>,
+    <span class="ident">counter_type</span>: <span class="ident">ast</span>::<span class="ident">ValueType</span>,
     <span class="ident">incr_condition</span>: <span class="ident">RcStr</span>,
 }
 

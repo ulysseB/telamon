@@ -487,9 +487,23 @@
 <span id="430">430</span>
 <span id="431">431</span>
 <span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Prints the definition of a choice.</span>
 <span class="kw">use</span> <span class="ident">ir</span>;
+<span class="kw">use</span> <span class="ident">ir</span>::<span class="ident">Adaptable</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">print</span>::{<span class="ident">ast</span>, <span class="ident">filter</span>, <span class="ident">value_set</span>};
 
@@ -700,6 +714,7 @@
         <span class="ident">arguments</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">ast</span>::<span class="ident">Variable</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">ast</span>::<span class="ident">Set</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
         <span class="ident">incr_condition</span>: <span class="ident">String</span>,
         <span class="ident">value</span>: <span class="ident">CounterValue</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+        <span class="ident">counter_type</span>: <span class="ident">ast</span>::<span class="ident">ValueType</span>,
         <span class="ident">is_half</span>: <span class="ident">bool</span>,
         <span class="ident">zero</span>: <span class="ident">u32</span>,
     },
@@ -709,8 +724,8 @@
         <span class="ident">incr_args</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">ast</span>::<span class="ident">Variable</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">ast</span>::<span class="ident">Set</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
         <span class="ident">incr_condition</span>: <span class="ident">String</span>,
         <span class="ident">arguments</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">ast</span>::<span class="ident">Variable</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">ast</span>::<span class="ident">Set</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
+        <span class="ident">value_type</span>: <span class="ident">ast</span>::<span class="ident">ValueType</span>,
         <span class="ident">is_half</span>: <span class="ident">bool</span>,
-        <span class="ident">to_half</span>: <span class="ident">bool</span>,
         <span class="ident">zero</span>: <span class="ident">u32</span>,
     },
     <span class="ident">Trigger</span> {
@@ -747,12 +762,14 @@
             <span class="ident">ir</span>::<span class="ident">ChoiceAction</span>::<span class="ident">IncrCounter</span> { <span class="ident">choice</span>: <span class="kw-2">ref</span> <span class="ident">counter</span>, <span class="kw-2">ref</span> <span class="ident">value</span> } <span class="op">=&gt;</span> {
                 <span class="kw">let</span> <span class="ident">counter_choice</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">ir_desc</span>.<span class="ident">get_choice</span>(<span class="kw-2">&amp;</span><span class="ident">counter</span>.<span class="ident">choice</span>);
                 <span class="kw">let</span> <span class="ident">arguments</span> <span class="op">=</span> <span class="ident">ast</span>::<span class="ident">vars_with_sets</span>(<span class="ident">counter_choice</span>, <span class="kw-2">&amp;</span><span class="ident">counter</span>.<span class="ident">vars</span>, <span class="ident">ctx</span>);
+                <span class="kw">let</span> <span class="ident">counter_type</span> <span class="op">=</span> <span class="ident">counter_choice</span>.<span class="ident">choice_def</span>().<span class="ident">value_type</span>();
                 <span class="kw">if</span> <span class="kw">let</span> <span class="ident">ir</span>::<span class="ident">ChoiceDef</span>::<span class="ident">Counter</span> {
                     <span class="ident">kind</span>, <span class="ident">visibility</span>, <span class="kw-2">ref</span> <span class="ident">incr_condition</span>, ..
                 } <span class="op">=</span> <span class="kw-2">*</span><span class="ident">counter_choice</span>.<span class="ident">choice_def</span>() {
                     <span class="ident">ChoiceAction</span>::<span class="ident">IncrCounter</span> {
                         <span class="ident">counter_name</span>: <span class="kw-2">&amp;</span><span class="ident">counter</span>.<span class="ident">choice</span>,
                         <span class="ident">incr_condition</span>: <span class="ident">value_set</span>::<span class="ident">print</span>(<span class="ident">incr_condition</span>, <span class="ident">ctx</span>),
+                        <span class="ident">counter_type</span>: <span class="ident">ast</span>::<span class="ident">ValueType</span>::<span class="ident">new</span>(<span class="ident">counter_type</span>, <span class="ident">ctx</span>),
                         <span class="ident">arguments</span>,
                         <span class="ident">value</span>: <span class="ident">CounterValue</span>::<span class="ident">new</span>(<span class="ident">value</span>, <span class="ident">ctx</span>),
                         <span class="ident">is_half</span>: <span class="ident">visibility</span> <span class="op">==</span> <span class="ident">ir</span>::<span class="ident">CounterVisibility</span>::<span class="ident">NoMax</span>,
@@ -760,11 +777,12 @@
                     }
                 } <span class="kw">else</span> { <span class="macro">panic</span><span class="macro">!</span>() }
             },
-            <span class="ident">ir</span>::<span class="ident">ChoiceAction</span>::<span class="ident">UpdateCounter</span> { <span class="kw-2">ref</span> <span class="ident">counter</span>, <span class="kw-2">ref</span> <span class="ident">incr</span>, <span class="ident">to_half</span> } <span class="op">=&gt;</span> {
+            <span class="ident">ir</span>::<span class="ident">ChoiceAction</span>::<span class="ident">UpdateCounter</span> { <span class="kw-2">ref</span> <span class="ident">counter</span>, <span class="kw-2">ref</span> <span class="ident">incr</span> } <span class="op">=&gt;</span> {
                 <span class="kw">let</span> <span class="ident">counter_choice</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">ir_desc</span>.<span class="ident">get_choice</span>(<span class="kw-2">&amp;</span><span class="ident">counter</span>.<span class="ident">choice</span>);
                 <span class="kw">let</span> <span class="ident">incr_choice</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">ir_desc</span>.<span class="ident">get_choice</span>(<span class="kw-2">&amp;</span><span class="ident">incr</span>.<span class="ident">choice</span>);
                 <span class="kw">let</span> <span class="ident">arguments</span> <span class="op">=</span> <span class="ident">ast</span>::<span class="ident">vars_with_sets</span>(<span class="ident">counter_choice</span>, <span class="kw-2">&amp;</span><span class="ident">counter</span>.<span class="ident">vars</span>, <span class="ident">ctx</span>);
                 <span class="kw">let</span> <span class="ident">incr_args</span> <span class="op">=</span> <span class="ident">ast</span>::<span class="ident">vars_with_sets</span>(<span class="ident">incr_choice</span>, <span class="kw-2">&amp;</span><span class="ident">incr</span>.<span class="ident">vars</span>, <span class="ident">ctx</span>);
+                <span class="kw">let</span> <span class="ident">value_type</span> <span class="op">=</span> <span class="ident">counter_choice</span>.<span class="ident">choice_def</span>().<span class="ident">value_type</span>();
                 <span class="kw">use</span> <span class="ident">ir</span>::<span class="ident">ChoiceDef</span>;
                 <span class="kw">if</span> <span class="kw">let</span> <span class="ident">ChoiceDef</span>::<span class="ident">Counter</span> {
                     <span class="ident">kind</span>, <span class="ident">visibility</span>, <span class="kw-2">ref</span> <span class="ident">incr_condition</span>, ..
@@ -775,7 +793,8 @@
                         <span class="ident">incr_condition</span>: <span class="ident">value_set</span>::<span class="ident">print</span>(<span class="ident">incr_condition</span>, <span class="ident">ctx</span>),
                         <span class="ident">is_half</span>: <span class="ident">visibility</span> <span class="op">==</span> <span class="ident">ir</span>::<span class="ident">CounterVisibility</span>::<span class="ident">NoMax</span>,
                         <span class="ident">zero</span>: <span class="ident">kind</span>.<span class="ident">zero</span>(),
-                        <span class="ident">incr_args</span>, <span class="ident">arguments</span>, <span class="ident">to_half</span>,
+                        <span class="ident">value_type</span>: <span class="ident">ast</span>::<span class="ident">ValueType</span>::<span class="ident">new</span>(<span class="ident">value_type</span>, <span class="ident">ctx</span>),
+                        <span class="ident">incr_args</span>, <span class="ident">arguments</span>,
                     }
                 } <span class="kw">else</span> { <span class="macro">panic</span><span class="macro">!</span>() }
             },
@@ -905,17 +924,24 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CounterValue</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="ident">Code</span>(<span class="ident">String</span>),
-    <span class="ident">Counter</span> { <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">str</span>, <span class="ident">arguments</span>:  <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">ast</span>::<span class="ident">Variable</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">ast</span>::<span class="ident">Set</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>)<span class="op">&gt;</span> }
+    <span class="ident">Choice</span> {
+        <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">str</span>,
+        <span class="ident">arguments</span>:  <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">ast</span>::<span class="ident">Variable</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">ast</span>::<span class="ident">Set</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
+        <span class="ident">full_type</span>: <span class="ident">ast</span>::<span class="ident">ValueType</span>,
+    }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">CounterValue</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">CounterVal</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">ast</span>::<span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">value</span> {
             <span class="ident">ir</span>::<span class="ident">CounterVal</span>::<span class="ident">Code</span>(<span class="kw-2">ref</span> <span class="ident">code</span>) <span class="op">=&gt;</span> <span class="ident">CounterValue</span>::<span class="ident">Code</span>(<span class="ident">ast</span>::<span class="ident">code</span>(<span class="ident">code</span>, <span class="ident">ctx</span>)),
-            <span class="ident">ir</span>::<span class="ident">CounterVal</span>::<span class="ident">Counter</span>(<span class="kw-2">ref</span> <span class="ident">counter</span>) <span class="op">=&gt;</span> {
+            <span class="ident">ir</span>::<span class="ident">CounterVal</span>::<span class="ident">Choice</span>(<span class="kw-2">ref</span> <span class="ident">counter</span>) <span class="op">=&gt;</span> {
                 <span class="kw">let</span> <span class="ident">choice</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">ir_desc</span>.<span class="ident">get_choice</span>(<span class="kw-2">&amp;</span><span class="ident">counter</span>.<span class="ident">choice</span>);
                 <span class="kw">let</span> <span class="ident">arguments</span> <span class="op">=</span> <span class="ident">ast</span>::<span class="ident">vars_with_sets</span>(<span class="ident">choice</span>, <span class="kw-2">&amp;</span><span class="ident">counter</span>.<span class="ident">vars</span>, <span class="ident">ctx</span>);
-                <span class="ident">CounterValue</span>::<span class="ident">Counter</span> { <span class="ident">arguments</span>, <span class="ident">name</span>: <span class="ident">choice</span>.<span class="ident">name</span>() }
+                <span class="kw">let</span> <span class="ident">full_type</span> <span class="op">=</span> <span class="ident">choice</span>.<span class="ident">choice_def</span>().<span class="ident">value_type</span>().<span class="ident">full_type</span>();
+                <span class="kw">let</span> <span class="ident">adaptator</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">Adaptator</span>::<span class="ident">from_arguments</span>(<span class="kw-2">&amp;</span><span class="ident">counter</span>.<span class="ident">vars</span>);
+                <span class="kw">let</span> <span class="ident">full_type</span> <span class="op">=</span> <span class="ident">ast</span>::<span class="ident">ValueType</span>::<span class="ident">new</span>(<span class="ident">full_type</span>.<span class="ident">adapt</span>(<span class="kw-2">&amp;</span><span class="ident">adaptator</span>), <span class="ident">ctx</span>);
+                <span class="ident">CounterValue</span>::<span class="ident">Choice</span> { <span class="ident">arguments</span>, <span class="ident">full_type</span>, <span class="ident">name</span>: <span class="ident">choice</span>.<span class="ident">name</span>() }
             },
         }
     }
