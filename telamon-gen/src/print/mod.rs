@@ -5,7 +5,7 @@ use itertools::Itertools;
 use serde_json::value::Value as JsonValue;
 use std::fmt::{self, Display, Formatter};
 //use std::io::prelude::*;
-use topological_sort::TopologicalSort;
+use pathfinding::prelude::topological_sort;
 use utils::*;
 
 // TODO(cleanup): use handlebars instead of printer macros and static templates
@@ -241,15 +241,17 @@ pub fn print(ir_desc: &ir::IrDesc) -> String {
 
 /// Order the choices so that they are computed in the right order to avoid overflows.
 fn order_choices<'a>(ir_desc: &'a ir::IrDesc) -> impl Iterator<Item=&'a ir::Choice> +'a {
-    let mut sort: TopologicalSort<_> = ir_desc.choices().map(|c| c.name()).collect();
-    for choice in ir_desc.choices() {
-        if let ir::ChoiceDef::Counter { ref value, .. } = *choice.choice_def() {
+    let names = ir_desc.choices().map(|c| c.name()).collect_vec();
+    let sorted = topological_sort(&names, |choice| {
+        let def = ir_desc.get_choice(choice).choice_def();
+        if let ir::ChoiceDef::Counter { ref value, .. } = *def {
             if let ir::CounterVal::Choice(ref counter) = *value {
-                sort.add_dependency(&counter.choice, choice.name());
+                return Some(&counter.choice);
             }
         }
-    }
-    sort.into_iter().map(move |c| ir_desc.get_choice(c))
+        None
+    });
+    unwrap!(sorted).into_iter().rev().map(move |c| ir_desc.get_choice(c))
 }
 
 #[derive(Debug, Serialize)]
