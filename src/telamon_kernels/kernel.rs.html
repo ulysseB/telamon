@@ -302,30 +302,16 @@
 <span id="245">245</span>
 <span id="246">246</span>
 <span id="247">247</span>
-<span id="248">248</span>
-<span id="249">249</span>
-<span id="250">250</span>
-<span id="251">251</span>
-<span id="252">252</span>
-<span id="253">253</span>
-<span id="254">254</span>
-<span id="255">255</span>
-<span id="256">256</span>
-<span id="257">257</span>
-<span id="258">258</span>
-<span id="259">259</span>
-<span id="260">260</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Abstracts kernels so we can build generic methods to test them.</span>
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">num_cpus</span>;
 <span class="kw">use</span> <span class="ident">rayon</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{<span class="ident">atomic</span>, <span class="ident">Mutex</span>};
-<span class="kw">use</span> <span class="ident">telamon</span>::{<span class="ident">codegen</span>, <span class="ident">device</span>, <span class="ident">explorer</span>, <span class="ident">ir</span>, <span class="ident">model</span>};
+<span class="kw">use</span> <span class="ident">telamon</span>::{<span class="ident">codegen</span>, <span class="ident">device</span>, <span class="ident">explorer</span>, <span class="ident">ir</span>};
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">explorer</span>::{<span class="ident">Candidate</span>, <span class="ident">local_selection</span>};
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">helper</span>::<span class="ident">SignatureBuilder</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">model</span>::<span class="ident">Bound</span>;
-<span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">search_space</span>::<span class="ident">SearchSpace</span>;
 <span class="kw">use</span> <span class="ident">statistics</span>;
 <span class="kw">use</span> <span class="ident">std</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
@@ -355,8 +341,8 @@
 
     <span class="doccomment">/// Builder the kernel body in the given builder. This builder should be based on the</span>
     <span class="doccomment">/// signature created by `build_signature`.</span>
-    <span class="kw">fn</span> <span class="ident">build_body</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">ir</span>::<span class="ident">Signature</span>, <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">device</span>::<span class="ident">Device</span>)
-        <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;&gt;</span>;
+    <span class="kw">fn</span> <span class="ident">build_body</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">ir</span>::<span class="ident">Signature</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">device</span>::<span class="ident">Context</span>)
+        <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;&gt;</span>;
 
     <span class="doccomment">/// Computes the expected output.</span>
     <span class="kw">fn</span> <span class="ident">get_expected_output</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="self">Self</span>::<span class="ident">ExpectedOutput</span>;
@@ -376,11 +362,7 @@
             <span class="ident">builder</span>.<span class="ident">get</span>()
         };
         <span class="kw">let</span> <span class="ident">expected_output</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">get_expected_output</span>(<span class="ident">context</span>);
-        <span class="kw">let</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">context</span>.<span class="ident">device</span>()).<span class="ident">into_iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">space</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">bound</span> <span class="op">=</span> <span class="ident">model</span>::<span class="ident">bound</span>(<span class="kw-2">&amp;</span><span class="ident">space</span>, <span class="ident">context</span>);
-                <span class="ident">Candidate</span>::<span class="ident">new</span>(<span class="ident">space</span>, <span class="ident">bound</span>)
-            }).<span class="ident">collect_vec</span>();
+        <span class="kw">let</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">context</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">num_deadends</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">num_runs</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">while</span> <span class="ident">num_runs</span> <span class="op">&lt;</span> <span class="ident">num_tests</span> {
@@ -421,11 +403,7 @@
             <span class="ident">kernel</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">build_signature</span>(<span class="ident">params</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
             <span class="ident">builder</span>.<span class="ident">get</span>()
         };
-        <span class="kw">let</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">context</span>.<span class="ident">device</span>()).<span class="ident">into_iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">space</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">bound</span> <span class="op">=</span> <span class="ident">model</span>::<span class="ident">bound</span>(<span class="kw-2">&amp;</span><span class="ident">space</span>, <span class="ident">context</span>);
-                <span class="ident">Candidate</span>::<span class="ident">new</span>(<span class="ident">space</span>, <span class="ident">bound</span>)
-            }).<span class="ident">collect_vec</span>();
+        <span class="kw">let</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">context</span>);
         <span class="kw">let</span> <span class="ident">leaves</span> <span class="op">=</span> <span class="ident">Mutex</span>::<span class="ident">new</span>(<span class="ident">Vec</span>::<span class="ident">new</span>());
         <span class="kw">let</span> <span class="ident">num_tested</span> <span class="op">=</span> <span class="ident">atomic</span>::<span class="ident">AtomicUsize</span>::<span class="ident">new</span>(<span class="number">0</span>);
         <span class="ident">context</span>.<span class="ident">async_eval</span>(<span class="ident">num_cpus</span>::<span class="ident">get</span>(), <span class="ident">device</span>::<span class="ident">EvalMode</span>::<span class="ident">TestBound</span>, <span class="kw-2">&amp;</span><span class="op">|</span><span class="ident">evaluator</span><span class="op">|</span> {
@@ -443,7 +421,7 @@
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">actions</span> <span class="op">=</span> <span class="ident">leaf</span>.<span class="ident">actions</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect_vec</span>();
                         <span class="ident">actions</span>.<span class="ident">reverse</span>();
                         <span class="kw">for</span> (<span class="ident">idx</span>, <span class="ident">partial_bound</span>) <span class="kw">in</span> <span class="ident">bounds</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-                            <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">partial_bound</span>.<span class="ident">value</span>() <span class="op">&lt;=</span> <span class="ident">bound</span>.<span class="ident">value</span>() <span class="op">*</span> <span class="number">1.001</span>,
+                            <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">partial_bound</span>.<span class="ident">value</span>() <span class="op">&lt;=</span> <span class="ident">bound</span>.<span class="ident">value</span>() <span class="op">*</span> <span class="number">1.01</span>,
                                     <span class="string">&quot;invalid inner bound: {} &lt; {}, kernel {}, \
                                     actions {:?} then {:?}&quot;</span>,
                                     <span class="ident">partial_bound</span>, <span class="ident">bound</span>, <span class="self">Self</span>::<span class="ident">name</span>(),
@@ -472,10 +450,10 @@
             <span class="ident">kernel</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">build_signature</span>(<span class="ident">params</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
             <span class="ident">builder</span>.<span class="ident">get</span>()
         };
-        <span class="kw">let</span> <span class="ident">search_space</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">context</span>.<span class="ident">device</span>());
-        <span class="kw">let</span> <span class="ident">best</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">explorer</span>::<span class="ident">find_best</span>(<span class="ident">config</span>, <span class="ident">context</span>, <span class="ident">search_space</span>),
+        <span class="kw">let</span> <span class="ident">search_space</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">context</span>);
+        <span class="kw">let</span> <span class="ident">best</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">explorer</span>::<span class="ident">find_best_ex</span>(<span class="ident">config</span>, <span class="ident">context</span>, <span class="ident">search_space</span>),
                            <span class="string">&quot;no candidates found for kernel {}&quot;</span>, <span class="self">Self</span>::<span class="ident">name</span>());
-        <span class="kw">let</span> <span class="ident">best_fn</span> <span class="op">=</span> <span class="ident">codegen</span>::<span class="ident">Function</span>::<span class="ident">build</span>(<span class="kw-2">&amp;</span><span class="ident">best</span>);
+        <span class="kw">let</span> <span class="ident">best_fn</span> <span class="op">=</span> <span class="ident">codegen</span>::<span class="ident">Function</span>::<span class="ident">build</span>(<span class="kw-2">&amp;</span><span class="ident">best</span>.<span class="ident">space</span>);
         <span class="ident">context</span>.<span class="ident">benchmark</span>(<span class="kw-2">&amp;</span><span class="ident">best_fn</span>, <span class="ident">num_samples</span>)
     }
 
@@ -492,11 +470,7 @@
             <span class="ident">kernel</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">build_signature</span>(<span class="ident">params</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
             <span class="ident">builder</span>.<span class="ident">get</span>()
         };
-        <span class="kw">let</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">context</span>.<span class="ident">device</span>()).<span class="ident">into_iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">space</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">bound</span> <span class="op">=</span> <span class="ident">model</span>::<span class="ident">bound</span>(<span class="kw-2">&amp;</span><span class="ident">space</span>, <span class="ident">context</span>);
-                <span class="ident">Candidate</span>::<span class="ident">new</span>(<span class="ident">space</span>, <span class="ident">bound</span>)
-            }).<span class="ident">collect_vec</span>();
+        <span class="kw">let</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">kernel</span>.<span class="ident">build_body</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">context</span>);
         <span class="kw">let</span> <span class="ident">num_deadends</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">num_samples</span>).<span class="ident">into_par_iter</span>().<span class="ident">filter</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">order</span> <span class="op">=</span> <span class="ident">explorer</span>::<span class="ident">config</span>::<span class="ident">NewNodeOrder</span>::<span class="ident">WeightedRandom</span>;
             <span class="kw">let</span> <span class="ident">inf</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span>;

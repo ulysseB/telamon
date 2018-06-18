@@ -173,6 +173,7 @@
 <span id="116">116</span>
 <span id="117">117</span>
 <span id="118">118</span>
+<span id="119">119</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Choices that can be applied to split the search space.</span>
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">BasicBlock</span>};
@@ -187,6 +188,7 @@
 <span class="doccomment">/// Either a regular action or a manually applied action.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ActionEx</span> {
+    <span class="ident">TileSizes</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;&gt;</span>),
     <span class="ident">Action</span>(<span class="ident">Action</span>),
     <span class="ident">LowerLayout</span> {
         <span class="ident">mem</span>: <span class="ident">ir</span>::<span class="ident">mem</span>::<span class="ident">InternalId</span>,

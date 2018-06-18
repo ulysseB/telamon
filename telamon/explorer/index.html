@@ -59,7 +59,7 @@
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a class='srclink' href='../../src/telamon/explorer/mod.rs.html#1-126' title='goto source code'>[src]</a></span></h1><div class='docblock'><p>exploration of the search space.</p>
+               </span><a class='srclink' href='../../src/telamon/explorer/mod.rs.html#1-131' title='goto source code'>[src]</a></span></h1><div class='docblock'><p>exploration of the search space.</p>
 </div><h2 id='reexports' class='section-header'><a href="#reexports">Re-exports</a></h2>
 <table><tr><td><code>pub use self::config::<a class="struct" href="../../telamon/explorer/config/struct.Config.html" title="struct telamon::explorer::config::Config">Config</a>;</code></td></tr><tr><td><code>pub use self::config::<a class="enum" href="../../telamon/explorer/config/enum.SearchAlgorithm.html" title="enum telamon::explorer::config::SearchAlgorithm">SearchAlgorithm</a>;</code></td></tr></table><h2 id='modules' class='section-header'><a href="#modules">Modules</a></h2>
 <table>
@@ -106,6 +106,15 @@ from the command line.</p>
                                 <p>Entry point of the exploration. This function returns the best candidate that it has found in
 the given time (or at whatever point we decided to stop the search - potentially after an
 exhaustive search)</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.find_best_ex.html"
+                                  title='fn telamon::explorer::find_best_ex'>find_best_ex</a></td>
+                           <td class='docblock-short'>
+                                <p>Same as <code>find_best</code>, but allows to specify pre-existing actions and also returns the
+actionsfor the best candidate.</p>
 
                            </td>
                        </tr>

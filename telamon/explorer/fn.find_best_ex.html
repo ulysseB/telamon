@@ -4,18 +4,18 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="rustdoc">
-    <meta name="description" content="API documentation for the Rust `fix_order` fn in crate `telamon`.">
-    <meta name="keywords" content="rust, rustlang, rust-lang, fix_order">
+    <meta name="description" content="API documentation for the Rust `find_best_ex` fn in crate `telamon`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, find_best_ex">
 
-    <title>telamon::explorer::choice::fix_order - Rust</title>
+    <title>telamon::explorer::find_best_ex - Rust</title>
 
-    <link rel="stylesheet" type="text/css" href="../../../normalize.css">
-    <link rel="stylesheet" type="text/css" href="../../../rustdoc.css"
+    <link rel="stylesheet" type="text/css" href="../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css"
           id="mainThemeStyle">
     
-    <link rel="stylesheet" type="text/css" href="../../../dark.css">
-    <link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle">
-    <script src="../../../storage.js"></script>
+    <link rel="stylesheet" type="text/css" href="../../dark.css">
+    <link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle">
+    <script src="../../storage.js"></script>
     
 
     
@@ -34,16 +34,16 @@
     <nav class="sidebar">
         <div class="sidebar-menu">&#9776;</div>
         
-        <div class="sidebar-elems"><p class='location'><a href='../../index.html'>telamon</a>::<wbr><a href='../index.html'>explorer</a>::<wbr><a href='index.html'>choice</a></p><script>window.sidebarCurrent = {name: 'fix_order', ty: 'fn', relpath: ''};</script><script defer src="sidebar-items.js"></script></div>
+        <div class="sidebar-elems"><p class='location'><a href='../index.html'>telamon</a>::<wbr><a href='index.html'>explorer</a></p><script>window.sidebarCurrent = {name: 'find_best_ex', ty: 'fn', relpath: ''};</script><script defer src="sidebar-items.js"></script></div>
     </nav>
 
     <div class="theme-picker">
         <button id="theme-picker" aria-label="Pick another theme!">
-            <img src="../../../brush.svg" width="18" alt="Pick another theme!">
+            <img src="../../brush.svg" width="18" alt="Pick another theme!">
         </button>
         <div id="theme-choices"></div>
     </div>
-    <script src="../../../theme.js"></script>
+    <script src="../../theme.js"></script>
     <nav class="sub">
         <form class="search-form js-only">
             <div class="search-container">
@@ -55,12 +55,12 @@
         </form>
     </nav>
 
-    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Function <a href='../../index.html'>telamon</a>::<wbr><a href='../index.html'>explorer</a>::<wbr><a href='index.html'>choice</a>::<wbr><a class="fn" href=''>fix_order</a></span><span class='out-of-band'><span id='render-detail'>
+    <section id='main' class="content"><h1 class='fqn'><span class='in-band'>Function <a href='../index.html'>telamon</a>::<wbr><a href='index.html'>explorer</a>::<wbr><a class="fn" href=''>find_best_ex</a></span><span class='out-of-band'><span id='render-detail'>
                    <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
                        [<span class='inner'>&#x2212;</span>]
                    </a>
-               </span><a class='srclink' href='../../../src/telamon/explorer/choice.rs.html#67-91' title='goto source code'>[src]</a></span></h1><pre class='rust fn'>pub fn fix_order(space: <a class="struct" href="../../../telamon/search_space/struct.SearchSpace.html" title="struct telamon::search_space::SearchSpace">SearchSpace</a>) -&gt; <a class="struct" href="../../../telamon/search_space/struct.SearchSpace.html" title="struct telamon::search_space::SearchSpace">SearchSpace</a></pre><div class='docblock'><p>Chooses an order between instructions and dimensions when multiple are possible.
-The function assumes the order between dimensions is already fixed.</p>
+               </span><a class='srclink' href='../../src/telamon/explorer/mod.rs.html#54-68' title='goto source code'>[src]</a></span></h1><pre class='rust fn'>pub fn find_best_ex&lt;'a&gt;(<br>&nbsp;&nbsp;&nbsp;&nbsp;config: &amp;<a class="struct" href="../../telamon/explorer/config/struct.Config.html" title="struct telamon::explorer::config::Config">Config</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;context: &amp;<a class="trait" href="../../telamon/device/trait.Context.html" title="trait telamon::device::Context">Context</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;candidates: <a class="struct" href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec">Vec</a>&lt;<a class="struct" href="../../telamon/explorer/struct.Candidate.html" title="struct telamon::explorer::Candidate">Candidate</a>&lt;'a&gt;&gt;<br>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../../telamon/explorer/struct.Candidate.html" title="struct telamon::explorer::Candidate">Candidate</a>&lt;'a&gt;&gt;</pre><div class='docblock'><p>Same as <code>find_best</code>, but allows to specify pre-existing actions and also returns the
+actionsfor the best candidate.</p>
 </div></section>
     <section id='search' class="content hidden"></section>
 
@@ -119,10 +119,10 @@ The function assumes the order between dimensions is already fixed.</p>
     
 
     <script>
-        window.rootPath = "../../../";
+        window.rootPath = "../../";
         window.currentCrate = "telamon";
     </script>
-    <script src="../../../main.js"></script>
-    <script defer src="../../../search-index.js"></script>
+    <script src="../../main.js"></script>
+    <script defer src="../../search-index.js"></script>
 </body>
 </html>
