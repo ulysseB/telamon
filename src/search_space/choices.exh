@@ -106,6 +106,9 @@ quotient ThreadDims of $dim in StaticDims:
   add_to_set = "::search_space::add_thread_dim($fun, $item)"
 end
 
+/// Strip-mining factor of a striped-mined dimension.
+define integer size($dim in StaticDims): "&[unwrap!($dim.size().as_int()) as u16]" end
+
 /// Specifies how iteration dimensions are implemented.
 define enum dim_kind($dim in Dimensions):
   /// The dimension is implemented as a regular loop.
