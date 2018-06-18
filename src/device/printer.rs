@@ -1,24 +1,27 @@
 use codegen::*;
-use std::io::prelude::*;
-use std::collection::Hashmap;
+use utils::*;
+use itertools::Itertools;
 
 use ir::{self, op, Type};
+use search_space::{Domain, DimKind};
 
 trait Printer {
     type Label;
 
     /// Get a proper string representation of an integer in target language
-    fn get_int(n: u32) -> String;
+    fn get_int(&self, n: u32) -> String;
 
-    fn print_binop(&mut self, return_id: &str, op: op::BinOp, op1: &str, op2: &str) ;
+    fn get_type(&mut self, t: &ir::Type) -> String;
+
+    fn print_binop(&mut self, return_id: &str, op_type: ir::BinOp, op1: &str, op2: &str) ;
 
     fn print_mul(&mut self, return_id: &str, round: op::Rounding, op1: &str, op2: &str) ;
 
-    fn print_mad(&mut self, return_id: &str, round: op::Rounding, op1: &str, op2: &str, op3: &&str) ;
+    fn print_mad(&mut self, return_id: &str, round: op::Rounding, op1: &str, op2: &str, op3: &str) ;
 
     fn print_mov(&mut self, return_id: &str, op: &str) ;
 
-    fn print_ld(&mut self, return_id: &str, addr: &str) ;
+    fn print_ld(&mut self, return_id: &str, cast_type: &str,  addr: &str) ;
 
     fn print_st(&mut self, op1: &str, op2: &str) ;
 
@@ -43,7 +46,7 @@ trait Printer {
     fn print_sync(&mut self) ;
 }
 
-fn cfg_vec(printer, fun: &Function, cfgs: &[Cfg], namer: &mut NameMap) {
+fn cfg_vec<T: Printer>(printer: &mut T, fun: &Function, cfgs: &[Cfg], namer: &mut NameMap) {
     cfgs.iter().map(|c| cfg(printer, fun, c, namer));
 }
 
@@ -55,12 +58,38 @@ fn cfg<'a, T: Printer>(printer: &mut T, fun: &Function, c: &Cfg<'a>, namer: &mut
         Cfg::Threads(ref dims, ref ind_levels, ref inner) => {
                 enable_threads(printer, fun, dims, namer);
                 for level in ind_levels {
-                    parallel_induction_level(printer, level, namer));
+                    parallel_induction_level(printer, level, namer);
                 }
                 cfg_vec(printer, fun, inner, namer);
                 printer.print_sync();
         }
-        Cfg::Instruction(ref i) => inst(printer, i, namer, fun),
+        Cfg::Instruction(ref i) => inst(printer, i, namer),
+    }
+}
+
+/// Prints a multiplicative induction var level.
+fn parallel_induction_level<T: Printer>(printer: &mut T, level: &InductionLevel, namer: &NameMap) {
+    let dim_id = level.increment.map(|(dim, _)| dim);
+    let ind_var = namer.name_induction_var(level.ind_var, dim_id);
+    let base_components =  level.base.components().map(|v| namer.name(v)).collect_vec();
+    if let Some((dim, increment)) = level.increment {
+        let index = namer.name_index(dim);
+        let step = namer.name_size(increment, Type::I(32));
+        match base_components[..] {
+            [] => printer.print_mul(&ind_var, op::Rounding::Nearest, &index, &step),
+            [ref base] => printer.print_mad(&ind_var, op::Rounding::Nearest, &index, &step, &base),
+            _ => panic!()
+        }
+    } else {
+        match base_components[..] {
+            //[] => format!("{} = 0;//Induction initialized",  ind_var),
+            [] => {let zero = printer.get_int(0); printer.print_mov(&ind_var, &zero);}
+            //[ref base] => format!(" {} = {};//Induction initialized", ind_var, base),
+            [ref base] =>  printer.print_mov(&ind_var, &base),
+            //[ref lhs, ref rhs] => format!("{} = {} + {};//Induction initialized", ind_var, lhs, rhs),
+            [ref lhs, ref rhs] =>  printer.print_binop(&ind_var, ir::BinOp::Add, &lhs, &rhs),
+            _ => panic!()
+        }
     }
 }
 
@@ -71,10 +100,10 @@ fn enable_threads<T: Printer>(printer: &mut T, fun: &Function, threads: &[bool],
         if is_active { continue; }
         let new_guard = namer.gen_name(ir::Type::I(1));
         let index = namer.name_index(dim.id());
-        printer.print_equal(new_guard, index, &"0");
+        printer.print_equal(&new_guard, index, &"0");
         if let Some(ref guard) = guard {
             //unwrap!(writeln!(ops, "   {} = {} && {};", guard, guard, new_guard));
-            printer.print_and(guard, guard, new_guard);
+            printer.print_and(&guard as &str, &guard as &str, &new_guard);
         } else {
             guard = Some(new_guard);
         };
@@ -96,121 +125,143 @@ fn gen_loop<T: Printer>(printer: &mut T, fun: &Function, dim: &Dimension, cfgs:
     }
 }
 
-fn standard_loop<T: Printer>(printer: &T, out: &T::Out, fun: &Function, dim: &Dimension, cfgs:
+fn standard_loop<T: Printer>(printer: &mut T,  fun: &Function, dim: &Dimension, cfgs:
                              &[Cfg], namer: &mut NameMap) {
-    let idx = namer.name_index(dim.id()).to_string();
-    let zero = printer.get_int(1);
-    printer.print_mov(idx, &zero);
-    let ind_var_vec = vec![];
-    let loop_id = namer.gen_loop_id();
-    printer.print_label(loop_id);
-    let ind_levels = dim.induction_levels().iter();
-    ind_levels.map(|level| {
-        let dim_id = level.increment.map(|(dim, _)| dim);
-        let ind_var = namer.name_induction_var(level.ind_var, dim_id);
-        let base_components = level.base.components().map(|v| namer.name(v));
-        let init = match base_components.collect_vec()[..] {
-            //[ref base] => format!("{} = {};//Induction variable\n  ", ind_var, base),
-            [ref base] => printer.print_mov(out, ind_var, base),
-            [ref lhs, ref rhs] =>
-                printer.print_binop(out, namer, op::BinOp::Add, ind_var, lhs, rhs),
-                //format!(" {} = {} + {};\n  ", ind_var, lhs, rhs),
-            _ => panic!(),
-        };
-        ind_var_vec.push(ind_var);
-    });
-    cfg_vec(printer, fun, cfgs, namer);
-    ind_levels.rev().map(|level| {
-      let ind_var = ind_var_vec.pop().unwrap();
-        if let Some((_, increment)) = level.increment {
-            let step = namer.name_size(increment, level.t());
-            printer.print_binop(ind_var, op::BinOp::Add, ind_var, step);
-        };
-    });
-    let one = printer.get_int(1);
-    printer.print_add(idx, idx, &one);
-    let gt_cond = "loop_test";
-    let size = printer.get_int(namer.name_size(dim.size(), Type::I(32));
-    printer.print_lt(&gt_cond, idx, size);
+  let idx = namer.name_index(dim.id()).to_string();
+  let zero = printer.get_int(1);
+  printer.print_mov(&idx, &zero);
+  let mut ind_var_vec = vec![];
+  let loop_id = namer.gen_loop_id();
+  printer.print_label(&loop_id.to_string());
+  let ind_levels = dim.induction_levels();
+  for level in ind_levels.iter() {
+    let dim_id = level.increment.map(|(dim, _)| dim);
+    let ind_var = namer.name_induction_var(level.ind_var, dim_id);
+    let base_components = level.base.components().map(|v| namer.name(v));
+    match base_components.collect_vec()[..] {
+      //[ref base] => format!("{} = {};//Induction variable\n  ", ind_var, base),
+      [ref base] => printer.print_mov(&ind_var, &base),
+      [ref lhs, ref rhs] =>
+        printer.print_binop( &ind_var, ir::BinOp::Add, &lhs, &rhs),
+        //format!(" {} = {} + {};\n  ", ind_var, lhs, rhs),
+      _ => panic!(),
+    };
+    ind_var_vec.push(ind_var.into_owned());
+  }
+  cfg_vec(printer, fun, cfgs, namer);
+  for level in ind_levels.iter() {
+    let ind_var: String = ind_var_vec.pop().unwrap();
+    if let Some((_, increment)) = level.increment {
+      let step = namer.name_size(increment, level.t());
+      printer.print_binop(&ind_var, ir::BinOp::Add, &ind_var, &step);
+    };
+  }
+  let one = printer.get_int(1);
+  printer.print_binop(&idx, op::BinOp::Add, &idx, &one);
+  let gt_cond = "loop_test";
+  printer.print_lt(&gt_cond, &idx, &namer.name_size(dim.size(), Type::I(32)));
 }
 
-fn unroll_loop(printer: &T, out: &T::Out, fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap)-> String {
-    //let mut body = Vec::new();
-    let mut incr_levels = Vec::new();
-    let mut ind_var_vec = vec![];
-    for level in dim.induction_levels() {
-        let t = cpu_type(&level.t());
-        let dim_id = level.increment.map(|(dim, _)| dim);
-        let ind_var = namer.name_induction_var(level.ind_var, dim_id).to_string();
-        let base_components = level.base.components().map(|v| namer.name(v));
-        let base = match base_components.collect_vec()[..] {
-            [ref base] => base.to_string(),
-            [ref lhs, ref rhs] => {
-                let tmp = namer.gen_name(level.t());
-                body.push(format!(" {} = {} + {};", tmp, lhs, rhs));
-                tmp
-            },
-            _ => panic!(),
+fn unroll_loop<T:Printer>(printer: &mut T, fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap) {
+  //let mut body = Vec::new();
+  let mut incr_levels = Vec::new();
+  //let mut ind_var_vec = vec![];
+  for level in dim.induction_levels() {
+    let dim_id = level.increment.map(|(dim, _)| dim);
+    let ind_var = namer.name_induction_var(level.ind_var, dim_id).to_string();
+    let base_components = level.base.components().map(|v| namer.name(v));
+    let base = match base_components.collect_vec()[..] {
+      [ref base] => base.to_string(),
+      [ref lhs, ref rhs] => {
+        let tmp = namer.gen_name(level.t());
+        //body.push(format!(" {} = {} + {};", tmp, lhs, rhs));
+        printer.print_binop(&tmp, ir::BinOp::Add, lhs, rhs);
+        tmp
+      },
+      _ => panic!(),
+    };
+    //body.push(format!("{} = {};", ind_var, base));
+    printer.print_mov(&ind_var, &base);
+    if let Some((_, incr)) = level.increment {
+      incr_levels.push((level, ind_var, incr, base));
+    }
+  }
+  for i in 0..unwrap!(dim.size().as_int()) {
+    namer.set_current_index(dim, i);
+    if i > 0 {
+      for &(level, ref ind_var, incr, ref base) in &incr_levels {
+        if let Some(step) = incr.as_int() {
+          //format!(" {} = {} + {};", ind_var, step*i, base),
+            let stepxi = printer.get_int(step * i);
+          printer.print_binop(ind_var, ir::BinOp::Add, &stepxi, &base);
+        } else {
+          let step = namer.name_size(incr, level.t());
+          //format!(" {} = {} + {};", ind_var, step, ind_var)
+          printer.print_binop(&ind_var, ir::BinOp::Add, &step, &ind_var);
         };
-        //body.push(format!("{} = {};", ind_var, base));
-        if let Some((_, incr)) = level.increment {
-            incr_levels.push((level, ind_var, t, incr, base));
-        }
+      }
     }
-    for i in 0..unwrap!(dim.size().as_int()) {
-        namer.set_current_index(dim, i);
-        if i > 0 {
-            for &(level, ref ind_var, _, incr, ref base) in &incr_levels {
-                let incr =  if let Some(step) = incr.as_int() {
-                    format!(" {} = {} + {};", ind_var, step*i, base)
-                } else {
-                    let step = namer.name_size(incr, level.t());
-                    format!(" {} = {} + {};", ind_var, step, ind_var)
-                };
-                body.push(incr);
-            }
-        }
-        body.push(cfg_vec(fun, cfgs, namer));
-    }
-    namer.unset_current_index(dim);
-    body.join("\n  ")
+    //body.push(cfg_vec(fun, cfgs, namer));
+    cfg_vec(printer, fun, cfgs, namer);
+  }
+  namer.unset_current_index(dim);
+}
+
+fn privatise_global_block<T: Printer>(printer: &mut T, block: &InternalMemBlock,
+                                      namer: &mut NameMap, fun: &Function) {
+  if fun.block_dims().is_empty() { return ; }
+  let addr = namer.name_addr(block.id());
+  let size = namer.name_size(block.local_size(), Type::I(32));
+  let d0 = namer.name_index(fun.block_dims()[0].id()).to_string();
+  let var = fun.block_dims()[1..].iter()
+    .fold(d0, |old_var, dim| {
+      let var = namer.gen_name(Type::I(32));
+      let size = namer.name_size(dim.size(), Type::I(32));
+      let idx = namer.name_index(dim.id());
+      printer.print_mad(&var, op::Rounding::Nearest, &old_var, &size, &idx);
+      //insts.push(format!("{} = {} * {} + {};",
+      //                  var, old_var, size, idx));
+      var
+    });
+  printer.print_mad(&addr, op::Rounding::Nearest, &var, &size, &addr);
 }
 
 /// Prints an instruction.
-fn inst<T: Printer>(printer: T, inst: &Instruction, namer: &mut NameMap ) {
+fn inst<T: Printer>(printer: &mut T, inst: &Instruction, namer: &mut NameMap ) {
     match *inst.operator() {
         op::BinOp(op, ref lhs, ref rhs, round) => {
             assert_eq!(round, op::Rounding::Nearest);
-            printer.print_binop(namer.name_inst(inst), op, namer.name_op(lhs), namer.name_op(rhs))
+            printer.print_binop(&namer.name_inst(inst), op, &namer.name_op(lhs), &namer.name_op(rhs))
         }
         op::Mul(ref lhs, ref rhs, round, _) => {
             assert_eq!(round, op::Rounding::Nearest);
-            printer.print_mul(namer.name_inst(inst), round, namer.name_op(lhs), namer.name_op(rhs))
+            printer.print_mul(&namer.name_inst(inst), round, &namer.name_op(lhs), &namer.name_op(rhs))
         },
         op::Mad(ref mul_lhs, ref mul_rhs, ref add_rhs, round) => {
             assert_eq!(round, op::Rounding::Nearest);
-            printer.print_mad(namer.name_inst(inst), round, namer.name_op(mul_lhs), namer.name_op(mul_rhs), namer.name_op(add_rhs))
+            printer.print_mad(&namer.name_inst(inst), round, &namer.name_op(mul_lhs), &namer.name_op(mul_rhs), &namer.name_op(add_rhs))
         },
         op::Mov(ref op) => {
 
-            printer.print_mov(namer.name_inst(inst), namer.name_op(op))
+            printer.print_mov(&namer.name_inst(inst), &namer.name_op(op))
         },
         op::Ld(ld_type, ref addr, _) => {
 
-            printer.print_ld(namer.name_inst(inst), cpu_type(&ld_type), namer.name_op(op))
+          let ld_type = printer.get_type(&ld_type);
+          printer.print_ld(&namer.name_inst(inst), &ld_type, &namer.name_op(addr))
         },
         op::St(ref addr, ref val, _,  _) => {
-            let op_type = val.t();
+            //let op_type = val.t();
             let guard = if inst.has_side_effects() {
                 namer.side_effect_guard()
             } else { None };
             if let Some(ref pred) = guard {
-                format!("if({}) ", pred);
-                  printer.print_cond_st(namer.name_op(addr), namer.name_op(val), pred);
-            } else {printer.print_st(namer.name_op(addr), namer.name_op(val));};
+                //format!("if({}) ", pred);
+                  printer.print_cond_st(&namer.name_op(addr), &namer.name_op(val), pred);
+            } else {printer.print_st(&namer.name_op(addr), &namer.name_op(val));};
         },
         op::Cast(ref op, t) => {
-            printer.print_mov(namer.name_inst(inst), cpu_type(&t), namer.name_op(op))
+            printer.print_cast(&namer.name_inst(inst), &namer.name_op(op), &t)
         },
         op::TmpLd(..) | op::TmpSt(..) => panic!("non-printable instruction")
     }
