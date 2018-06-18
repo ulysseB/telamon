@@ -1,6 +1,5 @@
 //! A module for handling accesses to the device memory.
-use ir::{self, InstId, Size, Type, dim};
-use std::hash::{Hash, Hasher};
+use ir::{self, InstId, Type, dim};
 use utils::*;
 
 // TODO(cleanup): move layouts into internal blocks.
@@ -30,25 +29,17 @@ pub trait Block {
 
 /// A block of memory allocated on the device by the kernel.
 #[derive(Clone)]
-pub struct InternalBlock<'a> {
+pub struct InternalBlock {
     id: InternalId,
     uses: Vec<InstId>,
-    base_size: Size<'a>,
+    base_size: u32,
     is_private: bool,
     mapped_dims: Vec<(ir::dim::Id, ir::dim::Id)>,
     // TODO(search_space): enable layout transformations.
     maybe_mapped: dim::Map,
 }
 
-impl<'a> PartialEq for InternalBlock<'a> {
-    fn eq(&self, other: &InternalBlock) -> bool { self.id() == other.id() }
-}
-
-impl<'a> Eq for InternalBlock<'a> {}
-
-impl<'a> Hash for InternalBlock<'a> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.id().hash(state) }
-}
+hash_from_key!(InternalBlock, &InternalBlock::id);
 
 /// A memory block allocated by the user.
 #[derive(Clone)]
@@ -57,7 +48,7 @@ pub struct ExternalBlock {
     uses: Vec<InstId>,
 }
 
-impl<'a> InternalBlock<'a> {
+impl InternalBlock {
     /// Returns the unique identifer of the memory block.
     pub fn id(&self) -> InternalId { self.id }
 
@@ -77,10 +68,10 @@ impl<'a> InternalBlock<'a> {
     pub fn is_private(&self) -> bool { self.is_private }
 
     /// Return the base size of the block, if it is statically known.
-    pub fn base_size(&self) -> Option<u32> { self.base_size.as_int() }
+    pub fn base_size(&self) -> u32 { self.base_size }
 }
 
-impl<'a> Block for InternalBlock<'a> {
+impl Block for InternalBlock {
     fn mem_id(&self) -> Id { Id::Internal(self.id.0) }
 
     fn as_internal(&self) -> Option<&InternalBlock> { Some(self) }
@@ -100,15 +91,15 @@ impl Block for ExternalBlock {
 
 /// Holds the blocks of memory to allocate on the device.
 #[derive(Clone)]
-pub struct BlockMap<'a> {
-    internal_blocks: Vec<InternalBlock<'a>>,
+pub struct BlockMap {
+    internal_blocks: Vec<InternalBlock>,
     external_blocks: Vec<ExternalBlock>,
     layouts: HashSet<InternalId>,
 }
 
-impl<'a> BlockMap<'a> {
+impl BlockMap {
     /// Creates a new `BlocksMap`.
-    pub fn new(num_external: u32) -> BlockMap<'a> {
+    pub fn new(num_external: u32) -> Self {
         let external_blocks = (0..num_external).map(|id| {
             ExternalBlock { id: Id::External(id), uses: vec![] }
         }).collect();
@@ -121,7 +112,7 @@ impl<'a> BlockMap<'a> {
 
     /// Allocates a new `Block` with the given type and sizes. Must call not merged on
     /// the dimensions that cannot be merged upon creation.
-    pub fn alloc_block(&mut self, base_size: Size<'a>, private: bool,
+    pub fn alloc_block(&mut self, base_size: u32, private: bool,
                        maybe_mapped: Option<ir::DimMap>) -> InternalId {
         let id = InternalId(self.internal_blocks.len() as u32);
         if let Some(ref dim_map) = maybe_mapped {
@@ -130,7 +121,7 @@ impl<'a> BlockMap<'a> {
         }
         let block = InternalBlock {
             id,
-            base_size: base_size.clone(),
+            base_size: base_size,
             is_private: private,
             uses: vec![],
             mapped_dims: vec![],
@@ -144,8 +135,7 @@ impl<'a> BlockMap<'a> {
     /// on dimensions.
     pub fn new_tmp<IT>(&mut self, t: Type, dims: IT) -> InternalId
             where IT: Iterator<Item=(dim::Id, dim::Id)> {
-        let base_size = ir::Size::new(unwrap!(t.len_byte()), vec![], 1);
-        self.alloc_block(base_size, true, Some(ir::DimMap::new(dims)))
+        self.alloc_block(unwrap!(t.len_byte()), true, Some(ir::DimMap::new(dims)))
     }
 
     /// Registers a use of a memory block by an instruction.
@@ -175,7 +165,7 @@ impl<'a> BlockMap<'a> {
     }
 
     /// Retuns the list of internal blocks.
-    pub fn internal_blocks<'b>(&'b self) -> impl Iterator<Item=&'b InternalBlock<'a>> {
+    pub fn internal_blocks<'b>(&'b self) -> impl Iterator<Item=&'b InternalBlock> {
         self.internal_blocks.iter()
     }
 
@@ -198,7 +188,7 @@ impl<'a> BlockMap<'a> {
 
     /// Registers that two dimensions may not be merged. Returns a list of dimensions
     /// removed from the memory blocks and a list of layouts to lower.
-    pub fn not_merged(&mut self, lhs_dim: &ir::Dimension<'a>, rhs: dim::Id)
+    pub fn not_merged(&mut self, lhs_dim: &ir::Dimension, rhs: dim::Id)
             -> Vec<InternalId> {
         let lhs = lhs_dim.id();
         let mut to_lower = Vec::new();

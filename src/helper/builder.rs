@@ -286,14 +286,14 @@ impl<'a> Builder<'a> {
     }
 
     /// Allocates a memory block in shared memory.
-    pub fn allocate_shared(&mut self, size: Size<'a>) -> mem::InternalId {
+    pub fn allocate_shared(&mut self, size: u32) -> mem::InternalId {
         let id = self.allocate(size, true);
         self.actions.push(Action::MemSpace(id.into(), MemSpace::SHARED));
         id
     }
 
     /// Allocates a memory block.
-    pub fn allocate(&mut self, size: Size<'a>, private: bool) -> mem::InternalId {
+    pub fn allocate(&mut self, size: u32, private: bool) -> mem::InternalId {
         self.function.add_mem_block(size, private)
     }
 

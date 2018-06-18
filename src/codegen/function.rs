@@ -205,13 +205,12 @@ pub enum AllocationScheme { Global, PrivatisedGlobal, Shared }
 
 impl<'a> InternalMemBlock<'a> {
     /// Creates a new InternalMemBlock from an `ir::mem::Internal`.
-    pub fn new(block: &'a ir::mem::InternalBlock<'a>,
+    pub fn new(block: &'a ir::mem::InternalBlock,
                num_threads_groups: &Option<ir::Size<'a>>,
                space: &'a SearchSpace<'a>) -> Self {
         let mem_space = space.domain().get_mem_space(block.mem_id());
         assert!(mem_space.is_constrained());
-        // FIXME: base_size should return an int 
-        let mut size = ir::Size::new(unwrap!(block.base_size()), vec![], 1);
+        let mut size = ir::Size::new(block.base_size(), vec![], 1);
         for &(dim, _) in block.mapped_dims() {
             size *= space.ir_instance().dim(dim).size();
         }

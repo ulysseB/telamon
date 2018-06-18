@@ -254,7 +254,7 @@ impl CudaPrinter {
         let extern_params = fun.params.iter()
             .map(|p| format!("{} {}", Self::host_type(&p.t), p.name))
             .collect_vec().join(", ");
-        let res = write!(out, include_str!("template/host.c"),
+      let res = write!(out, include_str!("template/host.c"),
         name = fun.name,
         ptx_code = self.function(fun, gpu).replace("\n", "\\n\\\n"),
         extern_params = extern_params,

@@ -96,7 +96,7 @@ fn lower_layout_choice(space: &SearchSpace, mem: ir::mem::InternalId) -> Vec<Act
     let mem_block = space.ir_instance().internal_mem_block(mem);
     let mapped_dims = mem_block.mapped_dims().iter().cloned().collect_vec();
     // Order dimensions until the stride is too big to matter in any way.
-    let mut to_process = vec![(vec![], mapped_dims, unwrap!(mem_block.base_size()))];
+    let mut to_process = vec![(vec![], mapped_dims, mem_block.base_size())];
     let mut actions = Vec::new();
     while let Some((ordered_dims, remaining_dims, ordered_size)) = to_process.pop() {
         // TODO(search_space): parametrize the max stride for layout ordering

@@ -156,9 +156,6 @@ define enum mem_space($mem in MemBlocks):
         || inst_flag($inst) is MEM_SHARED
 end
 
-require forall $mem in InternalMemBlocks:
-    "$mem.is_private() && $mem.base_size().is_some()"
-
 /// Specifies the version of an instruction to use.
 define enum inst_flag($inst in MemInsts):
   /// Access the global memory using both L1 and L2 cache. Coherence is not guaranteed
@@ -394,7 +391,7 @@ trigger forall $lhs in Dimensions:
 // TODO(cleanup): use dependent sets to only iterate on necessary pairs.
 // FIXME: remove cubic choice choices
 define half counter mem_size($mem in InternalMemBlocks):
-  base "$mem.base_size().unwrap_or(1)"
+  base "$mem.base_size()"
   forall $lhs in StaticDims:
     forall $rhs in StaticDims:
       mul size($lhs) when:

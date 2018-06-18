@@ -141,8 +141,7 @@ impl PerfModelTest for SharedLoad {
         let size_0 = builder.cst_size(32);
         let size_1 = builder.cst_size(32);
         let size_2 = builder.param_size("n");
-        let mem_size = builder.cst_size(8*32*32*4);
-        let mem = builder.allocate_shared(mem_size);
+        let mem = builder.allocate_shared(8*32*32*4);
         let d0 = builder.open_dim_ex(size_0, DimKind::THREAD);
         let d1 = builder.open_dim_ex(size_1, DimKind::THREAD);
         let ptr_to_mem_type = builder.type_of(&mem);
@@ -193,8 +192,7 @@ impl PerfModelTest for VectorSharedLoad {
         let size_0 = builder.cst_size(32);
         let size_1 = builder.cst_size(32);
         let size_2 = builder.param_size("n");
-        let mem_size = builder.cst_size(64*4*4);
-        let mem = builder.allocate_shared(mem_size);
+        let mem = builder.allocate_shared(64*4*4);
         let d0 = builder.open_dim_ex(size_0, DimKind::THREAD);
         let d1 = builder.open_dim_ex(size_1, DimKind::THREAD);
         let acc_0 = builder.mov(&0f32);
@@ -235,8 +233,7 @@ impl PerfModelTest for SharedReplay {
         let size_0 = builder.cst_size(32);
         let size_1 = builder.cst_size(32);
         let size_2 = builder.param_size("n");
-        let mem_size = builder.cst_size(8*32*32*4);
-        let mem = builder.allocate_shared(mem_size);
+        let mem = builder.allocate_shared(8*32*32*4);
         let d0 = builder.open_dim_ex(size_0, DimKind::THREAD);
         let d1 = builder.open_dim_ex(size_1, DimKind::THREAD);
         let ptr_to_mem_type = builder.type_of(&mem);
@@ -281,7 +278,7 @@ impl PerfModelTest for VectorSharedReplay {
         let size_0 = builder.cst_size(32);
         let size_1 = builder.cst_size(32);
         let size_2 = builder.param_size("n");
-        let mem_size = builder.cst_size(8*32*32*4);
+        let mem_size = 8*32*32*4;
         let mem = builder.allocate_shared(mem_size);
         let d0 = builder.open_dim_ex(size_0, DimKind::THREAD);
         let d1 = builder.open_dim_ex(size_1, DimKind::THREAD);
