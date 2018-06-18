@@ -249,7 +249,8 @@ impl<'a> ChoiceAction<'a> {
                 let choice = ctx.ir_desc.get_choice(&choice_instance.choice);
                 let filter_call = FilterCall::new(filter, set, conflicts, forall_offset, ctx);
                 let arguments = ast::vars_with_sets(choice, &choice_instance.vars, ctx);
-                let full_type = choice.value_type().full_type();
+                let adaptator = ir::Adaptator::from_arguments(&choice_instance.vars);
+                let full_type = choice.value_type().full_type().adapt(&adaptator);
                 ChoiceAction::Filter {
                     choice: choice.name(),
                     choice_full_type: ast::ValueType::new(full_type, ctx),
@@ -259,7 +260,8 @@ impl<'a> ChoiceAction<'a> {
             ir::ChoiceAction::IncrCounter { choice: ref counter, ref value } => {
                 let counter_choice = ctx.ir_desc.get_choice(&counter.choice);
                 let arguments = ast::vars_with_sets(counter_choice, &counter.vars, ctx);
-                let counter_type = counter_choice.choice_def().value_type();
+                let adaptator = ir::Adaptator::from_arguments(&counter.vars);
+                let counter_type = counter_choice.choice_def().value_type().adapt(&adaptator);
                 if let ir::ChoiceDef::Counter {
                     kind, visibility, ref incr_condition, ..
                 } = *counter_choice.choice_def() {
@@ -279,7 +281,8 @@ impl<'a> ChoiceAction<'a> {
                 let incr_choice = ctx.ir_desc.get_choice(&incr.choice);
                 let arguments = ast::vars_with_sets(counter_choice, &counter.vars, ctx);
                 let incr_args = ast::vars_with_sets(incr_choice, &incr.vars, ctx);
-                let value_type = counter_choice.choice_def().value_type();
+                let adaptator = ir::Adaptator::from_arguments(&counter.vars);
+                let value_type = counter_choice.choice_def().value_type().adapt(&adaptator);
                 use ir::ChoiceDef;
                 if let ChoiceDef::Counter {
                     kind, visibility, ref incr_condition, ..
