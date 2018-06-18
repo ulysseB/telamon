@@ -23,13 +23,14 @@ pub enum ActionEx {
 /// Lists the choices that can be applied to a function.
 pub fn list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item=Choice> + 'a {
     let fun = space.ir_instance();
+    let static_dims = fun.dims().filter(|d| d.size().as_int().is_some());
     fun.layouts_to_lower().iter().map(move |&layout| {
         lower_layout_choice(space, layout)
     }).chain(fun.dims().flat_map(move |dim| {
         let kinds = space.domain().get_dim_kind(dim.id());
         gen_choice(kinds.list(), &|k| Action::DimKind(dim.id(), k))
-    })).chain(fun.dims().enumerate().flat_map(move |(i, lhs)| {
-        fun.dims().take(i).flat_map(move |rhs| {
+    })).chain(static_dims.clone().enumerate().flat_map(move |(i, lhs)| {
+        static_dims.clone().take(i).flat_map(move |rhs| {
             let mappings = space.domain().get_thread_mapping(lhs.id(), rhs.id());
             gen_choice(mappings.list(), &|m| Action::ThreadMapping(lhs.id(), rhs.id(), m))
         })

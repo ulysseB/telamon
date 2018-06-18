@@ -93,7 +93,7 @@ quotient IterationDims($inst in Instructions) of $dim in Dimensions:
   add_to_set = "::search_space::add_iteration_dim($fun, $inst, $item)"
 end
 
-quotient ThreadDims of $dim in Dimensions:
+quotient ThreadDims of $dim in StaticDims:
   is_thread_dim = dim_kind($dim) is THREAD / thread_mapping is MAPPED
   item_type = "ir::Dimension"
   id_type = "ir::dim::Id"
@@ -248,14 +248,18 @@ define enum dim_mapping($lhs in Dimensions, $rhs in Dimensions):
     requires dim_kind($lhs) is UNROLL | VECTOR || order($lhs, $rhs) is MERGED
   /// Values may be transmitted using one register for each thread.
   value THREAD_MAP:
-    requires thread_mapping($lhs, $rhs) is MAPPED
+    requires "$lhs.size().as_int().is_some()"
   /// Values are transmitted through registers.
   alias MAPPED = UNROLL_MAP | THREAD_MAP:
     requires "$lhs.size() == $rhs.size()"
 end
 
+require forall $lhs in StaticDims:
+  forall $rhs in StaticDims:
+    thread_mapping($lhs, $rhs) is MAPPED || dim_mapping($lhs, $rhs) is not THREAD_MAP
+
 /// Indicates how are thread dimensions mapped on the GPU.
-define enum thread_mapping($lhs in Dimensions, $rhs in Dimensions):
+define enum thread_mapping($lhs in StaticDims, $rhs in StaticDims):
   antisymmetric:
     MAPPED_OUT -> MAPPED_IN
   /// One of the dimensions is a not thread.
@@ -280,9 +284,9 @@ define enum thread_mapping($lhs in Dimensions, $rhs in Dimensions):
 end
 
 // Enforce coherence between threads activations.
-require forall $lhs in Dimensions:
-  forall $rhs in Dimensions:
-    forall $other in Dimensions:
+require forall $lhs in StaticDims:
+  forall $rhs in StaticDims:
+    forall $other in StaticDims:
       thread_mapping($lhs, $rhs) is not MAPPED ||
         thread_mapping($lhs, $other) == thread_mapping($rhs, $other)
       thread_mapping($lhs, $other) is not MAPPED_OUT ||
@@ -298,10 +302,10 @@ require forall $outer in Dimensions:
         || dim_kind($mid) is THREAD
 
 // outer thread dimensions are limited to a size of 64.
-require forall $outer in Dimensions:
-  forall $inner in Dimensions:
+require forall $outer in StaticDims:
+  forall $inner in StaticDims:
     thread_mapping($outer, $inner) is not MAPPED_OUT
-      || "$outer.size().as_int().unwrap_or(1) <= 64"
+      || "unwrap!($outer.size().as_int()) <= 64"
 
 // A basic block nested with a thread dimension is nested or merged with the other
 require forall $bb in BasicBlocks:
@@ -314,8 +318,8 @@ require forall $bb in BasicBlocks:
 
 /// Limits the number of threads.
 define half counter num_threads():
-  forall $dim in Dimensions:
-    mul "$dim.size().as_int().unwrap_or(1)" when:
+  forall $dim in StaticDims:
+    mul "$dim.size().as_int().unwrap()" when:
       is_thread_dim($dim) is TRUE
 end
 
@@ -323,7 +327,7 @@ require num_threads() <= "$fun.device().max_threads()"
 
 /// Limits the number of thread dimensions.
 define half counter num_thread_dims():
-  forall $dim in Dimensions:
+  forall $dim in StaticDims:
     sum "1" when: is_thread_dim($dim) is TRUE
 end
 
@@ -331,8 +335,8 @@ require num_thread_dims() <= "3"
 
 /// Limits the number of nested unrolled loop.
 define half counter unroll_factor($inst in Instructions):
-  forall $dim in Dimensions:
-    mul "$dim.size().as_int().unwrap_or(1)" when:
+  forall $dim in StaticDims:
+    mul "unwrap!($dim.size().as_int())" when:
       is_iteration_dim($inst, $dim) is TRUE
       dim_kind($dim) is UNROLL
 end
@@ -350,13 +354,13 @@ require forall $inst in Instructions:
   num_block_dims($inst) <= "$fun.device().max_block_dims()"
 
 /// Counts the number on instructions nested in each dimension.
-define half counter num_nested_inst($dim in Dimensions):
+define half counter num_nested_inst($dim in StaticDims):
   forall $inst in Instructions:
     sum "1" when:
       order($dim, $inst) is OUTER
 end
 
-require forall $dim in Dimensions:
+require forall $dim in StaticDims:
   dim_kind($dim) is not VECTOR || num_nested_inst($dim) <= "1"
 
 require forall $dim in Dimensions:
@@ -388,9 +392,9 @@ trigger forall $lhs in Dimensions:
 // FIXME: remove cubic choice choices
 define half counter mem_size($mem in InternalMemBlocks):
   base "$mem.base_size().unwrap_or(1)"
-  forall $lhs in Dimensions:
-    forall $rhs in Dimensions:
-      mul "$lhs.size().as_int().unwrap_or(1)" when:
+  forall $lhs in StaticDims:
+    forall $rhs in StaticDims:
+      mul "unwrap!($lhs.size().as_int())" when:
         "$mem.maps_dims($lhs.id(), $rhs.id())"
         order($lhs, $rhs) is not MERGED
 end
