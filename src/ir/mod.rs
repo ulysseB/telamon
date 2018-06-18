@@ -57,6 +57,7 @@ pub struct NewObjs {
     pub mem_insts: Vec<InstId>,
     pub iteration_dims: Vec<(InstId, dim::Id)>,
     pub thread_dims: Vec<dim::Id>,
+    pub static_dims: Vec<dim::Id>,
 }
 
 impl NewObjs {

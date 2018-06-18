@@ -46,6 +46,18 @@ set Dimensions subsetof BasicBlocks:
   new_objs = "$objs.dimensions"
 end
 
+set StaticDims subsetof Dimensions:
+  item_type = "ir::Dimension"
+  id_type = "ir::dim::Id"
+  item_getter = "$fun.dim($id)"
+  id_getter = "$item.id()"
+  // TODO(cc_perf): dedicated iterator
+  iterator = "$fun.dims().flat_map(|d| d.size().as_int().map(|_| d))"
+  var_prefix = "dim"
+  from_superset = "$item.size().as_int().map(|_| $item)"
+  new_objs = "$objs.static_dims"
+end
+
 set MemBlocks:
   item_type = "ir::mem::Block"
   id_type = "ir::mem::Id"
