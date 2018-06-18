@@ -5,6 +5,7 @@ mod cpu;
 mod printer;
 mod compile;
 mod cpu_argument;
+mod printer_bis;
 
 pub use self::context::Context;
 pub use self::cpu::Cpu;
