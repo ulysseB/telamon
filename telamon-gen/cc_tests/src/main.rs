@@ -1124,4 +1124,29 @@ mod integer_set {
         assert_eq!(store.get_int0(), NumericSet::all(&[2, 4]));
         assert_eq!(store.get_int1(obj1), NumericSet::all(&[4]));
     }
+
+    #[test]
+    fn counter() {
+        let _ = ::env_logger::try_init();
+        let mut fun = ir::Function::default();
+        let obj0 = ir::set0::create(&mut fun, false);
+        let obj1 = ir::set0::create(&mut fun, false);
+        let obj2 = ir::set0::create(&mut fun, false);
+
+        let store = &mut DomainStore::new(&fun);
+        let actions = init_domain(store, &mut fun).unwrap();
+        let fun = &mut Arc::new(fun);
+        assert!(apply_decisions(actions, fun, store).is_ok());
+        assert_eq!(store.get_sum_int2(), Range { min: 9, max: 15 });
+
+        let actions = vec![Action::Int2(obj0, NumericSet::all(&[4]))];
+        assert!(apply_decisions(actions, fun, store).is_ok());
+        assert_eq!(store.get_sum_int2(), Range { min: 10, max: 14 });
+
+        let actions = vec![Action::Int2(obj1, NumericSet::all(&[5]))];
+        assert!(apply_decisions(actions, fun, store).is_ok());
+        assert_eq!(store.get_sum_int2(), Range { min: 12, max: 12 });
+        assert_eq!(store.get_int2(obj2), NumericSet::all(&[3]));
+
+    }
 }

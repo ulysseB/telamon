@@ -9,6 +9,13 @@ pub struct Adaptator {
 }
 
 impl Adaptator {
+    /// Creates an adaptator that maps the arguments to the given names.
+    pub fn from_arguments(args: &[ir::Variable]) -> Self {
+        let variables = args.iter().enumerate()
+            .map(|(id, &v)| (ir::Variable::Arg(id), v)).collect();
+        Adaptator { variables, .. Default::default() }
+    }
+
     /// Adapts a variable.
     pub fn variable(&self, var: ir::Variable) -> ir::Variable {
         self.variables.get(&var).cloned().unwrap_or(var)
