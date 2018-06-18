@@ -464,6 +464,13 @@ pub trait NumDomain {
     /// Returns the domain containing the values of `eq` that are also in the universe.
     fn new_eq<D: NumDomain>(universe: &Self::Universe, eq: D) -> Self;
 
+    /// Returns the value of the domain, if it is constrained.
+    fn final_value(&self) -> u32 {
+        assert_eq!(self.min(), self.max());
+        self.min()
+    }
+
+
     fn lt<D: NumDomain>(&self, other: D) -> bool { self.max() < other.min() }
 
     fn gt<D: NumDomain>(&self, other: D) -> bool { self.min() > other.max() }

@@ -34,7 +34,6 @@ pub struct InternalBlock<'a> {
     id: InternalId,
     uses: Vec<InstId>,
     base_size: Size<'a>,
-    size: Size<'a>,
     is_private: bool,
     mapped_dims: Vec<(ir::dim::Id, ir::dim::Id)>,
     // TODO(search_space): enable layout transformations.
@@ -61,9 +60,6 @@ pub struct ExternalBlock {
 impl<'a> InternalBlock<'a> {
     /// Returns the unique identifer of the memory block.
     pub fn id(&self) -> InternalId { self.id }
-
-    /// The size of the dimensions of the memory block.
-    pub fn size(&self) -> &Size<'a> { &self.size }
 
     /// Returns true if the layout is ready to be lowered.
     fn is_ready(&self) -> bool { self.maybe_mapped.is_empty() }
@@ -135,7 +131,6 @@ impl<'a> BlockMap<'a> {
         let block = InternalBlock {
             id,
             base_size: base_size.clone(),
-            size: base_size,
             is_private: private,
             uses: vec![],
             mapped_dims: vec![],
@@ -213,7 +208,6 @@ impl<'a> BlockMap<'a> {
             for pair in block.maybe_mapped.filter(|&mut (lhs2, rhs2)| {
                 (lhs2 == lhs && rhs2 == rhs) || (lhs2 == rhs && rhs2 == lhs)
             }) {
-                block.size *= lhs_dim.size();
                 block.mapped_dims.push(pair);
                 changed = true;
             }

@@ -5,6 +5,7 @@ use itertools::Itertools;
 use search_space::{self, DimKind, Domain, MemSpace, SearchSpace};
 use codegen::{cfg, Cfg, dimension, Dimension, InductionVar, InductionLevel};
 use std;
+use utils::*;
 
 /// A function ready to execute on a device, derived from a constrained IR instance.
 pub struct Function<'a> {
@@ -28,16 +29,17 @@ impl<'a> Function<'a> {
         trace!("dims = {:?}", dims);
         let insts = space.ir_instance().insts()
             .map(|inst| Instruction::new(inst, space)).collect_vec();
-        let device_code_args = dims.iter().flat_map(|d| d.host_values(space))
+        let mut device_code_args = dims.iter().flat_map(|d| d.host_values(space))
             .chain(induction_vars.iter().flat_map(|v| v.host_values(space)))
             .chain(insts.iter().flat_map(|i| i.host_values(space)))
             .chain(init_induction_levels.iter().flat_map(|l| l.host_values(space)))
-            .collect_vec();
+            .collect::<HashSet<_>>();
         let (block_dims, thread_dims, cfg) = cfg::build(space, insts, dims);
         let mem_blocks = register_mem_blocks(space, &block_dims);
-        let device_code_args = device_code_args.into_iter()
-            .chain(mem_blocks.iter().flat_map(|x| x.host_values(space, &block_dims)))
-            .unique_by(|x| x.key()).collect();
+        device_code_args.extend(mem_blocks.iter().flat_map(|x| {
+            x.host_values(space, &block_dims)
+        }));
+        let device_code_args = device_code_args.into_iter().collect();
         debug!("compiling cfg {:?}", cfg);
         Function {
             cfg, thread_dims, block_dims, induction_vars, device_code_args, space,
@@ -107,7 +109,7 @@ pub enum ParamVal<'a> {
     /// A parameter given by the caller.
     External(&'a ir::Parameter, ir::Type),
     /// A tiled dimension size computed on the host.
-    Size(&'a ir::Size<'a>),
+    Size(ir::Size<'a>),
     /// A pointer to a global memory block, allocated by the wrapper.
     GlobalMem(ir::mem::InternalId, ir::Size<'a>, ir::Type),
 }
@@ -126,12 +128,12 @@ impl<'a> ParamVal<'a> {
     }
 
     /// Builds the `ParamVal` needed to get a size value, if any.
-    pub fn from_size(size: &'a ir::Size) -> Option<Self> {
+    pub fn from_size(size: &ir::Size<'a>) -> Option<Self> {
         match *size.dividend() {
             [] => None,
             [p] if size.factor() == 1 && size.divisor() == 1 =>
                 Some(ParamVal::External(p, ir::Type::I(32))),
-            _ => Some(ParamVal::Size(size)),
+            _ => Some(ParamVal::Size(size.clone())),
         }
     }
 
@@ -153,14 +155,16 @@ impl<'a> ParamVal<'a> {
     }
 
     /// Returns a unique identifier for the `ParamVal`.
-    pub fn key(&self) -> ParamValKey<'a> {
+    pub fn key(&self) -> ParamValKey {
         match *self {
             ParamVal::External(p, _) => ParamValKey::External(p),
-            ParamVal::Size(s) => ParamValKey::Size(s),
+            ParamVal::Size(ref s) => ParamValKey::Size(s),
             ParamVal::GlobalMem(mem, ..) => ParamValKey::GlobalMem(mem),
         }
     }
 }
+
+hash_from_key!(ParamVal<'a>, &ParamVal::key, 'a);
 
 /// Uniquely identifies a `ParamVal`.
 #[derive(PartialEq, Eq, Hash, Copy, Clone)]
@@ -189,7 +193,7 @@ fn register_mem_blocks<'a>(space: &'a SearchSpace<'a>, block_dims: &[Dimension<'
 /// A memory block allocated by the kernel.
 pub struct InternalMemBlock<'a> {
     id: ir::mem::InternalId,
-    size: &'a ir::Size<'a>,
+    size: ir::Size<'a>,
     num_private_copies: Option<ir::Size<'a>>,
     mem_space: MemSpace,
     ptr_type: ir::Type,
@@ -206,7 +210,11 @@ impl<'a> InternalMemBlock<'a> {
                space: &'a SearchSpace<'a>) -> Self {
         let mem_space = space.domain().get_mem_space(block.mem_id());
         assert!(mem_space.is_constrained());
-        let size = block.size();
+        // FIXME: base_size should return an int 
+        let mut size = ir::Size::new(unwrap!(block.base_size()), vec![], 1);
+        for &(dim, _) in block.mapped_dims() {
+            size *= space.ir_instance().dim(dim).size();
+        }
         let num_private_copies = if block.is_private() && mem_space == MemSpace::GLOBAL {
             num_threads_groups.clone()
         } else { None };
@@ -224,7 +232,8 @@ impl<'a> InternalMemBlock<'a> {
             vec![ParamVal::GlobalMem(self.id, self.alloc_size(), t)]
         } else { vec![] };
         let size = if self.num_private_copies.is_some() {
-            Some(block_dims[1..].iter().map(|d| d.size()).chain(std::iter::once(self.size))
+            Some(block_dims[1..].iter().map(|d| d.size().clone())
+                 .chain(std::iter::once(self.size.clone()))
                 .map(ParamVal::Size))
         } else { None };
         out.extend(size.into_iter().flat_map(|x| x));
@@ -253,7 +262,7 @@ impl<'a> InternalMemBlock<'a> {
     }
 
     /// Returns the size of the part of the allocated memory accessible by each thread.
-    pub fn local_size(&self) -> &'a ir::Size<'a> { self.size }
+    pub fn local_size(&self) -> &ir::Size<'a> { &self.size }
 
     /// Returns the memory space the block is allocated in.
     pub fn mem_space(&self) -> MemSpace { self.mem_space }
