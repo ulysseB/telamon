@@ -164,7 +164,7 @@ impl Nesting {
         let num_unmapped_threads = space.ir_instance().thread_dims().filter(|dim| {
             !outer_dims.iter().any(|&other| {
                 if dim.id() == other { return true; }
-                if space.ir_instance().dim(other).size().as_int().is_none() { return false; }
+                if !space.ir_instance().dim(other).size().is_constant() { return false; }
                 let mapping = space.domain().get_thread_mapping(dim.id(), other);
                 mapping.intersects(ThreadMapping::MAPPED)
             })

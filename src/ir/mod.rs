@@ -79,7 +79,7 @@ impl NewObjs {
         self.add_bb(dim);
         self.dimensions.push(dim.id());
         if dim.is_thread_dim() { self.add_thread_dim(dim.id()); }
-        if dim.size().as_int().is_some() { self.static_dims.push(dim.id()); }
+        if dim.size().is_constant() { self.static_dims.push(dim.id()); }
     }
 
     /// Registers a new basic block.

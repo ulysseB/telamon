@@ -134,7 +134,7 @@ define enum dim_kind($dim in Dimensions):
       order($dim, $other) is NESTED | MERGED
   /// The dimension is mapped to a thread dimension on the device.
   value THREAD:
-    requires "$dim.size().as_int().is_some()"
+    requires "$dim.size().is_constant()"
   /// The dimension is parallel.
   alias PARALLEL = BLOCK | THREAD | VECTOR:
   /// The dimension is sequential.
@@ -251,15 +251,15 @@ define enum dim_mapping($lhs in Dimensions, $rhs in Dimensions):
     requires dim_kind($lhs) is UNROLL | VECTOR || order($lhs, $rhs) is MERGED
   /// Values may be transmitted using one register for each thread.
   value THREAD_MAP:
-    requires "$lhs.size().as_int().is_some()"
+    requires "$lhs.size().is_constant()"
   /// Values are transmitted through registers.
   alias MAPPED = UNROLL_MAP | THREAD_MAP:
-    requires "$lhs.size() == $rhs.size()"
 end
 
 require forall $lhs in StaticDims:
   forall $rhs in StaticDims:
     thread_mapping($lhs, $rhs) is MAPPED || dim_mapping($lhs, $rhs) is not THREAD_MAP
+    thread_mapping($lhs, $rhs) is not MAPPED || size($lhs) == size($rhs)
 
 /// Indicates how are thread dimensions mapped on the GPU.
 define enum thread_mapping($lhs in StaticDims, $rhs in StaticDims):
