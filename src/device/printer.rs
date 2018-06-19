@@ -5,13 +5,12 @@ use itertools::Itertools;
 use ir::{self, op, Type};
 use search_space::{Domain, DimKind};
 
-trait Printer {
-    type Label;
+pub trait Printer {
 
     /// Get a proper string representation of an integer in target language
     fn get_int(&self, n: u32) -> String;
 
-    fn get_type(&mut self, t: &ir::Type) -> String;
+    fn get_type(&mut self, t: &ir::Type) -> &'static str;
 
     fn print_binop(&mut self, return_id: &str, op_type: ir::BinOp, op1: &str, op2: &str) ;
 
@@ -23,7 +22,7 @@ trait Printer {
 
     fn print_ld(&mut self, return_id: &str, cast_type: &str,  addr: &str) ;
 
-    fn print_st(&mut self, op1: &str, op2: &str) ;
+    fn print_st(&mut self, addr: &str, val: &str) ;
 
     fn print_cond_st(&mut self, addr: &str, val: &str, cond: &str) ;
 
@@ -46,12 +45,12 @@ trait Printer {
     fn print_sync(&mut self) ;
 }
 
-fn cfg_vec<T: Printer>(printer: &mut T, fun: &Function, cfgs: &[Cfg], namer: &mut NameMap) {
+pub fn cfg_vec<T: Printer>(printer: &mut T, fun: &Function, cfgs: &[Cfg], namer: &mut NameMap) {
     cfgs.iter().map(|c| cfg(printer, fun, c, namer));
 }
 
 /// Prints a cfg.
-fn cfg<'a, T: Printer>(printer: &mut T, fun: &Function, c: &Cfg<'a>, namer: &mut NameMap) {
+pub fn cfg<'a, T: Printer>(printer: &mut T, fun: &Function, c: &Cfg<'a>, namer: &mut NameMap) {
     match *c {
         Cfg::Root(ref cfgs) => cfg_vec(printer, fun, cfgs, namer),
         Cfg::Loop(ref dim, ref cfgs) => gen_loop(printer, fun, dim, cfgs, namer),
@@ -68,7 +67,7 @@ fn cfg<'a, T: Printer>(printer: &mut T, fun: &Function, c: &Cfg<'a>, namer: &mut
 }
 
 /// Prints a multiplicative induction var level.
-fn parallel_induction_level<T: Printer>(printer: &mut T, level: &InductionLevel, namer: &NameMap) {
+pub fn parallel_induction_level<T: Printer>(printer: &mut T, level: &InductionLevel, namer: &NameMap) {
     let dim_id = level.increment.map(|(dim, _)| dim);
     let ind_var = namer.name_induction_var(level.ind_var, dim_id);
     let base_components =  level.base.components().map(|v| namer.name(v)).collect_vec();
@@ -94,7 +93,7 @@ fn parallel_induction_level<T: Printer>(printer: &mut T, level: &InductionLevel,
 }
 
 /// Change the side-effect guards so that only the specified threads are enabled.
-fn enable_threads<T: Printer>(printer: &mut T, fun: &Function, threads: &[bool], namer: &mut NameMap) {
+pub fn enable_threads<T: Printer>(printer: &mut T, fun: &Function, threads: &[bool], namer: &mut NameMap) {
     let mut guard = None;
     for (&is_active, dim) in threads.iter().zip_eq(fun.thread_dims().iter()) {
         if is_active { continue; }
@@ -112,7 +111,7 @@ fn enable_threads<T: Printer>(printer: &mut T, fun: &Function, threads: &[bool],
 }
 
 
-fn gen_loop<T: Printer>(printer: &mut T, fun: &Function, dim: &Dimension, cfgs:
+pub fn gen_loop<T: Printer>(printer: &mut T, fun: &Function, dim: &Dimension, cfgs:
                         &[Cfg], namer: &mut NameMap)
 {
     match dim.kind() {
@@ -125,7 +124,7 @@ fn gen_loop<T: Printer>(printer: &mut T, fun: &Function, dim: &Dimension, cfgs:
     }
 }
 
-fn standard_loop<T: Printer>(printer: &mut T,  fun: &Function, dim: &Dimension, cfgs:
+pub fn standard_loop<T: Printer>(printer: &mut T,  fun: &Function, dim: &Dimension, cfgs:
                              &[Cfg], namer: &mut NameMap) {
   let idx = namer.name_index(dim.id()).to_string();
   let zero = printer.get_int(1);
@@ -162,7 +161,7 @@ fn standard_loop<T: Printer>(printer: &mut T,  fun: &Function, dim: &Dimension, 
   printer.print_lt(&gt_cond, &idx, &namer.name_size(dim.size(), Type::I(32)));
 }
 
-fn unroll_loop<T:Printer>(printer: &mut T, fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap) {
+pub fn unroll_loop<T:Printer>(printer: &mut T, fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap) {
   //let mut body = Vec::new();
   let mut incr_levels = Vec::new();
   //let mut ind_var_vec = vec![];
@@ -207,7 +206,7 @@ fn unroll_loop<T:Printer>(printer: &mut T, fun: &Function, dim: &Dimension, cfgs
   namer.unset_current_index(dim);
 }
 
-fn privatise_global_block<T: Printer>(printer: &mut T, block: &InternalMemBlock,
+pub fn privatise_global_block<T: Printer>(printer: &mut T, block: &InternalMemBlock,
                                       namer: &mut NameMap, fun: &Function) {
   if fun.block_dims().is_empty() { return ; }
   let addr = namer.name_addr(block.id());
@@ -227,7 +226,7 @@ fn privatise_global_block<T: Printer>(printer: &mut T, block: &InternalMemBlock,
 }
 
 /// Prints an instruction.
-fn inst<T: Printer>(printer: &mut T, inst: &Instruction, namer: &mut NameMap ) {
+pub fn inst<T: Printer>(printer: &mut T, inst: &Instruction, namer: &mut NameMap ) {
     match *inst.operator() {
         op::BinOp(op, ref lhs, ref rhs, round) => {
             assert_eq!(round, op::Rounding::Nearest);

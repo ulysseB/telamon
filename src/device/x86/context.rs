@@ -6,7 +6,7 @@ use device::context::AsyncCallback;
 use device::x86::compile;
 use device::x86::cpu_argument::{CpuArray, Argument, CpuScalarArg, ArgLock};
 use device::x86::cpu::Cpu;
-use device::x86::printer::wrapper_function;
+use device::x86::printer::X86_printer;
 use explorer;
 use ir;
 use itertools::Itertools;
@@ -88,13 +88,15 @@ impl device::Context for Context {
 
     /// Evaluation in sequential mode
     fn evaluate(&self, func: &device::Function, _mode: EvalMode) -> Result<f64, ()> {
-        let fun_str = wrapper_function(func);
+        let mut printer = X86_printer::new();
+        let fun_str = printer.wrapper_function(func);
         function_evaluate(&fun_str, &self.gen_args(func))
     }
 
     /// returns a vec containing num_sample runs of function_evaluate
     fn benchmark(&self, func: &device::Function, num_samples: usize) -> Vec<f64> {
-        let fun_str = wrapper_function(func);
+        let mut printer = X86_printer::new();
+        let fun_str = printer.wrapper_function(func);
         let args =  self.gen_args(func);
         let mut res = vec![];
         for _ in 0..num_samples {
@@ -193,7 +195,8 @@ impl<'a, 'b, 'c> device::AsyncEvaluator<'a, 'c> for AsyncEvaluator<'a, 'b>
         {
             let dev_fun = device::Function::build(&candidate.space);
             code_args = self.context.gen_args(&dev_fun);
-            fun_str = wrapper_function(&dev_fun);
+            let mut printer = X86_printer::new();
+            fun_str = printer.wrapper_function(&dev_fun);
         }
         unwrap!(self.sender.send((candidate, fun_str, code_args, callback)));
     }
