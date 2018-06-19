@@ -28,8 +28,8 @@ pub struct Dimension<'a> {
 
 impl<'a> Dimension<'a> {
     /// Creates a new dimension.
-    pub fn new(size: ir::Size, id: Id) -> Result<Dimension, ir::Error> {
-        if size.as_int().map(|i| i <= 1).unwrap_or(false) {
+    pub fn new(size: ir::Size, id: Id) -> Dimension {
+        if size.universe().map(|u| u.contains(&1)).unwrap_or(false) {
             return Err(ir::Error::InvalidDimSize);
         }
         Ok(Dimension {

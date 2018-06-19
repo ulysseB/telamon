@@ -2,7 +2,7 @@
 use device::{Context, Device};
 use ir::{self, BasicBlock};
 use itertools::Itertools;
-use model::HwPressure;
+use model::{size, HwPressure};
 use num::integer::lcm;
 use search_space::{DimKind, Domain, Order, SearchSpace, ThreadMapping};
 use std;

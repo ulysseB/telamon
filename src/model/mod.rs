@@ -5,6 +5,8 @@ mod hw_pressure;
 mod level;
 mod local_info;
 
+pub mod size;
+
 pub use self::hw_pressure::{Bound, HwPressure, BottleneckLevel};
 pub use self::local_info::Nesting;
 
