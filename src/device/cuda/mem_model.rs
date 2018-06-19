@@ -409,11 +409,12 @@ mod tests {
     use ir;
     use env_logger;
     use search_space::Order;
+    use model::size::Range;
 
     /// Generates function with a load in two thread dimensions, with non-coalesced
     /// accessed on the first one.
     fn gen_function<'a>(signature: &'a ir::Signature, gpu: &'a Gpu, d0_d1_order: Order)
-            -> (SearchSpace<'a>, ir::InstId, HashMap<ir::dim::Id, u32>) {
+            -> (SearchSpace<'a>, ir::InstId, HashMap<ir::dim::Id, Range>) {
         let mut builder = helper::Builder::new(&signature, gpu);
         let t = ir::Type::F(32);
         let size = builder.cst_size(gpu.wrap_size);
@@ -430,8 +431,9 @@ mod tests {
         builder.order(&d0, &d1, d0_d1_order);
 
         let mut size_map = HashMap::default();
-        size_map.insert(d0, gpu.wrap_size as u32);
-        size_map.insert(d1, gpu.wrap_size as u32);
+        let wrap_size = Range { min: gpu.wrap_size as u64, max: gpu.wrap_size as u64 };
+        size_map.insert(d0, wrap_size);
+        size_map.insert(d1, wrap_size);
         (builder.get(), ld, size_map)
     }
 
