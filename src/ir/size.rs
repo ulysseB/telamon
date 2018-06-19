@@ -5,7 +5,7 @@ use std;
 /// The size of an iteration dimension. The size is of the form:
 /// `(factor * dividend_0 * dividend_1 * ...)) / divisor`
 /// where the reminder of the division is null.
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct Size<'a> {
     factor: u32,
     dividend: Vec<&'a ir::Parameter>,
@@ -58,6 +58,13 @@ impl<'a> Size<'a> {
         let gcd = num::integer::gcd(self.factor, self.divisor);
         self.factor /= gcd;
         self.divisor /= gcd;
+    }
+
+    /// Indicates if the dimension can be merged with another, assuming they have the
+    /// same tiling factor and size choice value.
+    pub fn is_compatible_with(&self, other: &ir::Size) -> bool {
+        self.factor == other.factor && self.dividend == other.dividend
+            && self.divisor == other.divisor
     }
 }
 

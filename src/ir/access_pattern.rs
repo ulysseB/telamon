@@ -21,7 +21,7 @@ impl Stride {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub enum AccessPattern<'a> {
     /// Unknown access pattern.
     Unknown { mem_id: ir::mem::Id },

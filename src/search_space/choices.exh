@@ -235,8 +235,13 @@ require forall $inst in Instructions:
 require forall $lhs in Dimensions:
   forall $rhs in Dimensions:
     // Merge constraitns
-    "$lhs.size() == $rhs.size()" || order($lhs, $rhs) is not MERGED
+    "$lhs.size().is_compatible_with($rhs.size())" || order($lhs, $rhs) is not MERGED
     dim_kind($lhs) == dim_kind($rhs) || order($lhs, $rhs) is not MERGED
+
+// Merge constraint for static dimensions.
+require forall $lhs in StaticDims:
+  forall $rhs in StaticDims:
+    size($lhs) == size($rhs) || order($lhs, $rhs) is not MERGED
 
 /// Specifies the valid mappings between two dimensions.
 define enum dim_mapping($lhs in Dimensions, $rhs in Dimensions):
