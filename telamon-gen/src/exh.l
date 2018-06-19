@@ -22,13 +22,13 @@
 
     // 
     typedef struct Span {
-        Pos leg;
+        Pos beg;
         Pos end;
         Data data;
     } Span;
 
     #define YY_USER_ACTION { \
-        yyextra.leg = yyextra.end; \
+        yyextra.beg = yyextra.end; \
         yyextra.end.line = yylineno; \
         yyextra.end.column += yyleng; \
     }
@@ -104,6 +104,7 @@ equals "=="
 not_equals "!="
 equal "="
 divide "/"
+integer "integer"
 
 choice_ident [a-z][a-z_0-9]*
 value_ident [A-Z][A-Z_0-9]*
@@ -183,6 +184,7 @@ code \"[^\n\"]*\"
 {antisymmetric} { return ANTISYMMETRIC; }
 {arrow} { return ARROW; }
 {divide} { return DIVIDE; }
+{integer} { return INTEGER; }
 
 {var} { yytext++; return VAR; }
 {code} { yytext++; return CODE; }

@@ -206,7 +206,6 @@ fn sort_thread_dims(dims: Vec<ThreadDimInfo>,
         heap.extend(dim_groups.remove(&out.len()));
         if total_size > gpu.wrap_size as u64 { break; }
     }
-    assert!(dim_groups.is_empty());
     out
 }
 

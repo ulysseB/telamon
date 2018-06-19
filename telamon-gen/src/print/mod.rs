@@ -5,7 +5,7 @@ use itertools::Itertools;
 use serde_json::value::Value as JsonValue;
 use std::fmt::{self, Display, Formatter};
 //use std::io::prelude::*;
-use topological_sort::TopologicalSort;
+use pathfinding::prelude::topological_sort;
 use utils::*;
 
 // TODO(cleanup): use handlebars instead of printer macros and static templates
@@ -43,6 +43,12 @@ macro_rules! render {
             let template = concat_sep!(".", $(stringify!($tmpl)),*);
             ::print::ENGINE.render(template, &data).unwrap()
         }
+    };
+    ($($tmpl:ident)/+, $data:expr) => {
+        {
+            let template = concat_sep!(".", $(stringify!($tmpl)),*);
+            ::print::ENGINE.render(template, &$data).unwrap()
+        }
     }
 }
 
@@ -72,6 +78,10 @@ lazy_static! {
         register_template!(engine, filter_action);
         register_template!(engine, filter_call);
         register_template!(engine, filter_self);
+        register_template!(engine, value_type/full_domain);
+        register_template!(engine, value_type/name);
+        register_template!(engine, value_type/num_constructor);
+        register_template!(engine, value_type/univers);
         register_template!(engine, getter);
         register_template!(engine, incr_counter);
         register_template!(engine, iter_new_objects);
@@ -187,6 +197,7 @@ mod ast;
 mod choice;
 mod filter;
 mod store;
+mod value_set;
 
 use self::store::PartialIterator;
 
@@ -230,15 +241,17 @@ pub fn print(ir_desc: &ir::IrDesc) -> String {
 
 /// Order the choices so that they are computed in the right order to avoid overflows.
 fn order_choices<'a>(ir_desc: &'a ir::IrDesc) -> impl Iterator<Item=&'a ir::Choice> +'a {
-    let mut sort: TopologicalSort<_> = ir_desc.choices().map(|c| c.name()).collect();
-    for choice in ir_desc.choices() {
-        if let ir::ChoiceDef::Counter { ref value, .. } = *choice.choice_def() {
-            if let ir::CounterVal::Counter(ref counter) = *value {
-                sort.add_dependency(&counter.choice, choice.name());
+    let names = ir_desc.choices().map(|c| c.name()).collect_vec();
+    let sorted = topological_sort(&names, |choice| {
+        let def = ir_desc.get_choice(choice).choice_def();
+        if let ir::ChoiceDef::Counter { ref value, .. } = *def {
+            if let ir::CounterVal::Choice(ref counter) = *value {
+                return Some(&counter.choice);
             }
         }
-    }
-    sort.into_iter().map(move |c| ir_desc.get_choice(c))
+        None
+    });
+    unwrap!(sorted).into_iter().rev().map(move |c| ir_desc.get_choice(c))
 }
 
 #[derive(Debug, Serialize)]
@@ -267,8 +280,11 @@ impl<'a> Trigger<'a> {
         let conditions = trigger.conditions.iter()
             .map(|c| filter::condition(c, ctx)).collect();
         let code = ast::code(&trigger.code, ctx);
-        let vars = foralls.map(|v| (v, ctx.var_def(v).1)).collect();
-        let partial_iterators = PartialIterator::generate(vars, false, ir_desc, ctx);
+        let vars = foralls.map(|v| (v, ctx.var_def(v).1)).collect_vec();
+        let partial_iters = PartialIterator::generate(&vars, false, ir_desc, ctx);
+        let partial_iterators = partial_iters.into_iter().map(|(iter, ctx)| {
+            (iter, vars.iter().map(|&(v, _)| ctx.var_name(v)).collect())
+        }).collect();
         Trigger { id, loop_nest, partial_iterators, arguments, inputs, conditions, code }
     }
 }
@@ -376,7 +392,7 @@ mod test {
                 let choice = self.ir_desc.get_choice(&input.choice);
                 let ctx = print::ast::Context::new(self.ir_desc, choice, &[],
                                                    self.inputs_def);
-                let values = print::ast::value_set(values, &ctx);
+                let values = print::value_set::print(values, &ctx);
                 write!(f, " {} = {},", input.choice, values)?;
             }
             for (cond, value) in &self.static_conds {

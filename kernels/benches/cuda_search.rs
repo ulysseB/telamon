@@ -23,45 +23,63 @@ fn main() {
     benchmark::<linalg::Axpy<f32>, _>((1 << 25, true), &executor, |params, ctx| {
         saxpy_reference(&cublas_handle, params, ctx)
     });
-    // 1.56
-    let params = linalg::MatMulP::new(128, 256, 32).transpose_b();
+    // 2.82 without tb*/
+    let params = linalg::MatMulP::new(128, 256, 32).static_sizes();//.transpose_b();
     benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
         matmul_reference(&cublas_handle, params, ctx)
     });
-    // 0.39
-    let params = linalg::MatMulP::new(128, 1024, 1024).transpose_b();
+    // 66x
+    let params = linalg::MatMulP::new(1024, 1024, 1024).stride_a(32);
+    benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
+        7.1e8 // Obtained from a cuda program.
+    });
+    // 0.52/4H
+    let params = linalg::MatMulP::new(128, 1024, 1024).static_sizes().transpose_a();
     benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
         matmul_reference(&cublas_handle, params, ctx)
     });
-    // 0.33
-    let params = linalg::MatMulP::new(128, 16384, 4096).transpose_b();
+    // 0.41, 0.53 with TA+Static
+    let params = linalg::MatMulP::new(128, 16384, 4096).static_sizes().transpose_a();
     benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
         matmul_reference(&cublas_handle, params, ctx)
     });
-    // 0.82 in 2.38 hours/4H
-    let params = linalg::MatMulP::new(1024, 1024, 1024);
+    // 0.87 in 2.38 hours/4H
+    let params = linalg::MatMulP::new(1024, 1024, 1024).static_sizes();
     benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
         matmul_reference(&cublas_handle, params, ctx)
     });
-    let params = linalg::BatchMMP::new(500, 26, 26, 72).transpose_b();
+    // 1.66 if reuseb + static sizes
+    let params = linalg::BatchMMP::new(512, 32, 32, 64).static_sizes().reuse_b();
+    benchmark::<linalg::BatchMM<f32>, _>(params, &executor, |params, ctx| {
+        batchmm_reference(&cublas_handle, params, ctx)
+    });
+    // 0.94 if not transposed in 20min
+    let params = linalg::BatchMMP::new(512, 32, 32, 64).static_sizes();
+    benchmark::<linalg::BatchMM<f32>, _>(params, &executor, |params, ctx| {
+        batchmm_reference(&cublas_handle, params, ctx)
+    });
+    // 0.60 if not transposed in 20min
+    let params = linalg::BatchMMP::new(500, 26, 26, 72).static_sizes();
     benchmark::<linalg::BatchMM<f32>, _>(params, &executor, |params, ctx| {
         batchmm_reference(&cublas_handle, params, ctx)
     });
     // 0.55 perf, with exhaustive search
-    benchmark::<linalg::MatVec<f32>, _>((1<<13, 1<<13, true), &executor, |params, ctx| {
+    /*benchmark::<linalg::MatVec<f32>, _>((1<<13, 1<<13, true), &executor, |params, ctx| {
         matvec_reference(&cublas_handle, params, ctx)
     });
     // 0.31 perf, with exhaustive search
     benchmark::<linalg::Gesummv<f32>, _>((1<<13, 1<<13, true), &executor, |params, ctx| {
         gesummv_reference(&cublas_handle, params, ctx)
-    });
+    });*/
     // FIXME: add more input sizes for benchmarks
+    // - non-powers of 2
+    // - repeat B
 }
 
 /// The number of times to run the generated code to evaluate its performance.
 const NUM_CODE_RUNS: usize = 40;
 /// Search timeout in minutes.
-const TIMEOUT: u64 = 120;
+const TIMEOUT: u64 = 240;
 
 /// Benchamrks a kernel against a reference implementation.
 fn benchmark<'a, K, REF>(params: K::Parameters,
@@ -71,12 +89,13 @@ fn benchmark<'a, K, REF>(params: K::Parameters,
 {
     let mut config = Config::read_from_file();
     config.timeout.get_or_insert(TIMEOUT);
-    config.distance_to_best.get_or_insert(20.);
+    //config.distance_to_best.get_or_insert(20.);
 
     let mut context = cuda::Context::new(executor);
     let runtime = K::benchmark(&config, params, NUM_CODE_RUNS, &mut context);
     for _ in 0..4 { reference(params, &context); }
     let ref_runtime = (0..NUM_CODE_RUNS).map(|_| reference(params, &context)).collect();
+    println!("runtimes: {:?}", runtime);
     let mean = estimate_mean(runtime, 0.95, "ns");
     let ref_mean = estimate_mean(ref_runtime, 0.95, "ns");
     println!("{}: {}, reference: {}, speedup: {:.2}",
@@ -207,7 +226,7 @@ fn batchmm_reference(handle: &CublasHandle,
         let (op_a, lda) = if params.transpose_a { (CUBLAS_T, m) } else { (CUBLAS_N, k) };
         let (op_b, ldb) = if params.transpose_b { (CUBLAS_T, k) } else { (CUBLAS_N, n) };
         let stride_a = (m*k) as libc::c_long;
-        let stride_b = (n*k) as libc::c_long;
+        let stride_b = if params.batch_b {  n*k } else { 0 } as libc::c_long;
         let stride_c = (m*n) as libc::c_long;
         time_cuda(|| {
             check_cublas(cublasSgemmStridedBatched(

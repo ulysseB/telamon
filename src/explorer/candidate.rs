@@ -5,6 +5,7 @@ use rpds::List;
 use model::{bound, Bound};
 use search_space::SearchSpace;
 use std::cmp::{Ordering, PartialOrd};
+use std;
 
 use itertools::Itertools;
 
@@ -29,7 +30,9 @@ impl<'a> Candidate<'a> {
     }
 
 
-    pub fn apply_choice(&self, context: &Context, choice: Vec<ActionEx>) -> Vec<Candidate<'a>> {
+    pub fn apply_choice(&self, context: &Context, choice: Vec<ActionEx>)
+        -> Vec<Candidate<'a>>
+    {
         let res = choice.into_iter().flat_map(|action| {
             self.apply_decision(context, action)
                 .map_err(|_| trace!("invalid action encountered")).ok()
@@ -44,6 +47,7 @@ impl<'a> Candidate<'a> {
         debug!("applying action {:?}", action);
         let mut space = self.space.clone();
         match action {
+            ActionEx::TileSizes(..) => panic!(),
             ActionEx::Action(action) => space.apply_decisions(vec![action]),
             ActionEx::LowerLayout { mem, ref st_dims, ref ld_dims } =>
                 space.lower_layout(mem, st_dims.clone(), ld_dims.clone()),
@@ -56,6 +60,15 @@ impl<'a> Candidate<'a> {
         }
         let actions = self.actions.push_front(action);
         Ok(Candidate { space, bound, depth: self.depth+1, actions })
+    }
+}
+
+impl<'a> std::fmt::Display for Candidate<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "candidate at depth {}, with bound {} for actions:",
+                 self.depth, self.bound)?;
+        for action in &self.actions { writeln!(f, "{:?}", action)?; }
+        Ok(())
     }
 }
 

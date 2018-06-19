@@ -1,5 +1,5 @@
-{{#with Counter~}}
+{{#with Choice~}}
     {{>choice.getter use_old=../use_old}}
 {{~else~}}
-    Range::new_eq({{Code}})
+    {{Code}}
 {{~/with~}}

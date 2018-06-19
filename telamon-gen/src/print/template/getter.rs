@@ -5,16 +5,17 @@
 {{~#*inline "args"}}({{#each arguments}}{{this.[0]}},{{/each}}){{/inline~}}
 
 {{~#*inline "restrict_op"~}}
-    {{~#ifeq choice_def "Enum"}}restrict{{/ifeq~}}
     {{~#with choice_def.Counter~}}
         {{~#ifeq kind "Add"}}apply_diff_add{{/ifeq~}}
         {{~#ifeq kind "Mul"}}apply_diff_mul{{/ifeq~}}
+    {{~else~}}
+        restrict
     {{~/with~}}
 {{~/inline}}
 
 /// Returns the domain of {name} for the given arguments.
 #[allow(unused_mut)]
-pub fn get_{{name}}(&self{{>args_decl}}) -> {{value_type}} {
+pub fn get_{{name}}(&self{{>args_decl}}) -> {{>value_type.name value_type}} {
     {{#if is_symmetric~}}
         if {{arguments.[0].[0]}} > {{arguments.[1].[0]}} {
             std::mem::swap(&mut {{arguments.[0].[0]}}, &mut {{arguments.[1].[0]}});
@@ -26,7 +27,7 @@ pub fn get_{{name}}(&self{{>args_decl}}) -> {{value_type}} {
 /// Returns the domain of {name} for the given arguments. If the domain has been restricted
 /// but the change not yet applied, returns the old value.
 #[allow(unused_mut)]
-pub fn get_old_{{name}}(&self{{>args_decl}},diff: &DomainDiff) -> {{value_type}} {
+pub fn get_old_{{name}}(&self{{>args_decl}},diff: &DomainDiff) -> {{>value_type.name value_type}} {
     {{#if is_symmetric~}}
         if {{arguments.[0].[0]}} > {{arguments.[1].[0]}} {
             std::mem::swap(&mut {{arguments.[0].[0]}}, &mut {{arguments.[1].[0]}});
@@ -42,7 +43,7 @@ pub fn get_old_{{name}}(&self{{>args_decl}},diff: &DomainDiff) -> {{value_type}}
 
 /// Sets the domain of {name} for the given arguments.
 #[allow(unused_mut)]
-pub fn set_{{name}}(&mut self{{>args_decl}}, mut value: {{value_type}}) {
+pub fn set_{{name}}(&mut self{{>args_decl}}, mut value: {{>value_type.name value_type}}) {
     {{#if is_symmetric~}}
         if {{arguments.[0].[0]}} > {{arguments.[1].[0]}} {
             std::mem::swap(&mut {{arguments.[0].[0]}}, &mut {{arguments.[1].[0]}});
@@ -56,7 +57,7 @@ pub fn set_{{name}}(&mut self{{>args_decl}}, mut value: {{value_type}}) {
 /// Restricts the domain of {name} for the given arguments. Put the old value in `diff`
 /// and indicates if the new domain is failed.
 #[allow(unused_mut)]
-pub fn restrict_{{name}}(&mut self{{>args_decl}}, mut value: {{value_type}},
+pub fn restrict_{{name}}(&mut self{{>args_decl}}, mut value: {{>value_type.name value_type}},
                          diff: &mut DomainDiff) -> Result<(), ()> {
     {{#if is_symmetric~}}
         if {{arguments.[0].[0]}} > {{arguments.[1].[0]}} {
@@ -77,8 +78,8 @@ pub fn restrict_{{name}}(&mut self{{>args_decl}}, mut value: {{value_type}},
 {{#if compute_counter~}}
 /// Updates a counter by changing the value of an increment.
 #[allow(unused_mut)]
-fn update_{{name}}(&mut self{{>args_decl}}, old_incr: {{value_type}},
-                   new_incr: {{value_type}}, diff: &mut DomainDiff) -> Result<(), ()> {
+fn update_{{name}}(&mut self{{>args_decl}}, old_incr: {{>value_type.name value_type}},
+                   new_incr: {{>value_type.name value_type}}, diff: &mut DomainDiff) -> Result<(), ()> {
     {{#if is_symmetric~}}
         if {{arguments.[0].[0]}} > {{arguments.[1].[0]}} {
             std::mem::swap(&mut {{arguments.[0].[0]}}, &mut {{arguments.[1].[0]}});

@@ -27,7 +27,8 @@ impl TruthTable {
                     }).collect_vec();
                     Some((id, sets))
                 },
-                ir::ChoiceDef::Counter { .. } => None,
+                ir::ChoiceDef::Counter { .. } |
+                ir::ChoiceDef::Number { .. } => None,
             }
         }).collect_vec();
         let sizes = values.iter().map(|&(_, ref v)| v.len()).collect_vec();
@@ -281,7 +282,7 @@ pub mod test {
         }).collect_vec();
         let num_indexes = valid_indexes.iter().map(|x| x.len()).collect_vec();
         let t = ir::ValueType::Enum(context.enum_.name().clone());
-        let mut value_set = ir::ValueSet::empty(t);
+        let mut value_set = ir::ValueSet::empty(&t);
         for indexes in NDRange::new(&num_indexes) {
             let table_index = indexes.iter().zip_eq(&valid_indexes)
                 .map(|(&idx, table_indexes)| table_indexes[idx])

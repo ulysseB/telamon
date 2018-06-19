@@ -26,9 +26,13 @@ pub enum Hint {
     Enum,
     /// Enum attribute.
     EnumAttribute,
+    /// Integer interface.
+    Integer,
+    /// Integer attribute.
+    IntegerAttribute,
 }
 
-/// TypeEror is the error representation of telamon's interfaces.
+/// TypeEror is the error representation of telamon's
 #[derive(Debug, PartialEq)]
 pub enum TypeError {
     /// Redefinition of a name and hint..
@@ -134,32 +138,33 @@ impl TypingContext {
     fn add_statement(&mut self, statement: Spanned<Statement>)
         -> Result<(), Spanned<TypeError>> {
         match statement {
-            Spanned { leg, end, data: d @ Statement::SetDef { .. } } => {
+            Spanned { beg, end, data: d @ Statement::SetDef { .. } } => {
                 let set_def: SetDef =
                     Result::<SetDef, TypeError>::from(d)
-                           .map_err(|e| Spanned { leg, end, data: e })?;
+                           .map_err(|e| Spanned { beg, end, data: e })?;
 
                 self.check_set_redefinition(&set_def)
-                       .map_err(|e| Spanned { leg, end, data: e })?;
+                       .map_err(|e| Spanned { beg, end, data: e })?;
                 self.check_set_parametric(&set_def)
-                       .map_err(|e| Spanned { leg, end, data: e })?;
+                       .map_err(|e| Spanned { beg, end, data: e })?;
                 self.check_superset_parametric(&set_def)
-                       .map_err(|e| Spanned { leg, end, data: e })?;
+                       .map_err(|e| Spanned { beg, end, data: e })?;
                 Ok(self.set_defs.push(set_def))
             },
-            Spanned { leg, end, data: d @ Statement::EnumDef { .. } } |
-            Spanned { leg, end, data: d @ Statement::CounterDef { .. } } => {
+            Spanned { beg, end, data: d @ Statement::EnumDef { .. } } |
+            Spanned { beg, end, data: d @ Statement::IntegerDef { .. } } |
+            Spanned { beg, end, data: d @ Statement::CounterDef { .. } } => {
                 let choice_def: ChoiceDef =
                     Result::<ChoiceDef, TypeError>::from(d)
-                           .map_err(|e| Spanned { leg, end, data: e })?;
+                           .map_err(|e| Spanned { beg, end, data: e })?;
 
                self.check_enum_redefinition(&choice_def)
-                       .map_err(|e| Spanned { leg, end, data: e })?;
+                       .map_err(|e| Spanned { beg, end, data: e })?;
                self.check_enum_parametric(&choice_def)
-                       .map_err(|e| Spanned { leg, end, data: e })?;
+                       .map_err(|e| Spanned { beg, end, data: e })?;
                Ok(self.choice_defs.push(choice_def))
             },
-            Spanned { leg, end,
+            Spanned { beg, end,
                 data: Statement::TriggerDef { foralls, conditions, code }
             } => {
                 Ok(self.triggers.push(TriggerDef {
@@ -168,7 +173,7 @@ impl TypingContext {
                     code: code,
                 }))
             },
-            Spanned { leg, end,
+            Spanned { beg, end,
                 data: Statement::Require(constraint)
             } => Ok(self.constraints.push(constraint)),
         }
@@ -187,6 +192,7 @@ impl TypingContext {
                     self.register_enum(name, doc, variables, statements),
                 ChoiceDef::CounterDef(CounterDef { name, doc, visibility, vars, body, }) =>
                     self.register_counter(name, doc, visibility, vars, body),
+                ChoiceDef::IntegerDef(def) => self.define_integer(def),
             }
         }
         for trigger in std::mem::replace(&mut self.triggers, vec![]) {
@@ -453,6 +459,21 @@ impl TypingContext {
         self.ir_desc.add_choice(ir::Choice::new(choice_name, doc, arguments, choice_def));
     }
 
+    /// Defines an integer choice.
+    fn define_integer(&mut self, def: IntegerDef) {
+        let choice_name = RcStr::new(def.name);
+        let doc = def.doc.map(RcStr::new);
+        let mut var_map = VarMap::default();
+        let vars = def.variables.into_iter().map(|v| {
+            let name = v.name.clone();
+            (name, var_map.decl_argument(&self.ir_desc, v))
+        }).collect();
+        let arguments = ir::ChoiceArguments::new(vars, false, false);
+        let universe = type_check_code(def.code.into(), &var_map);
+        let choice_def = ir::ChoiceDef::Number { universe };
+        self.ir_desc.add_choice(ir::Choice::new(choice_name, doc, arguments, choice_def));
+    }
+
     /// Register a constraint on an enum value.
     fn register_value_constraint(&mut self, choice: RcStr, args: Vec<VarDef>,
                                  value: RcStr, mut constraint: Constraint) {
@@ -493,9 +514,9 @@ impl TypingContext {
         let value = match body.value {
             CounterVal::Code(code) =>
                 ir::CounterVal::Code(type_check_code(RcStr::new(code), &var_map)),
-            CounterVal::Counter(counter) => {
+            CounterVal::Choice(counter) => {
                 let counter_name = counter_name.clone();
-                let (value, action) = self.counter_counter_val(
+                let (value, action) = self.counter_val_choice(
                     &counter, visibility, counter_name, &incr, kind, vars.len(), &var_map);
                 self.ir_desc.add_onchange(&counter.name, action);
                 value
@@ -584,19 +605,19 @@ impl TypingContext {
         (ir::ChoiceInstance { choice: name, vars }, condition)
     }
 
-    /// Returns the `CounterVal` referencing a counter. Registers the UpdateCounter action
+    /// Returns the `CounterVal` referencing a choice. Registers the UpdateCounter action
     /// so that the referencing counter is updated when the referenced counter is changed.
-    fn counter_counter_val(&mut self,
-                           counter: &ChoiceInstance,
-                           caller_visibility: ir::CounterVisibility,
-                           caller: RcStr,
-                           incr: &ir::ChoiceInstance,
-                           kind: ir::CounterKind,
-                           num_caller_vars: usize,
-                           var_map: &VarMap) -> (ir::CounterVal, ir::OnChangeAction) {
+    fn counter_val_choice(&mut self,
+                          counter: &ChoiceInstance,
+                          caller_visibility: ir::CounterVisibility,
+                          caller: RcStr,
+                          incr: &ir::ChoiceInstance,
+                          kind: ir::CounterKind,
+                          num_caller_vars: usize,
+                          var_map: &VarMap) -> (ir::CounterVal, ir::OnChangeAction) {
         // TODO(cleanup): do not force an ordering on counter declaration.
         let value_choice = self.ir_desc.get_choice(&counter.name);
-        let to_half = match *value_choice.choice_def() {
+        match *value_choice.choice_def() {
             ir::ChoiceDef::Counter { visibility, kind: value_kind, .. } => {
                 // TODO(cleanup): allow mul of sums. The problem is that you can multiply
                 // and/or divide by zero when doing this.
@@ -604,8 +625,8 @@ impl TypingContext {
                 assert!(!(kind == CounterKind::Mul && value_kind == CounterKind::Add));
                 assert!(caller_visibility >= visibility,
                         "Counters cannot sum on counters that expose less information");
-                visibility == ir::CounterVisibility::NoMax && caller_visibility > visibility
             },
+            ir::ChoiceDef::Number { .. } => (),
             ir::ChoiceDef::Enum { .. } => panic!("Enum as a counter value"),
         };
         // Type the increment counter value in the calling counter context.
@@ -618,10 +639,9 @@ impl TypingContext {
         let action = ir::ChoiceAction::UpdateCounter {
             counter: ir::ChoiceInstance { choice: caller, vars: caller_vars },
             incr: incr.adapt(&adaptator),
-            to_half
         };
         let update_action = ir::OnChangeAction { forall_vars, set_constraints, action };
-        (ir::CounterVal::Counter(instance), update_action)
+        (ir::CounterVal::Choice(instance), update_action)
     }
 
     /// Typecheck and registers a trigger.
@@ -682,6 +702,12 @@ impl TypingContext {
 /// A toplevel definition or constraint.
 #[derive(Debug)]
 pub enum Statement {
+    IntegerDef {
+        name: String,
+        doc: Option<String>,
+        variables: Vec<VarDef>,
+        code: String,
+    },
     /// Defines an enum.
     EnumDef {
         name: String,
@@ -1024,7 +1050,7 @@ fn type_check_enum_values(enum_: &ir::Enum, values: Vec<RcStr>) -> BTreeSet<RcSt
 
 /// The value of a counter increment.
 #[derive(Clone, Debug)]
-pub enum CounterVal { Code(String), Counter(ChoiceInstance) }
+pub enum CounterVal { Code(String), Choice(ChoiceInstance) }
 
 /// A statement in an enum definition.
 #[derive(Clone, Debug)]
@@ -1134,6 +1160,39 @@ impl EnumStatements {
     }
 }
 
+/// A toplevel integer
+#[derive(Clone, Debug)]
+pub struct IntegerDef {
+    pub name: String,
+    pub doc: Option<String>,
+    pub variables: Vec<VarDef>,
+    pub code: String, // varmap, type_check_code
+}
+
+impl IntegerDef {
+    pub fn get_variables(&self) -> Result<(), TypeError> {
+        for item in self.variables.iter() {
+            for subitem in self.variables.iter()
+                               .skip_while(|subitem| subitem != &item)
+                               .skip(1) {
+                if subitem == item {
+                    Err(TypeError::Redefinition(
+                            item.name.to_owned().to_string(),
+                            Hint::IntegerAttribute
+                    ))?
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl PartialEq for IntegerDef {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.name == rhs.name
+    }
+}
+ 
 /// A toplevel definition or constraint.
 #[derive(Clone, Debug)]
 pub struct EnumDef {
@@ -1162,7 +1221,10 @@ impl EnumDef {
                                .skip_while(|subitem| subitem != &item)
                                .skip(1) {
                 if subitem == item {
-                    Err(TypeError::Redefinition(item.to_string(), Hint::EnumAttribute))?
+                    Err(TypeError::Redefinition(
+                            item.to_string(),
+                            Hint::EnumAttribute
+                    ))?
                 }
             }
         }
@@ -1241,6 +1303,7 @@ impl PartialEq for CounterDef {
 pub enum ChoiceDef {
     CounterDef(CounterDef),
     EnumDef(EnumDef),
+    IntegerDef(IntegerDef),
 }
 
 impl ChoiceDef {
@@ -1252,6 +1315,7 @@ impl ChoiceDef {
             ChoiceDef::EnumDef(enum_def) => {
                 &enum_def.name
             },
+            ChoiceDef::IntegerDef(def) => &def.name,
         }
     }
 }
@@ -1273,6 +1337,14 @@ impl From<Statement> for Result<ChoiceDef, TypeError> {
                 enum_def.check_symmetric()?;
                 enum_def.check_undefined_value()?;
                 Ok(ChoiceDef::EnumDef(enum_def))
+            },
+            Statement::IntegerDef { name, doc, variables, code } => {
+                let integer_def: IntegerDef = IntegerDef {
+                    name, doc, variables, code
+                };
+
+                integer_def.get_variables()?;
+                Ok(ChoiceDef::IntegerDef(integer_def))
             },
             _ => unreachable!(),
         }
@@ -1305,7 +1377,6 @@ impl Default for SetDef {
 }
 
 impl SetDef {
-
     /// A field from a set should be unique.
     pub fn check_field_name_redefinition(&self) -> Result<(), TypeError> {
         for (item, ..) in self.keys.iter() {
@@ -1369,7 +1440,6 @@ impl From<Statement> for Result<SetDef, TypeError> {
                 let set_def: SetDef = SetDef {
                     name, doc, arg, superset, disjoint, keys, quotient
                 };
-                
                 set_def.check_undefined_key()?;
                 set_def.check_undefined_superset_key()?;
                 set_def.check_field_name_redefinition()?;

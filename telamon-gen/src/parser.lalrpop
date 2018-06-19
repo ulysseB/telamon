@@ -11,20 +11,20 @@ grammar;
 pub ast: ast::Ast = { statement* => ast::Ast { statements: <> } };
 
 statement: Spanned<ast::Statement> = {
-    <doc: doc?> <leg: @L> set <name: set_ident> <arg: ("(" <var_def> ")")?>
+    <doc: doc?> <beg: @L> set <name: set_ident> <arg: ("(" <var_def> ")")?>
             <superset: (subsetof <set_ref>)?> ":"
                 <end: @R> 
             <disjoint: set_disjoint?>
             <keys: set_def_map*> end => {
         let disjoint = disjoint.unwrap_or(Vec::new());
         Spanned {
-            leg: leg, end: end,
+            beg: beg, end: end,
             data: ast::Statement::SetDef {
                 name, doc, arg, superset, keys, disjoint, quotient: None
             }
         }
     },
-    <doc: doc?> <leg: @L> quotient <name: set_ident> <arg: ("(" <var_def> ")")?>
+    <doc: doc?> <beg: @L> quotient <name: set_ident> <arg: ("(" <var_def> ")")?>
         of <dividend: var_def> ":"
                 <end: @R> 
         <representant: choice_ident> "=" <conditions: list<condition, and>> "/"
@@ -40,16 +40,29 @@ statement: Spanned<ast::Statement> = {
         });
         let disjoint = disjoint.unwrap_or(Vec::new());
         Spanned {
-            leg: leg, end: end,
+            beg: beg, end: end,
             data: ast::Statement::SetDef {
                 name, doc, arg, superset, keys, disjoint, quotient
             }
         }
     },
-    <doc: doc?> <leg: @L> define enum_ <name: choice_ident> "(" <vars: choice_vars> ")" ":"
+    <doc: doc?> <beg: @L> define integer <name: choice_ident> "("
+                <vars: choice_vars> ")" ":" <universe: code> end
+                <end: @R> => {
+        Spanned {
+            beg: beg, end: end,
+            data: ast::Statement::IntegerDef {
+                name: name,
+                doc: doc,
+                variables: vars,
+                code: universe,
+            }
+        }
+    },
+    <doc: doc?> <beg: @L> define enum_ <name: choice_ident> "(" <vars: choice_vars> ")" ":"
                 <end: @R> <stmts: enum_stmt*> end => {
         Spanned {
-            leg: leg, end: end,
+            beg: beg, end: end,
             data: ast::Statement::EnumDef {
                 name: name,
                 doc: doc,
@@ -58,25 +71,25 @@ statement: Spanned<ast::Statement> = {
             }
         }
     },
-    <leg: @L> trigger <foralls: (forall <var_def> ":")*> <code: code> when
+    <beg: @L> trigger <foralls: (forall <var_def> ":")*> <code: code> when
         <conditions: non_empty_list<condition, and>> <end: @R> => {
         Spanned {
-            leg: leg, end: end,
+            beg: beg, end: end,
             data: ast::Statement::TriggerDef { foralls, conditions, code }
         }
     },
-    <doc: doc?> <leg: @L> define <visibility: counter_visibility?> counter <name: choice_ident>
+    <doc: doc?> <beg: @L> define <visibility: counter_visibility?> counter <name: choice_ident>
         "(" <vars: choice_vars> ")" ":" <end: @R> <body: counter_body> end => {
         let name = RcStr::new(name);
         let visibility = visibility.unwrap_or(ir::CounterVisibility::Full);
         Spanned {
-            leg: leg, end: end,
+            beg: beg, end: end,
             data: ast::Statement::CounterDef { name, doc, vars, visibility, body, }
         }
     },
     require <constraint> => {
         Spanned {
-            leg: Default::default(), end: Default::default(),
+            beg: Default::default(), end: Default::default(),
             data:  ast::Statement::Require(<>)
         }
     },
@@ -130,7 +143,7 @@ counter_body: ast::CounterBody = {
 
 counter_val: ast::CounterVal = {
     code => ast::CounterVal::Code(<>),
-    choice_instance => ast::CounterVal::Counter(<>),
+    choice_instance => ast::CounterVal::Choice(<>),
 };
 
 value_set = { non_empty_list<val_ident, "|"> };
@@ -222,6 +235,7 @@ extern {
         and => Token::And,
         of => Token::Of,
         quotient => Token::Quotient,
+        integer => Token::Integer,
 
         ":" => Token::Colon,
         "," => Token::Comma,

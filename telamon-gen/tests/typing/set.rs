@@ -28,7 +28,7 @@ fn set_redefinition() {
             new_objs = \"$objs.inst\"
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            leg: Position { line: 10, column: 10},
+            beg: Position { line: 10, column: 10},
             end: Position { line: 10, column: 18},
             data: TypeError::Redefinition(
                 String::from("Foo"),
@@ -52,7 +52,7 @@ fn set_field_redefinition() {
             new_objs = \"$objs.inst\"
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            leg: Position { line: 0, column: 0},
+            beg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 8},
             data: TypeError::Redefinition(
                 String::from("ItemType"),
@@ -74,7 +74,7 @@ fn set_undefined_key() {
             new_objs = \"$objs.inst\"
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            leg: Position { line: 0, column: 0},
+            beg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 16},
             data: TypeError::Undefined(ir::SetDefKey::ItemType.to_string())
         })
@@ -89,7 +89,7 @@ fn set_undefined_key() {
             new_objs = \"$objs.inst\"
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            leg: Position { line: 0, column: 0},
+            beg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 16},
             data: TypeError::Undefined(ir::SetDefKey::IdType.to_string())
         })
@@ -104,7 +104,7 @@ fn set_undefined_key() {
             new_objs = \"$objs.inst\"
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            leg: Position { line: 0, column: 0},
+            beg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 16},
             data: TypeError::Undefined(ir::SetDefKey::ItemGetter.to_string())
         })
@@ -119,7 +119,7 @@ fn set_undefined_key() {
             new_objs = \"$objs.inst\"
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            leg: Position { line: 0, column: 0},
+            beg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 16},
             data: TypeError::Undefined(ir::SetDefKey::IdGetter.to_string())
         })
@@ -134,7 +134,7 @@ fn set_undefined_key() {
             new_objs = \"$objs.inst\"
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            leg: Position { line: 0, column: 0},
+            beg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 16},
             data: TypeError::Undefined(ir::SetDefKey::Iter.to_string())
         })
@@ -165,7 +165,7 @@ fn set_undefined_parametric() {
             new_objs = \"$objs.operand\"
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            leg: Position { line: 0, column: 0},
+            beg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 34},
             data: TypeError::Undefined(String::from("Instruction"))
         })
@@ -207,7 +207,7 @@ fn set_undefined_subsetof() {
             from_superset = \"ir::inst::from_superset($fun, $item)\"
          end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            leg: Position { line: 0, column: 0},
+            beg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 36},
             data: TypeError::Undefined(String::from("BasicBlock")),
         })
@@ -259,7 +259,7 @@ fn set_from_superset_key() {
             new_objs = \"$objs.inst\"
          end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            leg: Position { line: 10, column: 10},
+            beg: Position { line: 10, column: 10},
             end: Position { line: 10, column: 46},
             data: TypeError::Undefined(ir::SetDefKey::FromSuperset.to_string())
         })

@@ -418,7 +418,7 @@ pub mod test {
                 SubFilter::Rules(ref rules) => self.eval_rules(rules),
                 SubFilter::Switch { switch, ref cases } => {
                     let t = ValueType::Enum(self.enum_.name().clone());
-                    let mut value_set = ValueSet::empty(t);
+                    let mut value_set = ValueSet::empty(&t);
                     for &(ref guard, ref filter) in cases {
                         if self.input_values[switch].is(guard).maybe_true() {
                             value_set.extend(self.eval_subfilter(filter));

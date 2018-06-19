@@ -42,21 +42,26 @@ use futures::executor::block_on;
 pub fn find_best<'a>(config: &Config, 
                      context: &Context,
                      search_space: Vec<SearchSpace<'a>>) -> Option<SearchSpace<'a>> { 
+    let candidates = search_space.into_iter().map(|space| {
+        let bound = bound(&space, context);
+        Candidate::new(space, bound)
+    }).collect();
+    find_best_ex(config, context, candidates).map(|c| c.space)
+}
+
+/// Same as `find_best`, but allows to specify pre-existing actions and also returns the
+/// actionsfor the best candidate.
+pub fn find_best_ex<'a>(config: &Config, 
+                        context: &Context,
+                        candidates: Vec<Candidate<'a>>) -> Option<Candidate<'a>> { 
     match config.algorithm {
         config::SearchAlgorithm::MultiArmedBandit(ref band_config) => {
-            let candidates = search_space.into_iter().map(|space| {
-                let bound = bound(&space, context);
-                Candidate::new(space, bound)
-            }).collect();
             let tree = bandit_arm::Tree::new(candidates, band_config);
             launch_search(config, tree, context)
         }
         config::SearchAlgorithm::BoundOrder => {
             let candidate_list = ParallelCandidateList::new(config.num_workers);
-            for space in search_space {
-                let bound = bound(&space, context);
-                candidate_list.insert(Candidate::new(space, bound));
-            }
+            for candidate in candidates { candidate_list.insert(candidate); }
             launch_search(config, candidate_list, context)
         }
     }
@@ -65,7 +70,7 @@ pub fn find_best<'a>(config: &Config,
 /// Launch all threads needed for the search. wait for each one of them to finish. Monitor is
 /// supposed to return the best candidate found
 fn launch_search<'a, T>(config: &Config, candidate_store: T, context: &Context) 
-    -> Option<SearchSpace<'a>> where T: Store<'a>
+    -> Option<Candidate<'a>> where T: Store<'a>
 {
     let (monitor_sender, monitor_receiver) = channel::mpsc::channel(100);
     let (log_sender, log_receiver) = sync::mpsc::sync_channel(100);

@@ -8,10 +8,15 @@ impl {type_name} {{
     pub const ALL: {type_name} = {type_name} {{ bits: {all_bits} }};
 
     /// Returns the empty domain.
-    pub fn failed() -> Self {{ {type_name} {{ bits: 0 }} }}
+    pub const FAILED: {type_name} = {type_name} {{ bits: 0 }};
 
     /// Returns the full domain.
     pub fn all() -> Self {{ Self::ALL }}
+
+    /// Insert values in the domain.
+    pub fn insert(&mut self, alternatives: Self) {{
+        self.bits |= alternatives.bits
+    }}
 
     /// Lists the alternatives contained in the domain.
     pub fn list<'a>(&self) -> impl Iterator<Item=Self> + 'static {{
@@ -19,6 +24,16 @@ impl {type_name} {{
         (0..{num_values}).map(|x| 1 << x)
             .filter(move |x| (bits & x) != 0)
             .map(|x| {type_name} {{ bits: x }})
+    }}
+
+    /// Indicates if two choices will have the same value.
+    pub fn eq(&self, other: Self) -> bool {{
+        self.is_constrained() && *self == other
+    }}
+
+    /// Indicates if two choices cannot be equal.
+    pub fn neq(&self, other: Self) -> bool {{
+        !self.intersects(other)
     }}
 
     {inverse}
@@ -39,10 +54,6 @@ impl Domain for {type_name} {{
 
     fn restrict(&mut self, alternatives: Self) {{
         self.bits &= alternatives.bits
-    }}
-
-    fn insert(&mut self, alternatives: Self) {{
-        self.bits |= alternatives.bits
     }}
 }}
 

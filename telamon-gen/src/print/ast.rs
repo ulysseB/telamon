@@ -269,19 +269,30 @@ impl<'a> Display for Variable<'a> {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result { self.name().fmt(f) }
 }
 
-impl Display for ir::ValueType {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        match *self {
-            ir::ValueType::Enum(ref name) => name,
-            ir::ValueType::Range => "Range",
-            ir::ValueType::HalfRange => "HalfRange",
-        }.fmt(f)
+/// The type of a value.
+#[derive(Serialize)]
+pub enum ValueType { Enum(RcStr), Range, HalfRange, NumericSet(String) }
+
+impl ValueType {
+    pub fn new(t: ir::ValueType, ctx: &Context) -> Self {
+        match t {
+            ir::ValueType::Enum(name) => ValueType::Enum(name.clone()),
+            ir::ValueType::Range => ValueType::Range,
+            ir::ValueType::HalfRange => ValueType::HalfRange,
+            ir::ValueType::NumericSet(univers) =>
+                ValueType::NumericSet(code(&univers, ctx)),
+        }
     }
 }
 
-impl<'a> Serialize for ir::ValueType {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_str(&self.to_string())
+impl Display for ValueType {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        match *self {
+            ValueType::Enum(ref name) => name,
+            ValueType::Range => "Range",
+            ValueType::HalfRange => "HalfRange",
+            ValueType::NumericSet(..) => "NumericSet",
+        }.fmt(f)
     }
 }
 
@@ -291,55 +302,6 @@ impl Display for ir::CounterKind {
             ir::CounterKind::Add => "+",
             ir::CounterKind::Mul => "*",
         }.fmt(f)
-    }
-}
-
-/// Prints a `ValueSet`.
-pub fn value_set(set: &ir::ValueSet, ctx: &Context) -> String {
-    if set.is_empty() {
-        format!("{}::FAILED", set.t())
-    } else {
-        match *set {
-            ir::ValueSet::Enum { ref enum_name, ref values, ref inputs } => {
-                let values = values.iter().map(|x| {
-                    format!("{}::{}", enum_name, x)
-                }).collect_vec();
-                let inputs = inputs.iter().map(|&(input, negate, inverse)| {
-                    let neg_str = if negate { "!" } else { "" };
-                    let inv_str = if inverse { ".inverse()" } else { "" };
-                    let var = ctx.input_name(input);
-                    format!("{}{}{}", neg_str, var, inv_str)
-                }).collect_vec();
-                values.into_iter().chain(inputs).format("|").to_string()
-            },
-            ir::ValueSet::Range { is_full: true, .. } => "Range::ALL".to_string(),
-            ir::ValueSet::Range { ref cmp_inputs, ref cmp_code, .. } => {
-                let inputs = cmp_inputs.iter().map(|&(op, input)| {
-                    (op, ctx.input_name(input).to_string())
-                }).collect_vec();
-                let code = cmp_code.iter().map(|&(op, ref code)| {
-                    (op, self::code(code, ctx))
-                }).collect_vec();
-                // FIXME: May not restrict enough
-                // -> must intersect each component of the range with he current set ?
-                //    - not enough, must rerun in some cases
-                inputs.into_iter().map(|(op, val)| match op {
-                    ir::CmpOp::Lt => format!("Range::new_lt({}.max)", val),
-                    ir::CmpOp::Gt => format!("Range::new_gt({}.min)", val),
-                    ir::CmpOp::Leq => format!("Range::new_leq({}.max)", val),
-                    ir::CmpOp::Geq => format!("Range::new_geq({}.min)", val),
-                    ir::CmpOp::Eq => format!("{}", val),
-                    ir::CmpOp::Neq => format!("Range::ALL"), // FIXME: may not restrict enough
-                }).chain(code.into_iter().map(|(op, val)| match op {
-                    ir::CmpOp::Lt => format!("Range::new_lt({})", val),
-                    ir::CmpOp::Gt => format!("Range::new_gt({})", val),
-                    ir::CmpOp::Leq => format!("Range::new_leq({})", val),
-                    ir::CmpOp::Geq => format!("Range::new_geq({})", val),
-                    ir::CmpOp::Eq => format!("Range::new_eq({})", val),
-                    ir::CmpOp::Neq => format!("Range::ALL"), // FIXME: may not restrict enough
-                })).format("|").to_string()
-            },
-        }
     }
 }
 
