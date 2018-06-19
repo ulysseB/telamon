@@ -105,7 +105,7 @@ pub fn sum_pressure(device: &Device,
         // Compute the pressure of a single instance and the number of instances.
         let mut num_instances = inner_sum_dims
             .intersection(&local_info.nesting[&bb].outer_dims)
-            .map(|d| f64::from(local_info.dim_sizes[d]))
+            .map(|d| local_info.dim_sizes[d].fixed_val() as f64)
             .product::<f64>();
         let mut bb_pressure = if let ir::BBId::Dim(dim) = bb {
             let kind = space.domain().get_dim_kind(dim);
@@ -151,7 +151,7 @@ fn block_bound(device: &Device, space: &SearchSpace, info: &LocalInfo,
     // Compute the pressure on the execution units in a single iteration.
     let mut pressure = sum_pressure(device, space, info, BottleneckLevel::Block, dims);
     // Repeat the pressure by the number of iterations of the level and compute the bound.
-    let n_iters = dims.iter().map(|&d| u64::from(info.dim_sizes[&d])).product::<u64>();
+    let n_iters = dims.iter().map(|&d| info.dim_sizes[&d].fixed_val()).product::<u64>();
     pressure.repeat_parallel(n_iters as f64);
     pressure.bound(BottleneckLevel::Block, &device.block_rates())
 }
@@ -285,7 +285,7 @@ impl RepeatLevel {
         let iterations: u32 = level.dims.iter().filter(|&&d| {
             let kind = space.domain().get_dim_kind(d);
             (kind & !DimKind::BLOCK).is(DimKind::SEQUENTIAL).is_true()
-        }).map(|d| local_info.dim_sizes[d]).product();
+        }).map(|d| local_info.dim_sizes[d].fixed_val() as u32).product();
         if iterations <= 1 { None } else {
             Some(RepeatLevel { level_id, iterations })
         }

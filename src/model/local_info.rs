@@ -16,7 +16,7 @@ pub struct LocalInfo {
     /// The pressure incured by a signle instance of each BB.
     pub hw_pressure: HashMap<ir::BBId, HwPressure>,
     /// The size of each dimensions.
-    pub dim_sizes: HashMap<ir::dim::Id, u32>,
+    pub dim_sizes: HashMap<ir::dim::Id, size::Range>,
     /// The pressure induced by a single iteration of each dimension and the exit latency
     /// of the loop.
     pub dim_overhead: HashMap<ir::dim::Id, (HwPressure, HwPressure)>,
@@ -30,9 +30,7 @@ impl LocalInfo {
     /// Compute the local information for the given search space, in the context.
     pub fn compute(space: &SearchSpace, context: &Context) -> Self {
         let dim_sizes = space.ir_instance().dims().map(|d| {
-            // FIXME: handle sizes that are not fixed.
-            let size = &::codegen::Size::from_ir(d.size(), space);
-            (d.id(), context.eval_size(size))
+            (d.id(), size::bounds(d.size(), space, context))
         }).collect();
         let nesting: HashMap<_, _> = space.ir_instance().blocks().map(|bb| {
             (bb.bb_id(), Nesting::compute(space, bb.bb_id(), &dim_sizes))
@@ -76,7 +74,7 @@ impl LocalInfo {
 
 fn add_indvar_pressure(device: &Device,
                        space: &SearchSpace,
-                       dim_sizes: &HashMap<ir::dim::Id, u32>,
+                       dim_sizes: &HashMap<ir::dim::Id, size::Range>,
                        indvar: &ir::InductionVar,
                        hw_pressure: &mut HashMap<ir::BBId, HwPressure>,
                        dim_overhead: &mut HashMap<ir::dim::Id, (HwPressure, HwPressure)>,
@@ -95,13 +93,13 @@ fn add_indvar_pressure(device: &Device,
        } else {
            device.multiplicative_indvar_pressure(&t)
        };
-       let size = dim_sizes[&dim];
+       let size = dim_sizes[&dim].fixed_val();
        if dim_kind.intersects(DimKind::THREAD | DimKind::BLOCK) {
            thread_overhead.add_parallel(&overhead);
        } else if size > 1 {
-           overhead.repeat_parallel(f64::from(size-1));
+           overhead.repeat_parallel((size-1) as f64);
            unwrap!(hw_pressure.get_mut(&dim.into())).add_parallel(&overhead);
-           overhead.repeat_parallel(1.0/f64::from(size-1));
+           overhead.repeat_parallel(1.0/(size-1) as f64);
            unwrap!(dim_overhead.get_mut(&dim)).0.add_parallel(&overhead);
        }
    }
@@ -135,7 +133,7 @@ pub struct Nesting {
 impl Nesting {
     /// Computes the nesting of a `BasicBlock`.
     fn compute(space: &SearchSpace, bb: ir::BBId,
-               dim_sizes: &HashMap<ir::dim::Id, u32>) -> Self {
+               dim_sizes: &HashMap<ir::dim::Id, size::Range>) -> Self {
         let mut inner_dims = Vec::new();
         let mut inner_bbs = Vec::new();
         let mut before_self = Vec::new();
@@ -171,10 +169,10 @@ impl Nesting {
                 let mapping = space.domain().get_thread_mapping(dim.id(), other);
                 mapping.intersects(ThreadMapping::MAPPED)
             })
-        }).map(|d| dim_sizes[&d.id()]).product::<u32>();
+        }).map(|d| dim_sizes[&d.id()].fixed_val() as u32).product::<u32>();
         let max_threads_per_block = outer_dims.iter().cloned().filter(|&d| {
             space.domain().get_dim_kind(d).intersects(DimKind::THREAD)
-        }).map(|d| dim_sizes[&d] as u64).product::<u64>() * num_unmapped_threads as u64;
+        }).map(|d| dim_sizes[&d].fixed_val()).product::<u64>() * num_unmapped_threads as u64;
         Nesting {
             inner_dims: VecSet::new(inner_dims),
             inner_bbs: VecSet::new(inner_bbs),
@@ -229,13 +227,14 @@ impl Default for Parallelism {
 }
 
 /// Computes the minimal and maximal parallelism accross instructions.
-fn parallelism(space: &SearchSpace, nesting: &HashMap<ir::BBId, Nesting>,
-               dim_sizes: &HashMap<ir::dim::Id, u32>) -> Parallelism {
+fn parallelism(space: &SearchSpace,
+               nesting: &HashMap<ir::BBId, Nesting>,
+               dim_sizes: &HashMap<ir::dim::Id, size::Range>) -> Parallelism {
     space.ir_instance().insts().map(|inst| {
         let mut par = Parallelism::default();
         for &dim in &nesting[&inst.bb_id()].outer_dims {
             let kind = space.domain().get_dim_kind(dim);
-            let size = u64::from(dim_sizes[&dim]);
+            let size = dim_sizes[&dim].fixed_val();
             if kind == DimKind::BLOCK { par.min_num_blocks *= size; }
             if kind.intersects(DimKind::BLOCK) { par.lcm_num_blocks *= size; }
         }

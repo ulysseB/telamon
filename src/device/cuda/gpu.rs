@@ -274,10 +274,10 @@ impl Gpu {
     }
 
     /// Returns the overhead induced by all the iterations of a loop.
-    fn dim_pressure(&self, kind: DimKind, size: u32) -> HwPressure {
+    fn dim_pressure(&self, kind: DimKind, size: model::size::Range) -> HwPressure {
         if kind == DimKind::LOOP {
             let mut pressure: HwPressure = self.loop_iter_overhead.into();
-            pressure.repeat_sequential(f64::from(size));
+            pressure.repeat_sequential(size.fixed_val() as f64);
             pressure.add_sequential(&self.loop_init_overhead.into());
             pressure
         } else if DimKind::THREAD.contains(kind) {
@@ -289,7 +289,7 @@ impl Gpu {
 
     /// Retruns the overhead for a single instance of the instruction.
     fn inst_pressure(&self, space: &SearchSpace,
-                     dim_sizes: &HashMap<ir::dim::Id, u32>,
+                     dim_sizes: &HashMap<ir::dim::Id, model::size::Range>,
                      inst: &ir::Instruction,
                      ctx: &device::Context) -> HwPressure {
         use ir::Operator::*;
@@ -446,7 +446,7 @@ impl device::Device for Gpu {
     }
 
     fn hw_pressure(&self, space: &SearchSpace,
-                   dim_sizes: &HashMap<ir::dim::Id, u32>,
+                   dim_sizes: &HashMap<ir::dim::Id, model::size::Range>,
                    _nesting: &HashMap<ir::BBId, model::Nesting>,
                    bb: &ir::BasicBlock,
                    ctx: &device::Context) -> model::HwPressure {

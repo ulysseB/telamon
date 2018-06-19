@@ -3,9 +3,10 @@ use binary_heap_plus::BinaryHeap;
 use device::{Context, cuda};
 use ir;
 use itertools::Itertools;
+use model::size;
+use num::Integer;
 use search_space::{DimKind, Domain, InstFlag, ThreadMapping, SearchSpace};
 use std;
-use num::Integer;
 use utils::*;
 
 // TODO(model): the pressure changes depending on the list of outer dimensions. Try to
@@ -30,7 +31,7 @@ pub struct MemInfo {
 pub fn analyse(space: &SearchSpace,
                gpu: &cuda::Gpu,
                inst: &ir::Instruction,
-               sizes: &HashMap<ir::dim::Id, u32>,
+               sizes: &HashMap<ir::dim::Id, size::Range>,
                ctx: &Context) -> MemInfo {
     let flag = space.domain().get_inst_flag(inst.id());
     let info = match *inst.operator() {
@@ -87,7 +88,7 @@ fn info(space: &SearchSpace,
         dims: &HashMap<ir::dim::Id, ir::Size>,
         is_shared_access: Trivalent,
         gpu: &cuda::Gpu,
-        sizes: &HashMap<ir::dim::Id, u32>,
+        sizes: &HashMap<ir::dim::Id, size::Range>,
         ctx: &Context) -> MemInfo {
     let mut info = NO_ACCESS_INFO;
     let thread_dims = tensor_thread_dims(space, inst, dims, sizes, gpu, ctx);
@@ -134,7 +135,7 @@ struct ThreadDimInfo {
 fn tensor_thread_dims(space: &SearchSpace,
                       inst: &ir::Instruction,
                       tensor_dims: &HashMap<ir::dim::Id, ir::Size>,
-                      sizes: &HashMap<ir::dim::Id, u32>,
+                      sizes: &HashMap<ir::dim::Id, size::Range>,
                       gpu: &cuda::Gpu,
                       ctx: &Context) -> Vec<ThreadDimInfo> {
     let external_dims = external_thread_dims(inst, space);
@@ -145,16 +146,13 @@ fn tensor_thread_dims(space: &SearchSpace,
             Trivalent::True => Some((dim, true)),
         }
     }).chain(external_dims).map(|(id, is_active_thread)| {
-        let size = sizes[&id];
+        let size = sizes[&id].fixed_val();
         let stride = tensor_dims.get(&id).map(|s| {
             // FIXME: handle size decisions
             let s = &::codegen::Size::from_ir(s, space);
             ctx.eval_size(s) as u64
         }).unwrap_or(0);
-        ThreadDimInfo {
-            size: u64::from(size),
-            stride, id, is_active_thread,
-        }
+        ThreadDimInfo { size, stride, id, is_active_thread }
     }).collect_vec();
     sort_thread_dims(dims, space, gpu)
 }
@@ -242,7 +240,7 @@ fn wrap_access_offsets(thread_dims: &[ThreadDimInfo], gpu: &cuda::Gpu) -> Vec<u6
 /// Computes the replay factor for a shared memory access.
 fn shared_replay_factor(offsets: &[u64],
                         tensor_dims: &HashMap<ir::dim::Id, ir::Size>,
-                        dim_sizes: &HashMap<ir::dim::Id, u32>,
+                        dim_sizes: &HashMap<ir::dim::Id, size::Range>,
                         space: &SearchSpace, gpu: &cuda::Gpu) -> f64 {
     // We only need to account for hits on the first bank. Other banks will have a smaller
     // replay factor.
@@ -256,8 +254,9 @@ fn shared_replay_factor(offsets: &[u64],
     let vector_replay = tensor_dims.iter()
         .flat_map(|(&d, stride)| stride.as_int().map(|s| (d, s)))
         .filter(|&(d, _)| space.domain().get_dim_kind(d).intersects(DimKind::VECTOR))
-        .map(|(d, stride)| div_ceil(dim_sizes[&d]*stride as u32, gpu.shared_bank_stride))
-        .min().unwrap_or(1);
+        .map(|(d, stride)| {
+            div_ceil(dim_sizes[&d].fixed_val() as u32*stride as u32, gpu.shared_bank_stride)
+        }).min().unwrap_or(1);
     let replay_factor = std::cmp::max(hits.len() as u32, vector_replay);
     trace!("shared_replay: {}", replay_factor);
     replay_factor as f64

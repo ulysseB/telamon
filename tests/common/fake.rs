@@ -76,7 +76,7 @@ impl device::Device for Device {
     }
 
     fn hw_pressure(&self, _: &SearchSpace,
-                   _: &HashMap<ir::dim::Id, u32>,
+                   _: &HashMap<ir::dim::Id, model::size::Range>,
                    _: &HashMap<ir::BBId, model::Nesting>,
                    _: &ir::BasicBlock,
                    _: &device::Context) -> HwPressure {

@@ -10,6 +10,14 @@ pub struct Range {
     pub max: u64,
 }
 
+impl Range {
+    /// Temporary function that assumes the range only contains a single value.
+    pub fn fixed_val(&self) -> u64 {
+        assert_eq!(self.min, self.max);
+        self.min
+    }
+}
+
 /// Bounds the values a size can take, in the given context.
 pub fn bounds(size: &ir::Size, _: &SearchSpace, ctx: &Context) -> Range {
     let mut total = size.factor();

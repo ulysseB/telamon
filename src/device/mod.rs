@@ -15,7 +15,7 @@ use ir;
 use search_space::{SearchSpace, DimKind};
 use std::hash;
 use std::io::Write;
-use model::{HwPressure, Nesting};
+use model::{self, HwPressure, Nesting};
 use utils::*;
 
 // TODO(perf): in PTX, shared and local pointers can have a 32-bit size, even in 64-bit
@@ -49,7 +49,7 @@ pub trait Device: Sync {
     /// Returns the pressure cause by a `BasicBlock`. For a dimension, returns the pressure
     /// for the full loop execution.
     fn hw_pressure(&self, space: &SearchSpace,
-                   dim_sizes: &HashMap<ir::dim::Id, u32>,
+                   dim_sizes: &HashMap<ir::dim::Id, model::size::Range>,
                    nesting: &HashMap<ir::BBId, Nesting>,
                    bb: &ir::BasicBlock,
                    ctx: &Context) -> HwPressure;
