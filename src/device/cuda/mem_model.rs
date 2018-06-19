@@ -187,7 +187,7 @@ fn external_thread_dims<'a>(inst: &'a ir::Instruction, space: &'a SearchSpace)
 /// respect dependencies since we don't know the exact order and it would be too costly to
 /// explore all of them (exponential). Instead we compute the minimal number of inner
 /// thread dimension for each dimension and ensure this amount is respected.
-/// 
+///
 /// Because we only support tensor accesses, bigger strides are multiples of smaller
 /// strides. Thus smaller stride will lead to less replays.
 fn sort_thread_dims(dims: Vec<ThreadDimInfo>,

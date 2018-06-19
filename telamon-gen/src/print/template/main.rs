@@ -325,17 +325,17 @@ impl Domain for HalfRange {
 #[derive(Copy, Clone)]
 pub struct NumericSet {
     len: usize,
-    values: [u16; NumericSet::MAX_LEN],
+    values: [u32; NumericSet::MAX_LEN],
 }
 
 #[allow(dead_code)]
 impl NumericSet {
-    const MAX_LEN: usize = 32;
+    const MAX_LEN: usize = 16;
 
     const FAILED: Self = NumericSet { len: 0, values: [0; NumericSet::MAX_LEN] };
 
     /// Returns the set containing all the possibilities. Assumes the universe is sorted.
-    pub fn all(univers: &[u16]) -> Self {
+    pub fn all(univers: &[u32]) -> Self {
         assert!(univers.len() <= NumericSet::MAX_LEN);
         let mut values = [0; NumericSet::MAX_LEN];
         for (v, dst) in univers.iter().cloned().zip(&mut values) { *dst = v; }
@@ -369,7 +369,7 @@ impl NumericSet {
         self.len = idx;
     }
 
-    fn restrict_to(&mut self, other: &[u16]) {
+    fn restrict_to(&mut self, other: &[u32]) {
         let (mut new_lhs, mut old_lhs, mut rhs) = (0, 0, 0);
         while old_lhs < self.len && rhs < other.len() {
             if self.values[old_lhs] > other[rhs] {
@@ -547,60 +547,60 @@ impl NumDomain for HalfRange {
 }
 
 impl NumDomain for NumericSet {
-    type Universe = [u16];
+    type Universe = [u32];
 
     fn min(&self) -> u32 {
-        if self.len == 0 { 1 } else { self.values[0] as u32 }
+        if self.len == 0 { 1 } else { self.values[0] }
     }
 
     fn max(&self) -> u32 {
-        if self.len == 0 { 0 } else { self.values[self.len-1] as u32 }
+        if self.len == 0 { 0 } else { self.values[self.len-1] }
     }
 
     fn as_num_set(&self) -> Option<NumericSet> { Some(*self) }
 
-    fn new_gt<D: NumDomain>(universe: &[u16], min: D) -> Self {
+    fn new_gt<D: NumDomain>(universe: &[u32], min: D) -> Self {
         let mut values = [0; NumericSet::MAX_LEN];
-        let min = std::cmp::min(std::u16::MAX as u32, min.min()) as u16;
+        let min = std::cmp::min(std::u32::MAX, min.min());
         let start = universe.binary_search(&min).map(|x| x+1).unwrap_or_else(|x| x);
         let len = universe.len() - start;
         for i in 0..len { values[i] = universe[start+i]; }
         NumericSet { values, len }
     }
 
-    fn new_lt<D: NumDomain>(universe: &[u16], max: D) -> Self {
+    fn new_lt<D: NumDomain>(universe: &[u32], max: D) -> Self {
         let mut values = [0; NumericSet::MAX_LEN];
-        let max = std::cmp::min(std::u16::MAX as u32, max.max()) as u16;
+        let max = std::cmp::min(std::u32::MAX, max.max());
         let len = universe.binary_search(&max).unwrap_or_else(|x| x);
         for i in 0..len { values[i] = universe[i]; }
         NumericSet { values, len }
     }
 
-    fn new_geq<D: NumDomain>(universe: &[u16], min: D) -> Self {
+    fn new_geq<D: NumDomain>(universe: &[u32], min: D) -> Self {
         let mut values = [0; NumericSet::MAX_LEN];
-        let min = std::cmp::min(std::u16::MAX as u32, min.min()) as u16;
+        let min = std::cmp::min(std::u32::MAX, min.min());
         let start = universe.binary_search(&min).unwrap_or_else(|x| x);
         let len = universe.len() - start;
         for i in 0..len { values[i] = universe[start+i]; }
         NumericSet { values, len }
     }
 
-    fn new_leq<D: NumDomain>(universe: &[u16], max: D) -> Self {
+    fn new_leq<D: NumDomain>(universe: &[u32], max: D) -> Self {
         let mut values = [0; NumericSet::MAX_LEN];
-        let max = std::cmp::min(std::u16::MAX as u32, max.max()) as u16;
+        let max = std::cmp::min(std::u32::MAX, max.max());
         let len = universe.binary_search(&max).map(|x| x+1).unwrap_or_else(|x| x);
         for i in 0..len { values[i] = universe[i]; }
         NumericSet { values, len }
     }
 
-    fn new_eq<D: NumDomain>(universe: &[u16], eq: D) -> Self {
+    fn new_eq<D: NumDomain>(universe: &[u32], eq: D) -> Self {
         if let Some(mut eq) = eq.as_num_set() {
             eq.restrict_to(universe);
             eq
         } else {
             let mut values = [0; NumericSet::MAX_LEN];
-            let min = std::cmp::min(std::u16::MAX as u32, eq.min()) as u16;
-            let max = std::cmp::min(std::u16::MAX as u32, eq.max()) as u16;
+            let min = std::cmp::min(std::u32::MAX, eq.min());
+            let max = std::cmp::min(std::u32::MAX, eq.max());
             let start = universe.binary_search(&min).unwrap_or_else(|x| x);
             let len = universe.binary_search(&max).unwrap_or_else(|x| x) - start;
             for i in 0..len { values[i] = universe[start+i]; }

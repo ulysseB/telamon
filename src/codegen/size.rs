@@ -34,9 +34,6 @@ impl<'a> Size<'a> {
         if self.dividend.is_empty() { Some(self.factor) } else { None }
     }
 
-    /// Indicates if the size is constant.
-    pub fn is_constant(&self) -> bool { self.dividend.is_empty() }
-
     /// Returns the dividends.
     pub fn dividend(&self) -> &[&'a ir::Parameter] { &self.dividend }
 
@@ -45,20 +42,6 @@ impl<'a> Size<'a> {
 
     /// Returns the factor.
     pub fn factor(&self) -> u32 { self.factor }
-
-    /// Multiplies the divisor by the given factor.
-    pub fn mul_divisor(&mut self, d: u32) {
-        assert_ne!(d, 0);
-        self.divisor *= d;
-        self.simplify();
-    }
-
-    /// Multiplies the factor by the given factor.
-    pub fn mul_factor(&mut self, d: u32) {
-        assert_ne!(d, 0);
-        self.factor *= d;
-        self.simplify();
-    }
 
     /// Simplifies the fraction factor/divisor.
     fn simplify(&mut self) {
