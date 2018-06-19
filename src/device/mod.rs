@@ -18,9 +18,6 @@ use std::io::Write;
 use model::{self, HwPressure, Nesting};
 use utils::*;
 
-// TODO(perf): in PTX, shared and local pointers can have a 32-bit size, even in 64-bit
-// mode. 32bits ops are potentialy faster than 64bits ops.
-
 /// Holds the specifications of a target.
 pub trait Device: Sync {
     /// Prints the code corresponding to a device `Function`.
