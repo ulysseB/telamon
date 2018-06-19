@@ -6,13 +6,13 @@ use search_space::{Domain, DimKind};
 use device::printer::{self, Printer};
 // TODO(cc_perf): avoid concatenating strings.
 
-pub struct X86_printer {
+pub struct X86printer {
     out_function: String,
 }
 
-impl X86_printer {
+impl X86printer {
     pub fn new() -> Self {
-        X86_printer {
+        X86printer {
             out_function: String::new(),
         }
     }
@@ -58,7 +58,7 @@ impl X86_printer {
         // Compute thread indexes.
         for (ind, dim) in function.thread_dims().iter().enumerate() {
             //FIXME: fetch proper thread index
-            decls.push(format!("{} = tid.t{};", namer.name_index(dim.id()), ind));
+            decls.push(format!("{} = tid.t{};\n", namer.name_index(dim.id()), ind));
         }
         decls.join("\n  ")
     }
@@ -88,13 +88,14 @@ impl X86_printer {
         self.out_function.push_str(&idx_loads);
         // LD_PARAM
         let ld_params = function.device_code_args().map(|val| {
-            format!("{var_name} = {name};",
+            format!("{var_name} = {name};// LD_PARAM",
                     var_name = name_map.name_param_val(val.key()),
                     name = name_map.name_param(val.key()))
         }).collect_vec().join("\n  ");
         self.out_function.push_str(&ld_params);
+        self.out_function.push_str(&"\n");
         // MEM DECL
-        function.mem_blocks().map(|block| {
+        for block in function.mem_blocks() {
             match block.alloc_scheme() {
                 AllocationScheme::Shared =>
                     panic!("No shared mem in cpu!!"),
@@ -102,7 +103,7 @@ impl X86_printer {
                     printer::privatise_global_block(self, block, name_map, function),
                 AllocationScheme::Global => (),
             }
-        });
+        };
         // Compute size casts
         for dim in function.dimensions() {
             if !dim.kind().intersects(DimKind::UNROLL | DimKind::LOOP) { continue; }
@@ -112,7 +113,7 @@ impl X86_printer {
                     if let Some(name) = name {
                         let cpu_t = self.get_type(&level.t());
                         let old_name = name_map.name_size(incr, Type::I(32));
-                        self.out_function.push_str(&format!("{} = ({}){};", name, cpu_t, old_name));
+                        self.out_function.push_str(&format!("{} = ({}){};\n", name, cpu_t, old_name));
                     }
                 }
             }
@@ -120,8 +121,9 @@ impl X86_printer {
         // INIT
         let ind_levels = function.init_induction_levels().into_iter()
             .chain(function.block_dims().iter().flat_map(|d| d.induction_levels()));
-        //init.extend(ind_levels.map(|level| printer::parallel_induction_level(self, level, name_map)));
-        ind_levels.map(|level| printer::parallel_induction_level(self, level, name_map));
+        for level in ind_levels {
+            printer::parallel_induction_level(self, level, name_map);
+        }
         // BODY
         printer::cfg(self, function, function.cfg(), name_map);
         // Close function bracket
@@ -282,7 +284,7 @@ impl X86_printer {
     }
 }
 
-impl Printer for X86_printer {
+impl Printer for X86printer {
     fn get_int(&self, n: u32) -> String {
         format!("{}", n)
     }
@@ -348,7 +350,7 @@ impl Printer for X86_printer {
     }
 
     fn print_label(&mut self, label_id: &str) {
-        let push_str = format!("LABEL_{}:", label_id);
+        let push_str = format!("LABEL_{}:\n", label_id);
         self.out_function.push_str(&push_str);
     }
 
@@ -378,7 +380,7 @@ impl Printer for X86_printer {
     }
 
     fn print_cond_jump(&mut self, label_id: &str, cond: &str) {
-        let push_str = format!("if({}) goto {};\n", cond, label_id);
+        let push_str = format!("if({}) goto LABEL_{};\n", cond, label_id);
         self.out_function.push_str(&push_str);
     }
 

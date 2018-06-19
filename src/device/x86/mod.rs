@@ -8,7 +8,7 @@ mod cpu_argument;
 
 pub use self::context::Context;
 pub use self::cpu::Cpu;
-pub use self::printer::X86_printer;
+pub use self::printer::X86printer;
 
 use codegen;
 use ir;

@@ -46,24 +46,26 @@ pub trait Printer {
 }
 
 pub fn cfg_vec<T: Printer>(printer: &mut T, fun: &Function, cfgs: &[Cfg], namer: &mut NameMap) {
-    cfgs.iter().map(|c| cfg(printer, fun, c, namer));
+  for c in cfgs.iter() {
+    cfg(printer, fun, c, namer);
+  }
 }
 
 /// Prints a cfg.
 pub fn cfg<'a, T: Printer>(printer: &mut T, fun: &Function, c: &Cfg<'a>, namer: &mut NameMap) {
-    match *c {
-        Cfg::Root(ref cfgs) => cfg_vec(printer, fun, cfgs, namer),
-        Cfg::Loop(ref dim, ref cfgs) => gen_loop(printer, fun, dim, cfgs, namer),
-        Cfg::Threads(ref dims, ref ind_levels, ref inner) => {
-                enable_threads(printer, fun, dims, namer);
-                for level in ind_levels {
-                    parallel_induction_level(printer, level, namer);
-                }
-                cfg_vec(printer, fun, inner, namer);
-                printer.print_sync();
-        }
-        Cfg::Instruction(ref i) => inst(printer, i, namer),
+  match *c {
+    Cfg::Root(ref cfgs) => cfg_vec(printer, fun, cfgs, namer),
+    Cfg::Loop(ref dim, ref cfgs) => gen_loop(printer, fun, dim, cfgs, namer),
+    Cfg::Threads(ref dims, ref ind_levels, ref inner) => {
+      enable_threads(printer, fun, dims, namer);
+      for level in ind_levels {
+        parallel_induction_level(printer, level, namer);
+      }
+      cfg_vec(printer, fun, inner, namer);
+      printer.print_sync();
     }
+    Cfg::Instruction(ref i) => inst(printer, i, namer),
+  }
 }
 
 /// Prints a multiplicative induction var level.
@@ -159,6 +161,7 @@ pub fn standard_loop<T: Printer>(printer: &mut T,  fun: &Function, dim: &Dimensi
   printer.print_binop(&idx, op::BinOp::Add, &idx, &one);
   let gt_cond = "loop_test";
   printer.print_lt(&gt_cond, &idx, &namer.name_size(dim.size(), Type::I(32)));
+  printer.print_cond_jump(&loop_id.to_string(), &gt_cond);
 }
 
 pub fn unroll_loop<T:Printer>(printer: &mut T, fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap) {
