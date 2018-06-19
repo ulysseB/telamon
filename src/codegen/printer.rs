@@ -145,10 +145,10 @@ pub trait Printer {
 
     /// Prints a multiplicative induction var level.
     fn parallel_induction_level(&mut self, level: &InductionLevel, namer: &NameMap) {
-        let dim_id = level.increment.map(|(dim, _)| dim);
+        let dim_id = level.increment.as_ref().map(|&(dim, _)| dim);
         let ind_var = namer.name_induction_var(level.ind_var, dim_id);
         let base_components =  level.base.components().map(|v| namer.name(v)).collect_vec();
-        if let Some((dim, increment)) = level.increment {
+        if let Some((dim, ref increment)) = level.increment {
             let index = namer.name_index(dim);
             let step = namer.name_size(increment, Type::I(32));
             let mode = MulMode::from_type(Type::I(32), level.t());
@@ -217,7 +217,7 @@ pub trait Printer {
         let loop_id = namer.gen_loop_id();
         let ind_levels = dim.induction_levels();
         for level in ind_levels.iter() {
-            let dim_id = level.increment.map(|(dim, _)| dim);
+            let dim_id = level.increment.as_ref().map(|&(dim, _)| dim);
             let ind_var = namer.name_induction_var(level.ind_var, dim_id);
             let base_components = level.base.components().map(|v| namer.name(v));
             match base_components.collect_vec()[..] {
@@ -231,7 +231,7 @@ pub trait Printer {
         self.print_label(&loop_id.to_string());
         self.cfg_vec(fun, cfgs, namer);
         for (level, ind_var) in ind_levels.iter().zip_eq(ind_var_vec) {
-            if let Some((_, increment)) = level.increment {
+            if let Some((_, ref increment)) = level.increment {
                 let step = namer.name_size(increment, level.t());
                 self.print_binop(
                     ir::BinOp::Add, level.t(), op::Rounding::Exact, &ind_var, &ind_var, &step);
@@ -248,7 +248,7 @@ pub trait Printer {
     fn unroll_loop(&mut self, fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap) {
         let mut incr_levels = Vec::new();
         for level in dim.induction_levels() {
-            let dim_id = level.increment.map(|(dim, _)| dim);
+            let dim_id = level.increment.as_ref().map(|&(dim, _)| dim);
             let ind_var = namer.name_induction_var(level.ind_var, dim_id).to_string();
             let base_components = level.base.components().map(|v| namer.name(v));
             let base = match base_components.collect_vec()[..] {
@@ -261,14 +261,14 @@ pub trait Printer {
                 _ => panic!(),
             };
             self.print_mov(level.t(), &ind_var, &base);
-            if let Some((_, incr)) = level.increment {
+            if let Some((_, ref incr)) = level.increment {
                 incr_levels.push((level, ind_var, incr, base));
             }
         }
         for i in 0..unwrap!(dim.size().as_int()) {
             namer.set_current_index(dim, i);
             if i > 0 {
-                for &(level, ref ind_var, incr, ref base) in &incr_levels {
+                for &(level, ref ind_var, ref incr, ref base) in &incr_levels {
                     if let Some(step) = incr.as_int() {
                         let stepxi = Self::get_int(step * i);
                         self.print_binop(ir::BinOp::Add, level.t(), op::Rounding::Exact,

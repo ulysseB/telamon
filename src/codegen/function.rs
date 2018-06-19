@@ -3,7 +3,7 @@ use ir;
 use ir::prelude::*;
 use itertools::Itertools;
 use search_space::{self, DimKind, Domain, MemSpace, SearchSpace};
-use codegen::{cfg, Cfg, dimension, Dimension, InductionVar, InductionLevel};
+use codegen::{self, cfg, Cfg, dimension, Dimension, InductionVar, InductionLevel};
 use std;
 use utils::*;
 
@@ -109,9 +109,9 @@ pub enum ParamVal<'a> {
     /// A parameter given by the caller.
     External(&'a ir::Parameter, ir::Type),
     /// A tiled dimension size computed on the host.
-    Size(ir::Size<'a>),
+    Size(codegen::Size<'a>),
     /// A pointer to a global memory block, allocated by the wrapper.
-    GlobalMem(ir::mem::InternalId, ir::Size<'a>, ir::Type),
+    GlobalMem(ir::mem::InternalId, codegen::Size<'a>, ir::Type),
 }
 
 impl<'a> ParamVal<'a> {
@@ -122,13 +122,12 @@ impl<'a> ParamVal<'a> {
                 let t = unwrap!(space.ir_instance().device().lower_type(p.t, space));
                 Some(ParamVal::External(p, t))
             }
-            ir::Operand::Size(ref s) => Self::from_size(s),
             _ => None,
         }
     }
 
     /// Builds the `ParamVal` needed to get a size value, if any.
-    pub fn from_size(size: &ir::Size<'a>) -> Option<Self> {
+    pub fn from_size(size: &codegen::Size<'a>) -> Option<Self> {
         match *size.dividend() {
             [] => None,
             [p] if size.factor() == 1 && size.divisor() == 1 =>
@@ -170,7 +169,7 @@ hash_from_key!(ParamVal<'a>, &ParamVal::key, 'a);
 #[derive(PartialEq, Eq, Hash, Copy, Clone)]
 pub enum ParamValKey<'a> {
     External(&'a ir::Parameter),
-    Size(&'a ir::Size<'a>),
+    Size(&'a codegen::Size<'a>),
     GlobalMem(ir::mem::InternalId),
 }
 
@@ -193,8 +192,8 @@ fn register_mem_blocks<'a>(space: &'a SearchSpace<'a>, block_dims: &[Dimension<'
 /// A memory block allocated by the kernel.
 pub struct InternalMemBlock<'a> {
     id: ir::mem::InternalId,
-    size: ir::Size<'a>,
-    num_private_copies: Option<ir::Size<'a>>,
+    size: codegen::Size<'a>,
+    num_private_copies: Option<codegen::Size<'a>>,
     mem_space: MemSpace,
     ptr_type: ir::Type,
 }
@@ -206,13 +205,14 @@ pub enum AllocationScheme { Global, PrivatisedGlobal, Shared }
 impl<'a> InternalMemBlock<'a> {
     /// Creates a new InternalMemBlock from an `ir::mem::Internal`.
     pub fn new(block: &'a ir::mem::InternalBlock,
-               num_threads_groups: &Option<ir::Size<'a>>,
+               num_threads_groups: &Option<codegen::Size<'a>>,
                space: &'a SearchSpace<'a>) -> Self {
         let mem_space = space.domain().get_mem_space(block.mem_id());
         assert!(mem_space.is_constrained());
-        let mut size = ir::Size::new(block.base_size(), vec![], 1);
+        let mut size = codegen::Size::new(block.base_size(), vec![], 1);
         for &(dim, _) in block.mapped_dims() {
-            size *= space.ir_instance().dim(dim).size();
+            let ir_size = space.ir_instance().dim(dim).size();
+            size *= &codegen::Size::from_ir(ir_size, space);
         }
         let num_private_copies = if block.is_private() && mem_space == MemSpace::GLOBAL {
             num_threads_groups.clone()
@@ -254,14 +254,14 @@ impl<'a> InternalMemBlock<'a> {
     }
 
     /// Generates the size of the memory to allocate.
-    pub fn alloc_size(&self) -> ir::Size<'a> {
+    pub fn alloc_size(&self) -> codegen::Size<'a> {
         let mut out = self.size.clone();
         if let Some(ref s) = self.num_private_copies { out *= s }
         out
     }
 
     /// Returns the size of the part of the allocated memory accessible by each thread.
-    pub fn local_size(&self) -> &ir::Size<'a> { &self.size }
+    pub fn local_size(&self) -> &codegen::Size<'a> { &self.size }
 
     /// Returns the memory space the block is allocated in.
     pub fn mem_space(&self) -> MemSpace { self.mem_space }

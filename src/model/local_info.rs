@@ -29,8 +29,11 @@ pub struct LocalInfo {
 impl LocalInfo {
     /// Compute the local information for the given search space, in the context.
     pub fn compute(space: &SearchSpace, context: &Context) -> Self {
-        let dim_sizes = space.ir_instance().dims()
-            .map(|d| (d.id(), context.eval_size(d.size()))).collect();
+        let dim_sizes = space.ir_instance().dims().map(|d| {
+            // FIXME: handle sizes that are not fixed.
+            let size = &::codegen::Size::from_ir(d.size(), space);
+            (d.id(), context.eval_size(size))
+        }).collect();
         let nesting: HashMap<_, _> = space.ir_instance().blocks().map(|bb| {
             (bb.bb_id(), Nesting::compute(space, bb.bb_id(), &dim_sizes))
         }).collect();

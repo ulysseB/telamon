@@ -2,7 +2,7 @@
 use device::cuda::{Gpu, Namer};
 use codegen::Printer;
 use codegen::*;
-use ir::{self, op, Size, Type};
+use ir::{self, op, Type};
 use itertools::Itertools;
 use search_space::{DimKind, Domain, InstFlag};
 use std;
@@ -192,7 +192,7 @@ impl CudaPrinter {
             for dim in function.dimensions() {
                 if !dim.kind().intersects(DimKind::UNROLL | DimKind::LOOP) { continue; }
                 for level in dim.induction_levels() {
-                    if let Some((_, incr)) = level.increment {
+                    if let Some((_, ref incr)) = level.increment {
                         let name = name_map.declare_size_cast(incr, level.t());
                         if let Some(name) = name {
                             let old_name = name_map.name_size(incr, Type::I(32));
@@ -235,7 +235,7 @@ impl CudaPrinter {
         let mut extra_cleanup = vec![];
         let params = fun.device_code_args().map(|p| match *p {
             ParamVal::External(p, _) => format!("&{}", p.name),
-            ParamVal::Size(size) => {
+            ParamVal::Size(ref size) => {
                 let extra_var = format!("_extra_{}", next_extra_var_id);
                 next_extra_var_id += 1;
                 extra_def.push(format!("int32_t {} = {};", extra_var, Self::host_size(size)));

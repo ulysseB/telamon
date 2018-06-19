@@ -146,7 +146,11 @@ fn tensor_thread_dims(space: &SearchSpace,
         }
     }).chain(external_dims).map(|(id, is_active_thread)| {
         let size = sizes[&id];
-        let stride = tensor_dims.get(&id).map(|s| ctx.eval_size(s) as u64).unwrap_or(0);
+        let stride = tensor_dims.get(&id).map(|s| {
+            // FIXME: handle size decisions
+            let s = &::codegen::Size::from_ir(s, space);
+            ctx.eval_size(s) as u64
+        }).unwrap_or(0);
         ThreadDimInfo {
             size: u64::from(size),
             stride, id, is_active_thread,
