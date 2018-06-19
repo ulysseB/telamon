@@ -15,7 +15,7 @@ use utils::*;
 pub use super::lexer::Spanned;
 
 /// Hint is a token representation.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Hint {
     /// Set interface.
     Set,
@@ -31,27 +31,73 @@ pub enum Hint {
     IntegerAttribute,
 }
 
-/// TypeEror is the error representation of telamon's
+impl Hint {
+    fn from(statement: &Spanned<Statement>) -> Self {
+        match statement {
+            Spanned { beg: _, end: _, data: Statement::SetDef { ..  } } => Hint::Set,
+            Spanned { beg: _, end: _, data: Statement::EnumDef { .. } } => Hint::Enum,
+            Spanned { beg: _, end: _, data: Statement::IntegerDef { .. } } => Hint::Integer,
+            _ => unreachable!(),
+        }
+    }
+}
+
+/// TypeEror is the error representation of telamon's.
 #[derive(Debug, PartialEq)]
 pub enum TypeError {
     /// Redefinition of a name and hint..
-    Redefinition(String, Hint),
+    Redefinition(Spanned<Hint>, Spanned<String>),
     /// Undefinition of set, enum or field.
     Undefined(String),
     /// Unvalid arguments of a symmetric enum.
     BadSymmetricArg(Vec<VarDef>),
 }
 
+/// CheckContext is a type system.
+#[derive(Debug, Default)]
+struct CheckerContext {
+    /// Map Name of unique identifiant.
+    redefinition: HashMap<String, Spanned<Hint>>,
+}
+
+impl CheckerContext {
+    pub fn redefinition(
+        &mut self, statement: &Spanned<Statement>
+    ) -> Result<(), TypeError> {
+        match statement {
+//            Spanned { beg, end, data: Statement::CounterDef { name, .. } }
+            Spanned { beg, end, data: Statement::SetDef { name, ..  } } |
+            Spanned { beg, end, data: Statement::EnumDef { name, .. } } |
+            Spanned { beg, end, data: Statement::IntegerDef { name, .. } } => {
+                let data: Hint = Hint::from(statement);
+                let value: Spanned<Hint> = Spanned { beg: *beg, end: *end, data };
+                if let Some(pre) = self.redefinition.insert(name.to_owned(), value) {
+                    Err(TypeError::Redefinition(pre, Spanned {
+                        beg: *beg, end: *end, data: name.to_owned(),
+                    }))
+                } else {
+                    Ok(())
+                }
+            },
+            _ => Ok(()),
+        }
+    }
+}
+
 /// Syntaxic tree for the constraint description.
 #[derive(Debug)]
-pub struct Ast { pub statements: Vec<Spanned<Statement>> }
+pub struct Ast { 
+    pub statements: Vec<Spanned<Statement>>,
+}
 
 impl Ast {
     /// Generate the defintion of choices and the list of constraints.
-    pub fn type_check(self)
-        -> Result<(ir::IrDesc, Vec<TypedConstraint>), Spanned<TypeError>> {
+    pub fn type_check(self) -> Result<(ir::IrDesc, Vec<TypedConstraint>), TypeError> {
+        let mut checker = CheckerContext::default();
         let mut context = TypingContext::default();
+
         for statement in self.statements {
+            checker.redefinition(&statement)?;
             context.add_statement(statement);
         }
         Ok(context.finalize())
@@ -996,32 +1042,6 @@ impl fmt::Display for EnumStatement {
     }
 }
 
-impl EnumStatement {
-    fn get_value(&self) -> Option<&String> {
-        if let EnumStatement::Value(value, ..) = self {
-            Some(value)
-        } else {
-            None
-        }
-    }
-
-    fn get_alias(&self) -> Option<&String> {
-        if let EnumStatement::Alias(value, ..) = self {
-            Some(value)
-        } else {
-            None
-        }
-    }
-
-    fn get_alias_decisions(&self) -> Option<&Vec<String>> {
-        if let EnumStatement::Alias(_, _, decisions, ..) = self {
-            Some(decisions)
-        } else {
-            None
-        }
-    }
-}
-
 impl PartialEq for EnumStatement {
     fn eq(&self, rhs: &Self) -> bool {
         match (self, rhs) {
@@ -1089,24 +1109,6 @@ struct IntegerDef {
     code: String, // varmap, type_check_code
 }
 
-impl IntegerDef {
-    fn get_variables(&self) -> Result<(), TypeError> {
-        for item in self.variables.iter() {
-            for subitem in self.variables.iter()
-                               .skip_while(|subitem| subitem != &item)
-                               .skip(1) {
-                if subitem == item {
-                    Err(TypeError::Redefinition(
-                            item.name.to_owned().to_string(),
-                            Hint::IntegerAttribute
-                    ))?
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
 impl PartialEq for IntegerDef {
     fn eq(&self, rhs: &Self) -> bool {
         self.name == rhs.name
@@ -1130,64 +1132,6 @@ impl Default for EnumDef {
             variables: vec![],
             statements: vec![],
         }
-    }
-}
-
-impl EnumDef {
-    /// A field from a enum should be unique.
-    pub fn check_field_name_redefinition(&self) -> Result<(), TypeError> {
-        for item in self.statements.iter() {
-            for subitem in self.statements.iter()
-                               .skip_while(|subitem| subitem != &item)
-                               .skip(1) {
-                if subitem == item {
-                    Err(TypeError::Redefinition(
-                            item.to_string(),
-                            Hint::EnumAttribute
-                    ))?
-                }
-            }
-        }
-        Ok(())
-    }
-
-    /// An antisymmetric should refers to two same parameter.
-    pub fn check_symmetric(&self) -> Result<(), TypeError> {
-        if self.statements.contains(&EnumStatement::Symmetric) {
-            match self.variables.len() {
-                2 => {
-                    if let Some((left, right)) =
-                        self.variables.windows(2)
-                            .find(|vars: &&[VarDef]| vars[0] != vars[1])
-                            .and_then(|vars: &[VarDef]|
-                                Some((vars[0].clone(), vars[1].clone()))) {
-                        Err(TypeError::BadSymmetricArg(vec![left, right]))?
-                    }
-                },
-                _ => Err(
-                    TypeError::BadSymmetricArg(self.variables.to_owned())
-                )?,
-            }
-        }
-        Ok(())
-    }
-
-    /// An Alias' value should exists.
-    pub fn check_undefined_value(&self) -> Result<(), TypeError> {
-        let values: Vec<&String> =
-            self.statements.iter()
-                           .filter_map(|item| item.get_value().or(item.get_alias()))
-                           .collect::<Vec<&String>>();
-
-        for decisions in self.statements.iter()
-                                        .filter_map(|item| item.get_alias_decisions()) {
-            for value in decisions {
-                if !values.contains(&value) {
-                    Err(TypeError::Undefined(value.to_owned()))?
-                }
-            }
-        }
-        Ok(())
     }
 }
 
@@ -1274,55 +1218,6 @@ impl Default for SetDef {
     }
 }
 
-impl SetDef {
-    /// A field from a set should be unique.
-    fn check_field_name_redefinition(&self) -> Result<(), TypeError> {
-        for (item, ..) in self.keys.iter() {
-            for (subitem, ..) in self.keys.iter()
-                               .skip_while(|(subitem, ..)| subitem != item)
-                               .skip(1) {
-                if subitem == item {
-                    Err(TypeError::Redefinition(
-                            item.to_string(), Hint::SetAttribute))?
-                }
-            }
-        }
-        Ok(())
-    }
-
-    /// A set should always have the keys: type, id_type, id_getter, iterator, getter.
-    fn check_undefined_key(&self) -> Result<(), TypeError> {
-        let keys = self.keys.iter().map(|(k, _, _)| k).collect::<Vec<&ir::SetDefKey>>();
-
-        if !keys.contains(&&ir::SetDefKey::ItemType) {
-            Err(TypeError::Undefined(ir::SetDefKey::ItemType.to_string()))?
-        }
-        if !keys.contains(&&ir::SetDefKey::IdType) {
-            Err(TypeError::Undefined(ir::SetDefKey::IdType.to_string()))?
-        }
-        if !keys.contains(&&ir::SetDefKey::ItemGetter) {
-            Err(TypeError::Undefined(ir::SetDefKey::ItemGetter.to_string()))?
-        }
-        if !keys.contains(&&ir::SetDefKey::IdGetter) {
-            Err(TypeError::Undefined(ir::SetDefKey::IdGetter.to_string()))?
-        }
-        if !keys.contains(&&ir::SetDefKey::Iter) {
-            Err(TypeError::Undefined(ir::SetDefKey::Iter.to_string()))?
-        }
-        Ok(())
-    }
-
-    fn check_undefined_superset_key(&self) -> Result<(), TypeError> {
-        if self.superset.is_some() {
-            if self.keys.iter().find(|(k, _, _)| k == &ir::SetDefKey::FromSuperset)
-                               .is_none() {
-                Err(TypeError::Undefined(ir::SetDefKey::FromSuperset.to_string()))?
-            }
-        }
-        Ok(())
-    }
-}
-
 impl PartialEq for SetDef {
     fn eq(&self, rhs: &Self) -> bool {
         self.name == rhs.name
@@ -1338,9 +1233,6 @@ impl From<Statement> for Result<SetDef, TypeError> {
                 let set_def: SetDef = SetDef {
                     name, doc, arg, superset, disjoint, keys, quotient
                 };
-                set_def.check_undefined_key()?;
-                set_def.check_undefined_superset_key()?;
-                set_def.check_field_name_redefinition()?;
                 Ok(set_def)
             },
             _ => unreachable!(),
