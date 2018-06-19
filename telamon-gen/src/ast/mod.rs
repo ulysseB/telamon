@@ -10,7 +10,6 @@ use regex::Regex;
 use std;
 use std::fmt;
 use std::collections::{BTreeSet, hash_map};
-use std::ops::Deref;
 use utils::*;
 
 pub use super::lexer::Spanned;
@@ -52,7 +51,9 @@ impl Ast {
     pub fn type_check(self)
         -> Result<(ir::IrDesc, Vec<TypedConstraint>), Spanned<TypeError>> {
         let mut context = TypingContext::default();
-        for statement in self.statements { context.add_statement(statement)? }
+        for statement in self.statements {
+            context.add_statement(statement);
+        }
         Ok(context.finalize())
     }
 }
@@ -68,114 +69,33 @@ struct TypingContext {
 }
 
 impl TypingContext {
-
-    /// A Set's name is unique.
-    pub fn check_set_redefinition(
-        &self, set_def: &SetDef
-    ) -> Result<(), TypeError> {
-        if self.set_defs.contains(set_def) {
-            Err(TypeError::Redefinition(set_def.name.to_owned(), Hint::Set))?
-        }
-        Ok(())
-    }
-
-    /// A Set parameter set should be defined
-    pub fn check_set_parameter(
-        &self, set_def: &SetDef
-    ) -> Result<(), TypeError> {
-        if let Some(VarDef { name: _, ref set }) = set_def.arg {
-            let name: &String = set.name.deref();
-            if self.set_defs.iter().find(|set| set.name.eq(name)).is_none() {
-                Err(TypeError::Undefined(name.to_owned()))?
-            }
-        }
-        Ok(())
-    }
-
-    /// A Set superset attribut should be defined
-    pub fn check_superset_parameter(
-        &self, set_def: &SetDef
-    ) -> Result<(), TypeError> {
-        if let Some(SetRef { ref name, .. }) = set_def.superset {
-            let name: &String = name.deref();
-            if self.set_defs.iter().find(|set| set.name.eq(name)).is_none() {
-                Err(TypeError::Undefined(name.to_owned()))?
-            }
-        }
-        Ok(())
-    }
-
-    /// A Enum's name is unique.
-    pub fn check_enum_redefinition(
-        &self, choice_def: &ChoiceDef
-    ) -> Result<(), TypeError> {
-        if self.choice_defs.contains(choice_def) {
-            if let ChoiceDef::EnumDef(enum_def) = choice_def {
-                Err(TypeError::Redefinition(enum_def.name.to_owned(), Hint::Enum))?
-            }
-        }
-        Ok(())
-    }
-
-    /// A Enum parameter set should be defined
-    pub fn check_enum_parameter(
-        &self, choice_def: &ChoiceDef
-    ) -> Result<(), TypeError> {
-        if let ChoiceDef::EnumDef(enum_def) = choice_def {
-            for VarDef { name: _, set } in enum_def.variables.iter() {
-                let name: &String = set.name.deref();
-                if self.set_defs.iter().find(|set| set.name.eq(name)).is_none() {
-                    Err(TypeError::Undefined(name.to_owned()))?
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-impl TypingContext {
     /// Adds a statement to the typing context.
-    fn add_statement(&mut self, statement: Spanned<Statement>)
-        -> Result<(), Spanned<TypeError>> {
+    fn add_statement(&mut self, statement: Spanned<Statement>) {
         match statement {
-            Spanned { beg, end, data: d @ Statement::SetDef { .. } } => {
-                let set_def: SetDef =
-                    Result::<SetDef, TypeError>::from(d)
-                           .map_err(|e| Spanned { beg, end, data: e })?;
-
-                self.check_set_redefinition(&set_def)
-                       .map_err(|e| Spanned { beg, end, data: e })?;
-                self.check_set_parameter(&set_def)
-                       .map_err(|e| Spanned { beg, end, data: e })?;
-                self.check_superset_parameter(&set_def)
-                       .map_err(|e| Spanned { beg, end, data: e })?;
-                Ok(self.set_defs.push(set_def))
+            Spanned { beg, end, data: Statement::SetDef {
+                name, doc, arg, superset, disjoint, keys, quotient
+            } } => {
+                self.set_defs.push(SetDef {
+                    name, doc, arg, superset, disjoint, keys, quotient
+                })
             },
-            Spanned { beg, end, data: d @ Statement::EnumDef { .. } } |
-            Spanned { beg, end, data: d @ Statement::IntegerDef { .. } } |
-            Spanned { beg, end, data: d @ Statement::CounterDef { .. } } => {
-                let choice_def: ChoiceDef =
-                    Result::<ChoiceDef, TypeError>::from(d)
-                           .map_err(|e| Spanned { beg, end, data: e })?;
-
-               self.check_enum_redefinition(&choice_def)
-                       .map_err(|e| Spanned { beg, end, data: e })?;
-               self.check_enum_parameter(&choice_def)
-                       .map_err(|e| Spanned { beg, end, data: e })?;
-               Ok(self.choice_defs.push(choice_def))
+            Spanned { beg, end, data: stmt @ Statement::EnumDef { .. } } |
+            Spanned { beg, end, data: stmt @ Statement::IntegerDef { .. } } |
+            Spanned { beg, end, data: stmt @ Statement::CounterDef { .. } } => {
+                self.choice_defs.push(ChoiceDef::from(stmt))
             },
             Spanned { beg, end,
                 data: Statement::TriggerDef { foralls, conditions, code }
             } => {
-                Ok(self.triggers.push(TriggerDef {
+                self.triggers.push(TriggerDef {
                     foralls: foralls,
                     conditions: conditions,
                     code: code,
-                }))
+                })
             },
             Spanned { beg, end,
                 data: Statement::Require(constraint)
-            } => Ok(self.constraints.push(constraint)),
+            } => self.constraints.push(constraint),
         }
     }
 
@@ -1306,31 +1226,23 @@ enum ChoiceDef {
     IntegerDef(IntegerDef),
 }
 
-impl From<Statement> for Result<ChoiceDef, TypeError> {
+impl From<Statement> for ChoiceDef {
     fn from(stmt: Statement) -> Self {
         match stmt {
             Statement::CounterDef { name, doc, visibility, vars, body } => {
-                Ok(ChoiceDef::CounterDef(CounterDef {
+                ChoiceDef::CounterDef(CounterDef {
                     name, doc, visibility, vars, body
-                }))
+                })
             },
             Statement::EnumDef { name, doc, variables, statements } => {
-                let enum_def: EnumDef = EnumDef {
+                ChoiceDef::EnumDef(EnumDef {
                     name, doc, variables, statements
-                };
-
-                enum_def.check_field_name_redefinition()?;
-                enum_def.check_symmetric()?;
-                enum_def.check_undefined_value()?;
-                Ok(ChoiceDef::EnumDef(enum_def))
+                })
             },
             Statement::IntegerDef { name, doc, variables, code } => {
-                let integer_def: IntegerDef = IntegerDef {
+                ChoiceDef::IntegerDef(IntegerDef {
                     name, doc, variables, code
-                };
-
-                integer_def.get_variables()?;
-                Ok(ChoiceDef::IntegerDef(integer_def))
+                })
             },
             _ => unreachable!(),
         }
