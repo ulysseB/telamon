@@ -1077,7 +1077,7 @@ impl fmt::Display for EnumStatement {
 }
 
 impl EnumStatement {
-    pub fn get_value(&self) -> Option<&String> {
+    fn get_value(&self) -> Option<&String> {
         if let EnumStatement::Value(value, ..) = self {
             Some(value)
         } else {
@@ -1085,7 +1085,7 @@ impl EnumStatement {
         }
     }
 
-    pub fn get_alias(&self) -> Option<&String> {
+    fn get_alias(&self) -> Option<&String> {
         if let EnumStatement::Alias(value, ..) = self {
             Some(value)
         } else {
@@ -1093,7 +1093,7 @@ impl EnumStatement {
         }
     }
 
-    pub fn get_alias_decisions(&self) -> Option<&Vec<String>> {
+    fn get_alias_decisions(&self) -> Option<&Vec<String>> {
         if let EnumStatement::Alias(_, _, decisions, ..) = self {
             Some(decisions)
         } else {
@@ -1120,20 +1120,20 @@ impl PartialEq for EnumStatement {
 
 /// Gathers the different statements of an enum.
 #[derive(Debug, Default)]
-pub struct EnumStatements {
+struct EnumStatements {
     /// The values the enum can take, with the atached documentation.
-    pub values: HashMap<RcStr, Option<String>>,
+    values: HashMap<RcStr, Option<String>>,
     /// Aliases mapped to the corresponding documentation and value set.
-    pub aliases: HashMap<RcStr, (Option<String>, HashSet<RcStr>)>,
+    aliases: HashMap<RcStr, (Option<String>, HashSet<RcStr>)>,
     /// Symmetry information.
-    pub symmetry: Option<Symmetry>,
+    symmetry: Option<Symmetry>,
     /// Constraints on a value.
-    pub constraints: Vec<(RcStr, Constraint)>,
+    constraints: Vec<(RcStr, Constraint)>,
 }
 
 impl EnumStatements {
     /// Registers an `EnumStatement`.
-    pub fn add_statement(&mut self, statement: EnumStatement) {
+    fn add_statement(&mut self, statement: EnumStatement) {
         match statement {
             EnumStatement::Value(name, doc, constraints) => {
                 let name = RcStr::new(name);
@@ -1162,15 +1162,15 @@ impl EnumStatements {
 
 /// A toplevel integer
 #[derive(Clone, Debug)]
-pub struct IntegerDef {
-    pub name: String,
-    pub doc: Option<String>,
-    pub variables: Vec<VarDef>,
-    pub code: String, // varmap, type_check_code
+struct IntegerDef {
+    name: String,
+    doc: Option<String>,
+    variables: Vec<VarDef>,
+    code: String, // varmap, type_check_code
 }
 
 impl IntegerDef {
-    pub fn get_variables(&self) -> Result<(), TypeError> {
+    fn get_variables(&self) -> Result<(), TypeError> {
         for item in self.variables.iter() {
             for subitem in self.variables.iter()
                                .skip_while(|subitem| subitem != &item)
@@ -1195,11 +1195,11 @@ impl PartialEq for IntegerDef {
  
 /// A toplevel definition or constraint.
 #[derive(Clone, Debug)]
-pub struct EnumDef {
-    pub name: String,
-    pub doc: Option<String>,
-    pub variables: Vec<VarDef>,
-    pub statements: Vec<EnumStatement>
+struct EnumDef {
+    name: String,
+    doc: Option<String>,
+    variables: Vec<VarDef>,
+    statements: Vec<EnumStatement>
 }
 
 impl Default for EnumDef {
@@ -1278,19 +1278,19 @@ impl PartialEq for EnumDef {
 }
 
 #[derive(Debug)]
-pub struct TriggerDef {
-    pub foralls: Vec<VarDef>,
-    pub conditions: Vec<Condition>,
-    pub code: String,
+struct TriggerDef {
+    foralls: Vec<VarDef>,
+    conditions: Vec<Condition>,
+    code: String,
 }
 
 #[derive(Clone, Debug)]
-pub struct CounterDef {
-    pub name: RcStr,
-    pub doc: Option<String>,
-    pub visibility: ir::CounterVisibility,
-    pub vars: Vec<VarDef>,
-    pub body: CounterBody,
+struct CounterDef {
+    name: RcStr,
+    doc: Option<String>,
+    visibility: ir::CounterVisibility,
+    vars: Vec<VarDef>,
+    body: CounterBody,
 }
 
 impl PartialEq for CounterDef {
@@ -1300,24 +1300,10 @@ impl PartialEq for CounterDef {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum ChoiceDef {
+enum ChoiceDef {
     CounterDef(CounterDef),
     EnumDef(EnumDef),
     IntegerDef(IntegerDef),
-}
-
-impl ChoiceDef {
-    pub fn get_name(&self) -> &String {
-        match self {
-            ChoiceDef::CounterDef(counter_def) => {
-                &counter_def.name
-            },
-            ChoiceDef::EnumDef(enum_def) => {
-                &enum_def.name
-            },
-            ChoiceDef::IntegerDef(def) => &def.name,
-        }
-    }
 }
 
 impl From<Statement> for Result<ChoiceDef, TypeError> {
@@ -1352,14 +1338,14 @@ impl From<Statement> for Result<ChoiceDef, TypeError> {
 }
 
 #[derive(Debug, Clone)]
-pub struct SetDef {
-    pub name: String,
-    pub doc: Option<String>,
-    pub arg: Option<VarDef>,
-    pub superset: Option<SetRef>,
-    pub disjoint: Vec<String>,
-    pub keys: Vec<(ir::SetDefKey, Option<VarDef>, String)>,
-    pub quotient: Option<Quotient>,
+struct SetDef {
+    name: String,
+    doc: Option<String>,
+    arg: Option<VarDef>,
+    superset: Option<SetRef>,
+    disjoint: Vec<String>,
+    keys: Vec<(ir::SetDefKey, Option<VarDef>, String)>,
+    quotient: Option<Quotient>,
 }
 
 impl Default for SetDef {
@@ -1378,7 +1364,7 @@ impl Default for SetDef {
 
 impl SetDef {
     /// A field from a set should be unique.
-    pub fn check_field_name_redefinition(&self) -> Result<(), TypeError> {
+    fn check_field_name_redefinition(&self) -> Result<(), TypeError> {
         for (item, ..) in self.keys.iter() {
             for (subitem, ..) in self.keys.iter()
                                .skip_while(|(subitem, ..)| subitem != item)
@@ -1393,7 +1379,7 @@ impl SetDef {
     }
 
     /// A set should always have the keys: type, id_type, id_getter, iterator, getter.
-    pub fn check_undefined_key(&self) -> Result<(), TypeError> {
+    fn check_undefined_key(&self) -> Result<(), TypeError> {
         let keys = self.keys.iter().map(|(k, _, _)| k).collect::<Vec<&ir::SetDefKey>>();
 
         if !keys.contains(&&ir::SetDefKey::ItemType) {
@@ -1414,7 +1400,7 @@ impl SetDef {
         Ok(())
     }
 
-    pub fn check_undefined_superset_key(&self) -> Result<(), TypeError> {
+    fn check_undefined_superset_key(&self) -> Result<(), TypeError> {
         if self.superset.is_some() {
             if self.keys.iter().find(|(k, _, _)| k == &ir::SetDefKey::FromSuperset)
                                .is_none() {
