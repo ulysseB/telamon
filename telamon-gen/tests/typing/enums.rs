@@ -133,7 +133,7 @@ fn enum_field_redefinition() {
 }
 
 #[test]
-fn enum_symmetric_two_parametric() {
+fn enum_symmetric_two_parameter() {
     assert_eq!(parser::parse_ast(Lexer::from(
         b"define enum foo():
             symmetric
@@ -239,7 +239,7 @@ fn enum_symmetric_two_parametric() {
 }
 
 #[test]
-fn enum_symmetric_same_parametric() {
+fn enum_symmetric_same_parameter() {
     assert_eq!(parser::parse_ast(Lexer::from(
         b"set BasicBlock:
             item_type = \"ir::basic_block::Obj\"
@@ -336,7 +336,7 @@ fn enum_undefined_value() {
 }
  
 #[test]
-fn enum_undefined_parametric() {
+fn enum_undefined_parameter() {
     assert_eq!(parser::parse_ast(Lexer::from(
             b"define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
                 symmetric

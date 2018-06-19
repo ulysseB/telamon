@@ -153,7 +153,7 @@ fn set_undefined_key() {
 }
 
 #[test]
-fn set_undefined_parametric() {
+fn set_undefined_parameter() {
     assert_eq!(parser::parse_ast(Lexer::from(
         b"set Operand($inst in Instruction):
             item_type = \"ir::operand::Obj\"

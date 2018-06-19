@@ -79,8 +79,8 @@ impl TypingContext {
         Ok(())
     }
 
-    /// A Set parametric set should be defined
-    pub fn check_set_parametric(
+    /// A Set parameter set should be defined
+    pub fn check_set_parameter(
         &self, set_def: &SetDef
     ) -> Result<(), TypeError> {
         if let Some(VarDef { name: _, ref set }) = set_def.arg {
@@ -93,7 +93,7 @@ impl TypingContext {
     }
 
     /// A Set superset attribut should be defined
-    pub fn check_superset_parametric(
+    pub fn check_superset_parameter(
         &self, set_def: &SetDef
     ) -> Result<(), TypeError> {
         if let Some(SetRef { ref name, .. }) = set_def.superset {
@@ -117,8 +117,8 @@ impl TypingContext {
         Ok(())
     }
 
-    /// A Enum parametric set should be defined
-    pub fn check_enum_parametric(
+    /// A Enum parameter set should be defined
+    pub fn check_enum_parameter(
         &self, choice_def: &ChoiceDef
     ) -> Result<(), TypeError> {
         if let ChoiceDef::EnumDef(enum_def) = choice_def {
@@ -145,9 +145,9 @@ impl TypingContext {
 
                 self.check_set_redefinition(&set_def)
                        .map_err(|e| Spanned { beg, end, data: e })?;
-                self.check_set_parametric(&set_def)
+                self.check_set_parameter(&set_def)
                        .map_err(|e| Spanned { beg, end, data: e })?;
-                self.check_superset_parametric(&set_def)
+                self.check_superset_parameter(&set_def)
                        .map_err(|e| Spanned { beg, end, data: e })?;
                 Ok(self.set_defs.push(set_def))
             },
@@ -160,7 +160,7 @@ impl TypingContext {
 
                self.check_enum_redefinition(&choice_def)
                        .map_err(|e| Spanned { beg, end, data: e })?;
-               self.check_enum_parametric(&choice_def)
+               self.check_enum_parameter(&choice_def)
                        .map_err(|e| Spanned { beg, end, data: e })?;
                Ok(self.choice_defs.push(choice_def))
             },
@@ -1231,7 +1231,7 @@ impl EnumDef {
         Ok(())
     }
 
-    /// An antisymmetric should refers to two same parametric.
+    /// An antisymmetric should refers to two same parameter.
     pub fn check_symmetric(&self) -> Result<(), TypeError> {
         if self.statements.contains(&EnumStatement::Symmetric) {
             match self.variables.len() {
