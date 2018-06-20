@@ -277,7 +277,7 @@ impl Gpu {
     fn dim_pressure(&self, kind: DimKind, size: model::size::Range) -> HwPressure {
         if kind == DimKind::LOOP {
             let mut pressure: HwPressure = self.loop_iter_overhead.into();
-            pressure.repeat_sequential(size.fixed_val() as f64);
+            pressure.repeat_sequential(size.min as f64);
             pressure.add_sequential(&self.loop_init_overhead.into());
             pressure
         } else if DimKind::THREAD.contains(kind) {

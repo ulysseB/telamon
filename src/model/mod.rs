@@ -327,8 +327,8 @@ mod cuda_tests {
             let space = builder.get_clone();
             let local_info = LocalInfo::compute(&space, &context);
             trace!("partial nesting: {:?}", local_info.nesting[&st_z.into()]);
-            sum_pressure(context.device(), &space, &local_info,
-                         BottleneckLevel::Global, &[])
+            sum_pressure(&context, &space, &local_info,
+                         BottleneckLevel::Global, &[], &ir::Size::one())
         }.get_bottleneck(3);
 
         builder.action(Action::ThreadMapping(dim_z, dim_x, ThreadMapping::MAPPED_OUT));
@@ -336,8 +336,8 @@ mod cuda_tests {
             let space = builder.get_clone();
             let local_info = LocalInfo::compute(&space, &context);
             trace!("final nesting: {:?}", local_info.nesting[&st_z.into()]);
-            sum_pressure(context.device(), &space, &local_info,
-                         BottleneckLevel::Global, &[])
+            sum_pressure(&context, &space, &local_info,
+                         BottleneckLevel::Global, &[], &ir::Size::one())
         }.get_bottleneck(3);
 
         assert!(final_pressure*1.001 >= partial_pressure, "{} < {}",
@@ -370,8 +370,8 @@ mod cuda_tests {
             let space = builder.get_clone();
             let local_info = LocalInfo::compute(&space, &context);
             trace!("partial nesting: {:?}", local_info.nesting[&st_z.into()]);
-            sum_pressure(context.device(), &space, &local_info,
-                         BottleneckLevel::Global, &[])
+            sum_pressure(&context, &space, &local_info,
+                         BottleneckLevel::Global, &[], &ir::Size::one())
         }.get_bottleneck(5);
 
         builder.action(Action::DimKind(dim_z, DimKind::THREAD));
@@ -379,8 +379,8 @@ mod cuda_tests {
             let space = builder.get();
             let local_info = LocalInfo::compute(&space, &context);
             trace!("final nesting: {:?}", local_info.nesting[&st_z.into()]);
-            sum_pressure(context.device(), &space, &local_info,
-                         BottleneckLevel::Global, &[])
+            sum_pressure(&context, &space, &local_info,
+                         BottleneckLevel::Global, &[], &ir::Size::one())
         }.get_bottleneck(5);
 
         assert!(final_pressure*1.001 >= partial_pressure, "{} < {}",
@@ -488,8 +488,8 @@ mod cuda_tests {
         let partial_pressure = {
             let space = builder.get_clone();
             let local_info = LocalInfo::compute(&space, &context);
-            sum_pressure(context.device(), &space, &local_info,
-                         BottleneckLevel::Global, &[])
+            sum_pressure(&context, &space, &local_info,
+                         BottleneckLevel::Global, &[], &ir::Size::one())
         }.get_bottleneck(4);
 
         builder.action(Action::ThreadMapping(init_dim_n, ld_a_dim[0],
@@ -498,8 +498,8 @@ mod cuda_tests {
         let final_pressure = {
             let space = builder.get();
             let local_info = LocalInfo::compute(&space, &context);
-            sum_pressure(context.device(), &space, &local_info,
-                         BottleneckLevel::Global, &[])
+            sum_pressure(&context, &space, &local_info,
+                         BottleneckLevel::Global, &[], &ir::Size::one())
         }.get_bottleneck(4);
  
         assert!(final_pressure*1.001 >= partial_pressure, "{} < {}",
@@ -531,8 +531,8 @@ mod cuda_tests {
         let partial_pressure = {
             let space = builder.get_clone();
             let local_info = LocalInfo::compute(&space, &context);
-            sum_pressure(context.device(), &space, &local_info,
-                         BottleneckLevel::Global, &[])
+            sum_pressure(&context, &space, &local_info,
+                         BottleneckLevel::Global, &[], &ir::Size::one())
         }.get_bottleneck(3);
 
         builder.action(Action::ThreadMapping(ld_a[0][0], ld_a[1][0],
@@ -541,8 +541,8 @@ mod cuda_tests {
         let final_pressure = {
             let space = builder.get();
             let local_info = LocalInfo::compute(&space, &context);
-            sum_pressure(context.device(), &space, &local_info,
-                         BottleneckLevel::Global, &[])
+            sum_pressure(&context, &space, &local_info,
+                         BottleneckLevel::Global, &[], &ir::Size::one())
         }.get_bottleneck(3);
 
         assert!(final_pressure*1.001 >= partial_pressure, "{} < {}",
@@ -573,8 +573,8 @@ mod cuda_tests {
         let partial_pressure = {
             let space = builder.get_clone();
             let local_info = LocalInfo::compute(&space, &context);
-            sum_pressure(context.device(), &space, &local_info,
-                         BottleneckLevel::Global, &[])
+            sum_pressure(&context, &space, &local_info,
+                         BottleneckLevel::Global, &[], &ir::Size::one())
         }.get_bottleneck(4);
 
         builder.action(Action::DimKind(ld_a[0][0], DimKind::UNROLL));
@@ -582,8 +582,8 @@ mod cuda_tests {
         let final_pressure = {
             let space = builder.get();
             let local_info = LocalInfo::compute(&space, &context);
-            sum_pressure(context.device(), &space, &local_info,
-                         BottleneckLevel::Global, &[])
+            sum_pressure(&context, &space, &local_info,
+                         BottleneckLevel::Global, &[], &ir::Size::one())
         }.get_bottleneck(4);
 
         assert!(final_pressure*1.001 >= partial_pressure, "{} < {}",

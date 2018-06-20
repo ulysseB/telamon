@@ -93,14 +93,15 @@ fn add_indvar_pressure(device: &Device,
        } else {
            device.multiplicative_indvar_pressure(&t)
        };
-       let size = dim_sizes[&dim].fixed_val();
+       let size = dim_sizes[&dim].min;
        if dim_kind.intersects(DimKind::THREAD | DimKind::BLOCK) {
            thread_overhead.add_parallel(&overhead);
-       } else if size > 1 {
-           overhead.repeat_parallel((size-1) as f64);
-           unwrap!(hw_pressure.get_mut(&dim.into())).add_parallel(&overhead);
-           overhead.repeat_parallel(1.0/(size-1) as f64);
+       } else {
            unwrap!(dim_overhead.get_mut(&dim)).0.add_parallel(&overhead);
+           if size > 1 {
+               overhead.repeat_parallel((size-1) as f64);
+               unwrap!(hw_pressure.get_mut(&dim.into())).add_parallel(&overhead);
+           }
        }
    }
 }
