@@ -4,26 +4,6 @@ pub use super::telamon_gen::lexer::{Lexer, Spanned, Position};
 pub use super::telamon_gen::parser;
 pub use super::telamon_gen::ast::*;
 
-#[test]
-#[ignore] // TODO(test): raise an error as expected by the test
-fn integer_redefinition() {
-    assert_eq!(parser::parse_ast(Lexer::from(
-        b" define integer foo($myarg in MySet) in \"mycode\"
-           end
-           define integer foo($myarg in MySet) in \"mycode\"
-           end".to_vec())).unwrap().type_check().err(),
-        Some(TypeError::Redefinition(Spanned {
-            beg: Position { line: 11, column: 10},
-            end: Position { line: 12, column: 13},
-            data: Hint::Integer,
-        }, Spanned {
-            beg: Position { line: 11, column: 10},
-            end: Position { line: 12, column: 13},
-            data:  String::from("foo"),
-        }))
-    );
-}
-
 /*
 #[test]
 #[ignore] // TODO(test): raise an error as expected by the test

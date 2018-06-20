@@ -34,9 +34,15 @@ pub enum Hint {
 impl Hint {
     fn from(statement: &Spanned<Statement>) -> Self {
         match statement {
-            Spanned { beg: _, end: _, data: Statement::SetDef { ..  } } => Hint::Set,
-            Spanned { beg: _, end: _, data: Statement::EnumDef { .. } } => Hint::Enum,
-            Spanned { beg: _, end: _, data: Statement::IntegerDef { .. } } => Hint::Integer,
+            Spanned {
+                beg: _, end: _, data: Statement::SetDef { ..  }
+            } => Hint::Set,
+            Spanned {
+                beg: _, end: _, data: Statement::EnumDef { .. }
+            } => Hint::Enum,
+            Spanned {
+                beg: _, end: _, data: Statement::IntegerDef { .. }
+            } => Hint::Integer,
             _ => unreachable!(),
         }
     }
@@ -48,7 +54,7 @@ pub enum TypeError {
     /// Redefinition of a name and hint..
     Redefinition(Spanned<Hint>, Spanned<String>),
     /// Undefinition of set, enum or field.
-    Undefined(String),
+    Undefined(Spanned<String>),
     /// Unvalid arguments of a symmetric enum.
     BadSymmetricArg(Vec<VarDef>),
 }
@@ -66,9 +72,12 @@ impl CheckerContext {
     ) -> Result<(), TypeError> {
         match statement {
 //            Spanned { beg, end, data: Statement::CounterDef { name, .. } }
-            Spanned { beg, end, data: Statement::SetDef { name, ..  } } |
-            Spanned { beg, end, data: Statement::EnumDef { name, .. } } |
-            Spanned { beg, end, data: Statement::IntegerDef { name, .. } } => {
+            Spanned { beg: _, end: _, data: Statement::SetDef {
+                name: Spanned { beg, end, data: name, }, .. } } |
+            Spanned { beg: _, end: _, data: Statement::EnumDef {
+                name: Spanned { beg, end, data: name, }, .. } } |
+            Spanned { beg: _, end: _, data: Statement::IntegerDef {
+                name: Spanned { beg, end, data: name, }, .. } } => {
                 let data: Hint = Hint::from(statement);
                 let value: Spanned<Hint> = Spanned { beg: *beg, end: *end, data };
                 if let Some(pre) = self.redefinition.insert(name.to_owned(), value) {
@@ -119,7 +128,11 @@ impl TypingContext {
     fn add_statement(&mut self, statement: Spanned<Statement>) {
         match statement {
             Spanned { beg, end, data: Statement::SetDef {
-                name, doc, arg, superset, disjoint, keys, quotient
+                name: Spanned {
+                    beg: _,
+                    end: _,
+                    data: name,
+                }, doc, arg, superset, disjoint, keys, quotient
             } } => {
                 self.set_defs.push(SetDef {
                     name, doc, arg, superset, disjoint, keys, quotient
@@ -669,14 +682,14 @@ impl TypingContext {
 #[derive(Debug)]
 pub enum Statement {
     IntegerDef {
-        name: String,
+        name: Spanned<String>,
         doc: Option<String>,
         variables: Vec<VarDef>,
         code: String,
     },
     /// Defines an enum.
     EnumDef {
-        name: String,
+        name: Spanned<String>,
         doc: Option<String>,
         variables: Vec<VarDef>,
         statements: Vec<EnumStatement>
@@ -694,7 +707,7 @@ pub enum Statement {
         body: CounterBody,
     },
     SetDef {
-        name: String,
+        name: Spanned<String>,
         doc: Option<String>,
         arg: Option<VarDef>,
         superset: Option<SetRef>,
@@ -1178,12 +1191,20 @@ impl From<Statement> for ChoiceDef {
                     name, doc, visibility, vars, body
                 })
             },
-            Statement::EnumDef { name, doc, variables, statements } => {
+            Statement::EnumDef { name: Spanned {
+                beg: _,
+                end: _,
+                data: name,
+            }, doc, variables, statements } => {
                 ChoiceDef::EnumDef(EnumDef {
                     name, doc, variables, statements
                 })
             },
-            Statement::IntegerDef { name, doc, variables, code } => {
+            Statement::IntegerDef { name: Spanned {
+                beg: _,
+                end: _,
+                data: name,
+            }, doc, variables, code } => {
                 ChoiceDef::IntegerDef(IntegerDef {
                     name, doc, variables, code
                 })
@@ -1228,7 +1249,11 @@ impl From<Statement> for Result<SetDef, TypeError> {
     fn from(stmt: Statement) -> Self {
         match stmt {
             Statement::SetDef {
-                name, doc, arg, superset, disjoint, keys, quotient
+                name: Spanned {
+                    beg: _,
+                    end: _,
+                    data: name,
+                }, doc, arg, superset, disjoint, keys, quotient
             } => {
                 let set_def: SetDef = SetDef {
                     name, doc, arg, superset, disjoint, keys, quotient

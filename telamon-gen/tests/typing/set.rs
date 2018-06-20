@@ -5,26 +5,6 @@ pub use super::telamon_gen::parser;
 pub use super::telamon_gen::ir;
 pub use super::telamon_gen::ast::*;
 
-#[test]
-fn set_redefinition() {
-    assert_eq!(parser::parse_ast(Lexer::from(
-        b"set Foo:
-          end
-          
-          set Foo:
-          end".to_vec())).unwrap().type_check().err(),
-        Some(TypeError::Redefinition(Spanned {
-            beg: Position { line: 0, column: 0},
-            end: Position { line: 0, column: 8},
-            data: Hint::Set,
-        }, Spanned {
-            beg: Position { line: 3, column: 10},
-            end: Position { line: 3, column: 18},
-            data:  String::from("Foo"),
-        }))
-    );
-}
-
 /*
 
 #[test]
