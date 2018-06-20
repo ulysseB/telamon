@@ -30,32 +30,18 @@ impl device::Device for Device {
 
     fn max_unrolling(&self) -> u32 { 256 }
 
-    fn can_vectorize(&self, dim: &ir::Dimension, op: &ir::Operator) -> bool {
-        // TODO(search_space): compute vectorizable info for tmp Ld/St. On vectorization,
-        // the layout must be constrained.
+    fn vectorization_factors(&self, dim: &ir::Dimension, op: &ir::Operator) -> &[u32] {
+        const LD_ST_FACTORS: [u32; 2] = [2, 4];
+        const OTHER_FACTORS: [u32; 0] = [];
         match *op {
-            Operator::St(_, ref operand, _, ref pattern) => {
-                if let Some(type_len) = operand.t().len_byte() {
-                    dim.size().as_int().into_iter().any(|x| x == 2 || x == 4) &&
-                        pattern.stride(dim.id()) == ir::Stride::Int(type_len as i32)
-                } else { false }
-            },
-            Operator::Ld(ref t, _, ref pattern) => {
-                if let Some(type_len) = t.len_byte() {
-                    dim.size().as_int().into_iter().any(|x| x == 2 || x == 4) &&
-                        pattern.stride(dim.id()) == ir::Stride::Int(type_len as i32)
-                } else { false }
-            },
-            Operator::BinOp(..) |
-                Operator::Mul(..) |
-                Operator::Mad(..) |
-                Operator::Mov(..) |
-                Operator::Cast(..) => false,
-                Operator::TmpLd(..) |
-                    Operator::TmpSt(..) => dim.size().as_int().into_iter().any(|x| x == 2 || x == 4),
+            Operator::TmpLd(..) | Operator::TmpSt(..) => &LD_ST_FACTORS,
+            Operator::Ld(ref t, _, ref pattern) if pattern.is_consecutive(dim.id(), t) =>
+                &LD_ST_FACTORS,
+            Operator::St(_, ref operand, _, ref pattern)
+                if pattern.is_consecutive(dim.id(), &operand.t()) => &LD_ST_FACTORS,
+            _ => &OTHER_FACTORS,
         }
     }
-
 
     fn max_block_dims(&self) -> u32 { 3 }
 

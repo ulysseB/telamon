@@ -11,16 +11,6 @@ pub enum Stride {
     Unknown,
 }
 
-impl Stride {
-    /// Unwrap the stride or return the given value.
-    pub fn unwrap_or(self, default: i32) -> i32 {
-        match self {
-            Stride::Int(stride) => stride,
-            Stride::Unknown => default,
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub enum AccessPattern<'a> {
     /// Unknown access pattern.
@@ -31,14 +21,12 @@ pub enum AccessPattern<'a> {
 }
 
 impl<'a> AccessPattern<'a> {
-    /// Returns the stride on a given dimension.
-    pub fn stride(&self, dim: ir::dim::Id) -> Stride {
-        match *self {
-            AccessPattern::Unknown { .. } => Stride::Unknown,
-            AccessPattern::Tensor { ref dims, .. } => {
-                dims.get(&dim).map(|s| {
-                    s.as_int().map(|x| Stride::Int(x as i32)).unwrap_or(Stride::Unknown)
-                }).unwrap_or(Stride::Int(0))
+    /// Indicates if emory accesses access to consecutive elements on the given dimension.
+    pub fn is_consecutive(&self, dim: ir::dim::Id, t: &ir::Type) -> bool {
+        match self {
+            AccessPattern::Unknown { .. } => false,
+            AccessPattern::Tensor { dims, .. } => {
+                dims.get(&dim).map(|s| s.as_fixed() == t.len_byte()).unwrap_or(false)
             },
         }
     }

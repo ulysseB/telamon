@@ -124,8 +124,6 @@ define enum dim_kind($dim in Dimensions):
     requires "$dim.size().is_constant()"
     requires forall $other_dim in Dimensions:
       order($dim, $other_dim) is not OUTER
-    requires forall $inst in Instructions:
-      order($dim, $inst) is not OUTER || "$fun.device().can_vectorize($dim, $inst.operator())"
   /// The dimension is mapped to a block dimension on the device.
   value BLOCK:
     requires forall $other_dim in Dimensions:
@@ -365,8 +363,13 @@ define half counter num_nested_inst($dim in StaticDims):
       order($dim, $inst) is OUTER
 end
 
+// Vectorization constraints.
 require forall $dim in StaticDims:
   dim_kind($dim) is not VECTOR || num_nested_inst($dim) <= "1"
+require forall $dim in StaticDims:
+  forall $inst in Instructions:
+    dim_kind($dim) is not VECTOR || order($dim, $inst) is not OUTER
+      || size($dim) == "$fun.device().vectorization_factors($dim, $inst.operator())"
 
 require forall $dim in Dimensions:
   forall $init in Instructions:

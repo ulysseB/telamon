@@ -43,7 +43,7 @@ impl device::Device for Cpu {
 
     fn max_unrolling(&self) -> u32 { 512 }
 
-    fn can_vectorize(&self, _dim: &ir::Dimension, _op: &ir::Operator) -> bool {false}
+    fn vectorization_factors(&self, _: &ir::Dimension, _: &ir::Operator) -> &[u32] { &[] }
 
     fn shared_mem(&self) -> u32 {0}
 

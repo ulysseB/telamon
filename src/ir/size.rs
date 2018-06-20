@@ -35,6 +35,12 @@ impl<'a> Size<'a> {
         if self.dividend.is_empty() { Some(self.factor) } else { None }
     }
 
+    /// Returns the size of a dimension if it is staticaly known and doesn't depend on
+    /// any choice.
+    pub fn as_fixed(&self) -> Option<u32> {
+        if self.dividend.is_empty() { Some(self.factor) } else { None }
+    }
+
     /// Indicates if the size is constant.
     pub fn is_constant(&self) -> bool { self.dividend.is_empty() }
 

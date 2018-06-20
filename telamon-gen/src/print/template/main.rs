@@ -652,3 +652,35 @@ impl NumDomain for u32 {
 
     fn new_eq<D: NumDomain>(universe: &u32, _: D) -> Self { *universe }
 }
+
+pub enum Never { }
+
+impl<'a> NumDomain for &'a [u32] {
+    type Universe = Never;
+
+
+    fn min(&self) -> u32 {
+        if self.is_empty() { 1 } else { self[0] }
+    }
+
+    fn max(&self) -> u32 {
+        if self.is_empty() { 0 } else { self[self.len()-1] }
+    }
+
+    fn as_num_set(&self) -> Option<NumericSet> {
+        assert!(self.len() < NumericSet::MAX_LEN);
+        let mut values = [0; NumericSet::MAX_LEN];
+        for i in 0..self.len() { values[i] = self[i] }
+        Some(NumericSet { len: self.len(), values })
+    }
+
+    fn new_gt<D: NumDomain>(_: &Never, _: D) -> Self { unreachable!() }
+
+    fn new_lt<D: NumDomain>(_: &Never, _: D) -> Self { unreachable!() }
+
+    fn new_geq<D: NumDomain>(_: &Never, _: D) -> Self { unreachable!() }
+
+    fn new_leq<D: NumDomain>(_: &Never, _: D) -> Self { unreachable!() }
+
+    fn new_eq<D: NumDomain>(_: &Never, _: D) -> Self { unreachable!() }
+}
