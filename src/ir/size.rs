@@ -15,6 +15,9 @@ pub struct Size<'a> {
 }
 
 impl<'a> Size<'a> {
+    /// Creates a new `Size` representing the constant `1`.
+    pub fn one() -> Self { Size::new(1, vec![], 1) }
+
     /// Creates a new 'Size'.
     pub fn new(factor: u32, dividend: Vec<&'a ir::Parameter>, divisor: u32) -> Self {
         assert!(factor != 0);
