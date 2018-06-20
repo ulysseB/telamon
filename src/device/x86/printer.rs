@@ -68,21 +68,23 @@ impl X86printer {
     pub fn function(&mut self, function: &Function) -> String {
         let mut namer = Namer::default();
         //let (param_decls, body, ld_params, idx_loads, mem_decls);
+        let mut return_string;
         //let mut init = Vec::new();
         // VAR DECL
-        let var_decls = self.var_decls(&namer);
+        //let var_decls = self.var_decls(&namer);
+        {
         let name_map = &mut NameMap::new(function, &mut namer);
         let param_decls = function.device_code_args()
             .map(|v| self.param_decl(v, name_map))
             .collect_vec().join(",\n  ");
         // SIGNATURE AND OPEN BRACKET
-        let signature = format!(include_str!("template/signature.c.template"),
+        return_string = format!(include_str!("template/signature.c.template"),
         name = function.name,
         params = param_decls
         );
-        self.out_function.push_str(&signature);
+        //self.out_function.push_str(&signature);
         // VAR DECL
-        self.out_function.push_str(&var_decls);
+        //self.out_function.push_str(&var_decls);
         // IDX LOADS
         let idx_loads = self.decl_par_indexes(function, name_map);
         self.out_function.push_str(&idx_loads);
@@ -126,23 +128,26 @@ impl X86printer {
         }
         // BODY
         printer::cfg(self, function, function.cfg(), name_map);
+        }
+        let var_decls = self.var_decls(&namer);
+        return_string.push_str(&var_decls);
+        return_string.push_str(&self.out_function);
         // Close function bracket
-        self.out_function.push('}');
-        self.out_function.clone()
+        return_string.push('}');
+        return_string
     }
 
     fn fun_params_cast(&mut self, function: &Function) -> String {
         function.device_code_args()
             .enumerate()
             .map(|(i, v)| match v {
-                ParamVal::External(..) if v.is_pointer() => format!("intptr_t p{i} = (intptr_t)*(args + {i})", 
-                                                                    i = i),
-                                                                    ParamVal::External(_, par_type) => format!("{t} p{i} = *({t}*)*(args + {i})", 
-                                                                                                               t = self.get_type(par_type), i = i),
-                                                                    ParamVal::Size(_) => format!("uint32_t p{i} = *(uint32_t*)*(args + {i})", i = i),
-                                                                    // Are we sure we know the size at compile time ? I think we do
-                                                                    ParamVal::GlobalMem(_, _, par_type) => format!("{t} p{i} = ({t})*(args + {i})", 
-                                                                                                                   t = self.get_type(par_type), i = i)
+                ParamVal::External(..) if v.is_pointer() => format!("intptr_t p{i} = (intptr_t)*(args + {i})", i = i),
+                ParamVal::External(_, par_type) => format!("{t} p{i} = *({t}*)*(args + {i})", 
+                                                           t = self.get_type(par_type), i = i),
+                ParamVal::Size(_) => format!("uint32_t p{i} = *(uint32_t*)*(args + {i})", i = i),
+                // Are we sure we know the size at compile time ? I think we do
+                ParamVal::GlobalMem(_, _, par_type) => format!("{t} p{i} = ({t})*(args + {i})", 
+                                                               t = self.get_type(par_type), i = i)
             }
             )
             .collect_vec()
@@ -329,18 +334,18 @@ impl Printer for X86printer {
         self.out_function.push_str(&push_str);
     }
 
-    fn print_ld(&mut self, return_id: &str, cast_type: &str,  addr: &str) {
-        let push_str = format!("{} = ({})*{} ;\n", return_id, cast_type, addr);
+    fn print_ld(&mut self, return_id: &str, val_type: &str,  addr: &str) {
+        let push_str = format!("{} = *({}*){} ;\n", return_id, val_type, addr);
         self.out_function.push_str(&push_str);
     }
 
-    fn print_st(&mut self, addr: &str, val: &str) {
-        let push_str = format!("*{} = {} ;\n", addr, val);
+    fn print_st(&mut self, addr: &str, val: &str, val_type: &str) {
+        let push_str = format!("*({}*){} = {} ;\n", val_type, addr, val);
         self.out_function.push_str(&push_str);
     }
 
-    fn print_cond_st(&mut self, addr: &str, val: &str, cond: &str) {
-        let push_str = format!("if ({}) *{} = {} ;\n", cond, addr, val);
+    fn print_cond_st(&mut self, addr: &str, val: &str, cond: &str, str_type: &str) {
+        let push_str = format!("if ({}) *({} *){} = {} ;\n", cond, str_type, addr, val);
         self.out_function.push_str(&push_str);
     }
 

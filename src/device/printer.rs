@@ -22,9 +22,9 @@ pub trait Printer {
 
     fn print_ld(&mut self, return_id: &str, cast_type: &str,  addr: &str) ;
 
-    fn print_st(&mut self, addr: &str, val: &str) ;
+    fn print_st(&mut self, addr: &str, val: &str, val_type: &str) ;
 
-    fn print_cond_st(&mut self, addr: &str, val: &str, cond: &str) ;
+    fn print_cond_st(&mut self, addr: &str, val: &str, cond: &str, val_type: &str) ;
 
     fn print_cast(&mut self, return_id: &str, op1: &str, t: &Type) ;
 
@@ -129,11 +129,10 @@ pub fn gen_loop<T: Printer>(printer: &mut T, fun: &Function, dim: &Dimension, cf
 pub fn standard_loop<T: Printer>(printer: &mut T,  fun: &Function, dim: &Dimension, cfgs:
                              &[Cfg], namer: &mut NameMap) {
   let idx = namer.name_index(dim.id()).to_string();
-  let zero = printer.get_int(1);
+  let zero = printer.get_int(0);
   printer.print_mov(&idx, &zero);
   let mut ind_var_vec = vec![];
   let loop_id = namer.gen_loop_id();
-  printer.print_label(&loop_id.to_string());
   let ind_levels = dim.induction_levels();
   for level in ind_levels.iter() {
     let dim_id = level.increment.map(|(dim, _)| dim);
@@ -149,6 +148,7 @@ pub fn standard_loop<T: Printer>(printer: &mut T,  fun: &Function, dim: &Dimensi
     };
     ind_var_vec.push(ind_var.into_owned());
   }
+  printer.print_label(&loop_id.to_string());
   cfg_vec(printer, fun, cfgs, namer);
   for level in ind_levels.iter() {
     let ind_var: String = ind_var_vec.pop().unwrap();
@@ -159,7 +159,8 @@ pub fn standard_loop<T: Printer>(printer: &mut T,  fun: &Function, dim: &Dimensi
   }
   let one = printer.get_int(1);
   printer.print_binop(&idx, op::BinOp::Add, &idx, &one);
-  let gt_cond = "loop_test";
+  //let gt_cond = "loop_test";
+  let gt_cond = namer.gen_name(ir::Type::I(32));
   printer.print_lt(&gt_cond, &idx, &namer.name_size(dim.size(), Type::I(32)));
   printer.print_cond_jump(&loop_id.to_string(), &gt_cond);
 }
@@ -253,14 +254,15 @@ pub fn inst<T: Printer>(printer: &mut T, inst: &Instruction, namer: &mut NameMap
           printer.print_ld(&namer.name_inst(inst), &ld_type, &namer.name_op(addr))
         },
         op::St(ref addr, ref val, _,  _) => {
-            //let op_type = val.t();
+            let op_type = val.t();
+            let str_type = printer.get_type(&op_type);
             let guard = if inst.has_side_effects() {
                 namer.side_effect_guard()
             } else { None };
             if let Some(ref pred) = guard {
                 //format!("if({}) ", pred);
-                  printer.print_cond_st(&namer.name_op(addr), &namer.name_op(val), pred);
-            } else {printer.print_st(&namer.name_op(addr), &namer.name_op(val));};
+                  printer.print_cond_st(&namer.name_op(addr), &namer.name_op(val), pred, &str_type);
+            } else {printer.print_st(&namer.name_op(addr), &namer.name_op(val), &str_type);};
         },
         op::Cast(ref op, t) => {
             printer.print_cast(&namer.name_inst(inst), &namer.name_op(op), &t)

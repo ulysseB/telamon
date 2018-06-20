@@ -63,7 +63,6 @@ impl codegen::Namer for Namer {
     fn name_float(&self, val: &Ratio<BigInt>, len: u16) -> String {
         assert!(len <= 64);
         let f = unwrap!(val.numer().to_f64()) / unwrap!(val.denom().to_f64());
-        //let binary = unsafe { std::mem::transmute::<f64, u64>(f) };
         format!("{:.5e}", f )
     }
 
