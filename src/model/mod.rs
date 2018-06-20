@@ -47,7 +47,7 @@ pub fn bound(space: &SearchSpace, context: &Context) -> Bound {
     // Build the dependency maps dag.
     let local_info = LocalInfo::compute(space, context);
     trace!("local_info {:?}", local_info);
-    let (mut levels, dim_maps) = level::generate(space, context.device(), &local_info);
+    let (mut levels, dim_maps) = level::generate(space, context, &local_info);
     let code_points = CodePointDag::build(space, &levels);
     let mut levels_dag = LevelDag::build(
         space, &local_info, &levels, dim_maps, code_points.len());
@@ -80,7 +80,7 @@ pub fn bound(space: &SearchSpace, context: &Context) -> Bound {
     let lcm_num_blocks = local_info.parallelism.lcm_num_blocks;
     let latency = block_latency.scale(block_parallelism, min_num_blocks, lcm_num_blocks);
     // Compute the throughput bound at the whole device level.
-    let global_pressure = sum_pressure(context.device(), space, &local_info,
+    let global_pressure = sum_pressure(context, space, &local_info,
                                        BottleneckLevel::Global, &[]);
     trace!("global pressure {:?}", global_pressure);
     let device_rates = context.device().total_rates();

@@ -85,3 +85,17 @@ impl<'a, 'b> std::ops::MulAssign<&'b Size<'a>> for Size<'a> {
         self.simplify();
     }
 }
+
+impl<'a, 'b> std::iter::Product<&'b ir::Size<'a>> for ir::Size<'a> where 'a: 'b  {
+    fn product<I>(iter: I) -> Self where I: Iterator<Item=&'b ir::Size<'a>> {
+        let mut factor = 1;
+        let mut dividend = vec![];
+        let mut divisor = 1;
+        for s in iter {
+            factor *= s.factor;
+            dividend.extend(s.dividend.iter().cloned());
+            divisor *= s.divisor;
+        }
+        ir::Size::new(factor, dividend, divisor)
+    }
+}

@@ -10,9 +10,9 @@ use utils::*;
 
 /// Local information on the different objects.
 #[derive(Debug)]
-pub struct LocalInfo {
+pub struct LocalInfo<'a> {
     /// The loops inside and outside each BB.
-    pub nesting: HashMap<ir::BBId, Nesting>,
+    pub nesting: HashMap<ir::BBId, Nesting<'a>>,
     /// The pressure incured by a signle instance of each BB.
     pub hw_pressure: HashMap<ir::BBId, HwPressure>,
     /// The size of each dimensions.
@@ -26,14 +26,14 @@ pub struct LocalInfo {
     pub parallelism: Parallelism,
 }
 
-impl LocalInfo {
+impl<'a> LocalInfo<'a> {
     /// Compute the local information for the given search space, in the context.
-    pub fn compute(space: &SearchSpace, context: &Context) -> Self {
+    pub fn compute(space: &SearchSpace<'a>, context: &Context) -> Self {
         let dim_sizes = space.ir_instance().dims().map(|d| {
             (d.id(), size::bounds(d.size(), space, context))
         }).collect();
         let nesting: HashMap<_, _> = space.ir_instance().blocks().map(|bb| {
-            (bb.bb_id(), Nesting::compute(space, bb.bb_id(), &dim_sizes))
+            (bb.bb_id(), Nesting::compute(space, bb.bb_id(), &dim_sizes, context))
         }).collect();
         let mut hw_pressure = space.ir_instance().blocks().map(|bb| {
             let is_thread = if let ir::BBId::Dim(id) = bb.bb_id() {
@@ -107,7 +107,7 @@ fn add_indvar_pressure(device: &Device,
 
 /// Nesting of an object.
 #[derive(Debug)]
-pub struct Nesting {
+pub struct Nesting<'a> {
     /// Dimensions nested inside the current BB.
     pub inner_dims: VecSet<ir::dim::Id>,
     /// Basic blocks nested inside the current BB.
@@ -124,16 +124,17 @@ pub struct Nesting {
     /// Only consider thread dimensions that are sure to be mapped to threads.
     has_inner_thread_dims: bool,
     /// Number of threads that are not represented in the active dimensions of the block.
-    pub num_unmapped_threads: u32,
+    pub num_unmapped_threads: ir::Size<'a>,
     /// Maximal number of threads this block can be in, considering only outer and mapped
     /// out dimensions.
-    pub max_threads_per_block: u64
+    pub max_threads_per_block: u64,
 }
 
-impl Nesting {
+impl<'a> Nesting<'a> {
     /// Computes the nesting of a `BasicBlock`.
-    fn compute(space: &SearchSpace, bb: ir::BBId,
-               dim_sizes: &HashMap<ir::dim::Id, size::Range>) -> Self {
+    fn compute(space: &SearchSpace<'a>, bb: ir::BBId,
+               dim_sizes: &HashMap<ir::dim::Id, size::Range>,
+               ctx: &Context) -> Self {
         let mut inner_dims = Vec::new();
         let mut inner_bbs = Vec::new();
         let mut before_self = Vec::new();
@@ -169,10 +170,11 @@ impl Nesting {
                 let mapping = space.domain().get_thread_mapping(dim.id(), other);
                 mapping.intersects(ThreadMapping::MAPPED)
             })
-        }).map(|d| dim_sizes[&d.id()].fixed_val() as u32).product::<u32>();
+        }).map(|d| d.size()).product();
         let max_threads_per_block = outer_dims.iter().cloned().filter(|&d| {
             space.domain().get_dim_kind(d).intersects(DimKind::THREAD)
-        }).map(|d| dim_sizes[&d].fixed_val()).product::<u64>() * num_unmapped_threads as u64;
+        }).map(|d| dim_sizes[&d].fixed_val()).product::<u64>() *
+            size::bounds(&num_unmapped_threads, space, ctx).fixed_val(); // FIXME: propagate down
         Nesting {
             inner_dims: VecSet::new(inner_dims),
             inner_bbs: VecSet::new(inner_bbs),
