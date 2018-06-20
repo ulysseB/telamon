@@ -1,6 +1,7 @@
 use ir;
 use num;
 use std;
+use std::borrow::Borrow;
 
 /// The size of an iteration dimension. The size is of the form:
 /// `(factor * dividend_0 * dividend_1 * ...)) / divisor`
@@ -77,12 +78,21 @@ impl<'a> Size<'a> {
     }
 }
 
-impl<'a, 'b> std::ops::MulAssign<&'b Size<'a>> for Size<'a> {
-    fn mul_assign(&mut self, rhs: &'b Size<'a>) {
-        self.factor *= rhs.factor;
-        self.dividend.extend(rhs.dividend.iter().cloned());
-        self.divisor *= rhs.divisor;
+impl<'a, T> std::ops::MulAssign<T> for Size<'a> where T: Borrow<ir::Size<'a>> {
+    fn mul_assign(&mut self, rhs: T) {
+        self.factor *= rhs.borrow().factor;
+        self.dividend.extend(rhs.borrow().dividend.iter().cloned());
+        self.divisor *= rhs.borrow().divisor;
         self.simplify();
+    }
+}
+
+impl<'a, T> std::ops::Mul<T> for Size<'a> where T: Borrow<ir::Size<'a>> {
+    type Output = Size<'a>;
+
+    fn mul(mut self, rhs: T) -> Self::Output {
+        self *= rhs;
+        self
     }
 }
 

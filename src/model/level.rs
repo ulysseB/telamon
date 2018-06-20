@@ -105,8 +105,8 @@ pub fn sum_pressure(ctx: &Context,
         // Compute the pressure of a single instance and the number of instances.
         let mut num_instances = inner_sum_dims
             .intersection(&local_info.nesting[&bb].outer_dims)
-            .map(|d| local_info.dim_sizes[d].fixed_val() as f64)
-            .product::<f64>();
+            .map(|&d| space.ir_instance().dim(d).size())
+            .product::<ir::Size>();
         let mut bb_pressure = if let ir::BBId::Dim(dim) = bb {
             let kind = space.domain().get_dim_kind(dim);
             if !bound_level.accounts_for_dim(kind) {
@@ -120,19 +120,18 @@ pub fn sum_pressure(ctx: &Context,
         if bound_level <= BottleneckLevel::Block {
             let is_predicated = space.ir_instance().block(bb).as_inst()
                 .map(|i| i.has_side_effects()).unwrap_or(false);
-            let unmapped_threads = size::bounds(
-                &nesting.num_unmapped_threads, space, ctx);
             let predicated_size = if is_predicated {
-                unmapped_threads.fixed_val()
+                size::bounds(&nesting.num_unmapped_threads, space, ctx).fixed_val()
             } else {
-                num_instances *= unmapped_threads.fixed_val() as f64; // FIXME: propagate down
+                num_instances *= &nesting.num_unmapped_threads;
                 1
             };
             let max_threads = nesting.max_threads_per_block;
             ctx.device().add_block_overhead(
                 predicated_size, max_threads, &mut bb_pressure);
         }
-        pressure.repeat_and_add_bottlenecks(num_instances, &bb_pressure);
+        let num_instances = size::bounds(&num_instances, space, ctx).fixed_val();
+        pressure.repeat_and_add_bottlenecks(num_instances as f64, &bb_pressure);
     }
     pressure
 }
@@ -156,7 +155,8 @@ fn block_bound(ctx: &Context,
     // Compute the pressure on the execution units in a single iteration.
     let mut pressure = sum_pressure(ctx, space, info, BottleneckLevel::Block, dims);
     // Repeat the pressure by the number of iterations of the level and compute the bound.
-    let n_iters = dims.iter().map(|&d| info.dim_sizes[&d].fixed_val()).product::<u64>();
+    let n_iters = dims.iter().map(|&d| space.ir_instance().dim(d).size()).product();
+    let n_iters = size::bounds(&n_iters, space, ctx).fixed_val();
     pressure.repeat_parallel(n_iters as f64);
     pressure.bound(BottleneckLevel::Block, &ctx.device().block_rates())
 }
@@ -284,13 +284,14 @@ pub struct RepeatLevel {
 
 impl RepeatLevel {
     pub fn new(space: &SearchSpace,
-               local_info: &LocalInfo,
+               ctx: &Context,
                level_id: usize,
                level: &Level) -> Option<Self> {
-        let iterations: u32 = level.dims.iter().filter(|&&d| {
+        let iterations = level.dims.iter().filter(|&&d| {
             let kind = space.domain().get_dim_kind(d);
             (kind & !DimKind::BLOCK).is(DimKind::SEQUENTIAL).is_true()
-        }).map(|d| local_info.dim_sizes[d].fixed_val() as u32).product();
+        }).map(|&d| space.ir_instance().dim(d).size()).product::<ir::Size>();
+        let iterations = size::bounds(&iterations, space, ctx).fixed_val() as u32;
         if iterations <= 1 { None } else {
             Some(RepeatLevel { level_id, iterations })
         }
@@ -323,13 +324,17 @@ impl LevelDag {
     }
 
     /// Generates the `LevelDag` for the given levels.
-    pub fn build(space: &SearchSpace, local_info: &LocalInfo, levels: &[Level],
-                 dim_maps: Vec<DimMap>, dep_map_size: usize) -> Self {
+    pub fn build(space: &SearchSpace,
+                 local_info: &LocalInfo,
+                 levels: &[Level],
+                 dim_maps: Vec<DimMap>,
+                 dep_map_size: usize,
+                 ctx: &Context) -> Self {
         let mut dag = LevelDag::new(space, dep_map_size);
         for (level_id, level) in levels.iter().enumerate() {
             if level.dims.is_empty() { continue; }
             let node_id = dag.gen_node_id(local_info, &level.dims, dep_map_size);
-            let repeat = RepeatLevel::new(space, local_info, level_id, level);
+            let repeat = RepeatLevel::new(space, ctx, level_id, level);
             dag.nodes[node_id].0.extend(repeat);
         }
         for dim_map in dim_maps {

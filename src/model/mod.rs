@@ -50,7 +50,7 @@ pub fn bound(space: &SearchSpace, context: &Context) -> Bound {
     let (mut levels, dim_maps) = level::generate(space, context, &local_info);
     let code_points = CodePointDag::build(space, &levels);
     let mut levels_dag = LevelDag::build(
-        space, &local_info, &levels, dim_maps, code_points.len());
+        space, &local_info, &levels, dim_maps, code_points.len(), context);
     trace!("levels {:?}", levels);
     trace!("code_points {:?}", code_points);
     populate(space, context.device(), &local_info, &code_points, &mut levels,
