@@ -29,12 +29,6 @@ impl<'a> Size<'a> {
         if self.dividend.is_empty() { Some(&self.universe) } else { None }
     }
 
-    /// Returns the size of a dimension if it is staticaly known.
-    #[deprecated]
-    pub fn as_int(&self) -> Option<u32> {
-        if self.dividend.is_empty() { Some(self.factor) } else { None }
-    }
-
     /// Returns the size of a dimension if it is staticaly known and doesn't depend on
     /// any choice.
     pub fn as_fixed(&self) -> Option<u32> {

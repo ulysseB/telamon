@@ -252,7 +252,7 @@ fn shared_replay_factor(offsets: &[u64],
     }
     // Handle the case where a single thread must access two banks.
     let vector_replay = tensor_dims.iter()
-        .flat_map(|(&d, stride)| stride.as_int().map(|s| (d, s)))
+        .flat_map(|(&d, stride)| stride.as_fixed().map(|s| (d, s)))
         .filter(|&(d, _)| space.domain().get_dim_kind(d).intersects(DimKind::VECTOR))
         .map(|(d, stride)| {
             div_ceil(dim_sizes[&d].fixed_val() as u32*stride as u32, gpu.shared_bank_stride)
