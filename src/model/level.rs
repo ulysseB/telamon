@@ -42,7 +42,7 @@ impl Level {
         // Compute the thread-level pressure.
         let thread_rates = ctx.device().thread_rates();
         let pressure = sum_pressure(
-            ctx, space, local_info, BottleneckLevel::Thread, &dims);
+            ctx, space, local_info, BottleneckLevel::Thread, &dims, &ir::Size::one());
         let end_latency = dims.iter().map(|d| {
             local_info.dim_overhead[d].1.bound(BottleneckLevel::Thread, &thread_rates)
         }).min().unwrap_or_else(FastBound::zero);
@@ -63,11 +63,12 @@ pub fn sum_pressure(ctx: &Context,
                     space: &SearchSpace,
                     local_info: &LocalInfo,
                     bound_level: BottleneckLevel,
-                    dims: &[ir::dim::Id]) -> HwPressure {
+                    nest: &[ir::dim::Id],
+                    repeat: &ir::Size) -> HwPressure {
     // Compute the pressure induced by the dimensions overhead.
-    let mut pressure = HwPressure::min(dims.iter().map(|d| &local_info.dim_overhead[d].0))
+    let mut pressure = HwPressure::min(nest.iter().map(|d| &local_info.dim_overhead[d].0))
         .unwrap_or_else(|| HwPressure::zero(ctx.device()));
-    if dims.is_empty() {
+    if nest.is_empty() {
         let threads_per_block = space.domain().get_num_threads().min as u64;
         let num_threads = match bound_level {
             BottleneckLevel::Global =>
@@ -82,7 +83,7 @@ pub fn sum_pressure(ctx: &Context,
         pressure.repeat_and_add_bottlenecks(num_threads as f64, &init_pressure);
     }
     // Get the list of inner dimensions and inner dimensions on wich the pressure is summed.
-    let inner_dim_sets = dims.iter().map(|&d| &local_info.nesting[&d.into()].inner_dims);
+    let inner_dim_sets = nest.iter().map(|&d| &local_info.nesting[&d.into()].inner_dims);
     let inner_dims = intersect_sets(inner_dim_sets).unwrap_or_else(|| {
         space.ir_instance().dims().map(|d| d.id()).collect()
     });
@@ -90,7 +91,7 @@ pub fn sum_pressure(ctx: &Context,
         bound_level.accounts_for_dim(space.domain().get_dim_kind(d))
     });
     // Get the list of inner basic blocks.
-    let inner_bbs_sets = dims.iter().map(|&d| &local_info.nesting[&d.into()].inner_bbs);
+    let inner_bbs_sets = nest.iter().map(|&d| &local_info.nesting[&d.into()].inner_bbs);
     let inner_bbs = intersect_sets(inner_bbs_sets)
         .map(|x| itertools::Either::Left(x.into_iter()))
         .unwrap_or_else(|| {
@@ -106,7 +107,7 @@ pub fn sum_pressure(ctx: &Context,
         let mut num_instances = inner_sum_dims
             .intersection(&local_info.nesting[&bb].outer_dims)
             .map(|&d| space.ir_instance().dim(d).size())
-            .product::<ir::Size>();
+            .product::<ir::Size>() * repeat;
         let mut bb_pressure = if let ir::BBId::Dim(dim) = bb {
             let kind = space.domain().get_dim_kind(dim);
             if !bound_level.accounts_for_dim(kind) {
@@ -152,12 +153,9 @@ fn block_bound(ctx: &Context,
                space: &SearchSpace,
                info: &LocalInfo,
                dims: &[ir::dim::Id]) -> FastBound {
-    // Compute the pressure on the execution units in a single iteration.
-    let mut pressure = sum_pressure(ctx, space, info, BottleneckLevel::Block, dims);
     // Repeat the pressure by the number of iterations of the level and compute the bound.
     let n_iters = dims.iter().map(|&d| space.ir_instance().dim(d).size()).product();
-    let n_iters = size::bounds(&n_iters, space, ctx).fixed_val();
-    pressure.repeat_parallel(n_iters as f64);
+    let pressure = sum_pressure(ctx, space, info, BottleneckLevel::Block, dims, &n_iters);
     pressure.bound(BottleneckLevel::Block, &ctx.device().block_rates())
 }
 
