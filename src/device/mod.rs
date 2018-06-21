@@ -71,8 +71,9 @@ pub trait Device: Sync {
     /// Adds the overhead (per instance) due to partial wraps and predicated dimensions to
     /// the pressure. If the instruction is not predicated, `predicated_dims_size` should
     /// be `1`.
-    fn add_block_overhead(&self, predicated_dims_size: u64,
-                          max_threads_per_blocks: u64,
+    fn add_block_overhead(&self, max_active_threads: model::size::FactorRange,
+                          max_threads: model::size::FactorRange,
+                          predication_factor: model::size::Range,
                           pressure: &mut HwPressure);
 
     /// Lowers a type using the memory space information. Returns `None` if some

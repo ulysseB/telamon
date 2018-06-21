@@ -55,9 +55,8 @@ impl device::Device for Cpu {
 
     fn name(&self) -> &str { &self.name }
 
-    fn add_block_overhead(&self, _predicated_dims_size: u64,
-                          _max_threads_per_blocks: u64,
-                          _pressure: &mut HwPressure) {
+    fn add_block_overhead(&self, _: model::size::FactorRange, _: model::size::FactorRange,
+                          _: model::size::Range, _: &mut HwPressure) {
     }
 
     fn lower_type(&self, t: ir::Type, _space: &SearchSpace) -> Option<ir::Type> {

@@ -99,6 +99,16 @@ impl<'a, T> std::ops::Mul<T> for Size<'a> where T: Borrow<ir::Size<'a>> {
     }
 }
 
+impl<'a, 'b, T> std::ops::Mul<T> for &'b Size<'a> where T: Borrow<ir::Size<'a>> {
+    type Output = Size<'a>;
+
+    fn mul(self, rhs: T) -> Self::Output {
+        let rhs = rhs.borrow();
+        let dividend = self.dividend.iter().chain(&rhs.dividend).cloned().collect();
+        ir::Size::new(self.factor*rhs.factor, dividend, self.divisor*rhs.divisor)
+    }
+}
+
 impl<'a, 'b> std::iter::Product<&'b ir::Size<'a>> for ir::Size<'a> where 'a: 'b  {
     fn product<I>(iter: I) -> Self where I: Iterator<Item=&'b ir::Size<'a>> {
         let mut factor = 1;
