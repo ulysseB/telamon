@@ -10,6 +10,7 @@ use regex::Regex;
 use std;
 use std::fmt;
 use std::collections::{BTreeSet, hash_map};
+use std::ops::Deref;
 use utils::*;
 
 pub use super::lexer::Spanned;
@@ -63,7 +64,7 @@ pub enum TypeError {
 #[derive(Debug, Default)]
 struct CheckerContext {
     /// Map Name of unique identifiant.
-    redefinition: HashMap<String, Spanned<Hint>>,
+    hash: HashMap<String, Spanned<Hint>>,
 }
 
 impl CheckerContext {
@@ -80,13 +81,92 @@ impl CheckerContext {
                 name: Spanned { beg, end, data: name, }, .. } } => {
                 let data: Hint = Hint::from(statement);
                 let value: Spanned<Hint> = Spanned { beg: *beg, end: *end, data };
-                if let Some(pre) = self.redefinition.insert(name.to_owned(), value) {
+                if let Some(pre) = self.hash.insert(name.to_owned(), value) {
                     Err(TypeError::Redefinition(pre, Spanned {
                         beg: *beg, end: *end, data: name.to_owned(),
                     }))
                 } else {
                     Ok(())
                 }
+            },
+            _ => Ok(()),
+        }
+    }
+
+    fn undefined_set(&self, name: &RcStr) -> Result<(), String> {
+        let name: &String = name.deref();
+        if !self.hash.contains_key(name) {
+            Err(name.to_owned())
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn undefined(
+        &self, statement: &Spanned<Statement>
+    ) -> Result<(), TypeError> {
+        match statement {
+            Spanned { beg, end, data: Statement::EnumDef {
+                name: _, doc: _, variables, ..  } } |
+            Spanned { beg, end, data: Statement::IntegerDef {
+                name: _, doc: _, variables, ..  } } => {
+                for VarDef { name: _, set: SetRef { name, .. } } in variables {
+                    let name: &String = name.deref();
+                    if !self.hash.contains_key(name) {
+                        Err(TypeError::Undefined(Spanned {
+                            beg: *beg, end: *end,
+                            data: name.to_owned(),
+                        }))?;
+                    }
+                }
+                Ok(())
+            },
+            Spanned { beg, end, data: Statement::SetDef {
+                name: _, doc: _, arg, superset, disjoint: _, keys, ..  } } => {
+                let keys = keys.iter().map(|(k, _, _)| k)
+                                      .collect::<Vec<&ir::SetDefKey>>();
+
+                if !keys.contains(&&ir::SetDefKey::ItemType) {
+                    Err(TypeError::Undefined(Spanned {
+                        beg: *beg, end: *end,
+                        data: ir::SetDefKey::ItemType.to_string()
+                    }))?;
+                }
+                if !keys.contains(&&ir::SetDefKey::IdType) {
+                    Err(TypeError::Undefined(Spanned {
+                        beg: *beg, end: *end,
+                        data: ir::SetDefKey::IdType.to_string()
+                    }))?;
+                }
+                if !keys.contains(&&ir::SetDefKey::ItemGetter) {
+                    Err(TypeError::Undefined(Spanned {
+                        beg: *beg, end: *end,
+                        data: ir::SetDefKey::ItemGetter.to_string()
+                    }))?;
+                }
+                if !keys.contains(&&ir::SetDefKey::IdGetter) {
+                    Err(TypeError::Undefined(Spanned {
+                        beg: *beg, end: *end,
+                        data: ir::SetDefKey::IdGetter.to_string()
+                    }))?;
+                }
+                if !keys.contains(&&ir::SetDefKey::Iter) {
+                    Err(TypeError::Undefined(Spanned {
+                        beg: *beg, end: *end,
+                        data: ir::SetDefKey::Iter.to_string()
+                    }))?;
+                }
+                if let Some(VarDef { name: _, set: SetRef { name, .. } }) = arg {
+                    self.undefined_set(name).map_err(|s| TypeError::Undefined(Spanned {
+                        beg: *beg, end: *end, data: s
+                    }))?;
+                }
+                if let Some(SetRef { name, .. }) = superset {
+                    self.undefined_set(name).map_err(|s| TypeError::Undefined(Spanned {
+                        beg: *beg, end:*end, data: s
+                    }))?;
+                }
+                Ok(())
             },
             _ => Ok(()),
         }
@@ -107,6 +187,7 @@ impl Ast {
 
         for statement in self.statements {
             checker.redefinition(&statement)?;
+            checker.undefined(&statement)?;
             context.add_statement(statement);
         }
         Ok(context.finalize())

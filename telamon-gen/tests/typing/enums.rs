@@ -284,22 +284,6 @@ fn enum_undefined_value() {
             data: TypeError::Undefined(String::from("B"))
         })
     );
-    assert!(parser::parse_ast(Lexer::from(
-        b"define enum foo():
-            value A:
-            value B:
-            alias AB = A | B:
-          end".to_vec())).unwrap().type_check().is_ok()
-    );
-    assert!(parser::parse_ast(Lexer::from(
-        b"define enum foo():
-            value A:
-            value B:
-            value C:
-            alias AB = A | B:
-            alias ABC = AB | C: 
-          end".to_vec())).unwrap().type_check().is_ok()
-    );
 }
  
 #[test]
