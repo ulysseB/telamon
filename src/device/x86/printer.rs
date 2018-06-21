@@ -3,7 +3,7 @@ use device::x86::Namer;
 use ir::{self, op, Type};
 use itertools::Itertools;
 use search_space::{Domain, DimKind};
-use device::printer::{self, Printer};
+use device::printer::Printer;
 // TODO(cc_perf): avoid concatenating strings.
 
 pub struct X86printer {
@@ -102,7 +102,7 @@ impl X86printer {
                 AllocationScheme::Shared =>
                     panic!("No shared mem in cpu!!"),
                 AllocationScheme::PrivatisedGlobal =>
-                    printer::privatise_global_block(self, block, name_map, function),
+                    Printer::privatise_global_block(self, block, name_map, function),
                 AllocationScheme::Global => (),
             }
         };
@@ -124,10 +124,10 @@ impl X86printer {
         let ind_levels = function.init_induction_levels().into_iter()
             .chain(function.block_dims().iter().flat_map(|d| d.induction_levels()));
         for level in ind_levels {
-            printer::parallel_induction_level(self, level, name_map);
+            self.parallel_induction_level(level, name_map);
         }
         // BODY
-        printer::cfg(self, function, function.cfg(), name_map);
+        self.cfg(function, function.cfg(), name_map);
         }
         let var_decls = self.var_decls(&namer);
         return_string.push_str(&var_decls);
