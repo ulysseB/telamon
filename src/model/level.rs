@@ -127,11 +127,11 @@ pub fn sum_pressure(ctx: &Context,
                 num_instances *= &nesting.num_unmapped_threads;
                 1
             };
-            let max_threads = nesting.max_threads_per_block;
+            let max_threads = size::bounds(&nesting.max_threads_per_block, space, ctx).fixed_val();
             ctx.device().add_block_overhead(
                 predicated_size, max_threads, &mut bb_pressure);
         }
-        let num_instances = size::bounds(&num_instances, space, ctx).fixed_val();
+        let num_instances = size::bounds(&num_instances, space, ctx).min;
         pressure.repeat_and_add_bottlenecks(num_instances as f64, &bb_pressure);
     }
     pressure

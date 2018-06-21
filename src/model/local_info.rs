@@ -33,7 +33,7 @@ impl<'a> LocalInfo<'a> {
             (d.id(), size::bounds(d.size(), space, context))
         }).collect();
         let nesting: HashMap<_, _> = space.ir_instance().blocks().map(|bb| {
-            (bb.bb_id(), Nesting::compute(space, bb.bb_id(), context))
+            (bb.bb_id(), Nesting::compute(space, bb.bb_id()))
         }).collect();
         let mut hw_pressure = space.ir_instance().blocks().map(|bb| {
             let is_thread = if let ir::BBId::Dim(id) = bb.bb_id() {
@@ -126,15 +126,13 @@ pub struct Nesting<'a> {
     has_inner_thread_dims: bool,
     /// Number of threads that are not represented in the active dimensions of the block.
     pub num_unmapped_threads: ir::Size<'a>,
-    /// Maximal number of threads this block can be in, considering only outer and mapped
-    /// out dimensions.
-    pub max_threads_per_block: u64,
+    /// Maximal number of threads in the block, considering only outer dimensions.
+    pub max_threads_per_block: ir::Size<'a>,
 }
 
 impl<'a> Nesting<'a> {
     /// Computes the nesting of a `BasicBlock`.
-    fn compute(space: &SearchSpace<'a>, bb: ir::BBId,
-               ctx: &Context) -> Self {
+    fn compute(space: &SearchSpace<'a>, bb: ir::BBId) -> Self {
         let mut inner_dims = Vec::new();
         let mut inner_bbs = Vec::new();
         let mut before_self = Vec::new();
@@ -173,9 +171,7 @@ impl<'a> Nesting<'a> {
         }).map(|d| d.size()).product::<ir::Size>();
         let max_threads_per_block = outer_dims.iter().cloned().filter(|&d| {
             space.domain().get_dim_kind(d).intersects(DimKind::THREAD)
-        }).map(|d| space.ir_instance().dim(d).size()).product::<ir::Size>() * &num_unmapped_threads;
-        let max_threads_per_block = size::bounds(&max_threads_per_block, space, ctx)
-            .fixed_val(); // FIXME: propagate down or take max
+        }).map(|d| space.ir_instance().dim(d).size()).product::<ir::Size>();
         Nesting {
             inner_dims: VecSet::new(inner_dims),
             inner_bbs: VecSet::new(inner_bbs),

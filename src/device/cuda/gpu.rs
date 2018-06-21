@@ -498,10 +498,10 @@ impl device::Device for Gpu {
                           pressure: &mut HwPressure) {
         assert!(predicated_dims_size > 0);
         assert!(max_threads_per_blocks > 0);
-        let active_ratio = self.waste_ratio(max_threads_per_blocks/predicated_dims_size);
+        let active_ratio = self.waste_ratio(max_threads_per_blocks);
         pressure.multiply(&InstDesc::wasted_ratio(active_ratio).into());
         if predicated_dims_size > 1 {
-            let full_ratio = self.waste_ratio(max_threads_per_blocks);
+            let full_ratio = self.waste_ratio(max_threads_per_blocks*predicated_dims_size);
             let num_skipped = full_ratio * predicated_dims_size as f64 - active_ratio;
             assert!(num_skipped >= 0.);
             pressure.repeat_and_add_bottlenecks(num_skipped, &self.skipped_pressure());
