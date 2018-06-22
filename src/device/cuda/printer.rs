@@ -23,7 +23,19 @@ impl Cuda_printer {
             ir::BinOp::Div => "div",
         }
     }
+
+    /// Prints a rounding mode selector.
+    fn rounding(rounding: op::Rounding) -> &'static str {
+        match rounding {
+            op::Rounding::Exact => "",
+            op::Rounding::Nearest => ".rn",
+            op::Rounding::Zero => ".rz",
+            op::Rounding::Positive => ".rp",
+            op::Rounding::Negative => ".rm",
+        }
+    }
 }
+
 impl Printer for Cuda_printer {
 
     /// Get a proper string representation of an integer in target language
@@ -31,68 +43,72 @@ impl Printer for Cuda_printer {
     }
 
     /// Print a type in the backend
-    fn get_type(&mut self, t: &ir::Type) -> &'static str;
+    fn get_type(&mut self, t: &ir::Type) -> &'static str {
+       match t {
+        Type::Void => panic!("void type cannot be printed"),
+        Type::I(1) => "pred".to_string(),
+        Type::I(size) => format!("s{size}", size = size),
+        Type::F(size) => format!("f{size}", size = size),
+        _ => panic!()
+    }
+ }
 
     /// Print return_id = op1 op op2
-    fn print_binop(&mut self, return_id: &str, op_type: ir::BinOp, op1: &str, op2: &str) {
-        let return_str = format("{}{}", Self::binary_op(op);
+    fn print_binop(&mut self, return_id: &str, op_type: ir::BinOp, op1: &str, op2: &str, r_type: &ir::Type, round: &op::Rounding) {
+        let return_str = format!("{}{}.{} {}, {}, {}", Self::binary_op(op_type),  Self::rounding(round), self.get_type(r_type), return_id, op1, op2);
+        self.out_function.push_str(&return_str);
     }
 
     /// Print return_id = op1 * op2
-    fn print_mul(&mut self, return_id: &str, round: op::Rounding, op1: &str, op2: &str);
+    fn print_mul(&mut self, return_id: &str, round: op::Rounding, op1: &str, op2: &str, r_type: &ir::Type, round: &op::Rounding) {
+        let return_str = format!("mul{}.{} {}, {}, {}", Self::rounding(round), self.get_type(r_type), return_id, op1, op2);
+        self.out_function.push_str(&return_str);
+    }
 
     /// Print return_id = mlhs * mrhs + arhs
-    fn print_mad(&mut self, return_id: &str, round: op::Rounding, mlhs: &str, mrhs: &str, arhs: &str);
+    fn print_mad(&mut self, return_id: &str, round: op::Rounding, mlhs: &str, mrhs: &str, arhs: &str, r_type: &ir::Type, round: &op::Rounding) {
+        let return_str = format!("mad{}.{} {}, {}, {}, {}", Self::rounding(round), self.get_type(r_type), return_id, mlhs, mrhs, arhs);
+        self.out_function.push_str(&return_str);
+    }
 
     /// Print return_id = op 
-    fn print_mov(&mut self, return_id: &str, op: &str);
+    fn print_mov(&mut self, return_id: &str, op: &str, r_type: &ir::Type) {}
 
     /// Print return_id = load [addr] 
-    fn print_ld(&mut self, return_id: &str, cast_type: &str,  addr: &str);
+    fn print_ld(&mut self, return_id: &str, cast_type: &str,  addr: &str, r_type: &ir::Type) {}
 
     /// Print store val [addr] 
-    fn print_st(&mut self, addr: &str, val: &str, val_type: &str);
+    fn print_st(&mut self, addr: &str, val: &str, val_type: &str) {}
 
     /// Print if (cond) store val [addr] 
-    fn print_cond_st(&mut self, addr: &str, val: &str, cond: &str, val_type: &str);
+    fn print_cond_st(&mut self, addr: &str, val: &str, cond: &str, val_type: &str) {}
 
     /// Print return_id = (val_type) val
-    fn print_cast(&mut self, return_id: &str, op1: &str, t: &Type);
+    fn print_cast(&mut self, return_id: &str, op1: &str, t: &Type) {}
 
     /// print a label where to jump
-    fn print_label(&mut self, label_id: &str);
+    fn print_label(&mut self, label_id: &str) {}
 
     /// Print return_id = op1 && op2
-    fn print_and(&mut self, return_id: &str, op1: &str, op2: &str);
+    fn print_and(&mut self, return_id: &str, op1: &str, op2: &str) {}
 
     /// Print return_id = op1 || op2
-    fn print_or(&mut self, return_id: &str, op1: &str, op2: &str);
+    fn print_or(&mut self, return_id: &str, op1: &str, op2: &str) {}
 
     /// Print return_id = op1 == op2
-    fn print_equal(&mut self, return_id: &str, op1: &str, op2: &str);
+    fn print_equal(&mut self, return_id: &str, op1: &str, op2: &str) {}
 
     /// Print return_id = op1 < op2
-    fn print_lt(&mut self, return_id: &str, op1: &str, op2: &str);
+    fn print_lt(&mut self, return_id: &str, op1: &str, op2: &str) {}
 
     /// Print return_id = op1 > op2
-    fn print_gt(&mut self, return_id: &str, op1: &str, op2: &str);
+    fn print_gt(&mut self, return_id: &str, op1: &str, op2: &str) {}
 
     /// Print if (cond) jump label(label_id)
-    fn print_cond_jump(&mut self, label_id: &str, cond: &str);
+    fn print_cond_jump(&mut self, label_id: &str, cond: &str) {}
 
     /// Print wait on all threads
-    fn print_sync(&mut self);
-}
-
-/// Prints a rounding mode selector.
-fn rounding(rounding: op::Rounding) -> &'static str {
-    match rounding {
-        op::Rounding::Exact => "",
-        op::Rounding::Nearest => ".rn",
-        op::Rounding::Zero => ".rz",
-        op::Rounding::Positive => ".rp",
-        op::Rounding::Negative => ".rm",
-    }
+    fn print_sync(&mut self) {}
 }
 
 /// Prints a `MulMode` selector.

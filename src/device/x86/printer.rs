@@ -314,7 +314,7 @@ impl Printer for X86printer {
         }
     }
 
-    fn print_binop(&mut self, return_id: &str, op_type: ir::BinOp, op1: &str, op2: &str) {
+    fn print_binop(&mut self, return_id: &str, op_type: ir::BinOp, op1: &str, op2: &str, _:&ir::Type, _:&op::Rounding) {
         let push_str = match op_type {
             ir::BinOp::Add => format!("{} = {} + {};\n", return_id, op1, op2),
             ir::BinOp::Sub => format!("{} = {} - {};\n", return_id, op1, op2),
@@ -323,22 +323,22 @@ impl Printer for X86printer {
         self.out_function.push_str(&push_str);
     }
 
-    fn print_mul(&mut self, return_id: &str, _: op::Rounding, op1: &str, op2: &str) {
+    fn print_mul(&mut self, return_id: &str, _: op::Rounding, op1: &str, op2: &str, _:&ir::Type, _:&op::Rounding) {
         let push_str = format!("{} = {} * {};\n", return_id, op1, op2);
         self.out_function.push_str(&push_str);
     }
 
-    fn print_mad(&mut self, return_id: &str, _: op::Rounding, op1: &str, op2: &str, op3: &str) {
+    fn print_mad(&mut self, return_id: &str, _: op::Rounding, op1: &str, op2: &str, op3: &str, _:&ir::Type, _:&op::Rounding) {
         let push_str = format!("{} = {} * {} + {};\n", return_id, op1, op2, op3);
         self.out_function.push_str(&push_str);
     }
 
-    fn print_mov(&mut self, return_id: &str, op: &str) {
+    fn print_mov(&mut self, return_id: &str, op: &str, _:&ir::Type) {
         let push_str = format!("{} = {} ;\n", return_id, op);
         self.out_function.push_str(&push_str);
     }
 
-    fn print_ld(&mut self, return_id: &str, val_type: &str,  addr: &str) {
+    fn print_ld(&mut self, return_id: &str, val_type: &str,  addr: &str, _:&ir::Type) {
         let push_str = format!("{} = *({}*){} ;\n", return_id, val_type, addr);
         self.out_function.push_str(&push_str);
     }
