@@ -5,7 +5,6 @@ use itertools::Itertools;
 use model::{size, HwPressure};
 use num::integer::lcm;
 use search_space::{DimKind, Domain, Order, SearchSpace, ThreadMapping};
-use std;
 use utils::*;
 
 /// Local information on the different objects.
@@ -15,8 +14,6 @@ pub struct LocalInfo<'a> {
     pub nesting: HashMap<ir::BBId, Nesting<'a>>,
     /// The pressure incured by a signle instance of each BB.
     pub hw_pressure: HashMap<ir::BBId, HwPressure>,
-    /// The size of each dimensions.
-    pub dim_sizes: HashMap<ir::dim::Id, size::Range>,
     /// The pressure induced by a single iteration of each dimension and the exit latency
     /// of the loop.
     pub dim_overhead: HashMap<ir::dim::Id, (HwPressure, HwPressure)>,
@@ -59,16 +56,14 @@ impl<'a> LocalInfo<'a> {
                 (d.id(), context.device().loop_iter_pressure(kind))
             }
         }).collect();
-        let parallelism = parallelism(space, &nesting, &dim_sizes);
+        let parallelism = parallelism(&nesting, space, context);
         // Add the pressure induced by induction variables.
         let mut thread_overhead = HwPressure::zero(context.device());
         for (_, var) in space.ir_instance().induction_vars() {
             add_indvar_pressure(context.device(), space, &dim_sizes, var,
                 &mut hw_pressure, &mut dim_overhead, &mut thread_overhead);
         }
-        LocalInfo {
-            dim_sizes, nesting, hw_pressure, dim_overhead, thread_overhead, parallelism
-        }
+        LocalInfo { nesting, hw_pressure, dim_overhead, thread_overhead, parallelism }
     }
 }
 
@@ -210,36 +205,64 @@ impl<'a> Nesting<'a> {
 /// Minimum and maximum parallelism in the whole GPU.
 #[derive(Debug)]
 pub struct Parallelism {
+    /// Minimal number of threads per block.
+    pub min_threads_per_block: u64,
+    /// Minimal number of threads.
+    pub min_threads: u64,
     /// Minimal number of block of threads.
-    pub min_num_blocks: u64,
+    pub min_blocks: u64,
     /// Maximal number of blocks of threads.
-    pub lcm_num_blocks: u64,
+    pub lcm_blocks: u64,
+}
+
+impl Parallelism {
+    fn combine_with(self, rhs: Parallelism) -> Self {
+        let min_threads_per_block = self.min_threads_per_block
+            .min(rhs.min_threads_per_block);
+        Parallelism {
+            min_threads_per_block,
+            min_threads: self.min_threads.min(rhs.min_threads),
+            min_blocks: self.min_blocks.min(rhs.min_blocks),
+            lcm_blocks: lcm(self.lcm_blocks, rhs.lcm_blocks),
+        }
+    }
 }
 
 impl Default for Parallelism {
     fn default() -> Self {
         Parallelism {
-            min_num_blocks: 1,
-            lcm_num_blocks: 1,
+            min_threads_per_block: 1,
+            min_threads: 1,
+            min_blocks: 1,
+            lcm_blocks: 1,
         }
     }
 }
 
 /// Computes the minimal and maximal parallelism accross instructions.
-fn parallelism(space: &SearchSpace,
-               nesting: &HashMap<ir::BBId, Nesting>,
-               dim_sizes: &HashMap<ir::dim::Id, size::Range>) -> Parallelism {
+fn parallelism(nesting: &HashMap<ir::BBId, Nesting>, space: &SearchSpace, ctx: &Context)
+    -> Parallelism
+{
+    let min_threads_size = space.ir_instance().thread_dims().map(|d| d.size())
+        .product::<ir::Size>();
+    let min_threads = size::bounds(&min_threads_size, space, ctx).min;
     space.ir_instance().insts().map(|inst| {
-        let mut par = Parallelism::default();
+        let mut min_blocks = ir::Size::one();
+        let mut max_blocks = ir::Size::one();
         for &dim in &nesting[&inst.bb_id()].outer_dims {
             let kind = space.domain().get_dim_kind(dim);
-            let size = dim_sizes[&dim].fixed_val();
-            if kind == DimKind::BLOCK { par.min_num_blocks *= size; }
-            if kind.intersects(DimKind::BLOCK) { par.lcm_num_blocks *= size; }
+            if kind.intersects(DimKind::BLOCK) {
+                let size = space.ir_instance().dim(dim).size();
+                max_blocks *= size;
+                if kind == DimKind::BLOCK { min_blocks *= size; }
+            }
         }
-        par
-    }).fold1(|lhs, rhs| Parallelism {
-        min_num_blocks: std::cmp::min(lhs.min_num_blocks, rhs.min_num_blocks),
-        lcm_num_blocks: lcm(lhs.lcm_num_blocks, rhs.lcm_num_blocks),
-    }).unwrap_or(Parallelism::default())
+        let min_threads_per_block = &min_blocks * &min_threads_size;
+        Parallelism {
+            min_threads,
+            min_threads_per_block: size::bounds(&min_threads_per_block, space, ctx).min,
+            min_blocks: size::bounds(&min_blocks, space, ctx).min,
+            lcm_blocks: size::factors(&max_blocks, space, ctx).lcm,
+        }
+    }).fold1(|lhs, rhs| lhs.combine_with(rhs)).unwrap_or(Parallelism::default())
 }

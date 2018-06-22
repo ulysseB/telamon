@@ -76,8 +76,8 @@ pub fn bound(space: &SearchSpace, context: &Context) -> Bound {
     debug!("block latency: {}", block_latency.value());
     // Scale the latency to the block level.
     let block_parallelism = u64::from(context.device().block_parallelism(space));
-    let min_num_blocks = local_info.parallelism.min_num_blocks;
-    let lcm_num_blocks = local_info.parallelism.lcm_num_blocks;
+    let min_num_blocks = local_info.parallelism.min_blocks;
+    let lcm_num_blocks = local_info.parallelism.lcm_blocks;
     let latency = block_latency.scale(block_parallelism, min_num_blocks, lcm_num_blocks);
     // Compute the throughput bound at the whole device level.
     let global_pressure = sum_pressure(context, space, &local_info,

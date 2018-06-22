@@ -69,12 +69,9 @@ pub fn sum_pressure(ctx: &Context,
     let mut pressure = HwPressure::min(nest.iter().map(|d| &local_info.dim_overhead[d].0))
         .unwrap_or_else(|| HwPressure::zero(ctx.device()));
     if nest.is_empty() {
-        let threads_per_block = space.domain().get_num_threads().min as u64;
-        // FIXME: can do better with sizes
         let min_num_threads = match bound_level {
-            BottleneckLevel::Global =>
-                threads_per_block * local_info.parallelism.min_num_blocks,
-            BottleneckLevel::Block => threads_per_block,
+            BottleneckLevel::Global => local_info.parallelism.min_threads,
+            BottleneckLevel::Block => local_info.parallelism.min_threads_per_block,
             BottleneckLevel::Thread => 1,
         };
         let mut init_pressure = local_info.thread_overhead.clone();
