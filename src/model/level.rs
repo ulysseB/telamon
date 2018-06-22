@@ -295,7 +295,7 @@ impl RepeatLevel {
             let kind = space.domain().get_dim_kind(d);
             (kind & !DimKind::BLOCK).is(DimKind::SEQUENTIAL).is_true()
         }).map(|&d| space.ir_instance().dim(d).size()).product::<ir::Size>();
-        let iterations = size::bounds(&iterations, space, ctx).fixed_val() as u32;
+        let iterations = size::bounds(&iterations, space, ctx).min as u32;
         if iterations <= 1 { None } else {
             Some(RepeatLevel { level_id, iterations })
         }

@@ -10,6 +10,9 @@ pub mod size;
 pub use self::hw_pressure::{Bound, HwPressure, BottleneckLevel};
 pub use self::local_info::Nesting;
 
+// TODO(model): we currently take the minimal value of sizes when computing levels size.
+// It migh beneficial to consider combination of dimensions instead as the size of loop
+// nest is known.
 // TODO(model): One some instruction, the latency dependens on the operand position.
 // TODO(model): Some instructions are divided into multiple sub-instructions. When adding
 //  ordering dependencies, this must be taken into account as the last sub-instruction
