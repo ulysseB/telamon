@@ -7,7 +7,6 @@ pub mod x86;
 
 mod argument;
 mod context;
-mod printer;
 
 pub use self::argument::{ScalarArgument, ArrayArgument, read_array, write_array};
 pub use self::context::{Context, EvalMode, ArgMap, AsyncCallback, AsyncEvaluator};

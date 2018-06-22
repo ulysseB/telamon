@@ -1,5 +1,6 @@
 //! Provides functions to print PTX code.
 use device::cuda::{Gpu, Namer};
+use device::printer::Printer;
 use codegen::*;
 use ir::{self, dim, op, Operand, Size, Type};
 use itertools::Itertools;
@@ -9,6 +10,79 @@ use std::fmt::Write as WriteFmt;
 use self::InstArg::*;
 use utils::*;
 // TODO(cc_perf): avoid concatenating strings.
+
+struct Cuda_printer {
+    function: String,
+}
+
+impl Cuda_printer {
+    fn binary_op(op: ir::BinOp) -> &'static str {
+        match op {
+            ir::BinOp::Add => "add",
+            ir::BinOp::Sub => "sub",
+            ir::BinOp::Div => "div",
+        }
+    }
+}
+impl Printer for Cuda_printer {
+
+    /// Get a proper string representation of an integer in target language
+    fn get_int(&self, n: u32) -> String {
+    }
+
+    /// Print a type in the backend
+    fn get_type(&mut self, t: &ir::Type) -> &'static str;
+
+    /// Print return_id = op1 op op2
+    fn print_binop(&mut self, return_id: &str, op_type: ir::BinOp, op1: &str, op2: &str) {
+        let return_str = format("{}{}", Self::binary_op(op);
+    }
+
+    /// Print return_id = op1 * op2
+    fn print_mul(&mut self, return_id: &str, round: op::Rounding, op1: &str, op2: &str);
+
+    /// Print return_id = mlhs * mrhs + arhs
+    fn print_mad(&mut self, return_id: &str, round: op::Rounding, mlhs: &str, mrhs: &str, arhs: &str);
+
+    /// Print return_id = op 
+    fn print_mov(&mut self, return_id: &str, op: &str);
+
+    /// Print return_id = load [addr] 
+    fn print_ld(&mut self, return_id: &str, cast_type: &str,  addr: &str);
+
+    /// Print store val [addr] 
+    fn print_st(&mut self, addr: &str, val: &str, val_type: &str);
+
+    /// Print if (cond) store val [addr] 
+    fn print_cond_st(&mut self, addr: &str, val: &str, cond: &str, val_type: &str);
+
+    /// Print return_id = (val_type) val
+    fn print_cast(&mut self, return_id: &str, op1: &str, t: &Type);
+
+    /// print a label where to jump
+    fn print_label(&mut self, label_id: &str);
+
+    /// Print return_id = op1 && op2
+    fn print_and(&mut self, return_id: &str, op1: &str, op2: &str);
+
+    /// Print return_id = op1 || op2
+    fn print_or(&mut self, return_id: &str, op1: &str, op2: &str);
+
+    /// Print return_id = op1 == op2
+    fn print_equal(&mut self, return_id: &str, op1: &str, op2: &str);
+
+    /// Print return_id = op1 < op2
+    fn print_lt(&mut self, return_id: &str, op1: &str, op2: &str);
+
+    /// Print return_id = op1 > op2
+    fn print_gt(&mut self, return_id: &str, op1: &str, op2: &str);
+
+    /// Print if (cond) jump label(label_id)
+    fn print_cond_jump(&mut self, label_id: &str, cond: &str);
+
+    /// Print wait on all threads
+    fn print_sync(&mut self);
+}
 
 /// Prints a rounding mode selector.
 fn rounding(rounding: op::Rounding) -> &'static str {

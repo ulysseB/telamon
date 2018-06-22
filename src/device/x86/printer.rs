@@ -3,7 +3,7 @@ use device::x86::Namer;
 use ir::{self, op, Type};
 use itertools::Itertools;
 use search_space::{Domain, DimKind};
-use device::printer::Printer;
+//use device::printer::Printer;
 // TODO(cc_perf): avoid concatenating strings.
 
 pub struct X86printer {
@@ -292,6 +292,10 @@ impl X86printer {
 impl Printer for X86printer {
     fn get_int(&self, n: u32) -> String {
         format!("{}", n)
+    }
+
+    fn get_float(&self, f: f32) -> String {
+        format!("{:.4e}", f)
     }
 
     fn get_type(&mut self, t: &ir::Type) -> &'static str {

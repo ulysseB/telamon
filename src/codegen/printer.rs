@@ -3,12 +3,15 @@ use utils::*;
 use itertools::Itertools;
 
 use ir::{self, op, Type};
-use search_space::{Domain, DimKind};
+use search_space::DimKind;
 
 pub trait Printer {
 
     /// Get a proper string representation of an integer in target language
     fn get_int(&self, n: u32) -> String;
+
+    /// Get a proper string representation of an float in target language
+    fn get_float(&self, f: f32) -> String;
 
     /// Print a type in the backend
     fn get_type(&mut self, t: &ir::Type) -> &'static str;
