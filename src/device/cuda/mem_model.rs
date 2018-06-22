@@ -252,9 +252,8 @@ fn shared_replay_factor(offsets: &[u64],
     let vector_replay = tensor_dims.iter()
         .flat_map(|(&d, stride)| stride.as_fixed().map(|s| (d, s)))
         .filter(|&(d, _)| space.domain().get_dim_kind(d).intersects(DimKind::VECTOR))
-        .map(|(d, stride)| {
-            div_ceil(dim_sizes[&d].fixed_val() as u32*stride as u32, gpu.shared_bank_stride)
-        }).min().unwrap_or(1);
+        .map(|(d, stride)| dim_sizes[&d].min * stride as u32)
+        .map(|size| div_ceil(size, gpu.shared_bank_stride)).min().unwrap_or(1);
     let replay_factor = std::cmp::max(hits.len() as u32, vector_replay);
     trace!("shared_replay: {}", replay_factor);
     replay_factor as f64
