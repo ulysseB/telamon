@@ -448,10 +448,10 @@ set TilingDims($dim in Dimensions) subsetof LogicalDimensions:
   item_getter = "$fun.logical_dimension($id)"
   id_getter = "$item.id()"
   var_prefix = "dim"
-  iterator = "$dim.logical_dim().filter(|_| $dim.size().is_constant()).map(|d| $fun.logical_dimension(d)).into_iter()"
+  iterator = "$dim.logical_dim().filter(|_| $dim.size().is_constant()).map(|d| $fun.logical_dimension(d))"
   from_superset = "$item.nonstatic_dim().filter(|d| d == $dim.id()).map(|_| $item)"
   reverse forall $logical in LogicalDimensions =
-    "$logical.nonstatic_dim().map(|d| $fun.dim(d)).into_iter()"
+    "$logical.nonstatic_dim().map(|d| $fun.dim(d))"
   new_objs = "$objs.tiling_dims"
 end
 
