@@ -415,3 +415,60 @@ end
 
 // Cannot use more shared memory that what is available.
 require shared_mem_used() <= "$fun.device().shared_mem()"
+
+/// A dimension before tiling.
+set LogicalDimensions:
+  item_type = "ir::dim::LogicalDim"
+  id_type = "ir::dim::LogicalId"
+  item_getter = "$fun.logical_dimension($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.logical_dimensions()"
+  var_prefix = "ldim"
+  new_objs = "$objs.logical_dims"
+end
+
+/// The dimensions that implement a logical dimension.
+set StaticDimsOf($logical in LogicalDimensions) subsetof StaticDims:
+  item_type = "ir::Dimension"
+  id_type = "ir::dim::Id"
+  item_getter = "$fun.dim($id)"
+  id_getter = "$item.id()"
+  iterator = "$logical.static_dims().map(|d| $fun.dim(d))"
+  var_prefix = "dim"
+  from_superset =
+    "(if $item.logical_dim() == Some($logical.id()) { Some($item) } else { None })"
+  reverse forall $dim in StaticDims =
+    "$dim.logical_dim().into_iter().map(|d| $fun.logical_dimension(d))"
+  new_objs = "$objs.static_dims_of"
+end
+
+set TilingDims($dim in Dimensions) subsetof LogicalDimensions:
+  item_type = "ir::dim::LogicalDim"
+  id_type = "ir::dim::LogicalId"
+  item_getter = "$fun.logical_dimension($id)"
+  id_getter = "$item.id()"
+  var_prefix = "dim"
+  iterator = "$dim.logical_dim().filter(|_| $dim.size().is_constant()).map(|d| $fun.logical_dimension(d)).into_iter()"
+  from_superset = "$item.nonstatic_dim().filter(|d| d == $dim.id()).map(|_| $item)"
+  reverse forall $logical in LogicalDimensions =
+    "$logical.nonstatic_dim().map(|d| $fun.dim(d)).into_iter()"
+  new_objs = "$objs.tiling_dims"
+end
+
+/// Number of iterations of the static dimensions of a loop nest.
+define counter logical_dim_size($logical in LogicalDimensions):
+  forall $dim in StaticDimsOf($logical): mul size($dim) when:
+end
+
+// Limit the size of logical dimensions.
+require forall $dim in LogicalDimensions:
+  logical_dim_size($dim) ==
+    "Range { min: $dim.min_static_size(), max: $dim.max_static_size() }"
+
+// Ensure merged dimensions have the same tiling factor.
+require forall $lhs in Dimensions:
+  forall $lhs_logical in TilingDims($lhs):
+    forall $rhs in Dimensions:
+      forall $rhs_logical in TilingDims($rhs):
+        order($lhs, $rhs) is not MERGED ||
+          logical_dim_size($lhs_logical) == logical_dim_size($rhs_logical)

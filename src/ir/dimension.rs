@@ -1,7 +1,6 @@
 //! Represents iteration dimensions.
 use ir::{self, BasicBlock};
 use std::fmt;
-use std::hash::{Hash, Hasher};
 
 /// Provides a unique identifier for iteration dimensions.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -58,6 +57,9 @@ impl<'a> Dimension<'a> {
 
     /// Sets the dimension as a thread dimension.
     pub fn set_thread_dim(&mut self) { self.is_thread_dim = true }
+
+    /// Returns the logical dimension this real dimension is part of, if any.
+    pub fn logical_dim(&self) -> Option<LogicalId> { None } // FIXME
 }
 
 impl<'a> BasicBlock<'a> for Dimension<'a> {
@@ -66,14 +68,40 @@ impl<'a> BasicBlock<'a> for Dimension<'a> {
     fn as_dim(&self) -> Option<&Dimension<'a>> { Some(self) }
 }
 
-// Dimension equality is based on `BBId`.
-impl<'a> PartialEq for Dimension<'a> {
-    fn eq(&self, other: &Dimension<'a>) -> bool { self.bb_id() == other.bb_id() }
+hash_from_key!(Dimension<'a>, &Dimension::id, 'a);
+
+/// Provides a unique identifier for logic dimensions.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct LogicalId(pub u32);
+
+/// A logic dimension composed of multiple `Dimension`s.
+#[derive(Clone, Debug)]
+pub struct LogicalDim {
+    id: LogicalId,
+    static_dims: Vec<Id>,
+    nonstatic_dim: Option<Id>,
+    max_size: u32,
+    has_dyn_dims: bool,
 }
 
-impl<'a> Eq for Dimension<'a> {}
+impl LogicalDim {
+    /// Returns a unique identifier for the logic dimension.
+    pub fn id(&self) -> LogicalId { self.id }
 
-// Dimension hash based on `BBId`.
-impl<'a> Hash for Dimension<'a> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.bb_id().hash(state) }
+    /// Returns the dimensions with a static size in the logic dimension.
+    pub fn static_dims(&self) -> impl Iterator<Item=Id> + '_ {
+        self.static_dims.iter().cloned()
+    }
+
+    pub fn nonstatic_dim(&self) -> Option<ir::dim::Id> { self.nonstatic_dim }
+
+    /// Returns the maximum size of combined static dimensions.
+    pub fn max_static_size(&self) -> u32 { self.max_size }
+
+    /// Returns the minimum size of combined static dimensions.
+    pub fn min_static_size(&self) -> u32 {
+        if self.has_dyn_dims { 1 } else { self.max_size }
+    }
 }
+
+hash_from_key!(LogicalDim, &LogicalDim::id);

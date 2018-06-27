@@ -30,6 +30,8 @@ pub mod mem;
 /// Defines iteration dimensions properties.
 pub mod dim {
     pub use super::dimension::Id;
+    pub use super::dimension::LogicalId;
+    pub use super::dimension::LogicalDim;
     pub use super::dim_map::DimMap as Map;
 }
 
@@ -58,6 +60,8 @@ pub struct NewObjs {
     pub iteration_dims: Vec<(InstId, dim::Id)>,
     pub thread_dims: Vec<dim::Id>,
     pub static_dims: Vec<dim::Id>,
+    pub logical_dims: Vec<dim::LogicalId>,
+    pub static_dims_of: Vec<(dim::LogicalId, dim::Id)>,
 }
 
 impl NewObjs {
@@ -99,6 +103,14 @@ impl NewObjs {
     pub fn add_mem_block(&mut self, id: mem::InternalId) {
         self.mem_blocks.push(id.into());
         self.internal_mem_blocks.push(id);
+    }
+
+    /// Registers a new logical dimension.
+    pub fn logical_dim_of(&mut self, logical_dim: &dim::LogicalDim) {
+        self.logical_dims.push(logical_dim.id());
+        for dim in logical_dim.static_dims() {
+            self.static_dims_of.push((logical_dim.id(), dim));
+        }
     }
 }
 
