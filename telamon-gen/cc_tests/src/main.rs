@@ -11,6 +11,8 @@ fn main() { panic!("use `cargo test` to run tests") }
 #[macro_use]
 mod ir_gen;
 
+mod fail;
+
 /// Test the type definitions.
 mod single_enum {
     define_ir!();
