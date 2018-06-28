@@ -58,22 +58,29 @@ fn redefinition_enum() {
             data: String::from("foo"),
         }))
     );
-    assert!(parser::parse_ast(Lexer::from(
-        b"set Foo:
-            item_type = \"ir::inst::Obj\"
-            id_type = \"ir::inst::Id\"
-            item_getter = \"ir::inst::get($fun, $id)\"
-            id_getter = \"ir::inst::Obj::id($item)\"
-            iterator = \"ir::inst::iter($fun)\"
-            var_prefix = \"inst\"
-            new_objs = \"$objs.inst\"
-          end
-          
-          define enum foo():
-          end".to_vec())).unwrap().type_check().is_ok()
-    );
 }
 
+/// Redefinition of the A Value from Enum.
+#[test]
+fn redefinition_enum_value() {
+    assert_eq!(parser::parse_ast(Lexer::from(
+        b"define enum foo():
+            value A:
+            value B:
+            value A:
+          end".to_vec())).unwrap().type_check().err(),
+        Some(TypeError::Redefinition(Spanned {
+            beg: Position { line: 0, column: 0},
+            end: Position { line: 0, column: 18},
+            data: Hint::EnumAttribute,
+        }, Spanned {
+            beg: Position { line: 0, column: 0},
+            end: Position { line: 0, column: 18},
+            data: String::from("A"),
+        }))
+    );
+}
+ 
 /// Redefinition of the foo Integer.
 #[test]
 fn redefinition_integer() {
@@ -100,19 +107,5 @@ fn redefinition_integer() {
             end: Position { line: 11, column: 28},
             data:  String::from("foo"),
         }))
-    );
-    assert!(parser::parse_ast(Lexer::from(
-        b"set Foo:
-            item_type = \"ir::inst::Obj\"
-            id_type = \"ir::inst::Id\"
-            item_getter = \"ir::inst::get($fun, $id)\"
-            id_getter = \"ir::inst::Obj::id($item)\"
-            iterator = \"ir::inst::iter($fun)\"
-            var_prefix = \"inst\"
-            new_objs = \"$objs.inst\"
-          end
-          
-          define integer foo($myarg in Foo): \"mycode\"
-          end".to_vec())).unwrap().type_check().is_ok()
     );
 }

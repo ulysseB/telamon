@@ -5,6 +5,7 @@ pub use super::telamon_gen::parser;
 pub use super::telamon_gen::ast::*;
 
 /*
+
 #[test]
 fn enum_field_redefinition() {
     assert_eq!(parser::parse_ast(Lexer::from(
@@ -24,15 +25,6 @@ fn enum_field_redefinition() {
             ),
         })
     );
-    assert!(parser::parse_ast(Lexer::from(
-        b"define enum foo():
-            value A:
-            value B:
-            value C:
-            alias AB = A | B:
-            alias BC = B | C:
-          end".to_vec())).unwrap().type_check().is_ok()
-    );
     assert_eq!(parser::parse_ast(Lexer::from(
         b"define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
             symmetric
@@ -49,23 +41,6 @@ fn enum_field_redefinition() {
             ),
         })
     );
-    assert!(parser::parse_ast(Lexer::from(
-        b"set BasicBlock:
-            item_type = \"ir::basic_block::Obj\"
-            id_type = \"ir::basic_block::Id\"
-            item_getter = \"ir::basic_block::get($fun, $id)\"
-            id_getter = \"ir::basic_block::Obj::id($item)\"
-            iterator = \"ir::basic_block::iter($fun)\"
-            var_prefix = \"bb\"
-            new_objs = \"$objs.basic_block\"
-          end
-
-          define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
-            symmetric
-            value A:
-            value B:
-          end".to_vec())).unwrap().type_check().is_ok()
-    );
     assert_eq!(parser::parse_ast(Lexer::from(
         b"define enum foo():
             value A:
@@ -81,24 +56,9 @@ fn enum_field_redefinition() {
             ),
         })
     );
-    assert!(parser::parse_ast(Lexer::from(
-        b"define enum foo():
-            value A:
-            value B:
-          end".to_vec())).unwrap().type_check().is_ok()
-    );
-    assert!(parser::parse_ast(Lexer::from(
-        b"define enum foo():
-            value A:
-            value B:
-            value C:
-            alias AB = A | B:
-            alias BC = B | C:
-            alias ABBC = AB | BC:
-          end".to_vec())).unwrap().type_check().is_ok()
-    );
 }
-
+*/
+/*
 #[test]
 fn enum_symmetric_two_parameter() {
     assert_eq!(parser::parse_ast(Lexer::from(

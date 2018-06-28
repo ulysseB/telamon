@@ -132,6 +132,7 @@ impl Iterator for Lexer {
             // be called again and it will resume scanning where it left off. 
             let code: YyToken = yylex(self.scanner);
             // The accessor function [yyget_extra](https://westes.github.io/flex/manual/Extra-Data.html)
+            println!("{:?}", code);
             // returns a extra copy.
             let extra: YyExtraType = yyget_extra(self.scanner);
 
@@ -174,9 +175,6 @@ impl Iterator for Lexer {
                 },
                 YyToken::Code => {
                     let out = yyget_text(self.scanner);
-                    let len = libc::strlen(out)-1;
-
-                    *out.offset(len as _) = b'\0' as _;
                     CStr::from_ptr(out)
                          .to_str().ok()
                          .and_then(|s: &str| Some(Ok((extra.beg, Token::Code(s.to_owned()), extra.end))))
