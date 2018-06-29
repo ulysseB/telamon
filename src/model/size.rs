@@ -15,12 +15,8 @@ impl Range {
 
     pub const ONE: Self = Range { min: 1, max: 1 };
 
-    /// Temporary function that assumes the range only contains a single value.
-    #[deprecated]
-    pub fn fixed_val(&self) -> u64 {
-        assert_eq!(self.min, self.max);
-        self.min
-    }
+    /// Indicates if the size can only take a single value.
+    pub fn is_constrained(&self) -> bool { self.min == self.max }
 }
 
 /// Bounds the values a size can take, in the given context.

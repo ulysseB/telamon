@@ -114,36 +114,57 @@ fn info(space: &SearchSpace,
 struct ThreadDimInfo {
     id: ir::dim::Id,
     is_active_thread: bool,
-    size: u64,
+    is_partial_dim: bool,
+    size: size::Range,
     stride: size::Range,
     stride_factors: size::FactorRange,
+}
+
+impl ThreadDimInfo {
+    /// Returns part of the dimension size handled by `Self`.
+    fn partial_size(&self) -> u64 {
+        if self.is_partial_dim { self.size.max - self.size.min } else { self.size.min }
+    }
 }
 
 /// Returns the size and stride of thread dimensions for a tensor access pattern and
 /// sort them in an optimal or better-than-optimal order. For two dimensions `d0`, `d1`
 /// such that `d0.stride` < `d1.stride` and `such that, d0` can be nested inside `d1` the
 /// order guarantees that `d0 < d1`.
+///
+/// Dimensions with a non-constrained size are split between a dimension for the minimal
+/// size and a partial dimension for the rest.
 fn tensor_thread_dims(space: &SearchSpace,
                       inst: &ir::Instruction,
                       tensor_dims: &HashMap<ir::dim::Id, ir::Size>,
                       sizes: &HashMap<ir::dim::Id, size::Range>,
                       ctx: &Context) -> Vec<ThreadDimInfo> {
     let external_dims = external_thread_dims(inst, space);
-    inst.iteration_dims().iter().flat_map(|&dim| {
+    let dims = inst.iteration_dims().iter().flat_map(|&dim| {
         match space.domain().get_dim_kind(dim).is(DimKind::THREAD) {
             Trivalent::False => None,
             Trivalent::Maybe => Some((dim, false)),
             Trivalent::True => Some((dim, true)),
         }
-    }).chain(external_dims).map(|(id, is_active_thread)| {
-        let size = sizes[&id].fixed_val();
+    }).chain(external_dims);
+    let mut out = Vec::new();
+    for (id, is_active_thread) in dims {
+        let size = sizes[&id];
         let stride_size = tensor_dims.get(&id);
         let stride = stride_size.map(|s| size::bounds(s, space, ctx))
             .unwrap_or(size::Range::ZERO);
         let stride_factors = stride_size.map(|s| size::factors(s, space, ctx))
             .unwrap_or(size::FactorRange::ZERO);
-        ThreadDimInfo { size, stride, id, is_active_thread, stride_factors }
-    }).collect()
+        let info = ThreadDimInfo {
+            is_partial_dim: false,
+            stride, id, is_active_thread, stride_factors, size,
+        };
+        if !size.is_constrained() {
+            out.push(ThreadDimInfo { is_partial_dim: true, .. info });
+        }
+        out.push(info);
+    }
+    out
 }
 
 /// Returns the thread dimensions that are mapped outside an instruction but not active
@@ -182,9 +203,7 @@ fn sort_thread_dims(dims: &[ThreadDimInfo],
                     gpu: &cuda::Gpu) -> Vec<ThreadDimInfo> {
     let sure_thread_dims = dims.iter().filter(|d| d.is_active_thread)
         .map(|d| d.id).collect_vec();
-    let cmp = |x: &ThreadDimInfo, y: &ThreadDimInfo| if use_gcd {
-        y.stride_factors.gcd.cmp(&x.stride_factors.gcd)
-    } else { y.stride.min.cmp(&x.stride.min) };
+    let cmp = |x: &ThreadDimInfo, y: &ThreadDimInfo| cmp_thread_dims(x, y, use_gcd);
     let mut heap = BinaryHeap::with_capacity_by(dims.len(), cmp);
     let mut dim_groups: MultiHashMap<_, _> = dims.into_iter().map(|d| {
         let num_inner = sure_thread_dims.iter().filter(|&&other| {
@@ -198,12 +217,25 @@ fn sort_thread_dims(dims: &[ThreadDimInfo],
     let mut out = Vec::new();
     let mut total_size = 1;
     while let Some(d) = heap.pop() {
-        total_size *= d.size;
+        if d.is_partial_dim {
+            total_size = (total_size/d.size.min) * d.size.max
+        } else {
+            total_size *= d.size.min;
+        }
         out.push(d);
         heap.extend(dim_groups.remove(&out.len()));
         if total_size > gpu.wrap_size as u64 { break; }
     }
     out
+}
+
+/// Indicates which loop nest order should be considered to minimize replays.
+fn cmp_thread_dims(lhs: &ThreadDimInfo, rhs: &ThreadDimInfo, use_gcd: bool)
+    -> std::cmp::Ordering
+{
+    let lhs_val = if use_gcd { lhs.stride_factors.gcd } else { lhs.stride.min };
+    let rhs_val = if use_gcd { rhs.stride_factors.gcd } else { rhs.stride.min };
+    lhs_val.cmp(&rhs_val).reverse().then(lhs.is_partial_dim.cmp(&rhs.is_partial_dim))
 }
 
 /// Returns the offset of memory accesses for each thread in a wrap. The offset is
@@ -216,19 +248,32 @@ fn wrap_access_offsets(thread_dims: &[ThreadDimInfo],
     let mut indexes = vec![0; thread_dims.len()];
     while offsets.len() < gpu.wrap_size as usize {
         let mut incr = true;
-        let mut offset = 0;
-        for (idx, dim) in indexes.iter_mut().zip_eq(thread_dims) {
-            if incr {
-                *idx += 1;
-                if *idx == dim.size { *idx = 0; } else { incr = false; }
+        let offset = thread_dims.iter().enumerate().map(|(i, dim)| {
+            if incr { incr = increment_index(i, thread_dims, &mut indexes); }
+            if dim.is_partial_dim && indexes[i] > 0 {
+                // TODO(cc_perf): save the index of real dimensions instead of recomputing. 
+                let real_pos = thread_dims[0..i].iter().position(|d| d.id == dim.id);
+                let real_pos = unwrap!(real_pos, "partial dim ordered before its base");
+                assert!(!thread_dims[real_pos].is_partial_dim);
+                indexes[real_pos] = thread_dims[real_pos].size.min-1;
             }
             let stride = if use_gcd { dim.stride_factors.gcd } else { dim.stride.min };
-            offset += *idx * stride;
-        }
+            indexes[i] * stride
+        }).product();
         if incr { break; } // We reached the end of all loops.
         offsets.push(offset);
     }
     offsets
+}
+
+/// Increments the index at the given position modulo the dimension size. Indicates if
+/// the next index should also be incremented.
+fn increment_index(pos: usize, dims: &[ThreadDimInfo], indexes: &mut [u64]) -> bool {
+    indexes[pos] += 1;
+    if indexes[pos] < dims[pos].partial_size() { false } else {
+        indexes[pos] = 0;
+        true
+    }
 }
 
 /// Compute the replay foactor caused by shared memory accesses.
