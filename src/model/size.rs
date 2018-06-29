@@ -11,9 +11,12 @@ pub struct Range {
 }
 
 impl Range {
+    pub const ZERO: Self = Range { min: 0, max: 0 };
+
     pub const ONE: Self = Range { min: 1, max: 1 };
 
     /// Temporary function that assumes the range only contains a single value.
+    #[deprecated]
     pub fn fixed_val(&self) -> u64 {
         assert_eq!(self.min, self.max);
         self.min
@@ -37,6 +40,8 @@ pub struct FactorRange {
 }
 
 impl FactorRange {
+    pub const ZERO: Self = FactorRange { gcd: 0, lcm: 0 };
+
     /// Create a `FactorRange` containing a single point.
     pub fn new_fixed(val: u64) -> Self { FactorRange { gcd: val, lcm: val } }
 }
