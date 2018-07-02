@@ -3,7 +3,6 @@ use ast;
 use ir;
 
 use lexer::*;
-
 use utils::*;
 
 grammar;
@@ -11,20 +10,28 @@ grammar;
 pub ast: ast::Ast = { statement* => ast::Ast { statements: <> } };
 
 statement: Spanned<ast::Statement> = {
-    <doc: doc?> <beg: @L> set <name: set_ident> <arg: ("(" <var_def> ")")?>
-            <superset: (subsetof <set_ref>)?> ":"
+    <doc: doc?> <beg: @L> set
+                    <beg_name: @L> <name: set_ident> <end_name: @R>
+                    <arg: ("(" <var_def> ")")?>
+                <superset: (subsetof <set_ref>)?> ":"
                 <end: @R> 
             <disjoint: set_disjoint?>
             <keys: set_def_map*> end => {
         let disjoint = disjoint.unwrap_or(Vec::new());
         Spanned {
-            beg: beg, end: end,
+            beg, end,
             data: ast::Statement::SetDef {
-                name, doc, arg, superset, keys, disjoint, quotient: None
+                name: Spanned {
+                    beg: beg_name,
+                    end: end_name,
+                    data: name,
+                }, doc, arg, superset, keys, disjoint, quotient: None
             }
         }
     },
-    <doc: doc?> <beg: @L> quotient <name: set_ident> <arg: ("(" <var_def> ")")?>
+    <doc: doc?> <beg: @L> quotient
+                    <beg_name: @L> <name: set_ident> <end_name: @R>
+                    <arg: ("(" <var_def> ")")?>
         of <dividend: var_def> ":"
                 <end: @R> 
         <representant: choice_ident> "=" <conditions: list<condition, and>> "/"
@@ -40,34 +47,43 @@ statement: Spanned<ast::Statement> = {
         });
         let disjoint = disjoint.unwrap_or(Vec::new());
         Spanned {
-            beg: beg, end: end,
+            beg, end,
             data: ast::Statement::SetDef {
-                name, doc, arg, superset, keys, disjoint, quotient
+                name: Spanned {
+                    beg: beg_name,
+                    end: end_name,
+                    data: name,
+                }, doc, arg, superset, keys, disjoint, quotient
             }
         }
     },
-    <doc: doc?> <beg: @L> define integer <name: choice_ident> "("
-                <vars: choice_vars> ")" ":" <universe: code> end
+    <doc: doc?> <beg: @L> define integer
+                    <beg_name: @L> <name: choice_ident> <end_name: @R>
+                    "(" <vars: choice_vars> ")" ":" <universe: code> end
                 <end: @R> => {
         Spanned {
-            beg: beg, end: end,
+            beg, end,
             data: ast::Statement::IntegerDef {
-                name: name,
-                doc: doc,
-                variables: vars,
-                code: universe,
+                name: Spanned {
+                    beg: beg_name,
+                    end: end_name,
+                    data: name,
+                }, doc, variables: vars, code: universe,
             }
         }
     },
-    <doc: doc?> <beg: @L> define enum_ <name: choice_ident> "(" <vars: choice_vars> ")" ":"
+    <doc: doc?> <beg: @L> define enum_
+                      <beg_name: @L> <name: choice_ident> <end_name: @R>
+                      "(" <vars: choice_vars> ")" ":"
                 <end: @R> <stmts: enum_stmt*> end => {
         Spanned {
-            beg: beg, end: end,
+            beg, end,
             data: ast::Statement::EnumDef {
-                name: name,
-                doc: doc,
-                variables: vars,
-                statements: stmts,
+                name: Spanned {
+                    beg: beg_name,
+                    end: end_name,
+                    data: name,
+                }, doc, variables: vars, statements: stmts,
             }
         }
     },
@@ -78,7 +94,8 @@ statement: Spanned<ast::Statement> = {
             data: ast::Statement::TriggerDef { foralls, conditions, code }
         }
     },
-    <doc: doc?> <beg: @L> define <visibility: counter_visibility?> counter <name: choice_ident>
+    <doc: doc?> <beg: @L> define <visibility: counter_visibility?> counter
+                <beg_name: @L> <name: choice_ident> <end_name: @R>
         "(" <vars: choice_vars> ")" ":" <end: @R> <body: counter_body> end => {
         let name = RcStr::new(name);
         let visibility = visibility.unwrap_or(ir::CounterVisibility::Full);

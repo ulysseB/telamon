@@ -9,6 +9,7 @@
 
 %x C_COMMENT
 %x LINE_DOC
+%x LINE_CODE
 
 %{
     #include "expression.h"
@@ -110,7 +111,6 @@ choice_ident [a-z][a-z_0-9]*
 value_ident [A-Z][A-Z_0-9]*
 set_ident [A-Z][A-Za-z_0-9]*
 var \${alpha_num}+
-code \"[^\n\"]*\"
 
 /* Patterns documentation: http://westes.github.io/flex/manual/Patterns.html#Patterns */
 %%
@@ -120,9 +120,14 @@ code \"[^\n\"]*\"
 <C_COMMENT>{c_comment_end} { BEGIN(INITIAL); }
 <C_COMMENT>.               { }
 
-{doc}             { yyextra.end.column -= 3; BEGIN(LINE_DOC); }
-<LINE_DOC>\n      { yyextra.end.column = 0; BEGIN(INITIAL); }
-<LINE_DOC>[^\n]*  { yyextra.end.column += 3; return DOC; }
+{doc}                      { yyextra.end.column -= 3; BEGIN(LINE_DOC); }
+<LINE_DOC>\n               { yyextra.end.column = 0; BEGIN(INITIAL); }
+<LINE_DOC>[^\n]*           { yyextra.end.column += 3; return DOC; }
+
+\"                         { BEGIN(LINE_CODE); }
+<LINE_CODE>\"              { BEGIN(INITIAL); }
+<LINE_CODE>\\\n[ \t]*      { }
+<LINE_CODE>.               { return CODE; }
 
 [\n] { yyextra.end.column = 0; }
 
@@ -187,7 +192,6 @@ code \"[^\n\"]*\"
 {integer} { return INTEGER; }
 
 {var} { yytext++; return VAR; }
-{code} { yytext++; return CODE; }
 {choice_ident} { return CHOICEIDENT; }
 {value_ident} { return VALUEIDENT; }
 {set_ident} { return SETIDENT; }

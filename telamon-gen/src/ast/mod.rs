@@ -16,7 +16,7 @@ use utils::*;
 pub use super::lexer::Spanned;
 
 /// Hint is a token representation.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Hint {
     /// Set interface.
     Set,
@@ -32,27 +32,204 @@ pub enum Hint {
     IntegerAttribute,
 }
 
-/// TypeEror is the error representation of telamon's
+impl Hint {
+    fn from(statement: &Spanned<Statement>) -> Self {
+        match statement {
+            Spanned {
+                beg: _, end: _, data: Statement::SetDef { ..  }
+            } => Hint::Set,
+            Spanned {
+                beg: _, end: _, data: Statement::EnumDef { .. }
+            } => Hint::Enum,
+            Spanned {
+                beg: _, end: _, data: Statement::IntegerDef { .. }
+            } => Hint::Integer,
+            _ => unreachable!(),
+        }
+    }
+}
+
+/// TypeEror is the error representation of telamon's.
 #[derive(Debug, PartialEq)]
 pub enum TypeError {
     /// Redefinition of a name and hint..
-    Redefinition(String, Hint),
+    Redefinition(Spanned<Hint>, Spanned<String>),
     /// Undefinition of set, enum or field.
-    Undefined(String),
+    Undefined(Spanned<String>),
     /// Unvalid arguments of a symmetric enum.
     BadSymmetricArg(Vec<VarDef>),
 }
 
+/// CheckContext is a type system.
+#[derive(Debug, Default)]
+struct CheckerContext {
+    /// Map Name of unique identifiant.
+    hash: HashMap<String, Spanned<Hint>>,
+}
+
+impl CheckerContext {
+
+    fn undefined_set(&self, name: &RcStr) -> Result<(), String> {
+        let name: &String = name.deref();
+        if !self.hash.contains_key(name) {
+            Err(name.to_owned())
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn undefined(
+        &self, statement: &Spanned<Statement>
+    ) -> Result<(), TypeError> {
+        match statement {
+            Spanned { beg, end, data: Statement::EnumDef {
+                name: _, doc: _, variables, ..  } } |
+            Spanned { beg, end, data: Statement::IntegerDef {
+                name: _, doc: _, variables, ..  } } => {
+                for VarDef { name: _, set: SetRef { name, .. } } in variables {
+                    let name: &String = name.deref();
+                    if !self.hash.contains_key(name) {
+                        Err(TypeError::Undefined(Spanned {
+                            beg: *beg, end: *end,
+                            data: name.to_owned(),
+                        }))?;
+                    }
+                }
+                Ok(())
+            },
+            Spanned { beg, end, data: Statement::SetDef {
+                name: _, doc: _, arg, superset, disjoint: _, keys, ..  } } => {
+                let keys = keys.iter().map(|(k, _, _)| k)
+                                      .collect::<Vec<&ir::SetDefKey>>();
+
+                if !keys.contains(&&ir::SetDefKey::ItemType) {
+                    Err(TypeError::Undefined(Spanned {
+                        beg: *beg, end: *end,
+                        data: ir::SetDefKey::ItemType.to_string()
+                    }))?;
+                }
+                if !keys.contains(&&ir::SetDefKey::IdType) {
+                    Err(TypeError::Undefined(Spanned {
+                        beg: *beg, end: *end,
+                        data: ir::SetDefKey::IdType.to_string()
+                    }))?;
+                }
+                if !keys.contains(&&ir::SetDefKey::ItemGetter) {
+                    Err(TypeError::Undefined(Spanned {
+                        beg: *beg, end: *end,
+                        data: ir::SetDefKey::ItemGetter.to_string()
+                    }))?;
+                }
+                if !keys.contains(&&ir::SetDefKey::IdGetter) {
+                    Err(TypeError::Undefined(Spanned {
+                        beg: *beg, end: *end,
+                        data: ir::SetDefKey::IdGetter.to_string()
+                    }))?;
+                }
+                if !keys.contains(&&ir::SetDefKey::Iter) {
+                    Err(TypeError::Undefined(Spanned {
+                        beg: *beg, end: *end,
+                        data: ir::SetDefKey::Iter.to_string()
+                    }))?;
+                }
+                if let Some(VarDef { name: _, set: SetRef { name, .. } }) = arg {
+                    self.undefined_set(name).map_err(|s| TypeError::Undefined(Spanned {
+                        beg: *beg, end: *end, data: s
+                    }))?;
+                }
+                if let Some(SetRef { name, .. }) = superset {
+                    self.undefined_set(name).map_err(|s| TypeError::Undefined(Spanned {
+                        beg: *beg, end:*end, data: s
+                    }))?;
+                }
+                Ok(())
+            },
+            _ => Ok(()),
+        }
+    }
+
+    pub fn subredefinition(
+        &mut self, statement: &Spanned<Statement>
+    ) -> Result<(), TypeError> {
+        match statement {
+            Spanned { beg, end, data: Statement::EnumDef {
+                name: _, doc: _, variables: _, statements, .. } } => {
+                let mut hash: HashMap<String, _> = HashMap::default();
+                for stmt in statements {
+                    match stmt {
+                        EnumStatement::Value(name, _, _) |
+                        EnumStatement::Alias(name, ..) => {
+                            if let Some(_) = hash.insert(
+                                name.to_owned(),
+                                Spanned {
+                                    data: (),
+                                    beg: Default::default(),
+                                    end: Default::default(),
+                                }
+                            ) {
+                                Err(TypeError::Redefinition(Spanned {
+                                    data: Hint::EnumAttribute,
+                                    beg: Default::default(),
+                                    end: Default::default(),
+                                }, Spanned {
+                                    data: name.to_owned(),
+                                    beg: Default::default(),
+                                    end: Default::default(),
+                                }))?;
+                            }
+                        },
+                        _ => {},
+                    }
+                }
+                Ok(())
+            },
+            _ => Ok(()),
+        }
+    }
+
+    pub fn redefinition(
+        &mut self, statement: &Spanned<Statement>
+    ) -> Result<(), TypeError> {
+        match statement {
+            Spanned { beg: _, end: _, data: Statement::SetDef {
+                name: Spanned { beg, end, data: name, }, .. } } |
+            Spanned { beg: _, end: _, data: Statement::EnumDef {
+                name: Spanned { beg, end, data: name, }, .. } } |
+            Spanned { beg: _, end: _, data: Statement::IntegerDef {
+                name: Spanned { beg, end, data: name, }, .. } } => {
+                let data: Hint = Hint::from(statement);
+                let value: Spanned<Hint> = Spanned { beg: *beg, end: *end, data };
+                if let Some(pre) = self.hash.insert(name.to_owned(), value) {
+                    Err(TypeError::Redefinition(pre, Spanned {
+                        beg: *beg, end: *end, data: name.to_owned(),
+                    }))
+                } else {
+                    Ok(())
+                }
+            },
+            _ => Ok(()),
+        }
+    }
+}
+
 /// Syntaxic tree for the constraint description.
 #[derive(Debug)]
-pub struct Ast { pub statements: Vec<Spanned<Statement>> }
+pub struct Ast { 
+    pub statements: Vec<Spanned<Statement>>,
+}
 
 impl Ast {
     /// Generate the defintion of choices and the list of constraints.
-    pub fn type_check(self)
-        -> Result<(ir::IrDesc, Vec<TypedConstraint>), Spanned<TypeError>> {
+    pub fn type_check(self) -> Result<(ir::IrDesc, Vec<TypedConstraint>), TypeError> {
+        let mut checker = CheckerContext::default();
         let mut context = TypingContext::default();
-        for statement in self.statements { context.add_statement(statement)? }
+
+        for statement in self.statements {
+            checker.redefinition(&statement)?;
+            checker.undefined(&statement)?;
+            checker.subredefinition(&statement)?;
+            context.add_statement(statement);
+        }
         Ok(context.finalize())
     }
 }
@@ -68,114 +245,37 @@ struct TypingContext {
 }
 
 impl TypingContext {
-
-    /// A Set's name is unique.
-    pub fn check_set_redefinition(
-        &self, set_def: &SetDef
-    ) -> Result<(), TypeError> {
-        if self.set_defs.contains(set_def) {
-            Err(TypeError::Redefinition(set_def.name.to_owned(), Hint::Set))?
-        }
-        Ok(())
-    }
-
-    /// A Set parametric set should be defined
-    pub fn check_set_parametric(
-        &self, set_def: &SetDef
-    ) -> Result<(), TypeError> {
-        if let Some(VarDef { name: _, ref set }) = set_def.arg {
-            let name: &String = set.name.deref();
-            if self.set_defs.iter().find(|set| set.name.eq(name)).is_none() {
-                Err(TypeError::Undefined(name.to_owned()))?
-            }
-        }
-        Ok(())
-    }
-
-    /// A Set superset attribut should be defined
-    pub fn check_superset_parametric(
-        &self, set_def: &SetDef
-    ) -> Result<(), TypeError> {
-        if let Some(SetRef { ref name, .. }) = set_def.superset {
-            let name: &String = name.deref();
-            if self.set_defs.iter().find(|set| set.name.eq(name)).is_none() {
-                Err(TypeError::Undefined(name.to_owned()))?
-            }
-        }
-        Ok(())
-    }
-
-    /// A Enum's name is unique.
-    pub fn check_enum_redefinition(
-        &self, choice_def: &ChoiceDef
-    ) -> Result<(), TypeError> {
-        if self.choice_defs.contains(choice_def) {
-            if let ChoiceDef::EnumDef(enum_def) = choice_def {
-                Err(TypeError::Redefinition(enum_def.name.to_owned(), Hint::Enum))?
-            }
-        }
-        Ok(())
-    }
-
-    /// A Enum parametric set should be defined
-    pub fn check_enum_parametric(
-        &self, choice_def: &ChoiceDef
-    ) -> Result<(), TypeError> {
-        if let ChoiceDef::EnumDef(enum_def) = choice_def {
-            for VarDef { name: _, set } in enum_def.variables.iter() {
-                let name: &String = set.name.deref();
-                if self.set_defs.iter().find(|set| set.name.eq(name)).is_none() {
-                    Err(TypeError::Undefined(name.to_owned()))?
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-impl TypingContext {
     /// Adds a statement to the typing context.
-    fn add_statement(&mut self, statement: Spanned<Statement>)
-        -> Result<(), Spanned<TypeError>> {
+    fn add_statement(&mut self, statement: Spanned<Statement>) {
         match statement {
-            Spanned { beg, end, data: d @ Statement::SetDef { .. } } => {
-                let set_def: SetDef =
-                    Result::<SetDef, TypeError>::from(d)
-                           .map_err(|e| Spanned { beg, end, data: e })?;
-
-                self.check_set_redefinition(&set_def)
-                       .map_err(|e| Spanned { beg, end, data: e })?;
-                self.check_set_parametric(&set_def)
-                       .map_err(|e| Spanned { beg, end, data: e })?;
-                self.check_superset_parametric(&set_def)
-                       .map_err(|e| Spanned { beg, end, data: e })?;
-                Ok(self.set_defs.push(set_def))
+            Spanned { beg, end, data: Statement::SetDef {
+                name: Spanned {
+                    beg: _,
+                    end: _,
+                    data: name,
+                }, doc, arg, superset, disjoint, keys, quotient
+            } } => {
+                self.set_defs.push(SetDef {
+                    name, doc, arg, superset, disjoint, keys, quotient
+                })
             },
-            Spanned { beg, end, data: d @ Statement::EnumDef { .. } } |
-            Spanned { beg, end, data: d @ Statement::IntegerDef { .. } } |
-            Spanned { beg, end, data: d @ Statement::CounterDef { .. } } => {
-                let choice_def: ChoiceDef =
-                    Result::<ChoiceDef, TypeError>::from(d)
-                           .map_err(|e| Spanned { beg, end, data: e })?;
-
-               self.check_enum_redefinition(&choice_def)
-                       .map_err(|e| Spanned { beg, end, data: e })?;
-               self.check_enum_parametric(&choice_def)
-                       .map_err(|e| Spanned { beg, end, data: e })?;
-               Ok(self.choice_defs.push(choice_def))
+            Spanned { beg, end, data: stmt @ Statement::EnumDef { .. } } |
+            Spanned { beg, end, data: stmt @ Statement::IntegerDef { .. } } |
+            Spanned { beg, end, data: stmt @ Statement::CounterDef { .. } } => {
+                self.choice_defs.push(ChoiceDef::from(stmt))
             },
             Spanned { beg, end,
                 data: Statement::TriggerDef { foralls, conditions, code }
             } => {
-                Ok(self.triggers.push(TriggerDef {
+                self.triggers.push(TriggerDef {
                     foralls: foralls,
                     conditions: conditions,
                     code: code,
-                }))
+                })
             },
             Spanned { beg, end,
                 data: Statement::Require(constraint)
-            } => Ok(self.constraints.push(constraint)),
+            } => self.constraints.push(constraint),
         }
     }
 
@@ -190,7 +290,8 @@ impl TypingContext {
             match choice_def {
                 ChoiceDef::EnumDef(EnumDef { name, doc, variables, statements }) =>
                     self.register_enum(name, doc, variables, statements),
-                ChoiceDef::CounterDef(CounterDef { name, doc, visibility, vars, body, }) =>
+                ChoiceDef::CounterDef(CounterDef { name, doc, visibility,
+                    vars, body, }) =>
                     self.register_counter(name, doc, visibility, vars, body),
                 ChoiceDef::IntegerDef(def) => self.define_integer(def),
             }
@@ -703,14 +804,14 @@ impl TypingContext {
 #[derive(Debug)]
 pub enum Statement {
     IntegerDef {
-        name: String,
+        name: Spanned<String>,
         doc: Option<String>,
         variables: Vec<VarDef>,
         code: String,
     },
     /// Defines an enum.
     EnumDef {
-        name: String,
+        name: Spanned<String>,
         doc: Option<String>,
         variables: Vec<VarDef>,
         statements: Vec<EnumStatement>
@@ -728,7 +829,7 @@ pub enum Statement {
         body: CounterBody,
     },
     SetDef {
-        name: String,
+        name: Spanned<String>,
         doc: Option<String>,
         arg: Option<VarDef>,
         superset: Option<SetRef>,
@@ -1076,32 +1177,6 @@ impl fmt::Display for EnumStatement {
     }
 }
 
-impl EnumStatement {
-    pub fn get_value(&self) -> Option<&String> {
-        if let EnumStatement::Value(value, ..) = self {
-            Some(value)
-        } else {
-            None
-        }
-    }
-
-    pub fn get_alias(&self) -> Option<&String> {
-        if let EnumStatement::Alias(value, ..) = self {
-            Some(value)
-        } else {
-            None
-        }
-    }
-
-    pub fn get_alias_decisions(&self) -> Option<&Vec<String>> {
-        if let EnumStatement::Alias(_, _, decisions, ..) = self {
-            Some(decisions)
-        } else {
-            None
-        }
-    }
-}
-
 impl PartialEq for EnumStatement {
     fn eq(&self, rhs: &Self) -> bool {
         match (self, rhs) {
@@ -1120,20 +1195,20 @@ impl PartialEq for EnumStatement {
 
 /// Gathers the different statements of an enum.
 #[derive(Debug, Default)]
-pub struct EnumStatements {
+struct EnumStatements {
     /// The values the enum can take, with the atached documentation.
-    pub values: HashMap<RcStr, Option<String>>,
+    values: HashMap<RcStr, Option<String>>,
     /// Aliases mapped to the corresponding documentation and value set.
-    pub aliases: HashMap<RcStr, (Option<String>, HashSet<RcStr>)>,
+    aliases: HashMap<RcStr, (Option<String>, HashSet<RcStr>)>,
     /// Symmetry information.
-    pub symmetry: Option<Symmetry>,
+    symmetry: Option<Symmetry>,
     /// Constraints on a value.
-    pub constraints: Vec<(RcStr, Constraint)>,
+    constraints: Vec<(RcStr, Constraint)>,
 }
 
 impl EnumStatements {
     /// Registers an `EnumStatement`.
-    pub fn add_statement(&mut self, statement: EnumStatement) {
+    fn add_statement(&mut self, statement: EnumStatement) {
         match statement {
             EnumStatement::Value(name, doc, constraints) => {
                 let name = RcStr::new(name);
@@ -1162,29 +1237,11 @@ impl EnumStatements {
 
 /// A toplevel integer
 #[derive(Clone, Debug)]
-pub struct IntegerDef {
-    pub name: String,
-    pub doc: Option<String>,
-    pub variables: Vec<VarDef>,
-    pub code: String, // varmap, type_check_code
-}
-
-impl IntegerDef {
-    pub fn get_variables(&self) -> Result<(), TypeError> {
-        for item in self.variables.iter() {
-            for subitem in self.variables.iter()
-                               .skip_while(|subitem| subitem != &item)
-                               .skip(1) {
-                if subitem == item {
-                    Err(TypeError::Redefinition(
-                            item.name.to_owned().to_string(),
-                            Hint::IntegerAttribute
-                    ))?
-                }
-            }
-        }
-        Ok(())
-    }
+struct IntegerDef {
+    name: String,
+    doc: Option<String>,
+    variables: Vec<VarDef>,
+    code: String, // varmap, type_check_code
 }
 
 impl PartialEq for IntegerDef {
@@ -1195,11 +1252,11 @@ impl PartialEq for IntegerDef {
  
 /// A toplevel definition or constraint.
 #[derive(Clone, Debug)]
-pub struct EnumDef {
-    pub name: String,
-    pub doc: Option<String>,
-    pub variables: Vec<VarDef>,
-    pub statements: Vec<EnumStatement>
+struct EnumDef {
+    name: String,
+    doc: Option<String>,
+    variables: Vec<VarDef>,
+    statements: Vec<EnumStatement>
 }
 
 impl Default for EnumDef {
@@ -1213,64 +1270,6 @@ impl Default for EnumDef {
     }
 }
 
-impl EnumDef {
-    /// A field from a enum should be unique.
-    pub fn check_field_name_redefinition(&self) -> Result<(), TypeError> {
-        for item in self.statements.iter() {
-            for subitem in self.statements.iter()
-                               .skip_while(|subitem| subitem != &item)
-                               .skip(1) {
-                if subitem == item {
-                    Err(TypeError::Redefinition(
-                            item.to_string(),
-                            Hint::EnumAttribute
-                    ))?
-                }
-            }
-        }
-        Ok(())
-    }
-
-    /// An antisymmetric should refers to two same parametric.
-    pub fn check_symmetric(&self) -> Result<(), TypeError> {
-        if self.statements.contains(&EnumStatement::Symmetric) {
-            match self.variables.len() {
-                2 => {
-                    if let Some((left, right)) =
-                        self.variables.windows(2)
-                            .find(|vars: &&[VarDef]| vars[0] != vars[1])
-                            .and_then(|vars: &[VarDef]|
-                                Some((vars[0].clone(), vars[1].clone()))) {
-                        Err(TypeError::BadSymmetricArg(vec![left, right]))?
-                    }
-                },
-                _ => Err(
-                    TypeError::BadSymmetricArg(self.variables.to_owned())
-                )?,
-            }
-        }
-        Ok(())
-    }
-
-    /// An Alias' value should exists.
-    pub fn check_undefined_value(&self) -> Result<(), TypeError> {
-        let values: Vec<&String> =
-            self.statements.iter()
-                           .filter_map(|item| item.get_value().or(item.get_alias()))
-                           .collect::<Vec<&String>>();
-
-        for decisions in self.statements.iter()
-                                        .filter_map(|item| item.get_alias_decisions()) {
-            for value in decisions {
-                if !values.contains(&value) {
-                    Err(TypeError::Undefined(value.to_owned()))?
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
 impl PartialEq for EnumDef {
     fn eq(&self, rhs: &Self) -> bool {
         self.name == rhs.name
@@ -1278,19 +1277,19 @@ impl PartialEq for EnumDef {
 }
 
 #[derive(Debug)]
-pub struct TriggerDef {
-    pub foralls: Vec<VarDef>,
-    pub conditions: Vec<Condition>,
-    pub code: String,
+struct TriggerDef {
+    foralls: Vec<VarDef>,
+    conditions: Vec<Condition>,
+    code: String,
 }
 
 #[derive(Clone, Debug)]
-pub struct CounterDef {
-    pub name: RcStr,
-    pub doc: Option<String>,
-    pub visibility: ir::CounterVisibility,
-    pub vars: Vec<VarDef>,
-    pub body: CounterBody,
+struct CounterDef {
+    name: RcStr,
+    doc: Option<String>,
+    visibility: ir::CounterVisibility,
+    vars: Vec<VarDef>,
+    body: CounterBody,
 }
 
 impl PartialEq for CounterDef {
@@ -1300,51 +1299,37 @@ impl PartialEq for CounterDef {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum ChoiceDef {
+enum ChoiceDef {
     CounterDef(CounterDef),
     EnumDef(EnumDef),
     IntegerDef(IntegerDef),
 }
 
-impl ChoiceDef {
-    pub fn get_name(&self) -> &String {
-        match self {
-            ChoiceDef::CounterDef(counter_def) => {
-                &counter_def.name
-            },
-            ChoiceDef::EnumDef(enum_def) => {
-                &enum_def.name
-            },
-            ChoiceDef::IntegerDef(def) => &def.name,
-        }
-    }
-}
-
-impl From<Statement> for Result<ChoiceDef, TypeError> {
+impl From<Statement> for ChoiceDef {
     fn from(stmt: Statement) -> Self {
         match stmt {
             Statement::CounterDef { name, doc, visibility, vars, body } => {
-                Ok(ChoiceDef::CounterDef(CounterDef {
+                ChoiceDef::CounterDef(CounterDef {
                     name, doc, visibility, vars, body
-                }))
+                })
             },
-            Statement::EnumDef { name, doc, variables, statements } => {
-                let enum_def: EnumDef = EnumDef {
+            Statement::EnumDef { name: Spanned {
+                beg: _,
+                end: _,
+                data: name,
+            }, doc, variables, statements } => {
+                ChoiceDef::EnumDef(EnumDef {
                     name, doc, variables, statements
-                };
-
-                enum_def.check_field_name_redefinition()?;
-                enum_def.check_symmetric()?;
-                enum_def.check_undefined_value()?;
-                Ok(ChoiceDef::EnumDef(enum_def))
+                })
             },
-            Statement::IntegerDef { name, doc, variables, code } => {
-                let integer_def: IntegerDef = IntegerDef {
+            Statement::IntegerDef { name: Spanned {
+                beg: _,
+                end: _,
+                data: name,
+            }, doc, variables, code } => {
+                ChoiceDef::IntegerDef(IntegerDef {
                     name, doc, variables, code
-                };
-
-                integer_def.get_variables()?;
-                Ok(ChoiceDef::IntegerDef(integer_def))
+                })
             },
             _ => unreachable!(),
         }
@@ -1352,14 +1337,14 @@ impl From<Statement> for Result<ChoiceDef, TypeError> {
 }
 
 #[derive(Debug, Clone)]
-pub struct SetDef {
-    pub name: String,
-    pub doc: Option<String>,
-    pub arg: Option<VarDef>,
-    pub superset: Option<SetRef>,
-    pub disjoint: Vec<String>,
-    pub keys: Vec<(ir::SetDefKey, Option<VarDef>, String)>,
-    pub quotient: Option<Quotient>,
+struct SetDef {
+    name: String,
+    doc: Option<String>,
+    arg: Option<VarDef>,
+    superset: Option<SetRef>,
+    disjoint: Vec<String>,
+    keys: Vec<(ir::SetDefKey, Option<VarDef>, String)>,
+    quotient: Option<Quotient>,
 }
 
 impl Default for SetDef {
@@ -1376,55 +1361,6 @@ impl Default for SetDef {
     }
 }
 
-impl SetDef {
-    /// A field from a set should be unique.
-    pub fn check_field_name_redefinition(&self) -> Result<(), TypeError> {
-        for (item, ..) in self.keys.iter() {
-            for (subitem, ..) in self.keys.iter()
-                               .skip_while(|(subitem, ..)| subitem != item)
-                               .skip(1) {
-                if subitem == item {
-                    Err(TypeError::Redefinition(
-                            item.to_string(), Hint::SetAttribute))?
-                }
-            }
-        }
-        Ok(())
-    }
-
-    /// A set should always have the keys: type, id_type, id_getter, iterator, getter.
-    pub fn check_undefined_key(&self) -> Result<(), TypeError> {
-        let keys = self.keys.iter().map(|(k, _, _)| k).collect::<Vec<&ir::SetDefKey>>();
-
-        if !keys.contains(&&ir::SetDefKey::ItemType) {
-            Err(TypeError::Undefined(ir::SetDefKey::ItemType.to_string()))?
-        }
-        if !keys.contains(&&ir::SetDefKey::IdType) {
-            Err(TypeError::Undefined(ir::SetDefKey::IdType.to_string()))?
-        }
-        if !keys.contains(&&ir::SetDefKey::ItemGetter) {
-            Err(TypeError::Undefined(ir::SetDefKey::ItemGetter.to_string()))?
-        }
-        if !keys.contains(&&ir::SetDefKey::IdGetter) {
-            Err(TypeError::Undefined(ir::SetDefKey::IdGetter.to_string()))?
-        }
-        if !keys.contains(&&ir::SetDefKey::Iter) {
-            Err(TypeError::Undefined(ir::SetDefKey::Iter.to_string()))?
-        }
-        Ok(())
-    }
-
-    pub fn check_undefined_superset_key(&self) -> Result<(), TypeError> {
-        if self.superset.is_some() {
-            if self.keys.iter().find(|(k, _, _)| k == &ir::SetDefKey::FromSuperset)
-                               .is_none() {
-                Err(TypeError::Undefined(ir::SetDefKey::FromSuperset.to_string()))?
-            }
-        }
-        Ok(())
-    }
-}
-
 impl PartialEq for SetDef {
     fn eq(&self, rhs: &Self) -> bool {
         self.name == rhs.name
@@ -1435,14 +1371,15 @@ impl From<Statement> for Result<SetDef, TypeError> {
     fn from(stmt: Statement) -> Self {
         match stmt {
             Statement::SetDef {
-                name, doc, arg, superset, disjoint, keys, quotient
+                name: Spanned {
+                    beg: _,
+                    end: _,
+                    data: name,
+                }, doc, arg, superset, disjoint, keys, quotient
             } => {
                 let set_def: SetDef = SetDef {
                     name, doc, arg, superset, disjoint, keys, quotient
                 };
-                set_def.check_undefined_key()?;
-                set_def.check_undefined_superset_key()?;
-                set_def.check_field_name_redefinition()?;
                 Ok(set_def)
             },
             _ => unreachable!(),
