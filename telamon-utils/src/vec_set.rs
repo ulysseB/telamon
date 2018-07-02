@@ -37,6 +37,62 @@ where T: Ord
         }
     }
 
+    /// Returns `rhs-other` and `rhs-self`.
+    pub fn symmetric_difference(mut self, mut other: Self) -> (Self, Self) {
+        let lhs_old_len = self.data.len();
+        let rhs_old_len = other.data.len();
+        unsafe {
+            // Make sure the moved elements are not drop twice if an exception occurs.
+            self.data.set_len(0);
+            other.data.set_len(0);
+            // Iterate simultaneously on both vectors to remove duplicate elements.
+            let (mut lhs_idx, mut lhs_del, mut rhs_idx, mut rhs_del) = (0, 0, 0, 0);
+            while lhs_idx < lhs_old_len && rhs_idx < rhs_old_len {
+                let lhs = self.data.as_mut_ptr().offset(lhs_idx as isize);
+                let rhs = other.data.as_mut_ptr().offset(rhs_idx as isize);
+                match (*lhs).cmp(&*rhs) {
+                    std::cmp::Ordering::Less => {
+                        if lhs_del > 0 {
+                            let lhs_dst = self.data.as_mut_ptr().offset((lhs_idx - lhs_del) as isize);
+                            std::ptr::copy_nonoverlapping(lhs, lhs_dst, 1);
+                        }
+                        lhs_idx += 1;
+                    },
+                    std::cmp::Ordering::Greater => {
+                        if rhs_del > 0 {
+                            let rhs_dst = other.data.as_mut_ptr().offset((rhs_idx - rhs_del) as isize);
+                            std::ptr::copy_nonoverlapping(rhs, rhs_dst, 1);
+                        }
+                        rhs_idx += 1;
+                    },
+                    std::cmp::Ordering::Equal => {
+                        std::mem::drop(&*lhs);
+                        std::mem::drop(&*rhs);
+                        lhs_idx += 1;
+                        lhs_del += 1;
+                        rhs_idx += 1;
+                        rhs_del += 1;
+                    }
+                }
+            }
+            // Complete vectors that are not yet explored.
+            if lhs_idx < lhs_old_len && lhs_del > 0 {
+                let lhs_src = self.data.as_mut_ptr().offset(lhs_idx as isize);
+                let lhs_dst = self.data.as_mut_ptr().offset((lhs_idx - lhs_del) as isize);
+                std::ptr::copy(lhs_src, lhs_dst, lhs_old_len - lhs_idx);
+            }
+            if rhs_idx < rhs_old_len && rhs_del > 0 {
+                let rhs_src = other.data.as_mut_ptr().offset(rhs_idx as isize);
+                let rhs_dst = other.data.as_mut_ptr().offset((rhs_idx - rhs_del) as isize);
+                std::ptr::copy(rhs_src, rhs_dst, rhs_old_len - rhs_idx);
+            }
+            // Set the size of vectors to the correct size since we can now safely panic.
+            self.data.set_len(lhs_old_len - lhs_del);
+            other.data.set_len(rhs_old_len - rhs_del);
+        }
+        (self, other)
+    }
+
     /// Returns a set containing the elements present in both `self` and
     /// `other`.
     pub fn intersection<'a>(&'a self, other: &'a VecSet<T>) -> Intersection<T> {
@@ -297,5 +353,14 @@ mod tests {
         assert_eq!(v1.partial_cmp(&v01), Some(Ordering::Less));
         assert_eq!(v01.partial_cmp(&v0), Some(Ordering::Greater));
         assert_eq!(v01.partial_cmp(&v1), Some(Ordering::Greater));
+    }
+
+    #[test]
+    fn symmetric_difference() {
+        let v0 = VecSet::new(vec![0, 2, 3, 5]);
+        let v1 = VecSet::new(vec![0, 1, 2, 4, 6]);
+        let (d0, d1) = v0.symmetric_difference(v1);
+        assert_eq!(d0, VecSet::new(vec![3, 5]));
+        assert_eq!(d1, VecSet::new(vec![1, 4, 6]))
     }
 }
