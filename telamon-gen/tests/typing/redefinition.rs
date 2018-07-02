@@ -70,12 +70,12 @@ fn redefinition_enum_value() {
             value A:
           end".to_vec())).unwrap().type_check().err(),
         Some(TypeError::Redefinition(Spanned {
-            beg: Position { line: 0, column: 0},
-            end: Position { line: 0, column: 18},
+            beg: Position::default(),
+            end: Position::default(),
             data: Hint::EnumAttribute,
         }, Spanned {
-            beg: Position { line: 0, column: 0},
-            end: Position { line: 0, column: 18},
+            beg: Position::default(),
+            end: Position::default(),
             data: String::from("A"),
         }))
     );

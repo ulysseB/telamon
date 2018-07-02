@@ -4,7 +4,7 @@ use telamon_gen::lexer::*;
 use telamon_gen::ir::{CounterKind, CounterVisibility, SetDefKey, CmpOp};
 
 #[test]
-fn initial() {
+fn lexer_initial() {
     // Invalid's Token
     assert_eq!(Lexer::from(b"!".to_vec()).collect::<Vec<_>>(), vec![
                 Err(LexicalError::InvalidToken(
@@ -423,7 +423,7 @@ fn initial() {
 }
 
 #[test]
-fn comment_mode() {
+fn lexer_comment_mode() {
     // C_COMMENT's Token
     assert_eq!(Lexer::from(b"/* comment */ ".to_vec()).collect::<Vec<_>>(), vec![]);
     assert_eq!(Lexer::from(b"/* comment \n comment */ ".to_vec()).collect::<Vec<_>>(), vec![]);
@@ -483,11 +483,17 @@ fn doc_mode() {
 }
 
 #[test]
-fn code_mode() {
+fn lexer_code_mode() {
     assert_eq!(Lexer::from(b"\"_\"".to_vec()).collect::<Vec<_>>(), vec![
                 Ok((Position { column: 1, ..Default::default() },
                    Token::Code(String::from("_")),
                    Position { column: 2, ..Default::default() } 
+                )),
+              ]);
+    assert_eq!(Lexer::from(b"\"__\"".to_vec()).collect::<Vec<_>>(), vec![
+                Ok((Position { column: 1, ..Default::default() },
+                   Token::Code(String::from("__")),
+                   Position { column: 3, ..Default::default() } 
                 )),
               ]);
 }

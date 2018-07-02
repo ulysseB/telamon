@@ -68,30 +68,6 @@ struct CheckerContext {
 }
 
 impl CheckerContext {
-    pub fn redefinition(
-        &mut self, statement: &Spanned<Statement>
-    ) -> Result<(), TypeError> {
-        match statement {
-//            Spanned { beg, end, data: Statement::CounterDef { name, .. } }
-            Spanned { beg: _, end: _, data: Statement::SetDef {
-                name: Spanned { beg, end, data: name, }, .. } } |
-            Spanned { beg: _, end: _, data: Statement::EnumDef {
-                name: Spanned { beg, end, data: name, }, .. } } |
-            Spanned { beg: _, end: _, data: Statement::IntegerDef {
-                name: Spanned { beg, end, data: name, }, .. } } => {
-                let data: Hint = Hint::from(statement);
-                let value: Spanned<Hint> = Spanned { beg: *beg, end: *end, data };
-                if let Some(pre) = self.hash.insert(name.to_owned(), value) {
-                    Err(TypeError::Redefinition(pre, Spanned {
-                        beg: *beg, end: *end, data: name.to_owned(),
-                    }))
-                } else {
-                    Ok(())
-                }
-            },
-            _ => Ok(()),
-        }
-    }
 
     fn undefined_set(&self, name: &RcStr) -> Result<(), String> {
         let name: &String = name.deref();
@@ -171,6 +147,69 @@ impl CheckerContext {
             _ => Ok(()),
         }
     }
+
+    pub fn subredefinition(
+        &mut self, statement: &Spanned<Statement>
+    ) -> Result<(), TypeError> {
+        match statement {
+            Spanned { beg, end, data: Statement::EnumDef {
+                name: _, doc: _, variables: _, statements, .. } } => {
+                let mut hash: HashMap<String, _> = HashMap::default();
+                for stmt in statements {
+                    match stmt {
+                        EnumStatement::Value(name, _, _) |
+                        EnumStatement::Alias(name, ..) => {
+                            if let Some(_) = hash.insert(
+                                name.to_owned(),
+                                Spanned {
+                                    data: (),
+                                    beg: Default::default(),
+                                    end: Default::default(),
+                                }
+                            ) {
+                                Err(TypeError::Redefinition(Spanned {
+                                    data: Hint::EnumAttribute,
+                                    beg: Default::default(),
+                                    end: Default::default(),
+                                }, Spanned {
+                                    data: name.to_owned(),
+                                    beg: Default::default(),
+                                    end: Default::default(),
+                                }))?;
+                            }
+                        },
+                        _ => {},
+                    }
+                }
+                Ok(())
+            },
+            _ => Ok(()),
+        }
+    }
+
+    pub fn redefinition(
+        &mut self, statement: &Spanned<Statement>
+    ) -> Result<(), TypeError> {
+        match statement {
+            Spanned { beg: _, end: _, data: Statement::SetDef {
+                name: Spanned { beg, end, data: name, }, .. } } |
+            Spanned { beg: _, end: _, data: Statement::EnumDef {
+                name: Spanned { beg, end, data: name, }, .. } } |
+            Spanned { beg: _, end: _, data: Statement::IntegerDef {
+                name: Spanned { beg, end, data: name, }, .. } } => {
+                let data: Hint = Hint::from(statement);
+                let value: Spanned<Hint> = Spanned { beg: *beg, end: *end, data };
+                if let Some(pre) = self.hash.insert(name.to_owned(), value) {
+                    Err(TypeError::Redefinition(pre, Spanned {
+                        beg: *beg, end: *end, data: name.to_owned(),
+                    }))
+                } else {
+                    Ok(())
+                }
+            },
+            _ => Ok(()),
+        }
+    }
 }
 
 /// Syntaxic tree for the constraint description.
@@ -188,6 +227,7 @@ impl Ast {
         for statement in self.statements {
             checker.redefinition(&statement)?;
             checker.undefined(&statement)?;
+            checker.subredefinition(&statement)?;
             context.add_statement(statement);
         }
         Ok(context.finalize())
@@ -250,7 +290,8 @@ impl TypingContext {
             match choice_def {
                 ChoiceDef::EnumDef(EnumDef { name, doc, variables, statements }) =>
                     self.register_enum(name, doc, variables, statements),
-                ChoiceDef::CounterDef(CounterDef { name, doc, visibility, vars, body, }) =>
+                ChoiceDef::CounterDef(CounterDef { name, doc, visibility,
+                    vars, body, }) =>
                     self.register_counter(name, doc, visibility, vars, body),
                 ChoiceDef::IntegerDef(def) => self.define_integer(def),
             }

@@ -3,7 +3,6 @@ use ast;
 use ir;
 
 use lexer::*;
-
 use utils::*;
 
 grammar;
@@ -60,7 +59,7 @@ statement: Spanned<ast::Statement> = {
     },
     <doc: doc?> <beg: @L> define integer
                     <beg_name: @L> <name: choice_ident> <end_name: @R>
-                    "(" <vars: choice_vars> ")" ":" <universe: code?> end
+                    "(" <vars: choice_vars> ")" ":" <universe: code> end
                 <end: @R> => {
         Spanned {
             beg, end,
@@ -88,7 +87,7 @@ statement: Spanned<ast::Statement> = {
             }
         }
     },
-    <beg: @L> trigger <foralls: (forall <var_def> ":")*> <code: code?> when
+    <beg: @L> trigger <foralls: (forall <var_def> ":")*> <code: code> when
         <conditions: non_empty_list<condition, and>> <end: @R> => {
         Spanned {
             beg: beg, end: end,
@@ -114,7 +113,7 @@ statement: Spanned<ast::Statement> = {
 };
 
 set_def_map: (ir::SetDefKey, Option<ast::VarDef>, String) = {
-    <key: set_def_key> <var: (forall <var_def>)?> "=" <val: code?> => (key, var, val),
+    <key: set_def_key> <var: (forall <var_def>)?> "=" <val: code> => (key, var, val),
 };
 
 set_disjoint: Vec<String> = {
@@ -150,7 +149,7 @@ enum_stmt: ast::EnumStatement = {
 };
 
 counter_body: ast::CounterBody = {
-    <base: (base <code?>)?>
+    <base: (base <code>)?>
     <iter_vars: (forall <var_def> ":")*> <kind: counter_kind> <value: counter_val> when ":"
         <conditions: condition*> =>
     {
@@ -160,7 +159,7 @@ counter_body: ast::CounterBody = {
 };
 
 counter_val: ast::CounterVal = {
-    <code: code?> => ast::CounterVal::Code(<>),
+    code => ast::CounterVal::Code(<>),
     choice_instance => ast::CounterVal::Choice(<>),
 };
 
@@ -183,6 +182,7 @@ condition: ast::Condition = {
     <lhs: choice_instance> <op: cmp_op> <rhs: code> => {
         ast::Condition::CmpCode { lhs, rhs: RcStr::new(rhs), op }
     },
+    code => ast::Condition::Code(RcStr::new(<>), false),
     boolean => ast::Condition::Bool(<>),
 };
 
@@ -199,12 +199,6 @@ doc: String = {
     }
 };
 
-code: String = {
-    <lines: (<code_line>)+> => {
-        lines.concat()
-    }
-};
-
 #[inline]
 non_empty_list<T, SEP>: Vec<T> = {
     <v: (<T> SEP)*> <e: T> => {
@@ -215,7 +209,7 @@ non_empty_list<T, SEP>: Vec<T> = {
 };
 
 list<T, SEP>: Vec<T> = {
-    non_empty_list<T, SEP>? => { <>.unwrap_or(Vec::new()) }
+  non_empty_list<T, SEP>? => { <>.unwrap_or(Vec::new()) }
 };
 
 extern {
@@ -227,7 +221,7 @@ extern {
         val_ident => Token::ValueIdent(<String>),
         set_ident => Token::SetIdent(<String>),
         var => Token::Var(<String>),
-        code_line => Token::Code(<String>),
+        code => Token::Code(<String>),
         doc_line => Token::Doc(<String>),
         boolean => Token::Bool(<bool>),
         counter_kind => Token::CounterKind(<ir::CounterKind>),
