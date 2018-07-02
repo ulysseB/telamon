@@ -52,9 +52,9 @@ set StaticDims subsetof Dimensions:
   item_getter = "$fun.dim($id)"
   id_getter = "$item.id()"
   // TODO(cc_perf): dedicated iterator
-  iterator = "$fun.dims().flat_map(|d| d.size().universe().map(|_| d))"
+  iterator = "$fun.dims().flat_map(|d| d.possible_sizes().map(|_| d))"
   var_prefix = "dim"
-  from_superset = "$item.size().universe().map(|_| $item)"
+  from_superset = "$item.possible_sizes().map(|_| $item)"
   new_objs = "$objs.static_dims"
 end
 
@@ -107,7 +107,7 @@ quotient ThreadDims of $dim in StaticDims:
 end
 
 /// Strip-mining factor of a striped-mined dimension.
-define integer size($dim in StaticDims): "unwrap!($dim.size().universe())" end
+define integer size($dim in StaticDims): "unwrap!($dim.possible_sizes())" end
 
 /// Specifies how iteration dimensions are implemented.
 define enum dim_kind($dim in Dimensions):

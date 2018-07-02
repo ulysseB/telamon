@@ -19,20 +19,28 @@ impl fmt::Display for Id {
 /// Represents an iteration dimension.
 #[derive(Clone, Debug)]
 pub struct Dimension<'a> {
-    size: ir::Size<'a>,
     id: Id,
+    size: ir::Size<'a>,
+    possible_sizes: Vec<u32>,
     iterated: Vec<ir::InstId>,
     is_thread_dim: bool,
+    logical_dim: Option<LogicalId>,
 }
+
+// FIXME: add a new_static method
 
 impl<'a> Dimension<'a> {
     /// Creates a new dimension.
-    pub fn new(size: ir::Size, id: Id) -> Dimension {
-        if size.universe().map(|u| u.contains(&1)).unwrap_or(false) {
-            return Err(ir::Error::InvalidDimSize);
-        }
+    pub fn new(size: ir::Size, id: Id, logical_dim: Option<LogicalId>)
+        -> Result<Dimension, ir::Error>
+    {
+        let possible_sizes = if let Some(s) = size.as_fixed() {
+            if s == 1 { return Err(ir::Error::InvalidDimSize); }
+            assert!(s != 1);
+            vec![s]
+        } else { vec![] };
         Ok(Dimension {
-            size, id,
+            size, id, logical_dim, possible_sizes,
             iterated: Vec::new(),
             is_thread_dim: false,
         })
@@ -40,6 +48,11 @@ impl<'a> Dimension<'a> {
 
     /// Retruns the size of the dimension.
     pub fn size(&self) -> &ir::Size<'a> { &self.size }
+
+    /// Returns the values the size can take, if it is statically known.
+    pub fn possible_sizes(&self) -> Option<&[u32]> {
+        if self.possible_sizes.is_empty() { None } else { Some(&self.possible_sizes) }
+    }
 
     /// Returns the id of the dimension.
     pub fn id(&self) -> Id { self.id }
@@ -59,7 +72,7 @@ impl<'a> Dimension<'a> {
     pub fn set_thread_dim(&mut self) { self.is_thread_dim = true }
 
     /// Returns the logical dimension this real dimension is part of, if any.
-    pub fn logical_dim(&self) -> Option<LogicalId> { None } // FIXME
+    pub fn logical_dim(&self) -> Option<LogicalId> { self.logical_dim }
 }
 
 impl<'a> BasicBlock<'a> for Dimension<'a> {
@@ -81,7 +94,6 @@ pub struct LogicalDim {
     static_dims: Vec<Id>,
     nonstatic_dim: Option<Id>,
     max_size: u32,
-    has_dyn_dims: bool,
 }
 
 impl LogicalDim {
@@ -100,7 +112,7 @@ impl LogicalDim {
 
     /// Returns the minimum size of combined static dimensions.
     pub fn min_static_size(&self) -> u32 {
-        if self.has_dyn_dims { 1 } else { self.max_size }
+        if self.nonstatic_dim.is_some() { 1 } else { self.max_size }
     }
 }
 

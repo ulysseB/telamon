@@ -106,8 +106,18 @@ impl<'a> Function<'a> {
     /// Creates a new dimension.
     pub fn add_dim(&mut self, size: Size<'a>) -> Result<dim::Id, ir::Error> {
         let id = dim::Id(self.dims.len() as u32);
-        self.dims.push(Dimension::new(size, id)?);
+        self.dims.push(Dimension::new(size, id, None)?);
         Ok(id)
+    }
+
+    /// Creates a logical dimension and the concret dimensions that composes it.
+    pub fn logical_dim(&mut self, size: ir::Size<'a>,
+                       tile_sizes: Vec<Vec<u32>>,
+                       max_tiling: Option<u32>) -> Vec<dim::Id> {
+        let logical_id = dim::LogicalId(self.logical_dims.len() as u32);
+        // FIXME: how to ensure the selected size is a divisor of the parameter ?
+        // FIXME: create the size of the dimension
+        unimplemented!() // FIXME: create the dims and the logical dim
     }
 
     /// Allocates a new memory block.

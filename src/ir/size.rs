@@ -11,8 +11,11 @@ pub struct Size<'a> {
     factor: u32,
     dividend: Vec<&'a ir::Parameter>,
     divisor: u32,
-    universe: Vec<u32>,
 }
+
+// FIXME: reference the size of static dimensions in `Size`.
+// - replace `divisor` by a list of dimension IDs
+// - Add a create-logic-dim function to correctly create the sizes
 
 impl<'a> Size<'a> {
     /// Creates a new `Size` representing the constant `1`.
@@ -22,19 +25,13 @@ impl<'a> Size<'a> {
     pub fn new(factor: u32, dividend: Vec<&'a ir::Parameter>, divisor: u32) -> Self {
         assert!(factor != 0);
         assert!(divisor != 0);
-        let universe = if dividend.is_empty() { vec![factor] } else { vec![] };
-        let mut new = Size { factor, dividend, divisor, universe };
+        let mut new = Size { factor, dividend, divisor };
         new.simplify();
         new
     }
 
-    /// Returns the values the size can take, if the size is statically known.
-    pub fn universe(&self) -> Option<&[u32]> {
-        if self.dividend.is_empty() { Some(&self.universe) } else { None }
-    }
-
     /// Returns the size of a dimension if it is staticaly known and doesn't depend on
-    /// any choice.
+    /// any decisions.
     pub fn as_fixed(&self) -> Option<u32> {
         if self.dividend.is_empty() { Some(self.factor) } else { None }
     }
@@ -70,7 +67,6 @@ impl<'a> Size<'a> {
         let gcd = num::integer::gcd(self.factor, self.divisor);
         self.factor /= gcd;
         self.divisor /= gcd;
-        if self.dividend.is_empty() { self.universe[0] = self.factor; }
     }
 
     /// Indicates if the dimension can be merged with another, assuming they have the

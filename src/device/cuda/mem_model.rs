@@ -251,7 +251,7 @@ fn wrap_access_offsets(thread_dims: &[ThreadDimInfo],
         let offset = thread_dims.iter().enumerate().map(|(i, dim)| {
             if incr { incr = increment_index(i, thread_dims, &mut indexes); }
             if dim.is_partial_dim && indexes[i] > 0 {
-                // TODO(cc_perf): save the index of real dimensions instead of recomputing. 
+                // TODO(cc_perf): save the index of real dimensions instead of recomputing.
                 let real_pos = thread_dims[0..i].iter().position(|d| d.id == dim.id);
                 let real_pos = unwrap!(real_pos, "partial dim ordered before its base");
                 assert!(!thread_dims[real_pos].is_partial_dim);
