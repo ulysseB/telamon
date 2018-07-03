@@ -183,17 +183,15 @@ impl Iterator for Lexer {
                                   let mut s: String = s.to_owned();
                                   let mut e = extra.end;
                                   loop {
-                                      let lookahead_token = self.lookahead_token();
-                                      if let Some(
-                                          Ok((_, Token::Code(ref code), end))
-                                      ) = lookahead_token {
-                                          e = end;
-                                          s.push_str(code);
-                                      } else {
-                                          self.lookahead_token = lookahead_token;
-                                          return Some(
-                                              Ok((extra.beg, Token::Code(s), e))
-                                          )
+                                      match self.next() {
+                                          Some(Ok((_, Token::Code(ref code), end)) => {
+                                              e = end;
+                                              s.push_str(code);
+                                          },
+                                          next => {
+                                              self.lookahead_token = next;
+                                              return Some(Ok((extra.beg, Token::Code(s), e)))
+                                          },
                                       }
                                   }
                              })
