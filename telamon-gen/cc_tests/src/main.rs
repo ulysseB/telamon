@@ -5,6 +5,7 @@ extern crate telamon_utils as utils;
 #[macro_use]
 extern crate log;
 extern crate env_logger;
+extern crate num;
 
 fn main() { panic!("use `cargo test` to run tests") }
 
