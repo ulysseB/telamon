@@ -496,4 +496,22 @@ fn lexer_code_mode() {
                    Position { column: 3, ..Default::default() } 
                 )),
               ]);
+    assert_eq!(Lexer::from(b"\"_\\\n_\"".to_vec()).collect::<Vec<_>>(), vec![
+                Ok((Position { column: 1, ..Default::default() },
+                   Token::Code(String::from("__")),
+                   Position { column: 2, line: 1 } 
+                )),
+              ]);
+    assert_eq!(Lexer::from(b"\"_\\\n       _\"".to_vec()).collect::<Vec<_>>(), vec![
+                Ok((Position { column: 1, ..Default::default() },
+                   Token::Code(String::from("__")),
+                   Position { column: 2, line: 1 } 
+                )),
+              ]);
+    assert_eq!(Lexer::from(b"\"_\\\n__\"".to_vec()).collect::<Vec<_>>(), vec![
+                Ok((Position { column: 1, ..Default::default() },
+                   Token::Code(String::from("___")),
+                   Position { column: 3, line: 1 } 
+                )),
+              ]);
 }

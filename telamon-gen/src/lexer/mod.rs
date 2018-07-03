@@ -184,7 +184,7 @@ impl Iterator for Lexer {
                                   let mut e = extra.end;
                                   loop {
                                       match self.next() {
-                                          Some(Ok((_, Token::Code(ref code), end)) => {
+                                          Some(Ok((_, Token::Code(ref code), end))) => {
                                               e = end;
                                               s.push_str(code);
                                           },
