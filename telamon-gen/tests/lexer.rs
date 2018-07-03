@@ -484,6 +484,7 @@ fn doc_mode() {
 
 #[test]
 fn lexer_code_mode() {
+    // Simple Code's Token
     assert_eq!(Lexer::from(b"\"_\"".to_vec()).collect::<Vec<_>>(), vec![
                 Ok((Position { column: 1, ..Default::default() },
                    Token::Code(String::from("_")),
@@ -496,6 +497,7 @@ fn lexer_code_mode() {
                    Position { column: 3, ..Default::default() } 
                 )),
               ]);
+    // Multiline Code's Token
     assert_eq!(Lexer::from(b"\"_\\\n_\"".to_vec()).collect::<Vec<_>>(), vec![
                 Ok((Position { column: 1, ..Default::default() },
                    Token::Code(String::from("__")),
@@ -512,6 +514,13 @@ fn lexer_code_mode() {
                 Ok((Position { column: 1, ..Default::default() },
                    Token::Code(String::from("___")),
                    Position { column: 3, line: 1 } 
+                )),
+              ]);
+    // Repetition Code's Token
+    assert_eq!(Lexer::from(b"\"_\" \"_\"".to_vec()).collect::<Vec<_>>(), vec![
+                Ok((Position { column: 1, ..Default::default() },
+                   Token::Code(String::from("__")),
+                   Position { column: 6, ..Default::default() } 
                 )),
               ]);
 }
