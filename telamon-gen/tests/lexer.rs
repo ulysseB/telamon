@@ -481,3 +481,46 @@ fn doc_mode() {
     // Line Comment MultiDoc's Token
     assert_eq!(Lexer::from(b"// comment \n // comment".to_vec()).collect::<Vec<_>>(), vec![]);
 }
+
+#[test]
+fn lexer_code_mode() {
+    // Simple Code's Token
+    assert_eq!(Lexer::from(b"\"_\"".to_vec()).collect::<Vec<_>>(), vec![
+                Ok((Position { column: 1, ..Default::default() },
+                   Token::Code(String::from("_")),
+                   Position { column: 2, ..Default::default() } 
+                )),
+              ]);
+    assert_eq!(Lexer::from(b"\"__\"".to_vec()).collect::<Vec<_>>(), vec![
+                Ok((Position { column: 1, ..Default::default() },
+                   Token::Code(String::from("__")),
+                   Position { column: 3, ..Default::default() } 
+                )),
+              ]);
+    // Multiline Code's Token
+    assert_eq!(Lexer::from(b"\"_\\\n_\"".to_vec()).collect::<Vec<_>>(), vec![
+                Ok((Position { column: 1, ..Default::default() },
+                   Token::Code(String::from("__")),
+                   Position { column: 2, line: 1 } 
+                )),
+              ]);
+    assert_eq!(Lexer::from(b"\"_\\\n       _\"".to_vec()).collect::<Vec<_>>(), vec![
+                Ok((Position { column: 1, ..Default::default() },
+                   Token::Code(String::from("__")),
+                   Position { column: 2, line: 1 } 
+                )),
+              ]);
+    assert_eq!(Lexer::from(b"\"_\\\n__\"".to_vec()).collect::<Vec<_>>(), vec![
+                Ok((Position { column: 1, ..Default::default() },
+                   Token::Code(String::from("___")),
+                   Position { column: 3, line: 1 } 
+                )),
+              ]);
+    // Repetition Code's Token
+    assert_eq!(Lexer::from(b"\"_\" \"_\"".to_vec()).collect::<Vec<_>>(), vec![
+                Ok((Position { column: 1, ..Default::default() },
+                   Token::Code(String::from("__")),
+                   Position { column: 6, ..Default::default() } 
+                )),
+              ]);
+}

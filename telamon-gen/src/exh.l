@@ -126,8 +126,8 @@ var \${alpha_num}+
 
 \"                         { BEGIN(LINE_CODE); }
 <LINE_CODE>\"              { BEGIN(INITIAL); }
-<LINE_CODE>\\\n[ \t]*      { }
-<LINE_CODE>.               { return CODE; }
+<LINE_CODE>\\\n[ \t]*      { yyextra.end.column -= strlen(yytext)+1; }
+<LINE_CODE>[^\\"]+|\\      { return CODE; }
 
 [\n] { yyextra.end.column = 0; }
 
