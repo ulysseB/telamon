@@ -144,7 +144,6 @@ impl<'a, S> Tensor<'a, S> where S: ScalarArgument {
                 induction_levels.push((d, stride.clone()));
                 stride *= builder.dim_size(d);
             }
-            induction_levels.push((dim[0], stride));
             dims.push(dim);
         }
         let pat = ir::AccessPattern::Tensor {
