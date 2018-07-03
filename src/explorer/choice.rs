@@ -23,8 +23,9 @@ pub enum ActionEx {
 
 /// Lists the choices that can be applied to a function.
 pub fn list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item=Choice> + 'a {
+    // FIXME: explore tile sizes
     let fun = space.ir_instance();
-    let static_dims = fun.dims().filter(|d| d.size().is_constant());
+    let static_dims = fun.dims().filter(|d| d.possible_sizes().is_some());
     fun.layouts_to_lower().iter().map(move |&layout| {
         lower_layout_choice(space, layout)
     }).chain(fun.dims().flat_map(move |dim| {

@@ -42,6 +42,11 @@ impl<'a> Builder<'a> {
         op.get(&self.function, &self.open_dims)
     }
 
+    /// Returns the size of a dimension.
+    pub fn dim_size(&self, dim: ir::dim::Id) -> &ir::Size<'a> {
+        self.function.dim(dim).size()
+    }
+
     /// Creates a binary operator.
     pub fn binop<'b: 'a>(&mut self,
                          op: ir::BinOp,
@@ -219,18 +224,10 @@ impl<'a> Builder<'a> {
     }
 
     /// Open multiple dimensions to represent a tiled dimension.
-    pub fn open_tiled_dim(&mut self, mut size: Size<'a>, tiling: &[u32]) -> DimGroup {
-        let mut tiling_factor = 1;
-        let mut dims = Vec::with_capacity(tiling.len()+1);
-        for tile_size in tiling.iter().cloned().rev() {
-            assert!(tile_size > 1);
-            tiling_factor *= tile_size;
-            dims.push(self.open_dim(Size::new(tile_size, vec![], 1)));
-        }
-        size.mul_divisor(tiling_factor);
-        dims.push(self.open_dim(size));
-        dims.reverse();
-        DimGroup::new(dims)
+    pub fn open_tiled_dim(&mut self, size: Size<'a>, tiling: &[u32]) -> DimGroup {
+        let ids = self.function.add_logical_dim(size, tiling);
+        self.open_dims.extend(ids.iter().map(|&id| (id, id)));
+        DimGroup::new(ids)
     }
 
     /// Opens a new dimension mapped to an existing one.
@@ -267,22 +264,11 @@ impl<'a> Builder<'a> {
     }
 
     /// Returns a constant size.
-    pub fn cst_size(&self, size: u32) -> Size<'a> { Size::new(size, vec![], 1) }
+    pub fn cst_size(&self, size: u32) -> Size<'a> { Size::new_const(size) }
 
     /// Returns a parameter size.
     pub fn param_size(&self, param: &str) -> Size<'a> {
-        Size::new(1, vec![self.find_param(param)], 1)
-    }
-
-    /// Returns a tiled size.
-    pub fn tile_size(&self, param: &str, chunk_size: u32) -> Size<'a> {
-        Size::new(1, vec![self.find_param(param)], chunk_size)
-    }
-
-    /// Returns a size from the given parameters, dividend and divisor.
-    pub fn size(&self, params: &[&str], dividend: u32, divisor: u32) -> Size<'a> {
-        let params = params.iter().map(|&p| self.find_param(p)).collect();
-        Size::new(dividend, params, divisor)
+        Size::new_param(self.find_param(param))
     }
 
     /// Allocates a memory block in shared memory.

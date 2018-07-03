@@ -4,6 +4,8 @@ use super::ir::prelude::*;
 #[allow(unused_imports)]
 use std;
 use std::sync::Arc;
+use num;
+use itertools::Itertools;
 #[allow(unused_imports)]
 use utils::*;
 
@@ -367,6 +369,21 @@ impl NumericSet {
         }
         self.values = values;
         self.len = idx;
+    }
+
+    /// Returns the greatest common divisor of possible values.
+    pub fn gcd(&self) -> u32 {
+        self.values[..self.len].iter().cloned().fold1(num::integer::gcd).unwrap_or(1)
+    }
+
+    /// Returns the least common multiple of possible values.
+    pub fn lcm(&self) -> u32 {
+        self.values[..self.len].iter().cloned().fold1(num::integer::lcm).unwrap_or(1)
+    }
+
+    /// Returns the only value in the set, if it is fully constrained.
+    pub fn as_constrained(&self) -> Option<u32> {
+        if self.len == 1 { Some(self.values[0]) } else { None }
     }
 
     fn restrict_to(&mut self, other: &[u32]) {

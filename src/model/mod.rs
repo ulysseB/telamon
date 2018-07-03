@@ -568,7 +568,7 @@ mod cuda_tests {
         let mut builder = Builder::new(&signature, context.device());
 
         let ld_a = a.load(&[&[]], &mut builder);
-        let dim1 = builder.open_dim_ex(ir::Size::new(26, vec![], 1), DimKind::THREAD);
+        let dim1 = builder.open_dim_ex(ir::Size::new_const(26), DimKind::THREAD);
         let _ = builder.mov(&0f32);
 
         builder.order(&ld_a.inst(), &dim1, Order::AFTER);

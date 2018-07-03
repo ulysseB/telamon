@@ -1,7 +1,8 @@
 //! Size evaluation and manipulation primitives.
 use device::Context;
 use ir;
-use search_space::SearchSpace;
+use num::integer;
+use search_space::{SearchSpace, NumDomain};
 
 /// A span of values.
 #[derive(Debug, Copy, Clone)]
@@ -20,11 +21,21 @@ impl Range {
 }
 
 /// Bounds the values a size can take, in the given context.
-pub fn bounds(size: &ir::Size, _: &SearchSpace, ctx: &Context) -> Range {
-    let mut total = size.factor();
-    for p in size.dividend() { total *= unwrap!(ctx.param_as_size(&p.name)); }
-    total /= size.divisor();
-    Range { min: total as u64, max: total as u64 }
+pub fn bounds(size: &ir::Size, space: &SearchSpace, ctx: &Context) -> Range {
+    let (mut factor, params, dividend_dims, divisor_dims) = size.members();
+    for p in params { factor *= unwrap!(ctx.param_as_size(&p.name)); }
+    let mut total = Range { min: factor as u64, max: factor as u64 };
+    for &d in dividend_dims {
+        let mut size = space.domain().get_size(d);
+        total.min *= size.min() as u64;
+        total.max *= size.max() as u64;
+    }
+    for &d in divisor_dims {
+        let mut size = space.domain().get_size(d);
+        total.min /= size.min() as u64;
+        total.max /= size.max() as u64;
+    }
+    total
 }
 
 /// A span of values, in term of factors. The actual value is a mulitpe of `gcd` and
@@ -43,9 +54,23 @@ impl FactorRange {
 }
 
 /// Returns a factor and a multiple of `size`.
-pub fn factors(size: &ir::Size, _: &SearchSpace, ctx: &Context) -> FactorRange {
-    let mut total = size.factor();
-    for p in size.dividend() { total *= unwrap!(ctx.param_as_size(&p.name)); }
-    total /= size.divisor();
-    FactorRange { gcd: total as u64, lcm: total as u64 }
+pub fn factors(size: &ir::Size, space: &SearchSpace, ctx: &Context) -> FactorRange {
+    let (mut factor, params, dividend_dims, divisor_dims) = size.members();
+    for p in params { factor *= unwrap!(ctx.param_as_size(&p.name)); }
+    let mut total = FactorRange::new_fixed(factor as u64);
+    for &d in dividend_dims {
+        let mut size = space.domain().get_size(d);
+        total.gcd *= size.gcd() as u64;
+        total.lcm *= size.lcm() as u64;
+    }
+    let mut divisor = FactorRange::new_fixed(1);
+    for &d in divisor_dims {
+        let mut size = space.domain().get_size(d);
+        divisor.gcd *= size.gcd() as u64;
+        divisor.lcm *= size.lcm() as u64;
+    }
+    FactorRange {
+        gcd: total.gcd / integer::gcd(total.gcd, divisor.lcm),
+        lcm: total.lcm / divisor.gcd
+    }
 }

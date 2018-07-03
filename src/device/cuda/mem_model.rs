@@ -177,7 +177,7 @@ fn external_thread_dims<'a>(inst: &'a ir::Instruction, space: &'a SearchSpace)
         let is_mapped = inst.iteration_dims().iter().map(|&other| {
             if dim.id() == other { return Trivalent::True; }
             // TODO(cc_perf): directly iterate on static dims
-            if !space.ir_instance().dim(other).size().is_constant() {
+            if space.ir_instance().dim(other).possible_sizes().is_none() {
                 return Trivalent::False;
             }
             let mapping = space.domain().get_thread_mapping(dim.id(), other);
@@ -497,7 +497,7 @@ mod tests {
         let d0 = builder.open_dim_ex(size.clone(), DimKind::THREAD);
         let d1 = builder.open_dim_ex(size.clone(), DimKind::THREAD);
         let addr = builder.mad(&d0, &(gpu.l1_cache_line as i32), &addr_base);
-        let stride = ir::Size::new(gpu.l1_cache_line, vec![], 1);
+        let stride = ir::Size::new_const(gpu.l1_cache_line);
         let pattern = ir::AccessPattern::Tensor {
             mem_id: ir::mem::Id::External(0),
             dims: std::iter::once((d0, stride)).collect(),

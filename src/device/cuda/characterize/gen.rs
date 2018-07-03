@@ -145,7 +145,7 @@ pub fn load_chain<'a>(signature: &'a Signature, device: &'a Device,
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(unroll_size, DimKind::UNROLL);
     if n_threads != 1 {
-        let d = builder.open_dim_ex(ir::Size::new(n_threads, vec![], 1), DimKind::THREAD);
+        let d = builder.open_dim_ex(ir::Size::new_const(n_threads), DimKind::THREAD);
         builder.order(&d, &d0, Order::OUTER);
     }
     let pattern0 = builder.unknown_access_pattern(mem_id);
@@ -215,19 +215,19 @@ pub fn parallel_load<'a>(signature: &'a Signature, gpu: &'a Gpu, num_blocks: &st
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1_1 = builder.open_mapped_dim(&d1_0);
     for (x, y) in d1_1.iter().tuple_windows() { builder.order(&x, &y, Order::OUTER); }
-    let d3 = builder.open_dim_ex(ir::Size::new(n_chained, vec![], 1), DimKind::UNROLL);
-    let d4_0 = builder.open_dim_ex(ir::Size::new(n_unroll, vec![], 1), DimKind::UNROLL);
+    let d3 = builder.open_dim_ex(ir::Size::new_const(n_chained), DimKind::UNROLL);
+    let d4_0 = builder.open_dim_ex(ir::Size::new_const(n_unroll), DimKind::UNROLL);
     let pattern = builder.unknown_access_pattern(mem_id);
     let mut strides = vec![
-        (d3, ir::Size::new(n_unroll*num_wraps*gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
-        (d4_0, ir::Size::new(num_wraps*gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
+        (d3, ir::Size::new_const(n_unroll*num_wraps*gpu.wrap_size*gpu.l1_cache_line)),
+        (d4_0, ir::Size::new_const(num_wraps*gpu.wrap_size*gpu.l1_cache_line)),
     ];
     if stride != 0 {
         let i = if num_wraps == 1 { 0 } else {
-            strides.push((d1_1[0], ir::Size::new(gpu.wrap_size*gpu.l1_cache_line, vec![], 1)));
+            strides.push((d1_1[0], ir::Size::new_const(gpu.wrap_size*gpu.l1_cache_line)));
             1
         };
-        strides.push((d1_1[i], ir::Size::new(stride*4, vec![], 1)));
+        strides.push((d1_1[i], ir::Size::new_const(stride*4)));
     };
     let addr = builder.induction_var(&array, strides);
     let val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_CG);
@@ -268,19 +268,19 @@ pub fn parallel_store<'a>(signature: &'a Signature, gpu: &'a Gpu, num_blocks: &s
     for d in &d1 { builder.action(Action::DimKind(d, DimKind::THREAD)); }
     for (x, y) in d1.iter().tuple_windows() { builder.order(&x, &y, Order::OUTER); }
 
-    let d3 = builder.open_dim_ex(ir::Size::new(n_chained, vec![], 1), DimKind::UNROLL);
-    let d4 = builder.open_dim_ex(ir::Size::new(n_unroll, vec![], 1), DimKind::UNROLL);
+    let d3 = builder.open_dim_ex(ir::Size::new_const(n_chained), DimKind::UNROLL);
+    let d4 = builder.open_dim_ex(ir::Size::new_const(n_unroll), DimKind::UNROLL);
     let pattern = builder.unknown_access_pattern(mem_id);
     let mut strides = vec![
-        (d3, ir::Size::new(n_unroll*num_wraps*gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
-        (d4, ir::Size::new(num_wraps*gpu.wrap_size*gpu.l1_cache_line, vec![], 1)),
+        (d3, ir::Size::new_const(n_unroll*num_wraps*gpu.wrap_size*gpu.l1_cache_line)),
+        (d4, ir::Size::new_const(num_wraps*gpu.wrap_size*gpu.l1_cache_line)),
     ];
     if stride != 0 {
         let i = if num_wraps == 1 { 0 } else {
-            strides.push((d1[0], ir::Size::new(gpu.wrap_size*gpu.l1_cache_line, vec![], 1)));
+            strides.push((d1[0], ir::Size::new_const(gpu.wrap_size*gpu.l1_cache_line)));
             1
         };
-        strides.push((d1[i], ir::Size::new(stride*4, vec![], 1)));
+        strides.push((d1[i], ir::Size::new_const(stride*4)));
     };
     let addr = builder.induction_var(&array, strides);
     builder.st_ex(&addr, &42f32, true, pattern, InstFlag::MEM_CG);

@@ -111,13 +111,32 @@ impl<'a> Function<'a> {
     }
 
     /// Creates a logical dimension and the concret dimensions that composes it.
-    pub fn logical_dim(&mut self, size: ir::Size<'a>,
-                       tile_sizes: Vec<Vec<u32>>,
-                       max_tiling: Option<u32>) -> Vec<dim::Id> {
+    // TODO(search_space): allow multiple sizes for each tilied dimension:
+    // - use the same tiling factors everywhere: tiling_factors: VecSet<u32>
+    // - give a number of tiles: num_tiles: usize
+    pub fn add_logical_dim(&mut self, mut size: ir::Size<'a>, tile_sizes: &[u32])
+        -> Vec<dim::Id>
+    {
         let logical_id = dim::LogicalId(self.logical_dims.len() as u32);
-        // FIXME: how to ensure the selected size is a divisor of the parameter ?
-        // FIXME: create the size of the dimension
-        unimplemented!() // FIXME: create the dims and the logical dim
+        let tiling = tile_sizes.iter().product();
+        let dim_ids = (0..tile_sizes.len() as u32 + 1).map(dim::Id).collect_vec();
+        let (tile_dims, base, max_tiling) = if let Some(size) = size.as_fixed() {
+            let sizes = std::iter::once(size/tiling).chain(tile_sizes.iter().cloned());
+            self.dims.extend(dim_ids.iter().zip_eq(sizes).map(|(&id, size)| {
+                Dimension::with_multi_sizes(id, vec![size], logical_id)
+            }));
+            (dim_ids.clone(), None, size)
+        } else {
+            size.tile(&dim_ids[1..].iter().cloned().collect());
+            self.dims.push(Dimension::new(size, dim_ids[0], Some(logical_id)));
+            self.dims.extend(dim_ids[1..].iter().zip_eq(tile_sizes).map(|(&id, &size)| {
+                Dimension::with_multi_sizes(id, vec![size], logical_id)
+            }));
+            (dim_ids[1..].iter().cloned().collect(), Some(dim_ids[0]), tiling)
+        };
+        let logical_dim = dim::LogicalDim::new(logical_id, tile_dims, base, max_tiling);
+        self.logical_dims.push(logical_dim);
+        dim_ids
     }
 
     /// Allocates a new memory block.
@@ -262,7 +281,7 @@ impl<'a> Function<'a> {
     fn gen_index(&mut self, mem: mem::Id, base_incr: u32, base_addr: Operand<'a>,
                      dims: Vec<dim::Id>) -> (Operand<'a>, AccessPattern<'a>) {
         let var_type = base_addr.t();
-        let base_size = ir::Size::new(base_incr, vec![], 1);
+        let base_size = ir::Size::new_const(base_incr);
         let increments = dims.iter().rev().scan(base_size, |size, &dim| {
             let old_size = size.clone();
             *size *= self.dim(dim).size();

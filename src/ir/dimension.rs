@@ -27,8 +27,6 @@ pub struct Dimension<'a> {
     logical_dim: Option<LogicalId>,
 }
 
-// FIXME: add a new_static method
-
 impl<'a> Dimension<'a> {
     /// Creates a new dimension.
     pub fn new(size: ir::Size, id: Id, logical_dim: Option<LogicalId>)
@@ -44,6 +42,20 @@ impl<'a> Dimension<'a> {
             iterated: Vec::new(),
             is_thread_dim: false,
         })
+    }
+
+    /// Creates a new dimension with multiple possibles sizes.
+    pub fn with_multi_sizes(id: Id,
+                            possible_sizes: Vec<u32>,
+                            logical_dim: LogicalId) -> Self {
+        assert!(!possible_sizes.is_empty());
+        Dimension {
+            id, possible_sizes,
+            size: ir::Size::new_dim(id),
+            logical_dim: Some(logical_dim),
+            iterated: Vec::new(),
+            is_thread_dim: false,
+        }
     }
 
     /// Retruns the size of the dimension.
@@ -97,6 +109,14 @@ pub struct LogicalDim {
 }
 
 impl LogicalDim {
+    /// Creates a new logical dimension.
+    pub fn new(id: LogicalId,
+               static_dims: Vec<Id>,
+               nonstatic_dim: Option<Id>,
+               max_size: u32) -> Self {
+        LogicalDim { id, static_dims, nonstatic_dim, max_size }
+    }
+
     /// Returns a unique identifier for the logic dimension.
     pub fn id(&self) -> LogicalId { self.id }
 

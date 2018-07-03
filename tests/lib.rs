@@ -46,13 +46,13 @@ fn inst_dim_order() {
     let context = fake::Context::default();
     let signature = empty_signature(1);
     let mut builder = helper::Builder::new(&signature, context.device());
-    let dim0 = builder.open_dim(Size::new(64, vec![], 1));
+    let dim0 = builder.open_dim(Size::new_const(64));
     let inst0 = builder.mov(&0i32);
     let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
     let addr = builder.cast(&0i64, ir::Type::PtrTo(ir::mem::Id::External(0)));
     let inst1 = builder.st(&addr, &0i32, pattern);
     builder.close_dim(&dim0);
-    let dim1 = builder.open_dim(Size::new(64, vec![], 1));
+    let dim1 = builder.open_dim(Size::new_const(64));
     let _ = builder.mov(&0i32);
     let space = builder.get();
     assert_eq!(space.domain().get_dim_kind(dim0), !DimKind::VECTOR);
@@ -97,8 +97,8 @@ fn max_thread_on_addinst() {
     let context = fake::Context::default();
     let signature = empty_signature(0);
     let mut builder = helper::Builder::new(&signature, context.device());
-    builder.open_dim_ex(Size::new(1024, vec![], 1), DimKind::THREAD);
-    let d1 = builder.open_dim(Size::new(2, vec![], 1));
+    builder.open_dim_ex(Size::new_const(1024), DimKind::THREAD);
+    let d1 = builder.open_dim(Size::new_const(2));
     builder.mov(&0i32);
     let space = builder.get();
     assert!(!space.domain().get_dim_kind(d1).intersects(DimKind::THREAD));
@@ -112,8 +112,8 @@ fn max_thread_on_setkind() {
     let context = fake::Context::default();
     let signature = empty_signature(0);
     let mut builder = helper::Builder::new(&signature, context.device());
-    let d0 = builder.open_dim(Size::new(1024, vec![], 1));
-    let d1 = builder.open_dim(Size::new(2, vec![], 1));
+    let d0 = builder.open_dim(Size::new_const(1024));
+    let d1 = builder.open_dim(Size::new_const(2));
     builder.mov(&0i32);
     builder.action(Action::DimKind(d0, DimKind::THREAD));
     let space = builder.get();
@@ -132,12 +132,12 @@ fn block_dims() {
         builder.get()
     };
     let mut builder = helper::Builder::new(&signature, context.device());
-    let d0 = builder.open_dim(Size::new(4, vec![], 1));
+    let d0 = builder.open_dim(Size::new_const(4));
     let inst =  builder.mov(&0i32);
     let s1 = builder.param_size("n");
     let d1 = builder.open_dim_ex(s1, DimKind::BLOCK);
-    let d2 = builder.open_dim_ex(Size::new(2, vec![], 1), DimKind::BLOCK);
-    let d3 = builder.open_dim_ex(Size::new(3, vec![], 1), DimKind::BLOCK);
+    let d2 = builder.open_dim_ex(Size::new_const(2), DimKind::BLOCK);
+    let d3 = builder.open_dim_ex(Size::new_const(3), DimKind::BLOCK);
     let space = builder.get();
     assert_eq!(space.domain().get_is_iteration_dim(inst.into(), d0), Bool::TRUE);
     assert_eq!(space.domain().get_is_iteration_dim(inst.into(), d1), Bool::TRUE);
@@ -160,16 +160,16 @@ fn vector_dims() {
     let mem_block = ir::mem::Id::External(0);
     let mut builder = helper::Builder::new(&signature, context.device());
     let base_addr = builder.cast(&0i64, ir::Type::PtrTo(mem_block));
-    let d0 = builder.open_dim(Size::new(4, vec![], 1));
+    let d0 = builder.open_dim(Size::new_const(4));
     // Test with one vectorizable instruction
     let pattern = builder.tensor_access_pattern(mem_block, &Type::I(8), &[&d0]);
-    let addr = builder.induction_var(&base_addr, vec![(d0, ir::Size::new(1, vec![], 1))]);
+    let addr = builder.induction_var(&base_addr, vec![(d0, ir::Size::new_const(1))]);
     builder.ld(Type::I(8), &addr, pattern.clone());
     assert!(builder.get_clone().domain().get_dim_kind(d0).intersects(DimKind::VECTOR));
     // Test with two insts and a non-vectorizable inst.
     builder.ld(Type::I(8), &addr, pattern);
     builder.close_dim(&d0);
-    let d1 = builder.open_dim(Size::new(4, vec![], 1));
+    let d1 = builder.open_dim(Size::new_const(4));
     builder.mul(&0i32, &0i32);
     builder.close_dim(&d1);
     let space = builder.get();
@@ -189,8 +189,8 @@ fn unroll_dims() {
         builder.get()
     };
     let mut builder = helper::Builder::new(&signature, context.device());
-    let d0 = builder.open_dim(Size::new(64, vec![], 1));
-    let d1 = builder.open_dim(Size::new(4096, vec![], 1));
+    let d0 = builder.open_dim(Size::new_const(64));
+    let d1 = builder.open_dim(Size::new_const(4096));
     let s2 = builder.param_size("n");
     let d2 = builder.open_dim(s2);
     builder.mov(&0i32);
@@ -209,13 +209,13 @@ fn reduce_dim_invariants() {
     let signature = empty_signature(1);
     let mut builder = helper::Builder::new(&signature, context.device());
     let init = builder.cast(&0i64, ir::Type::PtrTo(ir::mem::Id::External(0)));
-    let d0 = builder.open_dim(Size::new(4, vec![], 1));
+    let d0 = builder.open_dim(Size::new_const(4));
     let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
     let reduce = builder.ld(Type::I(64), &helper::Reduce(init), pattern);
 
-    let d1 = builder.open_dim(Size::new(4, vec![], 1));
+    let d1 = builder.open_dim(Size::new_const(4));
     builder.action(Action::IsIterationDim(reduce.into(), d1, Bool::TRUE));
-    let d2 = builder.open_dim(Size::new(4, vec![], 1));
+    let d2 = builder.open_dim(Size::new_const(4));
     builder.order(&d2, &init, !Order::OUTER);
     let space = builder.get();
     assert_eq!(space.domain().get_dim_kind(d0), DimKind::LOOP | DimKind::UNROLL);
@@ -232,7 +232,7 @@ fn rename_thread() {
     let context = fake::Context::default();
     let signature = empty_signature(0);
     let mut builder = helper::Builder::new(&signature, context.device());
-    let d_n_1 = &builder.open_dim_ex(Size::new(8, vec![], 1), DimKind::THREAD);
+    let d_n_1 = &builder.open_dim_ex(Size::new_const(8), DimKind::THREAD);
     builder.mov(&0i32);
     builder.mov(d_n_1);
     gen_best(&context, builder.get());
@@ -245,9 +245,9 @@ fn dim_merge() {
     let context = fake::Context::default();
     let signature = empty_signature(0);
     let mut builder = helper::Builder::new(&signature, context.device());
-    let d0 = builder.open_dim_ex(Size::new(4, vec![], 1), DimKind::LOOP);
+    let d0 = builder.open_dim_ex(Size::new_const(4), DimKind::LOOP);
     builder.mov(&0i32);
-    let d1 = builder.open_dim_ex(Size::new(4, vec![], 1), DimKind::LOOP);
+    let d1 = builder.open_dim_ex(Size::new_const(4), DimKind::LOOP);
     builder.order(&d0, &d1, Order::MERGED);
     gen_best(&context, builder.get());
 }
@@ -259,7 +259,7 @@ fn loop_fusion() {
     let context = fake::Context::default();
     let signature = empty_signature(0);
     let mut builder = helper::Builder::new(&signature, context.device());
-    let d0 = builder.open_dim_ex(Size::new(4, vec![], 1), DimKind::LOOP);
+    let d0 = builder.open_dim_ex(Size::new_const(4), DimKind::LOOP);
     let inst0 = builder.mov(&0i32);
     let d1 = builder.open_mapped_dim(&d0)[0];
     builder.mov(&inst0);
@@ -277,7 +277,7 @@ fn unrolled_loop_unfused_simple() {
     let context = fake::Context::default();
     let signature = empty_signature(0);
     let mut builder = helper::Builder::new(&signature, context.device());
-    let d0 = builder.open_dim_ex(Size::new(4, vec![], 1), DimKind::UNROLL);
+    let d0 = builder.open_dim_ex(Size::new_const(4), DimKind::UNROLL);
     let inst0 = builder.mov(&0i32);
     let d1 = builder.open_mapped_dim(&d0)[0];
     builder.mov(&inst0);
@@ -295,7 +295,7 @@ fn temporary_memory_gen_simple() {
     let context = fake::Context::default();
     let signature = empty_signature(0);
     let mut builder = helper::Builder::new(&signature, context.device());
-    let d0 = builder.open_dim_ex(Size::new(4, vec![], 1), DimKind::LOOP);
+    let d0 = builder.open_dim_ex(Size::new_const(4), DimKind::LOOP);
     let inst0 = builder.mov(&0i32);
     let d1 = builder.open_mapped_dim(&d0)[0];
     builder.mov(&helper::TmpArray(inst0));
@@ -313,10 +313,10 @@ fn unrolled_loop_unfused_reduction() {
     let context = fake::Context::default();
     let signature = empty_signature(0);
     let mut builder = helper::Builder::new(&signature, context.device());
-    let d0 = builder.open_dim_ex(ir::Size::new(4, vec![], 1), DimKind::UNROLL);
+    let d0 = builder.open_dim_ex(ir::Size::new_const(4), DimKind::UNROLL);
     let inst0 = builder.mov(&0i32);
     builder.open_mapped_dim(&d0);
-    let d1 = builder.open_dim_ex(ir::Size::new(1024, vec![], 1), DimKind::LOOP);
+    let d1 = builder.open_dim_ex(ir::Size::new_const(1024), DimKind::LOOP);
     builder.mov(&helper::Reduce(inst0));
 
     builder.order(&d0, &d1, Order::BEFORE);
@@ -333,8 +333,8 @@ fn two_thread_dim_map() {
     let signature = empty_signature(0);
     let mut builder = helper::Builder::new(&signature, context.device());
     // Generate a variable in each thread.
-    let dim0_0 = builder.open_dim_ex(ir::Size::new(32, vec![], 1), DimKind::THREAD);
-    let dim0_1 = builder.open_dim_ex(ir::Size::new(32, vec![], 1), DimKind::THREAD);
+    let dim0_0 = builder.open_dim_ex(ir::Size::new_const(32), DimKind::THREAD);
+    let dim0_1 = builder.open_dim_ex(ir::Size::new_const(32), DimKind::THREAD);
     let x = builder.mov(&0i32);
     // Transpose twice the variable using temporary memory.
     let dim1_0 = builder.open_mapped_dim(&dim0_1);
@@ -355,9 +355,9 @@ fn double_dim_map() {
 
     let mut builder = helper::Builder::new(&signature, context.device());
     // Load from a and b.
-    let dim0_0 = builder.open_dim_ex(ir::Size::new(32, vec![], 1), DimKind::THREAD);
-    let dim0_1 = builder.open_dim_ex(ir::Size::new(32, vec![], 1), DimKind::THREAD);
-    let dim0_2 = builder.open_dim_ex(ir::Size::new(4, vec![], 1), DimKind::UNROLL);
+    let dim0_0 = builder.open_dim_ex(ir::Size::new_const(32), DimKind::THREAD);
+    let dim0_1 = builder.open_dim_ex(ir::Size::new_const(32), DimKind::THREAD);
+    let dim0_2 = builder.open_dim_ex(ir::Size::new_const(4), DimKind::UNROLL);
     let x = builder.mov(&0i32);
     // Transpose and add a and b. Store the result in a.
     let dim1_0 = builder.open_mapped_dim(&dim0_1);

@@ -115,13 +115,13 @@ define enum dim_kind($dim in Dimensions):
   value LOOP:
   /// The dimension is fully unrolled.
   value UNROLL:
-    requires "$dim.size().is_constant()"
+    requires "$dim.possible_sizes().is_some()"
     // It doesn't makes sens to unroll outer loops.
     requires forall $other_dim in Dimensions:
       order($other_dim, $dim) is not INNER || dim_kind($other_dim) is VECTOR | UNROLL
   /// The dimension is implemented by using a vector instruction.
   value VECTOR:
-    requires "$dim.size().is_constant()"
+    requires "$dim.possible_sizes().is_some()"
     requires forall $other_dim in Dimensions:
       order($dim, $other_dim) is not OUTER
   /// The dimension is mapped to a block dimension on the device.
@@ -132,7 +132,7 @@ define enum dim_kind($dim in Dimensions):
       order($dim, $other) is NESTED | MERGED
   /// The dimension is mapped to a thread dimension on the device.
   value THREAD:
-    requires "$dim.size().is_constant()"
+    requires "$dim.possible_sizes().is_some()"
   /// The dimension is parallel.
   alias PARALLEL = BLOCK | THREAD | VECTOR:
   /// The dimension is sequential.
@@ -251,7 +251,7 @@ define enum dim_mapping($lhs in Dimensions, $rhs in Dimensions):
     requires dim_kind($lhs) is UNROLL | VECTOR || order($lhs, $rhs) is MERGED
   /// Values may be transmitted using one register for each thread.
   value THREAD_MAP:
-    requires "$lhs.size().is_constant()"
+    requires "$lhs.possible_sizes().is_some()"
   /// Values are transmitted through registers.
   alias MAPPED = UNROLL_MAP | THREAD_MAP:
 end
@@ -442,13 +442,16 @@ set StaticDimsOf($logical in LogicalDimensions) subsetof StaticDims:
   new_objs = "$objs.static_dims_of"
 end
 
+/// Logical dimension of a dimension with a non-static size.
+// TODO(cleanup): use a more generic set
 set TilingDims($dim in Dimensions) subsetof LogicalDimensions:
   item_type = "ir::dim::LogicalDim"
   id_type = "ir::dim::LogicalId"
   item_getter = "$fun.logical_dimension($id)"
   id_getter = "$item.id()"
   var_prefix = "dim"
-  iterator = "$dim.logical_dim().filter(|_| $dim.size().is_constant()).map(|d| $fun.logical_dimension(d))"
+  iterator =
+    "$dim.logical_dim().filter(|_| $dim.possible_sizes().is_none()).map(|d| $fun.logical_dimension(d))"
   from_superset = "$item.nonstatic_dim().filter(|d| d == $dim.id()).map(|_| $item)"
   reverse forall $logical in LogicalDimensions =
     "$logical.nonstatic_dim().map(|d| $fun.dim(d))"

@@ -20,7 +20,7 @@ pub fn invariants(fun: &ir::Function, op: &ir::Operand, user: ir::BBId) -> Vec<A
                 };
                 actions.push(Action::DimMapping(lhs, rhs, mapping));
                 // FIXME: allow tmp mem with dynamic size when the scope is global.
-                if !fun.dim(lhs).size().is_constant() {
+                if fun.dim(lhs).possible_sizes().is_none() {
                     actions.push(Action::Order(lhs.into(), rhs.into(), Order::MERGED));
                 }
             }

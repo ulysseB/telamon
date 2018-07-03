@@ -19,7 +19,7 @@ impl<'a> DimSize<'a> {
     /// Convert the size into the size type used by the IR.
     pub fn into_ir_size<'b>(&self, builder: &Builder<'b>) -> ir::Size<'b> {
         let params = self.params.iter().map(|p| builder.find_param(p)).collect();
-        ir::Size::new(self.factor, params, 1)
+        ir::Size::new(self.factor, params)
     }
 
     /// Converts the size into a numerical value for a given context.
@@ -51,7 +51,7 @@ impl<'a> TensorBuilder<'a> {
     /// Start building a `Tensor` with the given logical layout.
     pub fn new(name: &'a str, storage_dims: Vec<DimSize<'a>>) -> Self {
         let exposed_dims = (0..storage_dims.len()).collect();
-        TensorBuilder { 
+        TensorBuilder {
             name, storage_dims, exposed_dims,
             read_only: true,
         }
@@ -121,7 +121,7 @@ impl<'a, S> Tensor<'a, S> where S: ScalarArgument {
                read_only: bool,
                mem_id: ir::mem::Id,
                array: std::sync::Arc<ArrayArgument + 'a>) -> Self {
-        let mut incr: DimSize = unwrap!(S::t().len_byte()).into(); 
+        let mut incr: DimSize = unwrap!(S::t().len_byte()).into();
         let mut iter_dims = dim_sizes.into_iter().rev().map(|s| {
             let cur_incr = incr.clone();
             incr.factor *= s.factor;
@@ -140,9 +140,9 @@ impl<'a, S> Tensor<'a, S> where S: ScalarArgument {
             let size = size.into_ir_size(builder);
             let dim = builder.open_tiled_dim(size, tiling);
             let mut stride = stride.into_ir_size(builder);
-            for (d, &t) in dim.ids().rev().zip(tiling.iter().rev()) {
-                induction_levels.push((d, stride.clone())); 
-                stride.mul_factor(t);
+            for d in dim.ids().rev() {
+                induction_levels.push((d, stride.clone()));
+                stride *= builder.dim_size(d);
             }
             induction_levels.push((dim[0], stride));
             dims.push(dim);

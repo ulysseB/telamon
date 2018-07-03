@@ -83,7 +83,7 @@ impl NewObjs {
         self.add_bb(dim);
         self.dimensions.push(dim.id());
         if dim.is_thread_dim() { self.add_thread_dim(dim.id()); }
-        if dim.size().is_constant() { self.static_dims.push(dim.id()); }
+        if dim.possible_sizes().is_some() { self.static_dims.push(dim.id()); }
     }
 
     /// Registers a new basic block.
@@ -103,14 +103,6 @@ impl NewObjs {
     pub fn add_mem_block(&mut self, id: mem::InternalId) {
         self.mem_blocks.push(id.into());
         self.internal_mem_blocks.push(id);
-    }
-
-    /// Registers a new logical dimension.
-    pub fn logical_dim_of(&mut self, logical_dim: &dim::LogicalDim) {
-        self.logical_dims.push(logical_dim.id());
-        for dim in logical_dim.static_dims() {
-            self.static_dims_of.push((logical_dim.id(), dim));
-        }
     }
 }
 

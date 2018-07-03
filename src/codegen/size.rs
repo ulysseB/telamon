@@ -24,9 +24,15 @@ impl<'a> Size<'a> {
     }
 
     /// Converts an `ir::Size` to `Self`.
-    pub fn from_ir(size: &ir::Size<'a>, _: &SearchSpace) -> Self {
-        let dividend = size.dividend().iter().cloned().collect();
-        Size::new(size.factor(), dividend, size.divisor())
+    pub fn from_ir(size: &ir::Size<'a>, space: &SearchSpace) -> Self {
+        let (mut factor, params, dividend, divisor) = size.members();
+        factor *= dividend.iter().map(|&d| {
+            unwrap!(space.domain().get_size(d).as_constrained())
+        }).product::<u32>();
+        let divisor = divisor.iter().map(|&d| {
+            unwrap!(space.domain().get_size(d).as_constrained())
+        }).product();
+        Size::new(factor, params.iter().cloned().collect(), divisor)
     }
 
     /// Returns the size of a dimension if it is staticaly known.
