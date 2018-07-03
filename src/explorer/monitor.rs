@@ -4,6 +4,7 @@ use explorer::candidate::Candidate;
 use explorer::config::Config;
 use explorer::logger::LogMessage;
 use explorer::store::Store;
+use device::Context;
 use futures::channel;
 use futures::prelude::*;
 use futures::executor::block_on;
@@ -26,7 +27,8 @@ impl<T> From<TimeoutError<T>> for CommEnd {
 /// evaluator. Retrieve evaluations, retains the results and update the store accordingly.
 pub fn monitor<'a, T>(config: &Config, candidate_store: &T,
                       recv: channel::mpsc::Receiver<MonitorMessage<'a, T>>,
-                     log_sender: sync::mpsc::SyncSender<LogMessage>)
+                      log_sender: sync::mpsc::SyncSender<LogMessage>,
+                      context: &Context)
     -> Option<Candidate<'a>> where T: Store<'a>
 {
     warn!("Monitor waiting for evaluation results");
@@ -40,6 +42,7 @@ pub fn monitor<'a, T>(config: &Config, candidate_store: &T,
     };
     match res {
         Err(CommEnd::TimedOut) => {
+            candidate_store.probe(context);
             candidate_store.update_cut(0.0);
             log_sender.send(LogMessage::Timeout).unwrap();
             warn!("Timeout expired")
