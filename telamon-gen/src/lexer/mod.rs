@@ -68,7 +68,8 @@ pub type SpannedLexer<Tok, Pos, Err> = Result<(Pos, Tok, Pos), Err>;
 pub struct Lexer {
     scanner: YyScan,
     buffer: YyBufferState,
-    next: Option<SpannedLexer<Token, Position, LexicalError>>,
+    /// Stores the next token.
+    lookahead_token: Option<SpannedLexer<Token, Position, LexicalError>>,
 }
 
 impl Lexer {
@@ -102,7 +103,7 @@ impl From<Vec<u8>> for Lexer {
                 // The function  [yy_scan_bytes](https://westes.github.io/flex/manual/Multiple-Input-Buffers.html)
                 // scans len bytes starting at location bytes. 
                 buffer: buffer,
-                next: None,
+                lookahead_token: None,
             }
         }
     }
@@ -126,8 +127,8 @@ impl Iterator for Lexer {
     type Item = SpannedLexer<Token, Position, LexicalError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.next.is_some() {
-            self.next.take()
+        if self.lookahead_token.is_some() {
+            self.lookahead_token.take()
         } else {
             unsafe {
                 // The function [yylex](https://westes.github.io/flex/manual/Generated-Scanner.html)
@@ -182,14 +183,14 @@ impl Iterator for Lexer {
                                   let mut s: String = s.to_owned();
                                   let mut e = extra.end;
                                   loop {
-                                      let next = self.next();
+                                      let lookahead_token = self.lookahead_token();
                                       if let Some(
                                           Ok((_, Token::Code(ref code), end))
-                                      ) = next {
+                                      ) = lookahead_token {
                                           e = end;
                                           s.push_str(code);
                                       } else {
-                                          self.next = next;
+                                          self.lookahead_token = lookahead_token;
                                           return Some(
                                               Ok((extra.beg, Token::Code(s), e))
                                           )
