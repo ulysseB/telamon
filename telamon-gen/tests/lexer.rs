@@ -481,19 +481,3 @@ fn doc_mode() {
     // Line Comment MultiDoc's Token
     assert_eq!(Lexer::from(b"// comment \n // comment".to_vec()).collect::<Vec<_>>(), vec![]);
 }
-
-#[test]
-fn lexer_code_mode() {
-    assert_eq!(Lexer::from(b"\"_\"".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position { column: 1, ..Default::default() },
-                   Token::Code(String::from("_")),
-                   Position { column: 2, ..Default::default() } 
-                )),
-              ]);
-    assert_eq!(Lexer::from(b"\"__\"".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position { column: 1, ..Default::default() },
-                   Token::Code(String::from("__")),
-                   Position { column: 3, ..Default::default() } 
-                )),
-              ]);
-}

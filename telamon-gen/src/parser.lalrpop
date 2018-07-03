@@ -78,13 +78,13 @@ statement: Spanned<ast::Statement> = {
                 <end: @R> <stmts: enum_stmt*> end => {
         Spanned {
             beg, end,
-            data: ast::Statement::EnumDef {
+            data: ast::Statement::EnumDef(ast::EnumDef {
                 name: Spanned {
                     beg: beg_name,
                     end: end_name,
                     data: name,
                 }, doc, variables: vars, statements: stmts,
-            }
+            })
         }
     },
     <beg: @L> trigger <foralls: (forall <var_def> ":")*> <code: code> when

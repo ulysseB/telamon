@@ -13,7 +13,7 @@ use std::collections::{BTreeSet, hash_map};
 use std::ops::Deref;
 use utils::*;
 
-pub use super::lexer::Spanned;
+pub use super::lexer::{Position, Spanned};
 
 /// Hint is a token representation.
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -39,7 +39,7 @@ impl Hint {
                 beg: _, end: _, data: Statement::SetDef { ..  }
             } => Hint::Set,
             Spanned {
-                beg: _, end: _, data: Statement::EnumDef { .. }
+                beg: _, end: _, data: Statement::EnumDef(..)
             } => Hint::Enum,
             Spanned {
                 beg: _, end: _, data: Statement::IntegerDef { .. }
@@ -82,8 +82,8 @@ impl CheckerContext {
         &self, statement: &Spanned<Statement>
     ) -> Result<(), TypeError> {
         match statement {
-            Spanned { beg, end, data: Statement::EnumDef {
-                name: _, doc: _, variables, ..  } } |
+            Spanned { beg, end, data: Statement::EnumDef(EnumDef {
+                name: _, doc: _, variables, ..  }) } |
             Spanned { beg, end, data: Statement::IntegerDef {
                 name: _, doc: _, variables, ..  } } => {
                 for VarDef { name: _, set: SetRef { name, .. } } in variables {
@@ -148,53 +148,14 @@ impl CheckerContext {
         }
     }
 
-    pub fn subredefinition(
-        &mut self, statement: &Spanned<Statement>
-    ) -> Result<(), TypeError> {
-        match statement {
-            Spanned { beg, end, data: Statement::EnumDef {
-                name: _, doc: _, variables: _, statements, .. } } => {
-                let mut hash: HashMap<String, _> = HashMap::default();
-                for stmt in statements {
-                    match stmt {
-                        EnumStatement::Value(name, _, _) |
-                        EnumStatement::Alias(name, ..) => {
-                            if let Some(_) = hash.insert(
-                                name.to_owned(),
-                                Spanned {
-                                    data: (),
-                                    beg: Default::default(),
-                                    end: Default::default(),
-                                }
-                            ) {
-                                Err(TypeError::Redefinition(Spanned {
-                                    data: Hint::EnumAttribute,
-                                    beg: Default::default(),
-                                    end: Default::default(),
-                                }, Spanned {
-                                    data: name.to_owned(),
-                                    beg: Default::default(),
-                                    end: Default::default(),
-                                }))?;
-                            }
-                        },
-                        _ => {},
-                    }
-                }
-                Ok(())
-            },
-            _ => Ok(()),
-        }
-    }
-
     pub fn redefinition(
         &mut self, statement: &Spanned<Statement>
     ) -> Result<(), TypeError> {
         match statement {
             Spanned { beg: _, end: _, data: Statement::SetDef {
                 name: Spanned { beg, end, data: name, }, .. } } |
-            Spanned { beg: _, end: _, data: Statement::EnumDef {
-                name: Spanned { beg, end, data: name, }, .. } } |
+            Spanned { beg: _, end: _, data: Statement::EnumDef(EnumDef {
+                name: Spanned { beg, end, data: name, }, .. }) } |
             Spanned { beg: _, end: _, data: Statement::IntegerDef {
                 name: Spanned { beg, end, data: name, }, .. } } => {
                 let data: Hint = Hint::from(statement);
@@ -227,7 +188,7 @@ impl Ast {
         for statement in self.statements {
             checker.redefinition(&statement)?;
             checker.undefined(&statement)?;
-            checker.subredefinition(&statement)?;
+            statement.data.type_check()?;
             context.add_statement(statement);
         }
         Ok(context.finalize())
@@ -259,7 +220,7 @@ impl TypingContext {
                     name, doc, arg, superset, disjoint, keys, quotient
                 })
             },
-            Spanned { beg, end, data: stmt @ Statement::EnumDef { .. } } |
+            Spanned { beg, end, data: stmt @ Statement::EnumDef(..) } |
             Spanned { beg, end, data: stmt @ Statement::IntegerDef { .. } } |
             Spanned { beg, end, data: stmt @ Statement::CounterDef { .. } } => {
                 self.choice_defs.push(ChoiceDef::from(stmt))
@@ -289,7 +250,7 @@ impl TypingContext {
         for choice_def in std::mem::replace(&mut self.choice_defs, vec![]) {
             match choice_def {
                 ChoiceDef::EnumDef(EnumDef { name, doc, variables, statements }) =>
-                    self.register_enum(name, doc, variables, statements),
+                    self.register_enum(name.data, doc, variables, statements),
                 ChoiceDef::CounterDef(CounterDef { name, doc, visibility,
                     vars, body, }) =>
                     self.register_counter(name, doc, visibility, vars, body),
@@ -810,12 +771,7 @@ pub enum Statement {
         code: String,
     },
     /// Defines an enum.
-    EnumDef {
-        name: Spanned<String>,
-        doc: Option<String>,
-        variables: Vec<VarDef>,
-        statements: Vec<EnumStatement>
-    },
+    EnumDef(EnumDef),
     TriggerDef {
         foralls: Vec<VarDef>,
         conditions: Vec<Condition>,
@@ -838,6 +794,15 @@ pub enum Statement {
         quotient: Option<Quotient>,
     },
     Require(Constraint),
+}
+
+impl Statement {
+    pub fn type_check(&self) -> Result<(), TypeError> {
+        match self {
+            Statement::EnumDef(enum_def) => enum_def.type_check(),
+            _ => Ok(()),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1252,17 +1217,42 @@ impl PartialEq for IntegerDef {
  
 /// A toplevel definition or constraint.
 #[derive(Clone, Debug)]
-struct EnumDef {
-    name: String,
-    doc: Option<String>,
-    variables: Vec<VarDef>,
-    statements: Vec<EnumStatement>
+pub struct EnumDef {
+    pub name: Spanned<String>,
+    pub doc: Option<String>,
+    pub variables: Vec<VarDef>,
+    pub statements: Vec<EnumStatement>
+}
+
+impl EnumDef {
+    pub fn redefinition(&self) -> Result<(), TypeError> {
+        let mut hash: HashMap<String, _> = HashMap::default();
+        for stmt in self.statements.iter() {
+            match stmt {
+                EnumStatement::Value(name, _, _) | EnumStatement::Alias(name, ..) => {
+                    if let Some(_) = hash.insert(name.to_owned(), Spanned::default()) {
+                        Err(TypeError::Redefinition(
+                            Spanned::new(Hint::EnumAttribute),
+                            Spanned::new(name.to_owned()),
+                        ))?;
+                    }
+                },
+                _ => {},
+            }
+        }
+        Ok(())
+    }
+
+    pub fn type_check(&self) -> Result<(), TypeError> {
+        self.redefinition()?;
+        Ok(())
+    }
 }
 
 impl Default for EnumDef {
     fn default() -> EnumDef {
         EnumDef {
-            name: String::default(),
+            name: Spanned::new(String::default()),
             doc: None,
             variables: vec![],
             statements: vec![],
@@ -1313,13 +1303,17 @@ impl From<Statement> for ChoiceDef {
                     name, doc, visibility, vars, body
                 })
             },
-            Statement::EnumDef { name: Spanned {
-                beg: _,
-                end: _,
-                data: name,
-            }, doc, variables, statements } => {
+            Statement::EnumDef(EnumDef { name: Spanned {
+                beg,
+                end,
+                data,
+            }, doc, variables, statements }) => {
                 ChoiceDef::EnumDef(EnumDef {
-                    name, doc, variables, statements
+                    name: Spanned {
+                        beg,
+                        end,
+                        data,
+                    }, doc, variables, statements
                 })
             },
             Statement::IntegerDef { name: Spanned {
