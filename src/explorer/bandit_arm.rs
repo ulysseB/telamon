@@ -1,5 +1,9 @@
 //! Exploration of the search space.
 
+extern crate rand;
+use rand::prelude::*;
+use rand::distributions::uniform::{Uniform};
+
 use device::Context;
 use explorer::candidate::Candidate;
 use explorer::choice::ActionEx;
@@ -20,18 +24,17 @@ pub struct Tree<'a, 'b> {
     config: &'b BanditConfig,
 }
 
-struct ChoiceStats { }
+struct ChoiceStats {}
 
 impl ChoiceStats {
-    fn decision(&mut self, decision: ActionEx, bound: f64) {
-    }
+    fn decision(&mut self, decision: ActionEx, bound: f64) {}
 }
 
 struct CandidateStats {}
 
 impl CandidateStats {
     fn choice(&mut self) -> ChoiceStats {
-        ChoiceStats { }
+        ChoiceStats {}
     }
 }
 
@@ -299,6 +302,9 @@ impl<'a> SubTree<'a> {
                 }
             }
             SubTree::UnexpandedNode(candidate) => {
+                if Uniform::new(0, 100).sample(&mut thread_rng()) < 95 {
+                    return;
+                }
                 let mut candidate_stats = stats.candidate(
                     candidate
                         .actions
@@ -310,22 +316,45 @@ impl<'a> SubTree<'a> {
                 let start_time = Instant::now();
                 let mut num_choices = 0;
                 let mut num_decisions = 0;
+                let mut num_pruned_decisions = 0;
                 for choice in choice::list(&candidate.space) {
                     num_choices += 1;
                     let mut choice_stats = candidate_stats.choice();
                     for action in choice {
                         num_decisions += 1;
-                        choice_stats.decision(
-                            action.clone(),
-                            candidate
-                                .apply_decision(context, action)
-                                .map(|child| child.bound.value())
-                                .unwrap_or(f64::NAN),
-                        );
+                        let bound = candidate
+                            .apply_decision(context, action.clone())
+                            .map(|child| child.bound.value())
+                            .unwrap_or(f64::NAN);
+                        if bound.is_nan() {
+                            num_pruned_decisions += 1;
+                        }
+                        choice_stats.decision(action, bound);
                     }
                 }
                 let time = start_time.elapsed();
-                println!("Depth: {}, {:?} for {} choices ({} decisions)", candidate.depth, time.as_secs() as f64 + time.subsec_nanos() as f64 * 1e-9, num_choices, num_decisions);
+                println!(
+                    "Depth: {}, {:?} for {} choices ({} decisions, {} pruned)",
+                    candidate.depth,
+                    time.as_secs() as f64 + time.subsec_nanos() as f64 * 1e-9,
+                    num_choices,
+                    num_decisions,
+                    num_pruned_decisions,
+                );
+                if num_choices == 1 {
+                    println!(
+                        "path is {:?}",
+                        candidate
+                            .actions
+                            .into_iter()
+                            .map(Clone::clone)
+                            .collect_vec()
+                    );
+                    println!(
+                        "choice is {:?}",
+                        choice::list(&candidate.space).collect_vec()
+                    );
+                }
                 stats.duration(time)
             }
             SubTree::Empty => (),
