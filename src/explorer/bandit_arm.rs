@@ -320,7 +320,7 @@ impl<'a> Children<'a> {
                 }
             }
             if best_variance > first_variance {
-                info!("first choice {:?} has variance {:?} but choice {:?} has variance {:?}", first_choice, first_variance, best_choice, best_variance);
+                info!("first choice {:?} has variance {:?} but choice {:?} has variance {:?} (x {:?})", first_choice, first_variance, best_choice, best_variance, best_variance / first_variance);
             }
             // -- END --
 
