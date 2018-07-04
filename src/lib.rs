@@ -35,6 +35,9 @@ extern crate tokio_timer;
 #[cfg(feature="cuda")]
 extern crate rustc_serialize;
 #[macro_use]
+extern crate serde_derive;
+extern crate serde;
+#[macro_use]
 extern crate telamon_utils as utils;
 
 pub mod codegen;
