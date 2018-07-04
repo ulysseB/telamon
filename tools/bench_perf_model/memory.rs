@@ -1,6 +1,6 @@
 //! Tests the memory model.
 use telamon::device::{ArgMap, Context};
-use telamon::helper::{SignatureBuilder, Builder, DimGroup, Reduce};
+use telamon::helper::{SignatureBuilder, Builder, Reduce};
 use telamon::ir;
 use telamon::search_space::{Action, DimKind, InstFlag, Order};
 use PerfModelTest;
@@ -204,7 +204,7 @@ impl PerfModelTest for VectorSharedLoad {
         let ld = builder.ld(ir::Type::F(32), &addr, pattern);
         let d4_2 = builder.open_mapped_dim(&d4)[0];
         let acc = builder.add(&Reduce(acc_0), &ld);
-        builder.close_dim(&DimGroup::new(vec![d2, d3, d4_2]));
+        builder.close_dim(&[d2, d3, d4_2]);
         let out_pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
         builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::MEM_CS);
 
@@ -250,7 +250,7 @@ impl PerfModelTest for SharedReplay {
         let val = builder.ld(ir::Type::F(32), &addr, pattern);
         let d3_1 = builder.open_mapped_dim(&d3_0)[0];
         let acc = builder.add(&val, &Reduce(init));
-        builder.close_dim(&DimGroup::new(vec![d2, d4, d3_1]));
+        builder.close_dim(&[d2, d4, d3_1]);
         let out_pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
 
         builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::MEM_CS);
@@ -296,7 +296,7 @@ impl PerfModelTest for VectorSharedReplay {
         let val = builder.ld(ir::Type::F(32), &addr, pattern);
         let d3_1 = builder.open_mapped_dim(&d3_0)[0];
         let acc = builder.add(&val, &Reduce(init));
-        builder.close_dim(&DimGroup::new(vec![d2, d4, d3_1]));
+        builder.close_dim(&[d2, d4, d3_1]);
         let out_pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
 
         builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::MEM_CS);

@@ -24,12 +24,21 @@ impl MetaDimension for ir::dim::Id {
     }
 }
 
+impl<T> MetaDimension for T where T: std::borrow::Borrow<[ir::dim::Id]> {
+    fn ids<'b>(&'b self) -> Box<DoubleEndedIterator<Item=ir::dim::Id> + 'b> {
+        Box::new(self.borrow().iter().cloned())
+    }
+}
+
 /// A groups of dimensions that act as a single logical dimension.
 #[derive(Clone, Default)]
-pub struct DimGroup { dims: Vec<ir::dim::Id> }
+pub struct DimGroup {
+    dims: Vec<ir::dim::Id>
+}
 
 impl DimGroup {
     /// Creates a dimension group containing the given dimensions.
+    #[deprecated]
     pub fn new(dims: Vec<ir::dim::Id>) -> Self { DimGroup { dims } }
 
     /// Iterates over the sub-dimensions of the group.
