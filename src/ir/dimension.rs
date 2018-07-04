@@ -47,12 +47,11 @@ impl<'a> Dimension<'a> {
     /// Creates a new dimension with multiple possibles sizes.
     pub fn with_multi_sizes(id: Id,
                             possible_sizes: Vec<u32>,
-                            logical_dim: LogicalId) -> Self {
+                            logical_dim: Option<LogicalId>) -> Self {
         assert!(!possible_sizes.is_empty());
         Dimension {
-            id, possible_sizes,
+            id, possible_sizes, logical_dim,
             size: ir::Size::new_dim(id),
-            logical_dim: Some(logical_dim),
             iterated: Vec::new(),
             is_thread_dim: false,
         }

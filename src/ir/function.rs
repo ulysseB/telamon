@@ -105,7 +105,7 @@ impl<'a> Function<'a> {
 
     /// Creates a new dimension.
     pub fn add_dim(&mut self, size: Size<'a>) -> Result<dim::Id, ir::Error> {
-        // FIXME: assert the size is not dependent on another size ?
+        assert!(!size.depends_on_dim());
         let id = dim::Id(self.dims.len() as u32);
         self.dims.push(Dimension::new(size, id, None)?);
         Ok(id)
@@ -124,14 +124,14 @@ impl<'a> Function<'a> {
         let (tile_dims, base, max_tiling) = if let Some(size) = size.as_fixed() {
             let sizes = std::iter::once(size/tiling).chain(tile_sizes.iter().cloned());
             self.dims.extend(dim_ids.iter().zip_eq(sizes).map(|(&id, size)| {
-                Dimension::with_multi_sizes(id, vec![size], logical_id)
+                Dimension::with_multi_sizes(id, vec![size], Some(logical_id))
             }));
             (dim_ids.clone(), None, size)
         } else {
             size.tile(&dim_ids[1..].iter().cloned().collect());
             self.dims.push(Dimension::new(size, dim_ids[0], Some(logical_id)));
             self.dims.extend(dim_ids[1..].iter().zip_eq(tile_sizes).map(|(&id, &size)| {
-                Dimension::with_multi_sizes(id, vec![size], logical_id)
+                Dimension::with_multi_sizes(id, vec![size], Some(logical_id))
             }));
             (dim_ids[1..].iter().cloned().collect(), Some(dim_ids[0]), tiling)
         };
@@ -338,8 +338,12 @@ impl<'a> Function<'a> {
         Ok(ir::LoweredDimMap { mem: tmp_mem, store: st, load: ld, dimensions: dims })
     }
 
-    /// Adds multiple dimensions at once, using the sizes of the given dimensions.
+    /// Adds multiple dimensions at once, using the sizes of the given dimensions. If the
+    /// size of the given dimensions is not fixed, the new sizes will have a
+    /// non-constrained size. The caller should thus constrain it to have the size of
+    /// original dimensions.
     fn spawn_mapped_dims(&mut self, old_dims: &[dim::Id]) -> Vec<dim::Id> {
+        // FIXME:
         old_dims.iter().map(|&old_dim| {
             let size = self.dim(old_dim).size().clone();
             unwrap!(self.add_dim(size))

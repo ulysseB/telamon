@@ -51,6 +51,11 @@ impl<'a> Size<'a> {
         (self.static_factor, &self.params_factor, &self.dividend, &self.divisor)
     }
 
+    /// Indicates if the size depends on the size of a dimension.
+    pub fn depends_on_dim(&self) -> bool {
+        !self.dividend.is_empty() || !self.divisor.is_empty()
+    }
+
     /// Returns the size of a dimension if it is staticaly known and doesn't depend on
     /// any decisions.
     pub fn as_fixed(&self) -> Option<u32> {
