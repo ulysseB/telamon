@@ -1,5 +1,6 @@
 //! This file exposes a single function, monitor, that is launched in a special thread and pulls
 //! the evaluations results, store them and then updates the Store accordingly.
+use device::Context;
 use explorer::candidate::Candidate;
 use explorer::config::Config;
 use explorer::logger::LogMessage;
@@ -50,7 +51,7 @@ impl<'a> Default for Status<'a> {
 
 /// This function is an interface supposed to make a connection between the Store and the
 /// evaluator. Retrieve evaluations, retains the results and update the store accordingly.
-pub fn monitor<'a, T>(config: &Config, candidate_store: &T,
+pub fn monitor<'a, T>(config: &Config, context: &Context, candidate_store: &T,
                       recv: channel::mpsc::Receiver<MonitorMessage<'a, T>>,
                       log_sender: sync::mpsc::SyncSender<LogMessage>)
     -> Option<Candidate<'a>> where T: Store<'a>

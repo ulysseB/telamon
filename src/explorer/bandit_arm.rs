@@ -138,6 +138,11 @@ impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
             if res.is_some() { return res }
         }
     }
+
+    fn probe(&self, context: &Context) {
+        let cut = *unwrap!(self.cut.read());
+        unwrap!(self.shared_tree.read()).probe(context, cut);
+    }
 }
 
 
@@ -154,6 +159,19 @@ enum SubTree<'a> {
     UnexpandedNode(Candidate<'a>),
     /// The subtree is empty.
     Empty,
+}
+
+fn compute_variance(values: &Vec<f64>) -> f64 {
+    let length = values.len() as f64;
+    let expectancy = values.iter().sum::<f64>() / length;
+    let expectancy_sq = values.iter().map(|x| x * x).sum::<f64>() / length;
+    let variance = expectancy_sq - expectancy * expectancy;
+    variance
+}
+
+fn compute_bounds_variance<'a>(choices: &Vec<Candidate<'a>>, cut: f64) -> f64 {
+    let bounds = choices.iter().map(|c| c.bound.value() / cut).collect_vec();
+    compute_variance(&bounds)
 }
 
 impl<'a> SubTree<'a> {
@@ -217,6 +235,12 @@ impl<'a> SubTree<'a> {
     fn update_bound(&mut self, bound: f64) {
         if let SubTree::InternalNode(_, ref mut old_bound) = *self { *old_bound = bound }
     }
+
+    fn probe(&self, context: &Context, cut: f64) {
+        if let SubTree::InternalNode(node, _bound) = self {
+            unwrap!(node.read()).probe(context, cut)
+        }
+    }
 }
 
 /// Indicates the current state of a descent in the search tree.
@@ -234,16 +258,18 @@ enum DescendState<'a> {
 pub struct Children<'a> {
     children: Vec<SubTree<'a>>,
     rewards: Vec<(Vec<f64>, usize)>,
+    variance: f64,
 }
 
 impl<'a> Children<'a> {
     /// Creates a new children containing the given candidates, if any. Only keeps
     /// candidates above the cut.
     fn from_candidates(candidates: Vec<Candidate<'a>>, cut: f64) -> Self {
-        let children = candidates.into_iter().filter(|c| c.bound.value() < cut)
-            .map(SubTree::UnexpandedNode).collect_vec();
+        let candidates = candidates.into_iter().filter(|c| c.bound.value() < cut).collect_vec();
+        let variance = compute_bounds_variance(&candidates, cut);
+        let children = candidates.into_iter().map(SubTree::UnexpandedNode).collect_vec();
         let rewards = children.iter().map(|_| (vec![], 0)).collect();
-        Children { children: children, rewards }
+        Children { children: children, rewards, variance }
     }
 
     /// Returns the lowest bound of the children, if any.
@@ -294,6 +320,7 @@ impl<'a> Children<'a> {
             };
 
             // -- BEGIN --
+            /*
             let mut first_choice = None;
             let mut first_variance: f64 = 0.;
             let mut best_choice = None;
@@ -322,6 +349,7 @@ impl<'a> Children<'a> {
             if best_variance > first_variance {
                 info!("first choice {:?} has variance {:?} but choice {:?} has variance {:?} (x {:?})", first_choice, first_variance, best_choice, best_variance, best_variance / first_variance);
             }
+             */
             // -- END --
 
             let choice = choice::list(&cand.space).next();
@@ -387,6 +415,21 @@ impl<'a> Children<'a> {
                 .max_by(|lhs, rhs| cmp_f64(lhs.1, rhs.1));
             max.map(|(idx, value)| (child_idx, idx, value))
         }).max_by(|x1, x2| cmp_f64(x1.2, x2.2))
+    }
+
+    fn probe(&self, context: &Context, cut: f64) {
+        let success_ratios = 
+            self.rewards
+                .iter()
+                .map(|(successes, trials)| {
+                    successes.len() as f64 / *trials as f64
+                }).collect_vec();
+        let success_variance = compute_variance(&success_ratios);
+        let bounds_variance = self.variance;
+        info!("Ratios {:?} (success {:?}, bounds {:?})", success_ratios, success_variance, bounds_variance);
+        for child in self.children.iter() {
+            child.probe(context, cut);
+        }
     }
 }
 

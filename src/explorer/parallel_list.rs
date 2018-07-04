@@ -30,6 +30,8 @@ impl<'a> Store<'a> for ParallelCandidateList<'a> {
             else {return None;}
         }
     }
+
+    fn probe(&self, context: &Context) {}
 }
 
 /// A `CandidateList` that can be accessed by multiple threads.

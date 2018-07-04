@@ -78,7 +78,7 @@ fn launch_search<'a, T>(config: &Config, candidate_store: T, context: &Context)
         scope.builder().name("Telamon - Logger".to_string())
             .spawn( || logger::log(config, log_receiver)).unwrap();
         let best_cand_opt = scope.builder().name("Telamon - Monitor".to_string()).
-            spawn(|| monitor(config, &candidate_store, monitor_receiver, log_sender));
+            spawn(|| monitor(config, context, &candidate_store, monitor_receiver, log_sender));
         explore_space(config, &candidate_store, monitor_sender, context);
         unwrap!(best_cand_opt)
     }).join()
