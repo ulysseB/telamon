@@ -161,17 +161,17 @@ enum SubTree<'a> {
     Empty,
 }
 
-fn compute_variance(values: &Vec<f64>) -> f64 {
+fn moments(values: &Vec<f64>) -> (f64, f64) {
     let length = values.len() as f64;
     let expectancy = values.iter().sum::<f64>() / length;
     let expectancy_sq = values.iter().map(|x| x * x).sum::<f64>() / length;
     let variance = expectancy_sq - expectancy * expectancy;
-    variance
+    (expectancy, variance)
 }
 
 fn compute_bounds_variance<'a>(choices: &Vec<Candidate<'a>>, cut: f64) -> f64 {
     let bounds = choices.iter().map(|c| c.bound.value() / cut).collect_vec();
-    compute_variance(&bounds)
+    moments(&bounds).1
 }
 
 impl<'a> SubTree<'a> {
@@ -254,11 +254,12 @@ enum DescendState<'a> {
     DeadEnd,
 }
 
+
 /// Holds the children of a `SubTree::InternalNode`.
 pub struct Children<'a> {
     children: Vec<SubTree<'a>>,
     rewards: Vec<(Vec<f64>, usize)>,
-    variance: f64,
+    initial_cut: f64,
 }
 
 impl<'a> Children<'a> {
@@ -266,10 +267,13 @@ impl<'a> Children<'a> {
     /// candidates above the cut.
     fn from_candidates(candidates: Vec<Candidate<'a>>, cut: f64) -> Self {
         let candidates = candidates.into_iter().filter(|c| c.bound.value() < cut).collect_vec();
-        let variance = compute_bounds_variance(&candidates, cut);
         let children = candidates.into_iter().map(SubTree::UnexpandedNode).collect_vec();
         let rewards = children.iter().map(|_| (vec![], 0)).collect();
-        Children { children: children, rewards, variance }
+        Children {
+            children: children,
+            rewards,
+            initial_cut: cut,
+        }
     }
 
     /// Returns the lowest bound of the children, if any.
@@ -418,15 +422,13 @@ impl<'a> Children<'a> {
     }
 
     fn probe(&self, context: &Context, cut: f64) {
-        let success_ratios = 
-            self.rewards
-                .iter()
-                .map(|(successes, trials)| {
-                    successes.len() as f64 / *trials as f64
-                }).collect_vec();
-        let success_variance = compute_variance(&success_ratios);
-        let bounds_variance = self.variance;
-        info!("Ratios {:?} (success {:?}, bounds {:?})", success_ratios, success_variance, bounds_variance);
+        let child_stats = self.children
+            .iter()
+            .zip(self.rewards.iter())
+            .map(|(child, (successes, trials))| {
+                (child.bound(), successes.len(), trials)
+            }).collect_vec();
+        info!("({}) {:?}", self.initial_cut, child_stats);
         for child in self.children.iter() {
             child.probe(context, cut);
         }
