@@ -132,11 +132,10 @@ pub trait Kernel<'a>: Sized {
         unwrap!(leaves.into_inner())
     }
 
-    /// Runs the search and benchmarks the resulting candidate.
-    fn benchmark<AM>(config: &explorer::Config,
+    /// Runs the search and returns the best candidate.
+    fn find_best<AM>(config: &explorer::Config,
                      params: Self::Parameters,
-                     num_samples: usize,
-                     context: &mut AM) -> Vec<f64>
+                     context: &mut AM)
         where AM: device::ArgMap + device::Context + 'a
     {
         let kernel;
@@ -146,8 +145,28 @@ pub trait Kernel<'a>: Sized {
             builder.get()
         };
         let search_space = kernel.build_body(&signature, context);
-        let best = unwrap!(explorer::find_best_ex(config, context, search_space),
-                           "no candidates found for kernel {}", Self::name());
+        unwrap!(explorer::find_best_ex(config, context, search_space),
+                "no candidates found for kernel {}", Self::name());
+    }
+
+
+    /// Runs the search and benchmarks the resulting candidate.
+    fn benchmark<AM>(config: &explorer::Config,
+                     params: Self::Parameters,
+                     num_samples: usize,
+                     context: &'a mut AM) -> Vec<f64>
+        where AM: device::ArgMap + device::Context + 'a
+    {
+        let kernel;
+        let signature = {
+            let mut builder = SignatureBuilder::new(Self::name(), context);
+            kernel = Self::build_signature(params, &mut builder);
+            builder.get()
+        };
+        let search_space = kernel.build_body(&signature, context);
+        let best =
+            unwrap!(explorer::find_best_ex(config, context, search_space),
+                    "no candidates found for kernel {}", Self::name());
         let best_fn = codegen::Function::build(&best.space);
         context.benchmark(&best_fn, num_samples)
     }

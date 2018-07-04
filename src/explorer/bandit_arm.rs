@@ -73,9 +73,10 @@ impl<'a, 'b> Tree<'a, 'b> {
                 }
                 DescendState::InternalNode(node, is_new) => {
                     if is_new && self.config.monte_carlo {
-                        let mut lock = unwrap!(node.write());
-                        let res = lock.descend_noexpand(&self.config, context, cut);
-                        std::mem::drop(lock);
+                        let res = {
+                            let mut lock = unwrap!(node.write());
+                            lock.descend_noexpand(&self.config, context, cut)
+                        };
                         // We manually process the first two levels of the search as they
                         // are still in the tree and thus must be updated if needed.
                         let (idx, res2) = if let Some(x) = res { x } else { continue };
@@ -291,6 +292,24 @@ impl<'a> Children<'a> {
                 SubTree::InternalNode(ref node, _) =>
                     return (idx, Err(DescendState::InternalNode(node.clone(), true))),
             };
+
+            // -- BEGIN --
+            info!("Possible choices: ");
+            for choice in choice::list(&cand.space) {
+                let bounds = choice.into_iter().filter_map(|decision| {
+                    cand
+                        .apply_decision(context, decision)
+                        .ok()
+                        .map(|c| c.bound.value() / cut)
+                }).collect_vec();
+                let length = bounds.len() as f64;
+                let expectancy = bounds.iter().sum::<f64>() / length;
+                let expectancy_sq = bounds.iter().map(|x| x * x).sum::<f64>() / length;
+                let variance = expectancy_sq - expectancy * expectancy;
+                info!("    exp={}; var={}", expectancy, variance);
+            }
+            // -- END --
+
             let choice = choice::list(&cand.space).next();
             let out = if let Some(choice) = choice {
                 let cands = cand.apply_choice(context, choice);
