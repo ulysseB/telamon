@@ -294,8 +294,12 @@ impl<'a> Children<'a> {
             };
 
             // -- BEGIN --
-            info!("Possible choices: ");
-            for choice in choice::list(&cand.space) {
+            let mut first_choice = None;
+            let mut first_variance: f64 = 0.;
+            let mut best_choice = None;
+            let mut best_variance: f64 = 0.;
+            for (ix, choice) in choice::list(&cand.space).enumerate() {
+                let choice2 = choice.clone();
                 let bounds = choice.into_iter().filter_map(|decision| {
                     cand
                         .apply_decision(context, decision)
@@ -306,7 +310,17 @@ impl<'a> Children<'a> {
                 let expectancy = bounds.iter().sum::<f64>() / length;
                 let expectancy_sq = bounds.iter().map(|x| x * x).sum::<f64>() / length;
                 let variance = expectancy_sq - expectancy * expectancy;
-                info!("    exp={}; var={}", expectancy, variance);
+                if ix == 0 {
+                    first_choice = Some(choice2.clone());
+                    first_variance = variance;
+                }
+                if variance > best_variance {
+                    best_choice = Some(choice2);
+                    best_variance = variance;
+                }
+            }
+            if best_variance > first_variance {
+                info!("first choice {:?} has variance {:?} but choice {:?} has variance {:?}", first_choice, first_variance, best_choice, best_variance);
             }
             // -- END --
 
