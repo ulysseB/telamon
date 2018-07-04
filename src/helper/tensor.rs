@@ -1,6 +1,6 @@
 //! Utilities to allocate and operate on tensors.
 use device::{ArgMap, ScalarArgument, ArrayArgument, Context, read_array};
-use helper::{Builder, DimGroup, MetaDimension, SignatureBuilder};
+use helper::{Builder, LogicalDim, MetaDimension, SignatureBuilder};
 use ir;
 use itertools::Itertools;
 use ndarray::{self, ArrayD};
@@ -174,12 +174,12 @@ impl<'a, S> Tensor<'a, S> where S: ScalarArgument {
 /// A tensor loaded in registers.
 pub struct VirtualTensor {
     inst: ir::InstId,
-    dims: Vec<DimGroup>,
+    dims: Vec<LogicalDim>,
 }
 
 impl VirtualTensor {
     /// Creates a new `VirtualTensor`.
-    pub fn new(inst: ir::InstId, dims: Vec<DimGroup>) -> Self {
+    pub fn new(inst: ir::InstId, dims: Vec<LogicalDim>) -> Self {
         VirtualTensor { inst, dims }
     }
 
@@ -215,14 +215,14 @@ impl VirtualTensor {
 }
 
 impl std::ops::Index<usize> for VirtualTensor {
-    type Output = DimGroup;
+    type Output = LogicalDim;
 
     fn index(&self, idx: usize) -> &Self::Output { &self.dims[idx] }
 }
 
 impl<'a> IntoIterator for &'a VirtualTensor {
-    type Item = &'a DimGroup;
-    type IntoIter = std::slice::Iter<'a, DimGroup>;
+    type Item = &'a LogicalDim;
+    type IntoIter = std::slice::Iter<'a, LogicalDim>;
 
     fn into_iter(self) -> Self::IntoIter { self.dims.iter() }
 }

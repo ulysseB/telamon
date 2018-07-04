@@ -30,8 +30,8 @@ impl PerfModelTest for L1LinesPressure {
         let init = builder.mov(&0f32);
 
         let d0 = builder.open_dim_ex(size_n.clone(), DimKind::LOOP);
-        let d1_1 = builder.open_mapped_dim(&d1_0)[0];
-        let d2_1 = builder.open_mapped_dim(&d2_0)[0];
+        let d1_1 = builder.open_mapped_dim(&d1_0.into())[0];
+        let d2_1 = builder.open_mapped_dim(&d2_0.into())[0];
         let d3 = builder.open_dim_ex(ir::Size::new_const(UNROLL), DimKind::UNROLL);
         let strides = vec![
             (d3, ir::Size::new_const(THREAD_Y*THREAD_X*32*4)),
@@ -48,8 +48,8 @@ impl PerfModelTest for L1LinesPressure {
         builder.close_dim(&d0);
         builder.close_dim(&d3);
 
-        let d1_2 = builder.open_mapped_dim(&d1_1)[0];
-        let d2_2 = builder.open_mapped_dim(&d2_1)[0];
+        let d1_2 = builder.open_mapped_dim(&d1_1.into())[0];
+        let d2_2 = builder.open_mapped_dim(&d2_1.into())[0];
         let out_pattern = builder.unknown_access_pattern(ir::mem::Id::External(1));
         builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::MEM_CS);
 
@@ -88,8 +88,8 @@ impl PerfModelTest for L2LinesPressure {
         let init = builder.mov(&0f32);
 
         let d0 = builder.open_dim_ex(size_n.clone(), DimKind::LOOP);
-        let d1_1 = builder.open_mapped_dim(&d1_0)[0];
-        let d2_1 = builder.open_mapped_dim(&d2_0)[0];
+        let d1_1 = builder.open_mapped_dim(&d1_0.into())[0];
+        let d2_1 = builder.open_mapped_dim(&d2_0.into())[0];
         let d3 = builder.open_dim_ex(ir::Size::new_const(UNROLL), DimKind::UNROLL);
         let strides = vec![
             (d3, ir::Size::new_const(THREAD_Y*THREAD_X*8*4)),
@@ -106,8 +106,8 @@ impl PerfModelTest for L2LinesPressure {
         builder.close_dim(&d0);
         builder.close_dim(&d3);
 
-        let d1_2 = builder.open_mapped_dim(&d1_1)[0];
-        let d2_2 = builder.open_mapped_dim(&d2_1)[0];
+        let d1_2 = builder.open_mapped_dim(&d1_1.into())[0];
+        let d2_2 = builder.open_mapped_dim(&d2_1.into())[0];
         let out_pattern = builder.unknown_access_pattern(ir::mem::Id::External(1));
         builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::MEM_CS);
 
@@ -202,7 +202,7 @@ impl PerfModelTest for VectorSharedLoad {
         let (addr, pattern) = builder.tensor_access(
             &mem, mem.into(), &ir::Type::F(32), &[&d3, &d4]);
         let ld = builder.ld(ir::Type::F(32), &addr, pattern);
-        let d4_2 = builder.open_mapped_dim(&d4)[0];
+        let d4_2 = builder.open_mapped_dim(&d4.into())[0];
         let acc = builder.add(&Reduce(acc_0), &ld);
         builder.close_dim(&[d2, d3, d4_2]);
         let out_pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
@@ -248,7 +248,7 @@ impl PerfModelTest for SharedReplay {
         let d3_0 = builder.open_dim_ex(ir::Size::new_const(4), DimKind::UNROLL);
         let addr = builder.add(&Reduce(addr_0), &ptr_zero);
         let val = builder.ld(ir::Type::F(32), &addr, pattern);
-        let d3_1 = builder.open_mapped_dim(&d3_0)[0];
+        let d3_1 = builder.open_mapped_dim(&d3_0.into())[0];
         let acc = builder.add(&val, &Reduce(init));
         builder.close_dim(&[d2, d4, d3_1]);
         let out_pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
@@ -294,7 +294,7 @@ impl PerfModelTest for VectorSharedReplay {
         let pattern = builder.tensor_access_pattern(
             mem.into(), &ir::Type::F(32), &[&d0, &d1, &d3_0]);
         let val = builder.ld(ir::Type::F(32), &addr, pattern);
-        let d3_1 = builder.open_mapped_dim(&d3_0)[0];
+        let d3_1 = builder.open_mapped_dim(&d3_0.into())[0];
         let acc = builder.add(&val, &Reduce(init));
         builder.close_dim(&[d2, d4, d3_1]);
         let out_pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));

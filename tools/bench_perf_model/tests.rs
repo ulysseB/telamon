@@ -59,14 +59,14 @@ impl PerfModelTest for Test0 {
         let b_ld = builder.ld_ex(ir::Type::F(32), &b_addr, b_pattern, InstFlag::MEM_CG);
         builder.close_dim(&b_ld_unroll_dim);
         // Store A in shared memory.
-        let a_st_tmp_unroll_dim = builder.open_mapped_dim(&a_ld_unroll_dim);
+        let a_st_tmp_unroll_dim = builder.open_mapped_dim(&a_ld_unroll_dim.into());
         let (a_tmp_addr, a_tmp_st_pattern) = builder.tensor_access(
             &a_tmp_mem, a_tmp_mem.into(), &ir::Type::F(32),
             &[&thread_dim_1, &thread_dim_0, &a_st_tmp_unroll_dim]);
         builder.st(&a_tmp_addr, &a_ld, a_tmp_st_pattern);
         builder.close_dim(&a_st_tmp_unroll_dim);
         // Store B in shared memory.
-        let b_st_tmp_unroll_dim = builder.open_mapped_dim(&b_ld_unroll_dim);
+        let b_st_tmp_unroll_dim = builder.open_mapped_dim(&b_ld_unroll_dim.into());
         let (b_tmp_addr, b_tmp_st_pattern) = builder.tensor_access(
             &b_tmp_mem, b_tmp_mem.into(), &ir::Type::F(32),
             &[&thread_dim_1, &thread_dim_0, &b_st_tmp_unroll_dim]);
@@ -122,7 +122,7 @@ impl PerfModelTest for Test1 {
         let a_val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_CG);
         builder.close_dim(&unroll_dim_a);
         // Mad a and b
-        let unroll_dims_1 = builder.open_mapped_dim(&unroll_dim_0_0);
+        let unroll_dims_1 = builder.open_mapped_dim(&unroll_dim_0_0.into());
         let a_op = builder.dim_map(
             a_val, &[(&unroll_dim_a, &unroll_dims_1[0])], ir::DimMapScope::Thread);
         let acc = builder.mad(&a_op, &2f32, &Reduce(acc_init));
@@ -185,8 +185,8 @@ impl PerfModelTest for Test2 {
 
         let k_size = builder.param_size("k");
         let k_dim = builder.open_dim_ex(k_size, DimKind::LOOP);
-        let thread_dims_0_1 = builder.open_mapped_dim(&thread_dim_0_0);
-        let thread_dims_1_1 = builder.open_mapped_dim(&thread_dim_1_0);
+        let thread_dims_0_1 = builder.open_mapped_dim(&thread_dim_0_0.into());
+        let thread_dims_1_1 = builder.open_mapped_dim(&thread_dim_1_0.into());
         // Load A
         let unroll_dim_a = builder.open_dim_ex(tile_2_size.clone(), DimKind::VECTOR);
         let (addr, pattern) = builder.tensor_access(&a_tmp_mem, a_tmp_mem.into(),
@@ -200,8 +200,8 @@ impl PerfModelTest for Test2 {
         let b_val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_SHARED);
         builder.close_dim(&unroll_dim_b);
         // Mad a and b
-        let unroll_dims_0_1 = builder.open_mapped_dim(&unroll_dim_0_0);
-        let unroll_dims_1_1 = builder.open_mapped_dim(&unroll_dim_1_0);
+        let unroll_dims_0_1 = builder.open_mapped_dim(&unroll_dim_0_0.into());
+        let unroll_dims_1_1 = builder.open_mapped_dim(&unroll_dim_1_0.into());
         let a_op = builder.dim_map(
             a_val, &[(&unroll_dim_a, &unroll_dims_0_1)], ir::DimMapScope::Thread);
         let b_op = builder.dim_map(

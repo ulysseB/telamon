@@ -230,7 +230,7 @@ pub fn parallel_load<'a>(signature: &'a Signature, gpu: &'a Gpu, num_blocks: &st
     };
     let addr = builder.induction_var(&array, strides);
     let val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_CG);
-    let d4_1 = builder.open_mapped_dim(&d4_0)[0];
+    let d4_1 = builder.open_mapped_dim(&d4_0.into())[0];
     let acc = builder.add(&val, &Reduce(init));
     builder.close_dim(&[d0, d3, d4_1]);
     // Write the result
@@ -329,12 +329,12 @@ pub fn chain_in_syncthread<'a>(signature: &'a Signature, device: &'a Device, n_i
 
     let d1 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d2 = builder.open_dim_ex(sync_unroll_size, DimKind::UNROLL);
-    let d3 = builder.open_mapped_dim(&d0)[0];
+    let d3 = builder.open_mapped_dim(&d0.into())[0];
     let d4 = builder.open_dim_ex(add_unroll_size, DimKind::UNROLL);
     let acc = builder.add(&Reduce(init), &2f32);
     builder.close_dim(&[d1, d2, d3, d4]);
 
-    let d5 = builder.open_mapped_dim(&d0)[0];
+    let d5 = builder.open_mapped_dim(&d0.into())[0];
     let pattern = builder.unknown_access_pattern(out_id);
     builder.st_ex(&out, &acc, true, pattern, InstFlag::MEM_CG);
 
@@ -375,7 +375,7 @@ pub fn load_in_loop<'a>(signature: &'a Signature, device: &'a Device, threads: u
         let a_val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_CG);
         builder.close_dim(&unroll_dim_a);
         // Mad a and b
-        let unroll_dims_1 = builder.open_mapped_dim(&unroll_dim_0_0);
+        let unroll_dims_1 = builder.open_mapped_dim(&unroll_dim_0_0.into());
         let a_dim_map = ir::dim::Map::new(vec![(unroll_dim_a, unroll_dims_1[0])]);
         let a_op = ir::Operand::Inst(
             a_val, ir::Type::F(32), a_dim_map, ir::DimMapScope::Thread);

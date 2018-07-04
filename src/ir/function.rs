@@ -105,6 +105,7 @@ impl<'a> Function<'a> {
 
     /// Creates a new dimension.
     pub fn add_dim(&mut self, size: Size<'a>) -> Result<dim::Id, ir::Error> {
+        // FIXME: assert the size is not dependent on another size ?
         let id = dim::Id(self.dims.len() as u32);
         self.dims.push(Dimension::new(size, id, None)?);
         Ok(id)
@@ -115,7 +116,7 @@ impl<'a> Function<'a> {
     // - use the same tiling factors everywhere: tiling_factors: VecSet<u32>
     // - give a number of tiles: num_tiles: usize
     pub fn add_logical_dim(&mut self, mut size: ir::Size<'a>, tile_sizes: &[u32])
-        -> Vec<dim::Id>
+        -> (dim::LogicalId, Vec<dim::Id>)
     {
         let logical_id = dim::LogicalId(self.logical_dims.len() as u32);
         let tiling = tile_sizes.iter().product();
@@ -136,7 +137,7 @@ impl<'a> Function<'a> {
         };
         let logical_dim = dim::LogicalDim::new(logical_id, tile_dims, base, max_tiling);
         self.logical_dims.push(logical_dim);
-        dim_ids
+        (logical_id, dim_ids)
     }
 
     /// Allocates a new memory block.
