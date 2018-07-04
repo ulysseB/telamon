@@ -7,6 +7,8 @@ use explorer::config::{BanditConfig, NewNodeOrder, OldNodeOrder};
 use explorer::store::Store;
 use itertools::Itertools;
 use std;
+use std::io::Write;
+use std::fs::File;
 use std::f64;
 use std::sync::{Weak, Arc, RwLock};
 use utils::*;
@@ -140,7 +142,8 @@ impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
     }
 
     fn probe(&self, context: &Context) {
-        unwrap!(self.shared_tree.read()).probe(context);
+        let mut f = File::create("/tmp/log.csv");
+        unwrap!(self.shared_tree.read()).probe(context, &mut f);
     }
 }
 
@@ -160,17 +163,12 @@ enum SubTree<'a> {
     Empty,
 }
 
-fn moments(values: &Vec<f64>) -> (f64, f64) {
+fn compute_moments(values: &Vec<f64>) -> (f64, f64) {
     let length = values.len() as f64;
     let expectancy = values.iter().sum::<f64>() / length;
     let expectancy_sq = values.iter().map(|x| x * x).sum::<f64>() / length;
     let variance = expectancy_sq - expectancy * expectancy;
     (expectancy, variance)
-}
-
-fn compute_bounds_variance<'a>(choices: &Vec<Candidate<'a>>, cut: f64) -> f64 {
-    let bounds = choices.iter().map(|c| c.bound.value() / cut).collect_vec();
-    moments(&bounds).1
 }
 
 impl<'a> SubTree<'a> {
@@ -235,9 +233,9 @@ impl<'a> SubTree<'a> {
         if let SubTree::InternalNode(_, ref mut old_bound) = *self { *old_bound = bound }
     }
 
-    fn probe(&self, context: &Context) {
+    fn probe(&self, context: &Context, f: &mut File) {
         if let SubTree::InternalNode(node, bound) = self {
-            unwrap!(node.read()).probe(context, *bound)
+            unwrap!(node.read()).probe(context, *bound, f)
         }
     }
 }
@@ -420,16 +418,20 @@ impl<'a> Children<'a> {
         }).max_by(|x1, x2| cmp_f64(x1.2, x2.2))
     }
 
-    fn probe(&self, context: &Context, bound: f64) {
+    fn probe(&self, context: &Context, bound: f64, f: &mut File) {
         let child_stats = self.children
             .iter()
             .zip(self.rewards.iter())
             .map(|(child, (successes, trials))| {
                 (child.bound(), successes.len(), trials)
             }).collect_vec();
-        info!("{:?} (bound: {}, initial cut: {})", child_stats, bound, self.initial_cut);
+        write!(f, "{},{}", self.initial_cut, bound);
+        for (bound, length, trials) in child_stats {
+            write!(f, ",{},{},{}", bound, length, trials);
+        }
+        write!(f, "\n");
         for child in self.children.iter() {
-            child.probe(context);
+            child.probe(context, f);
         }
     }
 }
