@@ -140,8 +140,7 @@ impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
     }
 
     fn probe(&self, context: &Context) {
-        let cut = *unwrap!(self.cut.read());
-        unwrap!(self.shared_tree.read()).probe(context, cut);
+        unwrap!(self.shared_tree.read()).probe(context);
     }
 }
 
@@ -236,9 +235,9 @@ impl<'a> SubTree<'a> {
         if let SubTree::InternalNode(_, ref mut old_bound) = *self { *old_bound = bound }
     }
 
-    fn probe(&self, context: &Context, cut: f64) {
-        if let SubTree::InternalNode(node, _bound) = self {
-            unwrap!(node.read()).probe(context, cut)
+    fn probe(&self, context: &Context) {
+        if let SubTree::InternalNode(node, bound) = self {
+            unwrap!(node.read()).probe(context, *bound)
         }
     }
 }
@@ -421,16 +420,16 @@ impl<'a> Children<'a> {
         }).max_by(|x1, x2| cmp_f64(x1.2, x2.2))
     }
 
-    fn probe(&self, context: &Context, cut: f64) {
+    fn probe(&self, context: &Context, bound: f64) {
         let child_stats = self.children
             .iter()
             .zip(self.rewards.iter())
             .map(|(child, (successes, trials))| {
                 (child.bound(), successes.len(), trials)
             }).collect_vec();
-        info!("({}) {:?}", self.initial_cut, child_stats);
+        info!("{:?} (bound: {}, initial cut: {})", child_stats, bound, self.initial_cut);
         for child in self.children.iter() {
-            child.probe(context, cut);
+            child.probe(context);
         }
     }
 }
