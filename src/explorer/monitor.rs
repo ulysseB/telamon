@@ -22,6 +22,17 @@ impl<T> From<TimeoutError<T>> for CommEnd {
     }
 }
 
+struct Status<'a> {
+    best_candidate: Option<(Candidate<'a>, f64)>,
+    num_evaluations: usize,
+}
+
+impl<'a> Default for Status<'a> {
+    fn default() -> Self {
+        Status { best_candidate: None, num_evaluations: 0, }
+    }
+}
+
 /// This function is an interface supposed to make a connection between the Store and the
 /// evaluator. Retrieve evaluations, retains the results and update the store accordingly.
 pub fn monitor<'a, T>(config: &Config, candidate_store: &T,
@@ -31,13 +42,19 @@ pub fn monitor<'a, T>(config: &Config, candidate_store: &T,
 {
     warn!("Monitor waiting for evaluation results");
     let t0 = Instant::now();
-    let mut best_cand: Option<(Candidate, f64)> = None;
+    let mut status = Status::default();
     let res = if let Some(_) = config.timeout {
         block_until_timeout(
-            config, recv, t0, candidate_store, &log_sender, &mut best_cand)
+            config, recv, t0, candidate_store, &log_sender, &mut status)
     } else {
-        block_unbounded( config, recv, t0, candidate_store, &log_sender, &mut best_cand)
+        block_unbounded( config, recv, t0, candidate_store, &log_sender, &mut status)
     };
+    let duration = t0.elapsed();
+    let duration_secs = duration.as_secs() as f64 + duration.subsec_nanos() as f64 * 1e-9;
+    warn!("Exploration finished in {}s with {} candidates evaluated (avg {} candidate/s).",
+          duration_secs,
+          status.num_evaluations,
+          status.num_evaluations as f64 / duration_secs);
     match res {
         Err(CommEnd::TimedOut) => {
             candidate_store.update_cut(0.0);
@@ -48,7 +65,7 @@ pub fn monitor<'a, T>(config: &Config, candidate_store: &T,
             panic!("an error occured in the monitor while witing for nes candidates"),
         Ok(_) => warn!("No candidates to try anymore"),
     }
-    best_cand.map(|x| x.0)
+    status.best_candidate.map(|x| x.0)
 }
 
 /// Depending on the value of the evaluation we just did, computes the new cut value for the store
@@ -70,11 +87,11 @@ fn block_unbounded<'a, T>(config: &Config,
                           t0: Instant,
                           candidate_store: &T,
                           log_sender: &sync::mpsc::SyncSender<LogMessage>,
-                          best_cand: &mut Option<(Candidate<'a>, f64)>)
+                          status: &mut Status<'a>)
     -> Result<(), CommEnd> where T: Store<'a>
 {
     block_on(receiver.for_each(move |message| {
-        handle_message::<T>(config, message, t0, candidate_store, log_sender, best_cand);
+        handle_message::<T>(config, message, t0, candidate_store, log_sender, status);
         Ok(())
     }).map_err(|_| CommEnd::Other)).map(|_| ())
 }
@@ -86,7 +103,7 @@ fn block_until_timeout<'a, 'b, T>(config: &'b Config,
                                  t0: Instant,
                                  candidate_store: &'b T,
                                  log_sender: &'b sync::mpsc::SyncSender<LogMessage>,
-                                 best_cand: &'b mut Option<(Candidate<'a>, f64)>)
+                                 status: &'b mut Status<'a>)
     -> Result<(), CommEnd> where T: Store<'a>
 {
     let timer = configure_timer();
@@ -94,7 +111,7 @@ fn block_until_timeout<'a, 'b, T>(config: &'b Config,
     let timeout = config.timeout.unwrap_or(10000);
     let time = Duration::from_secs(timeout as u64 * 60);
     block_on(timer.timeout(receiver.for_each(move |message| {
-        handle_message::<T>(config, message, t0, candidate_store, log_sender, best_cand);
+        handle_message::<T>(config, message, t0, candidate_store, log_sender, status);
         Ok(())
     }).map_err(|_| CommEnd::Other), time).map(|_| ()))
 }
@@ -106,20 +123,26 @@ fn handle_message<'a, T>(config: &Config,
                          t0: Instant,
                          candidate_store: &T,
                          log_sender: &sync::mpsc::SyncSender<LogMessage>,
-                         best_cand: &mut Option<(Candidate<'a>, f64)>) where T: Store<'a> {
+                         status: &mut Status<'a>)
+where
+    T: Store<'a>,
+{
     let (cand, eval, cpt, payload) = message;
     let t = Instant::now() - t0;
     warn!("Got a new evaluation, bound: {:.4e} score: {:.4e}, current best: {:.4e}",
-          cand.bound.value(), eval, best_cand.as_ref().map_or(std::f64::INFINITY, |best:
-                                                              &(Candidate, f64)| best.1 ));
-    let change = best_cand.as_ref().map(|&(_, time)| time > eval).unwrap_or(true);
+          cand.bound.value(),
+          eval,
+          status.best_candidate.as_ref().map_or(std::f64::INFINITY, |best:
+                                                &(Candidate, f64)| best.1 ));
+    let change = status.best_candidate.as_ref().map(|&(_, time)| time > eval).unwrap_or(true);
     if change {
         warn!("Got a new best candidate, score: {:.3e}, {}", eval, cand);
         candidate_store.update_cut(get_new_cut(config, eval));
         let log_message = LogMessage::NewBest{score: eval, cpt, timestamp:t};
         log_sender.send(log_message).unwrap();
-        *best_cand = Some((cand, eval));
+        status.best_candidate = Some((cand, eval));
     }
+    status.num_evaluations += 1;
     candidate_store.commit_evaluation(payload, eval);
 }
 

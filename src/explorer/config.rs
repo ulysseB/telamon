@@ -171,6 +171,9 @@ pub struct BanditConfig {
     /// If true, does not expand tree until end - instead, starts a montecarlo descend after each
     /// expansion of a node
     pub monte_carlo: bool,
+    /// The maximum number of descents to perform. Exploration will
+    /// stop after that many number of descents.
+    pub max_descents: Option<usize>,
 }
 
 impl BanditConfig {
@@ -198,6 +201,7 @@ impl Default for BanditConfig {
             threshold: 10,
             delta: 1.,
             monte_carlo: true,
+            max_descents: None,
         }
     }
 }

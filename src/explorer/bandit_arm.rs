@@ -8,13 +8,15 @@ use explorer::store::Store;
 use itertools::Itertools;
 use std;
 use std::f64;
-use std::sync::{ Weak, Arc, RwLock};
+use std::sync::{Weak, Arc, RwLock};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use utils::*;
 
 /// A search tree to perform a multi-armed bandit search.
 pub struct Tree<'a, 'b> {
     shared_tree: Arc<RwLock<SubTree<'a>>>,
     cut: RwLock<f64>,
+    num_descents: Arc<AtomicUsize>,
     config: &'b BanditConfig,
 }
 
@@ -25,6 +27,7 @@ impl<'a, 'b> Tree<'a, 'b> {
         Tree {
             shared_tree: Arc::new(RwLock::new(root)),
             cut: RwLock::new(std::f64::INFINITY),
+            num_descents: Arc::new(AtomicUsize::new(0)),
             config,
         }
     }
@@ -130,6 +133,13 @@ impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
 
     fn explore(&self, context: &Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
         loop {
+            let num_descents = self.num_descents.fetch_add(1, Ordering::Relaxed);
+            if let Some(max_descents) = self.config.max_descents {
+                if num_descents >= max_descents {
+                    return None
+                }
+            }
+
             let cut: f64 = { *unwrap!(self.cut.read()) };
             let state = unwrap!(self.shared_tree.write()).descend(context, cut);
             if let DescendState::DeadEnd = state { return None; }
