@@ -60,7 +60,7 @@ fn enum_field_redefinition() {
 */
 /*
 #[test]
-fn enum_symmetric_two_parameter() {
+fn enum_symmetric_two_parameters() {
     assert_eq!(parser::parse_ast(Lexer::from(
         b"define enum foo():
             symmetric
