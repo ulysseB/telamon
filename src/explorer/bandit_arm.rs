@@ -142,7 +142,7 @@ impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
     }
 
     fn probe(&self, context: &Context) {
-        let mut f = File::create("/tmp/log.csv");
+        let mut f = unwrap!(File::create("/tmp/log.csv"));
         unwrap!(self.shared_tree.read()).probe(context, &mut f);
     }
 }
