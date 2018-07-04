@@ -1,7 +1,7 @@
 //! Describes CUDA-enabled GPUs.
 use codegen::Function;
 use device::{self, Device};
-use device::cuda::printer as p;
+use device::cuda::CudaPrinter;
 use device::cuda::mem_model::{self, MemInfo};
 use ir::{self, Type, Operator};
 use model::{self, HwPressure};
@@ -167,7 +167,8 @@ impl Gpu {
 
     /// Returns the PTX code for a Function.
     pub fn print_ptx(&self, fun: &Function) -> String {
-        p::function(fun, self)
+        let mut printer = CudaPrinter::new();
+        printer.function(fun, self)
     }
 
     /// Returns the description of a load instruction.
@@ -321,7 +322,7 @@ impl Gpu {
 }
 
 impl device::Device for Gpu {
-    fn print(&self, fun: &Function, out: &mut Write) { p::host_function(fun, self, out) }
+    fn print(&self, fun: &Function, out: &mut Write) { let mut printer = CudaPrinter::new(); printer.host_function(fun, self, out) }
 
     fn is_valid_type(&self, t: &Type) -> bool {
         match *t {

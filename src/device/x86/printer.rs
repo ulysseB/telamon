@@ -2,7 +2,7 @@ use codegen::*;
 use device::x86::Namer;
 use ir::{self, op, Type};
 use itertools::Itertools;
-use search_space::{Domain, DimKind};
+use search_space::{Domain, DimKind, InstFlag};
 //use device::printer::Printer;
 // TODO(cc_perf): avoid concatenating strings.
 
@@ -20,9 +20,9 @@ impl X86printer {
     fn param_decl(&mut self, param: &ParamVal, namer: &NameMap) -> String {
         let name = namer.name_param(param.key());
         match param {
-            ParamVal::External(_, par_type) => format!("{} {}", self.get_type(par_type), name),
+            ParamVal::External(_, par_type) => format!("{} {}", self.get_type(*par_type), name),
             ParamVal::Size(_) => format!("uint32_t {}", name),
-            ParamVal::GlobalMem(_, _, par_type) => format!("{} {}", self.get_type(par_type), name),
+            ParamVal::GlobalMem(_, _, par_type) => format!("{} {}", self.get_type(*par_type), name),
         }
     }
 
@@ -33,10 +33,10 @@ impl X86printer {
     fn var_decls(&mut self, namer: &Namer) -> String {
         let print_decl = |(&t, &n)| {
             match t {
-                ir::Type::PtrTo(..) => String::new(),
+                Type::PtrTo(..) => String::new(),
                 _ => {
                     let prefix = Namer::gen_prefix(&t);
-                    let mut s = format!("{} ", self.get_type(&t));
+                    let mut s = format!("{} ", self.get_type(t));
                     s.push_str(&(0..n).map(|i| format!("{}{}", prefix, i)).collect_vec().join(", "));
                     s.push_str(";\n  ");
                     s
@@ -67,67 +67,60 @@ impl X86printer {
     /// Prints a `Function`.
     pub fn function(&mut self, function: &Function) -> String {
         let mut namer = Namer::default();
-        //let (param_decls, body, ld_params, idx_loads, mem_decls);
         let mut return_string;
-        //let mut init = Vec::new();
-        // VAR DECL
-        //let var_decls = self.var_decls(&namer);
         {
-        let name_map = &mut NameMap::new(function, &mut namer);
-        let param_decls = function.device_code_args()
-            .map(|v| self.param_decl(v, name_map))
-            .collect_vec().join(",\n  ");
-        // SIGNATURE AND OPEN BRACKET
-        return_string = format!(include_str!("template/signature.c.template"),
-        name = function.name,
-        params = param_decls
-        );
-        //self.out_function.push_str(&signature);
-        // VAR DECL
-        //self.out_function.push_str(&var_decls);
-        // IDX LOADS
-        let idx_loads = self.decl_par_indexes(function, name_map);
-        self.out_function.push_str(&idx_loads);
-        // LD_PARAM
-        let ld_params = function.device_code_args().map(|val| {
-            format!("{var_name} = {name};// LD_PARAM",
-                    var_name = name_map.name_param_val(val.key()),
-                    name = name_map.name_param(val.key()))
-        }).collect_vec().join("\n  ");
-        self.out_function.push_str(&ld_params);
-        self.out_function.push_str(&"\n");
-        // MEM DECL
-        for block in function.mem_blocks() {
-            match block.alloc_scheme() {
-                AllocationScheme::Shared =>
-                    panic!("No shared mem in cpu!!"),
-                AllocationScheme::PrivatisedGlobal =>
-                    Printer::privatise_global_block(self, block, name_map, function),
-                AllocationScheme::Global => (),
-            }
-        };
-        // Compute size casts
-        for dim in function.dimensions() {
-            if !dim.kind().intersects(DimKind::UNROLL | DimKind::LOOP) { continue; }
-            for level in dim.induction_levels() {
-                if let Some((_, incr)) = level.increment {
-                    let name = name_map.declare_size_cast(incr, level.t());
-                    if let Some(name) = name {
-                        let cpu_t = self.get_type(&level.t());
-                        let old_name = name_map.name_size(incr, Type::I(32));
-                        self.out_function.push_str(&format!("{} = ({}){};\n", name, cpu_t, old_name));
+            let name_map = &mut NameMap::new(function, &mut namer);
+            let param_decls = function.device_code_args()
+                .map(|v| self.param_decl(v, name_map))
+                .collect_vec().join(",\n  ");
+            // SIGNATURE AND OPEN BRACKET
+            return_string = format!(include_str!("template/signature.c.template"),
+            name = function.name,
+            params = param_decls
+            );
+            // INDEX LOADS
+            let idx_loads = self.decl_par_indexes(function, name_map);
+            self.out_function.push_str(&idx_loads);
+            // LOAD PARAM
+            let ld_params = function.device_code_args().map(|val| {
+                format!("{var_name} = {name};// LD_PARAM",
+                        var_name = name_map.name_param_val(val.key()),
+                        name = name_map.name_param(val.key()))
+            }).collect_vec().join("\n  ");
+            self.out_function.push_str(&ld_params);
+            self.out_function.push_str(&"\n");
+            // MEM DECL
+            for block in function.mem_blocks() {
+                match block.alloc_scheme() {
+                    AllocationScheme::Shared =>
+                        panic!("No shared mem in cpu!!"),
+                    AllocationScheme::PrivatisedGlobal =>
+                        Printer::privatise_global_block(self, block, name_map, function),
+                    AllocationScheme::Global => (),
+                }
+            };
+            // Compute size casts
+            for dim in function.dimensions() {
+                if !dim.kind().intersects(DimKind::UNROLL | DimKind::LOOP) { continue; }
+                for level in dim.induction_levels() {
+                    if let Some((_, incr)) = level.increment {
+                        let name = name_map.declare_size_cast(incr, level.t());
+                        if let Some(name) = name {
+                            let cpu_t = self.get_type(level.t());
+                            let old_name = name_map.name_size(incr, Type::I(32));
+                            self.out_function.push_str(&format!("{} = ({}){};\n", name, cpu_t, old_name));
+                        }
                     }
                 }
             }
-        }
-        // INIT
-        let ind_levels = function.init_induction_levels().into_iter()
-            .chain(function.block_dims().iter().flat_map(|d| d.induction_levels()));
-        for level in ind_levels {
-            self.parallel_induction_level(level, name_map);
-        }
-        // BODY
-        self.cfg(function, function.cfg(), name_map);
+            // INIT
+            let ind_levels = function.init_induction_levels().into_iter()
+                .chain(function.block_dims().iter().flat_map(|d| d.induction_levels()));
+            for level in ind_levels {
+                self.parallel_induction_level(level, name_map);
+            }
+            // BODY
+            self.cfg(function, function.cfg(), name_map);
         }
         let var_decls = self.var_decls(&namer);
         return_string.push_str(&var_decls);
@@ -143,11 +136,11 @@ impl X86printer {
             .map(|(i, v)| match v {
                 ParamVal::External(..) if v.is_pointer() => format!("intptr_t p{i} = (intptr_t)*(args + {i})", i = i),
                 ParamVal::External(_, par_type) => format!("{t} p{i} = *({t}*)*(args + {i})", 
-                                                           t = self.get_type(par_type), i = i),
+                                                           t = self.get_type(*par_type), i = i),
                 ParamVal::Size(_) => format!("uint32_t p{i} = *(uint32_t*)*(args + {i})", i = i),
                 // Are we sure we know the size at compile time ? I think we do
                 ParamVal::GlobalMem(_, _, par_type) => format!("{t} p{i} = ({t})*(args + {i})", 
-                                                               t = self.get_type(par_type), i = i)
+                                                               t = self.get_type(*par_type), i = i)
             }
             )
             .collect_vec()
@@ -294,27 +287,27 @@ impl Printer for X86printer {
         format!("{}", n)
     }
 
-    fn get_float(&self, f: f32) -> String {
+    fn get_float(&self, f: f64) -> String {
         format!("{:.4e}", f)
     }
 
-    fn get_type(&mut self, t: &ir::Type) -> &'static str {
-        match *t {
-            Type::Void => "void",
+    fn get_type(&self, t: Type) -> String {
+        match t {
+            Type::Void => String::from("void"),
             //Type::PtrTo(..) => " uint8_t *",
-            Type::PtrTo(..) => "intptr_t",
-            Type::F(32) => "float",
-            Type::F(64) => "double",
-            Type::I(1) => "int8_t",
-            Type::I(8) => "int8_t",
-            Type::I(16) => "int16_t",
-            Type::I(32) => "int32_t",
-            Type::I(64) => "int64_t",
+            Type::PtrTo(..) => String::from("intptr_t"),
+            Type::F(32) => String::from("float"),
+            Type::F(64) => String::from("double"),
+            Type::I(1) => String::from("int8_t"),
+            Type::I(8) => String::from("int8_t"),
+            Type::I(16) => String::from("int16_t"),
+            Type::I(32) => String::from("int32_t"),
+            Type::I(64) => String::from("int64_t"),
             ref t => panic!("invalid type for the host: {}", t)
         }
     }
 
-    fn print_binop(&mut self, return_id: &str, op_type: ir::BinOp, op1: &str, op2: &str, _:&ir::Type, _:&op::Rounding) {
+    fn print_binop(&mut self, return_id: &str, op_type: ir::BinOp, op1: &str, op2: &str, _: Type, _:op::Rounding) {
         let push_str = match op_type {
             ir::BinOp::Add => format!("{} = {} + {};\n", return_id, op1, op2),
             ir::BinOp::Sub => format!("{} = {} - {};\n", return_id, op1, op2),
@@ -323,37 +316,37 @@ impl Printer for X86printer {
         self.out_function.push_str(&push_str);
     }
 
-    fn print_mul(&mut self, return_id: &str, _: op::Rounding, op1: &str, op2: &str, _:&ir::Type, _:&op::Rounding) {
+    fn print_mul(&mut self, return_id: &str, _: op::Rounding, op1: &str, _: Type, op2: &str, _: Type, _: Type) {
         let push_str = format!("{} = {} * {};\n", return_id, op1, op2);
         self.out_function.push_str(&push_str);
     }
 
-    fn print_mad(&mut self, return_id: &str, _: op::Rounding, op1: &str, op2: &str, op3: &str, _:&ir::Type, _:&op::Rounding) {
+    fn print_mad(&mut self, return_id: &str, _: op::Rounding, op1: &str, _: Type, op2: &str, _: Type, op3: &str, _: Type, _: Type) {
         let push_str = format!("{} = {} * {} + {};\n", return_id, op1, op2, op3);
         self.out_function.push_str(&push_str);
     }
 
-    fn print_mov(&mut self, return_id: &str, op: &str, _:&ir::Type) {
+    fn print_mov(&mut self, return_id: &str, op: &str, _: Type) {
         let push_str = format!("{} = {} ;\n", return_id, op);
         self.out_function.push_str(&push_str);
     }
 
-    fn print_ld(&mut self, return_id: &str, val_type: &str,  addr: &str, _:&ir::Type) {
+    fn print_ld(&mut self, return_id: &str, val_type: &str,  addr: &str, _: Type, _: InstFlag) {
         let push_str = format!("{} = *({}*){} ;\n", return_id, val_type, addr);
         self.out_function.push_str(&push_str);
     }
 
-    fn print_st(&mut self, addr: &str, val: &str, val_type: &str) {
+    fn print_st(&mut self, addr: &str, val: &str, val_type: &str, _: InstFlag) {
         let push_str = format!("*({}*){} = {} ;\n", val_type, addr, val);
         self.out_function.push_str(&push_str);
     }
 
-    fn print_cond_st(&mut self, addr: &str, val: &str, cond: &str, str_type: &str) {
+    fn print_cond_st(&mut self, addr: &str, val: &str, cond: &str, str_type: &str, _: InstFlag) {
         let push_str = format!("if ({}) *({} *){} = {} ;\n", cond, str_type, addr, val);
         self.out_function.push_str(&push_str);
     }
 
-    fn print_cast(&mut self, return_id: &str, op1: &str, t: &Type) {
+    fn print_cast(&mut self, return_id: &str, op1: &str, t: Type, _: op::Rounding) {
         let push_str = format!("{} = ({}) {};\n", return_id, self.get_type(t), op1);
         self.out_function.push_str(&push_str);
     }
