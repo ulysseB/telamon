@@ -59,7 +59,7 @@ impl TreeStats {
         let duration: Duration = self.timings.iter().sum();
         let total_time =
             duration.as_secs() as f64 + duration.subsec_nanos() as f64 * 1e-9;
-        println!("Avg time: {:?}", total_time / (self.timings.len() as f64));
+        println!("Avg time ({}): {:?}", self.timings.len(), total_time / (self.timings.len() as f64));
     }
 }
 
@@ -302,9 +302,9 @@ impl<'a> SubTree<'a> {
                 }
             }
             SubTree::UnexpandedNode(candidate) => {
-                if Uniform::new(0, 100).sample(&mut thread_rng()) < 95 {
+                /*if Uniform::new(0, 100).sample(&mut thread_rng()) < 95 {
                     return;
-                }
+                }*/
                 let mut candidate_stats = stats.candidate(
                     candidate
                         .actions
@@ -320,6 +320,7 @@ impl<'a> SubTree<'a> {
                 for choice in choice::list(&candidate.space) {
                     num_choices += 1;
                     let mut choice_stats = candidate_stats.choice();
+print!("{:?}@{}[{}]: ", choice, candidate.bound.value(), cut);
                     for action in choice {
                         num_decisions += 1;
                         let bound = candidate
@@ -330,7 +331,9 @@ impl<'a> SubTree<'a> {
                             num_pruned_decisions += 1;
                         }
                         choice_stats.decision(action, bound);
+print!("{} ", bound);
                     }
+println!("");
                 }
                 let time = start_time.elapsed();
                 println!(
