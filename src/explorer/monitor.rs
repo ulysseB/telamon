@@ -14,11 +14,26 @@ use tokio_timer::*;
 
 pub type MonitorMessage<'a, T> = (Candidate<'a>, f64, usize, <T as Store<'a>>::PayLoad);
 
-enum CommEnd { TimedOut, Other }
+/// Indicates why the exploration was terminated.
+pub enum TerminationReason {
+    /// The maximal number of evaluation was reached.
+    MaxEvaluation,
+    /// The timeout was reached.
+    Timeout,
+}
 
-impl<T> From<TimeoutError<T>> for CommEnd {
-    fn from(_: TimeoutError<T>) -> Self {
-        CommEnd::TimedOut
+impl<T> From<TimeoutError<T>> for TerminationReason {
+    fn from(_: TimeoutError<T>) -> Self { TerminationReason::Timeout }
+}
+
+impl std::fmt::Display for TerminationReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            TerminationReason::MaxEvaluation =>
+                write!(f, "the maximum number of evaluation was reached"),
+            TerminationReason::Timeout =>
+                write!(f, "the maximum exploration time was reached"),
+        }
     }
 }
 
@@ -37,7 +52,7 @@ impl<'a> Default for Status<'a> {
 /// evaluator. Retrieve evaluations, retains the results and update the store accordingly.
 pub fn monitor<'a, T>(config: &Config, candidate_store: &T,
                       recv: channel::mpsc::Receiver<MonitorMessage<'a, T>>,
-                     log_sender: sync::mpsc::SyncSender<LogMessage>)
+                      log_sender: sync::mpsc::SyncSender<LogMessage>)
     -> Option<Candidate<'a>> where T: Store<'a>
 {
     warn!("Monitor waiting for evaluation results");
@@ -56,14 +71,12 @@ pub fn monitor<'a, T>(config: &Config, candidate_store: &T,
           status.num_evaluations,
           status.num_evaluations as f64 / duration_secs);
     match res {
-        Err(CommEnd::TimedOut) => {
-            candidate_store.update_cut(0.0);
-            log_sender.send(LogMessage::Timeout).unwrap();
-            warn!("Timeout expired")
-        }
-        Err(CommEnd::Other) =>
-            panic!("an error occured in the monitor while witing for nes candidates"),
         Ok(_) => warn!("No candidates to try anymore"),
+        Err(reason) => {
+            warn!("exploration stoped because {}", reason);
+            candidate_store.update_cut(0.0);
+            unwrap!(log_sender.send(LogMessage::Finished(reason)));
+        },
     }
     status.best_candidate.map(|x| x.0)
 }
@@ -88,12 +101,11 @@ fn block_unbounded<'a, T>(config: &Config,
                           candidate_store: &T,
                           log_sender: &sync::mpsc::SyncSender<LogMessage>,
                           status: &mut Status<'a>)
-    -> Result<(), CommEnd> where T: Store<'a>
+    -> Result<(), TerminationReason> where T: Store<'a>
 {
-    block_on(receiver.for_each(move |message| {
-        handle_message::<T>(config, message, t0, candidate_store, log_sender, status);
-        Ok(())
-    }).map_err(|_| CommEnd::Other)).map(|_| ())
+    block_on(receiver.map_err(|n| n.never_into()).for_each(move |message| {
+        handle_message::<T>(config, message, t0, candidate_store, log_sender, status)
+    })).map(|_| ())
 }
 
 /// Given a receiver channel, builds a future that returns whenever the tree has been fully
@@ -104,16 +116,15 @@ fn block_until_timeout<'a, 'b, T>(config: &'b Config,
                                  candidate_store: &'b T,
                                  log_sender: &'b sync::mpsc::SyncSender<LogMessage>,
                                  status: &'b mut Status<'a>)
-    -> Result<(), CommEnd> where T: Store<'a>
+    -> Result<(), TerminationReason> where T: Store<'a>
 {
     let timer = configure_timer();
     //TODO Find a clean way to get a timeout that never returns - or no timeout at all
     let timeout = config.timeout.unwrap_or(10000);
     let time = Duration::from_secs(timeout as u64 * 60);
-    block_on(timer.timeout(receiver.for_each(move |message| {
-        handle_message::<T>(config, message, t0, candidate_store, log_sender, status);
-        Ok(())
-    }).map_err(|_| CommEnd::Other), time).map(|_| ()))
+    block_on(timer.timeout(receiver.map_err(|n| n.never_into()).for_each(move |message| {
+        handle_message::<T>(config, message, t0, candidate_store, log_sender, status)
+    }).map(|_| ()), time))
 }
 
 /// All work that has to be done on reception of a message, meaning updating the best cand if
@@ -123,7 +134,7 @@ fn handle_message<'a, T>(config: &Config,
                          t0: Instant,
                          candidate_store: &T,
                          log_sender: &sync::mpsc::SyncSender<LogMessage>,
-                         status: &mut Status<'a>)
+                         status: &mut Status<'a>) -> Result<(), TerminationReason>
 where
     T: Store<'a>,
 {
@@ -144,6 +155,7 @@ where
     }
     status.num_evaluations += 1;
     candidate_store.commit_evaluation(payload, eval);
+    Ok(())
 }
 
 /// Builds and returns a timer that suits our needs - that is, which timeout can be set to at least
