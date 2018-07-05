@@ -254,12 +254,12 @@ pub trait Printer {
             },
             op::Mov(ref op) => {
 
-                self.print_mov(&namer.name_inst(inst), &namer.name_op(op), Self::lower_type(inst.t()))
+                self.print_mov(&namer.name_inst(inst), &namer.name_op(op), Self::lower_type(inst.t(), fun))
             },
             op::Ld(ld_type, ref addr, _) => {
 
                 //let ld_type = self.get_type(ld_type);
-                self.print_ld(&namer.name_inst(inst), &ld_type, &namer.name_op(addr), inst.t(), unwrap!(inst.mem_flag()))
+                self.print_ld(&namer.name_inst(inst), ld_type, &namer.name_op(addr), inst.t(), unwrap!(inst.mem_flag()))
             },
             op::St(ref addr, ref val, _,  _) => {
                 let op_type = val.t();
