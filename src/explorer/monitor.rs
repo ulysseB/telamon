@@ -17,7 +17,7 @@ pub type MonitorMessage<'a, T> = (Candidate<'a>, f64, usize, <T as Store<'a>>::P
 /// Indicates why the exploration was terminated.
 pub enum TerminationReason {
     /// The maximal number of evaluation was reached.
-    MaxEvaluation,
+    MaxEvaluations,
     /// The timeout was reached.
     Timeout,
 }
@@ -29,8 +29,8 @@ impl<T> From<TimeoutError<T>> for TerminationReason {
 impl std::fmt::Display for TerminationReason {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            TerminationReason::MaxEvaluation =>
-                write!(f, "the maximum number of evaluation was reached"),
+            TerminationReason::MaxEvaluations =>
+                write!(f, "the maximum number of evaluations was reached"),
             TerminationReason::Timeout =>
                 write!(f, "the maximum exploration time was reached"),
         }
@@ -39,7 +39,7 @@ impl std::fmt::Display for TerminationReason {
 
 struct Status<'a> {
     best_candidate: Option<(Candidate<'a>, f64)>,
-    num_evaluations: usize,
+    num_evaluations: u64,
 }
 
 impl<'a> Default for Status<'a> {
@@ -73,7 +73,7 @@ pub fn monitor<'a, T>(config: &Config, candidate_store: &T,
     match res {
         Ok(_) => warn!("No candidates to try anymore"),
         Err(reason) => {
-            warn!("exploration stoped because {}", reason);
+            warn!("exploration stopped because {}", reason);
             candidate_store.update_cut(0.0);
             unwrap!(log_sender.send(LogMessage::Finished(reason)));
         },
@@ -155,6 +155,12 @@ where
     }
     status.num_evaluations += 1;
     candidate_store.commit_evaluation(payload, eval);
+
+    if let Some(max_evaluations) = config.max_evaluations {
+        if status.num_evaluations >= max_evaluations {
+            return Err(TerminationReason::MaxEvaluations)
+        }
+    }
     Ok(())
 }
 

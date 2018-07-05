@@ -19,7 +19,7 @@ pub fn log(config: &Config, recv: mpsc::Receiver<LogMessage>) {
                 log_monitor(score, cpt, timestamp, &mut write_buffer);
             }
             LogMessage::Finished(reason) =>{
-                unwrap!(writeln!(write_buffer, "search stoped because {}", reason));
+                unwrap!(writeln!(write_buffer, "search stopped because {}", reason));
             }
             // For now the evaluator is the only one to send logs, so we just ignore any other
             // types of message
