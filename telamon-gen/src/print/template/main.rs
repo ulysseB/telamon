@@ -403,7 +403,7 @@ impl NumericSet {
         self.len = new_lhs;
     }
 
-    fn complement(&self, universe: &[u16]) -> Self {
+    fn complement(&self, universe: &[u32]) -> Self {
         let mut values = [0; Self::MAX_LEN];
         let mut self_idx = 0;
         let mut new_idx = 0;
