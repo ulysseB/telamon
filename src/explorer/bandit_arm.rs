@@ -8,6 +8,7 @@ use explorer::{choice, local_selection};
 use explorer::config::{BanditConfig, NewNodeOrder, OldNodeOrder};
 use explorer::store::Store;
 use itertools::Itertools;
+use rand::{Rng, thread_rng};
 use search_space::Choice;
 use std;
 use std::io::Write;
@@ -216,7 +217,10 @@ impl<'a> SubTree<'a> {
                 DescendState::InternalNode(node, false)
             },
             SubTree::UnexpandedNode(candidate) => {
-                let choice = choice::list(&candidate.space).next();
+                // Random choice of the choice
+                let choices = choice::list(&candidate.space).collect_vec();
+                let num_choices = choices.len();
+                let choice = choices.into_iter().nth(thread_rng().gen_range(0, num_choices));
                 if let Some(choice) = choice {
                     let candidates = candidate.apply_choice(context, choice);
                     let children = Children::from_candidates(candidates, cut);
