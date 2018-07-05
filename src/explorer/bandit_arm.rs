@@ -445,11 +445,12 @@ impl<'a> Children<'a> {
                     CandidateStats {
                         bound: child.bound(),
                         num_successes: successes.len(),
-                        num_trials,
+                        num_trials: *num_trials,
                     }
                 }).collect_vec(),
         };
-        unwrap!(f.write_all(serde_pickle::to_vec(&stats, true)?));
+        unwrap!(f.write_all(&unwrap!(serde_pickle::to_vec(&stats, true))));
+        panic!("we done.");
 
         for child in self.children.iter() {
             child.probe(context, f);
