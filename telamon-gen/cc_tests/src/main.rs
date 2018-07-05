@@ -37,6 +37,9 @@ mod single_enum {
         assert_eq!(x, Foo::AB);
         x &= Foo::BC;
         assert_eq!(x, Foo::B);
+        // Test complement.
+        let fun = ir::Function::default();
+        assert_eq!(Action::Foo(Foo::A).complement(&fun), Some(Action::Foo(Foo::BC)));
 
         // Ensure `failed`, `all` and `is_failed` are working.
         assert!(Foo::FAILED.is_failed());
@@ -82,6 +85,11 @@ mod single_enum {
         let mut all0_2 = all0;
         all0_2.insert(all0);
         assert_eq!(all0_2, all0);
+
+        // Test action complement.
+        let fun = ir::Function::default();
+        assert_eq!(Action::Bar(NumericSet::all(&[1, 4])).complement(&fun),
+                   Some(Action::Bar(NumericSet::all(&[2, 8]))));
 
         // Test comparison operators.
         assert!(all0.lt(Range::new_eq(&Range::ALL, 9)));
