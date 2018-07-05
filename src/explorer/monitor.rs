@@ -153,12 +153,22 @@ where
         log_sender.send(log_message).unwrap();
         status.best_candidate = Some((cand, eval));
     }
-    status.num_evaluations += 1;
     candidate_store.commit_evaluation(payload, eval);
 
-    if let Some(max_evaluations) = config.max_evaluations {
-        if status.num_evaluations >= max_evaluations {
-            return Err(TerminationReason::MaxEvaluations)
+    // Note that it is possible that we actually didn't make an
+    // evaluation here, because the evaluator may return an infinite
+    // runtime for some of the candidates in its queue when a new best
+    // candidate was found. In this case, `eval` is be infinite, and
+    // we don't count the corresponding evaluation towards the number
+    // of evaluations performed (a sequential, non-parallel
+    // implementation of the search algorithm would not have selected
+    // this candidate since it would get cut).
+    if !eval.is_infinite() {
+        status.num_evaluations += 1;
+        if let Some(max_evaluations) = config.max_evaluations {
+            if status.num_evaluations >= max_evaluations {
+                return Err(TerminationReason::MaxEvaluations)
+            }
         }
     }
     Ok(())
