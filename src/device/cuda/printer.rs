@@ -300,8 +300,8 @@ impl Printer for CudaPrinter {
  }
 
     /// Print return_id = op1 op op2
-    fn print_binop(&mut self, return_id: &str, op_type: ir::BinOp, op1: &str, op2: &str, r_type: Type, round: op::Rounding) {
-        let return_str = format!("{}{}.{} {}, {}, {};\n", Self::binary_op(op_type),  Self::rounding(round), self.get_type(r_type), return_id, op1, op2);
+    fn print_binop(&mut self, op: ir::BinOp, return_type: Type, rounding: op::Rounding, return_id: &str, lhs: &str, rhs: &str) { 
+    let return_str = format!("{}{}.{} {}, {}, {};\n", Self::binary_op(op),  Self::rounding(rounding), self.get_type(return_type), return_id, lhs, rhs);
         self.out_function.push_str(&return_str);
     }
 
@@ -328,33 +328,33 @@ impl Printer for CudaPrinter {
     }
 
     /// Print return_id = op 
-    fn print_mov(&mut self, return_id: &str, op: &str, r_type: Type) {
-        let return_str = format!("mov.{} {}, {};\n", self.get_type(r_type), return_id, op);
+    fn print_mov(&mut self, return_type: Type, return_id: &str, op: &str) {
+        let return_str = format!("mov.{} {}, {};\n", self.get_type(return_type), return_id, op);
         self.out_function.push_str(&return_str);
     }
 
     /// Print return_id = load [addr] 
-    fn print_ld(&mut self, return_id: &str, cast_type: Type,  addr: &str, r_type: Type, mem_flag: InstFlag) {
-        let return_str = format!("{}.{} {}, [{}];\n", Self::ld_operator(mem_flag), self.get_type(r_type), return_id,  addr);
+    fn print_ld(&mut self, return_type: Type, flag: InstFlag, return_id: &str,  addr: &str) {
+        let return_str = format!("{}.{} {}, [{}];\n", Self::ld_operator(flag), self.get_type(return_type), return_id,  addr);
         self.out_function.push_str(&return_str);
     }
 
     /// Print store val [addr] 
-    fn print_st(&mut self, addr: &str, val: &str, val_type: &str, mem_flag: InstFlag) {
+    fn print_st(&mut self, val_type: Type, mem_flag: InstFlag, addr: &str, val: &str) {
         let operator = Self::st_operator(mem_flag);
-        let return_str = format!("{}.{} [{}], {};\n", operator, val_type, addr, val);
+        let return_str = format!("{}.{} [{}], {};\n", operator, self.get_type(val_type), addr, val);
         self.out_function.push_str(&return_str);
     }
 
     /// Print if (cond) store val [addr] 
-    fn print_cond_st(&mut self, addr: &str, val: &str, cond: &str, val_type: &str, mem_flag: InstFlag) {
+    fn print_cond_st(&mut self, val_type: Type, mem_flag: InstFlag, cond: &str, addr: &str, val: &str) {
         let operator = Self::st_operator(mem_flag);
-        let return_str = format!("@{} {}.{} [{}], {};\n", cond, operator, val_type, addr, val);
+        let return_str = format!("@{} {}.{} [{}], {};\n", cond, operator, self.get_type(val_type), addr, val);
         self.out_function.push_str(&return_str);
     }
 
     /// Print return_id = (val_type) val
-    fn print_cast(&mut self, return_id: &str, op1: &str, t: Type, round: op::Rounding) {
+    fn print_cast(&mut self, t: Type, round: op::Rounding, return_id: &str, op1: &str) {
         let operator = format!("cvt{}.{}", Self::rounding(round), self.get_type(t));
         let return_str = format!("{} {}, {}\n",  operator, return_id, op1);
         self.out_function.push_str(&return_str);

@@ -307,11 +307,11 @@ impl Printer for X86printer {
         }
     }
 
-    fn print_binop(&mut self, return_id: &str, op_type: ir::BinOp, op1: &str, op2: &str, _: Type, _:op::Rounding) {
-        let push_str = match op_type {
-            ir::BinOp::Add => format!("{} = {} + {};\n", return_id, op1, op2),
-            ir::BinOp::Sub => format!("{} = {} - {};\n", return_id, op1, op2),
-            ir::BinOp::Div => format!("{} = {} / {};\n", return_id, op1, op2),
+    fn print_binop(&mut self, op: ir::BinOp, _: Type, _: op::Rounding, return_id: &str, lhs: &str, rhs: &str) { 
+        let push_str = match op {
+            ir::BinOp::Add => format!("{} = {} + {};\n", return_id, lhs, rhs),
+            ir::BinOp::Sub => format!("{} = {} - {};\n", return_id, lhs, rhs),
+            ir::BinOp::Div => format!("{} = {} / {};\n", return_id, lhs, rhs),
         };
         self.out_function.push_str(&push_str);
     }
@@ -326,27 +326,27 @@ impl Printer for X86printer {
         self.out_function.push_str(&push_str);
     }
 
-    fn print_mov(&mut self, return_id: &str, op: &str, _: Type) {
+    fn print_mov(&mut self, _: Type, return_id: &str, op: &str) {
         let push_str = format!("{} = {} ;\n", return_id, op);
         self.out_function.push_str(&push_str);
     }
 
-    fn print_ld(&mut self, return_id: &str, cast_type: Type,  addr: &str, _: Type, _: InstFlag) {
-        let push_str = format!("{} = *({}*){} ;\n", return_id, self.get_type(cast_type), addr);
+    fn print_ld(&mut self, return_type: Type, _: InstFlag, return_id: &str,  addr: &str) {
+        let push_str = format!("{} = *({}*){} ;\n", return_id, self.get_type(return_type), addr);
         self.out_function.push_str(&push_str);
     }
 
-    fn print_st(&mut self, addr: &str, val: &str, val_type: &str, _: InstFlag) {
-        let push_str = format!("*({}*){} = {} ;\n", val_type, addr, val);
+    fn print_st(&mut self, val_type: Type, _: InstFlag, addr: &str, val: &str) {
+        let push_str = format!("*({}*){} = {} ;\n", self.get_type(val_type), addr, val);
         self.out_function.push_str(&push_str);
     }
 
-    fn print_cond_st(&mut self, addr: &str, val: &str, cond: &str, str_type: &str, _: InstFlag) {
-        let push_str = format!("if ({}) *({} *){} = {} ;\n", cond, str_type, addr, val);
+    fn print_cond_st(&mut self, val_type: Type, _: InstFlag, cond: &str, addr: &str, val: &str) {
+        let push_str = format!("if ({}) *({} *){} = {} ;\n", cond, self.get_type(val_type), addr, val);
         self.out_function.push_str(&push_str);
     }
 
-    fn print_cast(&mut self, return_id: &str, op1: &str, t: Type, _: op::Rounding) {
+    fn print_cast(&mut self, t: Type, _: op::Rounding, return_id: &str, op1: &str) {
         let push_str = format!("{} = ({}) {};\n", return_id, self.get_type(t), op1);
         self.out_function.push_str(&push_str);
     }
