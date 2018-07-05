@@ -239,6 +239,10 @@
 <span id="239">239</span>
 <span id="240">240</span>
 <span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Defines a structure to store the configuration of the exploration. The configuration</span>
 <span class="doccomment">//! is read from the `Setting.toml` file if it exists. Some parameters can be overridden</span>
@@ -267,6 +271,9 @@
     <span class="kw">pub</span> <span class="ident">stop_bound</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Indicates the search must be stopped after the given number of minutes.</span>
     <span class="kw">pub</span> <span class="ident">timeout</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
+    <span class="doccomment">/// Indicates the search must be stopped after the given number of</span>
+    <span class="doccomment">/// candidates have been evaluated.</span>
+    <span class="kw">pub</span> <span class="ident">max_evaluations</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u64</span><span class="op">&gt;</span>,
     <span class="doccomment">/// A percentage cut indicate that we only care to find a candidate that is in a</span>
     <span class="doccomment">/// certain range above the best Therefore, if cut_under is 20%, we can discard any</span>
     <span class="doccomment">/// candidate whose bound is above 80% of the current best.</span>
@@ -357,6 +364,7 @@
             <span class="ident">algorithm</span>: <span class="ident">SearchAlgorithm</span>::<span class="ident">default</span>(),
             <span class="ident">stop_bound</span>: <span class="prelude-val">None</span>,
             <span class="ident">timeout</span>: <span class="prelude-val">None</span>,
+            <span class="ident">max_evaluations</span>: <span class="prelude-val">None</span>,
             <span class="ident">distance_to_best</span>: <span class="prelude-val">None</span>,
         }
     }

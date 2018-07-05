@@ -45,18 +45,17 @@
 <span id="45">45</span>
 <span id="46">46</span>
 <span id="47">47</span>
-<span id="48">48</span>
 </pre><pre class="rust ">
-
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">mpsc</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fs</span>::<span class="ident">File</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>::{<span class="ident">Write</span>, <span class="ident">BufWriter</span>};
 <span class="kw">use</span> <span class="ident">explorer</span>::<span class="ident">config</span>::<span class="ident">Config</span>;
+<span class="kw">use</span> <span class="ident">explorer</span>::<span class="ident">monitor</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Duration</span>;
 
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">LogMessage</span> {
-    <span class="ident">NewBest</span>{<span class="ident">score</span>: <span class="ident">f64</span>, <span class="ident">cpt</span>: <span class="ident">usize</span>, <span class="ident">timestamp</span>: <span class="ident">Duration</span>},
-    <span class="ident">Timeout</span>,
+    <span class="ident">NewBest</span> { <span class="ident">score</span>: <span class="ident">f64</span>, <span class="ident">cpt</span>: <span class="ident">usize</span>, <span class="ident">timestamp</span>: <span class="ident">Duration</span> },
+    <span class="ident">Finished</span>(<span class="ident">monitor</span>::<span class="ident">TerminationReason</span>),
 }
 
 
@@ -67,9 +66,8 @@
             <span class="ident">LogMessage</span>::<span class="ident">NewBest</span>{<span class="ident">score</span>, <span class="ident">cpt</span>, <span class="ident">timestamp</span>} <span class="op">=&gt;</span>{
                 <span class="ident">log_monitor</span>(<span class="ident">score</span>, <span class="ident">cpt</span>, <span class="ident">timestamp</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">write_buffer</span>);
             }
-            <span class="ident">LogMessage</span>::<span class="ident">Timeout</span> <span class="op">=&gt;</span>{
-                <span class="kw">let</span> <span class="ident">message</span> <span class="op">=</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;Stopped search after reaching timeout\n&quot;</span>);
-                <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">write_buffer</span>.<span class="ident">write_all</span>(<span class="ident">message</span>.<span class="ident">as_bytes</span>()));
+            <span class="ident">LogMessage</span>::<span class="ident">Finished</span>(<span class="ident">reason</span>) <span class="op">=&gt;</span>{
+                <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(<span class="ident">write_buffer</span>, <span class="string">&quot;search stopped because {}&quot;</span>, <span class="ident">reason</span>));
             }
             <span class="comment">// For now the evaluator is the only one to send logs, so we just ignore any other</span>
             <span class="comment">// types of message</span>
