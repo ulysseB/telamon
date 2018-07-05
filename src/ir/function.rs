@@ -120,7 +120,9 @@ impl<'a> Function<'a> {
     {
         let logical_id = dim::LogicalId(self.logical_dims.len() as u32);
         let tiling = tile_sizes.iter().product();
-        let dim_ids = (0..tile_sizes.len() as u32 + 1).map(dim::Id).collect_vec();
+        let dim_ids = (0..tile_sizes.len()+1)
+            .map(|id| dim::Id((id+self.dims.len()) as u32))
+            .collect_vec();
         let (tile_dims, base, max_tiling) = if let Some(size) = size.as_fixed() {
             let sizes = std::iter::once(size/tiling).chain(tile_sizes.iter().cloned());
             self.dims.extend(dim_ids.iter().zip_eq(sizes).map(|(&id, size)| {
