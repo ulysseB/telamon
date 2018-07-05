@@ -162,6 +162,9 @@ impl Default for SearchAlgorithm {
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct BanditConfig {
+    /// Indicates how to select between choices when creating the
+    /// children of a node.
+    pub choices_order: ChoiceOrder,
     /// Indicates how to select between nodes of the search tree when none of their
     /// children have been evaluated.
     pub new_nodes_order: NewNodeOrder,
@@ -199,6 +202,7 @@ impl Default for BanditConfig {
         BanditConfig {
             new_nodes_order: NewNodeOrder::default(),
             old_nodes_order: OldNodeOrder::default(),
+            choices_order: ChoiceOrder::default(),
             threshold: 10,
             delta: 1.,
             monte_carlo: true,
@@ -224,6 +228,19 @@ pub enum NewNodeOrder {
 
 impl Default for NewNodeOrder {
     fn default() -> Self { NewNodeOrder::WeightedRandom }
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all="snake_case")]
+pub enum ChoiceOrder {
+    /// Consider the choices in the order given by the search space API.
+    Api,
+    /// Consider the choices in a random order.
+    Random,
+}
+
+impl Default for ChoiceOrder {
+    fn default() -> Self { ChoiceOrder::Api }
 }
 
 /// Indicates how to choose between nodes of the search tree with at least one descendent

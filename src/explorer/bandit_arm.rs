@@ -5,7 +5,7 @@ extern crate serde_pickle;
 use device::Context;
 use explorer::candidate::Candidate;
 use explorer::{choice, local_selection};
-use explorer::config::{BanditConfig, NewNodeOrder, OldNodeOrder};
+use explorer::config::{BanditConfig, NewNodeOrder, OldNodeOrder, ChoiceOrder};
 use explorer::store::Store;
 use itertools::Itertools;
 use rand::{Rng, thread_rng};
@@ -138,7 +138,7 @@ impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
     fn explore(&self, context: &Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
         loop {
             let cut: f64 = { *unwrap!(self.cut.read()) };
-            let state = unwrap!(self.shared_tree.write()).descend(context, cut);
+            let state = unwrap!(self.shared_tree.write()).descend(self.config, context, cut);
             if let DescendState::DeadEnd = state { return None; }
             let res = self.descend(context, state, cut);
             if res.is_some() { return res }
@@ -210,17 +210,31 @@ impl<'a> SubTree<'a> {
     }
 
     /// Descend one level in the tree, expanding it if necessary.
-    fn descend(&mut self, context: &Context, cut: f64) -> DescendState<'a> {
+    fn descend(
+        &mut self,
+        config: &BanditConfig,
+        context: &Context,
+        cut: f64,
+    ) -> DescendState<'a> {
         match std::mem::replace(self, SubTree::Empty) {
             SubTree::InternalNode(node, bound) => {
                 *self = SubTree::InternalNode(node.clone(), bound);
                 DescendState::InternalNode(node, false)
             },
             SubTree::UnexpandedNode(candidate) => {
-                // Random choice of the choice
-                let choices = choice::list(&candidate.space).collect_vec();
-                let num_choices = choices.len();
-                let choice = choices.into_iter().nth(thread_rng().gen_range(0, num_choices));
+                let choice = {
+                    let mut choices = choice::list(&candidate.space);
+                    match config.choices_order {
+                        ChoiceOrder::Api => choices.next(),
+                        ChoiceOrder::Random => {
+                            let choices = choices.collect_vec();
+                            let num_choices = choices.len();
+                            choices
+                                .into_iter()
+                                .nth(thread_rng().gen_range(0, num_choices))
+                        },
+                    }
+                };
                 if let Some(choice) = choice {
                     let candidates = candidate.apply_choice(context, choice);
                     let children = Children::from_candidates(candidates, cut);
@@ -325,7 +339,7 @@ impl<'a> Children<'a> {
         self.trim(cut);
         self.pick_child(config, cut).map(|idx| {
             self.rewards[idx].1 += 1;
-            (idx, self.children[idx].descend(context, cut))
+            (idx, self.children[idx].descend(config, context, cut))
         })
     }
 
