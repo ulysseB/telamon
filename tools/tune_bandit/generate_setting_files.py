@@ -34,35 +34,48 @@ def check(value, *, path=(), spec=spec):
 
     All entries in `value` are optional (i.e. can be `None`), unless the
     corresponding entry in the specification is a `dict`.
+
+    Args:
+        value: The value to check.
+        path: The path in the toplevel object leading to this
+            value. This is used to make more legible error messages.
+        spec: The specification to check the value against. See above
+            for explanations on the format.
+
+    Raises:
+        ValueError: When the value does not match the specification.
     """
 
     if isinstance(spec, dict):
         if not isinstance(value, dict):
-            print("Key {} should be a dict; got {}".format(
-                ".".join(path), value))
-            return False
-        unknown = set(value.keys()) - set(spec.keys())
-        if unknown:
-            print("Keys {} are missing".format(
-                ", ".join(".".join(path + (key, )) for key in unknown)))
-        return all(
+            raise ValueError(
+                "Key {} should be a dict; got {}".format(
+                    ".".join(path), value))
+        invalid = set(value.keys()) - set(spec.keys())
+        if invalid:
+            invalid_keys = sorted(['.'.join(path + (key, )) for key in invalid])
+            raise ValueError(
+                "Key{} {} {} invalid".format(
+                    "" if len(invalid_keys) == 1 else "s",
+                    ' and '.join(filter(None, [
+                        ', '.join(invalid_keys[:-1]),
+                        invalid_keys[-1],
+                    ])),
+                    "is" if len(invalid_keys) == 1 else "are"))
+        for key, spec_value in spec.items():
             check(value.get(key), path=path + (key, ), spec=spec_value)
-            for key, spec_value in spec.items())
     elif value is None:
-        return True
+        pass
     elif isinstance(spec, type):
         if not isinstance(value, spec):
-            print("Key {} should be a {}; got {!r}".format(
-                ".".join(path), spec.__name__, value))
-            return False
-        else:
-            return True
+            raise ValueError(
+                "Key {} should be a {}; got {!r}".format(
+                    ".".join(path), spec.__name__, value))
     elif isinstance(spec, tuple):
         if value not in spec:
-            print("Key {} should be one of {}; got {!r}".format(
-                ".".join(path), ", ".join(map(repr, spec)), value))
-            return False
-        return True
+            raise ValueError(
+                "Key {} should be one of {}; got {!r}".format(
+                    ".".join(path), ", ".join(map(repr, spec)), value))
     else:
         raise AssertionError(
             "Invalid spec: {}".format(spec))
@@ -94,8 +107,10 @@ def serialize(f, key, value):
         f.write("{} = {}\n".format(key, serialize_value(value)))
 
 def create_setting_file(options_dict, filename):
-    if not check(options_dict):
-        print("Invalid Options dict")
+    try:
+        check(options_dict)
+    except ValueError as e:
+        print("Invalid options dict: {}".format(e))
         return
 
     with open(filename, "w+") as f:

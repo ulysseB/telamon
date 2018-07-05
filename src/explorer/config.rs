@@ -14,6 +14,7 @@ use num_cpus;
 /// Stores the configuration of the exploration.
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct Config {
     /// Name of the file in wich to store the logs.
     pub log_file: String,
@@ -33,6 +34,23 @@ pub struct Config {
 }
 
 impl Config {
+    fn create_parser() -> config::Config {
+        let mut config_parser = config::Config::new();
+        // If there is nothing in the config, the parser fails by
+        // saying that it found a unit value where it expected a
+        // Config (see
+        // https://github.com/mehcode/config-rs/issues/60). As a
+        // workaround, we set an explicit default for the "timeout"
+        // option, which makes the parsing succeed even if there is
+        // nothing to parse.
+        unwrap!(config_parser.set_default::<Option<f64>>("timeout", None));
+        let config_path = std::path::Path::new("Settings.toml");
+        if config_path.exists() {
+            unwrap!(config_parser.merge(config::File::from(config_path)));
+        }
+        config_parser
+    }
+
     /// Reads the configuration from the "Settings.toml" file and from the command line.
     pub fn read() -> Self {
         let arg_parser = Self::setup_args_parser();
@@ -46,23 +64,14 @@ impl Config {
             println!("{}", arg_parser.usage(&brief));
             std::process::exit(0);
         }
-        let mut config_parser = config::Config::new();
-        let config_path = std::path::Path::new("Settings.toml");
-        if config_path.exists() {
-            unwrap!(config_parser.merge(config::File::from(config_path)));
-        }
+        let mut config_parser = Self::create_parser();
         Self::parse_arguments(&arg_matches, &mut config_parser);
-        config_parser.try_into::<Self>().unwrap()
+        unwrap!(config_parser.try_into::<Self>())
     }
 
     /// Extract the configuration from the configuration file, if any.
     pub fn read_from_file() -> Self {
-        let mut config_parser = config::Config::new();
-        let config_path = std::path::Path::new("Settings.toml");
-        if config_path.exists() {
-            unwrap!(config_parser.merge(config::File::from(config_path)));
-        }
-        config_parser.try_into::<Self>().unwrap()
+        unwrap!(Self::create_parser().try_into::<Self>())
     }
 
     /// Sets up the parser of command line arguments.
@@ -147,6 +156,7 @@ impl Default for SearchAlgorithm {
 /// Configuration parameters specific to the multi-armed bandit algorithm.
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct BanditConfig {
     /// Indicates how to select between nodes of the search tree when none of their
     /// children have been evaluated.
