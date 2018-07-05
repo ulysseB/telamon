@@ -1432,6 +1432,33 @@
 <span id="1432">1432</span>
 <span id="1433">1433</span>
 <span id="1434">1434</span>
+<span id="1435">1435</span>
+<span id="1436">1436</span>
+<span id="1437">1437</span>
+<span id="1438">1438</span>
+<span id="1439">1439</span>
+<span id="1440">1440</span>
+<span id="1441">1441</span>
+<span id="1442">1442</span>
+<span id="1443">1443</span>
+<span id="1444">1444</span>
+<span id="1445">1445</span>
+<span id="1446">1446</span>
+<span id="1447">1447</span>
+<span id="1448">1448</span>
+<span id="1449">1449</span>
+<span id="1450">1450</span>
+<span id="1451">1451</span>
+<span id="1452">1452</span>
+<span id="1453">1453</span>
+<span id="1454">1454</span>
+<span id="1455">1455</span>
+<span id="1456">1456</span>
+<span id="1457">1457</span>
+<span id="1458">1458</span>
+<span id="1459">1459</span>
+<span id="1460">1460</span>
+<span id="1461">1461</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>;
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
@@ -1714,13 +1741,13 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">actions</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
 
         <span class="kw">let</span> <span class="ident">inst</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">inst</span>);
-        <span class="kw">for</span> <span class="ident">dim_32</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
-            <span class="kw">let</span> <span class="ident">incr_status</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim_32</span>)).<span class="ident">is</span>(<span class="ident">Foo</span>::<span class="ident">A</span>);
+        <span class="kw">for</span> <span class="ident">dim_42</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
+            <span class="kw">let</span> <span class="ident">incr_status</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim_42</span>)).<span class="ident">is</span>(<span class="ident">Foo</span>::<span class="ident">A</span>);
             <span class="kw">let</span> <span class="ident">incr_amount</span> <span class="op">=</span> <span class="number">1</span>;
             <span class="kw">if</span> <span class="ident">incr_status</span>.<span class="ident">is_maybe</span>() {
                 <span class="macro">debug</span><span class="macro">!</span>(
                     <span class="string">&quot;restrict incr foo{:?} to {:?} with amount={:?}&quot;</span>,
-                    (<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim_32</span>),),
+                    (<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim_42</span>),),
                     <span class="ident">new_values</span>,
                     <span class="ident">incr_amount</span>
                 );
@@ -1730,7 +1757,7 @@
                 }
 
                 <span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">foo</span>::<span class="ident">restrict_delayed</span>(
-                    <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim_32</span>),
+                    <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim_42</span>),
                     <span class="ident">ir_instance</span>,
                     <span class="ident">store</span>,
                     <span class="ident">val</span>,
@@ -1756,13 +1783,13 @@
         }
 
         <span class="kw">let</span> <span class="ident">inst</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">inst</span>);
-        <span class="kw">for</span> <span class="ident">dim_32</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
-            <span class="kw">let</span> <span class="ident">incr_status</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim_32</span>)).<span class="ident">is</span>(<span class="ident">Foo</span>::<span class="ident">A</span>);
+        <span class="kw">for</span> <span class="ident">dim_42</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
+            <span class="kw">let</span> <span class="ident">incr_status</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim_42</span>)).<span class="ident">is</span>(<span class="ident">Foo</span>::<span class="ident">A</span>);
             <span class="kw">let</span> <span class="ident">incr_amount</span> <span class="op">=</span> <span class="number">1</span>;
             <span class="kw">if</span> <span class="ident">incr_status</span>.<span class="ident">is_maybe</span>() {
                 <span class="macro">debug</span><span class="macro">!</span>(
                     <span class="string">&quot;restrict incr foo{:?} to {:?} with amount={:?}&quot;</span>,
-                    (<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim_32</span>),),
+                    (<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim_42</span>),),
                     <span class="ident">new_values</span>,
                     <span class="ident">incr_amount</span>
                 );
@@ -1771,7 +1798,7 @@
                     <span class="ident">val</span>.<span class="ident">restrict</span>(<span class="op">!</span>(<span class="ident">Foo</span>::<span class="ident">A</span>));
                 }
 
-                <span class="ident">store</span>.<span class="ident">restrict_foo</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim_32</span>), <span class="ident">val</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
+                <span class="ident">store</span>.<span class="ident">restrict_foo</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim_42</span>), <span class="ident">val</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
             }
         }
         <span class="prelude-val">Ok</span>(())
@@ -1787,9 +1814,9 @@
         <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="ident">DomainDiff</span>,
     ) <span class="op">-&gt;</span> <span class="ident">HalfRange</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">counter_val</span> <span class="op">=</span> <span class="ident">HalfRange</span>::<span class="ident">new_eq</span>(<span class="kw-2">&amp;</span><span class="ident">HalfRange</span>::<span class="ident">ALL</span>, <span class="number">0</span>);
-        <span class="kw">for</span> <span class="ident">dim_33</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
+        <span class="kw">for</span> <span class="ident">dim_43</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
             <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="number">1</span>;
-            <span class="kw">let</span> <span class="ident">incr</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_old_foo</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim_33</span>), <span class="ident">diff</span>);
+            <span class="kw">let</span> <span class="ident">incr</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_old_foo</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">dim_43</span>), <span class="ident">diff</span>);
             <span class="kw">if</span> (<span class="ident">Foo</span>::<span class="ident">A</span>).<span class="ident">contains</span>(<span class="ident">incr</span>) {
                 <span class="ident">counter_val</span>.<span class="ident">min</span> <span class="op">+=</span> <span class="ident">NumDomain</span>::<span class="ident">min</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>);
             }
@@ -1831,13 +1858,13 @@
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
         {
             <span class="kw">let</span> <span class="ident">dim</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">dim</span>);
-            <span class="kw">for</span> <span class="ident">inst_34</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
+            <span class="kw">for</span> <span class="ident">inst_44</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
                 <span class="kw">if</span> <span class="ident">old</span>.<span class="ident">is</span>(<span class="ident">Foo</span>::<span class="ident">A</span>).<span class="ident">is_maybe</span>() {
                     <span class="kw">let</span> <span class="ident">new_status</span> <span class="op">=</span> <span class="ident">new</span>.<span class="ident">is</span>(<span class="ident">Foo</span>::<span class="ident">A</span>);
                     <span class="kw">if</span> <span class="ident">new_status</span>.<span class="ident">is_true</span>() {
                         <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="number">1</span>;
                         <span class="ident">store</span>.<span class="ident">restrict_half_counter</span>(
-                            <span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">inst_34</span>),
+                            <span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">inst_44</span>),
                             <span class="ident">HalfRange</span> { <span class="ident">min</span>: <span class="ident">NumDomain</span>::<span class="ident">min</span>(<span class="kw-2">&amp;</span><span class="ident">value</span>) },
                             <span class="ident">diff</span>,
                         )<span class="question-mark">?</span>;
@@ -2108,6 +2135,16 @@
     <span class="ident">HalfCounter</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Id</span>, <span class="ident">HalfRange</span>),
 
     <span class="ident">Foo</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">Foo</span>),
+}
+
+<span class="kw">impl</span> <span class="ident">Action</span> {
+    <span class="doccomment">/// Returns the action performing the complementary decision.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">complement</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
+            <span class="ident">Action</span>::<span class="ident">HalfCounter</span>(<span class="ident">inst</span>, <span class="ident">domain</span>) <span class="op">=&gt;</span> <span class="prelude-val">None</span>,
+            <span class="ident">Action</span>::<span class="ident">Foo</span>(<span class="ident">dim</span>, <span class="ident">domain</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">Action</span>::<span class="ident">Foo</span>(<span class="ident">dim</span>, <span class="op">!</span><span class="ident">domain</span>)),
+        }
+    }
 }
 
 <span class="doccomment">/// Applies an action to the domain.</span>
@@ -2598,6 +2635,23 @@
             }
         }
         <span class="self">self</span>.<span class="ident">len</span> <span class="op">=</span> <span class="ident">new_lhs</span>;
+    }
+
+    <span class="kw">fn</span> <span class="ident">complement</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">universe</span>: <span class="kw-2">&amp;</span>[<span class="ident">u16</span>]) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> [<span class="number">0</span>; <span class="self">Self</span>::<span class="ident">MAX_LEN</span>];
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">self_idx</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_idx</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">item</span> <span class="kw">in</span> <span class="ident">universe</span> {
+            <span class="kw">if</span> <span class="ident">self_idx</span> <span class="op">&gt;=</span> <span class="self">self</span>.<span class="ident">len</span> <span class="op">||</span> <span class="ident">item</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">values</span>[<span class="ident">self_idx</span>] {
+                <span class="ident">values</span>[<span class="ident">new_idx</span>] <span class="op">=</span> <span class="ident">item</span>;
+                <span class="ident">new_idx</span> <span class="op">+=</span> <span class="number">1</span>;
+            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">item</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">values</span>[<span class="ident">self_idx</span>] {
+                <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;self should be contained in universe&quot;</span>)
+            } <span class="kw">else</span> {
+                <span class="ident">self_idx</span> <span class="op">+=</span> <span class="number">1</span>;
+            }
+        }
+        <span class="ident">NumericSet</span> { <span class="ident">values</span>, <span class="ident">len</span>: <span class="ident">new_idx</span> }
     }
 }
 

@@ -1150,6 +1150,16 @@
 <span id="1150">1150</span>
 <span id="1151">1151</span>
 <span id="1152">1152</span>
+<span id="1153">1153</span>
+<span id="1154">1154</span>
+<span id="1155">1155</span>
+<span id="1156">1156</span>
+<span id="1157">1157</span>
+<span id="1158">1158</span>
+<span id="1159">1159</span>
+<span id="1160">1160</span>
+<span id="1161">1161</span>
+<span id="1162">1162</span>
 </pre><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">dead_code</span>, <span class="ident">unused_imports</span>)]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">itertools</span>;
@@ -1163,6 +1173,8 @@
 
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">mod</span> <span class="ident">ir_gen</span>;
+
+<span class="kw">mod</span> <span class="ident">fail</span>;
 
 <span class="doccomment">/// Test the type definitions.</span>
 <span class="kw">mod</span> <span class="ident">single_enum</span> {
@@ -1190,6 +1202,9 @@
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">x</span>, <span class="ident">Foo</span>::<span class="ident">AB</span>);
         <span class="ident">x</span> <span class="op">&amp;=</span> <span class="ident">Foo</span>::<span class="ident">BC</span>;
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">x</span>, <span class="ident">Foo</span>::<span class="ident">B</span>);
+        <span class="comment">// Test complement.</span>
+        <span class="kw">let</span> <span class="ident">fun</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">Function</span>::<span class="ident">default</span>();
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">Action</span>::<span class="ident">Foo</span>(<span class="ident">Foo</span>::<span class="ident">A</span>).<span class="ident">complement</span>(<span class="kw-2">&amp;</span><span class="ident">fun</span>), <span class="prelude-val">Some</span>(<span class="ident">Action</span>::<span class="ident">Foo</span>(<span class="ident">Foo</span>::<span class="ident">BC</span>)));
 
         <span class="comment">// Ensure `failed`, `all` and `is_failed` are working.</span>
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">Foo</span>::<span class="ident">FAILED</span>.<span class="ident">is_failed</span>());
@@ -1235,6 +1250,11 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">all0_2</span> <span class="op">=</span> <span class="ident">all0</span>;
         <span class="ident">all0_2</span>.<span class="ident">insert</span>(<span class="ident">all0</span>);
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">all0_2</span>, <span class="ident">all0</span>);
+
+        <span class="comment">// Test action complement.</span>
+        <span class="kw">let</span> <span class="ident">fun</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">Function</span>::<span class="ident">default</span>();
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">Action</span>::<span class="ident">Bar</span>(<span class="ident">NumericSet</span>::<span class="ident">all</span>(<span class="kw-2">&amp;</span>[<span class="number">1</span>, <span class="number">4</span>])).<span class="ident">complement</span>(<span class="kw-2">&amp;</span><span class="ident">fun</span>),
+                   <span class="prelude-val">Some</span>(<span class="ident">Action</span>::<span class="ident">Bar</span>(<span class="ident">NumericSet</span>::<span class="ident">all</span>(<span class="kw-2">&amp;</span>[<span class="number">2</span>, <span class="number">8</span>]))));
 
         <span class="comment">// Test comparison operators.</span>
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">all0</span>.<span class="ident">lt</span>(<span class="ident">Range</span>::<span class="ident">new_eq</span>(<span class="kw-2">&amp;</span><span class="ident">Range</span>::<span class="ident">ALL</span>, <span class="number">9</span>)));

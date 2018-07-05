@@ -1560,6 +1560,33 @@
 <span id="1560">1560</span>
 <span id="1561">1561</span>
 <span id="1562">1562</span>
+<span id="1563">1563</span>
+<span id="1564">1564</span>
+<span id="1565">1565</span>
+<span id="1566">1566</span>
+<span id="1567">1567</span>
+<span id="1568">1568</span>
+<span id="1569">1569</span>
+<span id="1570">1570</span>
+<span id="1571">1571</span>
+<span id="1572">1572</span>
+<span id="1573">1573</span>
+<span id="1574">1574</span>
+<span id="1575">1575</span>
+<span id="1576">1576</span>
+<span id="1577">1577</span>
+<span id="1578">1578</span>
+<span id="1579">1579</span>
+<span id="1580">1580</span>
+<span id="1581">1581</span>
+<span id="1582">1582</span>
+<span id="1583">1583</span>
+<span id="1584">1584</span>
+<span id="1585">1585</span>
+<span id="1586">1586</span>
+<span id="1587">1587</span>
+<span id="1588">1588</span>
+<span id="1589">1589</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>;
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
@@ -1889,20 +1916,20 @@
         <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
     ) <span class="op">-&gt;</span> <span class="ident">Foo</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Foo</span>::<span class="ident">FAILED</span>;
-        <span class="kw">let</span> <span class="ident">bar_111</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_bar</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">inst</span>));
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values_112</span> <span class="op">=</span> <span class="ident">Foo</span>::<span class="ident">all</span>();
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">bar_111</span>.<span class="ident">intersects</span>(<span class="ident">Bar</span>::<span class="ident">C</span>) {
-            <span class="ident">values_112</span>.<span class="ident">restrict</span>(<span class="ident">Foo</span>::<span class="ident">A</span>);
+        <span class="kw">let</span> <span class="ident">bar_121</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_bar</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">inst</span>));
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values_122</span> <span class="op">=</span> <span class="ident">Foo</span>::<span class="ident">all</span>();
+        <span class="kw">if</span> <span class="op">!</span><span class="ident">bar_121</span>.<span class="ident">intersects</span>(<span class="ident">Bar</span>::<span class="ident">C</span>) {
+            <span class="ident">values_122</span>.<span class="ident">restrict</span>(<span class="ident">Foo</span>::<span class="ident">A</span>);
         }
 
-        <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">values_112</span>);
+        <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">values_122</span>);
 
         <span class="macro">trace</span><span class="macro">!</span>(
             <span class="string">&quot;restrict foo{:?} to {:?} in filter 0&quot;</span>,
             (<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">inst</span>), <span class="ident">op</span>.<span class="ident">id</span>()),
             <span class="ident">values</span>
         );
-        <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;with bar_111 = {:?}&quot;</span>, <span class="ident">bar_111</span>);
+        <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;with bar_121 = {:?}&quot;</span>, <span class="ident">bar_121</span>);
         <span class="ident">values</span>
     }
 }
@@ -1924,8 +1951,8 @@
         <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
     ) <span class="op">-&gt;</span> <span class="ident">Bar</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Bar</span>::<span class="ident">all</span>();
-        <span class="kw">for</span> <span class="ident">op_113</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">operand</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>, <span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">inst</span>)) {
-            <span class="kw">let</span> <span class="ident">filter_res</span> <span class="op">=</span> <span class="self">self</span>::<span class="ident">filter_0</span>(<span class="ident">inst</span>, <span class="ident">op_113</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
+        <span class="kw">for</span> <span class="ident">op_123</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">operand</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>, <span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">inst</span>)) {
+            <span class="kw">let</span> <span class="ident">filter_res</span> <span class="op">=</span> <span class="self">self</span>::<span class="ident">filter_0</span>(<span class="ident">inst</span>, <span class="ident">op_123</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
             <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">filter_res</span>);
 
         }
@@ -1945,17 +1972,17 @@
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
         {
             <span class="kw">let</span> <span class="ident">inst</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">inst</span>);
-            <span class="kw">for</span> <span class="ident">op_114</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">operand</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>, <span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">inst</span>)) {
+            <span class="kw">for</span> <span class="ident">op_124</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">operand</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>, <span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">inst</span>)) {
                 <span class="comment">// Generates an action to filter a choice if needed.</span>
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Foo</span>::<span class="ident">all</span>();
-                <span class="kw">let</span> <span class="ident">filter_res</span> <span class="op">=</span> <span class="ident">foo</span>::<span class="ident">filter_0</span>(<span class="ident">inst</span>, <span class="ident">op_114</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
+                <span class="kw">let</span> <span class="ident">filter_res</span> <span class="op">=</span> <span class="ident">foo</span>::<span class="ident">filter_0</span>(<span class="ident">inst</span>, <span class="ident">op_124</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
                 <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">filter_res</span>);
 
 
                 <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;call restrict from {}, line {}&quot;</span>, <span class="macro">file</span><span class="macro">!</span>(), <span class="macro">line</span><span class="macro">!</span>());
                 <span class="ident">foo</span>::<span class="ident">restrict</span>(
                     <span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">inst</span>),
-                    <span class="ident">op_114</span>.<span class="ident">id</span>(),
+                    <span class="ident">op_124</span>.<span class="ident">id</span>(),
                     <span class="ident">ir_instance</span>,
                     <span class="ident">store</span>,
                     <span class="ident">values</span>,
@@ -2008,25 +2035,25 @@
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">filter_0</span>(
         <span class="ident">inst</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Obj</span>,
-        <span class="ident">op_115</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">operand</span>::<span class="ident">Obj</span>,
+        <span class="ident">op_125</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">operand</span>::<span class="ident">Obj</span>,
         <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
         <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
     ) <span class="op">-&gt;</span> <span class="ident">Bar</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Bar</span>::<span class="ident">FAILED</span>;
-        <span class="kw">let</span> <span class="ident">foo_116</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">inst</span>), <span class="ident">op_115</span>.<span class="ident">id</span>());
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values_117</span> <span class="op">=</span> <span class="ident">Bar</span>::<span class="ident">all</span>();
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">foo_116</span>.<span class="ident">intersects</span>(<span class="ident">Foo</span>::<span class="ident">A</span>) {
-            <span class="ident">values_117</span>.<span class="ident">restrict</span>(<span class="ident">Bar</span>::<span class="ident">C</span>);
+        <span class="kw">let</span> <span class="ident">foo_126</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">inst</span>), <span class="ident">op_125</span>.<span class="ident">id</span>());
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values_127</span> <span class="op">=</span> <span class="ident">Bar</span>::<span class="ident">all</span>();
+        <span class="kw">if</span> <span class="op">!</span><span class="ident">foo_126</span>.<span class="ident">intersects</span>(<span class="ident">Foo</span>::<span class="ident">A</span>) {
+            <span class="ident">values_127</span>.<span class="ident">restrict</span>(<span class="ident">Bar</span>::<span class="ident">C</span>);
         }
 
-        <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">values_117</span>);
+        <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">values_127</span>);
 
         <span class="macro">trace</span><span class="macro">!</span>(
             <span class="string">&quot;restrict bar{:?} to {:?} in filter 0&quot;</span>,
-            (<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">inst</span>), <span class="ident">op_115</span>.<span class="ident">id</span>()),
+            (<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">inst</span>), <span class="ident">op_125</span>.<span class="ident">id</span>()),
             <span class="ident">values</span>
         );
-        <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;with foo_116 = {:?}&quot;</span>, <span class="ident">foo_116</span>);
+        <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;with foo_126 = {:?}&quot;</span>, <span class="ident">foo_126</span>);
         <span class="ident">values</span>
     }
 }
@@ -2356,6 +2383,16 @@
     <span class="ident">Foo</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Id</span>, <span class="ident">ir</span>::<span class="ident">operand</span>::<span class="ident">Id</span>, <span class="ident">Foo</span>),
 
     <span class="ident">Bar</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Id</span>, <span class="ident">Bar</span>),
+}
+
+<span class="kw">impl</span> <span class="ident">Action</span> {
+    <span class="doccomment">/// Returns the action performing the complementary decision.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">complement</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
+            <span class="ident">Action</span>::<span class="ident">Foo</span>(<span class="ident">inst</span>, <span class="ident">op</span>, <span class="ident">domain</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">Action</span>::<span class="ident">Foo</span>(<span class="ident">inst</span>, <span class="ident">op</span>, <span class="op">!</span><span class="ident">domain</span>)),
+            <span class="ident">Action</span>::<span class="ident">Bar</span>(<span class="ident">inst</span>, <span class="ident">domain</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">Action</span>::<span class="ident">Bar</span>(<span class="ident">inst</span>, <span class="op">!</span><span class="ident">domain</span>)),
+        }
+    }
 }
 
 <span class="doccomment">/// Applies an action to the domain.</span>
@@ -2854,6 +2891,23 @@
             }
         }
         <span class="self">self</span>.<span class="ident">len</span> <span class="op">=</span> <span class="ident">new_lhs</span>;
+    }
+
+    <span class="kw">fn</span> <span class="ident">complement</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">universe</span>: <span class="kw-2">&amp;</span>[<span class="ident">u16</span>]) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> [<span class="number">0</span>; <span class="self">Self</span>::<span class="ident">MAX_LEN</span>];
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">self_idx</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_idx</span> <span class="op">=</span> <span class="number">0</span>;
+        <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">item</span> <span class="kw">in</span> <span class="ident">universe</span> {
+            <span class="kw">if</span> <span class="ident">self_idx</span> <span class="op">&gt;=</span> <span class="self">self</span>.<span class="ident">len</span> <span class="op">||</span> <span class="ident">item</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">values</span>[<span class="ident">self_idx</span>] {
+                <span class="ident">values</span>[<span class="ident">new_idx</span>] <span class="op">=</span> <span class="ident">item</span>;
+                <span class="ident">new_idx</span> <span class="op">+=</span> <span class="number">1</span>;
+            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">item</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">values</span>[<span class="ident">self_idx</span>] {
+                <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;self should be contained in universe&quot;</span>)
+            } <span class="kw">else</span> {
+                <span class="ident">self_idx</span> <span class="op">+=</span> <span class="number">1</span>;
+            }
+        }
+        <span class="ident">NumericSet</span> { <span class="ident">values</span>, <span class="ident">len</span>: <span class="ident">new_idx</span> }
     }
 }
 
