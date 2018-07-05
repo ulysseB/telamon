@@ -1,13 +1,13 @@
-
 use std::sync::mpsc;
 use std::fs::File;
 use std::io::{Write, BufWriter};
 use explorer::config::Config;
+use explorer::monitor;
 use std::time::Duration;
 
 pub enum LogMessage {
-    NewBest{score: f64, cpt: usize, timestamp: Duration},
-    Timeout,
+    NewBest { score: f64, cpt: usize, timestamp: Duration },
+    Finished(monitor::TerminationReason),
 }
 
 
@@ -18,9 +18,8 @@ pub fn log(config: &Config, recv: mpsc::Receiver<LogMessage>) {
             LogMessage::NewBest{score, cpt, timestamp} =>{
                 log_monitor(score, cpt, timestamp, &mut write_buffer);
             }
-            LogMessage::Timeout =>{
-                let message = format!("Stopped search after reaching timeout\n");
-                unwrap!(write_buffer.write_all(message.as_bytes()));
+            LogMessage::Finished(reason) =>{
+                unwrap!(writeln!(write_buffer, "search stopped because {}", reason));
             }
             // For now the evaluator is the only one to send logs, so we just ignore any other
             // types of message

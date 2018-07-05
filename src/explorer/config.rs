@@ -25,6 +25,9 @@ pub struct Config {
     pub stop_bound: Option<f64>,
     /// Indicates the search must be stopped after the given number of minutes.
     pub timeout: Option<u64>,
+    /// Indicates the search must be stopped after the given number of
+    /// candidates have been evaluated.
+    pub max_evaluations: Option<u64>,
     /// A percentage cut indicate that we only care to find a candidate that is in a
     /// certain range above the best Therefore, if cut_under is 20%, we can discard any
     /// candidate whose bound is above 80% of the current best.
@@ -115,6 +118,7 @@ impl Default for Config {
             algorithm: SearchAlgorithm::default(),
             stop_bound: None,
             timeout: None,
+            max_evaluations: None,
             distance_to_best: None,
         }
     }

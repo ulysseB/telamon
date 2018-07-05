@@ -8,7 +8,7 @@ use explorer::store::Store;
 use itertools::Itertools;
 use std;
 use std::f64;
-use std::sync::{ Weak, Arc, RwLock};
+use std::sync::{Weak, Arc, RwLock};
 use utils::*;
 
 /// A search tree to perform a multi-armed bandit search.
