@@ -10,6 +10,7 @@ pub enum Action {
 
 impl Action {
     /// Returns the action performing the complementary decision.
+    #[allow(unused_variables)]
     pub fn complement(&self, ir_instance: &ir::Function) -> Option<Self> {
         match *self {
             {{~#each choices}}
