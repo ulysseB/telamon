@@ -133,7 +133,9 @@ impl<'a, S> Tensor<'a, S> where S: ScalarArgument {
     }
 
     /// Creates a `VirtualTensor` that contains the values of `self`, loaded in registers.
-    pub fn load(&self, tiling: &[&[u32]], builder: &mut Builder) -> VirtualTensor {
+    pub fn load<'b>(&self, tiling: &[&[u32]], builder: &mut Builder<'b>)
+        -> VirtualTensor<'b>
+    {
         let mut dims = Vec::new();
         let mut induction_levels = Vec::new();
         for (&(ref size, ref stride), tiling) in self.iter_dims.iter().zip_eq(tiling) {
@@ -172,22 +174,22 @@ impl<'a, S> Tensor<'a, S> where S: ScalarArgument {
 }
 
 /// A tensor loaded in registers.
-pub struct VirtualTensor {
+pub struct VirtualTensor<'a> {
     inst: ir::InstId,
-    dims: Vec<LogicalDim>,
+    dims: Vec<LogicalDim<'a>>,
 }
 
-impl VirtualTensor {
+impl<'a> VirtualTensor<'a> {
     /// Creates a new `VirtualTensor`.
-    pub fn new(inst: ir::InstId, dims: Vec<LogicalDim>) -> Self {
+    pub fn new(inst: ir::InstId, dims: Vec<LogicalDim<'a>>) -> Self {
         VirtualTensor { inst, dims }
     }
 
     /// Creates an operand that yeilds the values of the tensor in the given loop nest.
-    pub fn dim_map<'a>(&self,
-                       dims: &[&MetaDimension],
-                       scope: ir::DimMapScope,
-                       builder: &mut Builder<'a>) -> ir::Operand<'a>
+    pub fn dim_map(&self,
+                   dims: &[&MetaDimension],
+                   scope: ir::DimMapScope,
+                   builder: &mut Builder<'a>) -> ir::Operand<'a>
     {
         let mapping = self.dims.iter().map(|x| x as &MetaDimension)
             .zip_eq(dims.iter().cloned()).collect_vec();
@@ -195,7 +197,7 @@ impl VirtualTensor {
     }
 
     /// Stores the `VirtualTensor` in memory.
-    pub fn store<S>(&self, tensor: &Tensor<S>, builder: &mut Builder) -> VirtualTensor
+    pub fn store<S>(&self, tensor: &Tensor<S>, builder: &mut Builder<'a>) -> VirtualTensor<'a>
         where S: ScalarArgument
     {
         assert!(!tensor.read_only);
@@ -214,15 +216,15 @@ impl VirtualTensor {
     pub fn inst(&self) -> ir::InstId { self.inst }
 }
 
-impl std::ops::Index<usize> for VirtualTensor {
-    type Output = LogicalDim;
+impl<'a> std::ops::Index<usize> for VirtualTensor<'a> {
+    type Output = LogicalDim<'a>;
 
     fn index(&self, idx: usize) -> &Self::Output { &self.dims[idx] }
 }
 
-impl<'a> IntoIterator for &'a VirtualTensor {
-    type Item = &'a LogicalDim;
-    type IntoIter = std::slice::Iter<'a, LogicalDim>;
+impl<'a, 'b> IntoIterator for &'a VirtualTensor<'b> {
+    type Item = &'a LogicalDim<'b>;
+    type IntoIter = std::slice::Iter<'a, LogicalDim<'b>>;
 
     fn into_iter(self) -> Self::IntoIter { self.dims.iter() }
 }

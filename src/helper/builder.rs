@@ -224,13 +224,13 @@ impl<'a> Builder<'a> {
     }
 
     /// Open multiple dimensions to represent a tiled dimension.
-    pub fn open_tiled_dim(&mut self, size: Size<'a>, tiling: &[u32]) -> LogicalDim {
+    pub fn open_tiled_dim(&mut self, size: Size<'a>, tiling: &[u32]) -> LogicalDim<'a> {
         if tiling.is_empty() {
             LogicalDim::Simple(self.open_dim(size))
         } else {
-            let (id, dims) = self.function.add_logical_dim(size, tiling);
+            let (id, dims) = self.function.add_logical_dim(size.clone(), tiling);
             self.open_dims.extend(dims.iter().map(|&id| (id, id)));
-            LogicalDim::Composite(id, dims, tiling.iter().cloned().collect())
+            LogicalDim::Composite(id, dims, size, tiling.iter().cloned().collect())
         }
     }
 
@@ -238,7 +238,7 @@ impl<'a> Builder<'a> {
     ///
     /// The size of the new dim is inherited from the mapped dim.
     /// The dimension mapped to is closed if needed.
-    pub fn open_mapped_dim(&mut self, old_dim: &LogicalDim) -> LogicalDim {
+    pub fn open_mapped_dim(&mut self, old_dim: &LogicalDim<'a>) -> LogicalDim<'a> {
         match old_dim {
             LogicalDim::Simple(old_id) => {
                 self.open_dims.remove(old_id);
@@ -254,16 +254,14 @@ impl<'a> Builder<'a> {
                 self.open_dims.insert(new_id, *old_id);
                 LogicalDim::Simple(new_id)
             },
-            LogicalDim::Composite(_, old_dims, tile_sizes) => {
-                let size = old_dims.iter().map(|&d| self.function.dim(d).size())
-                    .product();
+            LogicalDim::Composite(_, old_dims, size, tile_sizes) => {
                 let (new_id, new_dims) =
-                    self.function.add_logical_dim(size, tile_sizes);
+                    self.function.add_logical_dim(size.clone(), tile_sizes);
                 for (&old, &new) in old_dims.iter().zip_eq(&new_dims) {
                     self.open_dims.remove(&old);
                     self.open_dims.insert(new, old);
                 }
-                LogicalDim::Composite(new_id, new_dims, tile_sizes.clone())
+                LogicalDim::Composite(new_id, new_dims, size.clone(), tile_sizes.clone())
             },
         }
     }

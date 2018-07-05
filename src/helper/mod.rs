@@ -32,50 +32,50 @@ impl<T> MetaDimension for T where T: std::borrow::Borrow<[ir::dim::Id]> {
 
 /// A groups of dimensions that act as a single logical dimension.
 #[derive(Clone)]
-pub enum LogicalDim {
+pub enum LogicalDim<'a> {
     /// A single concrete dimension.
     Simple(ir::dim::Id),
     /// Multiple dimensions forming a single logical once.
-    Composite(ir::dim::LogicalId, Vec<ir::dim::Id>, Vec<u32>),
+    Composite(ir::dim::LogicalId, Vec<ir::dim::Id>, ir::Size<'a>, Vec<u32>),
 }
 
-impl LogicalDim {
+impl<'b> LogicalDim<'b> {
     pub fn iter<'a>(&'a self) -> Box<DoubleEndedIterator<Item=ir::dim::Id> + 'a> {
         self.into_iter()
     }
 }
 
-impl From<ir::dim::Id> for LogicalDim {
+impl From<ir::dim::Id> for LogicalDim<'static> {
     fn from(id: ir::dim::Id) -> Self { LogicalDim::Simple(id) }
 }
 
-impl MetaDimension for LogicalDim {
+impl<'b> MetaDimension for LogicalDim<'b> {
     fn ids<'a>(&'a self) -> Box<DoubleEndedIterator<Item=ir::dim::Id> + 'a> {
         self.into_iter()
     }
 }
 
-impl std::ops::Index<usize> for LogicalDim {
+impl<'a> std::ops::Index<usize> for LogicalDim<'a> {
     type Output = ir::dim::Id;
 
     fn index(&self, index: usize) -> &ir::dim::Id {
         match self {
             LogicalDim::Simple(id) if index == 0 => id,
             LogicalDim::Simple(_) => panic!("out of bounds index {}", index),
-            LogicalDim::Composite(_, dims, _) => &dims[index],
+            LogicalDim::Composite(_, dims, _, _) => &dims[index],
 
         }
     }
 }
 
-impl<'a> IntoIterator for &'a LogicalDim {
+impl<'a> IntoIterator for &'a LogicalDim<'a> {
     type Item = ir::dim::Id;
     type IntoIter = Box<DoubleEndedIterator<Item=ir::dim::Id> + 'a>;
 
     fn into_iter(self) -> Self::IntoIter {
         match self {
             LogicalDim::Simple(dim) => Box::new(std::iter::once(*dim)),
-            LogicalDim::Composite(_, dims, _) => Box::new(dims.iter().cloned()),
+            LogicalDim::Composite(_, dims, _, _) => Box::new(dims.iter().cloned()),
         }
     }
 }

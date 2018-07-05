@@ -101,7 +101,7 @@ fn thread_reduction_map() {
     let size_32 = builder.cst_size(32);
     let d0 = builder.open_dim_ex(size_32, DimKind::THREAD);
     let init = builder.mov(&0f32);
-    builder.open_mapped_dim(&d0);
+    builder.open_mapped_dim(&d0.into());
     let cst_size_2 = builder.cst_size(2);
     builder.open_dim_ex(cst_size_2, DimKind::LOOP);
     builder.add(&helper::Reduce(init), &1f32);
@@ -141,6 +141,7 @@ fn induction_var_nested() {
     let signature = {
         let mut builder = helper::SignatureBuilder::new("ind_var_test", &mut context);
         builder.scalar("k", 12i32);
+        builder.scalar("k4", 12i32/4);
         out = builder.array::<i32>("out", 1);
         builder.get()
     };
@@ -149,7 +150,7 @@ fn induction_var_nested() {
     let size_4 = builder.cst_size(4);
     let size_5 = builder.cst_size(5);
     let size_k = builder.param_size("k");
-    let size_k_tile_4 = builder.tile_size("k", 4);
+    let size_k_tile_4 = builder.param_size("k4");
     let d0 = builder.open_dim_ex(size_k_tile_4.clone(), DimKind::LOOP);
     let d1 = builder.open_dim_ex(size_4, DimKind::LOOP);
     let d2 = builder.open_dim_ex(size_5, DimKind::UNROLL);

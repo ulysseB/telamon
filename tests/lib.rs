@@ -2,6 +2,7 @@
 extern crate env_logger;
 extern crate libc;
 extern crate telamon;
+#[macro_use]
 extern crate telamon_utils as utils;
 
 mod common;
@@ -372,4 +373,27 @@ fn double_dim_map() {
     builder.order(&dim1_1, &dim1_2, Order::OUTER);
 
     //gen_best(&context, builder.get());
+}
+
+#[test]
+fn open_mapped_tiled_dim() {
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature(0);
+
+    let mut builder = helper::Builder::new(&signature, context.device());
+    let ldim0 = builder.open_tiled_dim(ir::Size::new_const(32), &[4]);
+    builder.mov(&0f32);
+    let ldim1 = builder.open_mapped_dim(&ldim0);
+    builder.mov(&0f32);
+
+    /*builder.action(Action::DimKind(ldim0[0], DimKind::UNROLL));
+    builder.action(Action::DimKind(ldim0[1], DimKind::UNROLL));
+    builder.action(Action::DimKind(ldim1[0], DimKind::UNROLL));
+    builder.action(Action::DimKind(ldim1[1], DimKind::UNROLL));*/
+    
+    let space = builder.get();
+    let fun = space.ir_instance();
+    assert_eq!(unwrap!(fun.dim(ldim0[0]).possible_sizes()), &[8]);
+    assert_eq!(unwrap!(fun.dim(ldim1[0]).possible_sizes()), &[8]);
 }
