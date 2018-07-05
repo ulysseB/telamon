@@ -343,10 +343,24 @@ impl<'a> Function<'a> {
     /// non-constrained size. The caller should thus constrain it to have the size of
     /// original dimensions.
     fn spawn_mapped_dims(&mut self, old_dims: &[dim::Id]) -> Vec<dim::Id> {
-        // FIXME:
         old_dims.iter().map(|&old_dim| {
-            let size = self.dim(old_dim).size().clone();
-            unwrap!(self.add_dim(size))
+            let size = {
+                let dim = self.dim(old_dim);
+                if let Some(universe) = dim.possible_sizes() {
+                    Err(universe.iter().cloned().collect())
+                } else {
+                    assert!(!dim.size().depends_on_dim());
+                    Ok(dim.size().clone())
+                }
+            };
+            match size {
+                Ok(size) => self.add_dim(size),
+                Err(universe) => {
+                    let id = ir::dim::Id(self.dims.len() as u32);
+                    self.dims.push(Dimension::with_multi_sizes(id, universe, None));
+                    id
+                },
+            }
         }).collect()
     }
 
