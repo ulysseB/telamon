@@ -6,6 +6,13 @@ use search_space::InstFlag;
 use ir::{self, op, Type};
 use search_space::DimKind;
 
+#[derive(Copy, Clone)]
+pub enum MulMode {
+    Wide,
+    Low,
+    High,
+    Empty,
+}
 pub trait Printer {
 
     /// Get a proper string representation of an integer in target language
@@ -21,10 +28,10 @@ pub trait Printer {
     fn print_binop(&mut self, return_id: &str, op_type: ir::BinOp, op1: &str, op2: &str, return_type: Type, round: op::Rounding); 
 
     /// Print return_id = op1 * op2
-    fn print_mul(&mut self, return_id: &str, round: op::Rounding, op1: &str, type_op1: Type, op2: &str, type_op2: Type, return_type: Type);
+    fn print_mul(&mut self, return_type: Type, round: op::Rounding, mul_mode: MulMode, return_id: &str, op1: &str, op2: &str);
 
     /// Print return_id = mlhs * mrhs + arhs
-    fn print_mad(&mut self, return_id: &str, round: op::Rounding, mlhs: &str, type_mlhs: Type, mrhs: &str, type_mrhs: Type, arhs: &str, type_arhs: Type, return_type: Type);
+    fn print_mad(&mut self, ret_type: Type, round: op::Rounding, mul_mode: MulMode, return_id: &str,  mlhs: &str, mrhs: &str, arhs: &str);
 
     /// Print return_id = op 
     fn print_mov(&mut self, return_id: &str, op: &str, return_type: Type);
@@ -65,6 +72,14 @@ pub trait Printer {
     /// Print wait on all threads
     fn print_sync(&mut self);
 
+    fn mul_mode(from: Type, to: Type) -> MulMode {
+        match (from, to) {
+            (Type::I(32), Type::I(64)) => MulMode::Wide,
+            (ref x, ref y) if x == y => MulMode::Low,
+            _ => panic!(),
+        }
+    }
+
     // TODO(cleanup): remove this function once values are preprocessed by codegen. If values
     // are preprocessed, types will be already lowered.
     fn lower_type(t: ir::Type, fun: &Function) -> ir::Type {
@@ -102,10 +117,11 @@ pub trait Printer {
         if let Some((dim, increment)) = level.increment {
             let index = namer.name_index(dim);
             let step = namer.name_size(increment, Type::I(32));
+            let mode = if level.t() == Type::I(64) { MulMode::Wide } else { MulMode::Low };
             match base_components[..] {
                 // TODO get a sensible type for index and step rather than just random I32
-                [] => self.print_mul(&ind_var, op::Rounding::Exact, &index, Type::I(32), &step, Type::I(32), level.t()),
-                [ref base] => self.print_mad(&ind_var, op::Rounding::Exact, &index, Type::I(32), &step, Type::I(32), &base, Type::I(64), level.t()),
+                [] => self.print_mul(level.t(), op::Rounding::Exact, mode, &ind_var, &index, &step),
+                [ref base] => self.print_mad(level.t(), op::Rounding::Exact, mode, &ind_var, &index, &step, &base),
                 _ => panic!()
             }
         } else {
@@ -235,10 +251,11 @@ pub trait Printer {
                 let var = namer.gen_name(Type::I(32));
                 let size = namer.name_size(dim.size(), Type::I(32));
                 let idx = namer.name_index(dim.id());
-                self.print_mad(&var, op::Rounding::Exact, &old_var, Type::I(32), &size, Type::I(32), &idx, Type::I(32), Type::I(32));
+                self.print_mad(Type::I(32), op::Rounding::Exact, MulMode::Low, &var,  &old_var, &size, &idx);
                 var
             });
-        self.print_mad(&addr, op::Rounding::Exact, &var, Type::I(32), &size, Type::I(32), &addr, addr_type, addr_type);
+        let mode = Self::mul_mode(Type::I(32), addr_type);
+        self.print_mad(addr_type, op::Rounding::Exact, mode, &addr,  &var, &size, &addr);
     }
 
     /// Prints an instruction.
@@ -247,11 +264,21 @@ pub trait Printer {
             op::BinOp(op, ref lhs, ref rhs, round) => {
                 self.print_binop(&namer.name_inst(inst), op, &namer.name_op(lhs), &namer.name_op(rhs), inst.t(), round)
             }
-            op::Mul(ref lhs, ref rhs, round, _) => {
-                self.print_mul(&namer.name_inst(inst), round, &namer.name_op(lhs), Self::lower_type(lhs.t(), fun), &namer.name_op(rhs), Self::lower_type(rhs.t(), fun), Self::lower_type(inst.t(), fun))
+            op::Mul(ref lhs, ref rhs, round, return_type) => {
+                let low_lhs_type = Self::lower_type(lhs.t(), fun);
+                let low_ret_type = Self::lower_type(return_type, fun);
+                let mode = if round == op::Rounding::Exact {
+                    Self::mul_mode(low_lhs_type, low_ret_type)
+                } else {MulMode::Empty };
+                self.print_mul(low_ret_type, round, mode, &namer.name_inst(inst), &namer.name_op(lhs), &namer.name_op(rhs))
             },
             op::Mad(ref mul_lhs, ref mul_rhs, ref add_rhs, round) => {
-                self.print_mad(&namer.name_inst(inst), round, &namer.name_op(mul_lhs), mul_lhs.t(), &namer.name_op(mul_rhs), mul_rhs.t(), &namer.name_op(add_rhs), add_rhs.t(), inst.t())
+                let low_mlhs_type = Self::lower_type(mul_lhs.t(), fun);
+                let low_arhs_type = Self::lower_type(add_rhs.t(), fun);
+                let mode = if round == op::Rounding::Exact {
+                    Self::mul_mode(low_mlhs_type, low_arhs_type)
+                } else {MulMode::Empty };
+                self.print_mad(Self::lower_type(inst.t(), fun), round, mode, &namer.name_inst(inst), &namer.name_op(mul_lhs), &namer.name_op(mul_rhs), &namer.name_op(add_rhs))
             },
             op::Mov(ref op) => {
 

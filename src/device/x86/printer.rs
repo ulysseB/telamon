@@ -316,13 +316,13 @@ impl Printer for X86printer {
         self.out_function.push_str(&push_str);
     }
 
-    fn print_mul(&mut self, return_id: &str, _: op::Rounding, op1: &str, _: Type, op2: &str, _: Type, _: Type) {
+    fn print_mul(&mut self, _: Type, _: op::Rounding, _: MulMode, return_id: &str, op1: &str, op2: &str) {
         let push_str = format!("{} = {} * {};\n", return_id, op1, op2);
         self.out_function.push_str(&push_str);
     }
 
-    fn print_mad(&mut self, return_id: &str, _: op::Rounding, op1: &str, _: Type, op2: &str, _: Type, op3: &str, _: Type, _: Type) {
-        let push_str = format!("{} = {} * {} + {};\n", return_id, op1, op2, op3);
+    fn print_mad(&mut self, _: Type, _: op::Rounding, _: MulMode, return_id: &str,  mlhs: &str, mrhs: &str, arhs: &str) {
+        let push_str = format!("{} = {} * {} + {};\n", return_id, mlhs, mrhs, arhs);
         self.out_function.push_str(&push_str);
     }
 

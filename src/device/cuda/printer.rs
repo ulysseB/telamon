@@ -17,11 +17,20 @@ pub struct CudaPrinter {
 
 impl CudaPrinter {
 
-    fn mul_mode(from: Type, to: Type) -> &'static str{
-        match (from, to) {
-            (Type::I(32), Type::I(64)) => ".wide",
-            (ref x, ref y) if x == y => ".lo",
-            _ => panic!(),
+    fn mul_mode(mode: MulMode) -> &'static str {
+        match mode {
+            MulMode::Wide => ".wide",
+            MulMode::Low => ".lo",
+            MulMode::High => ".hi",
+            MulMode::Empty => "",
+        }
+    }
+
+    fn get_inst_type(mode: MulMode, ret_type: Type) -> Type {
+        match mode {
+            MulMode::Wide => if let Type::I(n) = ret_type {Type::I( n / 2)} else {panic!("get_inst_type should only be called with integer types")}
+            ,
+            _ => ret_type,
         }
     }
 
@@ -297,25 +306,24 @@ impl Printer for CudaPrinter {
     }
 
     /// Print return_id = op1 * op2
-    fn print_mul(&mut self, return_id: &str, round: op::Rounding, lhs: &str, lhs_type: Type, rhs: &str, rhs_type: Type, r_type: Type) {
+    fn print_mul(&mut self, return_type: Type, round: op::Rounding, mul_mode: MulMode, return_id: &str, lhs: &str, rhs: &str) {
         let operator = if round == op::Rounding::Exact {
-            format!("mul{}", Self::mul_mode(lhs_type, r_type))
+            format!("mul{}", Self::mul_mode(mul_mode))
         } else {
             format!("mul{}", Self::rounding(round))
         };
-        let return_str = format!("{}.{} {}, {}, {};\n", operator, self.get_type(lhs_type), return_id, lhs, rhs);
+        let return_str = format!("{}.{} {}, {}, {};\n", operator, self.get_type(Self::get_inst_type(mul_mode, return_type)), return_id, lhs, rhs);
         self.out_function.push_str(&return_str);
     }
 
     /// Print return_id = mlhs * mrhs + arhs
-    fn print_mad(&mut self, return_id: &str, round: op::Rounding, mlhs: &str, mlhs_type: Type, mrhs: &str, mrhs_type: Type, arhs: &str, arhs_type: Type, r_type: Type) {
+    fn print_mad(&mut self, ret_type: Type, round: op::Rounding, mul_mode: MulMode, return_id: &str,  mlhs: &str, mrhs: &str, arhs: &str) {
         let operator = if round == op::Rounding::Exact {
-        debug!("mrhstype: {}, arhs_type: {}, mul_mode {}\nret type: {}, name return var: {}\n", mrhs_type, arhs_type, Self::mul_mode(mrhs_type, arhs_type), r_type, return_id);
-            format!("mad{}", Self::mul_mode(mrhs_type, arhs_type))
+            format!("mad{}", Self::mul_mode(mul_mode))
         } else {
             format!("fma{}", Self::rounding(round))
         };
-        let return_str = format!("{}.{} {}, {}, {}, {};\n", operator, self.get_type(mlhs_type), return_id, mlhs, mrhs, arhs);
+        let return_str = format!("{}.{} {}, {}, {}, {};\n", operator, self.get_type(Self::get_inst_type(mul_mode, ret_type)), return_id, mlhs, mrhs, arhs);
         self.out_function.push_str(&return_str);
     }
 
