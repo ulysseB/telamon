@@ -1,5 +1,7 @@
 //! Exploration of the search space.
 
+extern crate serde_pickle;
+
 use device::Context;
 use explorer::candidate::Candidate;
 use explorer::{choice, local_selection};
@@ -259,6 +261,20 @@ pub struct Children<'a> {
     initial_cut: f64,
 }
 
+#[derive(Serialize)]
+struct CandidateStats {
+    bound: f64,
+    num_successes: usize,
+    num_trials: usize,
+}
+
+#[derive(Serialize)]
+struct ChildrenStats {
+    initial_cut: f64,
+    bound: f64,
+    stats: Vec<CandidateStats>,
+}
+
 impl<'a> Children<'a> {
     /// Creates a new children containing the given candidates, if any. Only keeps
     /// candidates above the cut.
@@ -419,17 +435,22 @@ impl<'a> Children<'a> {
     }
 
     fn probe(&self, context: &Context, bound: f64, f: &mut File) {
-        let child_stats = self.children
-            .iter()
-            .zip(self.rewards.iter())
-            .map(|(child, (successes, trials))| {
-                (child.bound(), successes.len(), trials)
-            }).collect_vec();
-        write!(f, "{},{}", self.initial_cut, bound);
-        for (bound, length, trials) in child_stats {
-            write!(f, ",{},{},{}", bound, length, trials);
-        }
-        write!(f, "\n");
+        let stats = ChildrenStats {
+            initial_cut: self.initial_cut,
+            bound,
+            stats: self.children
+                .iter()
+                .zip(self.rewards.iter())
+                .map(|(child, (successes, num_trials))| {
+                    CandidateStats {
+                        bound: child.bound(),
+                        num_successes: successes.len(),
+                        num_trials,
+                    }
+                }).collect_vec(),
+        };
+        unwrap!(f.write_all(serde_pickle::to_vec(&stats, true)?));
+
         for child in self.children.iter() {
             child.probe(context, f);
         }

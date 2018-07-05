@@ -24,6 +24,25 @@ impl Action {
     }
 }
 
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+pub enum Choice {
+    {{~#each choices}}
+        {{to_type_name name}}(
+        {{~#each arguments}}{{this.[1].def.keys.IdType}},{{/each~}}),
+    {{/each~}}
+}
+
+impl From<Action> for Choice {
+    fn from(action: Action) -> Choice {
+        match action {
+            {{~#each choices}}
+            Action::{{to_type_name name}}({{>choice.arg_names}} _) =>
+                Choice::{{to_type_name name}}({{>choice.arg_names}}),
+            {{~/each}}
+        }
+    }
+}
+
 /// Applies an action to the domain.
 pub fn apply_action(action: Action, store: &mut DomainStore, diff: &mut DomainDiff)
         -> Result<(), ()> {
