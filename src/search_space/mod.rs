@@ -5,7 +5,7 @@ mod dim_map;
 mod operand;
 generated_file!(choices);
 
-pub use self::choices::{Action, Bool, DimKind, Domain, DomainStore, InstFlag, Order,
+pub use self::choices::{Action, Bool, Choice, DimKind, Domain, DomainStore, InstFlag, Order,
                         MemSpace, ThreadMapping};
 
 use self::choices::{apply_action, DomainDiff, init_domain};

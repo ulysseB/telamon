@@ -331,10 +331,12 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
     fn build_body<'b>(&self, signature: &'b ir::Signature, ctx: &'b device::Context)
         -> Vec<Candidate<'b>>
     {
-        let k_tiles = ::generate_tile_sizes(self.params.k as u32, &[64]);
-        let m_tiles = ::generate_tile_sizes(self.params.m as u32, &[64, 8]);
-        let n_tiles = ::generate_tile_sizes(self.params.n as u32, &[64, 8]);
-        let tilings = ::par_iter_product(::par_iter_product(m_tiles, n_tiles), k_tiles);
+        //let k_tiles = ::generate_tile_sizes(self.params.k as u32, &[64]);
+        //let m_tiles = ::generate_tile_sizes(self.params.m as u32, &[64, 8]);
+        //let n_tiles = ::generate_tile_sizes(self.params.n as u32, &[64, 8]);
+        //let tilings = ::par_iter_product(::par_iter_product(m_tiles, n_tiles), k_tiles);
+        // FIXME XXX TODO
+        let tilings = ::std::iter::once(((vec![16, 4], vec![16, 4]), vec![16]));
 
         tilings.map(|((m_tiling, n_tiling), k_tiling)| {
             let mut builder = helper::Builder::new(signature, ctx.device());

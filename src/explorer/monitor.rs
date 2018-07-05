@@ -71,6 +71,7 @@ pub fn monitor<'a, T>(config: &Config, context: &Context, candidate_store: &T,
           duration_secs,
           status.num_evaluations,
           status.num_evaluations as f64 / duration_secs);
+    candidate_store.probe(context);
     match res {
         Ok(_) => warn!("No candidates to try anymore"),
         Err(reason) => {

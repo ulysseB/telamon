@@ -8,6 +8,7 @@ use explorer::{choice, local_selection};
 use explorer::config::{BanditConfig, NewNodeOrder, OldNodeOrder};
 use explorer::store::Store;
 use itertools::Itertools;
+use search_space::Choice;
 use std;
 use std::io::Write;
 use std::fs::File;
@@ -259,19 +260,19 @@ pub struct Children<'a> {
     children: Vec<SubTree<'a>>,
     rewards: Vec<(Vec<f64>, usize)>,
     initial_cut: f64,
+    choice: Option<Choice>,
 }
 
-#[derive(Serialize)]
 struct CandidateStats {
     bound: f64,
     num_successes: usize,
     num_trials: usize,
 }
 
-#[derive(Serialize)]
 struct ChildrenStats {
     initial_cut: f64,
     bound: f64,
+    choice: Option<Choice>,
     stats: Vec<CandidateStats>,
 }
 
@@ -280,12 +281,20 @@ impl<'a> Children<'a> {
     /// candidates above the cut.
     fn from_candidates(candidates: Vec<Candidate<'a>>, cut: f64) -> Self {
         let candidates = candidates.into_iter().filter(|c| c.bound.value() < cut).collect_vec();
+        let choice: Option<Choice> = candidates.first().and_then(|c| {
+            if let Some(choice::ActionEx::Action(a)) = c.actions.first() {
+                Some((*a).into())
+            } else {
+                None
+            }
+        });
         let children = candidates.into_iter().map(SubTree::UnexpandedNode).collect_vec();
         let rewards = children.iter().map(|_| (vec![], 0)).collect();
         Children {
             children: children,
             rewards,
             initial_cut: cut,
+            choice,
         }
     }
 
@@ -437,6 +446,7 @@ impl<'a> Children<'a> {
     fn probe(&self, context: &Context, bound: f64, f: &mut File) {
         let stats = ChildrenStats {
             initial_cut: self.initial_cut,
+            choice: self.choice,
             bound,
             stats: self.children
                 .iter()
@@ -449,8 +459,12 @@ impl<'a> Children<'a> {
                     }
                 }).collect_vec(),
         };
-        unwrap!(f.write_all(&unwrap!(serde_pickle::to_vec(&stats, true))));
-        panic!("we done.");
+        // Manually write to csv
+        unwrap!(write!(f, "\"{:?}\",{},{}", stats.choice, stats.initial_cut, stats.bound));
+        for &CandidateStats { bound, num_successes, num_trials } in stats.stats.iter() {
+            unwrap!(write!(f, ",{},{},{}", bound, num_successes, num_trials));
+        }
+        unwrap!(write!(f, "\n"));
 
         for child in self.children.iter() {
             child.probe(context, f);
