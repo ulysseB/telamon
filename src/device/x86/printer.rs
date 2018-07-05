@@ -331,8 +331,8 @@ impl Printer for X86printer {
         self.out_function.push_str(&push_str);
     }
 
-    fn print_ld(&mut self, return_id: &str, val_type: &str,  addr: &str, _: Type, _: InstFlag) {
-        let push_str = format!("{} = *({}*){} ;\n", return_id, val_type, addr);
+    fn print_ld(&mut self, return_id: &str, cast_type: Type,  addr: &str, _: Type, _: InstFlag) {
+        let push_str = format!("{} = *({}*){} ;\n", return_id, self.get_type(cast_type), addr);
         self.out_function.push_str(&push_str);
     }
 

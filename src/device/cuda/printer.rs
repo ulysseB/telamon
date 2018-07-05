@@ -325,8 +325,8 @@ impl Printer for CudaPrinter {
     }
 
     /// Print return_id = load [addr] 
-    fn print_ld(&mut self, return_id: &str, cast_type: &str,  addr: &str, r_type: Type, mem_flag: InstFlag) {
-        let return_str = format!("{}.{} {}, {};\n", Self::ld_operator(mem_flag), self.get_type(r_type), return_id, addr);
+    fn print_ld(&mut self, return_id: &str, cast_type: Type,  addr: &str, r_type: Type, mem_flag: InstFlag) {
+        let return_str = format!("{}.{} {}, {};\n", Self::ld_operator(mem_flag), self.get_type(r_type),  addr, return_id);
         self.out_function.push_str(&return_str);
     }
 
@@ -358,32 +358,32 @@ impl Printer for CudaPrinter {
 
     /// Print return_id = op1 && op2
     fn print_and(&mut self, return_id: &str, op1: &str, op2: &str) {
-        let return_str = format!("and.pred {}, {};\n", op1, op2);
+        let return_str = format!("and.pred {}, {}, {};\n", return_id, op1, op2);
         self.out_function.push_str(&return_str);
     }
 
     /// Print return_id = op1 || op2
     fn print_or(&mut self, return_id: &str, op1: &str, op2: &str) {
-        let return_str = format!("or.pred {}, {};\n", op1, op2);
+        let return_str = format!("or.pred {}, {}, {};\n", return_id, op1, op2);
         self.out_function.push_str(&return_str);
     }
 
     /// Print return_id = op1 == op2
     fn print_equal(&mut self, return_id: &str, op1: &str, op2: &str) {
         let return_str = format!("setp.eq.u32 {}, {}, {};\n", return_id, op1, op2);
-        self.out_function.push_str(&return_id);
+        self.out_function.push_str(&return_str);
     }
 
     /// Print return_id = op1 < op2
     fn print_lt(&mut self, return_id: &str, op1: &str, op2: &str) {
         let return_str = format!("setp.lt.u32 {}, {}, {};\n", return_id, op1, op2);
-        self.out_function.push_str(&return_id);
+        self.out_function.push_str(&return_str);
     }
 
     /// Print return_id = op1 > op2
     fn print_gt(&mut self, return_id: &str, op1: &str, op2: &str) {
         let return_str = format!("setp.gt.u32 {}, {}, {};\n", return_id, op1, op2);
-        self.out_function.push_str(&return_id);
+        self.out_function.push_str(&return_str);
     }
 
     /// Print if (cond) jump label(label_id)

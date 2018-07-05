@@ -30,7 +30,7 @@ pub trait Printer {
     fn print_mov(&mut self, return_id: &str, op: &str, return_type: Type);
 
     /// Print return_id = load [addr] 
-    fn print_ld(&mut self, return_id: &str, cast_type: &str,  addr: &str, return_type: Type, flag: InstFlag);
+    fn print_ld(&mut self, return_id: &str, cast_type: Type,  addr: &str, return_type: Type, flag: InstFlag);
 
     /// Print store val [addr] 
     fn print_st(&mut self, addr: &str, val: &str, val_type: &str, mem_flag: InstFlag);
@@ -65,6 +65,11 @@ pub trait Printer {
     /// Print wait on all threads
     fn print_sync(&mut self);
 
+    // TODO(cleanup): remove this function once values are preprocessed by codegen. If values
+    // are preprocessed, types will be already lowered.
+    fn lower_type(t: ir::Type, fun: &Function) -> ir::Type {
+        unwrap!(fun.space().ir_instance().device().lower_type(t, fun.space()))
+    }
 
     fn cfg_vec(&mut self, fun: &Function, cfgs: &[Cfg], namer: &mut NameMap) {
         for c in cfgs.iter() {
@@ -85,7 +90,7 @@ pub trait Printer {
                 self.cfg_vec( fun, inner, namer);
                 self.print_sync();
             }
-            Cfg::Instruction(ref i) => self.inst( i, namer),
+            Cfg::Instruction(ref i) => self.inst( i, namer, fun),
         }
     }
 
@@ -99,15 +104,15 @@ pub trait Printer {
             let step = namer.name_size(increment, Type::I(32));
             match base_components[..] {
                 // TODO get a sensible type for index and step rather than just random I32
-                [] => self.print_mul(&ind_var, op::Rounding::Nearest, &index, Type::I(32), &step, Type::I(32), Type::I(32)),
-                [ref base] => self.print_mad(&ind_var, op::Rounding::Nearest, &index, Type::I(32), &step,Type::I(32), &base, Type::I(32), Type::I(32)),
+                [] => self.print_mul(&ind_var, op::Rounding::Exact, &index, Type::I(32), &step, Type::I(32), Type::I(32)),
+                [ref base] => self.print_mad(&ind_var, op::Rounding::Exact, &index, Type::I(32), &step,Type::I(32), &base, Type::I(32), Type::I(32)),
                 _ => panic!()
             }
         } else {
             match base_components[..] {
                 [] => {let zero = self.get_int(0); self.print_mov(&ind_var, &zero, Type::I(32));}
                 [ref base] =>  self.print_mov(&ind_var, &base, Type::I(32)),
-                [ref lhs, ref rhs] =>  self.print_binop(&ind_var, ir::BinOp::Add, &lhs, &rhs, Type::I(32), op::Rounding::Nearest),
+                [ref lhs, ref rhs] =>  self.print_binop(&ind_var, ir::BinOp::Add, &lhs, &rhs, Type::I(32), op::Rounding::Exact),
                 _ => panic!()
             }
         }
@@ -159,7 +164,7 @@ pub trait Printer {
             match base_components.collect_vec()[..] {
                 [ref base] => self.print_mov(&ind_var, &base, Type::I(32)),
                 [ref lhs, ref rhs] =>
-                    self.print_binop( &ind_var, ir::BinOp::Add, &lhs, &rhs, Type::I(32), op::Rounding::Nearest),
+                    self.print_binop( &ind_var, ir::BinOp::Add, &lhs, &rhs, Type::I(32), op::Rounding::Exact),
                 _ => panic!(),
             };
             ind_var_vec.push(ind_var.into_owned());
@@ -169,11 +174,11 @@ pub trait Printer {
         for (level, ind_var) in ind_levels.iter().zip_eq(ind_var_vec) {
             if let Some((_, increment)) = level.increment {
                 let step = namer.name_size(increment, level.t());
-                self.print_binop(&ind_var, ir::BinOp::Add, &ind_var, &step, Type::I(32), op::Rounding::Nearest);
+                self.print_binop(&ind_var, ir::BinOp::Add, &ind_var, &step, Type::I(32), op::Rounding::Exact);
             };
         }
         let one = self.get_int(1);
-        self.print_binop(&idx, op::BinOp::Add, &idx, &one, Type::I(32), op::Rounding::Nearest);
+        self.print_binop(&idx, op::BinOp::Add, &idx, &one, Type::I(32), op::Rounding::Exact);
         let gt_cond = namer.gen_name(ir::Type::I(32));
         self.print_lt(&gt_cond, &idx, &namer.name_size(dim.size(), Type::I(32)));
         self.print_cond_jump(&loop_id.to_string(), &gt_cond);
@@ -190,7 +195,7 @@ pub trait Printer {
                 [ref base] => base.to_string(),
                 [ref lhs, ref rhs] => {
                     let tmp = namer.gen_name(level.t());
-                    self.print_binop(&tmp, ir::BinOp::Add, lhs, rhs, Type::I(32), op::Rounding::Nearest);
+                    self.print_binop(&tmp, ir::BinOp::Add, lhs, rhs, Type::I(32), op::Rounding::Exact);
                     tmp
                 },
                 _ => panic!(),
@@ -206,10 +211,10 @@ pub trait Printer {
                 for &(level, ref ind_var, incr, ref base) in &incr_levels {
                     if let Some(step) = incr.as_int() {
                         let stepxi = self.get_int(step * i);
-                        self.print_binop(ind_var, ir::BinOp::Add, &stepxi, &base, Type::I(32), op::Rounding::Nearest);
+                        self.print_binop(ind_var, ir::BinOp::Add, &stepxi, &base, Type::I(32), op::Rounding::Exact);
                     } else {
                         let step = namer.name_size(incr, level.t());
-                        self.print_binop(&ind_var, ir::BinOp::Add, &step, &ind_var, Type::I(32), op::Rounding::Nearest);
+                        self.print_binop(&ind_var, ir::BinOp::Add, &step, &ind_var, Type::I(32), op::Rounding::Exact);
                     };
                 }
             }
@@ -236,27 +241,24 @@ pub trait Printer {
     }
 
     /// Prints an instruction.
-    fn inst(&mut self, inst: &Instruction, namer: &mut NameMap ) {
+    fn inst(&mut self, inst: &Instruction, namer: &mut NameMap, fun: &Function ) {
         match *inst.operator() {
             op::BinOp(op, ref lhs, ref rhs, round) => {
-                assert_eq!(round, op::Rounding::Nearest);
-                self.print_binop(&namer.name_inst(inst), op, &namer.name_op(lhs), &namer.name_op(rhs), inst.t(), op::Rounding::Nearest)
+                self.print_binop(&namer.name_inst(inst), op, &namer.name_op(lhs), &namer.name_op(rhs), inst.t(), round)
             }
             op::Mul(ref lhs, ref rhs, round, _) => {
-                assert_eq!(round, op::Rounding::Nearest);
-                self.print_mul(&namer.name_inst(inst), round, &namer.name_op(lhs), lhs.t(), &namer.name_op(rhs), rhs.t(), inst.t())
+                self.print_mul(&namer.name_inst(inst), round, &namer.name_op(lhs), Self::lower_type(lhs.t(), fun), &namer.name_op(rhs), Self::lower_type(rhs.t(), fun), inst.t())
             },
             op::Mad(ref mul_lhs, ref mul_rhs, ref add_rhs, round) => {
-                assert_eq!(round, op::Rounding::Nearest);
                 self.print_mad(&namer.name_inst(inst), round, &namer.name_op(mul_lhs), mul_lhs.t(), &namer.name_op(mul_rhs), mul_rhs.t(), &namer.name_op(add_rhs), add_rhs.t(), inst.t())
             },
             op::Mov(ref op) => {
 
-                self.print_mov(&namer.name_inst(inst), &namer.name_op(op), inst.t())
+                self.print_mov(&namer.name_inst(inst), &namer.name_op(op), Self::lower_type(inst.t()))
             },
             op::Ld(ld_type, ref addr, _) => {
 
-                let ld_type = self.get_type(ld_type);
+                //let ld_type = self.get_type(ld_type);
                 self.print_ld(&namer.name_inst(inst), &ld_type, &namer.name_op(addr), inst.t(), unwrap!(inst.mem_flag()))
             },
             op::St(ref addr, ref val, _,  _) => {
