@@ -1,3 +1,6 @@
+branches:
+  only:
+  - master
 language: rust
 cache: cargo
 sudo: false
