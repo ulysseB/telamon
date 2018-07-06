@@ -20,13 +20,13 @@ statement: Spanned<ast::Statement> = {
         let disjoint = disjoint.unwrap_or(Vec::new());
         Spanned {
             beg, end,
-            data: ast::Statement::SetDef {
+            data: ast::Statement::SetDef(ast::SetDef {
                 name: Spanned {
                     beg: beg_name,
                     end: end_name,
                     data: name,
                 }, doc, arg, superset, keys, disjoint, quotient: None
-            }
+            })
         }
     },
     <doc: doc?> <beg: @L> quotient
@@ -48,13 +48,13 @@ statement: Spanned<ast::Statement> = {
         let disjoint = disjoint.unwrap_or(Vec::new());
         Spanned {
             beg, end,
-            data: ast::Statement::SetDef {
+            data: ast::Statement::SetDef(ast::SetDef {
                 name: Spanned {
                     beg: beg_name,
                     end: end_name,
                     data: name,
                 }, doc, arg, superset, keys, disjoint, quotient
-            }
+            })
         }
     },
     <doc: doc?> <beg: @L> define integer

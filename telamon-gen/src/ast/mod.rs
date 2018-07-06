@@ -99,56 +99,18 @@ impl CheckerContext {
                 }
                 Ok(())
             },
-            Spanned { beg, end, data: Statement::SetDef {
-                ref name, doc: _, arg, superset, disjoint: _, keys, ..  } } => {
-                let keys = keys.iter().map(|(k, _, _)| k)
-                                      .collect::<Vec<&ir::SetDefKey>>();
-
-                if !keys.contains(&&ir::SetDefKey::ItemType) {
-                    Err(TypeError::MissingEntry(name.data.to_owned(), Spanned {
-                        beg: *beg, end: *end,
-                        data: ir::SetDefKey::ItemType.to_string()
-                    }))?;
-                }
-                if !keys.contains(&&ir::SetDefKey::IdType) {
-                    Err(TypeError::MissingEntry(name.data.to_owned(), Spanned {
-                        beg: *beg, end: *end,
-                        data: ir::SetDefKey::IdType.to_string()
-                    }))?;
-                }
-                if !keys.contains(&&ir::SetDefKey::ItemGetter) {
-                    Err(TypeError::MissingEntry(name.data.to_owned(), Spanned {
-                        beg: *beg, end: *end,
-                        data: ir::SetDefKey::ItemGetter.to_string()
-                    }))?;
-                }
-                if !keys.contains(&&ir::SetDefKey::IdGetter) {
-                    Err(TypeError::MissingEntry(name.data.to_owned(), Spanned {
-                        beg: *beg, end: *end,
-                        data: ir::SetDefKey::IdGetter.to_string()
-                    }))?;
-                }
-                if !keys.contains(&&ir::SetDefKey::Iter) {
-                    Err(TypeError::MissingEntry(name.data.to_owned(), Spanned {
-                        beg: *beg, end: *end,
-                        data: ir::SetDefKey::Iter.to_string()
-                    }))?;
-                }
+            Spanned { beg, end, data: Statement::SetDef(SetDef {
+                ref name, doc: _, arg, superset, disjoint: _, keys, ..  }) } => {
                 if let Some(VarDef { name: _, set: SetRef { name, .. } }) = arg {
                     self.undefined_set(name).map_err(|s| TypeError::Undefined(Spanned {
                         beg: *beg, end: *end, data: s
                     }))?;
                 }
                 if let Some(SetRef { name: supername, .. }) = superset {
-                    self.undefined_set(supername).map_err(|s| TypeError::Undefined(Spanned {
-                        beg: *beg, end:*end, data: s
-                    }))?;
-                }
-                if superset.is_some() && !keys.contains(&&ir::SetDefKey::FromSuperset) {
-                    Err(TypeError::MissingEntry(name.data.to_owned(), Spanned {
-                        beg: *beg, end: *end,
-                        data: ir::SetDefKey::FromSuperset.to_string()
-                    }))?;
+                    self.undefined_set(supername)
+                        .map_err(|s| TypeError::Undefined(Spanned {
+                                 beg: *beg, end:*end, data: s
+                        }))?;
                 }
                 Ok(())
             },
@@ -160,8 +122,8 @@ impl CheckerContext {
         &mut self, statement: &Spanned<Statement>
     ) -> Result<(), TypeError> {
         match statement {
-            Spanned { beg: _, end: _, data: Statement::SetDef {
-                name: Spanned { beg, end, data: name, }, .. } } |
+            Spanned { beg: _, end: _, data: Statement::SetDef(SetDef {
+                name: Spanned { beg, end, data: name, }, .. }) } |
             Spanned { beg: _, end: _, data: Statement::EnumDef(EnumDef {
                 name: Spanned { beg, end, data: name, }, .. }) } |
             Spanned { beg: _, end: _, data: Statement::IntegerDef {
@@ -217,13 +179,9 @@ impl TypingContext {
     /// Adds a statement to the typing context.
     fn add_statement(&mut self, statement: Spanned<Statement>) {
         match statement {
-            Spanned { beg, end, data: Statement::SetDef {
-                name: Spanned {
-                    beg: _,
-                    end: _,
-                    data: name,
-                }, doc, arg, superset, disjoint, keys, quotient
-            } } => {
+            Spanned { beg, end, data: Statement::SetDef(SetDef {
+                name, doc, arg, superset, disjoint, keys, quotient
+            }) } => {
                 self.set_defs.push(SetDef {
                     name, doc, arg, superset, disjoint, keys, quotient
                 })
@@ -252,7 +210,7 @@ impl TypingContext {
     fn finalize(mut self) -> (ir::IrDesc, Vec<TypedConstraint>) {
         for def in std::mem::replace(&mut self.set_defs, vec![]) {
             self.type_set_def(
-                def.name, def.arg, def.superset, def.keys, def.disjoint, def.quotient
+                def.name.data, def.arg, def.superset, def.keys, def.disjoint, def.quotient
             );
         }
         for choice_def in std::mem::replace(&mut self.choice_defs, vec![]) {
@@ -792,15 +750,7 @@ pub enum Statement {
         vars: Vec<VarDef>,
         body: CounterBody,
     },
-    SetDef {
-        name: Spanned<String>,
-        doc: Option<String>,
-        arg: Option<VarDef>,
-        superset: Option<SetRef>,
-        disjoint: Vec<String>,
-        keys: Vec<(ir::SetDefKey, Option<VarDef>, String)>,
-        quotient: Option<Quotient>,
-    },
+    SetDef(SetDef),
     Require(Constraint),
 }
 
@@ -808,6 +758,7 @@ impl Statement {
     pub fn type_check(&self) -> Result<(), TypeError> {
         match self {
             Statement::EnumDef(enum_def) => enum_def.type_check(),
+            Statement::SetDef(set_def) => set_def.type_check(),
             _ => Ok(()),
         }
     }
@@ -1340,27 +1291,64 @@ impl From<Statement> for ChoiceDef {
 }
 
 #[derive(Debug, Clone)]
-struct SetDef {
-    name: String,
-    doc: Option<String>,
-    arg: Option<VarDef>,
-    superset: Option<SetRef>,
-    disjoint: Vec<String>,
-    keys: Vec<(ir::SetDefKey, Option<VarDef>, String)>,
-    quotient: Option<Quotient>,
+pub struct SetDef {
+    pub name: Spanned<String>,
+    pub doc: Option<String>,
+    pub arg: Option<VarDef>,
+    pub superset: Option<SetRef>,
+    pub disjoint: Vec<String>,
+    pub keys: Vec<(ir::SetDefKey, Option<VarDef>, String)>,
+    pub quotient: Option<Quotient>,
 }
 
-impl Default for SetDef {
-    fn default() -> SetDef {
-        SetDef {
-            name: Default::default(),
-            doc: None,
-            arg: None,
-            superset: None,
-            disjoint: vec![],
-            keys: vec![],
-            quotient: None,
+impl SetDef {
+    fn missing_entry(&self) -> Result<(), TypeError> {
+        let keys = self.keys.iter()
+                            .map(|(k, _, _)| k)
+                            .collect::<Vec<&ir::SetDefKey>>();
+
+        if !keys.contains(&&ir::SetDefKey::ItemType) {
+            Err(TypeError::MissingEntry(self.name.data.to_owned(), Spanned {
+                beg: self.name.beg, end: self.name.end,
+                data: ir::SetDefKey::ItemType.to_string()
+            }))?;
         }
+        if !keys.contains(&&ir::SetDefKey::IdType) {
+            Err(TypeError::MissingEntry(self.name.data.to_owned(), Spanned {
+                beg: self.name.beg, end: self.name.end,
+                data: ir::SetDefKey::IdType.to_string()
+            }))?;
+        }
+        if !keys.contains(&&ir::SetDefKey::ItemGetter) {
+            Err(TypeError::MissingEntry(self.name.data.to_owned(), Spanned {
+                beg: self.name.beg, end: self.name.end,
+                data: ir::SetDefKey::ItemGetter.to_string()
+            }))?;
+        }
+        if !keys.contains(&&ir::SetDefKey::IdGetter) {
+            Err(TypeError::MissingEntry(self.name.data.to_owned(), Spanned {
+                beg: self.name.beg, end: self.name.end,
+                data: ir::SetDefKey::IdGetter.to_string()
+            }))?;
+        }
+        if !keys.contains(&&ir::SetDefKey::Iter) {
+            Err(TypeError::MissingEntry(self.name.data.to_owned(), Spanned {
+                beg: self.name.beg, end: self.name.end,
+                data: ir::SetDefKey::Iter.to_string()
+            }))?;
+        }
+        if self.superset.is_some() && !keys.contains(&&ir::SetDefKey::FromSuperset) {
+            Err(TypeError::MissingEntry(self.name.data.to_owned(), Spanned {
+                beg: self.name.beg, end: self.name.end,
+                data: ir::SetDefKey::FromSuperset.to_string()
+            }))?;
+        }
+        Ok(())
+    }
+
+    pub fn type_check(&self) -> Result<(), TypeError> {
+        self.missing_entry()?;
+        Ok(())
     }
 }
 
@@ -1373,17 +1361,12 @@ impl PartialEq for SetDef {
 impl From<Statement> for Result<SetDef, TypeError> {
     fn from(stmt: Statement) -> Self {
         match stmt {
-            Statement::SetDef {
-                name: Spanned {
-                    beg: _,
-                    end: _,
-                    data: name,
-                }, doc, arg, superset, disjoint, keys, quotient
-            } => {
-                let set_def: SetDef = SetDef {
+            Statement::SetDef(SetDef {
+                name, doc, arg, superset, disjoint, keys, quotient
+            }) => {
+                Ok(SetDef {
                     name, doc, arg, superset, disjoint, keys, quotient
-                };
-                Ok(set_def)
+                })
             },
             _ => unreachable!(),
         }

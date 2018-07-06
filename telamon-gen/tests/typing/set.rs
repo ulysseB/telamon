@@ -106,8 +106,8 @@ mod missing_entry {
                 new_objs = \"$objs.inst\"
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
-                beg: Position { line: 0, column: 0},
-                end: Position { line: 0, column: 16},
+                beg: Position { line: 0, column: 4},
+                end: Position { line: 0, column: 15},
                 data: ir::SetDefKey::ItemType.to_string()
             }))
         );
@@ -126,8 +126,8 @@ mod missing_entry {
                 new_objs = \"$objs.inst\"
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
-                beg: Position { line: 0, column: 0},
-                end: Position { line: 0, column: 16},
+                beg: Position { line: 0, column: 4},
+                end: Position { line: 0, column: 15},
                 data: ir::SetDefKey::IdType.to_string()
             }))
         );
@@ -146,8 +146,8 @@ mod missing_entry {
                 new_objs = \"$objs.inst\"
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
-                beg: Position { line: 0, column: 0},
-                end: Position { line: 0, column: 16},
+                beg: Position { line: 0, column: 4},
+                end: Position { line: 0, column: 15},
                 data: ir::SetDefKey::ItemGetter.to_string()
             }))
         );
@@ -166,8 +166,8 @@ mod missing_entry {
                 new_objs = \"$objs.inst\"
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
-                beg: Position { line: 0, column: 0},
-                end: Position { line: 0, column: 16},
+                beg: Position { line: 0, column: 4},
+                end: Position { line: 0, column: 15},
                 data: ir::SetDefKey::IdGetter.to_string()
             }))
         );
@@ -186,8 +186,8 @@ mod missing_entry {
                 new_objs = \"$objs.inst\"
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
-                beg: Position { line: 0, column: 0},
-                end: Position { line: 0, column: 16},
+                beg: Position { line: 0, column: 4},
+                end: Position { line: 0, column: 15},
                 data: ir::SetDefKey::Iter.to_string()
             }))
         );
@@ -217,8 +217,8 @@ mod missing_entry {
                 new_objs = \"$objs.inst\"
              end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
-                beg: Position { line: 10, column: 14},
-                end: Position { line: 10, column: 50},
+                beg: Position { line: 10, column: 18},
+                end: Position { line: 10, column: 29},
                 data: ir::SetDefKey::FromSuperset.to_string()
             }))
         );
