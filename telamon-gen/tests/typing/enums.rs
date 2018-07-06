@@ -4,6 +4,23 @@ pub use super::telamon_gen::lexer::{Lexer, Spanned, Position};
 pub use super::telamon_gen::parser;
 pub use super::telamon_gen::ast::*;
 
+/// Missing the set BasickBlock from a Emum.
+#[test]
+fn undefined_parameter_from_enum() {
+    assert_eq!(parser::parse_ast(Lexer::from(
+            b"define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
+                symmetric
+                value A:
+                value B:
+          end".to_vec())).unwrap().type_check().err(),
+        Some(TypeError::Undefined(Spanned {
+            beg: Position { line: 0, column: 0},
+            end: Position { line: 0, column: 56},
+            data: String::from("BasicBlock")
+        }))
+    );
+}
+
 /// Redefinition of the foo Enum.
 #[test]
 fn enum_redefinition() {
@@ -99,6 +116,7 @@ fn enum_field_redefinition() {
         })
     );
 }
+
 */
 /*
 #[test]
