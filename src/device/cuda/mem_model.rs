@@ -123,7 +123,7 @@ struct ThreadDimInfo {
 impl ThreadDimInfo {
     /// Returns part of the dimension size handled by `Self`.
     fn partial_size(&self) -> u64 {
-        if self.is_partial_dim { self.size.max - self.size.min } else { self.size.min }
+        if self.is_partial_dim { self.size.max - self.size.min + 1 } else { self.size.min }
     }
 }
 
@@ -224,8 +224,9 @@ fn sort_thread_dims(dims: &[ThreadDimInfo],
         }
         out.push(d);
         heap.extend(dim_groups.remove(&out.len()));
-        if total_size > gpu.wrap_size as u64 { break; }
+        if total_size >= gpu.wrap_size as u64 { break; }
     }
+    trace!("sorted dims: {:?}", out);
     out
 }
 
@@ -248,7 +249,7 @@ fn wrap_access_offsets(thread_dims: &[ThreadDimInfo],
     let mut indexes = vec![0; thread_dims.len()];
     while offsets.len() < gpu.wrap_size as usize {
         let mut incr = true;
-        let offset = thread_dims.iter().enumerate().map(|(i, dim)| {
+        for (i, dim) in thread_dims.iter().enumerate() {
             if incr { incr = increment_index(i, thread_dims, &mut indexes); }
             if dim.is_partial_dim && indexes[i] > 0 {
                 // TODO(cc_perf): save the index of real dimensions instead of recomputing.
@@ -257,9 +258,11 @@ fn wrap_access_offsets(thread_dims: &[ThreadDimInfo],
                 assert!(!thread_dims[real_pos].is_partial_dim);
                 indexes[real_pos] = thread_dims[real_pos].size.min-1;
             }
+        }
+        let offset = thread_dims.iter().enumerate().map(|(i, dim)| {
             let stride = if use_gcd { dim.stride_factors.gcd } else { dim.stride.min };
             indexes[i] * stride
-        }).product();
+        }).sum();
         if incr { break; } // We reached the end of all loops.
         offsets.push(offset);
     }
@@ -325,10 +328,12 @@ fn global_coalescing(thread_dims: &[ThreadDimInfo],
                      gpu: &cuda::Gpu) -> (f64, f64, f64) {
     let thread_dims = sort_thread_dims(thread_dims, false, space, gpu);
     let offsets = wrap_access_offsets(&thread_dims, true, gpu);
+    trace!("{:?}", offsets);
     let (mut l1_coalescing, mut l2_coalescing, mut replay) =
         offsets_global_coalescing(&offsets, gpu);
     if thread_dims.last().map(|d| !d.is_active_thread).unwrap_or(false) {
         let offsets = wrap_access_offsets(&thread_dims[0..thread_dims.len()-1], true, gpu);
+        trace!("{:?}", offsets);
         let (l1, l2, r) = offsets_global_coalescing(&offsets, gpu);
         l1_coalescing = f64::min(l1_coalescing, l1);
         l2_coalescing = f64::min(l2_coalescing, l2);
@@ -520,7 +525,7 @@ mod tests {
 
     /// Tests `MemInfo` for global loads without coalescing.
     #[test]
-    fn global_no_coalescing() {
+    fn global_full_coalescing() {
         let _ = env_logger::try_init();
         let executor = cuda::Executor::init();
         let ctx = cuda::Context::new(&executor);
@@ -536,7 +541,7 @@ mod tests {
 
     /// Tests `MemInfo` for global loads with full coalescing.
     #[test]
-    fn global_full_coalescing() {
+    fn global_no_coalescing() {
         let _ = env_logger::try_init();
         let executor = cuda::Executor::init();
         let ctx = cuda::Context::new(&executor);
@@ -548,5 +553,51 @@ mod tests {
         assert_eq!(inst_info.l1_coalescing, 1.0);
         assert_eq!(inst_info.l2_coalescing, 1.0);
         assert_eq!(inst_info.replay_factor, gpu.wrap_size as f64);
+    }
+
+    fn thread_dim_info(id: u32, partial: bool, min_size: u64, max_size: u64, stride: u64)
+        -> ThreadDimInfo
+    {
+        ThreadDimInfo {
+            id: ir::dim::Id(id),
+            is_active_thread: true,
+            is_partial_dim: partial,
+            size: size::Range { min: min_size, max: max_size },
+            stride: size::Range { min: stride, max: stride },
+            stride_factors: size::FactorRange::new_fixed(stride),
+        }
+    }
+
+    /// Tests offsets computation.
+    #[test]
+    fn offsets() {
+        let _ = env_logger::try_init();
+        let gpu = unwrap!(Gpu::from_name("dummy_cuda_gpu"));
+        let big_dim_0 = thread_dim_info(0, false, 32, 32, 0);
+        let big_dim_1 = thread_dim_info(1, false, 32, 32, 1);
+        let small_dim_0 = thread_dim_info(0, false, 4, 4, 0);
+        let small_dim_1 = thread_dim_info(1, false, 4, 4, 1);
+        let offsets_big_0 = wrap_access_offsets(&[big_dim_0, big_dim_1], false, &gpu); 
+        let offsets_big_1 = wrap_access_offsets(&[big_dim_1, big_dim_0], false, &gpu); 
+        let offsets_small = wrap_access_offsets(&[small_dim_0, small_dim_1], false, &gpu); 
+        assert_eq!(offsets_big_0, vec![0; 32]);
+        assert_eq!(offsets_big_1, (0..32).collect_vec());
+        assert_eq!(offsets_small, vec![0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3]);
+    }
+
+    /// Tests offsets computation, with partial dims.
+    #[test]
+    fn offsets_with_partial_dims() {
+        let _ = env_logger::try_init();
+        let gpu = unwrap!(Gpu::from_name("dummy_cuda_gpu"));
+        // Create two dimensions of size [4, 6], with strides 0, 1.
+        let beg_0 = thread_dim_info(0, false, 2, 4, 0);
+        let end_0 = thread_dim_info(0, true, 2, 4, 0);
+        let beg_1 = thread_dim_info(1, false, 2, 4, 1);
+        let end_1 = thread_dim_info(1, true, 2, 4, 1);
+        let offsets0 = wrap_access_offsets(&[beg_1, beg_0, end_0, end_1], false, &gpu);
+        let offsets1 = wrap_access_offsets(&[beg_1, beg_0, end_1, end_0], false, &gpu);
+        assert_eq!(offsets0, vec![0, 1, 0, 1, 0, 1, 0, 1, 2, 2, 2, 2, 3, 3, 3, 3]);
+        assert_eq!(offsets1, vec![0, 1, 0, 1, 2, 2, 3, 3, 0, 1, 2, 3, 0, 1, 2, 3]);
     }
 }
