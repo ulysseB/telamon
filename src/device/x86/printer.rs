@@ -3,6 +3,7 @@ use device::x86::Namer;
 use ir::{self, op, Type};
 use itertools::Itertools;
 use search_space::{Domain, DimKind, InstFlag};
+use std::fmt::Write as WriteFmt;
 //use device::printer::Printer;
 // TODO(cc_perf): avoid concatenating strings.
 
@@ -20,9 +21,9 @@ impl X86printer {
     fn param_decl(&mut self, param: &ParamVal, namer: &NameMap) -> String {
         let name = namer.name_param(param.key());
         match param {
-            ParamVal::External(_, par_type) => format!("{} {}", self.get_type(*par_type), name),
+            ParamVal::External(_, par_type) => format!("{} {}", Self::get_type(*par_type), name),
             ParamVal::Size(_) => format!("uint32_t {}", name),
-            ParamVal::GlobalMem(_, _, par_type) => format!("{} {}", self.get_type(*par_type), name),
+            ParamVal::GlobalMem(_, _, par_type) => format!("{} {}", Self::get_type(*par_type), name),
         }
     }
 
@@ -36,7 +37,7 @@ impl X86printer {
                 Type::PtrTo(..) => String::new(),
                 _ => {
                     let prefix = Namer::gen_prefix(&t);
-                    let mut s = format!("{} ", self.get_type(t));
+                    let mut s = format!("{} ", Self::get_type(t));
                     s.push_str(&(0..n).map(|i| format!("{}{}", prefix, i)).collect_vec().join(", "));
                     s.push_str(";\n  ");
                     s
@@ -57,7 +58,6 @@ impl X86printer {
         let mut decls = vec![];
         // Compute thread indexes.
         for (ind, dim) in function.thread_dims().iter().enumerate() {
-            //FIXME: fetch proper thread index
             decls.push(format!("{} = tid.t{};\n", namer.name_index(dim.id()), ind));
         }
         decls.join("\n  ")
@@ -80,15 +80,13 @@ impl X86printer {
             );
             // INDEX LOADS
             let idx_loads = self.decl_par_indexes(function, name_map);
-            self.out_function.push_str(&idx_loads);
+            writeln!(self.out_function, "{}", idx_loads);
             // LOAD PARAM
-            let ld_params = function.device_code_args().map(|val| {
-                format!("{var_name} = {name};// LD_PARAM",
+            for val in function.device_code_args() {
+                unwrap!(writeln!(self.out_function, "{var_name} = {name};// LD_PARAM",
                         var_name = name_map.name_param_val(val.key()),
-                        name = name_map.name_param(val.key()))
-            }).collect_vec().join("\n  ");
-            self.out_function.push_str(&ld_params);
-            self.out_function.push_str(&"\n");
+                        name = name_map.name_param(val.key())));
+            }
             // MEM DECL
             for block in function.mem_blocks() {
                 match block.alloc_scheme() {
@@ -106,9 +104,9 @@ impl X86printer {
                     if let Some((_, incr)) = level.increment {
                         let name = name_map.declare_size_cast(incr, level.t());
                         if let Some(name) = name {
-                            let cpu_t = self.get_type(level.t());
+                            let cpu_t = Self::get_type(level.t());
                             let old_name = name_map.name_size(incr, Type::I(32));
-                            self.out_function.push_str(&format!("{} = ({}){};\n", name, cpu_t, old_name));
+                            unwrap!(writeln!(self.out_function, "{} = ({}){};\n", name, cpu_t, old_name));
                         }
                     }
                 }
@@ -136,11 +134,11 @@ impl X86printer {
             .map(|(i, v)| match v {
                 ParamVal::External(..) if v.is_pointer() => format!("intptr_t p{i} = (intptr_t)*(args + {i})", i = i),
                 ParamVal::External(_, par_type) => format!("{t} p{i} = *({t}*)*(args + {i})", 
-                                                           t = self.get_type(*par_type), i = i),
+                                                           t = Self::get_type(*par_type), i = i),
                 ParamVal::Size(_) => format!("uint32_t p{i} = *(uint32_t*)*(args + {i})", i = i),
                 // Are we sure we know the size at compile time ? I think we do
                 ParamVal::GlobalMem(_, _, par_type) => format!("{t} p{i} = ({t})*(args + {i})", 
-                                                               t = self.get_type(*par_type), i = i)
+                                                               t = Self::get_type(*par_type), i = i)
             }
             )
             .collect_vec()
@@ -155,7 +153,8 @@ impl X86printer {
             .join(", ")
     }
 
-    // Build the right call for a nested loop on dimensions
+    // Build the right call for a nested loop on dimensions with linearized accesses
+    // that is, for a 3 dimensions arrays a[2][5][3] returns d0 + d1 * 3 + d2 * 5
     fn build_index_call(&mut self, func: &Function) -> String {
         let mut vec_ret = vec![];
         let dims = func.thread_dims();
@@ -184,86 +183,64 @@ impl X86printer {
 
     fn thread_gen(&mut self, func: &Function) -> String {
         if func.num_threads() == 1 {
-            let mut ret = format!("thread_arg_t thread_args;\n");
-            ret.push_str(&format!(" thread_args.args = args;\n"));
-            ret.push_str(&format!(" thread_args.tid.t0 = 0;\n"));
-            ret.push_str(&format!(" thread_args.tid.barrier = &barrier;\n"));
-            ret.push_str(&format!("pthread_barrier_init(&barrier, NULL,{});\n",   func.num_threads()));
-            ret.push_str(&format!("exec_wrap((void *)&thread_args);\n"));
-            return ret;
+            return format!(include_str!("template/monothread_init.c.template"));
         }
-        let mut ret = format!("pthread_t thr_ids[{}];\n", func.num_threads());
-        let mut ind_var_decl = String::from("int ");
-        let build_struct = format!("thread_arg_t thread_args[{}];\n", func.num_threads());
-        let dim_tid_struct = format!("thread_dim_id_t thread_tids[{}];\n", func.num_threads());
-        let barrier_init = format!("pthread_barrier_init(&barrier, NULL,{});\n",   func.num_threads() );
         let mut loop_decl = String::new();
         let mut ind_vec = Vec::new();
         let mut jmp_stack = Vec::new();
         for (ind, dim) in func.thread_dims().iter().enumerate() {
-            let mut loop_jmp = String::new();
             ind_vec.push(format!("d{}", ind));
-            loop_decl.push_str(&format!("d{}=0;\n", ind));
-            loop_decl.push_str(&format!("LOOP_BEGIN_{}:\n", ind));
-            loop_jmp.push_str(&format!("d{}++;\n", ind));
-            loop_jmp.push_str(&format!("if (d{} < {})\n", ind, unwrap!(dim.size().as_int())));
-            loop_jmp.push_str(&format!("    goto LOOP_BEGIN_{};\n", ind));
+            unwrap!(writeln!(loop_decl, include_str!("template/loop_init.c.template"),
+                                                     ind = ind, loop_type= "THREAD_INIT"));
+            let loop_jmp = format!(include_str!("template/loop_jump.c.template"),
+                                                     ind = ind, 
+                                                     size = unwrap!(dim.size().as_int()),
+                                                     loop_type = "THREAD_INIT");
             jmp_stack.push(loop_jmp);
         }
         let ind_dec_inter = ind_vec.join(", ");
-        ind_var_decl.push_str(&ind_dec_inter);
-        ind_var_decl.push_str(&";\n");
+        let ind_var_decl = format!( "int {};", ind_dec_inter);
         let mut loop_jmp = String::new(); 
         while let Some(j_str) = jmp_stack.pop() {
             loop_jmp.push_str(&j_str);
         }
-        let arg_struct = format!("thread_args[{ind}].args = args;\n",  ind = self.build_index_call(func) );
         let mut tid_struct = String::new();
         for (ind, _) in func.thread_dims().iter().enumerate() {
             tid_struct.push_str(&format!("thread_args[{index}].tid.t{dim_id} = d{dim_id};\n",  index = self.build_index_call(func), dim_id = ind));
         }
-        let barrier_str = format!("thread_args[{}].tid.barrier = &barrier;\n",  self.build_index_call(func) );
-        let create_call = format!("pthread_create(&thr_ids[{}], NULL, exec_wrap, (void *)&thread_args[{ind}]);\n",  ind = self.build_index_call(func) );
-        ret.push_str(&ind_var_decl);
-        ret.push_str(&build_struct);
-        ret.push_str(&dim_tid_struct);
-        ret.push_str(&barrier_init);
-        ret.push_str(&loop_decl);
-        ret.push_str(&arg_struct);
-        ret.push_str(&tid_struct);
-        ret.push_str(&barrier_str);
-        ret.push_str(&create_call);
-        ret.push_str(&loop_jmp);
-        ret
+        format!(include_str!("template/multithread_init.c.template"),
+        num_threads = func.num_threads(),
+        ind = self.build_index_call(func),
+        ind_var_decl = ind_var_decl,
+        loop_init = loop_decl,
+        tid_struct = tid_struct,
+        loop_jump = loop_jmp)
+
     }
 
     fn thread_join(&mut self, func: &Function) -> String {
         if func.num_threads() == 1 {
             return String::new();
         }
-        let mut ret = String::new();
         let mut loop_decl = String::new();
         let mut jmp_stack = Vec::new();
         for (ind, dim) in func.thread_dims().iter().enumerate() {
-            let mut loop_jmp = String::new();
-            loop_decl.push_str(&format!("d{} = 0;\n", ind));
-            loop_decl.push_str(&format!("JOIN_LOOP_BEGIN_{}:\n", ind));
-            loop_jmp.push_str(&format!("d{}++;\n", ind));
-            loop_jmp.push_str(&format!("if (d{} < {})\n", ind, unwrap!(dim.size().as_int())));
-            loop_jmp.push_str(&format!("    goto JOIN_LOOP_BEGIN_{};\n", ind));
+            unwrap!(writeln!(loop_decl, include_str!("template/loop_init.c.template"),
+                                                     ind = ind, loop_type = "JOIN"));
+            let loop_jmp = format!(include_str!("template/loop_jump.c.template"),
+                                                     ind = ind, 
+                                                     size = unwrap!(dim.size().as_int()),
+                                                     loop_type = "JOIN");
             jmp_stack.push(loop_jmp);
         }
         let mut loop_jmp = String::new();
         while let Some(j_str) = jmp_stack.pop() {
             loop_jmp.push_str(&j_str);
         }
-        let join_call = format!("pthread_join(thr_ids[{}], NULL);\n", self.build_index_call(func) );
-        let barrier_destroy = format!("pthread_barrier_destroy(&barrier);\n");
-        ret.push_str(&loop_decl);
-        ret.push_str(&join_call);
-        ret.push_str(&loop_jmp);
-        ret.push_str(&barrier_destroy);
-        ret
+        format!(include_str!("template/join_thread.c.template"),
+        ind = self.build_index_call(func),
+        loop_init = loop_decl,
+        loop_jump = loop_jmp)
 
     }
 
@@ -283,15 +260,15 @@ impl X86printer {
 }
 
 impl Printer for X86printer {
-    fn get_int(&self, n: u32) -> String {
+    fn get_int(n: u32) -> String {
         format!("{}", n)
     }
 
-    fn get_float(&self, f: f64) -> String {
+    fn get_float(f: f64) -> String {
         format!("{:.4e}", f)
     }
 
-    fn get_type(&self, t: Type) -> String {
+    fn get_type(t: Type) -> String {
         match t {
             Type::Void => String::from("void"),
             //Type::PtrTo(..) => " uint8_t *",
@@ -305,89 +282,74 @@ impl Printer for X86printer {
             Type::I(64) => String::from("int64_t"),
             ref t => panic!("invalid type for the host: {}", t)
         }
-    }
+}
 
     fn print_binop(&mut self, op: ir::BinOp, _: Type, _: op::Rounding, return_id: &str, lhs: &str, rhs: &str) { 
-        let push_str = match op {
-            ir::BinOp::Add => format!("{} = {} + {};\n", return_id, lhs, rhs),
-            ir::BinOp::Sub => format!("{} = {} - {};\n", return_id, lhs, rhs),
-            ir::BinOp::Div => format!("{} = {} / {};\n", return_id, lhs, rhs),
+        match op {
+            ir::BinOp::Add => unwrap!(writeln!(self.out_function, "{} = {} + {};", return_id, lhs, rhs)),
+            ir::BinOp::Sub => unwrap!(writeln!(self.out_function, "{} = {} - {};", return_id, lhs, rhs)),
+            ir::BinOp::Div => unwrap!(writeln!(self.out_function, "{} = {} / {};", return_id, lhs, rhs)),
         };
-        self.out_function.push_str(&push_str);
     }
 
     fn print_mul(&mut self, _: Type, _: op::Rounding, _: MulMode, return_id: &str, op1: &str, op2: &str) {
-        let push_str = format!("{} = {} * {};\n", return_id, op1, op2);
-        self.out_function.push_str(&push_str);
+        unwrap!(writeln!(self.out_function, "{} = {} * {};", return_id, op1, op2));
     }
 
     fn print_mad(&mut self, _: Type, _: op::Rounding, _: MulMode, return_id: &str,  mlhs: &str, mrhs: &str, arhs: &str) {
-        let push_str = format!("{} = {} * {} + {};\n", return_id, mlhs, mrhs, arhs);
-        self.out_function.push_str(&push_str);
+        unwrap!(writeln!(self.out_function, "{} = {} * {} + {};", return_id, mlhs, mrhs, arhs));
     }
 
     fn print_mov(&mut self, _: Type, return_id: &str, op: &str) {
-        let push_str = format!("{} = {} ;\n", return_id, op);
-        self.out_function.push_str(&push_str);
+        unwrap!(writeln!(self.out_function, "{} = {} ;", return_id, op));
     }
 
     fn print_ld(&mut self, return_type: Type, _: InstFlag, return_id: &str,  addr: &str) {
-        let push_str = format!("{} = *({}*){} ;\n", return_id, self.get_type(return_type), addr);
-        self.out_function.push_str(&push_str);
+        unwrap!(writeln!(self.out_function, "{} = *({}*){} ;", return_id, Self::get_type(return_type), addr));
     }
 
     fn print_st(&mut self, val_type: Type, _: InstFlag, addr: &str, val: &str) {
-        let push_str = format!("*({}*){} = {} ;\n", self.get_type(val_type), addr, val);
-        self.out_function.push_str(&push_str);
+        unwrap!(writeln!(self.out_function, "*({}*){} = {} ;", Self::get_type(val_type), addr, val));
     }
 
     fn print_cond_st(&mut self, val_type: Type, _: InstFlag, cond: &str, addr: &str, val: &str) {
-        let push_str = format!("if ({}) *({} *){} = {} ;\n", cond, self.get_type(val_type), addr, val);
-        self.out_function.push_str(&push_str);
+        unwrap!(writeln!(self.out_function, "if ({}) *({} *){} = {} ;", cond, Self::get_type(val_type), addr, val));
     }
 
     fn print_cast(&mut self, t: Type, _: op::Rounding, return_id: &str, op1: &str) {
-        let push_str = format!("{} = ({}) {};\n", return_id, self.get_type(t), op1);
-        self.out_function.push_str(&push_str);
+        unwrap!(writeln!(self.out_function, "{} = ({}) {};", return_id, Self::get_type(t), op1));
     }
 
     fn print_label(&mut self, label_id: &str) {
-        let push_str = format!("LABEL_{}:\n", label_id);
-        self.out_function.push_str(&push_str);
+        unwrap!(writeln!(self.out_function, "LABEL_{}:", label_id));
     }
 
     fn print_and(&mut self, return_id: &str, op1: &str, op2: &str){
-        let push_str = format!("{} = {} && {};\n", return_id, op1, op2);
-        self.out_function.push_str(&push_str);
+        unwrap!(writeln!(self.out_function, "{} = {} && {};", return_id, op1, op2));
     }
 
     fn print_or(&mut self, return_id: &str, op1: &str, op2: &str){
-        let push_str = format!("{} = {} || {};\n", return_id, op1, op2);
-        self.out_function.push_str(&push_str);
+        unwrap!(writeln!(self.out_function, "{} = {} || {};", return_id, op1, op2));
     }
 
     fn print_equal(&mut self, return_id: &str, op1: &str, op2: &str){
-        let push_str = format!("{} = {} == {};\n", return_id, op1, op2);
-        self.out_function.push_str(&push_str);
+        unwrap!(writeln!(self.out_function, "{} = {} == {};", return_id, op1, op2));
     }
 
     fn print_lt(&mut self, return_id: &str, op1: &str, op2: &str){
-        let push_str = format!("{} = {} < {};\n", return_id, op1, op2);
-        self.out_function.push_str(&push_str);
+        unwrap!(writeln!(self.out_function, "{} = {} < {};", return_id, op1, op2));
     }
 
     fn print_gt(&mut self, return_id: &str, op1: &str, op2: &str){
-        let push_str = format!("{} = {} > {};\n", return_id, op1, op2);
-        self.out_function.push_str(&push_str);
+        unwrap!(writeln!(self.out_function, "{} = {} > {};", return_id, op1, op2));
     }
 
     fn print_cond_jump(&mut self, label_id: &str, cond: &str) {
-        let push_str = format!("if({}) goto LABEL_{};\n", cond, label_id);
-        self.out_function.push_str(&push_str);
+        unwrap!(writeln!(self.out_function, "if({}) goto LABEL_{};", cond, label_id));
     }
 
     fn print_sync(&mut self) {
-        self.out_function.push_str(&"pthread_barrier_wait(tid.barrier);\n");
+        unwrap!(writeln!(self.out_function, "pthread_barrier_wait(tid.barrier);"));
     }
 }
 

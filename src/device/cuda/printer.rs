@@ -60,7 +60,7 @@ impl CudaPrinter {
     fn var_decls(&mut self, namer: &Namer) -> String {
         let print_decl = |(&t, n)| {
             let prefix = Namer::gen_prefix(&t);
-            format!(".reg.{} %{}<{}>;", self.get_type(t), prefix, n)
+            format!(".reg.{} %{}<{}>;", Self::get_type(t), prefix, n)
         };
         namer.num_var.iter().map(print_decl).collect_vec().join("\n  ")
     }
@@ -82,15 +82,22 @@ impl CudaPrinter {
 
     /// Declares a shared memory block.
     fn shared_mem_decl(&mut self, block: &InternalMemBlock, namer: &mut NameMap)  {
-        let ptr_type_name = self.get_type(Type::I(32));
+        let ptr_type_name = Self::get_type(Type::I(32));
         let name = namer.name_addr(block.id());
-        let mem_decl = format!(".shared.align 16 .u8 {vec_name}[{size}];\
+        //let mem_decl = format!(".shared.align 16 .u8 {vec_name}[{size}];\
+        //    \n  mov.{t} {name}, {vec_name};\n",
+        //    vec_name = &name[1..],
+        //    name = name,
+        //    t = ptr_type_name,
+        //    size = unwrap!(block.alloc_size().as_int()));
+        //self.out_function.push_str(&mem_decl);
+        //writeln!(self.out_function, )
+        writeln!(self.out_function, ".shared.align 16 .u8 {vec_name}[{size}];\
             \n  mov.{t} {name}, {vec_name};\n",
             vec_name = &name[1..],
             name = name,
             t = ptr_type_name,
             size = unwrap!(block.alloc_size().as_int()));
-        self.out_function.push_str(&mem_decl);
     }
 
     pub fn new() -> Self {
@@ -141,7 +148,7 @@ impl CudaPrinter {
     fn param_decl(&mut self, param: &ParamVal, namer: &NameMap) -> String {
         format!(
             ".param .{t}{attr} {name}",
-            t = self.get_type(param.t()),
+            t = Self::get_type(param.t()),
             attr = if param.is_pointer() { ".ptr.global.align 16" } else { "" },
             name = namer.name_param(param.key()),
             )
@@ -160,21 +167,19 @@ impl CudaPrinter {
     /// Prints a `Function`.
     pub fn function(&mut self, function: &Function, gpu: &Gpu) -> String {
         let mut namer = Namer::default();
-        let (param_decls, ld_params);
-        let mut body = String::new();
+        let param_decls;
         {
             let name_map = &mut NameMap::new(function, &mut namer);
             param_decls = function.device_code_args()
                 .map(|v| self.param_decl(v, name_map))
                 .collect_vec().join(",\n  ");
-            ld_params = function.device_code_args().map(|val| {
-                format!("ld.param.{t} {var_name}, [{name}];",
-                        t = self.get_type(val.t()),
+            // LOAD PARAMETERS
+            for val in function.device_code_args() {
+                writeln!(self.out_function, "ld.param.{t} {var_name}, [{name}];",
+                        t = Self::get_type(val.t()),
                         var_name = name_map.name_param_val(val.key()),
-                        name = name_map.name_param(val.key()))
-            }).collect_vec().join("\n  ");
-            self.out_function.push_str(&ld_params);
-            self.out_function.push_str(&"\n");
+                        name = name_map.name_param(val.key()));
+            }
             // INDEX LOAD
             let idx_loads = Self::decl_par_indexes(function, name_map);
             self.out_function.push_str(&idx_loads);
@@ -196,23 +201,22 @@ impl CudaPrinter {
                     if let Some((_, incr)) = level.increment {
                         let name = name_map.declare_size_cast(incr, level.t());
                         if let Some(name) = name {
-                            let ptx_t = self.get_type(level.t());
+                            let ptx_t = Self::get_type(level.t());
                             let old_name = name_map.name_size(incr, Type::I(32));
-                            self.out_function.push_str(&format!("cvt.{}.s32 {}, {};", ptx_t, name, old_name));
-                            self.out_function.push_str(&"\n");
+                            unwrap!(writeln!(self.out_function, "cvt.{}.s32 {}, {};", ptx_t, name, old_name));
                         }
                     }
                 }
             }
             let ind_levels = function.init_induction_levels().into_iter()
                 .chain(function.block_dims().iter().flat_map(|d| d.induction_levels()));
-            //init.extend(ind_levels.map(|level| self.parallel_induction_level(level, name_map)));
             for level in ind_levels {
                 self.parallel_induction_level(level, name_map);
             }
             self.cfg(function, function.cfg(), name_map);
         }
         let var_decls = self.var_decls(&namer);
+        let mut body = String::new();
         body.push_str(&var_decls);
         self.out_function.push_str(&"\n");
         body.push_str(&self.out_function);
@@ -278,18 +282,18 @@ impl CudaPrinter {
 impl Printer for CudaPrinter {
 
     /// Get a proper string representation of an integer in target language
-    fn get_int(&self, n: u32) -> String {
+    fn get_int(n: u32) -> String {
         format!("{}", n)
     }
 
     /// Get a proper string representation of an integer in target language
-    fn get_float(&self, f: f64) -> String {
+    fn get_float(f: f64) -> String {
         let binary = unsafe { std::mem::transmute::<f64, u64>(f) };
         format!("0D{:016X}", binary)
     }
 
     /// Print a type in the backend
-    fn get_type(&self, t: Type) -> String {
+    fn get_type(t: Type) -> String {
        match t {
         Type::Void => panic!("void type cannot be printed"),
         Type::I(1) => "pred".to_string(),
@@ -301,8 +305,7 @@ impl Printer for CudaPrinter {
 
     /// Print return_id = op1 op op2
     fn print_binop(&mut self, op: ir::BinOp, return_type: Type, rounding: op::Rounding, return_id: &str, lhs: &str, rhs: &str) { 
-    let return_str = format!("{}{}.{} {}, {}, {};\n", Self::binary_op(op),  Self::rounding(rounding), self.get_type(return_type), return_id, lhs, rhs);
-        self.out_function.push_str(&return_str);
+    unwrap!(writeln!(self.out_function, "{}{}.{} {}, {}, {};", Self::binary_op(op), Self::rounding(rounding), Self::get_type(return_type), return_id, lhs, rhs));
     }
 
     /// Print return_id = op1 * op2
@@ -312,8 +315,7 @@ impl Printer for CudaPrinter {
         } else {
             format!("mul{}", Self::rounding(round))
         };
-        let return_str = format!("{}.{} {}, {}, {};\n", operator, self.get_type(Self::get_inst_type(mul_mode, return_type)), return_id, lhs, rhs);
-        self.out_function.push_str(&return_str);
+        unwrap!(writeln!(self.out_function, "{}.{} {}, {}, {};", operator, Self::get_type(Self::get_inst_type(mul_mode, return_type)), return_id, lhs, rhs));
     }
 
     /// Print return_id = mlhs * mrhs + arhs
@@ -323,86 +325,74 @@ impl Printer for CudaPrinter {
         } else {
             format!("fma{}", Self::rounding(round))
         };
-        let return_str = format!("{}.{} {}, {}, {}, {};\n", operator, self.get_type(Self::get_inst_type(mul_mode, ret_type)), return_id, mlhs, mrhs, arhs);
-        self.out_function.push_str(&return_str);
+        unwrap!(writeln!(self.out_function, "{}.{} {}, {}, {}, {};", operator, Self::get_type(Self::get_inst_type(mul_mode, ret_type)), return_id, mlhs, mrhs, arhs));
     }
 
     /// Print return_id = op 
     fn print_mov(&mut self, return_type: Type, return_id: &str, op: &str) {
-        let return_str = format!("mov.{} {}, {};\n", self.get_type(return_type), return_id, op);
-        self.out_function.push_str(&return_str);
+        unwrap!(writeln!(self.out_function, "mov.{} {}, {};", Self::get_type(return_type), return_id, op));
     }
 
     /// Print return_id = load [addr] 
     fn print_ld(&mut self, return_type: Type, flag: InstFlag, return_id: &str,  addr: &str) {
-        let return_str = format!("{}.{} {}, [{}];\n", Self::ld_operator(flag), self.get_type(return_type), return_id,  addr);
-        self.out_function.push_str(&return_str);
+        unwrap!(writeln!(self.out_function, "{}.{} {}, [{}];", Self::ld_operator(flag), Self::get_type(return_type), return_id,  addr));
     }
 
     /// Print store val [addr] 
     fn print_st(&mut self, val_type: Type, mem_flag: InstFlag, addr: &str, val: &str) {
         let operator = Self::st_operator(mem_flag);
-        let return_str = format!("{}.{} [{}], {};\n", operator, self.get_type(val_type), addr, val);
-        self.out_function.push_str(&return_str);
+        unwrap!(writeln!(self.out_function, "{}.{} [{}], {};", operator, Self::get_type(val_type), addr, val));
     }
 
     /// Print if (cond) store val [addr] 
     fn print_cond_st(&mut self, val_type: Type, mem_flag: InstFlag, cond: &str, addr: &str, val: &str) {
         let operator = Self::st_operator(mem_flag);
-        let return_str = format!("@{} {}.{} [{}], {};\n", cond, operator, self.get_type(val_type), addr, val);
-        self.out_function.push_str(&return_str);
+        unwrap!(writeln!(self.out_function, "@{} {}.{} [{}], {};", cond, operator, Self::get_type(val_type), addr, val));
     }
 
     /// Print return_id = (val_type) val
     fn print_cast(&mut self, t: Type, round: op::Rounding, return_id: &str, op1: &str) {
-        let operator = format!("cvt{}.{}", Self::rounding(round), self.get_type(t));
-        let return_str = format!("{} {}, {}\n",  operator, return_id, op1);
-        self.out_function.push_str(&return_str);
+        let operator = format!("cvt{}.{}", Self::rounding(round), Self::get_type(t));
+        unwrap!(writeln!(self.out_function, "{} {}, {}",  operator, return_id, op1));
     }
 
     /// print a label where to jump
     fn print_label(&mut self, label_id: &str) {
-        self.out_function.push_str(&format!("LOOP_{}:\n", label_id));
+        self.out_function.push_str(&format!("LOOP_{}:", label_id));
     }
 
     /// Print return_id = op1 && op2
     fn print_and(&mut self, return_id: &str, op1: &str, op2: &str) {
-        let return_str = format!("and.pred {}, {}, {};\n", return_id, op1, op2);
-        self.out_function.push_str(&return_str);
+        unwrap!(writeln!(self.out_function, "and.pred {}, {}, {};", return_id, op1, op2));
     }
 
     /// Print return_id = op1 || op2
     fn print_or(&mut self, return_id: &str, op1: &str, op2: &str) {
-        let return_str = format!("or.pred {}, {}, {};\n", return_id, op1, op2);
-        self.out_function.push_str(&return_str);
+        unwrap!(writeln!(self.out_function, "or.pred {}, {}, {};", return_id, op1, op2));
     }
 
     /// Print return_id = op1 == op2
     fn print_equal(&mut self, return_id: &str, op1: &str, op2: &str) {
-        let return_str = format!("setp.eq.u32 {}, {}, {};\n", return_id, op1, op2);
-        self.out_function.push_str(&return_str);
+        unwrap!(writeln!(self.out_function, "setp.eq.u32 {}, {}, {};", return_id, op1, op2));
     }
 
     /// Print return_id = op1 < op2
     fn print_lt(&mut self, return_id: &str, op1: &str, op2: &str) {
-        let return_str = format!("setp.lt.u32 {}, {}, {};\n", return_id, op1, op2);
-        self.out_function.push_str(&return_str);
+        unwrap!(writeln!(self.out_function, "setp.lt.u32 {}, {}, {};", return_id, op1, op2));
     }
 
     /// Print return_id = op1 > op2
     fn print_gt(&mut self, return_id: &str, op1: &str, op2: &str) {
-        let return_str = format!("setp.gt.u32 {}, {}, {};\n", return_id, op1, op2);
-        self.out_function.push_str(&return_str);
+        unwrap!(writeln!(self.out_function, "setp.gt.u32 {}, {}, {};", return_id, op1, op2));
     }
 
     /// Print if (cond) jump label(label_id)
     fn print_cond_jump(&mut self, label_id: &str, cond: &str) {
-        let return_str = format!("@{} bra.uni LOOP_{};\n", cond, label_id);
-        self.out_function.push_str(&return_str);
+        unwrap!(writeln!(self.out_function, "@{} bra.uni LOOP_{};", cond, label_id));
     }
 
     /// Print wait on all threads
     fn print_sync(&mut self) {
-        self.out_function.push_str("bar.sync 0;\n");
+        unwrap!(writeln!(self.out_function, "bar.sync 0;"));
     }
 }

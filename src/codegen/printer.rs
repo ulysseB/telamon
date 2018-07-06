@@ -16,13 +16,13 @@ pub enum MulMode {
 pub trait Printer {
 
     /// Get a proper string representation of an integer in target language
-    fn get_int(&self, n: u32) -> String;
+    fn get_int(n: u32) -> String;
 
     /// Get a proper string representation of an float in target language
-    fn get_float(&self, f: f64) -> String;
+    fn get_float(f: f64) -> String;
 
     /// Print a type in the backend
-    fn get_type(&self, t: Type) -> String;
+    fn get_type(t: Type) -> String;
 
     /// Print return_id = lhs op rhs
     fn print_binop(&mut self, op: ir::BinOp, return_type: Type, rounding: op::Rounding, return_id: &str, lhs: &str, rhs: &str); 
@@ -126,7 +126,7 @@ pub trait Printer {
             }
         } else {
             match base_components[..] {
-                [] => {let zero = self.get_int(0); self.print_mov(level.t(), &ind_var, &zero);}
+                [] => {let zero = Self::get_int(0); self.print_mov(level.t(), &ind_var, &zero);}
                 [ref base] =>  self.print_mov(level.t(), &ind_var, &base),
                 [ref lhs, ref rhs] =>  self.print_binop(ir::BinOp::Add, level.t(), op::Rounding::Exact, &ind_var, &lhs, &rhs),
                 _ => panic!()
@@ -168,7 +168,7 @@ pub trait Printer {
     fn standard_loop(&mut self, fun: &Function, dim: &Dimension, cfgs:
                                      &[Cfg], namer: &mut NameMap) {
         let idx = namer.name_index(dim.id()).to_string();
-        let zero = self.get_int(0);
+        let zero = Self::get_int(0);
         self.print_mov(Type::I(32), &idx, &zero);
         let mut ind_var_vec = vec![];
         let loop_id = namer.gen_loop_id();
@@ -193,7 +193,7 @@ pub trait Printer {
                 self.print_binop(ir::BinOp::Add, level.t(), op::Rounding::Exact, &ind_var, &ind_var, &step);
             };
         }
-        let one = self.get_int(1);
+        let one = Self::get_int(1);
         self.print_binop(op::BinOp::Add, Type::I(32), op::Rounding::Exact, &idx, &idx,  &one);
         let gt_cond = namer.gen_name(ir::Type::I(1));
         self.print_lt(&gt_cond, &idx, &namer.name_size(dim.size(), Type::I(32)));
@@ -226,7 +226,7 @@ pub trait Printer {
             if i > 0 {
                 for &(level, ref ind_var, incr, ref base) in &incr_levels {
                     if let Some(step) = incr.as_int() {
-                        let stepxi = self.get_int(step * i);
+                        let stepxi = Self::get_int(step * i);
                         self.print_binop(ir::BinOp::Add, level.t(), op::Rounding::Exact, ind_var, &stepxi, base);
                     } else {
                         let step = namer.name_size(incr, level.t());
@@ -286,7 +286,6 @@ pub trait Printer {
             },
             op::Ld(ld_type, ref addr, _) => {
 
-                //let ld_type = self.get_type(ld_type);
                 self.print_ld(ld_type, unwrap!(inst.mem_flag()), &namer.name_inst(inst), &namer.name_op(addr))
             },
             op::St(ref addr, ref val, _,  _) => {
