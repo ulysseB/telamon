@@ -4,7 +4,6 @@ use ir::{self, op, Type};
 use itertools::Itertools;
 use search_space::{Domain, DimKind, InstFlag};
 use std::fmt::Write as WriteFmt;
-//use device::printer::Printer;
 // TODO(cc_perf): avoid concatenating strings.
 
 pub struct X86printer {
@@ -18,19 +17,22 @@ impl X86printer {
         }
     }
 
+    /// Declares all parameters of the function with the appropriate type
     fn param_decl(&mut self, param: &ParamVal, namer: &NameMap) -> String {
         let name = namer.name_param(param.key());
         match param {
-            ParamVal::External(_, par_type) => format!("{} {}", Self::get_type(*par_type), name),
+            ParamVal::External(_, par_type) => format!("{} {}",
+                                                       Self::get_type(*par_type), name),
             ParamVal::Size(_) => format!("uint32_t {}", name),
-            ParamVal::GlobalMem(_, _, par_type) => format!("{} {}", Self::get_type(*par_type), name),
+            ParamVal::GlobalMem(_, _, par_type) => format!("{} {}",
+                                                           Self::get_type(*par_type), name),
         }
     }
 
 
 
 
-
+    /// Declared all variables that have been required from the namer
     fn var_decls(&mut self, namer: &Namer) -> String {
         let print_decl = |(&t, &n)| {
             match t {
@@ -44,12 +46,11 @@ impl X86printer {
                 }
             }
         };
-        let mut ptr_decl = String::from("intptr_t  ");
-        ptr_decl.push_str(&(0..namer.num_glob_ptr).map( |i| format!("ptr{}", i)).collect_vec().join(", "));
-        ptr_decl.push_str(&";\n");
         let other_var_decl = namer.num_var.iter().map(print_decl).collect_vec().join("\n  ");
-        ptr_decl.push_str(&other_var_decl);
-        ptr_decl
+        format!("intptr_t {};\n{}",
+            &(0..namer.num_glob_ptr).map( |i| format!("ptr{}", i)).collect_vec().join(", "),
+            other_var_decl,
+            )
     }
 
     /// Declares block and thread indexes.
@@ -128,6 +129,8 @@ impl X86printer {
         return_string
     }
 
+    /// Function takes parameters as an array of void* pointers
+    /// This function converts back these pointers into their original types
     fn fun_params_cast(&mut self, function: &Function) -> String {
         function.device_code_args()
             .enumerate()
@@ -145,6 +148,7 @@ impl X86printer {
             .join(";\n  ")
     } 
 
+    /// Declares the variables that will be used in C function call
     fn params_call(&mut self, function: &Function) -> String {
         function.device_code_args()
             .enumerate().map(|x| x.0)
@@ -153,8 +157,8 @@ impl X86printer {
             .join(", ")
     }
 
-    // Build the right call for a nested loop on dimensions with linearized accesses
-    // that is, for a 3 dimensions arrays a[2][5][3] returns d0 + d1 * 3 + d2 * 5
+    /// Build the right call for a nested loop on dimensions with linearized accesses
+    /// that is, for a 3 dimensions arrays a[2][5][3] returns d0 + d1 * 3 + d2 * 5
     fn build_index_call(&mut self, func: &Function) -> String {
         let mut vec_ret = vec![];
         let dims = func.thread_dims();
@@ -170,6 +174,8 @@ impl X86printer {
         vec_ret.join(" + ")
     }
 
+    /// Helper for building a structure containing as many thread id (one id per dim)
+    /// as required. 
     fn build_thread_id_struct(&mut self, func: &Function) -> String {
         let mut ret = String::new();
         if func.num_threads() == 1 {
@@ -181,6 +187,7 @@ impl X86printer {
         ret
     }
 
+    /// Prints code that generates the required number of threads, stores the handles in an array
     fn thread_gen(&mut self, func: &Function) -> String {
         if func.num_threads() == 1 {
             return format!(include_str!("template/monothread_init.c.template"));
@@ -206,7 +213,8 @@ impl X86printer {
         }
         let mut tid_struct = String::new();
         for (ind, _) in func.thread_dims().iter().enumerate() {
-            tid_struct.push_str(&format!("thread_args[{index}].tid.t{dim_id} = d{dim_id};\n",  index = self.build_index_call(func), dim_id = ind));
+            tid_struct.push_str(&format!("thread_args[{index}].tid.t{dim_id} = d{dim_id};\n",
+                                         index = self.build_index_call(func), dim_id = ind));
         }
         format!(include_str!("template/multithread_init.c.template"),
         num_threads = func.num_threads(),
@@ -218,6 +226,7 @@ impl X86printer {
 
     }
 
+    /// Prints code that joins all previously generated threads
     fn thread_join(&mut self, func: &Function) -> String {
         if func.num_threads() == 1 {
             return String::new();
@@ -248,13 +257,13 @@ impl X86printer {
         let fun_str = self.function(func);
         let fun_params = self.params_call(func);
         format!(include_str!("template/host.c.template"),
-        fun_name = func.name,
-        fun_str = fun_str,
-        fun_params_cast = self.fun_params_cast(func),
-        fun_params = fun_params,
-        gen_threads = self.thread_gen(func),
-        dim_decl = self.build_thread_id_struct(func),
-        thread_join = self.thread_join(func),
+            fun_name = func.name,
+            fun_str = fun_str,
+            fun_params_cast = self.fun_params_cast(func),
+            fun_params = fun_params,
+            gen_threads = self.thread_gen(func),
+            dim_decl = self.build_thread_id_struct(func),
+            thread_join = self.thread_join(func),
         )
     }
 }
@@ -292,28 +301,35 @@ impl Printer for X86printer {
         };
     }
 
-    fn print_mul(&mut self, _: Type, _: op::Rounding, _: MulMode, return_id: &str, op1: &str, op2: &str) {
+    fn print_mul(&mut self, _: Type, _: op::Rounding, _: MulMode, 
+                 return_id: &str, op1: &str, op2: &str) {
         unwrap!(writeln!(self.out_function, "{} = {} * {};", return_id, op1, op2));
     }
 
-    fn print_mad(&mut self, _: Type, _: op::Rounding, _: MulMode, return_id: &str,  mlhs: &str, mrhs: &str, arhs: &str) {
-        unwrap!(writeln!(self.out_function, "{} = {} * {} + {};", return_id, mlhs, mrhs, arhs));
+    fn print_mad(&mut self, _: Type, _: op::Rounding, _: MulMode, return_id: &str,  mlhs: &str,
+                 mrhs: &str, arhs: &str) {
+        unwrap!(writeln!(self.out_function, "{} = {} * {} + {};",
+                         return_id, mlhs, mrhs, arhs));
     }
 
     fn print_mov(&mut self, _: Type, return_id: &str, op: &str) {
-        unwrap!(writeln!(self.out_function, "{} = {} ;", return_id, op));
+        unwrap!(writeln!(self.out_function, "{} = {} ;",
+                         return_id, op));
     }
 
     fn print_ld(&mut self, return_type: Type, _: InstFlag, return_id: &str,  addr: &str) {
-        unwrap!(writeln!(self.out_function, "{} = *({}*){} ;", return_id, Self::get_type(return_type), addr));
+        unwrap!(writeln!(self.out_function, "{} = *({}*){} ;",
+            return_id, Self::get_type(return_type), addr));
     }
 
     fn print_st(&mut self, val_type: Type, _: InstFlag, addr: &str, val: &str) {
-        unwrap!(writeln!(self.out_function, "*({}*){} = {} ;", Self::get_type(val_type), addr, val));
+        unwrap!(writeln!(self.out_function, "*({}*){} = {} ;",
+            Self::get_type(val_type), addr, val));
     }
 
     fn print_cond_st(&mut self, val_type: Type, _: InstFlag, cond: &str, addr: &str, val: &str) {
-        unwrap!(writeln!(self.out_function, "if ({}) *({} *){} = {} ;", cond, Self::get_type(val_type), addr, val));
+        unwrap!(writeln!(self.out_function, "if ({}) *({} *){} = {} ;",
+            cond, Self::get_type(val_type), addr, val));
     }
 
     fn print_cast(&mut self, t: Type, _: op::Rounding, return_id: &str, op1: &str) {
