@@ -58,6 +58,8 @@ pub enum TypeError {
     Undefined(Spanned<String>),
     /// Unvalid arguments of a symmetric enum.
     BadSymmetricArg(Vec<VarDef>),
+    /// Missing
+    MissingEntry(String, Spanned<String>),
 }
 
 /// CheckContext is a type system.
@@ -98,36 +100,36 @@ impl CheckerContext {
                 Ok(())
             },
             Spanned { beg, end, data: Statement::SetDef {
-                name: _, doc: _, arg, superset, disjoint: _, keys, ..  } } => {
+                ref name, doc: _, arg, superset, disjoint: _, keys, ..  } } => {
                 let keys = keys.iter().map(|(k, _, _)| k)
                                       .collect::<Vec<&ir::SetDefKey>>();
 
                 if !keys.contains(&&ir::SetDefKey::ItemType) {
-                    Err(TypeError::Undefined(Spanned {
+                    Err(TypeError::MissingEntry(name.data.to_owned(), Spanned {
                         beg: *beg, end: *end,
                         data: ir::SetDefKey::ItemType.to_string()
                     }))?;
                 }
                 if !keys.contains(&&ir::SetDefKey::IdType) {
-                    Err(TypeError::Undefined(Spanned {
+                    Err(TypeError::MissingEntry(name.data.to_owned(), Spanned {
                         beg: *beg, end: *end,
                         data: ir::SetDefKey::IdType.to_string()
                     }))?;
                 }
                 if !keys.contains(&&ir::SetDefKey::ItemGetter) {
-                    Err(TypeError::Undefined(Spanned {
+                    Err(TypeError::MissingEntry(name.data.to_owned(), Spanned {
                         beg: *beg, end: *end,
                         data: ir::SetDefKey::ItemGetter.to_string()
                     }))?;
                 }
                 if !keys.contains(&&ir::SetDefKey::IdGetter) {
-                    Err(TypeError::Undefined(Spanned {
+                    Err(TypeError::MissingEntry(name.data.to_owned(), Spanned {
                         beg: *beg, end: *end,
                         data: ir::SetDefKey::IdGetter.to_string()
                     }))?;
                 }
                 if !keys.contains(&&ir::SetDefKey::Iter) {
-                    Err(TypeError::Undefined(Spanned {
+                    Err(TypeError::MissingEntry(name.data.to_owned(), Spanned {
                         beg: *beg, end: *end,
                         data: ir::SetDefKey::Iter.to_string()
                     }))?;
@@ -1239,6 +1241,7 @@ impl EnumDef {
                 },
                 _ => {},
             }
+
         }
         Ok(())
     }

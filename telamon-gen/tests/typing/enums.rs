@@ -4,6 +4,48 @@ pub use super::telamon_gen::lexer::{Lexer, Spanned, Position};
 pub use super::telamon_gen::parser;
 pub use super::telamon_gen::ast::*;
 
+/// Redefinition of the foo Enum.
+#[test]
+fn enum_redefinition() {
+    assert_eq!(parser::parse_ast(Lexer::from(
+        b"define enum foo():
+          end
+          
+          define enum foo():
+          end".to_vec())).unwrap().type_check().err(),
+        Some(TypeError::Redefinition(Spanned {
+            beg: Position { line: 0, column: 12},
+            end: Position { line: 0, column: 15},
+            data: Hint::Enum,
+        }, Spanned {
+            beg: Position { line: 3, column: 22},
+            end: Position { line: 3, column: 25},
+            data: String::from("foo"),
+        }))
+    );
+}
+
+/// Redefinition of the A Value from Enum.
+#[test]
+fn enum_redefinition_value() {
+    assert_eq!(parser::parse_ast(Lexer::from(
+        b"define enum foo():
+            value A:
+            value B:
+            value A:
+          end".to_vec())).unwrap().type_check().err(),
+        Some(TypeError::Redefinition(Spanned {
+            beg: Position::default(),
+            end: Position::default(),
+            data: Hint::EnumAttribute,
+        }, Spanned {
+            beg: Position::default(),
+            end: Position::default(),
+            data: String::from("A"),
+        }))
+    );
+}
+
 /*
 
 #[test]

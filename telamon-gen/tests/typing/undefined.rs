@@ -17,7 +17,7 @@ fn undefined_item_type_from_set() {
             var_prefix = \"inst\"
             new_objs = \"$objs.inst\"
           end".to_vec())).unwrap().type_check().err(),
-        Some(TypeError::Undefined(Spanned {
+        Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
             beg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 16},
             data: ir::SetDefKey::ItemType.to_string()
@@ -37,7 +37,7 @@ fn undefined_id_type_from_set() {
             var_prefix = \"inst\"
             new_objs = \"$objs.inst\"
           end".to_vec())).unwrap().type_check().err(),
-        Some(TypeError::Undefined(Spanned {
+        Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
             beg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 16},
             data: ir::SetDefKey::IdType.to_string()
@@ -57,7 +57,7 @@ fn undefined_item_getter_from_set() {
             var_prefix = \"inst\"
             new_objs = \"$objs.inst\"
           end".to_vec())).unwrap().type_check().err(),
-        Some(TypeError::Undefined(Spanned {
+        Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
             beg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 16},
             data: ir::SetDefKey::ItemGetter.to_string()
@@ -77,7 +77,7 @@ fn undefined_id_getter_from_set() {
             var_prefix = \"inst\"
             new_objs = \"$objs.inst\"
           end".to_vec())).unwrap().type_check().err(),
-        Some(TypeError::Undefined(Spanned {
+        Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
             beg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 16},
             data: ir::SetDefKey::IdGetter.to_string()
@@ -97,7 +97,7 @@ fn undefined_iter_from_set() {
             var_prefix = \"inst\"
             new_objs = \"$objs.inst\"
           end".to_vec())).unwrap().type_check().err(),
-        Some(TypeError::Undefined(Spanned {
+        Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
             beg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 16},
             data: ir::SetDefKey::Iter.to_string()

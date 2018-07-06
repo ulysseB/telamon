@@ -4,6 +4,35 @@ pub use super::telamon_gen::lexer::{Lexer, Spanned, Position};
 pub use super::telamon_gen::parser;
 pub use super::telamon_gen::ast::*;
 
+/// Redefinition of the foo Integer.
+#[test]
+fn integer_redefinition() {
+    assert_eq!(parser::parse_ast(Lexer::from(
+        b"set Arg:
+            item_type = \"ir::inst::Obj\"
+            id_type = \"ir::inst::Id\"
+            item_getter = \"ir::inst::get($fun, $id)\"
+            id_getter = \"ir::inst::Obj::id($item)\"
+            iterator = \"ir::inst::iter($fun)\"
+            var_prefix = \"inst\"
+            new_objs = \"$objs.inst\"
+          end
+          define integer foo($myarg in Arg): \"mycode\"
+          end
+          define integer foo($myarg in Arg): \"mycode\"
+          end".to_vec())).unwrap().type_check().err(),
+        Some(TypeError::Redefinition(Spanned {
+            beg: Position { line: 9, column: 25},
+            end: Position { line: 9, column: 28},
+            data: Hint::Integer,
+        }, Spanned {
+            beg: Position { line: 11, column: 25},
+            end: Position { line: 11, column: 28},
+            data:  String::from("foo"),
+        }))
+    );
+}
+
 /*
 #[test]
 #[ignore] // TODO(test): raise an error as expected by the test
