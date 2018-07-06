@@ -4,7 +4,11 @@ pipeline {
     stages {
         stage('Build') {
             steps {
-                sh 'cargo build'
+                cache(maxCacheSize: 2000, caches: [
+                    [$class: 'ArbitraryFileCache', excludes: '', includes: '**/*', path: 'target']
+                ]) {
+                    sh 'cargo build'
+                }
             }
         }
     }
