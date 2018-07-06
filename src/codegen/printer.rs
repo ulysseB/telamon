@@ -13,6 +13,7 @@ pub enum MulMode {
     High,
     Empty,
 }
+
 pub trait Printer {
 
     /// Get a proper string representation of an integer in target language
@@ -117,9 +118,8 @@ pub trait Printer {
         if let Some((dim, increment)) = level.increment {
             let index = namer.name_index(dim);
             let step = namer.name_size(increment, Type::I(32));
-            let mode = if level.t() == Type::I(64) { MulMode::Wide } else { MulMode::Low };
+            let mode = Self::mul_mode(Type::I(32), level.t());
             match base_components[..] {
-                // TODO get a sensible type for index and step rather than just random I32
                 [] => self.print_mul(level.t(), op::Rounding::Exact, mode, &ind_var, &index, &step),
                 [ref base] => self.print_mad(level.t(), op::Rounding::Exact, mode, &ind_var, &index, &step, &base),
                 _ => panic!()
@@ -141,9 +141,9 @@ pub trait Printer {
             if is_active { continue; }
             let new_guard = namer.gen_name(ir::Type::I(1));
             let index = namer.name_index(dim.id());
-            self.print_equal(&new_guard, index, &"0");
+            self.print_equal(&new_guard, index, &Self::get_int(0));
             if let Some(ref guard) = guard {
-                self.print_and(&guard as &str, &guard as &str, &new_guard);
+                self.print_and(guard as &str, guard as &str, &new_guard);
             } else {
                 guard = Some(new_guard);
             };
@@ -165,6 +165,8 @@ pub trait Printer {
         }
     }
 
+    /// Prints a classic loop - that is, a sequential loop with an index and a jump to the beginning
+    /// at the end of the block
     fn standard_loop(&mut self, fun: &Function, dim: &Dimension, cfgs:
                                      &[Cfg], namer: &mut NameMap) {
         let idx = namer.name_index(dim.id()).to_string();
@@ -200,6 +202,7 @@ pub trait Printer {
         self.print_cond_jump(&loop_id.to_string(), &gt_cond);
     }
 
+    /// Prints an unroll loop - loop without jumps
     fn unroll_loop(&mut self, fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap) {
         //let mut body = Vec::new();
         let mut incr_levels = Vec::new();

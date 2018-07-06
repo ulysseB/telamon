@@ -253,6 +253,7 @@ impl X86printer {
 
     }
 
+    /// wrap the kernel call into a function with a fixed interface
     pub fn wrapper_function(&mut self, func: &Function) -> String {
         let fun_str = self.function(func);
         let fun_params = self.params_call(func);
