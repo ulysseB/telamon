@@ -243,9 +243,9 @@ impl Default for Parallelism {
 fn parallelism(nesting: &HashMap<ir::BBId, Nesting>, space: &SearchSpace, ctx: &Context)
     -> Parallelism
 {
-    let min_threads_size = space.ir_instance().thread_dims().map(|d| d.size())
+    let threads_per_block_size = space.ir_instance().thread_dims().map(|d| d.size())
         .product::<ir::Size>();
-    let min_threads = size::bounds(&min_threads_size, space, ctx).min;
+    let threads_per_block = size::bounds(&threads_per_block_size, space, ctx);
     space.ir_instance().insts().map(|inst| {
         let mut min_blocks = ir::Size::one();
         let mut max_blocks = ir::Size::one();
@@ -257,10 +257,10 @@ fn parallelism(nesting: &HashMap<ir::BBId, Nesting>, space: &SearchSpace, ctx: &
                 if kind == DimKind::BLOCK { min_blocks *= size; }
             }
         }
-        let min_threads_per_block = &min_blocks * &min_threads_size;
+        let total_threads_size = &min_blocks * &threads_per_block_size;
         Parallelism {
-            min_threads,
-            min_threads_per_block: size::bounds(&min_threads_per_block, space, ctx).min,
+            min_threads: size::bounds(&total_threads_size, space, ctx).min,
+            min_threads_per_block: threads_per_block.min,
             min_blocks: size::bounds(&min_blocks, space, ctx).min,
             lcm_blocks: size::factors(&max_blocks, space, ctx).lcm,
         }
