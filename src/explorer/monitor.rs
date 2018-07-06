@@ -140,7 +140,8 @@ where
 {
     let (cand, eval, cpt, payload) = message;
     let t = Instant::now() - t0;
-    warn!("Got a new evaluation, bound: {:.4e} score: {:.4e}, current best: {:.4e}",
+    warn!("Got a new evaluation after {}, bound: {:.4e} score: {:.4e}, current best: {:.4e}",
+          status.num_evaluations,
           cand.bound.value(),
           eval,
           status.best_candidate.as_ref().map_or(std::f64::INFINITY, |best:
