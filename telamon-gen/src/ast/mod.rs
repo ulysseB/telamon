@@ -139,9 +139,15 @@ impl CheckerContext {
                         beg: *beg, end: *end, data: s
                     }))?;
                 }
-                if let Some(SetRef { name, .. }) = superset {
-                    self.undefined_set(name).map_err(|s| TypeError::Undefined(Spanned {
+                if let Some(SetRef { name: supername, .. }) = superset {
+                    self.undefined_set(supername).map_err(|s| TypeError::Undefined(Spanned {
                         beg: *beg, end:*end, data: s
+                    }))?;
+                }
+                if superset.is_some() && !keys.contains(&&ir::SetDefKey::FromSuperset) {
+                    Err(TypeError::MissingEntry(name.data.to_owned(), Spanned {
+                        beg: *beg, end: *end,
+                        data: ir::SetDefKey::FromSuperset.to_string()
                     }))?;
                 }
                 Ok(())

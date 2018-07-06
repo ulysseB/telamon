@@ -6,5 +6,4 @@ pub mod enums;
 pub mod set;
 pub mod integer;
 
-pub mod redefinition;
 pub mod undefined;
