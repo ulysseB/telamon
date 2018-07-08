@@ -45,7 +45,7 @@ fn lower_dim_map(fun: &mut ir::Function, inst: ir::InstId, operand: usize,
     let operand = fun.inst(inst).operands()[operand];
     actions.extend(operand::invariants(fun, operand, inst.into()));
     // Update the list of new objets
-    for dim in lowered_dim_map.dimensions.iter().flat_map(|&(x, y)| vec![x, y]) {
+    for dim in lowered_dim_map.new_dims {
         new_objs.add_dimension(fun.dim(dim));
     }
     new_objs.add_mem_instruction(fun.inst(lowered_dim_map.store));

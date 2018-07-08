@@ -319,51 +319,51 @@ impl<'a> Function<'a> {
                 _ => panic!(),
             }
         };
-        let st_dims = self.spawn_mapped_dims(&src_dims);
-        let ld_dims = self.spawn_mapped_dims(&dst_dims);
+        let (st_dims, st_dim_map) = self.spawn_mapped_dims(&src_dims, false);
+        let (ld_dims, ld_dim_map) = self.spawn_mapped_dims(&dst_dims, true);
+        let new_dims = st_dim_map.iter().map(|x| x.1)
+            .chain(ld_dim_map.iter().map(|x| x.0)).collect();
         // Build the temporary memory block.
         let dims = st_dims.iter().cloned().zip_eq(ld_dims.iter().cloned()).collect_vec();
-        let tmp_mem = self.mem_blocks.new_tmp(data_type, dims.iter().cloned());
+        let mem = self.mem_blocks.new_tmp(data_type, dims.iter().cloned());
         // Build the store.
-        let st_dim_map = dim::Map::new(src_dims.iter().zip_eq(&st_dims).map(clone_pair));
         let st_operand =  Operand::new_inst(
             self.inst(src_inst), st_dim_map, ir::DimMapScope::Local);
         let st_dim_set = st_dims.iter().cloned().collect();
-        let st = self.add_inst(Operator::TmpSt(st_operand, tmp_mem.into()), st_dim_set);
-        let st = unwrap!(st);
+        let store = self.add_inst(Operator::TmpSt(st_operand, mem.into()), st_dim_set);
+        let store = unwrap!(store);
         // Build the load
-        let ld_dim_map = dim::Map::new(ld_dims.iter().zip_eq(&dst_dims).map(clone_pair));
         let ld_dim_set = ld_dims.iter().cloned().collect();
-        let ld = self.add_inst(Operator::TmpLd(data_type, tmp_mem.into()), ld_dim_set);
-        let ld = unwrap!(ld);
-        self.insts[dst_inst.0 as usize].lower_dim_map(dst_operand_pos, ld, ld_dim_map);
-        Ok(ir::LoweredDimMap { mem: tmp_mem, store: st, load: ld, dimensions: dims })
+        let load = self.add_inst(Operator::TmpLd(data_type, mem.into()), ld_dim_set);
+        let load = unwrap!(load);
+        self.insts[dst_inst.0 as usize].lower_dim_map(dst_operand_pos, load, ld_dim_map);
+        Ok(ir::LoweredDimMap { mem, store, load, dimensions: dims, new_dims })
     }
 
-    /// Adds multiple dimensions at once, using the sizes of the given dimensions. If the
-    /// size of the given dimensions is not fixed, the new sizes will have a
-    /// non-constrained size. The caller should thus constrain it to have the size of
-    /// original dimensions.
-    fn spawn_mapped_dims(&mut self, old_dims: &[dim::Id]) -> Vec<dim::Id> {
-        old_dims.iter().map(|&old_dim| {
-            let size = {
-                let dim = self.dim(old_dim);
-                if let Some(universe) = dim.possible_sizes() {
-                    Err(universe.iter().cloned().collect())
-                } else {
-                    assert!(!dim.size().depends_on_dim());
-                    Ok(dim.size().clone())
-                }
-            };
-            match size {
-                Ok(size) => self.add_dim(size),
-                Err(universe) => {
+    /// Create a new loop nest mapped to the given one. Dimensions that have a
+    /// non-constant size are reused instead of creating new one as they will be later
+    /// merge anyway. If dimensions have multiple possible sizes, the caller is responsible
+    /// for making sure they have the same size as the existing dimensions (for example
+    /// through mapping constraints).
+    ///
+    /// Returns the new loop nests (containing new dimensions and old dimensions with a
+    /// non-constant size) and the mapping from the old nest to the new one. The flag
+    /// `from` indicates if the mapping should be from or to the new loop nest.
+    fn spawn_mapped_dims(&mut self, old_dims: &[dim::Id], from: bool)
+        -> (Vec<dim::Id>, dim::Map)
+    {
+        let mut dim_map = Vec::new();
+        let mapped_dims = old_dims.iter().map(|&old_dim| {
+            self.dim(old_dim).possible_sizes()
+                .map(|universe| universe.iter().cloned().collect())
+                .map(|universe| {
                     let id = ir::dim::Id(self.dims.len() as u32);
                     self.dims.push(Dimension::with_multi_sizes(id, universe, None));
+                    dim_map.push(if from { (id, old_dim) } else { (old_dim, id) });
                     id
-                },
-            }
-        }).collect()
+                }).unwrap_or(old_dim)
+        }).collect();
+        (mapped_dims, dim::Map::new(dim_map))
     }
 
     /// Trigger to call when two dimensions are not merged.

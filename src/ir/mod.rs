@@ -111,7 +111,8 @@ pub struct LoweredDimMap {
     pub mem: mem::InternalId,
     pub store: InstId,
     pub load: InstId,
-    pub dimensions: Vec<(dim::Id, dim::Id)>
+    pub dimensions: Vec<(dim::Id, dim::Id)>,
+    pub new_dims: Vec<dim::Id>,
 }
 
 // TODO(perf): group static computations
