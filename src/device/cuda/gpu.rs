@@ -322,7 +322,10 @@ impl Gpu {
 }
 
 impl device::Device for Gpu {
-    fn print(&self, fun: &Function, out: &mut Write) { let mut printer = CudaPrinter::new(); printer.host_function(fun, self, out) }
+    fn print(&self, fun: &Function, out: &mut Write) {
+        let mut printer = CudaPrinter::new(); 
+        printer.host_function(fun, self, out) 
+    }
 
     fn is_valid_type(&self, t: &Type) -> bool {
         match *t {

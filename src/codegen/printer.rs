@@ -14,6 +14,17 @@ pub enum MulMode {
     Empty,
 }
 
+impl MulMode {
+    fn from_type(from: Type, to: Type) -> Self {
+        match (from, to) {
+            (Type::F(x), Type::F(y)) if x == y => MulMode::Empty,
+            (Type::I(a), Type::I(b)) if b == 2 * a => MulMode::Wide,
+            (_, _) => MulMode::Low,
+        }
+
+    }
+}
+
 pub trait Printer {
 
     /// Get a proper string representation of an integer in target language
@@ -47,7 +58,7 @@ pub trait Printer {
     fn print_cond_st(&mut self, return_type: Type, mem_flag: InstFlag, cond: &str, addr: &str, val: &str);
 
     /// Print return_id = (val_type) val
-    fn print_cast(&mut self, t: Type, round: op::Rounding, return_id: &str, op1: &str);
+    fn print_cast(&mut self, from_t: Type, to_t: Type, round: op::Rounding, return_id: &str, op1: &str);
 
     /// print a label where to jump
     fn print_label(&mut self, label_id: &str);
@@ -118,7 +129,7 @@ pub trait Printer {
         if let Some((dim, increment)) = level.increment {
             let index = namer.name_index(dim);
             let step = namer.name_size(increment, Type::I(32));
-            let mode = Self::mul_mode(Type::I(32), level.t());
+            let mode = MulMode::from_type(Type::I(32), level.t());
             match base_components[..] {
                 [] => self.print_mul(level.t(), op::Rounding::Exact, mode, &ind_var, &index, &step),
                 [ref base] => self.print_mad(level.t(), op::Rounding::Exact, mode, &ind_var, &index, &step, &base),
@@ -157,12 +168,10 @@ pub trait Printer {
                                 &[Cfg], namer: &mut NameMap)
     {
         match dim.kind() {
-            DimKind::LOOP => {
-                self.standard_loop(fun, dim, cfgs, namer)
-            }
-            DimKind::UNROLL => {self.unroll_loop(fun, dim, cfgs, namer)}
-            DimKind::VECTOR => {self.unroll_loop(fun, dim, cfgs, namer)}
-            _ => { unimplemented!() }
+            DimKind::LOOP => self.standard_loop(fun, dim, cfgs, namer),
+            DimKind::UNROLL => self.unroll_loop(fun, dim, cfgs, namer),
+            DimKind::VECTOR => self.unroll_loop(fun, dim, cfgs, namer),
+            _ =>  panic!("{:?} loop should not be printed here !", dim.kind())
         }
     }
 
@@ -183,7 +192,7 @@ pub trait Printer {
             match base_components.collect_vec()[..] {
                 [ref base] => self.print_mov(level.t(), &ind_var, &base),
                 [ref lhs, ref rhs] =>
-                    self.print_binop( ir::BinOp::Add, level.t(), op::Rounding::Exact, &ind_var, &lhs, &rhs, ),
+                    self.print_binop( ir::BinOp::Add, level.t(), op::Rounding::Exact, &ind_var, lhs, rhs),
                 _ => panic!(),
             };
             ind_var_vec.push(ind_var.into_owned());
@@ -258,7 +267,7 @@ pub trait Printer {
                 self.print_mad(Type::I(32), op::Rounding::Exact, MulMode::Low, &var,  &old_var, &size, &idx);
                 var
             });
-        let mode = Self::mul_mode(Type::I(32), addr_type);
+        let mode = MulMode::from_type(Type::I(32), addr_type);
         self.print_mad(addr_type, op::Rounding::Exact, mode, &addr,  &var, &size, &addr);
     }
 
@@ -271,22 +280,18 @@ pub trait Printer {
             op::Mul(ref lhs, ref rhs, round, return_type) => {
                 let low_lhs_type = Self::lower_type(lhs.t(), fun);
                 let low_ret_type = Self::lower_type(return_type, fun);
-                let mode = if round == op::Rounding::Exact {
-                    Self::mul_mode(low_lhs_type, low_ret_type)
-                } else {MulMode::Empty };
+                let mode = MulMode::from_type(low_lhs_type, low_ret_type);
                 self.print_mul(low_ret_type, round, mode, &namer.name_inst(inst), &namer.name_op(lhs), &namer.name_op(rhs))
             },
             op::Mad(ref mul_lhs, ref mul_rhs, ref add_rhs, round) => {
                 let low_mlhs_type = Self::lower_type(mul_lhs.t(), fun);
                 let low_arhs_type = Self::lower_type(add_rhs.t(), fun);
-                let mode = if round == op::Rounding::Exact {
-                    Self::mul_mode(low_mlhs_type, low_arhs_type)
-                } else {MulMode::Empty };
-                self.print_mad(Self::lower_type(inst.t(), fun), round, mode, &namer.name_inst(inst), &namer.name_op(mul_lhs), &namer.name_op(mul_rhs), &namer.name_op(add_rhs))
+                let mode = MulMode::from_type(low_mlhs_type, low_arhs_type);
+                self.print_mad(inst.t(), round, mode, &namer.name_inst(inst), &namer.name_op(mul_lhs), &namer.name_op(mul_rhs), &namer.name_op(add_rhs))
             },
             op::Mov(ref op) => {
 
-                self.print_mov(Self::lower_type(inst.t(), fun), &namer.name_inst(inst), &namer.name_op(op))
+                self.print_mov(inst.t(), &namer.name_inst(inst), &namer.name_op(op))
             },
             op::Ld(ld_type, ref addr, _) => {
 
@@ -307,7 +312,7 @@ pub trait Printer {
                     (Type::F(x), Type::F(y)) => if x > y {op::Rounding::Nearest} else {  op::Rounding::Exact },
                     _ => op::Rounding::Exact,
                 };
-                self.print_cast(t, rounding, &namer.name_inst(inst), &namer.name_op(op))
+                self.print_cast(op.t(), t, rounding, &namer.name_inst(inst), &namer.name_op(op))
             },
             op::TmpLd(..) | op::TmpSt(..) => panic!("non-printable instruction")
         }

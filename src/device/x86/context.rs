@@ -88,14 +88,14 @@ impl device::Context for Context {
 
     /// Evaluation in sequential mode
     fn evaluate(&self, func: &device::Function, _mode: EvalMode) -> Result<f64, ()> {
-        let mut printer = X86printer::new();
+        let mut printer = X86printer::default();
         let fun_str = printer.wrapper_function(func);
         function_evaluate(&fun_str, &self.gen_args(func))
     }
 
     /// returns a vec containing num_sample runs of function_evaluate
     fn benchmark(&self, func: &device::Function, num_samples: usize) -> Vec<f64> {
-        let mut printer = X86printer::new();
+        let mut printer = X86printer::default();
         let fun_str = printer.wrapper_function(func);
         let args =  self.gen_args(func);
         let mut res = vec![];
@@ -196,7 +196,7 @@ impl<'a, 'b, 'c> device::AsyncEvaluator<'a, 'c> for AsyncEvaluator<'a, 'b>
         {
             let dev_fun = device::Function::build(&candidate.space);
             code_args = self.context.gen_args(&dev_fun);
-            let mut printer = X86printer::new();
+            let mut printer = X86printer::default();
             fun_str = printer.wrapper_function(&dev_fun);
         }
         unwrap!(self.sender.send((candidate, fun_str, code_args, callback)));

@@ -6,17 +6,12 @@ use search_space::{Domain, DimKind, InstFlag};
 use std::fmt::Write as WriteFmt;
 // TODO(cc_perf): avoid concatenating strings.
 
+#[derive(Default)]
 pub struct X86printer {
     out_function: String,
 }
 
 impl X86printer {
-    pub fn new() -> Self {
-        X86printer {
-            out_function: String::new(),
-        }
-    }
-
     /// Declares all parameters of the function with the appropriate type
     fn param_decl(&mut self, param: &ParamVal, namer: &NameMap) -> String {
         let name = namer.name_param(param.key());
@@ -94,7 +89,7 @@ impl X86printer {
                     AllocationScheme::Shared =>
                         panic!("No shared mem in cpu!!"),
                     AllocationScheme::PrivatisedGlobal =>
-                        Printer::privatise_global_block(self, block, name_map, function),
+                        self.privatise_global_block(block, name_map, function),
                     AllocationScheme::Global => (),
                 }
             };
@@ -105,9 +100,8 @@ impl X86printer {
                     if let Some((_, incr)) = level.increment {
                         let name = name_map.declare_size_cast(incr, level.t());
                         if let Some(name) = name {
-                            let cpu_t = Self::get_type(level.t());
                             let old_name = name_map.name_size(incr, Type::I(32));
-                            unwrap!(writeln!(self.out_function, "{} = ({}){};\n", name, cpu_t, old_name));
+                            self.print_cast(Type::I(32), level.t(), op::Rounding::Exact, &name, &old_name);
                         }
                     }
                 }
@@ -333,7 +327,7 @@ impl Printer for X86printer {
             cond, Self::get_type(val_type), addr, val));
     }
 
-    fn print_cast(&mut self, t: Type, _: op::Rounding, return_id: &str, op1: &str) {
+    fn print_cast(&mut self, t: Type, _: Type, _: op::Rounding, return_id: &str, op1: &str) {
         unwrap!(writeln!(self.out_function, "{} = ({}) {};", return_id, Self::get_type(t), op1));
     }
 

@@ -56,6 +56,7 @@ impl CudaPrinter {
             _ => panic!("invalid store flag {:?}", flag),
         }
     }
+
     /// Prints the variables declared by the `Namer`.
     fn var_decls(&mut self, namer: &Namer) -> String {
         let print_decl = |(&t, n)| {
@@ -201,9 +202,8 @@ impl CudaPrinter {
                     if let Some((_, incr)) = level.increment {
                         let name = name_map.declare_size_cast(incr, level.t());
                         if let Some(name) = name {
-                            let ptx_t = Self::get_type(level.t());
                             let old_name = name_map.name_size(incr, Type::I(32));
-                            unwrap!(writeln!(self.out_function, "cvt.{}.s32 {}, {};", ptx_t, name, old_name));
+                            self.print_cast(Type::I(32), level.t(), op::Rounding::Exact, &name, &old_name);
                         }
                     }
                 }
@@ -351,14 +351,15 @@ impl Printer for CudaPrinter {
     }
 
     /// Print return_id = (val_type) val
-    fn print_cast(&mut self, t: Type, round: op::Rounding, return_id: &str, op1: &str) {
-        let operator = format!("cvt{}.{}", Self::rounding(round), Self::get_type(t));
-        unwrap!(writeln!(self.out_function, "{} {}, {}",  operator, return_id, op1));
+    fn print_cast(&mut self, from_t: Type, to_t: Type, round: op::Rounding, return_id: &str, op1: &str) {
+        let operator = format!("cvt{}.{}.{}", Self::rounding(round), Self::get_type(to_t), Self::get_type(from_t));
+        unwrap!(writeln!(self.out_function, "{} {}, {};",  operator, return_id, op1));
     }
 
     /// print a label where to jump
     fn print_label(&mut self, label_id: &str) {
-        self.out_function.push_str(&format!("LOOP_{}:", label_id));
+        //self.out_function.push_str(&format!("LOOP_{}:", label_id));
+        unwrap!(writeln!(self.out_function, "LOOP_{}:", label_id));
     }
 
     /// Print return_id = op1 && op2
