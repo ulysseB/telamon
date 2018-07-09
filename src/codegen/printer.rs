@@ -307,7 +307,7 @@ pub trait Printer {
                         &namer.name_op(val));
                 } else {
                     self.print_st(Self::lower_type(val.t(), fun),
-                        unwrap!(inst.mem_flag())
+                        unwrap!(inst.mem_flag()),
                         &namer.name_op(addr),
                         &namer.name_op(val));
                 };
