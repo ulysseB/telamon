@@ -136,14 +136,14 @@ pub trait Printer {
 
     /// Change the side-effect guards so that only the specified threads are enabled.
     fn enable_threads(&mut self, fun: &Function, threads: &[bool], namer: &mut NameMap) {
-        let mut guard = None;
+        let mut guard: Option<String> = None;
         for (&is_active, dim) in threads.iter().zip_eq(fun.thread_dims().iter()) {
             if is_active { continue; }
             let new_guard = namer.gen_name(ir::Type::I(1));
             let index = namer.name_index(dim.id());
             self.print_equal(&new_guard, index, &Self::get_int(0));
             if let Some(ref guard) = guard {
-                self.print_and(guard as &str, guard as &str, &new_guard);
+                self.print_and(guard, guard, &new_guard);
             } else {
                 guard = Some(new_guard);
             };
@@ -152,6 +152,7 @@ pub trait Printer {
     }
 
 
+    /// Prints a Loop
     fn gen_loop(&mut self, fun: &Function, dim: &Dimension, cfgs:
                                 &[Cfg], namer: &mut NameMap)
     {
