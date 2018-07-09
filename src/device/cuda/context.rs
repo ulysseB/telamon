@@ -126,10 +126,8 @@ impl<'a> device::Context for Context<'a> {
             // Start the evaluation thread.
             let eval_thread_name = "Telamon - GPU Evaluation Thread".to_string();
             let res = scope.builder().name(eval_thread_name).spawn(move || {
-                let mut cpt_candidate = 0;
                 let mut best_eval = std::f64::INFINITY;
                 while let Ok((candidate, thunk, callback)) = recv.recv() {
-                    cpt_candidate += 1;
                     let bound = candidate.bound.value();
                     let eval = if best_eval > bound || mode == EvalMode::TestBound {
                         thunk.execute().map(|t| t as f64 / clock_rate)
@@ -144,7 +142,7 @@ impl<'a> device::Context for Context<'a> {
                     if eval < best_eval {
                         best_eval = eval;
                     }
-                    callback.call(candidate, eval, cpt_candidate);
+                    callback.call(candidate, eval);
                 }
             });
             unwrap!(res);

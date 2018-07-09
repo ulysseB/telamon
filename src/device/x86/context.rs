@@ -119,11 +119,9 @@ impl device::Context for Context {
             // Start the evaluation thread.
             let eval_thread_name = "Telamon - CPU Evaluation Thread".to_string();
             unwrap!(scope.builder().name(eval_thread_name).spawn(move || {
-                let mut cpt_candidate = 0;
                 while let Ok((candidate, fun_str, code_args, callback)) = recv.recv() {
-                    cpt_candidate += 1;
                     let eval = function_evaluate(&fun_str, &code_args).unwrap();
-                    callback.call(candidate, eval, cpt_candidate);
+                    callback.call(candidate, eval);
                 }
             }));
         });

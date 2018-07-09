@@ -110,7 +110,7 @@ pub trait Kernel<'a>: Sized {
                 }
                 if let Some((leaf, bounds)) = descend_check_bounds(&candidates, context) {
                     let leaves = &leaves;
-                    evaluator.add_kernel(leaf, (move |leaf: Candidate, runtime: f64, _| {
+                    evaluator.add_kernel(leaf, (move |leaf: Candidate, runtime: f64| {
                         let bound = leaf.bound.clone();
                         let mut leaves = unwrap!(leaves.lock());
                         let mut actions = leaf.actions.iter().cloned().collect_vec();

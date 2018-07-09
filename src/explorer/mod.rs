@@ -95,10 +95,9 @@ fn explore_space<'a, T>(config: &Config,
         while let Some((cand, payload)) = candidate_store.explore(context) {
             let space = fix_order(cand.space);
             let eval_sender = eval_sender.clone();
-            let callback = move |leaf, eval, cpt| {
-                if let Err(err) = block_on(eval_sender.send((leaf, eval, cpt, payload))
-                                 .map(|_| ())
-                                 ) 
+            let callback = move |leaf, eval| {
+                if let Err(err) = block_on(eval_sender.send((leaf, eval, payload))
+                                           .map(|_| ()))
                 { warn!("Got disconnected , {:?}", err);}
             };
             evaluator.add_kernel(Candidate {space, .. cand }, SendBoxFnOnce::from(callback));
