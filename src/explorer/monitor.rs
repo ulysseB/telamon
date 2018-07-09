@@ -12,7 +12,7 @@ use std;
 use std::sync;
 use tokio_timer::*;
 
-pub type MonitorMessage<'a, T> = (Candidate<'a>, f64, usize, <T as Store<'a>>::PayLoad);
+pub type MonitorMessage<'a, T> = (Candidate<'a>, f64, <T as Store<'a>>::PayLoad);
 
 /// Indicates why the exploration was terminated.
 pub enum TerminationReason {
@@ -39,7 +39,7 @@ impl std::fmt::Display for TerminationReason {
 
 struct Status<'a> {
     best_candidate: Option<(Candidate<'a>, f64)>,
-    num_evaluations: u64,
+    num_evaluations: usize,
 }
 
 impl<'a> Default for Status<'a> {
@@ -138,23 +138,7 @@ fn handle_message<'a, T>(config: &Config,
 where
     T: Store<'a>,
 {
-    let (cand, eval, cpt, payload) = message;
-    let t = Instant::now() - t0;
-    warn!("Got a new evaluation after {}, bound: {:.4e} score: {:.4e}, current best: {:.4e}",
-          status.num_evaluations,
-          cand.bound.value(),
-          eval,
-          status.best_candidate.as_ref().map_or(std::f64::INFINITY, |best:
-                                                &(Candidate, f64)| best.1 ));
-    let change = status.best_candidate.as_ref().map(|&(_, time)| time > eval).unwrap_or(true);
-    if change {
-        warn!("Got a new best candidate, score: {:.3e}, {}", eval, cand);
-        candidate_store.update_cut(get_new_cut(config, eval));
-        let log_message = LogMessage::NewBest{score: eval, cpt, timestamp:t};
-        log_sender.send(log_message).unwrap();
-        status.best_candidate = Some((cand, eval));
-    }
-    candidate_store.commit_evaluation(payload, eval);
+    let (cand, eval, payload) = message;
 
     // Note that it is possible that we actually didn't make an
     // evaluation here, because the evaluator may return an infinite
@@ -172,6 +156,27 @@ where
             }
         }
     }
+
+    let t = Instant::now() - t0;
+    warn!("Got a new evaluation after {}, bound: {:.4e} score: {:.4e}, current best: {:.4e}",
+          status.num_evaluations,
+          cand.bound.value(),
+          eval,
+          status.best_candidate.as_ref().map_or(std::f64::INFINITY, |best:
+                                                &(Candidate, f64)| best.1 ));
+    let change = status.best_candidate.as_ref().map(|&(_, time)| time > eval).unwrap_or(true);
+    if change {
+        warn!("Got a new best candidate, score: {:.3e}, {}", eval, cand);
+        candidate_store.update_cut(get_new_cut(config, eval));
+        let log_message = LogMessage::NewBest{
+            score: eval,
+            cpt: status.num_evaluations,
+            timestamp: t
+        };
+        log_sender.send(log_message).unwrap();
+        status.best_candidate = Some((cand, eval));
+    }
+    candidate_store.commit_evaluation(payload, eval);
     Ok(())
 }
 
