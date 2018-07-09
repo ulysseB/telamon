@@ -207,14 +207,13 @@ pub trait Printer {
         }
         let one = Self::get_int(1);
         self.print_binop(op::BinOp::Add, Type::I(32), op::Rounding::Exact, &idx, &idx,  &one);
-        let gt_cond = namer.gen_name(ir::Type::I(1));
-        self.print_lt(&gt_cond, &idx, &namer.name_size(dim.size(), Type::I(32)));
-        self.print_cond_jump(&loop_id.to_string(), &gt_cond);
+        let lt_cond = namer.gen_name(ir::Type::I(1));
+        self.print_lt(&lt_cond, &idx, &namer.name_size(dim.size(), Type::I(32)));
+        self.print_cond_jump(&loop_id.to_string(), &lt_cond);
     }
 
     /// Prints an unroll loop - loop without jumps
     fn unroll_loop(&mut self, fun: &Function, dim: &Dimension, cfgs: &[Cfg], namer: &mut NameMap) {
-        //let mut body = Vec::new();
         let mut incr_levels = Vec::new();
         for level in dim.induction_levels() {
             let dim_id = level.increment.map(|(dim, _)| dim);
@@ -252,8 +251,7 @@ pub trait Printer {
         namer.unset_current_index(dim);
     }
 
-    fn privatise_global_block(&mut self, block: &InternalMemBlock,
-                                              namer: &mut NameMap, fun: &Function) {
+    fn privatise_global_block(&mut self, block: &InternalMemBlock, namer: &mut NameMap, fun: &Function) {
         if fun.block_dims().is_empty() { return ; }
         let addr = namer.name_addr(block.id());
         let addr_type = Self::lower_type(Type::PtrTo(block.id().into()), fun);
@@ -302,8 +300,17 @@ pub trait Printer {
                     namer.side_effect_guard()
                 } else { None };
                 if let Some(ref pred) = guard {
-                    self.print_cond_st(Self::lower_type(val.t(), fun), unwrap!(inst.mem_flag()), pred, &namer.name_op(addr), &namer.name_op(val) );
-                } else {self.print_st(Self::lower_type(val.t(), fun), unwrap!(inst.mem_flag()), &namer.name_op(addr), &namer.name_op(val));};
+                    self.print_cond_st(Self::lower_type(val.t(), fun),
+                        unwrap!(inst.mem_flag()),
+                        pred,
+                        &namer.name_op(addr),
+                        &namer.name_op(val));
+                } else {
+                    self.print_st(Self::lower_type(val.t(), fun),
+                        unwrap!(inst.mem_flag())
+                        &namer.name_op(addr),
+                        &namer.name_op(val));
+                };
             },
             op::Cast(ref op, t) => {
                 let rounding = match (op.t(), t) {
