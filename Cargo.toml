@@ -61,6 +61,7 @@ std-semaphore = "0.1.0"
 rpds = "0.5.0"
 binary-heap-plus = "0.1.4"
 tempfile = "3.0.1"
+xdg = "^2.1"
 
 [dependencies.telamon-utils]
 path = "telamon-utils"
