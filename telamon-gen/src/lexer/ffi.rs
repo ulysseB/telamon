@@ -77,6 +77,7 @@ impl <Y> Spanned<Y> {
     }
 }
 
+/// TODO: remove this implementation
 impl Default for Spanned<()> {
     fn default() -> Self {
         Spanned {
