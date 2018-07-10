@@ -175,6 +175,9 @@ impl Gpu {
                     let mut config_file = unwrap!(File::create(config_path.clone()));
                     unwrap!(
                         write!(config_file, "{}", include_str!("../../../data/cuda_gpus.json")));
+                    // We return the Path here instead of the already-opened file object because we
+                    // want to ensure that the toplevel `config_path` variable always point to a
+                    // readonly file in order to avoid subtle bugs.
                     config_path
                 },
             }
