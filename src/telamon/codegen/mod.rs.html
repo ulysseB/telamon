@@ -12,17 +12,21 @@
 <span id="12">12</span>
 <span id="13">13</span>
 <span id="14">14</span>
+<span id="15">15</span>
+<span id="16">16</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Helpers to generate code from an IR instance and fully specified decisions.</span>
 <span class="kw">mod</span> <span class="ident">cfg</span>;
 <span class="kw">mod</span> <span class="ident">dimension</span>;
 <span class="kw">mod</span> <span class="ident">function</span>;
 <span class="kw">mod</span> <span class="ident">namer</span>;
+<span class="kw">mod</span> <span class="ident">printer</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">cfg</span>::<span class="ident">Cfg</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">dimension</span>::{<span class="ident">Dimension</span>, <span class="ident">InductionLevel</span>, <span class="ident">InductionVar</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">function</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">namer</span>::{<span class="ident">Namer</span>, <span class="ident">NameMap</span>, <span class="ident">Value</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">printer</span>::{<span class="ident">MulMode</span>, <span class="ident">Printer</span>};
 
 <span class="comment">// TODO(cleanup): refactor function</span>
 <span class="comment">// - extend instructions with additional information: vector factor, flag, instantiated dims</span>

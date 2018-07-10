@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["Rounding","The rounding mode of an arithmetic operation."]]});
+initSidebarItems({"enum":[["BinOp","Represents binary arithmetic operators."],["Rounding","The rounding mode of an arithmetic operation."]]});

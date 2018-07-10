@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Context","A CPU evaluation context."],["Cpu","Represents CUDA GPUs."]]});
+initSidebarItems({"struct":[["Context","A CPU evaluation context."],["Cpu","Represents CUDA GPUs."],["X86printer",""]]});

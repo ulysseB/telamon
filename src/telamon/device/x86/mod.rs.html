@@ -93,6 +93,7 @@
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">context</span>::<span class="ident">Context</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">cpu</span>::<span class="ident">Cpu</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">printer</span>::<span class="ident">X86printer</span>;
 
 <span class="kw">use</span> <span class="ident">codegen</span>;
 <span class="kw">use</span> <span class="ident">ir</span>;
@@ -147,7 +148,6 @@
     <span class="kw">fn</span> <span class="ident">name_float</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">val</span>: <span class="kw-2">&amp;</span><span class="ident">Ratio</span><span class="op">&lt;</span><span class="ident">BigInt</span><span class="op">&gt;</span>, <span class="ident">len</span>: <span class="ident">u16</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">len</span> <span class="op">&lt;=</span> <span class="number">64</span>);
         <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">val</span>.<span class="ident">numer</span>().<span class="ident">to_f64</span>()) <span class="op">/</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">val</span>.<span class="ident">denom</span>().<span class="ident">to_f64</span>());
-        <span class="comment">//let binary = unsafe { std::mem::transmute::&lt;f64, u64&gt;(f) };</span>
         <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{:.5e}&quot;</span>, <span class="ident">f</span> )
     }
 
