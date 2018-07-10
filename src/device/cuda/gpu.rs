@@ -1,4 +1,6 @@
 //! Describes CUDA-enabled GPUs.
+extern crate xdg;
+
 use codegen::Function;
 use device::{self, Device};
 use device::cuda::printer as p;
@@ -158,7 +160,26 @@ pub struct Gpu {
 impl Gpu {
     /// Returns the GPU model corresponding to `name.
     pub fn from_name(name: &str) -> Option<Gpu> {
-        let mut file = unwrap!(File::open("data/cuda_gpus.json"));
+        let config_path = {
+            let xdg_dirs = unwrap!(
+                xdg::BaseDirectories::with_prefix("telamon"));
+            match xdg_dirs.find_config_file("cuda_gpus.json") {
+                Some(config_path) => config_path,
+                None => {
+                    let config_path = xdg_dirs
+                        .place_config_file("cuda_gpus.json")
+                        .expect("cannot create configuration directory");
+                    println!(
+                        "GPU configuration file not found; writing default configuration to {}",
+                        config_path.to_string_lossy());
+                    let mut config_file = unwrap!(File::create(config_path.clone()));
+                    unwrap!(
+                        write!(config_file, "{}", include_str!("../../../data/cuda_gpus.json")));
+                    config_path
+                },
+            }
+        };
+        let mut file = unwrap!(File::open(config_path));
         let mut string = String::new();
         unwrap!(file.read_to_string(&mut string));
         let gpus: Vec<Gpu> = unwrap!(json::decode(&string));
