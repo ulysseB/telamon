@@ -31,26 +31,17 @@ mod redefinition {
     #[test]
     fn integer() {
         assert_eq!(parser::parse_ast(Lexer::from(
-            b"set Arg:
-                item_type = \"ir::inst::Obj\"
-                id_type = \"ir::inst::Id\"
-                item_getter = \"ir::inst::get($fun, $id)\"
-                id_getter = \"ir::inst::Obj::id($item)\"
-                iterator = \"ir::inst::iter($fun)\"
-                var_prefix = \"inst\"
-                new_objs = \"$objs.inst\"
+            b"define integer foo(): \"mycode\"
               end
-              define integer foo($myarg in Arg): \"mycode\"
-              end
-              define integer foo($myarg in Arg): \"mycode\"
+              define integer foo(): \"mycode\"
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Redefinition(Spanned {
-                beg: Position { line: 9, column: 29},
-                end: Position { line: 9, column: 32},
+                beg: Position { line: 0, column: 15},
+                end: Position { line: 0, column: 18},
                 data: Hint::Integer,
             }, Spanned {
-                beg: Position { line: 11, column: 29},
-                end: Position { line: 11, column: 32},
+                beg: Position { line: 2, column: 29},
+                end: Position { line: 2, column: 32},
                 data:  String::from("foo"),
             }))
         );
