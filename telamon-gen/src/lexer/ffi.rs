@@ -67,7 +67,7 @@ pub struct Spanned<Y> {
     pub data: Y,
 }
 
-impl <Y> Spanned<Y> {
+impl<Y> Spanned<Y> {
     pub fn new(data: Y) -> Spanned<Y> {
         Spanned {
             beg: Position::default(),
