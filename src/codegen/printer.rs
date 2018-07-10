@@ -84,6 +84,8 @@ pub trait Printer {
     /// Print wait on all threads
     fn print_sync(&mut self);
 
+    fn print_vector_inst(&mut self, inst: &Instruction, dim: &Dimension, namer: &mut NameMap, fun: &Function);
+
     fn mul_mode(from: Type, to: Type) -> MulMode {
         match (from, to) {
             (Type::I(32), Type::I(64)) => MulMode::Wide,
@@ -170,7 +172,10 @@ pub trait Printer {
         match dim.kind() {
             DimKind::LOOP => self.standard_loop(fun, dim, cfgs, namer),
             DimKind::UNROLL => self.unroll_loop(fun, dim, cfgs, namer),
-            DimKind::VECTOR => self.unroll_loop(fun, dim, cfgs, namer),
+            DimKind::VECTOR => match *cfgs {
+                [Cfg::Instruction(ref inst)] => self.print_vector_inst(inst, dim, namer, fun),
+                ref body => panic!("invalid vector dimension body: {:?}", body),
+            }
             _ =>  panic!("{:?} loop should not be printed here !", dim.kind())
         }
     }

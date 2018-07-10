@@ -76,7 +76,7 @@ impl X86printer {
             );
             // INDEX LOADS
             let idx_loads = self.decl_par_indexes(function, name_map);
-            writeln!(self.out_function, "{}", idx_loads);
+            unwrap!(writeln!(self.out_function, "{}", idx_loads));
             // LOAD PARAM
             for val in function.device_code_args() {
                 unwrap!(writeln!(self.out_function, "{var_name} = {name};// LD_PARAM",
@@ -287,6 +287,10 @@ impl Printer for X86printer {
             ref t => panic!("invalid type for the host: {}", t)
         }
 }
+
+    fn print_vector_inst(&mut self, _: &Instruction, _: &Dimension, _: &mut NameMap, _: &Function) {
+        panic!("Vectorization not implemented for x86")
+    }
 
     fn print_binop(&mut self, op: ir::BinOp, _: Type, _: op::Rounding, return_id: &str, lhs: &str, rhs: &str) { 
         match op {

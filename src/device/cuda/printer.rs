@@ -15,7 +15,45 @@ pub struct CudaPrinter {
     out_function: String,
 }
 
+/// Represents an argument of a PTX vector instruction.
+enum VecInstArg<'a> {
+    Addr(&'a Operand<'a>),
+    VecInst(&'a Instruction<'a>, dim::Id, u32),
+    VecOp(&'a Operand<'a>, dim::Id, u32),
+}
+
 impl CudaPrinter {
+    /// Prints an vector instruction argument.
+    fn vec_inst_arg(arg: &VecInstArg, namer: &mut NameMap) -> String {
+        match *arg {
+            VecInstArg::Addr(op) => format!("[{}]", namer.name_op(op)),
+            VecInstArg::VecInst(inst, dim, size) => {
+                let names = (0..size).map(|i| {
+                    namer.indexed_inst_name(inst, dim, i).to_string()
+                }).collect_vec().join(", ");
+                format!("{{{names}}}", names = names)
+            },
+            VecInstArg::VecOp(op, dim, size) => {
+                let names = (0..size).map(|i| {
+                    namer.indexed_op_name(op, dim, i).to_string()
+                }).collect_vec().join(", ");
+                format!("{{{names}}}", names = names)
+            }
+        }
+    }
+
+    /// Assembles the different parts of an instruction in a single string.
+    fn assemble(operator: &str,
+                predicate: Option<RcStr>,
+                t: Type,
+                args: &[VecInstArg],
+                namer: &mut NameMap) -> String {
+        let args_str = args.iter().map(|x| Self::vec_inst_arg(x, namer)).collect_vec().join(", ");
+        let pred = if let Some(ref pred) = predicate {
+            format!("@{} ", pred)
+        } else { String::new() };
+        format!("{}{}.{} {};", pred, operator, Self::get_type(t), args_str)
+    }
 
     fn mul_mode(mode: MulMode) -> &'static str {
         match mode {
@@ -85,20 +123,12 @@ impl CudaPrinter {
     fn shared_mem_decl(&mut self, block: &InternalMemBlock, namer: &mut NameMap)  {
         let ptr_type_name = Self::get_type(Type::I(32));
         let name = namer.name_addr(block.id());
-        //let mem_decl = format!(".shared.align 16 .u8 {vec_name}[{size}];\
-        //    \n  mov.{t} {name}, {vec_name};\n",
-        //    vec_name = &name[1..],
-        //    name = name,
-        //    t = ptr_type_name,
-        //    size = unwrap!(block.alloc_size().as_int()));
-        //self.out_function.push_str(&mem_decl);
-        //writeln!(self.out_function, )
-        writeln!(self.out_function, ".shared.align 16 .u8 {vec_name}[{size}];\
+        unwrap!(writeln!(self.out_function, ".shared.align 16 .u8 {vec_name}[{size}];\
             \n  mov.{t} {name}, {vec_name};\n",
             vec_name = &name[1..],
             name = name,
             t = ptr_type_name,
-            size = unwrap!(block.alloc_size().as_int()));
+            size = unwrap!(block.alloc_size().as_int())));
     }
 
     pub fn new() -> Self {
@@ -176,10 +206,10 @@ impl CudaPrinter {
                 .collect_vec().join(",\n  ");
             // LOAD PARAMETERS
             for val in function.device_code_args() {
-                writeln!(self.out_function, "ld.param.{t} {var_name}, [{name}];",
+                unwrap!(writeln!(self.out_function, "ld.param.{t} {var_name}, [{name}];",
                         t = Self::get_type(val.t()),
                         var_name = name_map.name_param_val(val.key()),
-                        name = name_map.name_param(val.key()));
+                        name = name_map.name_param(val.key())));
             }
             // INDEX LOAD
             let idx_loads = Self::decl_par_indexes(function, name_map);
@@ -395,5 +425,30 @@ impl Printer for CudaPrinter {
     /// Print wait on all threads
     fn print_sync(&mut self) {
         unwrap!(writeln!(self.out_function, "bar.sync 0;"));
+    }
+
+    fn print_vector_inst(&mut self, inst: &Instruction, dim: &Dimension, namer: &mut NameMap, fun: &Function) {
+        let size = unwrap!(dim.size().as_int());
+        let flag = unwrap!(inst.mem_flag());
+        match *inst.operator() {
+            op::Ld(_, ref addr, _) => {
+                let operator = format!("{}.v{}", Self::ld_operator(flag), size);
+                let args = [VecInstArg::VecInst(inst, dim.id(), size), VecInstArg::Addr(addr)];
+                unwrap!(writeln!(Self::assemble(&operator, None, inst.t(), &args, namer)))
+            },
+            op::St(ref addr, ref val, _, _) => {
+                let operator = format!("{}.v{}", Self::st_operator(flag), size);
+                let operands = [VecInstArg::Addr(addr), VecInstArg::VecOp(val, dim.id(), size)];
+                let guard = if inst.has_side_effects() {
+                    namer.side_effect_guard()
+                } else { None };
+                unwrap!(writeln!(Self::assemble(&operator,
+                                                guard,
+                                                Self::lower_type(val.t(), fun), 
+                                                &operands, 
+                                                namer)))
+            },
+            _ => panic!("non-vectorizable instruction"),
+        }
     }
 }
