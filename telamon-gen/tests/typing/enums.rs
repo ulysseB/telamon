@@ -4,120 +4,137 @@ pub use super::telamon_gen::lexer::{Lexer, Spanned, Position};
 pub use super::telamon_gen::parser;
 pub use super::telamon_gen::ast::*;
 
-/// Missing the set BasickBlock from a Emum.
-#[test]
-fn undefined_parameter_from_enum() {
-    assert_eq!(parser::parse_ast(Lexer::from(
-            b"define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
+/// Undefined
+#[cfg(test)]
+mod undefined {
+    pub use super::*;
+
+    /// Missing the set BasickBlock from a Emum.
+    #[test]
+    fn parameter() {
+        assert_eq!(parser::parse_ast(Lexer::from(
+                b"define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
+                    symmetric
+                    value A:
+                    value B:
+              end".to_vec())).unwrap().type_check().err(),
+            Some(TypeError::Undefined(Spanned {
+                beg: Position { line: 0, column: 0},
+                end: Position { line: 0, column: 56},
+                data: String::from("BasicBlock")
+            }))
+        );
+    }
+
+    /// Missing the set BasickBlock from a Emum.
+    /// TODO: fixe position
+    #[test]
+    fn value() {
+        assert_eq!(parser::parse_ast(Lexer::from(
+            b"define enum foo():
+                value A:
+                alias AB = A | B:
+              end".to_vec())).unwrap().type_check().err(),
+            Some(TypeError::Undefined(Spanned {
+                beg: Position { line: 2, column: 22},
+                end: Position { line: 2, column: 24},
+                data: String::from("B")
+            }))
+        );
+    }
+}
+ 
+/// Redefinition
+#[cfg(test)]
+mod redefinition {
+    pub use super::*;
+
+    /// Redefinition of the foo Enum.
+    #[test]
+    fn enum_() {
+        assert_eq!(parser::parse_ast(Lexer::from(
+            b"define enum foo():
+              end
+              
+              define enum foo():
+              end".to_vec())).unwrap().type_check().err(),
+            Some(TypeError::Redefinition(Spanned {
+                beg: Position { line: 0, column: 12},
+                end: Position { line: 0, column: 15},
+                data: Hint::Enum,
+            }, Spanned {
+                beg: Position { line: 3, column: 26},
+                end: Position { line: 3, column: 29},
+                data: String::from("foo"),
+            }))
+        );
+    }
+
+    #[test]
+    fn field() {
+        assert_eq!(parser::parse_ast(Lexer::from(
+            b"define enum foo():
+                value A:
+                value B:
+                value C:
+                alias AB = A | B:
+                alias AB = A | B:
+              end".to_vec())).unwrap().type_check().err(),
+            Some(TypeError::Redefinition(Spanned {
+                beg: Position { line: 5, column: 22 },
+                end: Position { line: 5, column: 24 },
+                data: Hint::EnumAttribute,
+            }, Spanned {
+                beg: Position { line: 5, column: 22 },
+                end: Position { line: 5, column: 24 },
+                data: String::from("AB"),
+            }))
+        );
+        assert_eq!(parser::parse_ast(Lexer::from(
+            b"define enum foo():
+                value A:
+                value B:
+                value A:
+              end".to_vec())).unwrap().type_check().err(),
+            Some(TypeError::Redefinition(Spanned {
+                beg: Position { line: 3, column: 22 },
+                end: Position { line: 3, column: 23 },
+                data: Hint::EnumAttribute,
+            }, Spanned {
+                beg: Position { line: 3, column: 22 },
+                end: Position { line: 3, column: 23 },
+                data: String::from("A"),
+            }))
+        );
+        assert_eq!(parser::parse_ast(Lexer::from(
+            b"set BasicBlock:
+                item_type = \"ir::inst::Obj\"
+                id_type = \"ir::inst::Id\"
+                item_getter = \"ir::inst::get($fun, $id)\"
+                id_getter = \"ir::inst::Obj::id($item)\"
+                iterator = \"ir::inst::iter($fun)\"
+                var_prefix = \"inst\"
+                new_objs = \"$objs.inst\"
+              end
+              define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
+                symmetric
                 symmetric
                 value A:
                 value B:
-          end".to_vec())).unwrap().type_check().err(),
-        Some(TypeError::Undefined(Spanned {
-            beg: Position { line: 0, column: 0},
-            end: Position { line: 0, column: 56},
-            data: String::from("BasicBlock")
-        }))
-    );
+              end".to_vec())).unwrap().type_check().err(),
+            Some(TypeError::Redefinition(Spanned {
+                beg: Position { line: 10, column: 16 },
+                end: Position { line: 10, column: 25 },
+                data: Hint::EnumAttribute,
+            }, Spanned {
+                beg: Position { line: 11, column: 16 },
+                end: Position { line: 11, column: 25 },
+                data: String::from("Symmetric"),
+            }))
+        );
+    }
 }
 
-/// Redefinition of the foo Enum.
-#[test]
-fn enum_redefinition() {
-    assert_eq!(parser::parse_ast(Lexer::from(
-        b"define enum foo():
-          end
-          
-          define enum foo():
-          end".to_vec())).unwrap().type_check().err(),
-        Some(TypeError::Redefinition(Spanned {
-            beg: Position { line: 0, column: 12},
-            end: Position { line: 0, column: 15},
-            data: Hint::Enum,
-        }, Spanned {
-            beg: Position { line: 3, column: 22},
-            end: Position { line: 3, column: 25},
-            data: String::from("foo"),
-        }))
-    );
-}
-
-/// Redefinition of the A Value from Enum.
-#[test]
-fn enum_redefinition_value() {
-    assert_eq!(parser::parse_ast(Lexer::from(
-        b"define enum foo():
-            value A:
-            value B:
-            value A:
-          end".to_vec())).unwrap().type_check().err(),
-        Some(TypeError::Redefinition(Spanned {
-            beg: Position::default(),
-            end: Position::default(),
-            data: Hint::EnumAttribute,
-        }, Spanned {
-            beg: Position::default(),
-            end: Position::default(),
-            data: String::from("A"),
-        }))
-    );
-}
-
-/*
-
-#[test]
-fn enum_field_redefinition() {
-    assert_eq!(parser::parse_ast(Lexer::from(
-        b"define enum foo():
-            value A:
-            value B:
-            value C:
-            alias AB = A | B:
-            alias AB = A | B:
-          end".to_vec())).unwrap().type_check().err(),
-        Some(Spanned {
-            beg: Position { line: 0, column: 0},
-            end: Position { line: 0, column: 18},
-            data: TypeError::Redefinition(
-                String::from("AB"),
-                Hint::EnumAttribute,
-            ),
-        })
-    );
-    assert_eq!(parser::parse_ast(Lexer::from(
-        b"define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
-            symmetric
-            symmetric
-            value A:
-            value B:
-          end".to_vec())).unwrap().type_check().err(),
-        Some(Spanned {
-            beg: Position { line: 0, column: 0},
-            end: Position { line: 0, column: 56},
-            data: TypeError::Redefinition(
-                String::from("Symmetric"),
-                Hint::EnumAttribute
-            ),
-        })
-    );
-    assert_eq!(parser::parse_ast(Lexer::from(
-        b"define enum foo():
-            value A:
-            value B:
-            value A:
-          end".to_vec())).unwrap().type_check().err(),
-        Some(Spanned {
-            beg: Position { line: 0, column: 0},
-            end: Position { line: 0, column: 18},
-            data: TypeError::Redefinition(
-                String::from("A"),
-                Hint::EnumAttribute
-            ),
-        })
-    );
-}
-
-*/
 /*
 #[test]
 fn enum_symmetric_two_parameters() {
@@ -161,22 +178,6 @@ fn enum_symmetric_two_parameters() {
                 },
             ])
         })
-    );
-    assert!(parser::parse_ast(Lexer::from(
-        b"set BasicBlock:
-            item_type = \"ir::basic_block::Obj\"
-            id_type = \"ir::basic_block::Id\"
-            item_getter = \"ir::basic_block::get($fun, $id)\"
-            id_getter = \"ir::basic_block::Obj::id($item)\"
-            iterator = \"ir::basic_block::iter($fun)\"
-            var_prefix = \"bb\"
-            new_objs = \"$objs.basic_block\"
-          end
-          define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
-            symmetric
-            value A:
-            value B:
-          end".to_vec())).unwrap().type_check().is_ok()
     );
     assert_eq!(parser::parse_ast(Lexer::from(
         b"set BasicBlock:
@@ -270,54 +271,6 @@ fn enum_symmetric_same_parameter() {
                     }
                 }
                 ])
-        })
-    );
-    assert!(parser::parse_ast(Lexer::from(
-        b"set BasicBlock:
-            item_type = \"ir::basic_block::Obj\"
-            id_type = \"ir::basic_block::Id\"
-            item_getter = \"ir::basic_block::get($fun, $id)\"
-            id_getter = \"ir::basic_block::Obj::id($item)\"
-            iterator = \"ir::basic_block::iter($fun)\"
-            var_prefix = \"bb\"
-            new_objs = \"$objs.basic_block\"
-          end
-          define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
-            symmetric
-            value A:
-            value B:
-          end".to_vec())).unwrap().type_check().is_ok()
-    );
-}
-
-
-#[test]
-fn enum_undefined_value() {
-    assert_eq!(parser::parse_ast(Lexer::from(
-        b"define enum foo():
-            value A:
-            alias AB = A | B:
-          end".to_vec())).unwrap().type_check().err(),
-        Some(Spanned {
-            beg: Position { line: 0, column: 0},
-            end: Position { line: 0, column: 18},
-            data: TypeError::Undefined(String::from("B"))
-        })
-    );
-}
- 
-#[test]
-fn enum_undefined_parameter() {
-    assert_eq!(parser::parse_ast(Lexer::from(
-            b"define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
-                symmetric
-                value A:
-                value B:
-          end".to_vec())).unwrap().type_check().err(),
-        Some(Spanned {
-            beg: Position { line: 0, column: 0},
-            end: Position { line: 0, column: 56},
-            data: TypeError::Undefined(String::from("BasicBlock"))
         })
     );
 }

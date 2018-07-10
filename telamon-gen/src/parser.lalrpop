@@ -63,13 +63,13 @@ statement: Spanned<ast::Statement> = {
                 <end: @R> => {
         Spanned {
             beg, end,
-            data: ast::Statement::IntegerDef {
+            data: ast::Statement::IntegerDef(ast::IntegerDef {
                 name: Spanned {
                     beg: beg_name,
                     end: end_name,
                     data: name,
                 }, doc, variables: vars, code: universe,
-            }
+            })
         }
     },
     <doc: doc?> <beg: @L> define enum_
@@ -134,17 +134,19 @@ set_ref: ast::SetRef = {
     }
 };
 
-enum_stmt: ast::EnumStatement = {
-    <doc: doc?> value <name: val_ident> ":" <reqs: (requires <constraint>)*> => {
-        ast::EnumStatement::Value(name, doc, reqs)
+enum_stmt: Spanned<ast::EnumStatement> = {
+    <doc: doc?> value <beg: @L> <name: val_ident> <end: @R> ":" <reqs: (requires <constraint>)*> => {
+        Spanned { beg, end, data: ast::EnumStatement::Value(name, doc, reqs) }
     },
-    <doc: doc?> alias <name: val_ident> "=" <set: value_set> ":"
+    <doc: doc?> alias <beg: @L> <name: val_ident> <end: @R> "=" <set: value_set> ":"
             <reqs: (requires <constraint>)*> => {
-        ast::EnumStatement::Alias(name, doc, set, reqs)
+        Spanned { beg, end, data: ast::EnumStatement::Alias(name, doc, set, reqs) }
     },
-    symmetric => ast::EnumStatement::Symmetric,
+    <beg: @L> symmetric <end: @R> => {
+        Spanned { beg, end, data: ast::EnumStatement::Symmetric }
+    },
     antisymmetric ":" <(<val_ident> "->" <val_ident>)*> => {
-        ast::EnumStatement::AntiSymmetric(<>)
+        Spanned { beg: Default::default(), end: Default::default(), data: ast::EnumStatement::AntiSymmetric(<>) }
     },
 };
 
