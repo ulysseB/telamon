@@ -1268,17 +1268,6 @@ impl EnumDef {
     }
 }
 
-impl Default for EnumDef {
-    fn default() -> EnumDef {
-        EnumDef {
-            name: Spanned::new(String::default()),
-            doc: None,
-            variables: vec![],
-            statements: vec![],
-        }
-    }
-}
-
 impl PartialEq for EnumDef {
     fn eq(&self, rhs: &Self) -> bool {
         self.name == rhs.name
