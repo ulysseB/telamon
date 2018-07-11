@@ -33,17 +33,11 @@ pub enum Hint {
 }
 
 impl Hint {
-    fn from(statement: &Spanned<Statement>) -> Self {
+    fn from(statement: &Statement) -> Self {
         match statement {
-            Spanned {
-                beg: _, end: _, data: Statement::SetDef(..)
-            } => Hint::Set,
-            Spanned {
-                beg: _, end: _, data: Statement::EnumDef(..)
-            } => Hint::Enum,
-            Spanned {
-                beg: _, end: _, data: Statement::IntegerDef(..)
-            } => Hint::Integer,
+            Statement::SetDef(..) => Hint::Set,
+            Statement::EnumDef(..) => Hint::Enum,
+            Statement::IntegerDef(..) => Hint::Integer,
             _ => unreachable!(),
         }
     }
@@ -130,7 +124,7 @@ impl CheckerContext {
                 name: Spanned { beg, end, data: name, }, .. }) } |
             Spanned { beg: _, end: _, data: Statement::IntegerDef(IntegerDef {
                 name: Spanned { beg, end, data: name, }, .. }) } => {
-                let data: Hint = Hint::from(statement);
+                let data: Hint = Hint::from(&statement.data);
                 let value: Spanned<Hint> = Spanned { beg: *beg, end: *end, data };
                 if let Some(pre) = self.hash.insert(name.to_owned(), value) {
                     Err(TypeError::Redefinition(pre, Spanned {
