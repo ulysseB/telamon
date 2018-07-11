@@ -341,7 +341,7 @@ define half counter unroll_factor($inst in Instructions):
   forall $dim in StaticDims:
     mul size($dim) when:
       is_iteration_dim($inst, $dim) is TRUE
-      dim_kind($dim) is UNROLL
+      dim_kind($dim) is UNROLL | VECTOR
 end
 
 /// Limits the number of block dimensions.
@@ -355,6 +355,13 @@ end
 require forall $inst in Instructions:
   unroll_factor($inst) <= "$fun.device().max_unrolling()"
   num_block_dims($inst) <= "$fun.device().max_block_dims()"
+
+// Fix an arbitrary order for block dimensions. Also helps making sure block dimensions
+// on y and z axis are not too big as outer dimensions are usually bigger.
+require forall $lhs in Dimensions:
+  forall $rhs in Dimensions:
+    dim_kind($lhs) is not BLOCK || dim_kind($rhs) is not BLOCK ||
+      order($lhs, $rhs) is not OUTER || "$lhs.id() < $rhs.id()"
 
 /// Counts the number on instructions nested in each dimension.
 define half counter num_nested_inst($dim in StaticDims):
