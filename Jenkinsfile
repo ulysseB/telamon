@@ -1,5 +1,5 @@
 pipeline {
-  agent { label: 'ficus' }
+  agent { label 'ficus' }
 
   stages {
     stage('build') {
