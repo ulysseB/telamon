@@ -70,16 +70,6 @@ struct CheckerContext {
 }
 
 impl CheckerContext {
-
-    fn undefined_set(&self, name: &RcStr) -> Result<(), String> {
-        let name: &String = name.deref();
-        if !self.hash.contains_key(name) {
-            Err(name.to_owned())
-        } else {
-            Ok(())
-        }
-    }
-
     pub fn undefined(
         &self, statement: &Spanned<Statement>
     ) -> Result<(), TypeError> {
@@ -102,15 +92,20 @@ impl CheckerContext {
             Spanned { beg, end, data: Statement::SetDef(SetDef {
                 ref name, doc: _, arg, superset, disjoint: _, keys, ..  }) } => {
                 if let Some(VarDef { name: _, set: SetRef { name, .. } }) = arg {
-                    self.undefined_set(name).map_err(|s| TypeError::Undefined(Spanned {
-                        beg: *beg, end: *end, data: s
-                    }))?;
+                    let name: &String = name.deref();
+                    if !self.hash.contains_key(name) {
+                        Err(TypeError::Undefined(Spanned {
+                            beg: *beg, end:*end, data: name.to_owned()
+                        }))?;
+                    }
                 }
                 if let Some(SetRef { name: supername, .. }) = superset {
-                    self.undefined_set(supername)
-                        .map_err(|s| TypeError::Undefined(Spanned {
-                                 beg: *beg, end:*end, data: s
+                    let name: &String = supername.deref();
+                    if !self.hash.contains_key(name) {
+                        Err(TypeError::Undefined(Spanned {
+                            beg: *beg, end:*end, data: name.to_owned()
                         }))?;
+                    }
                 }
                 Ok(())
             },
