@@ -15,9 +15,9 @@ pipeline {
       steps {
         sh 'mkdir -p output'
         dir('kernels') {
-          sh 'cargo bench --bench=cuda-deadend > ../output/cuda_deadend'
-          sh 'cargo bench --bench=cuda-bound > ../output/cuda_bound'
-          sh 'RUST_LOG=telamon::explorer=warn cargo bench --bench=cuda-search > ../output/cuda_search 2>../output/cuda_search_log'
+          sh 'cargo bench --features=cuda --bench=cuda-deadend > ../output/cuda_deadend'
+          sh 'cargo bench --features=cuda --bench=cuda-bound > ../output/cuda_bound'
+          sh 'RUST_LOG=telamon::explorer=warn cargo bench --features=cuda --bench=cuda-search > ../output/cuda_search'
         }
       }
       
