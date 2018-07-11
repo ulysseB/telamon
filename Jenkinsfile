@@ -4,11 +4,7 @@ pipeline {
   stages {
     stage('build') {
       steps {
-        dir('kernels') {
-          sh 'cargo build --features=cuda --bench=cuda-search'
-          sh 'cargo build --features=cuda --bench=cuda-bound'
-          sh 'cargo build --features=cuda --bench=cuda-deadend'
-        }
+        sh 'cargo build --features=cuda --release'
       }
     } 
     stage('bench') {
