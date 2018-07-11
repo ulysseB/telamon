@@ -95,7 +95,7 @@ statement: Spanned<ast::Statement> = {
         }
     },
     <doc: doc?> <beg: @L> define <visibility: counter_visibility?> counter
-                <beg_name: @L> <name: choice_ident> <end_name: @R>
+                <name: choice_ident>
         "(" <vars: choice_vars> ")" ":" <end: @R> <body: counter_body> end => {
         let name = RcStr::new(name);
         let visibility = visibility.unwrap_or(ir::CounterVisibility::Full);
