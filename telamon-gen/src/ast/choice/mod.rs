@@ -12,27 +12,20 @@ pub enum ChoiceDef {
     IntegerDef(IntegerDef),
 }
 
+impl ChoiceDef {
+    pub fn type_check(&self) -> Result<(), TypeError> {
+        match self {
+            ChoiceDef::CounterDef(_) => Ok(()),
+            ChoiceDef::IntegerDef(integer_def) => integer_def.type_check(),
+            ChoiceDef::EnumDef(enum_def) => enum_def.type_check(),
+        }
+    }
+}
+
 impl From<Statement> for ChoiceDef {
     fn from(stmt: Statement) -> Self {
         match stmt {
-            Statement::CounterDef { name, doc, visibility, vars, body } => {
-                ChoiceDef::CounterDef(CounterDef {
-                    name, doc, visibility, vars, body
-                })
-            },
-            Statement::EnumDef(EnumDef { name: Spanned {
-                beg, end, data, }, doc, variables, statements }) => {
-                ChoiceDef::EnumDef(EnumDef {
-                    name: Spanned {
-                        beg, end, data,
-                    }, doc, variables, statements
-                })
-            },
-            Statement::IntegerDef(IntegerDef { name, doc, variables, code }) => {
-                ChoiceDef::IntegerDef(IntegerDef {
-                    name, doc, variables, code
-                })
-            },
+            Statement::ChoiceDef(def) => def,
             _ => unreachable!(),
         }
     }

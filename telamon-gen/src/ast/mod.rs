@@ -23,7 +23,7 @@ use utils::*;
 pub use self::set::SetDef;
 pub use self::choice::integer::IntegerDef;
 pub use self::choice::enumeration::EnumDef;
-use self::choice::ChoiceDef;
+pub use self::choice::ChoiceDef;
 use self::trigger::TriggerDef;
 use self::context::TypingContext;
 pub use self::constrain::Constraint;
@@ -51,8 +51,8 @@ impl Hint {
     fn from(statement: &Statement) -> Self {
         match statement {
             Statement::SetDef(..) => Hint::Set,
-            Statement::EnumDef(..) => Hint::Enum,
-            Statement::IntegerDef(..) => Hint::Integer,
+            Statement::ChoiceDef(ChoiceDef::EnumDef(..)) => Hint::Enum,
+            Statement::ChoiceDef(ChoiceDef::IntegerDef(..)) => Hint::Integer,
             _ => unreachable!(),
         }
     }
@@ -135,10 +135,16 @@ impl CheckerContext {
         match statement {
             Spanned { beg: _, end: _, data: Statement::SetDef(SetDef {
                 name: Spanned { beg, end, data: name, }, .. }) } |
-            Spanned { beg: _, end: _, data: Statement::EnumDef(EnumDef {
-                name: Spanned { beg, end, data: name, }, .. }) } |
-            Spanned { beg: _, end: _, data: Statement::IntegerDef(IntegerDef {
-                name: Spanned { beg, end, data: name, }, .. }) } => {
+            Spanned { beg: _, end: _, data: Statement::ChoiceDef(
+                ChoiceDef::EnumDef( EnumDef {
+                    name: Spanned { beg, end, data: name, }, .. 
+                })
+            ) } |
+            Spanned { beg: _, end: _, data: Statement::ChoiceDef(
+                ChoiceDef::IntegerDef( IntegerDef {
+                    name: Spanned { beg, end, data: name }, .. 
+                })
+            ) } => {
                 let data: Hint = Hint::from(&statement.data);
                 let value: Spanned<Hint> = Spanned { beg: *beg, end: *end, data };
                 if let Some(pre) = self.hash.insert(name.to_owned(), value) {
@@ -169,11 +175,15 @@ impl Ast {
         for statement in self.statements {
             checker.redefinition(&statement)?;
             match statement {
-                Spanned { beg, end, data: Statement::EnumDef(ref enumeration) } => {
+                Spanned { beg, end, data: Statement::ChoiceDef(
+                    ChoiceDef::EnumDef(ref enumeration)
+                ) } => {
                     checker.undefined_choicedef(Spanned { beg, end,
                         data: ChoiceDef::EnumDef(enumeration.clone()) })?;
                 },
-                Spanned { beg, end, data: Statement::IntegerDef(ref integer) } => {
+                Spanned { beg, end, data: Statement::ChoiceDef(
+                    ChoiceDef::IntegerDef(ref integer)
+                ) } => {
                     checker.undefined_choicedef(Spanned { beg, end,
                         data: ChoiceDef::IntegerDef(integer.clone()) })?;
                 },
@@ -192,20 +202,11 @@ impl Ast {
 /// A toplevel definition or constraint.
 #[derive(Debug)]
 pub enum Statement {
-    IntegerDef(IntegerDef),
-    /// Defines an enum.
-    EnumDef(EnumDef),
+    ChoiceDef(ChoiceDef),
     TriggerDef {
         foralls: Vec<VarDef>,
         conditions: Vec<Condition>,
         code: String,
-    },
-    CounterDef {
-        name: RcStr,
-        doc: Option<String>,
-        visibility: ir::CounterVisibility,
-        vars: Vec<VarDef>,
-        body: CounterBody,
     },
     SetDef(SetDef),
     Require(Constraint),
@@ -214,9 +215,8 @@ pub enum Statement {
 impl Statement {
     pub fn type_check(&self) -> Result<(), TypeError> {
         match self {
-            Statement::IntegerDef(integer_def) => integer_def.type_check(),
-            Statement::EnumDef(enum_def) => enum_def.type_check(),
-            Statement::SetDef(set_def) => set_def.type_check(),
+            Statement::SetDef(def) => def.type_check(),
+            Statement::ChoiceDef(def) => def.type_check(),
             _ => Ok(()),
         }
     }
@@ -269,7 +269,6 @@ pub struct CounterBody {
 /// Indicates if an enum exhibits symmetry.
 #[derive(Debug)]
 pub enum Symmetry { Symmetric, AntiSymmetric(Vec<(RcStr, RcStr)>) }
-
 
 /// References a set.
 #[derive(Clone, Debug)]
@@ -584,11 +583,11 @@ impl EnumStatements {
 
 #[derive(Clone, Debug)]
 pub struct CounterDef {
-    name: RcStr,
-    doc: Option<String>,
-    visibility: ir::CounterVisibility,
-    vars: Vec<VarDef>,
-    body: CounterBody,
+    pub name: RcStr,
+    pub doc: Option<String>,
+    pub visibility: ir::CounterVisibility,
+    pub vars: Vec<VarDef>,
+    pub body: CounterBody,
 }
 
 impl PartialEq for CounterDef {

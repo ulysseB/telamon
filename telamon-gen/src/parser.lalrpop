@@ -63,13 +63,15 @@ statement: Spanned<ast::Statement> = {
                 <end: @R> => {
         Spanned {
             beg, end,
-            data: ast::Statement::IntegerDef(ast::IntegerDef {
-                name: Spanned {
-                    beg: beg_name,
-                    end: end_name,
-                    data: name,
-                }, doc, variables: vars, code: universe,
-            })
+            data: ast::Statement::ChoiceDef(ast::ChoiceDef::IntegerDef(
+                ast::IntegerDef {
+                    name: Spanned {
+                        beg: beg_name,
+                        end: end_name,
+                        data: name,
+                    }, doc, variables: vars, code: universe,
+                }
+            ))
         }
     },
     <doc: doc?> <beg: @L> define enum_
@@ -78,13 +80,15 @@ statement: Spanned<ast::Statement> = {
                 <end: @R> <stmts: enum_stmt*> end => {
         Spanned {
             beg, end,
-            data: ast::Statement::EnumDef(ast::EnumDef {
-                name: Spanned {
-                    beg: beg_name,
-                    end: end_name,
-                    data: name,
-                }, doc, variables: vars, statements: stmts,
-            })
+            data: ast::Statement::ChoiceDef(ast::ChoiceDef::EnumDef(
+                ast::EnumDef {
+                    name: Spanned {
+                        beg: beg_name,
+                        end: end_name,
+                        data: name,
+                    }, doc, variables: vars, statements: stmts,
+                }
+            ))
         }
     },
     <beg: @L> trigger <foralls: (forall <var_def> ":")*> <code: code> when
@@ -101,7 +105,11 @@ statement: Spanned<ast::Statement> = {
         let visibility = visibility.unwrap_or(ir::CounterVisibility::Full);
         Spanned {
             beg: beg, end: end,
-            data: ast::Statement::CounterDef { name, doc, vars, visibility, body, }
+            data: ast::Statement::ChoiceDef(ast::ChoiceDef::CounterDef(
+                ast::CounterDef {
+                    name, doc, visibility, vars, body,
+                }
+            ))
         }
     },
     require <constraint> => {

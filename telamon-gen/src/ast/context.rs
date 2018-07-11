@@ -22,9 +22,12 @@ impl TypingContext {
                     name, doc, arg, superset, disjoint, keys, quotient
                 })
             },
-            Spanned { beg, end, data: stmt @ Statement::EnumDef(..) } |
-            Spanned { beg, end, data: stmt @ Statement::IntegerDef(..) } |
-            Spanned { beg, end, data: stmt @ Statement::CounterDef { .. } } => {
+            Spanned { beg, end, data: stmt @ Statement::ChoiceDef(
+                    ChoiceDef::EnumDef(..)) } |
+            Spanned { beg, end, data: stmt @ Statement::ChoiceDef(
+                    ChoiceDef::IntegerDef(..)) } |
+            Spanned { beg, end, data: stmt @ Statement::ChoiceDef(
+                    ChoiceDef::CounterDef(..)) } => {
                 self.choice_defs.push(ChoiceDef::from(stmt))
             },
             Spanned { beg, end,
