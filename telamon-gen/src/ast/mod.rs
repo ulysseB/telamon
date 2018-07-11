@@ -70,32 +70,40 @@ struct CheckerContext {
 }
 
 impl CheckerContext {
-    pub fn undefined(
-        &self, statement: &Spanned<Statement>
+    pub fn undefined_choicedef(
+        &self, statement: Spanned<ChoiceDef>
     ) -> Result<(), TypeError> {
         match statement {
-            Spanned { beg, end, data: Statement::EnumDef(EnumDef {
-                name: _, doc: _, variables, ..  }) } |
-            Spanned { beg, end, data: Statement::IntegerDef(IntegerDef {
-                name: _, doc: _, variables, ..  }) } => {
+            Spanned { beg, end, data: ChoiceDef::EnumDef(EnumDef {
+                name: _, doc: _, variables, .. }) } |
+            Spanned { beg, end, data: ChoiceDef::IntegerDef(IntegerDef {
+                name: _, doc: _, variables, .. }) } => {
                 for VarDef { name: _, set: SetRef { name, .. } } in variables {
                     let name: &String = name.deref();
                     if !self.hash.contains_key(name) {
                         Err(TypeError::Undefined(Spanned {
-                            beg: *beg, end: *end,
+                            beg, end,
                             data: name.to_owned(),
                         }))?;
                     }
                 }
-                Ok(())
             },
-            Spanned { beg, end, data: Statement::SetDef(SetDef {
-                ref name, doc: _, arg, superset, disjoint: _, keys, ..  }) } => {
+            _ => {},
+        }
+        Ok(())
+    }
+
+    pub fn undefined_setdef(
+        &self, statement: Spanned<&SetDef>
+    ) -> Result<(), TypeError> {
+        match statement {
+            Spanned { beg, end, data: SetDef {
+                ref name, doc: _, arg, superset, disjoint: _, keys, ..  } } => {
                 if let Some(VarDef { name: _, set: SetRef { name, .. } }) = arg {
                     let name: &String = name.deref();
                     if !self.hash.contains_key(name) {
                         Err(TypeError::Undefined(Spanned {
-                            beg: *beg, end:*end, data: name.to_owned()
+                            beg, end, data: name.to_owned()
                         }))?;
                     }
                 }
@@ -103,14 +111,13 @@ impl CheckerContext {
                     let name: &String = supername.deref();
                     if !self.hash.contains_key(name) {
                         Err(TypeError::Undefined(Spanned {
-                            beg: *beg, end:*end, data: name.to_owned()
+                            beg, end, data: name.to_owned()
                         }))?;
                     }
                 }
-                Ok(())
             },
-            _ => Ok(()),
         }
+        Ok(())
     }
 
     pub fn redefinition(
@@ -152,7 +159,18 @@ impl Ast {
 
         for statement in self.statements {
             checker.redefinition(&statement)?;
-            checker.undefined(&statement)?;
+            match statement {
+                Spanned { beg, end, data: Statement::EnumDef(ref enumeration) } => {
+                    checker.undefined_choicedef(Spanned { beg, end, data: ChoiceDef::EnumDef(enumeration.clone()) })?;
+                },
+                Spanned { beg, end, data: Statement::IntegerDef(ref integer) } => {
+                    checker.undefined_choicedef(Spanned { beg, end, data: ChoiceDef::IntegerDef(integer.clone()) })?;
+                },
+                Spanned { beg, end, data: Statement::SetDef(ref set) } => {
+                    checker.undefined_setdef(Spanned { beg, end, data: set })?;
+                },
+                _ => {},
+            }
             statement.data.type_check()?;
             context.add_statement(statement);
         }
@@ -1307,15 +1325,10 @@ impl From<Statement> for ChoiceDef {
                 })
             },
             Statement::EnumDef(EnumDef { name: Spanned {
-                beg,
-                end,
-                data,
-            }, doc, variables, statements }) => {
+                beg, end, data, }, doc, variables, statements }) => {
                 ChoiceDef::EnumDef(EnumDef {
                     name: Spanned {
-                        beg,
-                        end,
-                        data,
+                        beg, end, data,
                     }, doc, variables, statements
                 })
             },
