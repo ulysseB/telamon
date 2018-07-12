@@ -1,0 +1,6 @@
+build/
+__pycache__/
+.eggs
+*.egg-info
+_capi*.py
+*.so
