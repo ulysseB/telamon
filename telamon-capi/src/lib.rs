@@ -1,3 +1,8 @@
+//! C API wrappers for calling Telamon through FFI.
+//!
+//! The goal of the C API is to provide thin wrappers over existing Rust functionality, and only
+//! provides some cosmetic improvements to try and provide a somewhat idiomatic C interface.
+
 extern crate libc;
 extern crate telamon;
 extern crate telamon_kernels;
@@ -10,30 +15,37 @@ use telamon::device::x86;
 use telamon::explorer::config::Config;
 pub use telamon_kernels::{linalg, Kernel};
 
+/// Supported device types for running kernels.
 #[repr(C)]
 pub enum Device {
     X86,
     Cuda,
 }
 
+/// Supported kernels.
+#[derive(Copy, Clone)]
 pub enum KernelParameters {
+    /// A matrix-matrix multiplication kernel.
     MatMul(linalg::MatMulP),
 }
 
 impl KernelParameters {
+    /// Runs the search for a best candidate.
     fn optimize_kernel<C: device::ArgMap + device::Context>(
-        &self,
+        self,
         config: &Config,
         context: &mut C,
     ) {
         match self {
             KernelParameters::MatMul(params) => {
-                linalg::MatMul::<f32>::benchmark(config, params.clone(), 0, context);
+                linalg::MatMul::<f32>::benchmark(config, params, 0, context);
             }
         }
     }
 }
 
+/// Instanciate a new kernel for matrix-matrix multiplication. The caller is responsible for
+/// deallocating the returned pointer using kernel_free.
 #[no_mangle]
 pub extern "C" fn kernel_matmul_new(
     m: c_int,
@@ -55,11 +67,15 @@ pub extern "C" fn kernel_matmul_new(
     })))
 }
 
+/// Deallocates kernel parameters created through one of the `kernel_*_new` functions. The `params`
+/// pointer becomes invalid and must not be used again after calling `kernel_free`.
 #[no_mangle]
 pub unsafe extern "C" fn kernel_free(params: *mut KernelParameters) -> () {
     std::mem::drop(Box::from_raw(params));
 }
 
+/// Optimize a kernel on a given device. `config_data` points to a JSON-encoded string of length
+/// `config_len` containing the configuration parameters for the explorer.
 #[no_mangle]
 pub unsafe extern "C" fn kernel_optimize(
     params: *mut KernelParameters,
