@@ -4,6 +4,8 @@ extern crate libc;
 extern crate telamon;
 #[macro_use]
 extern crate telamon_utils as utils;
+#[macro_use]
+extern crate log;
 
 mod common;
 

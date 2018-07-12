@@ -4,13 +4,15 @@ extern crate libc;
 extern crate telamon;
 extern crate itertools;
 extern crate telamon_utils as utils;
+#[macro_use]
+extern crate log;
 
 mod common;
 
 use common::*;
 use telamon::device::{read_array, write_array, Context, cuda};
 use telamon::{ir, helper};
-use telamon::search_space::{Action, DimKind, InstFlag, Order};
+use telamon::search_space::*;
 use itertools::Itertools;
 
 /// Tests the printing of unrolled dimensions.
@@ -369,83 +371,6 @@ fn dim_map_reduce_0() {
     check_candidates(builder.get(), &context, || ());
 }
 
-/*
-#[test]
-fn model_dim_map_0() {
-    let _ = env_logger::try_init();
-    let executor = cuda::Executor::init();
-    let context = cuda::Context::new(&executor);
-    let signature = empty_signature(0);
-    let mut builder = helper::Builder::new(&signature, context.device());
-    let size4 = builder.cst_size(4);
-
-    let d0 = builder.open_dim_ex(size4.clone(), DimKind::UNROLL);
-        let a = builder.mul(&1f32, &2f32);
-
-    let d1 = builder.open_dim_ex(size4.clone(), DimKind::UNROLL);
-    let d2 = builder.open_mapped_dims(&[d0])[0];
-        let _ = builder.mul(&a, &2f32);
-
-
-    builder.order(d0.into(), d2.into(), Order::BEFORE);
-    builder.order(d1.into(), d2.into(), Order::OUTER);
-
-    explorer::test_model(&context, builder.get());
-}
-
-
-#[test]
-fn model_dim_map_1() {
-    let _ = env_logger::try_init();
-    let executor = cuda::Executor::init();
-    let context = cuda::Context::new(&executor);
-    let signature = empty_signature(0);
-    let mut builder = helper::Builder::new(&signature, context.device());
-    let size4 = builder.cst_size(4);
-
-    let _d0 = builder.open_dim_ex(size4.clone(), DimKind::LOOP);
-    let _d1 = builder.open_dim_ex(size4.clone(), DimKind::LOOP);
-    let d2 = builder.open_dim(size4.clone());
-        let a = builder.mul(&1f32, &2f32);
-
-    let _d3 = builder.open_dim_ex(size4.clone(), DimKind::THREAD_X);
-    let d4 = builder.open_mapped_dims(&[d2])[0];
-        let _ = builder.mul(&a, &2f32);
-
-    builder.action(Action::DimKind(d4, DimKind::UNROLL));
-    explorer::test_model(&context, builder.get());
-}
-
-#[test]
-fn model_size_one() {
-    let _ = env_logger::try_init();
-    let executor = cuda::Executor::init();
-    let mut context = cuda::Context::new(&executor);
-    let a;
-    let ref signature = {
-        let mut builder = helper::SignatureBuilder::new("sgemm", &mut context);
-        a = builder.array("a", 4*1024*1024 as usize);
-        builder.get()
-    };
-
-    let mut builder = helper::Builder::new(&signature, context.device());
-    let size_8 = builder.cst_size(8);
-    let size_1 = builder.cst_size(1);
-
-    let d0 = builder.open_dim_ex(size_8.clone(), DimKind::UNROLL);
-        let acc_init = builder.mov(&0f32);
-    let d1 = builder.open_dim_ex(size_1.clone(), DimKind::UNROLL);
-        let a_pattern = builder.unknown_access_pattern(a);
-        let a_ld = builder.ld_nc(ir::Type::F(32), &"a", a_pattern);
-    let d2 = builder.open_mapped_dims(&[d1])[0];
-        let (addr, pattern) = builder.tensor_access(&"a", a, &ir::Type::F(32), vec![d0, d2]);
-        builder.st(&addr, &a_ld, pattern);
-
-    builder.action(Action::InstFlag(a_ld, InstFlag::MEM_CG | InstFlag::MEM_NC));
-
-    explorer::test_model(&context, builder.get());
-}*/
-
 #[test]
 fn dim_map_active() {
     let _ = env_logger::try_init();
@@ -498,4 +423,38 @@ fn test0() {
 
     let mut space = builder.get();
     space.apply_decisions(vec![Action::DimKind(d4, DimKind::UNROLL)]).unwrap();
+}
+
+#[test]
+fn test1() {
+    let _ = env_logger::try_init();
+    let executor = cuda::Executor::init();
+    let mut context = cuda::Context::new(&executor);
+    let x;
+    let signature = {
+        let mut builder = helper::SignatureBuilder::new("test", &mut context);
+        x = builder.tensor::<f32>("x", vec![2.into()], true);
+        builder.get()
+    };
+
+    let mut builder = helper::Builder::new(&signature, context.device());
+
+    let ld_x = x.load(&[&[]], &mut builder);
+    let ld_a_n = builder.open_dim_ex(ir::Size::new_const(2), DimKind::UNROLL);
+    let ld_a = builder.mov(&0f32);
+
+    let acc_dim_n = builder.open_mapped_dim(&ld_a_n.into());
+    let a_op = builder.dim_map(ld_a, &[(&ld_a_n, &acc_dim_n)], ir::DimMapScope::Global);
+    let acc = builder.mov(&a_op);
+
+    builder.action(Action::InstFlag(ld_x.inst(), InstFlag::MEM_CG));
+    builder.action(Action::DimKind(ld_x[0][0], DimKind::VECTOR));
+    builder.action(Action::DimKind(acc_dim_n[0], DimKind::LOOP));
+
+    builder.order(&ld_x[0][0], &ld_a, Order::AFTER);
+    builder.order(&ld_x[0][0], &acc, Order::BEFORE);
+
+    let mut space = builder.get();
+    let action = Action::Order(ld_x[0][0].into(), ir::InstId(3).into(), Order::OUTER); 
+    assert!(space.apply_decisions(vec![action]).is_err());
 }
