@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Axpy","Computes `z = alpha*x+y`."],["BatchMM","Batch transposed matrix-matrix multiplication."],["BatchMMP",""],["Gesummv","Computes `y = (alpha*A + beta*B).x`."],["MatMul","Computes `C = A.B`."],["MatMulP",""],["MatVec","Computes `y = A.x`."]]});
