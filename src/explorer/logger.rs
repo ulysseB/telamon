@@ -25,7 +25,7 @@ pub fn log(config: &Config, recv: mpsc::Receiver<LogMessage>) {
             // types of message
             //_ => { }
         }
-        write_buffer.flush().unwrap();
+        unwrap!(write_buffer.flush());
     }
 }
 

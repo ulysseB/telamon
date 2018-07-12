@@ -173,7 +173,7 @@ where
             cpt: status.num_evaluations,
             timestamp: t
         };
-        log_sender.send(log_message).unwrap();
+        unwrap!(log_sender.send(log_message));
         status.best_candidate = Some((cand, eval));
     }
     candidate_store.commit_evaluation(payload, eval);

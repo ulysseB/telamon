@@ -122,7 +122,7 @@ impl device::Context for Context {
             let eval_thread_name = "Telamon - CPU Evaluation Thread".to_string();
             unwrap!(scope.builder().name(eval_thread_name).spawn(move || {
                 while let Ok((candidate, fun_str, code_args, callback)) = recv.recv() {
-                    let eval = function_evaluate(&fun_str, &code_args).unwrap();
+                    let eval = unwrap!(function_evaluate(&fun_str, &code_args));
                     callback.call(candidate, eval);
                 }
             }));
@@ -149,10 +149,10 @@ enum ThunkArg {
 /// temporary arrays at the last possible moment
 fn function_evaluate(fun_str: &String, args: &Vec<ThunkArg>) -> Result<f64, ()> {
     println!("{}", fun_str);
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = unwrap!(tempfile::tempdir());
     let templib_name = temp_dir.path().join("lib_compute.so").to_string_lossy().into_owned();
-    let mut source_file = tempfile::tempfile().unwrap();
-    source_file.write_all(fun_str.as_bytes()).unwrap();
+    let mut source_file = unwrap!(tempfile::tempfile());
+    unwrap!(source_file.write_all(fun_str.as_bytes()));
     let compile_status = compile::compile(source_file, &templib_name);
     if !compile_status.success() {
         panic!("Could not compile file");

@@ -106,7 +106,7 @@ impl Config {
 
 impl fmt::Display for Config {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", toml::to_string(self).unwrap())
+        write!(f, "{}", unwrap!(toml::to_string(self)))
     }
 }
 
