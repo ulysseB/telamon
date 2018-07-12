@@ -77,6 +77,15 @@ impl Config {
         unwrap!(Self::create_parser().try_into::<Self>())
     }
 
+    /// Parse the configuration from a JSON string. Primary user is
+    /// the Python API (through the C API).
+    pub fn from_json(json: &str) -> Self {
+        let mut parser = Self::create_parser();
+        unwrap!(parser.merge(
+            config::File::from_str(json, config::FileFormat::Json)));
+        unwrap!(parser.try_into::<Self>())
+    }
+
     /// Sets up the parser of command line arguments.
     fn setup_args_parser() -> getopts::Options {
         let mut opts = getopts::Options::new();
