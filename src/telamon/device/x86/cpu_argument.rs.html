@@ -100,7 +100,7 @@
 
     <span class="kw">fn</span> <span class="ident">size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
         <span class="kw">let</span> <span class="ident">CpuArray</span>(<span class="kw-2">ref</span> <span class="ident">vec_mutex</span>) <span class="op">=</span> <span class="self">self</span>;
-        <span class="kw">let</span> <span class="ident">array</span> <span class="op">=</span> <span class="ident">vec_mutex</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">array</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">vec_mutex</span>.<span class="ident">lock</span>());
         <span class="ident">array</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span>
     }
 }
@@ -112,20 +112,20 @@
 
     <span class="kw">fn</span> <span class="ident">arg_lock</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ArgLock</span> {
         <span class="kw">let</span> <span class="ident">CpuArray</span>(<span class="ident">mutex</span>) <span class="op">=</span> <span class="self">self</span>;
-        <span class="ident">ArgLock</span>::<span class="ident">Arr</span>(<span class="ident">mutex</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>())
+        <span class="ident">ArgLock</span>::<span class="ident">Arr</span>(<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">mutex</span>.<span class="ident">lock</span>()))
     }
 }
 
 <span class="kw">impl</span> <span class="ident">device</span>::<span class="ident">ArrayArgument</span> <span class="kw">for</span> <span class="ident">CpuArray</span> {
     <span class="kw">fn</span> <span class="ident">read_i8</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">i8</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">CpuArray</span>(<span class="kw-2">ref</span> <span class="ident">vec_mutex</span>) <span class="op">=</span> <span class="self">self</span>;
-        <span class="kw">let</span> <span class="ident">array</span> <span class="op">=</span> <span class="ident">vec_mutex</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">array</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">vec_mutex</span>.<span class="ident">lock</span>());
         <span class="ident">array</span>.<span class="ident">clone</span>()
     }
-    
+
     <span class="kw">fn</span> <span class="ident">write_i8</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">slice</span>: <span class="kw-2">&amp;</span>[<span class="ident">i8</span>]) {
         <span class="kw">let</span> <span class="ident">CpuArray</span>(<span class="kw-2">ref</span> <span class="ident">vec_mutex</span>) <span class="op">=</span> <span class="self">self</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">array</span> <span class="op">=</span> <span class="ident">vec_mutex</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">array</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">vec_mutex</span>.<span class="ident">lock</span>());
         <span class="kw-2">*</span><span class="ident">array</span> <span class="op">=</span> <span class="ident">slice</span>.<span class="ident">to_vec</span>();
     }
 }

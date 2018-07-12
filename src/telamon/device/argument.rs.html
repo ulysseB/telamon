@@ -185,7 +185,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">as_operand</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span> {
-        <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">new_float</span>(<span class="ident">Ratio</span>::<span class="ident">from_float</span>(<span class="kw-2">*</span><span class="self">self</span>).<span class="ident">unwrap</span>(), <span class="number">32</span>)
+        <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">new_float</span>(<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Ratio</span>::<span class="ident">from_float</span>(<span class="kw-2">*</span><span class="self">self</span>)), <span class="number">32</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">gen_random</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Rng</span><span class="op">&gt;</span>(<span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-&gt;</span> <span class="self">Self</span> { <span class="ident">rng</span>.<span class="ident">gen_range</span>(<span class="number">0.</span>, <span class="number">1.</span>) }
@@ -199,7 +199,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">as_operand</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span> {
-        <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">new_float</span>(<span class="ident">Ratio</span>::<span class="ident">from_float</span>(<span class="kw-2">*</span><span class="self">self</span>).<span class="ident">unwrap</span>(), <span class="number">64</span>)
+        <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">new_float</span>(<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Ratio</span>::<span class="ident">from_float</span>(<span class="kw-2">*</span><span class="self">self</span>)), <span class="number">64</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">gen_random</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Rng</span><span class="op">&gt;</span>(<span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-&gt;</span> <span class="self">Self</span> { <span class="ident">rng</span>.<span class="ident">gen_range</span>(<span class="number">0.</span>, <span class="number">1.</span>) }
@@ -215,7 +215,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">as_operand</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span> {
-        <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">new_int</span>(<span class="ident">BigInt</span>::<span class="ident">from_i8</span>(<span class="kw-2">*</span><span class="self">self</span>).<span class="ident">unwrap</span>(), <span class="number">8</span>)
+        <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">new_int</span>(<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">BigInt</span>::<span class="ident">from_i8</span>(<span class="kw-2">*</span><span class="self">self</span>)), <span class="number">8</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">gen_random</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Rng</span><span class="op">&gt;</span>(<span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-&gt;</span> <span class="self">Self</span> { <span class="ident">rng</span>.<span class="ident">gen_range</span>(<span class="number">0</span>, <span class="number">10</span>) }
@@ -231,7 +231,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">as_operand</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span> {
-        <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">new_int</span>(<span class="ident">BigInt</span>::<span class="ident">from_i16</span>(<span class="kw-2">*</span><span class="self">self</span>).<span class="ident">unwrap</span>(), <span class="number">16</span>)
+        <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">new_int</span>(<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">BigInt</span>::<span class="ident">from_i16</span>(<span class="kw-2">*</span><span class="self">self</span>)), <span class="number">16</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">gen_random</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Rng</span><span class="op">&gt;</span>(<span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-&gt;</span> <span class="self">Self</span> { <span class="ident">rng</span>.<span class="ident">gen_range</span>(<span class="number">0</span>, <span class="number">100</span>) }
@@ -247,7 +247,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">as_operand</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span> {
-        <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">new_int</span>(<span class="ident">BigInt</span>::<span class="ident">from_i32</span>(<span class="kw-2">*</span><span class="self">self</span>).<span class="ident">unwrap</span>(), <span class="number">32</span>)
+        <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">new_int</span>(<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">BigInt</span>::<span class="ident">from_i32</span>(<span class="kw-2">*</span><span class="self">self</span>)), <span class="number">32</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">gen_random</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Rng</span><span class="op">&gt;</span>(<span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-&gt;</span> <span class="self">Self</span> { <span class="ident">rng</span>.<span class="ident">gen_range</span>(<span class="number">0</span>, <span class="number">100</span>) }
@@ -263,7 +263,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">as_operand</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span> {
-        <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">new_int</span>(<span class="ident">BigInt</span>::<span class="ident">from_i64</span>(<span class="kw-2">*</span><span class="self">self</span>).<span class="ident">unwrap</span>(), <span class="number">64</span>)
+        <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">new_int</span>(<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">BigInt</span>::<span class="ident">from_i64</span>(<span class="kw-2">*</span><span class="self">self</span>)), <span class="number">64</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">gen_random</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Rng</span><span class="op">&gt;</span>(<span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-&gt;</span> <span class="self">Self</span> { <span class="ident">rng</span>.<span class="ident">gen_range</span>(<span class="number">0</span>, <span class="number">100</span>) }

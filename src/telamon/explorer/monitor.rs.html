@@ -364,7 +364,7 @@
             <span class="ident">cpt</span>: <span class="ident">status</span>.<span class="ident">num_evaluations</span>,
             <span class="ident">timestamp</span>: <span class="ident">t</span>
         };
-        <span class="ident">log_sender</span>.<span class="ident">send</span>(<span class="ident">log_message</span>).<span class="ident">unwrap</span>();
+        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">log_sender</span>.<span class="ident">send</span>(<span class="ident">log_message</span>));
         <span class="ident">status</span>.<span class="ident">best_candidate</span> <span class="op">=</span> <span class="prelude-val">Some</span>((<span class="ident">cand</span>, <span class="ident">eval</span>));
     }
     <span class="ident">candidate_store</span>.<span class="ident">commit_evaluation</span>(<span class="ident">payload</span>, <span class="ident">eval</span>);

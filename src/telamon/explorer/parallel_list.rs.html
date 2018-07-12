@@ -229,14 +229,14 @@
                 <span class="kw">return</span> <span class="prelude-val">None</span>;
             }
             <span class="ident">lock</span>.<span class="number">1</span> <span class="op">-=</span> <span class="number">1</span>;
-            <span class="ident">lock</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">wakeup</span>.<span class="ident">wait</span>(<span class="ident">lock</span>).<span class="ident">unwrap</span>();
+            <span class="ident">lock</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">wakeup</span>.<span class="ident">wait</span>(<span class="ident">lock</span>));
             <span class="ident">lock</span>.<span class="number">1</span> <span class="op">+=</span> <span class="number">1</span>;
         }
     }
 
     <span class="doccomment">/// Acquire the lock to the candidate list</span>
     <span class="kw">fn</span> <span class="ident">lock</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">MutexGuard</span><span class="op">&lt;</span>(<span class="ident">CandidateList</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">usize</span>)<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">mutex</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>()
+        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">mutex</span>.<span class="ident">lock</span>())
     }
 }
 
@@ -281,7 +281,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_cut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">new_cut</span>: <span class="ident">f64</span>) {
         <span class="self">self</span>.<span class="ident">cut</span> <span class="op">=</span> <span class="ident">new_cut</span>;
         <span class="kw">while</span> <span class="self">self</span>.<span class="ident">queue</span>.<span class="ident">max</span>().<span class="ident">map_or</span>(<span class="bool-val">false</span>, <span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">bound</span>.<span class="ident">value</span>() <span class="op">&gt;=</span> <span class="ident">new_cut</span>) {
-            <span class="kw">let</span> <span class="ident">candidate</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">queue</span>.<span class="ident">pop_max</span>().<span class="ident">unwrap</span>();
+            <span class="kw">let</span> <span class="ident">candidate</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">queue</span>.<span class="ident">pop_max</span>());
             <span class="self">self</span>.<span class="ident">drop_candidate</span>(<span class="ident">candidate</span>);
         }
     }

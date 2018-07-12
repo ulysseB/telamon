@@ -73,7 +73,7 @@
             <span class="comment">// types of message</span>
             <span class="comment">//_ =&gt; { }</span>
         }
-        <span class="ident">write_buffer</span>.<span class="ident">flush</span>().<span class="ident">unwrap</span>();
+        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">write_buffer</span>.<span class="ident">flush</span>());
     }
 }
 
