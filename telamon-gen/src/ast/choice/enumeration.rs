@@ -10,7 +10,8 @@ pub struct EnumDef {
 }
 
 impl EnumDef {
-    pub fn check_undefined(&self) -> Result<(), TypeError> {
+    /// This checks the undefined of value or alias.
+    fn check_undefined(&self) -> Result<(), TypeError> {
         let mut hash: HashMap<String, _> = HashMap::default();
 
         for stmt in self.statements.iter() {
@@ -39,7 +40,8 @@ impl EnumDef {
         Ok(())
     }
 
-    pub fn check_redefinition(&self) -> Result<(), TypeError> {
+    /// This checks that there isn't any doublon.
+    fn check_redefinition(&self) -> Result<(), TypeError> {
         let mut hash: HashMap<String, _> = HashMap::default();
         let mut symmetric: Option<Spanned<()>> = None;
 
@@ -93,6 +95,7 @@ impl EnumDef {
         Ok(())
     }
 
+    /// Type checks the condition.
     pub fn type_check(&self) -> Result<(), TypeError> {
         self.check_undefined()?;
         self.check_redefinition()?;

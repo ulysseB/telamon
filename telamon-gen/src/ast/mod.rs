@@ -79,7 +79,8 @@ struct CheckerContext {
 }
 
 impl CheckerContext {
-    pub fn check_undefined_choicedef(
+    /// This checks the undefined of EnumDef or IntegerDef.
+    fn check_undefined_choicedef(
         &self, statement: ChoiceDef
     ) -> Result<(), TypeError> {
         match statement {
@@ -102,7 +103,8 @@ impl CheckerContext {
         Ok(())
     }
 
-    pub fn check_undefined_setdef(
+    /// This checks the undefined of SetDef superset and arg.
+    fn check_undefined_setdef(
         &self, statement: &SetDef
     ) -> Result<(), TypeError> {
         match statement {
@@ -128,8 +130,9 @@ impl CheckerContext {
         }
         Ok(())
     }
-
-    pub fn check_redefinition(
+    
+    /// This checks the redefinition of SetDef, EnumDef and IntegerDef.
+    fn check_redefinition(
         &mut self, statement: &Statement
     ) -> Result<(), TypeError> {
         match statement {
@@ -151,6 +154,30 @@ impl CheckerContext {
             _ => Ok(()),
         }
     }
+
+    /// Type checks the condition.
+    pub fn type_check(
+        &mut self, statement: &Statement
+    ) -> Result<(), TypeError> {
+        self.check_redefinition(&statement)?;
+        match statement {
+            Statement::ChoiceDef(ChoiceDef::EnumDef(ref enumeration)) => {
+                self.check_undefined_choicedef(
+                    ChoiceDef::EnumDef(enumeration.clone()))?;
+            },
+            Statement::ChoiceDef(
+                ChoiceDef::IntegerDef(ref integer)
+            ) => {
+                self.check_undefined_choicedef(
+                    ChoiceDef::IntegerDef(integer.clone()))?;
+            },
+            Statement::SetDef(ref set) => {
+                self.check_undefined_setdef(set)?;
+            },
+            _ => {},
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
@@ -166,23 +193,7 @@ impl Ast {
         let mut context = TypingContext::default();
 
         for statement in self.statements {
-            checker.check_redefinition(&statement)?;
-            match statement {
-                Statement::ChoiceDef(ChoiceDef::EnumDef(ref enumeration)) => {
-                    checker.check_undefined_choicedef(
-                        ChoiceDef::EnumDef(enumeration.clone()))?;
-                },
-                Statement::ChoiceDef(
-                    ChoiceDef::IntegerDef(ref integer)
-                ) => {
-                    checker.check_undefined_choicedef(
-                        ChoiceDef::IntegerDef(integer.clone()))?;
-                },
-                Statement::SetDef(ref set) => {
-                    checker.check_undefined_setdef(set)?;
-                },
-                _ => {},
-            }
+            checker.type_check(&statement)?;
             statement.type_check()?;
             context.add_statement(statement);
         }

@@ -12,6 +12,9 @@ pub struct SetDef {
 }
 
 impl SetDef {
+
+    /// This checks the presence of keys ItemType, IdType, ItemGetter, IdGetter and Iter.
+    /// When there is a superset, this checks too the presence of FromSuperset keyword.
     fn check_missing_entry(&self) -> Result<(), TypeError> {
         let keys = self.keys.iter().map(|(k, _, _)| k)
                             .collect::<Vec<&ir::SetDefKey>>();
@@ -55,7 +58,8 @@ impl SetDef {
         Ok(())
     }
 
-    pub fn check_redefinition(&self) -> Result<(), TypeError> {
+    /// This checks that thereisn't any keys doublon.
+    fn check_redefinition(&self) -> Result<(), TypeError> {
         let mut hash: HashMap<String, _> = HashMap::default();
         for (key, ..) in self.keys.iter() {
             if let Some(before) = hash.insert(key.to_string(), ()) {
@@ -73,6 +77,7 @@ impl SetDef {
         Ok(())
     }
 
+    /// Type checks the condition.
     pub fn type_check(&self) -> Result<(), TypeError> {
         self.check_redefinition()?;
         self.check_missing_entry()?;
@@ -83,20 +88,5 @@ impl SetDef {
 impl PartialEq for SetDef {
     fn eq(&self, rhs: &Self) -> bool {
         self.name == rhs.name
-    }
-}
-
-impl From<Statement> for Result<SetDef, TypeError> {
-    fn from(stmt: Statement) -> Self {
-        match stmt {
-            Statement::SetDef(SetDef {
-                name, doc, arg, superset, disjoint, keys, quotient
-            }) => {
-                Ok(SetDef {
-                    name, doc, arg, superset, disjoint, keys, quotient
-                })
-            },
-            _ => unreachable!(),
-        }
     }
 }
