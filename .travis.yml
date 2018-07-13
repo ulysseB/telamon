@@ -4,8 +4,8 @@ branches:
     - staging
     # This is where pull requests from "bors try" are built.
     - trying
-    # Uncomment this to enable building pull requests.
-    #- master
+    # Also build commits on master. Remove this if we choose to protect master
+    - master
 language: rust
 cache: cargo
 sudo: false
@@ -27,6 +27,7 @@ jobs:
     - script: cd kernels && cargo test --release
     - script: cd telamon-gen && LEX="flex" cargo build --features "lex"
     - stage: documentation
+      if: branch IN (master, staging)
       script: cargo doc --no-deps --all
       deploy:
         provider: pages
@@ -35,8 +36,6 @@ jobs:
         skip-cleanup: true
         keep-history: true
         github-token: "$GITHUB_TOKEN"
-        on:
-          branch: master
 notifications:
   slack:
     rooms:

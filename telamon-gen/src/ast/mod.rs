@@ -517,13 +517,14 @@ impl TypingContext {
             CounterVal::Choice(counter) => {
                 let counter_name = counter_name.clone();
                 let (value, action) = self.counter_val_choice(
-                    &counter, visibility, counter_name, &incr, kind, vars.len(), &var_map);
+                    &counter, visibility, counter_name, &incr, &incr_condition,
+                    kind, vars.len(), &var_map);
                 self.ir_desc.add_onchange(&counter.name, action);
                 value
             },
         };
         let incr_counter = self.gen_incr_counter(
-            &counter_name, vars.len(), &var_map, &incr, value.clone());
+            &counter_name, vars.len(), &var_map, &incr, &incr_condition, value.clone());
         self.ir_desc.add_onchange(&incr.choice, incr_counter);
         // Register the counter choices.
         let incr_iter = iter_vars.iter().map(|p| p.1.clone()).collect_vec();
@@ -612,6 +613,7 @@ impl TypingContext {
                           caller_visibility: ir::CounterVisibility,
                           caller: RcStr,
                           incr: &ir::ChoiceInstance,
+                          incr_condition: &ir::ValueSet,
                           kind: ir::CounterKind,
                           num_caller_vars: usize,
                           var_map: &VarMap) -> (ir::CounterVal, ir::OnChangeAction) {
@@ -639,6 +641,7 @@ impl TypingContext {
         let action = ir::ChoiceAction::UpdateCounter {
             counter: ir::ChoiceInstance { choice: caller, vars: caller_vars },
             incr: incr.adapt(&adaptator),
+            incr_condition: incr_condition.adapt(&adaptator),
         };
         let update_action = ir::OnChangeAction { forall_vars, set_constraints, action };
         (ir::CounterVal::Choice(instance), update_action)
@@ -686,6 +689,7 @@ impl TypingContext {
                         num_counter_args: usize,
                         var_map: &VarMap,
                         incr: &ir::ChoiceInstance,
+                        incr_condition: &ir::ValueSet,
                         value: ir::CounterVal) -> ir::OnChangeAction {
         // Adapt the environement to the point of view of the increment.
         let (forall_vars, set_constraints, adaptator) =
@@ -693,8 +697,11 @@ impl TypingContext {
         let value = value.adapt(&adaptator);
         let counter_vars = (0..num_counter_args)
             .map(|i| adaptator.variable(ir::Variable::Arg(i))).collect();
-        let choice = ir::ChoiceInstance { choice: counter.clone(), vars: counter_vars };
-        let action =  ir::ChoiceAction::IncrCounter { choice, value };
+        let action =  ir::ChoiceAction::IncrCounter {
+            counter: ir::ChoiceInstance { choice: counter.clone(), vars: counter_vars },
+            value: value.adapt(&adaptator),
+            incr_condition: incr_condition.adapt(&adaptator),
+        };
         ir::OnChangeAction { forall_vars, set_constraints, action }
     }
 }
