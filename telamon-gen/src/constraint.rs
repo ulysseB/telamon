@@ -1,6 +1,7 @@
 //! Constraint representation and manipulation.
 use flat_filter::FlatFilter;
 use ir::{self, Adaptable};
+use ir::SetRef;
 use std;
 use utils::*;
 
@@ -90,7 +91,7 @@ fn gen_flat_filter(constraint: &Constraint, input_id: usize, ir_desc: &ir::IrDes
     // Detect the set constraints that must be applied before fetching the inputs.
     let mut input_set_constraints = Vec::new();
     let mut inner_set_constraints = Vec::new();
-    'iter_constraints: for (var, subset) in all_set_constraints {
+    'iter_constraints: for (var, subset) in all_set_constraints.into_iter().rev() {
         let given_set = match var {
             ir::Variable::Arg(i) => choice.arguments().get(i).1,
             _ => panic!(),
@@ -103,9 +104,19 @@ fn gen_flat_filter(constraint: &Constraint, input_id: usize, ir_desc: &ir::IrDes
                     continue 'iter_constraints;
                 }
             }
+            let is_used = input_set_constraints.iter().map(|x| &x.1).chain(&foralls)
+                .filter(|s| s.arg().map(|v| v == var).unwrap_or(false))
+                .map(|s| unwrap!(s.def().arg()))
+                .any(|s| !given_set.is_subset_of(s));
+            if is_used {
+                input_set_constraints.push((var, subset));
+                continue 'iter_constraints;
+            }
         }
         inner_set_constraints.push((var, subset));
     }
+    inner_set_constraints.reverse();
+    input_set_constraints.reverse();
     // Build the flat filter from the different parts.
     let set_constraints = ir::SetConstraints::new(inner_set_constraints);
     let rule = ir::Rule {

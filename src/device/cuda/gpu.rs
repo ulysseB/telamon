@@ -1,7 +1,9 @@
 //! Describes CUDA-enabled GPUs.
+extern crate xdg;
+
 use codegen::Function;
 use device::{self, Device};
-use device::cuda::printer as p;
+use device::cuda::CudaPrinter;
 use device::cuda::mem_model::{self, MemInfo};
 use ir::{self, Type, Operator};
 use model::{self, HwPressure};
@@ -158,7 +160,29 @@ pub struct Gpu {
 impl Gpu {
     /// Returns the GPU model corresponding to `name.
     pub fn from_name(name: &str) -> Option<Gpu> {
-        let mut file = unwrap!(File::open("data/cuda_gpus.json"));
+        let config_path = {
+            let xdg_dirs = unwrap!(
+                xdg::BaseDirectories::with_prefix("telamon"));
+            match xdg_dirs.find_config_file("cuda_gpus.json") {
+                Some(config_path) => config_path,
+                None => {
+                    let config_path = xdg_dirs
+                        .place_config_file("cuda_gpus.json")
+                        .expect("cannot create configuration directory");
+                    println!(
+                        "GPU configuration file not found; writing default configuration to {}",
+                        config_path.to_string_lossy());
+                    let mut config_file = unwrap!(File::create(config_path.clone()));
+                    unwrap!(
+                        write!(config_file, "{}", include_str!("../../../data/cuda_gpus.json")));
+                    // We return the Path here instead of the already-opened file object because we
+                    // want to ensure that the toplevel `config_path` variable always point to a
+                    // readonly file in order to avoid subtle bugs.
+                    config_path
+                },
+            }
+        };
+        let mut file = unwrap!(File::open(config_path));
         let mut string = String::new();
         unwrap!(file.read_to_string(&mut string));
         let gpus: Vec<Gpu> = unwrap!(json::decode(&string));
@@ -167,7 +191,8 @@ impl Gpu {
 
     /// Returns the PTX code for a Function.
     pub fn print_ptx(&self, fun: &Function) -> String {
-        p::function(fun, self)
+        let mut printer = CudaPrinter::new();
+        printer.function(fun, self)
     }
 
     /// Returns the description of a load instruction.
@@ -321,7 +346,10 @@ impl Gpu {
 }
 
 impl device::Device for Gpu {
-    fn print(&self, fun: &Function, out: &mut Write) { p::host_function(fun, self, out) }
+    fn print(&self, fun: &Function, out: &mut Write) {
+        let mut printer = CudaPrinter::new(); 
+        printer.host_function(fun, self, out) 
+    }
 
     fn is_valid_type(&self, t: &Type) -> bool {
         match *t {

@@ -189,7 +189,7 @@ impl<'a> Builder<'a> {
                          dims: &[&MetaDimension])
         -> (ir::IndVarId, ir::AccessPattern<'a>)
     {
-        let data_size = self.cst_size(t.len_byte().unwrap());
+        let data_size = self.cst_size(unwrap!(t.len_byte()));
         let induction_dims = dims.iter().flat_map(|d| d.ids()).rev()
             .scan(data_size, |size, dim| {
                 let increment = size.clone();
@@ -306,7 +306,7 @@ impl<'a> Builder<'a> {
     /// The last dimension is the major order.
     pub fn tensor_access_pattern(&self, mem: mem::Id, t: &Type, dims: &[&MetaDimension])
             -> AccessPattern<'a> {
-        let data_size = self.cst_size(t.len_byte().unwrap());
+        let data_size = self.cst_size(unwrap!(t.len_byte()));
         let dims = dims.iter().flat_map(|d| d.ids()).rev().scan(data_size, |size, dim| {
             let increment = size.clone();
             *size *= self.function.dim(dim).size();
@@ -333,7 +333,7 @@ impl<'a> Builder<'a> {
 
     /// Finds a paramter given its name.
     pub fn find_param(&self, param: &str) -> &'a Parameter {
-        self.function.signature().params.iter().find(|p| p.name == param).unwrap()
+        unwrap!(self.function.signature().params.iter().find(|p| p.name == param))
     }
 }
 

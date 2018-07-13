@@ -53,7 +53,7 @@ impl<'a, T> AutoOperand<'a> for T where T: ScalarArgument {
 impl<'a, 'c> AutoOperand<'a> for &'c str {
     fn get<'b>(&self, fun: &Function<'b>, _: &HashMap<dim::Id, dim::Id>)
             -> Operand<'b> where 'a: 'b {
-        Param(fun.signature().params.iter().find(|p| p.name == *self).unwrap())
+        Param(unwrap!(fun.signature().params.iter().find(|p| p.name == *self)))
     }
 }
 

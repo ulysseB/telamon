@@ -6,7 +6,7 @@ use device::context::AsyncCallback;
 use device::x86::compile;
 use device::x86::cpu_argument::{CpuArray, Argument, CpuScalarArg, ArgLock};
 use device::x86::cpu::Cpu;
-use device::x86::printer::wrapper_function;
+use device::x86::printer::X86printer;
 use explorer;
 use ir;
 use itertools::Itertools;
@@ -88,13 +88,15 @@ impl device::Context for Context {
 
     /// Evaluation in sequential mode
     fn evaluate(&self, func: &device::Function, _mode: EvalMode) -> Result<f64, ()> {
-        let fun_str = wrapper_function(func);
+        let mut printer = X86printer::default();
+        let fun_str = printer.wrapper_function(func);
         function_evaluate(&fun_str, &self.gen_args(func))
     }
 
     /// returns a vec containing num_sample runs of function_evaluate
     fn benchmark(&self, func: &device::Function, num_samples: usize) -> Vec<f64> {
-        let fun_str = wrapper_function(func);
+        let mut printer = X86printer::default();
+        let fun_str = printer.wrapper_function(func);
         let args =  self.gen_args(func);
         let mut res = vec![];
         for _ in 0..num_samples {
@@ -119,11 +121,9 @@ impl device::Context for Context {
             // Start the evaluation thread.
             let eval_thread_name = "Telamon - CPU Evaluation Thread".to_string();
             unwrap!(scope.builder().name(eval_thread_name).spawn(move || {
-                let mut cpt_candidate = 0;
                 while let Ok((candidate, fun_str, code_args, callback)) = recv.recv() {
-                    cpt_candidate += 1;
-                    let eval = function_evaluate(&fun_str, &code_args).unwrap();
-                    callback.call(candidate, eval, cpt_candidate);
+                    let eval = unwrap!(function_evaluate(&fun_str, &code_args));
+                    callback.call(candidate, eval);
                 }
             }));
         });
@@ -148,10 +148,10 @@ enum ThunkArg {
 /// returns the time elapsed. Converts ThunkArgs to HoldTHunk as we want to allocate memory for
 /// temporary arrays at the last possible moment
 fn function_evaluate(fun_str: &String, args: &Vec<ThunkArg>) -> Result<f64, ()> {
-    let temp_dir = tempfile::tempdir().unwrap();
+    let temp_dir = unwrap!(tempfile::tempdir());
     let templib_name = temp_dir.path().join("lib_compute.so").to_string_lossy().into_owned();
-    let mut source_file = tempfile::tempfile().unwrap();
-    source_file.write_all(fun_str.as_bytes()).unwrap();
+    let mut source_file = unwrap!(tempfile::tempfile());
+    unwrap!(source_file.write_all(fun_str.as_bytes()));
     let compile_status = compile::compile(source_file, &templib_name);
     if !compile_status.success() {
         panic!("Could not compile file");
@@ -193,7 +193,8 @@ impl<'a, 'b, 'c> device::AsyncEvaluator<'a, 'c> for AsyncEvaluator<'a, 'b>
         {
             let dev_fun = device::Function::build(&candidate.space);
             code_args = self.context.gen_args(&dev_fun);
-            fun_str = wrapper_function(&dev_fun);
+            let mut printer = X86printer::default();
+            fun_str = printer.wrapper_function(&dev_fun);
         }
         unwrap!(self.sender.send((candidate, fun_str, code_args, callback)));
     }

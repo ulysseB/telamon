@@ -385,6 +385,23 @@ impl NumericSet {
         }
         self.len = new_lhs;
     }
+
+    fn complement(&self, universe: &[u16]) -> Self {
+        let mut values = [0; Self::MAX_LEN];
+        let mut self_idx = 0;
+        let mut new_idx = 0;
+        for &item in universe {
+            if self_idx >= self.len || item < self.values[self_idx] {
+                values[new_idx] = item;
+                new_idx += 1;
+            } else if item > self.values[self_idx] {
+                panic!("self should be contained in universe")
+            } else {
+                self_idx += 1;
+            }
+        }
+        NumericSet { values, len: new_idx }
+    }
 }
 
 impl Domain for NumericSet {

@@ -1,3 +1,11 @@
+branches:
+  only:
+    # This is where pull requests from "bors r+" are built.
+    - staging
+    # This is where pull requests from "bors try" are built.
+    - trying
+    # Also build commits on master. Remove this if we choose to protect master
+    - master
 language: rust
 cache: cargo
 sudo: false
@@ -19,6 +27,7 @@ jobs:
     - script: cd kernels && cargo test --release
     - script: cd telamon-gen && LEX="flex" cargo build --features "lex"
     - stage: documentation
+      if: branch IN (master, staging)
       script: cargo doc --no-deps --all
       deploy:
         provider: pages
@@ -27,13 +36,11 @@ jobs:
         skip-cleanup: true
         keep-history: true
         github-token: "$GITHUB_TOKEN"
-        on:
-          branch: master
 notifications:
   slack:
     rooms:
       secure: bhOU59RYPbvA8GXYtL4JTGjKRbrOFyni2wjAV0gWQqwP9lkzYWlYDlsoHOFIR+DLhwN0Or2d5Sw47Ic3NLGrzhPOFcXNBhoRUy4QBUPWaKETEJbqjG/UvYRbfGr7ajosQdL1pDMuem8NFXdNcSCgnHu9Wgtim1EjO82rdc4YGPSCcHkfHpCncM435vXcDhtdz/ks9pF4igmJH0frhXTAkngckggaR2xx1cUAlrc4ztc03goe+uFC3Iti1QAp2DGMFx9hLvV1CjATeqSA4/65idUS0aEWccK2tNwLjp3nL3LAwwymCr4OWS8wCD0p1lk3Fvcc3FTX2fw6TfGciaFNCwAO+0FD5tJD+Uez+QllN4cufKrbwQo9ZlRP0fFsx38QJ1FeK8k/uk0hR7MzqypzkCNwG6NBI98L71P2sFvA15gELuI9sWhx655PwFzmjNwYw/zCeimp9pi+bNbYoWjckkwbN7ArwJjPt47vv/bIJbo/NrmNxFghZm4RTQW45prolMUqGO9AeIMf7oP24pPdEv3v9oH7lF/97tCBLt9Nd7LhwizK6nG/VFFCofwdIfBqlGDwJufN3UoMqVezkHqRuZa+tDgU9SuUrfAe1XnAc1+HbDzza55LM+3tzHn4sPr1jmlLIEHww2Yub4GpxBJYl+8MhusRbGhedqtpqeLk3LE=
-    on_success: change
+    on_success: never
     on_failure: change
 env:
   global:

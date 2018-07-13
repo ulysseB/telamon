@@ -8,7 +8,7 @@ works internally, we encourage you to read our paper [paper][cc17].
 
 ## Getting Started
 
-To compile Telamon, you need [rust 1.26 or higher](rust-install) installed. If you want to
+To compile Telamon, you need [rust 1.27 or higher](rust-install) installed. If you want to
 generate code for GPU, you will also need a CUDA toolchain installed, with the `cuda`,
 `curand` and `cupti` accessible in the include and library paths. You can the
 [documentation on github][telamon-doc].
