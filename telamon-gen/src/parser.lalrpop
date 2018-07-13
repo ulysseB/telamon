@@ -136,15 +136,6 @@ choice_instance: ast::ChoiceInstance = {
     },
 };
 
-choice: String = {
-    <name: choice_ident> => {
-        name
-    },
-    <name: set_ident> => {
-        name
-    }
-};
-
 doc: String = {
     <lines: (<doc_line>)+> => {
         lines.concat()
@@ -172,7 +163,7 @@ spanned<T>: Spanned<T> = {
 };
 
 stmt_set: ast::SetDef = {
-    <doc: doc?> set <name: spanned<choice>> <arg: ("(" <var_def> ")")?>
+    <doc: doc?> set <name: spanned<set_ident>> <arg: ("(" <var_def> ")")?>
                 <superset: (subsetof <set_ref>)?> ":" <disjoint: set_disjoint?>
                 <keys: set_def_map*> end => {
         let disjoint = disjoint.unwrap_or(Vec::new());
@@ -183,7 +174,7 @@ stmt_set: ast::SetDef = {
 };
 
 stmt_quotient: ast::SetDef = {
-    <doc: doc?> quotient <name: spanned<choice>> <arg: ("(" <var_def> ")")?> of
+    <doc: doc?> quotient <name: spanned<set_ident>> <arg: ("(" <var_def> ")")?> of
                 <dividend: var_def> ":"
                 <representant: choice_ident> "=" <conditions: list<condition, and>> "/"
                 <equiv: choice_ident> is <equiv_cond: value_set>
@@ -204,7 +195,8 @@ stmt_quotient: ast::SetDef = {
 };
 
 stmt_enum: ast::ChoiceDef = {
-    <doc: doc?> define enum_ <name: spanned<choice>> "(" <vars: choice_vars> ")" ":"
+    <doc: doc?> define enum_ <name: spanned<choice_ident>> "("
+                                       <vars: choice_vars> ")" ":"
                 <stmts: enum_stmt*> end => {
         ast::ChoiceDef::EnumDef(
             ast::EnumDef {
@@ -216,7 +208,7 @@ stmt_enum: ast::ChoiceDef = {
 
 stmt_integer: ast::ChoiceDef = {
     <doc: doc?> define integer
-                <name: spanned<choice>> "(" <vars: choice_vars> ")" ":"
+                <name: spanned<choice_ident>> "(" <vars: choice_vars> ")" ":"
                 <universe: code> end => {
         ast::ChoiceDef::IntegerDef(
             ast::IntegerDef {
