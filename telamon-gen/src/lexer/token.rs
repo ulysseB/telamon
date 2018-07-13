@@ -11,7 +11,7 @@ pub enum Token {
     And, Trigger, When, Alias, Counter, Define, Enum, Equal, Forall, In, Is, Not, Require,
     Requires, Value, End, Symmetric, AntiSymmetric, Arrow, Colon, Comma, LParen, RParen,
     BitOr, Or, SetDefKey(ir::SetDefKey), Set, SubsetOf, SetIdent(String), Base, Disjoint,
-    Quotient, Of, Divide, Integer,
+    Quotient, Of, Divide, Integer, Import
 }
 
 impl fmt::Display for Token {

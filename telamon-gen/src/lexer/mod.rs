@@ -241,6 +241,7 @@ impl Iterator for Lexer {
                     YyToken::Arrow => Some(Ok((extra.beg, Token::Arrow, extra.end))),
                     YyToken::Divide => Some(Ok((extra.beg, Token::Divide, extra.end))),
                     YyToken::Integer => Some(Ok((extra.beg, Token::Integer, extra.end))),
+                    YyToken::Import => Some(Ok((extra.beg, Token::Import, extra.end))),
                     // Return None to signal EOF.for a reached end of the string.
                     YyToken::EOF => None,
                 }
