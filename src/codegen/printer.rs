@@ -136,7 +136,7 @@ pub trait Printer {
                 for level in ind_levels {
                     self.parallel_induction_level( level, namer);
                 }
-                self.cfg_vec( fun, inner, namer);
+                self.cfg_vec(fun, inner, namer);
                 self.print_sync();
             }
             Cfg::Instruction(ref i) => self.inst( i, namer, fun),

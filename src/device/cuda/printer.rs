@@ -2,59 +2,18 @@
 use device::cuda::{Gpu, Namer};
 use codegen::Printer;
 use codegen::*;
-use ir::{self, dim, op, Operand, Size, Type};
+use ir::{self, op, Size, Type};
 use itertools::Itertools;
 use search_space::{DimKind, Domain, InstFlag};
 use std;
 use std::io::Write;
 use std::fmt::Write as WriteFmt;
-use utils::*;
-// TODO(cc_perf): avoid concatenating strings.
 
 pub struct CudaPrinter {
     out_function: String,
 }
 
-/// Represents an argument of a PTX vector instruction.
-enum VecInstArg<'a> {
-    Addr(&'a Operand<'a>),
-    VecInst(&'a Instruction<'a>, dim::Id, u32),
-    VecOp(&'a Operand<'a>, dim::Id, u32),
-}
-
 impl CudaPrinter {
-    /// Prints an vector instruction argument.
-    fn vec_inst_arg(arg: &VecInstArg, namer: &mut NameMap) -> String {
-        match *arg {
-            VecInstArg::Addr(op) => format!("[{}]", namer.name_op(op)),
-            VecInstArg::VecInst(inst, dim, size) => {
-                let names = (0..size).map(|i| {
-                    namer.indexed_inst_name(inst, dim, i).to_string()
-                }).collect_vec().join(", ");
-                format!("{{{names}}}", names = names)
-            },
-            VecInstArg::VecOp(op, dim, size) => {
-                let names = (0..size).map(|i| {
-                    namer.indexed_op_name(op, dim, i).to_string()
-                }).collect_vec().join(", ");
-                format!("{{{names}}}", names = names)
-            }
-        }
-    }
-
-    /// Assembles the different parts of an instruction in a single string.
-    fn assemble(operator: &str,
-                predicate: Option<RcStr>,
-                t: Type,
-                args: &[VecInstArg],
-                namer: &mut NameMap) -> String {
-        let args_str = args.iter().map(|x| Self::vec_inst_arg(x, namer)).collect_vec().join(", ");
-        let pred = if let Some(ref pred) = predicate {
-            format!("@{} ", pred)
-        } else { String::new() };
-        format!("{}{}.{} {};", pred, operator, Self::get_type(t), args_str)
-    }
-
     fn mul_mode(mode: MulMode) -> &'static str {
         match mode {
             MulMode::Wide => ".wide",
@@ -368,7 +327,7 @@ impl Printer for CudaPrinter {
     }
 
     /// Print return_id = mlhs * mrhs + arhs
-    fn print_mad(&mut self, ret_type: Type,
+    fn print_mad(&mut self, return_type: Type,
                  round: op::Rounding,
                  mul_mode: MulMode,
                  return_id: &str,
@@ -473,20 +432,26 @@ impl Printer for CudaPrinter {
         match *inst.operator() {
             op::Ld(_, ref addr, _) => {
                 let operator = format!("{}.v{}", Self::ld_operator(flag), size);
-                let args = [VecInstArg::VecInst(inst, dim.id(), size), VecInstArg::Addr(addr)];
-                unwrap!(writeln!(Self::assemble(&operator, None, inst.t(), &args, namer)))
+                let dst = (0..size).map(|i| {
+                    namer.indexed_inst_name(inst, dim.id(), i).to_string()
+                }).collect_vec().join(", ");
+                let t = Self::get_type(inst.t());
+                unwrap!(writeln!(self.out_function, "{}.{} {{{}}}, [{}];",
+                                 operator, t, dst, namer.name_op(addr)))
             },
             op::St(ref addr, ref val, _, _) => {
                 let operator = format!("{}.v{}", Self::st_operator(flag), size);
-                let operands = [VecInstArg::Addr(addr), VecInstArg::VecOp(val, dim.id(), size)];
                 let guard = if inst.has_side_effects() {
-                    namer.side_effect_guard()
-                } else { None };
-                unwrap!(writeln!(Self::assemble(&operator,
-                                                guard,
-                                                Self::lower_type(val.t(), fun), 
-                                                &operands, 
-                                                namer)))
+                    if let Some(pred) = namer.side_effect_guard() {
+                        format!("@{} ", pred)
+                    } else { String::new() }
+                } else { String::new() };
+                let t = Self::get_type(Self::lower_type(val.t(), fun));
+                let src = (0..size).map(|i| {
+                    namer.indexed_op_name(val, dim.id(), i).to_string()
+                }).collect_vec().join(", ");
+                unwrap!(writeln!(self.out_function, "{}{}.{} [{}], {{{}}};",
+                                 guard, operator, t, namer.name_op(addr), src));
             },
             _ => panic!("non-vectorizable instruction"),
         }
