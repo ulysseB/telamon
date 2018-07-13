@@ -76,7 +76,7 @@ mod redefinition {
 mod undefined {
     pub use super::*;
 
-    /// Missing the set Instruction from aSet
+    /// Missing the set Instruction from a Set
     #[test]
     fn parameter() {
         assert_eq!(parser::parse_ast(Lexer::from(
@@ -90,8 +90,8 @@ mod undefined {
                 new_objs = \"$objs.operand\"
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Undefined(Spanned {
-                beg: Position { line: 0, column: 0},
-                end: Position { line: 0, column: 34},
+                beg: Position { line: 0, column: 4},
+                end: Position { line: 0, column: 11},
                 data: String::from("Instruction"),
             }))
         );
@@ -112,8 +112,8 @@ mod undefined {
                 from_superset = \"ir::inst::from_superset($fun, $item)\"
              end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Undefined(Spanned {
-                beg: Position { line: 0, column: 0},
-                end: Position { line: 0, column: 36},
+                beg: Position { line: 0, column: 4},
+                end: Position { line: 0, column: 15},
                 data: String::from("BasicBlock"),
             }))
         );

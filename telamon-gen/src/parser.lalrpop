@@ -9,114 +9,36 @@ grammar;
 
 pub ast: ast::Ast = { statement* => ast::Ast { statements: <> } };
 
-statement: Spanned<ast::Statement> = {
-    <doc: doc?> <beg: @L> set
-                    <beg_name: @L> <name: set_ident> <end_name: @R>
-                    <arg: ("(" <var_def> ")")?>
-                <superset: (subsetof <set_ref>)?> ":"
-                <end: @R> 
-            <disjoint: set_disjoint?>
-            <keys: set_def_map*> end => {
-        let disjoint = disjoint.unwrap_or(Vec::new());
-        Spanned {
-            beg, end,
-            data: ast::Statement::SetDef(ast::SetDef {
-                name: Spanned {
-                    beg: beg_name,
-                    end: end_name,
-                    data: name,
-                }, doc, arg, superset, keys, disjoint, quotient: None
-            })
-        }
+statement: ast::Statement = {
+    stmt_set => {
+        ast::Statement::SetDef(<>)
     },
-    <doc: doc?> <beg: @L> quotient
-                    <beg_name: @L> <name: set_ident> <end_name: @R>
-                    <arg: ("(" <var_def> ")")?>
-        of <dividend: var_def> ":"
-                <end: @R> 
-        <representant: choice_ident> "=" <conditions: list<condition, and>> "/"
-        <equiv: choice_ident> is <equiv_cond: value_set>
-        <disjoint: set_disjoint?> <keys: set_def_map*> end => {
-        let superset = Some(dividend.set.clone());
-        let equiv_cond = equiv_cond.into_iter().map(RcStr::new).collect();
-        let quotient = Some(ast::Quotient {
-            item: dividend,
-            equiv_relation: (equiv, equiv_cond),
-            conditions,
-            representant: RcStr::new(representant),
-        });
-        let disjoint = disjoint.unwrap_or(Vec::new());
-        Spanned {
-            beg, end,
-            data: ast::Statement::SetDef(ast::SetDef {
-                name: Spanned {
-                    beg: beg_name,
-                    end: end_name,
-                    data: name,
-                }, doc, arg, superset, keys, disjoint, quotient
-            })
-        }
+    stmt_quotient => {
+        ast::Statement::SetDef(<>)
     },
-    <doc: doc?> <beg: @L> define integer
-                    <beg_name: @L> <name: choice_ident> <end_name: @R>
-                    "(" <vars: choice_vars> ")" ":" <universe: code> end
-                <end: @R> => {
-        Spanned {
-            beg, end,
-            data: ast::Statement::ChoiceDef(ast::ChoiceDef::IntegerDef(
-                ast::IntegerDef {
-                    name: Spanned {
-                        beg: beg_name,
-                        end: end_name,
-                        data: name,
-                    }, doc, variables: vars, code: universe,
-                }
-            ))
-        }
+    stmt_integer => {
+        ast::Statement::ChoiceDef(<>)
     },
-    <doc: doc?> <beg: @L> define enum_
-                      <beg_name: @L> <name: choice_ident> <end_name: @R>
-                      "(" <vars: choice_vars> ")" ":"
-                <end: @R> <stmts: enum_stmt*> end => {
-        Spanned {
-            beg, end,
-            data: ast::Statement::ChoiceDef(ast::ChoiceDef::EnumDef(
-                ast::EnumDef {
-                    name: Spanned {
-                        beg: beg_name,
-                        end: end_name,
-                        data: name,
-                    }, doc, variables: vars, statements: stmts,
-                }
-            ))
-        }
+    stmt_enum => {
+        ast::Statement::ChoiceDef(<>)
     },
-    <beg: @L> trigger <foralls: (forall <var_def> ":")*> <code: code> when
+    <beg: @L> spanned<trigger> <foralls: (forall <var_def> ":")*> <code: code> when
         <conditions: non_empty_list<condition, and>> <end: @R> => {
-        Spanned {
-            beg: beg, end: end,
-            data: ast::Statement::TriggerDef { foralls, conditions, code }
-        }
+            ast::Statement::TriggerDef { foralls, conditions, code }
     },
-    <doc: doc?> <beg: @L> define <visibility: counter_visibility?> counter
+    <doc: doc?> <beg: @L> spanned<define> <visibility: counter_visibility?> counter
                 <name: choice_ident>
         "(" <vars: choice_vars> ")" ":" <end: @R> <body: counter_body> end => {
         let name = RcStr::new(name);
         let visibility = visibility.unwrap_or(ir::CounterVisibility::Full);
-        Spanned {
-            beg: beg, end: end,
-            data: ast::Statement::ChoiceDef(ast::ChoiceDef::CounterDef(
+            ast::Statement::ChoiceDef(ast::ChoiceDef::CounterDef(
                 ast::CounterDef {
                     name, doc, visibility, vars, body,
                 }
             ))
-        }
     },
-    require <constraint> => {
-        Spanned {
-            beg: Default::default(), end: Default::default(),
-            data:  ast::Statement::Require(<>)
-        }
+    spanned<require> <constraint> => {
+        ast::Statement::Require(<>)
     },
 };
 
@@ -142,25 +64,36 @@ set_ref: ast::SetRef = {
     }
 };
 
-enum_stmt: Spanned<ast::EnumStatement> = {
-    <doc: doc?> value <beg: @L> <name: val_ident> <end: @R> ":" <reqs: (requires <constraint>)*> => {
-        Spanned { beg, end, data: ast::EnumStatement::Value(name, doc, reqs) }
+enum_stmt: ast::EnumStatement = {
+    <doc: doc?> value <name: spanned<val_ident>> ":"
+    <reqs: (requires <constraint>)*> => {
+        ast::EnumStatement::Value(name, doc, reqs)
     },
-    <doc: doc?> alias <beg: @L> <name: val_ident> <end: @R> "=" <set: value_set> ":"
+    <doc: doc?> alias <name: spanned<val_ident>> "=" <set: value_set> ":"
             <reqs: (requires <constraint>)*> => {
-        Spanned { beg, end, data: ast::EnumStatement::Alias(name, doc, set, reqs) }
+        ast::EnumStatement::Alias(name, doc, set, reqs)
     },
-    <beg: @L> symmetric <end: @R> => {
-        Spanned { beg, end, data: ast::EnumStatement::Symmetric }
+    <spanned_symmetric: spanned<stmt_symmetric>> => {
+        ast::EnumStatement::Symmetric(spanned_symmetric)
     },
-    antisymmetric ":" <(<val_ident> "->" <val_ident>)*> => {
-        Spanned { beg: Default::default(), end: Default::default(), data: ast::EnumStatement::AntiSymmetric(<>) }
+    <spanned_antisymmetric: spanned<stmt_antisymmetric>> => {
+        ast::EnumStatement::AntiSymmetric(spanned_antisymmetric)
     },
 };
 
+stmt_symmetric: () = {
+    symmetric => (),
+};
+
+stmt_antisymmetric: Vec<(String, String)>  = {
+    antisymmetric ":" <(<val_ident> "->" <val_ident>)*> => {
+        (<>)
+    }
+};
+
 counter_body: ast::CounterBody = {
-    <base: (base <code>)?>
-    <iter_vars: (forall <var_def> ":")*> <kind: counter_kind> <value: counter_val> when ":"
+    <base: (base <code>)?> <iter_vars: (forall <var_def> ":")*>
+    <kind: counter_kind> <value: counter_val> when ":"
         <conditions: condition*> =>
     {
         let base = base.unwrap_or(kind.zero().to_string());
@@ -203,6 +136,15 @@ choice_instance: ast::ChoiceInstance = {
     },
 };
 
+choice: String = {
+    <name: choice_ident> => {
+        name
+    },
+    <name: set_ident> => {
+        name
+    }
+};
+
 doc: String = {
     <lines: (<doc_line>)+> => {
         lines.concat()
@@ -220,6 +162,68 @@ non_empty_list<T, SEP>: Vec<T> = {
 
 list<T, SEP>: Vec<T> = {
   non_empty_list<T, SEP>? => { <>.unwrap_or(Vec::new()) }
+};
+
+#[inline]
+spanned<T>: Spanned<T> = {
+    <beg: @L> <data: T> <end: @R> => {
+        Spanned {  beg, end, data }
+    }
+};
+
+stmt_set: ast::SetDef = {
+    <doc: doc?> set <name: spanned<choice>> <arg: ("(" <var_def> ")")?>
+                <superset: (subsetof <set_ref>)?> ":" <disjoint: set_disjoint?>
+                <keys: set_def_map*> end => {
+        let disjoint = disjoint.unwrap_or(Vec::new());
+        ast::SetDef {
+              name, doc, arg, superset, keys, disjoint, quotient: None
+        }
+    }
+};
+
+stmt_quotient: ast::SetDef = {
+    <doc: doc?> quotient <name: spanned<choice>> <arg: ("(" <var_def> ")")?> of
+                <dividend: var_def> ":"
+                <representant: choice_ident> "=" <conditions: list<condition, and>> "/"
+                <equiv: choice_ident> is <equiv_cond: value_set>
+                <disjoint: set_disjoint?> <keys: set_def_map*> end => {
+        let superset = Some(dividend.set.clone());
+        let equiv_cond = equiv_cond.into_iter().map(RcStr::new).collect();
+        let quotient = Some(ast::Quotient {
+            item: dividend,
+            equiv_relation: (equiv, equiv_cond),
+            conditions,
+            representant: RcStr::new(representant),
+        });
+        let disjoint = disjoint.unwrap_or(Vec::new());
+        ast::SetDef {
+            name, doc, arg, superset, keys, disjoint, quotient
+        }
+    }
+};
+
+stmt_enum: ast::ChoiceDef = {
+    <doc: doc?> define enum_ <name: spanned<choice>> "(" <vars: choice_vars> ")" ":"
+                <stmts: enum_stmt*> end => {
+        ast::ChoiceDef::EnumDef(
+            ast::EnumDef {
+                name, doc, variables: vars, statements: stmts,
+            }
+        ) 
+    }
+};
+
+stmt_integer: ast::ChoiceDef = {
+    <doc: doc?> define integer
+                <name: spanned<choice>> "(" <vars: choice_vars> ")" ":"
+                <universe: code> end => {
+        ast::ChoiceDef::IntegerDef(
+            ast::IntegerDef {
+                name, doc, variables: vars, code: universe,
+            }
+        )
+    },
 };
 
 extern {

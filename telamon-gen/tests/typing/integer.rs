@@ -15,8 +15,8 @@ mod undefined {
             b"define integer foo($arg in MySet): \"mycode\"
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Undefined(Spanned {
-                beg: Position { line: 0, column: 0},
-                end: Position { line: 1, column: 17},
+                beg: Position { line: 0, column: 15},
+                end: Position { line: 0, column: 18},
                 data: String::from("MySet"),
             }))
         );

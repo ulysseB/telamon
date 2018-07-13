@@ -6,19 +6,19 @@ pub struct EnumDef {
     pub name: Spanned<String>,
     pub doc: Option<String>,
     pub variables: Vec<VarDef>,
-    pub statements: Vec<Spanned<EnumStatement>>
+    pub statements: Vec<EnumStatement>
 }
 
 impl EnumDef {
-    pub fn undefined(&self) -> Result<(), TypeError> {
+    pub fn check_undefined(&self) -> Result<(), TypeError> {
         let mut hash: HashMap<String, _> = HashMap::default();
 
         for stmt in self.statements.iter() {
             match stmt {
-                Spanned { beg, end, data: EnumStatement::Value(name, ..) } => {
+                EnumStatement::Value(Spanned { beg, end, data: name }, ..) => {
                     hash.insert(name.to_owned(), Spanned::default());
                 },
-                Spanned { beg, end, data: EnumStatement::Alias(name, _, sets, ..) } => {
+                EnumStatement::Alias(Spanned { beg, end, data: name }, _, sets, ..) => {
                     for set in sets {
                         if !hash.contains_key(set) {
                             Err(TypeError::Undefined(Spanned {
@@ -35,13 +35,13 @@ impl EnumDef {
         Ok(())
     }
 
-    pub fn redefinition(&self) -> Result<(), TypeError> {
+    pub fn check_redefinition(&self) -> Result<(), TypeError> {
         let mut hash: HashMap<String, _> = HashMap::default();
         let mut symmetric: Option<Spanned<()>> = None;
 
         for stmt in self.statements.iter() {
             match stmt {
-                Spanned { beg, end, data: EnumStatement::Symmetric } => {
+                EnumStatement::Symmetric(Spanned { beg, end, ..}) => {
                     if let Some(before) = symmetric {
                         Err(TypeError::Redefinition(
                             Spanned {
@@ -50,7 +50,7 @@ impl EnumDef {
                             },
                             Spanned {
                                 beg: *beg, end: *end,
-                                data: EnumStatement::Symmetric.to_string()
+                                data: String::from("Symmetric"),
                             },
                         ))?;
                     } else {
@@ -60,8 +60,8 @@ impl EnumDef {
                         });
                     }
                 },
-                Spanned { beg, end, data: EnumStatement::Value(name, ..) } |
-                Spanned { beg, end, data: EnumStatement::Alias(name, ..) } => {
+                EnumStatement::Value(Spanned { beg, end, data: name }, ..) |
+                EnumStatement::Alias(Spanned { beg, end, data: name }, ..) => {
                     if let Some(Spanned {
                         beg: beg_before,
                         end: end_before,
@@ -87,8 +87,8 @@ impl EnumDef {
     }
 
     pub fn type_check(&self) -> Result<(), TypeError> {
-        self.undefined()?;
-        self.redefinition()?;
+        self.check_undefined()?;
+        self.check_redefinition()?;
         Ok(())
     }
 }

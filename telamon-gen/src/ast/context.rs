@@ -13,44 +13,39 @@ pub struct TypingContext {
 
 impl TypingContext {
     /// Adds a statement to the typing context.
-    pub fn add_statement(&mut self, statement: Spanned<Statement>) {
+    pub fn add_statement(&mut self, statement: Statement) {
         match statement {
-            Spanned { beg, end, data: Statement::SetDef(SetDef {
+            Statement::SetDef(SetDef {
                 name, doc, arg, superset, disjoint, keys, quotient
-            }) } => {
+            }) => {
                 self.set_defs.push(SetDef {
                     name, doc, arg, superset, disjoint, keys, quotient
                 })
             },
-            Spanned { beg, end, data: stmt @ Statement::ChoiceDef(
-                    ChoiceDef::EnumDef(..)) } |
-            Spanned { beg, end, data: stmt @ Statement::ChoiceDef(
-                    ChoiceDef::IntegerDef(..)) } |
-            Spanned { beg, end, data: stmt @ Statement::ChoiceDef(
-                    ChoiceDef::CounterDef(..)) } => {
+            stmt @ Statement::ChoiceDef(
+                    ChoiceDef::EnumDef(..)) |
+            stmt @ Statement::ChoiceDef(
+                    ChoiceDef::IntegerDef(..)) |
+            stmt @ Statement::ChoiceDef(
+                    ChoiceDef::CounterDef(..)) => {
                 self.choice_defs.push(ChoiceDef::from(stmt))
             },
-            Spanned { beg, end,
-                data: Statement::TriggerDef { foralls, conditions, code }
-            } => {
+            Statement::TriggerDef { foralls, conditions, code } => {
                 self.triggers.push(TriggerDef {
                     foralls: foralls,
                     conditions: conditions,
                     code: code,
                 })
             },
-            Spanned { beg, end,
-                data: Statement::Require(constraint)
-            } => self.constraints.push(constraint),
+            Statement::Require(constraint) => self.constraints.push(constraint),
         }
     }
 
     /// Type-checks the statements in the correct order.
     pub fn finalize(mut self) -> (ir::IrDesc, Vec<TypedConstraint>) {
         for def in std::mem::replace(&mut self.set_defs, vec![]) {
-            self.type_set_def(
-                def.name.data, def.arg, def.superset, def.keys, def.disjoint, def.quotient
-            );
+            self.type_set_def(def.name.data, def.arg, def.superset,
+                              def.keys, def.disjoint, def.quotient);
         }
         for choice_def in std::mem::replace(&mut self.choice_defs, vec![]) {
             match choice_def {
@@ -262,13 +257,13 @@ impl TypingContext {
 
     /// Registers an enum definition.
     fn register_enum(&mut self, name: String, doc: Option<String>, vars: Vec<VarDef>,
-                     statements: Vec<Spanned<EnumStatement>>) {
+                     statements: Vec<EnumStatement>) {
         trace!("defining enum {}", name);
         let doc = doc.map(RcStr::new);
         let enum_name = RcStr::new(::to_type_name(&name));
         let choice_name = RcStr::new(name);
         let mut stmts = EnumStatements::default();
-        for s in statements { stmts.add_statement(s.data); }
+        for s in statements { stmts.add_statement(s); }
         // Register constraints
         for (value, constraint) in stmts.constraints {
             let choice = choice_name.clone();

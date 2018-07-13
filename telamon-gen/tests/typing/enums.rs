@@ -19,15 +19,14 @@ mod undefined {
                     value B:
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Undefined(Spanned {
-                beg: Position { line: 0, column: 0},
-                end: Position { line: 0, column: 56},
+                beg: Position { line: 0, column: 12},
+                end: Position { line: 0, column: 15},
                 data: String::from("BasicBlock")
             }))
         );
     }
 
     /// Missing the set BasickBlock from a Emum.
-    /// TODO: fixe position
     #[test]
     fn value() {
         assert_eq!(parser::parse_ast(Lexer::from(
@@ -43,7 +42,7 @@ mod undefined {
         );
     }
 }
- 
+
 /// Redefinition
 #[cfg(test)]
 mod redefinition {

@@ -79,14 +79,14 @@ struct CheckerContext {
 }
 
 impl CheckerContext {
-    pub fn undefined_choicedef(
-        &self, statement: Spanned<ChoiceDef>
+    pub fn check_undefined_choicedef(
+        &self, statement: ChoiceDef
     ) -> Result<(), TypeError> {
         match statement {
-            Spanned { beg, end, data: ChoiceDef::EnumDef(EnumDef {
-                name: _, doc: _, variables, .. }) } |
-            Spanned { beg, end, data: ChoiceDef::IntegerDef(IntegerDef {
-                name: _, doc: _, variables, .. }) } => {
+            ChoiceDef::EnumDef(EnumDef {
+                name: Spanned { beg, end, data: _ }, doc: _, variables, .. }) |
+            ChoiceDef::IntegerDef(IntegerDef {
+                name: Spanned { beg, end, data: _ }, doc: _, variables, .. }) => {
                 for VarDef { name: _, set: SetRef { name, .. } } in variables {
                     let name: &String = name.deref();
                     if !self.hash.contains_key(name) {
@@ -102,17 +102,17 @@ impl CheckerContext {
         Ok(())
     }
 
-    pub fn undefined_setdef(
-        &self, statement: Spanned<&SetDef>
+    pub fn check_undefined_setdef(
+        &self, statement: &SetDef
     ) -> Result<(), TypeError> {
         match statement {
-            Spanned { beg, end, data: SetDef {
-                ref name, doc: _, arg, superset, disjoint: _, keys, ..  } } => {
+            SetDef { name: Spanned { beg, end, data: ref name},
+                     doc: _, arg, superset, disjoint: _, keys, ..  } => {
                 if let Some(VarDef { name: _, set: SetRef { name, .. } }) = arg {
                     let name: &String = name.deref();
                     if !self.hash.contains_key(name) {
                         Err(TypeError::Undefined(Spanned {
-                            beg, end, data: name.to_owned()
+                            beg: *beg, end: *end, data: name.to_owned()
                         }))?;
                     }
                 }
@@ -120,7 +120,7 @@ impl CheckerContext {
                     let name: &String = supername.deref();
                     if !self.hash.contains_key(name) {
                         Err(TypeError::Undefined(Spanned {
-                            beg, end, data: name.to_owned()
+                            beg: *beg, end: *end, data: name.to_owned()
                         }))?;
                     }
                 }
@@ -129,23 +129,16 @@ impl CheckerContext {
         Ok(())
     }
 
-    pub fn redefinition(
-        &mut self, statement: &Spanned<Statement>
+    pub fn check_redefinition(
+        &mut self, statement: &Statement
     ) -> Result<(), TypeError> {
         match statement {
-            Spanned { beg: _, end: _, data: Statement::SetDef(SetDef {
-                name: Spanned { beg, end, data: name, }, .. }) } |
-            Spanned { beg: _, end: _, data: Statement::ChoiceDef(
-                ChoiceDef::EnumDef( EnumDef {
-                    name: Spanned { beg, end, data: name, }, .. 
-                })
-            ) } |
-            Spanned { beg: _, end: _, data: Statement::ChoiceDef(
-                ChoiceDef::IntegerDef( IntegerDef {
-                    name: Spanned { beg, end, data: name }, .. 
-                })
-            ) } => {
-                let data: Hint = Hint::from(&statement.data);
+            Statement::SetDef(SetDef { name: Spanned { beg, end, data: name }, .. }) |
+            Statement::ChoiceDef(ChoiceDef::EnumDef(
+                EnumDef { name: Spanned { beg, end, data: name, }, ..  })) |
+            Statement::ChoiceDef(ChoiceDef::IntegerDef(
+                IntegerDef { name: Spanned { beg, end, data: name }, .. })) => {
+                let data: Hint = Hint::from(&statement);
                 let value: Spanned<Hint> = Spanned { beg: *beg, end: *end, data };
                 if let Some(pre) = self.hash.insert(name.to_owned(), value) {
                     Err(TypeError::Redefinition(pre, Spanned {
@@ -163,7 +156,7 @@ impl CheckerContext {
 /// Syntaxic tree for the constraint description.
 #[derive(Debug)]
 pub struct Ast { 
-    pub statements: Vec<Spanned<Statement>>,
+    pub statements: Vec<Statement>,
 }
 
 impl Ast {
@@ -173,26 +166,24 @@ impl Ast {
         let mut context = TypingContext::default();
 
         for statement in self.statements {
-            checker.redefinition(&statement)?;
+            checker.check_redefinition(&statement)?;
             match statement {
-                Spanned { beg, end, data: Statement::ChoiceDef(
-                    ChoiceDef::EnumDef(ref enumeration)
-                ) } => {
-                    checker.undefined_choicedef(Spanned { beg, end,
-                        data: ChoiceDef::EnumDef(enumeration.clone()) })?;
+                Statement::ChoiceDef(ChoiceDef::EnumDef(ref enumeration)) => {
+                    checker.check_undefined_choicedef(
+                        ChoiceDef::EnumDef(enumeration.clone()))?;
                 },
-                Spanned { beg, end, data: Statement::ChoiceDef(
+                Statement::ChoiceDef(
                     ChoiceDef::IntegerDef(ref integer)
-                ) } => {
-                    checker.undefined_choicedef(Spanned { beg, end,
-                        data: ChoiceDef::IntegerDef(integer.clone()) })?;
+                ) => {
+                    checker.check_undefined_choicedef(
+                        ChoiceDef::IntegerDef(integer.clone()))?;
                 },
-                Spanned { beg, end, data: Statement::SetDef(ref set) } => {
-                    checker.undefined_setdef(Spanned { beg, end, data: set })?;
+                Statement::SetDef(ref set) => {
+                    checker.check_undefined_setdef(set)?;
                 },
                 _ => {},
             }
-            statement.data.type_check()?;
+            statement.type_check()?;
             context.add_statement(statement);
         }
         Ok(context.finalize())
@@ -503,21 +494,21 @@ pub enum CounterVal { Code(String), Choice(ChoiceInstance) }
 #[derive(Clone, Debug)]
 pub enum EnumStatement {
     /// Defines a possible decision for th enum.
-    Value(String, Option<String>, Vec<Constraint>),
+    Value(Spanned<String>, Option<String>, Vec<Constraint>),
     /// Defines a set of possible decisions for the enum.
-    Alias(String, Option<String>, Vec<String>, Vec<Constraint>),
+    Alias(Spanned<String>, Option<String>, Vec<String>, Vec<Constraint>),
     /// Specifies that the enum is symmetric.
-    Symmetric,
+    Symmetric(Spanned<()>),
     /// Specifies that the enum is antisymmetric and given the inverse function.
-    AntiSymmetric(Vec<(String, String)>),
+    AntiSymmetric(Spanned<Vec<(String, String)>>),
 }
 
 impl fmt::Display for EnumStatement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            EnumStatement::Alias(name, ..) => write!(f, "{}", name),
-            EnumStatement::Value(name, ..) => write!(f, "{}", name),
-            EnumStatement::Symmetric => write!(f, "Symmetric"),
+            EnumStatement::Alias(name, ..) => write!(f, "{}", name.data),
+            EnumStatement::Value(name, ..) => write!(f, "{}", name.data),
+            EnumStatement::Symmetric(..) => write!(f, "Symmetric"),
             EnumStatement::AntiSymmetric(..) => write!(f, "AntiSymmetric"),
         }
     }
@@ -530,10 +521,10 @@ impl PartialEq for EnumStatement {
              EnumStatement::Value(rhs_name, .. )) |
             (EnumStatement::Alias(name, .. ),
              EnumStatement::Alias(rhs_name, .. )) => {
-                name.eq(rhs_name)
+                name.data.eq(&rhs_name.data)
             },
-            (EnumStatement::Symmetric,
-             EnumStatement::Symmetric) => true,
+            (EnumStatement::Symmetric(..),
+             EnumStatement::Symmetric(..)) => true,
             _ => false,
         }
     }
@@ -557,23 +548,23 @@ impl EnumStatements {
     fn add_statement(&mut self, statement: EnumStatement) {
         match statement {
             EnumStatement::Value(name, doc, constraints) => {
-                let name = RcStr::new(name);
+                let name = RcStr::new(name.data);
                 assert!(self.values.insert(name.clone(), doc).is_none());
                 for c in constraints { self.constraints.push((name.clone(), c)); }
             },
             EnumStatement::Alias(name, doc, values, constraints) => {
-                let name = RcStr::new(name);
+                let name = RcStr::new(name.data);
                 let values = values.into_iter().map(RcStr::new).collect();
                 assert!(self.aliases.insert(name.clone(), (doc, values)).is_none());
                 for c in constraints { self.constraints.push((name.clone(), c)); }
             },
-            EnumStatement::Symmetric => {
+            EnumStatement::Symmetric(..) => {
                 assert!(self.symmetry.is_none());
                 self.symmetry = Some(Symmetry::Symmetric);
             },
             EnumStatement::AntiSymmetric(mapping) => {
                 assert!(self.symmetry.is_none());
-                let mapping = mapping.into_iter()
+                let mapping = mapping.data.into_iter()
                     .map(|(x, y)| (RcStr::new(x), RcStr::new(y))).collect();
                 self.symmetry = Some(Symmetry::AntiSymmetric(mapping));
             },

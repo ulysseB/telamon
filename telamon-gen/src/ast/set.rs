@@ -12,9 +12,8 @@ pub struct SetDef {
 }
 
 impl SetDef {
-    fn missing_entry(&self) -> Result<(), TypeError> {
-        let keys = self.keys.iter()
-                            .map(|(k, _, _)| k)
+    fn check_missing_entry(&self) -> Result<(), TypeError> {
+        let keys = self.keys.iter().map(|(k, _, _)| k)
                             .collect::<Vec<&ir::SetDefKey>>();
 
         if !keys.contains(&&ir::SetDefKey::ItemType) {
@@ -56,7 +55,7 @@ impl SetDef {
         Ok(())
     }
 
-    pub fn redefinition(&self) -> Result<(), TypeError> {
+    pub fn check_redefinition(&self) -> Result<(), TypeError> {
         let mut hash: HashMap<String, _> = HashMap::default();
         for (key, ..) in self.keys.iter() {
             if let Some(before) = hash.insert(key.to_string(), ()) {
@@ -75,8 +74,8 @@ impl SetDef {
     }
 
     pub fn type_check(&self) -> Result<(), TypeError> {
-        self.redefinition()?;
-        self.missing_entry()?;
+        self.check_redefinition()?;
+        self.check_missing_entry()?;
         Ok(())
     }
 }
