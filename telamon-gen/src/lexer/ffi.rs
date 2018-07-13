@@ -77,17 +77,6 @@ impl<Y> Spanned<Y> {
     }
 }
 
-/// TODO: remove this implementation
-impl Default for Spanned<()> {
-    fn default() -> Self {
-        Spanned {
-            beg: Position::default(),
-            end: Position::default(),
-            data: (),
-        }
-    }
-}
-
 pub type YyExtraType = Spanned<YyLval>;
 
 #[derive(Copy, Clone, Debug)]

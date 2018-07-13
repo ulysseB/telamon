@@ -16,7 +16,9 @@ impl EnumDef {
         for stmt in self.statements.iter() {
             match stmt {
                 EnumStatement::Value(Spanned { beg, end, data: name }, ..) => {
-                    hash.insert(name.to_owned(), Spanned::default());
+                    hash.insert(name.to_owned(), Spanned {
+                        beg: *beg, end: *end, data: ()
+                    } );
                 },
                 EnumStatement::Alias(Spanned { beg, end, data: name }, _, sets, ..) => {
                     for set in sets {
@@ -27,7 +29,9 @@ impl EnumDef {
                             }))?;
                         }
                     }
-                    hash.insert(name.to_owned(), Spanned::default());
+                    hash.insert(name.to_owned(), Spanned {
+                        beg: *beg, end: *end, data: ()
+                    });
                 },
                 _ => {},
             }
@@ -66,7 +70,10 @@ impl EnumDef {
                         beg: beg_before,
                         end: end_before,
                         data: _
-                    }) = hash.insert(name.to_owned(), Spanned::default()) {
+                    }) = hash.insert(
+                        name.to_owned(),
+                        Spanned { beg: *beg, end: *end, data: () }
+                    ) {
                         Err(TypeError::Redefinition(
                             Spanned {
                                 beg: *beg, end: *end,
