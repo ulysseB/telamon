@@ -21,7 +21,7 @@ impl CpuArray {
 
     fn size(&self) -> u32 {
         let CpuArray(ref vec_mutex) = self;
-        let array = vec_mutex.lock().unwrap();
+        let array = unwrap!(vec_mutex.lock());
         array.len() as u32
     }
 }
@@ -33,20 +33,20 @@ impl Argument for CpuArray {
 
     fn arg_lock(&self) -> ArgLock {
         let CpuArray(mutex) = self;
-        ArgLock::Arr(mutex.lock().unwrap())
+        ArgLock::Arr(unwrap!(mutex.lock()))
     }
 }
 
 impl device::ArrayArgument for CpuArray {
     fn read_i8(&self) -> Vec<i8> {
         let CpuArray(ref vec_mutex) = self;
-        let array = vec_mutex.lock().unwrap();
+        let array = unwrap!(vec_mutex.lock());
         array.clone()
     }
-    
+
     fn write_i8(&self, slice: &[i8]) {
         let CpuArray(ref vec_mutex) = self;
-        let mut array = vec_mutex.lock().unwrap();
+        let mut array = unwrap!(vec_mutex.lock());
         *array = slice.to_vec();
     }
 }

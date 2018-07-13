@@ -97,7 +97,14 @@ impl IrDesc {
     }
 
     pub fn add_onchange(&mut self, choice: &str, action: OnChangeAction) {
-        self.choices.get_mut(choice).unwrap().add_onchange(action);
+        let inverse = if action.applies_to_symmetric()
+            && self.get_choice(choice).arguments().is_symmetric()
+        {
+            Some(action.inverse(self))
+        } else { None };
+        let choice = unwrap!(self.choices.get_mut(choice));
+        choice.add_onchange(action);
+        if let Some(action) = inverse { choice.add_onchange(action); }
     }
 
     /// Registers an filter call action for a filter on a choice.

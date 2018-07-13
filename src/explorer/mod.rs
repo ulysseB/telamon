@@ -75,8 +75,8 @@ fn launch_search<'a, T>(config: &Config, candidate_store: T, context: &Context)
     let (monitor_sender, monitor_receiver) = channel::mpsc::channel(100);
     let (log_sender, log_receiver) = sync::mpsc::sync_channel(100);
     crossbeam::scope( |scope| {
-        scope.builder().name("Telamon - Logger".to_string())
-            .spawn( || logger::log(config, log_receiver)).unwrap();
+        unwrap!(scope.builder().name("Telamon - Logger".to_string())
+            .spawn( || logger::log(config, log_receiver)));
         let best_cand_opt = scope.builder().name("Telamon - Monitor".to_string()).
             spawn(|| monitor(config, &candidate_store, monitor_receiver, log_sender));
         explore_space(config, &candidate_store, monitor_sender, context);
@@ -95,10 +95,9 @@ fn explore_space<'a, T>(config: &Config,
         while let Some((cand, payload)) = candidate_store.explore(context) {
             let space = fix_order(cand.space);
             let eval_sender = eval_sender.clone();
-            let callback = move |leaf, eval, cpt| {
-                if let Err(err) = block_on(eval_sender.send((leaf, eval, cpt, payload))
-                                 .map(|_| ())
-                                 ) 
+            let callback = move |leaf, eval| {
+                if let Err(err) = block_on(eval_sender.send((leaf, eval, payload))
+                                           .map(|_| ()))
                 { warn!("Got disconnected , {:?}", err);}
             };
             evaluator.add_kernel(Candidate {space, .. cand }, SendBoxFnOnce::from(callback));

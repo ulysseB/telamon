@@ -69,6 +69,7 @@ lazy_static! {
         register_template!(engine, choice/arg_names);
         register_template!(engine, choice/arg_defs);
         register_template!(engine, choice/arg_ids);
+        register_template!(engine, choice/complement);
         register_template!(engine, choice/getter);
         register_template!(engine, compute_counter);
         register_template!(engine, conflict);

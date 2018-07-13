@@ -32,7 +32,7 @@ unsafe impl ScalarArgument for f32 {
     }
 
     fn as_operand(&self) -> ir::Operand<'static> {
-        ir::Operand::new_float(Ratio::from_float(*self).unwrap(), 32)
+        ir::Operand::new_float(unwrap!(Ratio::from_float(*self)), 32)
     }
 
     fn gen_random<R: Rng>(rng: &mut R) -> Self { rng.gen_range(0., 1.) }
@@ -46,7 +46,7 @@ unsafe impl ScalarArgument for f64 {
     }
 
     fn as_operand(&self) -> ir::Operand<'static> {
-        ir::Operand::new_float(Ratio::from_float(*self).unwrap(), 64)
+        ir::Operand::new_float(unwrap!(Ratio::from_float(*self)), 64)
     }
 
     fn gen_random<R: Rng>(rng: &mut R) -> Self { rng.gen_range(0., 1.) }
@@ -62,7 +62,7 @@ unsafe impl ScalarArgument for i8 {
     }
 
     fn as_operand(&self) -> ir::Operand<'static> {
-        ir::Operand::new_int(BigInt::from_i8(*self).unwrap(), 8)
+        ir::Operand::new_int(unwrap!(BigInt::from_i8(*self)), 8)
     }
 
     fn gen_random<R: Rng>(rng: &mut R) -> Self { rng.gen_range(0, 10) }
@@ -78,7 +78,7 @@ unsafe impl ScalarArgument for i16 {
     }
 
     fn as_operand(&self) -> ir::Operand<'static> {
-        ir::Operand::new_int(BigInt::from_i16(*self).unwrap(), 16)
+        ir::Operand::new_int(unwrap!(BigInt::from_i16(*self)), 16)
     }
 
     fn gen_random<R: Rng>(rng: &mut R) -> Self { rng.gen_range(0, 100) }
@@ -94,7 +94,7 @@ unsafe impl ScalarArgument for i32 {
     }
 
     fn as_operand(&self) -> ir::Operand<'static> {
-        ir::Operand::new_int(BigInt::from_i32(*self).unwrap(), 32)
+        ir::Operand::new_int(unwrap!(BigInt::from_i32(*self)), 32)
     }
 
     fn gen_random<R: Rng>(rng: &mut R) -> Self { rng.gen_range(0, 100) }
@@ -110,7 +110,7 @@ unsafe impl ScalarArgument for i64 {
     }
 
     fn as_operand(&self) -> ir::Operand<'static> {
-        ir::Operand::new_int(BigInt::from_i64(*self).unwrap(), 64)
+        ir::Operand::new_int(unwrap!(BigInt::from_i64(*self)), 64)
     }
 
     fn gen_random<R: Rng>(rng: &mut R) -> Self { rng.gen_range(0, 100) }

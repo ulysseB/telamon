@@ -11,6 +11,7 @@ pub use self::api::DeviceAttribute;
 pub use self::context::Context;
 pub use self::gpu::{Gpu, InstDesc};
 pub use self::kernel::Kernel;
+pub use self::printer::CudaPrinter;
 
 use codegen;
 use ir;
