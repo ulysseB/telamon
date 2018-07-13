@@ -85,5 +85,5 @@ impl<'a> PartialOrd for Candidate<'a> {
 }
 
 impl<'a> Ord for Candidate<'a> {
-    fn cmp(&self, rhs: &Candidate<'a>) -> Ordering { self.partial_cmp(rhs).unwrap() }
+    fn cmp(&self, rhs: &Candidate<'a>) -> Ordering { unwrap!(self.partial_cmp(rhs)) }
 }

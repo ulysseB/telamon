@@ -7,11 +7,6 @@
 )
 .reqntid {num_thread}
 {{
-  {var_decls}
-  {ld_params}
-  {idx_loads}
-  {mem_decls}
-  {init}
   {body}
   ret;
 }}

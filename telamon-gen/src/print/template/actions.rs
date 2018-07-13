@@ -8,6 +8,22 @@ pub enum Action {
     {{/each~}}
 }
 
+impl Action {
+    /// Returns the action performing the complementary decision.
+    #[allow(unused_variables)]
+    pub fn complement(&self, ir_instance: &ir::Function) -> Option<Self> {
+        match *self {
+            {{~#each choices}}
+                Action::{{to_type_name name}}({{>choice.arg_names}}domain) =>
+                {{~#if choice_def.Counter}}None{{else}}Some(
+                    Action::{{to_type_name name}}({{>choice.arg_names}}
+                                                  {{>choice.complement value="domain"}})
+                ){{~/if}},
+            {{~/each}}
+        }
+    }
+}
+
 /// Applies an action to the domain.
 pub fn apply_action(action: Action, store: &mut DomainStore, diff: &mut DomainDiff)
         -> Result<(), ()> {

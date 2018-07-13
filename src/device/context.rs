@@ -9,7 +9,7 @@ use std::sync::Arc;
 use boxfnonce::SendBoxFnOnce;
 
 /// A callback that is called after evaluating a kernel.
-pub type AsyncCallback<'a, 'b> = SendBoxFnOnce<'b, (Candidate<'a>, f64, usize)>;
+pub type AsyncCallback<'a, 'b> = SendBoxFnOnce<'b, (Candidate<'a>, f64)>;
 
 /// Describes the context for which a function must be optimized.
 pub trait Context: Sync {

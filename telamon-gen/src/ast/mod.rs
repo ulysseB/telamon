@@ -107,7 +107,7 @@ impl CheckerContext {
     ) -> Result<(), TypeError> {
         match statement {
             SetDef { name: Spanned { beg, end, data: ref name},
-                     doc: _, arg, superset, disjoint: _, keys, ..  } => {
+            doc: _, arg, superset, disjoint: _, keys, ..  } => {
                 if let Some(VarDef { name: _, set: SetRef { name, .. } }) = arg {
                     let name: &String = name.deref();
                     if !self.hash.contains_key(name) {
@@ -153,7 +153,6 @@ impl CheckerContext {
     }
 }
 
-/// Syntaxic tree for the constraint description.
 #[derive(Debug)]
 pub struct Ast { 
     pub statements: Vec<Statement>,
@@ -161,7 +160,8 @@ pub struct Ast {
 
 impl Ast {
     /// Generate the defintion of choices and the list of constraints.
-    pub fn type_check(self) -> Result<(ir::IrDesc, Vec<TypedConstraint>), TypeError> {
+    pub fn type_check(self)
+        -> Result<(ir::IrDesc, Vec<TypedConstraint>), TypeError> {
         let mut checker = CheckerContext::default();
         let mut context = TypingContext::default();
 

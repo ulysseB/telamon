@@ -9,3 +9,5 @@ define enum foo():
   alias AB = A | B:
   alias BC = B | C:
 end
+
+define integer bar(): "&[1, 2, 4, 8]" end

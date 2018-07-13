@@ -1,0 +1,4 @@
+{loop_init}
+pthread_join(thr_ids[{ind}], NULL); //self.build_index_call(func)
+{loop_jump}
+pthread_barrier_destroy(&barrier);
