@@ -349,10 +349,21 @@ impl Adaptable for OnChangeAction {
 /// An action to perform,
 #[derive(Clone, Debug)]
 pub enum ChoiceAction {
+    /// The choice runs all its filters on itself.
     FilterSelf,
+    /// The choice runs a filter on another choice.
     Filter { choice: ir::ChoiceInstance, filter: FilterCall },
-    IncrCounter { choice: ir::ChoiceInstance, value: ir::CounterVal, },
-    UpdateCounter { counter: ir::ChoiceInstance, incr: ir::ChoiceInstance },
+    /// Increments a counter if the increment condition is statisfied.
+    IncrCounter {
+        counter: ir::ChoiceInstance,
+        value: ir::CounterVal,
+    },
+    /// Update a counter after the increment value is changed.
+    UpdateCounter {
+        counter: ir::ChoiceInstance,
+        incr: ir::ChoiceInstance
+    },
+    /// Triggers a lowering.
     Trigger {
         id: usize,
         condition: ir::ChoiceCondition,
@@ -405,24 +416,24 @@ impl ChoiceAction {
 impl Adaptable for ChoiceAction {
     fn adapt(&self, adaptator: &ir::Adaptator) -> Self {
         use self::ChoiceAction::*;
-        match *self {
+        match self {
             FilterSelf => FilterSelf,
-            Filter { ref choice, ref filter } => Filter {
+            Filter { choice, filter } => Filter {
                 choice: choice.adapt(adaptator),
                 filter: filter.adapt(adaptator),
             },
-            IncrCounter { ref choice, ref value } => IncrCounter {
-                choice: choice.adapt(adaptator),
+            IncrCounter { counter, value } => IncrCounter {
+                counter: counter.adapt(adaptator),
                 value: value.adapt(adaptator),
             },
-            UpdateCounter { ref counter, ref incr } => UpdateCounter {
+            UpdateCounter { counter, incr } => UpdateCounter {
                 counter: counter.adapt(adaptator),
                 incr: incr.adapt(adaptator),
             },
-            Trigger { id, ref condition, ref code, inverse_self_cond } => Trigger {
+            Trigger { id, condition, code, inverse_self_cond } => Trigger {
                 condition: condition.adapt(adaptator),
                 code: code.adapt(adaptator),
-                id, inverse_self_cond,
+                id: *id, inverse_self_cond: *inverse_self_cond,
             },
         }
     }

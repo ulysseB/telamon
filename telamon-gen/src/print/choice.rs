@@ -242,9 +242,9 @@ impl<'a> ChoiceAction<'a> {
            conflicts: Vec<ast::Conflict<'a>>,
            ctx: &ast::Context<'a>,
            trigger_calls: &mut Vec<TriggerCall<'a>>) -> Self {
-        match *action {
+        match action {
             ir::ChoiceAction::FilterSelf => ChoiceAction::FilterSelf,
-            ir::ChoiceAction::Filter { choice: ref choice_instance, ref filter } => {
+            ir::ChoiceAction::Filter { choice: choice_instance, filter } => {
                 let set = ast::Variable::with_name("values");
                 let choice = ctx.ir_desc.get_choice(&choice_instance.choice);
                 let filter_call = FilterCall::new(filter, set, conflicts, forall_offset, ctx);
@@ -257,7 +257,8 @@ impl<'a> ChoiceAction<'a> {
                     filter_call, arguments,
                 }
             },
-            ir::ChoiceAction::IncrCounter { choice: ref counter, ref value } => {
+            // FIXME: incr_condition is false for antisymmetric choices
+            ir::ChoiceAction::IncrCounter { counter, value } => {
                 let counter_choice = ctx.ir_desc.get_choice(&counter.choice);
                 let arguments = ast::vars_with_sets(counter_choice, &counter.vars, ctx);
                 let adaptator = ir::Adaptator::from_arguments(&counter.vars);
@@ -276,7 +277,8 @@ impl<'a> ChoiceAction<'a> {
                     }
                 } else { panic!() }
             },
-            ir::ChoiceAction::UpdateCounter { ref counter, ref incr } => {
+            // FIXME: incr_condition is false for antisymmetric choices
+            ir::ChoiceAction::UpdateCounter { counter, incr } => {
                 let counter_choice = ctx.ir_desc.get_choice(&counter.choice);
                 let incr_choice = ctx.ir_desc.get_choice(&incr.choice);
                 let arguments = ast::vars_with_sets(counter_choice, &counter.vars, ctx);
@@ -298,9 +300,7 @@ impl<'a> ChoiceAction<'a> {
                     }
                 } else { panic!() }
             },
-            ir::ChoiceAction::Trigger {
-                id, ref condition, ref code, inverse_self_cond
-            } => {
+            ir::ChoiceAction::Trigger { id, condition, code, inverse_self_cond } => {
                 let others_conditions = condition.others_conditions.iter()
                     .map(|c| filter::condition(c, ctx)).collect();
                 let inputs = condition.inputs.iter().enumerate().map(|(pos, input)| {
@@ -315,8 +315,9 @@ impl<'a> ChoiceAction<'a> {
                 let code = ast::code(code, ctx);
                 let call_id = trigger_calls.len();
                 let mut self_condition = condition.self_condition.clone();
-                if inverse_self_cond { self_condition.inverse(ctx.ir_desc); }
-                trigger_calls.push(TriggerCall { id, code, arguments: arguments.clone() });
+                if *inverse_self_cond { self_condition.inverse(ctx.ir_desc); }
+                let call = TriggerCall { id: *id, code, arguments: arguments.clone() };
+                trigger_calls.push(call);
                 ChoiceAction::Trigger {
                     call_id, others_conditions, inputs, arguments,
                     self_condition: value_set::print(&self_condition, ctx),

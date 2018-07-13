@@ -693,8 +693,8 @@ impl TypingContext {
         let value = value.adapt(&adaptator);
         let counter_vars = (0..num_counter_args)
             .map(|i| adaptator.variable(ir::Variable::Arg(i))).collect();
-        let choice = ir::ChoiceInstance { choice: counter.clone(), vars: counter_vars };
-        let action =  ir::ChoiceAction::IncrCounter { choice, value };
+        let counter = ir::ChoiceInstance { choice: counter.clone(), vars: counter_vars };
+        let action =  ir::ChoiceAction::IncrCounter { counter, value };
         ir::OnChangeAction { forall_vars, set_constraints, action }
     }
 }
