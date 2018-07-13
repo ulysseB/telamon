@@ -71,6 +71,7 @@ trigger "trigger"
 half "half"
 hidden "internal"
 base "base"
+import "import"
 
 set "set"
 subsetof "subsetof"
@@ -151,6 +152,7 @@ var \${alpha_num}+
 {half} { yyextra.data = NOMAX;  return COUNTERVISIBILITY; }
 {hidden} { yyextra.data = HIDDENMAX;  return COUNTERVISIBILITY; }
 {base} { return BASE; }
+{import} { return IMPORT; }
 
 {item_type} { yyextra.data = ITEMTYPE;  return SETDEFKEY; }
 {new_objs} { yyextra.data = NEWOBJS;  return SETDEFKEY; }

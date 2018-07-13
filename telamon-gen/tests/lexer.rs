@@ -161,6 +161,13 @@ fn lexer_initial() {
                    Position { column: 4, ..Default::default() } 
                 )),
               ]);
+    // Import's Token
+    assert_eq!(Lexer::from(b"import".to_vec()).collect::<Vec<_>>(), vec![
+                Ok((Position::default(),
+                   Token::Import,
+                   Position { column: 6, ..Default::default() } 
+                )),
+              ]);
     // item_type's SetDefKey Token
     assert_eq!(Lexer::from(b"item_type".to_vec()).collect::<Vec<_>>(), vec![
                 Ok((Position::default(),
