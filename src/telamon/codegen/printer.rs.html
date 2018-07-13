@@ -330,6 +330,44 @@
 <span id="330">330</span>
 <span id="331">331</span>
 <span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">codegen</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
@@ -370,28 +408,45 @@
     <span class="kw">fn</span> <span class="ident">get_type</span>(<span class="ident">t</span>: <span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="ident">String</span>;
 
     <span class="doccomment">/// Print return_id = lhs op rhs</span>
-    <span class="kw">fn</span> <span class="ident">print_binop</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">op</span>: <span class="ident">ir</span>::<span class="ident">BinOp</span>, <span class="ident">return_type</span>: <span class="ident">Type</span>, <span class="ident">rounding</span>: <span class="ident">op</span>::<span class="ident">Rounding</span>, <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>); 
+    <span class="kw">fn</span> <span class="ident">print_binop</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">op</span>: <span class="ident">ir</span>::<span class="ident">BinOp</span>,
+                   <span class="ident">return_type</span>: <span class="ident">Type</span>,
+                   <span class="ident">rounding</span>: <span class="ident">op</span>::<span class="ident">Rounding</span>,
+                   <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+                   <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>);
 
     <span class="doccomment">/// Print return_id = op1 * op2</span>
-    <span class="kw">fn</span> <span class="ident">print_mul</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">return_type</span>: <span class="ident">Type</span>, <span class="ident">round</span>: <span class="ident">op</span>::<span class="ident">Rounding</span>, <span class="ident">mul_mode</span>: <span class="ident">MulMode</span>, <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">op1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">op2</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>);
+    <span class="kw">fn</span> <span class="ident">print_mul</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">return_type</span>: <span class="ident">Type</span>,
+                 <span class="ident">round</span>: <span class="ident">op</span>::<span class="ident">Rounding</span>,
+                 <span class="ident">mul_mode</span>: <span class="ident">MulMode</span>,
+                 <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+                 <span class="ident">op1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">op2</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>);
 
     <span class="doccomment">/// Print return_id = mlhs * mrhs + arhs</span>
-    <span class="kw">fn</span> <span class="ident">print_mad</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">ret_type</span>: <span class="ident">Type</span>, <span class="ident">round</span>: <span class="ident">op</span>::<span class="ident">Rounding</span>, <span class="ident">mul_mode</span>: <span class="ident">MulMode</span>, <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,  <span class="ident">mlhs</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">mrhs</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">arhs</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>);
+    <span class="kw">fn</span> <span class="ident">print_mad</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">ret_type</span>: <span class="ident">Type</span>,
+                 <span class="ident">round</span>: <span class="ident">op</span>::<span class="ident">Rounding</span>,
+                 <span class="ident">mul_mode</span>: <span class="ident">MulMode</span>,
+                 <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+                 <span class="ident">mlhs</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">mrhs</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">arhs</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>);
 
-    <span class="doccomment">/// Print return_id = op </span>
+    <span class="doccomment">/// Print return_id = op</span>
     <span class="kw">fn</span> <span class="ident">print_mov</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">return_type</span>: <span class="ident">Type</span>, <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">op</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>);
 
-    <span class="doccomment">/// Print return_id = load [addr] </span>
+    <span class="doccomment">/// Print return_id = load [addr]</span>
     <span class="kw">fn</span> <span class="ident">print_ld</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">return_type</span>: <span class="ident">Type</span>,<span class="ident">flag</span>: <span class="ident">InstFlag</span>, <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,  <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>);
 
-    <span class="doccomment">/// Print store val [addr] </span>
+    <span class="doccomment">/// Print store val [addr]</span>
     <span class="kw">fn</span> <span class="ident">print_st</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">val_type</span>: <span class="ident">Type</span>, <span class="ident">mem_flag</span>: <span class="ident">InstFlag</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">val</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>);
 
-    <span class="doccomment">/// Print if (cond) store val [addr] </span>
-    <span class="kw">fn</span> <span class="ident">print_cond_st</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">return_type</span>: <span class="ident">Type</span>, <span class="ident">mem_flag</span>: <span class="ident">InstFlag</span>, <span class="ident">cond</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">val</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>);
+    <span class="doccomment">/// Print if (cond) store val [addr]</span>
+    <span class="kw">fn</span> <span class="ident">print_cond_st</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">return_type</span>: <span class="ident">Type</span>,
+                     <span class="ident">mem_flag</span>: <span class="ident">InstFlag</span>,
+                     <span class="ident">cond</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">val</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>);
 
     <span class="doccomment">/// Print return_id = (val_type) val</span>
-    <span class="kw">fn</span> <span class="ident">print_cast</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">from_t</span>: <span class="ident">Type</span>, <span class="ident">to_t</span>: <span class="ident">Type</span>, <span class="ident">round</span>: <span class="ident">op</span>::<span class="ident">Rounding</span>, <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">op1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>);
+    <span class="kw">fn</span> <span class="ident">print_cast</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">from_t</span>: <span class="ident">Type</span>, <span class="ident">to_t</span>: <span class="ident">Type</span>,
+                  <span class="ident">round</span>: <span class="ident">op</span>::<span class="ident">Rounding</span>,
+                  <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+                  <span class="ident">op1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>);
 
     <span class="doccomment">/// print a label where to jump</span>
     <span class="kw">fn</span> <span class="ident">print_label</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">label_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>);
@@ -417,7 +472,10 @@
     <span class="doccomment">/// Print wait on all threads</span>
     <span class="kw">fn</span> <span class="ident">print_sync</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>);
 
-    <span class="kw">fn</span> <span class="ident">print_vector_inst</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">inst</span>: <span class="kw-2">&amp;</span><span class="ident">Instruction</span>, <span class="ident">dim</span>: <span class="kw-2">&amp;</span><span class="ident">Dimension</span>, <span class="ident">namer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">NameMap</span>, <span class="ident">fun</span>: <span class="kw-2">&amp;</span><span class="ident">Function</span>);
+    <span class="kw">fn</span> <span class="ident">print_vector_inst</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">inst</span>: <span class="kw-2">&amp;</span><span class="ident">Instruction</span>,
+                         <span class="ident">dim</span>: <span class="kw-2">&amp;</span><span class="ident">Dimension</span>,
+                         <span class="ident">namer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">NameMap</span>,
+                         <span class="ident">fun</span>: <span class="kw-2">&amp;</span><span class="ident">Function</span>);
 
     <span class="kw">fn</span> <span class="ident">mul_mode</span>(<span class="ident">from</span>: <span class="ident">Type</span>, <span class="ident">to</span>: <span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="ident">MulMode</span> {
         <span class="kw">match</span> (<span class="ident">from</span>, <span class="ident">to</span>) {
@@ -449,7 +507,7 @@
                 <span class="kw">for</span> <span class="ident">level</span> <span class="kw">in</span> <span class="ident">ind_levels</span> {
                     <span class="self">self</span>.<span class="ident">parallel_induction_level</span>( <span class="ident">level</span>, <span class="ident">namer</span>);
                 }
-                <span class="self">self</span>.<span class="ident">cfg_vec</span>( <span class="ident">fun</span>, <span class="ident">inner</span>, <span class="ident">namer</span>);
+                <span class="self">self</span>.<span class="ident">cfg_vec</span>(<span class="ident">fun</span>, <span class="ident">inner</span>, <span class="ident">namer</span>);
                 <span class="self">self</span>.<span class="ident">print_sync</span>();
             }
             <span class="ident">Cfg</span>::<span class="ident">Instruction</span>(<span class="kw-2">ref</span> <span class="ident">i</span>) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">inst</span>( <span class="ident">i</span>, <span class="ident">namer</span>, <span class="ident">fun</span>),
@@ -466,15 +524,21 @@
             <span class="kw">let</span> <span class="ident">step</span> <span class="op">=</span> <span class="ident">namer</span>.<span class="ident">name_size</span>(<span class="ident">increment</span>, <span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>));
             <span class="kw">let</span> <span class="ident">mode</span> <span class="op">=</span> <span class="ident">MulMode</span>::<span class="ident">from_type</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>), <span class="ident">level</span>.<span class="ident">t</span>());
             <span class="kw">match</span> <span class="ident">base_components</span>[..] {
-                [] <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">print_mul</span>(<span class="ident">level</span>.<span class="ident">t</span>(), <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span>, <span class="ident">mode</span>, <span class="kw-2">&amp;</span><span class="ident">ind_var</span>, <span class="kw-2">&amp;</span><span class="ident">index</span>, <span class="kw-2">&amp;</span><span class="ident">step</span>),
-                [<span class="kw-2">ref</span> <span class="ident">base</span>] <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">print_mad</span>(<span class="ident">level</span>.<span class="ident">t</span>(), <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span>, <span class="ident">mode</span>, <span class="kw-2">&amp;</span><span class="ident">ind_var</span>, <span class="kw-2">&amp;</span><span class="ident">index</span>, <span class="kw-2">&amp;</span><span class="ident">step</span>, <span class="kw-2">&amp;</span><span class="ident">base</span>),
+                [] <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">print_mul</span>(
+                    <span class="ident">level</span>.<span class="ident">t</span>(), <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span>, <span class="ident">mode</span>, <span class="kw-2">&amp;</span><span class="ident">ind_var</span>, <span class="kw-2">&amp;</span><span class="ident">index</span>, <span class="kw-2">&amp;</span><span class="ident">step</span>),
+                [<span class="kw-2">ref</span> <span class="ident">base</span>] <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">print_mad</span>(
+                    <span class="ident">level</span>.<span class="ident">t</span>(), <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span>, <span class="ident">mode</span>, <span class="kw-2">&amp;</span><span class="ident">ind_var</span>, <span class="kw-2">&amp;</span><span class="ident">index</span>, <span class="kw-2">&amp;</span><span class="ident">step</span>, <span class="kw-2">&amp;</span><span class="ident">base</span>),
                 <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>()
             }
         } <span class="kw">else</span> {
             <span class="kw">match</span> <span class="ident">base_components</span>[..] {
-                [] <span class="op">=&gt;</span> {<span class="kw">let</span> <span class="ident">zero</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">get_int</span>(<span class="number">0</span>); <span class="self">self</span>.<span class="ident">print_mov</span>(<span class="ident">level</span>.<span class="ident">t</span>(), <span class="kw-2">&amp;</span><span class="ident">ind_var</span>, <span class="kw-2">&amp;</span><span class="ident">zero</span>);}
+                [] <span class="op">=&gt;</span> {
+                    <span class="kw">let</span> <span class="ident">zero</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">get_int</span>(<span class="number">0</span>);
+                    <span class="self">self</span>.<span class="ident">print_mov</span>(<span class="ident">level</span>.<span class="ident">t</span>(), <span class="kw-2">&amp;</span><span class="ident">ind_var</span>, <span class="kw-2">&amp;</span><span class="ident">zero</span>);
+                }
                 [<span class="kw-2">ref</span> <span class="ident">base</span>] <span class="op">=&gt;</span>  <span class="self">self</span>.<span class="ident">print_mov</span>(<span class="ident">level</span>.<span class="ident">t</span>(), <span class="kw-2">&amp;</span><span class="ident">ind_var</span>, <span class="kw-2">&amp;</span><span class="ident">base</span>),
-                [<span class="kw-2">ref</span> <span class="ident">lhs</span>, <span class="kw-2">ref</span> <span class="ident">rhs</span>] <span class="op">=&gt;</span>  <span class="self">self</span>.<span class="ident">print_binop</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span>, <span class="ident">level</span>.<span class="ident">t</span>(), <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span>, <span class="kw-2">&amp;</span><span class="ident">ind_var</span>, <span class="kw-2">&amp;</span><span class="ident">lhs</span>, <span class="kw-2">&amp;</span><span class="ident">rhs</span>),
+                [<span class="kw-2">ref</span> <span class="ident">lhs</span>, <span class="kw-2">ref</span> <span class="ident">rhs</span>] <span class="op">=&gt;</span>  <span class="self">self</span>.<span class="ident">print_binop</span>(
+                    <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span>, <span class="ident">level</span>.<span class="ident">t</span>(), <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span>, <span class="kw-2">&amp;</span><span class="ident">ind_var</span>, <span class="kw-2">&amp;</span><span class="ident">lhs</span>, <span class="kw-2">&amp;</span><span class="ident">rhs</span>),
                 <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>()
             }
         }
@@ -529,8 +593,8 @@
             <span class="kw">let</span> <span class="ident">base_components</span> <span class="op">=</span> <span class="ident">level</span>.<span class="ident">base</span>.<span class="ident">components</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">namer</span>.<span class="ident">name</span>(<span class="ident">v</span>));
             <span class="kw">match</span> <span class="ident">base_components</span>.<span class="ident">collect_vec</span>()[..] {
                 [<span class="kw-2">ref</span> <span class="ident">base</span>] <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">print_mov</span>(<span class="ident">level</span>.<span class="ident">t</span>(), <span class="kw-2">&amp;</span><span class="ident">ind_var</span>, <span class="kw-2">&amp;</span><span class="ident">base</span>),
-                [<span class="kw-2">ref</span> <span class="ident">lhs</span>, <span class="kw-2">ref</span> <span class="ident">rhs</span>] <span class="op">=&gt;</span>
-                    <span class="self">self</span>.<span class="ident">print_binop</span>( <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span>, <span class="ident">level</span>.<span class="ident">t</span>(), <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span>, <span class="kw-2">&amp;</span><span class="ident">ind_var</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>),
+                [<span class="kw-2">ref</span> <span class="ident">lhs</span>, <span class="kw-2">ref</span> <span class="ident">rhs</span>] <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">print_binop</span>(
+                    <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span>, <span class="ident">level</span>.<span class="ident">t</span>(), <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span>, <span class="kw-2">&amp;</span><span class="ident">ind_var</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>),
                 <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(),
             };
             <span class="ident">ind_var_vec</span>.<span class="ident">push</span>(<span class="ident">ind_var</span>.<span class="ident">into_owned</span>());
@@ -540,7 +604,8 @@
         <span class="kw">for</span> (<span class="ident">level</span>, <span class="ident">ind_var</span>) <span class="kw">in</span> <span class="ident">ind_levels</span>.<span class="ident">iter</span>().<span class="ident">zip_eq</span>(<span class="ident">ind_var_vec</span>) {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">increment</span>)) <span class="op">=</span> <span class="ident">level</span>.<span class="ident">increment</span> {
                 <span class="kw">let</span> <span class="ident">step</span> <span class="op">=</span> <span class="ident">namer</span>.<span class="ident">name_size</span>(<span class="ident">increment</span>, <span class="ident">level</span>.<span class="ident">t</span>());
-                <span class="self">self</span>.<span class="ident">print_binop</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span>, <span class="ident">level</span>.<span class="ident">t</span>(), <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span>, <span class="kw-2">&amp;</span><span class="ident">ind_var</span>, <span class="kw-2">&amp;</span><span class="ident">ind_var</span>, <span class="kw-2">&amp;</span><span class="ident">step</span>);
+                <span class="self">self</span>.<span class="ident">print_binop</span>(
+                    <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span>, <span class="ident">level</span>.<span class="ident">t</span>(), <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span>, <span class="kw-2">&amp;</span><span class="ident">ind_var</span>, <span class="kw-2">&amp;</span><span class="ident">ind_var</span>, <span class="kw-2">&amp;</span><span class="ident">step</span>);
             };
         }
         <span class="kw">let</span> <span class="ident">one</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">get_int</span>(<span class="number">1</span>);
@@ -577,10 +642,12 @@
                 <span class="kw">for</span> <span class="kw-2">&amp;</span>(<span class="ident">level</span>, <span class="kw-2">ref</span> <span class="ident">ind_var</span>, <span class="ident">incr</span>, <span class="kw-2">ref</span> <span class="ident">base</span>) <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">incr_levels</span> {
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">step</span>) <span class="op">=</span> <span class="ident">incr</span>.<span class="ident">as_int</span>() {
                         <span class="kw">let</span> <span class="ident">stepxi</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">get_int</span>(<span class="ident">step</span> <span class="op">*</span> <span class="ident">i</span>);
-                        <span class="self">self</span>.<span class="ident">print_binop</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span>, <span class="ident">level</span>.<span class="ident">t</span>(), <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span>, <span class="ident">ind_var</span>, <span class="kw-2">&amp;</span><span class="ident">stepxi</span>, <span class="ident">base</span>);
+                        <span class="self">self</span>.<span class="ident">print_binop</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span>, <span class="ident">level</span>.<span class="ident">t</span>(), <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span>,
+                                         <span class="ident">ind_var</span>, <span class="kw-2">&amp;</span><span class="ident">stepxi</span>, <span class="ident">base</span>);
                     } <span class="kw">else</span> {
                         <span class="kw">let</span> <span class="ident">step</span> <span class="op">=</span> <span class="ident">namer</span>.<span class="ident">name_size</span>(<span class="ident">incr</span>, <span class="ident">level</span>.<span class="ident">t</span>());
-                        <span class="self">self</span>.<span class="ident">print_binop</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span>, <span class="ident">level</span>.<span class="ident">t</span>(), <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span>, <span class="kw-2">&amp;</span><span class="ident">ind_var</span>, <span class="kw-2">&amp;</span><span class="ident">step</span>, <span class="kw-2">&amp;</span><span class="ident">ind_var</span>);
+                        <span class="self">self</span>.<span class="ident">print_binop</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span>, <span class="ident">level</span>.<span class="ident">t</span>(), <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span>,
+                                         <span class="ident">ind_var</span>, <span class="kw-2">&amp;</span><span class="ident">step</span>, <span class="ident">ind_var</span>);
                     };
                 }
             }
@@ -589,7 +656,9 @@
         <span class="ident">namer</span>.<span class="ident">unset_current_index</span>(<span class="ident">dim</span>);
     }
 
-    <span class="kw">fn</span> <span class="ident">privatise_global_block</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span>: <span class="kw-2">&amp;</span><span class="ident">InternalMemBlock</span>, <span class="ident">namer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">NameMap</span>, <span class="ident">fun</span>: <span class="kw-2">&amp;</span><span class="ident">Function</span>) {
+    <span class="kw">fn</span> <span class="ident">privatise_global_block</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">block</span>: <span class="kw-2">&amp;</span><span class="ident">InternalMemBlock</span>,
+                              <span class="ident">namer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">NameMap</span>,
+                              <span class="ident">fun</span>: <span class="kw-2">&amp;</span><span class="ident">Function</span>) {
         <span class="kw">if</span> <span class="ident">fun</span>.<span class="ident">block_dims</span>().<span class="ident">is_empty</span>() { <span class="kw">return</span> ; }
         <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="ident">namer</span>.<span class="ident">name_addr</span>(<span class="ident">block</span>.<span class="ident">id</span>());
         <span class="kw">let</span> <span class="ident">addr_type</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">lower_type</span>(<span class="ident">Type</span>::<span class="ident">PtrTo</span>(<span class="ident">block</span>.<span class="ident">id</span>().<span class="ident">into</span>()), <span class="ident">fun</span>);
@@ -600,7 +669,8 @@
                 <span class="kw">let</span> <span class="ident">var</span> <span class="op">=</span> <span class="ident">namer</span>.<span class="ident">gen_name</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>));
                 <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">namer</span>.<span class="ident">name_size</span>(<span class="ident">dim</span>.<span class="ident">size</span>(), <span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>));
                 <span class="kw">let</span> <span class="ident">idx</span> <span class="op">=</span> <span class="ident">namer</span>.<span class="ident">name_index</span>(<span class="ident">dim</span>.<span class="ident">id</span>());
-                <span class="self">self</span>.<span class="ident">print_mad</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>), <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span>, <span class="ident">MulMode</span>::<span class="ident">Low</span>, <span class="kw-2">&amp;</span><span class="ident">var</span>,  <span class="kw-2">&amp;</span><span class="ident">old_var</span>, <span class="kw-2">&amp;</span><span class="ident">size</span>, <span class="kw-2">&amp;</span><span class="ident">idx</span>);
+                <span class="self">self</span>.<span class="ident">print_mad</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>), <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span>, <span class="ident">MulMode</span>::<span class="ident">Low</span>,
+                               <span class="kw-2">&amp;</span><span class="ident">var</span>, <span class="kw-2">&amp;</span><span class="ident">old_var</span>, <span class="kw-2">&amp;</span><span class="ident">size</span>, <span class="kw-2">&amp;</span><span class="ident">idx</span>);
                 <span class="ident">var</span>
             });
         <span class="kw">let</span> <span class="ident">mode</span> <span class="op">=</span> <span class="ident">MulMode</span>::<span class="ident">from_type</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>), <span class="ident">addr_type</span>);
@@ -611,27 +681,33 @@
     <span class="kw">fn</span> <span class="ident">inst</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">inst</span>: <span class="kw-2">&amp;</span><span class="ident">Instruction</span>, <span class="ident">namer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">NameMap</span>, <span class="ident">fun</span>: <span class="kw-2">&amp;</span><span class="ident">Function</span> ) {
         <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">inst</span>.<span class="ident">operator</span>() {
             <span class="ident">op</span>::<span class="ident">BinOp</span>(<span class="ident">op</span>, <span class="kw-2">ref</span> <span class="ident">lhs</span>, <span class="kw-2">ref</span> <span class="ident">rhs</span>, <span class="ident">round</span>) <span class="op">=&gt;</span> {
-                <span class="self">self</span>.<span class="ident">print_binop</span>(<span class="ident">op</span>, <span class="ident">inst</span>.<span class="ident">t</span>(), <span class="ident">round</span>, <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_inst</span>(<span class="ident">inst</span>), <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_op</span>(<span class="ident">lhs</span>), <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_op</span>(<span class="ident">rhs</span>))
+                <span class="self">self</span>.<span class="ident">print_binop</span>(<span class="ident">op</span>, <span class="ident">inst</span>.<span class="ident">t</span>(), <span class="ident">round</span>, <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_inst</span>(<span class="ident">inst</span>),
+                                 <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_op</span>(<span class="ident">lhs</span>), <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_op</span>(<span class="ident">rhs</span>))
             }
             <span class="ident">op</span>::<span class="ident">Mul</span>(<span class="kw-2">ref</span> <span class="ident">lhs</span>, <span class="kw-2">ref</span> <span class="ident">rhs</span>, <span class="ident">round</span>, <span class="ident">return_type</span>) <span class="op">=&gt;</span> {
                 <span class="kw">let</span> <span class="ident">low_lhs_type</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">lower_type</span>(<span class="ident">lhs</span>.<span class="ident">t</span>(), <span class="ident">fun</span>);
                 <span class="kw">let</span> <span class="ident">low_ret_type</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">lower_type</span>(<span class="ident">return_type</span>, <span class="ident">fun</span>);
                 <span class="kw">let</span> <span class="ident">mode</span> <span class="op">=</span> <span class="ident">MulMode</span>::<span class="ident">from_type</span>(<span class="ident">low_lhs_type</span>, <span class="ident">low_ret_type</span>);
-                <span class="self">self</span>.<span class="ident">print_mul</span>(<span class="ident">low_ret_type</span>, <span class="ident">round</span>, <span class="ident">mode</span>, <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_inst</span>(<span class="ident">inst</span>), <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_op</span>(<span class="ident">lhs</span>), <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_op</span>(<span class="ident">rhs</span>))
+                <span class="self">self</span>.<span class="ident">print_mul</span>(<span class="ident">low_ret_type</span>, <span class="ident">round</span>, <span class="ident">mode</span>, <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_inst</span>(<span class="ident">inst</span>),
+                               <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_op</span>(<span class="ident">lhs</span>), <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_op</span>(<span class="ident">rhs</span>))
             },
             <span class="ident">op</span>::<span class="ident">Mad</span>(<span class="kw-2">ref</span> <span class="ident">mul_lhs</span>, <span class="kw-2">ref</span> <span class="ident">mul_rhs</span>, <span class="kw-2">ref</span> <span class="ident">add_rhs</span>, <span class="ident">round</span>) <span class="op">=&gt;</span> {
                 <span class="kw">let</span> <span class="ident">low_mlhs_type</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">lower_type</span>(<span class="ident">mul_lhs</span>.<span class="ident">t</span>(), <span class="ident">fun</span>);
                 <span class="kw">let</span> <span class="ident">low_arhs_type</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">lower_type</span>(<span class="ident">add_rhs</span>.<span class="ident">t</span>(), <span class="ident">fun</span>);
                 <span class="kw">let</span> <span class="ident">mode</span> <span class="op">=</span> <span class="ident">MulMode</span>::<span class="ident">from_type</span>(<span class="ident">low_mlhs_type</span>, <span class="ident">low_arhs_type</span>);
-                <span class="self">self</span>.<span class="ident">print_mad</span>(<span class="ident">inst</span>.<span class="ident">t</span>(), <span class="ident">round</span>, <span class="ident">mode</span>, <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_inst</span>(<span class="ident">inst</span>), <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_op</span>(<span class="ident">mul_lhs</span>), <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_op</span>(<span class="ident">mul_rhs</span>), <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_op</span>(<span class="ident">add_rhs</span>))
+                <span class="self">self</span>.<span class="ident">print_mad</span>(<span class="ident">inst</span>.<span class="ident">t</span>(), <span class="ident">round</span>, <span class="ident">mode</span>, <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_inst</span>(<span class="ident">inst</span>),
+                               <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_op</span>(<span class="ident">mul_lhs</span>),
+                               <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_op</span>(<span class="ident">mul_rhs</span>),
+                               <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_op</span>(<span class="ident">add_rhs</span>))
             },
             <span class="ident">op</span>::<span class="ident">Mov</span>(<span class="kw-2">ref</span> <span class="ident">op</span>) <span class="op">=&gt;</span> {
 
                 <span class="self">self</span>.<span class="ident">print_mov</span>(<span class="ident">inst</span>.<span class="ident">t</span>(), <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_inst</span>(<span class="ident">inst</span>), <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_op</span>(<span class="ident">op</span>))
             },
             <span class="ident">op</span>::<span class="ident">Ld</span>(<span class="ident">ld_type</span>, <span class="kw-2">ref</span> <span class="ident">addr</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> {
-
-                <span class="self">self</span>.<span class="ident">print_ld</span>(<span class="ident">ld_type</span>, <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">inst</span>.<span class="ident">mem_flag</span>()), <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_inst</span>(<span class="ident">inst</span>), <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_op</span>(<span class="ident">addr</span>))
+                <span class="self">self</span>.<span class="ident">print_ld</span>(<span class="ident">ld_type</span>, <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">inst</span>.<span class="ident">mem_flag</span>()),
+                              <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_inst</span>(<span class="ident">inst</span>),
+                              <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_op</span>(<span class="ident">addr</span>))
             },
             <span class="ident">op</span>::<span class="ident">St</span>(<span class="kw-2">ref</span> <span class="ident">addr</span>, <span class="kw-2">ref</span> <span class="ident">val</span>, <span class="kw">_</span>,  <span class="kw">_</span>) <span class="op">=&gt;</span> {
                 <span class="kw">let</span> <span class="ident">guard</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">inst</span>.<span class="ident">has_side_effects</span>() {
@@ -654,7 +730,7 @@
                 <span class="kw">let</span> <span class="ident">rounding</span> <span class="op">=</span> <span class="kw">match</span> (<span class="ident">op</span>.<span class="ident">t</span>(), <span class="ident">t</span>) {
                     (<span class="ident">Type</span>::<span class="ident">F</span>(<span class="kw">_</span>), <span class="ident">Type</span>::<span class="ident">I</span>(<span class="kw">_</span>)) <span class="op">=&gt;</span> <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Nearest</span>,
                     (<span class="ident">Type</span>::<span class="ident">I</span>(<span class="kw">_</span>), <span class="ident">Type</span>::<span class="ident">F</span>(<span class="kw">_</span>)) <span class="op">=&gt;</span> <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Nearest</span>,
-                    (<span class="ident">Type</span>::<span class="ident">F</span>(<span class="ident">x</span>), <span class="ident">Type</span>::<span class="ident">F</span>(<span class="ident">y</span>)) <span class="op">=&gt;</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">&gt;</span> <span class="ident">y</span> {<span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Nearest</span>} <span class="kw">else</span> {  <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span> },
+                    (<span class="ident">Type</span>::<span class="ident">F</span>(<span class="ident">x</span>), <span class="ident">Type</span>::<span class="ident">F</span>(<span class="ident">y</span>)) <span class="kw">if</span> <span class="ident">x</span> <span class="op">&gt;</span> <span class="ident">y</span> <span class="op">=&gt;</span> <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Nearest</span>,
                     <span class="kw">_</span> <span class="op">=&gt;</span> <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span>,
                 };
                 <span class="self">self</span>.<span class="ident">print_cast</span>(<span class="ident">op</span>.<span class="ident">t</span>(), <span class="ident">t</span>, <span class="ident">rounding</span>, <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_inst</span>(<span class="ident">inst</span>), <span class="kw-2">&amp;</span><span class="ident">namer</span>.<span class="ident">name_op</span>(<span class="ident">op</span>))

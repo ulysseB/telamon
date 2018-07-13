@@ -486,6 +486,13 @@
 <span id="486">486</span>
 <span id="487">487</span>
 <span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! The constraint description for the ir.</span>
 <span class="kw">use</span> <span class="ident">std</span>;
@@ -586,7 +593,14 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_onchange</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">choice</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">action</span>: <span class="ident">OnChangeAction</span>) {
-        <span class="self">self</span>.<span class="ident">choices</span>.<span class="ident">get_mut</span>(<span class="ident">choice</span>).<span class="ident">unwrap</span>().<span class="ident">add_onchange</span>(<span class="ident">action</span>);
+        <span class="kw">let</span> <span class="ident">inverse</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">action</span>.<span class="ident">applies_to_symmetric</span>()
+            <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">get_choice</span>(<span class="ident">choice</span>).<span class="ident">arguments</span>().<span class="ident">is_symmetric</span>()
+        {
+            <span class="prelude-val">Some</span>(<span class="ident">action</span>.<span class="ident">inverse</span>(<span class="self">self</span>))
+        } <span class="kw">else</span> { <span class="prelude-val">None</span> };
+        <span class="kw">let</span> <span class="ident">choice</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">choices</span>.<span class="ident">get_mut</span>(<span class="ident">choice</span>));
+        <span class="ident">choice</span>.<span class="ident">add_onchange</span>(<span class="ident">action</span>);
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">action</span>) <span class="op">=</span> <span class="ident">inverse</span> { <span class="ident">choice</span>.<span class="ident">add_onchange</span>(<span class="ident">action</span>); }
     }
 
     <span class="doccomment">/// Registers an filter call action for a filter on a choice.</span>
