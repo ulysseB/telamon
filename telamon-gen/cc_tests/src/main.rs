@@ -727,6 +727,34 @@ mod counter_cond {
     }
 }
 
+mod antisymmetric_increment {
+    define_ir! { struct set_0; }
+    generated_file!(antisymmetric_increment);
+    use self::antisymmetric_increment::*;
+    use std::sync::Arc;
+
+    /// Ensure counters are working when the increment is antisymmetric.
+    #[test]
+    fn antisymmetric_increment() {
+        let _ = ::env_logger::try_init();
+
+        let mut fun = ir::Function::default();
+        let item0 = ir::set_0::create(&mut fun, false);
+        let item1 = ir::set_0::create(&mut fun, false);
+        let mut store = DomainStore::new(&fun);
+        let actions = init_domain(&mut store, &mut fun).unwrap();
+        let mut fun = Arc::new(fun);
+        assert!(apply_decisions(actions, &mut fun, &mut store).is_ok());
+        assert_eq!(store.get_bar(item0), Range { min: 0, max: 1 });
+        assert_eq!(store.get_bar(item1), Range { min: 0, max: 1 });
+
+        let actions = vec![Action::Foo(item0, item1, Foo::A)];
+        assert!(apply_decisions(actions, &mut fun, &mut store).is_ok());
+        assert_eq!(store.get_bar(item0), Range { min: 1, max: 1 });
+        assert_eq!(store.get_bar(item1), Range { min: 0, max: 0 });
+    }
+}
+
 #[allow(unused_variables)]
 mod half_counter {
     define_ir! { struct inst; struct dim; }
