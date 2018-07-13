@@ -257,15 +257,13 @@ impl<'a> ChoiceAction<'a> {
                     filter_call, arguments,
                 }
             },
-            // FIXME: incr_condition is false for antisymmetric choices
-            ir::ChoiceAction::IncrCounter { counter, value } => {
+            ir::ChoiceAction::IncrCounter { counter, value, incr_condition } => {
                 let counter_choice = ctx.ir_desc.get_choice(&counter.choice);
+                let counter_def = counter_choice.choice_def();
                 let arguments = ast::vars_with_sets(counter_choice, &counter.vars, ctx);
                 let adaptator = ir::Adaptator::from_arguments(&counter.vars);
-                let counter_type = counter_choice.choice_def().value_type().adapt(&adaptator);
-                if let ir::ChoiceDef::Counter {
-                    kind, visibility, ref incr_condition, ..
-                } = *counter_choice.choice_def() {
+                let counter_type = counter_def.value_type().adapt(&adaptator);
+                if let ir::ChoiceDef::Counter { kind, visibility, .. } = *counter_def {
                     ChoiceAction::IncrCounter {
                         counter_name: &counter.choice,
                         incr_condition: value_set::print(incr_condition, ctx),
@@ -277,18 +275,15 @@ impl<'a> ChoiceAction<'a> {
                     }
                 } else { panic!() }
             },
-            // FIXME: incr_condition is false for antisymmetric choices
-            ir::ChoiceAction::UpdateCounter { counter, incr } => {
+            ir::ChoiceAction::UpdateCounter { counter, incr, incr_condition } => {
                 let counter_choice = ctx.ir_desc.get_choice(&counter.choice);
+                let counter_def = counter_choice.choice_def();
                 let incr_choice = ctx.ir_desc.get_choice(&incr.choice);
                 let arguments = ast::vars_with_sets(counter_choice, &counter.vars, ctx);
                 let incr_args = ast::vars_with_sets(incr_choice, &incr.vars, ctx);
                 let adaptator = ir::Adaptator::from_arguments(&counter.vars);
-                let value_type = counter_choice.choice_def().value_type().adapt(&adaptator);
-                use ir::ChoiceDef;
-                if let ChoiceDef::Counter {
-                    kind, visibility, ref incr_condition, ..
-                } = *counter_choice.choice_def() {
+                let value_type = counter_def.value_type().adapt(&adaptator);
+                if let ir::ChoiceDef::Counter { kind, visibility, .. } = *counter_def {
                     ChoiceAction::UpdateCounter {
                         name: &counter.choice,
                         incr_name: &incr.choice,

@@ -354,14 +354,18 @@ pub enum ChoiceAction {
     /// The choice runs a filter on another choice.
     Filter { choice: ir::ChoiceInstance, filter: FilterCall },
     /// Increments a counter if the increment condition is statisfied.
+    // FIXME: inverse the condition when needed
     IncrCounter {
         counter: ir::ChoiceInstance,
         value: ir::CounterVal,
+        incr_condition: ir::ValueSet,
     },
     /// Update a counter after the increment value is changed.
+    // FIXME: inverse the condition when needed
     UpdateCounter {
         counter: ir::ChoiceInstance,
-        incr: ir::ChoiceInstance
+        incr: ir::ChoiceInstance,
+        incr_condition: ir::ValueSet,
     },
     /// Triggers a lowering.
     Trigger {
@@ -422,13 +426,15 @@ impl Adaptable for ChoiceAction {
                 choice: choice.adapt(adaptator),
                 filter: filter.adapt(adaptator),
             },
-            IncrCounter { counter, value } => IncrCounter {
+            IncrCounter { counter, value, incr_condition } => IncrCounter {
                 counter: counter.adapt(adaptator),
                 value: value.adapt(adaptator),
+                incr_condition: incr_condition.adapt(adaptator),
             },
-            UpdateCounter { counter, incr } => UpdateCounter {
+            UpdateCounter { counter, incr, incr_condition } => UpdateCounter {
                 counter: counter.adapt(adaptator),
                 incr: incr.adapt(adaptator),
+                incr_condition: incr_condition.adapt(adaptator),
             },
             Trigger { id, condition, code, inverse_self_cond } => Trigger {
                 condition: condition.adapt(adaptator),
