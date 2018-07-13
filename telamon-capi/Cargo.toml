@@ -1,0 +1,26 @@
+[package]
+name = "telamon-capi"
+version = "0.1.0"
+authors = ["Basile Clement <basile@clement.pm>"]
+
+[features]
+cuda = [
+     "telamon/cuda",
+     "telamon-kernels/cuda",
+]
+
+[lib]
+name = "telamon_capi"
+crate-type = ["cdylib"]
+
+[build-dependencies]
+cbindgen = "0.6"
+
+[dependencies]
+libc = "0.2"
+
+[dependencies.telamon]
+path = "../"
+
+[dependencies.telamon-kernels]
+path = "../kernels"

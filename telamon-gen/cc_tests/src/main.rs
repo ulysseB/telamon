@@ -11,6 +11,8 @@ fn main() { panic!("use `cargo test` to run tests") }
 #[macro_use]
 mod ir_gen;
 
+mod fail;
+
 /// Test the type definitions.
 mod single_enum {
     define_ir!();
@@ -37,6 +39,9 @@ mod single_enum {
         assert_eq!(x, Foo::AB);
         x &= Foo::BC;
         assert_eq!(x, Foo::B);
+        // Test complement.
+        let fun = ir::Function::default();
+        assert_eq!(Action::Foo(Foo::A).complement(&fun), Some(Action::Foo(Foo::BC)));
 
         // Ensure `failed`, `all` and `is_failed` are working.
         assert!(Foo::FAILED.is_failed());
@@ -82,6 +87,11 @@ mod single_enum {
         let mut all0_2 = all0;
         all0_2.insert(all0);
         assert_eq!(all0_2, all0);
+
+        // Test action complement.
+        let fun = ir::Function::default();
+        assert_eq!(Action::Bar(NumericSet::all(&[1, 4])).complement(&fun),
+                   Some(Action::Bar(NumericSet::all(&[2, 8]))));
 
         // Test comparison operators.
         assert!(all0.lt(Range::new_eq(&Range::ALL, 9)));
@@ -714,6 +724,34 @@ mod counter_cond {
         let actions = vec![Action::Foo(dim1, Foo::A), Action::Foo(dim2, Foo::A)];
         assert!(apply_decisions(actions, &mut fun, &mut store).is_ok());
         assert_eq!(store.get_foo(dim0), Foo::B);
+    }
+}
+
+mod antisymmetric_increment {
+    define_ir! { struct set_0; }
+    generated_file!(antisymmetric_increment);
+    use self::antisymmetric_increment::*;
+    use std::sync::Arc;
+
+    /// Ensure counters are working when the increment is antisymmetric.
+    #[test]
+    fn antisymmetric_increment() {
+        let _ = ::env_logger::try_init();
+
+        let mut fun = ir::Function::default();
+        let item0 = ir::set_0::create(&mut fun, false);
+        let item1 = ir::set_0::create(&mut fun, false);
+        let mut store = DomainStore::new(&fun);
+        let actions = init_domain(&mut store, &mut fun).unwrap();
+        let mut fun = Arc::new(fun);
+        assert!(apply_decisions(actions, &mut fun, &mut store).is_ok());
+        assert_eq!(store.get_bar(item0), Range { min: 0, max: 1 });
+        assert_eq!(store.get_bar(item1), Range { min: 0, max: 1 });
+
+        let actions = vec![Action::Foo(item0, item1, Foo::A)];
+        assert!(apply_decisions(actions, &mut fun, &mut store).is_ok());
+        assert_eq!(store.get_bar(item0), Range { min: 1, max: 1 });
+        assert_eq!(store.get_bar(item1), Range { min: 0, max: 0 });
     }
 }
 

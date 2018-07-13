@@ -32,6 +32,7 @@ fn main() {
             .compile("exh.a");
 
     // Compile the parser.
+    add_dependency("src/exh.c");
     add_dependency("src/parser.lalrpop");
     lalrpop::Configuration::new().use_cargo_dir_conventions().process().unwrap();
 }

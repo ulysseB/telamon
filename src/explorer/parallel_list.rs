@@ -74,14 +74,14 @@ impl<'a> ParallelCandidateList<'a> {
                 return None;
             }
             lock.1 -= 1;
-            lock = self.wakeup.wait(lock).unwrap();
+            lock = unwrap!(self.wakeup.wait(lock));
             lock.1 += 1;
         }
     }
 
     /// Acquire the lock to the candidate list
     fn lock(&self) -> std::sync::MutexGuard<(CandidateList<'a>, usize)> {
-        self.mutex.lock().unwrap()
+        unwrap!(self.mutex.lock())
     }
 }
 
@@ -126,7 +126,7 @@ impl<'a> CandidateList<'a> {
     pub fn update_cut(&mut self, new_cut: f64) {
         self.cut = new_cut;
         while self.queue.max().map_or(false, |x| x.bound.value() >= new_cut) {
-            let candidate = self.queue.pop_max().unwrap();
+            let candidate = unwrap!(self.queue.pop_max());
             self.drop_candidate(candidate);
         }
     }

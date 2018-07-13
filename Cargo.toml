@@ -54,10 +54,14 @@ rand = "0.4.2"
 rayon = "1.0.1"
 regex = "0.2.10"
 rustc-serialize = "0.3.24"
+serde = "1.0"
+serde_derive = "1.0"
+toml = "0.4"
 std-semaphore = "0.1.0"
 rpds = "0.5.0"
 binary-heap-plus = "0.1.4"
 tempfile = "3.0.1"
+xdg = "^2.1"
 
 [dependencies.telamon-utils]
 path = "telamon-utils"
@@ -83,4 +87,5 @@ members = [
     "telamon-gen",
     "telamon-utils",
     "telamon-gen/cc_tests",
+    "telamon-capi",
 ]

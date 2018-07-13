@@ -22,13 +22,13 @@ statement: ast::Statement = {
     stmt_enum => {
         ast::Statement::ChoiceDef(<>)
     },
-    <beg: @L> spanned<trigger> <foralls: (forall <var_def> ":")*> <code: code> when
-        <conditions: non_empty_list<condition, and>> <end: @R> => {
+    spanned<trigger> <foralls: (forall <var_def> ":")*> <code: code> when
+        <conditions: non_empty_list<condition, and>> => {
             ast::Statement::TriggerDef { foralls, conditions, code }
     },
-    <doc: doc?> <beg: @L> spanned<define> <visibility: counter_visibility?> counter
+    <doc: doc?> spanned<define> <visibility: counter_visibility?> counter
                 <name: choice_ident>
-        "(" <vars: choice_vars> ")" ":" <end: @R> <body: counter_body> end => {
+        "(" <vars: choice_vars> ")" ":" <body: counter_body> end => {
         let name = RcStr::new(name);
         let visibility = visibility.unwrap_or(ir::CounterVisibility::Full);
             ast::Statement::ChoiceDef(ast::ChoiceDef::CounterDef(

@@ -35,6 +35,7 @@ pub mod dim {
 pub mod op {
     pub use super::operator::Operator::*;
     pub use super::operator::Rounding;
+    pub use super::operator::BinOp;
 }
 
 /// Defines traits to import in the environment to use the IR.

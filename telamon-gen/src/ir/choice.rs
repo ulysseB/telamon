@@ -76,9 +76,6 @@ impl Choice {
     /// Adds an action to perform when the `Choice` is constrained.
     pub fn add_onchange(&mut self, action: OnChangeAction) {
         // TODO(cc_perf): normalize and merge forall vars when possible
-        if self.arguments().is_symmetric() && action.applies_to_symmetric() {
-            self.on_change.push(action.inverse());
-        }
         self.on_change.push(action);
     }
 
@@ -323,15 +320,15 @@ pub struct OnChangeAction {
 impl OnChangeAction {
     /// Indicates if the action sould also be registered for the symmetric of the choice,
     /// if applicable.
-    fn applies_to_symmetric(&self) -> bool { self.action.applies_to_symmetric() }
+    pub fn applies_to_symmetric(&self) -> bool { self.action.applies_to_symmetric() }
 
     /// Returns the action for the symmetric of the choice.
-    fn inverse(&self) -> Self {
+    pub fn inverse(&self, ir_desc: &ir::IrDesc) -> Self {
         let ref mut adaptator = ir::Adaptator::default();
         adaptator.set_variable(ir::Variable::Arg(0), ir::Variable::Arg(1));
         adaptator.set_variable(ir::Variable::Arg(1), ir::Variable::Arg(0));
         let mut out = self.adapt(adaptator);
-        out.action.inverse_self();
+        out.action.inverse_self(ir_desc);
         out
     }
 }
@@ -349,10 +346,23 @@ impl Adaptable for OnChangeAction {
 /// An action to perform,
 #[derive(Clone, Debug)]
 pub enum ChoiceAction {
+    /// The choice runs all its filters on itself.
     FilterSelf,
+    /// The choice runs a filter on another choice.
     Filter { choice: ir::ChoiceInstance, filter: FilterCall },
-    IncrCounter { choice: ir::ChoiceInstance, value: ir::CounterVal, },
-    UpdateCounter { counter: ir::ChoiceInstance, incr: ir::ChoiceInstance },
+    /// Increments a counter if the increment condition is statisfied.
+    IncrCounter {
+        counter: ir::ChoiceInstance,
+        value: ir::CounterVal,
+        incr_condition: ir::ValueSet,
+    },
+    /// Update a counter after the increment value is changed.
+    UpdateCounter {
+        counter: ir::ChoiceInstance,
+        incr: ir::ChoiceInstance,
+        incr_condition: ir::ValueSet,
+    },
+    /// Triggers a lowering.
     Trigger {
         id: usize,
         condition: ir::ChoiceCondition,
@@ -393,10 +403,13 @@ impl ChoiceAction {
     }
 
     /// Inverse references to the value of the choice the action is registered in.
-    pub fn inverse_self(&mut self) {
-        match *self {
-            ChoiceAction::Trigger { ref mut inverse_self_cond, .. } =>
+    pub fn inverse_self(&mut self, ir_desc: &ir::IrDesc) {
+        match self {
+            ChoiceAction::Trigger { inverse_self_cond, .. } =>
                 *inverse_self_cond = !*inverse_self_cond,
+            ChoiceAction::IncrCounter { incr_condition, .. } |
+            ChoiceAction::UpdateCounter { incr_condition, .. } =>
+                incr_condition.inverse(ir_desc),
             _ => (),
         }
     }
@@ -405,24 +418,26 @@ impl ChoiceAction {
 impl Adaptable for ChoiceAction {
     fn adapt(&self, adaptator: &ir::Adaptator) -> Self {
         use self::ChoiceAction::*;
-        match *self {
+        match self {
             FilterSelf => FilterSelf,
-            Filter { ref choice, ref filter } => Filter {
+            Filter { choice, filter } => Filter {
                 choice: choice.adapt(adaptator),
                 filter: filter.adapt(adaptator),
             },
-            IncrCounter { ref choice, ref value } => IncrCounter {
-                choice: choice.adapt(adaptator),
+            IncrCounter { counter, value, incr_condition } => IncrCounter {
+                counter: counter.adapt(adaptator),
                 value: value.adapt(adaptator),
+                incr_condition: incr_condition.adapt(adaptator),
             },
-            UpdateCounter { ref counter, ref incr } => UpdateCounter {
+            UpdateCounter { counter, incr, incr_condition } => UpdateCounter {
                 counter: counter.adapt(adaptator),
                 incr: incr.adapt(adaptator),
+                incr_condition: incr_condition.adapt(adaptator),
             },
-            Trigger { id, ref condition, ref code, inverse_self_cond } => Trigger {
+            Trigger { id, condition, code, inverse_self_cond } => Trigger {
                 condition: condition.adapt(adaptator),
                 code: code.adapt(adaptator),
-                id, inverse_self_cond,
+                id: *id, inverse_self_cond: *inverse_self_cond,
             },
         }
     }
