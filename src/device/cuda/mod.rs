@@ -2,7 +2,6 @@
 #[cfg(feature="cuda")]
 mod api;
 mod context;
-#[cfg(feature="cuda")]
 mod kernel;
 mod gpu;
 mod mem_model;
@@ -11,7 +10,7 @@ mod printer;
 #[cfg(not(feature="cuda"))]
 mod fake;
 #[cfg(not(feature="cuda"))]
-use self::fake::*;
+use self::fake as api;
 
 // Constructs to retrieve information on the GPU, that are not needed for the regular
 // operation of Telamon and thus only present if the cuda feature is.
