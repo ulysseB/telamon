@@ -67,6 +67,16 @@ pub struct Spanned<Y> {
     pub data: Y,
 }
 
+impl<Y> Spanned<Y> {
+    pub fn new(data: Y) -> Spanned<Y> {
+        Spanned {
+            beg: Position::default(),
+            end: Position::default(),
+            data,
+        }
+    }
+}
+
 pub type YyExtraType = Spanned<YyLval>;
 
 #[derive(Copy, Clone, Debug)]

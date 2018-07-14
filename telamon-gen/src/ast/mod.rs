@@ -1,9 +1,16 @@
 #![allow(unused_variables)]
 
 //! Syntaxic tree for the constraint description.
+
+mod set;
+mod trigger;
+mod choice;
+mod context;
+mod constrain;
+
 use constraint::Constraint as TypedConstraint;
 use constraint::dedup_inputs;
-use ir::{self, Adaptable};
+use ir;
 use itertools::Itertools;
 use print;
 use regex::Regex;
@@ -13,10 +20,18 @@ use std::collections::{BTreeSet, hash_map};
 use std::ops::Deref;
 use utils::*;
 
-pub use super::lexer::Spanned;
+pub use self::set::SetDef;
+pub use self::choice::integer::IntegerDef;
+pub use self::choice::enumeration::EnumDef;
+pub use self::choice::ChoiceDef;
+use self::trigger::TriggerDef;
+use self::context::TypingContext;
+pub use self::constrain::Constraint;
+
+pub use super::lexer::{Position, Spanned};
 
 /// Hint is a token representation.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Hint {
     /// Set interface.
     Set,
@@ -32,718 +47,181 @@ pub enum Hint {
     IntegerAttribute,
 }
 
-/// TypeEror is the error representation of telamon's
+impl Hint {
+    fn from(statement: &Statement) -> Self {
+        match statement {
+            Statement::SetDef(..) => Hint::Set,
+            Statement::ChoiceDef(ChoiceDef::EnumDef(..)) => Hint::Enum,
+            Statement::ChoiceDef(ChoiceDef::IntegerDef(..)) => Hint::Integer,
+            _ => unreachable!(),
+        }
+    }
+}
+
+/// TypeEror is the error representation of telamon's.
 #[derive(Debug, PartialEq)]
 pub enum TypeError {
     /// Redefinition of a name and hint..
-    Redefinition(String, Hint),
+    Redefinition(Spanned<Hint>, Spanned<String>),
     /// Undefinition of set, enum or field.
-    Undefined(String),
+    Undefined(Spanned<String>),
     /// Unvalid arguments of a symmetric enum.
     BadSymmetricArg(Vec<VarDef>),
+    /// Missing
+    MissingEntry(String, Spanned<String>),
 }
 
-/// Syntaxic tree for the constraint description.
+/// CheckContext is a type system.
+#[derive(Debug, Default)]
+struct CheckerContext {
+    /// Map Name of unique identifiant.
+    hash: HashMap<String, Spanned<Hint>>,
+}
+
+impl CheckerContext {
+    /// This checks the undefined of EnumDef or IntegerDef.
+    fn check_undefined_choicedef(
+        &self, statement: ChoiceDef
+    ) -> Result<(), TypeError> {
+        match statement {
+            ChoiceDef::EnumDef(EnumDef {
+                name: Spanned { beg, end, data: _ }, doc: _, variables, .. }) |
+            ChoiceDef::IntegerDef(IntegerDef {
+                name: Spanned { beg, end, data: _ }, doc: _, variables, .. }) => {
+                for VarDef { name: _, set: SetRef { name, .. } } in variables {
+                    let name: &String = name.deref();
+                    if !self.hash.contains_key(name) {
+                        Err(TypeError::Undefined(Spanned {
+                            beg, end,
+                            data: name.to_owned(),
+                        }))?;
+                    }
+                }
+            },
+            _ => {},
+        }
+        Ok(())
+    }
+
+    /// This checks the undefined of SetDef superset and arg.
+    fn check_undefined_setdef(
+        &self, statement: &SetDef
+    ) -> Result<(), TypeError> {
+        match statement {
+            SetDef { name: Spanned { beg, end, data: ref name},
+            doc: _, arg, superset, disjoint: _, keys, ..  } => {
+                if let Some(VarDef { name: _, set: SetRef { name, .. } }) = arg {
+                    let name: &String = name.deref();
+                    if !self.hash.contains_key(name) {
+                        Err(TypeError::Undefined(Spanned {
+                            beg: *beg, end: *end, data: name.to_owned()
+                        }))?;
+                    }
+                }
+                if let Some(SetRef { name: supername, .. }) = superset {
+                    let name: &String = supername.deref();
+                    if !self.hash.contains_key(name) {
+                        Err(TypeError::Undefined(Spanned {
+                            beg: *beg, end: *end, data: name.to_owned()
+                        }))?;
+                    }
+                }
+            },
+        }
+        Ok(())
+    }
+    
+    /// This checks the redefinition of SetDef, EnumDef and IntegerDef.
+    fn check_redefinition(
+        &mut self, statement: &Statement
+    ) -> Result<(), TypeError> {
+        match statement {
+            Statement::SetDef(SetDef { name: Spanned { beg, end, data: name }, .. }) |
+            Statement::ChoiceDef(ChoiceDef::EnumDef(
+                EnumDef { name: Spanned { beg, end, data: name, }, ..  })) |
+            Statement::ChoiceDef(ChoiceDef::IntegerDef(
+                IntegerDef { name: Spanned { beg, end, data: name }, .. })) => {
+                let data: Hint = Hint::from(&statement);
+                let value: Spanned<Hint> = Spanned { beg: *beg, end: *end, data };
+                if let Some(pre) = self.hash.insert(name.to_owned(), value) {
+                    Err(TypeError::Redefinition(pre, Spanned {
+                        beg: *beg, end: *end, data: name.to_owned(),
+                    }))
+                } else {
+                    Ok(())
+                }
+            },
+            _ => Ok(()),
+        }
+    }
+
+    /// Type checks the condition.
+    pub fn type_check(
+        &mut self, statement: &Statement
+    ) -> Result<(), TypeError> {
+        self.check_redefinition(&statement)?;
+        match statement {
+            Statement::ChoiceDef(ChoiceDef::EnumDef(ref enumeration)) => {
+                self.check_undefined_choicedef(
+                    ChoiceDef::EnumDef(enumeration.clone()))?;
+            },
+            Statement::ChoiceDef(
+                ChoiceDef::IntegerDef(ref integer)
+            ) => {
+                self.check_undefined_choicedef(
+                    ChoiceDef::IntegerDef(integer.clone()))?;
+            },
+            Statement::SetDef(ref set) => {
+                self.check_undefined_setdef(set)?;
+            },
+            _ => {},
+        }
+        Ok(())
+    }
+}
+
 #[derive(Debug)]
-pub struct Ast { pub statements: Vec<Spanned<Statement>> }
+pub struct Ast { 
+    pub statements: Vec<Statement>,
+}
 
 impl Ast {
     /// Generate the defintion of choices and the list of constraints.
     pub fn type_check(self)
-        -> Result<(ir::IrDesc, Vec<TypedConstraint>), Spanned<TypeError>> {
+        -> Result<(ir::IrDesc, Vec<TypedConstraint>), TypeError> {
+        let mut checker = CheckerContext::default();
         let mut context = TypingContext::default();
-        for statement in self.statements { context.add_statement(statement)? }
+
+        for statement in self.statements {
+            checker.type_check(&statement)?;
+            statement.type_check()?;
+            context.add_statement(statement);
+        }
         Ok(context.finalize())
-    }
-}
-
-#[derive(Default)]
-struct TypingContext {
-    ir_desc: ir::IrDesc,
-    set_defs: Vec<SetDef>,
-    choice_defs: Vec<ChoiceDef>,
-    triggers: Vec<TriggerDef>,
-    constraints: Vec<Constraint>,
-    checks: Vec<Check>,
-}
-
-impl TypingContext {
-
-    /// A Set's name is unique.
-    pub fn check_set_redefinition(
-        &self, set_def: &SetDef
-    ) -> Result<(), TypeError> {
-        if self.set_defs.contains(set_def) {
-            Err(TypeError::Redefinition(set_def.name.to_owned(), Hint::Set))?
-        }
-        Ok(())
-    }
-
-    /// A Set parametric set should be defined
-    pub fn check_set_parametric(
-        &self, set_def: &SetDef
-    ) -> Result<(), TypeError> {
-        if let Some(VarDef { name: _, ref set }) = set_def.arg {
-            let name: &String = set.name.deref();
-            if self.set_defs.iter().find(|set| set.name.eq(name)).is_none() {
-                Err(TypeError::Undefined(name.to_owned()))?
-            }
-        }
-        Ok(())
-    }
-
-    /// A Set superset attribut should be defined
-    pub fn check_superset_parametric(
-        &self, set_def: &SetDef
-    ) -> Result<(), TypeError> {
-        if let Some(SetRef { ref name, .. }) = set_def.superset {
-            let name: &String = name.deref();
-            if self.set_defs.iter().find(|set| set.name.eq(name)).is_none() {
-                Err(TypeError::Undefined(name.to_owned()))?
-            }
-        }
-        Ok(())
-    }
-
-    /// A Enum's name is unique.
-    pub fn check_enum_redefinition(
-        &self, choice_def: &ChoiceDef
-    ) -> Result<(), TypeError> {
-        if self.choice_defs.contains(choice_def) {
-            if let ChoiceDef::EnumDef(enum_def) = choice_def {
-                Err(TypeError::Redefinition(enum_def.name.to_owned(), Hint::Enum))?
-            }
-        }
-        Ok(())
-    }
-
-    /// A Enum parametric set should be defined
-    pub fn check_enum_parametric(
-        &self, choice_def: &ChoiceDef
-    ) -> Result<(), TypeError> {
-        if let ChoiceDef::EnumDef(enum_def) = choice_def {
-            for VarDef { name: _, set } in enum_def.variables.iter() {
-                let name: &String = set.name.deref();
-                if self.set_defs.iter().find(|set| set.name.eq(name)).is_none() {
-                    Err(TypeError::Undefined(name.to_owned()))?
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-impl TypingContext {
-    /// Adds a statement to the typing context.
-    fn add_statement(&mut self, statement: Spanned<Statement>)
-        -> Result<(), Spanned<TypeError>> {
-        match statement {
-            Spanned { beg, end, data: d @ Statement::SetDef { .. } } => {
-                let set_def: SetDef =
-                    Result::<SetDef, TypeError>::from(d)
-                           .map_err(|e| Spanned { beg, end, data: e })?;
-
-                self.check_set_redefinition(&set_def)
-                       .map_err(|e| Spanned { beg, end, data: e })?;
-                self.check_set_parametric(&set_def)
-                       .map_err(|e| Spanned { beg, end, data: e })?;
-                self.check_superset_parametric(&set_def)
-                       .map_err(|e| Spanned { beg, end, data: e })?;
-                Ok(self.set_defs.push(set_def))
-            },
-            Spanned { beg, end, data: d @ Statement::EnumDef { .. } } |
-            Spanned { beg, end, data: d @ Statement::IntegerDef { .. } } |
-            Spanned { beg, end, data: d @ Statement::CounterDef { .. } } => {
-                let choice_def: ChoiceDef =
-                    Result::<ChoiceDef, TypeError>::from(d)
-                           .map_err(|e| Spanned { beg, end, data: e })?;
-
-               self.check_enum_redefinition(&choice_def)
-                       .map_err(|e| Spanned { beg, end, data: e })?;
-               self.check_enum_parametric(&choice_def)
-                       .map_err(|e| Spanned { beg, end, data: e })?;
-               Ok(self.choice_defs.push(choice_def))
-            },
-            Spanned { beg, end,
-                data: Statement::TriggerDef { foralls, conditions, code }
-            } => {
-                Ok(self.triggers.push(TriggerDef {
-                    foralls: foralls,
-                    conditions: conditions,
-                    code: code,
-                }))
-            },
-            Spanned { beg, end,
-                data: Statement::Require(constraint)
-            } => Ok(self.constraints.push(constraint)),
-        }
-    }
-
-    /// Type-checks the statements in the correct order.
-    fn finalize(mut self) -> (ir::IrDesc, Vec<TypedConstraint>) {
-        for def in std::mem::replace(&mut self.set_defs, vec![]) {
-            self.type_set_def(
-                def.name, def.arg, def.superset, def.keys, def.disjoint, def.quotient
-            );
-        }
-        for choice_def in std::mem::replace(&mut self.choice_defs, vec![]) {
-            match choice_def {
-                ChoiceDef::EnumDef(EnumDef { name, doc, variables, statements }) =>
-                    self.register_enum(name, doc, variables, statements),
-                ChoiceDef::CounterDef(CounterDef { name, doc, visibility, vars, body, }) =>
-                    self.register_counter(name, doc, visibility, vars, body),
-                ChoiceDef::IntegerDef(def) => self.define_integer(def),
-            }
-        }
-        for trigger in std::mem::replace(&mut self.triggers, vec![]) {
-            self.register_trigger(trigger.foralls, trigger.conditions, trigger.code);
-        }
-        let constraints = {
-            let ir_desc = &self.ir_desc;
-            self.constraints.into_iter()
-                .flat_map(move |constraint| constraint.type_check(ir_desc))
-                .collect_vec()
-        };
-        for check in self.checks { check.check(&self.ir_desc); }
-        (self.ir_desc, constraints)
-    }
-
-    fn type_set_def(&mut self, name: String,
-                    arg_def: Option<VarDef>,
-                    superset: Option<SetRef>,
-                    keys: Vec<(ir::SetDefKey, Option<VarDef>, String)>,
-                    disjoints: Vec<String>,
-                    quotient: Option<Quotient>) {
-        trace!("defining set {}", name);
-        let mut var_map = VarMap::default();
-        let arg_name = arg_def.as_ref().map(|var| "$".to_string() + &var.name);
-        let arg = arg_def.clone().map(|arg| var_map.decl_argument(&self.ir_desc, arg));
-        let superset = superset.map(|set| set.type_check(&self.ir_desc, &var_map));
-        for disjoint in &disjoints { self.ir_desc.get_set_def(disjoint); }
-        let mut keymap = HashMap::default();
-        let mut reverse = None;
-        for (key, var, mut value) in keys {
-            let mut env = key.env();
-            // Add the set argument to the environement.
-            if let Some(ref arg_name) = arg_name {
-                // TODO(cleanup): use ir::Code to avoid using a dummy name.
-                // Currently, we may have a collision on the $var name.
-                if key.is_arg_in_env() {
-                    value = value.replace(arg_name, "$var");
-                    env.push("var");
-                }
-            }
-            // Handle the optional forall.
-            if key == ir::SetDefKey::Reverse {
-                let var_def = var.as_ref().unwrap();
-                let var_name = "$".to_string() + &var_def.name;
-                value = value.replace(&var_name, "$var");
-                env.push("var");
-            } else { assert!(var.is_none()); }
-            // Type-check the key.
-            for var in get_code_vars(&value) {
-                assert!(env.contains(&(&var as &str)),
-                        "unexpected variable ${} for key {:?}", var, key);
-            }
-            // Register the key.
-            if key == ir::SetDefKey::Reverse {
-                let set = var.unwrap().set.type_check(&self.ir_desc, &VarMap::default());
-                assert!(superset.as_ref().unwrap().is_subset_of_def(&set));
-                assert!(std::mem::replace(&mut reverse, Some((set, value))).is_none());
-            } else {
-                assert!(keymap.insert(key, value).is_none());
-            }
-        }
-        // Ensure required keys are present
-        assert_eq!(arg.is_some() && superset.is_some(), reverse.is_some(),
-                   "reverse key is missing");
-        for key in &ir::SetDefKey::REQUIRED { assert!(keymap.contains_key(key)); }
-        if superset.is_some() {
-            assert!(keymap.contains_key(&ir::SetDefKey::FromSuperset));
-        }
-        let def = ir::SetDef::new(name, arg, superset, reverse, keymap, disjoints);
-        if let Some(quotient) = quotient {
-            self.create_quotient(&def, quotient, arg_def);
-        }
-        self.ir_desc.add_set_def(def);
-    }
-
-    /// Creates the choices that implement the quotient set.
-    fn create_quotient(&mut self, set: &ir::SetDef,
-                       quotient: Quotient,
-                       arg: Option<VarDef>) {
-        trace!("defining quotient {}", set.name());
-        assert!(set.attributes().contains_key(&ir::SetDefKey::AddToSet));
-        let repr_name = quotient.representant;
-        // Create decisions to back the quotient set
-        self.create_repr_choice(repr_name.clone(), set, arg.clone(),
-                                quotient.item.name.clone());
-        let item_name = quotient.item.name.clone();
-        let arg_name = arg.as_ref().map(|x| x.name.clone());
-        let forall_vars = arg.clone().into_iter()
-            .chain(std::iter::once(quotient.item)).collect_vec();
-        let counter_name = self.create_repr_counter(
-            set.name().clone(), &repr_name, arg.clone(), item_name.clone(),
-            forall_vars.clone(),
-            RcStr::new(quotient.equiv_relation.0),
-            quotient.equiv_relation.1);
-        // Generate the code that set an item as representant.
-        let trigger_code = print::add_to_quotient(
-            set, &repr_name, &counter_name, &item_name, &arg_name);
-        // Constraint the representative value.
-        let forall_names = forall_vars.iter().map(|x| x.name.clone()).collect_vec();
-        let repr_instance = ChoiceInstance { name: repr_name, vars: forall_names.clone() };
-        let counter_instance = ChoiceInstance { name: counter_name, vars: forall_names };
-        let not_repr = Condition::new_is_bool(repr_instance.clone(), false);
-        let counter_leq_zero = Condition::CmpCode {
-            lhs: counter_instance, rhs: "0".into(), op: ir::CmpOp::Leq
-        };
-        // Add the constraints `repr is FALSE || dividend is true` and
-        // `repr is FALSE || counter <= 0`.
-        let mut disjunctions = quotient.conditions.iter()
-            .map(|c| vec![not_repr.clone(), c.clone()]).collect_vec();
-        disjunctions.push(vec![not_repr, counter_leq_zero.clone()]);
-        let repr_constraints = Constraint::new(forall_vars.clone(), disjunctions);
-        self.constraints.push(repr_constraints);
-        // Add the constraint `repr is TRUE || counter > 0 || dividend is false`.
-        let repr_true = Condition::new_is_bool(repr_instance, true);
-        let mut counter_gt_zero = counter_leq_zero.clone();
-        counter_gt_zero.negate();
-        let mut repr_true_conditions = vec![repr_true.clone(), counter_gt_zero];
-        for mut cond in quotient.conditions.iter().cloned() {
-            cond.negate();
-            repr_true_conditions.push(cond);
-        }
-        self.constraints.push(Constraint {
-            forall_vars: forall_vars.clone(),
-            disjunctions: vec![repr_true_conditions],
-            restrict_fragile: false,
-        });
-        // Add the constraint `item in set => repr is TRUE`.
-        let quotient_item_def = VarDef {
-            name: item_name,
-            set: SetRef { name: set.name().clone(), var: arg_name }
-        };
-        let item_in_set_foralls = arg.into_iter()
-            .chain(std::iter::once(quotient_item_def)).collect();
-        self.constraints.push(Constraint::new(item_in_set_foralls, vec![vec![repr_true]]));
-        // Generate the trigger that sets the repr to TRUE and add the item to the set.
-        let mut trigger_conds = quotient.conditions;
-        trigger_conds.push(counter_leq_zero);
-        self.triggers.push(TriggerDef {
-            foralls: forall_vars, conditions: trigger_conds, code: trigger_code,
-        });
-    }
-
-    /// Creates a boolean choice that indicates if an object represents a givne class.
-    fn create_repr_choice(&mut self, name: RcStr,
-                          set: &ir::SetDef,
-                          arg: Option<VarDef>,
-                          item_name: RcStr) {
-        let bool_str: RcStr = "Bool".into();
-        let def = ir::ChoiceDef::Enum(bool_str.clone());
-        let mut vars = Vec::new();
-        if let Some(arg) = arg.as_ref() {
-            vars.push((arg.name.clone(), set.arg().unwrap().clone()));
-        }
-        vars.push((item_name, set.superset().unwrap().clone()));
-        let args = ir::ChoiceArguments::new(vars, false, false);
-        let mut repr = ir::Choice::new(name, None, args, def);
-        let false_value_set = std::iter::once("FALSE".into()).collect();
-        repr.add_fragile_values(ir::ValueSet::enum_values(bool_str, false_value_set));
-        self.ir_desc.add_choice(repr);
-    }
-
-    /// Creates a counter for the number of objects that can represent another object in
-    /// a quotient set. Returns the name of the counter.
-    fn create_repr_counter(&mut self, set_name: RcStr,
-                           repr_name: &str,
-                           arg: Option<VarDef>,
-                           item_name: RcStr,
-                           vars: Vec<VarDef>,
-                           equiv_choice_name: RcStr,
-                           equiv_values: Vec<RcStr>) -> RcStr {
-        // Create the increment condition
-        self.checks.push(Check::IsSymmetric {
-            choice: equiv_choice_name.clone(), values: equiv_values.clone()
-        });
-        let rhs_name = RcStr::new(format!("{}_repr", item_name));
-        let rhs_set = SetRef {
-            name: set_name,
-            var: arg.as_ref().map(|d| d.name.clone())
-        };
-        let equiv_choice = ChoiceInstance {
-            name: equiv_choice_name,
-            vars: vec![item_name, rhs_name.clone()],
-        };
-        let condition = Condition::Is { lhs: equiv_choice, rhs: equiv_values, is: true };
-        // Create the counter.
-        let name = RcStr::new(format!("{}_class_counter", repr_name));
-        let visibility = ir::CounterVisibility::HiddenMax;
-        let body = CounterBody {
-            base: "0".to_string(),
-            conditions: vec![condition],
-            iter_vars: vec![VarDef { name: rhs_name, set: rhs_set }],
-            kind: ir::CounterKind::Add,
-            value: CounterVal::Code("1".to_string()),
-        };
-        self.choice_defs.push(ChoiceDef::CounterDef(CounterDef {
-            name: name.clone(), doc: None, visibility, vars, body,
-        }));
-        name
-    }
-
-    /// Registers an enum definition.
-    fn register_enum(&mut self, name: String, doc: Option<String>, vars: Vec<VarDef>,
-                     statements: Vec<EnumStatement>) {
-        trace!("defining enum {}", name);
-        let doc = doc.map(RcStr::new);
-        let enum_name = RcStr::new(::to_type_name(&name));
-        let choice_name = RcStr::new(name);
-        let mut stmts = EnumStatements::default();
-        for s in statements { stmts.add_statement(s); }
-        // Register constraints
-        for (value, constraint) in stmts.constraints {
-            let choice = choice_name.clone();
-            self.register_value_constraint(choice, vars.clone(), value, constraint);
-        }
-        // Typechek the anti-symmetry mapping.
-        let (symmetric, inverse) = match stmts.symmetry {
-            None => (false, false),
-            Some(Symmetry::Symmetric) => (true, false),
-            Some(Symmetry::AntiSymmetric(..)) => (true, true),
-        };
-        let mut var_map = VarMap::default();
-        let vars = vars.into_iter().map(|v| {
-            let name = v.name.clone();
-            (name, var_map.decl_argument(&self.ir_desc, v))
-        }).collect();
-        let arguments = ir::ChoiceArguments::new(vars, symmetric, inverse);
-        let inverse = if let Some(Symmetry::AntiSymmetric(mapping)) = stmts.symmetry {
-            {
-                let mut mapped = HashSet::default();
-                for &(ref lhs, ref rhs) in &mapping {
-                    assert!(stmts.values.contains_key(lhs), "unknown value {}", lhs);
-                    assert!(stmts.values.contains_key(rhs), "unknown value {}", rhs);
-                    assert!(mapped.insert(lhs), "{} is mapped twice", lhs);
-                    assert!(mapped.insert(rhs), "{} is mapped twice", rhs);
-                }
-            }
-            Some(mapping)
-        } else { None };
-        let mut enum_ = ir::Enum::new(enum_name.clone(), doc.clone(), inverse);
-        // Register values and aliases
-        for (name, doc) in stmts.values { enum_.add_value(name, doc); }
-        for name in stmts.aliases.keys().cloned().collect_vec() {
-            assert!(!enum_.values().contains_key(&name));
-            let mut expanded_values = HashSet::default();
-            let mut values = stmts.aliases.get_mut(&name).unwrap().1.drain().collect_vec();
-            while let Some(val) = values.pop() {
-                if enum_.values().contains_key(&val) {
-                    expanded_values.insert(val);
-                } else if name == val {
-                    panic!("loop in alias definition");
-                } else if let Some(&(_, ref sub_vals)) = stmts.aliases.get(&val) {
-                    values.extend(sub_vals.iter().cloned());
-                } else {
-                    panic!("undefined value in alias definition");
-                }
-            }
-            stmts.aliases.get_mut(&name).unwrap().1 = expanded_values;
-        }
-        // Register aliases
-        for (name, (doc, values)) in stmts.aliases { enum_.add_alias(name, values, doc); }
-        // Register the enum and the choice.
-        self.ir_desc.add_enum(enum_);
-        let choice_def = ir::ChoiceDef::Enum(enum_name);
-        self.ir_desc.add_choice(ir::Choice::new(choice_name, doc, arguments, choice_def));
-    }
-
-    /// Defines an integer choice.
-    fn define_integer(&mut self, def: IntegerDef) {
-        let choice_name = RcStr::new(def.name);
-        let doc = def.doc.map(RcStr::new);
-        let mut var_map = VarMap::default();
-        let vars = def.variables.into_iter().map(|v| {
-            let name = v.name.clone();
-            (name, var_map.decl_argument(&self.ir_desc, v))
-        }).collect();
-        let arguments = ir::ChoiceArguments::new(vars, false, false);
-        let universe = type_check_code(def.code.into(), &var_map);
-        let choice_def = ir::ChoiceDef::Number { universe };
-        self.ir_desc.add_choice(ir::Choice::new(choice_name, doc, arguments, choice_def));
-    }
-
-    /// Register a constraint on an enum value.
-    fn register_value_constraint(&mut self, choice: RcStr, args: Vec<VarDef>,
-                                 value: RcStr, mut constraint: Constraint) {
-        let choice_args = args.iter().map(|def| def.name.clone()).collect();
-        let self_instance = ChoiceInstance { name: choice, vars: choice_args };
-        let condition = Condition::Is { lhs: self_instance, rhs: vec![value], is: false };
-        constraint.forall_vars.extend(args);
-        for disjunction in &mut constraint.disjunctions {
-            disjunction.push(condition.clone());
-        }
-        self.constraints.push(constraint);
-    }
-
-    /// Registers a counter in the ir description.
-    fn register_counter(&mut self,
-                        counter_name: RcStr,
-                        doc: Option<String>,
-                        visibility: ir::CounterVisibility,
-                        untyped_vars: Vec<VarDef>,
-                        body: CounterBody) {
-        trace!("defining counter {}", counter_name);
-        let mut var_map = VarMap::default();
-        // Type-check the base.
-        let kind = body.kind;
-        let all_var_defs = untyped_vars.iter().chain(&body.iter_vars).cloned().collect();
-        let vars = untyped_vars.into_iter().map(|def| {
-            (def.name.clone(), var_map.decl_argument(&self.ir_desc, def))
-        }).collect_vec();
-        let base = type_check_code(RcStr::new(body.base), &var_map);
-        // Generate the increment
-        let iter_vars = body.iter_vars.into_iter().map(|def| {
-            (def.name.clone(), var_map.decl_forall(&self.ir_desc, def))
-        }).collect_vec();
-        let doc = doc.map(RcStr::new);
-        let (incr, incr_condition) = self.gen_increment(
-            &counter_name, &vars, &iter_vars, all_var_defs, body.conditions, &var_map);
-        // Type check the value.
-        let value = match body.value {
-            CounterVal::Code(code) =>
-                ir::CounterVal::Code(type_check_code(RcStr::new(code), &var_map)),
-            CounterVal::Choice(counter) => {
-                let counter_name = counter_name.clone();
-                let (value, action) = self.counter_val_choice(
-                    &counter, visibility, counter_name, &incr, &incr_condition,
-                    kind, vars.len(), &var_map);
-                self.ir_desc.add_onchange(&counter.name, action);
-                value
-            },
-        };
-        let incr_counter = self.gen_incr_counter(
-            &counter_name, vars.len(), &var_map, &incr, &incr_condition, value.clone());
-        self.ir_desc.add_onchange(&incr.choice, incr_counter);
-        // Register the counter choices.
-        let incr_iter = iter_vars.iter().map(|p| p.1.clone()).collect_vec();
-        let counter_def = ir::ChoiceDef::Counter {
-            incr_iter, kind, value, incr, incr_condition, visibility, base
-        };
-        let counter_args = ir::ChoiceArguments::new(vars, false, false);
-        let mut counter_choice = ir::Choice::new(
-            counter_name, doc, counter_args, counter_def);
-        // Filter the counter itself after an update, because the filter actually acts on
-        // the increments and depends on the counter value.
-        let filter_self = ir::OnChangeAction {
-            forall_vars: vec![],
-            set_constraints: ir::SetConstraints::default(),
-            action: ir::ChoiceAction::FilterSelf
-        };
-        counter_choice.add_onchange(filter_self);
-        self.ir_desc.add_choice(counter_choice);
-    }
-
-    /// Creates a choice to store the increment condition of a counter. Returns the
-    /// corresponding choice instance from the point of view of the counter and the
-    /// condition on wich the counter must be incremented.
-    fn gen_increment(&mut self, counter: &str,
-                     counter_vars: &[(RcStr, ir::Set)],
-                     iter_vars: &[(RcStr, ir::Set)],
-                     all_vars_defs: Vec<VarDef>,
-                     conditions: Vec<Condition>,
-                     var_map: &VarMap) -> (ir::ChoiceInstance, ir::ValueSet) {
-        // TODO(cleanup): the choice the counter increment is based on must be declared
-        // before the increment. It should not be the case.
-        match conditions[..] {
-            [Condition::Is { ref lhs, ref rhs, is }] => {
-                let incr = lhs.type_check(&self.ir_desc, var_map);
-                // Ensure all forall values are usefull.
-                let mut foralls = HashSet::default();
-                for &v in &incr.vars {
-                    if let ir::Variable::Forall(i) = v { foralls.insert(i); }
-                }
-                if foralls.len() == iter_vars.len() {
-                    // Generate the increment condition.
-                    let choice = self.ir_desc.get_choice(&incr.choice);
-                    let enum_ = self.ir_desc.get_enum(choice.choice_def().as_enum().unwrap());
-                    let values = type_check_enum_values(enum_, rhs.clone());
-                    let values = if is { values } else {
-                        enum_.values().keys().filter(|&v| !values.contains(v))
-                            .cloned().collect()
-                    };
-                    return (incr, ir::ValueSet::enum_values(enum_.name().clone(), values));
-                }
-            },
-            _ => (),
-        }
-        // Create the new choice.
-        let bool_choice: RcStr = "Bool".into();
-        let name = RcStr::new("increment_".to_string() + counter);
-        let def = ir::ChoiceDef::Enum(bool_choice.clone());
-        let variables = counter_vars.iter().chain(iter_vars).cloned().collect();
-        let args = ir::ChoiceArguments::new(variables, false, false);
-        let incr_choice = ir::Choice::new(name.clone(), None, args, def);
-        self.ir_desc.add_choice(incr_choice);
-        // Constraint the boolean to follow the conditions.
-        let vars = counter_vars.iter().chain(iter_vars).map(|x| x.0.clone()).collect();
-        let incr_instance = ChoiceInstance { name: name.clone(), vars };
-        let is_false = Condition::new_is_bool(incr_instance, false);
-        let mut disjunctions = conditions.iter().map(|cond| {
-            vec![cond.clone(), is_false.clone()]
-        }).collect_vec();
-        disjunctions.push(std::iter::once(is_false).chain(conditions).map(|mut cond| {
-            cond.negate();
-            cond
-        }).collect());
-        self.constraints.push(Constraint::new(all_vars_defs, disjunctions));
-        // Generate the choice instance.
-        let vars = (0..counter_vars.len()).map(ir::Variable::Arg)
-            .chain((0..iter_vars.len()).map(ir::Variable::Forall)).collect();
-        let true_value = std::iter::once("TRUE".into()).collect();
-        let condition = ir::ValueSet::enum_values(bool_choice, true_value);
-        (ir::ChoiceInstance { choice: name, vars }, condition)
-    }
-
-    /// Returns the `CounterVal` referencing a choice. Registers the UpdateCounter action
-    /// so that the referencing counter is updated when the referenced counter is changed.
-    fn counter_val_choice(&mut self,
-                          counter: &ChoiceInstance,
-                          caller_visibility: ir::CounterVisibility,
-                          caller: RcStr,
-                          incr: &ir::ChoiceInstance,
-                          incr_condition: &ir::ValueSet,
-                          kind: ir::CounterKind,
-                          num_caller_vars: usize,
-                          var_map: &VarMap) -> (ir::CounterVal, ir::OnChangeAction) {
-        // TODO(cleanup): do not force an ordering on counter declaration.
-        let value_choice = self.ir_desc.get_choice(&counter.name);
-        match *value_choice.choice_def() {
-            ir::ChoiceDef::Counter { visibility, kind: value_kind, .. } => {
-                // TODO(cleanup): allow mul of sums. The problem is that you can multiply
-                // and/or divide by zero when doing this.
-                use ir::CounterKind;
-                assert!(!(kind == CounterKind::Mul && value_kind == CounterKind::Add));
-                assert!(caller_visibility >= visibility,
-                        "Counters cannot sum on counters that expose less information");
-            },
-            ir::ChoiceDef::Number { .. } => (),
-            ir::ChoiceDef::Enum { .. } => panic!("Enum as a counter value"),
-        };
-        // Type the increment counter value in the calling counter context.
-        let instance = counter.type_check(&self.ir_desc, var_map);
-        let (forall_vars, set_constraints, adaptator) =
-            self.ir_desc.adapt_env(var_map.env(), &instance);
-        let caller_vars = (0..num_caller_vars).map(ir::Variable::Arg)
-            .map(|v| adaptator.variable(v)).collect();
-        // Create and register the action.
-        let action = ir::ChoiceAction::UpdateCounter {
-            counter: ir::ChoiceInstance { choice: caller, vars: caller_vars },
-            incr: incr.adapt(&adaptator),
-            incr_condition: incr_condition.adapt(&adaptator),
-        };
-        let update_action = ir::OnChangeAction { forall_vars, set_constraints, action };
-        (ir::CounterVal::Choice(instance), update_action)
-    }
-
-    /// Typecheck and registers a trigger.
-    fn register_trigger(&mut self, foralls: Vec<VarDef>, conditions: Vec<Condition>,
-                        code: String) {
-        trace!("defining trigger '{}'", code);
-        // Type check the code and the conditions.
-        let ref mut var_map = VarMap::default();
-        let foralls = foralls.into_iter()
-            .map(|def| var_map.decl_forall(&self.ir_desc, def)).collect();
-        let mut inputs = Vec::new();
-        let conditions = conditions.into_iter()
-            .map(|c| c.type_check(&self.ir_desc, var_map, &mut inputs))
-            .collect_vec();
-        let code = type_check_code(RcStr::new(code), var_map);
-        // Groups similiar inputs.
-        let (inputs, input_adaptator) = dedup_inputs(inputs, &self.ir_desc);
-        let conditions = conditions.into_iter()
-            .map(|c| c.adapt(&input_adaptator)).collect_vec();
-        // Adapt the trigger to the point of view of each inputs.
-        let onchange_actions = inputs.iter().enumerate().map(|(pos, input)| {
-            let (foralls, set_constraints, condition, adaptator) = ir::ChoiceCondition::new(
-                &self.ir_desc, inputs.clone(), pos, &conditions, var_map.env());
-            let code = code.adapt(&adaptator);
-            (input.choice.clone(), foralls, set_constraints, condition, code)
-        }).collect_vec();
-        // Add the trigger to the IR.
-        let trigger = ir::Trigger { foralls, inputs, conditions, code };
-        let id = self.ir_desc.add_trigger(trigger);
-        // Register the triggers to to be called when each input is modified.
-        for (choice, forall_vars, set_constraints, condition, code) in onchange_actions {
-            let action = ir::ChoiceAction::Trigger {
-                id, condition, code, inverse_self_cond: false,
-            };
-            let on_change = ir::OnChangeAction { forall_vars, set_constraints, action };
-            self.ir_desc.add_onchange(&choice, on_change);
-        }
-    }
-
-    /// Creates an action to update the a counter when incr is modified.
-    fn gen_incr_counter(&self, counter: &RcStr,
-                        num_counter_args: usize,
-                        var_map: &VarMap,
-                        incr: &ir::ChoiceInstance,
-                        incr_condition: &ir::ValueSet,
-                        value: ir::CounterVal) -> ir::OnChangeAction {
-        // Adapt the environement to the point of view of the increment.
-        let (forall_vars, set_constraints, adaptator) =
-            self.ir_desc.adapt_env(var_map.env(), incr);
-        let value = value.adapt(&adaptator);
-        let counter_vars = (0..num_counter_args)
-            .map(|i| adaptator.variable(ir::Variable::Arg(i))).collect();
-        let action =  ir::ChoiceAction::IncrCounter {
-            counter: ir::ChoiceInstance { choice: counter.clone(), vars: counter_vars },
-            value: value.adapt(&adaptator),
-            incr_condition: incr_condition.adapt(&adaptator),
-        };
-        ir::OnChangeAction { forall_vars, set_constraints, action }
     }
 }
 
 /// A toplevel definition or constraint.
 #[derive(Debug)]
 pub enum Statement {
-    IntegerDef {
-        name: String,
-        doc: Option<String>,
-        variables: Vec<VarDef>,
-        code: String,
-    },
-    /// Defines an enum.
-    EnumDef {
-        name: String,
-        doc: Option<String>,
-        variables: Vec<VarDef>,
-        statements: Vec<EnumStatement>
-    },
+    ChoiceDef(ChoiceDef),
     TriggerDef {
         foralls: Vec<VarDef>,
         conditions: Vec<Condition>,
         code: String,
     },
-    CounterDef {
-        name: RcStr,
-        doc: Option<String>,
-        visibility: ir::CounterVisibility,
-        vars: Vec<VarDef>,
-        body: CounterBody,
-    },
-    SetDef {
-        name: String,
-        doc: Option<String>,
-        arg: Option<VarDef>,
-        superset: Option<SetRef>,
-        disjoint: Vec<String>,
-        keys: Vec<(ir::SetDefKey, Option<VarDef>, String)>,
-        quotient: Option<Quotient>,
-    },
+    SetDef(SetDef),
     Require(Constraint),
+}
+
+impl Statement {
+    pub fn type_check(&self) -> Result<(), TypeError> {
+        match self {
+            Statement::SetDef(def) => def.type_check(),
+            Statement::ChoiceDef(def) => def.type_check(),
+            _ => Ok(()),
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -793,7 +271,6 @@ pub struct CounterBody {
 /// Indicates if an enum exhibits symmetry.
 #[derive(Debug)]
 pub enum Symmetry { Symmetric, AntiSymmetric(Vec<(RcStr, RcStr)>) }
-
 
 /// References a set.
 #[derive(Clone, Debug)]
@@ -889,41 +366,6 @@ impl VarMap {
     /// Returns the maping of variables to sets.
     fn env(&self) -> HashMap<ir::Variable, ir::Set> {
         self.map.values().cloned().collect()
-    }
-}
-
-/// A constraint that must be enforced by the IR.
-#[derive(Debug, Clone)]
-pub struct Constraint {
-    /// Variables for which the conditions must be respected.
-    pub forall_vars: Vec<VarDef>,
-    /// Conjunction of disjuction of condition that must be respected.
-    pub disjunctions: Vec<Vec<Condition>>,
-    /// Indicates if the constraint should restrict fragile values.
-    pub restrict_fragile: bool,
-}
-
-impl Constraint {
-    /// Creates a new constraint.
-    pub fn new(forall_vars: Vec<VarDef>, disjunctions: Vec<Vec<Condition>>) -> Self {
-        Constraint { forall_vars, disjunctions, restrict_fragile: true }
-    }
-
-    /// Type check the constraint.
-    fn type_check(self, ir_desc: &ir::IrDesc) -> Vec<TypedConstraint> {
-        let mut var_map = VarMap::default();
-        let sets = self.forall_vars.into_iter()
-            .map(|v| var_map.decl_forall(ir_desc, v)).collect_vec();
-        let restrict_fragile = self.restrict_fragile;
-        self.disjunctions.into_iter().map(|disjuction| {
-            let mut inputs = Vec::new();
-            let conditions = disjuction.into_iter()
-                .map(|x| x.type_check(ir_desc, &var_map, &mut inputs)).collect();
-            TypedConstraint {
-                vars: sets.clone(),
-                restrict_fragile, inputs, conditions,
-            }
-        }).collect_vec()
     }
 }
 
@@ -1063,48 +505,22 @@ pub enum CounterVal { Code(String), Choice(ChoiceInstance) }
 #[derive(Clone, Debug)]
 pub enum EnumStatement {
     /// Defines a possible decision for th enum.
-    Value(String, Option<String>, Vec<Constraint>),
+    Value(Spanned<String>, Option<String>, Vec<Constraint>),
     /// Defines a set of possible decisions for the enum.
-    Alias(String, Option<String>, Vec<String>, Vec<Constraint>),
+    Alias(Spanned<String>, Option<String>, Vec<String>, Vec<Constraint>),
     /// Specifies that the enum is symmetric.
-    Symmetric,
+    Symmetric(Spanned<()>),
     /// Specifies that the enum is antisymmetric and given the inverse function.
-    AntiSymmetric(Vec<(String, String)>),
+    AntiSymmetric(Spanned<Vec<(String, String)>>),
 }
 
 impl fmt::Display for EnumStatement {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            EnumStatement::Alias(name, ..) => write!(f, "{}", name),
-            EnumStatement::Value(name, ..) => write!(f, "{}", name),
-            EnumStatement::Symmetric => write!(f, "Symmetric"),
+            EnumStatement::Alias(name, ..) => write!(f, "{}", name.data),
+            EnumStatement::Value(name, ..) => write!(f, "{}", name.data),
+            EnumStatement::Symmetric(..) => write!(f, "Symmetric"),
             EnumStatement::AntiSymmetric(..) => write!(f, "AntiSymmetric"),
-        }
-    }
-}
-
-impl EnumStatement {
-    pub fn get_value(&self) -> Option<&String> {
-        if let EnumStatement::Value(value, ..) = self {
-            Some(value)
-        } else {
-            None
-        }
-    }
-
-    pub fn get_alias(&self) -> Option<&String> {
-        if let EnumStatement::Alias(value, ..) = self {
-            Some(value)
-        } else {
-            None
-        }
-    }
-
-    pub fn get_alias_decisions(&self) -> Option<&Vec<String>> {
-        if let EnumStatement::Alias(_, _, decisions, ..) = self {
-            Some(decisions)
-        } else {
-            None
         }
     }
 }
@@ -1116,10 +532,10 @@ impl PartialEq for EnumStatement {
              EnumStatement::Value(rhs_name, .. )) |
             (EnumStatement::Alias(name, .. ),
              EnumStatement::Alias(rhs_name, .. )) => {
-                name.eq(rhs_name)
+                name.data.eq(&rhs_name.data)
             },
-            (EnumStatement::Symmetric,
-             EnumStatement::Symmetric) => true,
+            (EnumStatement::Symmetric(..),
+             EnumStatement::Symmetric(..)) => true,
             _ => false,
         }
     }
@@ -1127,168 +543,44 @@ impl PartialEq for EnumStatement {
 
 /// Gathers the different statements of an enum.
 #[derive(Debug, Default)]
-pub struct EnumStatements {
+struct EnumStatements {
     /// The values the enum can take, with the atached documentation.
-    pub values: HashMap<RcStr, Option<String>>,
+    values: HashMap<RcStr, Option<String>>,
     /// Aliases mapped to the corresponding documentation and value set.
-    pub aliases: HashMap<RcStr, (Option<String>, HashSet<RcStr>)>,
+    aliases: HashMap<RcStr, (Option<String>, HashSet<RcStr>)>,
     /// Symmetry information.
-    pub symmetry: Option<Symmetry>,
+    symmetry: Option<Symmetry>,
     /// Constraints on a value.
-    pub constraints: Vec<(RcStr, Constraint)>,
+    constraints: Vec<(RcStr, Constraint)>,
 }
 
 impl EnumStatements {
     /// Registers an `EnumStatement`.
-    pub fn add_statement(&mut self, statement: EnumStatement) {
+    fn add_statement(&mut self, statement: EnumStatement) {
         match statement {
             EnumStatement::Value(name, doc, constraints) => {
-                let name = RcStr::new(name);
+                let name = RcStr::new(name.data);
                 assert!(self.values.insert(name.clone(), doc).is_none());
                 for c in constraints { self.constraints.push((name.clone(), c)); }
             },
             EnumStatement::Alias(name, doc, values, constraints) => {
-                let name = RcStr::new(name);
+                let name = RcStr::new(name.data);
                 let values = values.into_iter().map(RcStr::new).collect();
                 assert!(self.aliases.insert(name.clone(), (doc, values)).is_none());
                 for c in constraints { self.constraints.push((name.clone(), c)); }
             },
-            EnumStatement::Symmetric => {
+            EnumStatement::Symmetric(..) => {
                 assert!(self.symmetry.is_none());
                 self.symmetry = Some(Symmetry::Symmetric);
             },
             EnumStatement::AntiSymmetric(mapping) => {
                 assert!(self.symmetry.is_none());
-                let mapping = mapping.into_iter()
+                let mapping = mapping.data.into_iter()
                     .map(|(x, y)| (RcStr::new(x), RcStr::new(y))).collect();
                 self.symmetry = Some(Symmetry::AntiSymmetric(mapping));
             },
         }
     }
-}
-
-/// A toplevel integer
-#[derive(Clone, Debug)]
-pub struct IntegerDef {
-    pub name: String,
-    pub doc: Option<String>,
-    pub variables: Vec<VarDef>,
-    pub code: String, // varmap, type_check_code
-}
-
-impl IntegerDef {
-    pub fn get_variables(&self) -> Result<(), TypeError> {
-        for item in self.variables.iter() {
-            for subitem in self.variables.iter()
-                               .skip_while(|subitem| subitem != &item)
-                               .skip(1) {
-                if subitem == item {
-                    Err(TypeError::Redefinition(
-                            item.name.to_owned().to_string(),
-                            Hint::IntegerAttribute
-                    ))?
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-impl PartialEq for IntegerDef {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.name == rhs.name
-    }
-}
- 
-/// A toplevel definition or constraint.
-#[derive(Clone, Debug)]
-pub struct EnumDef {
-    pub name: String,
-    pub doc: Option<String>,
-    pub variables: Vec<VarDef>,
-    pub statements: Vec<EnumStatement>
-}
-
-impl Default for EnumDef {
-    fn default() -> EnumDef {
-        EnumDef {
-            name: String::default(),
-            doc: None,
-            variables: vec![],
-            statements: vec![],
-        }
-    }
-}
-
-impl EnumDef {
-    /// A field from a enum should be unique.
-    pub fn check_field_name_redefinition(&self) -> Result<(), TypeError> {
-        for item in self.statements.iter() {
-            for subitem in self.statements.iter()
-                               .skip_while(|subitem| subitem != &item)
-                               .skip(1) {
-                if subitem == item {
-                    Err(TypeError::Redefinition(
-                            item.to_string(),
-                            Hint::EnumAttribute
-                    ))?
-                }
-            }
-        }
-        Ok(())
-    }
-
-    /// An antisymmetric should refers to two same parametric.
-    pub fn check_symmetric(&self) -> Result<(), TypeError> {
-        if self.statements.contains(&EnumStatement::Symmetric) {
-            match self.variables.len() {
-                2 => {
-                    if let Some((left, right)) =
-                        self.variables.windows(2)
-                            .find(|vars: &&[VarDef]| vars[0] != vars[1])
-                            .and_then(|vars: &[VarDef]|
-                                Some((vars[0].clone(), vars[1].clone()))) {
-                        Err(TypeError::BadSymmetricArg(vec![left, right]))?
-                    }
-                },
-                _ => Err(
-                    TypeError::BadSymmetricArg(self.variables.to_owned())
-                )?,
-            }
-        }
-        Ok(())
-    }
-
-    /// An Alias' value should exists.
-    pub fn check_undefined_value(&self) -> Result<(), TypeError> {
-        let values: Vec<&String> =
-            self.statements.iter()
-                           .filter_map(|item| item.get_value().or(item.get_alias()))
-                           .collect::<Vec<&String>>();
-
-        for decisions in self.statements.iter()
-                                        .filter_map(|item| item.get_alias_decisions()) {
-            for value in decisions {
-                if !values.contains(&value) {
-                    Err(TypeError::Undefined(value.to_owned()))?
-                }
-            }
-        }
-        Ok(())
-    }
-}
-
-impl PartialEq for EnumDef {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.name == rhs.name
-    }
-}
-
-#[derive(Debug)]
-pub struct TriggerDef {
-    pub foralls: Vec<VarDef>,
-    pub conditions: Vec<Condition>,
-    pub code: String,
 }
 
 #[derive(Clone, Debug)]
@@ -1303,156 +595,5 @@ pub struct CounterDef {
 impl PartialEq for CounterDef {
     fn eq(&self, rhs: &Self) -> bool {
         self.name == rhs.name
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum ChoiceDef {
-    CounterDef(CounterDef),
-    EnumDef(EnumDef),
-    IntegerDef(IntegerDef),
-}
-
-impl ChoiceDef {
-    pub fn get_name(&self) -> &String {
-        match self {
-            ChoiceDef::CounterDef(counter_def) => {
-                &counter_def.name
-            },
-            ChoiceDef::EnumDef(enum_def) => {
-                &enum_def.name
-            },
-            ChoiceDef::IntegerDef(def) => &def.name,
-        }
-    }
-}
-
-impl From<Statement> for Result<ChoiceDef, TypeError> {
-    fn from(stmt: Statement) -> Self {
-        match stmt {
-            Statement::CounterDef { name, doc, visibility, vars, body } => {
-                Ok(ChoiceDef::CounterDef(CounterDef {
-                    name, doc, visibility, vars, body
-                }))
-            },
-            Statement::EnumDef { name, doc, variables, statements } => {
-                let enum_def: EnumDef = EnumDef {
-                    name, doc, variables, statements
-                };
-
-                enum_def.check_field_name_redefinition()?;
-                enum_def.check_symmetric()?;
-                enum_def.check_undefined_value()?;
-                Ok(ChoiceDef::EnumDef(enum_def))
-            },
-            Statement::IntegerDef { name, doc, variables, code } => {
-                let integer_def: IntegerDef = IntegerDef {
-                    name, doc, variables, code
-                };
-
-                integer_def.get_variables()?;
-                Ok(ChoiceDef::IntegerDef(integer_def))
-            },
-            _ => unreachable!(),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct SetDef {
-    pub name: String,
-    pub doc: Option<String>,
-    pub arg: Option<VarDef>,
-    pub superset: Option<SetRef>,
-    pub disjoint: Vec<String>,
-    pub keys: Vec<(ir::SetDefKey, Option<VarDef>, String)>,
-    pub quotient: Option<Quotient>,
-}
-
-impl Default for SetDef {
-    fn default() -> SetDef {
-        SetDef {
-            name: Default::default(),
-            doc: None,
-            arg: None,
-            superset: None,
-            disjoint: vec![],
-            keys: vec![],
-            quotient: None,
-        }
-    }
-}
-
-impl SetDef {
-    /// A field from a set should be unique.
-    pub fn check_field_name_redefinition(&self) -> Result<(), TypeError> {
-        for (item, ..) in self.keys.iter() {
-            for (subitem, ..) in self.keys.iter()
-                               .skip_while(|(subitem, ..)| subitem != item)
-                               .skip(1) {
-                if subitem == item {
-                    Err(TypeError::Redefinition(
-                            item.to_string(), Hint::SetAttribute))?
-                }
-            }
-        }
-        Ok(())
-    }
-
-    /// A set should always have the keys: type, id_type, id_getter, iterator, getter.
-    pub fn check_undefined_key(&self) -> Result<(), TypeError> {
-        let keys = self.keys.iter().map(|(k, _, _)| k).collect::<Vec<&ir::SetDefKey>>();
-
-        if !keys.contains(&&ir::SetDefKey::ItemType) {
-            Err(TypeError::Undefined(ir::SetDefKey::ItemType.to_string()))?
-        }
-        if !keys.contains(&&ir::SetDefKey::IdType) {
-            Err(TypeError::Undefined(ir::SetDefKey::IdType.to_string()))?
-        }
-        if !keys.contains(&&ir::SetDefKey::ItemGetter) {
-            Err(TypeError::Undefined(ir::SetDefKey::ItemGetter.to_string()))?
-        }
-        if !keys.contains(&&ir::SetDefKey::IdGetter) {
-            Err(TypeError::Undefined(ir::SetDefKey::IdGetter.to_string()))?
-        }
-        if !keys.contains(&&ir::SetDefKey::Iter) {
-            Err(TypeError::Undefined(ir::SetDefKey::Iter.to_string()))?
-        }
-        Ok(())
-    }
-
-    pub fn check_undefined_superset_key(&self) -> Result<(), TypeError> {
-        if self.superset.is_some() {
-            if self.keys.iter().find(|(k, _, _)| k == &ir::SetDefKey::FromSuperset)
-                               .is_none() {
-                Err(TypeError::Undefined(ir::SetDefKey::FromSuperset.to_string()))?
-            }
-        }
-        Ok(())
-    }
-}
-
-impl PartialEq for SetDef {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.name == rhs.name
-    }
-}
-
-impl From<Statement> for Result<SetDef, TypeError> {
-    fn from(stmt: Statement) -> Self {
-        match stmt {
-            Statement::SetDef {
-                name, doc, arg, superset, disjoint, keys, quotient
-            } => {
-                let set_def: SetDef = SetDef {
-                    name, doc, arg, superset, disjoint, keys, quotient
-                };
-                set_def.check_undefined_key()?;
-                set_def.check_undefined_superset_key()?;
-                set_def.check_field_name_redefinition()?;
-                Ok(set_def)
-            },
-            _ => unreachable!(),
-        }
     }
 }
