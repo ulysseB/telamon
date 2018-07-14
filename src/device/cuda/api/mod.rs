@@ -16,6 +16,7 @@ pub use self::jit_daemon::JITDaemon;
 use self::jit_daemon::DaemonSpawner;
 
 #[cfg(test)]
+#[cfg(feature="cuda")]
 mod tests {
     use super::*;
     use super::array;

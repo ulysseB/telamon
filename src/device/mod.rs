@@ -1,5 +1,4 @@
 //! Code generation and candidate evaluation for specific targets.
-#[cfg(feature="cuda")]
 pub mod cuda;
 #[cfg(feature="mppa")]
 pub mod mppa;

@@ -394,6 +394,7 @@ fn dynamic_nesting(lhs: &ir::Dimension, rhs: &ir::Dimension, space: &SearchSpace
 */
 
 #[cfg(test)]
+#[cfg(feature="cuda")]
 mod tests {
     use super::*;
     use device::cuda::{self, Gpu};
