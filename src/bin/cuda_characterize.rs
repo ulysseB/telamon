@@ -1,34 +1,10 @@
 extern crate env_logger;
 extern crate telamon;
 extern crate getopts;
-extern crate itertools;
-#[macro_use]
-extern crate log;
-extern crate num;
-extern crate prettytable;
-extern crate rustc_serialize;
-extern crate telamon_utils as utils;
 
-mod instruction;
-mod gen;
-mod gpu;
-mod math;
-mod table;
-
-use telamon::device::cuda::{Executor, Gpu, PerfCounter};
 use getopts::Options;
-use itertools::Itertools;
-use table::Table;
-use rustc_serialize::json;
-use std::io::{Read, Write};
 
-/// Creates an empty `Table` to hold the given performance counters.
-fn create_table(parameters: &[&str], counters: &[PerfCounter]) -> Table<u64> {
-    let header = parameters.iter().map(|x| x.to_string())
-        .chain(counters.iter().map(|x| x.to_string())).collect_vec();
-    Table::new(header)
-}
-
+/*
 /// Returns the list of existing GPU description.
 fn gpu_list() -> Result<Vec<Gpu>, String> {
     let mut file = match std::fs::File::open("data/cuda_gpus.json") {
@@ -44,25 +20,12 @@ fn gpu_list() -> Result<Vec<Gpu>, String> {
         Ok(x) => Ok(x),
         Err(x) => Err(x.to_string()),
     }
-}
-
-/// Asks for a confirmation on the command line.
-fn ask_confirmation(msg: &str) -> bool {
-    let mut stdout = std::io::stdout();
-    write!(stdout, "{} (y/N): ", msg).unwrap();
-    stdout.flush().unwrap();
-    let mut input = String::new();
-    std::io::stdin().read_line(&mut input).unwrap();
-    match input.trim() {
-        "y" => true,
-        _ => false,
-    }
-}
+}*/
 
 fn main() {
     env_logger::init();
     let mut opts = Options::new();
-    opts.optflag("h", "help", "Print the help menu.");
+    /*opts.optflag("h", "help", "Print the help menu.");
     opts.optflag("w", "write", "Write the gpu description to the gpu description file.");
     opts.optflag("y", "yes",
                  "Do not ask for confirmation before writing the gpu description.");
@@ -110,5 +73,5 @@ fn main() {
         println!("{}", json::as_pretty_json(&gpu));
     }
     //instruction::print_smx_bandwidth(&gpu, &executor);
-    //instruction::print_smx_store_bandwidth(&gpu, &executor);
+    //instruction::print_smx_store_bandwidth(&gpu, &executor);*/
 }

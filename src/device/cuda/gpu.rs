@@ -1,6 +1,4 @@
 //! Describes CUDA-enabled GPUs.
-extern crate xdg;
-
 use codegen::Function;
 use device::{self, Device};
 use device::cuda::CudaPrinter;
@@ -13,6 +11,7 @@ use std;
 use std::fs::File;
 use std::io::{Read, Write};
 use utils::*;
+use xdg;
 
 // FIXME: fix performance model
 // - l1_lines constraint for stores ?

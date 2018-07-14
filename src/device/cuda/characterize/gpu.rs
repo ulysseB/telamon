@@ -1,7 +1,7 @@
 //! Builds the description of a GPU.
-use telamon::device::cuda::{self, Executor, InstDesc};
-use telamon::device::cuda::DeviceAttribute::*;
-use instruction;
+use device::cuda::{self, Executor, InstDesc};
+use device::cuda::DeviceAttribute::*;
+use device::cuda::characterize::instruction;
 use std;
 
 const EMPTY_INST_DESC: InstDesc = InstDesc {

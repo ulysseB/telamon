@@ -7,7 +7,7 @@ version = "0.2.0"
 
 [[bin]]
 name = "cuda-characterize"
-path = "tools/cuda_characterize/main.rs"
+path = "src/bin/cuda_characterize.rs"
 required-features = ["cuda"]
 
 [[bin]]
