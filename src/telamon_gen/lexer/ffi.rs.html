@@ -133,6 +133,16 @@
 <span id="133">133</span>
 <span id="134">134</span>
 <span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
 </pre><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
 <span class="kw">use</span> ::<span class="ident">libc</span>;
@@ -201,6 +211,16 @@
     <span class="kw">pub</span> <span class="ident">end</span>: <span class="ident">Position</span>,
     <span class="doccomment">/// Spanned data</span>
     <span class="kw">pub</span> <span class="ident">data</span>: <span class="ident">Y</span>,
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Y</span><span class="op">&gt;</span> <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">Y</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">data</span>: <span class="ident">Y</span>) <span class="op">-&gt;</span> <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">Y</span><span class="op">&gt;</span> {
+        <span class="ident">Spanned</span> {
+            <span class="ident">beg</span>: <span class="ident">Position</span>::<span class="ident">default</span>(),
+            <span class="ident">end</span>: <span class="ident">Position</span>::<span class="ident">default</span>(),
+            <span class="ident">data</span>,
+        }
+    }
 }
 
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">YyExtraType</span> <span class="op">=</span> <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">YyLval</span><span class="op">&gt;</span>;
