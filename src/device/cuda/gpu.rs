@@ -164,21 +164,7 @@ impl Gpu {
                 xdg::BaseDirectories::with_prefix("telamon"));
             match xdg_dirs.find_config_file("cuda_gpus.json") {
                 Some(config_path) => config_path,
-                None => {
-                    let config_path = xdg_dirs
-                        .place_config_file("cuda_gpus.json")
-                        .expect("cannot create configuration directory");
-                    println!(
-                        "GPU configuration file not found; writing default configuration to {}",
-                        config_path.to_string_lossy());
-                    let mut config_file = unwrap!(File::create(config_path.clone()));
-                    unwrap!(
-                        write!(config_file, "{}", include_str!("../../../data/cuda_gpus.json")));
-                    // We return the Path here instead of the already-opened file object because we
-                    // want to ensure that the toplevel `config_path` variable always point to a
-                    // readonly file in order to avoid subtle bugs.
-                    config_path
-                },
+                None => unimplemented!() // FIXME,
             }
         };
         let mut file = unwrap!(File::open(config_path));

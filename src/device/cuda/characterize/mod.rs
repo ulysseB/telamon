@@ -15,7 +15,18 @@ use xdg;
 /// Retrieve the description of the GPU from the description file. Updates it if needed.
 pub fn get_gpu_desc(executor: &cuda::Executor) -> cuda::Gpu {
     let config_path = get_config_path();
-    unimplemented!() // FIXME 
+    // FIXME: try to parse the file
+    // FIXME: try to find the GPU
+    // FIXME: if GPU not found, characterize it and add it to the file
+    unimplemented!() // FIXME return the GPU
+}
+
+/// Characterize a GPU.
+pub fn characterize(executor: &cuda::Executor) -> cuda::Gpu {
+    info!("gpu name: {}", executor.device_name());
+    let mut gpu = gpu::functional_desc(executor);
+    gpu::performance_desc(executor, &mut gpu);
+    gpu
 }
 
 /// Creates an empty `Table` to hold the given performance counters.
