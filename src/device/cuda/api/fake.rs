@@ -3,6 +3,7 @@
 //! installed and to run tests on functions that do not rely on the executor.
 
 use device;
+use device::cuda::api;
 use std::marker::PhantomData;
 
 /// An argument that can be passed to the executor.
@@ -30,14 +31,12 @@ impl<'a, T> device::ArrayArgument for Array<'a, T> where T: device::ScalarArgume
 impl<'a, T> Argument for Array<'a, T> where T: device::ScalarArgument { }
 
 /// Interface with a CUDA device.
-#[derive(Debug)] // FIXME: remove the derive
 pub enum Executor { }
 
 impl Executor {
-    /// Initialize the `Executor`.
-    pub fn init() -> Executor {
-        panic!("CUDA support was not enable for this build, please recompile with \
-                --features=cuda")
+    /// Initializes the `Executor`.
+    pub fn try_init() -> Result<Executor, api::InitError> {
+        Err(api::InitError::NeedsCudaFeature)
     }
 
     /// Spawns a `JITDaemon`.

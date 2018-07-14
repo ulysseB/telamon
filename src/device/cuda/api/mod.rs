@@ -2,12 +2,14 @@
 #![allow(dead_code)]
 mod array;
 mod counter;
+mod error;
 mod executor;
 mod module;
 mod wrapper;
 mod jit_daemon;
 
 pub use self::array::Array;
+pub use self::error::*;
 pub use self::executor::*;
 pub use self::counter::{PerfCounter, PerfCounterSet};
 pub use self::module::{Module, Kernel, Argument};

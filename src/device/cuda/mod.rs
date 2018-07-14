@@ -3,8 +3,10 @@
 mod api;
 #[cfg(not(feature="cuda"))]
 mod api {
+    mod error;
     mod fake;
     pub use self::fake::*;
+    pub use self::error::*;
 }
 mod context;
 mod kernel;

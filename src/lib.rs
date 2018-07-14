@@ -6,6 +6,8 @@ extern crate crossbeam;
 extern crate env_logger;
 extern crate getopts;
 extern crate errno;
+#[macro_use]
+extern crate failure;
 extern crate interval_heap;
 extern crate itertools;
 extern crate libloading;
