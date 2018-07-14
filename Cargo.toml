@@ -11,11 +11,6 @@ path = "tools/cuda_characterize/main.rs"
 required-features = ["cuda"]
 
 [[bin]]
-name = "cache-bench"
-path = "tools/cuda_characterize/cache_main.rs"
-required-features = ["cuda"]
-
-[[bin]]
 name = "bench-perf-model"
 path = "tools/bench_perf_model/main.rs"
 required-features = ["cuda"]
