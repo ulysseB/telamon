@@ -1,8 +1,11 @@
 extern crate env_logger;
+extern crate itertools;
 extern crate telamon;
 extern crate getopts;
 
+use itertools::Itertools;
 use getopts::Options;
+use telamon::device::cuda;
 
 #[derive(Default)]
 struct Config {
@@ -26,7 +29,7 @@ impl Config {
         if opt_matches.opt_present("h") {
             let brief = opts.short_usage(&args[0]);
             println!("{}", opts.usage(&brief));
-            return;
+            std::process::exit(0);
         }
         config.write_to_file = opt_matches.opt_present("w");
         config
@@ -36,8 +39,8 @@ impl Config {
 fn main() {
     env_logger::init();
     let config = Config::parse();
-    let executor = Executor::init();
-    let gpu = device::cuda::characterize::characterize(&executor);
+    let executor = cuda::Executor::init();
+    let gpu = cuda::characterize::characterize(&executor);
 
     if config.write_to_file {
         unimplemented!(); // FIXME

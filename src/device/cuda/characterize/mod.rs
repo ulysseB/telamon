@@ -16,7 +16,7 @@ use xdg;
 pub fn get_gpu_desc(executor: &cuda::Executor) -> cuda::Gpu {
     let config_path = get_config_path();
     // FIXME: try to parse the file
-    // FIXME: try to find the GPU
+    // FIXME: check gpu name
     // FIXME: if GPU not found, characterize it and add it to the file
     unimplemented!() // FIXME return the GPU
 }

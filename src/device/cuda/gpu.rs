@@ -6,10 +6,10 @@ use device::cuda::mem_model::{self, MemInfo};
 use ir::{self, Type, Operator};
 use model::{self, HwPressure};
 use search_space::{DimKind, Domain, InstFlag, MemSpace, SearchSpace};
-use rustc_serialize::json;
+use serde_json;
 use std;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Write;
 use utils::*;
 use xdg;
 
@@ -19,7 +19,7 @@ use xdg;
 // - l1_lines per threads ?
 
 /// Specifies the performance parameters of an instruction.
-#[derive(Default, RustcDecodable, RustcEncodable, Clone, Copy, Debug)]
+#[derive(Default, Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct InstDesc {
     /// The latency of the instruction.
     pub latency: f64,
@@ -74,7 +74,7 @@ impl Into<HwPressure> for InstDesc {
 }
 
 /// Represents CUDA GPUs.
-#[derive(RustcDecodable, RustcEncodable, Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Gpu {
     /// The name of the GPU.
     pub name: String,
@@ -168,10 +168,7 @@ impl Gpu {
             }
         };
         let mut file = unwrap!(File::open(config_path));
-        let mut string = String::new();
-        unwrap!(file.read_to_string(&mut string));
-        let gpus: Vec<Gpu> = unwrap!(json::decode(&string));
-        gpus.into_iter().find(|x| x.name == name)
+        serde_json::from_reader(&mut file).ok()
     }
 
     /// Returns the PTX code for a Function.
@@ -332,8 +329,8 @@ impl Gpu {
 
 impl device::Device for Gpu {
     fn print(&self, fun: &Function, out: &mut Write) {
-        let mut printer = CudaPrinter::new(); 
-        printer.host_function(fun, self, out) 
+        let mut printer = CudaPrinter::new();
+        printer.host_function(fun, self, out)
     }
 
     fn is_valid_type(&self, t: &Type) -> bool {
