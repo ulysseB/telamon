@@ -1,17 +1,14 @@
 //! Describes CUDA-enabled GPUs.
 use codegen::Function;
-use device::{self, Device};
+use device::{self, cuda, Device};
 use device::cuda::CudaPrinter;
 use device::cuda::mem_model::{self, MemInfo};
 use ir::{self, Type, Operator};
 use model::{self, HwPressure};
 use search_space::{DimKind, Domain, InstFlag, MemSpace, SearchSpace};
-use serde_json;
 use std;
-use std::fs::File;
 use std::io::Write;
 use utils::*;
-use xdg;
 
 // FIXME: fix performance model
 // - l1_lines constraint for stores ?
@@ -158,17 +155,8 @@ pub struct Gpu {
 
 impl Gpu {
     /// Returns the GPU model corresponding to `name.
-    pub fn from_name(name: &str) -> Option<Gpu> {
-        let config_path = {
-            let xdg_dirs = unwrap!(
-                xdg::BaseDirectories::with_prefix("telamon"));
-            match xdg_dirs.find_config_file("cuda_gpus.json") {
-                Some(config_path) => config_path,
-                None => unimplemented!() // FIXME,
-            }
-        };
-        let mut file = unwrap!(File::open(config_path));
-        serde_json::from_reader(&mut file).ok()
+    pub fn from_executor(executor: &cuda::Executor) -> Gpu {
+        cuda::characterize::get_gpu_desc(executor)
     }
 
     /// Returns the PTX code for a Function.
@@ -479,16 +467,3 @@ fn min_assign<T: std::cmp::Ord>(lhs: &mut T, rhs: T) { if rhs < *lhs { *lhs = rh
 // TODO(model): On the Quadro K4000:
 // * The Mul wide latency is unknown.
 // * The latency is not specialized per operand.
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Obtains a GPU from a name.
-    #[test]
-    fn test_get_gpu_by_name() {
-        let name = "dummy_cuda_gpu";
-        let gpu = unwrap!(Gpu::from_name(name));
-        assert_eq!(gpu.name, name);
-    }
-}

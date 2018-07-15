@@ -440,7 +440,7 @@ mod tests {
         let _ = env_logger::try_init();
         let executor = cuda::Executor::init();
         let ctx = cuda::Context::new(&executor);
-        let gpu = unwrap!(Gpu::from_name("dummy_cuda_gpu"));
+        let gpu = cuda::Gpu::from_executor(&executor);
         let base = gen_signature();
         let (space, inst, size_map) = gen_function(&base, &gpu, Order::OUTER);
         let inst = space.ir_instance().inst(inst);
@@ -456,7 +456,7 @@ mod tests {
         let _ = env_logger::try_init();
         let executor = cuda::Executor::init();
         let ctx = cuda::Context::new(&executor);
-        let gpu = unwrap!(Gpu::from_name("dummy_cuda_gpu"));
+        let gpu = cuda::Gpu::from_executor(&executor);
         let base = gen_signature();
         let (space, inst, size_map) = gen_function(&base, &gpu, Order::INNER);
         let inst = space.ir_instance().inst(inst);
