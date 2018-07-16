@@ -31,7 +31,7 @@ impl device::Device for Cpu {
     fn is_valid_type(&self, t: &Type) -> bool {
         match *t {
             Type::I(i) | Type::F(i) => i == 32 || i == 64,
-            Type::Void | Type::PtrTo(_) => true,
+            Type::PtrTo(_) => true,
         }
     }
 

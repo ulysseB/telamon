@@ -310,7 +310,8 @@ pub trait Printer {
     fn inst(&mut self, inst: &Instruction, namer: &mut NameMap, fun: &Function ) {
         match *inst.operator() {
             op::BinOp(op, ref lhs, ref rhs, round) => {
-                self.print_binop(op, inst.t(), round, &namer.name_inst(inst),
+                let t = unwrap!(inst.t());
+                self.print_binop(op, t, round, &namer.name_inst(inst),
                                  &namer.name_op(lhs), &namer.name_op(rhs))
             }
             op::Mul(ref lhs, ref rhs, round, return_type) => {
@@ -324,14 +325,14 @@ pub trait Printer {
                 let low_mlhs_type = Self::lower_type(mul_lhs.t(), fun);
                 let low_arhs_type = Self::lower_type(add_rhs.t(), fun);
                 let mode = MulMode::from_type(low_mlhs_type, low_arhs_type);
-                self.print_mad(inst.t(), round, mode, &namer.name_inst(inst),
+                self.print_mad(unwrap!(inst.t()), round, mode, &namer.name_inst(inst),
                                &namer.name_op(mul_lhs),
                                &namer.name_op(mul_rhs),
                                &namer.name_op(add_rhs))
             },
             op::Mov(ref op) => {
-
-                self.print_mov(inst.t(), &namer.name_inst(inst), &namer.name_op(op))
+                let t = unwrap!(inst.t());
+                self.print_mov(t, &namer.name_inst(inst), &namer.name_op(op))
             },
             op::Ld(ld_type, ref addr, _) => {
                 self.print_ld(ld_type, unwrap!(inst.mem_flag()),

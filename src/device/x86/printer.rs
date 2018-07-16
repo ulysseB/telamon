@@ -274,7 +274,6 @@ impl Printer for X86printer {
 
     fn get_type(t: Type) -> String {
         match t {
-            Type::Void => String::from("void"),
             //Type::PtrTo(..) => " uint8_t *",
             Type::PtrTo(..) => String::from("intptr_t"),
             Type::F(32) => String::from("float"),

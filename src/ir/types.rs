@@ -6,8 +6,6 @@ use utils::*;
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 /// Values and intructions types.
 pub enum Type {
-    /// Type for instructions that do not produce a value.
-    Void,
     /// Type for integer values, with a fixed number of bits.
     I(u16),
     /// Type for floating point values, with a fixed number of bits.
@@ -21,7 +19,7 @@ impl Type {
     pub fn is_integer(&self) -> bool {
         match *self {
             Type::I(_) | Type::PtrTo(_) => true,
-            Type::Void | Type::F(_) => false,
+            Type::F(_) => false,
         }
     }
 
@@ -29,7 +27,7 @@ impl Type {
     pub fn is_float(&self) -> bool {
         match *self {
             Type::F(_) => true,
-            Type::Void | Type::I(_) | Type::PtrTo(..) => false,
+            Type::I(_) | Type::PtrTo(..) => false,
         }
     }
 
@@ -37,7 +35,6 @@ impl Type {
     pub fn len_byte(&self) -> Option<u32> {
         match *self {
             Type::I(i) | Type::F(i) => Some(u32::from(div_ceil(i, 8))),
-            Type::Void => Some(0),
             Type::PtrTo(_) => None
         }
     }
@@ -46,7 +43,6 @@ impl Type {
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Type::Void => write!(f, "void"),
             Type::I(s) => write!(f, "i{}", s),
             Type::F(s) => write!(f, "f{}", s),
             Type::PtrTo(mem) => write!(f, "ptr to {:?}", mem),

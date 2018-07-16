@@ -262,21 +262,21 @@ impl Gpu {
                      inst: &ir::Instruction,
                      ctx: &device::Context) -> HwPressure {
         use ir::Operator::*;
-        let t = self.lower_type(inst.t(), space).unwrap_or_else(|| inst.t());
+        let t = inst.t().map(|t| self.lower_type(t, space).unwrap_or(t));
         match (inst.operator(), t) {
-            (&BinOp(ir::BinOp::Add, ..), Type::F(32)) |
-            (&BinOp(ir::BinOp::Sub, ..), Type::F(32)) => self.add_f32_inst.into(),
-            (&BinOp(ir::BinOp::Add, ..), Type::F(64)) |
-            (&BinOp(ir::BinOp::Sub, ..), Type::F(64)) => self.add_f64_inst.into(),
-            (&BinOp(ir::BinOp::Add, ..), Type::I(32)) |
-            (&BinOp(ir::BinOp::Sub, ..), Type::I(32)) => self.add_i32_inst.into(),
-            (&BinOp(ir::BinOp::Add, ..), Type::I(64)) |
-            (&BinOp(ir::BinOp::Sub, ..), Type::I(64)) => self.add_i64_inst.into(),
-            (&Mul(..), Type::F(32)) => self.mul_f32_inst.into(),
-            (&Mul(..), Type::F(64)) => self.mul_f64_inst.into(),
-            (&Mul(..), Type::I(32)) |
-            (&Mul(..), Type::PtrTo(_)) => self.mul_i32_inst.into(),
-            (&Mul(ref op, _, _, _), Type::I(64)) => {
+            (&BinOp(ir::BinOp::Add, ..), Some(Type::F(32))) |
+            (&BinOp(ir::BinOp::Sub, ..), Some(Type::F(32))) => self.add_f32_inst.into(),
+            (&BinOp(ir::BinOp::Add, ..), Some(Type::F(64))) |
+            (&BinOp(ir::BinOp::Sub, ..), Some(Type::F(64))) => self.add_f64_inst.into(),
+            (&BinOp(ir::BinOp::Add, ..), Some(Type::I(32))) |
+            (&BinOp(ir::BinOp::Sub, ..), Some(Type::I(32))) => self.add_i32_inst.into(),
+            (&BinOp(ir::BinOp::Add, ..), Some(Type::I(64))) |
+            (&BinOp(ir::BinOp::Sub, ..), Some(Type::I(64))) => self.add_i64_inst.into(),
+            (&Mul(..), Some(Type::F(32))) => self.mul_f32_inst.into(),
+            (&Mul(..), Some(Type::F(64))) => self.mul_f64_inst.into(),
+            (&Mul(..), Some(Type::I(32))) |
+            (&Mul(..), Some(Type::PtrTo(_))) => self.mul_i32_inst.into(),
+            (&Mul(ref op, _, _, _), Some(Type::I(64))) => {
                 let op_t = self.lower_type(op.t(), space).unwrap_or_else(|| op.t());
                 if op_t == Type::I(64) {
                     self.mul_i64_inst.into()
@@ -284,11 +284,11 @@ impl Gpu {
                     self.mul_wide_inst.into()
                 }
             },
-            (&Mad(..), Type::F(32)) => self.mad_f32_inst.into(),
-            (&Mad(..), Type::F(64)) => self.mad_f64_inst.into(),
-            (&Mad(..), Type::I(32)) |
-            (&Mad(..), Type::PtrTo(_)) => self.mad_i32_inst.into(),
-            (&Mad(ref op, _, _, _), Type::I(64)) => {
+            (&Mad(..), Some(Type::F(32))) => self.mad_f32_inst.into(),
+            (&Mad(..), Some(Type::F(64))) => self.mad_f64_inst.into(),
+            (&Mad(..), Some(Type::I(32))) |
+            (&Mad(..), Some(Type::PtrTo(_))) => self.mad_i32_inst.into(),
+            (&Mad(ref op, _, _, _), Some(Type::I(64))) => {
                 let op_t = self.lower_type(op.t(), space).unwrap_or_else(|| op.t());
                 if op_t == Type::I(64) {
                     self.mad_i64_inst.into()
@@ -296,10 +296,10 @@ impl Gpu {
                     self.mad_wide_inst.into()
                 }
             },
-            (&BinOp(ir::BinOp::Div, ..), Type::F(32)) => self.div_f32_inst.into(),
-            (&BinOp(ir::BinOp::Div, ..), Type::F(64)) => self.div_f64_inst.into(),
-            (&BinOp(ir::BinOp::Div, ..), Type::I(32)) => self.div_i32_inst.into(),
-            (&BinOp(ir::BinOp::Div, ..), Type::I(64)) => self.div_i64_inst.into(),
+            (&BinOp(ir::BinOp::Div, ..), Some(Type::F(32))) => self.div_f32_inst.into(),
+            (&BinOp(ir::BinOp::Div, ..), Some(Type::F(64))) => self.div_f64_inst.into(),
+            (&BinOp(ir::BinOp::Div, ..), Some(Type::I(32))) => self.div_i32_inst.into(),
+            (&BinOp(ir::BinOp::Div, ..), Some(Type::I(64))) => self.div_i64_inst.into(),
             (&Ld(..), _) | (&TmpLd(..), _) => {
                 let flag = space.domain().get_inst_flag(inst.id());
                 let mem_info = mem_model::analyse(space, self, inst, dim_sizes, ctx);
@@ -347,14 +347,14 @@ impl Gpu {
 
 impl device::Device for Gpu {
     fn print(&self, fun: &Function, out: &mut Write) {
-        let mut printer = CudaPrinter::new(); 
-        printer.host_function(fun, self, out) 
+        let mut printer = CudaPrinter::new();
+        printer.host_function(fun, self, out)
     }
 
     fn is_valid_type(&self, t: &Type) -> bool {
         match *t {
             Type::I(i) | Type::F(i) => i == 32 || i == 64,
-            Type::Void | Type::PtrTo(_) => true,
+            Type::PtrTo(_) => true,
         }
     }
 

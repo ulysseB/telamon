@@ -28,7 +28,7 @@ impl<'a> Instruction<'a> {
     pub fn operands(&self) -> Vec<&Operand<'a>> { self.operator.operands() }
 
     /// Returns the type of the value produced by an instruction.
-    pub fn t(&self) -> Type { self.operator.t() }
+    pub fn t(&self) -> Option<Type> { self.operator.t() }
 
     /// Returns the operator of the instruction.
     pub fn operator(&self) -> &Operator { &self.operator }
