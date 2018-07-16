@@ -10,12 +10,12 @@ def build_capi(spec):
         print('CUDA build enabled.')
         cmd.extend(['--features', 'cuda'])
 
-    build = spec.add_external_build(cmd=cmd, path='..')
+    build = spec.add_external_build(cmd=cmd, path='../telamon-capi')
 
     spec.add_cffi_module(
         module_path='telamon._capi',
-        dylib=lambda: build.find_dylib('telamon_capi', in_path='target/release'),
-        header_filename=lambda: build.find_header('telamon.h', in_path='telamon-capi/include'),
+        dylib=lambda: build.find_dylib('telamon_capi', in_path='../target/release'),
+        header_filename=lambda: build.find_header('telamon.h', in_path='include'),
         rtld_flags=['NOW', 'NODELETE'],
     )
 

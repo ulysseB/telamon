@@ -1,8 +1,10 @@
 //! C API wrappers for calling Telamon through FFI.
 //!
-//! The goal of the C API is to provide thin wrappers over existing Rust functionality, and only
-//! provides some cosmetic improvements to try and provide a somewhat idiomatic C interface.
+//! The goal of the C API is to provide thin wrappers over existing Rust
+//! functionality, and only provides some cosmetic improvements to try and
+//! provide a somewhat idiomatic C interface.
 
+extern crate env_logger;
 extern crate libc;
 extern crate telamon;
 extern crate telamon_kernels;
@@ -15,6 +17,12 @@ use telamon::device::x86;
 use telamon::explorer::config::Config;
 pub use telamon_kernels::{linalg, Kernel};
 
+/// Initializes the logger.
+#[no_mangle]
+pub extern "C" fn env_logger_try_init() {
+    env_logger::try_init();
+}
+
 /// Supported device types for running kernels.
 #[repr(C)]
 pub enum Device {
@@ -23,7 +31,7 @@ pub enum Device {
 }
 
 /// Supported kernels.
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub enum KernelParameters {
     /// A matrix-matrix multiplication kernel.
     MatMul(linalg::MatMulP),
@@ -32,22 +40,47 @@ pub enum KernelParameters {
 impl KernelParameters {
     /// Runs the search for a best candidate.
     fn optimize_kernel<C: device::ArgMap + device::Context>(
-        self,
+        &self,
         config: &Config,
         context: &mut C,
     ) {
         match self {
             KernelParameters::MatMul(params) => {
-                linalg::MatMul::<f32>::benchmark(config, params, 0, context);
+                linalg::MatMul::<f32>::benchmark(
+                    config, params.clone(), 0, context);
             }
         }
     }
 }
 
-/// Instanciate a new kernel for matrix-matrix multiplication. The caller is responsible for
-/// deallocating the returned pointer using kernel_free.
+
+#[repr(C)]
+pub struct Tiling {
+    length: size_t,
+    data: *mut c_uint,
+}
+
+unsafe fn tiling_as_vec(tiling: *const Tiling) -> Option<Vec<u32>> {
+    if tiling.is_null() {
+        None
+    } else {
+        Some((&*tiling).as_vec())
+    }
+}
+
+impl Tiling {
+    unsafe fn as_vec(&self) -> Vec<u32> {
+        let vec = Vec::from_raw_parts(self.data, self.length, self.length);
+        let copy = vec.clone();
+        std::mem::forget(vec);
+        copy
+    }
+}
+
+/// Instanciate a new kernel for matrix-matrix multiplication. The caller is
+/// responsible for deallocating the returned pointer using kernel_free.
 #[no_mangle]
-pub extern "C" fn kernel_matmul_new(
+pub unsafe extern "C" fn kernel_matmul_new(
     m: c_int,
     n: c_int,
     k: c_int,
@@ -55,6 +88,9 @@ pub extern "C" fn kernel_matmul_new(
     transpose_a: c_int,
     transpose_b: c_int,
     generic: c_int,
+    tile_m: *const Tiling,
+    tile_n: *const Tiling,
+    tile_k: *const Tiling,
 ) -> *mut KernelParameters {
     Box::into_raw(Box::new(KernelParameters::MatMul(linalg::MatMulP {
         m: m as i32,
@@ -64,18 +100,23 @@ pub extern "C" fn kernel_matmul_new(
         transpose_a: transpose_a == 1,
         transpose_b: transpose_b == 1,
         generic: generic == 1,
+        m_tiling: tiling_as_vec(tile_m),
+        n_tiling: tiling_as_vec(tile_n),
+        k_tiling: tiling_as_vec(tile_k),
     })))
 }
 
-/// Deallocates kernel parameters created through one of the `kernel_*_new` functions. The `params`
-/// pointer becomes invalid and must not be used again after calling `kernel_free`.
+/// Deallocates kernel parameters created through one of the `kernel_*_new`
+/// functions. The `params` pointer becomes invalid and must not be used again
+/// after calling `kernel_free`.
 #[no_mangle]
 pub unsafe extern "C" fn kernel_free(params: *mut KernelParameters) -> () {
     std::mem::drop(Box::from_raw(params));
 }
 
-/// Optimize a kernel on a given device. `config_data` points to a JSON-encoded string of length
-/// `config_len` containing the configuration parameters for the explorer.
+/// Optimize a kernel on a given device. `config_data` points to a JSON-encoded
+/// string of length `config_len` containing the configuration parameters for
+/// the explorer.
 #[no_mangle]
 pub unsafe extern "C" fn kernel_optimize(
     params: *mut KernelParameters,

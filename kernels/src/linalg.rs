@@ -260,7 +260,7 @@ pub struct MatMul<'a, S: Scalar> {
     c: Tensor<'a, S>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct MatMulP {
     pub m: i32,
     pub n: i32,
@@ -269,6 +269,9 @@ pub struct MatMulP {
     pub transpose_a: bool,
     pub transpose_b: bool,
     pub generic: bool,
+    pub m_tiling: Option<Vec<u32>>,
+    pub n_tiling: Option<Vec<u32>>,
+    pub k_tiling: Option<Vec<u32>>,
 }
 
 impl MatMulP {
@@ -279,6 +282,9 @@ impl MatMulP {
             transpose_a: false,
             transpose_b: false,
             generic: true,
+            m_tiling: None,
+            n_tiling: None,
+            k_tiling: None,
         }
     }
 
@@ -331,9 +337,21 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
     fn build_body<'b>(&self, signature: &'b ir::Signature, ctx: &'b device::Context)
         -> Vec<Candidate<'b>>
     {
-        let k_tiles = ::generate_tile_sizes(self.params.k as u32, &[64]);
-        let m_tiles = ::generate_tile_sizes(self.params.m as u32, &[64, 8]);
-        let n_tiles = ::generate_tile_sizes(self.params.n as u32, &[64, 8]);
+        let k_tiles = if let Some(ref tiles) = self.params.k_tiling {
+            vec![tiles.clone()]
+        } else {
+            ::generate_tile_sizes(self.params.k as u32, &[64])
+        };
+        let m_tiles = if let Some(ref tiles) = self.params.m_tiling {
+            vec![tiles.clone()]
+        } else {
+            ::generate_tile_sizes(self.params.m as u32, &[64, 8])
+        };
+        let n_tiles = if let Some(ref tiles) = self.params.k_tiling {
+            vec![tiles.clone()]
+        } else {
+            ::generate_tile_sizes(self.params.n as u32, &[64, 8])
+        };
         let tilings = ::par_iter_product(::par_iter_product(m_tiles, n_tiles), k_tiles);
 
         tilings.map(|((m_tiling, n_tiling), k_tiling)| {

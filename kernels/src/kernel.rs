@@ -20,7 +20,7 @@ const MAX_DEADEND_RATIO: usize = 20;
 /// A kernel that can be compiled, benchmarked and used for correctness tests.
 pub trait Kernel<'a>: Sized {
     /// The input parameters of the kernel.
-    type Parameters: Copy;
+    type Parameters;
     /// The values to expect as output.
     type ExpectedOutput;
 
