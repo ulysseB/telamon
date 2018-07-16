@@ -11,6 +11,7 @@ mod operand;
 mod operator;
 mod size;
 mod types;
+mod value;
 
 use std;
 use std::marker::PhantomData;
@@ -28,6 +29,7 @@ pub use self::operand::{DimMapScope, LoweringMap, Operand};
 pub use self::operator::{BinOp, Operator};
 pub use self::size::{PartialSize, Size};
 pub use self::types::Type;
+pub use self::value::{Value, ValueId, ValueDef};
 
 pub mod mem;
 
