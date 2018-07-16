@@ -189,6 +189,60 @@ impl Gpu {
         gpus.into_iter().find(|x| x.name == name)
     }
 
+    /// Creates a dummy GPU, to use for tests and benchmarks without evaluation.
+    pub fn dummy() -> Self {
+        Gpu {
+            name: "dummy".to_string(),
+            sm_major: 0,
+            sm_minor: 0,
+            addr_size: 64,
+            shared_mem_per_smx: 49152,
+            shared_mem_per_block: 49152,
+            allow_nc_load: true,
+            allow_l1_for_global_mem: false,
+            wrap_size: 32,
+            thread_per_smx: 2048,
+            l1_cache_size: 16348,
+            l1_cache_line: 128,
+            l2_cache_size: 393216,
+            l2_cache_line: 32,
+            shared_bank_stride: 8,
+            num_smx: 4,
+            max_block_per_smx: 16,
+
+            smx_clock: -1.,
+            load_l2_latency: -1.,
+            load_ram_latency: -1.,
+            load_shared_latency: -1.,
+            loop_end_latency: -1.,
+
+            thread_rates: InstDesc::default(),
+            smx_rates: InstDesc::default(),
+            gpu_rates: InstDesc::default(),
+            add_f32_inst: InstDesc::default(),
+            add_f64_inst: InstDesc::default(),
+            add_i32_inst: InstDesc::default(),
+            add_i64_inst: InstDesc::default(),
+            mul_f32_inst: InstDesc::default(),
+            mul_f64_inst: InstDesc::default(),
+            mul_i32_inst: InstDesc::default(),
+            mul_i64_inst: InstDesc::default(),
+            mul_wide_inst: InstDesc::default(),
+            mad_f32_inst: InstDesc::default(),
+            mad_f64_inst: InstDesc::default(),
+            mad_i32_inst: InstDesc::default(),
+            mad_i64_inst: InstDesc::default(),
+            mad_wide_inst: InstDesc::default(),
+            div_f32_inst: InstDesc::default(),
+            div_f64_inst: InstDesc::default(),
+            div_i32_inst: InstDesc::default(),
+            div_i64_inst: InstDesc::default(),
+            syncthread_inst: InstDesc::default(),
+            loop_init_overhead: InstDesc::default(),
+            loop_iter_overhead: InstDesc::default(),
+        }
+    }
+
     /// Returns the PTX code for a Function.
     pub fn print_ptx(&self, fun: &Function) -> String {
         let mut printer = CudaPrinter::new();

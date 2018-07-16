@@ -27,6 +27,26 @@ pub struct Signature {
     pub mem_blocks: u32,
 }
 
+impl Signature {
+    /// Creates a new signature without any parameter.
+    pub fn new(name: String) -> Self {
+        Signature { name, params: vec![], mem_blocks: 0 }
+    }
+
+    /// Adds a scalar parameter.
+    pub fn add_scalar(&mut self, name: String, t: ir::Type) {
+        self.params.push(Parameter { name, t });
+    }
+
+    /// Adds a parameter with the given name and type to the signature.
+    pub fn add_array(&mut self, name: String) -> ir::mem::Id {
+        let id = mem::Id::External(self.mem_blocks);
+        self.mem_blocks += 1;
+        self.params.push(Parameter { name, t: ir::Type::PtrTo(id) });
+        id
+    }
+}
+
 /// Describes a function and the set of its possible implementation.
 #[derive(Clone)]
 pub struct Function<'a> {
