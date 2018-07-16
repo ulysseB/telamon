@@ -2,7 +2,9 @@
 use codegen;
 use device;
 use device::Context as ContextTrait;
-use device::cuda::{api, Context, Gpu, PerfCounterSet, JITDaemon};
+use device::cuda::{api, Context, Gpu, JITDaemon};
+#[cfg(feature="cuda")]
+use device::cuda::PerfCounterSet;
 use codegen::ParamVal;
 use itertools::Itertools;
 use std;
@@ -57,6 +59,7 @@ impl<'a, 'b> Kernel<'a, 'b> {
     }
 
     /// Instruments the kernel with the given performance counters.
+    #[cfg(feature="cuda")]
     pub fn instrument(&self, args: &Context, counters: &PerfCounterSet) -> Vec<u64> {
         let cuda_kernel = self.module.kernel(&self.function.name);
         self.gen_args(args).instrument(&cuda_kernel, counters, self.executor)
@@ -161,6 +164,7 @@ impl<'a> ThunkArgs<'a> {
     }
 
     /// Instruments the kernel.
+    #[cfg(feature="cuda")]
     pub fn instrument(&self, cuda_kernel: &api::Kernel, counters: &PerfCounterSet,
                       executor: &api::Executor) -> Vec<u64> {
         self.check_blocks_per_smx(cuda_kernel);

@@ -1,13 +1,26 @@
 //! Defines the CUDA target.
+#[cfg(feature="cuda")]
 mod api;
+#[cfg(not(feature="cuda"))]
+mod api {
+    mod error;
+    mod fake;
+    pub use self::fake::*;
+    pub use self::error::*;
+}
 mod context;
 mod kernel;
 mod gpu;
 mod mem_model;
 mod printer;
 
-pub use self::api::{Array, Executor, PerfCounter, PerfCounterSet, JITDaemon};
-pub use self::api::DeviceAttribute;
+
+// Constructs to retrieve information on the GPU, that are not needed for the regular
+// operation of Telamon and thus only present if the cuda feature is.
+#[cfg(feature="cuda")]
+pub use self::api::{DeviceAttribute, PerfCounter, PerfCounterSet};
+
+pub use self::api::{Array, Executor, JITDaemon};
 pub use self::context::Context;
 pub use self::gpu::{Gpu, InstDesc};
 pub use self::kernel::Kernel;

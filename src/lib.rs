@@ -6,6 +6,8 @@ extern crate crossbeam;
 extern crate env_logger;
 extern crate getopts;
 extern crate errno;
+#[macro_use]
+extern crate failure;
 extern crate interval_heap;
 extern crate itertools;
 extern crate libloading;
@@ -32,7 +34,6 @@ extern crate rand;
 extern crate rpds;
 extern crate futures;
 extern crate tokio_timer;
-#[cfg(feature="cuda")]
 extern crate rustc_serialize;
 #[macro_use]
 extern crate serde_derive;
