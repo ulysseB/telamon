@@ -129,24 +129,8 @@ pub fn process<'a, T: io::Write>(
 // TODO(filter): group filters if one iterates on a subtype of the other
 // TODO(filter): generate negative filter when there is at most one input.
 // TODO(filter): merge filters even if one input requires a type constraint
-// TODO(cc_perf): remove duplicates on_change filter actions
-// * Why does this happens ?
-//   > only on filters
-//   > when the filtered choice is symmetric, either when
-//     - changed is symmetric
-//          > can be solved by checking both changed and filtered are symmetric
-//     - changed appears multiple times in the arguments
-//          - can be detected directly when declaring the filter
-//          > how to detect this ?
-//
-// * How to fix it ?
-// - normalize filter calls
-//   -> can inverse lhs and rhs in symmetric, be careful if self is symmetric
-// - detect duplicates and remove them
-// - IS A X2 LIMITING FACTOR
-// > couldn't we do this during merging ?
-// TODO(cc_perf): Only iterate on the lower triangular part of symmetric domains in
-// on_change
+// TODO(cc_perf): Only iterate on the lower triangular part of symmetric rather than
+//  dynamically filtering out half of the cases
 // TODO(cc_perf): in truth table, intersect rules with rules with weaker conditions,
 
 // FIXME: fix counters:

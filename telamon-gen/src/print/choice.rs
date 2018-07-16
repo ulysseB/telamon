@@ -202,6 +202,7 @@ enum ChoiceAction<'a> {
     FilterSelf,
     Filter {
         choice: &'a str,
+        is_symmetric: bool,
         filter_call: FilterCall<'a>,
         choice_full_type: ast::ValueType,
         arguments: Vec<(ast::Variable<'a>, ast::Set<'a>)>,
@@ -252,6 +253,7 @@ impl<'a> ChoiceAction<'a> {
                 let adaptator = ir::Adaptator::from_arguments(&choice_instance.vars);
                 let full_type = choice.value_type().full_type().adapt(&adaptator);
                 ChoiceAction::Filter {
+                    is_symmetric: choice.arguments().is_symmetric(),
                     choice: choice.name(),
                     choice_full_type: ast::ValueType::new(full_type, ctx),
                     filter_call, arguments,
