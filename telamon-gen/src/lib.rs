@@ -130,6 +130,14 @@ pub fn process<'a, T: io::Write>(
 // TODO(filter): generate negative filter when there is at most one input.
 // TODO(filter): merge filters even if one input requires a type constraint
 // TODO(cc_perf): remove duplicates on_change filter actions
+// * Why does this happens ?
+//   > only on filters
+//   > when the filtered choice is symmetric, either when
+//     - changed is symmetric
+//          > can be solved by checking both changed and filtered are symmetric
+//     - changed appears multiple times in the arguments
+//          > how to 
+// * How to fix it ?
 // - normalize filter calls
 //   -> can inverse lhs and rhs in symmetric, be careful if self is symmetric
 // - detect duplicates and remove them
@@ -140,15 +148,15 @@ pub fn process<'a, T: io::Write>(
 // TODO(cc_perf): in truth table, intersect rules with rules with weaker conditions,
 
 // FIXME: fix counters:
-// * Discard full counters. Might re-enable them later if we can find a way to make lowerings
-//  commute
-// * Fordid resrtricting the FALSE value of the repr flag from conditions that involve other decisions
-// > this makes lowering commute. Otherwise we can force the counter to be >0, which can be true or
-//   not depending if another lowering has already occured.
-// * Charaterise the effect of fragile values on performance
-// FIXME: make sure the quotient set works correctly with things that force the repr flag to TRUE
-// (for example the constraint on reduction). One problem might be that the flag is forced to FALSE
-// but can be merged with a dim whose flag can be set to TRUE. The solutions for this may be to
-// ensure:
+// * Discard full counters. Might re-enable them later if we can find a way to make
+//   lowerings commute
+// * Fordid resrtricting the FALSE value of the repr flag from conditions that involve
+//   other decisions
+// > this makes lowering commute. Otherwise we can force the counter to be >0, which can
+//   be true or not depending if another lowering has already occured.
+// FIXME: make sure the quotient set works correctly with things that force the repr flag
+// to TRUE (for example the constraint on reduction). One problem might be that the flag
+// is forced to FALSE but can be merged with a dim whose flag can be set to TRUE. The
+// solutions for this may be to ensure:
 // - conditions on flags are uniform for merged dims
 // - the flag has a third state "ok to be true, but onyl if merged to another"

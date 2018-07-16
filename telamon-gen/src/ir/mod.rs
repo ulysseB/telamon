@@ -118,7 +118,8 @@ impl IrDesc {
             .map(|(v, set)| (v, set_constraints.find_set(v).unwrap_or(set).clone()))
             .collect::<HashMap<_, _>>();
         // If the changed choice is symmetric, the inverse filter should also be called.
-        if self.get_choice(&changed.choice).arguments().is_symmetric() {
+        if self.get_choice(&changed.choice).arguments().is_symmetric() &&
+            !self.get_choice(filtered).arguments().is_symmetric() {
             let vars = vec![changed.vars[1], changed.vars[0]];
             let ref changed = ChoiceInstance { choice: changed.choice.clone(), vars };
             let action = self.gen_filter_call_action(
