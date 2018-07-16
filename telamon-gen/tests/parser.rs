@@ -11,7 +11,7 @@ use std::path::Path;
 
 #[test]
 fn invalid_token() {
-    assert_eq!(parser::parse_ast(Lexer::from(b"!".to_vec())).err(), Some(
+    assert_eq!(parser::parse_ast(Lexer::new(b"!".to_vec())).err(), Some(
                   ParseError::User {
                       error: LexicalError::InvalidToken(
                           Position::default(),
@@ -22,7 +22,7 @@ fn invalid_token() {
               ));
 
     assert_eq!(format!("{}",
-                   parser::parse_ast(Lexer::from(b"!".to_vec()))
+                   parser::parse_ast(Lexer::new(b"!".to_vec()))
                           .map_err(|c|
                                error::ProcessError::from(
                                    (Path::new("exh").display(), c)))
@@ -32,7 +32,7 @@ fn invalid_token() {
 
 #[test]
 fn integer_token() {
-    assert!(parser::parse_ast(Lexer::from(
+    assert!(parser::parse_ast(Lexer::new(
         b"define integer mychoice($myarg in MySet): \"mycode\" end".to_vec())).is_ok()
     );
 }

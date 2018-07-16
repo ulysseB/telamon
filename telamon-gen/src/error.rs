@@ -49,6 +49,7 @@ impl <'a>From<(path::Display<'a>,
            ParseError::UnrecognizedToken { token: Some((l, .., e)), .. } |
            ParseError::ExtraToken { token: (l, .., e) } |
            ParseError::User { error: lexer::LexicalError::UnexpectedToken(l, .., e) } |
+           ParseError::User { error: lexer::LexicalError::InvalidInclude(l, .., e) } |
            ParseError::User { error: lexer::LexicalError::InvalidToken(l, .., e) } 
                 => ProcessError {
                     path: path,

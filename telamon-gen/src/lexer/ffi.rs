@@ -12,6 +12,10 @@ pub type YyBufferState = *const libc::c_void;
 /// Unsigned integer type used to represent the sizes f/lex.
 pub type YySize = libc::size_t;
 
+/// According to the [Default Memory Management](http://westes.github.io/flex/manual/The-Default-Memory-Management.html),
+/// the input buffer is 16kB.
+pub const YY_BUF_SIZE: libc::c_int = 16384;
+
 /// A sequence's row/column position
 #[derive(Copy, Clone)]
 #[repr(C)]
@@ -127,6 +131,8 @@ pub enum YyToken {
     Of,
     Divide,
     Integer,
+    /// Include exh header file.
+    Include,
     /// End-of-File
     EOF = libc::EOF as _,
 }
@@ -136,6 +142,9 @@ extern {
     pub fn yy_scan_string(yy_str: *const libc::c_char, yyscanner: YyScan) -> YyBufferState;
     pub fn yy_scan_buffer(base: *const libc::c_char, size: YySize, yyscanner: YyScan) -> YyBufferState;
     pub fn yy_scan_bytes(base: *const libc::c_char, len: libc::c_int, yyscanner: YyScan) -> YyBufferState;
+    pub fn yy_create_buffer(file: *const libc::FILE, size: libc::c_int, yyscanner: YyScan) -> YyBufferState;
+    pub fn yypush_buffer_state(buffer: YyBufferState, yyscanner: YyScan) -> libc::c_void;
+    pub fn yypop_buffer_state(yyscanner: YyScan) -> libc::c_void;
     pub fn yyget_extra(yyscanner: YyScan) -> YyExtraType;
     pub fn yylex(yyscanner: YyScan) -> YyToken;
     pub fn yyget_text(yyscanner: YyScan) -> *mut libc::c_char;

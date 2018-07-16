@@ -12,7 +12,7 @@ mod redefinition {
     /// Redefinition of the Foo Set.
     #[test]
     fn set() {
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
           b"set Foo:
                 item_type = \"ir::inst::Obj\"
                 id_type = \"ir::inst::Id\"
@@ -47,7 +47,7 @@ mod redefinition {
     /// TODO: fixe position
     #[test]
     fn field() {
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
           b"set Foo:
                 item_type = \"ir::inst::Obj\"
                 id_type = \"ir::inst::Id\"
@@ -79,7 +79,7 @@ mod undefined {
     /// Missing the set Instruction from a Set
     #[test]
     fn parameter() {
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
             b"set Operand($inst in Instruction):
                 item_type = \"ir::operand::Obj\"
                 id_type = \"ir::operand::Id\"
@@ -100,7 +100,7 @@ mod undefined {
     /// Missing the subset BasicBlock from a Set.
     #[test]
     fn subsetof() {
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
             b"set Instruction subsetof BasicBlock:
                 item_type = \"ir::inst::Obj\"
                 id_type = \"ir::inst::Id\"
@@ -128,7 +128,7 @@ mod missing_entry {
     /// Missing the ItemType's key from Set.
     #[test]
     fn item_type() {
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
             b"set Instruction:
                 id_type = \"ir::inst::Id\"
                 item_getter = \"ir::inst::get($fun, $id)\"
@@ -148,7 +148,7 @@ mod missing_entry {
     /// Missing the IdType's key from Set.
     #[test]
     fn id_type() {
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
             b"set Instruction:
                 item_type = \"ir::inst::Obj\"
                 item_getter = \"ir::inst::get($fun, $id)\"
@@ -168,7 +168,7 @@ mod missing_entry {
     /// Missing the ItemGetter's key from Set.
     #[test]
     fn item_getter() {
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
             b"set Instruction:
                 item_type = \"ir::inst::Obj\"
                 id_type = \"ir::inst::Id\"
@@ -188,7 +188,7 @@ mod missing_entry {
     /// Missing the IdGetter's key from Set.
     #[test]
     fn id_getter() {
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
             b"set Instruction:
                 item_type = \"ir::inst::Obj\"
                 id_type = \"ir::inst::Id\"
@@ -208,7 +208,7 @@ mod missing_entry {
     /// Missing the Iter's key from Set.
     #[test]
     fn iter() {
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
             b"set Instruction:
                 item_type = \"ir::inst::Obj\"
                 id_type = \"ir::inst::Id\"
@@ -228,7 +228,7 @@ mod missing_entry {
     /// Missing the SetDefKey's key from Set.
     #[test]
     fn from_superset() {
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
             b"set BasicBlock:
                 item_type = \"ir::basic_block::Obj\"
                 id_type = \"ir::basic_block::Id\"

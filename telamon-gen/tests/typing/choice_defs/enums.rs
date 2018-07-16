@@ -12,7 +12,7 @@ mod undefined {
     /// Missing the set BasickBlock from a Emum.
     #[test]
     fn parameter() {
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
                 b"define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
                     symmetric
                     value A:
@@ -29,7 +29,7 @@ mod undefined {
     /// Missing the set BasickBlock from a Emum.
     #[test]
     fn value() {
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
             b"define enum foo():
                 value A:
                 alias AB = A | B:
@@ -51,7 +51,7 @@ mod redefinition {
     /// Redefinition of the foo Enum.
     #[test]
     fn enum_() {
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
             b"define enum foo():
               end
               
@@ -71,7 +71,7 @@ mod redefinition {
 
     #[test]
     fn field() {
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
             b"define enum foo():
                 value A:
                 value B:
@@ -89,7 +89,7 @@ mod redefinition {
                 data: String::from("AB"),
             }))
         );
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
             b"define enum foo():
                 value A:
                 value B:
@@ -105,7 +105,7 @@ mod redefinition {
                 data: String::from("A"),
             }))
         );
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
             b"set BasicBlock:
                 item_type = \"ir::inst::Obj\"
                 id_type = \"ir::inst::Id\"
@@ -137,7 +137,7 @@ mod redefinition {
 /*
 #[test]
 fn enum_symmetric_two_parameters() {
-    assert_eq!(parser::parse_ast(Lexer::from(
+    assert_eq!(parser::parse_ast(Lexer::new(
         b"define enum foo():
             symmetric
             value A:
@@ -149,7 +149,7 @@ fn enum_symmetric_two_parameters() {
             data: TypeError::BadSymmetricArg(vec![])
         })
     );
-    assert_eq!(parser::parse_ast(Lexer::from(
+    assert_eq!(parser::parse_ast(Lexer::new(
         b"set BasicBlock:
             item_type = \"ir::basic_block::Obj\"
             id_type = \"ir::basic_block::Id\"
@@ -178,7 +178,7 @@ fn enum_symmetric_two_parameters() {
             ])
         })
     );
-    assert_eq!(parser::parse_ast(Lexer::from(
+    assert_eq!(parser::parse_ast(Lexer::new(
         b"set BasicBlock:
             item_type = \"ir::basic_block::Obj\"
             id_type = \"ir::basic_block::Id\"
@@ -227,7 +227,7 @@ fn enum_symmetric_two_parameters() {
 
 #[test]
 fn enum_symmetric_same_parameter() {
-    assert_eq!(parser::parse_ast(Lexer::from(
+    assert_eq!(parser::parse_ast(Lexer::new(
         b"set BasicBlock:
             item_type = \"ir::basic_block::Obj\"
             id_type = \"ir::basic_block::Id\"

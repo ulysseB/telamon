@@ -11,7 +11,7 @@ mod undefined {
     /// Missing the set MySet from a Integer.
     #[test]
     fn parameter() {
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
             b"define integer foo($arg in MySet): \"mycode\"
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Undefined(Spanned {
@@ -30,7 +30,7 @@ mod redefinition {
     /// Redefinition of the foo Integer.
     #[test]
     fn integer() {
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
             b"define integer foo(): \"mycode\"
               end
               define integer foo(): \"mycode\"

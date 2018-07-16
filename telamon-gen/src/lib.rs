@@ -12,6 +12,7 @@ extern crate serde_json;
 #[macro_use]
 extern crate telamon_utils as utils;
 extern crate libc;
+extern crate errno;
 
 extern crate lalrpop_util;
 
@@ -54,22 +55,20 @@ pub fn process_file<'a>(
     output_path: &path::Path,
     format: bool
 ) -> Result<(), error::ProcessError<'a>> {
-    let mut input = fs::File::open(path::Path::new(input_path)).unwrap();
     let mut output = fs::File::create(path::Path::new(output_path)).unwrap();
     let input_path_str = input_path.to_string_lossy();
     info!("compiling {} to {}", input_path_str, output_path.to_string_lossy());
-    process(&mut input, &mut output, format, input_path)
+    process(&mut output, format, input_path)
 }
 
 /// Parses a constraint description file.
 pub fn process<'a, T: io::Write>(
-    input: &mut io::Read,
     output: &mut T,
     format: bool,
     input_path: &'a path::Path
 ) -> Result<(), error::ProcessError<'a>> {
     // Parse and check the input.
-    let tokens = lexer::Lexer::new(input);
+    let tokens = lexer::Lexer::from_file(input_path);
     let ast: ast::Ast =
         parser::parse_ast(tokens)
                .map_err(|c| error::ProcessError::from((input_path.display(), c)))?;
