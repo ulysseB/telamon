@@ -39,6 +39,7 @@ pub struct Function<'a> {
     mem_blocks: mem::BlockMap<'a>,
     layouts_to_lower: Vec<ir::mem::InternalId>,
     induction_vars: Vec<ir::InductionVar<'a>>,
+    values: Vec<ir::Value>,
 }
 
 impl<'a> Function<'a> {
@@ -55,6 +56,7 @@ impl<'a> Function<'a> {
             mem_blocks,
             layouts_to_lower: Vec::new(),
             induction_vars: Vec::new(),
+            values: Vec::new(),
         }
     }
 
@@ -112,6 +114,11 @@ impl<'a> Function<'a> {
         self.insts.iter().map(|x| x as _).chain(self.dims.iter().map(|x| x as _))
     }
 
+    /// Returns the list of values.
+    pub fn values(&self) -> std::slice::Iter<ir::Value> {
+        self.values.iter()
+    }
+
     /// Returns the list of thread dimensions.
     pub fn thread_dims(&self) -> impl Iterator<Item=&Dimension<'a>> {
         self.thread_dims.iter().map(move |&d| self.dim(d))
@@ -140,6 +147,9 @@ impl<'a> Function<'a> {
             BBId::Dim(id) => self.dim(id),
         }
     }
+
+    /// Returns a `Value` given its id.
+    pub fn value(&self, id: ir::ValueId) -> &ir::Value { &self.values[id.0 as usize] }
 
     /// Returns the list of memory blocks. The block with id `i` is in i-th position.
     pub fn mem_blocks<'b>(&'b self) -> impl Iterator<Item=&'b mem::Block> {
