@@ -29,17 +29,19 @@ extern crate num_cpus;
 #[cfg(feature="mppa")]
 extern crate parking_lot;
 #[cfg(feature="cuda")]
+extern crate prettytable;
+#[cfg(feature="cuda")]
 extern crate prctl;
 extern crate rand;
 extern crate rpds;
 extern crate futures;
 extern crate tokio_timer;
-extern crate rustc_serialize;
 #[macro_use]
-extern crate serde_derive;
 extern crate serde;
+extern crate serde_json;
 #[macro_use]
 extern crate telamon_utils as utils;
+extern crate xdg;
 
 pub mod codegen;
 #[macro_use]

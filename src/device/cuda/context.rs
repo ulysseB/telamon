@@ -27,16 +27,10 @@ pub struct Context<'a> {
 impl<'a> Context<'a> {
     /// Create a new evaluation context. The GPU model if infered.
     pub fn new(executor: &'a Executor) -> Context {
-        let gpu_name = executor.device_name();
-        if let Some(gpu) = Gpu::from_name(&gpu_name) {
-            Context {
-                gpu_model: gpu,
-                executor,
-                parameters: HashMap::default(),
-            }
-        } else {
-            panic!("Unknown gpu model: {}, \
-                   please add it to devices/cuda_gpus.json.", gpu_name);
+        Context {
+            gpu_model: Gpu::from_executor(executor),
+            executor,
+            parameters: HashMap::default(),
         }
     }
 

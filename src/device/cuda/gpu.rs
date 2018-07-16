@@ -1,17 +1,13 @@
 //! Describes CUDA-enabled GPUs.
-extern crate xdg;
-
 use codegen::Function;
-use device::{self, Device};
+use device::{self, cuda, Device};
 use device::cuda::CudaPrinter;
 use device::cuda::mem_model::{self, MemInfo};
 use ir::{self, Type, Operator};
 use model::{self, HwPressure};
 use search_space::{DimKind, Domain, InstFlag, MemSpace, SearchSpace};
-use rustc_serialize::json;
 use std;
-use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Write;
 use utils::*;
 
 // FIXME: fix performance model
@@ -20,7 +16,7 @@ use utils::*;
 // - l1_lines per threads ?
 
 /// Specifies the performance parameters of an instruction.
-#[derive(Default, RustcDecodable, RustcEncodable, Clone, Copy, Debug)]
+#[derive(Default, Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct InstDesc {
     /// The latency of the instruction.
     pub latency: f64,
@@ -75,7 +71,7 @@ impl Into<HwPressure> for InstDesc {
 }
 
 /// Represents CUDA GPUs.
-#[derive(RustcDecodable, RustcEncodable, Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Gpu {
     /// The name of the GPU.
     pub name: String,
@@ -159,34 +155,15 @@ pub struct Gpu {
 
 impl Gpu {
     /// Returns the GPU model corresponding to `name.
-    pub fn from_name(name: &str) -> Option<Gpu> {
-        let config_path = {
-            let xdg_dirs = unwrap!(
-                xdg::BaseDirectories::with_prefix("telamon"));
-            match xdg_dirs.find_config_file("cuda_gpus.json") {
-                Some(config_path) => config_path,
-                None => {
-                    let config_path = xdg_dirs
-                        .place_config_file("cuda_gpus.json")
-                        .expect("cannot create configuration directory");
-                    println!(
-                        "GPU configuration file not found; writing default configuration to {}",
-                        config_path.to_string_lossy());
-                    let mut config_file = unwrap!(File::create(config_path.clone()));
-                    unwrap!(
-                        write!(config_file, "{}", include_str!("../../../data/cuda_gpus.json")));
-                    // We return the Path here instead of the already-opened file object because we
-                    // want to ensure that the toplevel `config_path` variable always point to a
-                    // readonly file in order to avoid subtle bugs.
-                    config_path
-                },
-            }
-        };
-        let mut file = unwrap!(File::open(config_path));
-        let mut string = String::new();
-        unwrap!(file.read_to_string(&mut string));
-        let gpus: Vec<Gpu> = unwrap!(json::decode(&string));
-        gpus.into_iter().find(|x| x.name == name)
+    #[cfg(feature="cuda")]
+    pub fn from_executor(executor: &cuda::Executor) -> Gpu {
+        cuda::characterize::get_gpu_desc(executor)
+    }
+
+    /// Returns the GPU model corresponding to `name.
+    #[cfg(not(feature="cuda"))]
+    pub fn from_executor(executor: &cuda::Executor) -> Gpu {
+        match *executor { }
     }
 
     /// Returns the PTX code for a Function.
@@ -347,8 +324,8 @@ impl Gpu {
 
 impl device::Device for Gpu {
     fn print(&self, fun: &Function, out: &mut Write) {
-        let mut printer = CudaPrinter::new(); 
-        printer.host_function(fun, self, out) 
+        let mut printer = CudaPrinter::new();
+        printer.host_function(fun, self, out)
     }
 
     fn is_valid_type(&self, t: &Type) -> bool {
@@ -497,16 +474,3 @@ fn min_assign<T: std::cmp::Ord>(lhs: &mut T, rhs: T) { if rhs < *lhs { *lhs = rh
 // TODO(model): On the Quadro K4000:
 // * The Mul wide latency is unknown.
 // * The latency is not specialized per operand.
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Obtains a GPU from a name.
-    #[test]
-    fn test_get_gpu_by_name() {
-        let name = "dummy_cuda_gpu";
-        let gpu = unwrap!(Gpu::from_name(name));
-        assert_eq!(gpu.name, name);
-    }
-}

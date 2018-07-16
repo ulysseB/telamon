@@ -1,16 +1,15 @@
 //! Builds code for micro benchmarks.
 use num::Zero;
-use telamon::codegen;
-use telamon::device::{ArgMap, ScalarArgument, Device};
-use telamon::device::cuda::{Gpu, Context, Kernel, PerfCounterSet};
-use telamon::explorer;
-use telamon::helper::{AutoOperand, Builder, DimGroup, Reduce};
-use telamon::ir;
-use telamon::ir::Signature;
-use telamon::search_space::{Action, DimKind, InstFlag, SearchSpace, ThreadMapping, Order};
+use codegen;
+use device::{ArgMap, ScalarArgument, Device};
+use device::cuda::{Gpu, Context, Kernel, PerfCounterSet};
+use device::cuda::characterize::Table;
+use explorer;
+use helper::{AutoOperand, Builder, DimGroup, Reduce};
+use ir::{self, Signature};
+use search_space::*;
 use itertools::Itertools;
 use std;
-use table::Table;
 use utils::*;
 
 /// Generates a function base with the given arguments.
