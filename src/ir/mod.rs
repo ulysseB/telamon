@@ -10,6 +10,7 @@ mod operand;
 mod operator;
 mod size;
 mod types;
+mod value;
 
 pub use self::access_pattern::{Stride, AccessPattern};
 pub use self::basic_block::{BasicBlock, BBId};
@@ -22,6 +23,7 @@ pub use self::operand::{Operand, DimMapScope};
 pub use self::operator::{BinOp, Operator};
 pub use self::size::Size;
 pub use self::types::Type;
+pub use self::value::{Value, ValueId, ValueDef};
 
 pub mod mem;
 

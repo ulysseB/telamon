@@ -1,6 +1,7 @@
 //! Describes the instructions.
 use device::Device;
 use ir::{self, BasicBlock, BBId, Operand, Operator, Type, DimMapScope};
+use std;
 use std::hash::{Hash, Hasher};
 use utils::*;
 
@@ -14,6 +15,7 @@ pub struct Instruction<'a> {
     operator: Operator<'a>,
     id: InstId,
     iter_dims: HashSet<ir::dim::Id>,
+    value: Option<ir::ValueId>,
 }
 
 impl<'a> Instruction<'a> {
@@ -21,7 +23,7 @@ impl<'a> Instruction<'a> {
     pub fn new(operator: Operator<'a>, id: InstId, iter_dims: HashSet<ir::dim::Id>,
                device: &Device) -> Instruction<'a> {
         operator.type_check(device);
-        Instruction { operator, id, iter_dims }
+        Instruction { operator, id, iter_dims, value: None }
     }
 
     /// Returns the list of operands of an `Instruction`.
@@ -108,6 +110,15 @@ impl<'a> Instruction<'a> {
     /// iteration dimension.
     pub fn add_iteration_dimension(&mut self, dim: ir::dim::Id) -> bool {
         self.iter_dims.insert(dim)
+    }
+
+    /// Returns the `Value` holding the result of this instruction.
+    pub fn result_value(&self) -> Option<ir::ValueId> { self.value }
+
+    /// Sets the `Value` holdings the result of this instruction.
+    pub fn set_result_value(&mut self, value: ir::ValueId) {
+        // An instruction value cannot be set twice.
+        assert_eq!(std::mem::replace(&mut self.value, Some(value)), None);
     }
 }
 
