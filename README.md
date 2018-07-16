@@ -4,13 +4,13 @@
 
 Telamon is a framework to find good combinations of optimization for computational kernels
 on GPUs. It currently focuses on dense linear algebra. For more information on how it
-works internally, we encourage you to read our paper [paper][cc17].
+works internally, we encourage you to read our [paper][cc17].
 
 ## Getting Started
 
-To compile Telamon, you need [rust 1.27 or higher](rust-install) installed. If you want to
-generate code for GPU, you will also need a CUDA toolchain installed, with the `cuda`,
-`curand` and `cupti` accessible in the include and library paths. You can the
+To compile Telamon, you need [rust 1.27 or higher][rust-install] installed. If you want to
+generate code for GPU, you will also need a CUDA toolchain installed, with `cuda`,
+`curand` and `cupti` accessible in the include and library paths. You can also view the
 [documentation on github][telamon-doc].
 
 To generate code for GPUs, Telamon needs a description of the targeted GPU. This
@@ -88,6 +88,6 @@ let best = explorer::find_best(explorer::config::read(), &context, search_space)
 context.device().gen_code(&best, &mut std::io::stdout());
 ```
 
-[rust-install]:(https://www.rust-lang.org/en-US/install.html)
-[cc17]:(https://stratoss.fr/ulysse/papers/telamon_cc17.pdf)
-[telamon-doc]:(https://ulysseb.github.com/telamon/telamon)
+[rust-install]: https://www.rust-lang.org/en-US/install.html
+[cc17]: https://stratoss.fr/ulysse/papers/telamon_cc17.pdf
+[telamon-doc]: https://ulysseb.github.com/telamon/telamon
