@@ -20,7 +20,7 @@ pub use telamon_kernels::{linalg, Kernel};
 /// Initializes the logger.
 #[no_mangle]
 pub extern "C" fn env_logger_try_init() {
-    env_logger::try_init();
+    let _ = env_logger::try_init();
 }
 
 /// Supported device types for running kernels.

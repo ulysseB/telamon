@@ -337,20 +337,14 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
     fn build_body<'b>(&self, signature: &'b ir::Signature, ctx: &'b device::Context)
         -> Vec<Candidate<'b>>
     {
-        let k_tiles = if let Some(ref tiles) = self.params.k_tiling {
-            vec![tiles.clone()]
-        } else {
-            ::generate_tile_sizes(self.params.k as u32, &[64])
-        };
-        let m_tiles = if let Some(ref tiles) = self.params.m_tiling {
-            vec![tiles.clone()]
-        } else {
+        let m_tiles = self.params.m_tiling.clone().map(Vec::new).unwrap_or_else(|| {
             ::generate_tile_sizes(self.params.m as u32, &[64, 8])
         };
-        let n_tiles = if let Some(ref tiles) = self.params.k_tiling {
-            vec![tiles.clone()]
-        } else {
+        let n_tiles = self.params.n_tiling.clone().map(Vec::new).unwrap_or_else(|| {
             ::generate_tile_sizes(self.params.n as u32, &[64, 8])
+        };
+        let k_tiles = self.params.k_tiling.clone().map(Vec::new).unwrap_or_else(|| {
+            ::generate_tile_sizes(self.params.k as u32, &[64])
         };
         let tilings = ::par_iter_product(::par_iter_product(m_tiles, n_tiles), k_tiles);
 
