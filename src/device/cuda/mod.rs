@@ -14,6 +14,7 @@ mod gpu;
 mod mem_model;
 mod printer;
 
+#[cfg(feature="cuda")]
 pub mod characterize;
 
 

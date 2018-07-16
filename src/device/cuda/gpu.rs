@@ -155,8 +155,15 @@ pub struct Gpu {
 
 impl Gpu {
     /// Returns the GPU model corresponding to `name.
+    #[cfg(feature="cuda")]
     pub fn from_executor(executor: &cuda::Executor) -> Gpu {
         cuda::characterize::get_gpu_desc(executor)
+    }
+
+    /// Returns the GPU model corresponding to `name.
+    #[cfg(not(feature="cuda"))]
+    pub fn from_executor(executor: &cuda::Executor) -> Gpu {
+        match *executor { }
     }
 
     /// Returns the PTX code for a Function.
