@@ -136,7 +136,9 @@ pub fn process<'a, T: io::Write>(
 //     - changed is symmetric
 //          > can be solved by checking both changed and filtered are symmetric
 //     - changed appears multiple times in the arguments
-//          > how to 
+//          - can be detected directly when declaring the filter
+//          > how to detect this ?
+//
 // * How to fix it ?
 // - normalize filter calls
 //   -> can inverse lhs and rhs in symmetric, be careful if self is symmetric
