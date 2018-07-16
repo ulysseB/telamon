@@ -64,8 +64,9 @@ fn create_table(parameters: &[&str], counters: &[cuda::PerfCounter]) -> Table<u6
 /// Returns the name of the configuration file.
 pub fn get_config_path() -> std::path::PathBuf {
     let xdg_dirs = unwrap!(xdg::BaseDirectories::with_prefix("telamon"));
-    xdg_dirs.find_config_file("cuda_gpus.json").unwrap_or_else(|| {
-        let path = xdg_dirs.place_config_file("cuda_gpus.json");
-        unwrap!(path, "cannot create configuration directory")
-    })
+    // We use `place_config_file` instead of `find_config_file` to avoid returning
+    // a system-wide files (e.g. in /usr/share/telamon/cuda_gpus.json) on which the user
+    // doesn't have write permissions.
+    let path = xdg_dirs.place_config_file("cuda_gpus.json");
+    unwrap!(path, "cannot create configuration directory")
 }
