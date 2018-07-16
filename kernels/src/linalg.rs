@@ -339,13 +339,13 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
     {
         let m_tiles = self.params.m_tiling.clone().map(Vec::new).unwrap_or_else(|| {
             ::generate_tile_sizes(self.params.m as u32, &[64, 8])
-        };
+        });
         let n_tiles = self.params.n_tiling.clone().map(Vec::new).unwrap_or_else(|| {
             ::generate_tile_sizes(self.params.n as u32, &[64, 8])
-        };
+        });
         let k_tiles = self.params.k_tiling.clone().map(Vec::new).unwrap_or_else(|| {
             ::generate_tile_sizes(self.params.k as u32, &[64])
-        };
+        });
         let tilings = ::par_iter_product(::par_iter_product(m_tiles, n_tiles), k_tiles);
 
         tilings.map(|((m_tiling, n_tiling), k_tiling)| {
