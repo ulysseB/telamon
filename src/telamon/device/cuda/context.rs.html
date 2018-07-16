@@ -178,12 +178,6 @@
 <span id="178">178</span>
 <span id="179">179</span>
 <span id="180">180</span>
-<span id="181">181</span>
-<span id="182">182</span>
-<span id="183">183</span>
-<span id="184">184</span>
-<span id="185">185</span>
-<span id="186">186</span>
 </pre><pre class="rust ">
 <span class="doccomment">///! Defines the CUDA evaluation context.</span>
 <span class="kw">use</span> <span class="ident">crossbeam</span>;
@@ -214,16 +208,10 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Create a new evaluation context. The GPU model if infered.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">executor</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Executor</span>) <span class="op">-&gt;</span> <span class="ident">Context</span> {
-        <span class="kw">let</span> <span class="ident">gpu_name</span> <span class="op">=</span> <span class="ident">executor</span>.<span class="ident">device_name</span>();
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">gpu</span>) <span class="op">=</span> <span class="ident">Gpu</span>::<span class="ident">from_name</span>(<span class="kw-2">&amp;</span><span class="ident">gpu_name</span>) {
-            <span class="ident">Context</span> {
-                <span class="ident">gpu_model</span>: <span class="ident">gpu</span>,
-                <span class="ident">executor</span>,
-                <span class="ident">parameters</span>: <span class="ident">HashMap</span>::<span class="ident">default</span>(),
-            }
-        } <span class="kw">else</span> {
-            <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Unknown gpu model: {}, \
-                   please add it to devices/cuda_gpus.json.&quot;</span>, <span class="ident">gpu_name</span>);
+        <span class="ident">Context</span> {
+            <span class="ident">gpu_model</span>: <span class="ident">Gpu</span>::<span class="ident">from_executor</span>(<span class="ident">executor</span>),
+            <span class="ident">executor</span>,
+            <span class="ident">parameters</span>: <span class="ident">HashMap</span>::<span class="ident">default</span>(),
         }
     }
 
