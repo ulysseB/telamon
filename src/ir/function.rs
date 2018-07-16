@@ -69,6 +69,7 @@ pub struct Function<'a, L = ir::LoweringMap> {
     induction_vars: Vec<ir::InductionVar<'a, L>>,
     logical_dims: Vec<ir::LogicalDim<'a>>,
     dim_mappings: SparseVec<ir::DimMappingId, ir::DimMapping>,
+    values: Vec<ir::Value>,
 }
 
 impl<'a, L> Function<'a, L> {
@@ -88,6 +89,7 @@ impl<'a, L> Function<'a, L> {
             induction_vars: Vec::new(),
             logical_dims: Vec::new(),
             dim_mappings: SparseVec::new(),
+            values: Vec::new(),
         }
     }
 
@@ -152,6 +154,11 @@ impl<'a, L> Function<'a, L> {
         self.static_dims.iter().map(move |&id| self.dim(id))
     }
 
+    /// Returns the list of values.
+    pub fn values(&self) -> std::slice::Iter<ir::Value> {
+        self.values.iter()
+    }
+
     /// Returns the list of thread dimensions.
     pub fn thread_dims(&self) -> impl Iterator<Item = &Dimension<'a>> {
         self.thread_dims.iter().map(move |&d| self.dim(d))
@@ -181,6 +188,9 @@ impl<'a, L> Function<'a, L> {
     pub fn logical_dim(&self, id: ir::LogicalDimId) -> &ir::LogicalDim<'a> {
         &self.logical_dims[id.0 as usize]
     }
+
+    /// Returns a `Value` given its id.
+    pub fn value(&self, id: ir::ValueId) -> &ir::Value { &self.values[id.0 as usize] }
 
     /// Returns the list of memory blocks. The block with id `i` is in i-th position.
     pub fn mem_blocks<'b>(&'b self) -> impl Iterator<Item = &'b mem::Block> {
