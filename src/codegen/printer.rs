@@ -335,7 +335,7 @@ pub trait Printer {
                 self.print_mov(t, &namer.name_inst(inst), &namer.name_op(op))
             },
             op::Ld(ld_type, ref addr, _) => {
-                self.print_ld(ld_type, unwrap!(inst.mem_flag()),
+                self.print_ld(Self::lower_type(ld_type, fun), unwrap!(inst.mem_flag()),
                               &namer.name_inst(inst),
                               &namer.name_op(addr))
             },
@@ -357,13 +357,16 @@ pub trait Printer {
                 };
             },
             op::Cast(ref op, t) => {
-                let rounding = match (op.t(), t) {
+                let from_t = Self::lower_type(op.t(), fun);
+                let to_t = Self::lower_type(t, fun);
+                let rounding = match (from_t, to_t) {
                     (Type::F(_), Type::I(_)) => op::Rounding::Nearest,
                     (Type::I(_), Type::F(_)) => op::Rounding::Nearest,
                     (Type::F(x), Type::F(y)) if x > y => op::Rounding::Nearest,
                     _ => op::Rounding::Exact,
                 };
-                self.print_cast(op.t(), t, rounding, &namer.name_inst(inst), &namer.name_op(op))
+                let dst = namer.name_inst(inst);
+                self.print_cast(from_t, to_t, rounding, &dst, &namer.name_op(op))
             },
             op::TmpLd(..) | op::TmpSt(..) => panic!("non-printable instruction")
         }
