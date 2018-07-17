@@ -15,11 +15,18 @@ pub struct InductionVar<'a> {
 impl<'a> InductionVar<'a> {
     /// Creates a new induction var. Size represents the increment over each diemnsion
     /// taken independenly.
-    pub fn new(dims: Vec<(ir::dim::Id, ir::Size<'a>)>, base: ir::Operand<'a>) -> Self {
-        assert!(base.t().is_integer());
+    pub fn new(dims: Vec<(ir::dim::Id, ir::Size<'a>)>, base: ir::Operand<'a>)
+        -> Result<Self, ir::Error>
+    {
+        ir::TypeError::check_integer(base.t())?;
         // Assert dimensions are unique.
         let mut dim_ids = HashSet::default();
-        for &(id, _) in &dims { assert!(dim_ids.insert(id)); }
+        for &(id, _) in &dims {
+            if !dim_ids.insert(id) {
+                return Err(ir::Error::DuplicateIncrement { dim: id });
+            }
+        }
+        // TODO(cleanup): return errors instead of panicing
         match base {
             ir::Operand::Reduce(..) =>
                 panic!("induction variables cannot perform reductions"),
@@ -28,7 +35,7 @@ impl<'a> InductionVar<'a> {
                 unimplemented!("dim map lowering for induction vars is not implemented yet"),
             _ => (),
         }
-        InductionVar { dims, base }
+        Ok(InductionVar { dims, base })
     }
 
     /// Renames a dimension.

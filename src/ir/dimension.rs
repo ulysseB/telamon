@@ -28,13 +28,15 @@ pub struct Dimension<'a> {
 
 impl<'a> Dimension<'a> {
     /// Creates a new dimension.
-    pub fn new(size: ir::Size, id: Id) -> Dimension {
-        assert_ne!(size.as_int(), Some(1));
-        Dimension {
+    pub fn new(size: ir::Size, id: Id) -> Result<Dimension, ir::Error> {
+        if size.as_int().map(|i| i <= 1).unwrap_or(false) {
+            return Err(ir::Error::InvalidDimSize);
+        }
+        Ok(Dimension {
             size, id,
             iterated: Vec::new(),
             is_thread_dim: false,
-        }
+        })
     }
 
     /// Retruns the size of the dimension.

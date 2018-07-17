@@ -26,7 +26,7 @@ impl device::Device for Device {
 
     fn print(&self, _: &codegen::Function, _: &mut Write) { }
 
-    fn is_valid_type(&self, _: &ir::Type) -> bool { true }
+    fn check_type(&self, _: ir::Type) -> Result<(), ir::TypeError> { Ok(()) }
 
     fn max_unrolling(&self) -> u32 { 256 }
 

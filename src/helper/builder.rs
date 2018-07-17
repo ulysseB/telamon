@@ -178,7 +178,8 @@ impl<'a> Builder<'a> {
 
     /// Inserts an instruction in the function.
     fn inst(&mut self, op: Operator<'a>) -> InstId {
-        self.function.add_inst(op, self.open_dims.iter().map(|(&x, _)| x).collect())
+        let open_dims = self.open_dims.iter().map(|(&x, _)| x).collect();
+        unwrap!(self.function.add_inst(op, open_dims))
     }
 
     /// Builds both an induction variable for a tensor memory access and the corresponding
@@ -205,7 +206,7 @@ impl<'a> Builder<'a> {
 
     /// Opens a new dimension.
     pub fn open_dim(&mut self, size: Size<'a>) -> dim::Id {
-        let id = self.function.add_dim(size);
+        let id = unwrap!(self.function.add_dim(size));
         self.open_dims.insert(id, id);
         id
     }
@@ -240,7 +241,7 @@ impl<'a> Builder<'a> {
         DimGroup::new(old_dim.ids().map(|old_id| {
             self.open_dims.remove(&old_id);
             let size = self.function.dim(old_id).size().clone();
-            let new_id = self.function.add_dim(size);
+            let new_id = unwrap!(self.function.add_dim(size));
             self.open_dims.insert(new_id, old_id);
             new_id
         }).collect())
@@ -319,7 +320,7 @@ impl<'a> Builder<'a> {
     pub fn induction_var(&mut self, base: &AutoOperand<'a>,
                          dims: Vec<(dim::Id, ir::Size<'a>)>) -> ir::IndVarId {
         let base = self.get_op(base);
-        self.function.add_ind_var(ir::InductionVar::new(dims, base))
+        self.function.add_ind_var(unwrap!(ir::InductionVar::new(dims, base)))
     }
 
     /// Creates a dim-map operand.

@@ -382,10 +382,11 @@ impl device::Device for Gpu {
         printer.host_function(fun, self, out)
     }
 
-    fn is_valid_type(&self, t: &Type) -> bool {
-        match *t {
-            Type::I(i) | Type::F(i) => i == 32 || i == 64,
-            Type::PtrTo(_) => true,
+    fn check_type(&self, t: Type) -> Result<(), ir::TypeError> {
+        match t {
+            Type::I(i) | Type::F(i) if i == 32 || i == 64 => Ok(()),
+            Type::PtrTo(_) => Ok(()),
+            t => Err(ir::TypeError::InvalidType { t }),
         }
     }
 

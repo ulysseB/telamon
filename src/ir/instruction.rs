@@ -1,12 +1,19 @@
 //! Describes the instructions.
 use device::Device;
 use ir::{self, BasicBlock, BBId, Operand, Operator, Type, DimMapScope};
+use std;
 use std::hash::{Hash, Hasher};
 use utils::*;
 
 /// Uniquely identifies an instruction.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct InstId(pub u32);
+
+impl std::fmt::Display for InstId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "instruction {}", self.0)
+    }
+}
 
 /// Represents an instruction.
 #[derive(Clone, Debug)]
@@ -19,9 +26,9 @@ pub struct Instruction<'a> {
 impl<'a> Instruction<'a> {
     /// Creates a new instruction and type-check the operands.
     pub fn new(operator: Operator<'a>, id: InstId, iter_dims: HashSet<ir::dim::Id>,
-               device: &Device) -> Instruction<'a> {
-        operator.type_check(device);
-        Instruction { operator, id, iter_dims }
+               device: &Device) -> Result<Instruction<'a>, ir::Error> {
+        operator.type_check(device)?;
+        Ok(Instruction { operator, id, iter_dims })
     }
 
     /// Returns the list of operands of an `Instruction`.
