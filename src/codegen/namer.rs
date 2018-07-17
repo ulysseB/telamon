@@ -124,7 +124,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
         for inst in function.cfg().instructions() {
             if let Some((inst_id, dim_map)) = inst.as_reduction() {
                 name_map.decl_alias(inst, inst_id, dim_map);
-            } else if inst.t() != Type::Void {
+            } else if inst.t().is_some() {
                 name_map.decl_inst(inst);
             }
         }
@@ -201,7 +201,9 @@ impl<'a, 'b> NameMap<'a, 'b> {
     fn decl_inst(&mut self, inst: &Instruction) {
         let (dim_ids, dim_sizes) = self.inst_name_dims(inst);
         let num_name = dim_sizes.iter().product();
-        let names = (0 .. num_name).map(|_| self.gen_name(inst.t())).collect_vec();
+        let names = (0 .. num_name).map(|_| {
+            self.gen_name(unwrap!(inst.t()))
+        }).collect_vec();
         let array = NDArray::new(dim_sizes, names);
         assert!(self.insts.insert(inst.id(), (dim_ids, array)).is_none());
     }

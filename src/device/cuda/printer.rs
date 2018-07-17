@@ -102,7 +102,6 @@ impl CudaPrinter {
     /// Prints a `Type` for the host.
     fn host_type(t: &Type) -> &'static str {
         match *t {
-            Type::Void => "void",
             Type::PtrTo(..) => "CUdeviceptr",
             Type::F(32) => "float",
             Type::F(64) => "double",
@@ -290,7 +289,6 @@ impl Printer for CudaPrinter {
     /// Print a type in the backend
     fn get_type(t: Type) -> String {
        match t {
-        Type::Void => panic!("void type cannot be printed"),
         Type::I(1) => "pred".to_string(),
         Type::I(size) => format!("s{size}", size = size),
         Type::F(size) => format!("f{size}", size = size),
@@ -302,7 +300,7 @@ impl Printer for CudaPrinter {
     fn print_binop(&mut self, op: ir::BinOp,
                    return_type: Type,
                    rounding: op::Rounding,
-                   return_id: &str, lhs: &str, rhs: &str) { 
+                   return_id: &str, lhs: &str, rhs: &str) {
         let op = Self::binary_op(op);
         let rounding = Self::rounding(rounding);
         let ret_type = Self::get_type(return_type);
@@ -342,27 +340,27 @@ impl Printer for CudaPrinter {
                          operator, t, return_id, mlhs, mrhs, arhs));
     }
 
-    /// Print return_id = op 
+    /// Print return_id = op
     fn print_mov(&mut self, return_type: Type, return_id: &str, op: &str) {
         unwrap!(writeln!(self.out_function, "mov.{} {}, {};",
                          Self::get_type(return_type), return_id, op));
     }
 
-    /// Print return_id = load [addr] 
+    /// Print return_id = load [addr]
     fn print_ld(&mut self, return_type: Type, flag: InstFlag, return_id: &str,  addr: &str) {
         let operator = Self::ld_operator(flag);
         unwrap!(writeln!(self.out_function, "{}.{} {}, [{}];",
                          operator, Self::get_type(return_type), return_id,  addr));
     }
 
-    /// Print store val [addr] 
+    /// Print store val [addr]
     fn print_st(&mut self, val_type: Type, mem_flag: InstFlag, addr: &str, val: &str) {
         let operator = Self::st_operator(mem_flag);
         unwrap!(writeln!(self.out_function, "{}.{} [{}], {};",
                          operator, Self::get_type(val_type), addr, val));
     }
 
-    /// Print if (cond) store val [addr] 
+    /// Print if (cond) store val [addr]
     fn print_cond_st(&mut self, val_type: Type,
                      mem_flag: InstFlag,
                      cond: &str, addr: &str, val: &str) {
@@ -435,7 +433,7 @@ impl Printer for CudaPrinter {
                 let dst = (0..size).map(|i| {
                     namer.indexed_inst_name(inst, dim.id(), i).to_string()
                 }).collect_vec().join(", ");
-                let t = Self::get_type(inst.t());
+                let t = Self::get_type(unwrap!(inst.t()));
                 unwrap!(writeln!(self.out_function, "{}.{} {{{}}}, [{}];",
                                  operator, t, dst, namer.name_op(addr)))
             },

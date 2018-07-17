@@ -72,12 +72,10 @@ pub enum Operator<'a> {
 impl<'a> Operator<'a> {
     /// Ensures the types of the operands are valid.
     pub fn type_check(&self, device: &Device) {
-        assert!(device.is_valid_type(&self.t()));
+        if let Some(t) = self.t() { assert!(device.is_valid_type(&t)); }
         // Check operand types.
         for operand in self.operands() {
-            let t = operand.t();
-            assert_ne!(t, Type::Void);
-            assert!(device.is_valid_type(&t));
+            assert!(device.is_valid_type(&operand.t()));
         }
         match *self {
             BinOp(_, ref lhs, ref rhs, rounding) => {
@@ -102,29 +100,22 @@ impl<'a> Operator<'a> {
                     _ => panic!(),
                 }
             },
-            Ld(ref t, ref addr, ref pattern) => {
-                assert_ne!(*t, Type::Void);
-                assert_eq!(addr.t(), Type::PtrTo(pattern.mem_block()));
-            },
+            Ld(_, ref addr, ref pattern) =>
+                assert_eq!(addr.t(), Type::PtrTo(pattern.mem_block())),
             St(ref addr, _, _, ref pattern) =>
                 assert_eq!(addr.t(), Type::PtrTo(pattern.mem_block())),
-            TmpLd(ref t, _) => assert_ne!(*t, Type::Void),
-            Cast(ref src, ref t) => {
-                assert_ne!(src.t(), Type::Void);
-                assert_ne!(*t, Type::Void);
-            },
-            Mov(..) | TmpSt(..) => (),
+            TmpLd(..) | Cast(..) | Mov(..) | TmpSt(..) => (),
         }
     }
 
     /// Returns the type of the value produced.
-    pub fn t(&self) -> Type {
+    pub fn t(&self) -> Option<Type> {
         match *self {
             BinOp(_, ref op, ..) |
             Mov(ref op) |
-            Mad(_, _, ref op, _) => op.t(),
-            Ld(t, ..) | TmpLd(t, _) | Cast(_, t) | Mul(.., t) => t,
-            St(..) | TmpSt(..) => Type::Void,
+            Mad(_, _, ref op, _) => Some(op.t()),
+            Ld(t, ..) | TmpLd(t, _) | Cast(_, t) | Mul(.., t) => Some(t),
+            St(..) | TmpSt(..) => None,
         }
     }
 

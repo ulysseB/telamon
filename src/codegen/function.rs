@@ -267,7 +267,7 @@ pub struct Instruction<'a> {
     instruction: &'a ir::Instruction<'a>,
     instantiation_dims: Vec<(ir::dim::Id, u32)>,
     mem_flag: Option<search_space::InstFlag>,
-    t: ir::Type,
+    t: Option<ir::Type>,
 }
 
 impl<'a> Instruction<'a> {
@@ -281,7 +281,9 @@ impl<'a> Instruction<'a> {
         }).collect();
         let mem_flag = instruction.as_mem_inst()
             .map(|inst| space.domain().get_inst_flag(inst.id()));
-        let t = unwrap!(space.ir_instance().device().lower_type(instruction.t(), space));
+        let t = instruction.t().map(|t| {
+            unwrap!(space.ir_instance().device().lower_type(t, space))
+        });
         Instruction { instruction, instantiation_dims, mem_flag, t }
     }
 
@@ -297,7 +299,7 @@ impl<'a> Instruction<'a> {
     }
 
     /// Returns the type of the instruction.
-    pub fn t(&self) -> ir::Type { self.t }
+    pub fn t(&self) -> Option<ir::Type> { self.t }
 
     /// Returns the operator computed by the instruction.
     pub fn operator(&self) -> &ir::Operator { self.instruction.operator() }
