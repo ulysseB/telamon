@@ -188,6 +188,7 @@
 <span id="188">188</span>
 <span id="189">189</span>
 <span id="190">190</span>
+<span id="191">191</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! This file exposes a single function, monitor, that is launched in a special thread and pulls</span>
 <span class="doccomment">//! the evaluations results, store them and then updates the Store accordingly.</span>
@@ -331,23 +332,6 @@
 {
     <span class="kw">let</span> (<span class="ident">cand</span>, <span class="ident">eval</span>, <span class="ident">payload</span>) <span class="op">=</span> <span class="ident">message</span>;
 
-    <span class="comment">// Note that it is possible that we actually didn&#39;t make an</span>
-    <span class="comment">// evaluation here, because the evaluator may return an infinite</span>
-    <span class="comment">// runtime for some of the candidates in its queue when a new best</span>
-    <span class="comment">// candidate was found. In this case, `eval` is be infinite, and</span>
-    <span class="comment">// we don&#39;t count the corresponding evaluation towards the number</span>
-    <span class="comment">// of evaluations performed (a sequential, non-parallel</span>
-    <span class="comment">// implementation of the search algorithm would not have selected</span>
-    <span class="comment">// this candidate since it would get cut).</span>
-    <span class="kw">if</span> <span class="op">!</span><span class="ident">eval</span>.<span class="ident">is_infinite</span>() {
-        <span class="ident">status</span>.<span class="ident">num_evaluations</span> <span class="op">+=</span> <span class="number">1</span>;
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">max_evaluations</span>) <span class="op">=</span> <span class="ident">config</span>.<span class="ident">max_evaluations</span> {
-            <span class="kw">if</span> <span class="ident">status</span>.<span class="ident">num_evaluations</span> <span class="op">&gt;=</span> <span class="ident">max_evaluations</span> {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TerminationReason</span>::<span class="ident">MaxEvaluations</span>)
-            }
-        }
-    }
-
     <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="ident">Instant</span>::<span class="ident">now</span>() <span class="op">-</span> <span class="ident">t0</span>;
     <span class="macro">warn</span><span class="macro">!</span>(<span class="string">&quot;Got a new evaluation after {}, bound: {:.4e} score: {:.4e}, current best: {:.4e}&quot;</span>,
           <span class="ident">status</span>.<span class="ident">num_evaluations</span>,
@@ -368,6 +352,24 @@
         <span class="ident">status</span>.<span class="ident">best_candidate</span> <span class="op">=</span> <span class="prelude-val">Some</span>((<span class="ident">cand</span>, <span class="ident">eval</span>));
     }
     <span class="ident">candidate_store</span>.<span class="ident">commit_evaluation</span>(<span class="ident">payload</span>, <span class="ident">eval</span>);
+
+    <span class="comment">// Note that it is possible that we actually didn&#39;t make an</span>
+    <span class="comment">// evaluation here, because the evaluator may return an infinite</span>
+    <span class="comment">// runtime for some of the candidates in its queue when a new best</span>
+    <span class="comment">// candidate was found. In this case, `eval` is be infinite, and</span>
+    <span class="comment">// we don&#39;t count the corresponding evaluation towards the number</span>
+    <span class="comment">// of evaluations performed (a sequential, non-parallel</span>
+    <span class="comment">// implementation of the search algorithm would not have selected</span>
+    <span class="comment">// this candidate since it would get cut).</span>
+    <span class="kw">if</span> <span class="op">!</span><span class="ident">eval</span>.<span class="ident">is_infinite</span>() {
+        <span class="ident">status</span>.<span class="ident">num_evaluations</span> <span class="op">+=</span> <span class="number">1</span>;
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">max_evaluations</span>) <span class="op">=</span> <span class="ident">config</span>.<span class="ident">max_evaluations</span> {
+            <span class="kw">if</span> <span class="ident">status</span>.<span class="ident">num_evaluations</span> <span class="op">&gt;=</span> <span class="ident">max_evaluations</span> {
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TerminationReason</span>::<span class="ident">MaxEvaluations</span>)
+            }
+        }
+    }
+
     <span class="prelude-val">Ok</span>(())
 }
 
