@@ -206,7 +206,7 @@ impl<'a> Builder<'a> {
 
     /// Opens a new dimension.
     pub fn open_dim(&mut self, size: Size<'a>) -> dim::Id {
-        let id = self.function.add_dim(size);
+        let id = unwrap!(self.function.add_dim(size));
         self.open_dims.insert(id, id);
         id
     }
@@ -241,7 +241,7 @@ impl<'a> Builder<'a> {
         DimGroup::new(old_dim.ids().map(|old_id| {
             self.open_dims.remove(&old_id);
             let size = self.function.dim(old_id).size().clone();
-            let new_id = self.function.add_dim(size);
+            let new_id = unwrap!(self.function.add_dim(size));
             self.open_dims.insert(new_id, old_id);
             new_id
         }).collect())

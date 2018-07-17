@@ -82,10 +82,10 @@ impl<'a> Function<'a> {
     }
 
     /// Creates a new dimension.
-    pub fn add_dim(&mut self, size: Size<'a>) -> dim::Id {
+    pub fn add_dim(&mut self, size: Size<'a>) -> Result<dim::Id, ir::Error> {
         let id = dim::Id(self.dims.len() as u32);
-        self.dims.push(Dimension::new(size, id));
-        id
+        self.dims.push(Dimension::new(size, id)?);
+        Ok(id)
     }
 
     /// Allocates a new memory block.
@@ -289,7 +289,7 @@ impl<'a> Function<'a> {
     fn spawn_mapped_dims(&mut self, old_dims: &[dim::Id]) -> Vec<dim::Id> {
         old_dims.iter().map(|&old_dim| {
             let size = self.dim(old_dim).size().clone();
-            self.add_dim(size)
+            unwrap!(self.add_dim(size))
         }).collect()
     }
 
