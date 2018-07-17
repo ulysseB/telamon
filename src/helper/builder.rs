@@ -320,7 +320,7 @@ impl<'a> Builder<'a> {
     pub fn induction_var(&mut self, base: &AutoOperand<'a>,
                          dims: Vec<(dim::Id, ir::Size<'a>)>) -> ir::IndVarId {
         let base = self.get_op(base);
-        self.function.add_ind_var(ir::InductionVar::new(dims, base))
+        self.function.add_ind_var(unwrap!(ir::InductionVar::new(dims, base)))
     }
 
     /// Creates a dim-map operand.

@@ -240,7 +240,8 @@ impl<'a> Function<'a> {
             mem_id: mem,
             dims: increments.iter().cloned().collect(),
         };
-        let ind_var = self.add_ind_var(ir::InductionVar::new(increments, base_addr));
+        let ind_var = unwrap!(ir::InductionVar::new(increments, base_addr));
+        let ind_var = self.add_ind_var(ind_var);
         let addr = ir::Operand::InductionVar(ind_var, var_type);
         (addr, pattern)
     }
