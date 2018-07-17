@@ -9,7 +9,7 @@ pub enum Token {
     /// The token incrimined.
     InvalidToken(String),
     /// The errno message of invalid include header file.
-    InvalidInclude(Errno),
+    InvalidInclude(String, Errno),
     ValueIdent(String), ChoiceIdent(String), Var(String), Doc(String), CmpOp(ir::CmpOp),
     Code(String), CounterKind(ir::CounterKind), Bool(bool),
     CounterVisibility(ir::CounterVisibility),

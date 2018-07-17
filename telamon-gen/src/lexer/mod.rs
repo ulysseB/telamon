@@ -83,6 +83,8 @@ pub struct Lexer {
     lookahead_token: Option<SpannedLexer<Token, Position, LexicalError>>,
     /// Multiple Input Buffers.
     include: Option<Box<Lexer>>,
+    /// Top level module.
+    root: bool,
 }
 
 impl Lexer {
@@ -111,6 +113,7 @@ impl Lexer {
                 buffer: buffer,
                 lookahead_token: None,
                 include: None,
+                root: true,
             }
         }
     }
@@ -161,7 +164,7 @@ impl Lexer {
 
                     set_errno(why);
                     Some(Err(LexicalError::InvalidInclude(
-                        extra.beg, Token::InvalidInclude(why), extra.end
+                        extra.beg, Token::InvalidInclude(filename.to_string(), why), extra.end
                     )))
                 },
                 yyin => {
@@ -176,6 +179,7 @@ impl Lexer {
                         buffer: self.buffer,
                         lookahead_token: None,
                         include: None,
+                        root: false,
                     }));
                     self.next()
                 },
@@ -186,13 +190,15 @@ impl Lexer {
 
 impl Drop for Lexer {
     fn drop(&mut self) {
-        unsafe {
-            // The function [yy_delete_buffer](https://westes.github.io/flex/manual/Multiple-Input-Buffers.html)
-            // clears the current contents of a buffer using.
-            yy_delete_buffer(self.buffer, self.scanner);
-            // The function [yylex_destroy](https://westes.github.io/flex/manual/Init-and-Destroy-Functions.html#index-yylex_005finit)
-            // frees the resources used by the scanner.
-            yylex_destroy(self.scanner);
+        if self.root {
+            unsafe {
+                // The function [yy_delete_buffer](https://westes.github.io/flex/manual/Multiple-Input-Buffers.html)
+                // clears the current contents of a buffer using.
+                yy_delete_buffer(self.buffer, self.scanner);
+                // The function [yylex_destroy](https://westes.github.io/flex/manual/Init-and-Destroy-Functions.html#index-yylex_005finit)
+                // frees the resources used by the scanner.
+                yylex_destroy(self.scanner);
+            }
         }
     }
 }   
