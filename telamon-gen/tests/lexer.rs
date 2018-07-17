@@ -531,11 +531,30 @@ fn lexer_code_mode() {
 
 #[test]
 fn lexer_include() {
-
    assert_eq!(Lexer::new(b"include /dev/unexist".to_vec()).collect::<Vec<_>>(), vec![
               Err(LexicalError::InvalidInclude(
                  Position::default(),
-                 Token::InvalidInclude(Errno(2)),
+                 Token::InvalidInclude(String::from("/dev/unexist"), Errno(2)),
                  Position { column: 20, ..Default::default() }))
               ]);
+
+   let include: &str = concat!("include ", env!("CARGO_MANIFEST_DIR"), "/tests/enum_foo.exh");
+   assert_eq!(Lexer::new(include.as_bytes().to_vec()).collect::<Vec<_>>(), vec![
+              Ok((Position { line: 0, column: 71 }, Token::Define, Position { line: 1, column: 77 })),
+              Ok((Position { line: 1, column: 78 }, Token::Enum, Position { line: 1, column: 82 })),
+              Ok((Position { line: 1, column: 83 }, Token::ChoiceIdent(String::from("foo")), Position { line: 1, column: 86 })),
+              Ok((Position { line: 1, column: 86 }, Token::LParen, Position { line: 1, column: 87 })),
+              Ok((Position { line: 1, column: 87 }, Token::RParen, Position { line: 1, column: 88 })),
+              Ok((Position { line: 1, column: 88 }, Token::Colon, Position { line: 1, column: 89 })),
+              Ok((Position { line: 2, column: 0 }, Token::End, Position { line: 2, column: 3 }))
+            ]);
+   assert_eq!(Lexer::new(include.as_bytes().to_vec()).collect::<Vec<_>>(), vec![
+              Ok((Position { line: 0, column: 71 }, Token::Define, Position { line: 1, column: 77 })),
+              Ok((Position { line: 1, column: 78 }, Token::Enum, Position { line: 1, column: 82 })),
+              Ok((Position { line: 1, column: 83 }, Token::ChoiceIdent(String::from("foo")), Position { line: 1, column: 86 })),
+              Ok((Position { line: 1, column: 86 }, Token::LParen, Position { line: 1, column: 87 })),
+              Ok((Position { line: 1, column: 87 }, Token::RParen, Position { line: 1, column: 88 })),
+              Ok((Position { line: 1, column: 88 }, Token::Colon, Position { line: 1, column: 89 })),
+              Ok((Position { line: 2, column: 0 }, Token::End, Position { line: 2, column: 3 }))
+            ]);
 }
