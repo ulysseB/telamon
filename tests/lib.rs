@@ -148,9 +148,9 @@ fn block_dims() {
     assert_eq!(space.domain().get_is_iteration_dim(inst.into(), d3), Bool::TRUE);
     assert_eq!(space.domain().get_dim_kind(d0),
                DimKind::LOOP | DimKind::THREAD | DimKind::UNROLL);
-    assert_eq!(space.domain().get_order(d1.into(), d2.into()), Order::NESTED);
-    assert_eq!(space.domain().get_order(d1.into(), d3.into()), Order::NESTED);
-    assert_eq!(space.domain().get_order(d2.into(), d3.into()), Order::NESTED);
+    assert_eq!(space.domain().get_order(d1.into(), d2.into()), Order::OUTER);
+    assert_eq!(space.domain().get_order(d1.into(), d3.into()), Order::OUTER);
+    assert_eq!(space.domain().get_order(d2.into(), d3.into()), Order::OUTER);
     gen_best(&context, space);
 }
 
