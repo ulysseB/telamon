@@ -2,6 +2,9 @@ import contextlib
 import json
 from telamon._capi import ffi, lib
 
+# Initialize Rust logger early.
+lib.env_logger_try_init()
+
 class TelamonError(Exception):
     """Base error class for Telamon errors."""
 
@@ -91,10 +94,41 @@ class Kernel(RustObject):
             raise TelamonError(
                 'Optimization failed.')
 
+def _ffi_tiling(tiles):
+    """Helper to convert Python tilings into a cffi compatible object.
+
+    Args:
+        tiles: The tiles ton convert. Must be either `None` (allow all tilings
+            across this axis) or a single tile definition.
+
+    Returns:
+        A cffi object representing a newly allocated tiling object.
+    """
+    if tiles is None:
+        return ffi.NULL
+
+    c_tiles = ffi.new('Tiling *')
+    c_tiles.length = len(tiles)
+    c_tiles.data = ffi.new('unsigned int *', len(tiles))
+    c_tiles.data[0:len(tiles)] = tiles
+    return c_tiles
+
 class MatMul(Kernel):
     """A Matrix Multiply kernel."""
 
-    def __init__(self, m: int, n: int, k: int, *, a_stride: int = 1, transpose_a: bool = False, transpose_b: bool = False, generic: bool = True):
+    def __init__(
+            self,
+            m: int,
+            n: int,
+            k: int,
+            *,
+            a_stride: int = 1,
+            transpose_a: bool = False,
+            transpose_b: bool = False,
+            generic: bool = True,
+            m_tiles=None,
+            n_tiles=None,
+            k_tiles=None):
         """Initializes a new Matrix Multiply kernel."""
 
         if a_stride < 1:
@@ -103,4 +137,8 @@ class MatMul(Kernel):
 
         super().__init__(
             lib.kernel_matmul_new(
-                m, n, k, a_stride, int(transpose_a), int(transpose_b), int(generic)))
+                m, n, k,
+                a_stride, int(transpose_a), int(transpose_b), int(generic),
+                _ffi_tiling(m_tiles),
+                _ffi_tiling(n_tiles),
+                _ffi_tiling(k_tiles)))
