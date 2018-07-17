@@ -582,6 +582,18 @@
 <span id="582">582</span>
 <span id="583">583</span>
 <span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
+<span id="594">594</span>
+<span id="595">595</span>
+<span id="596">596</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Linera algebra kernels.</span>
 <span class="kw">use</span> {<span class="ident">build_candidate</span>, <span class="ident">Scalar</span>, <span class="ident">create_size</span>};
@@ -845,7 +857,7 @@
     <span class="ident">c</span>: <span class="ident">Tensor</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span><span class="op">&gt;</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MatMulP</span> {
     <span class="kw">pub</span> <span class="ident">m</span>: <span class="ident">i32</span>,
     <span class="kw">pub</span> <span class="ident">n</span>: <span class="ident">i32</span>,
@@ -854,6 +866,9 @@
     <span class="kw">pub</span> <span class="ident">transpose_a</span>: <span class="ident">bool</span>,
     <span class="kw">pub</span> <span class="ident">transpose_b</span>: <span class="ident">bool</span>,
     <span class="kw">pub</span> <span class="ident">generic</span>: <span class="ident">bool</span>,
+    <span class="kw">pub</span> <span class="ident">m_tiling</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">n_tiling</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">k_tiling</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">MatMulP</span> {
@@ -864,6 +879,9 @@
             <span class="ident">transpose_a</span>: <span class="bool-val">false</span>,
             <span class="ident">transpose_b</span>: <span class="bool-val">false</span>,
             <span class="ident">generic</span>: <span class="bool-val">true</span>,
+            <span class="ident">m_tiling</span>: <span class="prelude-val">None</span>,
+            <span class="ident">n_tiling</span>: <span class="prelude-val">None</span>,
+            <span class="ident">k_tiling</span>: <span class="prelude-val">None</span>,
         }
     }
 
@@ -916,9 +934,15 @@
     <span class="kw">fn</span> <span class="ident">build_body</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">ir</span>::<span class="ident">Signature</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">device</span>::<span class="ident">Context</span>)
         <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;&gt;</span>
     {
-        <span class="kw">let</span> <span class="ident">k_tiles</span> <span class="op">=</span> ::<span class="ident">generate_tile_sizes</span>(<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">k</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span>[<span class="number">64</span>]);
-        <span class="kw">let</span> <span class="ident">m_tiles</span> <span class="op">=</span> ::<span class="ident">generate_tile_sizes</span>(<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">m</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span>[<span class="number">64</span>, <span class="number">8</span>]);
-        <span class="kw">let</span> <span class="ident">n_tiles</span> <span class="op">=</span> ::<span class="ident">generate_tile_sizes</span>(<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">n</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span>[<span class="number">64</span>, <span class="number">8</span>]);
+        <span class="kw">let</span> <span class="ident">m_tiles</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">m_tiling</span>.<span class="ident">clone</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">x</span>]).<span class="ident">unwrap_or_else</span>(<span class="op">||</span> {
+            ::<span class="ident">generate_tile_sizes</span>(<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">m</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span>[<span class="number">64</span>, <span class="number">8</span>])
+        });
+        <span class="kw">let</span> <span class="ident">n_tiles</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">n_tiling</span>.<span class="ident">clone</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">x</span>]).<span class="ident">unwrap_or_else</span>(<span class="op">||</span> {
+            ::<span class="ident">generate_tile_sizes</span>(<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">n</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span>[<span class="number">64</span>, <span class="number">8</span>])
+        });
+        <span class="kw">let</span> <span class="ident">k_tiles</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">k_tiling</span>.<span class="ident">clone</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">x</span>]).<span class="ident">unwrap_or_else</span>(<span class="op">||</span> {
+            ::<span class="ident">generate_tile_sizes</span>(<span class="self">self</span>.<span class="ident">params</span>.<span class="ident">k</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="kw-2">&amp;</span>[<span class="number">64</span>])
+        });
         <span class="kw">let</span> <span class="ident">tilings</span> <span class="op">=</span> ::<span class="ident">par_iter_product</span>(::<span class="ident">par_iter_product</span>(<span class="ident">m_tiles</span>, <span class="ident">n_tiles</span>), <span class="ident">k_tiles</span>);
 
         <span class="ident">tilings</span>.<span class="ident">map</span>(<span class="op">|</span>((<span class="ident">m_tiling</span>, <span class="ident">n_tiling</span>), <span class="ident">k_tiling</span>)<span class="op">|</span> {
