@@ -341,6 +341,7 @@
 <span id="341">341</span>
 <span id="342">342</span>
 <span id="343">343</span>
+<span id="344">344</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Helper struct to build a `Function`.</span>
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">Device</span>;
@@ -522,7 +523,8 @@
 
     <span class="doccomment">/// Inserts an instruction in the function.</span>
     <span class="kw">fn</span> <span class="ident">inst</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">op</span>: <span class="ident">Operator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
-        <span class="self">self</span>.<span class="ident">function</span>.<span class="ident">add_inst</span>(<span class="ident">op</span>, <span class="self">self</span>.<span class="ident">open_dims</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="kw-2">&amp;</span><span class="ident">x</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">x</span>).<span class="ident">collect</span>())
+        <span class="kw">let</span> <span class="ident">open_dims</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">open_dims</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="kw-2">&amp;</span><span class="ident">x</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">x</span>).<span class="ident">collect</span>();
+        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">function</span>.<span class="ident">add_inst</span>(<span class="ident">op</span>, <span class="ident">open_dims</span>))
     }
 
     <span class="doccomment">/// Builds both an induction variable for a tensor memory access and the corresponding</span>
@@ -549,7 +551,7 @@
 
     <span class="doccomment">/// Opens a new dimension.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">open_dim</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">size</span>: <span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">dim</span>::<span class="ident">Id</span> {
-        <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">function</span>.<span class="ident">add_dim</span>(<span class="ident">size</span>);
+        <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">function</span>.<span class="ident">add_dim</span>(<span class="ident">size</span>));
         <span class="self">self</span>.<span class="ident">open_dims</span>.<span class="ident">insert</span>(<span class="ident">id</span>, <span class="ident">id</span>);
         <span class="ident">id</span>
     }
@@ -584,7 +586,7 @@
         <span class="ident">DimGroup</span>::<span class="ident">new</span>(<span class="ident">old_dim</span>.<span class="ident">ids</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">old_id</span><span class="op">|</span> {
             <span class="self">self</span>.<span class="ident">open_dims</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">old_id</span>);
             <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">function</span>.<span class="ident">dim</span>(<span class="ident">old_id</span>).<span class="ident">size</span>().<span class="ident">clone</span>();
-            <span class="kw">let</span> <span class="ident">new_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">function</span>.<span class="ident">add_dim</span>(<span class="ident">size</span>);
+            <span class="kw">let</span> <span class="ident">new_id</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">function</span>.<span class="ident">add_dim</span>(<span class="ident">size</span>));
             <span class="self">self</span>.<span class="ident">open_dims</span>.<span class="ident">insert</span>(<span class="ident">new_id</span>, <span class="ident">old_id</span>);
             <span class="ident">new_id</span>
         }).<span class="ident">collect</span>())
@@ -663,7 +665,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">induction_var</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">base</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
                          <span class="ident">dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">ir</span>::<span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>)<span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">IndVarId</span> {
         <span class="kw">let</span> <span class="ident">base</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_op</span>(<span class="ident">base</span>);
-        <span class="self">self</span>.<span class="ident">function</span>.<span class="ident">add_ind_var</span>(<span class="ident">ir</span>::<span class="ident">InductionVar</span>::<span class="ident">new</span>(<span class="ident">dims</span>, <span class="ident">base</span>))
+        <span class="self">self</span>.<span class="ident">function</span>.<span class="ident">add_ind_var</span>(<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">ir</span>::<span class="ident">InductionVar</span>::<span class="ident">new</span>(<span class="ident">dims</span>, <span class="ident">base</span>)))
     }
 
     <span class="doccomment">/// Creates a dim-map operand.</span>

@@ -107,12 +107,15 @@
 <span id="107">107</span>
 <span id="108">108</span>
 <span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Representation and manipulation of a set of possible implementation.</span>
 <span class="kw">mod</span> <span class="ident">access_pattern</span>;
 <span class="kw">mod</span> <span class="ident">basic_block</span>;
 <span class="kw">mod</span> <span class="ident">dimension</span>;
 <span class="kw">mod</span> <span class="ident">dim_map</span>;
+<span class="kw">mod</span> <span class="ident">error</span>;
 <span class="kw">mod</span> <span class="ident">function</span>;
 <span class="kw">mod</span> <span class="ident">induction_var</span>;
 <span class="kw">mod</span> <span class="ident">instruction</span>;
@@ -125,6 +128,7 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">basic_block</span>::{<span class="ident">BasicBlock</span>, <span class="ident">BBId</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">dim_map</span>::<span class="ident">DimMap</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">dimension</span>::<span class="ident">Dimension</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">error</span>::{<span class="ident">Error</span>, <span class="ident">TypeError</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">function</span>::{<span class="ident">Function</span>, <span class="ident">Signature</span>, <span class="ident">Parameter</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">instruction</span>::{<span class="ident">InstId</span>, <span class="ident">Instruction</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">induction_var</span>::{<span class="ident">IndVarId</span>, <span class="ident">InductionVar</span>};

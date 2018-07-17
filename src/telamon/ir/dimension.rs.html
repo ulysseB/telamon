@@ -75,6 +75,8 @@
 <span id="75">75</span>
 <span id="76">76</span>
 <span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Represents iteration dimensions.</span>
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">BasicBlock</span>};
@@ -106,13 +108,15 @@
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Creates a new dimension.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">size</span>: <span class="ident">ir</span>::<span class="ident">Size</span>, <span class="ident">id</span>: <span class="ident">Id</span>) <span class="op">-&gt;</span> <span class="ident">Dimension</span> {
-        <span class="macro">assert_ne</span><span class="macro">!</span>(<span class="ident">size</span>.<span class="ident">as_int</span>(), <span class="prelude-val">Some</span>(<span class="number">1</span>));
-        <span class="ident">Dimension</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">size</span>: <span class="ident">ir</span>::<span class="ident">Size</span>, <span class="ident">id</span>: <span class="ident">Id</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Dimension</span>, <span class="ident">ir</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="ident">size</span>.<span class="ident">as_int</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">i</span> <span class="op">&lt;=</span> <span class="number">1</span>).<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>) {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ir</span>::<span class="ident">Error</span>::<span class="ident">InvalidDimSize</span>);
+        }
+        <span class="prelude-val">Ok</span>(<span class="ident">Dimension</span> {
             <span class="ident">size</span>, <span class="ident">id</span>,
             <span class="ident">iterated</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
             <span class="ident">is_thread_dim</span>: <span class="bool-val">false</span>,
-        }
+        })
     }
 
     <span class="doccomment">/// Retruns the size of the dimension.</span>
