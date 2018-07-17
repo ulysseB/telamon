@@ -2661,13 +2661,13 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DomainStore</span> {
     <span class="ident">enum_4</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,), <span class="ident">Enum4</span><span class="op">&gt;&gt;</span>,
 
-    <span class="ident">enum_1</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,), <span class="ident">Enum1</span><span class="op">&gt;&gt;</span>,
-
-    <span class="ident">enum_3</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,), <span class="ident">Enum3</span><span class="op">&gt;&gt;</span>,
-
     <span class="ident">enum_5</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,), <span class="ident">Enum5</span><span class="op">&gt;&gt;</span>,
 
     <span class="ident">enum_2</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,), <span class="ident">Enum2</span><span class="op">&gt;&gt;</span>,
+
+    <span class="ident">enum_3</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,), <span class="ident">Enum3</span><span class="op">&gt;&gt;</span>,
+
+    <span class="ident">enum_1</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,), <span class="ident">Enum1</span><span class="op">&gt;&gt;</span>,
 }
 
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
@@ -2692,22 +2692,6 @@
             );
         }
         <span class="kw">for</span> <span class="ident">bb</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
-            <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">enum_1</span>).<span class="ident">insert</span>(
-                (
-                    <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>),
-                ),
-                <span class="ident">Enum1</span>::<span class="ident">all</span>(),
-            );
-        }
-        <span class="kw">for</span> <span class="ident">bb</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
-            <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">enum_3</span>).<span class="ident">insert</span>(
-                (
-                    <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>),
-                ),
-                <span class="ident">Enum3</span>::<span class="ident">all</span>(),
-            );
-        }
-        <span class="kw">for</span> <span class="ident">bb</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
             <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">enum_5</span>).<span class="ident">insert</span>(
                 (
                     <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>),
@@ -2721,6 +2705,22 @@
                     <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>),
                 ),
                 <span class="ident">Enum2</span>::<span class="ident">all</span>(),
+            );
+        }
+        <span class="kw">for</span> <span class="ident">bb</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
+            <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">enum_3</span>).<span class="ident">insert</span>(
+                (
+                    <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>),
+                ),
+                <span class="ident">Enum3</span>::<span class="ident">all</span>(),
+            );
+        }
+        <span class="kw">for</span> <span class="ident">bb</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
+            <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">enum_1</span>).<span class="ident">insert</span>(
+                (
+                    <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>),
+                ),
+                <span class="ident">Enum1</span>::<span class="ident">all</span>(),
             );
         }
     }
@@ -2741,11 +2741,22 @@
         }
         <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">basic_block</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
             <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
-            <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">enum_1</span>).<span class="ident">insert</span>(
+            <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">enum_5</span>).<span class="ident">insert</span>(
                 (
                     <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),
                 ),
-                <span class="ident">Enum1</span>::<span class="ident">all</span>(),
+                <span class="ident">Enum5</span>::<span class="ident">all</span>(),
+            );
+
+
+        }
+        <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">basic_block</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
+            <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
+            <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">enum_2</span>).<span class="ident">insert</span>(
+                (
+                    <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),
+                ),
+                <span class="ident">Enum2</span>::<span class="ident">all</span>(),
             );
 
 
@@ -2763,22 +2774,11 @@
         }
         <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">basic_block</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
             <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
-            <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">enum_5</span>).<span class="ident">insert</span>(
+            <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">enum_1</span>).<span class="ident">insert</span>(
                 (
                     <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),
                 ),
-                <span class="ident">Enum5</span>::<span class="ident">all</span>(),
-            );
-
-
-        }
-        <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">basic_block</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-            <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
-            <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">enum_2</span>).<span class="ident">insert</span>(
-                (
-                    <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),
-                ),
-                <span class="ident">Enum2</span>::<span class="ident">all</span>(),
+                <span class="ident">Enum1</span>::<span class="ident">all</span>(),
             );
 
 
@@ -2831,106 +2831,6 @@
         <span class="kw">if</span> <span class="ident">old</span> <span class="op">!=</span> <span class="kw-2">*</span><span class="ident">ptr</span> {
             <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;restrict enum_4{:?} to {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="kw-2">*</span><span class="ident">ptr</span>);
             <span class="ident">diff</span>.<span class="ident">enum_4</span>.<span class="ident">entry</span>((<span class="ident">bb</span>,)).<span class="ident">or_insert</span>((<span class="ident">old</span>, <span class="kw-2">*</span><span class="ident">ptr</span>)).<span class="number">1</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
-        }
-        <span class="kw">if</span> <span class="ident">ptr</span>.<span class="ident">is_failed</span>() { <span class="prelude-val">Err</span>(()) } <span class="kw">else</span> { <span class="prelude-val">Ok</span>(()) }
-    }
-
-
-
-    <span class="doccomment">/// Returns the domain of {name} for the given arguments.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_enum_1</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>) <span class="op">-&gt;</span> <span class="ident">Enum1</span> { <span class="self">self</span>.<span class="ident">enum_1</span>[<span class="kw-2">&amp;</span>(<span class="ident">bb</span>,)] }
-
-    <span class="doccomment">/// Returns the domain of {name} for the given arguments. If the domain has</span>
-    <span class="doccomment">/// been restricted</span>
-    <span class="doccomment">/// but the change not yet applied, returns the old value.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_old_enum_1</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="kw-2">mut</span> <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,
-        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="ident">DomainDiff</span>,
-    ) <span class="op">-&gt;</span> <span class="ident">Enum1</span> {
-        <span class="ident">diff</span>.<span class="ident">enum_1</span>
-            .<span class="ident">get</span>(<span class="kw-2">&amp;</span>(<span class="ident">bb</span>,))
-            .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">old</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">old</span>)
-            .<span class="ident">unwrap_or_else</span>(<span class="op">||</span> <span class="self">self</span>.<span class="ident">enum_1</span>[<span class="kw-2">&amp;</span>(<span class="ident">bb</span>,)])
-    }
-
-    <span class="doccomment">/// Sets the domain of {name} for the given arguments.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_enum_1</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>, <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">Enum1</span>) {
-
-        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;set enum_1{:?} to {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="ident">value</span>);
-        <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">enum_1</span>).<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span>(<span class="ident">bb</span>,))) <span class="op">=</span> <span class="ident">value</span>;
-    }
-
-    <span class="doccomment">/// Restricts the domain of {name} for the given arguments. Put the old</span>
-    <span class="doccomment">/// value in `diff`</span>
-    <span class="doccomment">/// and indicates if the new domain is failed.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict_enum_1</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="kw-2">mut</span> <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,
-        <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">Enum1</span>,
-        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>,
-    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ptr</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">enum_1</span>).<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span>(<span class="ident">bb</span>,)));
-        <span class="kw">let</span> <span class="ident">old</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
-        <span class="ident">ptr</span>.<span class="ident">restrict</span>(<span class="ident">value</span>);
-        <span class="kw">if</span> <span class="ident">old</span> <span class="op">!=</span> <span class="kw-2">*</span><span class="ident">ptr</span> {
-            <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;restrict enum_1{:?} to {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="kw-2">*</span><span class="ident">ptr</span>);
-            <span class="ident">diff</span>.<span class="ident">enum_1</span>.<span class="ident">entry</span>((<span class="ident">bb</span>,)).<span class="ident">or_insert</span>((<span class="ident">old</span>, <span class="kw-2">*</span><span class="ident">ptr</span>)).<span class="number">1</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
-        }
-        <span class="kw">if</span> <span class="ident">ptr</span>.<span class="ident">is_failed</span>() { <span class="prelude-val">Err</span>(()) } <span class="kw">else</span> { <span class="prelude-val">Ok</span>(()) }
-    }
-
-
-
-    <span class="doccomment">/// Returns the domain of {name} for the given arguments.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_enum_3</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>) <span class="op">-&gt;</span> <span class="ident">Enum3</span> { <span class="self">self</span>.<span class="ident">enum_3</span>[<span class="kw-2">&amp;</span>(<span class="ident">bb</span>,)] }
-
-    <span class="doccomment">/// Returns the domain of {name} for the given arguments. If the domain has</span>
-    <span class="doccomment">/// been restricted</span>
-    <span class="doccomment">/// but the change not yet applied, returns the old value.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_old_enum_3</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="kw-2">mut</span> <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,
-        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="ident">DomainDiff</span>,
-    ) <span class="op">-&gt;</span> <span class="ident">Enum3</span> {
-        <span class="ident">diff</span>.<span class="ident">enum_3</span>
-            .<span class="ident">get</span>(<span class="kw-2">&amp;</span>(<span class="ident">bb</span>,))
-            .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">old</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">old</span>)
-            .<span class="ident">unwrap_or_else</span>(<span class="op">||</span> <span class="self">self</span>.<span class="ident">enum_3</span>[<span class="kw-2">&amp;</span>(<span class="ident">bb</span>,)])
-    }
-
-    <span class="doccomment">/// Sets the domain of {name} for the given arguments.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_enum_3</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>, <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">Enum3</span>) {
-
-        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;set enum_3{:?} to {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="ident">value</span>);
-        <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">enum_3</span>).<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span>(<span class="ident">bb</span>,))) <span class="op">=</span> <span class="ident">value</span>;
-    }
-
-    <span class="doccomment">/// Restricts the domain of {name} for the given arguments. Put the old</span>
-    <span class="doccomment">/// value in `diff`</span>
-    <span class="doccomment">/// and indicates if the new domain is failed.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict_enum_3</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="kw-2">mut</span> <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,
-        <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">Enum3</span>,
-        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>,
-    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ptr</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">enum_3</span>).<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span>(<span class="ident">bb</span>,)));
-        <span class="kw">let</span> <span class="ident">old</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
-        <span class="ident">ptr</span>.<span class="ident">restrict</span>(<span class="ident">value</span>);
-        <span class="kw">if</span> <span class="ident">old</span> <span class="op">!=</span> <span class="kw-2">*</span><span class="ident">ptr</span> {
-            <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;restrict enum_3{:?} to {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="kw-2">*</span><span class="ident">ptr</span>);
-            <span class="ident">diff</span>.<span class="ident">enum_3</span>.<span class="ident">entry</span>((<span class="ident">bb</span>,)).<span class="ident">or_insert</span>((<span class="ident">old</span>, <span class="kw-2">*</span><span class="ident">ptr</span>)).<span class="number">1</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
         }
         <span class="kw">if</span> <span class="ident">ptr</span>.<span class="ident">is_failed</span>() { <span class="prelude-val">Err</span>(()) } <span class="kw">else</span> { <span class="prelude-val">Ok</span>(()) }
     }
@@ -3034,6 +2934,106 @@
         }
         <span class="kw">if</span> <span class="ident">ptr</span>.<span class="ident">is_failed</span>() { <span class="prelude-val">Err</span>(()) } <span class="kw">else</span> { <span class="prelude-val">Ok</span>(()) }
     }
+
+
+
+    <span class="doccomment">/// Returns the domain of {name} for the given arguments.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_enum_3</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>) <span class="op">-&gt;</span> <span class="ident">Enum3</span> { <span class="self">self</span>.<span class="ident">enum_3</span>[<span class="kw-2">&amp;</span>(<span class="ident">bb</span>,)] }
+
+    <span class="doccomment">/// Returns the domain of {name} for the given arguments. If the domain has</span>
+    <span class="doccomment">/// been restricted</span>
+    <span class="doccomment">/// but the change not yet applied, returns the old value.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_old_enum_3</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">mut</span> <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,
+        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="ident">DomainDiff</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">Enum3</span> {
+        <span class="ident">diff</span>.<span class="ident">enum_3</span>
+            .<span class="ident">get</span>(<span class="kw-2">&amp;</span>(<span class="ident">bb</span>,))
+            .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">old</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">old</span>)
+            .<span class="ident">unwrap_or_else</span>(<span class="op">||</span> <span class="self">self</span>.<span class="ident">enum_3</span>[<span class="kw-2">&amp;</span>(<span class="ident">bb</span>,)])
+    }
+
+    <span class="doccomment">/// Sets the domain of {name} for the given arguments.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_enum_3</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>, <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">Enum3</span>) {
+
+        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;set enum_3{:?} to {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="ident">value</span>);
+        <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">enum_3</span>).<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span>(<span class="ident">bb</span>,))) <span class="op">=</span> <span class="ident">value</span>;
+    }
+
+    <span class="doccomment">/// Restricts the domain of {name} for the given arguments. Put the old</span>
+    <span class="doccomment">/// value in `diff`</span>
+    <span class="doccomment">/// and indicates if the new domain is failed.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict_enum_3</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="kw-2">mut</span> <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,
+        <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">Enum3</span>,
+        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>,
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ptr</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">enum_3</span>).<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span>(<span class="ident">bb</span>,)));
+        <span class="kw">let</span> <span class="ident">old</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
+        <span class="ident">ptr</span>.<span class="ident">restrict</span>(<span class="ident">value</span>);
+        <span class="kw">if</span> <span class="ident">old</span> <span class="op">!=</span> <span class="kw-2">*</span><span class="ident">ptr</span> {
+            <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;restrict enum_3{:?} to {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="kw-2">*</span><span class="ident">ptr</span>);
+            <span class="ident">diff</span>.<span class="ident">enum_3</span>.<span class="ident">entry</span>((<span class="ident">bb</span>,)).<span class="ident">or_insert</span>((<span class="ident">old</span>, <span class="kw-2">*</span><span class="ident">ptr</span>)).<span class="number">1</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
+        }
+        <span class="kw">if</span> <span class="ident">ptr</span>.<span class="ident">is_failed</span>() { <span class="prelude-val">Err</span>(()) } <span class="kw">else</span> { <span class="prelude-val">Ok</span>(()) }
+    }
+
+
+
+    <span class="doccomment">/// Returns the domain of {name} for the given arguments.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_enum_1</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>) <span class="op">-&gt;</span> <span class="ident">Enum1</span> { <span class="self">self</span>.<span class="ident">enum_1</span>[<span class="kw-2">&amp;</span>(<span class="ident">bb</span>,)] }
+
+    <span class="doccomment">/// Returns the domain of {name} for the given arguments. If the domain has</span>
+    <span class="doccomment">/// been restricted</span>
+    <span class="doccomment">/// but the change not yet applied, returns the old value.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_old_enum_1</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">mut</span> <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,
+        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="ident">DomainDiff</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">Enum1</span> {
+        <span class="ident">diff</span>.<span class="ident">enum_1</span>
+            .<span class="ident">get</span>(<span class="kw-2">&amp;</span>(<span class="ident">bb</span>,))
+            .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">old</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">old</span>)
+            .<span class="ident">unwrap_or_else</span>(<span class="op">||</span> <span class="self">self</span>.<span class="ident">enum_1</span>[<span class="kw-2">&amp;</span>(<span class="ident">bb</span>,)])
+    }
+
+    <span class="doccomment">/// Sets the domain of {name} for the given arguments.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_enum_1</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>, <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">Enum1</span>) {
+
+        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;set enum_1{:?} to {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="ident">value</span>);
+        <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">enum_1</span>).<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span>(<span class="ident">bb</span>,))) <span class="op">=</span> <span class="ident">value</span>;
+    }
+
+    <span class="doccomment">/// Restricts the domain of {name} for the given arguments. Put the old</span>
+    <span class="doccomment">/// value in `diff`</span>
+    <span class="doccomment">/// and indicates if the new domain is failed.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict_enum_1</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="kw-2">mut</span> <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,
+        <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">Enum1</span>,
+        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>,
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ptr</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">enum_1</span>).<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span>(<span class="ident">bb</span>,)));
+        <span class="kw">let</span> <span class="ident">old</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
+        <span class="ident">ptr</span>.<span class="ident">restrict</span>(<span class="ident">value</span>);
+        <span class="kw">if</span> <span class="ident">old</span> <span class="op">!=</span> <span class="kw-2">*</span><span class="ident">ptr</span> {
+            <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;restrict enum_1{:?} to {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="kw-2">*</span><span class="ident">ptr</span>);
+            <span class="ident">diff</span>.<span class="ident">enum_1</span>.<span class="ident">entry</span>((<span class="ident">bb</span>,)).<span class="ident">or_insert</span>((<span class="ident">old</span>, <span class="kw-2">*</span><span class="ident">ptr</span>)).<span class="number">1</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
+        }
+        <span class="kw">if</span> <span class="ident">ptr</span>.<span class="ident">is_failed</span>() { <span class="prelude-val">Err</span>(()) } <span class="kw">else</span> { <span class="prelude-val">Ok</span>(()) }
+    }
 }
 
 <span class="doccomment">/// Stores the old values of a modified `DomainStore`.</span>
@@ -3041,20 +3041,20 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DomainDiff</span> {
     <span class="kw">pub</span> <span class="ident">enum_4</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,), (<span class="ident">Enum4</span>, <span class="ident">Enum4</span>)<span class="op">&gt;</span>,
 
-    <span class="kw">pub</span> <span class="ident">enum_1</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,), (<span class="ident">Enum1</span>, <span class="ident">Enum1</span>)<span class="op">&gt;</span>,
-
-    <span class="kw">pub</span> <span class="ident">enum_3</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,), (<span class="ident">Enum3</span>, <span class="ident">Enum3</span>)<span class="op">&gt;</span>,
-
     <span class="kw">pub</span> <span class="ident">enum_5</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,), (<span class="ident">Enum5</span>, <span class="ident">Enum5</span>)<span class="op">&gt;</span>,
 
     <span class="kw">pub</span> <span class="ident">enum_2</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,), (<span class="ident">Enum2</span>, <span class="ident">Enum2</span>)<span class="op">&gt;</span>,
+
+    <span class="kw">pub</span> <span class="ident">enum_3</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,), (<span class="ident">Enum3</span>, <span class="ident">Enum3</span>)<span class="op">&gt;</span>,
+
+    <span class="kw">pub</span> <span class="ident">enum_1</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,), (<span class="ident">Enum1</span>, <span class="ident">Enum1</span>)<span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">DomainDiff</span> {
     <span class="doccomment">/// Indicates if the `DomainDiff` does not holds any modification.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_empty</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">enum_4</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">enum_1</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">enum_3</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span>
-            <span class="self">self</span>.<span class="ident">enum_5</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">enum_2</span>.<span class="ident">is_empty</span>()
+        <span class="self">self</span>.<span class="ident">enum_4</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">enum_5</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">enum_2</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span>
+            <span class="self">self</span>.<span class="ident">enum_3</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">enum_1</span>.<span class="ident">is_empty</span>()
     }
 
     <span class="doccomment">/// Removes all the modifications of &#39;{name}&#39; and returns them.</span>
@@ -3063,26 +3063,6 @@
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(((<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,)), <span class="ident">Enum4</span>, <span class="ident">Enum4</span>)<span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">enum_4</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">next</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> {
             <span class="kw">let</span> (<span class="ident">old</span>, <span class="ident">new</span>) <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">enum_4</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">k</span>));
-            (<span class="ident">k</span>, <span class="ident">old</span>, <span class="ident">new</span>)
-        })
-    }
-
-    <span class="doccomment">/// Removes all the modifications of &#39;{name}&#39; and returns them.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_enum_1_diff</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-    ) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(((<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,)), <span class="ident">Enum1</span>, <span class="ident">Enum1</span>)<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">enum_1</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">next</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> {
-            <span class="kw">let</span> (<span class="ident">old</span>, <span class="ident">new</span>) <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">enum_1</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">k</span>));
-            (<span class="ident">k</span>, <span class="ident">old</span>, <span class="ident">new</span>)
-        })
-    }
-
-    <span class="doccomment">/// Removes all the modifications of &#39;{name}&#39; and returns them.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_enum_3_diff</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-    ) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(((<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,)), <span class="ident">Enum3</span>, <span class="ident">Enum3</span>)<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">enum_3</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">next</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> {
-            <span class="kw">let</span> (<span class="ident">old</span>, <span class="ident">new</span>) <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">enum_3</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">k</span>));
             (<span class="ident">k</span>, <span class="ident">old</span>, <span class="ident">new</span>)
         })
     }
@@ -3103,6 +3083,26 @@
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(((<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,)), <span class="ident">Enum2</span>, <span class="ident">Enum2</span>)<span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">enum_2</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">next</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> {
             <span class="kw">let</span> (<span class="ident">old</span>, <span class="ident">new</span>) <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">enum_2</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">k</span>));
+            (<span class="ident">k</span>, <span class="ident">old</span>, <span class="ident">new</span>)
+        })
+    }
+
+    <span class="doccomment">/// Removes all the modifications of &#39;{name}&#39; and returns them.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_enum_3_diff</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(((<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,)), <span class="ident">Enum3</span>, <span class="ident">Enum3</span>)<span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">enum_3</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">next</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> {
+            <span class="kw">let</span> (<span class="ident">old</span>, <span class="ident">new</span>) <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">enum_3</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">k</span>));
+            (<span class="ident">k</span>, <span class="ident">old</span>, <span class="ident">new</span>)
+        })
+    }
+
+    <span class="doccomment">/// Removes all the modifications of &#39;{name}&#39; and returns them.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_enum_1_diff</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(((<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,)), <span class="ident">Enum1</span>, <span class="ident">Enum1</span>)<span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">enum_1</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">next</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> {
+            <span class="kw">let</span> (<span class="ident">old</span>, <span class="ident">new</span>) <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">enum_1</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">k</span>));
             (<span class="ident">k</span>, <span class="ident">old</span>, <span class="ident">new</span>)
         })
     }
@@ -3240,23 +3240,111 @@
     }
 }
 
-<span class="doccomment">/// Test IS conditions.</span>
+<span class="doccomment">/// Test CODE conditions.</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">enum_1</span> {
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">enum_5</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>;
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
     <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
 
-    <span class="doccomment">/// Returns the values a `enum_1` can take.</span>
+    <span class="doccomment">/// Returns the values a `enum_5` can take.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">filter</span>(
         <span class="ident">bb</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>,
         <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
         <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
-    ) <span class="op">-&gt;</span> <span class="ident">Enum1</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Enum1</span>::<span class="ident">all</span>();
+    ) <span class="op">-&gt;</span> <span class="ident">Enum5</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Enum5</span>::<span class="ident">all</span>();
+        <span class="kw">if</span> <span class="op">!</span>(<span class="ident">bb</span>.<span class="ident">condition</span>()) {
+            <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">Enum5</span>::<span class="ident">B</span> <span class="op">|</span> <span class="ident">Enum5</span>::<span class="ident">C</span>);
+        }
+
+        <span class="kw">if</span> <span class="op">!</span>(<span class="op">!</span><span class="ident">bb</span>.<span class="ident">condition</span>()) {
+            <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">Enum5</span>::<span class="ident">A</span> <span class="op">|</span> <span class="ident">Enum5</span>::<span class="ident">C</span>);
+        }
+
+
+
+
+        <span class="ident">values</span>
+    }
+
+    <span class="doccomment">/// Triggers the required actions after the domain is updated.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">on_change</span>(
+        <span class="ident">old</span>: <span class="ident">Enum5</span>,
+        <span class="ident">new</span>: <span class="ident">Enum5</span>,
+        <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,
+        <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&gt;</span>,
+        <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainStore</span>,
+        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>,
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
+        {
+            <span class="kw">let</span> <span class="ident">bb</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">bb</span>);
+        }
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">actions</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
+        <span class="kw">for</span> <span class="ident">action</span> <span class="kw">in</span> <span class="ident">actions</span> {
+            <span class="ident">apply_action</span>(<span class="ident">action</span>, <span class="ident">store</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// Generate actions that restrict the values the choice can take.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict_delayed</span>(
+        <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,
+        <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
+        <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
+        <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">Enum5</span>,
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">current</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_5</span>(<span class="ident">bb</span>);
+        <span class="ident">new_values</span>.<span class="ident">restrict</span>(<span class="ident">current</span>);
+        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;delayed restrict enum_5{:?} to {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="ident">new_values</span>);
+        <span class="kw">if</span> <span class="ident">new_values</span>.<span class="ident">is_failed</span>() {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(());
+        }
+        <span class="kw">if</span> <span class="ident">new_values</span> <span class="op">!=</span> <span class="ident">current</span> {
+            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Action</span>::<span class="ident">Enum5</span>(<span class="ident">bb</span>, <span class="ident">new_values</span>)])
+        } <span class="kw">else</span> {
+            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[])
+        }
+
+    }
+
+    <span class="doccomment">/// Restrict the values the choice can take.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict</span>(
+        <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,
+        <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
+        <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainStore</span>,
+        <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">Enum5</span>,
+        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>,
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
+        <span class="ident">store</span>.<span class="ident">restrict_enum_5</span>(<span class="ident">bb</span>, <span class="ident">new_values</span>, <span class="ident">diff</span>)
+    }
+
+
+}
+
+<span class="doccomment">/// Test IS NOT conditions.</span>
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">enum_2</span> {
+    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>;
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
+    <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
+
+    <span class="doccomment">/// Returns the values a `enum_2` can take.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">filter</span>(
+        <span class="ident">bb</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>,
+        <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
+        <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">Enum2</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Enum2</span>::<span class="ident">all</span>();
         <span class="kw">for</span> <span class="ident">bb_203</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
             <span class="kw">if</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb_203</span>) <span class="op">==</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>) {
                 <span class="kw">continue</span>;
@@ -3272,8 +3360,8 @@
     <span class="doccomment">/// Triggers the required actions after the domain is updated.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">on_change</span>(
-        <span class="ident">old</span>: <span class="ident">Enum1</span>,
-        <span class="ident">new</span>: <span class="ident">Enum1</span>,
+        <span class="ident">old</span>: <span class="ident">Enum2</span>,
+        <span class="ident">new</span>: <span class="ident">Enum2</span>,
         <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,
         <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&gt;</span>,
         <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainStore</span>,
@@ -3285,13 +3373,13 @@
                 <span class="kw">if</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb_204</span>) <span class="op">==</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>) {
                     <span class="kw">continue</span>;
                 } <span class="comment">// Generates an action to filter a choice if needed.</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Enum1</span>::<span class="ident">all</span>();
-                <span class="kw">let</span> <span class="ident">filter_res</span> <span class="op">=</span> <span class="ident">enum_1</span>::<span class="ident">filter_0</span>(<span class="ident">bb_204</span>, <span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Enum2</span>::<span class="ident">all</span>();
+                <span class="kw">let</span> <span class="ident">filter_res</span> <span class="op">=</span> <span class="ident">enum_2</span>::<span class="ident">filter_0</span>(<span class="ident">bb_204</span>, <span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
                 <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">filter_res</span>);
 
 
                 <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;call restrict from {}, line {}&quot;</span>, <span class="macro">file</span><span class="macro">!</span>(), <span class="macro">line</span><span class="macro">!</span>());
-                <span class="ident">enum_1</span>::<span class="ident">restrict</span>(
+                <span class="ident">enum_2</span>::<span class="ident">restrict</span>(
                     <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb_204</span>),
                     <span class="ident">ir_instance</span>,
                     <span class="ident">store</span>,
@@ -3313,16 +3401,16 @@
         <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,
         <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
         <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
-        <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">Enum1</span>,
+        <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">Enum2</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">current</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_1</span>(<span class="ident">bb</span>);
+        <span class="kw">let</span> <span class="ident">current</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_2</span>(<span class="ident">bb</span>);
         <span class="ident">new_values</span>.<span class="ident">restrict</span>(<span class="ident">current</span>);
-        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;delayed restrict enum_1{:?} to {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="ident">new_values</span>);
+        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;delayed restrict enum_2{:?} to {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="ident">new_values</span>);
         <span class="kw">if</span> <span class="ident">new_values</span>.<span class="ident">is_failed</span>() {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(());
         }
         <span class="kw">if</span> <span class="ident">new_values</span> <span class="op">!=</span> <span class="ident">current</span> {
-            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Action</span>::<span class="ident">Enum1</span>(<span class="ident">bb</span>, <span class="ident">new_values</span>)])
+            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Action</span>::<span class="ident">Enum2</span>(<span class="ident">bb</span>, <span class="ident">new_values</span>)])
         } <span class="kw">else</span> {
             <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[])
         }
@@ -3335,38 +3423,38 @@
         <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,
         <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
         <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainStore</span>,
-        <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">Enum1</span>,
+        <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">Enum2</span>,
         <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="ident">store</span>.<span class="ident">restrict_enum_1</span>(<span class="ident">bb</span>, <span class="ident">new_values</span>, <span class="ident">diff</span>)
+        <span class="ident">store</span>.<span class="ident">restrict_enum_2</span>(<span class="ident">bb</span>, <span class="ident">new_values</span>, <span class="ident">diff</span>)
     }
 
-    <span class="doccomment">/// Restricts the values `enum_1` can take.</span>
+    <span class="doccomment">/// Restricts the values `enum_2` can take.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">filter_0</span>(
         <span class="ident">bb</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>,
         <span class="ident">bb_205</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>,
         <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
         <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
-    ) <span class="op">-&gt;</span> <span class="ident">Enum1</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Enum1</span>::<span class="ident">FAILED</span>;
-        <span class="kw">let</span> <span class="ident">enum_1_206</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_1</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb_205</span>));
-        <span class="kw">if</span> <span class="ident">enum_1_206</span>.<span class="ident">intersects</span>(<span class="ident">Enum1</span>::<span class="ident">A</span>) {
-            <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">Enum1</span>::<span class="ident">A</span> <span class="op">|</span> <span class="ident">Enum1</span>::<span class="ident">B</span>);
+    ) <span class="op">-&gt;</span> <span class="ident">Enum2</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Enum2</span>::<span class="ident">FAILED</span>;
+        <span class="kw">let</span> <span class="ident">enum_2_206</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_2</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb_205</span>));
+        <span class="kw">if</span> <span class="ident">enum_2_206</span>.<span class="ident">intersects</span>(<span class="ident">Enum2</span>::<span class="ident">A</span>) {
+            <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">Enum2</span>::<span class="ident">A</span> <span class="op">|</span> <span class="ident">Enum2</span>::<span class="ident">B</span>);
         }
-        <span class="kw">if</span> <span class="ident">enum_1_206</span>.<span class="ident">intersects</span>(<span class="ident">Enum1</span>::<span class="ident">B</span>) {
-            <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">Enum1</span>::<span class="ident">all</span>());
+        <span class="kw">if</span> <span class="ident">enum_2_206</span>.<span class="ident">intersects</span>(<span class="ident">Enum2</span>::<span class="ident">B</span>) {
+            <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">Enum2</span>::<span class="ident">all</span>());
         }
-        <span class="kw">if</span> <span class="ident">enum_1_206</span>.<span class="ident">intersects</span>(<span class="ident">Enum1</span>::<span class="ident">C</span>) {
-            <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">Enum1</span>::<span class="ident">B</span> <span class="op">|</span> <span class="ident">Enum1</span>::<span class="ident">C</span>);
+        <span class="kw">if</span> <span class="ident">enum_2_206</span>.<span class="ident">intersects</span>(<span class="ident">Enum2</span>::<span class="ident">C</span>) {
+            <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">Enum2</span>::<span class="ident">B</span> <span class="op">|</span> <span class="ident">Enum2</span>::<span class="ident">C</span>);
         }
 
         <span class="macro">trace</span><span class="macro">!</span>(
-            <span class="string">&quot;restrict enum_1{:?} to {:?} in filter 0&quot;</span>,
+            <span class="string">&quot;restrict enum_2{:?} to {:?} in filter 0&quot;</span>,
             (<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>), <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb_205</span>)),
             <span class="ident">values</span>
         );
-        <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;with enum_1_206 = {:?}&quot;</span>, <span class="ident">enum_1_206</span>);
+        <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;with enum_2_206 = {:?}&quot;</span>, <span class="ident">enum_2_206</span>);
         <span class="ident">values</span>
     }
 }
@@ -3502,111 +3590,23 @@
     }
 }
 
-<span class="doccomment">/// Test CODE conditions.</span>
+<span class="doccomment">/// Test IS conditions.</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">enum_5</span> {
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">enum_1</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>;
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
     <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
 
-    <span class="doccomment">/// Returns the values a `enum_5` can take.</span>
+    <span class="doccomment">/// Returns the values a `enum_1` can take.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">filter</span>(
         <span class="ident">bb</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>,
         <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
         <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
-    ) <span class="op">-&gt;</span> <span class="ident">Enum5</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Enum5</span>::<span class="ident">all</span>();
-        <span class="kw">if</span> <span class="op">!</span>(<span class="ident">bb</span>.<span class="ident">condition</span>()) {
-            <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">Enum5</span>::<span class="ident">B</span> <span class="op">|</span> <span class="ident">Enum5</span>::<span class="ident">C</span>);
-        }
-
-        <span class="kw">if</span> <span class="op">!</span>(<span class="op">!</span><span class="ident">bb</span>.<span class="ident">condition</span>()) {
-            <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">Enum5</span>::<span class="ident">A</span> <span class="op">|</span> <span class="ident">Enum5</span>::<span class="ident">C</span>);
-        }
-
-
-
-
-        <span class="ident">values</span>
-    }
-
-    <span class="doccomment">/// Triggers the required actions after the domain is updated.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">on_change</span>(
-        <span class="ident">old</span>: <span class="ident">Enum5</span>,
-        <span class="ident">new</span>: <span class="ident">Enum5</span>,
-        <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,
-        <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&gt;</span>,
-        <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainStore</span>,
-        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>,
-    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        {
-            <span class="kw">let</span> <span class="ident">bb</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">bb</span>);
-        }
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">actions</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
-        <span class="kw">for</span> <span class="ident">action</span> <span class="kw">in</span> <span class="ident">actions</span> {
-            <span class="ident">apply_action</span>(<span class="ident">action</span>, <span class="ident">store</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
-        }
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="doccomment">/// Generate actions that restrict the values the choice can take.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict_delayed</span>(
-        <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,
-        <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
-        <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
-        <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">Enum5</span>,
-    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">current</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_5</span>(<span class="ident">bb</span>);
-        <span class="ident">new_values</span>.<span class="ident">restrict</span>(<span class="ident">current</span>);
-        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;delayed restrict enum_5{:?} to {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="ident">new_values</span>);
-        <span class="kw">if</span> <span class="ident">new_values</span>.<span class="ident">is_failed</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(());
-        }
-        <span class="kw">if</span> <span class="ident">new_values</span> <span class="op">!=</span> <span class="ident">current</span> {
-            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Action</span>::<span class="ident">Enum5</span>(<span class="ident">bb</span>, <span class="ident">new_values</span>)])
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[])
-        }
-
-    }
-
-    <span class="doccomment">/// Restrict the values the choice can take.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict</span>(
-        <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,
-        <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
-        <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainStore</span>,
-        <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">Enum5</span>,
-        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>,
-    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="ident">store</span>.<span class="ident">restrict_enum_5</span>(<span class="ident">bb</span>, <span class="ident">new_values</span>, <span class="ident">diff</span>)
-    }
-
-
-}
-
-<span class="doccomment">/// Test IS NOT conditions.</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">enum_2</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>;
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
-
-    <span class="doccomment">/// Returns the values a `enum_2` can take.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">filter</span>(
-        <span class="ident">bb</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>,
-        <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
-        <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
-    ) <span class="op">-&gt;</span> <span class="ident">Enum2</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Enum2</span>::<span class="ident">all</span>();
+    ) <span class="op">-&gt;</span> <span class="ident">Enum1</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Enum1</span>::<span class="ident">all</span>();
         <span class="kw">for</span> <span class="ident">bb_211</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
             <span class="kw">if</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb_211</span>) <span class="op">==</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>) {
                 <span class="kw">continue</span>;
@@ -3622,8 +3622,8 @@
     <span class="doccomment">/// Triggers the required actions after the domain is updated.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">on_change</span>(
-        <span class="ident">old</span>: <span class="ident">Enum2</span>,
-        <span class="ident">new</span>: <span class="ident">Enum2</span>,
+        <span class="ident">old</span>: <span class="ident">Enum1</span>,
+        <span class="ident">new</span>: <span class="ident">Enum1</span>,
         <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,
         <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&gt;</span>,
         <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainStore</span>,
@@ -3635,13 +3635,13 @@
                 <span class="kw">if</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb_212</span>) <span class="op">==</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>) {
                     <span class="kw">continue</span>;
                 } <span class="comment">// Generates an action to filter a choice if needed.</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Enum2</span>::<span class="ident">all</span>();
-                <span class="kw">let</span> <span class="ident">filter_res</span> <span class="op">=</span> <span class="ident">enum_2</span>::<span class="ident">filter_0</span>(<span class="ident">bb_212</span>, <span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Enum1</span>::<span class="ident">all</span>();
+                <span class="kw">let</span> <span class="ident">filter_res</span> <span class="op">=</span> <span class="ident">enum_1</span>::<span class="ident">filter_0</span>(<span class="ident">bb_212</span>, <span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
                 <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">filter_res</span>);
 
 
                 <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;call restrict from {}, line {}&quot;</span>, <span class="macro">file</span><span class="macro">!</span>(), <span class="macro">line</span><span class="macro">!</span>());
-                <span class="ident">enum_2</span>::<span class="ident">restrict</span>(
+                <span class="ident">enum_1</span>::<span class="ident">restrict</span>(
                     <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb_212</span>),
                     <span class="ident">ir_instance</span>,
                     <span class="ident">store</span>,
@@ -3663,16 +3663,16 @@
         <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,
         <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
         <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
-        <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">Enum2</span>,
+        <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">Enum1</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">current</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_2</span>(<span class="ident">bb</span>);
+        <span class="kw">let</span> <span class="ident">current</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_1</span>(<span class="ident">bb</span>);
         <span class="ident">new_values</span>.<span class="ident">restrict</span>(<span class="ident">current</span>);
-        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;delayed restrict enum_2{:?} to {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="ident">new_values</span>);
+        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;delayed restrict enum_1{:?} to {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="ident">new_values</span>);
         <span class="kw">if</span> <span class="ident">new_values</span>.<span class="ident">is_failed</span>() {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(());
         }
         <span class="kw">if</span> <span class="ident">new_values</span> <span class="op">!=</span> <span class="ident">current</span> {
-            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Action</span>::<span class="ident">Enum2</span>(<span class="ident">bb</span>, <span class="ident">new_values</span>)])
+            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Action</span>::<span class="ident">Enum1</span>(<span class="ident">bb</span>, <span class="ident">new_values</span>)])
         } <span class="kw">else</span> {
             <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[])
         }
@@ -3685,38 +3685,38 @@
         <span class="ident">bb</span>: <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>,
         <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
         <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainStore</span>,
-        <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">Enum2</span>,
+        <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">Enum1</span>,
         <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="ident">store</span>.<span class="ident">restrict_enum_2</span>(<span class="ident">bb</span>, <span class="ident">new_values</span>, <span class="ident">diff</span>)
+        <span class="ident">store</span>.<span class="ident">restrict_enum_1</span>(<span class="ident">bb</span>, <span class="ident">new_values</span>, <span class="ident">diff</span>)
     }
 
-    <span class="doccomment">/// Restricts the values `enum_2` can take.</span>
+    <span class="doccomment">/// Restricts the values `enum_1` can take.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">filter_0</span>(
         <span class="ident">bb</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>,
         <span class="ident">bb_213</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>,
         <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
         <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
-    ) <span class="op">-&gt;</span> <span class="ident">Enum2</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Enum2</span>::<span class="ident">FAILED</span>;
-        <span class="kw">let</span> <span class="ident">enum_2_214</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_2</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb_213</span>));
-        <span class="kw">if</span> <span class="ident">enum_2_214</span>.<span class="ident">intersects</span>(<span class="ident">Enum2</span>::<span class="ident">A</span>) {
-            <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">Enum2</span>::<span class="ident">A</span> <span class="op">|</span> <span class="ident">Enum2</span>::<span class="ident">B</span>);
+    ) <span class="op">-&gt;</span> <span class="ident">Enum1</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Enum1</span>::<span class="ident">FAILED</span>;
+        <span class="kw">let</span> <span class="ident">enum_1_214</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_1</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb_213</span>));
+        <span class="kw">if</span> <span class="ident">enum_1_214</span>.<span class="ident">intersects</span>(<span class="ident">Enum1</span>::<span class="ident">A</span>) {
+            <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">Enum1</span>::<span class="ident">A</span> <span class="op">|</span> <span class="ident">Enum1</span>::<span class="ident">B</span>);
         }
-        <span class="kw">if</span> <span class="ident">enum_2_214</span>.<span class="ident">intersects</span>(<span class="ident">Enum2</span>::<span class="ident">B</span>) {
-            <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">Enum2</span>::<span class="ident">all</span>());
+        <span class="kw">if</span> <span class="ident">enum_1_214</span>.<span class="ident">intersects</span>(<span class="ident">Enum1</span>::<span class="ident">B</span>) {
+            <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">Enum1</span>::<span class="ident">all</span>());
         }
-        <span class="kw">if</span> <span class="ident">enum_2_214</span>.<span class="ident">intersects</span>(<span class="ident">Enum2</span>::<span class="ident">C</span>) {
-            <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">Enum2</span>::<span class="ident">B</span> <span class="op">|</span> <span class="ident">Enum2</span>::<span class="ident">C</span>);
+        <span class="kw">if</span> <span class="ident">enum_1_214</span>.<span class="ident">intersects</span>(<span class="ident">Enum1</span>::<span class="ident">C</span>) {
+            <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">Enum1</span>::<span class="ident">B</span> <span class="op">|</span> <span class="ident">Enum1</span>::<span class="ident">C</span>);
         }
 
         <span class="macro">trace</span><span class="macro">!</span>(
-            <span class="string">&quot;restrict enum_2{:?} to {:?} in filter 0&quot;</span>,
+            <span class="string">&quot;restrict enum_1{:?} to {:?} in filter 0&quot;</span>,
             (<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>), <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb_213</span>)),
             <span class="ident">values</span>
         );
-        <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;with enum_2_214 = {:?}&quot;</span>, <span class="ident">enum_2_214</span>);
+        <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;with enum_1_214 = {:?}&quot;</span>, <span class="ident">enum_1_214</span>);
         <span class="ident">values</span>
     }
 }
@@ -4388,13 +4388,13 @@
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Action</span> {
     <span class="ident">Enum4</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>, <span class="ident">Enum4</span>),
 
-    <span class="ident">Enum1</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>, <span class="ident">Enum1</span>),
-
-    <span class="ident">Enum3</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>, <span class="ident">Enum3</span>),
-
     <span class="ident">Enum5</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>, <span class="ident">Enum5</span>),
 
     <span class="ident">Enum2</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>, <span class="ident">Enum2</span>),
+
+    <span class="ident">Enum3</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>, <span class="ident">Enum3</span>),
+
+    <span class="ident">Enum1</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Id</span>, <span class="ident">Enum1</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">Action</span> {
@@ -4403,10 +4403,10 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">complement</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
             <span class="ident">Action</span>::<span class="ident">Enum4</span>(<span class="ident">bb</span>, <span class="ident">domain</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">Action</span>::<span class="ident">Enum4</span>(<span class="ident">bb</span>, <span class="op">!</span><span class="ident">domain</span>)),
-            <span class="ident">Action</span>::<span class="ident">Enum1</span>(<span class="ident">bb</span>, <span class="ident">domain</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">Action</span>::<span class="ident">Enum1</span>(<span class="ident">bb</span>, <span class="op">!</span><span class="ident">domain</span>)),
-            <span class="ident">Action</span>::<span class="ident">Enum3</span>(<span class="ident">bb</span>, <span class="ident">domain</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">Action</span>::<span class="ident">Enum3</span>(<span class="ident">bb</span>, <span class="op">!</span><span class="ident">domain</span>)),
             <span class="ident">Action</span>::<span class="ident">Enum5</span>(<span class="ident">bb</span>, <span class="ident">domain</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">Action</span>::<span class="ident">Enum5</span>(<span class="ident">bb</span>, <span class="op">!</span><span class="ident">domain</span>)),
             <span class="ident">Action</span>::<span class="ident">Enum2</span>(<span class="ident">bb</span>, <span class="ident">domain</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">Action</span>::<span class="ident">Enum2</span>(<span class="ident">bb</span>, <span class="op">!</span><span class="ident">domain</span>)),
+            <span class="ident">Action</span>::<span class="ident">Enum3</span>(<span class="ident">bb</span>, <span class="ident">domain</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">Action</span>::<span class="ident">Enum3</span>(<span class="ident">bb</span>, <span class="op">!</span><span class="ident">domain</span>)),
+            <span class="ident">Action</span>::<span class="ident">Enum1</span>(<span class="ident">bb</span>, <span class="ident">domain</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">Action</span>::<span class="ident">Enum1</span>(<span class="ident">bb</span>, <span class="op">!</span><span class="ident">domain</span>)),
         }
     }
 }
@@ -4420,10 +4420,10 @@
     <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;applying action {:?}&quot;</span>, <span class="ident">action</span>);
     <span class="kw">match</span> <span class="ident">action</span> {
         <span class="ident">Action</span>::<span class="ident">Enum4</span>(<span class="ident">bb</span>, <span class="ident">value</span>) <span class="op">=&gt;</span> <span class="ident">store</span>.<span class="ident">restrict_enum_4</span>(<span class="ident">bb</span>, <span class="ident">value</span>, <span class="ident">diff</span>),
-        <span class="ident">Action</span>::<span class="ident">Enum1</span>(<span class="ident">bb</span>, <span class="ident">value</span>) <span class="op">=&gt;</span> <span class="ident">store</span>.<span class="ident">restrict_enum_1</span>(<span class="ident">bb</span>, <span class="ident">value</span>, <span class="ident">diff</span>),
-        <span class="ident">Action</span>::<span class="ident">Enum3</span>(<span class="ident">bb</span>, <span class="ident">value</span>) <span class="op">=&gt;</span> <span class="ident">store</span>.<span class="ident">restrict_enum_3</span>(<span class="ident">bb</span>, <span class="ident">value</span>, <span class="ident">diff</span>),
         <span class="ident">Action</span>::<span class="ident">Enum5</span>(<span class="ident">bb</span>, <span class="ident">value</span>) <span class="op">=&gt;</span> <span class="ident">store</span>.<span class="ident">restrict_enum_5</span>(<span class="ident">bb</span>, <span class="ident">value</span>, <span class="ident">diff</span>),
         <span class="ident">Action</span>::<span class="ident">Enum2</span>(<span class="ident">bb</span>, <span class="ident">value</span>) <span class="op">=&gt;</span> <span class="ident">store</span>.<span class="ident">restrict_enum_2</span>(<span class="ident">bb</span>, <span class="ident">value</span>, <span class="ident">diff</span>),
+        <span class="ident">Action</span>::<span class="ident">Enum3</span>(<span class="ident">bb</span>, <span class="ident">value</span>) <span class="op">=&gt;</span> <span class="ident">store</span>.<span class="ident">restrict_enum_3</span>(<span class="ident">bb</span>, <span class="ident">value</span>, <span class="ident">diff</span>),
+        <span class="ident">Action</span>::<span class="ident">Enum1</span>(<span class="ident">bb</span>, <span class="ident">value</span>) <span class="op">=&gt;</span> <span class="ident">store</span>.<span class="ident">restrict_enum_1</span>(<span class="ident">bb</span>, <span class="ident">value</span>, <span class="ident">diff</span>),
     }
 }
 
@@ -4437,14 +4437,6 @@
         <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;propagating enum_4{:?} {:?} -&gt; {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="ident">old</span>, <span class="ident">new</span>);
         <span class="ident">enum_4</span>::<span class="ident">on_change</span>(<span class="ident">old</span>, <span class="ident">new</span>, <span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
     }
-    <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(((<span class="ident">bb</span>,), <span class="ident">old</span>, <span class="ident">new</span>)) <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">pop_enum_1_diff</span>() {
-        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;propagating enum_1{:?} {:?} -&gt; {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="ident">old</span>, <span class="ident">new</span>);
-        <span class="ident">enum_1</span>::<span class="ident">on_change</span>(<span class="ident">old</span>, <span class="ident">new</span>, <span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
-    }
-    <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(((<span class="ident">bb</span>,), <span class="ident">old</span>, <span class="ident">new</span>)) <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">pop_enum_3_diff</span>() {
-        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;propagating enum_3{:?} {:?} -&gt; {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="ident">old</span>, <span class="ident">new</span>);
-        <span class="ident">enum_3</span>::<span class="ident">on_change</span>(<span class="ident">old</span>, <span class="ident">new</span>, <span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
-    }
     <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(((<span class="ident">bb</span>,), <span class="ident">old</span>, <span class="ident">new</span>)) <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">pop_enum_5_diff</span>() {
         <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;propagating enum_5{:?} {:?} -&gt; {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="ident">old</span>, <span class="ident">new</span>);
         <span class="ident">enum_5</span>::<span class="ident">on_change</span>(<span class="ident">old</span>, <span class="ident">new</span>, <span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
@@ -4452,6 +4444,14 @@
     <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(((<span class="ident">bb</span>,), <span class="ident">old</span>, <span class="ident">new</span>)) <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">pop_enum_2_diff</span>() {
         <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;propagating enum_2{:?} {:?} -&gt; {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="ident">old</span>, <span class="ident">new</span>);
         <span class="ident">enum_2</span>::<span class="ident">on_change</span>(<span class="ident">old</span>, <span class="ident">new</span>, <span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
+    }
+    <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(((<span class="ident">bb</span>,), <span class="ident">old</span>, <span class="ident">new</span>)) <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">pop_enum_3_diff</span>() {
+        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;propagating enum_3{:?} {:?} -&gt; {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="ident">old</span>, <span class="ident">new</span>);
+        <span class="ident">enum_3</span>::<span class="ident">on_change</span>(<span class="ident">old</span>, <span class="ident">new</span>, <span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
+    }
+    <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(((<span class="ident">bb</span>,), <span class="ident">old</span>, <span class="ident">new</span>)) <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">pop_enum_1_diff</span>() {
+        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;propagating enum_1{:?} {:?} -&gt; {:?}&quot;</span>, (<span class="ident">bb</span>,), <span class="ident">old</span>, <span class="ident">new</span>);
+        <span class="ident">enum_1</span>::<span class="ident">on_change</span>(<span class="ident">old</span>, <span class="ident">new</span>, <span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
     }
     <span class="prelude-val">Ok</span>(())
 }
@@ -4511,8 +4511,18 @@
         )<span class="question-mark">?</span>;
     }
     <span class="kw">for</span> <span class="ident">bb</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
-        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">enum_1</span>::<span class="ident">filter</span>(<span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
-        <span class="ident">enum_1</span>::<span class="ident">restrict</span>(
+        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">enum_5</span>::<span class="ident">filter</span>(<span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
+        <span class="ident">enum_5</span>::<span class="ident">restrict</span>(
+            <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>),
+            <span class="ident">ir_instance</span>,
+            <span class="ident">store</span>,
+            <span class="ident">values</span>,
+            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">unused_diff</span>,
+        )<span class="question-mark">?</span>;
+    }
+    <span class="kw">for</span> <span class="ident">bb</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
+        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">enum_2</span>::<span class="ident">filter</span>(<span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
+        <span class="ident">enum_2</span>::<span class="ident">restrict</span>(
             <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>),
             <span class="ident">ir_instance</span>,
             <span class="ident">store</span>,
@@ -4531,18 +4541,8 @@
         )<span class="question-mark">?</span>;
     }
     <span class="kw">for</span> <span class="ident">bb</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
-        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">enum_5</span>::<span class="ident">filter</span>(<span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
-        <span class="ident">enum_5</span>::<span class="ident">restrict</span>(
-            <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>),
-            <span class="ident">ir_instance</span>,
-            <span class="ident">store</span>,
-            <span class="ident">values</span>,
-            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">unused_diff</span>,
-        )<span class="question-mark">?</span>;
-    }
-    <span class="kw">for</span> <span class="ident">bb</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
-        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">enum_2</span>::<span class="ident">filter</span>(<span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
-        <span class="ident">enum_2</span>::<span class="ident">restrict</span>(
+        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">enum_1</span>::<span class="ident">filter</span>(<span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
+        <span class="ident">enum_1</span>::<span class="ident">restrict</span>(
             <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>),
             <span class="ident">ir_instance</span>,
             <span class="ident">store</span>,
@@ -4564,9 +4564,19 @@
         )<span class="question-mark">?</span>);
     }
     <span class="kw">for</span> <span class="ident">bb</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
-        <span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_1</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>));
-        <span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">enum_1</span>::<span class="ident">filter</span>(<span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
-        <span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">enum_1</span>::<span class="ident">restrict_delayed</span>(
+        <span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_5</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>));
+        <span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">enum_5</span>::<span class="ident">filter</span>(<span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
+        <span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">enum_5</span>::<span class="ident">restrict_delayed</span>(
+            <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>),
+            <span class="ident">ir_instance</span>,
+            <span class="ident">store</span>,
+            <span class="ident">new_value</span>,
+        )<span class="question-mark">?</span>);
+    }
+    <span class="kw">for</span> <span class="ident">bb</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
+        <span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_2</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>));
+        <span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">enum_2</span>::<span class="ident">filter</span>(<span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
+        <span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">enum_2</span>::<span class="ident">restrict_delayed</span>(
             <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>),
             <span class="ident">ir_instance</span>,
             <span class="ident">store</span>,
@@ -4584,19 +4594,9 @@
         )<span class="question-mark">?</span>);
     }
     <span class="kw">for</span> <span class="ident">bb</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
-        <span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_5</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>));
-        <span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">enum_5</span>::<span class="ident">filter</span>(<span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
-        <span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">enum_5</span>::<span class="ident">restrict_delayed</span>(
-            <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>),
-            <span class="ident">ir_instance</span>,
-            <span class="ident">store</span>,
-            <span class="ident">new_value</span>,
-        )<span class="question-mark">?</span>);
-    }
-    <span class="kw">for</span> <span class="ident">bb</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
-        <span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_2</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>));
-        <span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">enum_2</span>::<span class="ident">filter</span>(<span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
-        <span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">enum_2</span>::<span class="ident">restrict_delayed</span>(
+        <span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_1</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>));
+        <span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">enum_1</span>::<span class="ident">filter</span>(<span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
+        <span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">enum_1</span>::<span class="ident">restrict_delayed</span>(
             <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>),
             <span class="ident">ir_instance</span>,
             <span class="ident">store</span>,
@@ -4634,8 +4634,21 @@
     }
     <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">basic_block</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
         <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
-        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">enum_1</span>::<span class="ident">filter</span>(<span class="ident">obj</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
-        <span class="ident">enum_1</span>::<span class="ident">restrict</span>(
+        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">enum_5</span>::<span class="ident">filter</span>(<span class="ident">obj</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
+        <span class="ident">enum_5</span>::<span class="ident">restrict</span>(
+            <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),
+            <span class="ident">ir_instance</span>,
+            <span class="ident">store</span>,
+            <span class="ident">values</span>,
+            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">unused_diff</span>,
+        )<span class="question-mark">?</span>;
+
+
+    }
+    <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">basic_block</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
+        <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
+        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">enum_2</span>::<span class="ident">filter</span>(<span class="ident">obj</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
+        <span class="ident">enum_2</span>::<span class="ident">restrict</span>(
             <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),
             <span class="ident">ir_instance</span>,
             <span class="ident">store</span>,
@@ -4660,21 +4673,8 @@
     }
     <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">basic_block</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
         <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
-        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">enum_5</span>::<span class="ident">filter</span>(<span class="ident">obj</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
-        <span class="ident">enum_5</span>::<span class="ident">restrict</span>(
-            <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),
-            <span class="ident">ir_instance</span>,
-            <span class="ident">store</span>,
-            <span class="ident">values</span>,
-            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">unused_diff</span>,
-        )<span class="question-mark">?</span>;
-
-
-    }
-    <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">basic_block</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-        <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
-        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">enum_2</span>::<span class="ident">filter</span>(<span class="ident">obj</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
-        <span class="ident">enum_2</span>::<span class="ident">restrict</span>(
+        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">enum_1</span>::<span class="ident">filter</span>(<span class="ident">obj</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
+        <span class="ident">enum_1</span>::<span class="ident">restrict</span>(
             <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),
             <span class="ident">ir_instance</span>,
             <span class="ident">store</span>,
@@ -4692,36 +4692,6 @@
         <span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_4</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>));
         <span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">enum_4</span>::<span class="ident">filter</span>(<span class="ident">obj</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
         <span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">enum_4</span>::<span class="ident">restrict_delayed</span>(
-            <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),
-            <span class="ident">ir_instance</span>,
-            <span class="ident">store</span>,
-            <span class="ident">new_value</span>,
-        )<span class="question-mark">?</span>);
-
-
-    }
-    <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">basic_block</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-        <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
-        <span class="kw">let</span> <span class="ident">bb</span> <span class="op">=</span> <span class="ident">obj</span>;
-
-        <span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_1</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>));
-        <span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">enum_1</span>::<span class="ident">filter</span>(<span class="ident">obj</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
-        <span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">enum_1</span>::<span class="ident">restrict_delayed</span>(
-            <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),
-            <span class="ident">ir_instance</span>,
-            <span class="ident">store</span>,
-            <span class="ident">new_value</span>,
-        )<span class="question-mark">?</span>);
-
-
-    }
-    <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">basic_block</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-        <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
-        <span class="kw">let</span> <span class="ident">bb</span> <span class="op">=</span> <span class="ident">obj</span>;
-
-        <span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_3</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>));
-        <span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">enum_3</span>::<span class="ident">filter</span>(<span class="ident">obj</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
-        <span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">enum_3</span>::<span class="ident">restrict_delayed</span>(
             <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),
             <span class="ident">ir_instance</span>,
             <span class="ident">store</span>,
@@ -4752,6 +4722,36 @@
         <span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_2</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>));
         <span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">enum_2</span>::<span class="ident">filter</span>(<span class="ident">obj</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
         <span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">enum_2</span>::<span class="ident">restrict_delayed</span>(
+            <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),
+            <span class="ident">ir_instance</span>,
+            <span class="ident">store</span>,
+            <span class="ident">new_value</span>,
+        )<span class="question-mark">?</span>);
+
+
+    }
+    <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">basic_block</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
+        <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
+        <span class="kw">let</span> <span class="ident">bb</span> <span class="op">=</span> <span class="ident">obj</span>;
+
+        <span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_3</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>));
+        <span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">enum_3</span>::<span class="ident">filter</span>(<span class="ident">obj</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
+        <span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">enum_3</span>::<span class="ident">restrict_delayed</span>(
+            <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),
+            <span class="ident">ir_instance</span>,
+            <span class="ident">store</span>,
+            <span class="ident">new_value</span>,
+        )<span class="question-mark">?</span>);
+
+
+    }
+    <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">basic_block</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
+        <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
+        <span class="kw">let</span> <span class="ident">bb</span> <span class="op">=</span> <span class="ident">obj</span>;
+
+        <span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_enum_1</span>(<span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>));
+        <span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">enum_1</span>::<span class="ident">filter</span>(<span class="ident">obj</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
+        <span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">enum_1</span>::<span class="ident">restrict_delayed</span>(
             <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),
             <span class="ident">ir_instance</span>,
             <span class="ident">store</span>,
