@@ -26,7 +26,7 @@ pub trait Device: Sync {
     /// Prints the code corresponding to a device `Function`.
     fn print(&self, function: &Function, out: &mut Write);
     /// Indicates if a `Type` can be implemented on the device.
-    fn is_valid_type(&self, t: &ir::Type) -> bool;
+    fn check_type(&self, t: ir::Type) -> Result<(), ir::TypeError>;
     /// Returns the maximal number of block dimensions.
     fn max_block_dims(&self) -> u32;
     /// Returns the maximal number of threads.

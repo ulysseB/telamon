@@ -178,7 +178,8 @@ impl<'a> Builder<'a> {
 
     /// Inserts an instruction in the function.
     fn inst(&mut self, op: Operator<'a>) -> InstId {
-        self.function.add_inst(op, self.open_dims.iter().map(|(&x, _)| x).collect())
+        let open_dims = self.open_dims.iter().map(|(&x, _)| x).collect();
+        unwrap!(self.function.add_inst(op, open_dims))
     }
 
     /// Builds both an induction variable for a tensor memory access and the corresponding
