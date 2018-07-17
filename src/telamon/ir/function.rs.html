@@ -303,6 +303,26 @@
 <span id="303">303</span>
 <span id="304">304</span>
 <span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Provides a representation of functions.</span>
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">Device</span>;
@@ -331,6 +351,26 @@
     <span class="kw">pub</span> <span class="ident">params</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Parameter</span><span class="op">&gt;</span>,
     <span class="doccomment">/// The number of external memory blocks.</span>
     <span class="kw">pub</span> <span class="ident">mem_blocks</span>: <span class="ident">u32</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">Signature</span> {
+    <span class="doccomment">/// Creates a new signature without any parameter.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">name</span>: <span class="ident">String</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="ident">Signature</span> { <span class="ident">name</span>, <span class="ident">params</span>: <span class="macro">vec</span><span class="macro">!</span>[], <span class="ident">mem_blocks</span>: <span class="number">0</span> }
+    }
+
+    <span class="doccomment">/// Adds a scalar parameter.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_scalar</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">name</span>: <span class="ident">String</span>, <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>) {
+        <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">push</span>(<span class="ident">Parameter</span> { <span class="ident">name</span>, <span class="ident">t</span> });
+    }
+
+    <span class="doccomment">/// Adds a parameter with the given name and type to the signature.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_array</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">name</span>: <span class="ident">String</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">mem</span>::<span class="ident">Id</span> {
+        <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">mem</span>::<span class="ident">Id</span>::<span class="ident">External</span>(<span class="self">self</span>.<span class="ident">mem_blocks</span>);
+        <span class="self">self</span>.<span class="ident">mem_blocks</span> <span class="op">+=</span> <span class="number">1</span>;
+        <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">push</span>(<span class="ident">Parameter</span> { <span class="ident">name</span>, <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">PtrTo</span>(<span class="ident">id</span>) });
+        <span class="ident">id</span>
+    }
 }
 
 <span class="doccomment">/// Describes a function and the set of its possible implementation.</span>
