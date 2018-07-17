@@ -31,6 +31,7 @@ impl<'a> Dimension<'a> {
     /// Creates a new dimension.
     pub fn new(size: ir::Size, id: Id, logical_dim: Option<LogicalId>)
         -> Result<Dimension, ir::Error>
+    {
         let (size, possible_sizes) = if let Some(s) = size.as_fixed() {
             if s == 1 { return Err(ir::Error::InvalidDimSize); }
             (ir::Size::new_dim(id), vec![s])
@@ -45,14 +46,16 @@ impl<'a> Dimension<'a> {
     /// Creates a new dimension with multiple possibles sizes.
     pub fn with_multi_sizes(id: Id,
                             possible_sizes: Vec<u32>,
-                            logical_dim: Option<LogicalId>) -> Self {
-        assert!(!possible_sizes.is_empty());
-        Dimension {
+                            logical_dim: Option<LogicalId>) -> Result<Self, ir::Error> {
+        if possible_sizes.is_empty() || possible_sizes.contains(&1) {
+            return Err(ir::Error::InvalidDimSize);
+        }
+        Ok(Dimension {
             id, possible_sizes, logical_dim,
             size: ir::Size::new_dim(id),
             iterated: Vec::new(),
             is_thread_dim: false,
-        }
+        })
     }
 
     /// Retruns the size of the dimension.

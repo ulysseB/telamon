@@ -250,7 +250,7 @@ impl<'a> Builder<'a> {
                         dim.size().clone()
                     }
                 };
-                let new_id = self.function.add_dim(size);
+                let new_id = unwrap!(self.function.add_dim(size));
                 self.open_dims.insert(new_id, *old_id);
                 LogicalDim::Simple(new_id)
             },

@@ -572,7 +572,7 @@ mod tests {
     #[test]
     fn offsets() {
         let _ = env_logger::try_init();
-        let gpu = unwrap!(Gpu::from_name("dummy_cuda_gpu"));
+        let gpu = Gpu::dummy();
         let big_dim_0 = thread_dim_info(0, false, 32, 32, 0);
         let big_dim_1 = thread_dim_info(1, false, 32, 32, 1);
         let small_dim_0 = thread_dim_info(0, false, 4, 4, 0);
@@ -589,7 +589,7 @@ mod tests {
     #[test]
     fn offsets_with_partial_dims() {
         let _ = env_logger::try_init();
-        let gpu = unwrap!(Gpu::from_name("dummy_cuda_gpu"));
+        let gpu = Gpu::dummy();
         // Create two dimensions of size [4, 6], with strides 0, 1.
         let beg_0 = thread_dim_info(0, false, 2, 4, 0);
         let end_0 = thread_dim_info(0, true, 2, 4, 0);

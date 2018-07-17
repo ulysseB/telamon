@@ -3,6 +3,7 @@ use num::Zero;
 use codegen;
 use device::{ArgMap, ScalarArgument, Device};
 use device::cuda::{Gpu, Context, Kernel, PerfCounterSet};
+use device::cuda::characterize::Table;
 use explorer;
 use helper::{AutoOperand, Builder, Reduce};
 use ir::{self, Signature};

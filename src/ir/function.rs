@@ -123,20 +123,25 @@ impl<'a> Function<'a> {
         let dim_ids = (0..tile_sizes.len()+1)
             .map(|id| dim::Id((id+self.dims.len()) as u32))
             .collect_vec();
+        let mut dims = Vec::with_capacity(1+tile_sizes.len());
         let (tile_dims, base, max_tiling) = if let Some(size) = size.as_fixed() {
             let sizes = std::iter::once(size/tiling).chain(tile_sizes.iter().cloned());
-            self.dims.extend(dim_ids.iter().zip_eq(sizes).map(|(&id, size)| {
-                Dimension::with_multi_sizes(id, vec![size], Some(logical_id))
-            }));
+            for (&id, size) in dim_ids.iter().zip_eq(sizes) {
+                let dim = Dimension::with_multi_sizes(id, vec![size], Some(logical_id));
+                dims.push(unwrap!(dim));
+            }
             (dim_ids.clone(), None, size)
         } else {
             size.tile(&dim_ids[1..].iter().cloned().collect());
-            self.dims.push(Dimension::new(size, dim_ids[0], Some(logical_id)));
-            self.dims.extend(dim_ids[1..].iter().zip_eq(tile_sizes).map(|(&id, &size)| {
-                Dimension::with_multi_sizes(id, vec![size], Some(logical_id))
-            }));
+            let dim = Dimension::new(size, dim_ids[0], Some(logical_id));
+            self.dims.push(unwrap!(dim));
+            for (&id, &size) in dim_ids[1..].iter().zip_eq(tile_sizes) {
+                let dim = Dimension::with_multi_sizes(id, vec![size], Some(logical_id));
+                dims.push(unwrap!(dim));
+            }
             (dim_ids[1..].iter().cloned().collect(), Some(dim_ids[0]), tiling)
         };
+        self.dims.extend(dims);
         let logical_dim = dim::LogicalDim::new(logical_id, tile_dims, base, max_tiling);
         self.logical_dims.push(logical_dim);
         (logical_id, dim_ids)
@@ -358,7 +363,8 @@ impl<'a> Function<'a> {
                 .map(|universe| universe.iter().cloned().collect())
                 .map(|universe| {
                     let id = ir::dim::Id(self.dims.len() as u32);
-                    self.dims.push(Dimension::with_multi_sizes(id, universe, None));
+                    let dim = Dimension::with_multi_sizes(id, universe, None);
+                    self.dims.push(unwrap!(dim));
                     dim_map.push(if from { (id, old_dim) } else { (old_dim, id) });
                     id
                 }).unwrap_or(old_dim)
