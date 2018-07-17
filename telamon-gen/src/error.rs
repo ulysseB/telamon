@@ -22,7 +22,7 @@ pub struct ProcessError<'a> {
     pub span: Option<lexer::Span>,
     cause: Cause,
 }
-
+/*
 impl <'a>From<(path::Display<'a>,
                ParseError<lexer::Position,
                                  lexer::Token,
@@ -101,4 +101,4 @@ impl <'a>Error for ProcessError<'a> {
             None
         }
     }
-}
+}*/

@@ -31,18 +31,18 @@ use self::ffi::{
     yyget_extra,
 };
 
-pub use self::ffi::{Position, Spanned, Span};
+pub use self::ffi::{Position, LexerPosition, Spanned, Span};
 
 use ::libc;
 use ::errno::{errno, set_errno};
 
-pub type LexerItem = SpannedLexer<Token, Position, LexicalError>;
+pub type LexerItem = SpannedLexer<Token, LexerPosition, LexicalError>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum LexicalError {
-    InvalidToken(Position, Token, Position),
-    InvalidInclude(Position, Token, Position),
-    UnexpectedToken(Position, Token, Position),
+    InvalidToken(LexerPosition, Token, LexerPosition),
+    InvalidInclude(LexerPosition, Token, LexerPosition),
+    UnexpectedToken(LexerPosition, Token, LexerPosition),
 }
 
 impl Error for LexicalError {
@@ -80,7 +80,7 @@ pub struct Lexer {
     scanner: YyScan,
     buffer: YyBufferState,
     /// Stores the next token.
-    lookahead_token: Option<SpannedLexer<Token, Position, LexicalError>>,
+    lookahead_token: Option<SpannedLexer<Token, LexerPosition, LexicalError>>,
     /// Multiple Input Buffers.
     include: Option<Box<Lexer>>,
     /// Top level module.
@@ -138,16 +138,22 @@ impl Lexer {
     /// Returns a merged list of code terms into a code token.
     fn code(&mut self, extra: YyExtraType, buffer: &str) -> Option<LexerItem> {
         let mut buffer: String = buffer.to_owned();
-        let mut acc_end = extra.end;
+        let mut acc_end: Position = extra.end;
         loop {
             match self.next() {
-                Some(Ok((_, Token::Code(ref code), end))) => {
-                    acc_end = end;
+                Some(Ok((_, Token::Code(ref code), ref end))) => {
+                    acc_end = end.position;
                     buffer.push_str(code);
                 },
                 next => {
                     self.lookahead_token = next;
-                    return Some(Ok((extra.beg, Token::Code(buffer), acc_end)))
+                    return Some(Ok((LexerPosition {
+                            position: extra.beg,
+                            filename: self.filename.to_owned()
+                        }, Token::Code(buffer), LexerPosition {
+                        position: acc_end,
+                        filename: self.filename.to_owned()
+                    })))
                 },
             }
         }
@@ -164,7 +170,13 @@ impl Lexer {
 
                     set_errno(why);
                     Some(Err(LexicalError::InvalidInclude(
-                        extra.beg, Token::InvalidInclude(filename.to_string(), why), extra.end
+                        LexerPosition {
+                            position: extra.beg,
+                            filename: self.filename.to_owned()
+                        }, Token::InvalidInclude(filename.to_string(), why), LexerPosition {
+                            position: extra.end,
+                            filename: self.filename.to_owned()
+                        }
                     )))
                 },
                 yyin => {
@@ -236,7 +248,11 @@ impl Iterator for Lexer {
                             CStr::from_ptr(out)
                                  .to_str().ok()
                                  .and_then(|s: &str| Some(Err(LexicalError::InvalidToken(
-                                        extra.beg, Token::InvalidToken(s.to_owned()), extra.end
+                                        LexerPosition {
+                                            position: extra.beg, filename: self.filename.to_owned()
+                                        }, Token::InvalidToken(s.to_owned()), LexerPosition {
+                                            position: extra.end, filename: self.filename.to_owned()
+                                        },
                                 ))))
                         },
                         YyToken::Include => {
@@ -251,28 +267,50 @@ impl Iterator for Lexer {
 
                             CStr::from_ptr(out)
                                  .to_str().ok()
-                                 .and_then(|s: &str| Some(Ok((extra.beg, Token::ChoiceIdent(s.to_owned()), extra.end))))
+                                 .and_then(|s: &str| Some(Ok((
+                                        LexerPosition {
+                                            position: extra.beg, filename: self.filename.to_owned()
+                                        }, Token::ChoiceIdent(s.to_owned()), LexerPosition {
+                                            position: extra.end, filename: self.filename.to_owned()
+                                        }))))
                         },
                         YyToken::SetIdent => {
                             let out = yyget_text(self.scanner);
 
                             CStr::from_ptr(out)
                                  .to_str().ok()
-                                 .and_then(|s: &str| Some(Ok((extra.beg, Token::SetIdent(s.to_owned()), extra.end))))
+                                 .and_then(|s: &str| Some(Ok((
+                                        LexerPosition {
+                                            position: extra.beg,
+                                            filename: self.filename.to_owned()
+                                        }, Token::SetIdent(s.to_owned()), LexerPosition {
+                                            position: extra.end, filename: self.filename.to_owned()
+                                        }))))
                         },
                         YyToken::ValueIdent => {
                             let out = yyget_text(self.scanner);
 
                             CStr::from_ptr(out)
                                  .to_str().ok()
-                                 .and_then(|s: &str| Some(Ok((extra.beg, Token::ValueIdent(s.to_owned()), extra.end))))
+                                 .and_then(|s: &str| Some(Ok((
+                                        LexerPosition {
+                                            position: extra.beg,
+                                            filename: self.filename.to_owned()
+                                        }, Token::ValueIdent(s.to_owned()), LexerPosition {
+                                            position: extra.end, filename: self.filename.to_owned()
+                                        }))))
                         },
                         YyToken::Var => {
                             let out = yyget_text(self.scanner);
 
                             CStr::from_ptr(out)
                                  .to_str().ok()
-                                 .and_then(|s: &str| Some(Ok((extra.beg, Token::Var(s.to_owned()), extra.end))))
+                                 .and_then(|s: &str| Some(Ok((LexerPosition {
+                                            position: extra.beg,
+                                            filename: self.filename.to_owned()
+                                        }, Token::Var(s.to_owned()),
+                                        LexerPosition {
+                                            position: extra.end, filename: self.filename.to_owned() }))))
                         },
                         YyToken::Code => {
                             let out = yyget_text(self.scanner);
@@ -285,46 +323,318 @@ impl Iterator for Lexer {
 
                             CStr::from_ptr(out)
                                  .to_str().ok()
-                                 .and_then(|s: &str| Some(Ok((extra.beg, Token::Doc(s.to_owned()), extra.end))))
+                                 .and_then(|s: &str| Some(Ok((LexerPosition {
+                                            position: extra.beg,
+                                            filename: self.filename.to_owned()
+                                        }, Token::Doc(s.to_owned()),
+                                        LexerPosition {
+                                            position: extra.end, filename: self.filename.to_owned() }))))
                         },
-                        YyToken::Alias => Some(Ok((extra.beg, Token::Alias, extra.end))),
-                        YyToken::Counter => Some(Ok((extra.beg, Token::Counter, extra.end))),
-                        YyToken::Define => Some(Ok((extra.beg, Token::Define, extra.end))),
-                        YyToken::Enum => Some(Ok((extra.beg, Token::Enum, extra.end))),
-                        YyToken::Forall => Some(Ok((extra.beg, Token::Forall, extra.end))),
-                        YyToken::In => Some(Ok((extra.beg, Token::In, extra.end))),
-                        YyToken::Is => Some(Ok((extra.beg, Token::Is, extra.end))),
-                        YyToken::Not => Some(Ok((extra.beg, Token::Not, extra.end))),
-                        YyToken::Require => Some(Ok((extra.beg, Token::Require, extra.end))),
-                        YyToken::Requires => Some(Ok((extra.beg, Token::Requires, extra.end))),
-                        YyToken::CounterKind => Some(Ok((extra.beg, Token::CounterKind(extra.data.counter_kind), extra.end))),
-                        YyToken::Value => Some(Ok((extra.beg, Token::Value, extra.end))),
-                        YyToken::When => Some(Ok((extra.beg, Token::When, extra.end))),
-                        YyToken::Trigger => Some(Ok((extra.beg, Token::Trigger, extra.end))),
-                        YyToken::CounterVisibility => Some(Ok((extra.beg, Token::CounterVisibility(extra.data.counter_visibility), extra.end))),
-                        YyToken::Base => Some(Ok((extra.beg, Token::Base, extra.end))),
-                        YyToken::SetDefkey => Some(Ok((extra.beg, Token::SetDefKey(extra.data.set_def_key), extra.end))),
-                        YyToken::Set => Some(Ok((extra.beg, Token::Set, extra.end))),
-                        YyToken::SubsetOf => Some(Ok((extra.beg, Token::SubsetOf, extra.end))),
-                        YyToken::Disjoint => Some(Ok((extra.beg, Token::Disjoint, extra.end))),
-                        YyToken::Quotient => Some(Ok((extra.beg, Token::Quotient, extra.end))),
-                        YyToken::Of => Some(Ok((extra.beg, Token::Of, extra.end))),
-                        YyToken::Bool => Some(Ok((extra.beg, Token::Bool(extra.data.boolean), extra.end))),
-                        YyToken::Colon => Some(Ok((extra.beg, Token::Colon, extra.end))),
-                        YyToken::Comma => Some(Ok((extra.beg, Token::Comma, extra.end))),
-                        YyToken::LParen => Some(Ok((extra.beg, Token::LParen, extra.end))),
-                        YyToken::RParen => Some(Ok((extra.beg, Token::RParen, extra.end))),
-                        YyToken::BitOr => Some(Ok((extra.beg, Token::BitOr, extra.end))),
-                        YyToken::Or => Some(Ok((extra.beg, Token::Or, extra.end))),
-                        YyToken::And => Some(Ok((extra.beg, Token::And, extra.end))),
-                        YyToken::CmpOp => Some(Ok((extra.beg, Token::CmpOp(extra.data.cmp_op), extra.end))),
-                        YyToken::Equal => Some(Ok((extra.beg, Token::Equal, extra.end))),
-                        YyToken::End => Some(Ok((extra.beg, Token::End, extra.end))),
-                        YyToken::Symmetric => Some(Ok((extra.beg, Token::Symmetric, extra.end))),
-                        YyToken::AntiSymmetric => Some(Ok((extra.beg, Token::AntiSymmetric, extra.end))),
-                        YyToken::Arrow => Some(Ok((extra.beg, Token::Arrow, extra.end))),
-                        YyToken::Divide => Some(Ok((extra.beg, Token::Divide, extra.end))),
-                        YyToken::Integer => Some(Ok((extra.beg, Token::Integer, extra.end))),
+                        YyToken::Alias => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Alias, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Counter => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Counter, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Define => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Define, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Enum => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Enum, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Forall => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Forall, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::In => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::In, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Is => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Is, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Not => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Not, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Require => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Require, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Requires => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Requires, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::CounterKind => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::CounterKind(extra.data.counter_kind), LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Value => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Value, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::When => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::When, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Trigger => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Trigger, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::CounterVisibility => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::CounterVisibility(extra.data.counter_visibility),
+                            LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Base => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Base, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::SetDefkey => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::SetDefKey(extra.data.set_def_key), LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Set => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Set, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::SubsetOf => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::SubsetOf, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Disjoint => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Disjoint, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Quotient => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Quotient, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Of => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Of, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Bool => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Bool(extra.data.boolean), LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Colon => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Colon, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Comma => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Comma, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::LParen => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::LParen, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::RParen => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::RParen, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::BitOr => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::BitOr, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Or => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Or, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::And => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::And, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::CmpOp => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::CmpOp(extra.data.cmp_op), LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Equal => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Equal, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::End => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::End, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Symmetric => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Symmetric, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::AntiSymmetric => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::AntiSymmetric, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Arrow => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Arrow, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Divide => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Divide, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
+                        YyToken::Integer => Some(Ok((
+                            LexerPosition {
+                                position: extra.beg,
+                                filename: self.filename.to_owned()
+                            }, Token::Integer, LexerPosition {
+                                position: extra.end,
+                                filename: self.filename.to_owned()
+                            }))),
                         // Return None to signal EOF.for a reached end of the string.
                         YyToken::EOF => None,
                     }

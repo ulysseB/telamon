@@ -74,6 +74,7 @@ pub fn process<'a, T: io::Write>(
     } else {
         lexer::Lexer::from_file(input_path)
     };
+    /*
     let ast: ast::Ast = parser::parse_ast(tokens)
                .map_err(|c| error::ProcessError::from((input_path.display(), c)))?;
     let (mut ir_desc, constraints) = ast.type_check().unwrap();
@@ -123,7 +124,7 @@ pub fn process<'a, T: io::Write>(
         if fmt_report.has_warnings() { println!("{}", fmt_report); }
     } else {
         write!(output, "{}", code).unwrap();
-    }
+    }*/
     Ok(())
 }
 

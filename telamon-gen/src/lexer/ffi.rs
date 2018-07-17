@@ -44,6 +44,19 @@ impl fmt::Display for Position {
     }
 }
 
+#[derive(Default, Clone, Debug, PartialEq)]
+#[repr(C)]
+pub struct LexerPosition {
+    pub position: Position,
+    pub filename: Option<String>,
+}
+
+impl fmt::Display for LexerPosition {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "position: {:?}, filename: {:?}", self.position, self.filename)
+    }
+}
+
 /// A double sequence's row/column position
 #[derive(Default, Copy, Clone, Debug, PartialEq)]
 pub struct Span {
@@ -62,7 +75,7 @@ impl fmt::Display for Span {
 }
 
 /// A F/lex's token with a span.
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 #[repr(C)]
 pub struct Spanned<Y> {
     pub beg: Position,

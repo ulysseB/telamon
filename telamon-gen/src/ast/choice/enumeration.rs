@@ -48,7 +48,7 @@ impl EnumDef {
         for stmt in self.statements.iter() {
             match stmt {
                 EnumStatement::Symmetric(Spanned { beg, end, ..}) => {
-                    if let Some(before) = symmetric {
+                    if let Some(ref before) = symmetric {
                         Err(TypeError::Redefinition(
                             Spanned {
                                 beg: before.beg, end: before.end,

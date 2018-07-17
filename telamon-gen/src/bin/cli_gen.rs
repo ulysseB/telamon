@@ -13,7 +13,7 @@ fn main() {
         true,
         &Path::new("exh")
     ) {
-        eprintln!("error: {}", process_error);
+//        eprintln!("error: {}", process_error);
         process::exit(-1);
     }
 }
