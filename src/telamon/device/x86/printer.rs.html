@@ -367,7 +367,6 @@
 <span id="367">367</span>
 <span id="368">368</span>
 <span id="369">369</span>
-<span id="370">370</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">codegen</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">x86</span>::<span class="ident">Namer</span>;
@@ -645,7 +644,6 @@
 
     <span class="kw">fn</span> <span class="ident">get_type</span>(<span class="ident">t</span>: <span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
         <span class="kw">match</span> <span class="ident">t</span> {
-            <span class="ident">Type</span>::<span class="ident">Void</span> <span class="op">=&gt;</span> <span class="ident">String</span>::<span class="ident">from</span>(<span class="string">&quot;void&quot;</span>),
             <span class="comment">//Type::PtrTo(..) =&gt; &quot; uint8_t *&quot;,</span>
             <span class="ident">Type</span>::<span class="ident">PtrTo</span>(..) <span class="op">=&gt;</span> <span class="ident">String</span>::<span class="ident">from</span>(<span class="string">&quot;intptr_t&quot;</span>),
             <span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">32</span>) <span class="op">=&gt;</span> <span class="ident">String</span>::<span class="ident">from</span>(<span class="string">&quot;float&quot;</span>),

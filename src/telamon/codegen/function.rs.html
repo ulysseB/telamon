@@ -318,6 +318,8 @@
 <span id="318">318</span>
 <span id="319">319</span>
 <span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Describes a `Function` that is ready to execute on a device.</span>
 <span class="kw">use</span> <span class="ident">ir</span>;
@@ -588,7 +590,7 @@
     <span class="ident">instruction</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Instruction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
     <span class="ident">instantiation_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">u32</span>)<span class="op">&gt;</span>,
     <span class="ident">mem_flag</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">search_space</span>::<span class="ident">InstFlag</span><span class="op">&gt;</span>,
-    <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>,
+    <span class="ident">t</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Type</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Instruction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
@@ -602,7 +604,9 @@
         }).<span class="ident">collect</span>();
         <span class="kw">let</span> <span class="ident">mem_flag</span> <span class="op">=</span> <span class="ident">instruction</span>.<span class="ident">as_mem_inst</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">inst</span><span class="op">|</span> <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_inst_flag</span>(<span class="ident">inst</span>.<span class="ident">id</span>()));
-        <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">device</span>().<span class="ident">lower_type</span>(<span class="ident">instruction</span>.<span class="ident">t</span>(), <span class="ident">space</span>));
+        <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="ident">instruction</span>.<span class="ident">t</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> {
+            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">device</span>().<span class="ident">lower_type</span>(<span class="ident">t</span>, <span class="ident">space</span>))
+        });
         <span class="ident">Instruction</span> { <span class="ident">instruction</span>, <span class="ident">instantiation_dims</span>, <span class="ident">mem_flag</span>, <span class="ident">t</span> }
     }
 
@@ -618,7 +622,7 @@
     }
 
     <span class="doccomment">/// Returns the type of the instruction.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">t</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span> { <span class="self">self</span>.<span class="ident">t</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">t</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Type</span><span class="op">&gt;</span> { <span class="self">self</span>.<span class="ident">t</span> }
 
     <span class="doccomment">/// Returns the operator computed by the instruction.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">operator</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Operator</span> { <span class="self">self</span>.<span class="ident">instruction</span>.<span class="ident">operator</span>() }

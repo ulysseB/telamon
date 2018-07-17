@@ -336,6 +336,8 @@
 <span id="336">336</span>
 <span id="337">337</span>
 <span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">codegen</span>::{<span class="ident">Dimension</span>, <span class="ident">Function</span>, <span class="ident">ParamValKey</span>, <span class="ident">AllocationScheme</span>, <span class="ident">Instruction</span>};
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">dim</span>, <span class="ident">DimMap</span>, <span class="ident">InstId</span>, <span class="ident">mem</span>, <span class="ident">Operand</span>, <span class="ident">Size</span>, <span class="ident">Type</span>};
@@ -463,7 +465,7 @@
         <span class="kw">for</span> <span class="ident">inst</span> <span class="kw">in</span> <span class="ident">function</span>.<span class="ident">cfg</span>().<span class="ident">instructions</span>() {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">inst_id</span>, <span class="ident">dim_map</span>)) <span class="op">=</span> <span class="ident">inst</span>.<span class="ident">as_reduction</span>() {
                 <span class="ident">name_map</span>.<span class="ident">decl_alias</span>(<span class="ident">inst</span>, <span class="ident">inst_id</span>, <span class="ident">dim_map</span>);
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">inst</span>.<span class="ident">t</span>() <span class="op">!=</span> <span class="ident">Type</span>::<span class="ident">Void</span> {
+            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">inst</span>.<span class="ident">t</span>().<span class="ident">is_some</span>() {
                 <span class="ident">name_map</span>.<span class="ident">decl_inst</span>(<span class="ident">inst</span>);
             }
         }
@@ -540,7 +542,9 @@
     <span class="kw">fn</span> <span class="ident">decl_inst</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">inst</span>: <span class="kw-2">&amp;</span><span class="ident">Instruction</span>) {
         <span class="kw">let</span> (<span class="ident">dim_ids</span>, <span class="ident">dim_sizes</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">inst_name_dims</span>(<span class="ident">inst</span>);
         <span class="kw">let</span> <span class="ident">num_name</span> <span class="op">=</span> <span class="ident">dim_sizes</span>.<span class="ident">iter</span>().<span class="ident">product</span>();
-        <span class="kw">let</span> <span class="ident">names</span> <span class="op">=</span> (<span class="number">0</span> .. <span class="ident">num_name</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">gen_name</span>(<span class="ident">inst</span>.<span class="ident">t</span>())).<span class="ident">collect_vec</span>();
+        <span class="kw">let</span> <span class="ident">names</span> <span class="op">=</span> (<span class="number">0</span> .. <span class="ident">num_name</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+            <span class="self">self</span>.<span class="ident">gen_name</span>(<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">inst</span>.<span class="ident">t</span>()))
+        }).<span class="ident">collect_vec</span>();
         <span class="kw">let</span> <span class="ident">array</span> <span class="op">=</span> <span class="ident">NDArray</span>::<span class="ident">new</span>(<span class="ident">dim_sizes</span>, <span class="ident">names</span>);
         <span class="macro">assert</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">insts</span>.<span class="ident">insert</span>(<span class="ident">inst</span>.<span class="ident">id</span>(), (<span class="ident">dim_ids</span>, <span class="ident">array</span>)).<span class="ident">is_none</span>());
     }
