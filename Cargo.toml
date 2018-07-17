@@ -15,6 +15,10 @@ name = "bench-perf-model"
 path = "tools/bench_perf_model/main.rs"
 required-features = ["cuda"]
 
+[[bench]]
+name = "descent"
+harness = false
+
 [build-dependencies]
 cc = "1.0.12"
 
@@ -68,6 +72,7 @@ git = "https://github.com/ulysseB/tokio-timer.git"
 [dev-dependencies]
 gcc = "0.3.54"
 tempdir = "0.3.7"
+criterion = "0.2.4"
 
 [features]
 cuda = []
