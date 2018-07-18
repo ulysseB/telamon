@@ -110,7 +110,9 @@ define enum dim_kind($dim in Dimensions):
     requires forall $other_dim in Dimensions:
       order($dim, $other_dim) is not OUTER
     requires forall $inst in Instructions:
-      order($dim, $inst) is not OUTER || "$fun.device().can_vectorize($dim, $inst.operator())"
+      order($dim, $inst) is not OUTER || "$dim.size().as_int().map(|s| \
+        $fun.device().vectorization_factors($dim, $inst.operator()).contains(&s)) \
+        .unwrap_or(false)"
   /// The dimension is mapped to a block dimension on the device.
   value BLOCK:
     requires forall $other_dim in Dimensions:

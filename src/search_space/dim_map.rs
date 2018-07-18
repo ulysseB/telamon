@@ -1,8 +1,8 @@
 //! `DimMap` and layout lowering.
-use ir::{self, BasicBlock};
-use search_space::{Action, DimKind, Domain, DomainStore, InstFlag, Order};
+use ir;
+use search_space::{Action, DimKind, DomainStore, InstFlag, Order};
 use search_space::operand;
-use search_space::choices::{dim_kind, order};
+use search_space::choices::dim_kind;
 use itertools::Itertools;
 
 /// Lowers a layout
@@ -10,24 +10,17 @@ pub fn lower_layout(fun: &mut ir::Function, mem: ir::mem::InternalId,
                     st_dims: Vec<ir::dim::Id>, ld_dims: Vec<ir::dim::Id>,
                     domain: &DomainStore) -> Result<Vec<Action>, ()> {
     debug!("lower_layout({:?}) triggered", mem);
-    fun.lower_layout(mem, st_dims, ld_dims);
     let mut actions = Vec::new();
+    // TODO(automate): vectorization disabled -> express as an additional constraint
+    for (&st_dim, &ld_dim) in st_dims.iter().rev().zip_eq(ld_dims.iter().rev()).skip(1) {
+        let not_vec = !DimKind::VECTOR;
+        actions.extend(dim_kind::restrict_delayed(st_dim, fun, domain, not_vec)?);
+        actions.extend(dim_kind::restrict_delayed(ld_dim, fun, domain, not_vec)?);
+    }
+    fun.lower_layout(mem, st_dims, ld_dims);
     for &inst_id in fun.mem_block(mem.into()).uses() {
         let inst = fun.inst(inst_id);
         actions.extend(operand::inst_invariants(fun, inst));
-        // TODO(automate): vectorization disabled -> express as an additional constraint
-        for d in fun.dims() {
-            if !fun.device().can_vectorize(d, inst.operator()) {
-                let order = domain.get_order(inst.bb_id(), d.bb_id());
-                if domain.get_dim_kind(d.id()) == DimKind::VECTOR {
-                    actions.extend(order::restrict_delayed(
-                            inst.bb_id(), d.bb_id(), fun, domain, !Order::INNER)?);
-                } else if order.is(Order::INNER).is_true() {
-                    actions.extend(dim_kind::restrict_delayed(
-                            d.id(), fun, domain, !DimKind::VECTOR)?);
-                }
-            }
-        };
     }
     Ok(actions)
 }
