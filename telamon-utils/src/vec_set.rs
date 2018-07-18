@@ -38,9 +38,23 @@ where T: Ord
     }
 
     /// Returns `self\other` and `other\self`.
-    pub fn symmetric_difference(mut self, mut other: Self) -> (Self, Self) {
+    pub fn relative_difference(mut self, mut other: Self) -> (Self, Self) {
         let lhs_old_len = self.data.len();
         let rhs_old_len = other.data.len();
+        // The unsafe code is required because with have temporary holes in the vectors we
+        // process: the data inside the holes is either droped or moved and we so we don't
+        // want it to be dropped a second time if a panic occurs (for example in the
+        // comparison function, potentially defined by the user, for the data type).
+        //
+        // The trick is to set the lenght of arrays at 0 during the processing and set it
+        // back at the real lengh at the end. This way, if an unwinding occurs, it will
+        // not drop the content of the array and will only leak memory instead of
+        // accessing freed memory.
+        //
+        // We could also implement this without unsafe by swaping `idx` and `idx-del` but
+        // it would copy more data and result in more bound checks. Since
+        // `relative_difference` is expected to be used intensivelly, we prefer to use
+        // unsafe code.
         unsafe {
             // Make sure the moved elements are not drop twice if an exception occurs.
             self.data.set_len(0);
@@ -53,21 +67,23 @@ where T: Ord
                 match (*lhs).cmp(&*rhs) {
                     std::cmp::Ordering::Less => {
                         if lhs_del > 0 {
-                            let lhs_dst = self.data.as_mut_ptr().offset((lhs_idx - lhs_del) as isize);
+                            let lhs_dst = self.data.as_mut_ptr()
+                                .offset((lhs_idx - lhs_del) as isize);
                             std::ptr::copy_nonoverlapping(lhs, lhs_dst, 1);
                         }
                         lhs_idx += 1;
                     },
                     std::cmp::Ordering::Greater => {
                         if rhs_del > 0 {
-                            let rhs_dst = other.data.as_mut_ptr().offset((rhs_idx - rhs_del) as isize);
+                            let rhs_dst = other.data.as_mut_ptr()
+                                .offset((rhs_idx - rhs_del) as isize);
                             std::ptr::copy_nonoverlapping(rhs, rhs_dst, 1);
                         }
                         rhs_idx += 1;
                     },
                     std::cmp::Ordering::Equal => {
-                        std::mem::drop(&*lhs);
-                        std::mem::drop(&*rhs);
+                        std::ptr::drop_in_place(lhs);
+                        std::ptr::drop_in_place(rhs);
                         lhs_idx += 1;
                         lhs_del += 1;
                         rhs_idx += 1;
@@ -77,12 +93,12 @@ where T: Ord
             }
             // Complete vectors that are not yet explored.
             if lhs_idx < lhs_old_len && lhs_del > 0 {
-                let lhs_src = self.data.as_mut_ptr().offset(lhs_idx as isize);
+                let lhs_src = self.data.as_ptr().offset(lhs_idx as isize);
                 let lhs_dst = self.data.as_mut_ptr().offset((lhs_idx - lhs_del) as isize);
                 std::ptr::copy(lhs_src, lhs_dst, lhs_old_len - lhs_idx);
             }
             if rhs_idx < rhs_old_len && rhs_del > 0 {
-                let rhs_src = other.data.as_mut_ptr().offset(rhs_idx as isize);
+                let rhs_src = other.data.as_ptr().offset(rhs_idx as isize);
                 let rhs_dst = other.data.as_mut_ptr().offset((rhs_idx - rhs_del) as isize);
                 std::ptr::copy(rhs_src, rhs_dst, rhs_old_len - rhs_idx);
             }
