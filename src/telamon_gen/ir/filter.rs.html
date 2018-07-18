@@ -826,6 +826,8 @@
 <span id="826">826</span>
 <span id="827">827</span>
 <span id="828">828</span>
+<span id="829">829</span>
+<span id="830">830</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Filter on choices.</span>
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">SetRef</span>, <span class="ident">Adaptable</span>};
@@ -1575,9 +1577,11 @@
                     <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">inversed</span>);
                     (<span class="ident">op</span>, <span class="ident">new_input</span>)
                 }).<span class="ident">collect</span>();
+                <span class="kw">let</span> <span class="ident">cmp_code</span> <span class="op">=</span> <span class="ident">cmp_code</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">op</span>, <span class="ident">code</span>)<span class="op">|</span> {
+                    (<span class="kw-2">*</span><span class="ident">op</span>, <span class="ident">code</span>.<span class="ident">adapt</span>(<span class="ident">adaptator</span>))
+                }).<span class="ident">collect</span>();
                 <span class="ident">ValueSet</span>::<span class="ident">Integer</span> {
-                    <span class="ident">is_full</span>, <span class="ident">cmp_inputs</span>,
-                    <span class="ident">cmp_code</span>: <span class="ident">cmp_code</span>.<span class="ident">clone</span>(),
+                    <span class="ident">is_full</span>, <span class="ident">cmp_inputs</span>, <span class="ident">cmp_code</span>,
                     <span class="ident">universe</span>: <span class="ident">universe</span>.<span class="ident">adapt</span>(<span class="ident">adaptator</span>),
                 }
             },
