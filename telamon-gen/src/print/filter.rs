@@ -17,6 +17,7 @@ pub struct Filter<'a> {
 impl<'a> Filter<'a> {
     pub fn new(filter: &'a ir::Filter, id: usize, choice: &'a ir::Choice,
                ir_desc: &'a ir::IrDesc) -> Self {
+        trace!("filter {}_{}", choice.name(), id);
         let arguments = &filter.arguments[choice.arguments().len()..];
         let ref ctx = Context::new(ir_desc, choice, arguments, &filter.inputs);
         let arguments = filter.arguments.iter().enumerate().map(|(pos, t)| {
