@@ -2,6 +2,7 @@
     {{#with filter_ref.Inline~}}
         {{#each rules~}}
             {{>rule}}
+            trace!("inline filter restricts to {:?}", values);
         {{/each~}}
     {{/with~}}
     {{#with filter_ref.Call~}}

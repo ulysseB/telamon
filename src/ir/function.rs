@@ -56,9 +56,10 @@ pub struct Function<'a> {
     dims: Vec<Dimension<'a>>,
     thread_dims: VecSet<ir::dim::Id>,
     mem_insts: Vec<ir::InstId>,
-    mem_blocks: mem::BlockMap<'a>,
+    mem_blocks: mem::BlockMap,
     layouts_to_lower: Vec<ir::mem::InternalId>,
     induction_vars: Vec<ir::InductionVar<'a>>,
+    logical_dims: Vec<dim::LogicalDim>,
 }
 
 impl<'a> Function<'a> {
@@ -75,6 +76,7 @@ impl<'a> Function<'a> {
             mem_blocks,
             layouts_to_lower: Vec::new(),
             induction_vars: Vec::new(),
+            logical_dims: Vec::new(),
         }
     }
 
@@ -103,13 +105,50 @@ impl<'a> Function<'a> {
 
     /// Creates a new dimension.
     pub fn add_dim(&mut self, size: Size<'a>) -> Result<dim::Id, ir::Error> {
+        assert!(!size.depends_on_dim());
         let id = dim::Id(self.dims.len() as u32);
-        self.dims.push(Dimension::new(size, id)?);
+        self.dims.push(Dimension::new(size, id, None)?);
         Ok(id)
     }
 
+    /// Creates a logical dimension and the concret dimensions that composes it.
+    // TODO(search_space): allow multiple sizes for each tilied dimension:
+    // - use the same tiling factors everywhere: tiling_factors: VecSet<u32>
+    // - give a number of tiles: num_tiles: usize
+    pub fn add_logical_dim(&mut self, mut size: ir::Size<'a>, tile_sizes: &[u32])
+        -> (dim::LogicalId, Vec<dim::Id>)
+    {
+        let logical_id = dim::LogicalId(self.logical_dims.len() as u32);
+        let tiling = tile_sizes.iter().product();
+        let dim_ids = (0..tile_sizes.len()+1)
+            .map(|id| dim::Id((id+self.dims.len()) as u32))
+            .collect_vec();
+        let mut dims = Vec::with_capacity(1+tile_sizes.len());
+        let (tile_dims, base, max_tiling) = if let Some(size) = size.as_fixed() {
+            let sizes = std::iter::once(size/tiling).chain(tile_sizes.iter().cloned());
+            for (&id, size) in dim_ids.iter().zip_eq(sizes) {
+                let dim = Dimension::with_multi_sizes(id, vec![size], Some(logical_id));
+                dims.push(unwrap!(dim));
+            }
+            (dim_ids.clone(), None, size)
+        } else {
+            size.tile(&dim_ids[1..].iter().cloned().collect());
+            let dim = Dimension::new(size, dim_ids[0], Some(logical_id));
+            self.dims.push(unwrap!(dim));
+            for (&id, &size) in dim_ids[1..].iter().zip_eq(tile_sizes) {
+                let dim = Dimension::with_multi_sizes(id, vec![size], Some(logical_id));
+                dims.push(unwrap!(dim));
+            }
+            (dim_ids[1..].iter().cloned().collect(), Some(dim_ids[0]), tiling)
+        };
+        self.dims.extend(dims);
+        let logical_dim = dim::LogicalDim::new(logical_id, tile_dims, base, max_tiling);
+        self.logical_dims.push(logical_dim);
+        (logical_id, dim_ids)
+    }
+
     /// Allocates a new memory block.
-    pub fn add_mem_block(&mut self, size: Size<'a>, private: bool) -> mem::InternalId {
+    pub fn add_mem_block(&mut self, size: u32, private: bool) -> mem::InternalId {
         self.mem_blocks.alloc_block(size, private, None)
     }
 
@@ -176,7 +215,7 @@ impl<'a> Function<'a> {
 
     /// Returns the internal memory blocks.
     pub fn internal_mem_blocks<'b>(&'b self)
-            -> impl Iterator<Item=&'b mem::InternalBlock<'a>> {
+            -> impl Iterator<Item=&'b mem::InternalBlock> {
         self.mem_blocks.internal_blocks()
     }
 
@@ -241,7 +280,7 @@ impl<'a> Function<'a> {
     /// Generates an operand repesenting a pointer to a cell of a memory block.
     fn gen_internal_index(&mut self, id: mem::InternalId, dims: Vec<dim::Id>)
             -> (Operand<'a>, AccessPattern<'a>) {
-        let ty_len = unwrap!(self.mem_blocks.internal_block(id).base_size());
+        let ty_len = self.mem_blocks.internal_block(id).base_size();
         self.gen_index(id.into(), ty_len, Operand::Addr(id), dims)
     }
 
@@ -250,7 +289,7 @@ impl<'a> Function<'a> {
     fn gen_index(&mut self, mem: mem::Id, base_incr: u32, base_addr: Operand<'a>,
                      dims: Vec<dim::Id>) -> (Operand<'a>, AccessPattern<'a>) {
         let var_type = base_addr.t();
-        let base_size = ir::Size::new(base_incr, vec![], 1);
+        let base_size = ir::Size::new_const(base_incr);
         let increments = dims.iter().rev().scan(base_size, |size, &dim| {
             let old_size = size.clone();
             *size *= self.dim(dim).size();
@@ -285,33 +324,52 @@ impl<'a> Function<'a> {
                 _ => panic!(),
             }
         };
-        let st_dims = self.spawn_mapped_dims(&src_dims);
-        let ld_dims = self.spawn_mapped_dims(&dst_dims);
+        let (st_dims, st_dim_map) = self.spawn_mapped_dims(&src_dims, false);
+        let (ld_dims, ld_dim_map) = self.spawn_mapped_dims(&dst_dims, true);
+        let new_dims = st_dim_map.iter().map(|x| x.1)
+            .chain(ld_dim_map.iter().map(|x| x.0)).collect();
         // Build the temporary memory block.
         let dims = st_dims.iter().cloned().zip_eq(ld_dims.iter().cloned()).collect_vec();
-        let tmp_mem = self.mem_blocks.new_tmp(data_type, dims.iter().cloned());
+        let mem = self.mem_blocks.new_tmp(data_type, dims.iter().cloned());
         // Build the store.
-        let st_dim_map = dim::Map::new(src_dims.iter().zip_eq(&st_dims).map(clone_pair));
         let st_operand =  Operand::new_inst(
             self.inst(src_inst), st_dim_map, ir::DimMapScope::Local);
         let st_dim_set = st_dims.iter().cloned().collect();
-        let st = self.add_inst(Operator::TmpSt(st_operand, tmp_mem.into()), st_dim_set);
-        let st = unwrap!(st);
+        let store = self.add_inst(Operator::TmpSt(st_operand, mem.into()), st_dim_set);
+        let store = unwrap!(store);
         // Build the load
-        let ld_dim_map = dim::Map::new(ld_dims.iter().zip_eq(&dst_dims).map(clone_pair));
         let ld_dim_set = ld_dims.iter().cloned().collect();
-        let ld = self.add_inst(Operator::TmpLd(data_type, tmp_mem.into()), ld_dim_set);
-        let ld = unwrap!(ld);
-        self.insts[dst_inst.0 as usize].lower_dim_map(dst_operand_pos, ld, ld_dim_map);
-        Ok(ir::LoweredDimMap { mem: tmp_mem, store: st, load: ld, dimensions: dims })
+        let load = self.add_inst(Operator::TmpLd(data_type, mem.into()), ld_dim_set);
+        let load = unwrap!(load);
+        self.insts[dst_inst.0 as usize].lower_dim_map(dst_operand_pos, load, ld_dim_map);
+        Ok(ir::LoweredDimMap { mem, store, load, dimensions: dims, new_dims })
     }
 
-    /// Adds multiple dimensions at once, using the sizes of the given dimensions.
-    fn spawn_mapped_dims(&mut self, old_dims: &[dim::Id]) -> Vec<dim::Id> {
-        old_dims.iter().map(|&old_dim| {
-            let size = self.dim(old_dim).size().clone();
-            unwrap!(self.add_dim(size))
-        }).collect()
+    /// Create a new loop nest mapped to the given one. Dimensions that have a
+    /// non-constant size are reused instead of creating new one as they will be later
+    /// merge anyway. If dimensions have multiple possible sizes, the caller is responsible
+    /// for making sure they have the same size as the existing dimensions (for example
+    /// through mapping constraints).
+    ///
+    /// Returns the new loop nests (containing new dimensions and old dimensions with a
+    /// non-constant size) and the mapping from the old nest to the new one. The flag
+    /// `from` indicates if the mapping should be from or to the new loop nest.
+    fn spawn_mapped_dims(&mut self, old_dims: &[dim::Id], from: bool)
+        -> (Vec<dim::Id>, dim::Map)
+    {
+        let mut dim_map = Vec::new();
+        let mapped_dims = old_dims.iter().map(|&old_dim| {
+            self.dim(old_dim).possible_sizes()
+                .map(|universe| universe.iter().cloned().collect())
+                .map(|universe| {
+                    let id = ir::dim::Id(self.dims.len() as u32);
+                    let dim = Dimension::with_multi_sizes(id, universe, None);
+                    self.dims.push(unwrap!(dim));
+                    dim_map.push(if from { (id, old_dim) } else { (old_dim, id) });
+                    id
+                }).unwrap_or(old_dim)
+        }).collect();
+        (mapped_dims, dim::Map::new(dim_map))
     }
 
     /// Trigger to call when two dimensions are not merged.
@@ -322,6 +380,16 @@ impl<'a> Function<'a> {
 
     /// Returns the list of layouts to lower.
     pub(crate) fn layouts_to_lower(&self) -> &[ir::mem::InternalId] { &self.layouts_to_lower }
+
+    /// Returns the list of logical dimensions.
+    pub fn logical_dimensions(&self) -> impl Iterator<Item=&dim::LogicalDim> + '_ {
+        self.logical_dims.iter()
+    }
+
+    /// Returns a logical dimension given its identifier.
+    pub fn logical_dimension(&self, id: dim::LogicalId) -> &dim::LogicalDim {
+        &self.logical_dims[id.0 as usize]
+    }
 }
 
 impl<'a> std::ops::Deref for Function<'a> {

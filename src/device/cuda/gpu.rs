@@ -274,10 +274,10 @@ impl Gpu {
     }
 
     /// Returns the overhead induced by all the iterations of a loop.
-    fn dim_pressure(&self, kind: DimKind, size: u32) -> HwPressure {
+    fn dim_pressure(&self, kind: DimKind, size: model::size::Range) -> HwPressure {
         if kind == DimKind::LOOP {
             let mut pressure: HwPressure = self.loop_iter_overhead.into();
-            pressure.repeat_sequential(f64::from(size));
+            pressure.repeat_sequential(size.min as f64);
             pressure.add_sequential(&self.loop_init_overhead.into());
             pressure
         } else if DimKind::THREAD.contains(kind) {
@@ -289,7 +289,7 @@ impl Gpu {
 
     /// Retruns the overhead for a single instance of the instruction.
     fn inst_pressure(&self, space: &SearchSpace,
-                     dim_sizes: &HashMap<ir::dim::Id, u32>,
+                     dim_sizes: &HashMap<ir::dim::Id, model::size::Range>,
                      inst: &ir::Instruction,
                      ctx: &device::Context) -> HwPressure {
         use ir::Operator::*;
@@ -396,29 +396,15 @@ impl device::Device for Gpu {
 
     fn max_unrolling(&self) -> u32 { 512 }
 
-    fn can_vectorize(&self, dim: &ir::Dimension, op: &ir::Operator) -> bool {
-        // TODO(search_space): compute vectorizable info for tmp Ld/St. On vectorization,
-        // the layout must be constrained.
+    fn vectorization_factors(&self, dim: &ir::Dimension, op: &ir::Operator) -> &[u32] {
+        const LD_ST_FACTORS: [u32; 2] = [2, 4];
         match *op {
-            Operator::St(_, ref operand, _, ref pattern) => {
-                if let Some(type_len) = operand.t().len_byte() {
-                    dim.size().as_int().into_iter().any(|x| x == 2 || x == 4) &&
-                        pattern.stride(dim.id()) == ir::Stride::Int(type_len as i32)
-                } else { false }
-            },
-            Operator::Ld(ref t, _, ref pattern) => {
-                if let Some(type_len) = t.len_byte() {
-                    dim.size().as_int().into_iter().any(|x| x == 2 || x == 4) &&
-                        pattern.stride(dim.id()) == ir::Stride::Int(type_len as i32)
-                } else { false }
-            },
-            Operator::BinOp(..) |
-                Operator::Mul(..) |
-                Operator::Mad(..) |
-                Operator::Mov(..) |
-                Operator::Cast(..) => false,
-                Operator::TmpLd(..) |
-                    Operator::TmpSt(..) => dim.size().as_int().into_iter().any(|x| x == 2 || x == 4),
+            Operator::TmpLd(..) | Operator::TmpSt(..) => &LD_ST_FACTORS,
+            Operator::Ld(ref t, _, ref pattern) if pattern.is_consecutive(dim.id(), t) =>
+                &LD_ST_FACTORS,
+            Operator::St(_, ref operand, _, ref pattern)
+                if pattern.is_consecutive(dim.id(), &operand.t()) => &LD_ST_FACTORS,
+            _ => &[],
         }
     }
 
@@ -446,7 +432,7 @@ impl device::Device for Gpu {
     }
 
     fn hw_pressure(&self, space: &SearchSpace,
-                   dim_sizes: &HashMap<ir::dim::Id, u32>,
+                   dim_sizes: &HashMap<ir::dim::Id, model::size::Range>,
                    _nesting: &HashMap<ir::BBId, model::Nesting>,
                    bb: &ir::BasicBlock,
                    ctx: &device::Context) -> model::HwPressure {
@@ -507,17 +493,18 @@ impl device::Device for Gpu {
         }
     }
 
-    fn add_block_overhead(&self, predicated_dims_size: u64,
-                          max_threads_per_blocks: u64,
+    fn add_block_overhead(&self, max_active_threads: model::size::FactorRange,
+                          max_threads: model::size::FactorRange,
+                          predication_factor: model::size::Range,
                           pressure: &mut HwPressure) {
-        assert!(predicated_dims_size > 0);
-        assert!(max_threads_per_blocks > 0);
-        let active_ratio = self.waste_ratio(max_threads_per_blocks/predicated_dims_size);
+        let active_ratio = self.waste_ratio(max_active_threads.lcm);
         pressure.multiply(&InstDesc::wasted_ratio(active_ratio).into());
-        if predicated_dims_size > 1 {
-            let full_ratio = self.waste_ratio(max_threads_per_blocks);
-            let num_skipped = full_ratio * predicated_dims_size as f64 - active_ratio;
-            assert!(num_skipped >= 0.);
+        // Account for inactive wraps.
+        let total_ratio = self.waste_ratio(max_threads.lcm);
+        // TODO(model): might be able to do better since `predication_factor` value is
+        // linked to `max_threads` value.
+        let num_skipped = total_ratio * predication_factor.min as f64 - active_ratio;
+        if num_skipped > 0. {
             pressure.repeat_and_add_bottlenecks(num_skipped, &self.skipped_pressure());
         }
     }

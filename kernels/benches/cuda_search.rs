@@ -44,11 +44,13 @@ fn main() {
         matmul_reference(&cublas_handle, params, ctx)
     });
     // 0.87 in 2.38 hours/4H
+    // FIXME: 0.47 instead
     let params = linalg::MatMulP::new(1024, 1024, 1024).static_sizes();
     benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
         matmul_reference(&cublas_handle, params, ctx)
     });
     // 1.66 if reuseb + static sizes
+    // FIXME: OOM
     let params = linalg::BatchMMP::new(512, 32, 32, 64).static_sizes().reuse_b();
     benchmark::<linalg::BatchMM<f32>, _>(params, &executor, |params, ctx| {
         batchmm_reference(&cublas_handle, params, ctx)

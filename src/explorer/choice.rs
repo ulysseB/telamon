@@ -2,6 +2,7 @@
 use ir::{self, BasicBlock};
 use ir::mem::Block;
 use search_space::{Action, Domain, Order, SearchSpace};
+use search_space::NumDomain;
 use itertools::Itertools;
 
 /// Represents a choice that splits a search space in multiple ones.
@@ -22,14 +23,16 @@ pub enum ActionEx {
 
 /// Lists the choices that can be applied to a function.
 pub fn list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item=Choice> + 'a {
+    // FIXME: explore tile sizes
     let fun = space.ir_instance();
+    let static_dims = fun.dims().filter(|d| d.possible_sizes().is_some());
     fun.layouts_to_lower().iter().map(move |&layout| {
         lower_layout_choice(space, layout)
     }).chain(fun.dims().flat_map(move |dim| {
         let kinds = space.domain().get_dim_kind(dim.id());
         gen_choice(kinds.list(), &|k| Action::DimKind(dim.id(), k))
-    })).chain(fun.dims().enumerate().flat_map(move |(i, lhs)| {
-        fun.dims().take(i).flat_map(move |rhs| {
+    })).chain(static_dims.clone().enumerate().flat_map(move |(i, lhs)| {
+        static_dims.clone().take(i).flat_map(move |rhs| {
             let mappings = space.domain().get_thread_mapping(lhs.id(), rhs.id());
             gen_choice(mappings.list(), &|m| Action::ThreadMapping(lhs.id(), rhs.id(), m))
         })
@@ -95,7 +98,7 @@ fn lower_layout_choice(space: &SearchSpace, mem: ir::mem::InternalId) -> Vec<Act
     let mem_block = space.ir_instance().internal_mem_block(mem);
     let mapped_dims = mem_block.mapped_dims().iter().cloned().collect_vec();
     // Order dimensions until the stride is too big to matter in any way.
-    let mut to_process = vec![(vec![], mapped_dims, unwrap!(mem_block.base_size()))];
+    let mut to_process = vec![(vec![], mapped_dims, mem_block.base_size())];
     let mut actions = Vec::new();
     while let Some((ordered_dims, remaining_dims, ordered_size)) = to_process.pop() {
         // TODO(search_space): parametrize the max stride for layout ordering
@@ -108,7 +111,7 @@ fn lower_layout_choice(space: &SearchSpace, mem: ir::mem::InternalId) -> Vec<Act
                 let mut remaining_dims = remaining_dims.clone();
                 let mut ordered_dims = ordered_dims.clone();
                 let dim_pair = remaining_dims.swap_remove(i);
-                let size = unwrap!(space.ir_instance().dim(dim_pair.0).size().as_int());
+                let size = space.domain().get_size(dim_pair.0).min();
                 let ordered_size = ordered_size * size;
                 ordered_dims.push(dim_pair);
                 to_process.push((ordered_dims, remaining_dims, ordered_size));

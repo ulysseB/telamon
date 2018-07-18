@@ -30,6 +30,7 @@ pub fn gen_best(context: &Context, space: SearchSpace) {
 pub fn check_candidates<F>(space: SearchSpace, ctx: &Context, mut check: F)
         where F: FnMut() {
     explorer::gen_space(ctx, space, |_| (), |candidate| {
+        debug!("testing candidate with actions {:?}", candidate.actions);
         let fun = codegen::Function::build(&candidate.space);
         ctx.evaluate(&fun, EvalMode::FindBest).unwrap();
         check();

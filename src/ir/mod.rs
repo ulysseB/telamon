@@ -30,6 +30,8 @@ pub mod mem;
 /// Defines iteration dimensions properties.
 pub mod dim {
     pub use super::dimension::Id;
+    pub use super::dimension::LogicalId;
+    pub use super::dimension::LogicalDim;
     pub use super::dim_map::DimMap as Map;
 }
 
@@ -57,6 +59,9 @@ pub struct NewObjs {
     pub mem_insts: Vec<InstId>,
     pub iteration_dims: Vec<(InstId, dim::Id)>,
     pub thread_dims: Vec<dim::Id>,
+    pub static_dims: Vec<dim::Id>,
+    pub logical_dims: Vec<dim::LogicalId>,
+    pub static_dims_of: Vec<(dim::LogicalId, dim::Id)>,
 }
 
 impl NewObjs {
@@ -78,6 +83,7 @@ impl NewObjs {
         self.add_bb(dim);
         self.dimensions.push(dim.id());
         if dim.is_thread_dim() { self.add_thread_dim(dim.id()); }
+        if dim.possible_sizes().is_some() { self.static_dims.push(dim.id()); }
     }
 
     /// Registers a new basic block.
@@ -105,7 +111,8 @@ pub struct LoweredDimMap {
     pub mem: mem::InternalId,
     pub store: InstId,
     pub load: InstId,
-    pub dimensions: Vec<(dim::Id, dim::Id)>
+    pub dimensions: Vec<(dim::Id, dim::Id)>,
+    pub new_dims: Vec<dim::Id>,
 }
 
 // TODO(perf): group static computations

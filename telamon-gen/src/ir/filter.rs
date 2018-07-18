@@ -746,9 +746,11 @@ impl Adaptable for ValueSet {
                     assert!(!inversed);
                     (op, new_input)
                 }).collect();
+                let cmp_code = cmp_code.iter().map(|(op, code)| {
+                    (*op, code.adapt(adaptator))
+                }).collect();
                 ValueSet::Integer {
-                    is_full, cmp_inputs,
-                    cmp_code: cmp_code.clone(),
+                    is_full, cmp_inputs, cmp_code,
                     universe: universe.adapt(adaptator),
                 }
             },

@@ -194,6 +194,13 @@ pub fn clone_pair<T1: Clone, T2: Clone>(p: (&T1, &T2)) -> (T1, T2) {
 /// Defines equality from a key.
 #[macro_export]
 macro_rules! eq_from_key {
+    ($ty:ty, &$key:path $(, $args:tt)*) => {
+        impl<$($args),*> ::std::cmp::PartialEq for $ty {
+            fn eq(&self, other: &$ty) -> bool { $key(self).eq(&$key(other)) }
+        }
+
+        impl<$($args),*> ::std::cmp::Eq for $ty {}
+    };
     ($ty:ty, $key:path $(, $args:tt)*) => {
         impl<$($args),*> ::std::cmp::PartialEq for $ty {
             fn eq(&self, other: &$ty) -> bool { $key(self).eq($key(other)) }
@@ -208,6 +215,15 @@ macro_rules! eq_from_key {
 macro_rules! hash_from_key {
     ($ty:ty, $key:path $(, $args:tt)*) => {
         eq_from_key!($ty, $key $(, $args)*);
+
+        impl<$($args),*> ::std::hash::Hash for $ty {
+            fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {
+                $key(self).hash(state);
+            }
+        }
+    };
+    ($ty:ty, &$key:path $(, $args:tt)*) => {
+        eq_from_key!($ty, &$key $(, $args)*);
 
         impl<$($args),*> ::std::hash::Hash for $ty {
             fn hash<H: ::std::hash::Hasher>(&self, state: &mut H) {

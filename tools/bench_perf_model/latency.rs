@@ -1,6 +1,6 @@
 //! Tests the latency model.
 use telamon::device::{ArgMap, Context};
-use telamon::helper::{SignatureBuilder, Builder, DimGroup, Reduce};
+use telamon::helper::{SignatureBuilder, Builder, Reduce};
 use telamon::ir;
 use telamon::search_space::{Action, DimKind, InstFlag, Order};
 use PerfModelTest;
@@ -184,7 +184,7 @@ impl PerfModelTest for OrderedThreadDims {
         let d1_1 = builder.open_dim_ex(size_1.clone(), DimKind::LOOP);
         let d1_2 = builder.open_dim_ex(size_2.clone(), DimKind::UNROLL);
         let inst = builder.mul(&"x", &Reduce(init));
-        builder.close_dim(&DimGroup::new(vec![d1, d1_1, d1_2]));
+        builder.close_dim(&[d1, d1_1, d1_2]);
 
         let d2 = builder.open_dim_ex(size_0.clone(), DimKind::THREAD);
         let d2_1 = builder.open_dim_ex(size_1.clone(), DimKind::LOOP);
@@ -226,7 +226,7 @@ impl PerfModelTest for DimMap {
         let d2 = builder.open_dim_ex(size_1, DimKind::UNROLL);
         let op = builder.dim_map(i1, &[(&d1, &d2)], ir::DimMapScope::Thread);
         let i2 = builder.mad(&op, &op, &Reduce(init2));
-        builder.close_dim(&DimGroup::new(vec![d2, d0]));
+        builder.close_dim(&[d2, d0]);
         let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
         builder.st_ex(&"out", &i2, true, pattern, InstFlag::MEM_CS);
         builder.order(&d1, &d2, Order::BEFORE);

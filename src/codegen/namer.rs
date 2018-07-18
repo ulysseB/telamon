@@ -1,5 +1,5 @@
-use codegen::{Dimension, Function, ParamValKey, AllocationScheme, Instruction};
-use ir::{self, dim, DimMap, InstId, mem, Operand, Size, Type};
+use codegen::{self, Dimension, Function, ParamValKey, AllocationScheme, Instruction};
+use ir::{self, dim, DimMap, InstId, mem, Operand, Type};
 use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
@@ -53,7 +53,7 @@ pub struct NameMap<'a, 'b> {
     induction_vars: HashMap<ir::IndVarId, String>,
     induction_levels: HashMap<(ir::IndVarId, ir::dim::Id), String>,
     /// Casted sizes.
-    size_casts: HashMap<(&'a ir::Size<'a>, ir::Type), String>,
+    size_casts: HashMap<(&'a codegen::Size<'a>, ir::Type), String>,
     /// Guard to use in front of instructions with side effects.
     side_effect_guard: Option<RcStr>,
 }
@@ -173,7 +173,6 @@ impl<'a, 'b> NameMap<'a, 'b> {
                 } else {
                     Cow::Borrowed(&self.indexes[&id])
                 },
-            Operand::Size(ref size) => self.name_size(size, Type::I(32)),
             Operand::Param(p) => self.name_param_val(ParamValKey::External(p)),
             Operand::Addr(id) => self.name_addr(id),
             Operand::InductionVar(id, _) => self.name_induction_var(id, None),
@@ -301,7 +300,9 @@ impl<'a, 'b> NameMap<'a, 'b> {
 
     /// Declares a size cast. Returns the name of the variable only if a new variable was
     /// allcoated.
-    pub fn declare_size_cast(&mut self, size: &'a Size<'a>, t: ir::Type) -> Option<String> {
+    pub fn declare_size_cast(&mut self, size: &'a codegen::Size<'a>, t: ir::Type)
+        -> Option<String>
+    {
         if size.dividend().is_empty() || t == Type::I(32) { return None; }
         match self.size_casts.entry((size, t)) {
             hash_map::Entry::Occupied(..) => None,
@@ -311,8 +312,8 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     /// Assigns a name of a value to a size.
-    pub fn name_size(&self, size: &Size, expected_t: ir::Type) -> Cow<str> {
-        let size: &'a Size<'a> = unsafe { std::mem::transmute(size) };
+    pub fn name_size(&self, size: &codegen::Size, expected_t: ir::Type) -> Cow<str> {
+        let size: &'a codegen::Size<'a> = unsafe { std::mem::transmute(size) };
         match (size.dividend(), expected_t) {
             (&[], _) => {
                 assert_eq!(size.divisor(), 1);

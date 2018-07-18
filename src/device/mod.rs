@@ -15,11 +15,8 @@ use ir;
 use search_space::{SearchSpace, DimKind};
 use std::hash;
 use std::io::Write;
-use model::{HwPressure, Nesting};
+use model::{self, HwPressure, Nesting};
 use utils::*;
-
-// TODO(perf): in PTX, shared and local pointers can have a 32-bit size, even in 64-bit
-// mode. 32bits ops are potentialy faster than 64bits ops.
 
 /// Holds the specifications of a target.
 pub trait Device: Sync {
@@ -33,8 +30,9 @@ pub trait Device: Sync {
     fn max_threads(&self) -> u32;
     /// Returns the maximal unrolling factor.
     fn max_unrolling(&self) -> u32;
-    /// Indicates if vectorization is possible on a loop with size Size on this instruction.
-    fn can_vectorize(&self, dim: &ir::Dimension, op: &ir::Operator) -> bool;
+    /// Indicates the valid vectorization factors for the given operator, on the given
+    /// dimension.
+    fn vectorization_factors(&self, dim: &ir::Dimension, op: &ir::Operator) -> &[u32];
     /// Returns the amount of shared memory available for each thread block.
     fn shared_mem(&self) -> u32;
     /// Indicates if the device supports non-coherent memory accesses.
@@ -49,7 +47,7 @@ pub trait Device: Sync {
     /// Returns the pressure cause by a `BasicBlock`. For a dimension, returns the pressure
     /// for the full loop execution.
     fn hw_pressure(&self, space: &SearchSpace,
-                   dim_sizes: &HashMap<ir::dim::Id, u32>,
+                   dim_sizes: &HashMap<ir::dim::Id, model::size::Range>,
                    nesting: &HashMap<ir::BBId, Nesting>,
                    bb: &ir::BasicBlock,
                    ctx: &Context) -> HwPressure;
@@ -73,8 +71,9 @@ pub trait Device: Sync {
     /// Adds the overhead (per instance) due to partial wraps and predicated dimensions to
     /// the pressure. If the instruction is not predicated, `predicated_dims_size` should
     /// be `1`.
-    fn add_block_overhead(&self, predicated_dims_size: u64,
-                          max_threads_per_blocks: u64,
+    fn add_block_overhead(&self, max_active_threads: model::size::FactorRange,
+                          max_threads: model::size::FactorRange,
+                          predication_factor: model::size::Range,
                           pressure: &mut HwPressure);
 
     /// Lowers a type using the memory space information. Returns `None` if some

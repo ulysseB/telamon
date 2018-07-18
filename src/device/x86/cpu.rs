@@ -43,7 +43,7 @@ impl device::Device for Cpu {
 
     fn max_unrolling(&self) -> u32 { 512 }
 
-    fn can_vectorize(&self, _dim: &ir::Dimension, _op: &ir::Operator) -> bool {false}
+    fn vectorization_factors(&self, _: &ir::Dimension, _: &ir::Operator) -> &[u32] { &[] }
 
     fn shared_mem(&self) -> u32 {0}
 
@@ -55,9 +55,8 @@ impl device::Device for Cpu {
 
     fn name(&self) -> &str { &self.name }
 
-    fn add_block_overhead(&self, _predicated_dims_size: u64,
-                          _max_threads_per_blocks: u64,
-                          _pressure: &mut HwPressure) {
+    fn add_block_overhead(&self, _: model::size::FactorRange, _: model::size::FactorRange,
+                          _: model::size::Range, _: &mut HwPressure) {
     }
 
     fn lower_type(&self, t: ir::Type, _space: &SearchSpace) -> Option<ir::Type> {
@@ -65,7 +64,7 @@ impl device::Device for Cpu {
     }
 
     fn hw_pressure(&self, _space: &SearchSpace,
-                   _dim_sizes: &HashMap<ir::dim::Id, u32>,
+                   _dim_sizes: &HashMap<ir::dim::Id, model::size::Range>,
                    _nesting: &HashMap<ir::BBId, model::Nesting>,
                    _bb: &ir::BasicBlock,
                    _: &device::Context) -> model::HwPressure {

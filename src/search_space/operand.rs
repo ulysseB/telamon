@@ -6,7 +6,7 @@ use search_space::choices::{Action, DimKind, DimMapping, Order};
 /// Generates actions to enforce operands invariants.
 pub fn invariants(fun: &ir::Function, op: &ir::Operand, user: ir::BBId) -> Vec<Action> {
     match *op {
-        Int(..) | Float(..) | Size(..) | Param(..) | Addr(..) => vec![],
+        Int(..) | Float(..) | Param(..) | Addr(..) => vec![],
         Inst(src, _, ref dim_map, scope) => {
             // Order dimensions in the dim map.
             let order = Order::BEFORE | Order::MERGED;
@@ -20,7 +20,7 @@ pub fn invariants(fun: &ir::Function, op: &ir::Operand, user: ir::BBId) -> Vec<A
                 };
                 actions.push(Action::DimMapping(lhs, rhs, mapping));
                 // FIXME: allow tmp mem with dynamic size when the scope is global.
-                if fun.dim(lhs).size().as_int().is_none() {
+                if fun.dim(lhs).possible_sizes().is_none() {
                     actions.push(Action::Order(lhs.into(), rhs.into(), Order::MERGED));
                 }
             }

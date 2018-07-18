@@ -6,6 +6,12 @@ use PerfModelTest;
 
 pub struct Test0;
 
+impl Test0 {
+    const TILE_1: i32 = 32;
+
+    const TILE_2: i32 = 4;
+}
+
 impl PerfModelTest for Test0 {
     fn name() -> &'static str { "test_0" }
 
@@ -13,25 +19,23 @@ impl PerfModelTest for Test0 {
         const M: i32 = 1024;
         const N: i32 = 1024;
         const K: i32 = 1024;
-        builder.scalar("m", M);
-        builder.scalar("n", N);
-        builder.scalar("k", K);
+        builder.scalar("m", M / (Self::TILE_1 * Self::TILE_2));
+        builder.scalar("n", N / (Self::TILE_1 * Self::TILE_2));
+        builder.scalar("k", K/Self::TILE_1);
         builder.array::<f32>("a", (M*K) as usize);
         builder.array::<f32>("b", (K*N) as usize);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
-        let tile_1 = 32;
-        let tile_2 = 4;
-        let tile_1_size = builder.cst_size(tile_1);
-        let tile_2_size = builder.cst_size(tile_2);
-        let tmp_mem_size = builder.cst_size(4*tile_1*tile_1*tile_2);
-        let a_tmp_mem = builder.allocate_shared(tmp_mem_size.clone());
+        let tile_1_size = builder.cst_size(Self::TILE_1 as u32);
+        let tile_2_size = builder.cst_size(Self::TILE_2 as u32);
+        let tmp_mem_size = 4 * (Self::TILE_1 * Self::TILE_2) as u32;
+        let a_tmp_mem = builder.allocate_shared(tmp_mem_size);
         let b_tmp_mem = builder.allocate_shared(tmp_mem_size);
         // Configure dimension sizes
-        let m_tiled = builder.tile_size("m", tile_1 * tile_2);
-        let n_tiled = builder.tile_size("n", tile_1 * tile_2);
-        let k_tiled = builder.tile_size("k", tile_1);
+        let m_tiled = builder.param_size("m");
+        let n_tiled = builder.param_size("n");
+        let k_tiled = builder.param_size("k");
 
         let a = ir::mem::Id::External(0);
         let b = ir::mem::Id::External(1);
@@ -55,14 +59,14 @@ impl PerfModelTest for Test0 {
         let b_ld = builder.ld_ex(ir::Type::F(32), &b_addr, b_pattern, InstFlag::MEM_CG);
         builder.close_dim(&b_ld_unroll_dim);
         // Store A in shared memory.
-        let a_st_tmp_unroll_dim = builder.open_mapped_dim(&a_ld_unroll_dim);
+        let a_st_tmp_unroll_dim = builder.open_mapped_dim(&a_ld_unroll_dim.into());
         let (a_tmp_addr, a_tmp_st_pattern) = builder.tensor_access(
             &a_tmp_mem, a_tmp_mem.into(), &ir::Type::F(32),
             &[&thread_dim_1, &thread_dim_0, &a_st_tmp_unroll_dim]);
         builder.st(&a_tmp_addr, &a_ld, a_tmp_st_pattern);
         builder.close_dim(&a_st_tmp_unroll_dim);
         // Store B in shared memory.
-        let b_st_tmp_unroll_dim = builder.open_mapped_dim(&b_ld_unroll_dim);
+        let b_st_tmp_unroll_dim = builder.open_mapped_dim(&b_ld_unroll_dim.into());
         let (b_tmp_addr, b_tmp_st_pattern) = builder.tensor_access(
             &b_tmp_mem, b_tmp_mem.into(), &ir::Type::F(32),
             &[&thread_dim_1, &thread_dim_0, &b_st_tmp_unroll_dim]);
@@ -89,11 +93,7 @@ impl PerfModelTest for Test1 {
     fn name() -> &'static str { "test_1" }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
-        const M: i32 = 1024;
-        const N: i32 = 1024;
         const K: i32 = 1024;
-        builder.scalar("m", M);
-        builder.scalar("n", N);
         builder.scalar("k", K);
         builder.array::<f32>("out", 4*32*32*4 as usize);
     }
@@ -103,8 +103,8 @@ impl PerfModelTest for Test1 {
         let tile_2 = 4;
         let tile_1_size = builder.cst_size(tile_1);
         let tile_2_size = builder.cst_size(tile_2);
-        let tmp_mem_size = builder.cst_size(4*tile_1*tile_2);
-        let a_tmp_mem = builder.allocate(tmp_mem_size.clone(), true);
+        let tmp_mem_size = 4*tile_1*tile_2;
+        let a_tmp_mem = builder.allocate(tmp_mem_size, true);
         let out = ir::mem::Id::External(0);
 
         // Configure dimension sizes
@@ -122,7 +122,7 @@ impl PerfModelTest for Test1 {
         let a_val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_CG);
         builder.close_dim(&unroll_dim_a);
         // Mad a and b
-        let unroll_dims_1 = builder.open_mapped_dim(&unroll_dim_0_0);
+        let unroll_dims_1 = builder.open_mapped_dim(&unroll_dim_0_0.into());
         let a_op = builder.dim_map(
             a_val, &[(&unroll_dim_a, &unroll_dims_1[0])], ir::DimMapScope::Thread);
         let acc = builder.mad(&a_op, &2f32, &Reduce(acc_init));
@@ -141,6 +141,12 @@ impl PerfModelTest for Test1 {
 
 pub struct Test2;
 
+impl Test2 {
+    const TILE_1: i32 = 32;
+
+    const TILE_2: i32 = 4;
+}
+
 impl PerfModelTest for Test2 {
     fn name() -> &'static str { "test_2" }
 
@@ -148,25 +154,23 @@ impl PerfModelTest for Test2 {
         const M: i32 = 1024;
         const N: i32 = 1024;
         const K: i32 = 1024;
-        builder.scalar("m", M);
-        builder.scalar("n", N);
+        builder.scalar("m", M / (Self::TILE_1 * Self::TILE_2));
+        builder.scalar("n", N / (Self::TILE_1 * Self::TILE_2));
         builder.scalar("k", K);
         builder.array::<f32>("out", 4*32*32*4 as usize);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
-        let tile_1 = 32;
-        let tile_2 = 4;
-        let tile_1_size = builder.cst_size(tile_1);
-        let tile_2_size = builder.cst_size(tile_2);
-        let tmp_mem_size = builder.cst_size(4*tile_1*tile_2);
-        let a_tmp_mem = builder.allocate(tmp_mem_size.clone(), true);
+        let tile_1_size = builder.cst_size(Self::TILE_1 as u32);
+        let tile_2_size = builder.cst_size(Self::TILE_2 as u32);
+        let tmp_mem_size = 4 * (Self::TILE_1 * Self::TILE_2) as u32;
+        let a_tmp_mem = builder.allocate(tmp_mem_size, true);
         let b_tmp_mem = builder.allocate(tmp_mem_size, true);
         let out = ir::mem::Id::External(0);
 
         // Configure dimension sizes
-        let m_tiled = builder.tile_size("m", tile_1 * tile_2);
-        let n_tiled = builder.tile_size("n", tile_1 * tile_2);
+        let m_tiled = builder.param_size("m");
+        let n_tiled = builder.param_size("n");
         let b0 = builder.open_dim_ex(n_tiled, DimKind::BLOCK);
         let b1 = builder.open_dim_ex(m_tiled, DimKind::BLOCK);
         builder.order(&b0, &b1, Order::OUTER);
@@ -181,8 +185,8 @@ impl PerfModelTest for Test2 {
 
         let k_size = builder.param_size("k");
         let k_dim = builder.open_dim_ex(k_size, DimKind::LOOP);
-        let thread_dims_0_1 = builder.open_mapped_dim(&thread_dim_0_0);
-        let thread_dims_1_1 = builder.open_mapped_dim(&thread_dim_1_0);
+        let thread_dims_0_1 = builder.open_mapped_dim(&thread_dim_0_0.into());
+        let thread_dims_1_1 = builder.open_mapped_dim(&thread_dim_1_0.into());
         // Load A
         let unroll_dim_a = builder.open_dim_ex(tile_2_size.clone(), DimKind::VECTOR);
         let (addr, pattern) = builder.tensor_access(&a_tmp_mem, a_tmp_mem.into(),
@@ -196,8 +200,8 @@ impl PerfModelTest for Test2 {
         let b_val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_SHARED);
         builder.close_dim(&unroll_dim_b);
         // Mad a and b
-        let unroll_dims_0_1 = builder.open_mapped_dim(&unroll_dim_0_0);
-        let unroll_dims_1_1 = builder.open_mapped_dim(&unroll_dim_1_0);
+        let unroll_dims_0_1 = builder.open_mapped_dim(&unroll_dim_0_0.into());
+        let unroll_dims_1_1 = builder.open_mapped_dim(&unroll_dim_1_0.into());
         let a_op = builder.dim_map(
             a_val, &[(&unroll_dim_a, &unroll_dims_0_1)], ir::DimMapScope::Thread);
         let b_op = builder.dim_map(
