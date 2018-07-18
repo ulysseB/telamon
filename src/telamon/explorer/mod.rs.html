@@ -128,6 +128,11 @@
 <span id="128">128</span>
 <span id="129">129</span>
 <span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! exploration of the search space.</span>
 <span class="kw">mod</span> <span class="ident">candidate</span>;
@@ -205,14 +210,19 @@
 {
     <span class="kw">let</span> (<span class="ident">monitor_sender</span>, <span class="ident">monitor_receiver</span>) <span class="op">=</span> <span class="ident">channel</span>::<span class="ident">mpsc</span>::<span class="ident">channel</span>(<span class="number">100</span>);
     <span class="kw">let</span> (<span class="ident">log_sender</span>, <span class="ident">log_receiver</span>) <span class="op">=</span> <span class="ident">sync</span>::<span class="ident">mpsc</span>::<span class="ident">sync_channel</span>(<span class="number">100</span>);
-    <span class="ident">crossbeam</span>::<span class="ident">scope</span>( <span class="op">|</span><span class="ident">scope</span><span class="op">|</span> {
+    <span class="kw">let</span> <span class="ident">maybe_candidate</span> <span class="op">=</span> <span class="ident">crossbeam</span>::<span class="ident">scope</span>( <span class="op">|</span><span class="ident">scope</span><span class="op">|</span> {
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">scope</span>.<span class="ident">builder</span>().<span class="ident">name</span>(<span class="string">&quot;Telamon - Logger&quot;</span>.<span class="ident">to_string</span>())
             .<span class="ident">spawn</span>( <span class="op">||</span> <span class="ident">logger</span>::<span class="ident">log</span>(<span class="ident">config</span>, <span class="ident">log_receiver</span>)));
         <span class="kw">let</span> <span class="ident">best_cand_opt</span> <span class="op">=</span> <span class="ident">scope</span>.<span class="ident">builder</span>().<span class="ident">name</span>(<span class="string">&quot;Telamon - Monitor&quot;</span>.<span class="ident">to_string</span>()).
             <span class="ident">spawn</span>(<span class="op">||</span> <span class="ident">monitor</span>(<span class="ident">config</span>, <span class="kw-2">&amp;</span><span class="ident">candidate_store</span>, <span class="ident">monitor_receiver</span>, <span class="ident">log_sender</span>));
         <span class="ident">explore_space</span>(<span class="ident">config</span>, <span class="kw-2">&amp;</span><span class="ident">candidate_store</span>, <span class="ident">monitor_sender</span>, <span class="ident">context</span>);
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">best_cand_opt</span>)
-    }).<span class="ident">join</span>()
+    }).<span class="ident">join</span>();
+    <span class="comment">// At this point all threads have ended and nobody is going to be</span>
+    <span class="comment">// exploring the candidate store anymore, so the stats printer</span>
+    <span class="comment">// should have a consistent view on the tree.</span>
+    <span class="ident">candidate_store</span>.<span class="ident">print_stats</span>();
+    <span class="ident">maybe_candidate</span>
 }
 
 <span class="doccomment">/// Defines the work that explorer threads will do in a closure that will be passed to</span>
