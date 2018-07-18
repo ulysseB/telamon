@@ -1,6 +1,12 @@
 //! Defines a matrix-matrix multiply kernel.
-use telamon::{device, helper, ir};
-use telamon::search_space::*;
+#![allow(dead_code)]
+extern crate telamon;
+extern crate rand;
+
+use self::telamon::{device, explorer, helper, ir};
+use self::telamon::explorer::choice::ActionEx;
+use self::telamon::search_space::*;
+use self::rand::Rng;
 
 lazy_static! {
     /// A fake GPU description, used only to know which candidates are valid.
@@ -76,4 +82,42 @@ impl MMSig {
         builder.order(&st, &acc_k, Order::AFTER);
         builder.get()
     }
+}
+
+/// Descends in the search tree without saving the candidates.
+pub fn descend_without_copies(mut space: SearchSpace) {
+    while let Some(mut choice) = {
+        let choice = explorer::choice::list(&space).next();
+        choice
+    } {
+        let id = rand::thread_rng().gen_range(0, choice.len());
+        let res = match choice.swap_remove(id) {
+            ActionEx::TileSizes(..) => panic!(),
+            ActionEx::Action(action) => space.apply_decisions(vec![action]),
+            ActionEx::LowerLayout { mem, ref st_dims, ref ld_dims } =>
+                space.lower_layout(mem, st_dims.clone(), ld_dims.clone()),
+        };
+        if res.is_err() { return; }
+    }
+
+}
+
+/// Descends in the search tree and returns the candidates encountered.
+pub fn descend_with_copies(mut space: SearchSpace) -> Vec<SearchSpace> {
+    let mut spaces = vec![];
+    while let Some(mut choice) = {
+        let choice = explorer::choice::list(&space).next();
+        choice
+    } {
+        let id = rand::thread_rng().gen_range(0, choice.len());
+        let res = match choice.swap_remove(id) {
+            ActionEx::TileSizes(..) => panic!(),
+            ActionEx::Action(action) => space.apply_decisions(vec![action]),
+            ActionEx::LowerLayout { mem, ref st_dims, ref ld_dims } =>
+                space.lower_layout(mem, st_dims.clone(), ld_dims.clone()),
+        };
+        if res.is_err() { return spaces; }
+        spaces.push(space.clone());
+    }
+    spaces
 }

@@ -2,15 +2,10 @@
 #[macro_use]
 extern crate criterion;
 extern crate env_logger;
-extern crate telamon;
-extern crate rand;
 #[macro_use]
 extern crate lazy_static;
 
 use criterion::Criterion;
-use telamon::explorer;
-use telamon::explorer::choice::ActionEx;
-use rand::Rng;
 
 mod common;
 
@@ -24,21 +19,8 @@ fn config_criterion() -> Criterion {
 /// Benchmarks full descents in the search tree.
 fn mm_descent(c: &mut Criterion) {
     let _ = env_logger::try_init();
-    c.bench_function("mm descent", |b| b.iter(|| {
-        let mut space = common::MM.clone();
-        while let Some(mut choice) = {
-            let choice = explorer::choice::list(&space).next();
-            choice
-        } {
-           let id = rand::thread_rng().gen_range(0, choice.len());
-           let res = match choice.swap_remove(id) {
-                ActionEx::TileSizes(..) => panic!(),
-                ActionEx::Action(action) => space.apply_decisions(vec![action]),
-                ActionEx::LowerLayout { mem, ref st_dims, ref ld_dims } =>
-                    space.lower_layout(mem, st_dims.clone(), ld_dims.clone()),
-           };
-           if res.is_err() { return; }
-        }
+    c.bench_function("mm descent without copies", |b| b.iter(|| {
+        common::descend_without_copies(common::MM.clone());
     }));
 }
 
@@ -46,22 +28,7 @@ fn mm_descent(c: &mut Criterion) {
 fn mm_descent_copy(c: &mut Criterion) {
     let _ = env_logger::try_init();
     c.bench_function("mm descent with copy", |b| b.iter(|| {
-        let mut spaces = vec![];
-        let mut space = common::MM.clone();
-        while let Some(mut choice) = {
-            let choice = explorer::choice::list(&space).next();
-            choice
-        } {
-            spaces.push(space.clone());
-            let id = rand::thread_rng().gen_range(0, choice.len());
-            let res = match choice.swap_remove(id) {
-                ActionEx::TileSizes(..) => panic!(),
-                ActionEx::Action(action) => space.apply_decisions(vec![action]),
-                ActionEx::LowerLayout { mem, ref st_dims, ref ld_dims } =>
-                    space.lower_layout(mem, st_dims.clone(), ld_dims.clone()),
-            };
-            if res.is_err() { return; }
-        }
+        common::descend_with_copies(common::MM.clone());
     }));
 }
 
