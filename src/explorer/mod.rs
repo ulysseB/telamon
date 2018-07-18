@@ -74,14 +74,19 @@ fn launch_search<'a, T>(config: &Config, candidate_store: T, context: &Context)
 {
     let (monitor_sender, monitor_receiver) = channel::mpsc::channel(100);
     let (log_sender, log_receiver) = sync::mpsc::sync_channel(100);
-    crossbeam::scope( |scope| {
+    let maybe_candidate = crossbeam::scope( |scope| {
         unwrap!(scope.builder().name("Telamon - Logger".to_string())
             .spawn( || logger::log(config, log_receiver)));
         let best_cand_opt = scope.builder().name("Telamon - Monitor".to_string()).
             spawn(|| monitor(config, &candidate_store, monitor_receiver, log_sender));
         explore_space(config, &candidate_store, monitor_sender, context);
         unwrap!(best_cand_opt)
-    }).join()
+    }).join();
+    // At this point all threads have ended and nobody is going to be
+    // exploring the candidate store anymore, so the stats printer
+    // should have a consistent view on the tree.
+    candidate_store.print_stats();
+    maybe_candidate
 }
 
 /// Defines the work that explorer threads will do in a closure that will be passed to

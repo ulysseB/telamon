@@ -9,13 +9,27 @@ use itertools::Itertools;
 use std;
 use std::f64;
 use std::sync::{Weak, Arc, RwLock};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use utils::*;
+
+struct TreeStats {
+    num_deadends: AtomicUsize,
+}
+
+impl TreeStats {
+    fn new() -> Self {
+        TreeStats {
+            num_deadends: AtomicUsize::new(0),
+        }
+    }
+}
 
 /// A search tree to perform a multi-armed bandit search.
 pub struct Tree<'a, 'b> {
     shared_tree: Arc<RwLock<SubTree<'a>>>,
     cut: RwLock<f64>,
     config: &'b BanditConfig,
+    stats: TreeStats,
 }
 
 impl<'a, 'b> Tree<'a, 'b> {
@@ -26,6 +40,7 @@ impl<'a, 'b> Tree<'a, 'b> {
             shared_tree: Arc::new(RwLock::new(root)),
             cut: RwLock::new(std::f64::INFINITY),
             config,
+            stats: TreeStats::new(),
         }
     }
 
@@ -73,20 +88,22 @@ impl<'a, 'b> Tree<'a, 'b> {
                 }
                 DescendState::InternalNode(node, is_new) => {
                     if is_new && self.config.monte_carlo {
-                        let mut lock = unwrap!(node.write());
-                        let res = lock.descend_noexpand(&self.config, context, cut);
-                        std::mem::drop(lock);
+                        let res = unwrap!(node.write())
+                            .descend_noexpand(&self.config, context, cut);
                         // We manually process the first two levels of the search as they
                         // are still in the tree and thus must be updated if needed.
-                        let (idx, res2) = if let Some(x) = res { x } else { continue };
-                        path.0.push((Arc::downgrade(&node), idx));
-                        match res2 {
-                            Ok(candidate) => {
-                                let res = local_selection::descend(
-                                    self.config.new_nodes_order, context, candidate, cut);
-                                return res.map(|c| (c, path));
+                        if let Some((idx, maybe_candidate)) = res {
+                            path.0.push((Arc::downgrade(&node), idx));
+                            match maybe_candidate {
+                                Ok(candidate) => {
+                                    let res = local_selection::descend(
+                                        self.config.new_nodes_order, context, candidate, cut);
+                                    return res.map(|c| (c, path));
+                                }
+                                Err(new_state) => state = new_state,
                             }
-                            Err(new_state) => state = new_state,
+                        } else {
+                            continue;
                         }
                     } else {
                         let next = unwrap!(node.write())
@@ -134,8 +151,17 @@ impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
             let state = unwrap!(self.shared_tree.write()).descend(context, cut);
             if let DescendState::DeadEnd = state { return None; }
             let res = self.descend(context, state, cut);
-            if res.is_some() { return res }
+            if res.is_some() {
+                return res;
+            } else {
+                self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
+            }
         }
+    }
+
+    fn print_stats(&self) {
+        warn!("=== Bandit statistics ===");
+        warn!("Deadends encountered: {}", self.stats.num_deadends.load(Ordering::Relaxed));
     }
 }
 

@@ -13,4 +13,6 @@ pub trait Store<'a> : Sync  {
     fn commit_evaluation(&self, payload: Self::PayLoad, eval: f64);
     /// Retrieve a Candidate for evaluation, returns `None` if no candidate remains.
     fn explore(&self, context: &Context) -> Option<(Candidate<'a>, Self::PayLoad)>;
+    /// Displays statistics about the candidate store.
+    fn print_stats(&self) {}
 }
