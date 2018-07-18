@@ -14,6 +14,7 @@ path = "../"
 env_logger = "0.5.9"
 itertools = "0.7.8"
 log = "0.4.1"
+num = "0.2.0"
 
 [dependencies.telamon-utils]
 path = "../../telamon-utils"
