@@ -372,10 +372,10 @@ mod tests {
     }
 
     #[test]
-    fn symmetric_difference() {
+    fn relative_difference() {
         let v0 = VecSet::new(vec![0, 2, 3, 5]);
         let v1 = VecSet::new(vec![0, 1, 2, 4, 6]);
-        let (d0, d1) = v0.symmetric_difference(v1);
+        let (d0, d1) = v0.relative_difference(v1);
         assert_eq!(d0, VecSet::new(vec![3, 5]));
         assert_eq!(d1, VecSet::new(vec![1, 4, 6]))
     }
