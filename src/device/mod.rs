@@ -13,7 +13,6 @@ pub use self::context::{Context, EvalMode, ArgMap, AsyncCallback, AsyncEvaluator
 use codegen::Function;
 use ir;
 use search_space::{SearchSpace, DimKind};
-use std::hash;
 use std::io::Write;
 use model::{HwPressure, Nesting};
 use utils::*;
@@ -85,17 +84,5 @@ pub trait Device: Sync {
     fn gen_code(&self, implementation: &SearchSpace, out: &mut Write) {
         let code = Function::build(implementation);
         self.print(&code, out);
-    }
-}
-
-impl<'a> PartialEq for &'a Device {
-    fn eq(&self, other: &Self) -> bool { self.name() == other.name() }
-}
-
-impl<'a> Eq for &'a Device {}
-
-impl<'a> hash::Hash for &'a Device {
-    fn hash<T: hash::Hasher>(&self, state: &mut T) {
-        hash::Hash::hash(self.name(), state);
     }
 }

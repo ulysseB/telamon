@@ -2,7 +2,6 @@
 use device::Device;
 use ir::{self, BasicBlock, BBId, Operand, Operator, Type, DimMapScope};
 use std;
-use std::hash::{Hash, Hasher};
 use utils::*;
 
 /// Uniquely identifies an instruction.
@@ -122,16 +121,4 @@ impl<'a> BasicBlock<'a> for Instruction<'a> {
     fn bb_id(&self) -> BBId { self.id.into() }
 
     fn as_inst(&self) -> Option<&Instruction<'a>> { Some(self) }
-}
-
-// Instruction equality is based on `BBId`.
-impl<'a> PartialEq for Instruction<'a> {
-    fn eq(&self, other: &Instruction) -> bool { self.bb_id() == other.bb_id() }
-}
-
-impl<'a> Eq for Instruction<'a> {}
-
-// As for equality, Instruction hashing is based on `BBId`.
-impl<'a> Hash for Instruction<'a> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.bb_id().hash(state) }
 }

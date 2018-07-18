@@ -1,6 +1,5 @@
 //! A module for handling accesses to the device memory.
 use ir::{self, InstId, Size, Type, dim};
-use std::hash::{Hash, Hasher};
 use utils::*;
 
 // TODO(cleanup): move layouts into internal blocks.
@@ -39,16 +38,6 @@ pub struct InternalBlock<'a> {
     mapped_dims: Vec<(ir::dim::Id, ir::dim::Id)>,
     // TODO(search_space): enable layout transformations.
     maybe_mapped: dim::Map,
-}
-
-impl<'a> PartialEq for InternalBlock<'a> {
-    fn eq(&self, other: &InternalBlock) -> bool { self.id() == other.id() }
-}
-
-impl<'a> Eq for InternalBlock<'a> {}
-
-impl<'a> Hash for InternalBlock<'a> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.id().hash(state) }
 }
 
 /// A memory block allocated by the user.
