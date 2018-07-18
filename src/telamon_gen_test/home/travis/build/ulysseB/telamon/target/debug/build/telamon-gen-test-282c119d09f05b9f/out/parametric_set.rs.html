@@ -1587,7 +1587,6 @@
 <span id="1587">1587</span>
 <span id="1588">1588</span>
 <span id="1589">1589</span>
-<span id="1590">1590</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>;
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
@@ -1856,7 +1855,6 @@
         {
             <span class="kw">let</span> <span class="ident">inst</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">inst</span>);
             <span class="kw">for</span> <span class="ident">op_125</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">operand</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>, <span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">inst</span>)) {
-                <span class="comment">// Generates an action to filter a choice if needed.</span>
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Foo</span>::<span class="ident">all</span>();
                 <span class="kw">let</span> <span class="ident">filter_res</span> <span class="op">=</span> <span class="ident">foo</span>::<span class="ident">filter_0</span>(<span class="ident">inst</span>, <span class="ident">op_125</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
                 <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">filter_res</span>);
@@ -1980,7 +1978,7 @@
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
         {
             <span class="kw">let</span> <span class="ident">inst</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">inst</span>);
-            <span class="kw">let</span> <span class="ident">op</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">operand</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">inst</span>, <span class="ident">op</span>); <span class="comment">// Generates an action to filter a choice if needed.</span>
+            <span class="kw">let</span> <span class="ident">op</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">operand</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">inst</span>, <span class="ident">op</span>);
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Bar</span>::<span class="ident">all</span>();
             <span class="kw">let</span> <span class="ident">filter_res</span> <span class="op">=</span> <span class="ident">bar</span>::<span class="ident">filter_0</span>(<span class="ident">inst</span>, <span class="ident">op</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
             <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">filter_res</span>);

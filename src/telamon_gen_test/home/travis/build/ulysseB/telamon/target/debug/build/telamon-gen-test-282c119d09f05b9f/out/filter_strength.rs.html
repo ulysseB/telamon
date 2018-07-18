@@ -1334,7 +1334,7 @@
             <span class="kw">for</span> <span class="ident">bb_42</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
                 <span class="kw">if</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb_42</span>) <span class="op">==</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">bb</span>) {
                     <span class="kw">continue</span>;
-                } <span class="comment">// Generates an action to filter a choice if needed.</span>
+                }
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">Enum1</span>::<span class="ident">all</span>();
                 <span class="kw">let</span> <span class="ident">filter_res</span> <span class="op">=</span> <span class="ident">enum_1</span>::<span class="ident">filter_0</span>(<span class="ident">bb_42</span>, <span class="ident">bb</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
                 <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">filter_res</span>);

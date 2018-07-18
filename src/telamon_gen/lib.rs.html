@@ -146,12 +146,6 @@
 <span id="146">146</span>
 <span id="147">147</span>
 <span id="148">148</span>
-<span id="149">149</span>
-<span id="150">150</span>
-<span id="151">151</span>
-<span id="152">152</span>
-<span id="153">153</span>
-<span id="154">154</span>
 </pre><pre class="rust ">
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span> <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">env_logger</span>;
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">handlebars</span>;
@@ -284,27 +278,21 @@
 <span class="comment">// TODO(filter): group filters if one iterates on a subtype of the other</span>
 <span class="comment">// TODO(filter): generate negative filter when there is at most one input.</span>
 <span class="comment">// TODO(filter): merge filters even if one input requires a type constraint</span>
-<span class="comment">// TODO(cc_perf): remove duplicates on_change filter actions</span>
-<span class="comment">// - normalize filter calls</span>
-<span class="comment">//   -&gt; can inverse lhs and rhs in symmetric, be careful if self is symmetric</span>
-<span class="comment">// - detect duplicates and remove them</span>
-<span class="comment">// - IS A X2 LIMITING FACTOR</span>
-<span class="comment">// &gt; couldn&#39;t we do this during merging ?</span>
-<span class="comment">// TODO(cc_perf): Only iterate on the lower triangular part of symmetric domains in</span>
-<span class="comment">// on_change</span>
+<span class="comment">// TODO(cc_perf): Only iterate on the lower triangular part of symmetric rather than</span>
+<span class="comment">//  dynamically filtering out half of the cases</span>
 <span class="comment">// TODO(cc_perf): in truth table, intersect rules with rules with weaker conditions,</span>
 
 <span class="comment">// FIXME: fix counters:</span>
-<span class="comment">// * Discard full counters. Might re-enable them later if we can find a way to make lowerings</span>
-<span class="comment">//  commute</span>
-<span class="comment">// * Fordid resrtricting the FALSE value of the repr flag from conditions that involve other decisions</span>
-<span class="comment">// &gt; this makes lowering commute. Otherwise we can force the counter to be &gt;0, which can be true or</span>
-<span class="comment">//   not depending if another lowering has already occured.</span>
-<span class="comment">// * Charaterise the effect of fragile values on performance</span>
-<span class="comment">// FIXME: make sure the quotient set works correctly with things that force the repr flag to TRUE</span>
-<span class="comment">// (for example the constraint on reduction). One problem might be that the flag is forced to FALSE</span>
-<span class="comment">// but can be merged with a dim whose flag can be set to TRUE. The solutions for this may be to</span>
-<span class="comment">// ensure:</span>
+<span class="comment">// * Discard full counters. Might re-enable them later if we can find a way to make</span>
+<span class="comment">//   lowerings commute</span>
+<span class="comment">// * Fordid resrtricting the FALSE value of the repr flag from conditions that involve</span>
+<span class="comment">//   other decisions</span>
+<span class="comment">// &gt; this makes lowering commute. Otherwise we can force the counter to be &gt;0, which can</span>
+<span class="comment">//   be true or not depending if another lowering has already occured.</span>
+<span class="comment">// FIXME: make sure the quotient set works correctly with things that force the repr flag</span>
+<span class="comment">// to TRUE (for example the constraint on reduction). One problem might be that the flag</span>
+<span class="comment">// is forced to FALSE but can be merged with a dim whose flag can be set to TRUE. The</span>
+<span class="comment">// solutions for this may be to ensure:</span>
 <span class="comment">// - conditions on flags are uniform for merged dims</span>
 <span class="comment">// - the flag has a third state &quot;ok to be true, but onyl if merged to another&quot;</span>
 </pre>
