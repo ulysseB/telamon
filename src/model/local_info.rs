@@ -30,7 +30,7 @@ impl LocalInfo {
     /// Compute the local information for the given search space, in the context.
     pub fn compute(space: &SearchSpace, context: &Context) -> Self {
         let dim_sizes = space.ir_instance().dims()
-            .map(|d| (d.id(), context.eval_size(d.size()))).collect();
+            .map(|d| (d.id(), context.eval_size(&d.size().clone().into()))).collect();
         let nesting: HashMap<_, _> = space.ir_instance().blocks().map(|bb| {
             (bb.bb_id(), Nesting::compute(space, bb.bb_id(), &dim_sizes))
         }).collect();

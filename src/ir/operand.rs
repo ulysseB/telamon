@@ -28,8 +28,6 @@ pub enum Operand<'a> {
     Inst(InstId, Type, DimMap, DimMapScope),
     /// The current index in a loop.
     Index(dim::Id),
-    /// The size of a dimension.
-    Size(ir::Size<'a>),
     /// A parameter of the function.
     Param(&'a Parameter),
     /// The address of a memory block.
@@ -47,8 +45,7 @@ impl<'a> Operand<'a> {
             Int(_, n_bit) => Type::I(n_bit),
             Float(_, n_bit) => Type::F(n_bit),
             Addr(mem) => ir::Type::PtrTo(mem.into()),
-            Index(..) |
-            Size(..) => Type::I(32),
+            Index(..) => Type::I(32),
             Param(p) => p.t,
             Inst(_, t, ..) | Reduce(_, t, ..) | InductionVar(_, t) => t,
         }
@@ -111,7 +108,7 @@ impl<'a> Operand<'a> {
     /// Indicates if the operand stays constant during the execution.
     pub fn is_constant(&self) -> bool {
         match *self {
-            Int(..) | Float(..) | Addr(..) | Size(..) | Param(..) => true,
+            Int(..) | Float(..) | Addr(..) | Param(..) => true,
             Index(..) | Inst(..) | Reduce(..) | InductionVar(..) => false,
         }
     }
