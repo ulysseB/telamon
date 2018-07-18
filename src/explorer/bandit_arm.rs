@@ -79,7 +79,6 @@ impl<'a, 'b> Tree<'a, 'b> {
         loop {
             match std::mem::replace(&mut state, DescendState::DeadEnd) {
                 DescendState::DeadEnd => {
-                    self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
                     self.clean_deadends(path, cut);
                     return None
                 }
@@ -152,7 +151,11 @@ impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
             let state = unwrap!(self.shared_tree.write()).descend(context, cut);
             if let DescendState::DeadEnd = state { return None; }
             let res = self.descend(context, state, cut);
-            if res.is_some() { return res }
+            if res.is_some() {
+                return res;
+            } else {
+                self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
+            }
         }
     }
 
