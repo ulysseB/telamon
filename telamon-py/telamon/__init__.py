@@ -135,10 +135,17 @@ class MatMul(Kernel):
             raise ValueError(
                 'a_stride should be a positive integer.')
 
+        # We need to keep around a reference to the cffi objects until after
+        # the call is done in order to avoid having memory released too early.
+        # Using temporaries by passing in the result of `_ffi_tiling` directly
+        # to the `lib.kernel_matmul_new` call is not enough and can cause
+        # use-after-free bugs.
+        ffi_m_tiles = _ffi_tiling(m_tiles)
+        ffi_n_tiles = _ffi_tiling(n_tiles)
+        ffi_k_tiles = _ffi_tiling(k_tiles)
+
         super().__init__(
             lib.kernel_matmul_new(
                 m, n, k,
                 a_stride, int(transpose_a), int(transpose_b), int(generic),
-                _ffi_tiling(m_tiles),
-                _ffi_tiling(n_tiles),
-                _ffi_tiling(k_tiles)))
+                ffi_m_tiles, ffi_n_tiles, ffi_k_tiles))
