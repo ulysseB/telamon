@@ -19,6 +19,10 @@ required-features = ["cuda"]
 name = "descent"
 harness = false
 
+[[bench]]
+name = "memory"
+harness = false
+
 [build-dependencies]
 cc = "1.0.12"
 
@@ -73,6 +77,7 @@ git = "https://github.com/ulysseB/tokio-timer.git"
 gcc = "0.3.54"
 tempdir = "0.3.7"
 criterion = "0.2.4"
+jemalloc-ctl = "0.1"
 
 [features]
 cuda = []
