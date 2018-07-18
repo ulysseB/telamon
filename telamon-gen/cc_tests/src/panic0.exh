@@ -1,0 +1,20 @@
+set Dimensions:
+  item_type = "ir::Dimension"
+  id_type = "ir::dim::Id"
+  item_getter = "$fun.dim($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.dims()"
+  var_prefix = "dim"
+  new_objs = "$objs.dimensions"
+end
+
+define integer size($dim in Dimensions): "unwrap!($dim.size().universe())" end
+
+define enum foo($lhs in Dimensions, $rhs in Dimensions):
+  value A:
+  value B:
+end
+
+require forall $lhs in Dimensions:
+  forall $rhs in Dimensions:
+    foo($lhs, $rhs) is A || size($lhs) == "bar($lhs, $rhs)"
