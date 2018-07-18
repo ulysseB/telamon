@@ -14,5 +14,5 @@ pub trait Store<'a> : Sync  {
     /// Retrieve a Candidate for evaluation, returns `None` if no candidate remains.
     fn explore(&self, context: &Context) -> Option<(Candidate<'a>, Self::PayLoad)>;
     /// Displays statistics about the candidate store.
-    fn print_stats(&self);
+    fn print_stats(&self) {}
 }

@@ -30,10 +30,6 @@ impl<'a> Store<'a> for ParallelCandidateList<'a> {
             else {return None;}
         }
     }
-
-    fn print_stats(&self) {
-        // We don't have any stats to print.
-    }
 }
 
 /// A `CandidateList` that can be accessed by multiple threads.
