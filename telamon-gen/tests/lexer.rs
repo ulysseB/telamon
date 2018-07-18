@@ -532,63 +532,64 @@ fn lexer_code_mode() {
 
 #[test]
 fn lexer_include() {
-   assert_eq!(Lexer::new(b"include /dev/unexist".to_vec()).collect::<Vec<_>>(), vec![
-              Err(LexicalError::InvalidInclude(
-                 LexerPosition::default(),
-                 Token::InvalidInclude(String::from("/dev/unexist"), Errno(2)),
-                 LexerPosition {
-                     position: Position {
-                         column: 20, ..Default::default()
-                     },
-                     ..Default::default()
-                 }))
-              ]);
+   assert_eq!(Lexer::new(b"include \"/dev/unexist\"".to_vec()).collect::<Vec<_>>(),
+              vec![
+               Err(LexicalError::InvalidInclude(
+                  LexerPosition::default(),
+                  Token::InvalidInclude(String::from("/dev/unexist"), Errno(2)),
+                  LexerPosition {
+                      position: Position {
+                          column: 22, ..Default::default()
+                      },
+                      ..Default::default()
+                  }))
+               ]);
     
    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/enum_foo.exh");
-   let include = format!("include {}", filename);
+   let include = format!("include \"{}\"", filename);
    assert_eq!(Lexer::new(include.as_bytes().to_vec()).collect::<Vec<_>>(), vec![
-              Ok((LexerPosition::new(Position::new(0, 71), filename.to_owned()),
+              Ok((LexerPosition::new(Position::new(0, 73), filename.to_owned()),
                   Token::Define,
-                  LexerPosition::new(Position::new(1, 77), filename.to_owned()))),
-              Ok((LexerPosition::new(Position::new(1, 78), filename.to_owned()),
+                  LexerPosition::new(Position::new(1, 79), filename.to_owned()))),
+              Ok((LexerPosition::new(Position::new(1, 80), filename.to_owned()),
                   Token::Enum,
-                  LexerPosition::new(Position::new(1, 82), filename.to_owned()))),
-              Ok((LexerPosition::new(Position::new(1, 83), filename.to_owned()),
+                  LexerPosition::new(Position::new(1, 84), filename.to_owned()))),
+              Ok((LexerPosition::new(Position::new(1, 85), filename.to_owned()),
                   Token::ChoiceIdent(String::from("foo")),
-                  LexerPosition::new(Position::new(1, 86), filename.to_owned()))),
-              Ok((LexerPosition::new(Position::new(1, 86), filename.to_owned()),
-                  Token::LParen,
-                  LexerPosition::new(Position::new(1, 87), filename.to_owned()))),
-              Ok((LexerPosition::new(Position::new(1, 87), filename.to_owned()),
-                  Token::RParen,
                   LexerPosition::new(Position::new(1, 88), filename.to_owned()))),
               Ok((LexerPosition::new(Position::new(1, 88), filename.to_owned()),
-                  Token::Colon,
+                  Token::LParen,
                   LexerPosition::new(Position::new(1, 89), filename.to_owned()))),
+              Ok((LexerPosition::new(Position::new(1, 89), filename.to_owned()),
+                  Token::RParen,
+                  LexerPosition::new(Position::new(1, 90), filename.to_owned()))),
+              Ok((LexerPosition::new(Position::new(1, 90), filename.to_owned()),
+                  Token::Colon,
+                  LexerPosition::new(Position::new(1, 91), filename.to_owned()))),
               Ok((LexerPosition::new(Position::new(2, 0), filename.to_owned()),
                   Token::End,
                   LexerPosition::new(Position::new(2, 3), filename.to_owned())))
             ]);
 
    assert_eq!(Lexer::new(include.as_bytes().to_vec()).collect::<Vec<_>>(), vec![
-              Ok((LexerPosition::new(Position::new(0, 71), filename.to_owned()),
+              Ok((LexerPosition::new(Position::new(0, 73), filename.to_owned()),
                   Token::Define,
-                  LexerPosition::new(Position::new(1, 77), filename.to_owned()))),
-              Ok((LexerPosition::new(Position::new(1, 78), filename.to_owned()),
+                  LexerPosition::new(Position::new(1, 79), filename.to_owned()))),
+              Ok((LexerPosition::new(Position::new(1, 80), filename.to_owned()),
                   Token::Enum,
-                  LexerPosition::new(Position::new(1, 82), filename.to_owned()))),
-              Ok((LexerPosition::new(Position::new(1, 83), filename.to_owned()),
+                  LexerPosition::new(Position::new(1, 84), filename.to_owned()))),
+              Ok((LexerPosition::new(Position::new(1, 85), filename.to_owned()),
                   Token::ChoiceIdent(String::from("foo")),
-                  LexerPosition::new(Position::new(1, 86), filename.to_owned()))),
-              Ok((LexerPosition::new(Position::new(1, 86), filename.to_owned()),
-                  Token::LParen,
-                  LexerPosition::new(Position::new(1, 87), filename.to_owned()))),
-              Ok((LexerPosition::new(Position::new(1, 87), filename.to_owned()),
-                  Token::RParen,
                   LexerPosition::new(Position::new(1, 88), filename.to_owned()))),
               Ok((LexerPosition::new(Position::new(1, 88), filename.to_owned()),
-                  Token::Colon,
+                  Token::LParen,
                   LexerPosition::new(Position::new(1, 89), filename.to_owned()))),
+              Ok((LexerPosition::new(Position::new(1, 89), filename.to_owned()),
+                  Token::RParen,
+                  LexerPosition::new(Position::new(1, 90), filename.to_owned()))),
+              Ok((LexerPosition::new(Position::new(1, 90), filename.to_owned()),
+                  Token::Colon,
+                  LexerPosition::new(Position::new(1, 91), filename.to_owned()))),
               Ok((LexerPosition::new(Position::new(2, 0), filename.to_owned()),
                   Token::End,
                   LexerPosition::new(Position::new(2, 3), filename.to_owned())))

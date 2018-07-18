@@ -70,6 +70,13 @@ impl LexerPosition {
             filename: Some(filename),
         }
     }
+
+    // Returns a LexerPosition interface from Position with optional filename.
+    pub fn new_optional(position: Position, filename: Option<String>) -> Self {
+        LexerPosition {
+            position, filename,
+        }
+    }
 }
 
 impl From<Position> for LexerPosition {
