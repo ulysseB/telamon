@@ -22,7 +22,21 @@ pub struct ProcessError<'a> {
     pub span: Option<lexer::Span>,
     cause: Cause,
 }
-/*
+
+impl <'a>From<(path::Display<'a>,
+               ParseError<lexer::LexerPosition,
+                          lexer::Token,
+                          lexer::LexicalError>
+             )> for ProcessError<'a> {
+    fn from((path, parse): (path::Display<'a>,
+                                ParseError<lexer::LexerPosition,
+                                           lexer::Token,
+                                           lexer::LexicalError>
+    )) -> Self {
+        unimplemented!()
+    }
+}
+
 impl <'a>From<(path::Display<'a>,
                ParseError<lexer::Position,
                                  lexer::Token,
@@ -46,16 +60,30 @@ impl <'a>From<(path::Display<'a>,
                     span: None,
                     cause: Cause::Parse(parse),
                 }, 
-           ParseError::UnrecognizedToken { token: Some((l, .., e)), .. } |
-           ParseError::ExtraToken { token: (l, .., e) } |
-           ParseError::User { error: lexer::LexicalError::UnexpectedToken(l, .., e) } |
-           ParseError::User { error: lexer::LexicalError::InvalidInclude(l, .., e) } |
-           ParseError::User { error: lexer::LexicalError::InvalidToken(l, .., e) } 
-                => ProcessError {
-                    path: path,
-                    span: Some(lexer::Span { beg: l, end: Some(e) }),
-                    cause: Cause::Parse(parse),
-                },
+            ParseError::UnrecognizedToken { token: Some((l, .., e)), .. } |
+            ParseError::ExtraToken { token: (l, .., e) } |
+            ParseError::User {
+                error: lexer::LexicalError::UnexpectedToken(
+                    lexer::LexerPosition { position:  l, .. }, ..,
+                    lexer::LexerPosition { position: e, .. }
+                )
+            } |
+            ParseError::User {
+                error: lexer::LexicalError::InvalidInclude(
+                    lexer::LexerPosition { position:  l, .. }, ..,
+                    lexer::LexerPosition { position: e, .. }
+                )
+            } |
+            ParseError::User {
+                error: lexer::LexicalError::InvalidToken(
+                    lexer::LexerPosition { position:  l, .. }, ..,
+                    lexer::LexerPosition { position: e, .. }
+                )
+            } => ProcessError {
+                 path: path,
+                 span: Some(lexer::Span { beg: l, end: Some(e) }),
+                 cause: Cause::Parse(parse),
+            },
         }
     }
 }
@@ -101,4 +129,4 @@ impl <'a>Error for ProcessError<'a> {
             None
         }
     }
-}*/
+}
