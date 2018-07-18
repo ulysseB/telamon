@@ -11,416 +11,416 @@ fn lexer_initial() {
     // Invalid's Token
     assert_eq!(Lexer::new(b"!".to_vec()).collect::<Vec<_>>(), vec![
                 Err(LexicalError::InvalidToken(
-                   Position::default(),
+                   LexerPosition::default(),
                    Token::InvalidToken(String::from("!")),
-                   Position { column: 1, ..Default::default() } 
+                   LexerPosition::from(Position { column: 1, ..Default::default() }) 
                 )),
               ]);
 
     // ChoiceIdent's Token
     assert_eq!(Lexer::new(b"az_09".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                     Token::ChoiceIdent(String::from("az_09")),
-                    Position { column: 5, ..Default::default() } 
+                    LexerPosition::from(Position { column: 5, ..Default::default() }) 
                 )),
               ]);
     // SetIdent's Token
     assert_eq!(Lexer::new(b"Az_09".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::SetIdent(String::from("Az_09")),
-                   Position { column: 5, ..Default::default() } 
+                   LexerPosition::from(Position { column: 5, ..Default::default() }) 
                 )),
               ]);
     // ValueIdent's Token
     assert_eq!(Lexer::new(b"AZ_09".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::ValueIdent(String::from("AZ_09")),
-                   Position { column: 5, ..Default::default() } 
+                   LexerPosition::from(Position { column: 5, ..Default::default() }) 
                 )),
               ]);
     // Var's Token
     assert_eq!(Lexer::new(b"$vV".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Var(String::from("vV")),
-                   Position { column: 3, ..Default::default() } 
+                   LexerPosition::from(Position { column: 3, ..Default::default() }) 
                 )),
               ]);
     // Alias's Token
     assert_eq!(Lexer::new(b"alias".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Alias,
-                   Position { column: 5, ..Default::default() } 
+                   LexerPosition::from(Position { column: 5, ..Default::default() }) 
                 )),
               ]);
     // Counter's Token
     assert_eq!(Lexer::new(b"counter".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Counter,
-                   Position { column: 7, ..Default::default() } 
+                   LexerPosition::from(Position { column: 7, ..Default::default() }) 
                 )),
               ]);
     // Define's Token
     assert_eq!(Lexer::new(b"define".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Define,
-                   Position { column: 6, ..Default::default() } 
+                   LexerPosition::from(Position { column: 6, ..Default::default() }) 
                 )),
               ]);
     // Enum's Token
     assert_eq!(Lexer::new(b"enum".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Enum,
-                   Position { column: 4, ..Default::default() } 
+                   LexerPosition::from(Position { column: 4, ..Default::default() }) 
                 )),
               ]);
     // Forall's Token
     assert_eq!(Lexer::new(b"forall".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Forall,
-                   Position { column: 6, ..Default::default() } 
+                   LexerPosition::from(Position { column: 6, ..Default::default() }) 
                 )),
               ]);
     // In's Token
     assert_eq!(Lexer::new(b"in".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::In,
-                   Position { column: 2, ..Default::default() } 
+                   LexerPosition::from(Position { column: 2, ..Default::default() }) 
                 )),
               ]);
     // Is's Token
     assert_eq!(Lexer::new(b"is".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Is,
-                   Position { column: 2, ..Default::default() } 
+                   LexerPosition::from(Position { column: 2, ..Default::default() }) 
                 )),
               ]);
     // Not's Token
     assert_eq!(Lexer::new(b"not".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Not,
-                   Position { column: 3, ..Default::default() } 
+                   LexerPosition::from(Position { column: 3, ..Default::default() }) 
                 )),
               ]);
     // Require's Token
     assert_eq!(Lexer::new(b"require".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Require,
-                   Position { column: 7, ..Default::default() } 
+                   LexerPosition::from(Position { column: 7, ..Default::default() }) 
                 )),
               ]);
     // Mul's CounterKind Token
     assert_eq!(Lexer::new(b"mul".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::CounterKind(CounterKind::Mul),
-                   Position { column: 3, ..Default::default() } 
+                   LexerPosition::from(Position { column: 3, ..Default::default() }) 
                 )),
               ]);
     // Sum's CounterKind Token
     assert_eq!(Lexer::new(b"sum".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::CounterKind(CounterKind::Add),
-                   Position { column: 3, ..Default::default() } 
+                   LexerPosition::from(Position { column: 3, ..Default::default() }) 
                 )),
               ]);
     // Value's Token
     assert_eq!(Lexer::new(b"value".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Value,
-                   Position { column: 5, ..Default::default() } 
+                   LexerPosition::from(Position { column: 5, ..Default::default() }) 
                 )),
               ]);
     // When's Token
     assert_eq!(Lexer::new(b"when".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::When,
-                   Position { column: 4, ..Default::default() } 
+                   LexerPosition::from(Position { column: 4, ..Default::default() }) 
                 )),
               ]);
     // Trigger's Token
     assert_eq!(Lexer::new(b"trigger".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Trigger,
-                   Position { column: 7, ..Default::default() } 
+                   LexerPosition::from(Position { column: 7, ..Default::default() }) 
                 )),
               ]);
     // NoMax's CounterVisibility Token
     assert_eq!(Lexer::new(b"half".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::CounterVisibility(CounterVisibility::NoMax),
-                   Position { column: 4, ..Default::default() } 
+                   LexerPosition::from(Position { column: 4, ..Default::default() }) 
                 )),
               ]);
     // HiddenMax's CounterVisibility Token
     assert_eq!(Lexer::new(b"internal".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::CounterVisibility(CounterVisibility::HiddenMax),
-                   Position { column: 8, ..Default::default() } 
+                   LexerPosition::from(Position { column: 8, ..Default::default() }) 
                 )),
               ]);
     // Base's Token
     assert_eq!(Lexer::new(b"base".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Base,
-                   Position { column: 4, ..Default::default() } 
+                   LexerPosition::from(Position { column: 4, ..Default::default() }) 
                 )),
               ]);
     // item_type's SetDefKey Token
     assert_eq!(Lexer::new(b"item_type".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::SetDefKey(SetDefKey::ItemType),
-                   Position { column: 9, ..Default::default() } 
+                   LexerPosition::from(Position { column: 9, ..Default::default() }) 
                 )),
               ]);
     // NewObjs's SetDefKey Token
     assert_eq!(Lexer::new(b"new_objs".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::SetDefKey(SetDefKey::NewObjs),
-                   Position { column: 8, ..Default::default() } 
+                   LexerPosition::from(Position { column: 8, ..Default::default() }) 
                 )),
               ]);
     // IdType's SetDefKey Token
     assert_eq!(Lexer::new(b"id_type".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::SetDefKey(SetDefKey::IdType),
-                   Position { column: 7, ..Default::default() } 
+                   LexerPosition::from(Position { column: 7, ..Default::default() }) 
                 )),
               ]);
     // ItemGetter's SetDefKey Token
     assert_eq!(Lexer::new(b"item_getter".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::SetDefKey(SetDefKey::ItemGetter),
-                   Position { column: 11, ..Default::default() } 
+                   LexerPosition::from(Position { column: 11, ..Default::default() }) 
                 )),
               ]);
     // IdGetter's SetDefKey Token
     assert_eq!(Lexer::new(b"id_getter".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::SetDefKey(SetDefKey::IdGetter),
-                   Position { column: 9, ..Default::default() } 
+                   LexerPosition::from(Position { column: 9, ..Default::default() }) 
                 )),
               ]);
     // Iter's SetDefKey Token
     assert_eq!(Lexer::new(b"iterator".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::SetDefKey(SetDefKey::Iter),
-                   Position { column: 8, ..Default::default() } 
+                   LexerPosition::from(Position { column: 8, ..Default::default() }) 
                 )),
               ]);
     // Prefix's SetDefKey Token
     assert_eq!(Lexer::new(b"var_prefix".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::SetDefKey(SetDefKey::Prefix),
-                   Position { column: 10, ..Default::default() } 
+                   LexerPosition::from(Position { column: 10, ..Default::default() }) 
                 )),
               ]);
     // Reverse's SetDefKey Token
     assert_eq!(Lexer::new(b"reverse".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::SetDefKey(SetDefKey::Reverse),
-                   Position { column: 7, ..Default::default() } 
+                   LexerPosition::from(Position { column: 7, ..Default::default() }) 
                 )),
               ]);
     // AddToSet's SetDefKey Token
     assert_eq!(Lexer::new(b"add_to_set".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::SetDefKey(SetDefKey::AddToSet),
-                   Position { column: 10, ..Default::default() } 
+                   LexerPosition::from(Position { column: 10, ..Default::default() }) 
                 )),
               ]);
     // FromSuperset's SetDefKey Token
     assert_eq!(Lexer::new(b"from_superset".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::SetDefKey(SetDefKey::FromSuperset),
-                   Position { column: 13, ..Default::default() } 
+                   LexerPosition::from(Position { column: 13, ..Default::default() }) 
                 )),
               ]);
     // Set's Token
     assert_eq!(Lexer::new(b"set".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Set,
-                   Position { column: 3, ..Default::default() } 
+                   LexerPosition::from(Position { column: 3, ..Default::default() }) 
                 )),
               ]);
     // SubsetOf's Token
     assert_eq!(Lexer::new(b"subsetof".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::SubsetOf,
-                   Position { column: 8, ..Default::default() } 
+                   LexerPosition::from(Position { column: 8, ..Default::default() }) 
                 )),
               ]);
     // Disjoint's Token
     assert_eq!(Lexer::new(b"disjoint".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Disjoint,
-                   Position { column: 8, ..Default::default() } 
+                   LexerPosition::from(Position { column: 8, ..Default::default() }) 
                 )),
               ]);
     // Quotient's Token
     assert_eq!(Lexer::new(b"quotient".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Quotient,
-                   Position { column: 8, ..Default::default() }
+                   LexerPosition::from(Position { column: 8, ..Default::default() })
                 )),
               ]);
     // Of's Token
     assert_eq!(Lexer::new(b"of".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Of,
-                   Position { column: 2, ..Default::default() } 
+                   LexerPosition::from(Position { column: 2, ..Default::default() }) 
                 )),
               ]);
     // False's Bool Token
     assert_eq!(Lexer::new(b"false".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Bool(false),
-                   Position { column: 5, ..Default::default() } 
+                   LexerPosition::from(Position { column: 5, ..Default::default() }) 
                 )),
               ]);
     // True's Bool Token
     assert_eq!(Lexer::new(b"true".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Bool(true),
-                   Position { column: 4, ..Default::default() } 
+                   LexerPosition::from(Position { column: 4, ..Default::default() }) 
                 )),
               ]);
     // Colon's Token
     assert_eq!(Lexer::new(b":".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Colon,
-                   Position { column: 1, ..Default::default() } 
+                   LexerPosition::from(Position { column: 1, ..Default::default() }) 
                 )),
               ]);
     // Comma's Token
     assert_eq!(Lexer::new(b",".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Comma,
-                   Position { column: 1, ..Default::default() } 
+                   LexerPosition::from(Position { column: 1, ..Default::default() }) 
                 )),
               ]);
     // LParen's Token
     assert_eq!(Lexer::new(b"(".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::LParen,
-                   Position { column: 1, ..Default::default() } 
+                   LexerPosition::from(Position { column: 1, ..Default::default() }) 
                 )),
               ]);
     // RParen's Token
     assert_eq!(Lexer::new(b")".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::RParen,
-                   Position { column: 1, ..Default::default() } 
+                   LexerPosition::from(Position { column: 1, ..Default::default() }) 
                 )),
               ]);
     // Bitor's Token
     assert_eq!(Lexer::new(b"|".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::BitOr,
-                   Position { column: 1, ..Default::default() } 
+                   LexerPosition::from(Position { column: 1, ..Default::default() }) 
                 )),
               ]);
     // Or's Token
     assert_eq!(Lexer::new(b"||".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Or,
-                   Position { column: 2, ..Default::default() } 
+                   LexerPosition::from(Position { column: 2, ..Default::default() }) 
                 )),
               ]);
     // And's Token
     assert_eq!(Lexer::new(b"&&".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::And,
-                   Position { column: 2, ..Default::default() } 
+                   LexerPosition::from(Position { column: 2, ..Default::default() }) 
                 )),
               ]);
     // Gt's CmpOp Token
     assert_eq!(Lexer::new(b">".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::CmpOp(CmpOp::Gt),
-                   Position { column: 1, ..Default::default() } 
+                   LexerPosition::from(Position { column: 1, ..Default::default() }) 
                 )),
               ]);
     // Lt's CmpOp Token
     assert_eq!(Lexer::new(b"<".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::CmpOp(CmpOp::Lt),
-                   Position { column: 1, ..Default::default() } 
+                   LexerPosition::from(Position { column: 1, ..Default::default() }) 
                 )),
               ]);
     // Ge's CmpOp Token
     assert_eq!(Lexer::new(b">=".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::CmpOp(CmpOp::Geq),
-                   Position { column: 2, ..Default::default() } 
+                   LexerPosition::from(Position { column: 2, ..Default::default() }) 
                 )),
               ]);
     // Le's CmpOp Token
     assert_eq!(Lexer::new(b"<=".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::CmpOp(CmpOp::Leq),
-                   Position { column: 2, ..Default::default() } 
+                   LexerPosition::from(Position { column: 2, ..Default::default() }) 
                 )),
               ]);
     // Eq's CmpOp Token
     assert_eq!(Lexer::new(b"==".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::CmpOp(CmpOp::Eq),
-                   Position { column: 2, ..Default::default() } 
+                   LexerPosition::from(Position { column: 2, ..Default::default() }) 
                 )),
               ]);
     // Neq's CmpOp Token
     assert_eq!(Lexer::new(b"!=".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::CmpOp(CmpOp::Neq),
-                   Position { column: 2, ..Default::default() } 
+                   LexerPosition::from(Position { column: 2, ..Default::default() }) 
                 )),
               ]);
     // Equal's Token
     assert_eq!(Lexer::new(b"=".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Equal,
-                   Position { column: 1, ..Default::default() } 
+                   LexerPosition::from(Position { column: 1, ..Default::default() }) 
                 )),
               ]);
     // End's Token
     assert_eq!(Lexer::new(b"end".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::End,
-                   Position { column: 3, ..Default::default() } 
+                   LexerPosition::from(Position { column: 3, ..Default::default() }) 
                 )),
               ]);
     // Symmetric's Token
     assert_eq!(Lexer::new(b"symmetric".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Symmetric,
-                   Position { column: 9, ..Default::default() } 
+                   LexerPosition::from(Position { column: 9, ..Default::default() }) 
                 )),
               ]);
     // AntiSymmetric's Token
     assert_eq!(Lexer::new(b"antisymmetric".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::AntiSymmetric,
-                   Position { column: 13, ..Default::default() } 
+                   LexerPosition::from(Position { column: 13, ..Default::default() }) 
                 )),
               ]);
     // Arrow's Token
     assert_eq!(Lexer::new(b"->".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Arrow,
-                   Position { column: 2, ..Default::default() } 
+                   LexerPosition::from(Position { column: 2, ..Default::default() }) 
                 )),
               ]);
     // Divide's Token
     assert_eq!(Lexer::new(b"/".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Divide,
-                   Position { column: 1, ..Default::default() } 
+                   LexerPosition::from(Position { column: 1, ..Default::default() }) 
                 )),
               ]);
     // Integer's Token
     assert_eq!(Lexer::new(b"integer".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::Integer,
-                   Position { column: 7, ..Default::default() } 
+                   LexerPosition::from(Position { column: 7, ..Default::default() }) 
                 )),
               ]);
 }
@@ -428,27 +428,28 @@ fn lexer_initial() {
 #[test]
 fn lexer_comment_mode() {
     // C_COMMENT's Token
-    assert_eq!(Lexer::new(b"/* comment */ ".to_vec()).collect::<Vec<_>>(), vec![]);
-    assert_eq!(Lexer::new(b"/* comment \n comment */ ".to_vec()).collect::<Vec<_>>(), vec![]);
+    assert_eq!(Lexer::new(b"/* com */ ".to_vec()).collect::<Vec<_>>(), vec![]);
+    assert_eq!(Lexer::new(b"/* com \n com */ ".to_vec()).collect::<Vec<_>>(), vec![]);
 
     assert_eq!(Lexer::new(b"| /* comment */ |".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+                Ok((LexerPosition::default(),
                    Token::BitOr,
-                   Position { column: 1, ..Default::default() } 
+                   LexerPosition::from(Position { column: 1, ..Default::default() }) 
                 )),
-                Ok((Position { column: 16, ..Default::default() },
+                Ok((LexerPosition::from(Position { column: 16, ..Default::default() }),
                    Token::BitOr,
-                   Position { column: 17, ..Default::default() } 
+                   LexerPosition::from(Position { column: 17, ..Default::default() }) 
                 )),
                ]);
-    assert_eq!(Lexer::new(b"| /* comment \n comment */ |".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position::default(),
+    assert_eq!(Lexer::new(b"| /* comment \n comment */ |".to_vec()).collect::<Vec<_>>(),
+               vec![
+                Ok((LexerPosition::default(),
                    Token::BitOr,
-                   Position { column: 1, ..Default::default() } 
+                   LexerPosition::from(Position { column: 1, ..Default::default() })
                 )),
-                Ok((Position { column: 26, line: 1 },
+                Ok((LexerPosition::from(Position { column: 26, line: 1 }),
                    Token::BitOr,
-                   Position { column: 27, line: 1 } 
+                   LexerPosition::from(Position { column: 27, line: 1 })
                 )),
                ]);
 }
@@ -457,26 +458,27 @@ fn lexer_comment_mode() {
 fn lexer_doc_mode() {
     // Outer Line Doc's Token
     assert_eq!(Lexer::new(b"/// comment ".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position { column: 0, ..Default::default() },
+                Ok((LexerPosition::from(Position { column: 0, ..Default::default() }),
                     Token::Doc(String::from(" comment ")),
-                    Position { column: 12, ..Default::default() } 
+                    LexerPosition::from(Position { column: 12, ..Default::default() }) 
                 )),
               ]);
     assert_eq!(Lexer::new(b" /// comment ".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position { column: 1, ..Default::default() },
+                Ok((LexerPosition::from(Position { column: 1, ..Default::default() }),
                     Token::Doc(String::from(" comment ")),
-                    Position { column: 13, ..Default::default() } 
+                    LexerPosition::from(Position { column: 13, ..Default::default() }) 
                 )),
               ]);
     // Outer Line MultiDoc's Token
-    assert_eq!(Lexer::new(b"/// comment \n /// comment ".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position { column: 0, ..Default::default() },
+    assert_eq!(Lexer::new(b"/// comment \n /// comment ".to_vec()).collect::<Vec<_>>(),
+               vec![
+                Ok((LexerPosition::from(Position { column: 0, ..Default::default() }),
                     Token::Doc(String::from(" comment ")),
-                    Position { column: 12, ..Default::default() },
+                    LexerPosition::from(Position { column: 12, ..Default::default() }),
                 )),
-                Ok((Position { column: 1, line: 1 },
+                Ok((LexerPosition::from(Position { column: 1, line: 1 }),
                     Token::Doc(String::from(" comment ")),
-                    Position { column: 13, line: 1 }
+                    LexerPosition::from(Position { column: 13, line: 1 })
                 )),
               ]);
     // Line Comment Doc's Token
@@ -489,72 +491,106 @@ fn lexer_doc_mode() {
 fn lexer_code_mode() {
     // Simple Code's Token
     assert_eq!(Lexer::new(b"\"_\"".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position { column: 1, ..Default::default() },
+                Ok((LexerPosition::from(Position { column: 1, ..Default::default() }),
                    Token::Code(String::from("_")),
-                   Position { column: 2, ..Default::default() } 
+                   LexerPosition::from(Position { column: 2, ..Default::default() }) 
                 )),
               ]);
     assert_eq!(Lexer::new(b"\"__\"".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position { column: 1, ..Default::default() },
+                Ok((LexerPosition::from(Position { column: 1, ..Default::default() }),
                    Token::Code(String::from("__")),
-                   Position { column: 3, ..Default::default() } 
+                   LexerPosition::from(Position { column: 3, ..Default::default() })
                 )),
               ]);
     // Multiline Code's Token
     assert_eq!(Lexer::new(b"\"_\\\n_\"".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position { column: 1, ..Default::default() },
+                Ok((LexerPosition::from(Position { column: 1, ..Default::default() }),
                    Token::Code(String::from("__")),
-                   Position { column: 2, line: 1 } 
+                   LexerPosition::from(Position { column: 2, line: 1 })
                 )),
               ]);
     assert_eq!(Lexer::new(b"\"_\\\n       _\"".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position { column: 1, ..Default::default() },
+                Ok((LexerPosition::from(Position { column: 1, ..Default::default() }),
                    Token::Code(String::from("__")),
-                   Position { column: 2, line: 1 } 
+                   LexerPosition::from(Position { column: 2, line: 1 })
                 )),
               ]);
     assert_eq!(Lexer::new(b"\"_\\\n__\"".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position { column: 1, ..Default::default() },
+                Ok((LexerPosition::from(Position { column: 1, ..Default::default() }),
                    Token::Code(String::from("___")),
-                   Position { column: 3, line: 1 } 
+                   LexerPosition::from(Position { column: 3, line: 1 }) 
                 )),
               ]);
     // Repetition Code's Token
     assert_eq!(Lexer::new(b"\"_\" \"_\"".to_vec()).collect::<Vec<_>>(), vec![
-                Ok((Position { column: 1, ..Default::default() },
+                Ok((LexerPosition::from(Position { column: 1, ..Default::default() }),
                    Token::Code(String::from("__")),
-                   Position { column: 6, ..Default::default() } 
+                   LexerPosition::from(Position { column: 6, ..Default::default() }) 
                 )),
               ]);
 }
-
 
 #[test]
 fn lexer_include() {
    assert_eq!(Lexer::new(b"include /dev/unexist".to_vec()).collect::<Vec<_>>(), vec![
               Err(LexicalError::InvalidInclude(
-                 Position::default(),
+                 LexerPosition::default(),
                  Token::InvalidInclude(String::from("/dev/unexist"), Errno(2)),
-                 Position { column: 20, ..Default::default() }))
+                 LexerPosition {
+                     position: Position {
+                         column: 20, ..Default::default()
+                     },
+                     ..Default::default()
+                 }))
               ]);
-
-   let include: &str = concat!("include ", env!("CARGO_MANIFEST_DIR"), "/tests/enum_foo.exh");
+    
+   let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/enum_foo.exh");
+   let include = format!("include {}", filename);
    assert_eq!(Lexer::new(include.as_bytes().to_vec()).collect::<Vec<_>>(), vec![
-              Ok((Position { line: 0, column: 71 }, Token::Define, Position { line: 1, column: 77 })),
-              Ok((Position { line: 1, column: 78 }, Token::Enum, Position { line: 1, column: 82 })),
-              Ok((Position { line: 1, column: 83 }, Token::ChoiceIdent(String::from("foo")), Position { line: 1, column: 86 })),
-              Ok((Position { line: 1, column: 86 }, Token::LParen, Position { line: 1, column: 87 })),
-              Ok((Position { line: 1, column: 87 }, Token::RParen, Position { line: 1, column: 88 })),
-              Ok((Position { line: 1, column: 88 }, Token::Colon, Position { line: 1, column: 89 })),
-              Ok((Position { line: 2, column: 0 }, Token::End, Position { line: 2, column: 3 }))
+              Ok((LexerPosition::new(Position::new(0, 71), filename.to_owned()),
+                  Token::Define,
+                  LexerPosition::new(Position::new(1, 77), filename.to_owned()))),
+              Ok((LexerPosition::new(Position::new(1, 78), filename.to_owned()),
+                  Token::Enum,
+                  LexerPosition::new(Position::new(1, 82), filename.to_owned()))),
+              Ok((LexerPosition::new(Position::new(1, 83), filename.to_owned()),
+                  Token::ChoiceIdent(String::from("foo")),
+                  LexerPosition::new(Position::new(1, 86), filename.to_owned()))),
+              Ok((LexerPosition::new(Position::new(1, 86), filename.to_owned()),
+                  Token::LParen,
+                  LexerPosition::new(Position::new(1, 87), filename.to_owned()))),
+              Ok((LexerPosition::new(Position::new(1, 87), filename.to_owned()),
+                  Token::RParen,
+                  LexerPosition::new(Position::new(1, 88), filename.to_owned()))),
+              Ok((LexerPosition::new(Position::new(1, 88), filename.to_owned()),
+                  Token::Colon,
+                  LexerPosition::new(Position::new(1, 89), filename.to_owned()))),
+              Ok((LexerPosition::new(Position::new(2, 0), filename.to_owned()),
+                  Token::End,
+                  LexerPosition::new(Position::new(2, 3), filename.to_owned())))
             ]);
+
    assert_eq!(Lexer::new(include.as_bytes().to_vec()).collect::<Vec<_>>(), vec![
-              Ok((Position { line: 0, column: 71 }, Token::Define, Position { line: 1, column: 77 })),
-              Ok((Position { line: 1, column: 78 }, Token::Enum, Position { line: 1, column: 82 })),
-              Ok((Position { line: 1, column: 83 }, Token::ChoiceIdent(String::from("foo")), Position { line: 1, column: 86 })),
-              Ok((Position { line: 1, column: 86 }, Token::LParen, Position { line: 1, column: 87 })),
-              Ok((Position { line: 1, column: 87 }, Token::RParen, Position { line: 1, column: 88 })),
-              Ok((Position { line: 1, column: 88 }, Token::Colon, Position { line: 1, column: 89 })),
-              Ok((Position { line: 2, column: 0 }, Token::End, Position { line: 2, column: 3 }))
+              Ok((LexerPosition::new(Position::new(0, 71), filename.to_owned()),
+                  Token::Define,
+                  LexerPosition::new(Position::new(1, 77), filename.to_owned()))),
+              Ok((LexerPosition::new(Position::new(1, 78), filename.to_owned()),
+                  Token::Enum,
+                  LexerPosition::new(Position::new(1, 82), filename.to_owned()))),
+              Ok((LexerPosition::new(Position::new(1, 83), filename.to_owned()),
+                  Token::ChoiceIdent(String::from("foo")),
+                  LexerPosition::new(Position::new(1, 86), filename.to_owned()))),
+              Ok((LexerPosition::new(Position::new(1, 86), filename.to_owned()),
+                  Token::LParen,
+                  LexerPosition::new(Position::new(1, 87), filename.to_owned()))),
+              Ok((LexerPosition::new(Position::new(1, 87), filename.to_owned()),
+                  Token::RParen,
+                  LexerPosition::new(Position::new(1, 88), filename.to_owned()))),
+              Ok((LexerPosition::new(Position::new(1, 88), filename.to_owned()),
+                  Token::Colon,
+                  LexerPosition::new(Position::new(1, 89), filename.to_owned()))),
+              Ok((LexerPosition::new(Position::new(2, 0), filename.to_owned()),
+                  Token::End,
+                  LexerPosition::new(Position::new(2, 3), filename.to_owned())))
             ]);
 }

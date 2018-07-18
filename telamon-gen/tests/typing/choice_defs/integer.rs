@@ -18,6 +18,7 @@ mod undefined {
                 beg: Position { line: 0, column: 15},
                 end: Position { line: 0, column: 18},
                 data: String::from("MySet"),
+                filename: Default::default()
             }))
         );
     }
@@ -39,10 +40,12 @@ mod redefinition {
                 beg: Position { line: 0, column: 15},
                 end: Position { line: 0, column: 18},
                 data: Hint::Integer,
+                filename: Default::default()
             }, Spanned {
                 beg: Position { line: 2, column: 29},
                 end: Position { line: 2, column: 32},
                 data:  String::from("foo"),
+                filename: Default::default()
             }))
         );
     }

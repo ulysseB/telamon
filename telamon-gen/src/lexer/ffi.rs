@@ -38,6 +38,17 @@ pub struct Position {
     pub column: libc::c_uint,
 }
 
+impl Position {
+
+    // Returns a Position interface from a couple of line/column.
+    pub fn new(line: libc::c_uint, column: libc::c_uint) -> Self {
+        Position {
+            line,
+            column
+        }
+    }
+}
+
 impl fmt::Display for Position {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "line {}, column {}", self.line, self.column)
@@ -49,6 +60,25 @@ impl fmt::Display for Position {
 pub struct LexerPosition {
     pub position: Position,
     pub filename: Option<String>,
+}
+
+impl LexerPosition {
+    // Returns a LexerPosition interface from Position with filename.
+    pub fn new(position: Position, filename: String) -> Self {
+        LexerPosition {
+            position,
+            filename: Some(filename),
+        }
+    }
+}
+
+impl From<Position> for LexerPosition {
+    fn from(position: Position) -> Self {
+        LexerPosition {
+            position,
+            ..Default::default()
+        }
+    }
 }
 
 impl fmt::Display for LexerPosition {
@@ -75,26 +105,26 @@ impl fmt::Display for Span {
 }
 
 /// A F/lex's token with a span.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Default, Clone, PartialEq, Debug)]
 #[repr(C)]
-pub struct Spanned<Y> {
+pub struct LexerSpanned<Y> {
     pub beg: Position,
     pub end: Position,
     /// Spanned data
     pub data: Y,
 }
 
-impl<Y> Spanned<Y> {
-    pub fn new(data: Y) -> Spanned<Y> {
-        Spanned {
-            beg: Position::default(),
-            end: Position::default(),
-            data,
-        }
-    }
-}
+pub type YyExtraType = LexerSpanned<YyLval>;
 
-pub type YyExtraType = Spanned<YyLval>;
+/// A F/lex's token with a span.
+#[derive(Clone, PartialEq, Debug)]
+pub struct Spanned<Y> {
+    pub beg: Position,
+    pub end: Position,
+    /// Spanned data
+    pub data: Y,
+    pub filename: Option<String>,
+}
 
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]

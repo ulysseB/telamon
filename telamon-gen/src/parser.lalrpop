@@ -158,7 +158,12 @@ list<T, SEP>: Vec<T> = {
 #[inline]
 spanned<T>: Spanned<T> = {
     <beg: @L> <data: T> <end: @R> => {
-        Spanned { beg: beg.position, end: end.position, data }
+        Spanned {
+            beg: beg.position,
+            end: end.position,
+            data,
+            filename: beg.filename.to_owned(),
+        }
     }
 };
 

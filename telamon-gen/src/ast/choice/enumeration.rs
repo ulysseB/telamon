@@ -16,22 +16,23 @@ impl EnumDef {
 
         for stmt in self.statements.iter() {
             match stmt {
-                EnumStatement::Value(Spanned { beg, end, data: name }, ..) => {
+                EnumStatement::Value(Spanned { beg, end, data: name, filename }, ..) => {
                     hash.insert(name.to_owned(), Spanned {
-                        beg: *beg, end: *end, data: ()
+                        beg: *beg, end: *end, data: (), filename: filename.to_owned()
                     } );
                 },
-                EnumStatement::Alias(Spanned { beg, end, data: name }, _, sets, ..) => {
+                EnumStatement::Alias(Spanned { beg, end, data: name, filename }, _, sets, ..) => {
                     for set in sets {
                         if !hash.contains_key(set) {
                             Err(TypeError::Undefined(Spanned {
-                                beg: *beg, end: *end,
-                                data: set.to_owned(),
+                                beg: *beg, end: *end, data: set.to_owned(),
+                                filename: filename.to_owned()
                             }))?;
                         }
                     }
                     hash.insert(name.to_owned(), Spanned {
-                        beg: *beg, end: *end, data: ()
+                        beg: *beg, end: *end, data: (),
+                        filename: filename.to_owned()
                     });
                 },
                 _ => {},
@@ -47,43 +48,44 @@ impl EnumDef {
 
         for stmt in self.statements.iter() {
             match stmt {
-                EnumStatement::Symmetric(Spanned { beg, end, ..}) => {
+                EnumStatement::Symmetric(Spanned { beg, end, data: _, filename }) => {
                     if let Some(ref before) = symmetric {
                         Err(TypeError::Redefinition(
                             Spanned {
-                                beg: before.beg, end: before.end,
-                                data: Hint::EnumAttribute
+                                beg: before.beg, end: before.end, data: Hint::EnumAttribute,
+                                filename: filename.to_owned()
                             },
                             Spanned {
-                                beg: *beg, end: *end,
-                                data: String::from("Symmetric"),
+                                beg: *beg, end: *end, data: String::from("Symmetric"),
+                                filename: filename.to_owned()
                             },
                         ))?;
                     } else {
                         symmetric = Some(Spanned {
-                            beg: *beg, end: *end,
-                            data: (),
+                            beg: *beg, end: *end, data: (),
+                            filename: filename.to_owned()
                         });
                     }
                 },
-                EnumStatement::Value(Spanned { beg, end, data: name }, ..) |
-                EnumStatement::Alias(Spanned { beg, end, data: name }, ..) => {
+                EnumStatement::Value(Spanned { beg, end, data: name, filename }, ..) |
+                EnumStatement::Alias(Spanned { beg, end, data: name, filename }, ..) => {
                     if let Some(Spanned {
-                        beg: beg_before,
-                        end: end_before,
-                        data: _
+                        beg: beg_before, end: end_before, data: _, filename: _
                     }) = hash.insert(
                         name.to_owned(),
-                        Spanned { beg: *beg, end: *end, data: () }
+                        Spanned {
+                            beg: *beg, end: *end, data: (),
+                            filename: filename.to_owned()
+                        }
                     ) {
                         Err(TypeError::Redefinition(
                             Spanned {
-                                beg: *beg, end: *end,
-                                data: Hint::EnumAttribute
+                                beg: *beg, end: *end, data: Hint::EnumAttribute,
+                                filename: filename.to_owned()
                             },
                             Spanned {
-                                beg: *beg, end: *end,
-                                data: name.to_owned()
+                                beg: *beg, end: *end, data: name.to_owned(),
+                                filename: filename.to_owned()
                             },
                         ))?;
                     }

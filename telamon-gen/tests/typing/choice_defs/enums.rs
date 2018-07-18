@@ -21,7 +21,8 @@ mod undefined {
             Some(TypeError::Undefined(Spanned {
                 beg: Position { line: 0, column: 12},
                 end: Position { line: 0, column: 15},
-                data: String::from("BasicBlock")
+                data: String::from("BasicBlock"),
+                filename: Default::default()
             }))
         );
     }
@@ -37,7 +38,8 @@ mod undefined {
             Some(TypeError::Undefined(Spanned {
                 beg: Position { line: 2, column: 22},
                 end: Position { line: 2, column: 24},
-                data: String::from("B")
+                data: String::from("B"),
+                filename: Default::default()
             }))
         );
     }
@@ -61,10 +63,12 @@ mod redefinition {
                 beg: Position { line: 0, column: 12},
                 end: Position { line: 0, column: 15},
                 data: Hint::Enum,
+                filename: Default::default()
             }, Spanned {
                 beg: Position { line: 3, column: 26},
                 end: Position { line: 3, column: 29},
                 data: String::from("foo"),
+                filename: Default::default()
             }))
         );
     }
@@ -83,10 +87,12 @@ mod redefinition {
                 beg: Position { line: 5, column: 22 },
                 end: Position { line: 5, column: 24 },
                 data: Hint::EnumAttribute,
+                filename: Default::default()
             }, Spanned {
                 beg: Position { line: 5, column: 22 },
                 end: Position { line: 5, column: 24 },
                 data: String::from("AB"),
+                filename: Default::default()
             }))
         );
         assert_eq!(parser::parse_ast(Lexer::new(
@@ -99,10 +105,12 @@ mod redefinition {
                 beg: Position { line: 3, column: 22 },
                 end: Position { line: 3, column: 23 },
                 data: Hint::EnumAttribute,
+                filename: Default::default()
             }, Spanned {
                 beg: Position { line: 3, column: 22 },
                 end: Position { line: 3, column: 23 },
                 data: String::from("A"),
+                filename: Default::default()
             }))
         );
         assert_eq!(parser::parse_ast(Lexer::new(
@@ -125,10 +133,12 @@ mod redefinition {
                 beg: Position { line: 10, column: 16 },
                 end: Position { line: 10, column: 25 },
                 data: Hint::EnumAttribute,
+                filename: Default::default()
             }, Spanned {
                 beg: Position { line: 11, column: 16 },
                 end: Position { line: 11, column: 25 },
                 data: String::from("Symmetric"),
+                filename: Default::default()
             }))
         );
     }
@@ -146,7 +156,8 @@ fn enum_symmetric_two_parameters() {
         Some(Spanned {
             beg: Position { line: 0, column: 0},
             end: Position { line: 0, column: 18},
-            data: TypeError::BadSymmetricArg(vec![])
+            data: TypeError::BadSymmetricArg(vec![]),
+            filename: Default::default()
         })
     );
     assert_eq!(parser::parse_ast(Lexer::new(
@@ -175,7 +186,8 @@ fn enum_symmetric_two_parameters() {
                         var: None
                     }
                 },
-            ])
+            ]),
+            filename: Default::default()
         })
     );
     assert_eq!(parser::parse_ast(Lexer::new(
@@ -220,7 +232,8 @@ fn enum_symmetric_two_parameters() {
                         var: None
                     }
                 },
-            ])
+            ]),
+            filename: Default::default()
         })
     );
 }
@@ -269,7 +282,8 @@ fn enum_symmetric_same_parameter() {
                         var: None
                     }
                 }
-                ])
+            ]),
+            filename: Default::default()
         })
     );
 }

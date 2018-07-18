@@ -35,10 +35,12 @@ mod redefinition {
                 beg: Position { line: 0, column: 4},
                 end: Position { line: 0, column: 7},
                 data: Hint::Set,
+                filename: Default::default()
             }, Spanned {
                 beg: Position { line: 9, column: 16},
                 end: Position { line: 9, column: 19},
                 data:  String::from("Foo"),
+                filename: Default::default()
             }))
         );
     }
@@ -62,10 +64,12 @@ mod redefinition {
                 beg: Default::default(),
                 end: Default::default(),
                 data: Hint::Set,
+                filename: Default::default()
             }, Spanned {
                 beg: Default::default(),
                 end: Default::default(),
                 data:  String::from("NewObjs"),
+                filename: Default::default()
             }))
         );
     }
@@ -93,6 +97,7 @@ mod undefined {
                 beg: Position { line: 0, column: 4},
                 end: Position { line: 0, column: 11},
                 data: String::from("Instruction"),
+                filename: Default::default()
             }))
         );
     }
@@ -115,6 +120,7 @@ mod undefined {
                 beg: Position { line: 0, column: 4},
                 end: Position { line: 0, column: 15},
                 data: String::from("BasicBlock"),
+                filename: Default::default()
             }))
         );
     }
@@ -140,7 +146,8 @@ mod missing_entry {
             Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
                 beg: Position { line: 0, column: 4},
                 end: Position { line: 0, column: 15},
-                data: ir::SetDefKey::ItemType.to_string()
+                data: ir::SetDefKey::ItemType.to_string(),
+                filename: Default::default()
             }))
         );
     }
@@ -160,7 +167,8 @@ mod missing_entry {
             Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
                 beg: Position { line: 0, column: 4},
                 end: Position { line: 0, column: 15},
-                data: ir::SetDefKey::IdType.to_string()
+                data: ir::SetDefKey::IdType.to_string(),
+                filename: Default::default()
             }))
         );
     }
@@ -180,7 +188,8 @@ mod missing_entry {
             Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
                 beg: Position { line: 0, column: 4},
                 end: Position { line: 0, column: 15},
-                data: ir::SetDefKey::ItemGetter.to_string()
+                data: ir::SetDefKey::ItemGetter.to_string(),
+                filename: Default::default()
             }))
         );
     }
@@ -200,7 +209,8 @@ mod missing_entry {
             Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
                 beg: Position { line: 0, column: 4},
                 end: Position { line: 0, column: 15},
-                data: ir::SetDefKey::IdGetter.to_string()
+                data: ir::SetDefKey::IdGetter.to_string(),
+                filename: Default::default()
             }))
         );
     }
@@ -220,7 +230,8 @@ mod missing_entry {
             Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
                 beg: Position { line: 0, column: 4},
                 end: Position { line: 0, column: 15},
-                data: ir::SetDefKey::Iter.to_string()
+                data: ir::SetDefKey::Iter.to_string(),
+                filename: Default::default()
             }))
         );
     }
@@ -251,7 +262,8 @@ mod missing_entry {
             Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
                 beg: Position { line: 10, column: 18},
                 end: Position { line: 10, column: 29},
-                data: ir::SetDefKey::FromSuperset.to_string()
+                data: ir::SetDefKey::FromSuperset.to_string(),
+                filename: Default::default()
             }))
         );
     }
