@@ -25,11 +25,4 @@ fn main() {
     let space = common::MM.clone();
     let mem_one = resident_memory();
     println!("candidate size: {} bytes", mem_one - mem_beg);
-    let copies = (0..NUM_DESCENTS).map(|_| {
-        common::descend_with_copies(space.clone())
-    }).collect_vec();
-    let mem_descents = resident_memory();
-    let mem_per_descent = (mem_descents - mem_one)/NUM_DESCENTS;
-    println!("memory used per descent: {} bytes", mem_per_descent);
-    std::mem::drop(copies);
 }
