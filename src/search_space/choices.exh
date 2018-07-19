@@ -253,15 +253,17 @@ define enum dim_mapping($lhs in Dimensions, $rhs in Dimensions):
     requires dim_kind($lhs) is UNROLL | VECTOR || order($lhs, $rhs) is MERGED
   /// Values may be transmitted using one register for each thread.
   value THREAD_MAP:
-    requires thread_mapping($lhs, $rhs) is MAPPED
   /// Values are transmitted through registers.
   alias MAPPED = UNROLL_MAP | THREAD_MAP:
     requires "$lhs.size() == $rhs.size()"
 end
 
+require forall $lhs in StaticDims:
+  forall $rhs in StaticDims:
+    dim_mapping($lhs, $rhs) is not THREAD_MAP || thread_mapping($lhs, $rhs) is MAPPED
+
 /// Indicates how are thread dimensions mapped on the GPU.
-// FIXME: restrict to static dimensions
-define enum thread_mapping($lhs in Dimensions, $rhs in Dimensions):
+define enum thread_mapping($lhs in StaticDims, $rhs in StaticDims):
   antisymmetric:
     MAPPED_OUT -> MAPPED_IN
   /// One of the dimensions is a not thread.
