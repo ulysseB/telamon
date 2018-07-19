@@ -5,11 +5,14 @@ from telamon._capi import ffi, lib
 # Initialize Rust logger early.
 lib.env_logger_try_init()
 
+
 class TelamonError(Exception):
     """Base error class for Telamon errors."""
 
+
 # FIXME: The device stack should be a thread-local variable.
 _DEVICE_STACK = []
+
 
 @contextlib.contextmanager
 def device(device_spec: str):
@@ -27,14 +30,16 @@ def device(device_spec: str):
         device_spec: The device specification to use. One of "CPU" or "GPU".
     """
 
-    if device_spec.upper() == 'CPU':
+    if device_spec.upper() == "CPU":
         device_id = lib.X86
-    elif device_spec.upper() == 'GPU':
+    elif device_spec.upper() == "GPU":
         device_id = lib.Cuda
     else:
         raise ValueError(
             'Invalid device specification: {}; expected "CPU" or "GPU"'.format(
-                device_spec))
+                device_spec
+            )
+        )
 
     _DEVICE_STACK.append(device_id)
     try:
@@ -43,13 +48,15 @@ def device(device_spec: str):
         popped_id = _DEVICE_STACK.pop()
         assert popped_id == device_id
 
+
 def _get_current_device_id():
     return lib.X86 if not _DEVICE_STACK else _DEVICE_STACK[-1]
+
 
 class RustObject:
     """Thin wrapper around a Rust object."""
 
-    __slots__ = ('_objptr', )
+    __slots__ = ("_objptr",)
 
     # The deallocation function. This should be defined by subclasses, but we
     # allow it to be left as `None` for non-allocated types that are moved out
@@ -78,6 +85,7 @@ class RustObject:
         # Prevent double free/use after free.
         self._objptr = None
 
+
 class Kernel(RustObject):
     """Base class for Python objects representing Telamon kernels."""
 
@@ -87,12 +95,13 @@ class Kernel(RustObject):
         config_bytes = json.dumps(config or {}).encode()
 
         if not lib.kernel_optimize(
-                self.objptr,
-                _get_current_device_id(),
-                ffi.new("char[]", config_bytes),
-                len(config_bytes)):
-            raise TelamonError(
-                'Optimization failed.')
+            self.objptr,
+            _get_current_device_id(),
+            ffi.new("char[]", config_bytes),
+            len(config_bytes),
+        ):
+            raise TelamonError("Optimization failed.")
+
 
 def _ffi_tiling(tiles):
     """Helper to convert Python tilings into a cffi compatible object.
@@ -107,33 +116,34 @@ def _ffi_tiling(tiles):
     if tiles is None:
         return ffi.NULL
 
-    c_tiles = ffi.new('Tiling *')
+    c_tiles = ffi.new("Tiling *")
     c_tiles.length = len(tiles)
-    c_tiles.data = ffi.new('unsigned int *', len(tiles))
-    c_tiles.data[0:len(tiles)] = tiles
+    c_tiles.data = ffi.new("unsigned int *", len(tiles))
+    c_tiles.data[0 : len(tiles)] = tiles
     return c_tiles
+
 
 class MatMul(Kernel):
     """A Matrix Multiply kernel."""
 
     def __init__(
-            self,
-            m: int,
-            n: int,
-            k: int,
-            *,
-            a_stride: int = 1,
-            transpose_a: bool = False,
-            transpose_b: bool = False,
-            generic: bool = True,
-            m_tiles=None,
-            n_tiles=None,
-            k_tiles=None):
+        self,
+        m: int,
+        n: int,
+        k: int,
+        *,
+        a_stride: int = 1,
+        transpose_a: bool = False,
+        transpose_b: bool = False,
+        generic: bool = True,
+        m_tiles=None,
+        n_tiles=None,
+        k_tiles=None
+    ):
         """Initializes a new Matrix Multiply kernel."""
 
         if a_stride < 1:
-            raise ValueError(
-                'a_stride should be a positive integer.')
+            raise ValueError("a_stride should be a positive integer.")
 
         # We need to keep around a reference to the cffi objects until after
         # the call is done in order to avoid having memory released too early.
@@ -146,6 +156,15 @@ class MatMul(Kernel):
 
         super().__init__(
             lib.kernel_matmul_new(
-                m, n, k,
-                a_stride, int(transpose_a), int(transpose_b), int(generic),
-                ffi_m_tiles, ffi_n_tiles, ffi_k_tiles))
+                m,
+                n,
+                k,
+                a_stride,
+                int(transpose_a),
+                int(transpose_b),
+                int(generic),
+                ffi_m_tiles,
+                ffi_n_tiles,
+                ffi_k_tiles,
+            )
+        )
