@@ -26,7 +26,7 @@ impl<'a> Instruction<'a> {
     /// Creates a new instruction and type-check the operands.
     pub fn new(operator: Operator<'a>, id: InstId, iter_dims: HashSet<ir::dim::Id>,
                device: &Device) -> Result<Instruction<'a>, ir::Error> {
-        operator.type_check(device)?;
+        operator.check(&iter_dims, device)?;
         Ok(Instruction { operator, id, iter_dims })
     }
 

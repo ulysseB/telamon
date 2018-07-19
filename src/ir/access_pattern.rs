@@ -40,4 +40,20 @@ impl<'a> AccessPattern<'a> {
             AccessPattern::Tensor { mem_id, .. } => mem_id,
         }
     }
+
+    /// Ensure the access pattern is valid for an instruction declared in the given
+    /// dimensions.
+    pub fn check(&self, iter_dims: &HashSet<ir::dim::Id>) -> Result<(), ir::Error> {
+        match self {
+            AccessPattern::Unknown { .. } => Ok(()),
+            AccessPattern::Tensor { dims, .. } => {
+                for (&dim, _) in dims {
+                    if !iter_dims.contains(&dim) {
+                        return Err(ir::Error::InvalidDimInPattern { dim });
+                    }
+                }
+                Ok(())
+            },
+        }
+    }
 }

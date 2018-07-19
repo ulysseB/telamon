@@ -5,6 +5,7 @@ use itertools::Itertools;
 use std;
 use std::borrow::Cow;
 use self::Operator::*;
+use utils::*;
 
 /// The rounding mode of an arithmetic operation.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -93,7 +94,9 @@ pub enum Operator<'a> {
 
 impl<'a> Operator<'a> {
     /// Ensures the types of the operands are valid.
-    pub fn type_check(&self, device: &Device) -> Result<(), ir::TypeError> {
+    pub fn check(&self, iter_dims: &HashSet<ir::dim::Id>, device: &Device)
+        -> Result<(), ir::Error>
+    {
         self.t().map(|t| device.check_type(t)).unwrap_or(Ok(()))?;
         for operand in self.operands() { device.check_type(operand.t())?; }
         match *self {
@@ -121,10 +124,14 @@ impl<'a> Operator<'a> {
                     (_, t) => Err(ir::TypeError::UnexpectedType { t })?,
                 }
             },
-            Ld(_, ref addr, ref pattern) =>
-                ir::TypeError::check_equals(addr.t(), Type::PtrTo(pattern.mem_block()))?,
-            St(ref addr, _, _, ref pattern) =>
-                ir::TypeError::check_equals(addr.t(), Type::PtrTo(pattern.mem_block()))?,
+            Ld(_, ref addr, ref pattern) => {
+                pattern.check(iter_dims)?;
+                ir::TypeError::check_equals(addr.t(), Type::PtrTo(pattern.mem_block()))?;
+            },
+            St(ref addr, _, _, ref pattern) => {
+                pattern.check(iter_dims)?;
+                ir::TypeError::check_equals(addr.t(), Type::PtrTo(pattern.mem_block()))?;
+            },
             TmpLd(..) | Cast(..) | Mov(..) | TmpSt(..) => (),
         }
         Ok(())
