@@ -3187,10 +3187,87 @@
 <span id="3187">3187</span>
 <span id="3188">3188</span>
 <span id="3189">3189</span>
+<span id="3190">3190</span>
+<span id="3191">3191</span>
+<span id="3192">3192</span>
+<span id="3193">3193</span>
+<span id="3194">3194</span>
+<span id="3195">3195</span>
+<span id="3196">3196</span>
+<span id="3197">3197</span>
+<span id="3198">3198</span>
+<span id="3199">3199</span>
+<span id="3200">3200</span>
+<span id="3201">3201</span>
+<span id="3202">3202</span>
+<span id="3203">3203</span>
+<span id="3204">3204</span>
+<span id="3205">3205</span>
+<span id="3206">3206</span>
+<span id="3207">3207</span>
+<span id="3208">3208</span>
+<span id="3209">3209</span>
+<span id="3210">3210</span>
+<span id="3211">3211</span>
+<span id="3212">3212</span>
+<span id="3213">3213</span>
+<span id="3214">3214</span>
+<span id="3215">3215</span>
+<span id="3216">3216</span>
+<span id="3217">3217</span>
+<span id="3218">3218</span>
+<span id="3219">3219</span>
+<span id="3220">3220</span>
+<span id="3221">3221</span>
+<span id="3222">3222</span>
+<span id="3223">3223</span>
+<span id="3224">3224</span>
+<span id="3225">3225</span>
+<span id="3226">3226</span>
+<span id="3227">3227</span>
+<span id="3228">3228</span>
+<span id="3229">3229</span>
+<span id="3230">3230</span>
+<span id="3231">3231</span>
+<span id="3232">3232</span>
+<span id="3233">3233</span>
+<span id="3234">3234</span>
+<span id="3235">3235</span>
+<span id="3236">3236</span>
+<span id="3237">3237</span>
+<span id="3238">3238</span>
+<span id="3239">3239</span>
+<span id="3240">3240</span>
+<span id="3241">3241</span>
+<span id="3242">3242</span>
+<span id="3243">3243</span>
+<span id="3244">3244</span>
+<span id="3245">3245</span>
+<span id="3246">3246</span>
+<span id="3247">3247</span>
+<span id="3248">3248</span>
+<span id="3249">3249</span>
+<span id="3250">3250</span>
+<span id="3251">3251</span>
+<span id="3252">3252</span>
+<span id="3253">3253</span>
+<span id="3254">3254</span>
+<span id="3255">3255</span>
+<span id="3256">3256</span>
+<span id="3257">3257</span>
+<span id="3258">3258</span>
+<span id="3259">3259</span>
+<span id="3260">3260</span>
+<span id="3261">3261</span>
+<span id="3262">3262</span>
+<span id="3263">3263</span>
+<span id="3264">3264</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>;
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
 <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
+<span class="kw">use</span> <span class="ident">num</span>;
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
 <span class="kw">use</span> <span class="ident">std</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
@@ -3204,9 +3281,9 @@
 
     <span class="ident">param_value_choice_2</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>, <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>), <span class="ident">ParamValueChoice2</span><span class="op">&gt;&gt;</span>,
 
-    <span class="ident">param_choice</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,), <span class="ident">ParamChoice</span><span class="op">&gt;&gt;</span>,
-
     <span class="ident">param_value_choice</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>, <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>), <span class="ident">ParamValueChoice</span><span class="op">&gt;&gt;</span>,
+
+    <span class="ident">param_choice</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,), <span class="ident">ParamChoice</span><span class="op">&gt;&gt;</span>,
 
     <span class="ident">value_ab_choice</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>, <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>), <span class="ident">ValueAbChoice</span><span class="op">&gt;&gt;</span>,
 }
@@ -3244,14 +3321,6 @@
             }
         }
         <span class="kw">for</span> <span class="ident">param</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
-            <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">param_choice</span>).<span class="ident">insert</span>(
-                (<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(
-                    <span class="ident">param</span>,
-                ),),
-                <span class="ident">ParamChoice</span>::<span class="ident">all</span>(),
-            );
-        }
-        <span class="kw">for</span> <span class="ident">param</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
             <span class="kw">for</span> <span class="ident">val</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
                 <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">param_value_choice</span>).<span class="ident">insert</span>(
                     (
@@ -3261,6 +3330,14 @@
                     <span class="ident">ParamValueChoice</span>::<span class="ident">all</span>(),
                 );
             }
+        }
+        <span class="kw">for</span> <span class="ident">param</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
+            <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">param_choice</span>).<span class="ident">insert</span>(
+                (<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(
+                    <span class="ident">param</span>,
+                ),),
+                <span class="ident">ParamChoice</span>::<span class="ident">all</span>(),
+            );
         }
         <span class="kw">for</span> <span class="ident">param</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
             <span class="kw">for</span> <span class="ident">val</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">value_ab</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>, <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>)) {
@@ -3323,17 +3400,6 @@
         }
         <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">param</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
             <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
-            <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">param_choice</span>).<span class="ident">insert</span>(
-                (
-                    <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),
-                ),
-                <span class="ident">ParamChoice</span>::<span class="ident">all</span>(),
-            );
-
-
-        }
-        <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">param</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-            <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
             <span class="kw">for</span> <span class="ident">val</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
                 <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">param_value_choice</span>).<span class="ident">insert</span>(
                     (
@@ -3363,6 +3429,17 @@
                 );
 
             }
+        }
+        <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">param</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
+            <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
+            <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">param_choice</span>).<span class="ident">insert</span>(
+                (
+                    <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),
+                ),
+                <span class="ident">ParamChoice</span>::<span class="ident">all</span>(),
+            );
+
+
         }
         <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">param</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
             <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
@@ -3522,58 +3599,6 @@
 
     <span class="doccomment">/// Returns the domain of {name} for the given arguments.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_param_choice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">param</span>: <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>) <span class="op">-&gt;</span> <span class="ident">ParamChoice</span> {
-        <span class="self">self</span>.<span class="ident">param_choice</span>[<span class="kw-2">&amp;</span>(<span class="ident">param</span>,)]
-    }
-
-    <span class="doccomment">/// Returns the domain of {name} for the given arguments. If the domain has</span>
-    <span class="doccomment">/// been restricted</span>
-    <span class="doccomment">/// but the change not yet applied, returns the old value.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_old_param_choice</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="kw-2">mut</span> <span class="ident">param</span>: <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,
-        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="ident">DomainDiff</span>,
-    ) <span class="op">-&gt;</span> <span class="ident">ParamChoice</span> {
-        <span class="ident">diff</span>.<span class="ident">param_choice</span>
-            .<span class="ident">get</span>(<span class="kw-2">&amp;</span>(<span class="ident">param</span>,))
-            .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">old</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">old</span>)
-            .<span class="ident">unwrap_or_else</span>(<span class="op">||</span> <span class="self">self</span>.<span class="ident">param_choice</span>[<span class="kw-2">&amp;</span>(<span class="ident">param</span>,)])
-    }
-
-    <span class="doccomment">/// Sets the domain of {name} for the given arguments.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_param_choice</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">param</span>: <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>, <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">ParamChoice</span>) {
-
-        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;set param_choice{:?} to {:?}&quot;</span>, (<span class="ident">param</span>,), <span class="ident">value</span>);
-        <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">param_choice</span>).<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span>(<span class="ident">param</span>,))) <span class="op">=</span> <span class="ident">value</span>;
-    }
-
-    <span class="doccomment">/// Restricts the domain of {name} for the given arguments. Put the old</span>
-    <span class="doccomment">/// value in `diff`</span>
-    <span class="doccomment">/// and indicates if the new domain is failed.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict_param_choice</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="kw-2">mut</span> <span class="ident">param</span>: <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,
-        <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">ParamChoice</span>,
-        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>,
-    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ptr</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">param_choice</span>).<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span>(<span class="ident">param</span>,)));
-        <span class="kw">let</span> <span class="ident">old</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
-        <span class="ident">ptr</span>.<span class="ident">restrict</span>(<span class="ident">value</span>);
-        <span class="kw">if</span> <span class="ident">old</span> <span class="op">!=</span> <span class="kw-2">*</span><span class="ident">ptr</span> {
-            <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;restrict param_choice{:?} to {:?}&quot;</span>, (<span class="ident">param</span>,), <span class="kw-2">*</span><span class="ident">ptr</span>);
-            <span class="ident">diff</span>.<span class="ident">param_choice</span>.<span class="ident">entry</span>((<span class="ident">param</span>,)).<span class="ident">or_insert</span>((<span class="ident">old</span>, <span class="kw-2">*</span><span class="ident">ptr</span>)).<span class="number">1</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
-        }
-        <span class="kw">if</span> <span class="ident">ptr</span>.<span class="ident">is_failed</span>() { <span class="prelude-val">Err</span>(()) } <span class="kw">else</span> { <span class="prelude-val">Ok</span>(()) }
-    }
-
-
-
-    <span class="doccomment">/// Returns the domain of {name} for the given arguments.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_param_value_choice</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="kw-2">mut</span> <span class="ident">param</span>: <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,
@@ -3634,6 +3659,58 @@
                 .<span class="ident">entry</span>((<span class="ident">param</span>, <span class="ident">val</span>))
                 .<span class="ident">or_insert</span>((<span class="ident">old</span>, <span class="kw-2">*</span><span class="ident">ptr</span>))
                 .<span class="number">1</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
+        }
+        <span class="kw">if</span> <span class="ident">ptr</span>.<span class="ident">is_failed</span>() { <span class="prelude-val">Err</span>(()) } <span class="kw">else</span> { <span class="prelude-val">Ok</span>(()) }
+    }
+
+
+
+    <span class="doccomment">/// Returns the domain of {name} for the given arguments.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_param_choice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">param</span>: <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>) <span class="op">-&gt;</span> <span class="ident">ParamChoice</span> {
+        <span class="self">self</span>.<span class="ident">param_choice</span>[<span class="kw-2">&amp;</span>(<span class="ident">param</span>,)]
+    }
+
+    <span class="doccomment">/// Returns the domain of {name} for the given arguments. If the domain has</span>
+    <span class="doccomment">/// been restricted</span>
+    <span class="doccomment">/// but the change not yet applied, returns the old value.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_old_param_choice</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">mut</span> <span class="ident">param</span>: <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,
+        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="ident">DomainDiff</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">ParamChoice</span> {
+        <span class="ident">diff</span>.<span class="ident">param_choice</span>
+            .<span class="ident">get</span>(<span class="kw-2">&amp;</span>(<span class="ident">param</span>,))
+            .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">old</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">old</span>)
+            .<span class="ident">unwrap_or_else</span>(<span class="op">||</span> <span class="self">self</span>.<span class="ident">param_choice</span>[<span class="kw-2">&amp;</span>(<span class="ident">param</span>,)])
+    }
+
+    <span class="doccomment">/// Sets the domain of {name} for the given arguments.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_param_choice</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">param</span>: <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>, <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">ParamChoice</span>) {
+
+        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;set param_choice{:?} to {:?}&quot;</span>, (<span class="ident">param</span>,), <span class="ident">value</span>);
+        <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">param_choice</span>).<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span>(<span class="ident">param</span>,))) <span class="op">=</span> <span class="ident">value</span>;
+    }
+
+    <span class="doccomment">/// Restricts the domain of {name} for the given arguments. Put the old</span>
+    <span class="doccomment">/// value in `diff`</span>
+    <span class="doccomment">/// and indicates if the new domain is failed.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_mut</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict_param_choice</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="kw-2">mut</span> <span class="ident">param</span>: <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,
+        <span class="kw-2">mut</span> <span class="ident">value</span>: <span class="ident">ParamChoice</span>,
+        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>,
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ptr</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">param_choice</span>).<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span>(<span class="ident">param</span>,)));
+        <span class="kw">let</span> <span class="ident">old</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
+        <span class="ident">ptr</span>.<span class="ident">restrict</span>(<span class="ident">value</span>);
+        <span class="kw">if</span> <span class="ident">old</span> <span class="op">!=</span> <span class="kw-2">*</span><span class="ident">ptr</span> {
+            <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;restrict param_choice{:?} to {:?}&quot;</span>, (<span class="ident">param</span>,), <span class="kw-2">*</span><span class="ident">ptr</span>);
+            <span class="ident">diff</span>.<span class="ident">param_choice</span>.<span class="ident">entry</span>((<span class="ident">param</span>,)).<span class="ident">or_insert</span>((<span class="ident">old</span>, <span class="kw-2">*</span><span class="ident">ptr</span>)).<span class="number">1</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">ptr</span>;
         }
         <span class="kw">if</span> <span class="ident">ptr</span>.<span class="ident">is_failed</span>() { <span class="prelude-val">Err</span>(()) } <span class="kw">else</span> { <span class="prelude-val">Ok</span>(()) }
     }
@@ -3714,10 +3791,10 @@
     <span class="kw">pub</span> <span class="ident">param_value_choice_2</span>:
         <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>, <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>), (<span class="ident">ParamValueChoice2</span>, <span class="ident">ParamValueChoice2</span>)<span class="op">&gt;</span>,
 
-    <span class="kw">pub</span> <span class="ident">param_choice</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,), (<span class="ident">ParamChoice</span>, <span class="ident">ParamChoice</span>)<span class="op">&gt;</span>,
-
     <span class="kw">pub</span> <span class="ident">param_value_choice</span>:
         <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>, <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>), (<span class="ident">ParamValueChoice</span>, <span class="ident">ParamValueChoice</span>)<span class="op">&gt;</span>,
+
+    <span class="kw">pub</span> <span class="ident">param_choice</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,), (<span class="ident">ParamChoice</span>, <span class="ident">ParamChoice</span>)<span class="op">&gt;</span>,
 
     <span class="kw">pub</span> <span class="ident">value_ab_choice</span>:
         <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>, <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>), (<span class="ident">ValueAbChoice</span>, <span class="ident">ValueAbChoice</span>)<span class="op">&gt;</span>,
@@ -3727,7 +3804,7 @@
     <span class="doccomment">/// Indicates if the `DomainDiff` does not holds any modification.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_empty</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">value_choice</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">param_value_choice_2</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span>
-            <span class="self">self</span>.<span class="ident">param_choice</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">param_value_choice</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span>
+            <span class="self">self</span>.<span class="ident">param_value_choice</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">param_choice</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span>
             <span class="self">self</span>.<span class="ident">value_ab_choice</span>.<span class="ident">is_empty</span>()
     }
 
@@ -3752,21 +3829,21 @@
     }
 
     <span class="doccomment">/// Removes all the modifications of &#39;{name}&#39; and returns them.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_param_choice_diff</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-    ) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(((<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,)), <span class="ident">ParamChoice</span>, <span class="ident">ParamChoice</span>)<span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">param_choice</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">next</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> {
-            <span class="kw">let</span> (<span class="ident">old</span>, <span class="ident">new</span>) <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">param_choice</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">k</span>));
-            (<span class="ident">k</span>, <span class="ident">old</span>, <span class="ident">new</span>)
-        })
-    }
-
-    <span class="doccomment">/// Removes all the modifications of &#39;{name}&#39; and returns them.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_param_value_choice_diff</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(((<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>, <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>)), <span class="ident">ParamValueChoice</span>, <span class="ident">ParamValueChoice</span>)<span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">param_value_choice</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">next</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> {
             <span class="kw">let</span> (<span class="ident">old</span>, <span class="ident">new</span>) <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">param_value_choice</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">k</span>));
+            (<span class="ident">k</span>, <span class="ident">old</span>, <span class="ident">new</span>)
+        })
+    }
+
+    <span class="doccomment">/// Removes all the modifications of &#39;{name}&#39; and returns them.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_param_choice_diff</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(((<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,)), <span class="ident">ParamChoice</span>, <span class="ident">ParamChoice</span>)<span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">param_choice</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">next</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> {
+            <span class="kw">let</span> (<span class="ident">old</span>, <span class="ident">new</span>) <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">param_choice</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">k</span>));
             (<span class="ident">k</span>, <span class="ident">old</span>, <span class="ident">new</span>)
         })
     }
@@ -4103,138 +4180,6 @@
 
 
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">param_choice</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>;
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
-
-    <span class="doccomment">/// Returns the values a `param_choice` can take.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">filter</span>(
-        <span class="ident">param</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>,
-        <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
-        <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
-    ) <span class="op">-&gt;</span> <span class="ident">ParamChoice</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">ParamChoice</span>::<span class="ident">all</span>();
-        <span class="kw">for</span> <span class="ident">value_ab_150</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">value_ab</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>, <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>)) {
-            <span class="kw">let</span> <span class="ident">filter_res</span> <span class="op">=</span> <span class="self">self</span>::<span class="ident">filter_0</span>(<span class="ident">param</span>, <span class="ident">value_ab_150</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
-            <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">filter_res</span>);
-
-        }
-
-        <span class="ident">values</span>
-    }
-
-    <span class="doccomment">/// Triggers the required actions after the domain is updated.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">on_change</span>(
-        <span class="ident">old</span>: <span class="ident">ParamChoice</span>,
-        <span class="ident">new</span>: <span class="ident">ParamChoice</span>,
-        <span class="ident">param</span>: <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,
-        <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&gt;</span>,
-        <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainStore</span>,
-        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>,
-    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        {
-            <span class="kw">let</span> <span class="ident">param</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">param</span>);
-            <span class="kw">for</span> <span class="ident">value_ab_151</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">value_ab</span>::<span class="ident">iter</span>(
-                <span class="ident">ir_instance</span>,
-                <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>),
-            )
-            {
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">ValueAbChoice</span>::<span class="ident">all</span>();
-                <span class="kw">let</span> <span class="ident">filter_res</span> <span class="op">=</span>
-                    <span class="ident">value_ab_choice</span>::<span class="ident">filter_1</span>(<span class="ident">param</span>, <span class="ident">value_ab_151</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
-                <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">filter_res</span>);
-
-
-                <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;call restrict from {}, line {}&quot;</span>, <span class="macro">file</span><span class="macro">!</span>(), <span class="macro">line</span><span class="macro">!</span>());
-                <span class="ident">value_ab_choice</span>::<span class="ident">restrict</span>(
-                    <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>),
-                    <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">value_ab_151</span>),
-                    <span class="ident">ir_instance</span>,
-                    <span class="ident">store</span>,
-                    <span class="ident">values</span>,
-                    <span class="ident">diff</span>,
-                )<span class="question-mark">?</span>;
-            }
-        }
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">actions</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
-        <span class="kw">for</span> <span class="ident">action</span> <span class="kw">in</span> <span class="ident">actions</span> {
-            <span class="ident">apply_action</span>(<span class="ident">action</span>, <span class="ident">store</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
-        }
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="doccomment">/// Generate actions that restrict the values the choice can take.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict_delayed</span>(
-        <span class="ident">param</span>: <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,
-        <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
-        <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
-        <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">ParamChoice</span>,
-    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">current</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_param_choice</span>(<span class="ident">param</span>);
-        <span class="ident">new_values</span>.<span class="ident">restrict</span>(<span class="ident">current</span>);
-        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;delayed restrict param_choice{:?} to {:?}&quot;</span>, (<span class="ident">param</span>,), <span class="ident">new_values</span>);
-        <span class="kw">if</span> <span class="ident">new_values</span>.<span class="ident">is_failed</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(());
-        }
-        <span class="kw">if</span> <span class="ident">new_values</span> <span class="op">!=</span> <span class="ident">current</span> {
-            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Action</span>::<span class="ident">ParamChoice</span>(<span class="ident">param</span>, <span class="ident">new_values</span>)])
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[])
-        }
-
-    }
-
-    <span class="doccomment">/// Restrict the values the choice can take.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict</span>(
-        <span class="ident">param</span>: <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,
-        <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
-        <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainStore</span>,
-        <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">ParamChoice</span>,
-        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>,
-    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-        <span class="ident">store</span>.<span class="ident">restrict_param_choice</span>(<span class="ident">param</span>, <span class="ident">new_values</span>, <span class="ident">diff</span>)
-    }
-
-    <span class="doccomment">/// Restricts the values `param_choice` can take.</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">filter_0</span>(
-        <span class="ident">param</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>,
-        <span class="ident">value_ab_152</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Obj</span>,
-        <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
-        <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
-    ) <span class="op">-&gt;</span> <span class="ident">ParamChoice</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">ParamChoice</span>::<span class="ident">FAILED</span>;
-        <span class="kw">let</span> <span class="ident">value_ab_choice_153</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_value_ab_choice</span>(
-            <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>),
-            <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">value_ab_152</span>),
-        );
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values_154</span> <span class="op">=</span> <span class="ident">ParamChoice</span>::<span class="ident">all</span>();
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">param</span>) <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">param_a</span>::<span class="ident">from_superset</span>(<span class="ident">ir_instance</span>, <span class="ident">param</span>) {
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">value_ab_choice_153</span>.<span class="ident">intersects</span>(<span class="ident">ValueAbChoice</span>::<span class="ident">A</span>) {
-                <span class="ident">values_154</span>.<span class="ident">restrict</span>(<span class="ident">ParamChoice</span>::<span class="ident">A</span>);
-            }
-        }
-        <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">values_154</span>);
-
-        <span class="macro">trace</span><span class="macro">!</span>(
-            <span class="string">&quot;restrict param_choice{:?} to {:?} in filter 0&quot;</span>,
-            (<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>), <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">value_ab_152</span>)),
-            <span class="ident">values</span>
-        );
-        <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;with value_ab_choice_153 = {:?}&quot;</span>, <span class="ident">value_ab_choice_153</span>);
-        <span class="ident">values</span>
-    }
-}
-
-
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">param_value_choice</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>;
@@ -4371,21 +4316,21 @@
         <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
     ) <span class="op">-&gt;</span> <span class="ident">ParamValueChoice</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">ParamValueChoice</span>::<span class="ident">FAILED</span>;
-        <span class="kw">let</span> <span class="ident">value_choice_155</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_value_choice</span>(<span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">val</span>));
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values_156</span> <span class="op">=</span> <span class="ident">ParamValueChoice</span>::<span class="ident">all</span>();
+        <span class="kw">let</span> <span class="ident">value_choice_150</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_value_choice</span>(<span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">val</span>));
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values_151</span> <span class="op">=</span> <span class="ident">ParamValueChoice</span>::<span class="ident">all</span>();
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">val</span>) <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">value_ab</span>::<span class="ident">from_superset</span>(<span class="ident">ir_instance</span>, <span class="ident">param</span>, <span class="ident">val</span>) {
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">value_choice_155</span>.<span class="ident">intersects</span>(<span class="ident">ValueChoice</span>::<span class="ident">A</span>) {
-                <span class="ident">values_156</span>.<span class="ident">restrict</span>(<span class="ident">ParamValueChoice</span>::<span class="ident">A</span>);
+            <span class="kw">if</span> <span class="op">!</span><span class="ident">value_choice_150</span>.<span class="ident">intersects</span>(<span class="ident">ValueChoice</span>::<span class="ident">A</span>) {
+                <span class="ident">values_151</span>.<span class="ident">restrict</span>(<span class="ident">ParamValueChoice</span>::<span class="ident">A</span>);
             }
         }
-        <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">values_156</span>);
+        <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">values_151</span>);
 
         <span class="macro">trace</span><span class="macro">!</span>(
             <span class="string">&quot;restrict param_value_choice{:?} to {:?} in filter 0&quot;</span>,
             (<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>), <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">val</span>)),
             <span class="ident">values</span>
         );
-        <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;with value_choice_155 = {:?}&quot;</span>, <span class="ident">value_choice_155</span>);
+        <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;with value_choice_150 = {:?}&quot;</span>, <span class="ident">value_choice_150</span>);
         <span class="ident">values</span>
     }
     <span class="doccomment">/// Restricts the values `param_value_choice` can take.</span>
@@ -4397,18 +4342,150 @@
         <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
     ) <span class="op">-&gt;</span> <span class="ident">ParamValueChoice</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">ParamValueChoice</span>::<span class="ident">FAILED</span>;
-        <span class="kw">let</span> <span class="ident">value_ab_choice_157</span> <span class="op">=</span>
+        <span class="kw">let</span> <span class="ident">value_ab_choice_152</span> <span class="op">=</span>
             <span class="ident">store</span>.<span class="ident">get_value_ab_choice</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>), <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">val</span>));
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values_158</span> <span class="op">=</span> <span class="ident">ParamValueChoice</span>::<span class="ident">all</span>();
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">value_ab_choice_157</span>.<span class="ident">intersects</span>(<span class="ident">ValueAbChoice</span>::<span class="ident">A</span>) {
-            <span class="ident">values_158</span>.<span class="ident">restrict</span>(<span class="ident">ParamValueChoice</span>::<span class="ident">A</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values_153</span> <span class="op">=</span> <span class="ident">ParamValueChoice</span>::<span class="ident">all</span>();
+        <span class="kw">if</span> <span class="op">!</span><span class="ident">value_ab_choice_152</span>.<span class="ident">intersects</span>(<span class="ident">ValueAbChoice</span>::<span class="ident">A</span>) {
+            <span class="ident">values_153</span>.<span class="ident">restrict</span>(<span class="ident">ParamValueChoice</span>::<span class="ident">A</span>);
         }
 
-        <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">values_158</span>);
+        <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">values_153</span>);
 
         <span class="macro">trace</span><span class="macro">!</span>(
             <span class="string">&quot;restrict param_value_choice{:?} to {:?} in filter 1&quot;</span>,
             (<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>), <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">val</span>)),
+            <span class="ident">values</span>
+        );
+        <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;with value_ab_choice_152 = {:?}&quot;</span>, <span class="ident">value_ab_choice_152</span>);
+        <span class="ident">values</span>
+    }
+}
+
+
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">param_choice</span> {
+    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>;
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
+    <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
+
+    <span class="doccomment">/// Returns the values a `param_choice` can take.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">filter</span>(
+        <span class="ident">param</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>,
+        <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
+        <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">ParamChoice</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">ParamChoice</span>::<span class="ident">all</span>();
+        <span class="kw">for</span> <span class="ident">value_ab_154</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">value_ab</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>, <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>)) {
+            <span class="kw">let</span> <span class="ident">filter_res</span> <span class="op">=</span> <span class="self">self</span>::<span class="ident">filter_0</span>(<span class="ident">param</span>, <span class="ident">value_ab_154</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
+            <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">filter_res</span>);
+
+        }
+
+        <span class="ident">values</span>
+    }
+
+    <span class="doccomment">/// Triggers the required actions after the domain is updated.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">on_change</span>(
+        <span class="ident">old</span>: <span class="ident">ParamChoice</span>,
+        <span class="ident">new</span>: <span class="ident">ParamChoice</span>,
+        <span class="ident">param</span>: <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,
+        <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&gt;</span>,
+        <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainStore</span>,
+        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>,
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
+        {
+            <span class="kw">let</span> <span class="ident">param</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">param</span>);
+            <span class="kw">for</span> <span class="ident">value_ab_155</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">value_ab</span>::<span class="ident">iter</span>(
+                <span class="ident">ir_instance</span>,
+                <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>),
+            )
+            {
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">ValueAbChoice</span>::<span class="ident">all</span>();
+                <span class="kw">let</span> <span class="ident">filter_res</span> <span class="op">=</span>
+                    <span class="ident">value_ab_choice</span>::<span class="ident">filter_1</span>(<span class="ident">param</span>, <span class="ident">value_ab_155</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
+                <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">filter_res</span>);
+
+
+                <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;call restrict from {}, line {}&quot;</span>, <span class="macro">file</span><span class="macro">!</span>(), <span class="macro">line</span><span class="macro">!</span>());
+                <span class="ident">value_ab_choice</span>::<span class="ident">restrict</span>(
+                    <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>),
+                    <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">value_ab_155</span>),
+                    <span class="ident">ir_instance</span>,
+                    <span class="ident">store</span>,
+                    <span class="ident">values</span>,
+                    <span class="ident">diff</span>,
+                )<span class="question-mark">?</span>;
+            }
+        }
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">actions</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
+        <span class="kw">for</span> <span class="ident">action</span> <span class="kw">in</span> <span class="ident">actions</span> {
+            <span class="ident">apply_action</span>(<span class="ident">action</span>, <span class="ident">store</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
+        }
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// Generate actions that restrict the values the choice can take.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict_delayed</span>(
+        <span class="ident">param</span>: <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,
+        <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
+        <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
+        <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">ParamChoice</span>,
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">current</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_param_choice</span>(<span class="ident">param</span>);
+        <span class="ident">new_values</span>.<span class="ident">restrict</span>(<span class="ident">current</span>);
+        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;delayed restrict param_choice{:?} to {:?}&quot;</span>, (<span class="ident">param</span>,), <span class="ident">new_values</span>);
+        <span class="kw">if</span> <span class="ident">new_values</span>.<span class="ident">is_failed</span>() {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(());
+        }
+        <span class="kw">if</span> <span class="ident">new_values</span> <span class="op">!=</span> <span class="ident">current</span> {
+            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Action</span>::<span class="ident">ParamChoice</span>(<span class="ident">param</span>, <span class="ident">new_values</span>)])
+        } <span class="kw">else</span> {
+            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[])
+        }
+
+    }
+
+    <span class="doccomment">/// Restrict the values the choice can take.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">restrict</span>(
+        <span class="ident">param</span>: <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>,
+        <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
+        <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainStore</span>,
+        <span class="kw-2">mut</span> <span class="ident">new_values</span>: <span class="ident">ParamChoice</span>,
+        <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>,
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
+        <span class="ident">store</span>.<span class="ident">restrict_param_choice</span>(<span class="ident">param</span>, <span class="ident">new_values</span>, <span class="ident">diff</span>)
+    }
+
+    <span class="doccomment">/// Restricts the values `param_choice` can take.</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_variables</span>, <span class="ident">unused_mut</span>, <span class="ident">unused_parens</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">filter_0</span>(
+        <span class="ident">param</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>,
+        <span class="ident">value_ab_156</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Obj</span>,
+        <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span>,
+        <span class="ident">store</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">ParamChoice</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">ParamChoice</span>::<span class="ident">FAILED</span>;
+        <span class="kw">let</span> <span class="ident">value_ab_choice_157</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_value_ab_choice</span>(
+            <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>),
+            <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">value_ab_156</span>),
+        );
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values_158</span> <span class="op">=</span> <span class="ident">ParamChoice</span>::<span class="ident">all</span>();
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">param</span>) <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">param_a</span>::<span class="ident">from_superset</span>(<span class="ident">ir_instance</span>, <span class="ident">param</span>) {
+            <span class="kw">if</span> <span class="op">!</span><span class="ident">value_ab_choice_157</span>.<span class="ident">intersects</span>(<span class="ident">ValueAbChoice</span>::<span class="ident">A</span>) {
+                <span class="ident">values_158</span>.<span class="ident">restrict</span>(<span class="ident">ParamChoice</span>::<span class="ident">A</span>);
+            }
+        }
+        <span class="ident">values</span>.<span class="ident">insert</span>(<span class="ident">values_158</span>);
+
+        <span class="macro">trace</span><span class="macro">!</span>(
+            <span class="string">&quot;restrict param_choice{:?} to {:?} in filter 0&quot;</span>,
+            (<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>), <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">value_ab_156</span>)),
             <span class="ident">values</span>
         );
         <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;with value_ab_choice_157 = {:?}&quot;</span>, <span class="ident">value_ab_choice_157</span>);
@@ -5247,9 +5324,9 @@
 
     <span class="ident">ParamValueChoice2</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>, <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>, <span class="ident">ParamValueChoice2</span>),
 
-    <span class="ident">ParamChoice</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>, <span class="ident">ParamChoice</span>),
-
     <span class="ident">ParamValueChoice</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>, <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>, <span class="ident">ParamValueChoice</span>),
+
+    <span class="ident">ParamChoice</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>, <span class="ident">ParamChoice</span>),
 
     <span class="ident">ValueAbChoice</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Id</span>, <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">Id</span>, <span class="ident">ValueAbChoice</span>),
 }
@@ -5267,15 +5344,15 @@
                     <span class="op">!</span><span class="ident">domain</span>,
                 ),
             ),
-            <span class="ident">Action</span>::<span class="ident">ParamChoice</span>(<span class="ident">param</span>, <span class="ident">domain</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(
-                <span class="ident">Action</span>::<span class="ident">ParamChoice</span>(<span class="ident">param</span>, <span class="op">!</span><span class="ident">domain</span>),
-            ),
             <span class="ident">Action</span>::<span class="ident">ParamValueChoice</span>(<span class="ident">param</span>, <span class="ident">val</span>, <span class="ident">domain</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(
                 <span class="ident">Action</span>::<span class="ident">ParamValueChoice</span>(
                     <span class="ident">param</span>,
                     <span class="ident">val</span>,
                     <span class="op">!</span><span class="ident">domain</span>,
                 ),
+            ),
+            <span class="ident">Action</span>::<span class="ident">ParamChoice</span>(<span class="ident">param</span>, <span class="ident">domain</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(
+                <span class="ident">Action</span>::<span class="ident">ParamChoice</span>(<span class="ident">param</span>, <span class="op">!</span><span class="ident">domain</span>),
             ),
             <span class="ident">Action</span>::<span class="ident">ValueAbChoice</span>(<span class="ident">param</span>, <span class="ident">val</span>, <span class="ident">domain</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">Action</span>::<span class="ident">ValueAbChoice</span>(
                 <span class="ident">param</span>,
@@ -5298,11 +5375,11 @@
         <span class="ident">Action</span>::<span class="ident">ParamValueChoice2</span>(<span class="ident">param</span>, <span class="ident">val</span>, <span class="ident">value</span>) <span class="op">=&gt;</span> {
             <span class="ident">store</span>.<span class="ident">restrict_param_value_choice_2</span>(<span class="ident">param</span>, <span class="ident">val</span>, <span class="ident">value</span>, <span class="ident">diff</span>)
         }
-        <span class="ident">Action</span>::<span class="ident">ParamChoice</span>(<span class="ident">param</span>, <span class="ident">value</span>) <span class="op">=&gt;</span> {
-            <span class="ident">store</span>.<span class="ident">restrict_param_choice</span>(<span class="ident">param</span>, <span class="ident">value</span>, <span class="ident">diff</span>)
-        }
         <span class="ident">Action</span>::<span class="ident">ParamValueChoice</span>(<span class="ident">param</span>, <span class="ident">val</span>, <span class="ident">value</span>) <span class="op">=&gt;</span> {
             <span class="ident">store</span>.<span class="ident">restrict_param_value_choice</span>(<span class="ident">param</span>, <span class="ident">val</span>, <span class="ident">value</span>, <span class="ident">diff</span>)
+        }
+        <span class="ident">Action</span>::<span class="ident">ParamChoice</span>(<span class="ident">param</span>, <span class="ident">value</span>) <span class="op">=&gt;</span> {
+            <span class="ident">store</span>.<span class="ident">restrict_param_choice</span>(<span class="ident">param</span>, <span class="ident">value</span>, <span class="ident">diff</span>)
         }
         <span class="ident">Action</span>::<span class="ident">ValueAbChoice</span>(<span class="ident">param</span>, <span class="ident">val</span>, <span class="ident">value</span>) <span class="op">=&gt;</span> {
             <span class="ident">store</span>.<span class="ident">restrict_value_ab_choice</span>(<span class="ident">param</span>, <span class="ident">val</span>, <span class="ident">value</span>, <span class="ident">diff</span>)
@@ -5329,13 +5406,13 @@
         );
         <span class="ident">param_value_choice_2</span>::<span class="ident">on_change</span>(<span class="ident">old</span>, <span class="ident">new</span>, <span class="ident">param</span>, <span class="ident">val</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
     }
-    <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(((<span class="ident">param</span>,), <span class="ident">old</span>, <span class="ident">new</span>)) <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">pop_param_choice_diff</span>() {
-        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;propagating param_choice{:?} {:?} -&gt; {:?}&quot;</span>, (<span class="ident">param</span>,), <span class="ident">old</span>, <span class="ident">new</span>);
-        <span class="ident">param_choice</span>::<span class="ident">on_change</span>(<span class="ident">old</span>, <span class="ident">new</span>, <span class="ident">param</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
-    }
     <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(((<span class="ident">param</span>, <span class="ident">val</span>), <span class="ident">old</span>, <span class="ident">new</span>)) <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">pop_param_value_choice_diff</span>() {
         <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;propagating param_value_choice{:?} {:?} -&gt; {:?}&quot;</span>, (<span class="ident">param</span>, <span class="ident">val</span>), <span class="ident">old</span>, <span class="ident">new</span>);
         <span class="ident">param_value_choice</span>::<span class="ident">on_change</span>(<span class="ident">old</span>, <span class="ident">new</span>, <span class="ident">param</span>, <span class="ident">val</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
+    }
+    <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(((<span class="ident">param</span>,), <span class="ident">old</span>, <span class="ident">new</span>)) <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">pop_param_choice_diff</span>() {
+        <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;propagating param_choice{:?} {:?} -&gt; {:?}&quot;</span>, (<span class="ident">param</span>,), <span class="ident">old</span>, <span class="ident">new</span>);
+        <span class="ident">param_choice</span>::<span class="ident">on_change</span>(<span class="ident">old</span>, <span class="ident">new</span>, <span class="ident">param</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>, <span class="ident">diff</span>)<span class="question-mark">?</span>;
     }
     <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(((<span class="ident">param</span>, <span class="ident">val</span>), <span class="ident">old</span>, <span class="ident">new</span>)) <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">pop_value_ab_choice_diff</span>() {
         <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;propagating value_ab_choice{:?} {:?} -&gt; {:?}&quot;</span>, (<span class="ident">param</span>, <span class="ident">val</span>), <span class="ident">old</span>, <span class="ident">new</span>);
@@ -5412,16 +5489,6 @@
         }
     }
     <span class="kw">for</span> <span class="ident">param</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
-        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">param_choice</span>::<span class="ident">filter</span>(<span class="ident">param</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
-        <span class="ident">param_choice</span>::<span class="ident">restrict</span>(
-            <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>),
-            <span class="ident">ir_instance</span>,
-            <span class="ident">store</span>,
-            <span class="ident">values</span>,
-            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">unused_diff</span>,
-        )<span class="question-mark">?</span>;
-    }
-    <span class="kw">for</span> <span class="ident">param</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
         <span class="kw">for</span> <span class="ident">val</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
             <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">param_value_choice</span>::<span class="ident">filter</span>(<span class="ident">param</span>, <span class="ident">val</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
             <span class="ident">param_value_choice</span>::<span class="ident">restrict</span>(
@@ -5433,6 +5500,16 @@
                 <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">unused_diff</span>,
             )<span class="question-mark">?</span>;
         }
+    }
+    <span class="kw">for</span> <span class="ident">param</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
+        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">param_choice</span>::<span class="ident">filter</span>(<span class="ident">param</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
+        <span class="ident">param_choice</span>::<span class="ident">restrict</span>(
+            <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>),
+            <span class="ident">ir_instance</span>,
+            <span class="ident">store</span>,
+            <span class="ident">values</span>,
+            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">unused_diff</span>,
+        )<span class="question-mark">?</span>;
     }
     <span class="kw">for</span> <span class="ident">param</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
         <span class="kw">for</span> <span class="ident">val</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">value_ab</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>, <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>)) {
@@ -5477,16 +5554,6 @@
         }
     }
     <span class="kw">for</span> <span class="ident">param</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
-        <span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_param_choice</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>));
-        <span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">param_choice</span>::<span class="ident">filter</span>(<span class="ident">param</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
-        <span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">param_choice</span>::<span class="ident">restrict_delayed</span>(
-            <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>),
-            <span class="ident">ir_instance</span>,
-            <span class="ident">store</span>,
-            <span class="ident">new_value</span>,
-        )<span class="question-mark">?</span>);
-    }
-    <span class="kw">for</span> <span class="ident">param</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
         <span class="kw">for</span> <span class="ident">val</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
             <span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_param_value_choice</span>(
                 <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>),
@@ -5501,6 +5568,16 @@
                 <span class="ident">new_value</span>,
             )<span class="question-mark">?</span>);
         }
+    }
+    <span class="kw">for</span> <span class="ident">param</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
+        <span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_param_choice</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>));
+        <span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">param_choice</span>::<span class="ident">filter</span>(<span class="ident">param</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
+        <span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">param_choice</span>::<span class="ident">restrict_delayed</span>(
+            <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>),
+            <span class="ident">ir_instance</span>,
+            <span class="ident">store</span>,
+            <span class="ident">new_value</span>,
+        )<span class="question-mark">?</span>);
     }
     <span class="kw">for</span> <span class="ident">param</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
         <span class="kw">for</span> <span class="ident">val</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">value_ab</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>, <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">param</span>)) {
@@ -5585,19 +5662,6 @@
     }
     <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">param</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
         <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
-        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">param_choice</span>::<span class="ident">filter</span>(<span class="ident">obj</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
-        <span class="ident">param_choice</span>::<span class="ident">restrict</span>(
-            <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),
-            <span class="ident">ir_instance</span>,
-            <span class="ident">store</span>,
-            <span class="ident">values</span>,
-            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">unused_diff</span>,
-        )<span class="question-mark">?</span>;
-
-
-    }
-    <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">param</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-        <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
         <span class="kw">for</span> <span class="ident">val</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
             <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">param_value_choice</span>::<span class="ident">filter</span>(<span class="ident">obj</span>, <span class="ident">val</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
             <span class="ident">param_value_choice</span>::<span class="ident">restrict</span>(
@@ -5631,6 +5695,19 @@
             )<span class="question-mark">?</span>;
 
         }
+    }
+    <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">param</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
+        <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
+        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">param_choice</span>::<span class="ident">filter</span>(<span class="ident">obj</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
+        <span class="ident">param_choice</span>::<span class="ident">restrict</span>(
+            <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),
+            <span class="ident">ir_instance</span>,
+            <span class="ident">store</span>,
+            <span class="ident">values</span>,
+            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">unused_diff</span>,
+        )<span class="question-mark">?</span>;
+
+
     }
     <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">param</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
         <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
@@ -5733,21 +5810,6 @@
     }
     <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">param</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
         <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
-        <span class="kw">let</span> <span class="ident">param</span> <span class="op">=</span> <span class="ident">obj</span>;
-
-        <span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_param_choice</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>));
-        <span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">param_choice</span>::<span class="ident">filter</span>(<span class="ident">obj</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
-        <span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">param_choice</span>::<span class="ident">restrict_delayed</span>(
-            <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),
-            <span class="ident">ir_instance</span>,
-            <span class="ident">store</span>,
-            <span class="ident">new_value</span>,
-        )<span class="question-mark">?</span>);
-
-
-    }
-    <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">param</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-        <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
         <span class="kw">for</span> <span class="ident">val</span> <span class="kw">in</span> <span class="ident">ir</span>::<span class="ident">value</span>::<span class="ident">iter</span>(<span class="ident">ir_instance</span>) {
             <span class="kw">let</span> <span class="ident">param</span> <span class="op">=</span> <span class="ident">obj</span>;
 
@@ -5792,6 +5854,21 @@
             )<span class="question-mark">?</span>);
 
         }
+    }
+    <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">param</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
+        <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
+        <span class="kw">let</span> <span class="ident">param</span> <span class="op">=</span> <span class="ident">obj</span>;
+
+        <span class="kw">let</span> <span class="ident">old_value</span> <span class="op">=</span> <span class="ident">store</span>.<span class="ident">get_param_choice</span>(<span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>));
+        <span class="kw">let</span> <span class="ident">new_value</span> <span class="op">=</span> <span class="ident">param_choice</span>::<span class="ident">filter</span>(<span class="ident">obj</span>, <span class="ident">ir_instance</span>, <span class="ident">store</span>);
+        <span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">param_choice</span>::<span class="ident">restrict_delayed</span>(
+            <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">Obj</span>::<span class="ident">id</span>(<span class="ident">obj</span>),
+            <span class="ident">ir_instance</span>,
+            <span class="ident">store</span>,
+            <span class="ident">new_value</span>,
+        )<span class="question-mark">?</span>);
+
+
     }
     <span class="kw">for</span> (<span class="ident">pos</span>, <span class="kw-2">&amp;</span><span class="ident">obj</span>) <span class="kw">in</span> <span class="ident">new_objs</span>.<span class="ident">param</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
         <span class="kw">let</span> <span class="ident">obj</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">param</span>::<span class="ident">get</span>(<span class="ident">ir_instance</span>, <span class="ident">obj</span>);
@@ -6026,18 +6103,25 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NumericSet</span> {
     <span class="ident">len</span>: <span class="ident">usize</span>,
-    <span class="ident">values</span>: [<span class="ident">u16</span>; <span class="ident">NumericSet</span>::<span class="ident">MAX_LEN</span>],
+    <span class="ident">values</span>: [<span class="ident">u32</span>; <span class="ident">NumericSet</span>::<span class="ident">MAX_LEN</span>],
 }
 
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
 <span class="kw">impl</span> <span class="ident">NumericSet</span> {
-    <span class="kw">const</span> <span class="ident">MAX_LEN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">32</span>;
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MAX_LEN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">16</span>;
 
-    <span class="kw">const</span> <span class="ident">FAILED</span>: <span class="self">Self</span> <span class="op">=</span> <span class="ident">NumericSet</span> { <span class="ident">len</span>: <span class="number">0</span>, <span class="ident">values</span>: [<span class="number">0</span>; <span class="ident">NumericSet</span>::<span class="ident">MAX_LEN</span>] };
+    <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">FAILED</span>: <span class="self">Self</span> <span class="op">=</span> <span class="ident">NumericSet</span> { <span class="ident">len</span>: <span class="number">0</span>, <span class="ident">values</span>: [<span class="number">0</span>; <span class="ident">NumericSet</span>::<span class="ident">MAX_LEN</span>] };
+
+    <span class="doccomment">/// Creates a new `NumericSet` containing a single value.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_fixed</span>(<span class="ident">val</span>: <span class="ident">u32</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> [<span class="number">0</span>; <span class="self">Self</span>::<span class="ident">MAX_LEN</span>];
+        <span class="ident">values</span>[<span class="number">0</span>] <span class="op">=</span> <span class="ident">val</span>;
+        <span class="ident">NumericSet</span> { <span class="ident">values</span>, <span class="ident">len</span>: <span class="number">1</span> }
+    }
 
     <span class="doccomment">/// Returns the set containing all the possibilities. Assumes the universe</span>
     <span class="doccomment">/// is sorted.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">all</span>(<span class="ident">univers</span>: <span class="kw-2">&amp;</span>[<span class="ident">u16</span>]) <span class="op">-&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">all</span>(<span class="ident">univers</span>: <span class="kw-2">&amp;</span>[<span class="ident">u32</span>]) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">univers</span>.<span class="ident">len</span>() <span class="op">&lt;=</span> <span class="ident">NumericSet</span>::<span class="ident">MAX_LEN</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> [<span class="number">0</span>; <span class="ident">NumericSet</span>::<span class="ident">MAX_LEN</span>];
         <span class="kw">for</span> (<span class="ident">v</span>, <span class="ident">dst</span>) <span class="kw">in</span> <span class="ident">univers</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">zip</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">values</span>) {
@@ -6076,7 +6160,39 @@
         <span class="self">self</span>.<span class="ident">len</span> <span class="op">=</span> <span class="ident">idx</span>;
     }
 
-    <span class="kw">fn</span> <span class="ident">restrict_to</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span>[<span class="ident">u16</span>]) {
+    <span class="doccomment">/// Returns the greatest common divisor of possible values.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gcd</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
+        <span class="self">self</span>.<span class="ident">values</span>[..<span class="self">self</span>.<span class="ident">len</span>]
+            .<span class="ident">iter</span>()
+            .<span class="ident">cloned</span>()
+            .<span class="ident">fold1</span>(<span class="ident">num</span>::<span class="ident">integer</span>::<span class="ident">gcd</span>)
+            .<span class="ident">unwrap_or</span>(<span class="number">1</span>)
+    }
+
+    <span class="doccomment">/// Returns the least common multiple of possible values.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lcm</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
+        <span class="self">self</span>.<span class="ident">values</span>[..<span class="self">self</span>.<span class="ident">len</span>]
+            .<span class="ident">iter</span>()
+            .<span class="ident">cloned</span>()
+            .<span class="ident">fold1</span>(<span class="ident">num</span>::<span class="ident">integer</span>::<span class="ident">lcm</span>)
+            .<span class="ident">unwrap_or</span>(<span class="number">1</span>)
+    }
+
+    <span class="doccomment">/// Returns the only value in the set, if it is fully constrained.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_constrained</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">len</span> <span class="op">==</span> <span class="number">1</span> { <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">values</span>[<span class="number">0</span>]) } <span class="kw">else</span> { <span class="prelude-val">None</span> }
+    }
+
+    <span class="doccomment">/// Lists the possible values the domain can take.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">list</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">values</span>[<span class="number">0</span>..<span class="self">self</span>.<span class="ident">len</span>]
+            .<span class="ident">iter</span>()
+            .<span class="ident">cloned</span>()
+            .<span class="ident">map</span>(<span class="self">Self</span>::<span class="ident">new_fixed</span>)
+            .<span class="ident">collect</span>()
+    }
+
+    <span class="kw">fn</span> <span class="ident">restrict_to</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span>[<span class="ident">u32</span>]) {
         <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">new_lhs</span>, <span class="kw-2">mut</span> <span class="ident">old_lhs</span>, <span class="kw-2">mut</span> <span class="ident">rhs</span>) <span class="op">=</span> (<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>);
         <span class="kw">while</span> <span class="ident">old_lhs</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">len</span> <span class="op">&amp;&amp;</span> <span class="ident">rhs</span> <span class="op">&lt;</span> <span class="ident">other</span>.<span class="ident">len</span>() {
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">values</span>[<span class="ident">old_lhs</span>] <span class="op">&gt;</span> <span class="ident">other</span>[<span class="ident">rhs</span>] {
@@ -6093,7 +6209,7 @@
         <span class="self">self</span>.<span class="ident">len</span> <span class="op">=</span> <span class="ident">new_lhs</span>;
     }
 
-    <span class="kw">fn</span> <span class="ident">complement</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">universe</span>: <span class="kw-2">&amp;</span>[<span class="ident">u16</span>]) <span class="op">-&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">complement</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">universe</span>: <span class="kw-2">&amp;</span>[<span class="ident">u32</span>]) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> [<span class="number">0</span>; <span class="self">Self</span>::<span class="ident">MAX_LEN</span>];
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">self_idx</span> <span class="op">=</span> <span class="number">0</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_idx</span> <span class="op">=</span> <span class="number">0</span>;
@@ -6184,6 +6300,13 @@
     <span class="doccomment">/// universe.</span>
     <span class="kw">fn</span> <span class="ident">new_eq</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">NumDomain</span><span class="op">&gt;</span>(<span class="ident">universe</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>::<span class="ident">Universe</span>, <span class="ident">eq</span>: <span class="ident">D</span>) <span class="op">-&gt;</span> <span class="self">Self</span>;
 
+    <span class="doccomment">/// Returns the value of the domain, if it is constrained.</span>
+    <span class="kw">fn</span> <span class="ident">final_value</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">min</span>(), <span class="self">self</span>.<span class="ident">max</span>());
+        <span class="self">self</span>.<span class="ident">min</span>()
+    }
+
+
     <span class="kw">fn</span> <span class="ident">lt</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">NumDomain</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="ident">D</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> { <span class="self">self</span>.<span class="ident">max</span>() <span class="op">&lt;</span> <span class="ident">other</span>.<span class="ident">min</span>() }
 
     <span class="kw">fn</span> <span class="ident">gt</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">NumDomain</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="ident">D</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> { <span class="self">self</span>.<span class="ident">min</span>() <span class="op">&gt;</span> <span class="ident">other</span>.<span class="ident">max</span>() }
@@ -6260,19 +6383,17 @@
 }
 
 <span class="kw">impl</span> <span class="ident">NumDomain</span> <span class="kw">for</span> <span class="ident">NumericSet</span> {
-    <span class="kw">type</span> <span class="ident">Universe</span> <span class="op">=</span> [<span class="ident">u16</span>];
+    <span class="kw">type</span> <span class="ident">Universe</span> <span class="op">=</span> [<span class="ident">u32</span>];
 
-    <span class="kw">fn</span> <span class="ident">min</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> { <span class="kw">if</span> <span class="self">self</span>.<span class="ident">len</span> <span class="op">==</span> <span class="number">0</span> { <span class="number">1</span> } <span class="kw">else</span> { <span class="self">self</span>.<span class="ident">values</span>[<span class="number">0</span>] <span class="kw">as</span> <span class="ident">u32</span> } }
+    <span class="kw">fn</span> <span class="ident">min</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> { <span class="kw">if</span> <span class="self">self</span>.<span class="ident">len</span> <span class="op">==</span> <span class="number">0</span> { <span class="number">1</span> } <span class="kw">else</span> { <span class="self">self</span>.<span class="ident">values</span>[<span class="number">0</span>] } }
 
-    <span class="kw">fn</span> <span class="ident">max</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">len</span> <span class="op">==</span> <span class="number">0</span> { <span class="number">0</span> } <span class="kw">else</span> { <span class="self">self</span>.<span class="ident">values</span>[<span class="self">self</span>.<span class="ident">len</span> <span class="op">-</span> <span class="number">1</span>] <span class="kw">as</span> <span class="ident">u32</span> }
-    }
+    <span class="kw">fn</span> <span class="ident">max</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> { <span class="kw">if</span> <span class="self">self</span>.<span class="ident">len</span> <span class="op">==</span> <span class="number">0</span> { <span class="number">0</span> } <span class="kw">else</span> { <span class="self">self</span>.<span class="ident">values</span>[<span class="self">self</span>.<span class="ident">len</span> <span class="op">-</span> <span class="number">1</span>] } }
 
     <span class="kw">fn</span> <span class="ident">as_num_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">NumericSet</span><span class="op">&gt;</span> { <span class="prelude-val">Some</span>(<span class="kw-2">*</span><span class="self">self</span>) }
 
-    <span class="kw">fn</span> <span class="ident">new_gt</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">NumDomain</span><span class="op">&gt;</span>(<span class="ident">universe</span>: <span class="kw-2">&amp;</span>[<span class="ident">u16</span>], <span class="ident">min</span>: <span class="ident">D</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">new_gt</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">NumDomain</span><span class="op">&gt;</span>(<span class="ident">universe</span>: <span class="kw-2">&amp;</span>[<span class="ident">u32</span>], <span class="ident">min</span>: <span class="ident">D</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> [<span class="number">0</span>; <span class="ident">NumericSet</span>::<span class="ident">MAX_LEN</span>];
-        <span class="kw">let</span> <span class="ident">min</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">min</span>(<span class="ident">std</span>::<span class="ident">u16</span>::<span class="ident">MAX</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="ident">min</span>.<span class="ident">min</span>()) <span class="kw">as</span> <span class="ident">u16</span>;
+        <span class="kw">let</span> <span class="ident">min</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">min</span>(<span class="ident">std</span>::<span class="ident">u32</span>::<span class="ident">MAX</span>, <span class="ident">min</span>.<span class="ident">min</span>());
         <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">universe</span>.<span class="ident">binary_search</span>(<span class="kw-2">&amp;</span><span class="ident">min</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span> <span class="op">+</span> <span class="number">1</span>).<span class="ident">unwrap_or_else</span>(
             <span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>,
         );
@@ -6283,9 +6404,9 @@
         <span class="ident">NumericSet</span> { <span class="ident">values</span>, <span class="ident">len</span> }
     }
 
-    <span class="kw">fn</span> <span class="ident">new_lt</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">NumDomain</span><span class="op">&gt;</span>(<span class="ident">universe</span>: <span class="kw-2">&amp;</span>[<span class="ident">u16</span>], <span class="ident">max</span>: <span class="ident">D</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">new_lt</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">NumDomain</span><span class="op">&gt;</span>(<span class="ident">universe</span>: <span class="kw-2">&amp;</span>[<span class="ident">u32</span>], <span class="ident">max</span>: <span class="ident">D</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> [<span class="number">0</span>; <span class="ident">NumericSet</span>::<span class="ident">MAX_LEN</span>];
-        <span class="kw">let</span> <span class="ident">max</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">min</span>(<span class="ident">std</span>::<span class="ident">u16</span>::<span class="ident">MAX</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="ident">max</span>.<span class="ident">max</span>()) <span class="kw">as</span> <span class="ident">u16</span>;
+        <span class="kw">let</span> <span class="ident">max</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">min</span>(<span class="ident">std</span>::<span class="ident">u32</span>::<span class="ident">MAX</span>, <span class="ident">max</span>.<span class="ident">max</span>());
         <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="ident">universe</span>.<span class="ident">binary_search</span>(<span class="kw-2">&amp;</span><span class="ident">max</span>).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>);
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">len</span> {
             <span class="ident">values</span>[<span class="ident">i</span>] <span class="op">=</span> <span class="ident">universe</span>[<span class="ident">i</span>];
@@ -6293,9 +6414,9 @@
         <span class="ident">NumericSet</span> { <span class="ident">values</span>, <span class="ident">len</span> }
     }
 
-    <span class="kw">fn</span> <span class="ident">new_geq</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">NumDomain</span><span class="op">&gt;</span>(<span class="ident">universe</span>: <span class="kw-2">&amp;</span>[<span class="ident">u16</span>], <span class="ident">min</span>: <span class="ident">D</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">new_geq</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">NumDomain</span><span class="op">&gt;</span>(<span class="ident">universe</span>: <span class="kw-2">&amp;</span>[<span class="ident">u32</span>], <span class="ident">min</span>: <span class="ident">D</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> [<span class="number">0</span>; <span class="ident">NumericSet</span>::<span class="ident">MAX_LEN</span>];
-        <span class="kw">let</span> <span class="ident">min</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">min</span>(<span class="ident">std</span>::<span class="ident">u16</span>::<span class="ident">MAX</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="ident">min</span>.<span class="ident">min</span>()) <span class="kw">as</span> <span class="ident">u16</span>;
+        <span class="kw">let</span> <span class="ident">min</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">min</span>(<span class="ident">std</span>::<span class="ident">u32</span>::<span class="ident">MAX</span>, <span class="ident">min</span>.<span class="ident">min</span>());
         <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">universe</span>.<span class="ident">binary_search</span>(<span class="kw-2">&amp;</span><span class="ident">min</span>).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>);
         <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="ident">universe</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">start</span>;
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">len</span> {
@@ -6304,9 +6425,9 @@
         <span class="ident">NumericSet</span> { <span class="ident">values</span>, <span class="ident">len</span> }
     }
 
-    <span class="kw">fn</span> <span class="ident">new_leq</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">NumDomain</span><span class="op">&gt;</span>(<span class="ident">universe</span>: <span class="kw-2">&amp;</span>[<span class="ident">u16</span>], <span class="ident">max</span>: <span class="ident">D</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">new_leq</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">NumDomain</span><span class="op">&gt;</span>(<span class="ident">universe</span>: <span class="kw-2">&amp;</span>[<span class="ident">u32</span>], <span class="ident">max</span>: <span class="ident">D</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> [<span class="number">0</span>; <span class="ident">NumericSet</span>::<span class="ident">MAX_LEN</span>];
-        <span class="kw">let</span> <span class="ident">max</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">min</span>(<span class="ident">std</span>::<span class="ident">u16</span>::<span class="ident">MAX</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="ident">max</span>.<span class="ident">max</span>()) <span class="kw">as</span> <span class="ident">u16</span>;
+        <span class="kw">let</span> <span class="ident">max</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">min</span>(<span class="ident">std</span>::<span class="ident">u32</span>::<span class="ident">MAX</span>, <span class="ident">max</span>.<span class="ident">max</span>());
         <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="ident">universe</span>.<span class="ident">binary_search</span>(<span class="kw-2">&amp;</span><span class="ident">max</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span> <span class="op">+</span> <span class="number">1</span>).<span class="ident">unwrap_or_else</span>(
             <span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>,
         );
@@ -6316,14 +6437,14 @@
         <span class="ident">NumericSet</span> { <span class="ident">values</span>, <span class="ident">len</span> }
     }
 
-    <span class="kw">fn</span> <span class="ident">new_eq</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">NumDomain</span><span class="op">&gt;</span>(<span class="ident">universe</span>: <span class="kw-2">&amp;</span>[<span class="ident">u16</span>], <span class="ident">eq</span>: <span class="ident">D</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">new_eq</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">NumDomain</span><span class="op">&gt;</span>(<span class="ident">universe</span>: <span class="kw-2">&amp;</span>[<span class="ident">u32</span>], <span class="ident">eq</span>: <span class="ident">D</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">mut</span> <span class="ident">eq</span>) <span class="op">=</span> <span class="ident">eq</span>.<span class="ident">as_num_set</span>() {
             <span class="ident">eq</span>.<span class="ident">restrict_to</span>(<span class="ident">universe</span>);
             <span class="ident">eq</span>
         } <span class="kw">else</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> [<span class="number">0</span>; <span class="ident">NumericSet</span>::<span class="ident">MAX_LEN</span>];
-            <span class="kw">let</span> <span class="ident">min</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">min</span>(<span class="ident">std</span>::<span class="ident">u16</span>::<span class="ident">MAX</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="ident">eq</span>.<span class="ident">min</span>()) <span class="kw">as</span> <span class="ident">u16</span>;
-            <span class="kw">let</span> <span class="ident">max</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">min</span>(<span class="ident">std</span>::<span class="ident">u16</span>::<span class="ident">MAX</span> <span class="kw">as</span> <span class="ident">u32</span>, <span class="ident">eq</span>.<span class="ident">max</span>()) <span class="kw">as</span> <span class="ident">u16</span>;
+            <span class="kw">let</span> <span class="ident">min</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">min</span>(<span class="ident">std</span>::<span class="ident">u32</span>::<span class="ident">MAX</span>, <span class="ident">eq</span>.<span class="ident">min</span>());
+            <span class="kw">let</span> <span class="ident">max</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">min</span>(<span class="ident">std</span>::<span class="ident">u32</span>::<span class="ident">MAX</span>, <span class="ident">eq</span>.<span class="ident">max</span>());
             <span class="kw">let</span> <span class="ident">start</span> <span class="op">=</span> <span class="ident">universe</span>.<span class="ident">binary_search</span>(<span class="kw-2">&amp;</span><span class="ident">min</span>).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>);
             <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> <span class="ident">universe</span>.<span class="ident">binary_search</span>(<span class="kw-2">&amp;</span><span class="ident">max</span>).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>) <span class="op">-</span> <span class="ident">start</span>;
             <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">len</span> {
@@ -6376,6 +6497,35 @@
     }
 
     <span class="kw">fn</span> <span class="ident">new_eq</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">NumDomain</span><span class="op">&gt;</span>(<span class="ident">universe</span>: <span class="kw-2">&amp;</span><span class="ident">u32</span>, <span class="kw">_</span>: <span class="ident">D</span>) <span class="op">-&gt;</span> <span class="self">Self</span> { <span class="kw-2">*</span><span class="ident">universe</span> }
+}
+
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Never</span> { }
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">NumDomain</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u32</span>] {
+    <span class="kw">type</span> <span class="ident">Universe</span> <span class="op">=</span> <span class="ident">Never</span>;
+
+    <span class="kw">fn</span> <span class="ident">min</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> { <span class="kw">if</span> <span class="self">self</span>.<span class="ident">is_empty</span>() { <span class="number">1</span> } <span class="kw">else</span> { <span class="self">self</span>[<span class="number">0</span>] } }
+
+    <span class="kw">fn</span> <span class="ident">max</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> { <span class="kw">if</span> <span class="self">self</span>.<span class="ident">is_empty</span>() { <span class="number">0</span> } <span class="kw">else</span> { <span class="self">self</span>[<span class="self">self</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>] } }
+
+    <span class="kw">fn</span> <span class="ident">as_num_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">NumericSet</span><span class="op">&gt;</span> {
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="ident">NumericSet</span>::<span class="ident">MAX_LEN</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span> <span class="op">=</span> [<span class="number">0</span>; <span class="ident">NumericSet</span>::<span class="ident">MAX_LEN</span>];
+        <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">len</span>() {
+            <span class="ident">values</span>[<span class="ident">i</span>] <span class="op">=</span> <span class="self">self</span>[<span class="ident">i</span>]
+        }
+        <span class="prelude-val">Some</span>(<span class="ident">NumericSet</span> { <span class="ident">len</span>: <span class="self">self</span>.<span class="ident">len</span>(), <span class="ident">values</span> })
+    }
+
+    <span class="kw">fn</span> <span class="ident">new_gt</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">NumDomain</span><span class="op">&gt;</span>(<span class="ident">never</span>: <span class="kw-2">&amp;</span><span class="ident">Never</span>, <span class="kw">_</span>: <span class="ident">D</span>) <span class="op">-&gt;</span> <span class="self">Self</span> { <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">never</span> { } }
+
+    <span class="kw">fn</span> <span class="ident">new_lt</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">NumDomain</span><span class="op">&gt;</span>(<span class="ident">never</span>: <span class="kw-2">&amp;</span><span class="ident">Never</span>, <span class="kw">_</span>: <span class="ident">D</span>) <span class="op">-&gt;</span> <span class="self">Self</span> { <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">never</span> { } }
+
+    <span class="kw">fn</span> <span class="ident">new_geq</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">NumDomain</span><span class="op">&gt;</span>(<span class="ident">never</span>: <span class="kw-2">&amp;</span><span class="ident">Never</span>, <span class="kw">_</span>: <span class="ident">D</span>) <span class="op">-&gt;</span> <span class="self">Self</span> { <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">never</span> { } }
+
+    <span class="kw">fn</span> <span class="ident">new_leq</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">NumDomain</span><span class="op">&gt;</span>(<span class="ident">never</span>: <span class="kw-2">&amp;</span><span class="ident">Never</span>, <span class="kw">_</span>: <span class="ident">D</span>) <span class="op">-&gt;</span> <span class="self">Self</span> { <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">never</span> { } }
+
+    <span class="kw">fn</span> <span class="ident">new_eq</span><span class="op">&lt;</span><span class="ident">D</span>: <span class="ident">NumDomain</span><span class="op">&gt;</span>(<span class="ident">never</span>: <span class="kw-2">&amp;</span><span class="ident">Never</span>, <span class="kw">_</span>: <span class="ident">D</span>) <span class="op">-&gt;</span> <span class="self">Self</span> { <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">never</span> { } }
 }
 </pre>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g. <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g. <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g. <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../../../../../../../../../../../";window.currentCrate = "telamon_gen_test";</script><script src="../../../../../../../../../../../../aliases.js"></script><script src="../../../../../../../../../../../../main.js"></script><script defer src="../../../../../../../../../../../../search-index.js"></script></body></html>
