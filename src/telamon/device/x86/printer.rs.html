@@ -366,7 +366,6 @@
 <span id="366">366</span>
 <span id="367">367</span>
 <span id="368">368</span>
-<span id="369">369</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">codegen</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">x86</span>::<span class="ident">Namer</span>;
@@ -467,7 +466,7 @@
             <span class="kw">for</span> <span class="ident">dim</span> <span class="kw">in</span> <span class="ident">function</span>.<span class="ident">dimensions</span>() {
                 <span class="kw">if</span> <span class="op">!</span><span class="ident">dim</span>.<span class="ident">kind</span>().<span class="ident">intersects</span>(<span class="ident">DimKind</span>::<span class="ident">UNROLL</span> <span class="op">|</span> <span class="ident">DimKind</span>::<span class="ident">LOOP</span>) { <span class="kw">continue</span>; }
                 <span class="kw">for</span> <span class="ident">level</span> <span class="kw">in</span> <span class="ident">dim</span>.<span class="ident">induction_levels</span>() {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">incr</span>)) <span class="op">=</span> <span class="ident">level</span>.<span class="ident">increment</span> {
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">incr</span>)) <span class="op">=</span> <span class="ident">level</span>.<span class="ident">increment</span> {
                         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">name_map</span>.<span class="ident">declare_size_cast</span>(<span class="ident">incr</span>, <span class="ident">level</span>.<span class="ident">t</span>());
                         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">name</span>) <span class="op">=</span> <span class="ident">name</span> {
                             <span class="kw">let</span> <span class="ident">old_name</span> <span class="op">=</span> <span class="ident">name_map</span>.<span class="ident">name_size</span>(<span class="ident">incr</span>, <span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>));
@@ -587,7 +586,6 @@
         <span class="ident">loop_init</span> <span class="op">=</span> <span class="ident">loop_decl</span>,
         <span class="ident">tid_struct</span> <span class="op">=</span> <span class="ident">tid_struct</span>,
         <span class="ident">loop_jump</span> <span class="op">=</span> <span class="ident">loop_jmp</span>)
-
     }
 
     <span class="doccomment">/// Prints code that joins all previously generated threads</span>

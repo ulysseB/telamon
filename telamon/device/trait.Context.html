@@ -5,7 +5,7 @@
 <div class='item-spacer'></div>    fn <a href='#tymethod.async_eval' class='fnname'>async_eval</a>&lt;'a, 'b&gt;(<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&amp;self, <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;num_workers: <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.usize.html">usize</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;mode: <a class="enum" href="../../telamon/device/enum.EvalMode.html" title="enum telamon::device::EvalMode">EvalMode</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;inner: &amp;(<a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.Fn.html" title="trait core::ops::function::Fn">Fn</a>(&amp;mut <a class="trait" href="../../telamon/device/trait.AsyncEvaluator.html" title="trait telamon::device::AsyncEvaluator">AsyncEvaluator</a>&lt;'a, 'b&gt;) + <a class="trait" href="https://doc.rust-lang.org/nightly/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a>)<br>&nbsp;&nbsp;&nbsp;&nbsp;);
 <div class='item-spacer'></div>    fn <a href='#tymethod.param_as_size' class='fnname'>param_as_size</a>(&amp;self, name: &amp;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a>&gt;;
 
-    fn <a href='#method.eval_size' class='fnname'>eval_size</a>(&amp;self, size: &amp;<a class="struct" href="../../telamon/ir/struct.Size.html" title="struct telamon::ir::Size">Size</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a> { ... }
+    fn <a href='#method.eval_size' class='fnname'>eval_size</a>(&amp;self, size: &amp;<a class="struct" href="../../telamon/codegen/struct.Size.html" title="struct telamon::codegen::Size">Size</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a> { ... }
 }</pre></div><div class='docblock'><p>Describes the context for which a function must be optimized.</p>
 </div>
             <h2 id='required-methods' class='small-section-header'>
@@ -25,7 +25,7 @@ whose bound is aboive the best candidate should be skiped.</p>
               Provided Methods<a href='#provided-methods' class='anchor'></a>
             </h2>
             <div class='methods'>
-        <h3 id='method.eval_size' class='method'><span id='eval_size.v' class='invisible'><code>fn <a href='#method.eval_size' class='fnname'>eval_size</a>(&amp;self, size: &amp;<a class="struct" href="../../telamon/ir/struct.Size.html" title="struct telamon::ir::Size">Size</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a></code></span></h3><div class='docblock'><p>Evaluate a size.</p>
+        <h3 id='method.eval_size' class='method'><span id='eval_size.v' class='invisible'><code>fn <a href='#method.eval_size' class='fnname'>eval_size</a>(&amp;self, size: &amp;<a class="struct" href="../../telamon/codegen/struct.Size.html" title="struct telamon::codegen::Size">Size</a>) -&gt; <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.u32.html">u32</a></code></span></h3><div class='docblock'><p>Evaluate a size.</p>
 </div></div>
         <h2 id='implementors' class='small-section-header'>
           Implementors<a href='#implementors' class='anchor'></a>

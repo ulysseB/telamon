@@ -68,7 +68,7 @@
 </pre><pre class="rust ">
 <span class="doccomment">//! Describes the context for which a function must be optimized.</span>
 <span class="kw">use</span> <span class="ident">device</span>::{<span class="ident">Device</span>, <span class="ident">ScalarArgument</span>, <span class="ident">ArrayArgument</span>};
-<span class="kw">use</span> <span class="ident">codegen</span>::<span class="ident">Function</span>;
+<span class="kw">use</span> <span class="ident">codegen</span>::{<span class="self">self</span>, <span class="ident">Function</span>};
 <span class="kw">use</span> <span class="ident">explorer</span>::<span class="ident">Candidate</span>;
 <span class="kw">use</span> <span class="ident">ir</span>;
 <span class="kw">use</span> <span class="ident">num</span>;
@@ -97,7 +97,7 @@
     <span class="kw">fn</span> <span class="ident">param_as_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>;
 
     <span class="doccomment">/// Evaluate a size.</span>
-    <span class="kw">fn</span> <span class="ident">eval_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">size</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Size</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
+    <span class="kw">fn</span> <span class="ident">eval_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">size</span>: <span class="kw-2">&amp;</span><span class="ident">codegen</span>::<span class="ident">Size</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dividend</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">size</span>.<span class="ident">factor</span>();
         <span class="kw">for</span> <span class="ident">p</span> <span class="kw">in</span> <span class="ident">size</span>.<span class="ident">dividend</span>() {
             <span class="ident">dividend</span> <span class="op">*=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">param_as_size</span>(<span class="kw-2">&amp;</span><span class="ident">p</span>.<span class="ident">name</span>));
