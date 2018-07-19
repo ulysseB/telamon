@@ -12,6 +12,10 @@ pub fn lower_layout(fun: &mut ir::Function, mem: ir::mem::InternalId,
     debug!("lower_layout({:?}) triggered", mem);
     let mut actions = Vec::new();
     // TODO(automate): vectorization disabled -> express as an additional constraint
+    // We need to manually set every dimension except the innermost as non-vectorizable
+    // because temporary loads and stores do not restrict vectorization automatically
+    // since they are not aware of the access pattern. The constraint propagation is not
+    // aware we just specified the access pattern and so doesn't re-run the constraints.
     for (&st_dim, &ld_dim) in st_dims.iter().rev().zip_eq(ld_dims.iter().rev()).skip(1) {
         let not_vec = !DimKind::VECTOR;
         actions.extend(dim_kind::restrict_delayed(st_dim, fun, domain, not_vec)?);
