@@ -46,6 +46,18 @@ set Dimensions subsetof BasicBlocks:
   new_objs = "$objs.dimensions"
 end
 
+/// The set of dimensions for which the sizes it can take is statically known.
+set StaticDims subsetof Dimensions:
+  item_type = "ir::Dimension"
+  id_type = "ir::dim::Id"
+  item_getter = "$fun.dim($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.static_dims()"
+  var_prefix = "dim"
+  from_superset = "$item.possible_sizes().map(|_| $item)"
+  new_objs = "$objs.static_dims"
+end
+
 set MemBlocks:
   item_type = "ir::mem::Block"
   id_type = "ir::MemId"
@@ -381,9 +393,9 @@ trigger forall $lhs in Dimensions:
 // FIXME: remove cubic choice choices
 define half counter mem_size($mem in InternalMemBlocks):
   base "$mem.base_size()"
-  forall $lhs in Dimensions:
-    forall $rhs in Dimensions:
-      mul "$lhs.size().as_int().unwrap_or(1)" when:
+  forall $lhs in StaticDims:
+    forall $rhs in StaticDims:
+      mul "unwrap!($lhs.size().as_int())" when:
         "$mem.maps_dims($lhs.id(), $rhs.id())"
         order($lhs, $rhs) is not MERGED
 end

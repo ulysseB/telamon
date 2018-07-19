@@ -54,6 +54,7 @@ pub struct Function<'a> {
     device: &'a Device,
     insts: Vec<Instruction<'a>>,
     dims: Vec<Dimension<'a>>,
+    static_dims: Vec<ir::DimId>,
     thread_dims: VecSet<ir::DimId>,
     mem_insts: Vec<ir::InstId>,
     mem_blocks: mem::BlockMap,
@@ -71,6 +72,7 @@ impl<'a> Function<'a> {
             insts: vec![],
             mem_insts: vec![],
             dims: vec![],
+            static_dims: vec![],
             thread_dims: VecSet::default(),
             mem_blocks,
             layouts_to_lower: Vec::new(),
@@ -104,7 +106,9 @@ impl<'a> Function<'a> {
     /// Creates a new dimension.
     pub fn add_dim(&mut self, size: Size<'a>) -> Result<ir::DimId, ir::Error> {
         let id = ir::DimId(self.dims.len() as u32);
-        self.dims.push(Dimension::new(size, id)?);
+        let dim = Dimension::new(size, id)?;
+        if dim.possible_sizes().is_some() { self.static_dims.push(id); }
+        self.dims.push(dim);
         Ok(id)
     }
 
@@ -128,6 +132,11 @@ impl<'a> Function<'a> {
     /// Returns the list of dimensions of the function.
     pub fn dims<'b>(&'b self) -> impl Iterator<Item=&'b Dimension<'a>> + Clone {
         self.dims.iter()
+    }
+
+    /// Returns the list of stastic dimensions in the function.
+    pub fn static_dims<'b>(&'b self) -> impl Iterator<Item=&'b Dimension<'a>> {
+        self.static_dims.iter().map(move |&id| self.dim(id))
     }
 
     /// Lists all `BasicBlock`s.
