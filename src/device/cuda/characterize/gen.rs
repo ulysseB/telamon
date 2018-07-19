@@ -165,7 +165,7 @@ pub fn shared_load_chain<'a>(signature: &'a Signature, device: &'a Device,
                             ) -> SearchSpace<'a> {
     let mut builder = Builder::new(signature, device);
     let array_dim_size = builder.cst_size(array_size);
-    let array = builder.allocate_shared(ir::Size::new(4*array_size, vec![], 1));
+    let array = builder.allocate_shared(4*array_size);
     let init_dim = builder.open_dim_ex(array_dim_size.clone(), DimKind::LOOP);
     let init_addr = builder.mad(&init_dim, &4i32, &array);
     let increment = builder.cast(&4i32, ir::Type::PtrTo(array.into()));
@@ -357,8 +357,8 @@ pub fn load_in_loop<'a>(signature: &'a Signature, device: &'a Device, threads: u
                         out: &str, out_id: ir::mem::Id) -> SearchSpace<'a> {
         let mut builder = Builder::new(signature, device);
         let size_4 = builder.cst_size(4);
-        let tmp_mem_size = builder.cst_size(4*4*threads);
-        let tmp_mem = builder.allocate(tmp_mem_size.clone(), true);
+        let tmp_mem_size = 4*4*threads;
+        let tmp_mem = builder.allocate(tmp_mem_size, true);
 
         // Configure dimension sizes
         let threads_size = builder.cst_size(threads);

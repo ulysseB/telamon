@@ -286,15 +286,16 @@ impl<'a> Builder<'a> {
     }
 
     /// Allocates a memory block in shared memory.
-    pub fn allocate_shared(&mut self, size: Size<'a>) -> mem::InternalId {
+    pub fn allocate_shared(&mut self, size: u32) -> mem::InternalId {
         let id = self.allocate(size, true);
         self.actions.push(Action::MemSpace(id.into(), MemSpace::SHARED));
         id
     }
 
     /// Allocates a memory block.
-    pub fn allocate(&mut self, size: Size<'a>, private: bool) -> mem::InternalId {
-        self.function.add_mem_block(size, private)
+    pub fn allocate(&mut self, size: u32, private: bool) -> mem::InternalId {
+        assert!(private, "allocating non-private memory is not yet supported");
+        self.function.add_mem_block(size)
     }
 
     /// Generates an access paterns with all the strides unknown on the opened dimensions.
@@ -303,8 +304,8 @@ impl<'a> Builder<'a> {
     }
 
     /// Generates the access pattern corresponding to accessing a tensor of the given
-    /// type. The data is assumed to be laid out contiguously in the order given by dimensions.
-    /// The last dimension is the major order.
+    /// type. The data is assumed to be laid out contiguously in the order given by
+    /// dimensions. The last dimension is the major order.
     pub fn tensor_access_pattern(&self, mem: mem::Id, t: &Type, dims: &[&MetaDimension])
             -> AccessPattern<'a> {
         let data_size = self.cst_size(unwrap!(t.len_byte()));

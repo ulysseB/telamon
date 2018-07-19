@@ -25,8 +25,8 @@ impl PerfModelTest for Test0 {
         let tile_2 = 4;
         let tile_1_size = builder.cst_size(tile_1);
         let tile_2_size = builder.cst_size(tile_2);
-        let tmp_mem_size = builder.cst_size(4*tile_1*tile_1*tile_2);
-        let a_tmp_mem = builder.allocate_shared(tmp_mem_size.clone());
+        let tmp_mem_size = 4*tile_1*tile_1*tile_2;
+        let a_tmp_mem = builder.allocate_shared(tmp_mem_size);
         let b_tmp_mem = builder.allocate_shared(tmp_mem_size);
         // Configure dimension sizes
         let m_tiled = builder.tile_size("m", tile_1 * tile_2);
@@ -103,8 +103,8 @@ impl PerfModelTest for Test1 {
         let tile_2 = 4;
         let tile_1_size = builder.cst_size(tile_1);
         let tile_2_size = builder.cst_size(tile_2);
-        let tmp_mem_size = builder.cst_size(4*tile_1*tile_2);
-        let a_tmp_mem = builder.allocate(tmp_mem_size.clone(), true);
+        let tmp_mem_size = 4*tile_1*tile_2;
+        let a_tmp_mem = builder.allocate(tmp_mem_size, true);
         let out = ir::mem::Id::External(0);
 
         // Configure dimension sizes
@@ -159,8 +159,8 @@ impl PerfModelTest for Test2 {
         let tile_2 = 4;
         let tile_1_size = builder.cst_size(tile_1);
         let tile_2_size = builder.cst_size(tile_2);
-        let tmp_mem_size = builder.cst_size(4*tile_1*tile_2);
-        let a_tmp_mem = builder.allocate(tmp_mem_size.clone(), true);
+        let tmp_mem_size = 4*tile_1*tile_2;
+        let a_tmp_mem = builder.allocate(tmp_mem_size, true);
         let b_tmp_mem = builder.allocate(tmp_mem_size, true);
         let out = ir::mem::Id::External(0);
 
