@@ -83,7 +83,7 @@ impl<'a, 'b> Kernel<'a, 'b> {
         let mut tmp_arrays = vec![];
         let params = self.function.device_code_args().map(|x| match *x {
             ParamVal::External(p, _) => ThunkArg::ArgRef(args.get_param(&p.name)),
-            ParamVal::Size(s) => ThunkArg::Size(args.eval_size(s) as i32),
+            ParamVal::Size(ref s) => ThunkArg::Size(args.eval_size(s) as i32),
             ParamVal::GlobalMem(_, ref size, _) => {
                 tmp_arrays.push(args.eval_size(size) as usize);
                 ThunkArg::TmpArray(tmp_arrays.len() - 1)
