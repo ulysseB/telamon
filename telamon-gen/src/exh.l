@@ -106,7 +106,7 @@ not_equals "!="
 equal "="
 divide "/"
 integer "integer"
-include "include".*\".*\"
+include "include"{whitespace}*\".*\"
 
 choice_ident [a-z][a-z_0-9]*
 value_ident [A-Z][A-Z_0-9]*
