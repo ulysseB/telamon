@@ -9,7 +9,7 @@ extern crate libc;
 extern crate telamon;
 extern crate telamon_kernels;
 
-use libc::{c_char, c_int, c_uint, size_t};
+use libc::{c_char, c_int, c_uint, size_t, uint32_t};
 use telamon::device;
 #[cfg(feature = "cuda")]
 use telamon::device::cuda;
@@ -46,39 +46,28 @@ impl KernelParameters {
     ) {
         match self {
             KernelParameters::MatMul(params) => {
-                linalg::MatMul::<f32>::benchmark(
-                    config, params.clone(), 0, context);
+                linalg::MatMul::<f32>::benchmark(config, params.clone(), 0, context);
             }
         }
     }
 }
 
-
-#[repr(C)]
-pub struct Tiling {
-    length: size_t,
-    data: *mut c_uint,
-}
-
-unsafe fn tiling_as_vec(tiling: *const Tiling) -> Option<Vec<u32>> {
-    if tiling.is_null() {
+/// Helper function to create a Rust vector from a C array (pointer
+/// and size) without transfering ownership (it performs a
+/// copy). Returns None when data is null.
+unsafe fn c_vec<T: Clone>(data: *const T, len: usize) -> Option<Vec<T>> {
+    if data.is_null() {
         None
     } else {
-        Some((&*tiling).as_vec())
+        Some(std::slice::from_raw_parts(data, len).to_vec())
     }
 }
 
-impl Tiling {
-    unsafe fn as_vec(&self) -> Vec<u32> {
-        let vec = Vec::from_raw_parts(self.data, self.length, self.length);
-        let copy = vec.clone();
-        std::mem::forget(vec);
-        copy
-    }
-}
-
-/// Instanciate a new kernel for matrix-matrix multiplication. The caller is
-/// responsible for deallocating the returned pointer using kernel_free.
+/// Instanciate a new kernel for matrix-matrix multiplication. The
+/// caller is responsible for deallocating the returned pointer using
+/// kernel_free. The tile_m, tile_n and tile_k parameters are read
+/// from during the call, but no pointer to the corresponding data is
+/// kept afterwards.
 #[no_mangle]
 pub unsafe extern "C" fn kernel_matmul_new(
     m: c_int,
@@ -88,9 +77,12 @@ pub unsafe extern "C" fn kernel_matmul_new(
     transpose_a: c_int,
     transpose_b: c_int,
     generic: c_int,
-    tile_m: *const Tiling,
-    tile_n: *const Tiling,
-    tile_k: *const Tiling,
+    tile_m: *const uint32_t,
+    tile_m_len: size_t,
+    tile_n: *const uint32_t,
+    tile_n_len: size_t,
+    tile_k: *const uint32_t,
+    tile_k_len: size_t,
 ) -> *mut KernelParameters {
     Box::into_raw(Box::new(KernelParameters::MatMul(linalg::MatMulP {
         m: m as i32,
@@ -100,9 +92,9 @@ pub unsafe extern "C" fn kernel_matmul_new(
         transpose_a: transpose_a == 1,
         transpose_b: transpose_b == 1,
         generic: generic == 1,
-        m_tiling: tiling_as_vec(tile_m),
-        n_tiling: tiling_as_vec(tile_n),
-        k_tiling: tiling_as_vec(tile_k),
+        m_tiling: c_vec(tile_m, tile_m_len),
+        n_tiling: c_vec(tile_n, tile_n_len),
+        k_tiling: c_vec(tile_k, tile_k_len),
     })))
 }
 
