@@ -1,6 +1,6 @@
 pub use super::utils::RcStr;
 
-pub use super::telamon_gen::lexer::{Lexer, Spanned, Position};
+pub use super::telamon_gen::lexer::{Lexer, Spanned, Position, LexerPosition};
 pub use super::telamon_gen::parser;
 pub use super::telamon_gen::ast::*;
 
@@ -15,10 +15,15 @@ mod undefined {
             b"define integer foo($arg in MySet): \"mycode\"
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Undefined(Spanned {
-                beg: Position { line: 0, column: 15},
-                end: Position { line: 0, column: 18},
+                beg: Position {
+                    position: LexerPosition { line: 0, column: 15 },
+                    ..Default::default()
+                },
+                end: Position {
+                    position: LexerPosition { line: 0, column: 18 },
+                    ..Default::default()
+                },
                 data: String::from("MySet"),
-                filename: Default::default()
             }))
         );
     }
@@ -37,15 +42,25 @@ mod redefinition {
               define integer foo(): \"mycode\"
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Redefinition(Spanned {
-                beg: Position { line: 0, column: 15},
-                end: Position { line: 0, column: 18},
+                beg: Position {
+                    position: LexerPosition { line: 0, column: 15 },
+                    ..Default::default()
+                },
+                end: Position {
+                    position: LexerPosition { line: 0, column: 18 },
+                    ..Default::default()
+                },
                 data: Hint::Integer,
-                filename: Default::default()
             }, Spanned {
-                beg: Position { line: 2, column: 29},
-                end: Position { line: 2, column: 32},
+                beg: Position {
+                    position: LexerPosition { line: 2, column: 29 },
+                    ..Default::default()
+                },
+                end: Position {
+                    position: LexerPosition { line: 2, column: 32 },
+                    ..Default::default()
+                },
                 data:  String::from("foo"),
-                filename: Default::default()
             }))
         );
     }

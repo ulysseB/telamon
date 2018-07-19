@@ -1,4 +1,4 @@
-use super::lexer::{LexerPosition, Token, LexicalError, Span};
+use super::lexer::{Position, Token, LexicalError, Span};
 use super::lalrpop_util::*;
 
 use std::{path, fmt};
@@ -7,7 +7,7 @@ use std::error::Error;
 #[derive(Debug)]
 pub enum Cause {
     /// Lalrpop
-    Parse(ParseError<LexerPosition,
+    Parse(ParseError<Position,
                      Token,
                      LexicalError>),
     /// Will be remplaced by field for Ast [...]
@@ -24,17 +24,17 @@ pub struct ProcessError<'a> {
 }
 
 impl <'a>From<(path::Display<'a>,
-               ParseError<LexerPosition,
+               ParseError<Position,
                           Token,
                           LexicalError>
              )> for ProcessError<'a> {
     fn from((path, parse): (path::Display<'a>,
-                                ParseError<LexerPosition,
+                                ParseError<Position,
                                            Token,
                                            LexicalError>
     )) -> Self {
         match parse {
-            ParseError::InvalidToken { location: LexerPosition {
+            ParseError::InvalidToken { location: Position {
                 position: beg, .. }
             } => {
                 ProcessError {
@@ -51,21 +51,21 @@ impl <'a>From<(path::Display<'a>,
                 }
             }, 
             ParseError::UnrecognizedToken {
-                token: Some((LexerPosition { position: l, .. }, ..,
-                             LexerPosition { position: e, .. })), ..
+                token: Some((Position { position: l, .. }, ..,
+                             Position { position: e, .. })), ..
             } |
             ParseError::ExtraToken {
-                token: (LexerPosition { position: l, .. }, ..,
-                        LexerPosition { position: e, .. })
+                token: (Position { position: l, .. }, ..,
+                        Position { position: e, .. })
             } |
             ParseError::User {
-                error: LexicalError::UnexpectedToken(LexerPosition { position: l, .. }, .., LexerPosition { position: e, .. })
+                error: LexicalError::UnexpectedToken(Position { position: l, .. }, .., Position { position: e, .. })
             } |
             ParseError::User {
-                error: LexicalError::InvalidInclude(LexerPosition { position: l, .. }, .., LexerPosition { position: e, .. })
+                error: LexicalError::InvalidInclude(Position { position: l, .. }, .., Position { position: e, .. })
             } |
             ParseError::User {
-                error: LexicalError::InvalidToken(LexerPosition { position: l, .. }, .., LexerPosition { position: e, .. })
+                error: LexicalError::InvalidToken(Position { position: l, .. }, .., Position { position: e, .. })
             } => ProcessError {
                  path: path,
                  span: Some(Span { beg: l, end: Some(e) }),

@@ -14,9 +14,12 @@ fn invalid_token() {
     assert_eq!(parser::parse_ast(Lexer::new(b"!".to_vec())).err(), Some(
                   ParseError::User {
                       error: LexicalError::InvalidToken(
-                          LexerPosition::default(),
+                          Position::default(),
                           Token::InvalidToken(String::from("!")),
-                          LexerPosition { position: Position { column: 1, ..Default::default() }, ..Default::default() }
+                          Position {
+                              position: LexerPosition::new(0, 1),
+                              ..Default::default()
+                          }
                       ),
                   }
               ));

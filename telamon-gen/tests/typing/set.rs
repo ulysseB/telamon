@@ -1,6 +1,6 @@
 pub use super::utils::RcStr;
 
-pub use super::telamon_gen::lexer::{Lexer, Spanned, Position};
+pub use super::telamon_gen::lexer::{Lexer, Spanned, Position, LexerPosition};
 pub use super::telamon_gen::parser;
 pub use super::telamon_gen::ir;
 pub use super::telamon_gen::ast::*;
@@ -32,15 +32,25 @@ mod redefinition {
                 new_objs = \"$objs.inst\"
             end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Redefinition(Spanned {
-                beg: Position { line: 0, column: 4},
-                end: Position { line: 0, column: 7},
+                beg: Position {
+                  position: LexerPosition { line: 0, column: 4 },
+                  ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 0, column: 7 },
+                  ..Default::default()
+                },
                 data: Hint::Set,
-                filename: Default::default()
             }, Spanned {
-                beg: Position { line: 9, column: 16},
-                end: Position { line: 9, column: 19},
+                beg: Position {
+                  position: LexerPosition { line: 9, column: 16 },
+                  ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 9, column: 19 },
+                  ..Default::default()
+                },
                 data:  String::from("Foo"),
-                filename: Default::default()
             }))
         );
     }
@@ -64,12 +74,10 @@ mod redefinition {
                 beg: Default::default(),
                 end: Default::default(),
                 data: Hint::Set,
-                filename: Default::default()
             }, Spanned {
                 beg: Default::default(),
                 end: Default::default(),
                 data:  String::from("NewObjs"),
-                filename: Default::default()
             }))
         );
     }
@@ -94,10 +102,15 @@ mod undefined {
                 new_objs = \"$objs.operand\"
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Undefined(Spanned {
-                beg: Position { line: 0, column: 4},
-                end: Position { line: 0, column: 11},
+                beg: Position {
+                  position: LexerPosition { line: 0, column: 4 },
+                  ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 0, column: 11 },
+                  ..Default::default()
+                },
                 data: String::from("Instruction"),
-                filename: Default::default()
             }))
         );
     }
@@ -117,10 +130,15 @@ mod undefined {
                 from_superset = \"ir::inst::from_superset($fun, $item)\"
              end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Undefined(Spanned {
-                beg: Position { line: 0, column: 4},
-                end: Position { line: 0, column: 15},
+                beg: Position {
+                  position: LexerPosition { line: 0, column: 4 },
+                  ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 0, column: 15 },
+                  ..Default::default()
+                },
                 data: String::from("BasicBlock"),
-                filename: Default::default()
             }))
         );
     }
@@ -144,10 +162,15 @@ mod missing_entry {
                 new_objs = \"$objs.inst\"
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
-                beg: Position { line: 0, column: 4},
-                end: Position { line: 0, column: 15},
+                beg: Position {
+                  position: LexerPosition { line: 0, column: 4 },
+                  ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 0, column: 15 },
+                  ..Default::default()
+                },
                 data: ir::SetDefKey::ItemType.to_string(),
-                filename: Default::default()
             }))
         );
     }
@@ -165,10 +188,15 @@ mod missing_entry {
                 new_objs = \"$objs.inst\"
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
-                beg: Position { line: 0, column: 4},
-                end: Position { line: 0, column: 15},
+                beg: Position {
+                  position: LexerPosition { line: 0, column: 4 },
+                  ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 0, column: 15 },
+                  ..Default::default()
+                },
                 data: ir::SetDefKey::IdType.to_string(),
-                filename: Default::default()
             }))
         );
     }
@@ -186,10 +214,15 @@ mod missing_entry {
                 new_objs = \"$objs.inst\"
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
-                beg: Position { line: 0, column: 4},
-                end: Position { line: 0, column: 15},
+                beg: Position {
+                  position: LexerPosition { line: 0, column: 4 },
+                  ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 0, column: 15 },
+                  ..Default::default()
+                },
                 data: ir::SetDefKey::ItemGetter.to_string(),
-                filename: Default::default()
             }))
         );
     }
@@ -207,10 +240,15 @@ mod missing_entry {
                 new_objs = \"$objs.inst\"
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
-                beg: Position { line: 0, column: 4},
-                end: Position { line: 0, column: 15},
+                beg: Position {
+                  position: LexerPosition { line: 0, column: 4 },
+                  ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 0, column: 15 },
+                  ..Default::default()
+                },
                 data: ir::SetDefKey::IdGetter.to_string(),
-                filename: Default::default()
             }))
         );
     }
@@ -228,10 +266,15 @@ mod missing_entry {
                 new_objs = \"$objs.inst\"
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
-                beg: Position { line: 0, column: 4},
-                end: Position { line: 0, column: 15},
+                beg: Position {
+                  position: LexerPosition { line: 0, column: 4 },
+                  ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 0, column: 15 },
+                  ..Default::default()
+                },
                 data: ir::SetDefKey::Iter.to_string(),
-                filename: Default::default()
             }))
         );
     }
@@ -249,7 +292,7 @@ mod missing_entry {
                 var_prefix = \"bb\"
                 new_objs = \"$objs.basic_block\"
               end
-              
+
               set Instruction subsetof BasicBlock:
                 item_type = \"ir::inst::Obj\"
                 id_type = \"ir::inst::Id\"
@@ -260,10 +303,15 @@ mod missing_entry {
                 new_objs = \"$objs.inst\"
              end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
-                beg: Position { line: 10, column: 18},
-                end: Position { line: 10, column: 29},
+                beg: Position {
+                  position: LexerPosition { line: 10, column: 18 },
+                  ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 10, column: 29 },
+                  ..Default::default()
+                },
                 data: ir::SetDefKey::FromSuperset.to_string(),
-                filename: Default::default()
             }))
         );
     }

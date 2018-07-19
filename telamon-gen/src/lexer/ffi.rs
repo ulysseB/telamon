@@ -33,23 +33,23 @@ pub union YyLval {
 /// A sequence's row/column position
 #[derive(Default, Copy, Clone, Debug, PartialEq)]
 #[repr(C)]
-pub struct Position {
+pub struct LexerPosition {
     pub line: libc::c_uint,
     pub column: libc::c_uint,
 }
 
-impl Position {
+impl LexerPosition {
 
-    // Returns a Position interface from a couple of line/column.
+    // Returns a LexerPosition interface from a couple of line/column.
     pub fn new(line: libc::c_uint, column: libc::c_uint) -> Self {
-        Position {
+        LexerPosition {
             line,
             column
         }
     }
 }
 
-impl fmt::Display for Position {
+impl fmt::Display for LexerPosition {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "line {}, column {}", self.line, self.column)
     }
@@ -57,48 +57,48 @@ impl fmt::Display for Position {
 
 #[derive(Default, Clone, Debug, PartialEq)]
 #[repr(C)]
-pub struct LexerPosition {
-    pub position: Position,
+pub struct Position {
+    pub position: LexerPosition,
     pub filename: Option<String>,
 }
 
-impl LexerPosition {
-    // Returns a LexerPosition interface from Position with filename.
-    pub fn new(position: Position, filename: String) -> Self {
-        LexerPosition {
+impl Position {
+    // Returns a Position interface from LexerPosition with filename.
+    pub fn new(position: LexerPosition, filename: String) -> Self {
+        Position {
             position,
             filename: Some(filename),
         }
     }
 
-    // Returns a LexerPosition interface from Position with optional filename.
-    pub fn new_optional(position: Position, filename: Option<String>) -> Self {
-        LexerPosition {
+    // Returns a Position interface from LexerPosition with optional filename.
+    pub fn new_optional(position: LexerPosition, filename: Option<String>) -> Self {
+        Position {
             position, filename,
         }
     }
 }
 
-impl From<Position> for LexerPosition {
-    fn from(position: Position) -> Self {
-        LexerPosition {
+impl From<LexerPosition> for Position {
+    fn from(position: LexerPosition) -> Self {
+        Position {
             position,
             ..Default::default()
         }
     }
 }
 
-impl fmt::Display for LexerPosition {
+impl fmt::Display for Position {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "position: {:?}, filename: {:?}", self.position, self.filename)
     }
 }
 
 /// A double sequence's row/column position
-#[derive(Default, Copy, Clone, Debug, PartialEq)]
+#[derive(Default, Clone, Debug, PartialEq)]
 pub struct Span {
-    pub beg: Position,
-    pub end: Option<Position>,
+    pub beg: LexerPosition,
+    pub end: Option<LexerPosition>,
 }
 
 impl fmt::Display for Span {
@@ -112,25 +112,23 @@ impl fmt::Display for Span {
 }
 
 /// A F/lex's token with a span.
-#[derive(Default, Clone, PartialEq, Debug)]
+#[derive(Default, Copy, Clone, PartialEq, Debug)]
 #[repr(C)]
 pub struct LexerSpanned<Y> {
-    pub beg: Position,
-    pub end: Position,
+    pub beg: LexerPosition,
+    pub end: LexerPosition,
     /// Spanned data
     pub data: Y,
 }
 
 pub type YyExtraType = LexerSpanned<YyLval>;
 
-/// A F/lex's token with a span.
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Default, Clone, PartialEq, Debug)]
 pub struct Spanned<Y> {
     pub beg: Position,
     pub end: Position,
     /// Spanned data
     pub data: Y,
-    pub filename: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug)]

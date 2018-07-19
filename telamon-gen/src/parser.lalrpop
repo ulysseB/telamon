@@ -159,10 +159,9 @@ list<T, SEP>: Vec<T> = {
 spanned<T>: Spanned<T> = {
     <beg: @L> <data: T> <end: @R> => {
         Spanned {
-            beg: beg.position,
-            end: end.position,
+            beg,
+            end,
             data,
-            filename: beg.filename.to_owned(),
         }
     }
 };
@@ -224,7 +223,7 @@ stmt_integer: ast::ChoiceDef = {
 };
 
 extern {
-    type Location = LexerPosition;
+    type Location = Position;
     type Error = LexicalError;
 
     enum Token {

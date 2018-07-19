@@ -16,23 +16,24 @@ impl EnumDef {
 
         for stmt in self.statements.iter() {
             match stmt {
-                EnumStatement::Value(Spanned { beg, end, data: name, filename }, ..) => {
+                EnumStatement::Value(Spanned { beg, end, data: name }, ..) => {
                     hash.insert(name.to_owned(), Spanned {
-                        beg: *beg, end: *end, data: (), filename: filename.to_owned()
+                        beg: beg.to_owned(), end: end.to_owned(),
+                        data: (),
                     } );
                 },
-                EnumStatement::Alias(Spanned { beg, end, data: name, filename }, _, sets, ..) => {
+                EnumStatement::Alias(Spanned { beg, end, data: name }, _, sets, ..) => {
                     for set in sets {
                         if !hash.contains_key(set) {
                             Err(TypeError::Undefined(Spanned {
-                                beg: *beg, end: *end, data: set.to_owned(),
-                                filename: filename.to_owned()
+                                beg: beg.to_owned(), end: end.to_owned(),
+                                data: set.to_owned(),
                             }))?;
                         }
                     }
                     hash.insert(name.to_owned(), Spanned {
-                        beg: *beg, end: *end, data: (),
-                        filename: filename.to_owned()
+                        beg: beg.to_owned(), end: end.to_owned(),
+                        data: (),
                     });
                 },
                 _ => {},
@@ -48,44 +49,44 @@ impl EnumDef {
 
         for stmt in self.statements.iter() {
             match stmt {
-                EnumStatement::Symmetric(Spanned { beg, end, data: _, filename }) => {
+                EnumStatement::Symmetric(Spanned { beg, end, data: _ }) => {
                     if let Some(ref before) = symmetric {
                         Err(TypeError::Redefinition(
                             Spanned {
-                                beg: before.beg, end: before.end, data: Hint::EnumAttribute,
-                                filename: filename.to_owned()
+                                beg: beg.to_owned(), end: end.to_owned(),
+                                data: Hint::EnumAttribute,
                             },
                             Spanned {
-                                beg: *beg, end: *end, data: String::from("Symmetric"),
-                                filename: filename.to_owned()
+                                beg: beg.to_owned(), end: end.to_owned(),
+                                data: String::from("Symmetric"),
                             },
                         ))?;
                     } else {
                         symmetric = Some(Spanned {
-                            beg: *beg, end: *end, data: (),
-                            filename: filename.to_owned()
+                            beg: beg.to_owned(), end: end.to_owned(),
+                            data: (),
                         });
                     }
                 },
-                EnumStatement::Value(Spanned { beg, end, data: name, filename }, ..) |
-                EnumStatement::Alias(Spanned { beg, end, data: name, filename }, ..) => {
+                EnumStatement::Value(Spanned { beg, end, data: name }, ..) |
+                EnumStatement::Alias(Spanned { beg, end, data: name }, ..) => {
                     if let Some(Spanned {
-                        beg: beg_before, end: end_before, data: _, filename: _
+                        beg: beg_before, end: end_before, data: _
                     }) = hash.insert(
                         name.to_owned(),
                         Spanned {
-                            beg: *beg, end: *end, data: (),
-                            filename: filename.to_owned()
+                            beg: beg.to_owned(), end: end.to_owned(),
+                            data: (),
                         }
                     ) {
                         Err(TypeError::Redefinition(
                             Spanned {
-                                beg: *beg, end: *end, data: Hint::EnumAttribute,
-                                filename: filename.to_owned()
+                                beg: beg.to_owned(), end: end.to_owned(),
+                                data: Hint::EnumAttribute,
                             },
                             Spanned {
-                                beg: *beg, end: *end, data: name.to_owned(),
-                                filename: filename.to_owned()
+                                beg: beg.to_owned(), end: end.to_owned(),
+                                data: name.to_owned(),
                             },
                         ))?;
                     }

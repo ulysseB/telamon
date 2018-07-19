@@ -1,6 +1,6 @@
 pub use super::utils::RcStr;
 
-pub use super::telamon_gen::lexer::{Lexer, Spanned, Position};
+pub use super::telamon_gen::lexer::{Lexer, Spanned, Position, LexerPosition};
 pub use super::telamon_gen::parser;
 pub use super::telamon_gen::ast::*;
 
@@ -19,10 +19,15 @@ mod undefined {
                     value B:
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Undefined(Spanned {
-                beg: Position { line: 0, column: 12},
-                end: Position { line: 0, column: 15},
+                beg: Position {
+                  position: LexerPosition { line: 0, column: 12 },
+                  ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 0, column: 15 },
+                  ..Default::default()
+                },
                 data: String::from("BasicBlock"),
-                filename: Default::default()
             }))
         );
     }
@@ -36,10 +41,15 @@ mod undefined {
                 alias AB = A | B:
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Undefined(Spanned {
-                beg: Position { line: 2, column: 22},
-                end: Position { line: 2, column: 24},
+                beg: Position {
+                  position: LexerPosition { line: 2, column: 22 },
+                  ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 2, column: 24 },
+                  ..Default::default()
+                },
                 data: String::from("B"),
-                filename: Default::default()
             }))
         );
     }
@@ -56,19 +66,29 @@ mod redefinition {
         assert_eq!(parser::parse_ast(Lexer::new(
             b"define enum foo():
               end
-              
+
               define enum foo():
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Redefinition(Spanned {
-                beg: Position { line: 0, column: 12},
-                end: Position { line: 0, column: 15},
+                beg: Position {
+                  position: LexerPosition { line: 0, column: 12 },
+                  ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 0, column: 15 },
+                  ..Default::default()
+                },
                 data: Hint::Enum,
-                filename: Default::default()
             }, Spanned {
-                beg: Position { line: 3, column: 26},
-                end: Position { line: 3, column: 29},
+                beg: Position {
+                  position: LexerPosition { line: 3, column: 26 },
+                  ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 3, column: 29 },
+                  ..Default::default()
+                },
                 data: String::from("foo"),
-                filename: Default::default()
             }))
         );
     }
@@ -84,15 +104,25 @@ mod redefinition {
                 alias AB = A | B:
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Redefinition(Spanned {
-                beg: Position { line: 5, column: 22 },
-                end: Position { line: 5, column: 24 },
+                beg: Position {
+                  position: LexerPosition { line: 5, column: 22  },
+                   ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 5, column: 24  },
+                   ..Default::default()
+                },
                 data: Hint::EnumAttribute,
-                filename: Default::default()
             }, Spanned {
-                beg: Position { line: 5, column: 22 },
-                end: Position { line: 5, column: 24 },
+                beg: Position {
+                  position: LexerPosition { line: 5, column: 22  },
+                   ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 5, column: 24  },
+                   ..Default::default()
+                },
                 data: String::from("AB"),
-                filename: Default::default()
             }))
         );
         assert_eq!(parser::parse_ast(Lexer::new(
@@ -102,15 +132,25 @@ mod redefinition {
                 value A:
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Redefinition(Spanned {
-                beg: Position { line: 3, column: 22 },
-                end: Position { line: 3, column: 23 },
+                beg: Position {
+                  position: LexerPosition { line: 3, column: 22  },
+                   ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 3, column: 23  },
+                   ..Default::default()
+                },
                 data: Hint::EnumAttribute,
-                filename: Default::default()
             }, Spanned {
-                beg: Position { line: 3, column: 22 },
-                end: Position { line: 3, column: 23 },
+                beg: Position {
+                  position: LexerPosition { line: 3, column: 22  },
+                   ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 3, column: 23  },
+                   ..Default::default()
+                },
                 data: String::from("A"),
-                filename: Default::default()
             }))
         );
         assert_eq!(parser::parse_ast(Lexer::new(
@@ -130,15 +170,25 @@ mod redefinition {
                 value B:
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Redefinition(Spanned {
-                beg: Position { line: 10, column: 16 },
-                end: Position { line: 10, column: 25 },
+                beg: Position {
+                  position: LexerPosition { line: 11, column: 16  },
+                   ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 11, column: 25  },
+                   ..Default::default()
+                },
                 data: Hint::EnumAttribute,
-                filename: Default::default()
             }, Spanned {
-                beg: Position { line: 11, column: 16 },
-                end: Position { line: 11, column: 25 },
+                beg: Position {
+                  position: LexerPosition { line: 11, column: 16  },
+                   ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 11, column: 25  },
+                   ..Default::default()
+                },
                 data: String::from("Symmetric"),
-                filename: Default::default()
             }))
         );
     }
@@ -154,10 +204,15 @@ fn enum_symmetric_two_parameters() {
             value B:
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            beg: Position { line: 0, column: 0},
-            end: Position { line: 0, column: 18},
+            beg: Position {
+              position: LexerPosition { line: 0, column: 0 },
+              ..Default::default()
+            },
+            end: Position {
+              position: LexerPosition { line: 0, column: 18 },
+              ..Default::default()
+            },
             data: TypeError::BadSymmetricArg(vec![]),
-            filename: Default::default()
         })
     );
     assert_eq!(parser::parse_ast(Lexer::new(
@@ -176,8 +231,14 @@ fn enum_symmetric_two_parameters() {
             value B:
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            beg: Position { line: 9, column: 10},
-            end: Position { line: 9, column: 46},
+            beg: Position {
+              position: LexerPosition { line: 9, column: 10 },
+              ..Default::default()
+            },
+            end: Position {
+              position: LexerPosition { line: 9, column: 46 },
+              ..Default::default()
+            },
             data: TypeError::BadSymmetricArg(vec![
                 VarDef {
                     name: RcStr::new(String::from("lhs")),
@@ -187,7 +248,6 @@ fn enum_symmetric_two_parameters() {
                     }
                 },
             ]),
-            filename: Default::default()
         })
     );
     assert_eq!(parser::parse_ast(Lexer::new(
@@ -208,8 +268,14 @@ fn enum_symmetric_two_parameters() {
             value B:
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            beg: Position { line: 9, column: 10},
-            end: Position { line: 11, column: 46},
+            beg: Position {
+              position: LexerPosition { line: 9, column: 10 },
+              ..Default::default()
+            },
+            end: Position {
+              position: LexerPosition { line: 11, column: 46 },
+              ..Default::default()
+            },
             data: TypeError::BadSymmetricArg(vec![
                 VarDef {
                     name: RcStr::new(String::from("lhs")),
@@ -233,7 +299,6 @@ fn enum_symmetric_two_parameters() {
                     }
                 },
             ]),
-            filename: Default::default()
         })
     );
 }
@@ -265,8 +330,14 @@ fn enum_symmetric_same_parameter() {
             value B:
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            beg: Position { line: 18, column: 10},
-            end: Position { line: 18, column: 67},
+            beg: Position {
+              position: LexerPosition { line: 18, column: 10 },
+              ..Default::default()
+            },
+            end: Position {
+              position: LexerPosition { line: 18, column: 67 },
+              ..Default::default()
+            },
             data: TypeError::BadSymmetricArg(vec![
                 VarDef {
                     name: RcStr::new(String::from("lhs")),
@@ -283,7 +354,6 @@ fn enum_symmetric_same_parameter() {
                     }
                 }
             ]),
-            filename: Default::default()
         })
     );
 }

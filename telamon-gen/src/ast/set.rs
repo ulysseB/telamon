@@ -21,44 +21,38 @@ impl SetDef {
 
         if !keys.contains(&&ir::SetDefKey::ItemType) {
             Err(TypeError::MissingEntry(self.name.data.to_owned(), Spanned {
-                beg: self.name.beg, end: self.name.end,
+                beg: self.name.beg.to_owned(), end: self.name.end.to_owned(),
                 data: ir::SetDefKey::ItemType.to_string(),
-                filename: self.name.filename.to_owned(),
             }))?;
         }
         if !keys.contains(&&ir::SetDefKey::IdType) {
             Err(TypeError::MissingEntry(self.name.data.to_owned(), Spanned {
-                beg: self.name.beg, end: self.name.end,
+                beg: self.name.beg.to_owned(), end: self.name.end.to_owned(),
                 data: ir::SetDefKey::IdType.to_string(),
-                filename: self.name.filename.to_owned(),
             }))?;
         }
         if !keys.contains(&&ir::SetDefKey::ItemGetter) {
             Err(TypeError::MissingEntry(self.name.data.to_owned(), Spanned {
-                beg: self.name.beg, end: self.name.end,
+                beg: self.name.beg.to_owned(), end: self.name.end.to_owned(),
                 data: ir::SetDefKey::ItemGetter.to_string(),
-                filename: self.name.filename.to_owned(),
             }))?;
         }
         if !keys.contains(&&ir::SetDefKey::IdGetter) {
             Err(TypeError::MissingEntry(self.name.data.to_owned(), Spanned {
-                beg: self.name.beg, end: self.name.end,
+                beg: self.name.beg.to_owned(), end: self.name.end.to_owned(),
                 data: ir::SetDefKey::IdGetter.to_string(),
-                filename: self.name.filename.to_owned(),
             }))?;
         }
         if !keys.contains(&&ir::SetDefKey::Iter) {
             Err(TypeError::MissingEntry(self.name.data.to_owned(), Spanned {
-                beg: self.name.beg, end: self.name.end,
+                beg: self.name.beg.to_owned(), end: self.name.end.to_owned(),
                 data: ir::SetDefKey::Iter.to_string(),
-                filename: self.name.filename.to_owned(),
             }))?;
         }
         if self.superset.is_some() && !keys.contains(&&ir::SetDefKey::FromSuperset) {
             Err(TypeError::MissingEntry(self.name.data.to_owned(), Spanned {
-                beg: self.name.beg, end: self.name.end,
+                beg: self.name.beg.to_owned(), end: self.name.end.to_owned(),
                 data: ir::SetDefKey::FromSuperset.to_string(),
-                filename: self.name.filename.to_owned(),
             }))?;
         }
         Ok(())
@@ -73,12 +67,10 @@ impl SetDef {
                     beg: Default::default(),
                     end: Default::default(),
                     data: Hint::Set,
-                    filename: self.name.filename.to_owned(),
                 }, Spanned {
                     beg: Default::default(),
                     end: Default::default(),
                     data: key.to_string(),
-                    filename: self.name.filename.to_owned(),
                 }))?;
             }
         }
