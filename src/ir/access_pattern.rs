@@ -21,13 +21,13 @@ pub enum AccessPattern<'a> {
 }
 
 impl<'a> AccessPattern<'a> {
-    /// Indicates if emory accesses access to consecutive elements on the given dimension.
+    /// Indicates if memory accesses access to consecutive elements on the given dimension.
     pub fn is_consecutive(&self, dim: ir::dim::Id, t: &ir::Type) -> bool {
         match self {
             AccessPattern::Unknown { .. } => false,
             AccessPattern::Tensor { dims, .. } => {
-                dims.get(&dim).and_then(|s| s.as_int())
-                    .map(|s| Some(s) == t.len_byte())
+                dims.get(&dim).and_then(|stride| stride.as_int())
+                    .map(|stride| Some(stride) == t.len_byte())
                     .unwrap_or(false)
             },
         }
@@ -41,12 +41,14 @@ impl<'a> AccessPattern<'a> {
         }
     }
 
-    /// Ensure the access pattern is valid for an instruction declared in the given
-    /// dimensions.
+    /// Ensure the access pattern is valid for an instruction nested in the dimensions
+    /// given in `iter_dims`.
     pub fn check(&self, iter_dims: &HashSet<ir::dim::Id>) -> Result<(), ir::Error> {
         match self {
             AccessPattern::Unknown { .. } => Ok(()),
             AccessPattern::Tensor { dims, .. } => {
+                // Ensures all dimensions referenced in the pattern are nested outside
+                // the access pattern.
                 for (&dim, _) in dims {
                     if !iter_dims.contains(&dim) {
                         return Err(ir::Error::InvalidDimInPattern { dim });
