@@ -53,27 +53,11 @@ impl KernelParameters {
     }
 }
 
-
-#[repr(C)]
-pub struct Tiling {
-    length: size_t,
-    data: *mut c_uint,
-}
-
-unsafe fn tiling_as_vec(tiling: *const Tiling) -> Option<Vec<u32>> {
-    if tiling.is_null() {
+unsafe fn convert_tiling(data: *const c_uint, len: size_t) -> Option<Vec<u32>> {
+    if data.is_null() {
         None
     } else {
-        Some((&*tiling).as_vec())
-    }
-}
-
-impl Tiling {
-    unsafe fn as_vec(&self) -> Vec<u32> {
-        let vec = Vec::from_raw_parts(self.data, self.length, self.length);
-        let copy = vec.clone();
-        std::mem::forget(vec);
-        copy
+        Some (std::slice::from_raw_parts(data, len).to_vec())
     }
 }
 
@@ -88,9 +72,12 @@ pub unsafe extern "C" fn kernel_matmul_new(
     transpose_a: c_int,
     transpose_b: c_int,
     generic: c_int,
-    tile_m: *const Tiling,
-    tile_n: *const Tiling,
-    tile_k: *const Tiling,
+    tile_m: *const c_uint,
+    num_tiles_m: size_t,
+    tile_n: *const c_uint,
+    num_tiles_n: size_t,
+    tile_k: *const c_uint,
+    num_tiles_k: size_t
 ) -> *mut KernelParameters {
     Box::into_raw(Box::new(KernelParameters::MatMul(linalg::MatMulP {
         m: m as i32,
@@ -100,9 +87,9 @@ pub unsafe extern "C" fn kernel_matmul_new(
         transpose_a: transpose_a == 1,
         transpose_b: transpose_b == 1,
         generic: generic == 1,
-        m_tiling: tiling_as_vec(tile_m),
-        n_tiling: tiling_as_vec(tile_n),
-        k_tiling: tiling_as_vec(tile_k),
+        m_tiling: convert_tiling(tile_m, num_tiles_m),
+        n_tiling: convert_tiling(tile_n, num_tiles_n),
+        k_tiling: convert_tiling(tile_k, num_tiles_k),
     })))
 }
 
