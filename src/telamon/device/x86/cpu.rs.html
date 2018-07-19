@@ -156,7 +156,7 @@
 
     <span class="kw">fn</span> <span class="ident">max_unrolling</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> { <span class="number">512</span> }
 
-    <span class="kw">fn</span> <span class="ident">can_vectorize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_dim</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Dimension</span>, <span class="ident">_op</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Operator</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {<span class="bool-val">false</span>}
+    <span class="kw">fn</span> <span class="ident">vectorization_factors</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Dimension</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Operator</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u32</span>] { <span class="kw-2">&amp;</span>[] }
 
     <span class="kw">fn</span> <span class="ident">shared_mem</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {<span class="number">0</span>}
 

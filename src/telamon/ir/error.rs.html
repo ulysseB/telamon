@@ -70,6 +70,8 @@
 <span id="70">70</span>
 <span id="71">71</span>
 <span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Error management for IR creation.</span>
 <span class="kw">use</span> <span class="ident">ir</span>;
@@ -138,6 +140,8 @@
     <span class="ident">InvalidDimSize</span>,
     <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span><span class="op">=</span><span class="string">&quot;dimension {} appears twice in the increment list&quot;</span>, <span class="ident">dim</span>)]</span>
     <span class="ident">DuplicateIncrement</span> { <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span> },
+    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span><span class="op">=</span><span class="string">&quot;the access pattern references dimension {}, but is not nested inside&quot;</span>, <span class="ident">dim</span>)]</span>
+    <span class="ident">InvalidDimInPattern</span> { <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span> },
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">TypeError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Error</span> {
