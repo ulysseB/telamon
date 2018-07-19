@@ -93,7 +93,7 @@ quotient IterationDims($inst in Instructions) of $dim in Dimensions:
   add_to_set = "::search_space::add_iteration_dim($fun, $inst, $item)"
 end
 
-quotient ThreadDims of $dim in Dimensions:
+quotient ThreadDims of $dim in StaticDims:
   is_thread_dim = dim_kind($dim) is THREAD / thread_mapping is MAPPED
   item_type = "ir::Dimension"
   id_type = "ir::DimId"
@@ -112,13 +112,13 @@ define enum dim_kind($dim in Dimensions):
   value LOOP:
   /// The dimension is fully unrolled.
   value UNROLL:
-    requires "$dim.size().is_constant()"
+    requires "$dim.possible_sizes().is_some()"
     // It doesn't makes sens to unroll outer loops.
     requires forall $other_dim in Dimensions:
       order($other_dim, $dim) is not INNER || dim_kind($other_dim) is VECTOR | UNROLL
   /// The dimension is implemented by using a vector instruction.
   value VECTOR:
-    requires "$dim.size().is_constant()"
+    requires "$dim.possible_sizes().is_some()"
     requires forall $other_dim in Dimensions:
       order($dim, $other_dim) is not OUTER
     // This constraint effectively forbids VECTOR dimensions to be merged as dimensions
@@ -139,7 +139,7 @@ define enum dim_kind($dim in Dimensions):
       order($dim, $other) is NESTED | MERGED
   /// The dimension is mapped to a thread dimension on the device.
   value THREAD:
-    requires "$dim.size().as_int().is_some()"
+    requires "$dim.possible_sizes().is_some()"
   /// The dimension is parallel.
   alias PARALLEL = BLOCK | THREAD | VECTOR:
   /// The dimension is sequential.
@@ -260,6 +260,7 @@ define enum dim_mapping($lhs in Dimensions, $rhs in Dimensions):
 end
 
 /// Indicates how are thread dimensions mapped on the GPU.
+// FIXME: restrict to static dimensions
 define enum thread_mapping($lhs in Dimensions, $rhs in Dimensions):
   antisymmetric:
     MAPPED_OUT -> MAPPED_IN
@@ -285,9 +286,9 @@ define enum thread_mapping($lhs in Dimensions, $rhs in Dimensions):
 end
 
 // Enforce coherence between threads activations.
-require forall $lhs in Dimensions:
-  forall $rhs in Dimensions:
-    forall $other in Dimensions:
+require forall $lhs in StaticDims:
+  forall $rhs in StaticDims:
+    forall $other in StaticDims:
       thread_mapping($lhs, $rhs) is not MAPPED ||
         thread_mapping($lhs, $other) == thread_mapping($rhs, $other)
       thread_mapping($lhs, $other) is not MAPPED_OUT ||
@@ -295,40 +296,51 @@ require forall $lhs in Dimensions:
         thread_mapping($lhs, $rhs) is MAPPED_OUT
 
 // Thread dimensions are grouped together
-require forall $outer in Dimensions:
-  forall $inner in Dimensions:
+require forall $outer in StaticDims:
+  forall $inner in StaticDims:
     forall $mid in Dimensions:
       order($outer, $mid) is not OUTER || order($mid, $inner) is not OUTER
         || dim_kind($outer) is not THREAD || dim_kind($inner) is not THREAD
         || dim_kind($mid) is THREAD
 
 // outer thread dimensions are limited to a size of 64.
-require forall $outer in Dimensions:
-  forall $inner in Dimensions:
+require forall $outer in StaticDims:
+  forall $inner in StaticDims:
     thread_mapping($outer, $inner) is not MAPPED_OUT
-      || "$outer.size().as_int().unwrap_or(1) <= 64"
+      || "unwrap!($outer.size().as_int()) <= 64"
 
 // A basic block nested with a thread dimension is nested or merged with the other
 require forall $bb in BasicBlocks:
-  forall $nested_thread in Dimensions:
-    forall $other_thread in Dimensions:
+  forall $nested_thread in StaticDims:
+    forall $other_thread in StaticDims:
       order($bb, $nested_thread) is not NESTED || dim_kind($nested_thread) is not THREAD
         || order($other_thread, $nested_thread) is not NESTED
         || dim_kind($other_thread) is not THREAD
         || order($bb, $other_thread) is not ORDERED
 
 /// Limits the number of threads.
+///
+/// The counter iterates on `StaticDims` instead of just `ThreadDims` because we want the
+/// constraint `num_threads() <= "$fun.device().max_threads()"` to propagate to dimensions
+/// that still have the possibility of not being thread dimensions. Otherwise the
+/// constraint would only apply to dimensions for wich we already took the decision they
+/// were threads.
 define half counter num_threads():
-  forall $dim in Dimensions:
-    mul "$dim.size().as_int().unwrap_or(1)" when:
+  forall $dim in StaticDims:
+    mul "unwrap!($dim.size().as_int())" when:
       is_thread_dim($dim) is TRUE
 end
 
 require num_threads() <= "$fun.device().max_threads()"
 
 /// Limits the number of thread dimensions.
+///
+/// The counter iterates on `StaticDims` instead of just `ThreadDims` because we want the
+/// constraint `num_thread_dims() <= 3` to propagate to dimensions that still have the
+/// possibility of not being thread dimensions. Otherwise the constraint would only apply
+/// to dimensions for wich we already took the decision they were threads.
 define half counter num_thread_dims():
-  forall $dim in Dimensions:
+  forall $dim in StaticDims:
     sum "1" when: is_thread_dim($dim) is TRUE
 end
 
@@ -336,8 +348,8 @@ require num_thread_dims() <= "3"
 
 /// Limits the number of nested unrolled loop.
 define half counter unroll_factor($inst in Instructions):
-  forall $dim in Dimensions:
-    mul "$dim.size().as_int().unwrap_or(1)" when:
+  forall $dim in StaticDims:
+    mul "unwrap!($dim.size().as_int())" when:
       is_iteration_dim($inst, $dim) is TRUE
       dim_kind($dim) is UNROLL
 end
@@ -355,13 +367,13 @@ require forall $inst in Instructions:
   num_block_dims($inst) <= "$fun.device().max_block_dims()"
 
 /// Counts the number on instructions nested in each dimension.
-define half counter num_nested_inst($dim in Dimensions):
+define half counter num_nested_inst($dim in StaticDims):
   forall $inst in Instructions:
     sum "1" when:
       order($dim, $inst) is OUTER
 end
 
-require forall $dim in Dimensions:
+require forall $dim in StaticDims:
   dim_kind($dim) is not VECTOR || num_nested_inst($dim) <= "1"
 
 require forall $dim in Dimensions:
