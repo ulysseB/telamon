@@ -1,5 +1,6 @@
 import contextlib
 import json
+import numpy as np
 from telamon._capi import ffi, lib
 
 # Initialize Rust logger early.
@@ -103,24 +104,52 @@ class Kernel(RustObject):
             raise TelamonError("Optimization failed.")
 
 
-def _ffi_tiling(tiles):
-    """Helper to convert Python tilings into a cffi compatible object.
+class _Tiling:
+    """Helper to convert Python tilings into cffi compatible objects.
 
-    Args:
-        tiles: The tiles ton convert. Must be either `None` (allow all tilings
-            across this axis) or a single tile definition.
-
-    Returns:
-        A cffi object representing a newly allocated tiling object.
+    Attributes:
+        data_ptr: A pointer to the tiling data that can be used by the C API.
+            This pointer points inside a NumPy array that the `_Tiling` object
+            has a reference to, but no other reference is guaranteed to exist:
+            hence it should not be accessed past the lifetime of the `_Tiling`
+            object.
     """
-    if tiles is None:
-        return ffi.NULL
 
-    c_tiles = ffi.new("Tiling *")
-    c_tiles.length = len(tiles)
-    c_tiles.data = ffi.new("unsigned int *", len(tiles))
-    c_tiles.data[0 : len(tiles)] = tiles
-    return c_tiles
+    def __init__(self, tiles, *, copy: bool = True):
+        """Initializes a new tiling.
+
+        Args:
+            tiles: The tiling specification. If `None`, the tiling is
+                unspecified; otherwise, it should be a sequence of integers
+                defining each tile.
+            copy: If `False` and `tiles` is already a `uint32` NumPy array,
+                `_Tiling` will use the `tiles` array directly instead of making
+                a copy. In all other cases a copy will be made regardless of
+                this argument.
+        """
+        if tiles is None:
+            self._tiles = None
+        else:
+            self._tiles = np.array(tiles, dtype=np.uint32, copy=copy)
+
+    @property
+    def data_ptr(self):
+        if self._tiles is None:
+            return ffi.NULL
+
+        return ffi.cast("uint32_t *", self._tiles.ctypes.data)
+
+    def __getitem__(self, index):
+        if self._tiles is None:
+            raise IndexError("cannot index into an unspecified tiling")
+
+        return self._tiles[index]
+
+    def __len__(self):
+        if self._tiles is None:
+            return 0
+
+        return len(self._tiles)
 
 
 class MatMul(Kernel):
@@ -145,14 +174,11 @@ class MatMul(Kernel):
         if a_stride < 1:
             raise ValueError("a_stride should be a positive integer.")
 
-        # We need to keep around a reference to the cffi objects until after
-        # the call is done in order to avoid having memory released too early.
-        # Using temporaries by passing in the result of `_ffi_tiling` directly
-        # to the `lib.kernel_matmul_new` call is not enough and can cause
-        # use-after-free bugs.
-        ffi_m_tiles = _ffi_tiling(m_tiles)
-        ffi_n_tiles = _ffi_tiling(n_tiles)
-        ffi_k_tiles = _ffi_tiling(k_tiles)
+        # The X_tiles variable have references to NumPy arrays that are used by
+        # the kernel_matmul_new call and must thus outlive it.
+        m_tiles = _Tiling(m_tiles, copy=False)
+        n_tiles = _Tiling(n_tiles, copy=False)
+        k_tiles = _Tiling(k_tiles, copy=False)
 
         super().__init__(
             lib.kernel_matmul_new(
@@ -163,8 +189,11 @@ class MatMul(Kernel):
                 int(transpose_a),
                 int(transpose_b),
                 int(generic),
-                ffi_m_tiles,
-                ffi_n_tiles,
-                ffi_k_tiles,
+                m_tiles.data_ptr,
+                len(m_tiles),
+                n_tiles.data_ptr,
+                len(n_tiles),
+                k_tiles.data_ptr,
+                len(k_tiles),
             )
         )

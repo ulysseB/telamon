@@ -28,6 +28,6 @@ setup(
     packages=["telamon"],
     zip_safe=False,
     setup_requires=["milksnake"],
-    install_requires=["milksnake"],
+    install_requires=["milksnake", "toml", "numpy"],
     milksnake_tasks=[build_capi],
 )
