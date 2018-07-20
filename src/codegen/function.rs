@@ -204,12 +204,16 @@ pub enum AllocationScheme { Global, PrivatisedGlobal, Shared }
 
 impl<'a> InternalMemBlock<'a> {
     /// Creates a new InternalMemBlock from an `ir::mem::Internal`.
-    pub fn new(block: &'a ir::mem::InternalBlock<'a>,
+    pub fn new(block: &'a ir::mem::InternalBlock,
                num_threads_groups: &Option<codegen::Size<'a>>,
                space: &'a SearchSpace<'a>) -> Self {
         let mem_space = space.domain().get_mem_space(block.mem_id());
         assert!(mem_space.is_constrained());
-        let size = codegen::Size::from_ir(block.size(), space);
+        let mut size = codegen::Size::new(block.base_size(), vec![], 1);
+        for &(dim, _) in block.mapped_dims() {
+            let ir_size = space.ir_instance().dim(dim).size();
+            size *= &codegen::Size::from_ir(ir_size, space);
+        }
         let num_private_copies = if block.is_private() && mem_space == MemSpace::GLOBAL {
             num_threads_groups.clone()
         } else { None };
@@ -229,7 +233,7 @@ impl<'a> InternalMemBlock<'a> {
         let size = if self.num_private_copies.is_some() {
             Some(block_dims[1..].iter().map(|d| d.size().clone())
                  .chain(std::iter::once(self.size.clone()))
-                .map(ParamVal::Size))
+                 .map(ParamVal::Size))
         } else { None };
         out.extend(size.into_iter().flat_map(|x| x));
         out

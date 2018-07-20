@@ -56,7 +56,7 @@ pub struct Function<'a> {
     dims: Vec<Dimension<'a>>,
     thread_dims: VecSet<ir::dim::Id>,
     mem_insts: Vec<ir::InstId>,
-    mem_blocks: mem::BlockMap<'a>,
+    mem_blocks: mem::BlockMap,
     layouts_to_lower: Vec<ir::mem::InternalId>,
     induction_vars: Vec<ir::InductionVar<'a>>,
 }
@@ -109,8 +109,8 @@ impl<'a> Function<'a> {
     }
 
     /// Allocates a new memory block.
-    pub fn add_mem_block(&mut self, size: Size<'a>, private: bool) -> mem::InternalId {
-        self.mem_blocks.alloc_block(size, private, None)
+    pub fn add_mem_block(&mut self, size: u32) -> mem::InternalId {
+        self.mem_blocks.alloc_block(size, None)
     }
 
     /// Adds an induction variable.
@@ -176,7 +176,7 @@ impl<'a> Function<'a> {
 
     /// Returns the internal memory blocks.
     pub fn internal_mem_blocks<'b>(&'b self)
-            -> impl Iterator<Item=&'b mem::InternalBlock<'a>> {
+            -> impl Iterator<Item=&'b mem::InternalBlock> {
         self.mem_blocks.internal_blocks()
     }
 
@@ -241,7 +241,7 @@ impl<'a> Function<'a> {
     /// Generates an operand repesenting a pointer to a cell of a memory block.
     fn gen_internal_index(&mut self, id: mem::InternalId, dims: Vec<dim::Id>)
             -> (Operand<'a>, AccessPattern<'a>) {
-        let ty_len = unwrap!(self.mem_blocks.internal_block(id).base_size());
+        let ty_len = self.mem_blocks.internal_block(id).base_size();
         self.gen_index(id.into(), ty_len, Operand::Addr(id), dims)
     }
 
