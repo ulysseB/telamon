@@ -1,26 +1,51 @@
 //! MPPA evaluation context.
 use crossbeam::sync::MsQueue;
-use device::{self, mppa};
+use crossbeam;
+use device::{self, ScalarArgument, ArrayArgument, mppa, EvalMode};
+use device::context::AsyncCallback;
 use device::Context as ContextTrait;
-use device::mppa::telajax;
+use device::mppa::{MppaPrinter, telajax};
+use device::mppa::telajax::{Buffer, allocate_array};
 use explorer;
 use ir;
 use libc;
 use search_space::SearchSpace;
 use std;
-use std::sync::Arc;
+use std::sync::{mpsc, Arc};
+use std::time::Instant;
 use utils::*;
 
 const EXECUTION_QUEUE_SIZE: isize = 512;
+/// Max number of candidates waiting to be evaluated.
+const EVAL_BUFFER_SIZE: usize = 100;
+
+pub trait Argument: Sync + Send {
+    /// Returns a pointer to the object.
+    fn raw_ptr(&self) -> *const libc::c_void;
+    /// Returns the argument value if it can represent a size.
+    fn as_size(&self) -> Option<u32> { None }
+}
+
+impl<T> Argument for T where T: device::ScalarArgument {
+    fn raw_ptr(&self) -> *const libc::c_void {
+        device::ScalarArgument::raw_ptr(self)
+    }
+
+    fn as_size(&self) -> Option<u32> {
+        device::ScalarArgument::as_size(self)
+    }
+}
 
 /// MPPA evaluation context.
 pub struct Context<'a> {
-    device: mppa::MPPA,
-    executor: std::sync::MutexGuard<'static, telajax::Device>,
-    parameters: HashMap<String, Box<device::Argument + 'a>>,
+    device: mppa::Mppa,
+    //executor: std::sync::MutexGuard<'static, telajax::Device>,
+    executor: *mut telajax::Device,
+    parameters: HashMap<String, Arc<Argument + 'a>>,
     wrappers: Cache<ir::Signature, telajax::Wrapper>,
     writeback_slots: MsQueue<telajax::Mem>,
 }
+unsafe impl<'a> Sync for Context<'a> {}
 
 impl<'a> Context<'a> {
     /// Creates a new `Context`. Blocks until the MPPA device is ready to be used.
@@ -31,7 +56,7 @@ impl<'a> Context<'a> {
             writeback_slots.push(executor.alloc(8));
         }
         Context {
-            device: mppa::MPPA::default(),
+            device: mppa::Mppa::default(),
             executor,
             parameters: HashMap::default(),
             wrappers: Cache::new(25),
@@ -39,129 +64,195 @@ impl<'a> Context<'a> {
         }
     }
 
+    fn bind_param(&mut self, name: String, value: Arc<Argument>) {
+        self.parameters.insert(name, value);
+    }
+
     /// Compiles and sets the arguments of a kernel.
-    fn setup_kernel<'b>(&self, fun: &device::Function<'a, 'b>)
-            -> (telajax::Kernel, telajax::Mem) {
+    fn setup_kernel(&self, fun: &device::Function<'a>)
+            -> (telajax::Kernel, telajax::Mem) 
+            {
         let mut code: Vec<u8> = Vec::new();
-        let wrapper = self.get_wrapper(fun.signature());
-        mppa::printer::print(fun, true, &mut code).unwrap();
-        let code = std::ffi::CString::new(code).unwrap();
-        debug!("{}", code.clone().into_string().unwrap()); // DEBUG
+        let mut printer = MppaPrinter::default();
+        let wrapper = self.get_wrapper(fun, &mut printer);
+        //mppa::printer::print(fun, true, &mut code).unwrap();
+        let kernel_code: String = printer.wrapper_function(fun);
+        //let code = std::ffi::CString::new(code).unwrap();
+        //debug!("{}", code.clone().into_string().unwrap()); // DEBUG
         let cflags = std::ffi::CString::new("").unwrap();
         let lflags = std::ffi::CString::new("").unwrap();
-        let mut kernel = self.executor.build_kernel(&code, &cflags, &lflags, &*wrapper);
+        let kernel_code = unwrap!(std::ffi::CString::new(kernel_code));
+        let mut kernel = self.executor.build_kernel(&kernel_code, &cflags, &lflags, &*wrapper);
         kernel.set_num_clusters(1);
         let (mut arg_sizes, mut args): (Vec<_>, Vec<_>) = fun.params.iter().map(|p| {
             let arg = self.get_param(&p.name);
-            (arg.size_of(), arg.raw_ptr())
+            (unwrap!(arg.as_size()) as usize, arg.raw_ptr())
         }).unzip();
         let out_mem = self.writeback_slots.pop();
         arg_sizes.push(std::mem::size_of::<*mut libc::c_void>());
         args.push(out_mem.raw_ptr());
-        kernel.set_args(&arg_sizes, &args);
+        kernel.set_args(&arg_sizes[..], &args[..]);
         (kernel, out_mem)
     }
 
     /// Returns the wrapper for the given signature.
-    fn get_wrapper<'b>(&self, sig: &ir::Signature) -> Arc<telajax::Wrapper> {
+    //fn get_wrapper<'b>(&self, sig: &ir::Signature) -> Arc<telajax::Wrapper> {
+    fn get_wrapper<'b>(&self, fun: &device::Function, printer: &mut MppaPrinter) -> Arc<telajax::Wrapper> {
         self.wrappers.get(sig, || {
             let mut ocl_code: Vec<u8> = Vec::new();
-            mppa::printer::print_ocl_wrapper(sig, &mut ocl_code).unwrap();
+            printer.print_ocl_wrapper(fun);
             let name = std::ffi::CString::new("wrapper").unwrap();
             let ocl_code = std::ffi::CString::new(ocl_code).unwrap();
             debug!("{}", ocl_code.clone().into_string().unwrap());
             self.executor.build_wrapper(&name, &ocl_code)
         })
     }
+
+    /// Returns a parameter given its name.
+    pub fn get_param(&self, name: &str) -> &Argument { self.parameters[name].as_ref() }
 }
 
-impl<'a> device::Context<'a> for Context<'a> {
+impl<'a> device::Context for Context<'a> {
     fn device(&self) -> &device::Device { &self.device }
 
-    fn bind_param(&mut self, param: &ir::Parameter, value: Box<device::Argument + 'a>) {
-        assert_eq!(param.t, value.t());
-        self.parameters.insert(param.name.to_string(), value);
+
+    fn benchmark(&self, function: &device::Function, num_samples: usize) -> Vec<f64> {
+        unimplemented!()
     }
 
-    fn get_param(&self, name: &str) -> &device::Argument {
-        self.parameters[name].as_ref()
-    }
 
-    fn allocate_array(&mut self, id: ir::mem::Id, size: usize) -> Box<device::Argument> {
-        let mem = self.executor.alloc(size);
-        Box::new(Buffer { mem: mem, id: id, context: Default::default() })
-    }
-
-    fn evaluate(&self, fun: &device::Function) -> f64 {
+    fn evaluate(&self, fun: &device::Function, _mode: EvalMode) -> Result<f64, ()> {
         let (kernel, out_mem) = self.setup_kernel(fun);
         self.executor.execute_kernel(&kernel);
         let mut t: [u64; 1] = [0];
         self.executor.read_buffer(&out_mem, &mut t, &[]);
         self.writeback_slots.push(out_mem);
-        t[0] as f64
+        Ok(t[0] as f64)
     }
 
-    fn bound(&self, _: &SearchSpace) -> f64 {
-        0.0 // FIXME: bound the execution time
-    }
-
-    fn async_eval<'b, 'c>(&'c self, callback: &'c device::AsyncCallback<'b, 'c>,
-                          inner: &mut FnMut(&device::AsyncEvaluator<'b>)) {
+    fn async_eval<'b, 'c>(&self, num_workers: usize, _mode: EvalMode,
+                          inner: &(Fn(&mut device::AsyncEvaluator<'b, 'c>) + Sync)){
         // FIXME: execute in parallel
-        let evaluator = AsyncEvaluator { context: self, callback: callback };
-        inner(&evaluator);
-        self.executor.wait_all();
+        let (send, recv) = mpsc::sync_channel(EVAL_BUFFER_SIZE);
+        let mut evaluator = AsyncEvaluator { 
+            context: self,
+            sender: send};
+        //inner(&mut evaluator);
+        //self.executor.wait_all();
+        crossbeam::scope(move |scope| {
+            // Start the explorer threads.
+            for _ in 0..num_workers {
+                let mut evaluator = AsyncEvaluator {
+                    context: self,
+                    sender: send.clone(),
+                };
+                unwrap!(scope.builder().name("Telamon - Explorer Thread".to_string())
+                        .spawn(move || inner(&mut evaluator)));
+            }
+            // Start the evaluation thread.
+            let eval_thread_name = "Telamon - CPU Evaluation Thread".to_string();
+            unwrap!(scope.builder().name(eval_thread_name).spawn(move || {
+                while let Ok((candidate, kernel, callback)) = recv.recv() {
+                    // TODO: measure time directly on MPPA
+                    let t0 = Instant::now();
+                    self.executor.execute_kernel(&kernel);
+                    let t = Instant::now() - t0;
+                    callback.call(candidate, t.subsec_nanos() as f64);
+                }
+            }));
+        });
+    }
+
+    fn param_as_size(&self, name: &str) -> Option<u32> {
+        self.get_param(name).as_size()
     }
 }
+
+impl< 'a> device::ArgMap for Context<'a> {
+    type Array = Buffer<'a>;
+
+    fn bind_scalar<S: ScalarArgument>(&mut self, param: &ir::Parameter, value: S) {
+        assert_eq!(param.t, S::t());
+        self.bind_param(param.name.clone(), Arc::new(value));
+    }
+
+    fn bind_array<S: ScalarArgument>(&mut self, param: &ir::Parameter, len: usize)
+        -> Arc<Self::Array>
+    {
+        let size = len * std::mem::size_of::<S>();
+        //let buffer_arc: Arc<Buffer<'a>> = Arc::new(self.executor.allocate_array(size));
+        let buffer_arc: Arc<Buffer<'a>> = Arc::new(Buffer::new(self.executor, size));
+        self.bind_param(param.name.clone(), buffer_arc.clone());
+        buffer_arc
+    }
+}
+
+type AsyncPayload<'a, 'b> = (explorer::Candidate<'a>, telajax::Kernel, AsyncCallback<'a, 'b>);
 
 /// Asynchronous evaluator.
 struct AsyncEvaluator<'a, 'b> where 'a: 'b {
     context: &'b Context<'b>,
-    callback: &'b device::AsyncCallback<'a, 'b>,
+    sender: mpsc::SyncSender<AsyncPayload<'a, 'b>>,
 }
 
-impl<'a, 'b> device::AsyncEvaluator<'a> for AsyncEvaluator<'a, 'b> where 'a:'b {
-    fn add_kernel(&self, candidate: explorer::Candidate<'a>) {
+impl<'a, 'b, 'c> device::AsyncEvaluator<'a, 'c> for AsyncEvaluator<'a, 'b>
+    where 'a: 'b, 'c: 'b {
+    fn add_kernel(&mut self, candidate: explorer::Candidate<'a>, callback: device::AsyncCallback<'a, 'b>) {
         let (kernel, out_mem) = {
             let dev_fun = device::Function::build(&candidate.space);
             self.context.setup_kernel(&dev_fun)
         };
-        let kernel_event = self.context.executor.enqueue_kernel(&kernel);
-        let mut t = vec![0u64];
-        let read_event = self.context.executor.async_read_buffer(
-            &out_mem, &mut t, &[kernel_event]);
-        let callback = move || {
-            self.context.writeback_slots.push(out_mem);
-            (self.callback)(candidate, t[0] as f64);
-        };
-        self.context.executor.set_event_callback(&read_event, callback);
+        unwrap!(self.sender.send((candidate, kernel, callback)));
+    }
+}
+
+impl<'a> Argument for Buffer<'a> {
+    fn as_size(&self) -> Option<u32> {
+        Some(self.mem.read().unwrap().len() as u32)
+    }
+
+    fn raw_ptr(&self) -> *const libc::c_void {
+        self.mem.read().unwrap().raw_ptr()
     }
 }
 
 
-/// Buffer in MPPA RAM.
-pub struct Buffer<'a> {
-    mem: telajax::Mem,
-    id: ir::mem::Id,
-    context: std::marker::PhantomData<&'a ()>,
-}
-
-impl<'a> Buffer<'a> {
-    /// Copies a host buffer to the device buffer.
-    pub fn copy_from_host<T: Copy>(&mut self, data: &[T], ctx: &Context) {
-        ctx.executor.write_buffer(data, &mut self.mem, &[]);
-    }
-
-    /// Copies the buffer on the host.
-    pub fn copy_to_host<T: Copy>(&self, data: &mut [T], ctx: &Context) {
-        ctx.executor.read_buffer(&self.mem, data, &[]);
-    }
-}
-
-impl<'a> device::Argument for Buffer<'a> {
-    fn t(&self) -> ir::Type { ir::Type::PtrTo(self.id) }
-
-    fn raw_ptr(&self) -> *const libc::c_void { self.mem.raw_ptr() }
-
-    fn size_of(&self) -> usize { std::mem::size_of::<*mut libc::c_void>() }
-}
+///// Buffer in MPPA RAM.
+//pub struct Buffer<'a> {
+//    mem: std::sync::RwLock<telajax::Mem>,
+//    executor: &'a std::sync::MutexGuard<'static, telajax::Device>,
+//}
+//
+//impl<'a> Buffer<'a> {
+//    fn new(len : usize, executor: &'a std::sync::MutexGuard<'static, telajax::Device>) -> Self {
+//        let mem_block = executor.alloc(len);
+//        Buffer {
+//            mem : std::sync::RwLock::new(mem_block),
+//            executor: executor,
+//        }
+//    }
+//}
+//
+//impl<'a> Argument for Buffer<'a> {
+//    fn as_size(&self) -> Option<u32> {
+//        Some(self.mem.read().unwrap().len() as u32)
+//    }
+//
+//    fn raw_ptr(&self) -> *const libc::c_void {
+//        self.mem.read().unwrap().raw_ptr()
+//    }
+//}
+//
+//impl<'a> device::ArrayArgument for Buffer<'a> {
+//    fn read_i8(&self) -> Vec<i8> {
+//        let mem_block = unwrap!(self.mem.read());
+//        let mut read_buffer = vec![0; mem_block.len()];
+//        self.executor.read_buffer::<i8>(&mem_block, &mut read_buffer, &[]);
+//        read_buffer
+//    }
+//
+//    fn write_i8(&self, slice: &[i8]) {
+//        let mut mem_block = unwrap!(self.mem.write());
+//        self.executor.write_buffer::<i8>(slice, &mut mem_block, &[]);
+//    }
+//}

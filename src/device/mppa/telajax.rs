@@ -3,7 +3,9 @@
 use libc;
 use parking_lot;
 use std::ffi::CStr;
+use std::sync::Arc;
 use std;
+use device::{self, ArrayArgument};
 
 lazy_static! {
     static ref DEVICE: std::sync::Mutex<Device> = std::sync::Mutex::new(Device::init());
@@ -21,11 +23,42 @@ struct DeviceInner {
     queue: *mut libc::c_void,
 }
 
+/// Buffer in MPPA RAM.
+pub struct Buffer<'a> {
+    pub mem: std::sync::RwLock<Mem>,
+    pub executor: &'a Device,
+}
+
+
+impl<'a> Buffer<'a> {
+    pub fn new(executor: *mut Device, len: usize) -> Self {
+        let mem_block = executor.alloc(len);
+        Buffer{
+            mem: RwLock::new(mem),
+            executor: unsafe {executor as &Device},
+        }
+    }
+}
+impl<'a> device::ArrayArgument for Buffer<'a> {
+    fn read_i8(&self) -> Vec<i8> {
+        let mem_block = unwrap!(self.mem.read());
+        let mut read_buffer = vec![0; mem_block.len()];
+        self.executor.read_buffer::<i8>(&mem_block, &mut read_buffer, &[]);
+        read_buffer
+    }
+
+    fn write_i8(&self, slice: &[i8]) {
+        let mut mem_block = unwrap!(self.mem.write());
+        self.executor.write_buffer::<i8>(slice, &mut mem_block, &[]);
+    }
+}
 /// A Telajax execution context.
 pub struct Device {
     inner: DeviceInner,
     rwlock: Box<parking_lot::RwLock<()>>,
 }
+
+
 
 impl Device {
     /// Returns a reference to the `Device`. Guarantees unique access to the device.
@@ -40,6 +73,14 @@ impl Device {
         }};
         assert_eq!(error, 0);
         device
+    }
+
+    pub fn allocate_array<'a>(&'a self, len: usize) -> Buffer<'a> {
+        let mem_block = self.alloc(len);
+        Buffer {
+            mem : std::sync::RwLock::new(mem_block),
+            executor: self,
+        }
     }
 
     /// Build a wrapper for a kernel.
@@ -261,6 +302,10 @@ pub struct Mem {
 impl Mem {
     pub fn raw_ptr(&self) -> *const libc::c_void {
         &self.ptr as *const _ as *const libc::c_void
+    }
+    
+    pub fn len(&self) -> usize {
+        self.len
     }
 }
 

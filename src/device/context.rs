@@ -22,7 +22,7 @@ pub trait Context: Sync {
     fn benchmark(&self, space: &Function, num_samples: usize) -> Vec<f64>;
     /// Calls the `inner` closure in parallel, and gives it a pointer to an `AsyncEvaluator`
     /// to evaluate candidates in the context. `skip_bad_bounds` indicates than candidates
-    /// whose bound is aboive the best candidate should be skiped.
+    /// whose bound is above the best candidate should be skiped.
     fn async_eval<'a, 'b>(&self, num_workers: usize, mode: EvalMode,
                           inner: &(Fn(&mut AsyncEvaluator<'a, 'b>) + Sync)) ;
     /// Returns a parameter interpreted as a size, if possible.
