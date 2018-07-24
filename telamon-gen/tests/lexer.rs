@@ -532,6 +532,7 @@ fn lexer_code_mode() {
 
 #[test]
 fn lexer_include() {
+   // Unexist include.
    assert_eq!(Lexer::new(b"include \"/dev/unexist\"".to_vec()).collect::<Vec<_>>(),
               vec![
                Err(LexicalError::InvalidInclude(
@@ -545,53 +546,22 @@ fn lexer_include() {
                   }))
                ]);
 
+   // Double includes.
    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/enum_foo.exh");
    let include = format!("include \"{}\"", filename);
-   assert_eq!(Lexer::new(include.as_bytes().to_vec()).collect::<Vec<_>>(), vec![
-              Ok((Position::new(LexerPosition::new(0, 73), filename.to_owned()),
-                  Token::Define,
-                  Position::new(LexerPosition::new(1, 79), filename.to_owned()))),
-              Ok((Position::new(LexerPosition::new(1, 80), filename.to_owned()),
-                  Token::Enum,
-                  Position::new(LexerPosition::new(1, 84), filename.to_owned()))),
-              Ok((Position::new(LexerPosition::new(1, 85), filename.to_owned()),
-                  Token::ChoiceIdent(String::from("foo")),
-                  Position::new(LexerPosition::new(1, 88), filename.to_owned()))),
-              Ok((Position::new(LexerPosition::new(1, 88), filename.to_owned()),
-                  Token::LParen,
-                  Position::new(LexerPosition::new(1, 89), filename.to_owned()))),
-              Ok((Position::new(LexerPosition::new(1, 89), filename.to_owned()),
-                  Token::RParen,
-                  Position::new(LexerPosition::new(1, 90), filename.to_owned()))),
-              Ok((Position::new(LexerPosition::new(1, 90), filename.to_owned()),
-                  Token::Colon,
-                  Position::new(LexerPosition::new(1, 91), filename.to_owned()))),
-              Ok((Position::new(LexerPosition::new(2, 0), filename.to_owned()),
-                  Token::End,
-                  Position::new(LexerPosition::new(2, 3), filename.to_owned())))
-            ]);
 
-   assert_eq!(Lexer::new(include.as_bytes().to_vec()).collect::<Vec<_>>(), vec![
-              Ok((Position::new(LexerPosition::new(0, 73), filename.to_owned()),
-                  Token::Define,
-                  Position::new(LexerPosition::new(1, 79), filename.to_owned()))),
-              Ok((Position::new(LexerPosition::new(1, 80), filename.to_owned()),
-                  Token::Enum,
-                  Position::new(LexerPosition::new(1, 84), filename.to_owned()))),
-              Ok((Position::new(LexerPosition::new(1, 85), filename.to_owned()),
-                  Token::ChoiceIdent(String::from("foo")),
-                  Position::new(LexerPosition::new(1, 88), filename.to_owned()))),
-              Ok((Position::new(LexerPosition::new(1, 88), filename.to_owned()),
-                  Token::LParen,
-                  Position::new(LexerPosition::new(1, 89), filename.to_owned()))),
-              Ok((Position::new(LexerPosition::new(1, 89), filename.to_owned()),
-                  Token::RParen,
-                  Position::new(LexerPosition::new(1, 90), filename.to_owned()))),
-              Ok((Position::new(LexerPosition::new(1, 90), filename.to_owned()),
-                  Token::Colon,
-                  Position::new(LexerPosition::new(1, 91), filename.to_owned()))),
-              Ok((Position::new(LexerPosition::new(2, 0), filename.to_owned()),
-                  Token::End,
-                  Position::new(LexerPosition::new(2, 3), filename.to_owned())))
-            ]);
+   assert_eq!(Lexer::new(include.as_bytes().to_vec()).count(), 7);
+   assert_eq!(Lexer::new(include.as_bytes().to_vec()).count(), 7);
+
+   // header include.
+   let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/include_foo.exh");
+   let include = format!("include \"{}\"", filename);
+
+   assert_eq!(Lexer::new(include.as_bytes().to_vec()).count(), 7);
+
+   // Sub header include.
+   let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/sub/include_foo.exh");
+   let include = format!("include \"{}\"", filename);
+
+   assert_eq!(Lexer::new(include.as_bytes().to_vec()).count(), 7);
 }

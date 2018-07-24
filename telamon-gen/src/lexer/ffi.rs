@@ -3,6 +3,7 @@ use ::libc;
 use ::ir;
 
 use std::fmt;
+use std::path::PathBuf;
 
 /// A [yyscan](https://westes.github.io/flex/manual/About-yyscan_005ft.html) type is the internal
 /// representation of a [yylex_init](https://westes.github.io/flex/manual/Init-and-Destroy-Functions.html) structure.
@@ -72,9 +73,10 @@ impl Position {
     }
 
     // Returns a Position interface from LexerPosition with optional filename.
-    pub fn new_optional(position: LexerPosition, filename: Option<String>) -> Self {
+    pub fn new_optional(position: LexerPosition, filename: Option<PathBuf>) -> Self {
         Position {
-            position, filename,
+            position,
+            filename: filename.and_then(|path| Some(path.to_string_lossy().to_string())),
         }
     }
 }

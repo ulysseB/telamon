@@ -11,7 +11,8 @@ use std::fmt;
 pub use self::token::Token;
 pub use self::ffi::Spanned;
 
-use std::ffi::CStr;
+use std::path::{PathBuf, Path};
+use std::ffi::{CStr, CString};
 
 use self::ffi::{
     YyScan,
@@ -43,6 +44,9 @@ use ::errno::{errno, set_errno};
 pub type ParserSpanned<Tok, Pos, Err> = Result<(Pos, Tok, Pos), Err>;
 
 pub type LexerItem = ParserSpanned<Token, Position, LexicalError>;
+
+/// FD of include header.
+type YyIn = *mut libc::FILE;
 
 #[derive(Debug, Clone, PartialEq)]
 /// TODO; struct Error {
@@ -91,15 +95,15 @@ impl fmt::Display for LexicalError {
 
 pub struct Lexer {
     /// Name of entryfile.
-    filename: Option<String>,
+    filename: Option<PathBuf>,
     scanner: YyScan,
     buffer: YyBufferState,
     /// Stores the next token.
     lookahead_token: Option<ParserSpanned<Token, Position, LexicalError>>,
     /// Multiple Input Buffers.
     include: Option<Box<Lexer>>,
-    /// Top level module.
-    root: bool,
+    /// Sub level module yyin.
+    sublevel: Option<YyIn>,
 }
 
 impl Lexer {
@@ -128,7 +132,7 @@ impl Lexer {
                 buffer: buffer,
                 lookahead_token: None,
                 include: None,
-                root: true,
+                sublevel: None,
             }
         }
     }
@@ -146,7 +150,7 @@ impl Lexer {
         let mut input = fs::File::open(input_path).unwrap();
         let mut lexer = Lexer::from_input(&mut input);
 
-        lexer.filename = Some(input_path.to_string_lossy().to_string());
+        lexer.filename = Some(input_path.to_path_buf());
         lexer
     }
 
@@ -162,40 +166,43 @@ impl Lexer {
                 },
                 next => {
                     self.lookahead_token = next;
-                    return Some(Ok((Position {
-                            position: extra.beg,
-                            filename: self.filename.to_owned()
-                        },
-                        Token::Code(buffer),
-                        Position {
-                            position: acc_end,
-                            filename: self.filename.to_owned()
-                        }
+                    return Some(Ok((Position::new_optional(extra.beg, self.filename.to_owned()),
+                                    Token::Code(buffer),
+                                    Position::new_optional(acc_end, self.filename.to_owned())
                     )))
                 },
             }
         }
     }
 
+    /// If defined, concats parent directory with filename.
     /// Links the new include buffer, Returns the first token from this include.
     fn include(&mut self, extra: YyExtraType, filename: &str) -> Option<LexerItem> {
+        let mut path: PathBuf = PathBuf::new();
+        let filepath: &Path = Path::new(filename);
+
+        if filepath.is_relative() {
+            if let Some(ref parent_path) = self.filename {
+                if let Some(ref parent) = parent_path.parent() {
+                    path.push(parent.to_path_buf());
+                }
+            }
+        }
+        path.push(filepath);
+        let filename: CString = CString::new(path.to_str().unwrap()).unwrap();
         unsafe {
             // [Multiple Input Buffers](http://westes.github.io/flex/manual/Multiple-Input-Buffers.html#Multiple-Input-Buffers)
             // include file scanner.
-            match libc::fopen(filename.as_ptr() as *const _, "r".as_ptr() as *const _) {
+            match libc::fopen(filename.to_bytes_with_nul()
+                                      .as_ptr() as *const _, "r".as_ptr() as *const _) {
                 yyin if yyin.is_null() => {
                     let why = errno();
 
                     set_errno(why);
                     Some(Err(LexicalError::InvalidInclude(
-                        Position {
-                            position: extra.beg,
-                            filename: self.filename.to_owned()
-                        },
-                        Token::InvalidInclude(filename.to_string(), why), Position {
-                            position: extra.end,
-                            filename: self.filename.to_owned()
-                        }
+                        Position::new_optional(extra.beg, self.filename.to_owned()),
+                        Token::InvalidInclude(filename.to_str().unwrap().to_string(), why),
+                        Position::new_optional(extra.end, self.filename.to_owned())
                     )))
                 },
                 yyin => {
@@ -203,17 +210,17 @@ impl Lexer {
 
                     yypush_buffer_state(buffer, self.scanner);
                     self.include = Some(Box::new(Lexer {
-                        filename: Some(filename.to_string()),
+                        filename: Some(filepath.to_path_buf()),
                         scanner: self.scanner,
                         // The function  [yy_scan_bytes](https://westes.github.io/flex/manual/Multiple-Input-Buffers.html)
                         // scans len bytes starting at location bytes.
                         buffer: self.buffer,
                         lookahead_token: None,
                         include: None,
-                        root: false,
+                        sublevel: Some(yyin),
                     }));
                     self.next()
-                },
+                }
             }
         }
     }
@@ -221,8 +228,10 @@ impl Lexer {
 
 impl Drop for Lexer {
     fn drop(&mut self) {
-        if self.root {
-            unsafe {
+        unsafe {
+            if let Some(yyin) = self.sublevel {
+                libc::fclose(yyin);
+            } else {
                 // The function [yy_delete_buffer](https://westes.github.io/flex/manual/Multiple-Input-Buffers.html)
                 // clears the current contents of a buffer using.
                 yy_delete_buffer(self.buffer, self.scanner);
