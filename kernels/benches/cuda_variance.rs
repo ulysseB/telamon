@@ -1,7 +1,5 @@
 //! Benchmarks the variance of measures on the GPU.
 extern crate env_logger;
-#[macro_use]
-extern crate failure;
 extern crate itertools;
 #[macro_use]
 extern crate log;
@@ -80,41 +78,39 @@ fn accuracy<'a, K>(params: &K::Parameters,
     }).collect_vec();
     info!("Evaluation finished, analysing results");
     let results = candidates.iter().zip_eq(slow_evals.into_iter().zip_eq(fast_evals));
+    let mut all_diffs = 0.;
+    let mut all_cpu_gpu_diffs = 0.;
     for (_, (cpu_bound_times, gpu_bound_times)) in results {
-        let cpu = analyse_runtimes(cpu_bound_times).unwrap_or_else(|err| {
-            println!("{} in cpu-bound {}", err, name);
-            err.median
-        });
         let gpu_bound_times = unwrap!(gpu_bound_times.into_inner());
-        let gpu = analyse_runtimes(gpu_bound_times).unwrap_or_else(|err| {
-            println!("{} in cpu-bound {}", err, name);
-            err.median
-        });
-        let diff_factor = 2.*(cpu-gpu).abs()/(cpu+gpu);
+        let (cpu_med, cpu_diff) = analyse_runtimes(cpu_bound_times, name, "cpu");
+        let (gpu_med, gpu_diff) = analyse_runtimes(gpu_bound_times, name, "gpu");
+        all_diffs += cpu_diff;
+        all_diffs += gpu_diff;
+        let diff_factor = 2.*(cpu_med - gpu_med).abs()/(cpu_med + gpu_med);
+        all_cpu_gpu_diffs += diff_factor;
         if diff_factor > MAX_DIFF {
             println!("annormal difference between cpu-bound {:.2e} and gpu-bound {:.2e} \
-                      evaluations ({:.2e} factor) in {}", cpu, gpu, diff_factor, name)
+                      evaluations ({:.2e}x) in {}", cpu_med, gpu_med, diff_factor, name)
         }
     }
+    let diff = all_diffs / (2 * NUM_TESTS) as f64; 
+    let cpu_gpu_diff = all_cpu_gpu_diffs / NUM_TESTS as f64;
+    println!("average delta between the fastest and slowest evaluation: {:.2e}x", diff);
+    println!("average delta cpu-bound and gpu-bound evaluations: {:.2e}x", cpu_gpu_diff);
 }
 
-/// Analyses the regularity of execution times and returns the median. Fails if the
-/// relative difference between the fastest and the slowest evaluation is too big.
-fn analyse_runtimes(mut runtimes: Vec<f64>) -> Result<f64, NoisyError> {
+/// Analyses the regularity of execution times and returns the median and the relative
+/// difference between the fastest and the slowest evaluation. Fails if the relative
+/// difference is too big.
+fn analyse_runtimes(mut runtimes: Vec<f64>, name: &str, bound: &str) -> (f64, f64) {
     runtimes.sort_by(|&x, &y| cmp_f64(x, y));
     let median = runtimes[runtimes.len()/2];
     let diff = (runtimes[runtimes.len()-1] - runtimes[0])/median;
     if diff > MAX_DIFF {
-        return Err(NoisyError {
-            median,
-            min: 1. - runtimes[0]/median,
-            max: runtimes[runtimes.len()-1]/median - 1.,
-        });
+        let min = 1. - runtimes[0]/median;
+        let max = runtimes[runtimes.len()-1]/median - 1.;
+        println!("noisy {}-bound evaluations {:.2e}ns (-{:.2e}x, +{:.2e}x) in {}",
+                  bound, median, min, max, name);
     }
-    Ok(median)
+    (median, diff)
 }
-
-/// Error raised when the fastest and slowest evaluation are too far appart.
-#[derive(Debug, Fail)]
-#[fail(display="noisy evaluations ({:.2e}ns -{:.2e}, +{:.2e}%)", median, min, max)]
-struct NoisyError { median: f64, min: f64, max: f64 }
