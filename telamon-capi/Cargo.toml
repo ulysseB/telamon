@@ -17,6 +17,7 @@ crate-type = ["cdylib"]
 cbindgen = "0.6"
 
 [dependencies]
+env_logger = "0.5.9"
 libc = "0.2"
 
 [dependencies.telamon]

@@ -1,5 +1,6 @@
 //! Interface with CUDA Modules and Kernels.
 use device;
+#[cfg(feature="cuda")]
 use device::cuda::api::PerfCounterSet;
 use device::cuda::api::wrapper::*;
 use itertools::Itertools;
@@ -73,6 +74,7 @@ impl<'a> Kernel<'a> {
     }
 
     /// Instruments the kernel with the given performance counters.
+    #[cfg(feature="cuda")]
     pub fn instrument(&self, blocks: &[u32; 3], threads: &[u32; 3], args: &[&Argument],
                       counters: &PerfCounterSet) -> Vec<u64> {
         counters.instrument( unsafe { &*self.function }, blocks, threads, args)

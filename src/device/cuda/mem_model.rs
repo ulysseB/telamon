@@ -146,7 +146,9 @@ fn tensor_thread_dims(space: &SearchSpace,
         }
     }).chain(external_dims).map(|(id, is_active_thread)| {
         let size = sizes[&id];
-        let stride = tensor_dims.get(&id).map(|s| ctx.eval_size(s) as u64).unwrap_or(0);
+        let stride = tensor_dims.get(&id).map(|s| {
+            ctx.eval_size(&s.clone().into()) as u64
+        }).unwrap_or(0);
         ThreadDimInfo {
             size: u64::from(size),
             stride, id, is_active_thread,
@@ -394,6 +396,7 @@ fn dynamic_nesting(lhs: &ir::Dimension, rhs: &ir::Dimension, space: &SearchSpace
 */
 
 #[cfg(test)]
+#[cfg(feature="cuda")]
 mod tests {
     use super::*;
     use device::cuda::{self, Gpu};
@@ -439,7 +442,7 @@ mod tests {
         let _ = env_logger::try_init();
         let executor = cuda::Executor::init();
         let ctx = cuda::Context::new(&executor);
-        let gpu = unwrap!(Gpu::from_name("dummy_cuda_gpu"));
+        let gpu = cuda::Gpu::from_executor(&executor);
         let base = gen_signature();
         let (space, inst, size_map) = gen_function(&base, &gpu, Order::OUTER);
         let inst = space.ir_instance().inst(inst);
@@ -455,7 +458,7 @@ mod tests {
         let _ = env_logger::try_init();
         let executor = cuda::Executor::init();
         let ctx = cuda::Context::new(&executor);
-        let gpu = unwrap!(Gpu::from_name("dummy_cuda_gpu"));
+        let gpu = cuda::Gpu::from_executor(&executor);
         let base = gen_signature();
         let (space, inst, size_map) = gen_function(&base, &gpu, Order::INNER);
         let inst = space.ir_instance().inst(inst);

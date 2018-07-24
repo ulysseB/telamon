@@ -5,6 +5,7 @@ extern crate telamon_utils as utils;
 #[macro_use]
 extern crate log;
 extern crate env_logger;
+extern crate num;
 
 fn main() { panic!("use `cargo test` to run tests") }
 
@@ -1138,11 +1139,11 @@ mod integer_set {
     use self::integer_set::*;
     use std::sync::Arc;
 
-    const INT0_DOMAIN: [u16; 3] = [2, 4, 6];
+    const INT0_DOMAIN: [u32; 3] = [2, 4, 6];
 
-    const INT1_DOMAIN: [u16; 3] = [3, 4, 5];
+    const INT1_DOMAIN: [u32; 3] = [3, 4, 5];
 
-    fn int1_domain<'a>(_: &ir::Function, _: &'a ir::set0::Obj) -> &'a [u16] {
+    fn int1_domain<'a>(_: &ir::Function, _: &'a ir::set0::Obj) -> &'a [u32] {
         &INT1_DOMAIN
     }
 

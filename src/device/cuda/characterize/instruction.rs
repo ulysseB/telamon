@@ -1,15 +1,12 @@
 //! Microbenchmarks to get the description of each instruction.
-use create_table;
-use num::Zero;
-use telamon::codegen;
-use telamon::device::{Device, ScalarArgument};
-use telamon::device::cuda::{Context, Executor, Gpu, InstDesc, Kernel, PerfCounter};
-use telamon::ir;
-use gen;
+use codegen;
+use device::{Device, ScalarArgument};
+use device::cuda::{Context, Executor, Gpu, InstDesc, Kernel, PerfCounter};
+use device::cuda::characterize::{create_table, gen, math, Table};
+use ir;
 use itertools::Itertools;
-use math;
+use num::Zero;
 use std;
-use table::Table;
 use utils::*;
 
 /// Instruments a single thread with a loop containing chained instructions.

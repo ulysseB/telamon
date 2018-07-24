@@ -2,59 +2,18 @@
 use device::cuda::{Gpu, Namer};
 use codegen::Printer;
 use codegen::*;
-use ir::{self, dim, op, Operand, Size, Type};
+use ir::{self, op, Type};
 use itertools::Itertools;
 use search_space::{DimKind, Domain, InstFlag};
 use std;
 use std::io::Write;
 use std::fmt::Write as WriteFmt;
-use utils::*;
-// TODO(cc_perf): avoid concatenating strings.
 
 pub struct CudaPrinter {
     out_function: String,
 }
 
-/// Represents an argument of a PTX vector instruction.
-enum VecInstArg<'a> {
-    Addr(&'a Operand<'a>),
-    VecInst(&'a Instruction<'a>, dim::Id, u32),
-    VecOp(&'a Operand<'a>, dim::Id, u32),
-}
-
 impl CudaPrinter {
-    /// Prints an vector instruction argument.
-    fn vec_inst_arg(arg: &VecInstArg, namer: &mut NameMap) -> String {
-        match *arg {
-            VecInstArg::Addr(op) => format!("[{}]", namer.name_op(op)),
-            VecInstArg::VecInst(inst, dim, size) => {
-                let names = (0..size).map(|i| {
-                    namer.indexed_inst_name(inst, dim, i).to_string()
-                }).collect_vec().join(", ");
-                format!("{{{names}}}", names = names)
-            },
-            VecInstArg::VecOp(op, dim, size) => {
-                let names = (0..size).map(|i| {
-                    namer.indexed_op_name(op, dim, i).to_string()
-                }).collect_vec().join(", ");
-                format!("{{{names}}}", names = names)
-            }
-        }
-    }
-
-    /// Assembles the different parts of an instruction in a single string.
-    fn assemble(operator: &str,
-                predicate: Option<RcStr>,
-                t: Type,
-                args: &[VecInstArg],
-                namer: &mut NameMap) -> String {
-        let args_str = args.iter().map(|x| Self::vec_inst_arg(x, namer)).collect_vec().join(", ");
-        let pred = if let Some(ref pred) = predicate {
-            format!("@{} ", pred)
-        } else { String::new() };
-        format!("{}{}.{} {};", pred, operator, Self::get_type(t), args_str)
-    }
-
     fn mul_mode(mode: MulMode) -> &'static str {
         match mode {
             MulMode::Wide => ".wide",
@@ -66,8 +25,13 @@ impl CudaPrinter {
 
     fn get_inst_type(mode: MulMode, ret_type: Type) -> Type {
         match mode {
-            MulMode::Wide => if let Type::I(n) = ret_type {Type::I( n / 2)} else {panic!("get_inst_type should only be called with integer types")}
-            ,
+            MulMode::Wide => {
+                if let Type::I(n) = ret_type {
+                    Type::I( n / 2)
+                } else {
+                    panic!("get_inst_type should only be called with integer types")
+                }
+            },
             _ => ret_type,
         }
     }
@@ -138,7 +102,6 @@ impl CudaPrinter {
     /// Prints a `Type` for the host.
     fn host_type(t: &Type) -> &'static str {
         match *t {
-            Type::Void => "void",
             Type::PtrTo(..) => "CUdeviceptr",
             Type::F(32) => "float",
             Type::F(64) => "double",
@@ -229,11 +192,12 @@ impl CudaPrinter {
             for dim in function.dimensions() {
                 if !dim.kind().intersects(DimKind::UNROLL | DimKind::LOOP) { continue; }
                 for level in dim.induction_levels() {
-                    if let Some((_, incr)) = level.increment {
+                    if let Some((_, ref incr)) = level.increment {
                         let name = name_map.declare_size_cast(incr, level.t());
                         if let Some(name) = name {
                             let old_name = name_map.name_size(incr, Type::I(32));
-                            self.print_cast(Type::I(32), level.t(), op::Rounding::Exact, &name, &old_name);
+                            self.print_cast(Type::I(32), level.t(), op::Rounding::Exact,
+                                            &name, &old_name);
                         }
                     }
                 }
@@ -271,7 +235,7 @@ impl CudaPrinter {
         let mut extra_cleanup = vec![];
         let params = fun.device_code_args().map(|p| match *p {
             ParamVal::External(p, _) => format!("&{}", p.name),
-            ParamVal::Size(size) => {
+            ParamVal::Size(ref size) => {
                 let extra_var = format!("_extra_{}", next_extra_var_id);
                 next_extra_var_id += 1;
                 extra_def.push(format!("int32_t {} = {};", extra_var, Self::host_size(size)));
@@ -325,7 +289,6 @@ impl Printer for CudaPrinter {
     /// Print a type in the backend
     fn get_type(t: Type) -> String {
        match t {
-        Type::Void => panic!("void type cannot be printed"),
         Type::I(1) => "pred".to_string(),
         Type::I(size) => format!("s{size}", size = size),
         Type::F(size) => format!("f{size}", size = size),
@@ -334,61 +297,92 @@ impl Printer for CudaPrinter {
  }
 
     /// Print return_id = op1 op op2
-    fn print_binop(&mut self, op: ir::BinOp, return_type: Type, rounding: op::Rounding, return_id: &str, lhs: &str, rhs: &str) { 
-    unwrap!(writeln!(self.out_function, "{}{}.{} {}, {}, {};", Self::binary_op(op), Self::rounding(rounding), Self::get_type(return_type), return_id, lhs, rhs));
+    fn print_binop(&mut self, op: ir::BinOp,
+                   return_type: Type,
+                   rounding: op::Rounding,
+                   return_id: &str, lhs: &str, rhs: &str) {
+        let op = Self::binary_op(op);
+        let rounding = Self::rounding(rounding);
+        let ret_type = Self::get_type(return_type);
+        unwrap!(writeln!(self.out_function, "{}{}.{} {}, {}, {};",
+                         op, rounding, ret_type, return_id, lhs, rhs));
     }
 
     /// Print return_id = op1 * op2
-    fn print_mul(&mut self, return_type: Type, round: op::Rounding, mul_mode: MulMode, return_id: &str, lhs: &str, rhs: &str) {
+    fn print_mul(&mut self, return_type: Type,
+                 round: op::Rounding,
+                 mul_mode: MulMode,
+                 return_id: &str,
+                 lhs: &str, rhs: &str) {
         let operator = if round == op::Rounding::Exact {
             format!("mul{}", Self::mul_mode(mul_mode))
         } else {
             format!("mul{}", Self::rounding(round))
         };
-        unwrap!(writeln!(self.out_function, "{}.{} {}, {}, {};", operator, Self::get_type(Self::get_inst_type(mul_mode, return_type)), return_id, lhs, rhs));
+        let t = Self::get_type(Self::get_inst_type(mul_mode, return_type));
+        unwrap!(writeln!(self.out_function, "{}.{} {}, {}, {};",
+                         operator, t, return_id, lhs, rhs));
     }
 
     /// Print return_id = mlhs * mrhs + arhs
-    fn print_mad(&mut self, ret_type: Type, round: op::Rounding, mul_mode: MulMode, return_id: &str,  mlhs: &str, mrhs: &str, arhs: &str) {
+    fn print_mad(&mut self, return_type: Type,
+                 round: op::Rounding,
+                 mul_mode: MulMode,
+                 return_id: &str,
+                 mlhs: &str, mrhs: &str, arhs: &str) {
         let operator = if round == op::Rounding::Exact {
             format!("mad{}", Self::mul_mode(mul_mode))
         } else {
             format!("fma{}", Self::rounding(round))
         };
-        unwrap!(writeln!(self.out_function, "{}.{} {}, {}, {}, {};", operator, Self::get_type(Self::get_inst_type(mul_mode, ret_type)), return_id, mlhs, mrhs, arhs));
+        let t = Self::get_type(Self::get_inst_type(mul_mode, return_type));
+        unwrap!(writeln!(self.out_function, "{}.{} {}, {}, {}, {};",
+                         operator, t, return_id, mlhs, mrhs, arhs));
     }
 
-    /// Print return_id = op 
+    /// Print return_id = op
     fn print_mov(&mut self, return_type: Type, return_id: &str, op: &str) {
-        unwrap!(writeln!(self.out_function, "mov.{} {}, {};", Self::get_type(return_type), return_id, op));
+        unwrap!(writeln!(self.out_function, "mov.{} {}, {};",
+                         Self::get_type(return_type), return_id, op));
     }
 
-    /// Print return_id = load [addr] 
+    /// Print return_id = load [addr]
     fn print_ld(&mut self, return_type: Type, flag: InstFlag, return_id: &str,  addr: &str) {
-        unwrap!(writeln!(self.out_function, "{}.{} {}, [{}];", Self::ld_operator(flag), Self::get_type(return_type), return_id,  addr));
+        let operator = Self::ld_operator(flag);
+        unwrap!(writeln!(self.out_function, "{}.{} {}, [{}];",
+                         operator, Self::get_type(return_type), return_id,  addr));
     }
 
-    /// Print store val [addr] 
+    /// Print store val [addr]
     fn print_st(&mut self, val_type: Type, mem_flag: InstFlag, addr: &str, val: &str) {
         let operator = Self::st_operator(mem_flag);
-        unwrap!(writeln!(self.out_function, "{}.{} [{}], {};", operator, Self::get_type(val_type), addr, val));
+        unwrap!(writeln!(self.out_function, "{}.{} [{}], {};",
+                         operator, Self::get_type(val_type), addr, val));
     }
 
-    /// Print if (cond) store val [addr] 
-    fn print_cond_st(&mut self, val_type: Type, mem_flag: InstFlag, cond: &str, addr: &str, val: &str) {
+    /// Print if (cond) store val [addr]
+    fn print_cond_st(&mut self, val_type: Type,
+                     mem_flag: InstFlag,
+                     cond: &str, addr: &str, val: &str) {
         let operator = Self::st_operator(mem_flag);
-        unwrap!(writeln!(self.out_function, "@{} {}.{} [{}], {};", cond, operator, Self::get_type(val_type), addr, val));
+        unwrap!(writeln!(self.out_function, "@{} {}.{} [{}], {};",
+                         cond, operator, Self::get_type(val_type), addr, val));
     }
 
     /// Print return_id = (val_type) val
-    fn print_cast(&mut self, from_t: Type, to_t: Type, round: op::Rounding, return_id: &str, op1: &str) {
-        let operator = format!("cvt{}.{}.{}", Self::rounding(round), Self::get_type(to_t), Self::get_type(from_t));
+    fn print_cast(&mut self, from_t: Type, to_t: Type,
+                  round: op::Rounding,
+                  return_id: &str,
+                  op1: &str) {
+        let rounding = Self::rounding(round);
+        let to_t = Self::get_type(to_t);
+        let from_t = Self::get_type(from_t);
+        let operator = format!("cvt{}.{}.{}", rounding, to_t, from_t);
         unwrap!(writeln!(self.out_function, "{} {}, {};",  operator, return_id, op1));
     }
 
     /// print a label where to jump
     fn print_label(&mut self, label_id: &str) {
-        //self.out_function.push_str(&format!("LOOP_{}:", label_id));
         unwrap!(writeln!(self.out_function, "LOOP_{}:", label_id));
     }
 
@@ -427,26 +421,35 @@ impl Printer for CudaPrinter {
         unwrap!(writeln!(self.out_function, "bar.sync 0;"));
     }
 
-    fn print_vector_inst(&mut self, inst: &Instruction, dim: &Dimension, namer: &mut NameMap, fun: &Function) {
+    fn print_vector_inst(&mut self, inst: &Instruction,
+                         dim: &Dimension,
+                         namer: &mut NameMap,
+                         fun: &Function) {
         let size = unwrap!(dim.size().as_int());
         let flag = unwrap!(inst.mem_flag());
         match *inst.operator() {
             op::Ld(_, ref addr, _) => {
                 let operator = format!("{}.v{}", Self::ld_operator(flag), size);
-                let args = [VecInstArg::VecInst(inst, dim.id(), size), VecInstArg::Addr(addr)];
-                unwrap!(writeln!(Self::assemble(&operator, None, inst.t(), &args, namer)))
+                let dst = (0..size).map(|i| {
+                    namer.indexed_inst_name(inst, dim.id(), i).to_string()
+                }).collect_vec().join(", ");
+                let t = Self::get_type(unwrap!(inst.t()));
+                unwrap!(writeln!(self.out_function, "{}.{} {{{}}}, [{}];",
+                                 operator, t, dst, namer.name_op(addr)))
             },
             op::St(ref addr, ref val, _, _) => {
                 let operator = format!("{}.v{}", Self::st_operator(flag), size);
-                let operands = [VecInstArg::Addr(addr), VecInstArg::VecOp(val, dim.id(), size)];
                 let guard = if inst.has_side_effects() {
-                    namer.side_effect_guard()
-                } else { None };
-                unwrap!(writeln!(Self::assemble(&operator,
-                                                guard,
-                                                Self::lower_type(val.t(), fun), 
-                                                &operands, 
-                                                namer)))
+                    if let Some(pred) = namer.side_effect_guard() {
+                        format!("@{} ", pred)
+                    } else { String::new() }
+                } else { String::new() };
+                let t = Self::get_type(Self::lower_type(val.t(), fun));
+                let src = (0..size).map(|i| {
+                    namer.indexed_op_name(val, dim.id(), i).to_string()
+                }).collect_vec().join(", ");
+                unwrap!(writeln!(self.out_function, "{}{}.{} [{}], {{{}}};",
+                                 guard, operator, t, namer.name_op(addr), src));
             },
             _ => panic!("non-vectorizable instruction"),
         }

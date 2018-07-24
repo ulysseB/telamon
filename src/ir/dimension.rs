@@ -1,7 +1,6 @@
 //! Represents iteration dimensions.
 use ir::{self, BasicBlock};
 use std::fmt;
-use std::hash::{Hash, Hasher};
 
 /// Provides a unique identifier for iteration dimensions.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -28,13 +27,15 @@ pub struct Dimension<'a> {
 
 impl<'a> Dimension<'a> {
     /// Creates a new dimension.
-    pub fn new(size: ir::Size, id: Id) -> Dimension {
-        assert_ne!(size.as_int(), Some(1));
-        Dimension {
+    pub fn new(size: ir::Size, id: Id) -> Result<Dimension, ir::Error> {
+        if size.as_int().map(|i| i <= 1).unwrap_or(false) {
+            return Err(ir::Error::InvalidDimSize);
+        }
+        Ok(Dimension {
             size, id,
             iterated: Vec::new(),
             is_thread_dim: false,
-        }
+        })
     }
 
     /// Retruns the size of the dimension.
@@ -62,16 +63,4 @@ impl<'a> BasicBlock<'a> for Dimension<'a> {
     fn bb_id(&self) -> ir::BBId { self.id.into() }
 
     fn as_dim(&self) -> Option<&Dimension<'a>> { Some(self) }
-}
-
-// Dimension equality is based on `BBId`.
-impl<'a> PartialEq for Dimension<'a> {
-    fn eq(&self, other: &Dimension<'a>) -> bool { self.bb_id() == other.bb_id() }
-}
-
-impl<'a> Eq for Dimension<'a> {}
-
-// Dimension hash based on `BBId`.
-impl<'a> Hash for Dimension<'a> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.bb_id().hash(state) }
 }

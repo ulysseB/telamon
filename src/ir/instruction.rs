@@ -1,12 +1,18 @@
 //! Describes the instructions.
 use device::Device;
 use ir::{self, BasicBlock, BBId, Operand, Operator, Type, DimMapScope};
-use std::hash::{Hash, Hasher};
+use std;
 use utils::*;
 
 /// Uniquely identifies an instruction.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct InstId(pub u32);
+
+impl std::fmt::Display for InstId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "instruction {}", self.0)
+    }
+}
 
 /// Represents an instruction.
 #[derive(Clone, Debug)]
@@ -19,16 +25,16 @@ pub struct Instruction<'a> {
 impl<'a> Instruction<'a> {
     /// Creates a new instruction and type-check the operands.
     pub fn new(operator: Operator<'a>, id: InstId, iter_dims: HashSet<ir::dim::Id>,
-               device: &Device) -> Instruction<'a> {
-        operator.type_check(device);
-        Instruction { operator, id, iter_dims }
+               device: &Device) -> Result<Instruction<'a>, ir::Error> {
+        operator.check(&iter_dims, device)?;
+        Ok(Instruction { operator, id, iter_dims })
     }
 
     /// Returns the list of operands of an `Instruction`.
     pub fn operands(&self) -> Vec<&Operand<'a>> { self.operator.operands() }
 
     /// Returns the type of the value produced by an instruction.
-    pub fn t(&self) -> Type { self.operator.t() }
+    pub fn t(&self) -> Option<Type> { self.operator.t() }
 
     /// Returns the operator of the instruction.
     pub fn operator(&self) -> &Operator { &self.operator }
@@ -115,16 +121,4 @@ impl<'a> BasicBlock<'a> for Instruction<'a> {
     fn bb_id(&self) -> BBId { self.id.into() }
 
     fn as_inst(&self) -> Option<&Instruction<'a>> { Some(self) }
-}
-
-// Instruction equality is based on `BBId`.
-impl<'a> PartialEq for Instruction<'a> {
-    fn eq(&self, other: &Instruction) -> bool { self.bb_id() == other.bb_id() }
-}
-
-impl<'a> Eq for Instruction<'a> {}
-
-// As for equality, Instruction hashing is based on `BBId`.
-impl<'a> Hash for Instruction<'a> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.bb_id().hash(state) }
 }
