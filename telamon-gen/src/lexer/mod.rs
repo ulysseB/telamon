@@ -210,7 +210,7 @@ impl Lexer {
 
                     yypush_buffer_state(buffer, self.scanner);
                     self.include = Some(Box::new(Lexer {
-                        filename: Some(filepath.to_path_buf()),
+                        filename: Some(PathBuf::from(filename.to_str().unwrap())),
                         scanner: self.scanner,
                         // The function  [yy_scan_bytes](https://westes.github.io/flex/manual/Multiple-Input-Buffers.html)
                         // scans len bytes starting at location bytes.
