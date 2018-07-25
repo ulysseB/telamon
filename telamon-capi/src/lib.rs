@@ -9,10 +9,11 @@ extern crate libc;
 extern crate telamon;
 extern crate telamon_kernels;
 
+#[cfg(feature = "cuda")]
+pub mod cuda;
+
 use libc::{c_char, c_int, c_uint, size_t, uint32_t};
 use telamon::device;
-#[cfg(feature = "cuda")]
-use telamon::device::cuda;
 use telamon::device::x86;
 use telamon::explorer::config::Config;
 pub use telamon_kernels::{linalg, Kernel};
@@ -128,8 +129,9 @@ pub unsafe extern "C" fn kernel_optimize(
         Device::Cuda => {
             #[cfg(feature = "cuda")]
             {
-                let executor = cuda::Executor::init();
-                (*params).optimize_kernel(&config, &mut cuda::Context::new(&executor));
+                let executor = device::cuda::Executor::init();
+                let mut context = device::cuda::Context::new(&executor);
+                (*params).optimize_kernel(&config, &mut context);
             }
             #[cfg(not(feature = "cuda"))]
             return false;
