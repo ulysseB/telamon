@@ -377,7 +377,7 @@ where
 
     // At each iteration of this loop we maintain the invariant that
     // the priority queue contains exactly the nodes for which all
-    // predecessors are in sorted, but have not been sorted
+    // predecessors are already sorted, but have not been sorted
     // themselves. Using a priority queue ensures that we are always
     // processing nodes in the order they appear in the initial
     // `nodes` slice.
@@ -418,7 +418,7 @@ where
     }
 }
 
-/// Note that the code in the `stable_topological_sort_tests` omdule
+/// Note that the code in the `stable_topological_sort_tests` module
 /// should be in an Examples sections in the `stable_topological_sort`
 /// function, but we can't run rustdoc tests on private functions for
 /// some reason.
