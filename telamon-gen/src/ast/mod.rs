@@ -302,7 +302,7 @@ impl SetRef {
 /// Defines a variable.
 #[derive(Debug, Clone)]
 pub struct VarDef {
-    pub name: RcStr,
+    pub name: Spanned<RcStr>,
     pub set: SetRef,
 }
 
@@ -339,9 +339,9 @@ impl VarMap {
     fn decl_var(&mut self, ir_desc: &ir::IrDesc, var_def: VarDef,
                 var: ir::Variable) -> ir::Set {
         let set = var_def.set.type_check(ir_desc, self);
-        match self.map.entry(var_def.name.clone()) {
+        match self.map.entry(var_def.name.data.clone()) {
             hash_map::Entry::Occupied(..) =>
-                panic!("variable {} defined twice", var_def.name),
+                panic!("variable {} defined twice", var_def.name.data),
             hash_map::Entry::Vacant(entry) => { entry.insert((var, set.clone())); },
         };
         set
