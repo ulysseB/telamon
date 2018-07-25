@@ -20,5 +20,8 @@ libc = "0.2"
 [dependencies.telamon]
 path = "../"
 
+[dependencies.telamon-utils]
+path = "../telamon-utils"
+
 [dependencies.telamon-kernels]
 path = "../kernels"
