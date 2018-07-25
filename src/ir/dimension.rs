@@ -3,7 +3,7 @@ use ir::{self, BasicBlock};
 use std::fmt;
 
 /// Provides a unique identifier for iteration dimensions.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Id(pub u32);
 
 impl fmt::Debug  for Id {

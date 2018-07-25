@@ -5,10 +5,10 @@ use utils::*;
 // TODO(cleanup): move layouts into internal blocks.
 
 /// Uniquely identifies a block.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 pub enum Id { Internal(u32), External(u32) }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 pub struct InternalId(pub u32);
 
 impl From<InternalId> for Id {

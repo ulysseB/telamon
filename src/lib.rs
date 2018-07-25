@@ -39,6 +39,7 @@ extern crate tokio_timer;
 #[macro_use]
 extern crate serde;
 extern crate serde_json;
+extern crate bincode;
 #[macro_use]
 extern crate telamon_utils as utils;
 extern crate xdg;

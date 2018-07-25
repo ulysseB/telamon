@@ -178,7 +178,7 @@ pub trait Domain: Copy + Eq {
 }
 
 /// Abstracts integer choices by a range.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Range {
     pub min: u32,
     pub max: u32,
@@ -262,7 +262,7 @@ impl Domain for Range {
 }
 
 /// Abstracts integer choices by a range, but only store `min`.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct HalfRange { pub min: u32 }
 
 #[allow(dead_code)]
