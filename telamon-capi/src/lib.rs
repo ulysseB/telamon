@@ -18,6 +18,9 @@ use telamon::device::x86;
 use telamon::explorer::config::Config;
 pub use telamon_kernels::{linalg, Kernel};
 
+/// Generic type that stores the exection environment of kernels on any device.
+pub struct Context(*const device::Context);
+
 /// Initializes the logger.
 #[no_mangle]
 pub extern "C" fn env_logger_try_init() {
