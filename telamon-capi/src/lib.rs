@@ -18,8 +18,12 @@ use telamon::device::x86;
 use telamon::explorer::config::Config;
 pub use telamon_kernels::{linalg, Kernel};
 
-/// Generic type that stores the exection environment of kernels on any device.
+/// Description of the evaluation context. In particular, in contains the mapping between
+/// argument names and argument values.
 pub struct Context(*const device::Context);
+
+/// Description of the targeted device.
+pub struct Device(*const device::Device);
 
 /// Initializes the logger.
 #[no_mangle]
@@ -29,7 +33,7 @@ pub extern "C" fn env_logger_try_init() {
 
 /// Supported device types for running kernels.
 #[repr(C)]
-pub enum Device {
+pub enum DeviceId {
     X86,
     Cuda,
 }
@@ -116,7 +120,7 @@ pub unsafe extern "C" fn kernel_free(params: *mut KernelParameters) -> () {
 #[no_mangle]
 pub unsafe extern "C" fn kernel_optimize(
     params: *mut KernelParameters,
-    device: Device,
+    device: DeviceId,
     config_data: *const c_char,
     config_len: size_t,
 ) -> bool {
@@ -128,8 +132,8 @@ pub unsafe extern "C" fn kernel_optimize(
         Config::from_json(config_str)
     };
     let _bench_result = match device {
-        Device::X86 => (*params).optimize_kernel(&config, &mut x86::Context::new()),
-        Device::Cuda => {
+        DeviceId::X86 => (*params).optimize_kernel(&config, &mut x86::Context::new()),
+        DeviceId::Cuda => {
             #[cfg(feature = "cuda")]
             {
                 let executor = device::cuda::Executor::init();
