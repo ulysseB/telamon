@@ -2,6 +2,7 @@
 use std;
 
 use itertools::Itertools;
+use indexmap::IndexMap;
 use utils::*;
 
 mod adaptator;
@@ -16,9 +17,9 @@ pub use self::adaptator::*;
 
 /// Describes the choices that constitute the IR.
 pub struct IrDesc {
-    choices: HashMap<RcStr, Choice>,
-    enums: HashMap<RcStr, Enum>,
-    set_defs: HashMap<RcStr, std::rc::Rc<SetDef>>,
+    choices: IndexMap<RcStr, Choice>,
+    enums: IndexMap<RcStr, Enum>,
+    set_defs: IndexMap<RcStr, std::rc::Rc<SetDef>>,
     triggers: Vec<Trigger>,
 }
 
@@ -197,7 +198,7 @@ impl IrDesc {
                 set_constraints.push((Variable::Arg(arg_id), expected_set.clone()));
             }
         }
-        // Add the remaining variables as foralls. We keep the foralls in the order thwy were
+        // Add the remaining variables as foralls. We keep the foralls in the order they were
         // given, so the sets are still defined after their parameters.
         let vars = vars.into_iter().sorted_by_key(|x| x.0);
         for (forall_id, (mapped_var, set)) in vars.into_iter().enumerate() {
@@ -248,9 +249,9 @@ impl IrDesc {
 impl Default for IrDesc {
     fn default() -> Self {
        let mut ir_desc =  IrDesc {
-           choices: HashMap::default(),
-           enums: HashMap::default(),
-           set_defs: HashMap::default(),
+           choices: IndexMap::default(),
+           enums: IndexMap::default(),
+           set_defs: IndexMap::default(),
            triggers: Vec::new(),
        };
        let mut bool_enum = Enum::new("Bool".into(), None, None);
@@ -281,8 +282,8 @@ impl CounterKind {
 pub struct Enum {
     name: RcStr,
     doc: Option<RcStr>,
-    values: HashMap<RcStr, Option<String>>,
-    aliases: HashMap<RcStr, (HashSet<RcStr>, Option<String>)>,
+    values: IndexMap<RcStr, Option<String>>,
+    aliases: IndexMap<RcStr, (HashSet<RcStr>, Option<String>)>,
     inverse: Option<Vec<(RcStr, RcStr)>>,
 }
 
@@ -294,8 +295,8 @@ impl Enum {
             name: name,
             doc: doc,
             inverse: inverse,
-            values: HashMap::default(),
-            aliases: HashMap::default(),
+            values: IndexMap::default(),
+            aliases: IndexMap::default(),
         }
     }
 
@@ -315,7 +316,7 @@ impl Enum {
     }
 
     /// Lists the aliases.
-    pub fn aliases(&self) -> &HashMap<RcStr, (HashSet<RcStr>, Option<String>)> {
+    pub fn aliases(&self) -> &IndexMap<RcStr, (HashSet<RcStr>, Option<String>)> {
         &self.aliases
     }
 
@@ -323,7 +324,7 @@ impl Enum {
     pub fn doc(&self) -> Option<&str> { self.doc.as_ref().map(|x| x as &str) }
 
     /// Returns the values the enum can take, and their associated comment.
-    pub fn values(&self) -> &HashMap<RcStr, Option<String>> { &self.values }
+    pub fn values(&self) -> &IndexMap<RcStr, Option<String>> { &self.values }
 
     /// Replaces aliases by the corresponding values.
     pub fn expand<IT: IntoIterator<Item=RcStr>>(&self, set: IT) -> HashSet<RcStr> {
