@@ -4,6 +4,8 @@ use super::ir::prelude::*;
 #[allow(unused_imports)]
 use std;
 use std::sync::Arc;
+use num;
+use itertools::Itertools;
 #[allow(unused_imports)]
 use utils::*;
 
@@ -325,17 +327,24 @@ impl Domain for HalfRange {
 #[derive(Copy, Clone)]
 pub struct NumericSet {
     len: usize,
-    values: [u16; NumericSet::MAX_LEN],
+    values: [u32; NumericSet::MAX_LEN],
 }
 
 #[allow(dead_code)]
 impl NumericSet {
-    const MAX_LEN: usize = 32;
+    pub const MAX_LEN: usize = 16;
 
-    const FAILED: Self = NumericSet { len: 0, values: [0; NumericSet::MAX_LEN] };
+    pub const FAILED: Self = NumericSet { len: 0, values: [0; NumericSet::MAX_LEN] };
+
+    /// Creates a new `NumericSet` containing a single value.
+    pub fn new_fixed(val: u32) -> Self {
+        let mut values = [0; Self::MAX_LEN];
+        values[0] = val;
+        NumericSet { values, len: 1 }
+    }
 
     /// Returns the set containing all the possibilities. Assumes the universe is sorted.
-    pub fn all(univers: &[u16]) -> Self {
+    pub fn all(univers: &[u32]) -> Self {
         assert!(univers.len() <= NumericSet::MAX_LEN);
         let mut values = [0; NumericSet::MAX_LEN];
         for (v, dst) in univers.iter().cloned().zip(&mut values) { *dst = v; }
@@ -369,7 +378,27 @@ impl NumericSet {
         self.len = idx;
     }
 
-    fn restrict_to(&mut self, other: &[u16]) {
+    /// Returns the greatest common divisor of possible values.
+    pub fn gcd(&self) -> u32 {
+        self.values[..self.len].iter().cloned().fold1(num::integer::gcd).unwrap_or(1)
+    }
+
+    /// Returns the least common multiple of possible values.
+    pub fn lcm(&self) -> u32 {
+        self.values[..self.len].iter().cloned().fold1(num::integer::lcm).unwrap_or(1)
+    }
+
+    /// Returns the only value in the set, if it is fully constrained.
+    pub fn as_constrained(&self) -> Option<u32> {
+        if self.len == 1 { Some(self.values[0]) } else { None }
+    }
+
+    /// Lists the possible values the domain can take.
+    pub fn list<'a>(&'a self) -> Vec<Self> {
+        self.values[0..self.len].iter().cloned().map(Self::new_fixed).collect()
+    }
+
+    fn restrict_to(&mut self, other: &[u32]) {
         let (mut new_lhs, mut old_lhs, mut rhs) = (0, 0, 0);
         while old_lhs < self.len && rhs < other.len() {
             if self.values[old_lhs] > other[rhs] {
@@ -386,7 +415,7 @@ impl NumericSet {
         self.len = new_lhs;
     }
 
-    fn complement(&self, universe: &[u16]) -> Self {
+    fn complement(&self, universe: &[u32]) -> Self {
         let mut values = [0; Self::MAX_LEN];
         let mut self_idx = 0;
         let mut new_idx = 0;
@@ -464,6 +493,13 @@ pub trait NumDomain {
     /// Returns the domain containing the values of `eq` that are also in the universe.
     fn new_eq<D: NumDomain>(universe: &Self::Universe, eq: D) -> Self;
 
+    /// Returns the value of the domain, if it is constrained.
+    fn final_value(&self) -> u32 {
+        assert_eq!(self.min(), self.max());
+        self.min()
+    }
+
+
     fn lt<D: NumDomain>(&self, other: D) -> bool { self.max() < other.min() }
 
     fn gt<D: NumDomain>(&self, other: D) -> bool { self.min() > other.max() }
@@ -540,60 +576,60 @@ impl NumDomain for HalfRange {
 }
 
 impl NumDomain for NumericSet {
-    type Universe = [u16];
+    type Universe = [u32];
 
     fn min(&self) -> u32 {
-        if self.len == 0 { 1 } else { self.values[0] as u32 }
+        if self.len == 0 { 1 } else { self.values[0] }
     }
 
     fn max(&self) -> u32 {
-        if self.len == 0 { 0 } else { self.values[self.len-1] as u32 }
+        if self.len == 0 { 0 } else { self.values[self.len-1] }
     }
 
     fn as_num_set(&self) -> Option<NumericSet> { Some(*self) }
 
-    fn new_gt<D: NumDomain>(universe: &[u16], min: D) -> Self {
+    fn new_gt<D: NumDomain>(universe: &[u32], min: D) -> Self {
         let mut values = [0; NumericSet::MAX_LEN];
-        let min = std::cmp::min(std::u16::MAX as u32, min.min()) as u16;
+        let min = std::cmp::min(std::u32::MAX, min.min());
         let start = universe.binary_search(&min).map(|x| x+1).unwrap_or_else(|x| x);
         let len = universe.len() - start;
         for i in 0..len { values[i] = universe[start+i]; }
         NumericSet { values, len }
     }
 
-    fn new_lt<D: NumDomain>(universe: &[u16], max: D) -> Self {
+    fn new_lt<D: NumDomain>(universe: &[u32], max: D) -> Self {
         let mut values = [0; NumericSet::MAX_LEN];
-        let max = std::cmp::min(std::u16::MAX as u32, max.max()) as u16;
+        let max = std::cmp::min(std::u32::MAX, max.max());
         let len = universe.binary_search(&max).unwrap_or_else(|x| x);
         for i in 0..len { values[i] = universe[i]; }
         NumericSet { values, len }
     }
 
-    fn new_geq<D: NumDomain>(universe: &[u16], min: D) -> Self {
+    fn new_geq<D: NumDomain>(universe: &[u32], min: D) -> Self {
         let mut values = [0; NumericSet::MAX_LEN];
-        let min = std::cmp::min(std::u16::MAX as u32, min.min()) as u16;
+        let min = std::cmp::min(std::u32::MAX, min.min());
         let start = universe.binary_search(&min).unwrap_or_else(|x| x);
         let len = universe.len() - start;
         for i in 0..len { values[i] = universe[start+i]; }
         NumericSet { values, len }
     }
 
-    fn new_leq<D: NumDomain>(universe: &[u16], max: D) -> Self {
+    fn new_leq<D: NumDomain>(universe: &[u32], max: D) -> Self {
         let mut values = [0; NumericSet::MAX_LEN];
-        let max = std::cmp::min(std::u16::MAX as u32, max.max()) as u16;
+        let max = std::cmp::min(std::u32::MAX, max.max());
         let len = universe.binary_search(&max).map(|x| x+1).unwrap_or_else(|x| x);
         for i in 0..len { values[i] = universe[i]; }
         NumericSet { values, len }
     }
 
-    fn new_eq<D: NumDomain>(universe: &[u16], eq: D) -> Self {
+    fn new_eq<D: NumDomain>(universe: &[u32], eq: D) -> Self {
         if let Some(mut eq) = eq.as_num_set() {
             eq.restrict_to(universe);
             eq
         } else {
             let mut values = [0; NumericSet::MAX_LEN];
-            let min = std::cmp::min(std::u16::MAX as u32, eq.min()) as u16;
-            let max = std::cmp::min(std::u16::MAX as u32, eq.max()) as u16;
+            let min = std::cmp::min(std::u32::MAX, eq.min());
+            let max = std::cmp::min(std::u32::MAX, eq.max());
             let start = universe.binary_search(&min).unwrap_or_else(|x| x);
             let len = universe.binary_search(&max).unwrap_or_else(|x| x) - start;
             for i in 0..len { values[i] = universe[start+i]; }
@@ -644,4 +680,35 @@ impl NumDomain for u32 {
     }
 
     fn new_eq<D: NumDomain>(universe: &u32, _: D) -> Self { *universe }
+}
+
+pub enum Never { }
+
+impl<'a> NumDomain for &'a [u32] {
+    type Universe = Never;
+
+    fn min(&self) -> u32 {
+        if self.is_empty() { 1 } else { self[0] }
+    }
+
+    fn max(&self) -> u32 {
+        if self.is_empty() { 0 } else { self[self.len()-1] }
+    }
+
+    fn as_num_set(&self) -> Option<NumericSet> {
+        assert!(self.len() < NumericSet::MAX_LEN);
+        let mut values = [0; NumericSet::MAX_LEN];
+        for i in 0..self.len() { values[i] = self[i] }
+        Some(NumericSet { len: self.len(), values })
+    }
+
+    fn new_gt<D: NumDomain>(never: &Never, _: D) -> Self { match *never { } }
+
+    fn new_lt<D: NumDomain>(never: &Never, _: D) -> Self { match *never { } }
+
+    fn new_geq<D: NumDomain>(never: &Never, _: D) -> Self { match *never { } }
+
+    fn new_leq<D: NumDomain>(never: &Never, _: D) -> Self { match *never { } }
+
+    fn new_eq<D: NumDomain>(never: &Never, _: D) -> Self { match *never { } }
 }

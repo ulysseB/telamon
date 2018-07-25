@@ -178,7 +178,8 @@ impl<'a> Builder<'a> {
 
     /// Inserts an instruction in the function.
     fn inst(&mut self, op: Operator<'a>) -> InstId {
-        self.function.add_inst(op, self.open_dims.iter().map(|(&x, _)| x).collect())
+        let open_dims = self.open_dims.iter().map(|(&x, _)| x).collect();
+        unwrap!(self.function.add_inst(op, open_dims))
     }
 
     /// Builds both an induction variable for a tensor memory access and the corresponding
@@ -205,7 +206,7 @@ impl<'a> Builder<'a> {
 
     /// Opens a new dimension.
     pub fn open_dim(&mut self, size: Size<'a>) -> dim::Id {
-        let id = self.function.add_dim(size);
+        let id = unwrap!(self.function.add_dim(size));
         self.open_dims.insert(id, id);
         id
     }
@@ -240,7 +241,7 @@ impl<'a> Builder<'a> {
         DimGroup::new(old_dim.ids().map(|old_id| {
             self.open_dims.remove(&old_id);
             let size = self.function.dim(old_id).size().clone();
-            let new_id = self.function.add_dim(size);
+            let new_id = unwrap!(self.function.add_dim(size));
             self.open_dims.insert(new_id, old_id);
             new_id
         }).collect())
@@ -285,15 +286,16 @@ impl<'a> Builder<'a> {
     }
 
     /// Allocates a memory block in shared memory.
-    pub fn allocate_shared(&mut self, size: Size<'a>) -> mem::InternalId {
+    pub fn allocate_shared(&mut self, size: u32) -> mem::InternalId {
         let id = self.allocate(size, true);
         self.actions.push(Action::MemSpace(id.into(), MemSpace::SHARED));
         id
     }
 
     /// Allocates a memory block.
-    pub fn allocate(&mut self, size: Size<'a>, private: bool) -> mem::InternalId {
-        self.function.add_mem_block(size, private)
+    pub fn allocate(&mut self, size: u32, private: bool) -> mem::InternalId {
+        assert!(private, "allocating non-private memory is not yet supported");
+        self.function.add_mem_block(size)
     }
 
     /// Generates an access paterns with all the strides unknown on the opened dimensions.
@@ -302,8 +304,8 @@ impl<'a> Builder<'a> {
     }
 
     /// Generates the access pattern corresponding to accessing a tensor of the given
-    /// type. The data is assumed to be laid out contiguously in the order given by dimensions.
-    /// The last dimension is the major order.
+    /// type. The data is assumed to be laid out contiguously in the order given by
+    /// dimensions. The last dimension is the major order.
     pub fn tensor_access_pattern(&self, mem: mem::Id, t: &Type, dims: &[&MetaDimension])
             -> AccessPattern<'a> {
         let data_size = self.cst_size(unwrap!(t.len_byte()));
@@ -319,7 +321,7 @@ impl<'a> Builder<'a> {
     pub fn induction_var(&mut self, base: &AutoOperand<'a>,
                          dims: Vec<(dim::Id, ir::Size<'a>)>) -> ir::IndVarId {
         let base = self.get_op(base);
-        self.function.add_ind_var(ir::InductionVar::new(dims, base))
+        self.function.add_ind_var(unwrap!(ir::InductionVar::new(dims, base)))
     }
 
     /// Creates a dim-map operand.

@@ -60,9 +60,9 @@ impl SetDef {
 
     /// This checks that thereisn't any keys doublon.
     fn check_redefinition(&self) -> Result<(), TypeError> {
-        let mut hash: HashMap<String, _> = HashMap::default();
+        let mut hash: HashSet<String> = HashSet::default();
         for (key, ..) in self.keys.iter() {
-            if let Some(before) = hash.insert(key.to_string(), ()) {
+            if !hash.insert(key.to_string()) {
                 Err(TypeError::Redefinition(Spanned {
                     beg: Default::default(),
                     end: Default::default(),

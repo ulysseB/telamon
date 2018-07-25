@@ -28,8 +28,6 @@ pub enum Operand<'a> {
     Inst(InstId, Type, DimMap, DimMapScope),
     /// The current index in a loop.
     Index(dim::Id),
-    /// The size of a dimension.
-    Size(ir::Size<'a>),
     /// A parameter of the function.
     Param(&'a Parameter),
     /// The address of a memory block.
@@ -47,8 +45,7 @@ impl<'a> Operand<'a> {
             Int(_, n_bit) => Type::I(n_bit),
             Float(_, n_bit) => Type::F(n_bit),
             Addr(mem) => ir::Type::PtrTo(mem.into()),
-            Index(..) |
-            Size(..) => Type::I(32),
+            Index(..) => Type::I(32),
             Param(p) => p.t,
             Inst(_, t, ..) | Reduce(_, t, ..) | InductionVar(_, t) => t,
         }
@@ -58,18 +55,16 @@ impl<'a> Operand<'a> {
     pub fn new_inst(inst: &Instruction, dim_map: DimMap, mut scope: DimMapScope)
             -> Operand<'a> {
         // A temporary arry can only be generated if the type size is known.
-        assert_ne!(inst.t(), Type::Void);
-        if scope == DimMapScope::Global && inst.t().len_byte().is_none() {
+        if scope == DimMapScope::Global && unwrap!(inst.t()).len_byte().is_none() {
             scope = DimMapScope::Thread
         }
-        Inst(inst.id(), inst.t(), dim_map, scope)
+        Inst(inst.id(), unwrap!(inst.t()), dim_map, scope)
     }
 
     /// Creates a reduce operand from an instruction and a set of dimensions to reduce on.
     pub fn new_reduce(init: &Instruction, dim_map: DimMap, dims: Vec<ir::dim::Id>)
             -> Operand<'a> {
-        assert_ne!(init.t(), Type::Void);
-        Reduce(init.id(), init.t(), dim_map, dims)
+        Reduce(init.id(), unwrap!(init.t()), dim_map, dims)
     }
 
     /// Creates a new Int operand and checks its number of bits.
@@ -113,7 +108,7 @@ impl<'a> Operand<'a> {
     /// Indicates if the operand stays constant during the execution.
     pub fn is_constant(&self) -> bool {
         match *self {
-            Int(..) | Float(..) | Addr(..) | Size(..) | Param(..) => true,
+            Int(..) | Float(..) | Addr(..) | Param(..) => true,
             Index(..) | Inst(..) | Reduce(..) | InductionVar(..) => false,
         }
     }

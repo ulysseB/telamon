@@ -109,8 +109,16 @@ define enum dim_kind($dim in Dimensions):
     requires "$dim.size().is_constant()"
     requires forall $other_dim in Dimensions:
       order($dim, $other_dim) is not OUTER
+    // This constraint effectively forbids VECTOR dimensions to be merged as dimensions
+    // that originates from other loop nests will not be declared in the access pattern
+    // and thus will have no possible vectorization factors.
+    //
+    // If we ever want to merge VECTOR dimensions, we will need to restric this constraint
+    // to iteration dimensions.
     requires forall $inst in Instructions:
-      order($dim, $inst) is not OUTER || "$fun.device().can_vectorize($dim, $inst.operator())"
+      order($dim, $inst) is not OUTER || "$dim.size().as_int().map(|s| \
+        $fun.device().vectorization_factors($dim, $inst.operator()).contains(&s)) \
+        .unwrap_or(false)"
   /// The dimension is mapped to a block dimension on the device.
   value BLOCK:
     requires forall $other_dim in Dimensions:
@@ -140,9 +148,6 @@ define enum mem_space($mem in MemBlocks):
       "unwrap!($inst.operator().mem_used()) != $mem.mem_id()"
         || inst_flag($inst) is MEM_SHARED
 end
-
-require forall $mem in InternalMemBlocks:
-    "$mem.is_private() && $mem.base_size().is_some()"
 
 /// Specifies the version of an instruction to use.
 define enum inst_flag($inst in MemInsts):
@@ -375,7 +380,7 @@ trigger forall $lhs in Dimensions:
 // TODO(cleanup): use dependent sets to only iterate on necessary pairs.
 // FIXME: remove cubic choice choices
 define half counter mem_size($mem in InternalMemBlocks):
-  base "$mem.base_size().unwrap_or(1)"
+  base "$mem.base_size()"
   forall $lhs in Dimensions:
     forall $rhs in Dimensions:
       mul "$lhs.size().as_int().unwrap_or(1)" when:

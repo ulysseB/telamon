@@ -3,7 +3,6 @@ extern crate handlebars;
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate log;
 extern crate itertools;
-extern crate pathfinding;
 extern crate regex;
 extern crate rustfmt;
 extern crate serde;
@@ -129,31 +128,56 @@ pub fn process<'a, T: io::Write>(
     Ok(())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::print::Variable;
+    use std::io::Cursor;
+    use std::path::Path;
+
+    /// Ensure that the output of telamon-gen is stable across calls.
+    #[test]
+    fn stable_output() {
+        let mut in_buf = Cursor::new(include_str!("../../src/search_space/choices.exh").as_bytes());
+        let ref_out = {
+            let mut ref_out = Vec::new();
+            super::process(&mut in_buf, &mut ref_out, false, &Path::new("choices.exh")).unwrap();
+            ref_out
+        };
+        // Ideally we would want to run this loop more than once, but
+        // generation is currently too slow to be worth it.
+        for _ in 0..1 {
+            Variable::reset_prefix();
+            in_buf.set_position(0);
+
+            let mut out_buf = Vec::new();
+            super::process(&mut in_buf, &mut out_buf, false, &Path::new("choices.exh")).unwrap();
+            assert_eq!(
+                ::std::str::from_utf8(&out_buf),
+                ::std::str::from_utf8(&ref_out)
+            );
+        }
+    }
+}
+
 // TODO(cleanup): avoid name conflicts in the printer
 // TODO(feature): allow multiple supersets
 // TODO(filter): group filters if one iterates on a subtype of the other
 // TODO(filter): generate negative filter when there is at most one input.
 // TODO(filter): merge filters even if one input requires a type constraint
-// TODO(cc_perf): remove duplicates on_change filter actions
-// - normalize filter calls
-//   -> can inverse lhs and rhs in symmetric, be careful if self is symmetric
-// - detect duplicates and remove them
-// - IS A X2 LIMITING FACTOR
-// > couldn't we do this during merging ?
-// TODO(cc_perf): Only iterate on the lower triangular part of symmetric domains in
-// on_change
+// TODO(cc_perf): Only iterate on the lower triangular part of symmetric rather than
+//  dynamically filtering out half of the cases
 // TODO(cc_perf): in truth table, intersect rules with rules with weaker conditions,
 
 // FIXME: fix counters:
-// * Discard full counters. Might re-enable them later if we can find a way to make lowerings
-//  commute
-// * Fordid resrtricting the FALSE value of the repr flag from conditions that involve other decisions
-// > this makes lowering commute. Otherwise we can force the counter to be >0, which can be true or
-//   not depending if another lowering has already occured.
-// * Charaterise the effect of fragile values on performance
-// FIXME: make sure the quotient set works correctly with things that force the repr flag to TRUE
-// (for example the constraint on reduction). One problem might be that the flag is forced to FALSE
-// but can be merged with a dim whose flag can be set to TRUE. The solutions for this may be to
-// ensure:
+// * Discard full counters. Might re-enable them later if we can find a way to make
+//   lowerings commute
+// * Fordid resrtricting the FALSE value of the repr flag from conditions that involve
+//   other decisions
+// > this makes lowering commute. Otherwise we can force the counter to be >0, which can
+//   be true or not depending if another lowering has already occured.
+// FIXME: make sure the quotient set works correctly with things that force the repr flag
+// to TRUE (for example the constraint on reduction). One problem might be that the flag
+// is forced to FALSE but can be merged with a dim whose flag can be set to TRUE. The
+// solutions for this may be to ensure:
 // - conditions on flags are uniform for merged dims
 // - the flag has a third state "ok to be true, but onyl if merged to another"

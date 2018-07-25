@@ -15,11 +15,14 @@ pub struct Executor {
 }
 
 impl Executor {
-    /// Initialize the `Executor`.
-    pub fn init() -> Executor {
+    /// Tries to initialize the `Executor` and panics if it fails.
+    pub fn init() -> Executor { unwrap!(Self::try_init()) }
+
+    /// Initializes the `Executor`.
+    pub fn try_init() -> Result<Executor, InitError> {
         // The daemon must be spawned before init_cuda is called.
         let _ = unwrap!(JIT_SPAWNER.lock());
-        Executor { context: unsafe { init_cuda(0) } }
+        Ok(Executor { context: unsafe { init_cuda(0) } })
     }
 
     /// Spawns a `JITDaemon`.

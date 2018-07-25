@@ -12,7 +12,7 @@ pub struct Dimension<'a> {
     representant: ir::dim::Id,
     other_dims: Vec<ir::dim::Id>,
     induction_levels: Vec<InductionLevel<'a>>,
-    size: &'a ir::Size<'a>,
+    size: codegen::Size<'a>,
 }
 
 impl<'a> Dimension<'a> {
@@ -23,7 +23,7 @@ impl<'a> Dimension<'a> {
     pub fn kind(&self) -> DimKind { self.kind }
 
     /// Returns the size of the dimensions.
-    pub fn size(&self) -> &'a ir::Size<'a> { self.size }
+    pub fn size(&self) -> &codegen::Size<'a> { &self.size }
 
     /// Returns the ids of the `ir::Dimensions` represented by this dimension.
     pub fn dim_ids(&self) -> impl Iterator<Item=ir::dim::Id> {
@@ -52,7 +52,7 @@ impl<'a> Dimension<'a> {
         -> impl Iterator<Item=codegen::ParamVal<'a>> + 'b
     {
         let size_param = if self.kind == DimKind::LOOP {
-            codegen::ParamVal::from_size(self.size)
+            codegen::ParamVal::from_size(&self.size)
         } else { None };
         self.induction_levels.iter().flat_map(move |l| l.host_values(space))
             .chain(size_param)
@@ -65,7 +65,7 @@ impl<'a> Dimension<'a> {
         Dimension {
             kind,
             representant: dim.id(),
-            size: dim.size(),
+            size: codegen::Size::from_ir(dim.size(), space),
             other_dims: vec![],
             induction_levels: vec![]
         }
@@ -78,7 +78,7 @@ impl<'a> Dimension<'a> {
         if order == Order::MERGED {
             self.other_dims.push(dim.id());
             debug_assert_eq!(self.kind, space.domain().get_dim_kind(dim.id()));
-            debug_assert_eq!(self.size, dim.size());
+            debug_assert_eq!(self.size, codegen::Size::from_ir(dim.size(), space));
             if cfg!(debug) {
                 for &other in &self.other_dims {
                     let order = space.domain().get_order(dim.id().into(), other.into());
@@ -106,7 +106,7 @@ pub fn group_merged_dimensions<'a>(space: &'a SearchSpace<'a>) -> Vec<Dimension<
 #[derive(Debug)]
 pub struct InductionLevel<'a> {
     pub ind_var: ir::IndVarId,
-    pub increment: Option<(ir::dim::Id, &'a ir::Size<'a>)>,
+    pub increment: Option<(ir::dim::Id, codegen::Size<'a>)>,
     pub base: InductionVarValue<'a>,
 }
 
@@ -118,8 +118,9 @@ impl<'a> InductionLevel<'a> {
     pub fn host_values(&self, space: &SearchSpace)
         -> impl Iterator<Item=codegen::ParamVal<'a>>
     {
-        self.increment.and_then(|(_, s)| codegen::ParamVal::from_size(s)).into_iter()
-            .chain(self.base.host_values(space))
+        self.increment.as_ref().and_then(|&(_, ref s)| {
+            codegen::ParamVal::from_size(s)
+        }).into_iter().chain(self.base.host_values(space))
     }
 }
 
@@ -222,7 +223,7 @@ pub fn register_induction_vars<'a>(dims: &mut Vec<Dimension<'a>>,
             let value = InductionVarValue::computed_elsewhere(&outer_value);
             let base = outer_value;
             let level = InductionLevel { ind_var: id, increment: None, base };
-            let dim = unwrap!(precomputed.last().and_then(|p| p.increment)).0;
+            let dim = unwrap!(precomputed.last().and_then(|p| p.increment.as_ref())).0;
             ind_levels_map.insert(dim, level);
             value
         } else { outer_value };
@@ -237,7 +238,7 @@ pub fn register_induction_vars<'a>(dims: &mut Vec<Dimension<'a>>,
     (ind_vars, precomputed_levels)
 }
 
-type IndVarIncrement<'a> = (ir::dim::Id, &'a ir::Size<'a>);
+type IndVarIncrement<'a> = (ir::dim::Id, codegen::Size<'a>);
 
 /// Retrieves the list of induction levels that can be computed at the beginning of the
 /// thread and the induction levels that are updated during loops. Both lists are sorted
@@ -247,6 +248,7 @@ fn get_ind_var_levels<'a>(ind_var: &'a ir::InductionVar<'a>, space: &SearchSpace
 {
     let (mut const_levels, mut mut_levels) = (Vec::new(), Vec::new());
     for &(dim, ref size) in ind_var.dims() {
+        let size = codegen::Size::from_ir(size, space);
         match space.domain().get_dim_kind(dim) {
             DimKind::VECTOR => (),
             DimKind::LOOP | DimKind::UNROLL => mut_levels.push((dim, size)),

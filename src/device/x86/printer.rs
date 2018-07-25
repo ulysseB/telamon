@@ -97,7 +97,7 @@ impl X86printer {
             for dim in function.dimensions() {
                 if !dim.kind().intersects(DimKind::UNROLL | DimKind::LOOP) { continue; }
                 for level in dim.induction_levels() {
-                    if let Some((_, incr)) = level.increment {
+                    if let Some((_, ref incr)) = level.increment {
                         let name = name_map.declare_size_cast(incr, level.t());
                         if let Some(name) = name {
                             let old_name = name_map.name_size(incr, Type::I(32));
@@ -217,7 +217,6 @@ impl X86printer {
         loop_init = loop_decl,
         tid_struct = tid_struct,
         loop_jump = loop_jmp)
-
     }
 
     /// Prints code that joins all previously generated threads
@@ -274,7 +273,6 @@ impl Printer for X86printer {
 
     fn get_type(t: Type) -> String {
         match t {
-            Type::Void => String::from("void"),
             //Type::PtrTo(..) => " uint8_t *",
             Type::PtrTo(..) => String::from("intptr_t"),
             Type::F(32) => String::from("float"),
