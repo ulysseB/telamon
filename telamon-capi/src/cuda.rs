@@ -10,6 +10,9 @@ use telamon::ir;
 /// Opaque type that contains the mapping of kernel parameters to actual values.
 pub struct CudaEnvironment {
     executor: cuda::Executor,
+    // `ManuallyDrop` is necessary to control the order in wich `drop` is called on the
+    // members of the struct. `context` references `executor` and thus needs
+    // to be dropped before `executor`.
     context: std::mem::ManuallyDrop<cuda::Context<'static>>,
     context_ref: Context,
     device_ref: Device,
@@ -18,8 +21,12 @@ pub struct CudaEnvironment {
 /// Returns a pointer to a CUDA environement. The caller is responsible for deallocating
 /// the pointer by calling `telamon_cuda_destroy_environment`.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_cuda_create_environment() -> *mut CudaEnvironment {
+pub unsafe extern "C" fn telamon_cuda_environment_new() -> *mut CudaEnvironment {
     let _ = env_logger::try_init();
+    // `CudaEnvironment` is a self-referential struct: it contains references to iteself.
+    // We must thus intialize it step by step, so that members holding references are
+    // created after referenced members. Initially, only `executor` is created and the
+    // rest is left initialized. We then manually write the remaining fields.
     let mut env = Box::new(CudaEnvironment {
         executor: cuda::Executor::init(),
         context: std::mem::uninitialized(),
@@ -35,7 +42,7 @@ pub unsafe extern "C" fn telamon_cuda_create_environment() -> *mut CudaEnvironme
 
 /// Destroys a CUDA context.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_cuda_destroy_context(env: *mut CudaEnvironment) {
+pub unsafe extern "C" fn telamon_cuda_environment_free(env: *mut CudaEnvironment) {
     let mut env = Box::from_raw(env);
     std::mem::ManuallyDrop::drop(&mut env.context);
 }
