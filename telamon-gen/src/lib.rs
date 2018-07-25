@@ -3,7 +3,6 @@ extern crate handlebars;
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate log;
 extern crate itertools;
-extern crate pathfinding;
 extern crate regex;
 extern crate rustfmt;
 extern crate serde;
@@ -12,6 +11,7 @@ extern crate serde_json;
 #[macro_use]
 extern crate telamon_utils as utils;
 extern crate libc;
+extern crate indexmap;
 
 extern crate lalrpop_util;
 
@@ -122,6 +122,37 @@ pub fn process<'a, T: io::Write>(
         write!(output, "{}", code).unwrap();
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::print::Variable;
+    use std::io::Cursor;
+    use std::path::Path;
+
+    /// Ensure that the output of telamon-gen is stable across calls.
+    #[test]
+    fn stable_output() {
+        let mut in_buf = Cursor::new(include_str!("../../src/search_space/choices.exh").as_bytes());
+        let ref_out = {
+            let mut ref_out = Vec::new();
+            super::process(&mut in_buf, &mut ref_out, false, &Path::new("choices.exh")).unwrap();
+            ref_out
+        };
+        // Ideally we would want to run this loop more than once, but
+        // generation is currently too slow to be worth it.
+        for _ in 0..1 {
+            Variable::reset_prefix();
+            in_buf.set_position(0);
+
+            let mut out_buf = Vec::new();
+            super::process(&mut in_buf, &mut out_buf, false, &Path::new("choices.exh")).unwrap();
+            assert_eq!(
+                ::std::str::from_utf8(&out_buf),
+                ::std::str::from_utf8(&ref_out)
+            );
+        }
+    }
 }
 
 // TODO(cleanup): avoid name conflicts in the printer

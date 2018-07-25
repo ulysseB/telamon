@@ -19,6 +19,7 @@ use std::fmt;
 use std::collections::{BTreeSet, hash_map};
 use std::ops::Deref;
 use utils::*;
+use indexmap::IndexMap;
 
 pub use self::set::SetDef;
 pub use self::choice::integer::IntegerDef;
@@ -545,9 +546,9 @@ impl PartialEq for EnumStatement {
 #[derive(Debug, Default)]
 struct EnumStatements {
     /// The values the enum can take, with the atached documentation.
-    values: HashMap<RcStr, Option<String>>,
+    values: IndexMap<RcStr, Option<String>>,
     /// Aliases mapped to the corresponding documentation and value set.
-    aliases: HashMap<RcStr, (Option<String>, HashSet<RcStr>)>,
+    aliases: IndexMap<RcStr, (Option<String>, HashSet<RcStr>)>,
     /// Symmetry information.
     symmetry: Option<Symmetry>,
     /// Constraints on a value.

@@ -1,5 +1,6 @@
 use ir::{self,Adaptable};
 use super::*;
+use indexmap::IndexMap;
 
 #[derive(Default)]
 pub struct TypingContext {
@@ -82,7 +83,7 @@ impl TypingContext {
         let arg = arg_def.clone().map(|arg| var_map.decl_argument(&self.ir_desc, arg));
         let superset = superset.map(|set| set.type_check(&self.ir_desc, &var_map));
         for disjoint in &disjoints { self.ir_desc.get_set_def(disjoint); }
-        let mut keymap = HashMap::default();
+        let mut keymap = IndexMap::default();
         let mut reverse = None;
         for (key, var, mut value) in keys {
             let mut env = key.env();

@@ -3,6 +3,7 @@ use std;
 use std::fmt;
 use std::borrow::Borrow;
 use utils::*;
+use indexmap::IndexMap;
 
 /// Generic trait for sets.
 pub trait SetRef<'a> {
@@ -182,7 +183,7 @@ pub struct SetDef {
     arg: Option<ir::Set>,
     superset: Option<Set>,
     reverse: ReverseSet,
-    keys: HashMap<SetDefKey, String>,
+    keys: IndexMap<SetDefKey, String>,
     depth: usize,
     def_order: usize,
     disjoints: Vec<String>,
@@ -194,7 +195,7 @@ impl SetDef {
                arg: Option<ir::Set>,
                superset: Option<Set>,
                reverse: Option<(Set, String)>,
-               keys: HashMap<SetDefKey, String>,
+               keys: IndexMap<SetDefKey, String>,
                disjoints: Vec<String>) -> std::rc::Rc<Self> {
         let name = RcStr::new(name);
         let reverse = if let Some((set, iter)) = reverse {
@@ -234,7 +235,7 @@ impl SetDef {
              arg: Option<ir::Set>,
              superset: Option<Set>,
              reverse: ReverseSet,
-             keys: HashMap<SetDefKey, String>,
+             keys: IndexMap<SetDefKey, String>,
              disjoints: Vec<String>) -> Self {
         let depth = superset.as_ref().map(|s| s.def.depth + 1).unwrap_or(0);
         let def_order = arg.as_ref().map(|s| s.def.def_order + 1).unwrap_or(0);
@@ -251,7 +252,7 @@ impl SetDef {
     pub fn superset(&self) -> Option<&ir::Set> { self.superset.as_ref() }
 
     /// The attributes of the set.
-    pub fn attributes(&self) -> &HashMap<SetDefKey, String> { &self.keys }
+    pub fn attributes(&self) -> &IndexMap<SetDefKey, String> { &self.keys }
 
     /// Suggest a prefix for variables in the set.
     pub fn prefix(&self) -> &str {
