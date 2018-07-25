@@ -306,7 +306,7 @@ impl<'a, 'b, 'c> MppaPrinter<'a, 'b, 'c> where 'a: 'c, 'b: 'c {
             });
             //let cl_arg_defs = signature.params.iter().format_with("", |p, f| {
             let cl_arg_defs = fun.device_code_args().format_with("", |p, f| {
-                f(&format_args!("{},", Self::cl_type_name(&p.t)))
+                f(&format_args!("{},", Self::cl_type_name(&p.t())))
             }).to_string();
             format!(include_str!("ocl_wrapper_template.cl"),
             name = fun.name,

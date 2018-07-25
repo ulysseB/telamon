@@ -3,12 +3,12 @@
 use libc;
 use parking_lot;
 use std::ffi::CStr;
-use std::sync::Arc;
+use std::sync::{RwLock, Arc};
 use std;
 use device::{self, ArrayArgument};
 
 lazy_static! {
-    static ref DEVICE: std::sync::Mutex<Device> = std::sync::Mutex::new(Device::init());
+    static ref DEVICE: Device = Device::init();
 }
 
 unsafe impl Sync for Device {}
@@ -24,22 +24,22 @@ struct DeviceInner {
 }
 
 /// Buffer in MPPA RAM.
-pub struct Buffer<'a> {
-    pub mem: std::sync::RwLock<Mem>,
-    pub executor: &'a Device,
+pub struct Buffer {
+    pub mem: RwLock<Mem>,
+    pub executor: &'static Device,
 }
 
 
-impl<'a> Buffer<'a> {
-    pub fn new(executor: *mut Device, len: usize) -> Self {
+impl Buffer {
+    pub fn new(executor: &'static Device, len: usize) -> Self {
         let mem_block = executor.alloc(len);
         Buffer{
-            mem: RwLock::new(mem),
-            executor: unsafe {executor as &Device},
+            mem: RwLock::new(mem_block),
+            executor : executor,
         }
     }
 }
-impl<'a> device::ArrayArgument for Buffer<'a> {
+impl device::ArrayArgument for Buffer {
     fn read_i8(&self) -> Vec<i8> {
         let mem_block = unwrap!(self.mem.read());
         let mut read_buffer = vec![0; mem_block.len()];
@@ -62,7 +62,8 @@ pub struct Device {
 
 impl Device {
     /// Returns a reference to the `Device`. Guarantees unique access to the device.
-    pub fn get() -> std::sync::MutexGuard<'static, Device> { DEVICE.lock().unwrap() }
+    //pub fn get() -> std::sync::MutexGuard<'static, Device> { DEVICE.lock().unwrap() }
+    pub fn get() -> &'static Device { &DEVICE }
 
     /// Initializes the device.
     fn init() -> Self {
@@ -75,10 +76,10 @@ impl Device {
         device
     }
 
-    pub fn allocate_array<'a>(&'a self, len: usize) -> Buffer<'a> {
+    pub fn allocate_array(&'static self, len: usize) -> Buffer {
         let mem_block = self.alloc(len);
         Buffer {
-            mem : std::sync::RwLock::new(mem_block),
+            mem : RwLock::new(mem_block),
             executor: self,
         }
     }

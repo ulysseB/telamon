@@ -5,7 +5,7 @@ use device::{self, ScalarArgument, ArrayArgument, mppa, EvalMode};
 use device::context::AsyncCallback;
 use device::Context as ContextTrait;
 use device::mppa::{MppaPrinter, telajax};
-use device::mppa::telajax::{Buffer, allocate_array};
+use device::mppa::telajax::Buffer;
 use explorer;
 use ir;
 use libc;
@@ -37,10 +37,10 @@ impl<T> Argument for T where T: device::ScalarArgument {
 }
 
 /// MPPA evaluation context.
-pub struct Context<'a> {
+pub struct Context<'a>  {
     device: mppa::Mppa,
     //executor: std::sync::MutexGuard<'static, telajax::Device>,
-    executor: *mut telajax::Device,
+    executor: &'static telajax::Device,
     parameters: HashMap<String, Arc<Argument + 'a>>,
     wrappers: Cache<ir::Signature, telajax::Wrapper>,
     writeback_slots: MsQueue<telajax::Mem>,
@@ -97,7 +97,7 @@ impl<'a> Context<'a> {
 
     /// Returns the wrapper for the given signature.
     //fn get_wrapper<'b>(&self, sig: &ir::Signature) -> Arc<telajax::Wrapper> {
-    fn get_wrapper<'b>(&self, fun: &device::Function, printer: &mut MppaPrinter) -> Arc<telajax::Wrapper> {
+    fn get_wrapper(&self, fun: &device::Function, printer: &mut MppaPrinter) -> Arc<telajax::Wrapper> {
         self.wrappers.get(sig, || {
             let mut ocl_code: Vec<u8> = Vec::new();
             printer.print_ocl_wrapper(fun);
@@ -130,8 +130,8 @@ impl<'a> device::Context for Context<'a> {
         Ok(t[0] as f64)
     }
 
-    fn async_eval<'b, 'c>(&self, num_workers: usize, _mode: EvalMode,
-                          inner: &(Fn(&mut device::AsyncEvaluator<'b, 'c>) + Sync)){
+    fn async_eval<'c, 'd>(&self, num_workers: usize, _mode: EvalMode,
+                          inner: &(Fn(&mut device::AsyncEvaluator<'c, 'd>) + Sync)) {
         // FIXME: execute in parallel
         let (send, recv) = mpsc::sync_channel(EVAL_BUFFER_SIZE);
         let mut evaluator = AsyncEvaluator { 
@@ -169,7 +169,7 @@ impl<'a> device::Context for Context<'a> {
 }
 
 impl< 'a> device::ArgMap for Context<'a> {
-    type Array = Buffer<'a>;
+    type Array = Buffer;
 
     fn bind_scalar<S: ScalarArgument>(&mut self, param: &ir::Parameter, value: S) {
         assert_eq!(param.t, S::t());
@@ -181,7 +181,7 @@ impl< 'a> device::ArgMap for Context<'a> {
     {
         let size = len * std::mem::size_of::<S>();
         //let buffer_arc: Arc<Buffer<'a>> = Arc::new(self.executor.allocate_array(size));
-        let buffer_arc: Arc<Buffer<'a>> = Arc::new(Buffer::new(self.executor, size));
+        let buffer_arc = Arc::new(Buffer::new(self.executor, size));
         self.bind_param(param.name.clone(), buffer_arc.clone());
         buffer_arc
     }
@@ -206,7 +206,7 @@ impl<'a, 'b, 'c> device::AsyncEvaluator<'a, 'c> for AsyncEvaluator<'a, 'b>
     }
 }
 
-impl<'a> Argument for Buffer<'a> {
+impl Argument for Buffer {
     fn as_size(&self) -> Option<u32> {
         Some(self.mem.read().unwrap().len() as u32)
     }
