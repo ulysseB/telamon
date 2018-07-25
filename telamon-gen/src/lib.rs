@@ -13,6 +13,7 @@ extern crate serde_json;
 extern crate telamon_utils as utils;
 extern crate libc;
 extern crate errno;
+extern crate indexmap;
 
 extern crate lalrpop_util;
 
