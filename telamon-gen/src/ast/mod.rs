@@ -67,7 +67,7 @@ pub enum TypeError {
     /// Undefinition of set, enum or field.
     Undefined(Spanned<String>),
     /// Unvalid arguments of a symmetric enum.
-    BadSymmetricArg(Vec<VarDef>),
+    BadSymmetricArg(Spanned<String>, Vec<VarDef>),
     /// Missing
     MissingEntry(String, Spanned<String>),
 }
@@ -308,6 +308,8 @@ pub struct VarDef {
 
 impl PartialEq for VarDef {
     fn eq(&self, rhs: &Self) -> bool {
+        self.name.beg == rhs.name.beg &&
+        self.name.end == rhs.name.end &&
         self.set == rhs.set
     }
 }
@@ -513,6 +515,16 @@ pub enum EnumStatement {
     Symmetric(Spanned<()>),
     /// Specifies that the enum is antisymmetric and given the inverse function.
     AntiSymmetric(Spanned<Vec<(String, String)>>),
+}
+
+impl EnumStatement {
+    pub fn is_symmetric(&self) -> bool {
+        if let EnumStatement::Symmetric(..) = self {
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl fmt::Display for EnumStatement {

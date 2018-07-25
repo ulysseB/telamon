@@ -134,143 +134,171 @@ mod redefinition {
     }
 }
 
-/*
-#[test]
-fn enum_symmetric_two_parameters() {
-    assert_eq!(parser::parse_ast(Lexer::from(
-        b"define enum foo():
-            symmetric
-            value A:
-            value B:
-          end".to_vec())).unwrap().type_check().err(),
-        Some(Spanned {
-            beg: Position { line: 0, column: 0},
-            end: Position { line: 0, column: 18},
-            data: TypeError::BadSymmetricArg(vec![])
-        })
-    );
-    assert_eq!(parser::parse_ast(Lexer::from(
-        b"set BasicBlock:
-            item_type = \"ir::basic_block::Obj\"
-            id_type = \"ir::basic_block::Id\"
-            item_getter = \"ir::basic_block::get($fun, $id)\"
-            id_getter = \"ir::basic_block::Obj::id($item)\"
-            iterator = \"ir::basic_block::iter($fun)\"
-            var_prefix = \"bb\"
-            new_objs = \"$objs.basic_block\"
-          end
-          define enum foo($lhs in BasicBlock):
-            symmetric
-            value A:
-            value B:
-          end".to_vec())).unwrap().type_check().err(),
-        Some(Spanned {
-            beg: Position { line: 9, column: 10},
-            end: Position { line: 9, column: 46},
-            data: TypeError::BadSymmetricArg(vec![
-                VarDef {
-                    name: RcStr::new(String::from("lhs")),
-                    set: SetRef {
-                        name: RcStr::new(String::from("BasicBlock")),
-                        var: None
-                    }
-                },
-            ])
-        })
-    );
-    assert_eq!(parser::parse_ast(Lexer::from(
-        b"set BasicBlock:
-            item_type = \"ir::basic_block::Obj\"
-            id_type = \"ir::basic_block::Id\"
-            item_getter = \"ir::basic_block::get($fun, $id)\"
-            id_getter = \"ir::basic_block::Obj::id($item)\"
-            iterator = \"ir::basic_block::iter($fun)\"
-            var_prefix = \"bb\"
-            new_objs = \"$objs.basic_block\"
-          end
-          define enum foo($lhs in BasicBlock,
-                          $chs in BasicBlock,
-                          $rhs in BasicBlock):
-            symmetric
-            value A:
-            value B:
-          end".to_vec())).unwrap().type_check().err(),
-        Some(Spanned {
-            beg: Position { line: 9, column: 10},
-            end: Position { line: 11, column: 46},
-            data: TypeError::BadSymmetricArg(vec![
-                VarDef {
-                    name: RcStr::new(String::from("lhs")),
-                    set: SetRef {
-                        name: RcStr::new(String::from("BasicBlock")),
-                        var: None
-                    }
-                },
-                VarDef {
-                    name: RcStr::new(String::from("chs")),
-                    set: SetRef {
-                        name: RcStr::new(String::from("BasicBlock")),
-                        var: None
-                    }
-                },
-                VarDef {
-                    name: RcStr::new(String::from("rhs")),
-                    set: SetRef {
-                        name: RcStr::new(String::from("BasicBlock")),
-                        var: None
-                    }
-                },
-            ])
-        })
-    );
-}
+/// Parameter
+#[cfg(test)]
+mod parameter {
+    pub use super::*;
 
-#[test]
-fn enum_symmetric_same_parameter() {
-    assert_eq!(parser::parse_ast(Lexer::from(
-        b"set BasicBlock:
-            item_type = \"ir::basic_block::Obj\"
-            id_type = \"ir::basic_block::Id\"
-            item_getter = \"ir::basic_block::get($fun, $id)\"
-            id_getter = \"ir::basic_block::Obj::id($item)\"
-            iterator = \"ir::basic_block::iter($fun)\"
-            var_prefix = \"bb\"
-            new_objs = \"$objs.basic_block\"
-          end
-          set BasicBlock2:
-            item_type = \"ir::basic_block::Obj\"
-            id_type = \"ir::basic_block::Id\"
-            item_getter = \"ir::basic_block::get($fun, $id)\"
-            id_getter = \"ir::basic_block::Obj::id($item)\"
-            iterator = \"ir::basic_block::iter($fun)\"
-            var_prefix = \"bb\"
-            new_objs = \"$objs.basic_block\"
-          end
-          define enum foo($lhs in BasicBlock, $rhs in BasicBlock2):
-            symmetric
-            value A:
-            value B:
-          end".to_vec())).unwrap().type_check().err(),
-        Some(Spanned {
-            beg: Position { line: 18, column: 10},
-            end: Position { line: 18, column: 67},
-            data: TypeError::BadSymmetricArg(vec![
+    #[test]
+    fn two() {
+        assert_eq!(parser::parse_ast(Lexer::from(
+            b"define enum foo():
+                symmetric
+                value A:
+                value B:
+              end".to_vec())).unwrap().type_check().err(),
+            Some(TypeError::BadSymmetricArg(Spanned {
+                beg: Position { line: 0, column: 12 },
+                end: Position { line: 0, column: 15 },
+                data: String::from("foo"),
+            }, vec![]))
+        );
+        assert_eq!(parser::parse_ast(Lexer::from(
+            b"set BasicBlock:
+                item_type = \"ir::basic_block::Obj\"
+                id_type = \"ir::basic_block::Id\"
+                item_getter = \"ir::basic_block::get($fun, $id)\"
+                id_getter = \"ir::basic_block::Obj::id($item)\"
+                iterator = \"ir::basic_block::iter($fun)\"
+                var_prefix = \"bb\"
+                new_objs = \"$objs.basic_block\"
+              end
+              define enum foo($lhs in BasicBlock):
+                symmetric
+                value A:
+                value B:
+              end".to_vec())).unwrap().type_check().err(),
+            Some(TypeError::BadSymmetricArg(Spanned {
+                beg: Position { line: 9, column: 26 },
+                end: Position { line: 9, column: 29 },
+                data: String::from("foo"),
+            }, vec![
                 VarDef {
-                    name: RcStr::new(String::from("lhs")),
+                    name: Spanned {
+                        beg: Position { line: 9, column: 30 },
+                        end: Position { line: 9, column: 34 },
+                        data: RcStr::new(String::from("lhs"))
+                    },
+                    set: SetRef {
+                        name: RcStr::new(String::from("BasicBlock")),
+                        var: None
+                    }
+                }
+            ]))
+        );
+        assert_eq!(parser::parse_ast(Lexer::from(
+            b"set BasicBlock:
+                item_type = \"ir::basic_block::Obj\"
+                id_type = \"ir::basic_block::Id\"
+                item_getter = \"ir::basic_block::get($fun, $id)\"
+                id_getter = \"ir::basic_block::Obj::id($item)\"
+                iterator = \"ir::basic_block::iter($fun)\"
+                var_prefix = \"bb\"
+                new_objs = \"$objs.basic_block\"
+              end
+              define enum foo($lhs in BasicBlock,
+                              $chs in BasicBlock,
+                              $rhs in BasicBlock):
+                symmetric
+                value A:
+                value B:
+              end".to_vec())).unwrap().type_check().err(),
+            Some(TypeError::BadSymmetricArg(Spanned {
+                beg: Position { line: 9, column: 26 },
+                end: Position { line: 9, column: 29 },
+                data: String::from("foo"),
+            }, vec![
+                VarDef {
+                    name: Spanned {
+                        beg: Position { line: 9, column: 30 },
+                        end: Position { line: 9, column: 34 },
+                        data: RcStr::new(String::from("lhs"))
+                    },
                     set: SetRef {
                         name: RcStr::new(String::from("BasicBlock")),
                         var: None
                     }
                 },
                 VarDef {
-                    name: RcStr::new(String::from("rhs")),
+                    name: Spanned {
+                        beg: Position { line: 10, column: 30 },
+                        end: Position { line: 10, column: 34 },
+                        data: RcStr::new(String::from("chs"))
+                    },
+                    set: SetRef {
+                        name: RcStr::new(String::from("BasicBlock")),
+                        var: None
+                    }
+                },
+                VarDef {
+                    name: Spanned {
+                        beg: Position { line: 11, column: 30 },
+                        end: Position { line: 11, column: 34 },
+                        data: RcStr::new(String::from("rhs"))
+                    },
+                    set: SetRef {
+                        name: RcStr::new(String::from("BasicBlock")),
+                        var: None
+                    }
+                },
+            ]))
+        );
+    }
+
+    #[test]
+    fn same() {
+        assert_eq!(parser::parse_ast(Lexer::from(
+            b"set BasicBlock:
+                item_type = \"ir::basic_block::Obj\"
+                id_type = \"ir::basic_block::Id\"
+                item_getter = \"ir::basic_block::get($fun, $id)\"
+                id_getter = \"ir::basic_block::Obj::id($item)\"
+                iterator = \"ir::basic_block::iter($fun)\"
+                var_prefix = \"bb\"
+                new_objs = \"$objs.basic_block\"
+              end
+              set BasicBlock2:
+                item_type = \"ir::basic_block::Obj\"
+                id_type = \"ir::basic_block::Id\"
+                item_getter = \"ir::basic_block::get($fun, $id)\"
+                id_getter = \"ir::basic_block::Obj::id($item)\"
+                iterator = \"ir::basic_block::iter($fun)\"
+                var_prefix = \"bb\"
+                new_objs = \"$objs.basic_block\"
+              end
+              define enum foo($lhs in BasicBlock, $rhs in BasicBlock2):
+                symmetric
+                value A:
+                value B:
+              end".to_vec())).unwrap().type_check().err(),
+            Some(TypeError::BadSymmetricArg(Spanned {
+                beg: Position { line: 18, column: 26 },
+                end: Position { line: 18, column: 29 },
+                data: String::from("foo"),
+            }, vec![
+                VarDef {
+                    name: Spanned {
+                        beg: Position { line: 18, column: 30 },
+                        end: Position { line: 18, column: 34 },
+                        data: RcStr::new(String::from("lhs"))
+                    },
+                    set: SetRef {
+                        name: RcStr::new(String::from("BasicBlock")),
+                        var: None
+                    }
+                },
+                VarDef {
+                    name: Spanned {
+                        beg: Position { line: 18, column: 50 },
+                        end: Position { line: 18, column: 54 },
+                        data: RcStr::new(String::from("rhs"))
+                    },
                     set: SetRef {
                         name: RcStr::new(String::from("BasicBlock2")),
                         var: None
                     }
                 }
-                ])
-        })
-    );
+            ]))
+        );
+    }
 }
-*/

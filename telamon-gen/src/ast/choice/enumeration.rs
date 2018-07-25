@@ -95,10 +95,42 @@ impl EnumDef {
         Ok(())
     }
 
+    /// This checks that there is two parameters if the field symmetric is defined.
+    fn check_two_parameter(&self) -> Result<(), TypeError> {
+        if self.statements.iter().find(|item| item.is_symmetric()).is_some() {
+            if self.variables.len() != 2 {
+                Err(TypeError::BadSymmetricArg(
+                        self.name.to_owned(),
+                        self.variables.to_owned())
+                )?;
+            }
+        }
+        Ok(())
+    }
+
+    fn check_same_parameter(&self) -> Result<(), TypeError> {
+        if self.statements.iter().find(|item| item.is_symmetric()).is_some() {
+            match self.variables.as_slice() {
+                [VarDef { name, .. }, VarDef { name: rhs_name, .. }] => {
+                    if name != rhs_name {
+                        Err(TypeError::BadSymmetricArg(
+                                self.name.to_owned(),
+                                self.variables.to_owned())
+                        )?;
+                    }
+                },
+                _ => {},
+            }
+        }
+        Ok(())
+    }
+
     /// Type checks the condition.
     pub fn type_check(&self) -> Result<(), TypeError> {
         self.check_undefined()?;
         self.check_redefinition()?;
+        self.check_two_parameter()?;
+        self.check_same_parameter()?;
         Ok(())
     }
 }
