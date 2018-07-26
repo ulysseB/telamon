@@ -277,7 +277,30 @@ pub unsafe extern "C" fn telamon_ir_operand_new_inst(
     Box::into_raw(Box::new(Operand(operand)))
 }
 
-// FIXME: operand creation: reduce
+/// Creates an operand that take the value of `init_inst` the first time is is encountered
+/// and then reuse the value produced by the instruction using the operand, effectivelly
+/// creating a reduction. The value is is transmitted point-to-point between the source
+/// dimensions (`src_dims`, in which `init_inst` is produced) and destination dimensions
+/// (`dst_dims`, in which the operand is used). `num_mapped_dims` indicates the number of
+/// dimensions in `src_dims` and in `dst_dims`. `reduction_dims` indicates on which
+/// dimensions the reduction occurs: values are not reused accross other dimensions.
+#[no_mangle]
+pub unsafe extern "C" fn telamon_ir_operand_new_reduction(
+    function: *const Function,
+    init_inst: ir::InstId,
+    src_dims: *const ir::dim::Id,
+    dst_dims: *const ir::dim::Id,
+    num_mapped_dims: libc::size_t,
+    reduction_dims: *const ir::dim::Id,
+    num_reduction_dims: libc::size_t,
+) -> *mut Operand {
+    let init = (*function).0.inst(init_inst);
+    let reduction_dims = std::slice::from_raw_parts(
+        reduction_dims, num_reduction_dims).to_vec();
+    let dim_map = dim_map_from_arrays(src_dims, dst_dims, num_mapped_dims);
+    let operand = ir::Operand::new_reduce(init, dim_map, reduction_dims);
+    Box::into_raw(Box::new(Operand(operand)))
+}
 
 /// Helper function that creates a `DimMap` from C arrays of dimensions. Does not holds
 /// references after the function exits.
