@@ -567,6 +567,27 @@ fn lexer_include() {
 }
 
 #[test]
+fn lexer_include_extra() {
+    // Header include.
+    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/foo_bar.exh");
+    let include = format!("include \"{}\"", filename);
+
+    assert_eq!(Lexer::new(include.as_bytes().to_vec())
+                          .map(|t| t.unwrap())
+                          .map(|(_, t, _)| t)
+                          .collect::<Vec<_>>(),
+               vec![
+                   Token::Define, Token::Enum, Token::ChoiceIdent(String::from("foo")), Token::LParen, Token::RParen, Token::Colon,
+                   Token::End,
+                   Token::Define, Token::Enum, Token::ChoiceIdent(String::from("bar")), Token::LParen, Token::RParen, Token::Colon,
+                       Token::Value, Token::ValueIdent(String::from("A")), Token::Colon,
+                       Token::Value, Token::ValueIdent(String::from("B")), Token::Colon,
+                   Token::End
+               ]
+    );
+}
+
+#[test]
 #[ignore]
 fn lexer_include_guard() {
    // double header include.
