@@ -5,6 +5,7 @@
 //! provide a somewhat idiomatic C interface.
 extern crate env_logger;
 extern crate libc;
+extern crate num;
 extern crate telamon;
 extern crate telamon_kernels;
 #[macro_use]

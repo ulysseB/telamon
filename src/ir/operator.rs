@@ -9,6 +9,7 @@ use utils::*;
 
 /// The rounding mode of an arithmetic operation.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[repr(C)]
 pub enum Rounding {
     /// No rounding occurs.
     Exact,
@@ -46,6 +47,7 @@ impl Rounding {
 
 /// Represents binary arithmetic operators.
 #[derive(Clone, Copy, Debug)]
+#[repr(C)]
 pub enum BinOp {
     /// Adds two operands.
     Add,
