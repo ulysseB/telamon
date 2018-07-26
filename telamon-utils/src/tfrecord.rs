@@ -18,9 +18,7 @@
 //! file. The checksums are 32-bit CRC using the Castagnoli polynomial
 //! masked as follow:
 //!
-//! ```
-//! masked_crc = ((crc >> 15) | (crc << 17)) + 0xa282ead8ul
-//! ```
+//! masked_crc = ((crc >> 15) | (crc << 17)) + 0xa282ead8u32
 //!
 extern crate byteorder;
 extern crate crc;
