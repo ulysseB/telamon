@@ -324,7 +324,7 @@ impl Domain for HalfRange {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub struct NumericSet {
     len: usize,
     values: [u32; NumericSet::MAX_LEN],
