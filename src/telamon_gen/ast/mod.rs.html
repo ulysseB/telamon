@@ -598,6 +598,15 @@
 <span id="598">598</span>
 <span id="599">599</span>
 <span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
 </pre><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">unused_variables</span>)]</span>
 
@@ -687,14 +696,17 @@
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">statement</span> {
             <span class="ident">ChoiceDef</span>::<span class="ident">EnumDef</span>(<span class="ident">EnumDef</span> {
-                <span class="ident">name</span>: <span class="ident">Spanned</span> { <span class="ident">beg</span>, <span class="ident">end</span>, <span class="ident">data</span>: <span class="kw">_</span> }, <span class="ident">doc</span>: <span class="kw">_</span>, <span class="ident">variables</span>, .. }) <span class="op">|</span>
+                <span class="ident">name</span>: <span class="ident">Spanned</span> { <span class="kw-2">ref</span> <span class="ident">beg</span>, <span class="kw-2">ref</span> <span class="ident">end</span>, <span class="ident">data</span>: <span class="kw">_</span> },
+                <span class="ident">doc</span>: <span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">variables</span>,
+            .. }) <span class="op">|</span>
             <span class="ident">ChoiceDef</span>::<span class="ident">IntegerDef</span>(<span class="ident">IntegerDef</span> {
-                <span class="ident">name</span>: <span class="ident">Spanned</span> { <span class="ident">beg</span>, <span class="ident">end</span>, <span class="ident">data</span>: <span class="kw">_</span> }, <span class="ident">doc</span>: <span class="kw">_</span>, <span class="ident">variables</span>, .. }) <span class="op">=&gt;</span> {
+                <span class="ident">name</span>: <span class="ident">Spanned</span> { <span class="kw-2">ref</span> <span class="ident">beg</span>, <span class="kw-2">ref</span> <span class="ident">end</span>, <span class="ident">data</span>: <span class="kw">_</span> }, <span class="ident">doc</span>: <span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">variables</span>,
+            .. }) <span class="op">=&gt;</span> {
                 <span class="kw">for</span> <span class="ident">VarDef</span> { <span class="ident">name</span>: <span class="kw">_</span>, <span class="ident">set</span>: <span class="ident">SetRef</span> { <span class="ident">name</span>, .. } } <span class="kw">in</span> <span class="ident">variables</span> {
                     <span class="kw">let</span> <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">String</span> <span class="op">=</span> <span class="ident">name</span>.<span class="ident">deref</span>();
                     <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">hash</span>.<span class="ident">contains_key</span>(<span class="ident">name</span>) {
                         <span class="prelude-val">Err</span>(<span class="ident">TypeError</span>::<span class="ident">Undefined</span>(<span class="ident">Spanned</span> {
-                            <span class="ident">beg</span>, <span class="ident">end</span>,
+                            <span class="ident">beg</span>: <span class="ident">beg</span>.<span class="ident">to_owned</span>(), <span class="ident">end</span>: <span class="ident">end</span>.<span class="ident">to_owned</span>(),
                             <span class="ident">data</span>: <span class="ident">name</span>.<span class="ident">to_owned</span>(),
                         }))<span class="question-mark">?</span>;
                     }
@@ -710,13 +722,14 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">statement</span>: <span class="kw-2">&amp;</span><span class="ident">SetDef</span>
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">statement</span> {
-            <span class="ident">SetDef</span> { <span class="ident">name</span>: <span class="ident">Spanned</span> { <span class="ident">beg</span>, <span class="ident">end</span>, <span class="ident">data</span>: <span class="kw-2">ref</span> <span class="ident">name</span>},
+            <span class="ident">SetDef</span> { <span class="ident">name</span>: <span class="ident">Spanned</span> { <span class="ident">beg</span>, <span class="ident">end</span>, <span class="ident">data</span>: <span class="kw-2">ref</span> <span class="ident">name</span> },
             <span class="ident">doc</span>: <span class="kw">_</span>, <span class="ident">arg</span>, <span class="ident">superset</span>, <span class="ident">disjoint</span>: <span class="kw">_</span>, <span class="ident">keys</span>, ..  } <span class="op">=&gt;</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">VarDef</span> { <span class="ident">name</span>: <span class="kw">_</span>, <span class="ident">set</span>: <span class="ident">SetRef</span> { <span class="ident">name</span>, .. } }) <span class="op">=</span> <span class="ident">arg</span> {
                     <span class="kw">let</span> <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">String</span> <span class="op">=</span> <span class="ident">name</span>.<span class="ident">deref</span>();
                     <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">hash</span>.<span class="ident">contains_key</span>(<span class="ident">name</span>) {
                         <span class="prelude-val">Err</span>(<span class="ident">TypeError</span>::<span class="ident">Undefined</span>(<span class="ident">Spanned</span> {
-                            <span class="ident">beg</span>: <span class="kw-2">*</span><span class="ident">beg</span>, <span class="ident">end</span>: <span class="kw-2">*</span><span class="ident">end</span>, <span class="ident">data</span>: <span class="ident">name</span>.<span class="ident">to_owned</span>()
+                            <span class="ident">beg</span>: <span class="ident">beg</span>.<span class="ident">to_owned</span>(), <span class="ident">end</span>: <span class="ident">end</span>.<span class="ident">to_owned</span>(),
+                            <span class="ident">data</span>: <span class="ident">name</span>.<span class="ident">to_owned</span>(),
                         }))<span class="question-mark">?</span>;
                     }
                 }
@@ -724,7 +737,8 @@
                     <span class="kw">let</span> <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">String</span> <span class="op">=</span> <span class="ident">supername</span>.<span class="ident">deref</span>();
                     <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">hash</span>.<span class="ident">contains_key</span>(<span class="ident">name</span>) {
                         <span class="prelude-val">Err</span>(<span class="ident">TypeError</span>::<span class="ident">Undefined</span>(<span class="ident">Spanned</span> {
-                            <span class="ident">beg</span>: <span class="kw-2">*</span><span class="ident">beg</span>, <span class="ident">end</span>: <span class="kw-2">*</span><span class="ident">end</span>, <span class="ident">data</span>: <span class="ident">name</span>.<span class="ident">to_owned</span>()
+                            <span class="ident">beg</span>: <span class="ident">beg</span>.<span class="ident">to_owned</span>(), <span class="ident">end</span>: <span class="ident">end</span>.<span class="ident">to_owned</span>(),
+                            <span class="ident">data</span>: <span class="ident">name</span>.<span class="ident">to_owned</span>(),
                         }))<span class="question-mark">?</span>;
                     }
                 }
@@ -740,14 +754,18 @@
         <span class="kw">match</span> <span class="ident">statement</span> {
             <span class="ident">Statement</span>::<span class="ident">SetDef</span>(<span class="ident">SetDef</span> { <span class="ident">name</span>: <span class="ident">Spanned</span> { <span class="ident">beg</span>, <span class="ident">end</span>, <span class="ident">data</span>: <span class="ident">name</span> }, .. }) <span class="op">|</span>
             <span class="ident">Statement</span>::<span class="ident">ChoiceDef</span>(<span class="ident">ChoiceDef</span>::<span class="ident">EnumDef</span>(
-                <span class="ident">EnumDef</span> { <span class="ident">name</span>: <span class="ident">Spanned</span> { <span class="ident">beg</span>, <span class="ident">end</span>, <span class="ident">data</span>: <span class="ident">name</span>, }, ..  })) <span class="op">|</span>
+                <span class="ident">EnumDef</span> { <span class="ident">name</span>: <span class="ident">Spanned</span> { <span class="ident">beg</span>, <span class="ident">end</span>, <span class="ident">data</span>: <span class="ident">name</span> }, ..  })) <span class="op">|</span>
             <span class="ident">Statement</span>::<span class="ident">ChoiceDef</span>(<span class="ident">ChoiceDef</span>::<span class="ident">IntegerDef</span>(
                 <span class="ident">IntegerDef</span> { <span class="ident">name</span>: <span class="ident">Spanned</span> { <span class="ident">beg</span>, <span class="ident">end</span>, <span class="ident">data</span>: <span class="ident">name</span> }, .. })) <span class="op">=&gt;</span> {
                 <span class="kw">let</span> <span class="ident">data</span>: <span class="ident">Hint</span> <span class="op">=</span> <span class="ident">Hint</span>::<span class="ident">from</span>(<span class="kw-2">&amp;</span><span class="ident">statement</span>);
-                <span class="kw">let</span> <span class="ident">value</span>: <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">Hint</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Spanned</span> { <span class="ident">beg</span>: <span class="kw-2">*</span><span class="ident">beg</span>, <span class="ident">end</span>: <span class="kw-2">*</span><span class="ident">end</span>, <span class="ident">data</span> };
+                <span class="kw">let</span> <span class="ident">value</span>: <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">Hint</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Spanned</span> {
+                    <span class="ident">beg</span>: <span class="ident">beg</span>.<span class="ident">to_owned</span>(), <span class="ident">end</span>: <span class="ident">end</span>.<span class="ident">to_owned</span>(),
+                    <span class="ident">data</span>,
+                };
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">pre</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">hash</span>.<span class="ident">insert</span>(<span class="ident">name</span>.<span class="ident">to_owned</span>(), <span class="ident">value</span>) {
                     <span class="prelude-val">Err</span>(<span class="ident">TypeError</span>::<span class="ident">Redefinition</span>(<span class="ident">pre</span>, <span class="ident">Spanned</span> {
-                        <span class="ident">beg</span>: <span class="kw-2">*</span><span class="ident">beg</span>, <span class="ident">end</span>: <span class="kw-2">*</span><span class="ident">end</span>, <span class="ident">data</span>: <span class="ident">name</span>.<span class="ident">to_owned</span>(),
+                        <span class="ident">beg</span>: <span class="ident">beg</span>.<span class="ident">to_owned</span>(), <span class="ident">end</span>: <span class="ident">end</span>.<span class="ident">to_owned</span>(),
+                        <span class="ident">data</span>: <span class="ident">name</span>.<span class="ident">to_owned</span>(),
                     }))
                 } <span class="kw">else</span> {
                     <span class="prelude-val">Ok</span>(())

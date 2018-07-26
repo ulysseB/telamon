@@ -101,8 +101,24 @@
 <span id="101">101</span>
 <span id="102">102</span>
 <span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
 </pre><pre class="rust ">
-<span class="kw">use</span> <span class="kw">super</span>::<span class="ident">lexer</span>;
+<span class="kw">use</span> <span class="kw">super</span>::<span class="ident">lexer</span>::{<span class="ident">Position</span>, <span class="ident">Token</span>, <span class="ident">LexicalError</span>, <span class="ident">Span</span>};
 <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">lalrpop_util</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">path</span>, <span class="ident">fmt</span>};
@@ -111,9 +127,9 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Cause</span> {
     <span class="doccomment">/// Lalrpop</span>
-    <span class="ident">Parse</span>(<span class="ident">ParseError</span><span class="op">&lt;</span><span class="ident">lexer</span>::<span class="ident">Position</span>,
-                     <span class="ident">lexer</span>::<span class="ident">Token</span>,
-                     <span class="ident">lexer</span>::<span class="ident">LexicalError</span><span class="op">&gt;</span>),
+    <span class="ident">Parse</span>(<span class="ident">ParseError</span><span class="op">&lt;</span><span class="ident">Position</span>,
+                     <span class="ident">Token</span>,
+                     <span class="ident">LexicalError</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Will be remplaced by field for Ast [...]</span>
     <span class="ident">Other</span>,
 }
@@ -123,42 +139,58 @@
     <span class="doccomment">/// Display of filename.</span>
     <span class="kw">pub</span> <span class="ident">path</span>: <span class="ident">path</span>::<span class="ident">Display</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Position of lexeme.</span>
-    <span class="kw">pub</span> <span class="ident">span</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">lexer</span>::<span class="ident">Span</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">span</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Span</span><span class="op">&gt;</span>,
     <span class="ident">cause</span>: <span class="ident">Cause</span>,
 }
 
 <span class="kw">impl</span> <span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span><span class="ident">From</span><span class="op">&lt;</span>(<span class="ident">path</span>::<span class="ident">Display</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
-               <span class="ident">ParseError</span><span class="op">&lt;</span><span class="ident">lexer</span>::<span class="ident">Position</span>,
-                                 <span class="ident">lexer</span>::<span class="ident">Token</span>,
-                                 <span class="ident">lexer</span>::<span class="ident">LexicalError</span><span class="op">&gt;</span>
+               <span class="ident">ParseError</span><span class="op">&lt;</span><span class="ident">Position</span>,
+                          <span class="ident">Token</span>,
+                          <span class="ident">LexicalError</span><span class="op">&gt;</span>
              )<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ProcessError</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">from</span>((<span class="ident">path</span>, <span class="ident">parse</span>): (<span class="ident">path</span>::<span class="ident">Display</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
-                                <span class="ident">ParseError</span><span class="op">&lt;</span><span class="ident">lexer</span>::<span class="ident">Position</span>,
-                                           <span class="ident">lexer</span>::<span class="ident">Token</span>,
-                                           <span class="ident">lexer</span>::<span class="ident">LexicalError</span><span class="op">&gt;</span>
+                                <span class="ident">ParseError</span><span class="op">&lt;</span><span class="ident">Position</span>,
+                                           <span class="ident">Token</span>,
+                                           <span class="ident">LexicalError</span><span class="op">&gt;</span>
     )) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">match</span> <span class="ident">parse</span> {
-            <span class="ident">ParseError</span>::<span class="ident">InvalidToken</span> { <span class="ident">location</span> }
-                <span class="op">=&gt;</span> <span class="ident">ProcessError</span> {
+            <span class="ident">ParseError</span>::<span class="ident">InvalidToken</span> { <span class="ident">location</span>: <span class="ident">Position</span> {
+                <span class="ident">position</span>: <span class="ident">beg</span>, .. }
+            } <span class="op">=&gt;</span> {
+                <span class="ident">ProcessError</span> {
                     <span class="ident">path</span>: <span class="ident">path</span>,
-                    <span class="ident">span</span>: <span class="prelude-val">Some</span>(<span class="ident">lexer</span>::<span class="ident">Span</span> { <span class="ident">beg</span>: <span class="ident">location</span>, ..<span class="ident">Default</span>::<span class="ident">default</span>() }),
+                    <span class="ident">span</span>: <span class="prelude-val">Some</span>(<span class="ident">Span</span> { <span class="ident">beg</span>, ..<span class="ident">Default</span>::<span class="ident">default</span>() }),
                     <span class="ident">cause</span>: <span class="ident">Cause</span>::<span class="ident">Parse</span>(<span class="ident">parse</span>),
-                },
-            <span class="ident">ParseError</span>::<span class="ident">UnrecognizedToken</span> { <span class="ident">token</span>: <span class="prelude-val">None</span>, .. }
-                <span class="op">=&gt;</span> <span class="ident">ProcessError</span> {
+                }
+            },
+            <span class="ident">ParseError</span>::<span class="ident">UnrecognizedToken</span> { <span class="ident">token</span>: <span class="prelude-val">None</span>, .. } <span class="op">=&gt;</span> {
+                <span class="ident">ProcessError</span> {
                     <span class="ident">path</span>: <span class="ident">path</span>,
                     <span class="ident">span</span>: <span class="prelude-val">None</span>,
                     <span class="ident">cause</span>: <span class="ident">Cause</span>::<span class="ident">Parse</span>(<span class="ident">parse</span>),
-                }, 
-           <span class="ident">ParseError</span>::<span class="ident">UnrecognizedToken</span> { <span class="ident">token</span>: <span class="prelude-val">Some</span>((<span class="ident">l</span>, .., <span class="ident">e</span>)), .. } <span class="op">|</span>
-           <span class="ident">ParseError</span>::<span class="ident">ExtraToken</span> { <span class="ident">token</span>: (<span class="ident">l</span>, .., <span class="ident">e</span>) } <span class="op">|</span>
-           <span class="ident">ParseError</span>::<span class="ident">User</span> { <span class="ident">error</span>: <span class="ident">lexer</span>::<span class="ident">LexicalError</span>::<span class="ident">UnexpectedToken</span>(<span class="ident">l</span>, .., <span class="ident">e</span>) } <span class="op">|</span>
-           <span class="ident">ParseError</span>::<span class="ident">User</span> { <span class="ident">error</span>: <span class="ident">lexer</span>::<span class="ident">LexicalError</span>::<span class="ident">InvalidToken</span>(<span class="ident">l</span>, .., <span class="ident">e</span>) } 
-                <span class="op">=&gt;</span> <span class="ident">ProcessError</span> {
-                    <span class="ident">path</span>: <span class="ident">path</span>,
-                    <span class="ident">span</span>: <span class="prelude-val">Some</span>(<span class="ident">lexer</span>::<span class="ident">Span</span> { <span class="ident">beg</span>: <span class="ident">l</span>, <span class="ident">end</span>: <span class="prelude-val">Some</span>(<span class="ident">e</span>) }),
-                    <span class="ident">cause</span>: <span class="ident">Cause</span>::<span class="ident">Parse</span>(<span class="ident">parse</span>),
-                },
+                }
+            }, 
+            <span class="ident">ParseError</span>::<span class="ident">UnrecognizedToken</span> {
+                <span class="ident">token</span>: <span class="prelude-val">Some</span>((<span class="ident">Position</span> { <span class="ident">position</span>: <span class="ident">l</span>, .. }, ..,
+                             <span class="ident">Position</span> { <span class="ident">position</span>: <span class="ident">e</span>, .. })), ..
+            } <span class="op">|</span>
+            <span class="ident">ParseError</span>::<span class="ident">ExtraToken</span> {
+                <span class="ident">token</span>: (<span class="ident">Position</span> { <span class="ident">position</span>: <span class="ident">l</span>, .. }, ..,
+                        <span class="ident">Position</span> { <span class="ident">position</span>: <span class="ident">e</span>, .. })
+            } <span class="op">|</span>
+            <span class="ident">ParseError</span>::<span class="ident">User</span> {
+                <span class="ident">error</span>: <span class="ident">LexicalError</span>::<span class="ident">UnexpectedToken</span>(<span class="ident">Position</span> { <span class="ident">position</span>: <span class="ident">l</span>, .. }, .., <span class="ident">Position</span> { <span class="ident">position</span>: <span class="ident">e</span>, .. })
+            } <span class="op">|</span>
+            <span class="ident">ParseError</span>::<span class="ident">User</span> {
+                <span class="ident">error</span>: <span class="ident">LexicalError</span>::<span class="ident">InvalidInclude</span>(<span class="ident">Position</span> { <span class="ident">position</span>: <span class="ident">l</span>, .. }, .., <span class="ident">Position</span> { <span class="ident">position</span>: <span class="ident">e</span>, .. })
+            } <span class="op">|</span>
+            <span class="ident">ParseError</span>::<span class="ident">User</span> {
+                <span class="ident">error</span>: <span class="ident">LexicalError</span>::<span class="ident">InvalidToken</span>(<span class="ident">Position</span> { <span class="ident">position</span>: <span class="ident">l</span>, .. }, .., <span class="ident">Position</span> { <span class="ident">position</span>: <span class="ident">e</span>, .. })
+            } <span class="op">=&gt;</span> <span class="ident">ProcessError</span> {
+                 <span class="ident">path</span>: <span class="ident">path</span>,
+                 <span class="ident">span</span>: <span class="prelude-val">Some</span>(<span class="ident">Span</span> { <span class="ident">beg</span>: <span class="ident">l</span>, <span class="ident">end</span>: <span class="prelude-val">Some</span>(<span class="ident">e</span>) }),
+                 <span class="ident">cause</span>: <span class="ident">Cause</span>::<span class="ident">Parse</span>(<span class="ident">parse</span>),
+            },
         }
     }
 }
@@ -175,11 +207,11 @@
                 }), ..} <span class="op">|</span>
            <span class="ident">ProcessError</span> { <span class="ident">path</span>, <span class="ident">span</span>, <span class="ident">cause</span>: <span class="ident">Cause</span>::<span class="ident">Parse</span>(
                 <span class="ident">ParseError</span>::<span class="ident">User</span> {
-                    <span class="ident">error</span>: <span class="ident">lexer</span>::<span class="ident">LexicalError</span>::<span class="ident">UnexpectedToken</span>(<span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">token</span>, <span class="kw">_</span>)
+                    <span class="ident">error</span>: <span class="ident">LexicalError</span>::<span class="ident">UnexpectedToken</span>(<span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">token</span>, <span class="kw">_</span>)
                 }), ..} <span class="op">|</span>
            <span class="ident">ProcessError</span> { <span class="ident">path</span>, <span class="ident">span</span>, <span class="ident">cause</span>: <span class="ident">Cause</span>::<span class="ident">Parse</span>(
                 <span class="ident">ParseError</span>::<span class="ident">User</span> {
-                    <span class="ident">error</span>: <span class="ident">lexer</span>::<span class="ident">LexicalError</span>::<span class="ident">InvalidToken</span>(<span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">token</span>, <span class="kw">_</span>)
+                    <span class="ident">error</span>: <span class="ident">LexicalError</span>::<span class="ident">InvalidToken</span>(<span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">token</span>, <span class="kw">_</span>)
                 }), ..} <span class="op">=&gt;</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">span</span>) <span class="op">=</span> <span class="ident">span</span> {
                     <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;{}, {} -&gt; {}&quot;</span>, <span class="ident">token</span>, <span class="ident">span</span>, <span class="ident">path</span>)
