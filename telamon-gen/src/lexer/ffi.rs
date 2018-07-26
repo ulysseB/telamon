@@ -133,6 +133,16 @@ pub struct Spanned<Y> {
     pub data: Y,
 }
 
+impl <Y> Spanned<Y> {
+    pub fn with_data<T>(&self, data: T)  -> Spanned<T> {
+        Spanned {
+            beg: self.beg.to_owned(),
+            end: self.end.to_owned(),
+            data,
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub enum YyToken {

@@ -105,11 +105,11 @@ mod redefinition {
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Redefinition(Spanned {
                 beg: Position {
-                  position: LexerPosition { line: 5, column: 22  },
+                  position: LexerPosition { line: 4, column: 22  },
                    ..Default::default()
                 },
                 end: Position {
-                  position: LexerPosition { line: 5, column: 24  },
+                  position: LexerPosition { line: 4, column: 24  },
                    ..Default::default()
                 },
                 data: Hint::EnumAttribute,
@@ -133,11 +133,11 @@ mod redefinition {
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Redefinition(Spanned {
                 beg: Position {
-                  position: LexerPosition { line: 3, column: 22  },
+                  position: LexerPosition { line: 1, column: 22  },
                    ..Default::default()
                 },
                 end: Position {
-                  position: LexerPosition { line: 3, column: 23  },
+                  position: LexerPosition { line: 1, column: 23  },
                    ..Default::default()
                 },
                 data: Hint::EnumAttribute,
@@ -171,11 +171,11 @@ mod redefinition {
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Redefinition(Spanned {
                 beg: Position {
-                  position: LexerPosition { line: 11, column: 16  },
+                  position: LexerPosition { line: 10, column: 16  },
                    ..Default::default()
                 },
                 end: Position {
-                  position: LexerPosition { line: 11, column: 25  },
+                  position: LexerPosition { line: 10, column: 25  },
                    ..Default::default()
                 },
                 data: Hint::EnumAttribute,
