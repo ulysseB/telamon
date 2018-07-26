@@ -572,6 +572,51 @@
 <span id="572">572</span>
 <span id="573">573</span>
 <span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
+<span id="594">594</span>
+<span id="595">595</span>
+<span id="596">596</span>
+<span id="597">597</span>
+<span id="598">598</span>
+<span id="599">599</span>
+<span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
+<span id="611">611</span>
+<span id="612">612</span>
+<span id="613">613</span>
+<span id="614">614</span>
+<span id="615">615</span>
+<span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>,<span class="ident">Adaptable</span>};
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
@@ -654,7 +699,7 @@
                     <span class="ident">quotient</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Quotient</span><span class="op">&gt;</span>) {
         <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;defining set {}&quot;</span>, <span class="ident">name</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">var_map</span> <span class="op">=</span> <span class="ident">VarMap</span>::<span class="ident">default</span>();
-        <span class="kw">let</span> <span class="ident">arg_name</span> <span class="op">=</span> <span class="ident">arg_def</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">var</span><span class="op">|</span> <span class="string">&quot;$&quot;</span>.<span class="ident">to_string</span>() <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">var</span>.<span class="ident">name</span>);
+        <span class="kw">let</span> <span class="ident">arg_name</span> <span class="op">=</span> <span class="ident">arg_def</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">var</span><span class="op">|</span> <span class="string">&quot;$&quot;</span>.<span class="ident">to_string</span>() <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">var</span>.<span class="ident">name</span>.<span class="ident">data</span>);
         <span class="kw">let</span> <span class="ident">arg</span> <span class="op">=</span> <span class="ident">arg_def</span>.<span class="ident">clone</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">arg</span><span class="op">|</span> <span class="ident">var_map</span>.<span class="ident">decl_argument</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ir_desc</span>, <span class="ident">arg</span>));
         <span class="kw">let</span> <span class="ident">superset</span> <span class="op">=</span> <span class="ident">superset</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">set</span><span class="op">|</span> <span class="ident">set</span>.<span class="ident">type_check</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ir_desc</span>, <span class="kw-2">&amp;</span><span class="ident">var_map</span>));
         <span class="kw">for</span> <span class="ident">disjoint</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">disjoints</span> { <span class="self">self</span>.<span class="ident">ir_desc</span>.<span class="ident">get_set_def</span>(<span class="ident">disjoint</span>); }
@@ -674,7 +719,7 @@
             <span class="comment">// Handle the optional forall.</span>
             <span class="kw">if</span> <span class="ident">key</span> <span class="op">==</span> <span class="ident">ir</span>::<span class="ident">SetDefKey</span>::<span class="ident">Reverse</span> {
                 <span class="kw">let</span> <span class="ident">var_def</span> <span class="op">=</span> <span class="ident">var</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>();
-                <span class="kw">let</span> <span class="ident">var_name</span> <span class="op">=</span> <span class="string">&quot;$&quot;</span>.<span class="ident">to_string</span>() <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">var_def</span>.<span class="ident">name</span>;
+                <span class="kw">let</span> <span class="ident">var_name</span> <span class="op">=</span> <span class="string">&quot;$&quot;</span>.<span class="ident">to_string</span>() <span class="op">+</span> <span class="kw-2">&amp;</span><span class="ident">var_def</span>.<span class="ident">name</span>.<span class="ident">data</span>;
                 <span class="ident">value</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">replace</span>(<span class="kw-2">&amp;</span><span class="ident">var_name</span>, <span class="string">&quot;$var&quot;</span>);
                 <span class="ident">env</span>.<span class="ident">push</span>(<span class="string">&quot;var&quot;</span>);
             } <span class="kw">else</span> { <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">var</span>.<span class="ident">is_none</span>()); }
@@ -721,17 +766,29 @@
         <span class="kw">let</span> <span class="ident">forall_vars</span> <span class="op">=</span> <span class="ident">arg</span>.<span class="ident">clone</span>().<span class="ident">into_iter</span>()
             .<span class="ident">chain</span>(<span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">once</span>(<span class="ident">quotient</span>.<span class="ident">item</span>)).<span class="ident">collect_vec</span>();
         <span class="kw">let</span> <span class="ident">counter_name</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">create_repr_counter</span>(
-            <span class="ident">set</span>.<span class="ident">name</span>().<span class="ident">clone</span>(), <span class="kw-2">&amp;</span><span class="ident">repr_name</span>, <span class="ident">arg</span>.<span class="ident">clone</span>(), <span class="ident">item_name</span>.<span class="ident">clone</span>(),
+            <span class="ident">set</span>.<span class="ident">name</span>().<span class="ident">clone</span>(), <span class="kw-2">&amp;</span><span class="ident">repr_name</span>, <span class="ident">arg</span>.<span class="ident">clone</span>(), <span class="ident">item_name</span>.<span class="ident">data</span>.<span class="ident">clone</span>(),
             <span class="ident">forall_vars</span>.<span class="ident">clone</span>(),
             <span class="ident">RcStr</span>::<span class="ident">new</span>(<span class="ident">quotient</span>.<span class="ident">equiv_relation</span>.<span class="number">0</span>),
             <span class="ident">quotient</span>.<span class="ident">equiv_relation</span>.<span class="number">1</span>);
         <span class="comment">// Generate the code that set an item as representant.</span>
         <span class="kw">let</span> <span class="ident">trigger_code</span> <span class="op">=</span> <span class="ident">print</span>::<span class="ident">add_to_quotient</span>(
-            <span class="ident">set</span>, <span class="kw-2">&amp;</span><span class="ident">repr_name</span>, <span class="kw-2">&amp;</span><span class="ident">counter_name</span>, <span class="kw-2">&amp;</span><span class="ident">item_name</span>, <span class="kw-2">&amp;</span><span class="ident">arg_name</span>);
+            <span class="ident">set</span>, <span class="kw-2">&amp;</span><span class="ident">repr_name</span>, <span class="kw-2">&amp;</span><span class="ident">counter_name</span>, <span class="kw-2">&amp;</span><span class="ident">item_name</span>.<span class="ident">data</span>,
+            <span class="kw-2">&amp;</span><span class="ident">arg_name</span>.<span class="ident">clone</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">n</span><span class="op">|</span> <span class="ident">n</span>.<span class="ident">data</span>)
+        );
         <span class="comment">// Constraint the representative value.</span>
         <span class="kw">let</span> <span class="ident">forall_names</span> <span class="op">=</span> <span class="ident">forall_vars</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">name</span>.<span class="ident">clone</span>()).<span class="ident">collect_vec</span>();
-        <span class="kw">let</span> <span class="ident">repr_instance</span> <span class="op">=</span> <span class="ident">ChoiceInstance</span> { <span class="ident">name</span>: <span class="ident">repr_name</span>, <span class="ident">vars</span>: <span class="ident">forall_names</span>.<span class="ident">clone</span>() };
-        <span class="kw">let</span> <span class="ident">counter_instance</span> <span class="op">=</span> <span class="ident">ChoiceInstance</span> { <span class="ident">name</span>: <span class="ident">counter_name</span>, <span class="ident">vars</span>: <span class="ident">forall_names</span> };
+        <span class="kw">let</span> <span class="ident">repr_instance</span> <span class="op">=</span> <span class="ident">ChoiceInstance</span> {
+            <span class="ident">name</span>: <span class="ident">repr_name</span>,
+            <span class="ident">vars</span>: <span class="ident">forall_names</span>.<span class="ident">iter</span>()
+                              .<span class="ident">map</span>(<span class="op">|</span><span class="ident">n</span><span class="op">|</span> <span class="ident">n</span>.<span class="ident">data</span>.<span class="ident">clone</span>())
+                              .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;&gt;</span>()
+        };
+        <span class="kw">let</span> <span class="ident">counter_instance</span> <span class="op">=</span> <span class="ident">ChoiceInstance</span> {
+            <span class="ident">name</span>: <span class="ident">counter_name</span>,
+            <span class="ident">vars</span>: <span class="ident">forall_names</span>.<span class="ident">iter</span>()
+                              .<span class="ident">map</span>(<span class="op">|</span><span class="ident">n</span><span class="op">|</span> <span class="ident">n</span>.<span class="ident">data</span>.<span class="ident">clone</span>())
+                              .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;&gt;</span>()
+        };
         <span class="kw">let</span> <span class="ident">not_repr</span> <span class="op">=</span> <span class="ident">Condition</span>::<span class="ident">new_is_bool</span>(<span class="ident">repr_instance</span>.<span class="ident">clone</span>(), <span class="bool-val">false</span>);
         <span class="kw">let</span> <span class="ident">counter_leq_zero</span> <span class="op">=</span> <span class="ident">Condition</span>::<span class="ident">CmpCode</span> {
             <span class="ident">lhs</span>: <span class="ident">counter_instance</span>, <span class="ident">rhs</span>: <span class="string">&quot;0&quot;</span>.<span class="ident">into</span>(), <span class="ident">op</span>: <span class="ident">ir</span>::<span class="ident">CmpOp</span>::<span class="ident">Leq</span>
@@ -760,7 +817,7 @@
         <span class="comment">// Add the constraint `item in set =&gt; repr is TRUE`.</span>
         <span class="kw">let</span> <span class="ident">quotient_item_def</span> <span class="op">=</span> <span class="ident">VarDef</span> {
             <span class="ident">name</span>: <span class="ident">item_name</span>,
-            <span class="ident">set</span>: <span class="ident">SetRef</span> { <span class="ident">name</span>: <span class="ident">set</span>.<span class="ident">name</span>().<span class="ident">clone</span>(), <span class="ident">var</span>: <span class="ident">arg_name</span> }
+            <span class="ident">set</span>: <span class="ident">SetRef</span> { <span class="ident">name</span>: <span class="ident">set</span>.<span class="ident">name</span>().<span class="ident">clone</span>(), <span class="ident">var</span>: <span class="ident">arg_name</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">n</span><span class="op">|</span> <span class="ident">n</span>.<span class="ident">data</span>) }
         };
         <span class="kw">let</span> <span class="ident">item_in_set_foralls</span> <span class="op">=</span> <span class="ident">arg</span>.<span class="ident">into_iter</span>()
             .<span class="ident">chain</span>(<span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">once</span>(<span class="ident">quotient_item_def</span>)).<span class="ident">collect</span>();
@@ -777,7 +834,7 @@
     <span class="kw">fn</span> <span class="ident">create_repr_choice</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">name</span>: <span class="ident">RcStr</span>,
                           <span class="ident">set</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">SetDef</span>,
                           <span class="ident">arg</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">VarDef</span><span class="op">&gt;</span>,
-                          <span class="ident">item_name</span>: <span class="ident">RcStr</span>) {
+                          <span class="ident">item_name</span>: <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">RcStr</span><span class="op">&gt;</span>) {
         <span class="kw">let</span> <span class="ident">bool_str</span>: <span class="ident">RcStr</span> <span class="op">=</span> <span class="string">&quot;Bool&quot;</span>.<span class="ident">into</span>();
         <span class="kw">let</span> <span class="ident">def</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">ChoiceDef</span>::<span class="ident">Enum</span>(<span class="ident">bool_str</span>.<span class="ident">clone</span>());
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vars</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
@@ -785,7 +842,10 @@
             <span class="ident">vars</span>.<span class="ident">push</span>((<span class="ident">arg</span>.<span class="ident">name</span>.<span class="ident">clone</span>(), <span class="ident">set</span>.<span class="ident">arg</span>().<span class="ident">unwrap</span>().<span class="ident">clone</span>()));
         }
         <span class="ident">vars</span>.<span class="ident">push</span>((<span class="ident">item_name</span>, <span class="ident">set</span>.<span class="ident">superset</span>().<span class="ident">unwrap</span>().<span class="ident">clone</span>()));
-        <span class="kw">let</span> <span class="ident">args</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">ChoiceArguments</span>::<span class="ident">new</span>(<span class="ident">vars</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
+        <span class="kw">let</span> <span class="ident">args</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">ChoiceArguments</span>::<span class="ident">new</span>(<span class="ident">vars</span>.<span class="ident">into_iter</span>()
+                                                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">n</span>, <span class="ident">s</span>)<span class="op">|</span> (<span class="ident">n</span>.<span class="ident">data</span>, <span class="ident">s</span>))
+                                                .<span class="ident">collect</span>(),
+                                            <span class="bool-val">false</span>, <span class="bool-val">false</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">repr</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">Choice</span>::<span class="ident">new</span>(<span class="ident">name</span>, <span class="prelude-val">None</span>, <span class="ident">args</span>, <span class="ident">def</span>);
         <span class="kw">let</span> <span class="ident">false_value_set</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">once</span>(<span class="string">&quot;FALSE&quot;</span>.<span class="ident">into</span>()).<span class="ident">collect</span>();
         <span class="ident">repr</span>.<span class="ident">add_fragile_values</span>(<span class="ident">ir</span>::<span class="ident">ValueSet</span>::<span class="ident">enum_values</span>(<span class="ident">bool_str</span>, <span class="ident">false_value_set</span>));
@@ -808,7 +868,7 @@
         <span class="kw">let</span> <span class="ident">rhs_name</span> <span class="op">=</span> <span class="ident">RcStr</span>::<span class="ident">new</span>(<span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}_repr&quot;</span>, <span class="ident">item_name</span>));
         <span class="kw">let</span> <span class="ident">rhs_set</span> <span class="op">=</span> <span class="ident">SetRef</span> {
             <span class="ident">name</span>: <span class="ident">set_name</span>,
-            <span class="ident">var</span>: <span class="ident">arg</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">d</span><span class="op">|</span> <span class="ident">d</span>.<span class="ident">name</span>.<span class="ident">clone</span>())
+            <span class="ident">var</span>: <span class="ident">arg</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">d</span><span class="op">|</span> <span class="ident">d</span>.<span class="ident">name</span>.<span class="ident">data</span>.<span class="ident">clone</span>())
         };
         <span class="kw">let</span> <span class="ident">equiv_choice</span> <span class="op">=</span> <span class="ident">ChoiceInstance</span> {
             <span class="ident">name</span>: <span class="ident">equiv_choice_name</span>,
@@ -821,7 +881,11 @@
         <span class="kw">let</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">CounterBody</span> {
             <span class="ident">base</span>: <span class="string">&quot;0&quot;</span>.<span class="ident">to_string</span>(),
             <span class="ident">conditions</span>: <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">condition</span>],
-            <span class="ident">iter_vars</span>: <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">VarDef</span> { <span class="ident">name</span>: <span class="ident">rhs_name</span>, <span class="ident">set</span>: <span class="ident">rhs_set</span> }],
+            <span class="ident">iter_vars</span>: <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">VarDef</span> { <span class="ident">name</span>: <span class="ident">Spanned</span> {
+                <span class="ident">data</span>: <span class="ident">rhs_name</span>,
+                <span class="ident">beg</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
+                <span class="ident">end</span>: <span class="ident">Default</span>::<span class="ident">default</span>()
+            }, <span class="ident">set</span>: <span class="ident">rhs_set</span> }],
             <span class="ident">kind</span>: <span class="ident">ir</span>::<span class="ident">CounterKind</span>::<span class="ident">Add</span>,
             <span class="ident">value</span>: <span class="ident">CounterVal</span>::<span class="ident">Code</span>(<span class="string">&quot;1&quot;</span>.<span class="ident">to_string</span>()),
         };
@@ -855,8 +919,12 @@
         <span class="kw">let</span> <span class="ident">vars</span> <span class="op">=</span> <span class="ident">vars</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">v</span>.<span class="ident">name</span>.<span class="ident">clone</span>();
             (<span class="ident">name</span>, <span class="ident">var_map</span>.<span class="ident">decl_argument</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ir_desc</span>, <span class="ident">v</span>))
-        }).<span class="ident">collect</span>();
-        <span class="kw">let</span> <span class="ident">arguments</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">ChoiceArguments</span>::<span class="ident">new</span>(<span class="ident">vars</span>, <span class="ident">symmetric</span>, <span class="ident">inverse</span>);
+        }).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;&gt;</span>();
+        <span class="kw">let</span> <span class="ident">arguments</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">ChoiceArguments</span>::<span class="ident">new</span>(<span class="ident">vars</span>.<span class="ident">into_iter</span>()
+                                                     .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">n</span>, <span class="ident">s</span>)<span class="op">|</span> (<span class="ident">n</span>.<span class="ident">data</span>, <span class="ident">s</span>))
+                                                     .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;&gt;</span>(),
+                                                 <span class="ident">symmetric</span>,
+                                                 <span class="ident">inverse</span>);
         <span class="kw">let</span> <span class="ident">inverse</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">Symmetry</span>::<span class="ident">AntiSymmetric</span>(<span class="ident">mapping</span>)) <span class="op">=</span> <span class="ident">stmts</span>.<span class="ident">symmetry</span> {
             {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mapped</span> <span class="op">=</span> <span class="ident">HashSet</span>::<span class="ident">default</span>();
@@ -905,8 +973,11 @@
         <span class="kw">let</span> <span class="ident">vars</span> <span class="op">=</span> <span class="ident">def</span>.<span class="ident">variables</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">v</span>.<span class="ident">name</span>.<span class="ident">clone</span>();
             (<span class="ident">name</span>, <span class="ident">var_map</span>.<span class="ident">decl_argument</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ir_desc</span>, <span class="ident">v</span>))
-        }).<span class="ident">collect</span>();
-        <span class="kw">let</span> <span class="ident">arguments</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">ChoiceArguments</span>::<span class="ident">new</span>(<span class="ident">vars</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
+        }).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;&gt;</span>();
+        <span class="kw">let</span> <span class="ident">arguments</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">ChoiceArguments</span>::<span class="ident">new</span>(<span class="ident">vars</span>.<span class="ident">into_iter</span>()
+                                                     .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">n</span>, <span class="ident">s</span>)<span class="op">|</span> (<span class="ident">n</span>.<span class="ident">data</span>, <span class="ident">s</span>))
+                                                     .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;&gt;</span>(),
+                                                 <span class="bool-val">false</span>, <span class="bool-val">false</span>);
         <span class="kw">let</span> <span class="ident">universe</span> <span class="op">=</span> <span class="ident">type_check_code</span>(<span class="ident">def</span>.<span class="ident">code</span>.<span class="ident">into</span>(), <span class="kw-2">&amp;</span><span class="ident">var_map</span>);
         <span class="kw">let</span> <span class="ident">choice_def</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">ChoiceDef</span>::<span class="ident">Number</span> { <span class="ident">universe</span> };
         <span class="self">self</span>.<span class="ident">ir_desc</span>.<span class="ident">add_choice</span>(<span class="ident">ir</span>::<span class="ident">Choice</span>::<span class="ident">new</span>(<span class="ident">choice_name</span>, <span class="ident">doc</span>, <span class="ident">arguments</span>, <span class="ident">choice_def</span>));
@@ -915,8 +986,14 @@
     <span class="doccomment">/// Register a constraint on an enum value.</span>
     <span class="kw">fn</span> <span class="ident">register_value_constraint</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">choice</span>: <span class="ident">RcStr</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">VarDef</span><span class="op">&gt;</span>,
                                  <span class="ident">value</span>: <span class="ident">RcStr</span>, <span class="kw-2">mut</span> <span class="ident">constraint</span>: <span class="ident">Constraint</span>) {
-        <span class="kw">let</span> <span class="ident">choice_args</span> <span class="op">=</span> <span class="ident">args</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">def</span><span class="op">|</span> <span class="ident">def</span>.<span class="ident">name</span>.<span class="ident">clone</span>()).<span class="ident">collect</span>();
-        <span class="kw">let</span> <span class="ident">self_instance</span> <span class="op">=</span> <span class="ident">ChoiceInstance</span> { <span class="ident">name</span>: <span class="ident">choice</span>, <span class="ident">vars</span>: <span class="ident">choice_args</span> };
+        <span class="kw">let</span> <span class="ident">choice_args</span> <span class="op">=</span>
+            <span class="ident">args</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">def</span><span class="op">|</span> <span class="ident">def</span>.<span class="ident">name</span>.<span class="ident">clone</span>())
+                       .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;&gt;</span>();
+        <span class="kw">let</span> <span class="ident">self_instance</span> <span class="op">=</span> <span class="ident">ChoiceInstance</span> {
+            <span class="ident">name</span>: <span class="ident">choice</span>, <span class="ident">vars</span>: <span class="ident">choice_args</span>.<span class="ident">into_iter</span>()
+                                           .<span class="ident">map</span>(<span class="op">|</span><span class="ident">n</span><span class="op">|</span> <span class="ident">n</span>.<span class="ident">data</span>)
+                                           .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;&gt;</span>()
+        };
         <span class="kw">let</span> <span class="ident">condition</span> <span class="op">=</span> <span class="ident">Condition</span>::<span class="ident">Is</span> { <span class="ident">lhs</span>: <span class="ident">self_instance</span>, <span class="ident">rhs</span>: <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">value</span>], <span class="ident">is</span>: <span class="bool-val">false</span> };
         <span class="ident">constraint</span>.<span class="ident">forall_vars</span>.<span class="ident">extend</span>(<span class="ident">args</span>);
         <span class="kw">for</span> <span class="ident">disjunction</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">constraint</span>.<span class="ident">disjunctions</span> {
@@ -947,7 +1024,18 @@
         }).<span class="ident">collect_vec</span>();
         <span class="kw">let</span> <span class="ident">doc</span> <span class="op">=</span> <span class="ident">doc</span>.<span class="ident">map</span>(<span class="ident">RcStr</span>::<span class="ident">new</span>);
         <span class="kw">let</span> (<span class="ident">incr</span>, <span class="ident">incr_condition</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">gen_increment</span>(
-            <span class="kw-2">&amp;</span><span class="ident">counter_name</span>, <span class="kw-2">&amp;</span><span class="ident">vars</span>, <span class="kw-2">&amp;</span><span class="ident">iter_vars</span>, <span class="ident">all_var_defs</span>, <span class="ident">body</span>.<span class="ident">conditions</span>, <span class="kw-2">&amp;</span><span class="ident">var_map</span>);
+            <span class="kw-2">&amp;</span><span class="ident">counter_name</span>,
+            <span class="ident">vars</span>.<span class="ident">iter</span>()
+                .<span class="ident">cloned</span>()
+                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">n</span>, <span class="ident">s</span>)<span class="op">|</span> (<span class="ident">n</span>.<span class="ident">data</span>, <span class="ident">s</span>))
+                .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;&gt;</span>()
+                .<span class="ident">as_slice</span>(),
+            <span class="ident">iter_vars</span>.<span class="ident">iter</span>()
+                .<span class="ident">cloned</span>()
+                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">n</span>, <span class="ident">s</span>)<span class="op">|</span> (<span class="ident">n</span>.<span class="ident">data</span>, <span class="ident">s</span>))
+                .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;&gt;</span>()
+                .<span class="ident">as_slice</span>(),
+            <span class="ident">all_var_defs</span>, <span class="ident">body</span>.<span class="ident">conditions</span>, <span class="kw-2">&amp;</span><span class="ident">var_map</span>);
         <span class="comment">// Type check the value.</span>
         <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">body</span>.<span class="ident">value</span> {
             <span class="ident">CounterVal</span>::<span class="ident">Code</span>(<span class="ident">code</span>) <span class="op">=&gt;</span>
@@ -969,7 +1057,9 @@
         <span class="kw">let</span> <span class="ident">counter_def</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">ChoiceDef</span>::<span class="ident">Counter</span> {
             <span class="ident">incr_iter</span>, <span class="ident">kind</span>, <span class="ident">value</span>, <span class="ident">incr</span>, <span class="ident">incr_condition</span>, <span class="ident">visibility</span>, <span class="ident">base</span>
         };
-        <span class="kw">let</span> <span class="ident">counter_args</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">ChoiceArguments</span>::<span class="ident">new</span>(<span class="ident">vars</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>);
+        <span class="kw">let</span> <span class="ident">counter_args</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">ChoiceArguments</span>::<span class="ident">new</span>(<span class="ident">vars</span>.<span class="ident">into_iter</span>()
+                                                        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">n</span>, <span class="ident">s</span>)<span class="op">|</span> (<span class="ident">n</span>.<span class="ident">data</span>, <span class="ident">s</span>))
+                                                        .<span class="ident">collect</span>(), <span class="bool-val">false</span>, <span class="bool-val">false</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">counter_choice</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">Choice</span>::<span class="ident">new</span>(
             <span class="ident">counter_name</span>, <span class="ident">doc</span>, <span class="ident">counter_args</span>, <span class="ident">counter_def</span>);
         <span class="comment">// Filter the counter itself after an update, because the filter actually acts on</span>
