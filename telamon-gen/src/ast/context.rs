@@ -394,8 +394,8 @@ impl TypingContext {
         // Type-check the base.
         let kind = body.kind;
         let all_var_defs = untyped_vars.iter().chain(&body.iter_vars).cloned().collect();
-        let vars = untyped_vars.iter().map(|def| {
-            (def.name.clone(), var_map.decl_argument(&self.ir_desc, def.clone()))
+        let vars = untyped_vars.into_iter().map(|def| {
+            (def.name.clone(), var_map.decl_argument(&self.ir_desc, def))
         }).collect_vec();
         let base = type_check_code(RcStr::new(body.base), &var_map);
         // Generate the increment
