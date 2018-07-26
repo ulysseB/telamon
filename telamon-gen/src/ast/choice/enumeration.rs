@@ -44,9 +44,29 @@ impl EnumDef {
     fn check_redefinition(&self) -> Result<(), TypeError> {
         let mut hash: HashMap<String, _> = HashMap::default();
         let mut symmetric: Option<Spanned<()>> = None;
+        let mut antisymmetric: Option<Spanned<()>> = None;
 
         for stmt in self.statements.iter() {
             match stmt {
+                EnumStatement::AntiSymmetric(Spanned { beg, end, ..}) => {
+                    if let Some(before) = antisymmetric {
+                        Err(TypeError::Redefinition(
+                            Spanned {
+                                beg: before.beg, end: before.end,
+                                data: Hint::EnumAttribute
+                            },
+                            Spanned {
+                                beg: *beg, end: *end,
+                                data: String::from("Antisymmetric"),
+                            },
+                        ))?;
+                    } else {
+                        antisymmetric = Some(Spanned {
+                            beg: *beg, end: *end,
+                            data: (),
+                        });
+                    }
+                },
                 EnumStatement::Symmetric(Spanned { beg, end, ..}) => {
                     if let Some(before) = symmetric {
                         Err(TypeError::Redefinition(
@@ -88,7 +108,6 @@ impl EnumDef {
                         ))?;
                     }
                 },
-                _ => {},
             }
 
         }
@@ -97,7 +116,8 @@ impl EnumDef {
 
     /// This checks that there is two parameters if the field symmetric is defined.
     fn check_two_parameter(&self) -> Result<(), TypeError> {
-        if self.statements.iter().find(|item| item.is_symmetric()).is_some() {
+        if self.statements.iter().find(|item| item.is_symmetric()
+                                           || item.is_antisymmetric()).is_some() {
             if self.variables.len() != 2 {
                 Err(TypeError::BadSymmetricArg(
                         self.name.to_owned(),
@@ -109,7 +129,8 @@ impl EnumDef {
     }
 
     fn check_same_parameter(&self) -> Result<(), TypeError> {
-        if self.statements.iter().find(|item| item.is_symmetric()).is_some() {
+        if self.statements.iter().find(|item| item.is_symmetric()
+                                           || item.is_antisymmetric()).is_some() {
             match self.variables.as_slice() {
                 [VarDef { name, .. }, VarDef { name: rhs_name, .. }] => {
                     if name != rhs_name {

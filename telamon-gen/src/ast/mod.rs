@@ -70,6 +70,8 @@ pub enum TypeError {
     BadSymmetricArg(Spanned<String>, Vec<VarDef>),
     /// Missing
     MissingEntry(String, Spanned<String>),
+    /// Conflict between incompatible keywords.
+    Conflict(Spanned<String>, Spanned<String>),
 }
 
 /// CheckContext is a type system.
@@ -520,6 +522,14 @@ pub enum EnumStatement {
 impl EnumStatement {
     pub fn is_symmetric(&self) -> bool {
         if let EnumStatement::Symmetric(..) = self {
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn is_antisymmetric(&self) -> bool {
+        if let EnumStatement::AntiSymmetric(..) = self {
             true
         } else {
             false
