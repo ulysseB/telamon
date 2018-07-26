@@ -1,17 +1,13 @@
 //! Describes CUDA-enabled GPUs.
-extern crate xdg;
-
 use codegen::Function;
-use device::{self, Device};
+use device::{self, cuda, Device};
 use device::cuda::CudaPrinter;
 use device::cuda::mem_model::{self, MemInfo};
 use ir::{self, Type, Operator};
 use model::{self, HwPressure};
 use search_space::{DimKind, Domain, InstFlag, MemSpace, SearchSpace};
-use rustc_serialize::json;
 use std;
-use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Write;
 use utils::*;
 
 // FIXME: fix performance model
@@ -20,7 +16,7 @@ use utils::*;
 // - l1_lines per threads ?
 
 /// Specifies the performance parameters of an instruction.
-#[derive(Default, RustcDecodable, RustcEncodable, Clone, Copy, Debug)]
+#[derive(Default, Serialize, Deserialize, Clone, Copy, Debug)]
 pub struct InstDesc {
     /// The latency of the instruction.
     pub latency: f64,
@@ -75,7 +71,7 @@ impl Into<HwPressure> for InstDesc {
 }
 
 /// Represents CUDA GPUs.
-#[derive(RustcDecodable, RustcEncodable, Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Gpu {
     /// The name of the GPU.
     pub name: String,
@@ -159,34 +155,69 @@ pub struct Gpu {
 
 impl Gpu {
     /// Returns the GPU model corresponding to `name.
-    pub fn from_name(name: &str) -> Option<Gpu> {
-        let config_path = {
-            let xdg_dirs = unwrap!(
-                xdg::BaseDirectories::with_prefix("telamon"));
-            match xdg_dirs.find_config_file("cuda_gpus.json") {
-                Some(config_path) => config_path,
-                None => {
-                    let config_path = xdg_dirs
-                        .place_config_file("cuda_gpus.json")
-                        .expect("cannot create configuration directory");
-                    println!(
-                        "GPU configuration file not found; writing default configuration to {}",
-                        config_path.to_string_lossy());
-                    let mut config_file = unwrap!(File::create(config_path.clone()));
-                    unwrap!(
-                        write!(config_file, "{}", include_str!("../../../data/cuda_gpus.json")));
-                    // We return the Path here instead of the already-opened file object because we
-                    // want to ensure that the toplevel `config_path` variable always point to a
-                    // readonly file in order to avoid subtle bugs.
-                    config_path
-                },
-            }
-        };
-        let mut file = unwrap!(File::open(config_path));
-        let mut string = String::new();
-        unwrap!(file.read_to_string(&mut string));
-        let gpus: Vec<Gpu> = unwrap!(json::decode(&string));
-        gpus.into_iter().find(|x| x.name == name)
+    #[cfg(feature="cuda")]
+    pub fn from_executor(executor: &cuda::Executor) -> Gpu {
+        cuda::characterize::get_gpu_desc(executor)
+    }
+
+    /// Returns the GPU model corresponding to `name.
+    #[cfg(not(feature="cuda"))]
+    pub fn from_executor(executor: &cuda::Executor) -> Gpu {
+        match *executor { }
+    }
+
+    /// Creates a dummy GPU, to use for tests and benchmarks without evaluation.
+    pub fn dummy() -> Self {
+        Gpu {
+            name: "dummy".to_string(),
+            sm_major: 0,
+            sm_minor: 0,
+            addr_size: 64,
+            shared_mem_per_smx: 49152,
+            shared_mem_per_block: 49152,
+            allow_nc_load: true,
+            allow_l1_for_global_mem: false,
+            wrap_size: 32,
+            thread_per_smx: 2048,
+            l1_cache_size: 16348,
+            l1_cache_line: 128,
+            l2_cache_size: 393216,
+            l2_cache_line: 32,
+            shared_bank_stride: 8,
+            num_smx: 4,
+            max_block_per_smx: 16,
+
+            smx_clock: -1.,
+            load_l2_latency: -1.,
+            load_ram_latency: -1.,
+            load_shared_latency: -1.,
+            loop_end_latency: -1.,
+
+            thread_rates: InstDesc::default(),
+            smx_rates: InstDesc::default(),
+            gpu_rates: InstDesc::default(),
+            add_f32_inst: InstDesc::default(),
+            add_f64_inst: InstDesc::default(),
+            add_i32_inst: InstDesc::default(),
+            add_i64_inst: InstDesc::default(),
+            mul_f32_inst: InstDesc::default(),
+            mul_f64_inst: InstDesc::default(),
+            mul_i32_inst: InstDesc::default(),
+            mul_i64_inst: InstDesc::default(),
+            mul_wide_inst: InstDesc::default(),
+            mad_f32_inst: InstDesc::default(),
+            mad_f64_inst: InstDesc::default(),
+            mad_i32_inst: InstDesc::default(),
+            mad_i64_inst: InstDesc::default(),
+            mad_wide_inst: InstDesc::default(),
+            div_f32_inst: InstDesc::default(),
+            div_f64_inst: InstDesc::default(),
+            div_i32_inst: InstDesc::default(),
+            div_i64_inst: InstDesc::default(),
+            syncthread_inst: InstDesc::default(),
+            loop_init_overhead: InstDesc::default(),
+            loop_iter_overhead: InstDesc::default(),
+        }
     }
 
     /// Returns the PTX code for a Function.
@@ -262,21 +293,21 @@ impl Gpu {
                      inst: &ir::Instruction,
                      ctx: &device::Context) -> HwPressure {
         use ir::Operator::*;
-        let t = self.lower_type(inst.t(), space).unwrap_or_else(|| inst.t());
+        let t = inst.t().map(|t| self.lower_type(t, space).unwrap_or(t));
         match (inst.operator(), t) {
-            (&BinOp(ir::BinOp::Add, ..), Type::F(32)) |
-            (&BinOp(ir::BinOp::Sub, ..), Type::F(32)) => self.add_f32_inst.into(),
-            (&BinOp(ir::BinOp::Add, ..), Type::F(64)) |
-            (&BinOp(ir::BinOp::Sub, ..), Type::F(64)) => self.add_f64_inst.into(),
-            (&BinOp(ir::BinOp::Add, ..), Type::I(32)) |
-            (&BinOp(ir::BinOp::Sub, ..), Type::I(32)) => self.add_i32_inst.into(),
-            (&BinOp(ir::BinOp::Add, ..), Type::I(64)) |
-            (&BinOp(ir::BinOp::Sub, ..), Type::I(64)) => self.add_i64_inst.into(),
-            (&Mul(..), Type::F(32)) => self.mul_f32_inst.into(),
-            (&Mul(..), Type::F(64)) => self.mul_f64_inst.into(),
-            (&Mul(..), Type::I(32)) |
-            (&Mul(..), Type::PtrTo(_)) => self.mul_i32_inst.into(),
-            (&Mul(ref op, _, _, _), Type::I(64)) => {
+            (&BinOp(ir::BinOp::Add, ..), Some(Type::F(32))) |
+            (&BinOp(ir::BinOp::Sub, ..), Some(Type::F(32))) => self.add_f32_inst.into(),
+            (&BinOp(ir::BinOp::Add, ..), Some(Type::F(64))) |
+            (&BinOp(ir::BinOp::Sub, ..), Some(Type::F(64))) => self.add_f64_inst.into(),
+            (&BinOp(ir::BinOp::Add, ..), Some(Type::I(32))) |
+            (&BinOp(ir::BinOp::Sub, ..), Some(Type::I(32))) => self.add_i32_inst.into(),
+            (&BinOp(ir::BinOp::Add, ..), Some(Type::I(64))) |
+            (&BinOp(ir::BinOp::Sub, ..), Some(Type::I(64))) => self.add_i64_inst.into(),
+            (&Mul(..), Some(Type::F(32))) => self.mul_f32_inst.into(),
+            (&Mul(..), Some(Type::F(64))) => self.mul_f64_inst.into(),
+            (&Mul(..), Some(Type::I(32))) |
+            (&Mul(..), Some(Type::PtrTo(_))) => self.mul_i32_inst.into(),
+            (&Mul(ref op, _, _, _), Some(Type::I(64))) => {
                 let op_t = self.lower_type(op.t(), space).unwrap_or_else(|| op.t());
                 if op_t == Type::I(64) {
                     self.mul_i64_inst.into()
@@ -284,11 +315,11 @@ impl Gpu {
                     self.mul_wide_inst.into()
                 }
             },
-            (&Mad(..), Type::F(32)) => self.mad_f32_inst.into(),
-            (&Mad(..), Type::F(64)) => self.mad_f64_inst.into(),
-            (&Mad(..), Type::I(32)) |
-            (&Mad(..), Type::PtrTo(_)) => self.mad_i32_inst.into(),
-            (&Mad(ref op, _, _, _), Type::I(64)) => {
+            (&Mad(..), Some(Type::F(32))) => self.mad_f32_inst.into(),
+            (&Mad(..), Some(Type::F(64))) => self.mad_f64_inst.into(),
+            (&Mad(..), Some(Type::I(32))) |
+            (&Mad(..), Some(Type::PtrTo(_))) => self.mad_i32_inst.into(),
+            (&Mad(ref op, _, _, _), Some(Type::I(64))) => {
                 let op_t = self.lower_type(op.t(), space).unwrap_or_else(|| op.t());
                 if op_t == Type::I(64) {
                     self.mad_i64_inst.into()
@@ -296,10 +327,10 @@ impl Gpu {
                     self.mad_wide_inst.into()
                 }
             },
-            (&BinOp(ir::BinOp::Div, ..), Type::F(32)) => self.div_f32_inst.into(),
-            (&BinOp(ir::BinOp::Div, ..), Type::F(64)) => self.div_f64_inst.into(),
-            (&BinOp(ir::BinOp::Div, ..), Type::I(32)) => self.div_i32_inst.into(),
-            (&BinOp(ir::BinOp::Div, ..), Type::I(64)) => self.div_i64_inst.into(),
+            (&BinOp(ir::BinOp::Div, ..), Some(Type::F(32))) => self.div_f32_inst.into(),
+            (&BinOp(ir::BinOp::Div, ..), Some(Type::F(64))) => self.div_f64_inst.into(),
+            (&BinOp(ir::BinOp::Div, ..), Some(Type::I(32))) => self.div_i32_inst.into(),
+            (&BinOp(ir::BinOp::Div, ..), Some(Type::I(64))) => self.div_i64_inst.into(),
             (&Ld(..), _) | (&TmpLd(..), _) => {
                 let flag = space.domain().get_inst_flag(inst.id());
                 let mem_info = mem_model::analyse(space, self, inst, dim_sizes, ctx);
@@ -347,14 +378,15 @@ impl Gpu {
 
 impl device::Device for Gpu {
     fn print(&self, fun: &Function, out: &mut Write) {
-        let mut printer = CudaPrinter::new(); 
-        printer.host_function(fun, self, out) 
+        let mut printer = CudaPrinter::new();
+        printer.host_function(fun, self, out)
     }
 
-    fn is_valid_type(&self, t: &Type) -> bool {
-        match *t {
-            Type::I(i) | Type::F(i) => i == 32 || i == 64,
-            Type::Void | Type::PtrTo(_) => true,
+    fn check_type(&self, t: Type) -> Result<(), ir::TypeError> {
+        match t {
+            Type::I(i) | Type::F(i) if i == 32 || i == 64 => Ok(()),
+            Type::PtrTo(_) => Ok(()),
+            t => Err(ir::TypeError::InvalidType { t }),
         }
     }
 
@@ -364,29 +396,15 @@ impl device::Device for Gpu {
 
     fn max_unrolling(&self) -> u32 { 512 }
 
-    fn can_vectorize(&self, dim: &ir::Dimension, op: &ir::Operator) -> bool {
-        // TODO(search_space): compute vectorizable info for tmp Ld/St. On vectorization,
-        // the layout must be constrained.
+    fn vectorization_factors(&self, dim: &ir::Dimension, op: &ir::Operator) -> &[u32] {
+        const LD_ST_FACTORS: [u32; 2] = [2, 4];
         match *op {
-            Operator::St(_, ref operand, _, ref pattern) => {
-                if let Some(type_len) = operand.t().len_byte() {
-                    dim.size().as_int().into_iter().any(|x| x == 2 || x == 4) &&
-                        pattern.stride(dim.id()) == ir::Stride::Int(type_len as i32)
-                } else { false }
-            },
-            Operator::Ld(ref t, _, ref pattern) => {
-                if let Some(type_len) = t.len_byte() {
-                    dim.size().as_int().into_iter().any(|x| x == 2 || x == 4) &&
-                        pattern.stride(dim.id()) == ir::Stride::Int(type_len as i32)
-                } else { false }
-            },
-            Operator::BinOp(..) |
-                Operator::Mul(..) |
-                Operator::Mad(..) |
-                Operator::Mov(..) |
-                Operator::Cast(..) => false,
-                Operator::TmpLd(..) |
-                    Operator::TmpSt(..) => dim.size().as_int().into_iter().any(|x| x == 2 || x == 4),
+            Operator::TmpLd(..) | Operator::TmpSt(..) => &LD_ST_FACTORS,
+            Operator::Ld(ref t, _, ref pattern) if pattern.is_consecutive(dim.id(), t) =>
+                &LD_ST_FACTORS,
+            Operator::St(_, ref operand, _, ref pattern)
+                if pattern.is_consecutive(dim.id(), &operand.t()) => &LD_ST_FACTORS,
+            _ => &[],
         }
     }
 
@@ -497,16 +515,3 @@ fn min_assign<T: std::cmp::Ord>(lhs: &mut T, rhs: T) { if rhs < *lhs { *lhs = rh
 // TODO(model): On the Quadro K4000:
 // * The Mul wide latency is unknown.
 // * The latency is not specialized per operand.
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Obtains a GPU from a name.
-    #[test]
-    fn test_get_gpu_by_name() {
-        let name = "dummy_cuda_gpu";
-        let gpu = unwrap!(Gpu::from_name(name));
-        assert_eq!(gpu.name, name);
-    }
-}

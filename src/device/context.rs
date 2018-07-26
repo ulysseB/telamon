@@ -1,6 +1,6 @@
 //! Describes the context for which a function must be optimized.
 use device::{Device, ScalarArgument, ArrayArgument};
-use codegen::Function;
+use codegen::{self, Function};
 use explorer::Candidate;
 use ir;
 use num;
@@ -29,7 +29,7 @@ pub trait Context: Sync {
     fn param_as_size(&self, name: &str) -> Option<u32>;
 
     /// Evaluate a size.
-    fn eval_size(&self, size: &ir::Size) -> u32 {
+    fn eval_size(&self, size: &codegen::Size) -> u32 {
         let mut dividend: u32 = size.factor();
         for p in size.dividend() {
             dividend *= unwrap!(self.param_as_size(&p.name));
@@ -62,6 +62,18 @@ pub trait AsyncEvaluator<'a, 'b> {
 pub enum EvalMode {
     /// Find the best candidate, skip bad candidates and allow optimizations.
     FindBest,
+    /// Test the evaluation function, same as `FindBest` but do not skip candidates.
+    TestEval,
     /// Test the performance model, do not skip candidates and do not optimize.
     TestBound,
+}
+
+impl EvalMode {
+    /// Indicates if candidates with a bound above the cut can be skipped.
+    pub fn skip_bad_candidates(&self) -> bool {
+        match self {
+            EvalMode::FindBest => true,
+            EvalMode::TestBound | EvalMode::TestEval => false,
+        }
+    }
 }

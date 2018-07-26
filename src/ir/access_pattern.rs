@@ -11,17 +11,7 @@ pub enum Stride {
     Unknown,
 }
 
-impl Stride {
-    /// Unwrap the stride or return the given value.
-    pub fn unwrap_or(self, default: i32) -> i32 {
-        match self {
-            Stride::Int(stride) => stride,
-            Stride::Unknown => default,
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub enum AccessPattern<'a> {
     /// Unknown access pattern.
     Unknown { mem_id: ir::mem::Id },
@@ -31,14 +21,14 @@ pub enum AccessPattern<'a> {
 }
 
 impl<'a> AccessPattern<'a> {
-    /// Returns the stride on a given dimension.
-    pub fn stride(&self, dim: ir::dim::Id) -> Stride {
-        match *self {
-            AccessPattern::Unknown { .. } => Stride::Unknown,
-            AccessPattern::Tensor { ref dims, .. } => {
-                dims.get(&dim).map(|s| {
-                    s.as_int().map(|x| Stride::Int(x as i32)).unwrap_or(Stride::Unknown)
-                }).unwrap_or(Stride::Int(0))
+    /// Indicates if memory accesses access to consecutive elements on the given dimension.
+    pub fn is_consecutive(&self, dim: ir::dim::Id, t: &ir::Type) -> bool {
+        match self {
+            AccessPattern::Unknown { .. } => false,
+            AccessPattern::Tensor { dims, .. } => {
+                dims.get(&dim).and_then(|stride| stride.as_int())
+                    .map(|stride| Some(stride) == t.len_byte())
+                    .unwrap_or(false)
             },
         }
     }
@@ -48,6 +38,24 @@ impl<'a> AccessPattern<'a> {
         match *self {
             AccessPattern::Unknown { mem_id } |
             AccessPattern::Tensor { mem_id, .. } => mem_id,
+        }
+    }
+
+    /// Ensure the access pattern is valid for an instruction nested in the dimensions
+    /// given in `iter_dims`.
+    pub fn check(&self, iter_dims: &HashSet<ir::dim::Id>) -> Result<(), ir::Error> {
+        match self {
+            AccessPattern::Unknown { .. } => Ok(()),
+            AccessPattern::Tensor { dims, .. } => {
+                // Ensures all dimensions referenced in the pattern are nested outside
+                // the access pattern.
+                for (&dim, _) in dims {
+                    if !iter_dims.contains(&dim) {
+                        return Err(ir::Error::InvalidDimInPattern { dim });
+                    }
+                }
+                Ok(())
+            },
         }
     }
 }

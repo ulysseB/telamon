@@ -1,5 +1,4 @@
 //! Code generation and candidate evaluation for specific targets.
-#[cfg(feature="cuda")]
 pub mod cuda;
 #[cfg(feature="mppa")]
 pub mod mppa;
@@ -14,28 +13,25 @@ pub use self::context::{Context, EvalMode, ArgMap, AsyncCallback, AsyncEvaluator
 use codegen::Function;
 use ir;
 use search_space::{SearchSpace, DimKind};
-use std::hash;
 use std::io::Write;
 use model::{HwPressure, Nesting};
 use utils::*;
-
-// TODO(perf): in PTX, shared and local pointers can have a 32-bit size, even in 64-bit
-// mode. 32bits ops are potentialy faster than 64bits ops.
 
 /// Holds the specifications of a target.
 pub trait Device: Sync {
     /// Prints the code corresponding to a device `Function`.
     fn print(&self, function: &Function, out: &mut Write);
     /// Indicates if a `Type` can be implemented on the device.
-    fn is_valid_type(&self, t: &ir::Type) -> bool;
+    fn check_type(&self, t: ir::Type) -> Result<(), ir::TypeError>;
     /// Returns the maximal number of block dimensions.
     fn max_block_dims(&self) -> u32;
     /// Returns the maximal number of threads.
     fn max_threads(&self) -> u32;
     /// Returns the maximal unrolling factor.
     fn max_unrolling(&self) -> u32;
-    /// Indicates if vectorization is possible on a loop with size Size on this instruction.
-    fn can_vectorize(&self, dim: &ir::Dimension, op: &ir::Operator) -> bool;
+    /// Indicates the valid vectorization factors for the given operator, on the given
+    /// dimension.
+    fn vectorization_factors(&self, dim: &ir::Dimension, op: &ir::Operator) -> &[u32];
     /// Returns the amount of shared memory available for each thread block.
     fn shared_mem(&self) -> u32;
     /// Indicates if the device supports non-coherent memory accesses.
@@ -86,17 +82,5 @@ pub trait Device: Sync {
     fn gen_code(&self, implementation: &SearchSpace, out: &mut Write) {
         let code = Function::build(implementation);
         self.print(&code, out);
-    }
-}
-
-impl<'a> PartialEq for &'a Device {
-    fn eq(&self, other: &Self) -> bool { self.name() == other.name() }
-}
-
-impl<'a> Eq for &'a Device {}
-
-impl<'a> hash::Hash for &'a Device {
-    fn hash<T: hash::Hasher>(&self, state: &mut T) {
-        hash::Hash::hash(self.name(), state);
     }
 }

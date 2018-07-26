@@ -175,21 +175,8 @@ impl Lexer {
         }
     }
 
-    /// If defined, concats parent directory with filename.
     /// Links the new include buffer, Returns the first token from this include.
-    fn include(&mut self, extra: YyExtraType, filename: &str) -> Option<LexerItem> {
-        let mut path: PathBuf = PathBuf::new();
-        let filepath: &Path = Path::new(filename);
-
-        if filepath.is_relative() {
-            if let Some(ref parent_path) = self.filename {
-                if let Some(ref parent) = parent_path.parent() {
-                    path.push(parent.to_path_buf());
-                }
-            }
-        }
-        path.push(filepath);
-        let filename: CString = CString::new(path.to_str().unwrap()).unwrap();
+    fn include_open(&mut self, extra: YyExtraType, filename: CString) -> Option<LexerItem> {
         unsafe {
             // [Multiple Input Buffers](http://westes.github.io/flex/manual/Multiple-Input-Buffers.html#Multiple-Input-Buffers)
             // include file scanner.
@@ -223,6 +210,23 @@ impl Lexer {
                 }
             }
         }
+    }
+
+    /// Resources the parent folder of filename and opens the include.
+    fn include(&mut self, extra: YyExtraType, filename: &str) -> Option<LexerItem> {
+        let mut path: PathBuf = PathBuf::new();
+        let filepath: &Path = Path::new(filename);
+
+        if filepath.is_relative() {
+            if let Some(ref parent_path) = self.filename {
+                if let Some(ref parent) = parent_path.parent() {
+                    path.push(parent.to_path_buf());
+                }
+            }
+        }
+        path.push(filepath);
+        let filename: CString = CString::new(path.to_str().unwrap()).unwrap();
+        self.include_open(extra, filename)
     }
 }
 

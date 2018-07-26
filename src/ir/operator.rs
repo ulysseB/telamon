@@ -2,9 +2,10 @@
 use device::Device;
 use ir::{self, AccessPattern, mem, Operand, Type};
 use itertools::Itertools;
+use std;
 use std::borrow::Cow;
-use std::fmt;
 use self::Operator::*;
+use utils::*;
 
 /// The rounding mode of an arithmetic operation.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -19,6 +20,28 @@ pub enum Rounding {
     Positive,
     /// Rounds toward negative infinite.
     Negative,
+}
+
+impl std::fmt::Display for Rounding {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let name = match self {
+            Rounding::Exact => "exact",
+            Rounding::Nearest => "toward nearest",
+            Rounding::Zero => "toward zero",
+            Rounding::Positive => "toward +inf",
+            Rounding::Negative => "toward -inf",
+        };
+        write!(f, "{}", name)
+    }
+}
+
+impl Rounding {
+    /// Ensures the rounding policy applies to the given type.
+    fn check(&self, t: ir::Type) -> Result<(), ir::TypeError> {
+        if t.is_float() ^ (*self == Rounding::Exact) { Ok(()) } else {
+            Err(ir::TypeError::InvalidRounding { rounding: *self, t })
+        }
+    }
 }
 
 /// Represents binary arithmetic operators.
@@ -71,60 +94,57 @@ pub enum Operator<'a> {
 
 impl<'a> Operator<'a> {
     /// Ensures the types of the operands are valid.
-    pub fn type_check(&self, device: &Device) {
-        assert!(device.is_valid_type(&self.t()));
-        // Check operand types.
-        for operand in self.operands() {
-            let t = operand.t();
-            assert_ne!(t, Type::Void);
-            assert!(device.is_valid_type(&t));
-        }
+    pub fn check(&self, iter_dims: &HashSet<ir::dim::Id>, device: &Device)
+        -> Result<(), ir::Error>
+    {
+        self.t().map(|t| device.check_type(t)).unwrap_or(Ok(()))?;
+        for operand in self.operands() { device.check_type(operand.t())?; }
         match *self {
             BinOp(_, ref lhs, ref rhs, rounding) => {
-                assert!(lhs.t().is_float() ^ (rounding == Rounding::Exact));
-                assert_eq!(lhs.t(), rhs.t());
+                rounding.check(lhs.t())?;
+                ir::TypeError::check_equals(lhs.t(), rhs.t())?;
             },
-            Mul(ref lhs, ref rhs, rounding, ref res_type) => {
-                assert!(lhs.t().is_float() ^ (rounding == Rounding::Exact));
-                match (lhs.t(), rhs.t(), res_type) {
-                    (ref x, ref y, z) if x == y && y == z => (),
-                    (Type::I(32), Type::I(32), &Type::I(64)) |
-                    (Type::I(32), Type::I(32), &Type::PtrTo(_)) => (),
-                    _ => panic!(),
+            Mul(ref lhs, ref rhs, rounding, res_type) => {
+                rounding.check(lhs.t())?;
+                ir::TypeError::check_equals(lhs.t(), rhs.t())?;
+                match (lhs.t(), res_type) {
+                    (x, z) if x == z => (),
+                    (Type::I(32), Type::I(64)) |
+                    (Type::I(32), Type::PtrTo(_)) => (),
+                    (_, t) => Err(ir::TypeError::UnexpectedType { t })?,
                 }
             }
             Mad(ref mul_lhs, ref mul_rhs, ref add_rhs, rounding) => {
-                assert!(mul_lhs.t().is_float() ^ (rounding == Rounding::Exact));
-                match (mul_lhs.t(), mul_rhs.t(), add_rhs.t()) {
-                    (ref x, ref y, ref z) if x == y && y == z => (),
-                    (Type::I(32), Type::I(32), Type::I(64)) |
-                    (Type::I(32), Type::I(32), Type::PtrTo(_)) => (),
-                    _ => panic!(),
+                rounding.check(mul_lhs.t())?;
+                ir::TypeError::check_equals(mul_lhs.t(), mul_rhs.t())?;
+                match (mul_lhs.t(), add_rhs.t()) {
+                    (ref x, ref z) if x == z => (),
+                    (Type::I(32), Type::I(64)) |
+                    (Type::I(32), Type::PtrTo(_)) => (),
+                    (_, t) => Err(ir::TypeError::UnexpectedType { t })?,
                 }
             },
-            Ld(ref t, ref addr, ref pattern) => {
-                assert_ne!(*t, Type::Void);
-                assert_eq!(addr.t(), Type::PtrTo(pattern.mem_block()));
+            Ld(_, ref addr, ref pattern) => {
+                pattern.check(iter_dims)?;
+                ir::TypeError::check_equals(addr.t(), Type::PtrTo(pattern.mem_block()))?;
             },
-            St(ref addr, _, _, ref pattern) =>
-                assert_eq!(addr.t(), Type::PtrTo(pattern.mem_block())),
-            TmpLd(ref t, _) => assert_ne!(*t, Type::Void),
-            Cast(ref src, ref t) => {
-                assert_ne!(src.t(), Type::Void);
-                assert_ne!(*t, Type::Void);
+            St(ref addr, _, _, ref pattern) => {
+                pattern.check(iter_dims)?;
+                ir::TypeError::check_equals(addr.t(), Type::PtrTo(pattern.mem_block()))?;
             },
-            Mov(..) | TmpSt(..) => (),
+            TmpLd(..) | Cast(..) | Mov(..) | TmpSt(..) => (),
         }
+        Ok(())
     }
 
     /// Returns the type of the value produced.
-    pub fn t(&self) -> Type {
+    pub fn t(&self) -> Option<Type> {
         match *self {
             BinOp(_, ref op, ..) |
             Mov(ref op) |
-            Mad(_, _, ref op, _) => op.t(),
-            Ld(t, ..) | TmpLd(t, _) | Cast(_, t) | Mul(.., t) => t,
-            St(..) | TmpSt(..) => Type::Void,
+            Mad(_, _, ref op, _) => Some(op.t()),
+            Ld(t, ..) | TmpLd(t, _) | Cast(_, t) | Mul(.., t) => Some(t),
+            St(..) | TmpSt(..) => None,
         }
     }
 
@@ -204,8 +224,8 @@ impl<'a> Operator<'a> {
     }
 }
 
-impl<'a> fmt::Display for Operator<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<'a> std::fmt::Display for Operator<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let name = match *self {
             BinOp(op, ..) => op.as_str(),
             Mul(..) => "mul",

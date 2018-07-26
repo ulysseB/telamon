@@ -7,18 +7,21 @@ version = "0.2.0"
 
 [[bin]]
 name = "cuda-characterize"
-path = "tools/cuda_characterize/main.rs"
-required-features = ["cuda"]
-
-[[bin]]
-name = "cache-bench"
-path = "tools/cuda_characterize/cache_main.rs"
+path = "src/bin/cuda_characterize.rs"
 required-features = ["cuda"]
 
 [[bin]]
 name = "bench-perf-model"
 path = "tools/bench_perf_model/main.rs"
 required-features = ["cuda"]
+
+[[bench]]
+name = "descent"
+harness = false
+
+[[bench]]
+name = "memory"
+harness = false
 
 [build-dependencies]
 cc = "1.0.12"
@@ -27,11 +30,13 @@ cc = "1.0.12"
 path = "telamon-gen"
 
 [dependencies]
+binary-heap-plus = "0.1.4"
 boxfnonce = "0.1.0"
 config = "0.8.0"
 crossbeam = "0.3.2"
 env_logger = "0.5.9"
 errno = "0.2.3"
+failure = "0.1.1"
 futures-preview = "0.2"
 getopts = "0.2.17"
 interval-heap = "0.0.5"
@@ -53,14 +58,13 @@ prettytable-rs = "0.6.7"
 rand = "0.4.2"
 rayon = "1.0.1"
 regex = "0.2.10"
-rustc-serialize = "0.3.24"
+rpds = "0.5.0"
 serde = "1.0"
 serde_derive = "1.0"
-toml = "0.4"
+serde_json = "1.0.22"
 std-semaphore = "0.1.0"
-rpds = "0.5.0"
-binary-heap-plus = "0.1.4"
 tempfile = "3.0.1"
+toml = "0.4"
 xdg = "^2.1"
 
 [dependencies.telamon-utils]
@@ -72,14 +76,15 @@ git = "https://github.com/ulysseB/tokio-timer.git"
 [dev-dependencies]
 gcc = "0.3.54"
 tempdir = "0.3.7"
+criterion = "0.2.4"
+jemalloc-ctl = "0.1"
 
 [features]
 cuda = []
 default = []
 format_exh = []
-mppa = []
 lex = []
-
+mppa = []
 
 [workspace]
 members = [
