@@ -140,7 +140,7 @@ mod tests {
         let mut in_buf = Cursor::new(include_str!("../../src/search_space/choices.exh").as_bytes());
         let ref_out = {
             let mut ref_out = Vec::new();
-            super::process(&mut in_buf, &mut ref_out, false, &Path::new("choices.exh")).unwrap();
+            super::process(Some(&mut in_buf), &mut ref_out, false, &Path::new("choices.exh")).unwrap();
             ref_out
         };
         // Ideally we would want to run this loop more than once, but
@@ -150,7 +150,7 @@ mod tests {
             in_buf.set_position(0);
 
             let mut out_buf = Vec::new();
-            super::process(&mut in_buf, &mut out_buf, false, &Path::new("choices.exh")).unwrap();
+            super::process(Some(&mut in_buf), &mut out_buf, false, &Path::new("choices.exh")).unwrap();
             assert_eq!(
                 ::std::str::from_utf8(&out_buf),
                 ::std::str::from_utf8(&ref_out)
