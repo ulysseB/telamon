@@ -18,6 +18,11 @@ use telamon::device::x86;
 use telamon::explorer::config::Config;
 pub use telamon_kernels::{linalg, Kernel};
 
+// Pointers to `device::Context` and `device::Device` are not C-like pointers. Instead,
+// they are fat pointers containing both a regular pointer to the object and a pointer to
+// the vtable. Thus, we define wrappers to encapsulate the pointers in an opaque type and
+// we return pointers to the wrappers to C users.
+
 /// Description of the evaluation context. In particular, in contains the mapping between
 /// argument names and argument values.
 pub struct Context(*const device::Context);
