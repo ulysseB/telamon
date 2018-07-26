@@ -5,6 +5,8 @@ use utils::*;
 
 /// Represents a mapping between dimenions.
 #[derive(Clone, Debug)]
+// TODO(cleanup): once merge is handled exclusively from the domain, we can use a `Vec`
+// instead.
 pub struct DimMap {
     map: LinkedList<(Id, Id)>,
 }

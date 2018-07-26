@@ -241,6 +241,57 @@ pub unsafe extern "C" fn telamon_ir_operand_new_parameter(
     Box::into_raw(Box::new(Operand(operand)))
 }
 
+/// Creates an operand that returns the current index on a dimension.
+// FIXME: repr(C) ir::dim::Id
+#[no_mangle]
+pub unsafe extern "C" fn telamon_ir_operand_new_index(dim: ir::dim::Id) -> *mut Operand {
+    let operand = ir::Operand::Index(dim);
+    Box::into_raw(Box::new(Operand(operand)))
+}
+
+/// Creates an operand that references the value of an instruction. The value of the
+/// instruction is transmitted point-to-point between the source dimensions (`src_dims`,
+/// in which the instruction is produced) and destination dimensions (`dst_dims`, in which
+/// the operand is used). `num_mapped_dims` indicates the number of dimensions in
+/// `src_dims` and in `dst_dims`. If `allow_tmp_mem` is non-zero, Telamon can allocate
+/// memory to transfer data between the two loop nests. Otherwise, it makes sure the data
+/// can be stored in registers (for example by fusing or unrolling loops).
+// FIXME: repr(C) ir::InstId
+#[no_mangle]
+pub unsafe extern "C" fn telamon_ir_operand_new_inst(
+    function: *const Function,
+    inst: ir::InstId,
+    src_dims: *const ir::dim::Id,
+    dst_dims: *const ir::dim::Id,
+    num_mapped_dims: libc::size_t,
+    allow_tmp_mem: libc::c_int,
+) -> *mut Operand {
+    let inst = (*function).0.inst(inst);
+    let dim_map = dim_map_from_arrays(src_dims, dst_dims, num_mapped_dims);
+    let dim_map_scope = if allow_tmp_mem == 0 {
+        ir::DimMapScope::Thread
+    } else {
+        ir::DimMapScope::Global
+    };
+    let operand = ir::Operand::new_inst(inst, dim_map, dim_map_scope);
+    Box::into_raw(Box::new(Operand(operand)))
+}
+
+// FIXME: operand creation: reduce
+
+/// Helper function that creates a `DimMap` from C arrays of dimensions. Does not holds
+/// references after the function exits.
+unsafe fn dim_map_from_arrays(
+    src_dims: *const ir::dim::Id,
+    dst_dims: *const ir::dim::Id,
+    num_mapped_dims: libc::size_t,
+) -> ir::DimMap {
+    let src_dims = std::slice::from_raw_parts(src_dims, num_mapped_dims);
+    let dst_dims = std::slice::from_raw_parts(dst_dims, num_mapped_dims);
+    let dims = src_dims.iter().cloned().zip(dst_dims.iter().cloned());
+    ir::DimMap::new(dims)
+}
+
 /// Opaque type that abstracts away the lifetime parameter of `ir::Operator` so that
 /// cbindgen can generate bindings.
 pub struct Operator(ir::Operator<'static>);
@@ -387,6 +438,3 @@ unsafe fn tensor_access(
     let access_pattern = ir::AccessPattern::Tensor { mem_id: array_id, dims };
     Ok((address, access_pattern))
 }
-
-
-// FIXME: operand creation: inst, index, reduce
