@@ -88,6 +88,11 @@ let best = explorer::find_best(explorer::config::read(), &context, search_space)
 context.device().gen_code(&best, &mut std::io::stdout());
 ```
 
+## Licence
+
+Telamon is released under the Apache Licence (version 2.0). See [LICENCE](LICENCE) for
+more details.
+
 [rust-install]: https://www.rust-lang.org/en-US/install.html
 [cc17]: https://stratoss.fr/ulysse/papers/telamon_cc17.pdf
 [telamon-doc]: https://ulysseb.github.com/telamon/telamon
