@@ -16,23 +16,16 @@ impl EnumDef {
 
         for stmt in self.statements.iter() {
             match stmt {
-                EnumStatement::Value(Spanned { beg, end, data: name }, ..) => {
-                    hash.insert(name.to_owned(), Spanned {
-                        beg: *beg, end: *end, data: ()
-                    } );
+                EnumStatement::Value(spanned, ..) => {
+                    hash.insert(spanned.data.to_owned(), spanned.with_data(()));
                 },
-                EnumStatement::Alias(Spanned { beg, end, data: name }, _, sets, ..) => {
+                EnumStatement::Alias(spanned, _, sets, ..) => {
                     for set in sets {
                         if !hash.contains_key(set) {
-                            Err(TypeError::Undefined(Spanned {
-                                beg: *beg, end: *end,
-                                data: set.to_owned(),
-                            }))?;
+                            Err(TypeError::Undefined(spanned.with_data(set.to_owned())))?;
                         }
                     }
-                    hash.insert(name.to_owned(), Spanned {
-                        beg: *beg, end: *end, data: ()
-                    });
+                    hash.insert(spanned.data.to_owned(), spanned.with_data(()));
                 },
                 _ => {},
             }
@@ -47,44 +40,20 @@ impl EnumDef {
 
         for stmt in self.statements.iter() {
             match stmt {
-                EnumStatement::Symmetric(Spanned { beg, end, ..}) => {
-                    if let Some(before) = symmetric {
-                        Err(TypeError::Redefinition(
-                            Spanned {
-                                beg: before.beg, end: before.end,
-                                data: Hint::EnumAttribute
-                            },
-                            Spanned {
-                                beg: *beg, end: *end,
-                                data: String::from("Symmetric"),
-                            },
-                        ))?;
+                EnumStatement::Symmetric(spanned) => {
+                    if let Some(ref before) = symmetric {
+                        Err(TypeError::Redefinition(before.with_data(Hint::EnumAttribute),
+                                                    spanned.with_data(String::from("Symmetric"))))?;
                     } else {
-                        symmetric = Some(Spanned {
-                            beg: *beg, end: *end,
-                            data: (),
-                        });
+                        symmetric = Some(spanned.with_data(()));
                     }
                 },
-                EnumStatement::Value(Spanned { beg, end, data: name }, ..) |
-                EnumStatement::Alias(Spanned { beg, end, data: name }, ..) => {
-                    if let Some(Spanned {
-                        beg: beg_before,
-                        end: end_before,
-                        data: _
-                    }) = hash.insert(
-                        name.to_owned(),
-                        Spanned { beg: *beg, end: *end, data: () }
-                    ) {
+                EnumStatement::Value(spanned, ..) |
+                EnumStatement::Alias(spanned, ..) => {
+                    if let Some(before) = hash.insert(spanned.data.to_owned(), spanned.with_data(())) {
                         Err(TypeError::Redefinition(
-                            Spanned {
-                                beg: *beg, end: *end,
-                                data: Hint::EnumAttribute
-                            },
-                            Spanned {
-                                beg: *beg, end: *end,
-                                data: name.to_owned()
-                            },
+                            before.with_data(Hint::EnumAttribute),
+                            spanned.with_data(spanned.data.to_owned())
                         ))?;
                     }
                 },

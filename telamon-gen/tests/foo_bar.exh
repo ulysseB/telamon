@@ -1,0 +1,2 @@
+include "enum_foo.exh"
+define enum bar(): value A: value B: end

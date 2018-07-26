@@ -106,6 +106,7 @@ not_equals "!="
 equal "="
 divide "/"
 integer "integer"
+include "include"{whitespace}*\".*\"
 
 choice_ident [a-z][a-z_0-9]*
 value_ident [A-Z][A-Z_0-9]*
@@ -131,7 +132,14 @@ var \${alpha_num}+
 
 [\n] { yyextra.end.column = 0; }
 
-{blank} {}
+{blank} { }
+
+{include} {
+    int length = strlen(yytext);
+    yytext[length-1] = '\0';
+    yytext = memchr(yytext, '\"', length)+1;
+    return INCLUDE;
+}
 
 {alias} { return ALIAS; }
 {counter} { return COUNTER; }

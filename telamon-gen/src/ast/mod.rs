@@ -86,14 +86,17 @@ impl CheckerContext {
     ) -> Result<(), TypeError> {
         match statement {
             ChoiceDef::EnumDef(EnumDef {
-                name: Spanned { beg, end, data: _ }, doc: _, variables, .. }) |
+                name: Spanned { ref beg, ref end, data: _ },
+                doc: _, ref variables,
+            .. }) |
             ChoiceDef::IntegerDef(IntegerDef {
-                name: Spanned { beg, end, data: _ }, doc: _, variables, .. }) => {
+                name: Spanned { ref beg, ref end, data: _ }, doc: _, ref variables,
+            .. }) => {
                 for VarDef { name: _, set: SetRef { name, .. } } in variables {
                     let name: &String = name.deref();
                     if !self.hash.contains_key(name) {
                         Err(TypeError::Undefined(Spanned {
-                            beg, end,
+                            beg: beg.to_owned(), end: end.to_owned(),
                             data: name.to_owned(),
                         }))?;
                     }
@@ -109,13 +112,14 @@ impl CheckerContext {
         &self, statement: &SetDef
     ) -> Result<(), TypeError> {
         match statement {
-            SetDef { name: Spanned { beg, end, data: ref name},
+            SetDef { name: Spanned { beg, end, data: ref name },
             doc: _, arg, superset, disjoint: _, keys, ..  } => {
                 if let Some(VarDef { name: _, set: SetRef { name, .. } }) = arg {
                     let name: &String = name.deref();
                     if !self.hash.contains_key(name) {
                         Err(TypeError::Undefined(Spanned {
-                            beg: *beg, end: *end, data: name.to_owned()
+                            beg: beg.to_owned(), end: end.to_owned(),
+                            data: name.to_owned(),
                         }))?;
                     }
                 }
@@ -123,7 +127,8 @@ impl CheckerContext {
                     let name: &String = supername.deref();
                     if !self.hash.contains_key(name) {
                         Err(TypeError::Undefined(Spanned {
-                            beg: *beg, end: *end, data: name.to_owned()
+                            beg: beg.to_owned(), end: end.to_owned(),
+                            data: name.to_owned(),
                         }))?;
                     }
                 }
@@ -139,14 +144,18 @@ impl CheckerContext {
         match statement {
             Statement::SetDef(SetDef { name: Spanned { beg, end, data: name }, .. }) |
             Statement::ChoiceDef(ChoiceDef::EnumDef(
-                EnumDef { name: Spanned { beg, end, data: name, }, ..  })) |
+                EnumDef { name: Spanned { beg, end, data: name }, ..  })) |
             Statement::ChoiceDef(ChoiceDef::IntegerDef(
                 IntegerDef { name: Spanned { beg, end, data: name }, .. })) => {
                 let data: Hint = Hint::from(&statement);
-                let value: Spanned<Hint> = Spanned { beg: *beg, end: *end, data };
+                let value: Spanned<Hint> = Spanned {
+                    beg: beg.to_owned(), end: end.to_owned(),
+                    data,
+                };
                 if let Some(pre) = self.hash.insert(name.to_owned(), value) {
                     Err(TypeError::Redefinition(pre, Spanned {
-                        beg: *beg, end: *end, data: name.to_owned(),
+                        beg: beg.to_owned(), end: end.to_owned(),
+                        data: name.to_owned(),
                     }))
                 } else {
                     Ok(())
