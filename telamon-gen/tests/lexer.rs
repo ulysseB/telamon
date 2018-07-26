@@ -550,7 +550,7 @@ fn lexer_include() {
    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/include_foo.exh");
    let include = format!("include \"{}\"", filename);
 
-   assert_eq!(Lexer::new(include.as_bytes().to_vec()).count(), 7);
+   assert_eq!(Lexer::new(include.as_bytes().to_vec()).count(), 9);
 
    // Two same header include.
    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/enum_foo.exh");

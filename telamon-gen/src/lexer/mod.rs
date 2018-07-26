@@ -226,37 +226,21 @@ impl Lexer {
     }
 }
 
-impl Drop for Lexer {
-    fn drop(&mut self) {
-        unsafe {
-            if let Some(yyin) = self.sublevel {
-                libc::fclose(yyin);
-            } else {
-                // The function [yy_delete_buffer](https://westes.github.io/flex/manual/Multiple-Input-Buffers.html)
-                // clears the current contents of a buffer using.
-                yy_delete_buffer(self.buffer, self.scanner);
-                // The function [yylex_destroy](https://westes.github.io/flex/manual/Init-and-Destroy-Functions.html#index-yylex_005finit)
-                // frees the resources used by the scanner.
-                yylex_destroy(self.scanner);
-            }
-        }
-    }
-}
-
 /// the Lalrpop Iterator is a exh implementation:for lexer.
 impl Iterator for Lexer {
     type Item = LexerItem;
 
     fn next(&mut self) -> Option<Self::Item> {
         unsafe {
-            if let Some(ref mut module) = self.include {
-                match module.next() {
-                    token @ None | token @ Some(Err(..)) => {
-                        yypop_buffer_state(self.scanner);
-                        token
-                    },
-                    token => token,
+            if self.include.is_some() {
+                if let Some(ref mut module) = self.include {
+                    match module.next() {
+                        None => yypop_buffer_state(self.scanner),
+                        token => return token,
+                    };
                 }
+                self.include = None;
+                self.next()
             } else {
                 if self.lookahead_token.is_some() {
                     self.lookahead_token.take()
@@ -268,7 +252,6 @@ impl Iterator for Lexer {
                     // The accessor function [yyget_extra](https://westes.github.io/flex/manual/Extra-Data.html)
                     // returns a extra copy.
                     let extra: YyExtraType = yyget_extra(self.scanner);
-
                     match code {
                         YyToken::InvalidToken => {
                             let out = yyget_text(self.scanner);
@@ -720,6 +703,23 @@ impl Iterator for Lexer {
                         YyToken::EOF => None,
                     }
                 }
+            }
+        }
+    }
+}
+
+impl Drop for Lexer {
+    fn drop(&mut self) {
+        unsafe {
+            if let Some(yyin) = self.sublevel {
+                libc::fclose(yyin);
+            } else {
+                // The function [yy_delete_buffer](https://westes.github.io/flex/manual/Multiple-Input-Buffers.html)
+                // clears the current contents of a buffer using.
+                yy_delete_buffer(self.buffer, self.scanner);
+                // The function [yylex_destroy](https://westes.github.io/flex/manual/Init-and-Destroy-Functions.html#index-yylex_005finit)
+                // frees the resources used by the scanner.
+                yylex_destroy(self.scanner);
             }
         }
     }
