@@ -3,9 +3,52 @@ use Device;
 use libc;
 use num::rational::Ratio;
 use std;
+use std::cell::RefCell;
 use telamon::ir;
 
 pub use telamon::ir::op::Rounding;
+
+thread_local! {
+    static ERROR: RefCell<Option<ir::Error>> = RefCell::new(None);
+}
+
+pub type Status = libc::c_int;
+
+const OK_STATUS: Status = 1;
+const FAIL_STATUS: Status = 0;
+
+/// Helper macro that unwraps a result. Exits with `$error` and sets the global `ERROR`
+/// variable when an error is encountered.
+///
+/// When no value is specified for `$error`, returns with `FAIL_STATUS`. When `null` is
+/// specified instead, exits with a null mutable pointer.
+macro_rules! unwrap_or_exit {
+    ($result:expr) => { unwrap_or_exit!($result, FAIL_STATUS) };
+    ($result:expr, null) => { unwrap_or_exit!($result, std::ptr::null_mut()) };
+    ($result:expr, $error:expr) => {
+        match $result {
+            Ok(data) => data,
+            Err(error) => {
+                ERROR.with(|error_var| {
+                    *error_var.borrow_mut() = Some(error.into());
+                });
+                return $error
+            }
+        }
+    };
+}
+
+/// Prints the error message in a string. Returns `null` if no error was present. The
+/// caller is responsible for freeing the string with `free`.
+#[no_mangle]
+pub unsafe extern "C" fn telamon_ir_strerror() -> *mut libc::c_char {
+    ERROR.with(|error| {
+        error.borrow().as_ref().map(|error| {
+            let string = unwrap!(std::ffi::CString::new(error.to_string()));
+            libc::strdup(string.as_ptr())
+        }).unwrap_or(std::ptr::null_mut())
+    })
+}
 
 /// Creates a function signature that must be deallocated with
 /// `telamon_ir_signature_free`.
@@ -44,14 +87,14 @@ pub unsafe extern "C" fn telamon_ir_signature_add_scalar(
 }
 
 /// Adds an array parameter to the function signature.
+// FIXME: repr(C) ir::mem::Id
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_signature_add_array(
     signature: *mut ir::Signature,
-    name: *const libc::c_char
-) {
-    // FIXME: retrun the memory Id
+    name: *const libc::c_char,
+) -> ir::mem::Id {
     let name = unwrap!(std::ffi::CStr::from_ptr(name).to_str());
-    (*signature).add_array(name.to_string());
+    (*signature).add_array(name.to_string())
 }
 
 /// Creates an integer type that must be freed with `telamon_ir_type_free`.
@@ -97,29 +140,35 @@ pub unsafe extern "C" fn telamon_ir_function_free(function: *mut Function) {
 }
 
 /// Adds an instruction performing the given operator in the given dimensions to the
-/// function. Takes ownership of the operator but does not keeps any reference to
-/// `dimensions`.
+/// function. Writes the unique identifier of the instruction in `inst_id`. Returns
+/// zero if an error occures. Takes ownership of the operator but does not keeps any
+/// reference to `dimensions`.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_function_add_instruction(
     function: *mut Function,
     operator: *mut Operator,
     dimensions: *const ir::dim::Id,
     num_dimensions: libc::size_t,
-) {
-    // FIXME: return the instruction ID
+    inst_id: *mut ir::InstId,
+) -> Status {
     let dimensions = std::slice::from_raw_parts(dimensions, num_dimensions);
     let dim_set = dimensions.iter().cloned().collect();
-    (*function).0.add_inst((Box::from_raw(operator)).0, dim_set);
+    let operator = Box::from_raw(operator).0;
+    *inst_id = unwrap_or_exit!((*function).0.add_inst(operator, dim_set));
+    OK_STATUS
 }
 
-/// Adds a dimension of the given size to the function. Takes ownership of `size`.
+/// Adds a dimension of the given size to the function. Takes ownership of `size` and
+/// writes the unique identifier of the dimension in `dim_id`. Returns zero if an error
+/// occurs.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_function_add_dimension(
     function: *mut Function,
     size: *mut Size,
-) {
-    // FIXME: return the dimension ID
-    (*function).0.add_dim(Box::from_raw(size).0);
+    dim_id: *mut ir::dim::Id,
+) -> Status {
+    *dim_id = unwrap_or_exit!((*function).0.add_dim(Box::from_raw(size).0));
+    OK_STATUS
 }
 
 /// Opaque type that abstracts away the lifetime parameter of `ir::Size` so cbindgen
@@ -156,24 +205,26 @@ pub unsafe extern "C" fn telamon_ir_size_free(size: *mut Size) {
 pub struct Operand(ir::Operand<'static>);
 
 /// Create a constant integer operand. The provided type must be an integer type.
+/// Returns `null` if an error is encountered.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_operand_new_int(
     t: *const ir::Type,
     value: libc::int64_t,
 ) -> *mut Operand {
-    ir::TypeError::check_integer(*t);
+    unwrap_or_exit!(ir::TypeError::check_integer(*t), null);
     let type_len = unwrap!((*t).len_byte()) as u16;
     let operand = ir::Operand::new_int(value.into(), 8*type_len);
     Box::into_raw(Box::new(Operand(operand)))
 }
 
 /// Creates a constant floating point operand. The provided type must be an float type.
+/// Returns `null` if an error is encountered.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_operand_new_float(
     t: *const ir::Type,
     value: libc::c_double,
 ) -> *mut Operand {
-    ir::TypeError::check_float(*t);
+    unwrap_or_exit!(ir::TypeError::check_float(*t), null);
     let type_len = unwrap!((*t).len_byte()) as u16;
     let value = unwrap!(Ratio::from_float(value));
     let operand = ir::Operand::new_float(value, type_len);
