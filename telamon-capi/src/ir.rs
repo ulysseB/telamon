@@ -315,16 +315,78 @@ pub unsafe extern "C" fn telamon_ir_operator_new_cast(
     Box::into_raw(Box::new(Operator(operator)))
 }
 
-// FIXME: doc
+/// Creates an operator that loads a tensor stored in memory. Takes the ownership of
+/// `base_address` and creates copies of `strided_dims`, `strides` and `loaded_type`.
+/// This function also adds thei necessary address computation code to `function`.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_operator_new_tensor_load(
+    function: *mut Function,
+    array_id: ir::mem::Id,
     base_address: *mut Operand,
     strided_dims: *const ir::dim::Id,
-    strides: *const Size, // FIXME: should we take ownership of sizes
+    strides: *const Size,
+    num_strided_dims: libc::size_t,
     loaded_type: *const ir::Type,
 ) -> *mut Operator {
-    unimplemented!() // FIXME
+    let tensor_access = tensor_access(function, array_id, base_address, strided_dims,
+                                      strides, num_strided_dims);
+    let (address, access_pattern) = unwrap_or_exit!(tensor_access, null);
+    let operator = ir::Operator::Ld(*loaded_type, address, access_pattern);
+    Box::into_raw(Box::new(Operator(operator)))
 }
 
-// FIXME: operator ld, st
+/// Creates an operator that stores a tensor in memory. Takes the ownership of
+/// `base_address` and `value` and creates copies of `strided_dims`, `strides` and
+/// `loaded_type`. This function also adds the necessary address computation code to
+/// `function`.
+#[no_mangle]
+pub unsafe extern "C" fn telamon_ir_operator_new_tensor_store(
+    function: *mut Function,
+    array_id: ir::mem::Id,
+    base_address: *mut Operand,
+    strided_dims: *const ir::dim::Id,
+    strides: *const Size,
+    num_strided_dims: libc::size_t,
+    value: *mut Operand,
+) -> *mut Operator {
+    let tensor_access = tensor_access(function, array_id, base_address, strided_dims,
+                                      strides, num_strided_dims);
+    let (address, access_pattern) = unwrap_or_exit!(tensor_access, null);
+    let value = Box::from_raw(value).0;
+    let operator = ir::Operator::St(address, value, true, access_pattern);
+    Box::into_raw(Box::new(Operator(operator)))
+}
+
+/// Helper function that generates the address and the access pattern of a tensor
+/// memory access. Takes the ownership of `base_adress`, and creates copies of
+/// `strided_dims` and `strides`.
+unsafe fn tensor_access(
+    function: *mut Function,
+    array_id: ir::mem::Id,
+    base_address: *mut Operand,
+    strided_dims: *const ir::dim::Id,
+    strides: *const Size,
+    num_strided_dims: libc::size_t
+) -> Result<(ir::Operand<'static>, ir::AccessPattern<'static>), ir::Error> {
+    let base_address = Box::from_raw(base_address).0;
+    let strided_dims = std::slice::from_raw_parts(strided_dims, num_strided_dims);
+    let strides = std::slice::from_raw_parts(strides, num_strided_dims);
+    let address = if strided_dims.is_empty() {
+        base_address
+    } else {
+        let dims = (0..num_strided_dims).map(|i| {
+            (strided_dims[i], strides[i].0.clone())
+        }).collect();
+        let ind_var = ir::InductionVar::new(dims, base_address)?;
+        let ind_var_id = (*function).0.add_ind_var(ind_var);
+        ir::Operand::InductionVar(ind_var_id, ir::Type::PtrTo(array_id))
+    };
+    let dims = (0..num_strided_dims).map(|i| {
+        (strided_dims[i], strides[i].0.clone())
+    }).collect();
+    let access_pattern = ir::AccessPattern::Tensor { mem_id: array_id, dims };
+    Ok((address, access_pattern))
+}
+
+
 // FIXME: operand creation: inst, index, reduce
