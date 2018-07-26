@@ -73,7 +73,7 @@ impl<'a> Context<'a> {
             -> (telajax::Kernel, telajax::Mem) 
             {
         let mut code: Vec<u8> = Vec::new();
-        let mut printer = MppaPrinter::default();
+        let mut printer = MppaPrinter::new(Namer::default(), fun);
         let wrapper = self.get_wrapper(fun, &mut printer);
         //mppa::printer::print(fun, true, &mut code).unwrap();
         let kernel_code: String = printer.wrapper_function(fun);

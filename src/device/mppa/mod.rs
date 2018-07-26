@@ -21,7 +21,7 @@ use num::ToPrimitive;
 use utils::*;
 
 #[derive(Default)]
-struct Namer {
+pub struct Namer {
     num_var: HashMap<ir::Type, usize>,
     num_sizes: usize,
     num_glob_ptr: usize,

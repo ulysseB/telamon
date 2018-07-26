@@ -33,7 +33,7 @@ pub trait Namer {
 // TODO(cc_perf): use an arena rather that ref-counted strings
 pub struct NameMap<'a, 'b> {
     /// Provides fresh names.
-    namer: std::cell::RefCell<&'b mut Namer>,
+    pub namer: std::cell::RefCell<&'b mut Namer>,
     /// Keeps track of the name of the values produced by instructions.
     insts: HashMap<InstId, (Vec<dim::Id>, NDArray<String>)>,
     /// Keeps track of loop index names.

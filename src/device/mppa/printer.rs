@@ -6,16 +6,24 @@ use search_space::{Domain, DimKind, InstFlag};
 use std::fmt::Write as WriteFmt;
 // TODO(cc_perf): avoid concatenating strings.
 
-#[derive(Default)]
-pub struct MppaPrinter<'a, 'b, 'c> where 'a: 'c , 'b: 'c {
-    namer: &'c mut NameMap<'a, 'b>,
+//#[derive(Default)]
+pub struct MppaPrinter<'a, 'b> {
+    name_map: NameMap<'a, 'b>,
     out_function: String,
 }
 
-impl<'a, 'b, 'c> MppaPrinter<'a, 'b, 'c> where 'a: 'c, 'b: 'c {
+impl<'a, 'b> MppaPrinter<'a, 'b> {
+    pub fn new(namer: &mut Namer, fun: &device::Function) -> Self {
+        let name_map = NameMap::new(fun, namer);
+        MppaPrinter  {
+            name_map: name_map,
+            out_function: String::new(),
+        }
+    }
+
     /// Declares all parameters of the function with the appropriate type
     fn param_decl(&mut self, param: &ParamVal) -> String {
-        let name = self.namer.name_param(param.key());
+        let name = self.name_map.name_param(param.key());
         match param {
             ParamVal::External(_, par_type) => format!("{} {}",
                                                        Self::get_type(*par_type), name),
@@ -42,9 +50,10 @@ impl<'a, 'b, 'c> MppaPrinter<'a, 'b, 'c> where 'a: 'c, 'b: 'c {
                 }
             }
         };
-        let other_var_decl = self.namer.num_var.iter().map(print_decl).collect_vec().join("\n  ");
+        let other_var_decl = self.name_map.namer.borrow().num_var.iter()
+            .map(print_decl).collect_vec().join("\n  ");
         format!("intptr_t {};\n{}",
-            &(0..self.namer.num_glob_ptr).map( |i| format!("ptr{}", i)).collect_vec().join(", "),
+            &(0..self.name_map.num_glob_ptr).map( |i| format!("ptr{}", i)).collect_vec().join(", "),
             other_var_decl,
             )
     }
@@ -55,7 +64,7 @@ impl<'a, 'b, 'c> MppaPrinter<'a, 'b, 'c> where 'a: 'c, 'b: 'c {
         let mut decls = vec![];
         // Compute thread indexes.
         for (ind, dim) in function.thread_dims().iter().enumerate() {
-            decls.push(format!("{} = tid.t{};\n", self.namer.name_index(dim.id()), ind));
+            decls.push(format!("{} = tid.t{};\n", self.name_map.name_index(dim.id()), ind));
         }
         decls.join("\n  ")
     }
@@ -82,8 +91,8 @@ impl<'a, 'b, 'c> MppaPrinter<'a, 'b, 'c> where 'a: 'c, 'b: 'c {
             // LOAD PARAM
             for val in function.device_code_args() {
                 unwrap!(writeln!(self.out_function, "{var_name} = {name};// LD_PARAM",
-                        var_name = self.namer.name_param_val(val.key()),
-                        name = self.namer.name_param(val.key())));
+                        var_name = self.name_map.name_param_val(val.key()),
+                        name = self.name_map.name_param(val.key())));
             }
             // MEM DECL
             for block in function.mem_blocks() {
@@ -91,7 +100,7 @@ impl<'a, 'b, 'c> MppaPrinter<'a, 'b, 'c> where 'a: 'c, 'b: 'c {
                     AllocationScheme::Shared =>
                         panic!("No shared mem in cpu!!"),
                     AllocationScheme::PrivatisedGlobal =>
-                        self.privatise_global_block(block, self.namer, function),
+                        self.privatise_global_block(block, &mut self.name_map, function),
                     AllocationScheme::Global => (),
                 }
             };
@@ -100,9 +109,9 @@ impl<'a, 'b, 'c> MppaPrinter<'a, 'b, 'c> where 'a: 'c, 'b: 'c {
                 if !dim.kind().intersects(DimKind::UNROLL | DimKind::LOOP) { continue; }
                 for level in dim.induction_levels() {
                     if let Some((_, incr)) = level.increment {
-                        let name = self.namer.declare_size_cast(incr, level.t());
+                        let name = self.name_map.declare_size_cast(incr, level.t());
                         if let Some(name) = name {
-                            let old_name = self.namer.name_size(incr, Type::I(32));
+                            let old_name = self.name_map.name_size(incr, Type::I(32));
                             self.print_cast(Type::I(32), level.t(), op::Rounding::Exact, &name, &old_name);
                         }
                     }
@@ -112,10 +121,10 @@ impl<'a, 'b, 'c> MppaPrinter<'a, 'b, 'c> where 'a: 'c, 'b: 'c {
             let ind_levels = function.init_induction_levels().into_iter()
                 .chain(function.block_dims().iter().flat_map(|d| d.induction_levels()));
             for level in ind_levels {
-                self.parallel_induction_level(level, self.namer);
+                self.parallel_induction_level(level, &mut self.name_map);
             }
             // BODY
-            self.cfg(function, function.cfg(), self.namer);
+            self.cfg(function, function.cfg(), &mut self.name_map);
         }
         let var_decls = self.var_decls();
         return_string.push_str(&var_decls);
@@ -250,7 +259,7 @@ impl<'a, 'b, 'c> MppaPrinter<'a, 'b, 'c> where 'a: 'c, 'b: 'c {
     }
 
     /// wrap the kernel call into a function with a fixed interface
-    pub fn wrapper_function(&mut self, func: &Function) -> String {
+    pub fn wrapper_function(&mut self, func: &'a Function<'a>) -> String {
         let fun_str = self.function(func);
         let fun_params = self.params_call(func);
         format!(include_str!("template/host.c.template"),
@@ -316,7 +325,7 @@ impl<'a, 'b, 'c> MppaPrinter<'a, 'b, 'c> where 'a: 'c, 'b: 'c {
         }
 }
 
-impl<'a, 'b, 'c> Printer for MppaPrinter<'a, 'b, 'c> where 'a: 'c, 'b: 'c {
+impl<'a, 'b> Printer for MppaPrinter<'a, 'b> {
     fn get_int(n: u32) -> String {
         format!("{}", n)
     }
