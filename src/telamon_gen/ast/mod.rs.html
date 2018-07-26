@@ -597,6 +597,7 @@
 <span id="597">597</span>
 <span id="598">598</span>
 <span id="599">599</span>
+<span id="600">600</span>
 </pre><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">unused_variables</span>)]</span>
 
@@ -619,6 +620,7 @@
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::{<span class="ident">BTreeSet</span>, <span class="ident">hash_map</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">ops</span>::<span class="ident">Deref</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">indexmap</span>::<span class="ident">IndexMap</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">set</span>::<span class="ident">SetDef</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">choice</span>::<span class="ident">integer</span>::<span class="ident">IntegerDef</span>;
@@ -1145,9 +1147,9 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
 <span class="kw">struct</span> <span class="ident">EnumStatements</span> {
     <span class="doccomment">/// The values the enum can take, with the atached documentation.</span>
-    <span class="ident">values</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">RcStr</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;&gt;</span>,
+    <span class="ident">values</span>: <span class="ident">IndexMap</span><span class="op">&lt;</span><span class="ident">RcStr</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;&gt;</span>,
     <span class="doccomment">/// Aliases mapped to the corresponding documentation and value set.</span>
-    <span class="ident">aliases</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">RcStr</span>, (<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">RcStr</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
+    <span class="ident">aliases</span>: <span class="ident">IndexMap</span><span class="op">&lt;</span><span class="ident">RcStr</span>, (<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">RcStr</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// Symmetry information.</span>
     <span class="ident">symmetry</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Symmetry</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Constraints on a value.</span>
