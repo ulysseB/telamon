@@ -69,7 +69,7 @@ macro_rules! define_ir {
     // Defines the set ID.
     (@id_def trait $name:ident, $x:tt) => { define_ir!(@id_def struct $name, $x); };
     (@id_def struct $name:ident, $x:tt) => {
-        #[derive(Clone, Copy, Hash, Debug, PartialEq, Eq, PartialOrd, Ord)]
+        #[derive(Clone, Copy, Hash, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
         pub struct Id(pub usize);
     };
     (@id_def type $name:ident, $super:ident) => { pub use super::$super::Id as Id; };

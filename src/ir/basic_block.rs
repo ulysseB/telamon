@@ -3,7 +3,7 @@ use ir;
 use std;
 
 /// Provides a unique identifer for a basic block.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum BBId { Inst(ir::InstId), Dim(ir::dim::Id) }
 
 impl From<ir::InstId> for BBId {

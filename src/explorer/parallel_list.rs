@@ -5,17 +5,25 @@ use device::Context;
 use explorer::choice;
 use explorer::store::Store;
 use interval_heap::IntervalHeap;
+use rpds::List;
 use std;
 use std::f64;
 
 impl<'a> Store<'a> for ParallelCandidateList<'a> {
     type PayLoad = ();
 
+    type Event = ();
+
     fn update_cut(&self, new_cut: f64) {
         self.lock().0.update_cut(new_cut);
     }
 
-    fn commit_evaluation(&self, (): Self::PayLoad, _: f64) { }
+    fn commit_evaluation(
+        &self,
+        _actions: &List<choice::ActionEx>,
+        (): Self::PayLoad,
+        _: f64)
+    { }
 
     fn explore(&self, context: &Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
         loop {
