@@ -15,11 +15,11 @@ pub fn compute_counter({{>choice.arg_defs ../this}}
         let incr = {{>choice.getter incr use_old=true}};
         {{#unless half~}}
             if ({{incr_condition}}).intersects(incr) {
-                counter_val.max {{op}}= NumDomain::max(&value);
+                counter_val.max {{op}}= NumSet::max(&value);
             }
         {{/unless~}}
         if ({{incr_condition}}).contains(incr) {
-            counter_val.min {{op}}= NumDomain::min(&value);
+            counter_val.min {{op}}= NumSet::min(&value);
         }
     {{/loop_nest}}
     counter_val

@@ -1,8 +1,13 @@
+// Enables `quote!` to work on bigger chunks of code.
+#![recursion_limit="256"]
 #[cfg(test)] extern crate env_logger;
 extern crate handlebars;
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate log;
 extern crate itertools;
+extern crate pathfinding;
+extern crate proc_macro2;
+#[macro_use] extern crate quote;
 extern crate regex;
 extern crate rustfmt;
 extern crate serde;

@@ -1,4 +1,6 @@
 //! Print the IR description in rust.
+mod runtime;
+
 use handlebars::{self, Handlebars, Helper, Renderable, RenderContext, RenderError};
 use ir;
 use itertools::Itertools;
@@ -242,7 +244,8 @@ pub fn print(ir_desc: &ir::IrDesc) -> String {
         enums: String = ir_desc.enums().format("\n\n").to_string(),
         partial_iterators: PartialIters<'a> = partials,
         incr_iterators: Vec<store::IncrIterator<'a>> = incr_iterators,
-        triggers: Vec<Trigger<'a>> = triggers
+        triggers: Vec<Trigger<'a>> = triggers,
+        runtime: String = runtime::get().to_string()
     )
 }
 
