@@ -332,6 +332,32 @@ pub struct NumericSet {
     values: [u32; NumericSet::MAX_LEN],
 }
 
+// FIXME: replace num_set with `mask: u16, all: u16`.
+
+// FIXME: functions that do not need the universe:
+// - insert
+// - list
+// - is_failed
+// - is_constrained
+// - contains
+// - restrict
+// FIXME: functions to delete
+// - new_fixed
+// - restrict_to
+// - as_num_set
+// FIXME: functions that needs the universe (and that's ok)
+// - gcd/lcm
+// - min/max
+// - as_constrained
+// - complement
+// FIXME: all NumDomain methods need both universe
+// > request domain in min, max
+// > request domain in comparison
+// > request domain in constructors
+// > request domain in final_value, rename it as_constrained
+// > fix templates that use each functions
+// Problem: it is not known for code: use () instead
+// FIXME: do range and half range need a universe ?
 #[allow(dead_code)]
 impl NumericSet {
     pub const MAX_LEN: usize = 16;
