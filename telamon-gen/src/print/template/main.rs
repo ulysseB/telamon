@@ -358,6 +358,8 @@ pub struct NumericSet {
 // > fix templates that use each functions
 // Problem: it is not known for code: use () instead
 // FIXME: do range and half range need a universe ?
+// > remove Never universe, replace by ()
+
 #[allow(dead_code)]
 impl NumericSet {
     pub const MAX_LEN: usize = 16;
@@ -510,17 +512,6 @@ pub trait NumDomain {
     /// Returns the domain as a `NumericSet`, if applicable.
     fn as_num_set(&self) -> Option<NumericSet> { None }
 
-    /// Returns the domain containing the values of the universe greater than min.
-    fn new_gt<D: NumDomain>(universe: &Self::Universe, min: D) -> Self;
-    /// Returns the domain containing the values of the universe smaller than max.
-    fn new_lt<D: NumDomain>(universe: &Self::Universe, max: D) -> Self;
-    /// Retruns the domain containing the values of the universe greater or equal to min.
-    fn new_geq<D: NumDomain>(universe: &Self::Universe, min: D) -> Self;
-    /// Returns the domain containing the values of the universe smaller or equal to min.
-    fn new_leq<D: NumDomain>(universe: &Self::Universe, min: D) -> Self;
-    /// Returns the domain containing the values of `eq` that are also in the universe.
-    fn new_eq<D: NumDomain>(universe: &Self::Universe, eq: D) -> Self;
-
     /// Returns the value of the domain, if it is constrained.
     fn final_value(&self) -> u32 {
         assert_eq!(self.min(), self.max());
@@ -545,13 +536,29 @@ pub trait NumDomain {
     }
 }
 
+/// A choice that contains integers.
+pub trait NumChoice: NumDomain {
+    /// Returns the domain containing the values of the universe greater than min.
+    fn new_gt<D: NumDomain>(universe: &Self::Universe, min: D) -> Self;
+    /// Returns the domain containing the values of the universe smaller than max.
+    fn new_lt<D: NumDomain>(universe: &Self::Universe, max: D) -> Self;
+    /// Retruns the domain containing the values of the universe greater or equal to min.
+    fn new_geq<D: NumDomain>(universe: &Self::Universe, min: D) -> Self;
+    /// Returns the domain containing the values of the universe smaller or equal to min.
+    fn new_leq<D: NumDomain>(universe: &Self::Universe, min: D) -> Self;
+    /// Returns the domain containing the values of `eq` that are also in the universe.
+    fn new_eq<D: NumDomain>(universe: &Self::Universe, eq: D) -> Self;
+}
+
 impl NumDomain for Range {
     type Universe = Range;
 
     fn min(&self) -> u32 { self.min }
 
     fn max(&self) -> u32 { self.max }
+}
 
+impl NumChoice for Range {
     fn new_gt<D: NumDomain>(universe: &Range, min: D) -> Self {
         let min = min.min().saturating_add(1);
         Range { min: std::cmp::max(min, universe.min), .. *universe }
@@ -584,7 +591,9 @@ impl NumDomain for HalfRange {
     fn min(&self) -> u32 { self.min }
 
     fn max(&self) -> u32 { std::u32::MAX }
+}
 
+impl NumChoice for HalfRange {
     fn new_gt<D: NumDomain>(universe: &HalfRange, min: D) -> Self {
         let min = min.min().saturating_add(1);
         HalfRange { min: std::cmp::max(min, universe.min) }
@@ -616,6 +625,26 @@ impl NumDomain for NumericSet {
 
     fn as_num_set(&self) -> Option<NumericSet> { Some(*self) }
 
+    fn neq<D: NumDomain>(&self, other: D) -> bool {
+        if let Some(other) = other.as_num_set() {
+            let (mut self_idx, mut other_idx) = (0, 0);
+            while self_idx < self.len && other_idx < other.len {
+                if self.values[self_idx] < other.values[other_idx] {
+                    self_idx += 1;
+                } else if self.values[self_idx] > other.values[other_idx] {
+                    other_idx += 1
+                } else {
+                    return false;
+                }
+            }
+            true
+        } else {
+            self.min() > other.max() || self.max() < other.min()
+        }
+    }
+}
+
+impl NumChoice for NumericSet {
     fn new_gt<D: NumDomain>(universe: &[u32], min: D) -> Self {
         let mut values = [0; NumericSet::MAX_LEN];
         let min = std::cmp::min(std::u32::MAX, min.min());
@@ -664,24 +693,6 @@ impl NumDomain for NumericSet {
             NumericSet { values, len }
         }
     }
-
-    fn neq<D: NumDomain>(&self, other: D) -> bool {
-        if let Some(other) = other.as_num_set() {
-            let (mut self_idx, mut other_idx) = (0, 0);
-            while self_idx < self.len && other_idx < other.len {
-                if self.values[self_idx] < other.values[other_idx] {
-                    self_idx += 1;
-                } else if self.values[self_idx] > other.values[other_idx] {
-                    other_idx += 1
-                } else {
-                    return false;
-                }
-            }
-            true
-        } else {
-            self.min() > other.max() || self.max() < other.min()
-        }
-    }
 }
 
 impl NumDomain for u32 {
@@ -690,24 +701,6 @@ impl NumDomain for u32 {
     fn min(&self) -> u32 { *self }
 
     fn max(&self) -> u32 { *self }
-
-    fn new_gt<D: NumDomain>(universe: &u32, min: D) -> Self {
-        std::cmp::max(*universe, min.min().saturating_add(1))
-    }
-
-    fn new_lt<D: NumDomain>(universe: &u32, max: D) -> Self {
-        std::cmp::min(*universe, max.max().saturating_sub(1))
-    }
-
-    fn new_geq<D: NumDomain>(universe: &u32, min: D) -> Self {
-        std::cmp::max(*universe, min.min())
-    }
-
-    fn new_leq<D: NumDomain>(universe: &u32, max: D) -> Self {
-        std::cmp::min(*universe, max.max())
-    }
-
-    fn new_eq<D: NumDomain>(universe: &u32, _: D) -> Self { *universe }
 }
 
 pub enum Never { }
@@ -729,14 +722,4 @@ impl<'a> NumDomain for &'a [u32] {
         for i in 0..self.len() { values[i] = self[i] }
         Some(NumericSet { len: self.len(), values })
     }
-
-    fn new_gt<D: NumDomain>(never: &Never, _: D) -> Self { match *never { } }
-
-    fn new_lt<D: NumDomain>(never: &Never, _: D) -> Self { match *never { } }
-
-    fn new_geq<D: NumDomain>(never: &Never, _: D) -> Self { match *never { } }
-
-    fn new_leq<D: NumDomain>(never: &Never, _: D) -> Self { match *never { } }
-
-    fn new_eq<D: NumDomain>(never: &Never, _: D) -> Self { match *never { } }
 }
