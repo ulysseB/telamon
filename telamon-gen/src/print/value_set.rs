@@ -67,6 +67,6 @@ fn universe_fun(t: &ast::ValueType, fun: &str, arg: &str,) -> String {
     match t {
         ast::ValueType::NumericSet(universe) =>
             format!("{}::{}({},{})", t, fun, universe, arg),
-        t => format!("{}::{}(&{}::ALL,{})", t, fun, t, arg),
+        t => format!("{}::{}(&(),{})", t, fun, arg),
     }
 }

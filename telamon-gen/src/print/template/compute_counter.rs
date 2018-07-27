@@ -6,9 +6,9 @@ pub fn compute_counter({{>choice.arg_defs ../this}}
         -> {{~#if half}} HalfRange {{else}} Range {{/if}}
 {
     let mut counter_val = {{~#if half~}}
-        HalfRange::new_eq(&HalfRange::ALL, {{base}});
+        HalfRange::new_eq(&(), {{base}});
     {{~else~}}
-        Range::new_eq(&Range::ALL, {{base}});
+        Range::new_eq(&(), {{base}});
     {{~/if~}}
     {{#>loop_nest nest}}
         let value = {{>counter_value value use_old=true}};

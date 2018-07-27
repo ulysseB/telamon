@@ -97,14 +97,14 @@ mod single_enum {
                    Some(Action::Bar(NumericSet::all(&[2, 8]))));
 
         // Test comparison operators.
-        assert!(all0.lt(Range::new_eq(&Range::ALL, 9)));
-        assert!(!all0.lt(Range::new_eq(&Range::ALL, 8)));
-        assert!(all0.gt(Range::new_eq(&Range::ALL, 0)));
-        assert!(!all0.gt(Range::new_eq(&Range::ALL, 1)));
-        assert!(all0.leq(Range::new_eq(&Range::ALL, 8)));
-        assert!(!all0.leq(Range::new_eq(&Range::ALL, 7)));
-        assert!(all0.geq(Range::new_eq(&Range::ALL, 1)));
-        assert!(!all0.geq(Range::new_eq(&Range::ALL, 2)));
+        assert!(all0.lt(Range::new_eq(&(), 9)));
+        assert!(!all0.lt(Range::new_eq(&(), 8)));
+        assert!(all0.gt(Range::new_eq(&(), 0)));
+        assert!(!all0.gt(Range::new_eq(&(), 1)));
+        assert!(all0.leq(Range::new_eq(&(), 8)));
+        assert!(!all0.leq(Range::new_eq(&(), 7)));
+        assert!(all0.geq(Range::new_eq(&(), 1)));
+        assert!(!all0.geq(Range::new_eq(&(), 2)));
 
         assert!(all0.neq(NumericSet::all(&[5, 7])));
         assert!(!all0.neq(NumericSet::all(&[4, 7])));
