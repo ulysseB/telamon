@@ -358,7 +358,6 @@ pub struct NumericSet {
 // > fix templates that use each functions
 // Problem: it is not known for code: use () instead
 // FIXME: do range and half range need a universe ?
-// > remove Never universe, replace by ()
 
 #[allow(dead_code)]
 impl NumericSet {
@@ -696,17 +695,15 @@ impl NumChoice for NumericSet {
 }
 
 impl NumDomain for u32 {
-    type Universe = u32;
+    type Universe = ();
 
     fn min(&self) -> u32 { *self }
 
     fn max(&self) -> u32 { *self }
 }
 
-pub enum Never { }
-
 impl<'a> NumDomain for &'a [u32] {
-    type Universe = Never;
+    type Universe = ();
 
     fn min(&self) -> u32 {
         if self.is_empty() { 1 } else { self[0] }
