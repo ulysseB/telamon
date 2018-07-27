@@ -1189,6 +1189,8 @@
 <span id="1189">1189</span>
 <span id="1190">1190</span>
 <span id="1191">1191</span>
+<span id="1192">1192</span>
+<span id="1193">1193</span>
 </pre><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">dead_code</span>, <span class="ident">unused_imports</span>)]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">itertools</span>;
@@ -1198,6 +1200,8 @@
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">log</span>;
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">env_logger</span>;
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">num</span>;
+<span class="attribute">#[<span class="ident">macro_use</span>]</span>
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">serde_derive</span>;
 
 <span class="kw">fn</span> <span class="ident">main</span>() { <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;use `cargo test` to run tests&quot;</span>) }
 

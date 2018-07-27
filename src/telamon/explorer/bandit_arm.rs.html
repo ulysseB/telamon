@@ -414,6 +414,41 @@
 <span id="414">414</span>
 <span id="415">415</span>
 <span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Exploration of the search space.</span>
 
@@ -422,11 +457,13 @@
 <span class="kw">use</span> <span class="ident">explorer</span>::{<span class="ident">choice</span>, <span class="ident">local_selection</span>};
 <span class="kw">use</span> <span class="ident">explorer</span>::<span class="ident">config</span>::{<span class="ident">BanditConfig</span>, <span class="ident">NewNodeOrder</span>, <span class="ident">OldNodeOrder</span>};
 <span class="kw">use</span> <span class="ident">explorer</span>::<span class="ident">store</span>::<span class="ident">Store</span>;
+<span class="kw">use</span> <span class="ident">explorer</span>::<span class="ident">logger</span>::<span class="ident">LogMessage</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
+<span class="kw">use</span> <span class="ident">rpds</span>::<span class="ident">List</span>;
 <span class="kw">use</span> <span class="ident">std</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">f64</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{<span class="ident">Weak</span>, <span class="ident">Arc</span>, <span class="ident">RwLock</span>};
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">atomic</span>::{<span class="ident">AtomicUsize</span>, <span class="ident">Ordering</span>};
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">atomic</span>::{<span class="ident">AtomicBool</span>, <span class="ident">AtomicUsize</span>, <span class="ident">Ordering</span>};
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
 <span class="kw">struct</span> <span class="ident">TreeStats</span> {
@@ -441,23 +478,39 @@
     }
 }
 
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreeEvent</span> {
+    <span class="ident">Evaluation</span> {
+        <span class="ident">actions</span>: <span class="ident">Sequence</span><span class="op">&lt;</span><span class="ident">choice</span>::<span class="ident">ActionEx</span><span class="op">&gt;</span>,
+        <span class="ident">score</span>: <span class="ident">f64</span>,
+    },
+}
+
 <span class="doccomment">/// A search tree to perform a multi-armed bandit search.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Tree</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span> {
     <span class="ident">shared_tree</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">SubTree</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">stop</span>: <span class="ident">AtomicBool</span>,
     <span class="ident">cut</span>: <span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
     <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">BanditConfig</span>,
     <span class="ident">stats</span>: <span class="ident">TreeStats</span>,
+    <span class="ident">log</span>: <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">mpsc</span>::<span class="ident">SyncSender</span><span class="op">&lt;</span><span class="ident">LogMessage</span><span class="op">&lt;</span><span class="ident">TreeEvent</span><span class="op">&gt;&gt;</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span> <span class="ident">Tree</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Creates a new search tree containing the given candidates.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">candidates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>, <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">BanditConfig</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">candidates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
+        <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">BanditConfig</span>,
+        <span class="ident">log_sender</span>: <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">mpsc</span>::<span class="ident">SyncSender</span><span class="op">&lt;</span><span class="ident">LogMessage</span><span class="op">&lt;</span><span class="ident">TreeEvent</span><span class="op">&gt;&gt;</span>
+    ) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">root</span> <span class="op">=</span> <span class="ident">SubTree</span>::<span class="ident">from_candidates</span>(<span class="ident">candidates</span>, <span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span>);
         <span class="ident">Tree</span> {
             <span class="ident">shared_tree</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">root</span>)),
+            <span class="ident">stop</span>: <span class="ident">AtomicBool</span>::<span class="ident">new</span>(<span class="bool-val">false</span>),
             <span class="ident">cut</span>: <span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span>),
             <span class="ident">config</span>,
             <span class="ident">stats</span>: <span class="ident">TreeStats</span>::<span class="ident">new</span>(),
+            <span class="ident">log</span>: <span class="ident">log_sender</span>,
         }
     }
 
@@ -539,6 +592,8 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span> <span class="ident">Store</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Tree</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span> {
     <span class="kw">type</span> <span class="ident">PayLoad</span> <span class="op">=</span> <span class="ident">Path</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>;
 
+    <span class="kw">type</span> <span class="ident">Event</span> <span class="op">=</span> <span class="ident">TreeEvent</span>;
+
     <span class="kw">fn</span> <span class="ident">update_cut</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">new_cut</span>: <span class="ident">f64</span>) {
         <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">cut</span>.<span class="ident">write</span>()) <span class="op">=</span> <span class="ident">new_cut</span>;
         <span class="kw">let</span> <span class="ident">root</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">shared_tree</span>.<span class="ident">write</span>()).<span class="ident">trim</span>(<span class="ident">new_cut</span>);
@@ -552,7 +607,17 @@
         <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;trimming finished&quot;</span>);
     }
 
-    <span class="kw">fn</span> <span class="ident">commit_evaluation</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">path</span>: <span class="self">Self</span>::<span class="ident">PayLoad</span>, <span class="ident">eval</span>: <span class="ident">f64</span>) {
+    <span class="kw">fn</span> <span class="ident">commit_evaluation</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">actions</span>: <span class="kw-2">&amp;</span><span class="ident">List</span><span class="op">&lt;</span><span class="ident">choice</span>::<span class="ident">ActionEx</span><span class="op">&gt;</span>,
+        <span class="kw-2">mut</span> <span class="ident">path</span>: <span class="self">Self</span>::<span class="ident">PayLoad</span>,
+        <span class="ident">eval</span>: <span class="ident">f64</span>,
+    ) {
+        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">log</span>.<span class="ident">send</span>(<span class="ident">LogMessage</span>::<span class="ident">Event</span>(<span class="ident">TreeEvent</span>::<span class="ident">Evaluation</span> {
+            <span class="ident">actions</span>: <span class="ident">Sequence</span>::<span class="ident">List</span>(<span class="ident">actions</span>.<span class="ident">clone</span>()),
+            <span class="ident">score</span>: <span class="ident">eval</span>,
+        })));
+
         <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">node</span>, <span class="ident">idx</span>)) <span class="op">=</span> <span class="ident">path</span>.<span class="number">0</span>.<span class="ident">pop</span>() {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">node</span>) <span class="op">=</span> <span class="ident">node</span>.<span class="ident">upgrade</span>() {
                 <span class="kw">if</span> <span class="op">!</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">node</span>.<span class="ident">write</span>()).<span class="ident">update_rewards</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">config</span>, <span class="ident">idx</span>, <span class="ident">eval</span>) {
@@ -564,6 +629,7 @@
 
     <span class="kw">fn</span> <span class="ident">explore</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="self">Self</span>::<span class="ident">PayLoad</span>)<span class="op">&gt;</span> {
         <span class="kw">loop</span> {
+            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stop</span>.<span class="ident">load</span>(<span class="ident">Ordering</span>::<span class="ident">Relaxed</span>) { <span class="kw">return</span> <span class="prelude-val">None</span>; }
             <span class="kw">let</span> <span class="ident">cut</span>: <span class="ident">f64</span> <span class="op">=</span> { <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">cut</span>.<span class="ident">read</span>()) };
             <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">shared_tree</span>.<span class="ident">write</span>()).<span class="ident">descend</span>(<span class="ident">context</span>, <span class="ident">cut</span>);
             <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DescendState</span>::<span class="ident">DeadEnd</span> <span class="op">=</span> <span class="ident">state</span> { <span class="kw">return</span> <span class="prelude-val">None</span>; }
@@ -574,6 +640,10 @@
                 <span class="self">self</span>.<span class="ident">stats</span>.<span class="ident">num_deadends</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Ordering</span>::<span class="ident">Relaxed</span>);
             }
         }
+    }
+
+    <span class="kw">fn</span> <span class="ident">stop_exploration</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.<span class="ident">stop</span>.<span class="ident">store</span>(<span class="bool-val">true</span>, <span class="ident">Ordering</span>::<span class="ident">Relaxed</span>);
     }
 
     <span class="kw">fn</span> <span class="ident">print_stats</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {

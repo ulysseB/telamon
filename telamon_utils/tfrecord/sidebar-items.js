@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["ReadError","The error type for errors occuring while reading a tfrecord file."],["WriteError","The error type for errors occuring while writing a tfrecord file."]],"trait":[["RecordReader","A trait extension for reading records."],["RecordWriter","A trait extension for writing records."]]});

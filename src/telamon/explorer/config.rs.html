@@ -252,6 +252,9 @@
 <span id="252">252</span>
 <span id="253">253</span>
 <span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Defines a structure to store the configuration of the exploration. The configuration</span>
 <span class="doccomment">//! is read from the `Setting.toml` file if it exists. Some parameters can be overridden</span>
@@ -273,6 +276,8 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Config</span> {
     <span class="doccomment">/// Name of the file in wich to store the logs.</span>
     <span class="kw">pub</span> <span class="ident">log_file</span>: <span class="ident">String</span>,
+    <span class="doccomment">/// Name of the file in which to store the binary event log.</span>
+    <span class="kw">pub</span> <span class="ident">event_log</span>: <span class="ident">String</span>,
     <span class="doccomment">/// Number of exploration threads.</span>
     <span class="kw">pub</span> <span class="ident">num_workers</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// Indicates the search must be stopped if a candidate with an execution time better</span>
@@ -378,6 +383,7 @@
     <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="ident">Config</span> {
             <span class="ident">log_file</span>: <span class="ident">String</span>::<span class="ident">from</span>(<span class="string">&quot;watch.log&quot;</span>),
+            <span class="ident">event_log</span>: <span class="ident">String</span>::<span class="ident">from</span>(<span class="string">&quot;eventlog.tfrecord&quot;</span>),
             <span class="ident">num_workers</span>: <span class="ident">num_cpus</span>::<span class="ident">get</span>(),
             <span class="ident">algorithm</span>: <span class="ident">SearchAlgorithm</span>::<span class="ident">default</span>(),
             <span class="ident">stop_bound</span>: <span class="prelude-val">None</span>,
