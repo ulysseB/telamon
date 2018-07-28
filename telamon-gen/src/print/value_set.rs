@@ -29,7 +29,10 @@ pub fn print(set: &ir::ValueSet, ctx: &Context) -> String {
                 }).chain(cmp_code.iter().map(|&(op, ref code)| {
                     (op, ast::code(code, ctx), ir::ValueType::Constant)
                 })).map(|(op, arg, arg_t)| {
-                    universe_fun(&set.t(), cmp_op_fun_name(op), &arg, &arg_t, ctx)
+                    // TODO(cleanup): parse in the lexer rather than here
+                    let from = unwrap!(arg.parse());
+                    print::value::integer_domain_constructor(
+                        &set.t(), op, from, &arg_t, ctx)
                 }).format("|").to_string()
             },
         }
@@ -51,27 +54,4 @@ fn enum_set(name: &str,
         format!("{}{}{}", neg_str, var, inv_str)
     }).collect_vec();
     values.into_iter().chain(inputs).format("|").to_string()
-}
-
-/// Returns the function to call to implement the given operator.
-// FIXME: mov to print/value.rs
-fn cmp_op_fun_name(op: ir::CmpOp) -> &'static str {
-    match op {
-        ir::CmpOp::Lt => "new_lt",
-        ir::CmpOp::Gt => "new_gt",
-        ir::CmpOp::Leq => "new_leq",
-        ir::CmpOp::Geq => "new_geq",
-        ir::CmpOp::Eq => "new_eq",
-        ir::CmpOp::Neq => panic!("neq operations on numeric domains are not supported"),
-    }
-}
-
-// FIXME: mov to print/value.rs
-fn universe_fun(t: &ir::ValueType, fun: &str,
-                arg: &str, arg_t: &ir::ValueType,
-                ctx: &Context) -> String {
-    let arg_universe = print::value::universe(arg_t, ctx);
-    let universe = print::value::universe(t, ctx);
-    let t = quote!(#t);
-    format!("{}::{}({}, {}, {})", t, fun, universe, arg, arg_universe)
 }
