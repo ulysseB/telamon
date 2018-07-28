@@ -200,7 +200,7 @@ pub fn get() -> TokenStream {
 
             fn as_num_set(&self) -> Option<NumericSet> { Some(*self) }
 
-            fn neq<D: NumSet>(&self, other: D) -> bool {
+            fn neq<D: NumSet>(&self, _: &[u32], other: D, _: &D::Universe) -> bool {
                 if let Some(other) = other.as_num_set() {
                     let (mut self_idx, mut other_idx) = (0, 0);
                     while self_idx < self.len && other_idx < other.len {

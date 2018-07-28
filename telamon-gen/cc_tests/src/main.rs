@@ -72,7 +72,8 @@ mod single_enum {
     #[test]
     fn numeric_operation() {
         let _ = ::env_logger::try_init();
-        let all0 = NumericSet::all(&[1, 2, 4, 8]);
+        let universe0 = &[1, 2, 4, 8];
+        let all0 = NumericSet::all(universe0);
         let all1 = NumericSet::all(&[2, 3, 4]);
         let inter01 = NumericSet::all(&[2, 4]);
         let empty = NumericSet::all(&[]);
@@ -97,17 +98,17 @@ mod single_enum {
                    Some(Action::Bar(NumericSet::all(&[2, 8]))));
 
         // Test comparison operators.
-        assert!(all0.lt(Range::new_eq(&(), 9, &())));
-        assert!(!all0.lt(Range::new_eq(&(), 8, &())));
-        assert!(all0.gt(Range::new_eq(&(), 0, &())));
-        assert!(!all0.gt(Range::new_eq(&(), 1, &())));
-        assert!(all0.leq(Range::new_eq(&(), 8, &())));
-        assert!(!all0.leq(Range::new_eq(&(), 7, &())));
-        assert!(all0.geq(Range::new_eq(&(), 1, &())));
-        assert!(!all0.geq(Range::new_eq(&(), 2, &())));
+        assert!(all0.lt(universe0, Range::new_eq(&(), 9, &()), &()));
+        assert!(!all0.lt(universe0, Range::new_eq(&(), 8, &()), &()));
+        assert!(all0.gt(universe0, Range::new_eq(&(), 0, &()), &()));
+        assert!(!all0.gt(universe0, Range::new_eq(&(), 1, &()), &()));
+        assert!(all0.leq(universe0, Range::new_eq(&(), 8, &()), &()));
+        assert!(!all0.leq(universe0, Range::new_eq(&(), 7, &()), &()));
+        assert!(all0.geq(universe0, Range::new_eq(&(), 1, &()), &()));
+        assert!(!all0.geq(universe0, Range::new_eq(&(), 2, &()), &()));
 
-        assert!(all0.neq(NumericSet::all(&[5, 7])));
-        assert!(!all0.neq(NumericSet::all(&[4, 7])));
+        assert!(all0.neq(universe0, &[5, 7][..], &()));
+        assert!(!all0.neq(universe0, &[4, 7][..], &()));
 
         // Test constructors.
         assert_eq!(NumericSet::new_lt(&[2, 4, 6], 5, &()), NumericSet::all(&[2, 4]));

@@ -29,7 +29,7 @@ pub fn print(set: &ir::ValueSet, ctx: &Context) -> String {
                 }).chain(cmp_code.iter().map(|&(op, ref code)| {
                     (op, ast::code(code, ctx), ir::ValueType::Constant)
                 })).map(|(op, arg, arg_t)| {
-                    // TODO(cleanup): parse in the lexer rather than here
+                    // TODO(span): parse in the lexer rather than here
                     let from = unwrap!(arg.parse());
                     print::value::integer_domain_constructor(
                         &set.t(), op, from, &arg_t, ctx)

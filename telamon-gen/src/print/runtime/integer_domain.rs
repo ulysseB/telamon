@@ -21,19 +21,33 @@ pub fn get() -> TokenStream {
                 self.min()
             }
 
-            fn lt<D: NumSet>(&self, other: D) -> bool { self.max() < other.min() }
+            fn lt<D: NumSet>(&self, _: &Self::Universe,
+                             other: D, _: &D::Universe) -> bool {
+                self.max() < other.min()
+            }
 
-            fn gt<D: NumSet>(&self, other: D) -> bool { self.min() > other.max() }
+            fn gt<D: NumSet>(&self, _: &Self::Universe,
+                             other: D, _: &D::Universe) -> bool {
+                self.min() > other.max()
+            }
 
-            fn leq<D: NumSet>(&self, other: D) -> bool { self.max() <= other.min() }
+            fn leq<D: NumSet>(&self, _: &Self::Universe,
+                              other: D, _: &D::Universe) -> bool {
+                self.max() <= other.min()
+            }
 
-            fn geq<D: NumSet>(&self, other: D) -> bool { self.min() >= other.max() }
+            fn geq<D: NumSet>(&self, _: &Self::Universe,
+                              other: D, _: &D::Universe) -> bool {
+                self.min() >= other.max()
+            }
 
-            fn eq<D: NumSet>(&self, other: D) -> bool {
+            fn eq<D: NumSet>(&self, _: &Self::Universe,
+                             other: D, _: &D::Universe) -> bool {
                 self.min() == other.max() && self.max() == other.min()
             }
 
-            fn neq<D: NumSet>(&self, other: D) -> bool {
+            fn neq<D: NumSet>(&self, _: &Self::Universe,
+                              other: D, _: &D::Universe) -> bool {
                 self.min() > other.max() || self.max() < other.min()
             }
         }

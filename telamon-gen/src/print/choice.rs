@@ -301,7 +301,7 @@ impl<'a> ChoiceAction<'a> {
             },
             ir::ChoiceAction::Trigger { id, condition, code, inverse_self_cond } => {
                 let others_conditions = condition.others_conditions.iter()
-                    .map(|c| filter::condition(c, ctx)).collect();
+                    .map(|c| filter::condition(c, ctx).to_string()).collect();
                 let inputs = condition.inputs.iter().enumerate().map(|(pos, input)| {
                     (ctx.input_name(pos), ast::ChoiceInstance::new(input, ctx))
                 }).collect();

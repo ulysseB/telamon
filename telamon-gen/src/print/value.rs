@@ -10,7 +10,7 @@ pub fn universe(value_type: &ir::ValueType, ctx: &ast::Context) -> TokenStream {
         ir::ValueType::Enum(..) => panic!("only intger domains have a universe"),
         ir::ValueType::Range { .. } | ir::ValueType::Constant => quote!(&()),
         ir::ValueType::NumericSet(universe) => {
-            // TODO(cleanup): parse the piece of code during parsing.
+            // TODO(span): parse the piece of code during parsing.
             unwrap!(ast::code(universe, ctx).parse())
         }
     }
@@ -40,7 +40,7 @@ pub fn constructor_from_op(op: ir::CmpOp) -> Ident {
         ir::CmpOp::Eq => "new_eq",
         ir::CmpOp::Neq => panic!("neq operations on numeric domains are not supported"),
     };
-    // TODO(cleanup): get the real span from the lexer
+    // TODO(span): get the real span from the lexer
     Ident::new(name, Span::call_site())
 }
 
@@ -55,7 +55,7 @@ impl quote::ToTokens for ir::ValueType {
                 panic!("the type of user-provided constants cannot is unspecified")
             }
         };
-        // TODO(cleanup): get the real span from the lexer
+        // TODO(span): get the real span from the lexer
         Ident::new(name, Span::call_site()).to_tokens(stream);
     }
 }

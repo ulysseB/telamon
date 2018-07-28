@@ -544,7 +544,7 @@ impl<'a> Trigger<'a> {
         let arguments = foralls.clone().map(|v| ctx.var_def(v))
             .map(|(v, set)| (v, ast::Set::new(set, ctx))).collect();
         let conditions = trigger.conditions.iter()
-            .map(|c| filter::condition(c, ctx)).collect();
+            .map(|c| filter::condition(c, ctx).to_string()).collect();
         let code = ast::code(&trigger.code, ctx);
         let vars = foralls.map(|v| (v, ctx.var_def(v).1)).collect_vec();
         let partial_iters = PartialIterator::generate(&vars, false, ir_desc, ctx);
