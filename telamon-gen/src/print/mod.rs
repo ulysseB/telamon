@@ -1,5 +1,6 @@
 //! Print the IR description in rust.
 mod runtime;
+mod value;
 
 use handlebars::{self, Handlebars, Helper, Renderable, RenderContext, RenderError};
 use ir;

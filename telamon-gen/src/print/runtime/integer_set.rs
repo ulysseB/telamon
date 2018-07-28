@@ -22,9 +22,14 @@ use proc_macro2::TokenStream;
 // FIXME: all NumSet methods need both universe
 // > request domain in min, max
 // > request domain in comparison
-// > request domain in constructors
 // > request domain in final_value, rename it as_constrained
 // > fix templates that use each functions
+// FIXME: all num domain methods require both universes
+// > request domain in constructors
+//   - in trait def
+//   - in trait impl
+//   - in value_set printing
+//   - in other templates
 // Problem: it is not known for code: use () instead
 // FIXME: do range and half range need a universe ?
 
@@ -215,7 +220,7 @@ pub fn get() -> TokenStream {
         }
 
         impl NumDomain for NumericSet {
-            fn new_gt<D: NumSet>(universe: &[u32], min: D) -> Self {
+            fn new_gt<D: NumSet>(universe: &[u32], min: D, _: &D::Universe) -> Self {
                 let mut values = [0; NumericSet::MAX_LEN];
                 let min = std::cmp::min(std::u32::MAX, min.min());
                 let start = universe.binary_search(&min).map(|x| x+1).unwrap_or_else(|x| x);
@@ -224,7 +229,7 @@ pub fn get() -> TokenStream {
                 NumericSet { values, len }
             }
 
-            fn new_lt<D: NumSet>(universe: &[u32], max: D) -> Self {
+            fn new_lt<D: NumSet>(universe: &[u32], max: D, _: &D::Universe) -> Self {
                 let mut values = [0; NumericSet::MAX_LEN];
                 let max = std::cmp::min(std::u32::MAX, max.max());
                 let len = universe.binary_search(&max).unwrap_or_else(|x| x);
@@ -232,7 +237,7 @@ pub fn get() -> TokenStream {
                 NumericSet { values, len }
             }
 
-            fn new_geq<D: NumSet>(universe: &[u32], min: D) -> Self {
+            fn new_geq<D: NumSet>(universe: &[u32], min: D, _: &D::Universe) -> Self {
                 let mut values = [0; NumericSet::MAX_LEN];
                 let min = std::cmp::min(std::u32::MAX, min.min());
                 let start = universe.binary_search(&min).unwrap_or_else(|x| x);
@@ -241,7 +246,7 @@ pub fn get() -> TokenStream {
                 NumericSet { values, len }
             }
 
-            fn new_leq<D: NumSet>(universe: &[u32], max: D) -> Self {
+            fn new_leq<D: NumSet>(universe: &[u32], max: D, _: &D::Universe) -> Self {
                 let mut values = [0; NumericSet::MAX_LEN];
                 let max = std::cmp::min(std::u32::MAX, max.max());
                 let len = universe.binary_search(&max).map(|x| x+1).unwrap_or_else(|x| x);
@@ -249,7 +254,7 @@ pub fn get() -> TokenStream {
                 NumericSet { values, len }
             }
 
-            fn new_eq<D: NumSet>(universe: &[u32], eq: D) -> Self {
+            fn new_eq<D: NumSet>(universe: &[u32], eq: D, _: &D::Universe) -> Self {
                 if let Some(mut eq) = eq.as_num_set() {
                     eq.restrict_to(universe);
                     eq

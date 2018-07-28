@@ -124,7 +124,8 @@ pub fn condition<'a>(cond: &'a ir::Condition, ctx: &Context<'a>) -> String {
             format!("!({})", code)
         },
         ir::Condition::Enum { input, ref values, negate, inverse } => {
-            let enum_name = ctx.input_choice_def(input).as_enum().unwrap();
+            let enum_name = ctx.ir_desc.get_choice(&ctx.input(input).choice)
+                .choice_def().as_enum().unwrap();
             let input_type = ctx.ir_desc.get_enum(enum_name);
             let name = ctx.input_name(input);
             let set = ir::normalized_enum_set(values, !negate, inverse, input_type);

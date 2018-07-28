@@ -97,21 +97,21 @@ mod single_enum {
                    Some(Action::Bar(NumericSet::all(&[2, 8]))));
 
         // Test comparison operators.
-        assert!(all0.lt(Range::new_eq(&(), 9)));
-        assert!(!all0.lt(Range::new_eq(&(), 8)));
-        assert!(all0.gt(Range::new_eq(&(), 0)));
-        assert!(!all0.gt(Range::new_eq(&(), 1)));
-        assert!(all0.leq(Range::new_eq(&(), 8)));
-        assert!(!all0.leq(Range::new_eq(&(), 7)));
-        assert!(all0.geq(Range::new_eq(&(), 1)));
-        assert!(!all0.geq(Range::new_eq(&(), 2)));
+        assert!(all0.lt(Range::new_eq(&(), 9, &())));
+        assert!(!all0.lt(Range::new_eq(&(), 8, &())));
+        assert!(all0.gt(Range::new_eq(&(), 0, &())));
+        assert!(!all0.gt(Range::new_eq(&(), 1, &())));
+        assert!(all0.leq(Range::new_eq(&(), 8, &())));
+        assert!(!all0.leq(Range::new_eq(&(), 7, &())));
+        assert!(all0.geq(Range::new_eq(&(), 1, &())));
+        assert!(!all0.geq(Range::new_eq(&(), 2, &())));
 
         assert!(all0.neq(NumericSet::all(&[5, 7])));
         assert!(!all0.neq(NumericSet::all(&[4, 7])));
 
         // Test constructors.
-        assert_eq!(NumericSet::new_lt(&[2, 4, 6], 5), NumericSet::all(&[2, 4]));
-        assert_eq!(NumericSet::new_gt(&[2, 4, 6], 3), NumericSet::all(&[4, 6]));
+        assert_eq!(NumericSet::new_lt(&[2, 4, 6], 5, &()), NumericSet::all(&[2, 4]));
+        assert_eq!(NumericSet::new_gt(&[2, 4, 6], 3, &()), NumericSet::all(&[4, 6]));
     }
 }
 

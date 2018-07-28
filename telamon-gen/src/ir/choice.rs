@@ -203,9 +203,10 @@ impl ChoiceDef {
     pub fn value_type(&self) -> ValueType {
         match *self {
             ChoiceDef::Enum(ref name) => ValueType::Enum(name.clone()),
-            ChoiceDef::Counter { visibility: CounterVisibility::NoMax, .. } =>
-                ValueType::HalfRange,
-            ChoiceDef::Counter { .. } => ValueType::Range,
+            ChoiceDef::Counter { visibility, .. } => {
+                let is_half = visibility == CounterVisibility::NoMax;
+                ValueType::Range { is_half }
+            }
             ChoiceDef::Number { ref universe, .. } =>
                 ValueType::NumericSet(universe.clone()),
         }
@@ -249,7 +250,10 @@ impl Adaptable for CounterVal {
 impl ValueType {
     /// Returns the full type, instead of a the trimmed one.
     pub fn full_type(self) -> Self {
-        if self == ValueType::HalfRange { ValueType::Range } else { self }
+        match self {
+            ValueType::Range { .. } => ValueType::Range { is_half: false },
+            t => t
+        }
     }
 
     /// Returns the enum name, if applicable.
@@ -260,15 +264,23 @@ impl ValueType {
 
 /// Specifies the type of the values a choice can take.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ValueType { Enum(RcStr), Range, HalfRange, NumericSet(ir::Code) }
+pub enum ValueType {
+    /// Generated type that represents the values of an enum choice.
+    Enum(RcStr),
+    /// Represents a contiguous range of values.
+    Range { is_half: bool },
+    /// Represents a small set of integers.
+    NumericSet(ir::Code),
+    /// Represents an external constant, provided by the user. Its exact type is
+    /// unspecified.
+    Constant,
+}
 
 impl Adaptable for ValueType {
     fn adapt(&self, adaptator: &ir::Adaptator) -> Self {
-        match *self {
-            ref t @ ValueType::Enum(..) |
-            ref t @ ValueType::Range |
-            ref t @ ValueType::HalfRange => t.clone(),
+        match self {
             ValueType::NumericSet(ref uni) => ValueType::NumericSet(uni.adapt(adaptator)),
+            t => t.clone(),
         }
     }
 }

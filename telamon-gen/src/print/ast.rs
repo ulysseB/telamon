@@ -109,9 +109,7 @@ impl<'a> Context<'a> {
     }
 
     /// Returns the choice definition of an input.
-    pub fn input_choice_def(&self, id: usize) -> &'a ir::ChoiceDef {
-        self.ir_desc.get_choice(&self.input_defs[id].choice).choice_def()
-    }
+    pub fn input(&self, id: usize) -> &'a ir::ChoiceInstance { &self.input_defs[id] }
 }
 
 /// An instance of a choice.
@@ -286,10 +284,11 @@ impl ValueType {
     pub fn new(t: ir::ValueType, ctx: &Context) -> Self {
         match t {
             ir::ValueType::Enum(name) => ValueType::Enum(name.clone()),
-            ir::ValueType::Range => ValueType::Range,
-            ir::ValueType::HalfRange => ValueType::HalfRange,
+            ir::ValueType::Range { is_half: false } => ValueType::Range,
+            ir::ValueType::Range { is_half: true } => ValueType::HalfRange,
             ir::ValueType::NumericSet(univers) =>
                 ValueType::NumericSet(code(&univers, ctx)),
+            ir::ValueType::Constant => panic!("user-provided values type is unspecified"),
         }
     }
 }

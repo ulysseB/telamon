@@ -222,7 +222,8 @@ enum ChoiceAction<'a> {
         incr_args: Vec<(ast::Variable<'a>, ast::Set<'a>)>,
         incr_condition: String,
         arguments: Vec<(ast::Variable<'a>, ast::Set<'a>)>,
-        value_type: ast::ValueType,
+        counter_type: ast::ValueType,
+        incr_type: ast::ValueType,
         is_half: bool,
         zero: u32,
     },
@@ -284,7 +285,7 @@ impl<'a> ChoiceAction<'a> {
                 let arguments = ast::vars_with_sets(counter_choice, &counter.vars, ctx);
                 let incr_args = ast::vars_with_sets(incr_choice, &incr.vars, ctx);
                 let adaptator = ir::Adaptator::from_arguments(&counter.vars);
-                let value_type = counter_def.value_type().adapt(&adaptator);
+                let counter_type = counter_def.value_type().adapt(&adaptator);
                 if let ir::ChoiceDef::Counter { kind, visibility, .. } = *counter_def {
                     ChoiceAction::UpdateCounter {
                         name: &counter.choice,
@@ -292,7 +293,8 @@ impl<'a> ChoiceAction<'a> {
                         incr_condition: value_set::print(incr_condition, ctx),
                         is_half: visibility == ir::CounterVisibility::NoMax,
                         zero: kind.zero(),
-                        value_type: ast::ValueType::new(value_type, ctx),
+                        counter_type: ast::ValueType::new(counter_type, ctx),
+                        incr_type: ast::ValueType::new(ctx.choice.value_type(), ctx),
                         incr_args, arguments,
                     }
                 } else { panic!() }

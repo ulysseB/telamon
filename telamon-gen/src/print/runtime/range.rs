@@ -98,25 +98,25 @@ pub fn get() -> TokenStream {
         }
 
         impl NumDomain for Range {
-            fn new_gt<D: NumSet>(_: &(), min: D) -> Self {
+            fn new_gt<D: NumSet>(_: &(), min: D, _: &D::Universe) -> Self {
                 let min = min.min().saturating_add(1);
                 Range { min, .. Range::ALL }
             }
 
-            fn new_lt<D: NumSet>(_: &(), max: D) -> Self {
+            fn new_lt<D: NumSet>(_: &(), max: D, _: &D::Universe) -> Self {
                 let max = max.max().saturating_sub(1);
                 Range { max, .. Range::ALL }
             }
 
-            fn new_geq<D: NumSet>(_: &(), min: D) -> Self {
+            fn new_geq<D: NumSet>(_: &(), min: D, _: &D::Universe) -> Self {
                 Range { min: min.min(), .. Range::ALL }
             }
 
-            fn new_leq<D: NumSet>(_: &(), max: D) -> Self {
+            fn new_leq<D: NumSet>(_: &(), max: D, _: &D::Universe) -> Self {
                 Range { max: max.max(), .. Range::ALL }
             }
 
-            fn new_eq<D: NumSet>(_: &(), eq: D) -> Self {
+            fn new_eq<D: NumSet>(_: &(), eq: D, _: &D::Universe) -> Self {
                 Range {
                     max: eq.max(),
                     min: eq.min(),
@@ -197,20 +197,24 @@ pub fn get() -> TokenStream {
         }
 
         impl NumDomain for HalfRange {
-            fn new_gt<D: NumSet>(_: &(), min: D) -> Self {
+            fn new_gt<D: NumSet>(_: &(), min: D, _: &D::Universe) -> Self {
                 let min = min.min().saturating_add(1);
                 HalfRange { min }
             }
 
-            fn new_lt<D: NumSet>(_: &(), _: D) -> Self { HalfRange::ALL }
+            fn new_lt<D: NumSet>(_: &(), _: D, _: &D::Universe) -> Self {
+                HalfRange::ALL
+            }
 
-            fn new_geq<D: NumSet>(_: &(), min: D) -> Self {
+            fn new_geq<D: NumSet>(_: &(), min: D, _: &D::Universe) -> Self {
                 HalfRange { min: min.min() }
             }
 
-            fn new_leq<D: NumSet>(_: &(), _: D) -> Self { HalfRange::ALL }
+            fn new_leq<D: NumSet>(_: &(), _: D, _: &D::Universe) -> Self {
+                HalfRange::ALL
+            }
 
-            fn new_eq<D: NumSet>(_: &(), eq: D) -> Self {
+            fn new_eq<D: NumSet>(_: &(), eq: D, _: &D::Universe) -> Self {
                 HalfRange { min: eq.min() }
             }
         }

@@ -168,6 +168,12 @@ impl ChoiceInstance {
             },
         }
     }
+
+    /// Returns the type of the values the chocie takes.
+    pub fn value_type(&self, ir_desc: &ir::IrDesc) -> ir::ValueType {
+        let adaptator = ir::Adaptator::from_arguments(&self.vars);
+        ir_desc.get_choice(&self.choice).value_type().adapt(&adaptator)
+    }
 }
 
 impl Adaptable for ChoiceInstance {
@@ -483,8 +489,7 @@ impl ValueSet {
                     inputs: BTreeSet::default()
                 }
             },
-            t @ ir::ValueType::Range |
-            t @ ir::ValueType::HalfRange |
+            t @ ir::ValueType::Range { .. } |
             t @ ir::ValueType::NumericSet(..) => {
                 ValueSet::Integer {
                     is_full: false,
@@ -493,6 +498,7 @@ impl ValueSet {
                     universe: t.clone().full_type(),
                 }
             },
+            ir::ValueType::Constant => panic!("a set cannot have a `Constant` type")
         }
 
     }
@@ -511,8 +517,7 @@ impl ValueSet {
                     normalized_enum_set(vec![], is_eq, false, enum_)
                 }
             },
-            t @ ir::ValueType::Range |
-            t @ ir::ValueType::HalfRange |
+            t @ ir::ValueType::Range { .. }|
             t @ ir::ValueType::NumericSet(..) => {
                 assert!(!is_inv);
                 if is_eq {
@@ -524,6 +529,7 @@ impl ValueSet {
                     }
                 } else { ValueSet::empty(t) }
             },
+            ir::ValueType::Constant => panic!("a set cannot have a `Constant` type")
         }
     }
 
@@ -540,7 +546,8 @@ impl ValueSet {
                 values: Default::default(),
                 inputs: std::iter::once((input, op == CmpOp::Neq, inverse)).collect(),
             },
-            t @ ir::ValueType::Range | t @ ir::ValueType::NumericSet(..) => {
+            t @ ir::ValueType::Range { is_half: false } |
+            t @ ir::ValueType::NumericSet(..) => {
                 assert!(!inverse);
                 ValueSet::Integer {
                     is_full: false,
@@ -549,7 +556,10 @@ impl ValueSet {
                     universe: t.clone().full_type(),
                 }
             },
-            ir::ValueType::HalfRange => panic!("Cannot compare HalfRanges to inputs"),
+            ir::ValueType::Range { is_half: true } => {
+                panic!("Cannot compare HalfRanges to inputs")
+            }
+            ir::ValueType::Constant => panic!("a set cannot have a `Constant` type")
         }
     }
 

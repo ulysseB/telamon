@@ -1,6 +1,7 @@
 //! Prints sets of values.
 use ir;
 use itertools::Itertools;
+use print;
 use print::ast::{self, Context};
 use std::collections::BTreeSet;
 use utils::*;
@@ -23,11 +24,12 @@ pub fn print(set: &ir::ValueSet, ctx: &Context) -> String {
             },
             ir::ValueSet::Integer { ref cmp_inputs, ref cmp_code, .. } => {
                 cmp_inputs.iter().map(|&(op, input)| {
-                    (op, ctx.input_name(input).to_string())
+                    let input_type = ctx.input(input).value_type(&ctx.ir_desc);
+                    (op, ctx.input_name(input).to_string(), input_type)
                 }).chain(cmp_code.iter().map(|&(op, ref code)| {
-                    (op, ast::code(code, ctx))
-                })).map(|(op, val)| {
-                    universe_fun(&t, cmp_op_fun_name(op), &val)
+                    (op, ast::code(code, ctx), ir::ValueType::Constant)
+                })).map(|(op, arg, arg_t)| {
+                    universe_fun(&set.t(), cmp_op_fun_name(op), &arg, &arg_t, ctx)
                 }).format("|").to_string()
             },
         }
@@ -52,6 +54,7 @@ fn enum_set(name: &str,
 }
 
 /// Returns the function to call to implement the given operator.
+// FIXME: mov to print/value.rs
 fn cmp_op_fun_name(op: ir::CmpOp) -> &'static str {
     match op {
         ir::CmpOp::Lt => "new_lt",
@@ -63,10 +66,12 @@ fn cmp_op_fun_name(op: ir::CmpOp) -> &'static str {
     }
 }
 
-fn universe_fun(t: &ast::ValueType, fun: &str, arg: &str,) -> String {
-    match t {
-        ast::ValueType::NumericSet(universe) =>
-            format!("{}::{}({},{})", t, fun, universe, arg),
-        t => format!("{}::{}(&(),{})", t, fun, arg),
-    }
+// FIXME: mov to print/value.rs
+fn universe_fun(t: &ir::ValueType, fun: &str,
+                arg: &str, arg_t: &ir::ValueType,
+                ctx: &Context) -> String {
+    let arg_universe = print::value::universe(arg_t, ctx);
+    let universe = print::value::universe(t, ctx);
+    let t = quote!(#t);
+    format!("{}::{}({}, {}, {})", t, fun, universe, arg, arg_universe)
 }

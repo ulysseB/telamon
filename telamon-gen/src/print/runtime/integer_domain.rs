@@ -41,18 +41,23 @@ pub fn get() -> TokenStream {
         /// A choice that contains integers.
         pub trait NumDomain: NumSet {
             /// Returns the domain containing the values of the universe greater than min.
-            fn new_gt<D: NumSet>(universe: &Self::Universe, min: D) -> Self;
+            fn new_gt<D: NumSet>(universe: &Self::Universe,
+                                 min: D, min_universe: &D::Universe) -> Self;
             /// Returns the domain containing the values of the universe smaller than max.
-            fn new_lt<D: NumSet>(universe: &Self::Universe, max: D) -> Self;
+            fn new_lt<D: NumSet>(universe: &Self::Universe,
+                                 max: D, max_universe: &D::Universe) -> Self;
             /// Retruns the domain containing the values of the universe greater or equal
             /// to min.
-            fn new_geq<D: NumSet>(universe: &Self::Universe, min: D) -> Self;
+            fn new_geq<D: NumSet>(universe: &Self::Universe,
+                                  min: D, min_universe: &D::Universe) -> Self;
             /// Returns the domain containing the values of the universe smaller or equal
             /// to min.
-            fn new_leq<D: NumSet>(universe: &Self::Universe, min: D) -> Self;
+            fn new_leq<D: NumSet>(universe: &Self::Universe,
+                                  max: D, max_universe: &D::Universe) -> Self;
             /// Returns the domain containing the values of `eq` that are also in the
             /// universe.
-            fn new_eq<D: NumSet>(universe: &Self::Universe, eq: D) -> Self;
+            fn new_eq<D: NumSet>(universe: &Self::Universe,
+                                 eq: D, eq_universe: &D::Universe) -> Self;
         }
 
         impl NumSet for u32 {
