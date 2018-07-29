@@ -4,6 +4,7 @@ use itertools::Itertools;
 use print;
 use print::ast::{self, Context};
 use std::collections::BTreeSet;
+use std::borrow::Cow;
 use utils::*;
 
 /// Prints a `ValueSet`.
@@ -12,10 +13,6 @@ pub fn print(set: &ir::ValueSet, ctx: &Context) -> String {
     if set.is_empty() {
         format!("{}::FAILED", t)
     } else {
-        // FIXME: The set might not be restriceted enough when combining range sets.
-        // - should limit to the current domain.
-        // TODO(cc_perf): might be faster to limit to the current domain rather than the
-        // full universe.
         match *set {
             ir::ValueSet::Enum { ref enum_name, ref values, ref inputs } =>
                 enum_set(enum_name, values, inputs, ctx),
@@ -23,17 +20,16 @@ pub fn print(set: &ir::ValueSet, ctx: &Context) -> String {
                 render!(value_type/full_domain, t)
             },
             ir::ValueSet::Integer { ref cmp_inputs, ref cmp_code, .. } => {
-                cmp_inputs.iter().map(|&(op, input)| {
-                    let input_type = ctx.input(input).value_type(&ctx.ir_desc);
-                    (op, ctx.input_name(input).to_string(), input_type)
+                // FIXME: The set might not be restriceted enough when combining range
+                // sets: should limit to the current domain.
+                let parts = cmp_inputs.iter().map(|&(op, input)| {
+                    (op, Cow::Borrowed(ctx.input(input)))
                 }).chain(cmp_code.iter().map(|&(op, ref code)| {
-                    (op, ast::code(code, ctx), ir::ValueType::Constant)
-                })).map(|(op, arg, arg_t)| {
-                    // TODO(span): parse in the lexer rather than here
-                    let from = unwrap!(arg.parse());
-                    print::value::integer_domain_constructor(
-                        &set.t(), op, from, &arg_t, ctx)
-                }).format("|").to_string()
+                    (op, Cow::Owned(print::Value::new_const(code, ctx)))
+                })).map(|(op, from)| {
+                    print::value::integer_domain_constructor(op, &from, set.t(), ctx)
+                });
+                quote!(#(#parts)|*).to_string()
             },
         }
     }

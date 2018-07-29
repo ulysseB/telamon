@@ -2,6 +2,10 @@
 mod runtime;
 mod value;
 
+// Re-export commonly used items.
+use print::ast::Context;
+use print::value::Value;
+
 use handlebars::{self, Handlebars, Helper, Renderable, RenderContext, RenderError};
 use ir;
 use itertools::Itertools;

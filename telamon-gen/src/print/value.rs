@@ -1,32 +1,89 @@
 //! Prints the manipulation of individual domains.
 use ir;
-use print::ast;
+use print;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+/// A value that a domain can take.
+#[derive(Debug, Clone)]
+pub struct Value {
+    tokens: TokenStream,
+    value_type: ir::ValueType,
+}
+
+impl Value {
+    /// Create a new value.
+    pub fn new(tokens: TokenStream, value_type: ir::ValueType) -> Self {
+        Value { tokens, value_type }
+    }
+
+    /// Creates a new value with a unique name.
+    pub fn new_ident(prefix: &str, value_type: ir::ValueType) -> Self {
+        lazy_static! { static ref NEXT_ID: AtomicUsize = AtomicUsize::new(0); }
+        let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
+        // TODO(span): get the real span from the lexer
+        let ident = Ident::new(&format!("{}_{}", prefix, id), Span::call_site());
+        Self::new(quote!(#ident), value_type)
+    }
+
+    /// Creates a new user-provided constant value.
+    pub fn new_const(code: &ir::Code, ctx: &print::Context) -> Self {
+        // TODO(cleanup): parse in the lexer rather than here
+        let tokens = unwrap!(print::ast::code(code, ctx).parse());
+        Self::new(tokens, ir::ValueType::Constant)
+    }
+
+    /// Returns the type taken by the value.
+    pub fn value_type(&self) -> &ir::ValueType { &self.value_type }
+
+    /// Returns the antisymmetric of the value instead of the value.
+    pub fn inverse(&mut self) {
+        self.tokens = {
+            let tokens = &self.tokens;
+            quote!(#tokens.inverse())
+        };
+    }
+
+    /// Returns the complement of the value instead of the value.
+    pub fn negate(&mut self) {
+        self.tokens = {
+            let tokens = &self.tokens;
+            quote!(!#tokens)
+        };
+    }
+}
+
+impl quote::ToTokens for Value {
+    fn to_tokens(&self, stream: &mut TokenStream) {
+        self.tokens.to_tokens(stream)
+    }
+}
 
 /// Prints the universe of a `ValueType`.
-pub fn universe(value_type: &ir::ValueType, ctx: &ast::Context) -> TokenStream {
+pub fn universe(value_type: &ir::ValueType, ctx: &print::Context) -> Value {
     match value_type {
         ir::ValueType::Enum(..) => panic!("only intger domains have a universe"),
-        ir::ValueType::Range { .. } | ir::ValueType::Constant => quote!(&()),
-        ir::ValueType::NumericSet(universe) => {
-            // TODO(span): parse the piece of code during parsing.
-            unwrap!(ast::code(universe, ctx).parse())
+        ir::ValueType::Range { .. } | ir::ValueType::Constant => {
+            Value::new(quote!(&()), ir::ValueType::Constant)
         }
+        ir::ValueType::NumericSet(universe) => Value::new_const(universe, ctx),
     }
 }
 
 /// Calls a constructor for an integer domain. `constructor_op` indicates which
 /// constructor should be called.
-pub fn integer_domain_constructor(to_type: &ir::ValueType,
-                                  constructor_op: ir::CmpOp,
-                                  from: TokenStream,
-                                  from_type: &ir::ValueType,
-                                  ctx: &ast::Context) -> TokenStream {
+pub fn integer_domain_constructor(
+    constructor_op: ir::CmpOp,
+    from: &Value,
+    to_type: ir::ValueType,
+    ctx: &print::Context
+) -> Value {
     let constructor = constructor_from_op(constructor_op);
-    let to_universe = universe(to_type, ctx);
-    let from_universe = universe(from_type, ctx);
-    quote!(#to_type::#constructor(#to_universe, #from, #from_universe))
+    let to_universe = universe(&to_type, ctx);
+    let from_universe = universe(from.value_type(), ctx);
+    let tokens = quote!(#to_type::#constructor(#to_universe, #from, #from_universe));
+    Value::new(tokens, to_type)
 }
 
 /// Returns the name of te integer domain constructor to call to obatain the domain

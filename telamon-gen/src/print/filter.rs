@@ -120,41 +120,25 @@ pub fn condition(cond: &ir::Condition, ctx: &Context) -> TokenStream {
     match cond {
         ir::Condition::Bool(b) => quote!(#b),
         ir::Condition::Code { code, negate } => {
-            // TODO(cleanup): parse the code earlier.
-            let code: TokenStream = unwrap!(ast::code(code, ctx).parse());
-            let negation = if *negate { quote!(!) } else { quote!() };
-            quote!(#negation#code)
+            let mut code = print::Value::new_const(code, ctx);
+            if *negate { code.negate(); }
+            quote!(#code)
         }
         ir::Condition::Enum { input, values, negate, inverse } => {
-            // TODO(cleanup): doi the parsing beforhand
-            let name: TokenStream = unwrap!(ctx.input_name(*input).to_string().parse());
-            let value_type = ctx.input(*input).value_type(ctx.ir_desc);
-            let enum_def = if let ir::ValueType::Enum(name) = value_type {
-                ctx.ir_desc.get_enum(&name)
-            } else {
-                panic!("Enum expected")
-            };
+            let input = ctx.input(*input);
+            let enum_def = ctx.ir_desc.get_enum(unwrap!(input.value_type().as_enum()));
             let set = ir::normalized_enum_set(values, !*negate, *inverse, enum_def);
+            // TODO(cleanup): do the parsing beforhand
             let value_set: TokenStream = unwrap!(value_set::print(&set, ctx).parse());
-            quote!(!#name.intersects(#value_set))
+            quote!(!#input.intersects(#value_set))
         }
         ir::Condition::CmpCode { lhs, rhs, op } => {
-            // TODO(cleanup): do the parsing beforhand
-            // FIXME: bundle values and types
-            let lhs_type = ctx.input(*lhs).value_type(ctx.ir_desc);
-            let lhs: TokenStream = unwrap!(ctx.input_name(*lhs).to_string().parse());
-            let rhs: TokenStream = unwrap!(ast::code(rhs, ctx).parse());
-            comparison(*op, lhs, &lhs_type, rhs, &ir::ValueType::Constant, ctx)
+            comparison(*op, ctx.input(*lhs), &print::Value::new_const(rhs, ctx), ctx)
         }
         ir::Condition::CmpInput { lhs, rhs, op, inverse } => {
-            // TODO(cleanup): do the parsing beforhand
-            // FIXME: bundle values and types
-            let lhs_type = ctx.input(*lhs).value_type(ctx.ir_desc);
-            let lhs: TokenStream = unwrap!(ctx.input_name(*lhs).to_string().parse());
-            let rhs_type = ctx.input(*rhs).value_type(ctx.ir_desc);
-            let mut rhs: TokenStream = unwrap!(ctx.input_name(*rhs).to_string().parse());
-            if *inverse { rhs = quote!(#rhs.inverse()); }
-            comparison(*op, lhs, &lhs_type, rhs, &rhs_type, ctx)
+            let mut rhs = ctx.input(*rhs).clone();
+            if *inverse { rhs.inverse() }
+            comparison(*op, ctx.input(*lhs), &rhs, ctx)
         }
     }
 }
@@ -162,14 +146,12 @@ pub fn condition(cond: &ir::Condition, ctx: &Context) -> TokenStream {
 /// Produces code that compares to domains.
 fn comparison(
     op: ir::CmpOp,
-    lhs: TokenStream,
-    lhs_type: &ir::ValueType,
-    rhs: TokenStream,
-    rhs_type: &ir::ValueType,
+    lhs: &print::Value,
+    rhs: &print::Value,
     ctx: &Context,
 ) -> TokenStream {
-    let lhs_universe = print::value::universe(lhs_type, ctx);
-    let rhs_universe = print::value::universe(rhs_type, ctx);
+    let lhs_universe = print::value::universe(lhs.value_type(), ctx);
+    let rhs_universe = print::value::universe(rhs.value_type(), ctx);
     quote!(#lhs.#op(#lhs_universe, #rhs, #rhs_universe))
 }
 
