@@ -191,7 +191,7 @@ impl FastOrigin {
 
 /// A `CodePoint`, but based on dimension ids rather than level ids.
 #[derive(Clone)]
-pub enum Point { Inst(ir::InstId), Entry(Vec<ir::dim::Id>), Exit(Vec<ir::dim::Id>) }
+pub enum Point { Inst(ir::InstId), Entry(Vec<ir::DimId>), Exit(Vec<ir::DimId>) }
 
 impl fmt::Display for Point {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -225,7 +225,7 @@ pub enum Origin {
     /// The bound is caused by a bottleneck.
     Bottleneck(&'static str, BottleneckLevel),
     /// The bound is repeated in a loop.
-    Loop { dims: Vec<ir::dim::Id>, iterations: u32, inner: Box<Origin> },
+    Loop { dims: Vec<ir::DimId>, iterations: u32, inner: Box<Origin> },
     /// The bound is caused by a dependency chain.
     Chain { before: Box<Bound>, mid_point: Point, after: Box<Bound> },
     /// The bound is scalled to account for a parallelism level.

@@ -87,7 +87,7 @@ impl<'a> device::Context<'a> for Context<'a> {
         self.parameters[name].as_ref()
     }
 
-    fn allocate_array(&mut self, id: ir::mem::Id, size: usize) -> Box<device::Argument> {
+    fn allocate_array(&mut self, id: ir::MemId, size: usize) -> Box<device::Argument> {
         let mem = self.executor.alloc(size);
         Box::new(Buffer { mem: mem, id: id, context: Default::default() })
     }
@@ -142,7 +142,7 @@ impl<'a, 'b> device::AsyncEvaluator<'a> for AsyncEvaluator<'a, 'b> where 'a:'b {
 /// Buffer in MPPA RAM.
 pub struct Buffer<'a> {
     mem: telajax::Mem,
-    id: ir::mem::Id,
+    id: ir::MemId,
     context: std::marker::PhantomData<&'a ()>,
 }
 

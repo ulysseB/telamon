@@ -30,7 +30,6 @@ pub mod mem;
 
 /// Defines iteration dimensions properties.
 pub mod dim {
-    pub use super::dimension::Id;
     pub use super::dim_map::DimMap as Map;
 }
 
@@ -51,13 +50,13 @@ pub mod prelude {
 #[derive(Default, Debug)]
 pub struct NewObjs {
     pub instructions: Vec<InstId>,
-    pub dimensions: Vec<dim::Id>,
+    pub dimensions: Vec<DimId>,
     pub basic_blocks: Vec<BBId>,
     pub mem_blocks: Vec<MemId>,
     pub internal_mem_blocks: Vec<mem::InternalId>,
     pub mem_insts: Vec<InstId>,
-    pub iteration_dims: Vec<(InstId, dim::Id)>,
-    pub thread_dims: Vec<dim::Id>,
+    pub iteration_dims: Vec<(InstId, DimId)>,
+    pub thread_dims: Vec<DimId>,
 }
 
 impl NewObjs {
@@ -87,12 +86,12 @@ impl NewObjs {
     }
 
     /// Sets a dimension as a new iteration dimension.
-    pub fn add_iteration_dim(&mut self, inst: InstId, dim: dim::Id) {
+    pub fn add_iteration_dim(&mut self, inst: InstId, dim: DimId) {
         self.iteration_dims.push((inst, dim));
     }
 
     /// Sets a dimension as a new thread dimension.
-    pub fn add_thread_dim(&mut self, dim: dim::Id) { self.thread_dims.push(dim) }
+    pub fn add_thread_dim(&mut self, dim: DimId) { self.thread_dims.push(dim) }
 
     /// Registers a new memory block.
     pub fn add_mem_block(&mut self, id: mem::InternalId) {
@@ -106,7 +105,7 @@ pub struct LoweredDimMap {
     pub mem: mem::InternalId,
     pub store: InstId,
     pub load: InstId,
-    pub dimensions: Vec<(dim::Id, dim::Id)>
+    pub dimensions: Vec<(DimId, DimId)>
 }
 
 // TODO(perf): group static computations

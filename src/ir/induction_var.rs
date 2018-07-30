@@ -8,14 +8,14 @@ pub struct IndVarId(pub u32);
 /// A multidimentional induction variable. No dimension should appear twice in dims.
 #[derive(Clone, Debug)]
 pub struct InductionVar<'a> {
-    dims: Vec<(ir::dim::Id, ir::Size<'a>)>,
+    dims: Vec<(ir::DimId, ir::Size<'a>)>,
     base: ir::Operand<'a>,
 }
 
 impl<'a> InductionVar<'a> {
     /// Creates a new induction var. Size represents the increment over each diemnsion
     /// taken independenly.
-    pub fn new(dims: Vec<(ir::dim::Id, ir::Size<'a>)>, base: ir::Operand<'a>)
+    pub fn new(dims: Vec<(ir::DimId, ir::Size<'a>)>, base: ir::Operand<'a>)
         -> Result<Self, ir::Error>
     {
         ir::TypeError::check_integer(base.t())?;
@@ -39,7 +39,7 @@ impl<'a> InductionVar<'a> {
     }
 
     /// Renames a dimension.
-    pub fn merge_dims(&mut self, lhs: ir::dim::Id, rhs: ir::dim::Id) {
+    pub fn merge_dims(&mut self, lhs: ir::DimId, rhs: ir::DimId) {
         self.base.merge_dims(lhs, rhs);
     }
 
@@ -47,5 +47,5 @@ impl<'a> InductionVar<'a> {
     pub fn base(&self) -> &ir::Operand<'a> { &self.base }
 
     /// Returns the list of induction dimensions along with the corresponding increments.
-    pub fn dims(&self) -> &[(ir::dim::Id, ir::Size<'a>)] { &self.dims }
+    pub fn dims(&self) -> &[(ir::DimId, ir::Size<'a>)] { &self.dims }
 }

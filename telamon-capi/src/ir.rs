@@ -68,7 +68,7 @@ pub unsafe extern "C" fn telamon_ir_signature_free(signature: *mut ir::Signature
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_signature_param(
     signature: *const ir::Signature,
-    index: libc::size_t
+    index: usize
 ) -> *const ir::Parameter {
     &(*signature).params[index]
 }
@@ -97,7 +97,7 @@ pub unsafe extern "C" fn telamon_ir_signature_add_array(
 /// Creates an integer type that must be freed with `telamon_ir_type_free`.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_type_new_int(
-    num_bits: libc::uint16_t,
+    num_bits: u16,
 ) -> *mut ir::Type {
     Box::into_raw(Box::new(ir::Type::I(num_bits)))
 }
@@ -105,7 +105,7 @@ pub unsafe extern "C" fn telamon_ir_type_new_int(
 /// Creates a floating-point type that must be freed with `telamon_ir_type_free`.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_type_new_float(
-    num_bits: libc::uint16_t,
+    num_bits: u16,
 ) -> *mut ir::Type {
     Box::into_raw(Box::new(ir::Type::F(num_bits)))
 }
@@ -145,7 +145,7 @@ pub unsafe extern "C" fn telamon_ir_function_add_instruction(
     function: *mut Function,
     operator: *mut Operator,
     dimensions: *const ir::DimId,
-    num_dimensions: libc::size_t,
+    num_dimensions: usize,
     inst_id: *mut ir::InstId,
 ) -> u32 {
     let dimensions = std::slice::from_raw_parts(dimensions, num_dimensions);
@@ -180,10 +180,10 @@ pub struct Size(ir::Size<'static>);
 /// takes its ownership.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_size_new(
-    const_factor: libc::uint32_t,
-    const_divisor: libc::uint32_t,
+    const_factor: u32,
+    const_divisor: u32,
     param_factors: *const *const ir::Parameter,
-    num_params: libc::size_t,
+    num_params: usize,
 ) -> *mut Size {
     let parameters = std::slice::from_raw_parts(param_factors, num_params)
         .iter().map(|&ptr| &*ptr).collect();
@@ -259,7 +259,7 @@ pub unsafe extern "C" fn telamon_ir_operand_new_inst(
     inst: ir::InstId,
     src_dims: *const ir::DimId,
     dst_dims: *const ir::DimId,
-    num_mapped_dims: libc::size_t,
+    num_mapped_dims: usize,
     allow_tmp_mem: libc::c_int,
 ) -> *mut Operand {
     let inst = (*function).0.inst(inst);
@@ -286,9 +286,9 @@ pub unsafe extern "C" fn telamon_ir_operand_new_reduction(
     init_inst: ir::InstId,
     src_dims: *const ir::DimId,
     dst_dims: *const ir::DimId,
-    num_mapped_dims: libc::size_t,
+    num_mapped_dims: usize,
     reduction_dims: *const ir::DimId,
-    num_reduction_dims: libc::size_t,
+    num_reduction_dims: usize,
 ) -> *mut Operand {
     let init = (*function).0.inst(init_inst);
     let reduction_dims = std::slice::from_raw_parts(
@@ -303,7 +303,7 @@ pub unsafe extern "C" fn telamon_ir_operand_new_reduction(
 unsafe fn dim_map_from_arrays(
     src_dims: *const ir::DimId,
     dst_dims: *const ir::DimId,
-    num_mapped_dims: libc::size_t,
+    num_mapped_dims: usize,
 ) -> ir::DimMap {
     let src_dims = std::slice::from_raw_parts(src_dims, num_mapped_dims);
     let dst_dims = std::slice::from_raw_parts(dst_dims, num_mapped_dims);
@@ -395,7 +395,7 @@ pub unsafe extern "C" fn telamon_ir_operator_new_tensor_load(
     base_address: *mut Operand,
     strided_dims: *const ir::DimId,
     strides: *const Size,
-    num_strided_dims: libc::size_t,
+    num_strided_dims: usize,
     loaded_type: *const ir::Type,
 ) -> *mut Operator {
     let tensor_access = tensor_access(function, array_id, base_address, strided_dims,
@@ -416,7 +416,7 @@ pub unsafe extern "C" fn telamon_ir_operator_new_tensor_store(
     base_address: *mut Operand,
     strided_dims: *const ir::DimId,
     strides: *const Size,
-    num_strided_dims: libc::size_t,
+    num_strided_dims: usize,
     value: *mut Operand,
 ) -> *mut Operator {
     let tensor_access = tensor_access(function, array_id, base_address, strided_dims,
@@ -436,7 +436,7 @@ unsafe fn tensor_access(
     base_address: *mut Operand,
     strided_dims: *const ir::DimId,
     strides: *const Size,
-    num_strided_dims: libc::size_t
+    num_strided_dims: usize
 ) -> Result<(ir::Operand<'static>, ir::AccessPattern<'static>), ir::Error> {
     let base_address = Box::from_raw(base_address).0;
     let strided_dims = std::slice::from_raw_parts(strided_dims, num_strided_dims);

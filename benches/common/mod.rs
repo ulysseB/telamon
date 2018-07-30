@@ -19,9 +19,9 @@ lazy_static! {
 /// Stores the signature and the external arrays IDs for matrix-matrix multiplication.
 struct MMSig {
     signature: ir::Signature,
-    a: ir::mem::Id,
-    b: ir::mem::Id,
-    c: ir::mem::Id,
+    a: ir::MemId,
+    b: ir::MemId,
+    c: ir::MemId,
 }
 
 impl MMSig {

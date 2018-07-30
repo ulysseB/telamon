@@ -4,17 +4,16 @@ use std::fmt;
 
 /// Provides a unique identifier for iteration dimensions.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[repr(C)]
 pub struct DimId(pub u32);
-#[deprecated]
-pub type Id = DimId;
 
-impl fmt::Debug  for Id {
+impl fmt::Debug  for DimId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "dim::Id({})", self.0)
+        write!(f, "ir::DimId({})", self.0)
     }
 }
 
-impl fmt::Display for Id {
+impl fmt::Display for DimId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.0.fmt(f) }
 }
 
@@ -22,14 +21,14 @@ impl fmt::Display for Id {
 #[derive(Clone, Debug)]
 pub struct Dimension<'a> {
     size: ir::Size<'a>,
-    id: Id,
+    id: DimId,
     iterated: Vec<ir::InstId>,
     is_thread_dim: bool,
 }
 
 impl<'a> Dimension<'a> {
     /// Creates a new dimension.
-    pub fn new(size: ir::Size, id: Id) -> Result<Dimension, ir::Error> {
+    pub fn new(size: ir::Size, id: DimId) -> Result<Dimension, ir::Error> {
         if size.as_int().map(|i| i <= 1).unwrap_or(false) {
             return Err(ir::Error::InvalidDimSize);
         }
@@ -44,7 +43,7 @@ impl<'a> Dimension<'a> {
     pub fn size(&self) -> &ir::Size<'a> { &self.size }
 
     /// Returns the id of the dimension.
-    pub fn id(&self) -> Id { self.id }
+    pub fn id(&self) -> DimId { self.id }
 
     /// Returns the constructs iterated along this dimension.
     pub fn iterated<'b>(&'b self) -> impl Iterator<Item=ir::InstId> + 'b {

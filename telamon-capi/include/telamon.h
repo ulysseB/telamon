@@ -86,11 +86,6 @@ typedef struct CudaEnvironment CudaEnvironment;
 typedef struct Device Device;
 
 /*
- * Provides a unique identifier for iteration dimensions.
- */
-typedef struct DimId DimId;
-
-/*
  * A function ready to execute on a device, derived from a constrained IR instance.
  */
 typedef struct Function Function;
@@ -133,6 +128,13 @@ typedef struct Size Size;
  * Values and intructions types.
  */
 typedef struct Type Type;
+
+/*
+ * Provides a unique identifier for iteration dimensions.
+ */
+typedef struct {
+    uint32_t _0;
+} DimId;
 
 /*
  * Uniquely identifies an instruction.
@@ -283,7 +285,7 @@ uint32_t telamon_ir_function_add_dimension(Function *function, Size *size, DimId
 uint32_t telamon_ir_function_add_instruction(Function *function,
                                              Operator *operator,
                                              const DimId *dimensions,
-                                             size_t num_dimensions,
+                                             uintptr_t num_dimensions,
                                              InstId *inst_id);
 
 /*
@@ -321,7 +323,7 @@ Operand *telamon_ir_operand_new_inst(const Function *function,
                                      InstId inst,
                                      const DimId *src_dims,
                                      const DimId *dst_dims,
-                                     size_t num_mapped_dims,
+                                     uintptr_t num_mapped_dims,
                                      int allow_tmp_mem);
 
 /*
@@ -349,9 +351,9 @@ Operand *telamon_ir_operand_new_reduction(const Function *function,
                                           InstId init_inst,
                                           const DimId *src_dims,
                                           const DimId *dst_dims,
-                                          size_t num_mapped_dims,
+                                          uintptr_t num_mapped_dims,
                                           const DimId *reduction_dims,
-                                          size_t num_reduction_dims);
+                                          uintptr_t num_reduction_dims);
 
 /*
  * Creates a binary operator. Takes ownership of the operands.
@@ -401,7 +403,7 @@ Operator *telamon_ir_operator_new_tensor_load(Function *function,
                                               Operand *base_address,
                                               const DimId *strided_dims,
                                               const Size *strides,
-                                              size_t num_strided_dims,
+                                              uintptr_t num_strided_dims,
                                               const Type *loaded_type);
 
 /*
@@ -415,7 +417,7 @@ Operator *telamon_ir_operator_new_tensor_store(Function *function,
                                                Operand *base_address,
                                                const DimId *strided_dims,
                                                const Size *strides,
-                                               size_t num_strided_dims,
+                                               uintptr_t num_strided_dims,
                                                Operand *value);
 
 /*
@@ -442,7 +444,7 @@ Signature *telamon_ir_signature_new(const char *name);
 /*
  * Returns the parameter at the given position.
  */
-const Parameter *telamon_ir_signature_param(const Signature *signature, size_t index);
+const Parameter *telamon_ir_signature_param(const Signature *signature, uintptr_t index);
 
 /*
  * Frees a size allocated with `telamon_ir_size_new`.
@@ -460,7 +462,7 @@ void telamon_ir_size_free(Size *size);
 Size *telamon_ir_size_new(uint32_t const_factor,
                           uint32_t const_divisor,
                           const Parameter *const *param_factors,
-                          size_t num_params);
+                          uintptr_t num_params);
 
 /*
  * Prints the error message in a string. Returns `null` if no error was present. The

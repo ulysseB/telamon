@@ -399,12 +399,12 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
 
             let mut space = builder.get();
             let mem_0 = ir::mem::InternalId(0);
-            let (d23, d24, d25) = (ir::dim::Id {id: 23}, ir::dim::Id {id: 24}, ir::dim::Id {id: 25});
-            let (d26, d27, d28) = (ir::dim::Id {id: 26}, ir::dim::Id {id: 27}, ir::dim::Id {id: 28});
+            let (d23, d24, d25) = (ir::DimId {id: 23}, ir::DimId {id: 24}, ir::DimId {id: 25});
+            let (d26, d27, d28) = (ir::DimId {id: 26}, ir::DimId {id: 27}, ir::DimId {id: 28});
             assert!(space.lower_layout(mem_0, vec![d23, d24, d25], vec![d26, d27, d28]).is_ok());
             let mem_1 = ir::mem::InternalId(1);
-            let (d29, d30, d31) = (ir::dim::Id {id: 29}, ir::dim::Id {id: 30}, ir::dim::Id {id: 31});
-            let (d32, d33, d34) = (ir::dim::Id {id: 32}, ir::dim::Id {id: 33}, ir::dim::Id {id: 34});
+            let (d29, d30, d31) = (ir::DimId {id: 29}, ir::DimId {id: 30}, ir::DimId {id: 31});
+            let (d32, d33, d34) = (ir::DimId {id: 32}, ir::DimId {id: 33}, ir::DimId {id: 34});
             assert!(space.lower_layout(mem_1, vec![d29, d30, d31], vec![d32, d33, d34]).is_ok());
             let actions = vec![
                 Action::DimKind(d25, DimKind::VECTOR),

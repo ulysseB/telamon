@@ -74,9 +74,9 @@ pub enum Error {
     #[fail(display="dimensions must have a size of at least 2")]
     InvalidDimSize,
     #[fail(display="dimension {} appears twice in the increment list", dim)]
-    DuplicateIncrement { dim: ir::dim::Id },
+    DuplicateIncrement { dim: ir::DimId },
     #[fail(display="the access pattern references dimension {}, but is not nested inside", dim)]
-    InvalidDimInPattern { dim: ir::dim::Id },
+    InvalidDimInPattern { dim: ir::DimId },
 }
 
 impl From<TypeError> for Error {
