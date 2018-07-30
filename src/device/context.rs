@@ -62,6 +62,18 @@ pub trait AsyncEvaluator<'a, 'b> {
 pub enum EvalMode {
     /// Find the best candidate, skip bad candidates and allow optimizations.
     FindBest,
+    /// Test the evaluation function, same as `FindBest` but do not skip candidates.
+    TestEval,
     /// Test the performance model, do not skip candidates and do not optimize.
     TestBound,
+}
+
+impl EvalMode {
+    /// Indicates if candidates with a bound above the cut can be skipped.
+    pub fn skip_bad_candidates(&self) -> bool {
+        match self {
+            EvalMode::FindBest => true,
+            EvalMode::TestBound | EvalMode::TestEval => false,
+        }
+    }
 }

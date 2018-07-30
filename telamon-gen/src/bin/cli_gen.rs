@@ -8,7 +8,7 @@ use std::path::Path;
 fn main() {
     env_logger::init();
     if let Err(process_error) = telamon_gen::process(
-        &mut std::io::stdin(),
+        Some(&mut std::io::stdin()),
         &mut std::io::stdout(),
         true,
         &Path::new("exh")

@@ -5,7 +5,7 @@ use std;
 use utils::*;
 
 /// Uniquely identifies an instruction.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct InstId(pub u32);
 
 impl std::fmt::Display for InstId {

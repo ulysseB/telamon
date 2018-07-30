@@ -18,6 +18,8 @@ use num_cpus;
 pub struct Config {
     /// Name of the file in wich to store the logs.
     pub log_file: String,
+    /// Name of the file in which to store the binary event log.
+    pub event_log: String,
     /// Number of exploration threads.
     pub num_workers: usize,
     /// Indicates the search must be stopped if a candidate with an execution time better
@@ -123,6 +125,7 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             log_file: String::from("watch.log"),
+            event_log: String::from("eventlog.tfrecord"),
             num_workers: num_cpus::get(),
             algorithm: SearchAlgorithm::default(),
             stop_bound: None,

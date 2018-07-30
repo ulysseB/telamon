@@ -12,6 +12,8 @@ pub mod local_selection;
 
 pub use self::config::{Config, SearchAlgorithm};
 pub use self::candidate::Candidate;
+pub use self::bandit_arm::TreeEvent;
+pub use self::logger::LogMessage;
 
 use self::choice::fix_order;
 use self::monitor::{monitor, MonitorMessage};
@@ -41,7 +43,7 @@ use futures::executor::block_on;
 /// exhaustive search)
 pub fn find_best<'a>(config: &Config, 
                      context: &Context,
-                     search_space: Vec<SearchSpace<'a>>) -> Option<SearchSpace<'a>> { 
+                     search_space: Vec<SearchSpace<'a>>) -> Option<SearchSpace<'a>> {
     let candidates = search_space.into_iter().map(|space| {
         let bound = bound(&space, context);
         Candidate::new(space, bound)
@@ -56,27 +58,42 @@ pub fn find_best_ex<'a>(config: &Config,
                         candidates: Vec<Candidate<'a>>) -> Option<Candidate<'a>> { 
     match config.algorithm {
         config::SearchAlgorithm::MultiArmedBandit(ref band_config) => {
-            let tree = bandit_arm::Tree::new(candidates, band_config);
-            launch_search(config, tree, context)
-        }
+            crossbeam::scope(|scope| {
+                let (log_sender, log_receiver) = sync::mpsc::sync_channel(100);
+                unwrap!(scope.builder().name("Telamon - Logger".to_string())
+                        .spawn( || (unwrap!(logger::log(config, log_receiver)))));
+
+                let tree = bandit_arm::Tree::new(
+                    candidates, band_config, log_sender.clone());
+                unwrap!(scope.builder().name("Telamon - Search".to_string())
+                    .spawn(move || launch_search(config, tree, context, log_sender)))
+            }).join()
+        },
         config::SearchAlgorithm::BoundOrder => {
-            let candidate_list = ParallelCandidateList::new(config.num_workers);
-            for candidate in candidates { candidate_list.insert(candidate); }
-            launch_search(config, candidate_list, context)
-        }
+            crossbeam::scope(|scope| {
+                let (log_sender, log_receiver) = sync::mpsc::sync_channel(100);
+                unwrap!(scope.builder().name("Telamon - Logger".to_string())
+                        .spawn( || (unwrap!(logger::log(config, log_receiver)))));
+
+                let candidate_list = ParallelCandidateList::new(config.num_workers);
+                unwrap!(scope.builder().name("Telamon - Search".to_string())
+                    .spawn(move || launch_search(config, candidate_list, context, log_sender)))
+            }).join()
+        },
     }
 }
 
 /// Launch all threads needed for the search. wait for each one of them to finish. Monitor is
 /// supposed to return the best candidate found
-fn launch_search<'a, T>(config: &Config, candidate_store: T, context: &Context) 
-    -> Option<Candidate<'a>> where T: Store<'a>
+fn launch_search<'a, T: Store<'a>>(
+    config: &Config,
+    candidate_store: T,
+    context: &Context,
+    log_sender: sync::mpsc::SyncSender<LogMessage<T::Event>>,
+) -> Option<Candidate<'a>>
 {
     let (monitor_sender, monitor_receiver) = channel::mpsc::channel(100);
-    let (log_sender, log_receiver) = sync::mpsc::sync_channel(100);
     let maybe_candidate = crossbeam::scope( |scope| {
-        unwrap!(scope.builder().name("Telamon - Logger".to_string())
-            .spawn( || logger::log(config, log_receiver)));
         let best_cand_opt = scope.builder().name("Telamon - Monitor".to_string()).
             spawn(|| monitor(config, &candidate_store, monitor_receiver, log_sender));
         explore_space(config, &candidate_store, monitor_sender, context);

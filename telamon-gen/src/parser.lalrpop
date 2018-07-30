@@ -162,7 +162,11 @@ list<T, SEP>: Vec<T> = {
 #[inline]
 spanned<T>: Spanned<T> = {
     <beg: @L> <data: T> <end: @R> => {
-        Spanned {  beg, end, data }
+        Spanned {
+            beg,
+            end,
+            data,
+        }
     }
 };
 

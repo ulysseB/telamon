@@ -1,5 +1,5 @@
 {doc_comment}
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct {type_name} {{ bits: {bits_type} }}
 
 impl {type_name} {{

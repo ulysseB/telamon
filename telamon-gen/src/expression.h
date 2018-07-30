@@ -47,6 +47,7 @@ enum token {
     OF,
     DIVIDE,
     INTEGER,
+    INCLUDE,
 };
 
 // Indicates whether a counter sums or adds.
