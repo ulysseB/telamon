@@ -56,7 +56,6 @@ mod redefinition {
     }
 
     /// Redefinition of the Field from Set.
-    /// TODO: fixe position
     #[test]
     fn field() {
         assert_eq!(parser::parse_ast(Lexer::new(
@@ -71,12 +70,24 @@ mod redefinition {
                 new_objs = \"$objs.inst\"
             end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Redefinition(Spanned {
-                beg: Default::default(),
-                end: Default::default(),
+                beg: Position {
+                  position: LexerPosition { line: 7, column: 16 },
+                  ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 7, column: 24 },
+                  ..Default::default()
+                },
                 data: Hint::Set,
             }, Spanned {
-                beg: Default::default(),
-                end: Default::default(),
+                beg: Position {
+                  position: LexerPosition { line: 8, column: 16 },
+                  ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 8, column: 24 },
+                  ..Default::default()
+                },
                 data:  String::from("NewObjs"),
             }))
         );

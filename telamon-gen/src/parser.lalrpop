@@ -42,8 +42,8 @@ statement: ast::Statement = {
     },
 };
 
-set_def_map: (ir::SetDefKey, Option<ast::VarDef>, String) = {
-    <key: set_def_key> <var: (forall <var_def>)?> "=" <val: code> => (key, var, val),
+set_def_map: (Spanned<ir::SetDefKey>, Option<ast::VarDef>, String) = {
+    <key: spanned<set_def_key>> <var: (forall <var_def>)?> "=" <val: code> => (key, var, val),
 };
 
 set_disjoint: Vec<String> = {
