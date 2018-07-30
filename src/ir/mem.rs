@@ -6,6 +6,7 @@ use utils::*;
 
 /// Uniquely identifies a block.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+#[repr(C)]
 pub enum Id { Internal(u32), External(u32) }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]

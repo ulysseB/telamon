@@ -12,18 +12,16 @@ thread_local! {
     static ERROR: RefCell<Option<ir::Error>> = RefCell::new(None);
 }
 
-pub type Status = libc::c_int;
-
-const OK_STATUS: Status = 1;
-const FAIL_STATUS: Status = 0;
+const TELAMON_STATUS_OK: u32 = 1;
+const TELAMON_STATUS_FAIL: u32 = 0;
 
 /// Helper macro that unwraps a result. Exits with `$error` and sets the global `ERROR`
 /// variable when an error is encountered.
 ///
-/// When no value is specified for `$error`, returns with `FAIL_STATUS`. When `null` is
+/// When no value is specified for `$error`, returns with `TELAMON_STATUS_FAIL`. When `null` is
 /// specified instead, exits with a null mutable pointer.
 macro_rules! unwrap_or_exit {
-    ($result:expr) => { unwrap_or_exit!($result, FAIL_STATUS) };
+    ($result:expr) => { unwrap_or_exit!($result, TELAMON_STATUS_FAIL) };
     ($result:expr, null) => { unwrap_or_exit!($result, std::ptr::null_mut()) };
     ($result:expr, $error:expr) => {
         match $result {
@@ -141,8 +139,8 @@ pub unsafe extern "C" fn telamon_ir_function_free(function: *mut Function) {
 
 /// Adds an instruction performing the given operator in the given dimensions to the
 /// function. Writes the unique identifier of the instruction in `inst_id`. Returns
-/// zero if an error occures. Takes ownership of the operator but does not keeps any
-/// reference to `dimensions`.
+/// `TELAMON_STATUS_OK` except if an error occures. Takes ownership of the operator
+/// but does not keeps any reference to `dimensions`.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_function_add_instruction(
     function: *mut Function,
@@ -150,25 +148,25 @@ pub unsafe extern "C" fn telamon_ir_function_add_instruction(
     dimensions: *const ir::dim::Id,
     num_dimensions: libc::size_t,
     inst_id: *mut ir::InstId,
-) -> Status {
+) -> u32 {
     let dimensions = std::slice::from_raw_parts(dimensions, num_dimensions);
     let dim_set = dimensions.iter().cloned().collect();
     let operator = Box::from_raw(operator).0;
     *inst_id = unwrap_or_exit!((*function).0.add_inst(operator, dim_set));
-    OK_STATUS
+    TELAMON_STATUS_OK
 }
 
 /// Adds a dimension of the given size to the function. Takes ownership of `size` and
-/// writes the unique identifier of the dimension in `dim_id`. Returns zero if an error
-/// occurs.
+/// writes the unique identifier of the dimension in `dim_id`. Returns `TELAMON_STATUS_OK`
+/// except if an error occurs.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_function_add_dimension(
     function: *mut Function,
     size: *mut Size,
     dim_id: *mut ir::dim::Id,
-) -> Status {
+) -> u32 {
     *dim_id = unwrap_or_exit!((*function).0.add_dim(Box::from_raw(size).0));
-    OK_STATUS
+    TELAMON_STATUS_OK
 }
 
 /// Opaque type that abstracts away the lifetime parameter of `ir::Size` so cbindgen
@@ -256,7 +254,6 @@ pub unsafe extern "C" fn telamon_ir_operand_new_index(dim: ir::dim::Id) -> *mut 
 /// `src_dims` and in `dst_dims`. If `allow_tmp_mem` is non-zero, Telamon can allocate
 /// memory to transfer data between the two loop nests. Otherwise, it makes sure the data
 /// can be stored in registers (for example by fusing or unrolling loops).
-// FIXME: repr(C) ir::InstId
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_operand_new_inst(
     function: *const Function,
