@@ -85,12 +85,11 @@ pub unsafe extern "C" fn telamon_ir_signature_add_scalar(
 }
 
 /// Adds an array parameter to the function signature.
-// FIXME: repr(C) ir::mem::Id
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_signature_add_array(
     signature: *mut ir::Signature,
     name: *const libc::c_char,
-) -> ir::mem::Id {
+) -> ir::mem::MemId {
     let name = unwrap!(std::ffi::CStr::from_ptr(name).to_str());
     (*signature).add_array(name.to_string())
 }
@@ -145,7 +144,7 @@ pub unsafe extern "C" fn telamon_ir_function_free(function: *mut Function) {
 pub unsafe extern "C" fn telamon_ir_function_add_instruction(
     function: *mut Function,
     operator: *mut Operator,
-    dimensions: *const ir::dim::Id,
+    dimensions: *const ir::DimId,
     num_dimensions: libc::size_t,
     inst_id: *mut ir::InstId,
 ) -> u32 {
@@ -163,7 +162,7 @@ pub unsafe extern "C" fn telamon_ir_function_add_instruction(
 pub unsafe extern "C" fn telamon_ir_function_add_dimension(
     function: *mut Function,
     size: *mut Size,
-    dim_id: *mut ir::dim::Id,
+    dim_id: *mut ir::DimId,
 ) -> u32 {
     *dim_id = unwrap_or_exit!((*function).0.add_dim(Box::from_raw(size).0));
     TELAMON_STATUS_OK
@@ -240,9 +239,9 @@ pub unsafe extern "C" fn telamon_ir_operand_new_parameter(
 }
 
 /// Creates an operand that returns the current index on a dimension.
-// FIXME: repr(C) ir::dim::Id
+// FIXME: repr(C) ir::DimId
 #[no_mangle]
-pub unsafe extern "C" fn telamon_ir_operand_new_index(dim: ir::dim::Id) -> *mut Operand {
+pub unsafe extern "C" fn telamon_ir_operand_new_index(dim: ir::DimId) -> *mut Operand {
     let operand = ir::Operand::Index(dim);
     Box::into_raw(Box::new(Operand(operand)))
 }
@@ -258,8 +257,8 @@ pub unsafe extern "C" fn telamon_ir_operand_new_index(dim: ir::dim::Id) -> *mut 
 pub unsafe extern "C" fn telamon_ir_operand_new_inst(
     function: *const Function,
     inst: ir::InstId,
-    src_dims: *const ir::dim::Id,
-    dst_dims: *const ir::dim::Id,
+    src_dims: *const ir::DimId,
+    dst_dims: *const ir::DimId,
     num_mapped_dims: libc::size_t,
     allow_tmp_mem: libc::c_int,
 ) -> *mut Operand {
@@ -285,10 +284,10 @@ pub unsafe extern "C" fn telamon_ir_operand_new_inst(
 pub unsafe extern "C" fn telamon_ir_operand_new_reduction(
     function: *const Function,
     init_inst: ir::InstId,
-    src_dims: *const ir::dim::Id,
-    dst_dims: *const ir::dim::Id,
+    src_dims: *const ir::DimId,
+    dst_dims: *const ir::DimId,
     num_mapped_dims: libc::size_t,
-    reduction_dims: *const ir::dim::Id,
+    reduction_dims: *const ir::DimId,
     num_reduction_dims: libc::size_t,
 ) -> *mut Operand {
     let init = (*function).0.inst(init_inst);
@@ -302,8 +301,8 @@ pub unsafe extern "C" fn telamon_ir_operand_new_reduction(
 /// Helper function that creates a `DimMap` from C arrays of dimensions. Does not holds
 /// references after the function exits.
 unsafe fn dim_map_from_arrays(
-    src_dims: *const ir::dim::Id,
-    dst_dims: *const ir::dim::Id,
+    src_dims: *const ir::DimId,
+    dst_dims: *const ir::DimId,
     num_mapped_dims: libc::size_t,
 ) -> ir::DimMap {
     let src_dims = std::slice::from_raw_parts(src_dims, num_mapped_dims);
@@ -392,9 +391,9 @@ pub unsafe extern "C" fn telamon_ir_operator_new_cast(
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_operator_new_tensor_load(
     function: *mut Function,
-    array_id: ir::mem::Id,
+    array_id: ir::mem::MemId,
     base_address: *mut Operand,
-    strided_dims: *const ir::dim::Id,
+    strided_dims: *const ir::DimId,
     strides: *const Size,
     num_strided_dims: libc::size_t,
     loaded_type: *const ir::Type,
@@ -413,9 +412,9 @@ pub unsafe extern "C" fn telamon_ir_operator_new_tensor_load(
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_operator_new_tensor_store(
     function: *mut Function,
-    array_id: ir::mem::Id,
+    array_id: ir::mem::MemId,
     base_address: *mut Operand,
-    strided_dims: *const ir::dim::Id,
+    strided_dims: *const ir::DimId,
     strides: *const Size,
     num_strided_dims: libc::size_t,
     value: *mut Operand,
@@ -433,9 +432,9 @@ pub unsafe extern "C" fn telamon_ir_operator_new_tensor_store(
 /// `strided_dims` and `strides`.
 unsafe fn tensor_access(
     function: *mut Function,
-    array_id: ir::mem::Id,
+    array_id: ir::mem::MemId,
     base_address: *mut Operand,
-    strided_dims: *const ir::dim::Id,
+    strided_dims: *const ir::DimId,
     strides: *const Size,
     num_strided_dims: libc::size_t
 ) -> Result<(ir::Operand<'static>, ir::AccessPattern<'static>), ir::Error> {

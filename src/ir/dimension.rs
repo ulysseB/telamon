@@ -4,7 +4,9 @@ use std::fmt;
 
 /// Provides a unique identifier for iteration dimensions.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct Id(pub u32);
+pub struct DimId(pub u32);
+#[deprecated]
+pub type Id = DimId;
 
 impl fmt::Debug  for Id {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

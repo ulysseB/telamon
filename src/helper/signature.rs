@@ -1,6 +1,6 @@
 //! Helper functions to create a function signature and bind parameters.
 use device::{self, ScalarArgument, write_array};
-use ir::{self, Signature, Parameter, mem};
+use ir::{self, Signature, Parameter};
 use itertools::Itertools;
 use helper::tensor::{DimSize, Tensor};
 use rand;
@@ -34,7 +34,7 @@ impl<'a, AM> Builder<'a, AM> where AM: device::ArgMap + device::Context + 'a {
 
     /// Creates a new parameter and binds it to a freshly allocated an array.
     pub fn array<S: ScalarArgument>(&mut self, name: &str, size: usize)
-        -> (ir::mem::Id, Arc<AM::Array>)
+        -> (ir::MemId, Arc<AM::Array>)
     {
         let id = self.alloc_array_id();
         let param = Parameter { name: name.to_string(), t: ir::Type::PtrTo(id), };
@@ -64,8 +64,8 @@ impl<'a, AM> Builder<'a, AM> where AM: device::ArgMap + device::Context + 'a {
     pub fn context(&self) -> &AM { self.context }
 
     /// Allocates an array ID.
-    fn alloc_array_id(&mut self) -> mem::Id {
-        let id = mem::Id::External(self.signature.mem_blocks);
+    fn alloc_array_id(&mut self) -> ir::MemId {
+        let id = ir::MemId::External(self.signature.mem_blocks);
         self.signature.mem_blocks += 1;
         id
     }

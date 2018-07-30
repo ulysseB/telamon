@@ -15,11 +15,12 @@ mod types;
 pub use self::access_pattern::{Stride, AccessPattern};
 pub use self::basic_block::{BasicBlock, BBId};
 pub use self::dim_map::DimMap;
-pub use self::dimension::Dimension;
+pub use self::dimension::{DimId, Dimension};
 pub use self::error::{Error, TypeError};
 pub use self::function::{Function, Signature, Parameter};
 pub use self::instruction::{InstId, Instruction};
 pub use self::induction_var::{IndVarId, InductionVar};
+pub use self::mem::MemId;
 pub use self::operand::{Operand, DimMapScope};
 pub use self::operator::{BinOp, Operator};
 pub use self::size::Size;
@@ -52,7 +53,7 @@ pub struct NewObjs {
     pub instructions: Vec<InstId>,
     pub dimensions: Vec<dim::Id>,
     pub basic_blocks: Vec<BBId>,
-    pub mem_blocks: Vec<mem::Id>,
+    pub mem_blocks: Vec<MemId>,
     pub internal_mem_blocks: Vec<mem::InternalId>,
     pub mem_insts: Vec<InstId>,
     pub iteration_dims: Vec<(InstId, dim::Id)>,

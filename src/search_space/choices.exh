@@ -37,7 +37,7 @@ end
 set Dimensions subsetof BasicBlocks:
   disjoint: Instructions
   item_type = "ir::Dimension"
-  id_type = "ir::dim::Id"
+  id_type = "ir::DimId"
   item_getter = "$fun.dim($id)"
   id_getter = "$item.id()"
   iterator = "$fun.dims()"
@@ -48,7 +48,7 @@ end
 
 set MemBlocks:
   item_type = "ir::mem::Block"
-  id_type = "ir::mem::Id"
+  id_type = "ir::MemId"
   item_getter = "$fun.mem_block($id)"
   id_getter = "$item.mem_id()"
   iterator = "$fun.mem_blocks()"
@@ -70,7 +70,7 @@ end
 quotient IterationDims($inst in Instructions) of $dim in Dimensions:
   is_iteration_dim = order($dim, $inst) is OUTER / order is MERGED
   item_type = "ir::Dimension"
-  id_type = "ir::dim::Id"
+  id_type = "ir::DimId"
   item_getter = "$fun.dim($id)"
   id_getter = "$item.id()"
   iterator = "$inst.iteration_dims().iter().map(|&d| $fun.dim(d))"
@@ -84,7 +84,7 @@ end
 quotient ThreadDims of $dim in Dimensions:
   is_thread_dim = dim_kind($dim) is THREAD / thread_mapping is MAPPED
   item_type = "ir::Dimension"
-  id_type = "ir::dim::Id"
+  id_type = "ir::DimId"
   item_getter = "$fun.dim($id)"
   id_getter = "$item.id()"
   iterator = "$fun.thread_dims()"

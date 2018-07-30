@@ -7,13 +7,15 @@ use utils::*;
 /// Uniquely identifies a block.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 #[repr(C)]
-pub enum Id { Internal(u32), External(u32) }
+pub enum MemId { Internal(u32), External(u32) }
+#[deprecated]
+pub type Id = MemId;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 pub struct InternalId(pub u32);
 
-impl From<InternalId> for Id {
-    fn from(id: InternalId) -> Self { Id::Internal(id.0) }
+impl From<InternalId> for MemId {
+    fn from(id: InternalId) -> Self { MemId::Internal(id.0) }
 }
 
 /// Represents a memory block.
@@ -42,7 +44,7 @@ pub struct InternalBlock {
 /// A memory block allocated by the user.
 #[derive(Clone)]
 pub struct ExternalBlock {
-    id: Id,
+    id: MemId,
     uses: Vec<InstId>,
 }
 
@@ -70,7 +72,7 @@ impl InternalBlock {
 }
 
 impl Block for InternalBlock {
-    fn mem_id(&self) -> Id { Id::Internal(self.id.0) }
+    fn mem_id(&self) -> MemId { MemId::Internal(self.id.0) }
 
     fn as_internal(&self) -> Option<&InternalBlock> { Some(self) }
 
@@ -80,7 +82,7 @@ impl Block for InternalBlock {
 }
 
 impl Block for ExternalBlock {
-    fn mem_id(&self) -> Id { self.id }
+    fn mem_id(&self) -> MemId { self.id }
 
     fn uses(&self) -> &[InstId] { &self.uses }
 
@@ -99,7 +101,7 @@ impl BlockMap {
     /// Creates a new `BlocksMap`.
     pub fn new(num_external: u32) -> Self {
         let external_blocks = (0..num_external).map(|id| {
-            ExternalBlock { id: Id::External(id), uses: vec![] }
+            ExternalBlock { id: MemId::External(id), uses: vec![] }
         }).collect();
         BlockMap {
             internal_blocks: vec![],
@@ -142,18 +144,18 @@ impl BlockMap {
     }
 
     /// Returns a block given its Id.
-    pub fn block(&self, id: Id) -> &Block {
+    pub fn block(&self, id: MemId) -> &Block {
         match id {
-            Id::Internal(num) => &self.internal_blocks[num as usize],
-            Id::External(num) => &self.external_blocks[num as usize],
+            MemId::Internal(num) => &self.internal_blocks[num as usize],
+            MemId::External(num) => &self.external_blocks[num as usize],
         }
     }
 
     /// Returns a block given its Id.
-    pub fn block_mut(&mut self, id: Id) -> &mut Block {
+    pub fn block_mut(&mut self, id: MemId) -> &mut Block {
         match id {
-            Id::Internal(num) => &mut self.internal_blocks[num as usize],
-            Id::External(num) => &mut self.external_blocks[num as usize],
+            MemId::Internal(num) => &mut self.internal_blocks[num as usize],
+            MemId::External(num) => &mut self.external_blocks[num as usize],
         }
     }
 
