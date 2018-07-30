@@ -7,6 +7,8 @@ extern crate num;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate failure;
 
 mod cache;
 mod dag;
@@ -16,12 +18,15 @@ pub mod multimap;
 mod vec_set;
 #[macro_use]
 pub mod unwrap;
+pub mod sequence;
+pub mod tfrecord;
 
 pub use self::cache::Cache;
 pub use self::dag::Dag;
 pub use self::iterator::*;
 pub use self::ndarray::{NDArray, NDRange};
 pub use self::vec_set::VecSet;
+pub use self::sequence::Sequence;
 use fnv::FnvHasher;
 use num::Integer;
 use std::hash::BuildHasherDefault;

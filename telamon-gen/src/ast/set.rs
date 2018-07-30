@@ -20,45 +20,34 @@ impl SetDef {
                             .collect::<Vec<&ir::SetDefKey>>();
 
         if !keys.contains(&&ir::SetDefKey::ItemType) {
-            Err(TypeError::MissingEntry(self.name.data.to_owned(), Spanned {
-                beg: self.name.beg, end: self.name.end,
-                data: ir::SetDefKey::ItemType.to_string()
-            }))?;
+            Err(TypeError::MissingEntry(self.name.data.to_owned(),
+                self.name.with_data(ir::SetDefKey::ItemType.to_string())))?;
         }
         if !keys.contains(&&ir::SetDefKey::IdType) {
-            Err(TypeError::MissingEntry(self.name.data.to_owned(), Spanned {
-                beg: self.name.beg, end: self.name.end,
-                data: ir::SetDefKey::IdType.to_string()
-            }))?;
+            Err(TypeError::MissingEntry(self.name.data.to_owned(),
+                self.name.with_data(ir::SetDefKey::IdType.to_string())))?;
         }
         if !keys.contains(&&ir::SetDefKey::ItemGetter) {
-            Err(TypeError::MissingEntry(self.name.data.to_owned(), Spanned {
-                beg: self.name.beg, end: self.name.end,
-                data: ir::SetDefKey::ItemGetter.to_string()
-            }))?;
+            Err(TypeError::MissingEntry(self.name.data.to_owned(),
+                self.name.with_data(ir::SetDefKey::ItemGetter.to_string())))?;
         }
         if !keys.contains(&&ir::SetDefKey::IdGetter) {
-            Err(TypeError::MissingEntry(self.name.data.to_owned(), Spanned {
-                beg: self.name.beg, end: self.name.end,
-                data: ir::SetDefKey::IdGetter.to_string()
-            }))?;
+            Err(TypeError::MissingEntry(self.name.data.to_owned(),
+                self.name.with_data(ir::SetDefKey::IdGetter.to_string())))?;
         }
         if !keys.contains(&&ir::SetDefKey::Iter) {
-            Err(TypeError::MissingEntry(self.name.data.to_owned(), Spanned {
-                beg: self.name.beg, end: self.name.end,
-                data: ir::SetDefKey::Iter.to_string()
-            }))?;
+            Err(TypeError::MissingEntry(self.name.data.to_owned(),
+                self.name.with_data(ir::SetDefKey::Iter.to_string())))?;
         }
         if self.superset.is_some() && !keys.contains(&&ir::SetDefKey::FromSuperset) {
-            Err(TypeError::MissingEntry(self.name.data.to_owned(), Spanned {
-                beg: self.name.beg, end: self.name.end,
-                data: ir::SetDefKey::FromSuperset.to_string()
-            }))?;
+            Err(TypeError::MissingEntry(self.name.data.to_owned(),
+                self.name.with_data(ir::SetDefKey::FromSuperset.to_string())))?;
         }
         Ok(())
     }
 
     /// This checks that thereisn't any keys doublon.
+    /// TODO: fixe position, add Spanned to parser for key attributs.
     fn check_redefinition(&self) -> Result<(), TypeError> {
         let mut hash: HashSet<String> = HashSet::default();
         for (key, ..) in self.keys.iter() {

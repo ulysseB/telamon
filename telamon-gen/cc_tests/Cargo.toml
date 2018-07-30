@@ -15,6 +15,8 @@ env_logger = "0.5.9"
 itertools = "0.7.8"
 log = "0.4.1"
 num = "0.2.0"
+serde = "1.0"
+serde_derive = "1.0"
 
 [dependencies.telamon-utils]
 path = "../../telamon-utils"

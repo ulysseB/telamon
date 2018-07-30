@@ -9,13 +9,26 @@ extern crate libc;
 extern crate telamon;
 extern crate telamon_kernels;
 
+#[cfg(feature = "cuda")]
+pub mod cuda;
+
 use libc::{c_char, c_int, c_uint, size_t, uint32_t};
 use telamon::device;
-#[cfg(feature = "cuda")]
-use telamon::device::cuda;
 use telamon::device::x86;
 use telamon::explorer::config::Config;
 pub use telamon_kernels::{linalg, Kernel};
+
+// Pointers to `device::Context` and `device::Device` are not C-like pointers. Instead,
+// they are fat pointers containing both a regular pointer to the object and a pointer to
+// the vtable. Thus, we define wrappers to encapsulate the pointers in an opaque type and
+// we return pointers to the wrappers to C users.
+
+/// Description of the evaluation context. In particular, in contains the mapping between
+/// argument names and argument values.
+pub struct Context(*const device::Context);
+
+/// Description of the targeted device.
+pub struct Device(*const device::Device);
 
 /// Initializes the logger.
 #[no_mangle]
@@ -25,7 +38,7 @@ pub extern "C" fn env_logger_try_init() {
 
 /// Supported device types for running kernels.
 #[repr(C)]
-pub enum Device {
+pub enum DeviceId {
     X86,
     Cuda,
 }
@@ -112,7 +125,7 @@ pub unsafe extern "C" fn kernel_free(params: *mut KernelParameters) -> () {
 #[no_mangle]
 pub unsafe extern "C" fn kernel_optimize(
     params: *mut KernelParameters,
-    device: Device,
+    device: DeviceId,
     config_data: *const c_char,
     config_len: size_t,
 ) -> bool {
@@ -124,12 +137,13 @@ pub unsafe extern "C" fn kernel_optimize(
         Config::from_json(config_str)
     };
     let _bench_result = match device {
-        Device::X86 => (*params).optimize_kernel(&config, &mut x86::Context::new()),
-        Device::Cuda => {
+        DeviceId::X86 => (*params).optimize_kernel(&config, &mut x86::Context::new()),
+        DeviceId::Cuda => {
             #[cfg(feature = "cuda")]
             {
-                let executor = cuda::Executor::init();
-                (*params).optimize_kernel(&config, &mut cuda::Context::new(&executor));
+                let executor = device::cuda::Executor::init();
+                let mut context = device::cuda::Context::new(&executor);
+                (*params).optimize_kernel(&config, &mut context);
             }
             #[cfg(not(feature = "cuda"))]
             return false;

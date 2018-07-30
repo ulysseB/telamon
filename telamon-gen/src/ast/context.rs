@@ -79,7 +79,7 @@ impl TypingContext {
                     quotient: Option<Quotient>) {
         trace!("defining set {}", name);
         let mut var_map = VarMap::default();
-        let arg_name = arg_def.as_ref().map(|var| "$".to_string() + &var.name);
+        let arg_name = arg_def.as_ref().map(|var| "$".to_string() + &var.name.data);
         let arg = arg_def.clone().map(|arg| var_map.decl_argument(&self.ir_desc, arg));
         let superset = superset.map(|set| set.type_check(&self.ir_desc, &var_map));
         for disjoint in &disjoints { self.ir_desc.get_set_def(disjoint); }
@@ -99,7 +99,7 @@ impl TypingContext {
             // Handle the optional forall.
             if key == ir::SetDefKey::Reverse {
                 let var_def = var.as_ref().unwrap();
-                let var_name = "$".to_string() + &var_def.name;
+                let var_name = "$".to_string() + &var_def.name.data;
                 value = value.replace(&var_name, "$var");
                 env.push("var");
             } else { assert!(var.is_none()); }
@@ -146,17 +146,29 @@ impl TypingContext {
         let forall_vars = arg.clone().into_iter()
             .chain(std::iter::once(quotient.item)).collect_vec();
         let counter_name = self.create_repr_counter(
-            set.name().clone(), &repr_name, arg.clone(), item_name.clone(),
+            set.name().clone(), &repr_name, arg.clone(), item_name.data.clone(),
             forall_vars.clone(),
             RcStr::new(quotient.equiv_relation.0),
             quotient.equiv_relation.1);
         // Generate the code that set an item as representant.
         let trigger_code = print::add_to_quotient(
-            set, &repr_name, &counter_name, &item_name, &arg_name);
+            set, &repr_name, &counter_name, &item_name.data,
+            &arg_name.clone().map(|n| n.data)
+        );
         // Constraint the representative value.
         let forall_names = forall_vars.iter().map(|x| x.name.clone()).collect_vec();
-        let repr_instance = ChoiceInstance { name: repr_name, vars: forall_names.clone() };
-        let counter_instance = ChoiceInstance { name: counter_name, vars: forall_names };
+        let repr_instance = ChoiceInstance {
+            name: repr_name,
+            vars: forall_names.iter()
+                              .map(|n| n.data.clone())
+                              .collect::<Vec<_>>()
+        };
+        let counter_instance = ChoiceInstance {
+            name: counter_name,
+            vars: forall_names.iter()
+                              .map(|n| n.data.clone())
+                              .collect::<Vec<_>>()
+        };
         let not_repr = Condition::new_is_bool(repr_instance.clone(), false);
         let counter_leq_zero = Condition::CmpCode {
             lhs: counter_instance, rhs: "0".into(), op: ir::CmpOp::Leq
@@ -185,7 +197,7 @@ impl TypingContext {
         // Add the constraint `item in set => repr is TRUE`.
         let quotient_item_def = VarDef {
             name: item_name,
-            set: SetRef { name: set.name().clone(), var: arg_name }
+            set: SetRef { name: set.name().clone(), var: arg_name.map(|n| n.data) }
         };
         let item_in_set_foralls = arg.into_iter()
             .chain(std::iter::once(quotient_item_def)).collect();
@@ -202,7 +214,7 @@ impl TypingContext {
     fn create_repr_choice(&mut self, name: RcStr,
                           set: &ir::SetDef,
                           arg: Option<VarDef>,
-                          item_name: RcStr) {
+                          item_name: Spanned<RcStr>) {
         let bool_str: RcStr = "Bool".into();
         let def = ir::ChoiceDef::Enum(bool_str.clone());
         let mut vars = Vec::new();
@@ -210,7 +222,10 @@ impl TypingContext {
             vars.push((arg.name.clone(), set.arg().unwrap().clone()));
         }
         vars.push((item_name, set.superset().unwrap().clone()));
-        let args = ir::ChoiceArguments::new(vars, false, false);
+        let args = ir::ChoiceArguments::new(vars.into_iter()
+                                                .map(|(n, s)| (n.data, s))
+                                                .collect(),
+                                            false, false);
         let mut repr = ir::Choice::new(name, None, args, def);
         let false_value_set = std::iter::once("FALSE".into()).collect();
         repr.add_fragile_values(ir::ValueSet::enum_values(bool_str, false_value_set));
@@ -233,7 +248,7 @@ impl TypingContext {
         let rhs_name = RcStr::new(format!("{}_repr", item_name));
         let rhs_set = SetRef {
             name: set_name,
-            var: arg.as_ref().map(|d| d.name.clone())
+            var: arg.as_ref().map(|d| d.name.data.clone())
         };
         let equiv_choice = ChoiceInstance {
             name: equiv_choice_name,
@@ -246,7 +261,11 @@ impl TypingContext {
         let body = CounterBody {
             base: "0".to_string(),
             conditions: vec![condition],
-            iter_vars: vec![VarDef { name: rhs_name, set: rhs_set }],
+            iter_vars: vec![VarDef { name: Spanned {
+                data: rhs_name,
+                beg: Default::default(),
+                end: Default::default()
+            }, set: rhs_set }],
             kind: ir::CounterKind::Add,
             value: CounterVal::Code("1".to_string()),
         };
@@ -280,8 +299,12 @@ impl TypingContext {
         let vars = vars.into_iter().map(|v| {
             let name = v.name.clone();
             (name, var_map.decl_argument(&self.ir_desc, v))
-        }).collect();
-        let arguments = ir::ChoiceArguments::new(vars, symmetric, inverse);
+        }).collect::<Vec<_>>();
+        let arguments = ir::ChoiceArguments::new(vars.into_iter()
+                                                     .map(|(n, s)| (n.data, s))
+                                                     .collect::<Vec<_>>(),
+                                                 symmetric,
+                                                 inverse);
         let inverse = if let Some(Symmetry::AntiSymmetric(mapping)) = stmts.symmetry {
             {
                 let mut mapped = HashSet::default();
@@ -330,8 +353,11 @@ impl TypingContext {
         let vars = def.variables.into_iter().map(|v| {
             let name = v.name.clone();
             (name, var_map.decl_argument(&self.ir_desc, v))
-        }).collect();
-        let arguments = ir::ChoiceArguments::new(vars, false, false);
+        }).collect::<Vec<_>>();
+        let arguments = ir::ChoiceArguments::new(vars.into_iter()
+                                                     .map(|(n, s)| (n.data, s))
+                                                     .collect::<Vec<_>>(),
+                                                 false, false);
         let universe = type_check_code(def.code.into(), &var_map);
         let choice_def = ir::ChoiceDef::Number { universe };
         self.ir_desc.add_choice(ir::Choice::new(choice_name, doc, arguments, choice_def));
@@ -340,8 +366,14 @@ impl TypingContext {
     /// Register a constraint on an enum value.
     fn register_value_constraint(&mut self, choice: RcStr, args: Vec<VarDef>,
                                  value: RcStr, mut constraint: Constraint) {
-        let choice_args = args.iter().map(|def| def.name.clone()).collect();
-        let self_instance = ChoiceInstance { name: choice, vars: choice_args };
+        let choice_args =
+            args.iter().map(|def| def.name.clone())
+                       .collect::<Vec<_>>();
+        let self_instance = ChoiceInstance {
+            name: choice, vars: choice_args.into_iter()
+                                           .map(|n| n.data)
+                                           .collect::<Vec<_>>()
+        };
         let condition = Condition::Is { lhs: self_instance, rhs: vec![value], is: false };
         constraint.forall_vars.extend(args);
         for disjunction in &mut constraint.disjunctions {
@@ -372,7 +404,18 @@ impl TypingContext {
         }).collect_vec();
         let doc = doc.map(RcStr::new);
         let (incr, incr_condition) = self.gen_increment(
-            &counter_name, &vars, &iter_vars, all_var_defs, body.conditions, &var_map);
+            &counter_name,
+            vars.iter()
+                .cloned()
+                .map(|(n, s)| (n.data, s))
+                .collect::<Vec<_>>()
+                .as_slice(),
+            iter_vars.iter()
+                .cloned()
+                .map(|(n, s)| (n.data, s))
+                .collect::<Vec<_>>()
+                .as_slice(),
+            all_var_defs, body.conditions, &var_map);
         // Type check the value.
         let value = match body.value {
             CounterVal::Code(code) =>
@@ -394,7 +437,9 @@ impl TypingContext {
         let counter_def = ir::ChoiceDef::Counter {
             incr_iter, kind, value, incr, incr_condition, visibility, base
         };
-        let counter_args = ir::ChoiceArguments::new(vars, false, false);
+        let counter_args = ir::ChoiceArguments::new(vars.into_iter()
+                                                        .map(|(n, s)| (n.data, s))
+                                                        .collect(), false, false);
         let mut counter_choice = ir::Choice::new(
             counter_name, doc, counter_args, counter_def);
         // Filter the counter itself after an update, because the filter actually acts on

@@ -11,6 +11,7 @@ extern crate serde_json;
 #[macro_use]
 extern crate telamon_utils as utils;
 extern crate libc;
+extern crate errno;
 extern crate indexmap;
 
 extern crate lalrpop_util;
@@ -54,25 +55,28 @@ pub fn process_file<'a>(
     output_path: &path::Path,
     format: bool
 ) -> Result<(), error::ProcessError<'a>> {
-    let mut input = fs::File::open(path::Path::new(input_path)).unwrap();
     let mut output = fs::File::create(path::Path::new(output_path)).unwrap();
     let input_path_str = input_path.to_string_lossy();
     info!("compiling {} to {}", input_path_str, output_path.to_string_lossy());
-    process(&mut input, &mut output, format, input_path)
+    process(None, &mut output, format, input_path)
 }
 
 /// Parses a constraint description file.
 pub fn process<'a, T: io::Write>(
-    input: &mut io::Read,
+    input: Option<&mut io::Read>,
     output: &mut T,
     format: bool,
     input_path: &'a path::Path
 ) -> Result<(), error::ProcessError<'a>> {
     // Parse and check the input.
-    let tokens = lexer::Lexer::new(input);
-    let ast: ast::Ast =
-        parser::parse_ast(tokens)
+    let tokens = if let Some(stream) = input {
+        lexer::Lexer::from_input(stream)
+    } else {
+        lexer::Lexer::from_file(input_path)
+    };
+    let ast: ast::Ast = parser::parse_ast(tokens)
                .map_err(|c| error::ProcessError::from((input_path.display(), c)))?;
+    
     let (mut ir_desc, constraints) = ast.type_check().unwrap();
     debug!("constraints: {:?}", constraints);
     // Generate flat filters.
@@ -136,7 +140,7 @@ mod tests {
         let mut in_buf = Cursor::new(include_str!("../../src/search_space/choices.exh").as_bytes());
         let ref_out = {
             let mut ref_out = Vec::new();
-            super::process(&mut in_buf, &mut ref_out, false, &Path::new("choices.exh")).unwrap();
+            super::process(Some(&mut in_buf), &mut ref_out, false, &Path::new("choices.exh")).unwrap();
             ref_out
         };
         // Ideally we would want to run this loop more than once, but
@@ -146,7 +150,7 @@ mod tests {
             in_buf.set_position(0);
 
             let mut out_buf = Vec::new();
-            super::process(&mut in_buf, &mut out_buf, false, &Path::new("choices.exh")).unwrap();
+            super::process(Some(&mut in_buf), &mut out_buf, false, &Path::new("choices.exh")).unwrap();
             assert_eq!(
                 ::std::str::from_utf8(&out_buf),
                 ::std::str::from_utf8(&ref_out)

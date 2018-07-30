@@ -52,9 +52,13 @@ set_disjoint: Vec<String> = {
 
 choice_vars = { list<var_def, ","> };
 
+rc_var: RcStr = {
+    <name: var> => RcStr::new(name),
+};
+
 var_def: ast::VarDef = {
-    <name: var> in_ <set: set_ref> => {
-        ast::VarDef { name: RcStr::new(name), set }
+    <spanned_name: spanned<rc_var>> in_ <set: set_ref> => {
+        ast::VarDef { name: spanned_name, set }
     },
 };
 
@@ -158,7 +162,11 @@ list<T, SEP>: Vec<T> = {
 #[inline]
 spanned<T>: Spanned<T> = {
     <beg: @L> <data: T> <end: @R> => {
-        Spanned {  beg, end, data }
+        Spanned {
+            beg,
+            end,
+            data,
+        }
     }
 };
 

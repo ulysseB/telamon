@@ -5,11 +5,13 @@ use explorer::candidate::Candidate;
 use explorer::{choice, local_selection};
 use explorer::config::{BanditConfig, NewNodeOrder, OldNodeOrder};
 use explorer::store::Store;
+use explorer::logger::LogMessage;
 use itertools::Itertools;
+use rpds::List;
 use std;
 use std::f64;
 use std::sync::{Weak, Arc, RwLock};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use utils::*;
 
 struct TreeStats {
@@ -24,23 +26,39 @@ impl TreeStats {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+pub enum TreeEvent {
+    Evaluation {
+        actions: Sequence<choice::ActionEx>,
+        score: f64,
+    },
+}
+
 /// A search tree to perform a multi-armed bandit search.
 pub struct Tree<'a, 'b> {
     shared_tree: Arc<RwLock<SubTree<'a>>>,
+    stop: AtomicBool,
     cut: RwLock<f64>,
     config: &'b BanditConfig,
     stats: TreeStats,
+    log: std::sync::mpsc::SyncSender<LogMessage<TreeEvent>>,
 }
 
 impl<'a, 'b> Tree<'a, 'b> {
     /// Creates a new search tree containing the given candidates.
-    pub fn new(candidates: Vec<Candidate<'a>>, config: &'b BanditConfig) -> Self {
+    pub fn new(
+        candidates: Vec<Candidate<'a>>,
+        config: &'b BanditConfig,
+        log_sender: std::sync::mpsc::SyncSender<LogMessage<TreeEvent>>
+    ) -> Self {
         let root = SubTree::from_candidates(candidates, std::f64::INFINITY);
         Tree {
             shared_tree: Arc::new(RwLock::new(root)),
+            stop: AtomicBool::new(false),
             cut: RwLock::new(std::f64::INFINITY),
             config,
             stats: TreeStats::new(),
+            log: log_sender,
         }
     }
 
@@ -122,6 +140,8 @@ impl<'a, 'b> Tree<'a, 'b> {
 impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
     type PayLoad = Path<'a>;
 
+    type Event = TreeEvent;
+
     fn update_cut(&self, new_cut: f64) {
         *unwrap!(self.cut.write()) = new_cut;
         let root = unwrap!(self.shared_tree.write()).trim(new_cut);
@@ -135,7 +155,17 @@ impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
         info!("trimming finished");
     }
 
-    fn commit_evaluation(&self, mut path: Self::PayLoad, eval: f64) {
+    fn commit_evaluation(
+        &self,
+        actions: &List<choice::ActionEx>,
+        mut path: Self::PayLoad,
+        eval: f64,
+    ) {
+        unwrap!(self.log.send(LogMessage::Event(TreeEvent::Evaluation {
+            actions: Sequence::List(actions.clone()),
+            score: eval,
+        })));
+
         while let Some((node, idx)) = path.0.pop() {
             if let Some(node) = node.upgrade() {
                 if !unwrap!(node.write()).update_rewards(&self.config, idx, eval) {
@@ -147,6 +177,7 @@ impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
 
     fn explore(&self, context: &Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
         loop {
+            if self.stop.load(Ordering::Relaxed) { return None; }
             let cut: f64 = { *unwrap!(self.cut.read()) };
             let state = unwrap!(self.shared_tree.write()).descend(context, cut);
             if let DescendState::DeadEnd = state { return None; }
@@ -157,6 +188,10 @@ impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
                 self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
             }
         }
+    }
+
+    fn stop_exploration(&self) {
+        self.stop.store(true, Ordering::Relaxed);
     }
 
     fn print_stats(&self) {

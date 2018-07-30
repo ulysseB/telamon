@@ -16,6 +16,9 @@ pub trait Context: Sync {
     /// Returns the description of the device the code runs on.
     fn device(&self) -> &Device;
     /// Returns the execution time of a fully specified implementation in nanoseconds.
+    /// 
+    /// This function should be called multiple times to obtain accurate execution time.
+    /// Indeed, it only executes the code once, without warming the GPU first.
     fn evaluate(&self, space: &Function, mode: EvalMode) -> Result<f64, ()>;
     /// Compiles and benchmarks a functions. As opposed to `Self::evaluate`, the measured
     /// time contains potential startup times.
@@ -62,6 +65,18 @@ pub trait AsyncEvaluator<'a, 'b> {
 pub enum EvalMode {
     /// Find the best candidate, skip bad candidates and allow optimizations.
     FindBest,
+    /// Test the evaluation function, same as `FindBest` but do not skip candidates.
+    TestEval,
     /// Test the performance model, do not skip candidates and do not optimize.
     TestBound,
+}
+
+impl EvalMode {
+    /// Indicates if candidates with a bound above the cut can be skipped.
+    pub fn skip_bad_candidates(&self) -> bool {
+        match self {
+            EvalMode::FindBest => true,
+            EvalMode::TestBound | EvalMode::TestEval => false,
+        }
+    }
 }

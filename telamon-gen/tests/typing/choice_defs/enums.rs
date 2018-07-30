@@ -1,6 +1,6 @@
 pub use super::utils::RcStr;
 
-pub use super::telamon_gen::lexer::{Lexer, Spanned, Position};
+pub use super::telamon_gen::lexer::{Lexer, Spanned, Position, LexerPosition};
 pub use super::telamon_gen::parser;
 pub use super::telamon_gen::ast::*;
 
@@ -12,16 +12,22 @@ mod undefined {
     /// Missing the set BasickBlock from a Emum.
     #[test]
     fn parameter() {
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
                 b"define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
                     symmetric
                     value A:
                     value B:
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Undefined(Spanned {
-                beg: Position { line: 0, column: 12},
-                end: Position { line: 0, column: 15},
-                data: String::from("BasicBlock")
+                beg: Position {
+                  position: LexerPosition { line: 0, column: 12 },
+                  ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 0, column: 15 },
+                  ..Default::default()
+                },
+                data: String::from("BasicBlock"),
             }))
         );
     }
@@ -29,15 +35,21 @@ mod undefined {
     /// Missing the set BasickBlock from a Emum.
     #[test]
     fn value() {
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
             b"define enum foo():
                 value A:
                 alias AB = A | B:
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Undefined(Spanned {
-                beg: Position { line: 2, column: 22},
-                end: Position { line: 2, column: 24},
-                data: String::from("B")
+                beg: Position {
+                  position: LexerPosition { line: 2, column: 22 },
+                  ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 2, column: 24 },
+                  ..Default::default()
+                },
+                data: String::from("B"),
             }))
         );
     }
@@ -51,19 +63,31 @@ mod redefinition {
     /// Redefinition of the foo Enum.
     #[test]
     fn enum_() {
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
             b"define enum foo():
               end
-              
+
               define enum foo():
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Redefinition(Spanned {
-                beg: Position { line: 0, column: 12},
-                end: Position { line: 0, column: 15},
+                beg: Position {
+                  position: LexerPosition { line: 0, column: 12 },
+                  ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 0, column: 15 },
+                  ..Default::default()
+                },
                 data: Hint::Enum,
             }, Spanned {
-                beg: Position { line: 3, column: 26},
-                end: Position { line: 3, column: 29},
+                beg: Position {
+                  position: LexerPosition { line: 3, column: 26 },
+                  ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 3, column: 29 },
+                  ..Default::default()
+                },
                 data: String::from("foo"),
             }))
         );
@@ -71,7 +95,7 @@ mod redefinition {
 
     #[test]
     fn field() {
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
             b"define enum foo():
                 value A:
                 value B:
@@ -80,32 +104,56 @@ mod redefinition {
                 alias AB = A | B:
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Redefinition(Spanned {
-                beg: Position { line: 5, column: 22 },
-                end: Position { line: 5, column: 24 },
+                beg: Position {
+                  position: LexerPosition { line: 4, column: 22  },
+                   ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 4, column: 24  },
+                   ..Default::default()
+                },
                 data: Hint::EnumAttribute,
             }, Spanned {
-                beg: Position { line: 5, column: 22 },
-                end: Position { line: 5, column: 24 },
+                beg: Position {
+                  position: LexerPosition { line: 5, column: 22  },
+                   ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 5, column: 24  },
+                   ..Default::default()
+                },
                 data: String::from("AB"),
             }))
         );
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
             b"define enum foo():
                 value A:
                 value B:
                 value A:
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Redefinition(Spanned {
-                beg: Position { line: 3, column: 22 },
-                end: Position { line: 3, column: 23 },
+                beg: Position {
+                  position: LexerPosition { line: 1, column: 22  },
+                   ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 1, column: 23  },
+                   ..Default::default()
+                },
                 data: Hint::EnumAttribute,
             }, Spanned {
-                beg: Position { line: 3, column: 22 },
-                end: Position { line: 3, column: 23 },
+                beg: Position {
+                  position: LexerPosition { line: 3, column: 22  },
+                   ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 3, column: 23  },
+                   ..Default::default()
+                },
                 data: String::from("A"),
             }))
         );
-        assert_eq!(parser::parse_ast(Lexer::from(
+        assert_eq!(parser::parse_ast(Lexer::new(
             b"set BasicBlock:
                 item_type = \"ir::inst::Obj\"
                 id_type = \"ir::inst::Id\"
@@ -122,12 +170,24 @@ mod redefinition {
                 value B:
               end".to_vec())).unwrap().type_check().err(),
             Some(TypeError::Redefinition(Spanned {
-                beg: Position { line: 10, column: 16 },
-                end: Position { line: 10, column: 25 },
+                beg: Position {
+                  position: LexerPosition { line: 10, column: 16  },
+                   ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 10, column: 25  },
+                   ..Default::default()
+                },
                 data: Hint::EnumAttribute,
             }, Spanned {
-                beg: Position { line: 11, column: 16 },
-                end: Position { line: 11, column: 25 },
+                beg: Position {
+                  position: LexerPosition { line: 11, column: 16  },
+                   ..Default::default()
+                },
+                end: Position {
+                  position: LexerPosition { line: 11, column: 25  },
+                   ..Default::default()
+                },
                 data: String::from("Symmetric"),
             }))
         );
@@ -137,19 +197,25 @@ mod redefinition {
 /*
 #[test]
 fn enum_symmetric_two_parameters() {
-    assert_eq!(parser::parse_ast(Lexer::from(
+    assert_eq!(parser::parse_ast(Lexer::new(
         b"define enum foo():
             symmetric
             value A:
             value B:
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            beg: Position { line: 0, column: 0},
-            end: Position { line: 0, column: 18},
-            data: TypeError::BadSymmetricArg(vec![])
+            beg: Position {
+              position: LexerPosition { line: 0, column: 0 },
+              ..Default::default()
+            },
+            end: Position {
+              position: LexerPosition { line: 0, column: 18 },
+              ..Default::default()
+            },
+            data: TypeError::BadSymmetricArg(vec![]),
         })
     );
-    assert_eq!(parser::parse_ast(Lexer::from(
+    assert_eq!(parser::parse_ast(Lexer::new(
         b"set BasicBlock:
             item_type = \"ir::basic_block::Obj\"
             id_type = \"ir::basic_block::Id\"
@@ -165,8 +231,14 @@ fn enum_symmetric_two_parameters() {
             value B:
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            beg: Position { line: 9, column: 10},
-            end: Position { line: 9, column: 46},
+            beg: Position {
+              position: LexerPosition { line: 9, column: 10 },
+              ..Default::default()
+            },
+            end: Position {
+              position: LexerPosition { line: 9, column: 46 },
+              ..Default::default()
+            },
             data: TypeError::BadSymmetricArg(vec![
                 VarDef {
                     name: RcStr::new(String::from("lhs")),
@@ -175,10 +247,10 @@ fn enum_symmetric_two_parameters() {
                         var: None
                     }
                 },
-            ])
+            ]),
         })
     );
-    assert_eq!(parser::parse_ast(Lexer::from(
+    assert_eq!(parser::parse_ast(Lexer::new(
         b"set BasicBlock:
             item_type = \"ir::basic_block::Obj\"
             id_type = \"ir::basic_block::Id\"
@@ -196,8 +268,14 @@ fn enum_symmetric_two_parameters() {
             value B:
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            beg: Position { line: 9, column: 10},
-            end: Position { line: 11, column: 46},
+            beg: Position {
+              position: LexerPosition { line: 9, column: 10 },
+              ..Default::default()
+            },
+            end: Position {
+              position: LexerPosition { line: 11, column: 46 },
+              ..Default::default()
+            },
             data: TypeError::BadSymmetricArg(vec![
                 VarDef {
                     name: RcStr::new(String::from("lhs")),
@@ -220,14 +298,14 @@ fn enum_symmetric_two_parameters() {
                         var: None
                     }
                 },
-            ])
+            ]),
         })
     );
 }
 
 #[test]
 fn enum_symmetric_same_parameter() {
-    assert_eq!(parser::parse_ast(Lexer::from(
+    assert_eq!(parser::parse_ast(Lexer::new(
         b"set BasicBlock:
             item_type = \"ir::basic_block::Obj\"
             id_type = \"ir::basic_block::Id\"
@@ -252,8 +330,14 @@ fn enum_symmetric_same_parameter() {
             value B:
           end".to_vec())).unwrap().type_check().err(),
         Some(Spanned {
-            beg: Position { line: 18, column: 10},
-            end: Position { line: 18, column: 67},
+            beg: Position {
+              position: LexerPosition { line: 18, column: 10 },
+              ..Default::default()
+            },
+            end: Position {
+              position: LexerPosition { line: 18, column: 67 },
+              ..Default::default()
+            },
             data: TypeError::BadSymmetricArg(vec![
                 VarDef {
                     name: RcStr::new(String::from("lhs")),
@@ -269,7 +353,7 @@ fn enum_symmetric_same_parameter() {
                         var: None
                     }
                 }
-                ])
+            ]),
         })
     );
 }

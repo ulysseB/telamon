@@ -86,14 +86,17 @@ impl CheckerContext {
     ) -> Result<(), TypeError> {
         match statement {
             ChoiceDef::EnumDef(EnumDef {
-                name: Spanned { beg, end, data: _ }, doc: _, variables, .. }) |
+                name: Spanned { ref beg, ref end, data: _ },
+                doc: _, ref variables,
+            .. }) |
             ChoiceDef::IntegerDef(IntegerDef {
-                name: Spanned { beg, end, data: _ }, doc: _, variables, .. }) => {
+                name: Spanned { ref beg, ref end, data: _ }, doc: _, ref variables,
+            .. }) => {
                 for VarDef { name: _, set: SetRef { name, .. } } in variables {
                     let name: &String = name.deref();
                     if !self.hash.contains_key(name) {
                         Err(TypeError::Undefined(Spanned {
-                            beg, end,
+                            beg: beg.to_owned(), end: end.to_owned(),
                             data: name.to_owned(),
                         }))?;
                     }
@@ -109,13 +112,14 @@ impl CheckerContext {
         &self, statement: &SetDef
     ) -> Result<(), TypeError> {
         match statement {
-            SetDef { name: Spanned { beg, end, data: ref name},
+            SetDef { name: Spanned { beg, end, data: ref name },
             doc: _, arg, superset, disjoint: _, keys, ..  } => {
                 if let Some(VarDef { name: _, set: SetRef { name, .. } }) = arg {
                     let name: &String = name.deref();
                     if !self.hash.contains_key(name) {
                         Err(TypeError::Undefined(Spanned {
-                            beg: *beg, end: *end, data: name.to_owned()
+                            beg: beg.to_owned(), end: end.to_owned(),
+                            data: name.to_owned(),
                         }))?;
                     }
                 }
@@ -123,7 +127,8 @@ impl CheckerContext {
                     let name: &String = supername.deref();
                     if !self.hash.contains_key(name) {
                         Err(TypeError::Undefined(Spanned {
-                            beg: *beg, end: *end, data: name.to_owned()
+                            beg: beg.to_owned(), end: end.to_owned(),
+                            data: name.to_owned(),
                         }))?;
                     }
                 }
@@ -139,14 +144,18 @@ impl CheckerContext {
         match statement {
             Statement::SetDef(SetDef { name: Spanned { beg, end, data: name }, .. }) |
             Statement::ChoiceDef(ChoiceDef::EnumDef(
-                EnumDef { name: Spanned { beg, end, data: name, }, ..  })) |
+                EnumDef { name: Spanned { beg, end, data: name }, ..  })) |
             Statement::ChoiceDef(ChoiceDef::IntegerDef(
                 IntegerDef { name: Spanned { beg, end, data: name }, .. })) => {
                 let data: Hint = Hint::from(&statement);
-                let value: Spanned<Hint> = Spanned { beg: *beg, end: *end, data };
+                let value: Spanned<Hint> = Spanned {
+                    beg: beg.to_owned(), end: end.to_owned(),
+                    data,
+                };
                 if let Some(pre) = self.hash.insert(name.to_owned(), value) {
                     Err(TypeError::Redefinition(pre, Spanned {
-                        beg: *beg, end: *end, data: name.to_owned(),
+                        beg: beg.to_owned(), end: end.to_owned(),
+                        data: name.to_owned(),
                     }))
                 } else {
                     Ok(())
@@ -302,7 +311,7 @@ impl SetRef {
 /// Defines a variable.
 #[derive(Debug, Clone)]
 pub struct VarDef {
-    pub name: RcStr,
+    pub name: Spanned<RcStr>,
     pub set: SetRef,
 }
 
@@ -339,9 +348,9 @@ impl VarMap {
     fn decl_var(&mut self, ir_desc: &ir::IrDesc, var_def: VarDef,
                 var: ir::Variable) -> ir::Set {
         let set = var_def.set.type_check(ir_desc, self);
-        match self.map.entry(var_def.name.clone()) {
+        match self.map.entry(var_def.name.data.clone()) {
             hash_map::Entry::Occupied(..) =>
-                panic!("variable {} defined twice", var_def.name),
+                panic!("variable {} defined twice", var_def.name.data),
             hash_map::Entry::Vacant(entry) => { entry.insert((var, set.clone())); },
         };
         set
