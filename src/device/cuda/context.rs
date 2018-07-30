@@ -85,6 +85,9 @@ impl<'a> Context<'a> {
             info!("candidate skipped after its first evaluation");
             return Ok(t0);
         }
+        // TODO(cc_perf): becomes the limiting factor after a few hours. We should stop
+        // earlier and make tests to know when (for example, measure the MAX delta between
+        // min and median with N outliers).
         let runtimes = (0..NUM_EVALS).map(|_| thunk.execute());
         let runtimes_by_value = process_results(runtimes, |iter| iter.sorted())?;
         let median = self.ticks_to_ns(runtimes_by_value[NUM_EVALS/2]);
