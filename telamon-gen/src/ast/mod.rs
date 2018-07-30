@@ -49,11 +49,10 @@ pub enum Hint {
 }
 
 impl Hint {
-    fn from(statement: &Statement) -> Self {
+    fn from(statement: &ChoiceDef) -> Self {
         match statement {
-            Statement::SetDef(..) => Hint::Set,
-            Statement::ChoiceDef(ChoiceDef::EnumDef(..)) => Hint::Enum,
-            Statement::ChoiceDef(ChoiceDef::IntegerDef(..)) => Hint::Integer,
+            ChoiceDef::EnumDef(..) => Hint::Enum,
+            ChoiceDef::IntegerDef(..) => Hint::Integer,
             _ => unreachable!(),
         }
     }
@@ -75,17 +74,48 @@ pub enum TypeError {
 }
 
 /// CheckContext is a type system.
+/// TODO: multi hashmap: Set, Enum [...]
+/// CheckerContext -> typing/context.rs
 #[derive(Debug, Default)]
 struct CheckerContext {
     /// Map Name of unique identifiant.
-    hash: HashMap<String, Spanned<Hint>>,
+    hash_set: HashMap<String, Spanned<Hint>>,
+    hash_choice: HashMap<String, Spanned<Hint>>,
 }
 
 impl CheckerContext {
+
+    /// This checks the redefinition of SetDef.
+    pub fn declare_set(&mut self, statement: &Statement) -> Result<(), TypeError> {
+        if let Statement::SetDef(set) = statement {
+            if let Some(pre) = self.hash_set.insert(
+                set.name.data.to_owned(),
+                set.name.with_data(Hint::Set)
+            ) {
+                Err(TypeError::Redefinition(pre, set.name.to_owned()))?;
+            }
+        }
+        Ok(())
+    }
+
+    /// This checks the redefinition of ChoiceDef (EnumDef and IntegerDef).
+    pub fn declare_choice(&mut self, statement: &Statement) -> Result<(), TypeError> {
+        if let Statement::ChoiceDef(choice) = statement {
+            if let Some(pre) = self.hash_choice.insert(
+                choice.get_name().data.to_owned(),
+                choice.get_name().with_data(Hint::from(choice))
+            ) {
+                Err(TypeError::Redefinition(pre, choice.get_name()))?;
+            }
+        }
+        Ok(())
+    }
+
+//    pub check_set_define(...)
+//    pub check_choice_set(...)
+
     /// This checks the undefined of EnumDef or IntegerDef.
-    fn check_undefined_choicedef(
-        &self, statement: ChoiceDef
-    ) -> Result<(), TypeError> {
+    fn check_undefined_choicedef(&self, statement: ChoiceDef) -> Result<(), TypeError> {
         match statement {
             ChoiceDef::EnumDef(EnumDef {
                 name: Spanned { ref beg, ref end, data: _ },
@@ -96,7 +126,7 @@ impl CheckerContext {
             .. }) => {
                 for VarDef { name: _, set: SetRef { name, .. } } in variables {
                     let name: &String = name.deref();
-                    if !self.hash.contains_key(name) {
+                    if !self.hash_choice.contains_key(name) {
                         Err(TypeError::Undefined(Spanned {
                             beg: beg.to_owned(), end: end.to_owned(),
                             data: name.to_owned(),
@@ -110,15 +140,13 @@ impl CheckerContext {
     }
 
     /// This checks the undefined of SetDef superset and arg.
-    fn check_undefined_setdef(
-        &self, statement: &SetDef
-    ) -> Result<(), TypeError> {
+    fn check_undefined_setdef(&self, statement: &SetDef) -> Result<(), TypeError> {
         match statement {
             SetDef { name: Spanned { beg, end, data: ref name },
             doc: _, arg, superset, disjoint: _, keys, ..  } => {
                 if let Some(VarDef { name: _, set: SetRef { name, .. } }) = arg {
                     let name: &String = name.deref();
-                    if !self.hash.contains_key(name) {
+                    if !self.hash_set.contains_key(name) {
                         Err(TypeError::Undefined(Spanned {
                             beg: beg.to_owned(), end: end.to_owned(),
                             data: name.to_owned(),
@@ -127,7 +155,7 @@ impl CheckerContext {
                 }
                 if let Some(SetRef { name: supername, .. }) = superset {
                     let name: &String = supername.deref();
-                    if !self.hash.contains_key(name) {
+                    if !self.hash_set.contains_key(name) {
                         Err(TypeError::Undefined(Spanned {
                             beg: beg.to_owned(), end: end.to_owned(),
                             data: name.to_owned(),
@@ -139,39 +167,10 @@ impl CheckerContext {
         Ok(())
     }
     
-    /// This checks the redefinition of SetDef, EnumDef and IntegerDef.
-    fn check_redefinition(
-        &mut self, statement: &Statement
-    ) -> Result<(), TypeError> {
-        match statement {
-            Statement::SetDef(SetDef { name: Spanned { beg, end, data: name }, .. }) |
-            Statement::ChoiceDef(ChoiceDef::EnumDef(
-                EnumDef { name: Spanned { beg, end, data: name }, ..  })) |
-            Statement::ChoiceDef(ChoiceDef::IntegerDef(
-                IntegerDef { name: Spanned { beg, end, data: name }, .. })) => {
-                let data: Hint = Hint::from(&statement);
-                let value: Spanned<Hint> = Spanned {
-                    beg: beg.to_owned(), end: end.to_owned(),
-                    data,
-                };
-                if let Some(pre) = self.hash.insert(name.to_owned(), value) {
-                    Err(TypeError::Redefinition(pre, Spanned {
-                        beg: beg.to_owned(), end: end.to_owned(),
-                        data: name.to_owned(),
-                    }))
-                } else {
-                    Ok(())
-                }
-            },
-            _ => Ok(()),
-        }
-    }
-
     /// Type checks the condition.
-    pub fn type_check(
-        &mut self, statement: &Statement
-    ) -> Result<(), TypeError> {
-        self.check_redefinition(&statement)?;
+    pub fn type_check(&mut self, statement: &Statement) -> Result<(), TypeError> {
+        self.declare_set(&statement)?;
+        self.declare_choice(&statement)?;
         match statement {
             Statement::ChoiceDef(ChoiceDef::EnumDef(ref enumeration)) => {
                 self.check_undefined_choicedef(
@@ -199,6 +198,7 @@ pub struct Ast {
 
 impl Ast {
     /// Generate the defintion of choices and the list of constraints.
+    /// TODO: remove typing context
     pub fn type_check(self)
         -> Result<(ir::IrDesc, Vec<TypedConstraint>), TypeError> {
         let mut checker = CheckerContext::default();

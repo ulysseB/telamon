@@ -5,7 +5,7 @@ pub use super::*;
 pub use self::enumeration::EnumDef;
 pub use self::integer::IntegerDef;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum ChoiceDef {
     CounterDef(CounterDef),
     EnumDef(EnumDef),
@@ -18,6 +18,14 @@ impl ChoiceDef {
             ChoiceDef::CounterDef(_) => Ok(()),
             ChoiceDef::IntegerDef(integer_def) => integer_def.type_check(),
             ChoiceDef::EnumDef(enum_def) => enum_def.type_check(),
+        }
+    }
+
+    pub fn get_name(&self) -> Spanned<String> {
+        match self {
+            ChoiceDef::IntegerDef(choice) => choice.name.to_owned(),
+            ChoiceDef::EnumDef(choice) => choice.name.to_owned(),
+            _ => unreachable!(),
         }
     }
 }
