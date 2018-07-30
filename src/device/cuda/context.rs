@@ -6,7 +6,7 @@ use device::cuda::api::{self, Argument};
 use device::cuda::kernel::Thunk;
 use explorer;
 use ir;
-use itertools::*;
+use itertools::{Itertools, process_results};
 use std;
 use std::f64;
 use std::sync::{atomic, mpsc, Arc};
