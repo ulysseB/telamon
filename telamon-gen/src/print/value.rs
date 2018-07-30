@@ -34,6 +34,19 @@ impl Value {
         Self::new(tokens, ir::ValueType::Constant)
     }
 
+    /// Fetches a value from the store. If `get_old` is true, only take into account
+    /// decisions that have been propagated.
+    pub fn from_store(
+        choice_instance: &ir::ChoiceInstance,
+        get_old: bool,
+        ctx: &print::Context
+    ) -> Self {
+        let getter = print::store::getter_name(&choice_instance.choice, get_old);
+        let ids = print::choice::ids(choice_instance, ctx);
+        let tokens = quote!(store.#getter(#(#ids,)*));
+        Self::new(tokens, choice_instance.value_type(ctx.ir_desc))
+    }
+
     /// Returns the type taken by the value.
     pub fn value_type(&self) -> &ir::ValueType { &self.value_type }
 

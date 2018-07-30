@@ -9,46 +9,48 @@ pub fn get() -> TokenStream {
             type Universe: ?Sized;
 
             /// Returns the maximum value in the domain.
-            fn min(&self) -> u32;
+            fn min(&self, universe: &Self::Universe) -> u32;
             /// Returns the minimum value in the domain.
-            fn max(&self) -> u32;
+            fn max(&self, universe: &Self::Universe) -> u32;
             /// Returns the domain as a `NumericSet`, if applicable.
             fn as_num_set(&self) -> Option<NumericSet> { None }
 
             /// Returns the value of the domain, if it is constrained.
-            fn final_value(&self) -> u32 {
-                assert_eq!(self.min(), self.max());
-                self.min()
+            fn as_constrained(&self, universe: &Self::Universe) -> Option<u32> {
+                let value = self.min(universe);
+                if value == self.max(universe) { Some(value) } else { None }
             }
 
-            fn lt<D: NumSet>(&self, _: &Self::Universe,
-                             other: D, _: &D::Universe) -> bool {
-                self.max() < other.min()
+            fn lt<D: NumSet>(&self, universe: &Self::Universe,
+                             other: D, other_universe: &D::Universe) -> bool {
+                self.max(universe) < other.min(other_universe)
             }
 
-            fn gt<D: NumSet>(&self, _: &Self::Universe,
-                             other: D, _: &D::Universe) -> bool {
-                self.min() > other.max()
+            fn gt<D: NumSet>(&self, universe: &Self::Universe,
+                             other: D, other_universe: &D::Universe) -> bool {
+                self.min(universe) > other.max(other_universe)
             }
 
-            fn leq<D: NumSet>(&self, _: &Self::Universe,
-                              other: D, _: &D::Universe) -> bool {
-                self.max() <= other.min()
+            fn leq<D: NumSet>(&self, universe: &Self::Universe,
+                              other: D, other_universe: &D::Universe) -> bool {
+                self.max(universe) <= other.min(other_universe)
             }
 
-            fn geq<D: NumSet>(&self, _: &Self::Universe,
-                              other: D, _: &D::Universe) -> bool {
-                self.min() >= other.max()
+            fn geq<D: NumSet>(&self, universe: &Self::Universe,
+                              other: D, other_universe: &D::Universe) -> bool {
+                self.min(universe) >= other.max(other_universe)
             }
 
-            fn eq<D: NumSet>(&self, _: &Self::Universe,
-                             other: D, _: &D::Universe) -> bool {
-                self.min() == other.max() && self.max() == other.min()
+            fn eq<D: NumSet>(&self, universe: &Self::Universe,
+                             other: D, other_universe: &D::Universe) -> bool {
+                self.min(universe) == other.max(other_universe) &&
+                    self.max(universe) == other.min(other_universe)
             }
 
-            fn neq<D: NumSet>(&self, _: &Self::Universe,
-                              other: D, _: &D::Universe) -> bool {
-                self.min() > other.max() || self.max() < other.min()
+            fn neq<D: NumSet>(&self, universe: &Self::Universe,
+                              other: D, other_universe: &D::Universe) -> bool {
+                self.min(universe) > other.max(other_universe) ||
+                    self.max(universe) < other.min(other_universe)
             }
         }
 
@@ -77,19 +79,19 @@ pub fn get() -> TokenStream {
         impl NumSet for u32 {
             type Universe = ();
 
-            fn min(&self) -> u32 { *self }
+            fn min(&self, _: &()) -> u32 { *self }
 
-            fn max(&self) -> u32 { *self }
+            fn max(&self, _: &()) -> u32 { *self }
         }
 
         impl<'a> NumSet for &'a [u32] {
             type Universe = ();
 
-            fn min(&self) -> u32 {
+            fn min(&self, _: &()) -> u32 {
                 if self.is_empty() { 1 } else { self[0] }
             }
 
-            fn max(&self) -> u32 {
+            fn max(&self, _: &()) -> u32 {
                 if self.is_empty() { 0 } else { self[self.len()-1] }
             }
 

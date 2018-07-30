@@ -1,5 +1,19 @@
-//! Prints the definition of a choice.
+//! Prints the definition and manipulation of choices.
 use ir;
+use print;
+use proc_macro2::TokenStream;
+
+/// Prints the ids of the variables of a `ChoiceInstance`.
+pub fn ids(choice_instance: &ir::ChoiceInstance, ctx: &print::Context) -> TokenStream {
+    let choice = ctx.ir_desc.get_choice(&choice_instance.choice);
+    let ids = choice_instance.vars.iter().zip_eq(choice.arguments().sets())
+        // TODO(cleanup): parse beforehand
+        .map(|(var, set)| print::set::id(unwrap!(var.to_string().parse()), set));
+    quote!(#(#ids,)*)
+}
+
+
+// TODO(cleanup): use TokenStream insted of templates
 use ir::Adaptable;
 use itertools::Itertools;
 use print::{ast, filter, value_set};

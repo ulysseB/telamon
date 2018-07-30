@@ -16,12 +16,9 @@ use proc_macro2::TokenStream;
 // - as_num_set
 // FIXME: functions that needs the universe (and that's ok)
 // - gcd/lcm
-// - min/max
 // - as_constrained
 // - complement
 // FIXME: all NumSet methods need both universe
-// > request domain in min, max
-// > request domain in comparison
 // > request domain in final_value, rename it as_constrained
 // > fix templates that use each functions
 // FIXME: all num domain methods require both universes
@@ -102,11 +99,6 @@ pub fn get() -> TokenStream {
             pub fn lcm(&self) -> u32 {
                 self.values[..self.len].iter().cloned()
                     .fold1(num::integer::lcm).unwrap_or(1)
-            }
-
-            /// Returns the only value in the set, if it is fully constrained.
-            pub fn as_constrained(&self) -> Option<u32> {
-                if self.len == 1 { Some(self.values[0]) } else { None }
             }
 
             /// Lists the possible values the domain can take.
@@ -190,17 +182,18 @@ pub fn get() -> TokenStream {
         impl NumSet for NumericSet {
             type Universe = [u32];
 
-            fn min(&self) -> u32 {
+            fn min(&self, _: &[u32]) -> u32 {
                 if self.len == 0 { 1 } else { self.values[0] }
             }
 
-            fn max(&self) -> u32 {
+            fn max(&self, _: &[u32]) -> u32 {
                 if self.len == 0 { 0 } else { self.values[self.len-1] }
             }
 
             fn as_num_set(&self) -> Option<NumericSet> { Some(*self) }
 
-            fn neq<D: NumSet>(&self, _: &[u32], other: D, _: &D::Universe) -> bool {
+            fn neq<D: NumSet>(&self, universe: &[u32],
+                              other: D, other_universe: &D::Universe) -> bool {
                 if let Some(other) = other.as_num_set() {
                     let (mut self_idx, mut other_idx) = (0, 0);
                     while self_idx < self.len && other_idx < other.len {
@@ -214,56 +207,62 @@ pub fn get() -> TokenStream {
                     }
                     true
                 } else {
-                    self.min() > other.max() || self.max() < other.min()
+                    self.min(universe) > other.max(other_universe) ||
+                        self.max(universe) < other.min(other_universe)
                 }
             }
         }
 
         impl NumDomain for NumericSet {
-            fn new_gt<D: NumSet>(universe: &[u32], min: D, _: &D::Universe) -> Self {
+            fn new_gt<D: NumSet>(universe: &[u32],
+                                 min: D, min_universe: &D::Universe) -> Self {
                 let mut values = [0; NumericSet::MAX_LEN];
-                let min = std::cmp::min(std::u32::MAX, min.min());
-                let start = universe.binary_search(&min).map(|x| x+1).unwrap_or_else(|x| x);
+                let start = universe.binary_search(&min.min(min_universe))
+                    .map(|x| x+1).unwrap_or_else(|x| x);
                 let len = universe.len() - start;
                 for i in 0..len { values[i] = universe[start+i]; }
                 NumericSet { values, len }
             }
 
-            fn new_lt<D: NumSet>(universe: &[u32], max: D, _: &D::Universe) -> Self {
+            fn new_lt<D: NumSet>(universe: &[u32],
+                                 max: D, max_universe: &D::Universe) -> Self {
                 let mut values = [0; NumericSet::MAX_LEN];
-                let max = std::cmp::min(std::u32::MAX, max.max());
-                let len = universe.binary_search(&max).unwrap_or_else(|x| x);
+                let len = universe.binary_search(&max.max(max_universe))
+                    .unwrap_or_else(|x| x);
                 for i in 0..len { values[i] = universe[i]; }
                 NumericSet { values, len }
             }
 
-            fn new_geq<D: NumSet>(universe: &[u32], min: D, _: &D::Universe) -> Self {
+            fn new_geq<D: NumSet>(universe: &[u32],
+                                  min: D, min_universe: &D::Universe) -> Self {
                 let mut values = [0; NumericSet::MAX_LEN];
-                let min = std::cmp::min(std::u32::MAX, min.min());
-                let start = universe.binary_search(&min).unwrap_or_else(|x| x);
+                let start = universe.binary_search(&min.min(min_universe))
+                    .unwrap_or_else(|x| x);
                 let len = universe.len() - start;
                 for i in 0..len { values[i] = universe[start+i]; }
                 NumericSet { values, len }
             }
 
-            fn new_leq<D: NumSet>(universe: &[u32], max: D, _: &D::Universe) -> Self {
+            fn new_leq<D: NumSet>(universe: &[u32],
+                                  max: D, max_universe: &D::Universe) -> Self {
                 let mut values = [0; NumericSet::MAX_LEN];
-                let max = std::cmp::min(std::u32::MAX, max.max());
-                let len = universe.binary_search(&max).map(|x| x+1).unwrap_or_else(|x| x);
+                let len = universe.binary_search(&max.max(max_universe))
+                    .map(|x| x+1).unwrap_or_else(|x| x);
                 for i in 0..len { values[i] = universe[i]; }
                 NumericSet { values, len }
             }
 
-            fn new_eq<D: NumSet>(universe: &[u32], eq: D, _: &D::Universe) -> Self {
+            fn new_eq<D: NumSet>(universe: &[u32],
+                                 eq: D, eq_universe: &D::Universe) -> Self {
                 if let Some(mut eq) = eq.as_num_set() {
                     eq.restrict_to(universe);
                     eq
                 } else {
                     let mut values = [0; NumericSet::MAX_LEN];
-                    let min = std::cmp::min(std::u32::MAX, eq.min());
-                    let max = std::cmp::min(std::u32::MAX, eq.max());
-                    let start = universe.binary_search(&min).unwrap_or_else(|x| x);
-                    let len = universe.binary_search(&max).unwrap_or_else(|x| x) - start;
+                    let start = universe.binary_search(&min.min(eq_universe))
+                        .unwrap_or_else(|x| x);
+                    let len = universe.binary_search(&max.max(eq_universe))
+                        .unwrap_or_else(|x| x) - start;
                     for i in 0..len { values[i] = universe[start+i]; }
                     NumericSet { values, len }
                 }

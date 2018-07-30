@@ -92,34 +92,34 @@ pub fn get() -> TokenStream {
         impl NumSet for Range {
             type Universe = ();
 
-            fn min(&self) -> u32 { self.min }
+            fn min(&self, _: &()) -> u32 { self.min }
 
-            fn max(&self) -> u32 { self.max }
+            fn max(&self, _: &()) -> u32 { self.max }
         }
 
         impl NumDomain for Range {
-            fn new_gt<D: NumSet>(_: &(), min: D, _: &D::Universe) -> Self {
-                let min = min.min().saturating_add(1);
+            fn new_gt<D: NumSet>(_: &(), min: D, min_universe: &D::Universe) -> Self {
+                let min = min.min(min_universe).saturating_add(1);
                 Range { min, .. Range::ALL }
             }
 
-            fn new_lt<D: NumSet>(_: &(), max: D, _: &D::Universe) -> Self {
-                let max = max.max().saturating_sub(1);
+            fn new_lt<D: NumSet>(_: &(), max: D, max_universe: &D::Universe) -> Self {
+                let max = max.max(max_universe).saturating_sub(1);
                 Range { max, .. Range::ALL }
             }
 
-            fn new_geq<D: NumSet>(_: &(), min: D, _: &D::Universe) -> Self {
-                Range { min: min.min(), .. Range::ALL }
+            fn new_geq<D: NumSet>(_: &(), min: D, min_universe: &D::Universe) -> Self {
+                Range { min: min.min(min_universe), .. Range::ALL }
             }
 
-            fn new_leq<D: NumSet>(_: &(), max: D, _: &D::Universe) -> Self {
-                Range { max: max.max(), .. Range::ALL }
+            fn new_leq<D: NumSet>(_: &(), max: D, max_universe: &D::Universe) -> Self {
+                Range { max: max.max(max_universe), .. Range::ALL }
             }
 
-            fn new_eq<D: NumSet>(_: &(), eq: D, _: &D::Universe) -> Self {
+            fn new_eq<D: NumSet>(_: &(), eq: D, eq_universe: &D::Universe) -> Self {
                 Range {
-                    max: eq.max(),
-                    min: eq.min(),
+                    max: eq.max(eq_universe),
+                    min: eq.min(eq_universe),
                 }
             }
         }
@@ -191,14 +191,14 @@ pub fn get() -> TokenStream {
         impl NumSet for HalfRange {
             type Universe = ();
 
-            fn min(&self) -> u32 { self.min }
+            fn min(&self, _: &()) -> u32 { self.min }
 
-            fn max(&self) -> u32 { std::u32::MAX }
+            fn max(&self, _: &()) -> u32 { std::u32::MAX }
         }
 
         impl NumDomain for HalfRange {
-            fn new_gt<D: NumSet>(_: &(), min: D, _: &D::Universe) -> Self {
-                let min = min.min().saturating_add(1);
+            fn new_gt<D: NumSet>(_: &(), min: D, min_universe: &D::Universe) -> Self {
+                let min = min.min(min_universe).saturating_add(1);
                 HalfRange { min }
             }
 
@@ -206,16 +206,16 @@ pub fn get() -> TokenStream {
                 HalfRange::ALL
             }
 
-            fn new_geq<D: NumSet>(_: &(), min: D, _: &D::Universe) -> Self {
-                HalfRange { min: min.min() }
+            fn new_geq<D: NumSet>(_: &(), min: D, min_universe: &D::Universe) -> Self {
+                HalfRange { min: min.min(min_universe) }
             }
 
             fn new_leq<D: NumSet>(_: &(), _: D, _: &D::Universe) -> Self {
                 HalfRange::ALL
             }
 
-            fn new_eq<D: NumSet>(_: &(), eq: D, _: &D::Universe) -> Self {
-                HalfRange { min: eq.min() }
+            fn new_eq<D: NumSet>(_: &(), eq: D, eq_universe: &D::Universe) -> Self {
+                HalfRange { min: eq.min(eq_universe) }
             }
         }
     }

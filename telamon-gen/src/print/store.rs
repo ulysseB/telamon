@@ -1,4 +1,18 @@
 //! Prints the domain store definition.
+use proc_macro2::{Ident, Span};
+
+/// Returns the name of the getter method for `choice`. If `get_old` is true, the method
+/// will only take into account decisions that have been propagated.
+pub fn getter_name(choice: &str, get_old: bool) -> Ident {
+    let name = if get_old {
+        format!("get_old_{}", choice)
+    } else {
+        format!("get_{}", choice)
+    };
+    Ident::new(&name, Span::call_site())
+}
+
+//TODO(cleanup): use TokenStream instead of templates
 use ir;
 use ir::SetRef;
 use itertools::Itertools;
@@ -8,6 +22,7 @@ use print::choice::Ast as ChoiceAst;
 use print::choice::CounterValue;
 use std::iter;
 use utils::*;
+
 
 /// Returns the partial iterators over the choices.
 // TODO(cleanup): do not use ChoiceAst so we can directly iterate on IR choices.
