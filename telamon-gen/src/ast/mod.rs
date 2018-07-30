@@ -319,8 +319,6 @@ pub struct VarDef {
 
 impl PartialEq for VarDef {
     fn eq(&self, rhs: &Self) -> bool {
-        self.name.beg == rhs.name.beg &&
-        self.name.end == rhs.name.end &&
         self.set == rhs.set
     }
 }

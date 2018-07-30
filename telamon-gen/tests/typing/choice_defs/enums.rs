@@ -52,6 +52,27 @@ mod undefined {
                 data: String::from("B"),
             }))
         );
+        assert_eq!(parser::parse_ast(Lexer::new(
+            b"set BasicBlock:
+                item_type = \"ir::inst::Obj\"
+                id_type = \"ir::inst::Id\"
+                item_getter = \"ir::inst::get($fun, $id)\"
+                id_getter = \"ir::inst::Obj::id($item)\"
+                iterator = \"ir::inst::iter($fun)\"
+                var_prefix = \"inst\"
+                new_objs = \"$objs.inst\"
+              end
+              define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
+                antisymmetric:
+                  A -> B
+                value A:
+              end".to_vec())).unwrap().type_check().err(),
+            Some(TypeError::Undefined(Spanned {
+                beg: Position::new_optional(LexerPosition::new(10, 16), None),
+                end: Position::new_optional(LexerPosition::new(11, 24), None),
+                data: String::from("B"),
+            }))
+        );
     }
 }
 
@@ -59,6 +80,35 @@ mod undefined {
 #[cfg(test)]
 mod redefinition {
     pub use super::*;
+
+    #[test]
+    fn parameter() {
+        assert_eq!(parser::parse_ast(Lexer::new(
+            b"set BasicBlock:
+                item_type = \"ir::inst::Obj\"
+                id_type = \"ir::inst::Id\"
+                item_getter = \"ir::inst::get($fun, $id)\"
+                id_getter = \"ir::inst::Obj::id($item)\"
+                iterator = \"ir::inst::iter($fun)\"
+                var_prefix = \"inst\"
+                new_objs = \"$objs.inst\"
+              end
+              define enum foo($lhs in BasicBlock, $lhs in BasicBlock):
+                symmetric
+                value A:
+                value B:
+              end".to_vec())).unwrap().type_check().err(),
+            Some(TypeError::Redefinition(Spanned {
+                beg: Position::new_optional(LexerPosition::new(9, 30), None),
+                end: Position::new_optional(LexerPosition::new(9, 34), None),
+                data: Hint::EnumAttribute,
+            }, Spanned {
+                beg: Position::new_optional(LexerPosition::new(9, 50), None),
+                end: Position::new_optional(LexerPosition::new(9, 54), None),
+                data: String::from("lhs"),
+            }))
+        );
+    }
 
     /// Redefinition of the foo Enum.
     #[test]
@@ -93,6 +143,7 @@ mod redefinition {
         );
     }
 
+    /// Redefinition of the AB field Alias.
     #[test]
     fn field() {
         assert_eq!(parser::parse_ast(Lexer::new(
@@ -153,47 +204,42 @@ mod redefinition {
                 data: String::from("A"),
             }))
         );
-    }
 
-    mod antisymmetric {
-        pub use super::*;
-
-        #[test]
-        fn field() {
-            assert_eq!(parser::parse_ast(Lexer::new(
-                b"set BasicBlock:
-                    item_type = \"ir::inst::Obj\"
-                    id_type = \"ir::inst::Id\"
-                    item_getter = \"ir::inst::get($fun, $id)\"
-                    id_getter = \"ir::inst::Obj::id($item)\"
-                    iterator = \"ir::inst::iter($fun)\"
-                    var_prefix = \"inst\"
-                    new_objs = \"$objs.inst\"
-                  end
-                  define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
-                    antisymmetric:
-                      A -> B
-                    antisymmetric:
-                      A -> B
-                    value A:
-                    value B:
-                  end".to_vec())).unwrap().type_check().err(),
-                Some(TypeError::Redefinition(Spanned {
-                    beg: Position::new_optional(LexerPosition::new(10, 20), None),
-                    end: Position::new_optional(LexerPosition::new(11, 28), None),
-                    data: Hint::EnumAttribute,
-                }, Spanned {
-                    beg: Position::new_optional(LexerPosition::new(12, 20), None),
-                    end: Position::new_optional(LexerPosition::new(13, 28), None),
-                    data: String::from("Antisymmetric"),
-                }))
-            );
-        }
+        /// Redefinition of the field Antisymmetric.
+        assert_eq!(parser::parse_ast(Lexer::new(
+            b"set BasicBlock:
+                item_type = \"ir::inst::Obj\"
+                id_type = \"ir::inst::Id\"
+                item_getter = \"ir::inst::get($fun, $id)\"
+                id_getter = \"ir::inst::Obj::id($item)\"
+                iterator = \"ir::inst::iter($fun)\"
+                var_prefix = \"inst\"
+                new_objs = \"$objs.inst\"
+              end
+              define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
+                antisymmetric:
+                  A -> B
+                antisymmetric:
+                  A -> B
+                value A:
+                value B:
+              end".to_vec())).unwrap().type_check().err(),
+            Some(TypeError::Redefinition(Spanned {
+                beg: Position::new_optional(LexerPosition::new(10, 16), None),
+                end: Position::new_optional(LexerPosition::new(11, 24), None),
+                data: Hint::EnumAttribute,
+            }, Spanned {
+                beg: Position::new_optional(LexerPosition::new(12, 16), None),
+                end: Position::new_optional(LexerPosition::new(13, 24), None),
+                data: String::from("Antisymmetric"),
+            }))
+        );
     }
 
     mod symmetric {
         pub use super::*;
 
+        /// Redefinition of the field Symmetric.
         #[test]
         fn field() {
             assert_eq!(parser::parse_ast(Lexer::new(
@@ -280,6 +326,68 @@ mod parameter {
                         },
                         set: SetRef {
                             name: RcStr::new(String::from("BasicBlock")),
+                            var: None
+                        }
+                    }
+                ]))
+            );
+        }
+
+        #[test]
+        fn same() {
+            assert_eq!(parser::parse_ast(Lexer::new(
+                b"set BasicBlock:
+                    item_type = \"ir::basic_block::Obj\"
+                    id_type = \"ir::basic_block::Id\"
+                    item_getter = \"ir::basic_block::get($fun, $id)\"
+                    id_getter = \"ir::basic_block::Obj::id($item)\"
+                    iterator = \"ir::basic_block::iter($fun)\"
+                    var_prefix = \"bb\"
+                    new_objs = \"$objs.basic_block\"
+                  end
+                  set BasicBlock2:
+                    item_type = \"ir::basic_block::Obj\"
+                    id_type = \"ir::basic_block::Id\"
+                    item_getter = \"ir::basic_block::get($fun, $id)\"
+                    id_getter = \"ir::basic_block::Obj::id($item)\"
+                    iterator = \"ir::basic_block::iter($fun)\"
+                    var_prefix = \"bb\"
+                    new_objs = \"$objs.basic_block\"
+                  end
+                  define enum foo($lhs in BasicBlock, $rhs in BasicBlock2):
+                    antisymmetric:
+                      A -> B
+                    value A:
+                    value B:
+                  end".to_vec())).unwrap().type_check().err(),
+                Some(TypeError::BadSymmetricArg(Spanned {
+                    beg: Position::new_optional(LexerPosition::new(18, 30), None),
+                    end: Position::new_optional(LexerPosition::new(18, 33), None),
+                    data: String::from("foo"),
+                }, vec![
+                    VarDef {
+                        name: Spanned {
+                            beg: Position::new_optional(LexerPosition::new(18, 34),
+                                None),
+                            end: Position::new_optional(LexerPosition::new(18, 38),
+                                None),
+                            data: RcStr::new(String::from("lhs"))
+                        },
+                        set: SetRef {
+                            name: RcStr::new(String::from("BasicBlock")),
+                            var: None
+                        }
+                    },
+                    VarDef {
+                        name: Spanned {
+                            beg: Position::new_optional(LexerPosition::new(18, 54),
+                                None),
+                            end: Position::new_optional(LexerPosition::new(18, 58),
+                                None),
+                            data: RcStr::new(String::from("rhs"))
+                        },
+                        set: SetRef {
+                            name: RcStr::new(String::from("BasicBlock2")),
                             var: None
                         }
                     }
@@ -467,3 +575,36 @@ mod parameter {
         }
     }
 }
+
+/// Illegal definition of Symmetric and Antisymmetric
+/// in the same enumeration.
+#[test]
+fn conflict() {
+    assert_eq!(parser::parse_ast(Lexer::new(
+        b"set BasicBlock:
+            item_type = \"ir::basic_block::Obj\"
+            id_type = \"ir::basic_block::Id\"
+            item_getter = \"ir::basic_block::get($fun, $id)\"
+            id_getter = \"ir::basic_block::Obj::id($item)\"
+            iterator = \"ir::basic_block::iter($fun)\"
+            var_prefix = \"bb\"
+            new_objs = \"$objs.basic_block\"
+          end
+          define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
+            symmetric
+            antisymmetric:
+              A -> B
+            value A:
+            value B:
+          end".to_vec())).unwrap().type_check().err(),
+        Some(TypeError::Conflict(Spanned {
+            beg: Position::new_optional(LexerPosition::new(10, 12), None),
+            end: Position::new_optional(LexerPosition::new(10, 21), None),
+            data: String::from("Symmetric"),
+        }, Spanned {
+            beg: Position::new_optional(LexerPosition::new(11, 12), None),
+            end: Position::new_optional(LexerPosition::new(12, 20), None),
+            data: String::from("Antisymmetric"),
+        }))
+    )
+} 
