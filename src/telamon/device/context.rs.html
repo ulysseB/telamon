@@ -77,6 +77,9 @@
 <span id="77">77</span>
 <span id="78">78</span>
 <span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Describes the context for which a function must be optimized.</span>
 <span class="kw">use</span> <span class="ident">device</span>::{<span class="ident">Device</span>, <span class="ident">ScalarArgument</span>, <span class="ident">ArrayArgument</span>};
@@ -96,6 +99,9 @@
     <span class="doccomment">/// Returns the description of the device the code runs on.</span>
     <span class="kw">fn</span> <span class="ident">device</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Device</span>;
     <span class="doccomment">/// Returns the execution time of a fully specified implementation in nanoseconds.</span>
+    <span class="doccomment">/// </span>
+    <span class="doccomment">/// This function should be called multiple times to obtain accurate execution time.</span>
+    <span class="doccomment">/// Indeed, it only executes the code once, without warming the GPU first.</span>
     <span class="kw">fn</span> <span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">Function</span>, <span class="ident">mode</span>: <span class="ident">EvalMode</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">f64</span>, ()<span class="op">&gt;</span>;
     <span class="doccomment">/// Compiles and benchmarks a functions. As opposed to `Self::evaluate`, the measured</span>
     <span class="doccomment">/// time contains potential startup times.</span>

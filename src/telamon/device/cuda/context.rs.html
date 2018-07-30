@@ -178,6 +178,42 @@
 <span id="178">178</span>
 <span id="179">179</span>
 <span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
 </pre><pre class="rust ">
 <span class="doccomment">///! Defines the CUDA evaluation context.</span>
 <span class="kw">use</span> <span class="ident">crossbeam</span>;
@@ -187,6 +223,7 @@
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">cuda</span>::<span class="ident">kernel</span>::<span class="ident">Thunk</span>;
 <span class="kw">use</span> <span class="ident">explorer</span>;
 <span class="kw">use</span> <span class="ident">ir</span>;
+<span class="kw">use</span> <span class="ident">itertools</span>::{<span class="ident">Itertools</span>, <span class="ident">process_results</span>};
 <span class="kw">use</span> <span class="ident">std</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">f64</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{<span class="ident">atomic</span>, <span class="ident">mpsc</span>, <span class="ident">Arc</span>};
@@ -197,6 +234,15 @@
 <span class="kw">const</span> <span class="ident">EVAL_BUFFER_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">100</span>;
 <span class="comment">// TODO(perf): enable optimizations when possible</span>
 <span class="kw">const</span> <span class="ident">JIT_OPT_LEVEL</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">2</span>;
+
+<span class="doccomment">/// Candidates with a runtime above `SKIP_THRESHOLD * cut` are skipped after the first</span>
+<span class="doccomment">/// evaluation.</span>
+<span class="kw">const</span> <span class="ident">SKIP_THRESHOLD</span>: <span class="ident">f64</span> <span class="op">=</span> <span class="number">3.</span>;
+<span class="comment">// FIXME: tune values + add a second threshold after a few iterations</span>
+<span class="doccomment">/// Number of evaluations of perform on each candidate.</span>
+<span class="kw">const</span> <span class="ident">NUM_EVALS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">20</span>;
+<span class="doccomment">/// Number of outlier evaluations to discard.</span>
+<span class="kw">const</span> <span class="ident">NUM_OUTLIERS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">4</span>;
 
 <span class="doccomment">/// A CUDA evaluation context.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
@@ -241,6 +287,40 @@
             <span class="ident">EvalMode</span>::<span class="ident">FindBest</span> <span class="op">|</span> <span class="ident">EvalMode</span>::<span class="ident">TestEval</span> <span class="op">=&gt;</span> <span class="ident">JIT_OPT_LEVEL</span>,
         }
     }
+
+    <span class="doccomment">/// Evaluates `thunk` multiple times to obtain accurate execution times.</span>
+    <span class="kw">fn</span> <span class="ident">eval_runtime</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">thunk</span>: <span class="kw-2">&amp;</span><span class="ident">Thunk</span>,
+                    <span class="ident">bound</span>: <span class="ident">f64</span>,
+                    <span class="ident">current_best</span>: <span class="ident">f64</span>,
+                    <span class="ident">mode</span>: <span class="ident">EvalMode</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">f64</span>, ()<span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="ident">bound</span> <span class="op">&gt;=</span> <span class="ident">current_best</span> <span class="op">&amp;&amp;</span> <span class="ident">mode</span>.<span class="ident">skip_bad_candidates</span>() {
+            <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;candidate skipped because of its bound&quot;</span>);
+            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span>);
+        }
+        <span class="kw">let</span> <span class="ident">t0</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ticks_to_ns</span>(<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">thunk</span>.<span class="ident">execute</span>()));
+        <span class="kw">if</span> <span class="ident">mode</span>.<span class="ident">skip_bad_candidates</span>() <span class="op">&amp;&amp;</span> <span class="ident">t0</span> <span class="op">*</span> <span class="ident">SKIP_THRESHOLD</span> <span class="op">&gt;=</span> <span class="ident">bound</span> {
+            <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;candidate skipped after its first evaluation&quot;</span>);
+            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">t0</span>);
+        }
+        <span class="comment">// TODO(cc_perf): becomes the limiting factor after a few hours. We should stop</span>
+        <span class="comment">// earlier and make tests to know when (for example, measure the MAX delta between</span>
+        <span class="comment">// min and median with N outliers).</span>
+        <span class="kw">let</span> <span class="ident">runtimes</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">NUM_EVALS</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">thunk</span>.<span class="ident">execute</span>());
+        <span class="kw">let</span> <span class="ident">runtimes_by_value</span> <span class="op">=</span> <span class="ident">process_results</span>(<span class="ident">runtimes</span>, <span class="op">|</span><span class="ident">iter</span><span class="op">|</span> <span class="ident">iter</span>.<span class="ident">sorted</span>())<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">median</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ticks_to_ns</span>(<span class="ident">runtimes_by_value</span>[<span class="ident">NUM_EVALS</span><span class="op">/</span><span class="number">2</span>]);
+        <span class="kw">let</span> <span class="ident">runtimes_by_delta</span> <span class="op">=</span> <span class="ident">runtimes_by_value</span>.<span class="ident">into_iter</span>()
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">ticks_to_ns</span>(<span class="ident">t</span>))
+            .<span class="ident">sorted_by</span>(<span class="op">|</span><span class="ident">lhs</span>, <span class="ident">rhs</span><span class="op">|</span> <span class="ident">cmp_f64</span>((<span class="ident">lhs</span><span class="op">-</span><span class="ident">median</span>).<span class="ident">abs</span>(), (<span class="ident">rhs</span><span class="op">-</span><span class="ident">median</span>).<span class="ident">abs</span>()));
+        <span class="kw">let</span> <span class="ident">num_samples</span> <span class="op">=</span> <span class="ident">NUM_EVALS</span> <span class="op">-</span> <span class="ident">NUM_OUTLIERS</span>;
+        <span class="kw">let</span> <span class="ident">average</span> <span class="op">=</span> <span class="ident">runtimes_by_delta</span>[..<span class="ident">num_samples</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>()
+            .<span class="ident">sum</span>::<span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>() <span class="op">/</span> <span class="ident">num_samples</span> <span class="kw">as</span> <span class="ident">f64</span>;
+        <span class="prelude-val">Ok</span>(<span class="ident">average</span>)
+    }
+
+    <span class="doccomment">/// Converts a number of clock ticks into a number of nanoseconds.</span>
+    <span class="kw">fn</span> <span class="ident">ticks_to_ns</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ticks</span>: <span class="ident">u64</span>) <span class="op">-&gt;</span> <span class="ident">f64</span> {
+        <span class="ident">ticks</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">/</span> <span class="self">self</span>.<span class="ident">gpu_model</span>.<span class="ident">smx_clock</span>
+    }
 }
 
 
@@ -270,7 +350,7 @@
     <span class="kw">fn</span> <span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">function</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Function</span>, <span class="ident">mode</span>: <span class="ident">EvalMode</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">f64</span>, ()<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">gpu</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">gpu_model</span>;
         <span class="kw">let</span> <span class="ident">kernel</span> <span class="op">=</span> <span class="ident">Kernel</span>::<span class="ident">compile</span>(<span class="ident">function</span>, <span class="ident">gpu</span>, <span class="self">self</span>.<span class="ident">executor</span>, <span class="self">Self</span>::<span class="ident">opt_level</span>(<span class="ident">mode</span>));
-        <span class="prelude-val">Ok</span>(<span class="ident">kernel</span>.<span class="ident">evaluate</span>(<span class="self">self</span>)<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">/</span> <span class="self">self</span>.<span class="ident">gpu_model</span>.<span class="ident">smx_clock</span>)
+        <span class="ident">kernel</span>.<span class="ident">evaluate</span>(<span class="self">self</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="ident">t</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">/</span> <span class="self">self</span>.<span class="ident">gpu_model</span>.<span class="ident">smx_clock</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">benchmark</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">function</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Function</span>, <span class="ident">num_samples</span>: <span class="ident">usize</span>) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span> {
@@ -284,7 +364,6 @@
         <span class="comment">// Setup the evaluator.</span>
         <span class="kw">let</span> <span class="ident">blocked_time</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">atomic</span>::<span class="ident">AtomicUsize</span>::<span class="ident">new</span>(<span class="number">0</span>);
         <span class="kw">let</span> (<span class="ident">send</span>, <span class="ident">recv</span>) <span class="op">=</span> <span class="ident">mpsc</span>::<span class="ident">sync_channel</span>(<span class="ident">EVAL_BUFFER_SIZE</span>);
-        <span class="kw">let</span> <span class="ident">clock_rate</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">gpu_model</span>.<span class="ident">smx_clock</span>;
         <span class="comment">// Correct because the thread handle is not escaped.</span>
         <span class="ident">crossbeam</span>::<span class="ident">scope</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">scope</span><span class="op">|</span> {
             <span class="comment">// Start the explorer threads.</span>
@@ -304,16 +383,9 @@
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">best_eval</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span>;
                 <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>((<span class="ident">candidate</span>, <span class="ident">thunk</span>, <span class="ident">callback</span>)) <span class="op">=</span> <span class="ident">recv</span>.<span class="ident">recv</span>() {
                     <span class="kw">let</span> <span class="ident">bound</span> <span class="op">=</span> <span class="ident">candidate</span>.<span class="ident">bound</span>.<span class="ident">value</span>();
-                    <span class="kw">let</span> <span class="ident">eval</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">best_eval</span> <span class="op">&lt;=</span> <span class="ident">bound</span> <span class="op">&amp;&amp;</span> <span class="ident">mode</span>.<span class="ident">skip_bad_candidates</span>() {
-                        <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;candidate skipped because of bounds&quot;</span>);
-                        <span class="prelude-val">Ok</span>(<span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span>)
-                    } <span class="kw">else</span> {
-                        <span class="ident">thunk</span>.<span class="ident">execute</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="ident">t</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">/</span> <span class="ident">clock_rate</span>)
-                    };
-                    <span class="kw">let</span> <span class="ident">eval</span> <span class="op">=</span> <span class="ident">eval</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span>()<span class="op">|</span> {
-                        <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;evaluation failed for actions {:?}, with kernel {:?}&quot;</span>,
-                               <span class="ident">candidate</span>.<span class="ident">actions</span>, <span class="ident">thunk</span>)
-                    });
+                    <span class="kw">let</span> <span class="ident">eval</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">eval_runtime</span>(<span class="kw-2">&amp;</span><span class="ident">thunk</span>, <span class="ident">bound</span>, <span class="ident">best_eval</span>, <span class="ident">mode</span>),
+                        <span class="string">&quot;evaluation failed for actions {:?}, with kernel {:?}&quot;</span>,
+                        <span class="ident">candidate</span>.<span class="ident">actions</span>, <span class="ident">thunk</span>);
                     <span class="kw">if</span> <span class="ident">eval</span> <span class="op">&lt;</span> <span class="ident">best_eval</span> {
                         <span class="ident">best_eval</span> <span class="op">=</span> <span class="ident">eval</span>;
                     }
