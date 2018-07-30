@@ -52,7 +52,7 @@ impl EnumDef {
     }
 
     /// This checks that there isn't any doublon in the field list.
-    fn check_redefinition(&self) -> Result<(), TypeError> {
+    fn check_redefinition_field(&self) -> Result<(), TypeError> {
         let mut hash: HashMap<String, _> = HashMap::default();
         let mut symmetric: Option<Spanned<()>> = None;
         let mut antisymmetric: Option<Spanned<()>> = None;
@@ -156,6 +156,7 @@ impl EnumDef {
         Ok(())
     }
 
+    /// This checkls that the parameters share the same type.
     fn check_same_parameter(&self) -> Result<(), TypeError> {
         if self.statements.iter().find(|item| item.is_symmetric()
                                            || item.is_antisymmetric()).is_some() {
@@ -178,8 +179,8 @@ impl EnumDef {
     /// Type checks the condition.
     pub fn type_check(&self) -> Result<(), TypeError> {
         self.check_undefined()?;
-        self.check_redefinition()?;
         self.check_redefinition_parameter()?;
+        self.check_redefinition_field()?;
         self.check_two_parameter()?;
         self.check_same_parameter()?;
         self.check_conflict()?;

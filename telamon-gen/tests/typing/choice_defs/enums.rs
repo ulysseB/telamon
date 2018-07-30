@@ -81,6 +81,7 @@ mod undefined {
 mod redefinition {
     pub use super::*;
 
+    /// Redefinition of parameter name $lhs.
     #[test]
     fn parameter() {
         assert_eq!(parser::parse_ast(Lexer::new(
@@ -143,9 +144,10 @@ mod redefinition {
         );
     }
 
-    /// Redefinition of the AB field Alias.
+    /// Redefinition of field.
     #[test]
     fn field() {
+        /// Redefinition of the AB field Alias.
         assert_eq!(parser::parse_ast(Lexer::new(
             b"define enum foo():
                 value A:
@@ -176,6 +178,8 @@ mod redefinition {
                 data: String::from("AB"),
             }))
         );
+
+        /// Redefinition of the A field Value.
         assert_eq!(parser::parse_ast(Lexer::new(
             b"define enum foo():
                 value A:
@@ -277,9 +281,11 @@ mod redefinition {
 mod parameter {
     pub use super::*;
 
+    /// Unvalid parameter.
     mod antisymmetric {
         pub use super::*;
 
+        /// Unvalid number of parameter.
         #[test]
         fn two() {
             assert_eq!(parser::parse_ast(Lexer::new(
@@ -333,6 +339,7 @@ mod parameter {
             );
         }
 
+        /// Unvalid type parameter.
         #[test]
         fn same() {
             assert_eq!(parser::parse_ast(Lexer::new(
@@ -396,9 +403,11 @@ mod parameter {
         }
     }
 
+    /// Unvalid parameter.
     mod symmetric {
         pub use super::*;
 
+        /// Unvalid number of parameter.
         #[test]
         fn two() {
             assert_eq!(parser::parse_ast(Lexer::new(
@@ -513,6 +522,7 @@ mod parameter {
             );
         }
 
+        /// Unvalid type parameter.
         #[test]
         fn same() {
             assert_eq!(parser::parse_ast(Lexer::new(
