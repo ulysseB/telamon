@@ -87,6 +87,9 @@ impl Ast {
         let mut checker = CheckerContext::default();
         let mut context = TypingContext::default();
 
+
+        /// declare
+        /// define
         for statement in self.statements {
             checker.type_check(&statement)?;
             statement.type_check()?;

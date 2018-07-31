@@ -37,36 +37,8 @@ impl CheckerContext {
         Ok(())
     }
 
-//    pub check_set_define(...)
-//    pub check_choice_set(...)
-
-    /// This checks the undefined of EnumDef or IntegerDef.
-    fn check_undefined_choicedef(&self, statement: ChoiceDef) -> Result<(), TypeError> {
-        match statement {
-            ChoiceDef::EnumDef(EnumDef {
-                name: Spanned { ref beg, ref end, data: _ },
-                doc: _, ref variables,
-            .. }) |
-            ChoiceDef::IntegerDef(IntegerDef {
-                name: Spanned { ref beg, ref end, data: _ }, doc: _, ref variables,
-            .. }) => {
-                for VarDef { name: _, set: SetRef { name, .. } } in variables {
-                    let name: &String = name.deref();
-                    if !self.hash_choice.contains_key(name) {
-                        Err(TypeError::Undefined(Spanned {
-                            beg: beg.to_owned(), end: end.to_owned(),
-                            data: name.to_owned(),
-                        }))?;
-                    }
-                }
-            },
-            _ => {},
-        }
-        Ok(())
-    }
-
     /// This checks the undefined of SetDef superset and arg.
-    fn check_undefined_setdef(&self, statement: &SetDef) -> Result<(), TypeError> {
+    fn check_set_define(&self, statement: &SetDef) -> Result<(), TypeError> {
         match statement {
             SetDef { name: Spanned { beg, end, data: ref name },
             doc: _, arg, superset, disjoint: _, keys, ..  } => {
@@ -92,6 +64,31 @@ impl CheckerContext {
         }
         Ok(())
     }
+
+    /// This checks the undefined of EnumDef or IntegerDef.
+    fn check_choice_define(&self, statement: ChoiceDef) -> Result<(), TypeError> {
+        match statement {
+            ChoiceDef::EnumDef(EnumDef {
+                name: Spanned { ref beg, ref end, data: _ },
+                doc: _, ref variables,
+            .. }) |
+            ChoiceDef::IntegerDef(IntegerDef {
+                name: Spanned { ref beg, ref end, data: _ }, doc: _, ref variables,
+            .. }) => {
+                for VarDef { name: _, set: SetRef { name, .. } } in variables {
+                    let name: &String = name.deref();
+                    if !self.hash_choice.contains_key(name) {
+                        Err(TypeError::Undefined(Spanned {
+                            beg: beg.to_owned(), end: end.to_owned(),
+                            data: name.to_owned(),
+                        }))?;
+                    }
+                }
+            },
+            _ => {},
+        }
+        Ok(())
+    }
     
     /// Type checks the condition.
     pub fn type_check(&mut self, statement: &Statement) -> Result<(), TypeError> {
@@ -99,17 +96,17 @@ impl CheckerContext {
         self.declare_choice(&statement)?;
         match statement {
             Statement::ChoiceDef(ChoiceDef::EnumDef(ref enumeration)) => {
-                self.check_undefined_choicedef(
+                self.check_choice_define(
                     ChoiceDef::EnumDef(enumeration.clone()))?;
             },
             Statement::ChoiceDef(
                 ChoiceDef::IntegerDef(ref integer)
             ) => {
-                self.check_undefined_choicedef(
+                self.check_choice_define(
                     ChoiceDef::IntegerDef(integer.clone()))?;
             },
             Statement::SetDef(ref set) => {
-                self.check_undefined_setdef(set)?;
+                self.check_set_define(set)?;
             },
             _ => {},
         }
