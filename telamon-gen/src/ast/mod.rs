@@ -31,6 +31,11 @@ pub use self::constrain::Constraint;
 
 pub use super::lexer::{Position, Spanned};
 
+/// Name of interface
+pub type Name = String;
+/// Name with beg/end position.
+pub type SpannedName = Spanned<Name>;
+
 /// Hint is a token representation.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Hint {
@@ -63,22 +68,22 @@ impl Hint {
 #[derive(Debug, PartialEq)]
 pub enum TypeError {
     /// Redefinition of a name and hint..
-    Redefinition(Spanned<Hint>, Spanned<String>),
+    Redefinition(Spanned<Hint>, Spanned<Name>),
     /// Undefinition of set, enum or field.
-    Undefined(Spanned<String>),
+    Undefined(Spanned<Name>),
     /// Unvalid arguments of a symmetric enum.
-    BadSymmetricArg(Spanned<String>, Vec<VarDef>),
+    BadSymmetricArg(Spanned<Name>, Vec<VarDef>),
     /// Missing
-    MissingEntry(String, Spanned<String>),
+    MissingEntry(Name, Spanned<Name>),
     /// Conflict between incompatible keywords.
-    Conflict(Spanned<String>, Spanned<String>),
+    Conflict(Spanned<Name>, Spanned<Name>),
 }
 
 /// CheckContext is a type system.
 #[derive(Debug, Default)]
 struct CheckerContext {
     /// Map Name of unique identifiant.
-    hash: HashMap<String, Spanned<Hint>>,
+    hash: HashMap<Name, Spanned<Hint>>,
 }
 
 impl CheckerContext {
@@ -517,9 +522,9 @@ pub enum CounterVal { Code(String), Choice(ChoiceInstance) }
 #[derive(Clone, Debug)]
 pub enum EnumStatement {
     /// Defines a possible decision for th enum.
-    Value(Spanned<String>, Option<String>, Vec<Constraint>),
+    Value(Spanned<Name>, Option<String>, Vec<Constraint>),
     /// Defines a set of possible decisions for the enum.
-    Alias(Spanned<String>, Option<String>, Vec<String>, Vec<Constraint>),
+    Alias(Spanned<Name>, Option<String>, Vec<String>, Vec<Constraint>),
     /// Specifies that the enum is symmetric.
     Symmetric(Spanned<()>),
     /// Specifies that the enum is antisymmetric and given the inverse function.

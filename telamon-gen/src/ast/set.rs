@@ -2,7 +2,7 @@ use super::*;
 
 #[derive(Debug, Clone)]
 pub struct SetDef {
-    pub name: Spanned<String>,
+    pub name: SpannedName,
     pub doc: Option<String>,
     pub arg: Option<VarDef>,
     pub superset: Option<SetRef>,

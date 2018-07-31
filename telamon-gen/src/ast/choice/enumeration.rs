@@ -3,7 +3,7 @@ use super::*;
 /// A toplevel definition or constraint.
 #[derive(Clone, Debug)]
 pub struct EnumDef {
-    pub name: Spanned<String>,
+    pub name: SpannedName,
     pub doc: Option<String>,
     pub variables: Vec<VarDef>,
     pub statements: Vec<EnumStatement>
