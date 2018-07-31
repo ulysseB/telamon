@@ -74,11 +74,6 @@
 <span id="74">74</span>
 <span id="75">75</span>
 <span id="76">76</span>
-<span id="77">77</span>
-<span id="78">78</span>
-<span id="79">79</span>
-<span id="80">80</span>
-<span id="81">81</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
@@ -89,7 +84,7 @@
     <span class="kw">pub</span> <span class="ident">arg</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">VarDef</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">superset</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SetRef</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">disjoint</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">keys</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">SetDefKey</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">VarDef</span><span class="op">&gt;</span>, <span class="ident">String</span>)<span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">keys</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">SetDefKey</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">VarDef</span><span class="op">&gt;</span>, <span class="ident">String</span>)<span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">quotient</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Quotient</span><span class="op">&gt;</span>,
 }
 
@@ -98,8 +93,9 @@
     <span class="doccomment">/// This checks the presence of keys ItemType, IdType, ItemGetter, IdGetter and Iter.</span>
     <span class="doccomment">/// When there is a superset, this checks too the presence of FromSuperset keyword.</span>
     <span class="kw">fn</span> <span class="ident">check_missing_entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">keys</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">keys</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="kw">_</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">k</span>)
-                            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">SetDefKey</span><span class="op">&gt;&gt;</span>();
+        <span class="kw">let</span> <span class="ident">keys</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">keys</span>.<span class="ident">iter</span>()
+                            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="kw">_</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">k</span>.<span class="ident">data</span>)
+                            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">SetDefKey</span><span class="op">&gt;&gt;</span>();
 
         <span class="kw">if</span> <span class="op">!</span><span class="ident">keys</span>.<span class="ident">contains</span>(<span class="op">&amp;&amp;</span><span class="ident">ir</span>::<span class="ident">SetDefKey</span>::<span class="ident">ItemType</span>) {
             <span class="prelude-val">Err</span>(<span class="ident">TypeError</span>::<span class="ident">MissingEntry</span>(<span class="self">self</span>.<span class="ident">name</span>.<span class="ident">data</span>.<span class="ident">to_owned</span>(),
@@ -129,20 +125,14 @@
     }
 
     <span class="doccomment">/// This checks that thereisn&#39;t any keys doublon.</span>
-    <span class="doccomment">/// TODO: fixe position, add Spanned to parser for key attributs.</span>
     <span class="kw">fn</span> <span class="ident">check_redefinition</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hash</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashSet</span>::<span class="ident">default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hash</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="ident">Spanned</span><span class="op">&lt;</span>()<span class="op">&gt;&gt;</span> <span class="op">=</span> <span class="ident">HashMap</span>::<span class="ident">default</span>();
         <span class="kw">for</span> (<span class="ident">key</span>, ..) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">keys</span>.<span class="ident">iter</span>() {
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">hash</span>.<span class="ident">insert</span>(<span class="ident">key</span>.<span class="ident">to_string</span>()) {
-                <span class="prelude-val">Err</span>(<span class="ident">TypeError</span>::<span class="ident">Redefinition</span>(<span class="ident">Spanned</span> {
-                    <span class="ident">beg</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
-                    <span class="ident">end</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
-                    <span class="ident">data</span>: <span class="ident">Hint</span>::<span class="ident">Set</span>,
-                }, <span class="ident">Spanned</span> {
-                    <span class="ident">beg</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
-                    <span class="ident">end</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
-                    <span class="ident">data</span>: <span class="ident">key</span>.<span class="ident">to_string</span>(),
-                }))<span class="question-mark">?</span>;
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">pre</span>) <span class="op">=</span> <span class="ident">hash</span>.<span class="ident">insert</span>(<span class="ident">key</span>.<span class="ident">data</span>.<span class="ident">to_owned</span>(), <span class="ident">key</span>.<span class="ident">with_data</span>(())) {
+                <span class="prelude-val">Err</span>(<span class="ident">TypeError</span>::<span class="ident">Redefinition</span>(
+                    <span class="ident">pre</span>.<span class="ident">with_data</span>(<span class="ident">Hint</span>::<span class="ident">Set</span>),
+                    <span class="ident">key</span>.<span class="ident">with_data</span>(<span class="ident">key</span>.<span class="ident">data</span>.<span class="ident">to_string</span>()),
+                ))<span class="question-mark">?</span>;
             }
         }
         <span class="prelude-val">Ok</span>(())
