@@ -33,7 +33,7 @@ impl ChoiceDef {
         match self {
             ChoiceDef::IntegerDef(choice) => choice.name.to_owned(),
             ChoiceDef::EnumDef(choice) => choice.name.to_owned(),
-            _ => unreachable!(),
+            ChoiceDef::CounterDef(choice) => choice.name.with_data(choice.name.data.to_string()),
         }
     }
 }

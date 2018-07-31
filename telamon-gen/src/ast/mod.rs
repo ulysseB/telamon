@@ -47,6 +47,8 @@ pub enum Hint {
     Integer,
     /// Integer attribute.
     IntegerAttribute,
+    /// Integer interface.
+    Counter,
 }
 
 impl Hint {
@@ -54,7 +56,7 @@ impl Hint {
         match statement {
             ChoiceDef::EnumDef(..) => Hint::Enum,
             ChoiceDef::IntegerDef(..) => Hint::Integer,
-            _ => unreachable!(),
+            ChoiceDef::CounterDef(..) => Hint::Counter,
         }
     }
 }
@@ -90,6 +92,8 @@ impl Ast {
         // declare
         for statement in self.statements.iter() {
             checker.declare(statement)?;
+        }
+        for statement in self.statements.iter() {
             statement.declare()?;
         }
         // define
@@ -515,7 +519,7 @@ impl EnumStatements {
 
 #[derive(Clone, Debug)]
 pub struct CounterDef {
-    pub name: RcStr,
+    pub name: Spanned<RcStr>,
     pub doc: Option<String>,
     pub visibility: ir::CounterVisibility,
     pub vars: Vec<VarDef>,

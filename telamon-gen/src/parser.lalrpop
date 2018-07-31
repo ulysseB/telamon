@@ -9,6 +9,10 @@ grammar;
 
 pub ast: ast::Ast = { statement* => ast::Ast { statements: <> } };
 
+rc_choice_ident: RcStr = {
+    <name: choice_ident> => RcStr::new(name),
+};
+
 statement: ast::Statement = {
     stmt_set => {
         ast::Statement::SetDef(<>)
@@ -27,9 +31,8 @@ statement: ast::Statement = {
             ast::Statement::TriggerDef { foralls, conditions, code }
     },
     <doc: doc?> spanned<define> <visibility: counter_visibility?> counter
-                <name: choice_ident>
+                <name: spanned<rc_choice_ident>>
         "(" <vars: choice_vars> ")" ":" <body: counter_body> end => {
-        let name = RcStr::new(name);
         let visibility = visibility.unwrap_or(ir::CounterVisibility::Full);
             ast::Statement::ChoiceDef(ast::ChoiceDef::CounterDef(
                 ast::CounterDef {
