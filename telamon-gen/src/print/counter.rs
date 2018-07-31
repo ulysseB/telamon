@@ -39,7 +39,7 @@ pub fn compute_counter_body(
 
 /// Prints the value of a counter increment. Only takes into account decisions that have
 /// been propagated.
-fn counter_value(value: &ir::CounterVal, ctx: &print::Context) -> print::Value {
+pub fn counter_value(value: &ir::CounterVal, ctx: &print::Context) -> print::Value {
     match value {
         ir::CounterVal::Code(code) => print::Value::new_const(code, ctx),
         ir::CounterVal::Choice(choice) => print::Value::from_store(choice, true, ctx),

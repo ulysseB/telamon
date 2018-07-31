@@ -224,10 +224,12 @@ enum ChoiceAction<'a> {
         counter_name: &'a str,
         arguments: Vec<(ast::Variable<'a>, ast::Set<'a>)>,
         incr_condition: String,
-        value: CounterValue<'a>,
+        value_getter: String,
         counter_type: ast::ValueType,
         is_half: bool,
         zero: u32,
+        min: String,
+        max: String,
     },
     UpdateCounter {
         name: &'a str,
@@ -279,15 +281,21 @@ impl<'a> ChoiceAction<'a> {
                 let arguments = ast::vars_with_sets(counter_choice, &counter.vars, ctx);
                 let adaptator = ir::Adaptator::from_arguments(&counter.vars);
                 let counter_type = counter_def.value_type().adapt(&adaptator);
+                let value_getter = print::counter::counter_value(value, ctx);
+                let value = print::Value::ident("value", value_getter.value_type().clone());
+                let min = value.get_min(ctx);
+                let max = value.get_max(ctx);
                 if let ir::ChoiceDef::Counter { kind, visibility, .. } = *counter_def {
                     ChoiceAction::IncrCounter {
                         counter_name: &counter.choice,
                         incr_condition: value_set::print(incr_condition, ctx).to_string(),
                         counter_type: ast::ValueType::new(counter_type, ctx),
                         arguments,
-                        value: CounterValue::new(value, ctx),
+                        value_getter: quote!(#value_getter).to_string(),
                         is_half: visibility == ir::CounterVisibility::NoMax,
                         zero: kind.zero(),
+                        min: quote!(#min).to_string(),
+                        max: quote!(#max).to_string(),
                     }
                 } else { panic!() }
             },
