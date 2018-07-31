@@ -10,7 +10,14 @@ pub struct IntegerDef {
 }
 
 impl IntegerDef {
-    pub fn type_check(&self) -> Result<(), TypeError> {
+
+    /// Type checks the declare's condition.
+    pub fn declare(&self) -> Result<(), TypeError> {
+        Ok(())
+    }
+
+    /// Type checks the define's condition.
+    pub fn define(&self) -> Result<(), TypeError> {
         Ok(())
     }
 }

@@ -87,12 +87,18 @@ impl Ast {
         let mut checker = CheckerContext::default();
         let mut context = TypingContext::default();
 
-
-        /// declare
-        /// define
+        // declare
+        for statement in self.statements.iter() {
+            checker.declare(statement)?;
+            statement.declare()?;
+        }
+        // define
+        for statement in self.statements.iter() {
+            checker.define(statement)?;
+            statement.define()?;
+        }
+        // typing context
         for statement in self.statements {
-            checker.type_check(&statement)?;
-            statement.type_check()?;
             context.add_statement(statement);
         }
         Ok(context.finalize())
@@ -113,10 +119,18 @@ pub enum Statement {
 }
 
 impl Statement {
-    pub fn type_check(&self) -> Result<(), TypeError> {
+    pub fn declare(&self) -> Result<(), TypeError> {
         match self {
-            Statement::SetDef(def) => def.type_check(),
-            Statement::ChoiceDef(def) => def.type_check(),
+            Statement::SetDef(def) => def.declare(),
+            Statement::ChoiceDef(def) => def.declare(),
+            _ => Ok(()),
+        }
+    }
+
+    pub fn define(&self) -> Result<(), TypeError> {
+        match self {
+            Statement::SetDef(def) => def.define(),
+            Statement::ChoiceDef(def) => def.define(),
             _ => Ok(()),
         }
     }

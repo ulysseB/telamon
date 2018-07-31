@@ -12,6 +12,25 @@ pub struct SetDef {
 }
 
 impl SetDef {
+    /// This checks that thereisn't any keys doublon.
+    /// TODO: fixe position, add Spanned to parser for key attributs.
+    fn check_declare(&self) -> Result<(), TypeError> {
+        let mut hash: HashSet<String> = HashSet::default();
+        for (key, ..) in self.keys.iter() {
+            if !hash.insert(key.to_string()) {
+                Err(TypeError::Redefinition(Spanned {
+                    beg: Default::default(),
+                    end: Default::default(),
+                    data: Hint::Set,
+                }, Spanned {
+                    beg: Default::default(),
+                    end: Default::default(),
+                    data: key.to_string(),
+                }))?;
+            }
+        }
+        Ok(())
+    }
 
     /// This checks the presence of keys ItemType, IdType, ItemGetter, IdGetter and Iter.
     /// When there is a superset, this checks too the presence of FromSuperset keyword.
@@ -46,29 +65,15 @@ impl SetDef {
         Ok(())
     }
 
-    /// This checks that thereisn't any keys doublon.
-    /// TODO: fixe position, add Spanned to parser for key attributs.
-    fn check_redefinition(&self) -> Result<(), TypeError> {
-        let mut hash: HashSet<String> = HashSet::default();
-        for (key, ..) in self.keys.iter() {
-            if !hash.insert(key.to_string()) {
-                Err(TypeError::Redefinition(Spanned {
-                    beg: Default::default(),
-                    end: Default::default(),
-                    data: Hint::Set,
-                }, Spanned {
-                    beg: Default::default(),
-                    end: Default::default(),
-                    data: key.to_string(),
-                }))?;
-            }
-        }
+
+    /// Type checks the declare's condition.
+    pub fn declare(&self) -> Result<(), TypeError> {
+        self.check_declare()?;
         Ok(())
     }
 
-    /// Type checks the condition.
-    pub fn type_check(&self) -> Result<(), TypeError> {
-        self.check_redefinition()?;
+    /// Type checks the define's condition.
+    pub fn define(&self) -> Result<(), TypeError> {
         self.check_missing_entry()?;
         Ok(())
     }

@@ -13,11 +13,19 @@ pub enum ChoiceDef {
 }
 
 impl ChoiceDef {
-    pub fn type_check(&self) -> Result<(), TypeError> {
+    pub fn declare(&self) -> Result<(), TypeError> {
         match self {
             ChoiceDef::CounterDef(_) => Ok(()),
-            ChoiceDef::IntegerDef(integer_def) => integer_def.type_check(),
-            ChoiceDef::EnumDef(enum_def) => enum_def.type_check(),
+            ChoiceDef::IntegerDef(integer_def) => integer_def.declare(),
+            ChoiceDef::EnumDef(enum_def) => enum_def.declare(),
+        }
+    }
+
+    pub fn define(&self) -> Result<(), TypeError> {
+        match self {
+            ChoiceDef::CounterDef(_) => Ok(()),
+            ChoiceDef::IntegerDef(integer_def) => integer_def.define(),
+            ChoiceDef::EnumDef(enum_def) => enum_def.define(),
         }
     }
 

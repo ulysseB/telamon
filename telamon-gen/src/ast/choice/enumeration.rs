@@ -10,49 +10,9 @@ pub struct EnumDef {
 }
 
 impl EnumDef {
-    /// This checks the undefined of value or alias from alias or antisymmetric.
-    fn check_undefined(&self) -> Result<(), TypeError> {
-        let mut hash: HashMap<String, _> = HashMap::default();
-
-        for stmt in self.statements.iter() {
-            match stmt {
-                EnumStatement::Value(spanned, ..) |
-                EnumStatement::Alias(spanned, ..) => {
-                    hash.insert(spanned.data.to_owned(), ());
-                },
-                _ => {},
-            }
-        }
-        for stmt in self.statements.iter() {
-            match stmt {
-                EnumStatement::AntiSymmetric(spanned) => {
-                    for (first, second) in spanned.data.iter() {
-                        if !hash.contains_key(&first.to_owned()) {
-                            Err(TypeError::Undefined(
-                                spanned.with_data(first.to_owned())))?;
-                        }
-                        if !hash.contains_key(&second.to_owned()) {
-                            Err(TypeError::Undefined(
-                                spanned.with_data(second.to_owned())))?;
-                        }
-                    }
-                },
-                EnumStatement::Alias(spanned, _, sets, ..) => {
-                    for set in sets {
-                        if !hash.contains_key(&set.to_owned()) {
-                            Err(TypeError::Undefined(
-                                spanned.with_data(set.to_owned())))?;
-                        }
-                    }
-                },
-                _ => {},
-            }
-        }
-        Ok(())
-    }
 
     /// This checks that there isn't any doublon in the field list.
-    fn check_redefinition_field(&self) -> Result<(), TypeError> {
+    fn check_declare_field(&self) -> Result<(), TypeError> {
         let mut hash: HashMap<String, _> = HashMap::default();
         let mut symmetric: Option<Spanned<()>> = None;
         let mut antisymmetric: Option<Spanned<()>> = None;
@@ -94,7 +54,7 @@ impl EnumDef {
     }
 
     /// This checks that there isn't any doublon in parameter list.
-    fn check_redefinition_parameter(&self) -> Result<(), TypeError> {
+    fn check_declare_parameter(&self) -> Result<(), TypeError> {
         let mut hash: HashMap<String, _> = HashMap::default();
         for VarDef { name, .. } in self.variables.as_slice() {
             if let Some(before) = hash.insert(name.data.to_string(),
@@ -142,6 +102,47 @@ impl EnumDef {
         Ok(())
     }
 
+    /// This checks the undefined of value or alias from alias or antisymmetric.
+    fn check_field(&self) -> Result<(), TypeError> {
+        let mut hash: HashMap<String, _> = HashMap::default();
+
+        for stmt in self.statements.iter() {
+            match stmt {
+                EnumStatement::Value(spanned, ..) |
+                EnumStatement::Alias(spanned, ..) => {
+                    hash.insert(spanned.data.to_owned(), ());
+                },
+                _ => {},
+            }
+        }
+        for stmt in self.statements.iter() {
+            match stmt {
+                EnumStatement::AntiSymmetric(spanned) => {
+                    for (first, second) in spanned.data.iter() {
+                        if !hash.contains_key(&first.to_owned()) {
+                            Err(TypeError::Undefined(
+                                spanned.with_data(first.to_owned())))?;
+                        }
+                        if !hash.contains_key(&second.to_owned()) {
+                            Err(TypeError::Undefined(
+                                spanned.with_data(second.to_owned())))?;
+                        }
+                    }
+                },
+                EnumStatement::Alias(spanned, _, sets, ..) => {
+                    for set in sets {
+                        if !hash.contains_key(&set.to_owned()) {
+                            Err(TypeError::Undefined(
+                                spanned.with_data(set.to_owned())))?;
+                        }
+                    }
+                },
+                _ => {},
+            }
+        }
+        Ok(())
+    }
+
     /// This checks that there is two parameters if the field symmetric is defined.
     fn check_two_parameter(&self) -> Result<(), TypeError> {
         if self.statements.iter().find(|item| item.is_symmetric()
@@ -176,11 +177,16 @@ impl EnumDef {
         Ok(())
     }
 
-    /// Type checks the condition.
-    pub fn type_check(&self) -> Result<(), TypeError> {
-        self.check_undefined()?;
-        self.check_redefinition_parameter()?;
-        self.check_redefinition_field()?;
+    /// Type checks the declare's condition.
+    pub fn declare(&self) -> Result<(), TypeError> {
+        self.check_declare_parameter()?;
+        self.check_declare_field()?;
+        Ok(())
+    }
+
+    /// Type checks the define's condition.
+    pub fn define(&self) -> Result<(), TypeError> {
+        self.check_field()?;
         self.check_two_parameter()?;
         self.check_same_parameter()?;
         self.check_conflict()?;

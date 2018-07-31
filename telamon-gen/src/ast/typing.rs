@@ -90,10 +90,15 @@ impl CheckerContext {
         Ok(())
     }
     
-    /// Type checks the condition.
-    pub fn type_check(&mut self, statement: &Statement) -> Result<(), TypeError> {
+    /// Type checks the declare's condition.
+    pub fn declare(&mut self, statement: &Statement) -> Result<(), TypeError> {
         self.declare_set(&statement)?;
         self.declare_choice(&statement)?;
+        Ok(())
+    }
+    
+    /// Type checks the define's condition.
+    pub fn define(&mut self, statement: &Statement) -> Result<(), TypeError> {
         match statement {
             Statement::ChoiceDef(ChoiceDef::EnumDef(ref enumeration)) => {
                 self.check_choice_define(
