@@ -62,7 +62,7 @@ impl Value {
     pub fn inverse(&mut self) {
         self.tokens = {
             let tokens = &self.tokens;
-            quote!(#tokens.inverse())
+            quote!((#tokens).inverse())
         };
     }
 
@@ -70,7 +70,7 @@ impl Value {
     pub fn negate(&mut self) {
         self.tokens = {
             let tokens = &self.tokens;
-            quote!(!#tokens)
+            quote!(!(#tokens))
         };
     }
 
