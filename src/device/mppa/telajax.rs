@@ -7,21 +7,14 @@ use std::sync::{RwLock, Arc};
 use std;
 use device::{self, ArrayArgument};
 
+include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+
 lazy_static! {
     static ref DEVICE: Device = Device::init();
 }
 
 unsafe impl Sync for Device {}
 unsafe impl Send for Device {}
-
-/// A Telajax device.
-#[repr(C)]
-struct DeviceInner {
-    platform_id: *mut libc::c_void,
-    device_id: *mut libc::c_void,
-    context: *mut libc::c_void,
-    queue: *mut libc::c_void,
-}
 
 /// Buffer in MPPA RAM.
 pub struct Buffer {
@@ -54,7 +47,7 @@ impl device::ArrayArgument for Buffer {
 }
 /// A Telajax execution context.
 pub struct Device {
-    inner: DeviceInner,
+    inner: device_t,
     rwlock: Box<parking_lot::RwLock<()>>,
 }
 
@@ -69,7 +62,7 @@ impl Device {
     fn init() -> Self {
         let mut error = 0;
         let device = unsafe { Device {
-            inner: telajax_device_init(0, [].as_ptr(), &mut error),
+            inner: telajax_device_init(0, [].as_mut_ptr(), &mut error),
             rwlock: Box::new(parking_lot::RwLock::default()),
         }};
         assert_eq!(error, 0);
@@ -90,10 +83,10 @@ impl Device {
         let flags: &'static CStr = Default::default();
         let wrapper = unsafe {
             telajax_wrapper_build(name.as_ptr(), code.as_ptr(), flags.as_ptr(),
-                                  &self.inner, &mut error)
+                                  &self.inner as *const _ as *mut _,  &mut error)
         };
         assert_eq!(error, 0);
-        wrapper
+        Wrapper(wrapper)
     }
 
     /// Compiles a kernel.
@@ -106,17 +99,17 @@ impl Device {
         let mut error = 0;
         let kernel = unsafe {
             telajax_kernel_build(code.as_ptr(), cflags.as_ptr(), lflags.as_ptr(),
-                                 wrapper, &self.inner, &mut error)
+                                 &wrapper.0 as *const _ as *mut _, &self.inner as *const _ as *mut _, &mut error)
         };
         assert_eq!(error, 0);
-        kernel
+        Kernel(kernel)
     }
 
     /// Asynchronously executes a `Kernel`.
-    pub fn enqueue_kernel(&self, kernel: &Kernel) -> Event {
+    pub fn enqueue_kernel(&self, kernel: &mut Kernel) -> Event {
         unsafe {
             let mut event_ptr = std::mem::uninitialized();
-            assert_eq!(telajax_kernel_enqueue(kernel, &self.inner, &mut event_ptr), 0);
+            assert_eq!(telajax_kernel_enqueue(&mut kernel.0 as *mut _, &self.inner as *const _ as *mut _, &mut event_ptr), 0);
             Event(event_ptr)
         }
     }
@@ -125,8 +118,8 @@ impl Device {
     pub fn execute_kernel(&self, kernel: &Kernel) {
         unsafe {
             let mut event: Event = std::mem::uninitialized();
-            assert_eq!(telajax_kernel_enqueue(kernel, &self.inner, &mut event.0), 0);
-            assert_eq!(telajax_event_wait(event.0), 0);
+            assert_eq!(telajax_kernel_enqueue(&mut kernel.0 as *mut _, &self.inner as *const _ as *mut _, &mut event.0), 0);
+            assert_eq!(telajax_event_wait(1, &event.0 as *const _), 0);
         }
 
     }
@@ -134,14 +127,14 @@ impl Device {
     /// Waits until all kernels have completed their execution.
     pub fn wait_all(&self) {
         let _ = self.rwlock.write();
-        unsafe { assert_eq!(telajax_device_waitall(&self.inner), 0); }
+        unsafe { assert_eq!(telajax_device_waitall(&self.inner as *const _ as *mut _), 0); }
     }
 
     /// Allocates a memory buffer.
-    pub fn alloc(&mut self, size: usize) -> Mem {
+    pub fn alloc(&self, size: usize) -> Mem {
         let mut error = 0;
         let mem = unsafe {
-            telajax_device_mem_alloc(size, 1 << 0, &mut self.inner, &mut error)
+            telajax_device_mem_alloc(size, 1 << 0, &self.inner as *const _ as *mut _, &mut error)
         };
         assert_eq!(error, 0);
         Mem { ptr: mem, len: size }
@@ -154,13 +147,13 @@ impl Device {
                                        wait_events: &[Event]) -> Event {
         let size = data.len() * std::mem::size_of::<T>();
         assert!(size <= mem.len);
-        let data_ptr = data.as_ptr() as *const libc::c_void;
+        let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
         let wait_n = wait_events.len() as libc::c_uint;
-        let wait_ptr = wait_events.as_ptr() as *const libc::c_void;
+        let wait_ptr = wait_events.as_ptr() as *const event_t;
         unsafe {
             let mut event: Event = std::mem::uninitialized();
             let res = telajax_device_mem_write(
-                &self.inner, mem.ptr, data_ptr, size, wait_n, wait_ptr, &mut event.0);
+                &self.inner as *const _ as *mut _, mem.ptr, data_ptr, size, wait_n, wait_ptr, &mut event.0);
             assert_eq!(res, 0);
             event
         }
@@ -173,13 +166,13 @@ impl Device {
                                  wait_events: &[Event]) {
         let size = data.len() * std::mem::size_of::<T>();
         assert!(size <= mem.len);
-        let data_ptr = data.as_ptr() as *const libc::c_void;
+        let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
         let wait_n = wait_events.len() as libc::c_uint;
-        let wait_ptr = wait_events.as_ptr() as *const libc::c_void;
+        let wait_ptr = wait_events.as_ptr() as *const event_t;
         unsafe {
             let null_mut = std::ptr::null_mut();
             let res = telajax_device_mem_write(
-                &self.inner, mem.ptr, data_ptr, size, wait_n, wait_ptr, null_mut);
+                &self.inner as *const _ as *mut _, mem.ptr, data_ptr, size, wait_n, wait_ptr, null_mut);
             assert_eq!(res, 0);
         }
     }
@@ -191,13 +184,13 @@ impl Device {
                                       wait_events: &[Event]) -> Event {
         let size = data.len() * std::mem::size_of::<T>();
         assert!(size <= mem.len);
-        let data_ptr = data.as_ptr() as *mut libc::c_void;
-        let wait_n = wait_events.len() as libc::c_uint;
-        let wait_ptr = wait_events.as_ptr() as *const libc::c_void;
+        let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
+        let wait_n = wait_events.len() as std::os::raw::c_uint;
+        let wait_ptr = wait_events.as_ptr() as *const event_t;
         unsafe {
             let mut event: Event = std::mem::uninitialized();
             let res = telajax_device_mem_read(
-                &self.inner, mem.ptr, data_ptr, size, wait_n, wait_ptr, &mut event.0);
+                &self.inner as *const _ as *mut _, mem.ptr, data_ptr, size, wait_n, wait_ptr, &mut event.0);
             assert_eq!(res, 0);
             event
         }
@@ -207,13 +200,13 @@ impl Device {
     pub fn read_buffer<T: Copy>(&self, mem: &Mem, data: &mut [T], wait_events: &[Event]) {
         let size = data.len() * std::mem::size_of::<T>();
         assert!(size <= mem.len);
-        let data_ptr = data.as_ptr() as *mut libc::c_void;
+        let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
         unsafe {
             let null_mut = std::ptr::null_mut();
-            let wait_n = wait_events.len() as libc::c_uint;
-            let wait_ptr = wait_events.as_ptr() as *const libc::c_void;
+            let wait_n = wait_events.len() as std::os::raw::c_uint;
+            let wait_ptr = wait_events.as_ptr() as *const event_t;
             let res = telajax_device_mem_read(
-                &self.inner, mem.ptr, data_ptr, size, wait_n, wait_ptr, null_mut);
+                &self.inner as *const _ as *mut _, mem.ptr, data_ptr, size, wait_n, wait_ptr, null_mut);
             assert_eq!(res, 0);
         }
     }
@@ -226,8 +219,8 @@ impl Device {
         let callback = callback_wrapper::<F>;
         unsafe {
             self.rwlock.raw_read();
-            let data_ptr = data_ptr as *mut libc::c_void;
-            telajax_event_set_callback(callback, data_ptr, event.0);
+            let data_ptr = data_ptr as *mut std::os::raw::c_void;
+            telajax_event_set_callback(Some(callback), data_ptr, event.0);
         }
     }
 }
@@ -240,31 +233,17 @@ impl Drop for Device {
     }
 }
 
-/// A wrapper to call a kernel.
-#[repr(C)]
-pub struct Wrapper {
-    name: *mut libc::c_char,
-    program: *mut libc::c_void,
-}
-
+pub struct Wrapper(wrapper_s);
 unsafe impl Send for Wrapper {}
 unsafe impl Sync for Wrapper {}
 
 impl Drop for Wrapper {
     fn drop(&mut self) {
-        unsafe { assert_eq!(telajax_wrapper_release(self), 0); }
+        unsafe { assert_eq!(telajax_wrapper_release(&mut self.0 as *mut _), 0); }
     }
 }
 
-/// A kernel to be executed on the device.
-#[repr(C)]
-pub struct Kernel {
-    program: *mut libc::c_void,
-    kernel: *mut libc::c_void,
-    work_dim: libc::c_int,
-    global_size: [libc::size_t; 3],
-    local_size: [libc::size_t; 3],
-}
+pub struct Kernel (kernel_s);
 
 impl Kernel {
     /// Sets the arguments of the `Kernel`.
@@ -273,7 +252,8 @@ impl Kernel {
         let num_arg = sizes.len() as i32;
         let sizes_ptr = sizes.as_ptr();
         unsafe {
-            assert_eq!(telajax_kernel_set_args(num_arg, sizes_ptr, args.as_ptr(), self), 0);
+            // Needs *mut ptr mostly because they were not specified as const in original c api
+            assert_eq!(telajax_kernel_set_args(num_arg, sizes_ptr as *const _ as *mut _, args.as_ptr() as *const _ as *mut _, &mut self.0 as *mut _), 0);
         }
     }
 
@@ -281,7 +261,7 @@ impl Kernel {
     pub fn set_num_clusters(&mut self, num: usize) {
         assert!(num <= 16);
         unsafe {
-            assert_eq!(telajax_kernel_set_dim(1, [1].as_ptr(), [num].as_ptr(), self), 0);
+            assert_eq!(telajax_kernel_set_dim(1, [1].as_ptr(), [num].as_ptr(), &mut self.0 as *mut _), 0);
         }
     }
 }
@@ -290,13 +270,13 @@ unsafe impl Send for Kernel {}
 
 impl Drop for Kernel {
     fn drop(&mut self) {
-        unsafe { assert_eq!(telajax_kernel_release(self), 0); }
+        unsafe { assert_eq!(telajax_kernel_release(&mut self.0 as *mut _), 0); }
     }
 }
 
 /// A buffer allocated on the device.
 pub struct Mem {
-    ptr: *mut libc::c_void,
+    ptr: *mut _cl_mem,
     len: usize,
 }
 
@@ -321,7 +301,7 @@ impl Drop for Mem {
 
 /// An event triggered at the end of a memory operation or kernel execution.
 #[repr(C)]
-pub struct Event(*mut libc::c_void);
+pub struct Event(*mut _cl_event);
 
 impl Drop for Event {
     fn drop(&mut self) {
@@ -330,9 +310,9 @@ impl Drop for Event {
 }
 
 /// Calls the closure passed in data.
-unsafe extern fn callback_wrapper<F: FnOnce()>(_: *const libc::c_void,
+unsafe extern fn callback_wrapper<F: FnOnce()>(_: cl_event,
                                                _: i32,
-                                               data: *mut libc::c_void) {
+                                               data: *mut std::os::raw::c_void) {
     let data = Box::from_raw(data as *mut CallbackData<F>);
     let ref lock = *data.rwlock;
     (data.closure)();
@@ -346,74 +326,3 @@ struct CallbackData<F: FnOnce()> {
     rwlock: *const parking_lot::RwLock<()>,
 }
 
-extern "C" {
-    fn telajax_device_init(argc: libc::c_int,
-                           argv: *const *const libc::c_char,
-                           error: *mut libc::c_int) -> DeviceInner;
-
-    fn telajax_device_finalize(device: *mut DeviceInner);
-
-    fn telajax_device_waitall(device: *const DeviceInner) -> libc::c_int;
-
-    fn telajax_device_mem_alloc(size: libc::size_t,
-                                mem_flags: u64,
-                                device: *mut DeviceInner,
-                                error: *mut libc::c_int) -> *mut libc::c_void;
-
-    fn telajax_device_mem_write(device: *const DeviceInner,
-                                device_mem: *mut libc::c_void,
-                                host_mem: *const libc::c_void,
-                                size: libc::size_t,
-                                num_events_wait: libc::c_uint,
-                                events_wait: *const libc::c_void,
-                                event: *mut *mut libc::c_void) -> libc::c_int;
-
-    fn telajax_device_mem_read(device: *const DeviceInner,
-                               device_mem: *const libc::c_void,
-                               host_mem: *mut libc::c_void,
-                               size: libc::size_t,
-                               num_events_wait: libc::c_uint,
-                               events_wait: *const libc::c_void,
-                               event: *mut *mut libc::c_void) -> libc::c_int;
-
-    fn telajax_device_mem_release(mem: *mut libc::c_void) -> libc::c_int;
-
-    fn telajax_wrapper_build(kernel_ocl_name: *const libc::c_char,
-                             kernel_ocl_wrapper: *const libc::c_char,
-                             options: *const libc::c_char,
-                             device: *const DeviceInner,
-                             error: *mut libc::c_int) -> Wrapper;
-
-    fn telajax_wrapper_release(wrapper: *mut Wrapper) -> libc::c_int;
-
-    fn telajax_kernel_build(kernel_code: *const libc::c_char,
-	                        cflags: *const libc::c_char,
-                            lflags: *const libc::c_char,
-                            wrapper: *const Wrapper,
-                            device: *const DeviceInner,
-                            error: *mut libc::c_int) -> Kernel;
-
-    fn telajax_kernel_set_dim(work_dim: libc::c_int,
-                              global_size: *const libc::size_t,
-                              local_size: *const libc::size_t,
-                              kernel: *mut Kernel) -> libc::c_int;
-
-    fn telajax_kernel_release(kernel: *mut Kernel) -> libc::c_int;
-
-    fn telajax_kernel_set_args(num_args: libc::c_int,
-                               args_size: *const libc::size_t,
-                               args: *const *const libc::c_void,
-                               kernel: *mut Kernel) -> libc::c_int;
-
-    fn telajax_kernel_enqueue(kernel: *const Kernel,
-                              device: *const DeviceInner,
-                              event: *mut *mut libc::c_void) -> libc::c_int;
-
-    fn telajax_event_set_callback(callback: Callback,
-                                  data: *mut libc::c_void,
-                                  event: *mut libc::c_void);
-
-    fn telajax_event_wait(event: *mut libc::c_void) -> libc::c_int;
-
-    fn telajax_event_release(event: *mut libc::c_void) -> libc::c_int;
-}

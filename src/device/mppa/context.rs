@@ -1,4 +1,5 @@
 //! MPPA evaluation context.
+use codegen;
 use crossbeam::sync::MsQueue;
 use crossbeam;
 use device::{self, ScalarArgument, ArrayArgument, mppa, EvalMode};
@@ -73,10 +74,12 @@ impl<'a> Context<'a> {
             -> (telajax::Kernel, telajax::Mem) 
             {
         let mut code: Vec<u8> = Vec::new();
-        let mut printer = MppaPrinter::new(Namer::default(), fun);
-        let wrapper = self.get_wrapper(fun, &mut printer);
+        let mut printer = MppaPrinter::default();
+        let mut namer = mppa::Namer::default();
+        let mut name_map = codegen::NameMap::new(fun, &mut namer);
+        let wrapper = self.get_wrapper(fun, &mut namer, &mut name_map);
         //mppa::printer::print(fun, true, &mut code).unwrap();
-        let kernel_code: String = printer.wrapper_function(fun);
+        let kernel_code: String = printer.wrapper_function(fun, &mut namer, &mut name_map);
         //let code = std::ffi::CString::new(code).unwrap();
         //debug!("{}", code.clone().into_string().unwrap()); // DEBUG
         let cflags = std::ffi::CString::new("").unwrap();
@@ -97,15 +100,16 @@ impl<'a> Context<'a> {
 
     /// Returns the wrapper for the given signature.
     //fn get_wrapper<'b>(&self, sig: &ir::Signature) -> Arc<telajax::Wrapper> {
-    fn get_wrapper(&self, fun: &device::Function, printer: &mut MppaPrinter) -> Arc<telajax::Wrapper> {
-        self.wrappers.get(sig, || {
-            let mut ocl_code: Vec<u8> = Vec::new();
-            printer.print_ocl_wrapper(fun);
-            let name = std::ffi::CString::new("wrapper").unwrap();
-            let ocl_code = std::ffi::CString::new(ocl_code).unwrap();
-            debug!("{}", ocl_code.clone().into_string().unwrap());
-            self.executor.build_wrapper(&name, &ocl_code)
-        })
+    fn get_wrapper<'b, 'c>(&self, fun: &device::Function, namer: &mut mppa::Namer, name_map: &'b mut codegen::NameMap<'b, 'c>) -> Arc<telajax::Wrapper> {
+        // TODO: There was a memoization here that allowed to cache a result for an already
+        // generated signature wrapper. Maybe reimplement it
+        let mut printer = MppaPrinter::default();
+        let mut ocl_code: Vec<u8> = Vec::new();
+        printer.print_ocl_wrapper(fun, namer, name_map);
+        let name = std::ffi::CString::new("wrapper").unwrap();
+        let ocl_code = std::ffi::CString::new(ocl_code).unwrap();
+        debug!("{}", ocl_code.clone().into_string().unwrap());
+        Arc::new(self.executor.build_wrapper(&name, &ocl_code))
     }
 
     /// Returns a parameter given its name.
@@ -134,9 +138,9 @@ impl<'a> device::Context for Context<'a> {
                           inner: &(Fn(&mut device::AsyncEvaluator<'c, 'd>) + Sync)) {
         // FIXME: execute in parallel
         let (send, recv) = mpsc::sync_channel(EVAL_BUFFER_SIZE);
-        let mut evaluator = AsyncEvaluator { 
-            context: self,
-            sender: send};
+        //let mut evaluator = AsyncEvaluator { 
+        //    context: self,
+        //    sender: send};
         //inner(&mut evaluator);
         //self.executor.wait_all();
         crossbeam::scope(move |scope| {
