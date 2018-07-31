@@ -12,8 +12,9 @@ thread_local! {
     static ERROR: RefCell<Option<ir::Error>> = RefCell::new(None);
 }
 
-const TELAMON_STATUS_OK: u32 = 1;
-const TELAMON_STATUS_FAIL: u32 = 0;
+/// Indicates if a telamon function exited correctly.
+#[repr(C)]
+pub enum TelamonStatus { TelamonStatusOk, TelamonStatusFail }
 
 /// Helper macro that unwraps a result. Exits with `$error` and sets the global `ERROR`
 /// variable when an error is encountered.
@@ -21,7 +22,7 @@ const TELAMON_STATUS_FAIL: u32 = 0;
 /// When no value is specified for `$error`, returns with `TELAMON_STATUS_FAIL`. When `null` is
 /// specified instead, exits with a null mutable pointer.
 macro_rules! unwrap_or_exit {
-    ($result:expr) => { unwrap_or_exit!($result, TELAMON_STATUS_FAIL) };
+    ($result:expr) => { unwrap_or_exit!($result, TelamonStatus::TelamonStatusOk) };
     ($result:expr, null) => { unwrap_or_exit!($result, std::ptr::null_mut()) };
     ($result:expr, $error:expr) => {
         match $result {
@@ -138,7 +139,7 @@ pub unsafe extern "C" fn telamon_ir_function_free(function: *mut Function) {
 
 /// Adds an instruction performing the given operator in the given dimensions to the
 /// function. Writes the unique identifier of the instruction in `inst_id`. Returns
-/// `TELAMON_STATUS_OK` except if an error occures. Takes ownership of the operator
+/// `TelamonStatusOk` except if an error occurs. Takes ownership of the operator
 /// but does not keeps any reference to `dimensions`.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_function_add_instruction(
@@ -147,25 +148,25 @@ pub unsafe extern "C" fn telamon_ir_function_add_instruction(
     dimensions: *const ir::DimId,
     num_dimensions: usize,
     inst_id: *mut ir::InstId,
-) -> u32 {
+) -> TelamonStatus {
     let dimensions = std::slice::from_raw_parts(dimensions, num_dimensions);
     let dim_set = dimensions.iter().cloned().collect();
     let operator = Box::from_raw(operator).0;
     *inst_id = unwrap_or_exit!((*function).0.add_inst(operator, dim_set));
-    TELAMON_STATUS_OK
+    TelamonStatus::TelamonStatusOk
 }
 
 /// Adds a dimension of the given size to the function. Takes ownership of `size` and
-/// writes the unique identifier of the dimension in `dim_id`. Returns `TELAMON_STATUS_OK`
+/// writes the unique identifier of the dimension in `dim_id`. Returns `TelamonStatusOk`
 /// except if an error occurs.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_function_add_dimension(
     function: *mut Function,
     size: *mut Size,
     dim_id: *mut ir::DimId,
-) -> u32 {
+) -> TelamonStatus {
     *dim_id = unwrap_or_exit!((*function).0.add_dim(Box::from_raw(size).0));
-    TELAMON_STATUS_OK
+    TelamonStatus::TelamonStatusOk
 }
 
 /// Opaque type that abstracts away the lifetime parameter of `ir::Size` so cbindgen
@@ -174,7 +175,7 @@ pub struct Size(ir::Size<'static>);
 
 /// Create a size equal to:
 /// ```
-/// const_factor * paramr_factors[0] * .. * param_factors[num_params-1] / const_divisor
+/// const_factor * param_factors[0] * .. * param_factors[num_params-1] / const_divisor
 /// ```
 /// The size must be freed calling `telamon_ir_size_free` or passed to a function that
 /// takes its ownership.
@@ -214,7 +215,7 @@ pub unsafe extern "C" fn telamon_ir_operand_new_int(
     Box::into_raw(Box::new(Operand(operand)))
 }
 
-/// Creates a constant floating point operand. The provided type must be an float type.
+/// Creates a constant floating point operand. The provided type must be a float type.
 /// Returns `null` if an error is encountered.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_operand_new_float(
@@ -239,7 +240,6 @@ pub unsafe extern "C" fn telamon_ir_operand_new_parameter(
 }
 
 /// Creates an operand that returns the current index on a dimension.
-// FIXME: repr(C) ir::DimId
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_operand_new_index(dim: ir::DimId) -> *mut Operand {
     let operand = ir::Operand::Index(dim);
@@ -387,7 +387,7 @@ pub unsafe extern "C" fn telamon_ir_operator_new_cast(
 
 /// Creates an operator that loads a tensor stored in memory. Takes the ownership of
 /// `base_address` and creates copies of `strided_dims`, `strides` and `loaded_type`.
-/// This function also adds thei necessary address computation code to `function`.
+/// This function also adds the necessary address computation code to `function`.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_operator_new_tensor_load(
     function: *mut Function,

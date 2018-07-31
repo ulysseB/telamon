@@ -13,10 +13,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#define TELAMON_STATUS_FAIL 0
-
-#define TELAMON_STATUS_OK 1
-
 /*
  * Represents binary arithmetic operators.
  */
@@ -68,6 +64,14 @@ typedef enum {
      */
     Negative,
 } Rounding;
+
+/*
+ * Indicates if a telamon function exited correctly.
+ */
+typedef enum {
+    TelamonStatusOk,
+    TelamonStatusFail,
+} TelamonStatus;
 
 /*
  * Description of the evaluation context. In particular, in contains the mapping between
@@ -271,22 +275,22 @@ const Device *telamon_cuda_get_device(const CudaEnvironment *env);
 
 /*
  * Adds a dimension of the given size to the function. Takes ownership of `size` and
- * writes the unique identifier of the dimension in `dim_id`. Returns `TELAMON_STATUS_OK`
+ * writes the unique identifier of the dimension in `dim_id`. Returns `TelamonStatusOk`
  * except if an error occurs.
  */
-uint32_t telamon_ir_function_add_dimension(Function *function, Size *size, DimId *dim_id);
+TelamonStatus telamon_ir_function_add_dimension(Function *function, Size *size, DimId *dim_id);
 
 /*
  * Adds an instruction performing the given operator in the given dimensions to the
  * function. Writes the unique identifier of the instruction in `inst_id`. Returns
- * `TELAMON_STATUS_OK` except if an error occures. Takes ownership of the operator
+ * `TelamonStatusOk` except if an error occurs. Takes ownership of the operator
  * but does not keeps any reference to `dimensions`.
  */
-uint32_t telamon_ir_function_add_instruction(Function *function,
-                                             Operator *operator,
-                                             const DimId *dimensions,
-                                             uintptr_t num_dimensions,
-                                             InstId *inst_id);
+TelamonStatus telamon_ir_function_add_instruction(Function *function,
+                                                  Operator *operator,
+                                                  const DimId *dimensions,
+                                                  uintptr_t num_dimensions,
+                                                  InstId *inst_id);
 
 /*
  * Frees a function allocated with `telamon_ir_function_new`.
@@ -300,7 +304,7 @@ void telamon_ir_function_free(Function *function);
 Function *telamon_ir_function_new(const Signature *signature, const Device *device);
 
 /*
- * Creates a constant floating point operand. The provided type must be an float type.
+ * Creates a constant floating point operand. The provided type must be a float type.
  * Returns `null` if an error is encountered.
  */
 Operand *telamon_ir_operand_new_float(const Type *t, double value);
@@ -396,7 +400,7 @@ Operator *telamon_ir_operator_new_mul(Operand *lhs,
 /*
  * Creates an operator that loads a tensor stored in memory. Takes the ownership of
  * `base_address` and creates copies of `strided_dims`, `strides` and `loaded_type`.
- * This function also adds thei necessary address computation code to `function`.
+ * This function also adds the necessary address computation code to `function`.
  */
 Operator *telamon_ir_operator_new_tensor_load(Function *function,
                                               MemId array_id,
@@ -454,7 +458,7 @@ void telamon_ir_size_free(Size *size);
 /*
  * Create a size equal to:
  * ```
- * const_factor * paramr_factors[0] * .. * param_factors[num_params-1] / const_divisor
+ * const_factor * param_factors[0] * .. * param_factors[num_params-1] / const_divisor
  * ```
  * The size must be freed calling `telamon_ir_size_free` or passed to a function that
  * takes its ownership.
