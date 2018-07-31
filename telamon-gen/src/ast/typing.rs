@@ -77,7 +77,7 @@ impl CheckerContext {
             .. }) => {
                 for VarDef { name: _, set: SetRef { name, .. } } in variables {
                     let name: &String = name.deref();
-                    if !self.hash_choice.contains_key(name) {
+                    if !self.hash_set.contains_key(name) {
                         Err(TypeError::Undefined(Spanned {
                             beg: beg.to_owned(), end: end.to_owned(),
                             data: name.to_owned(),
