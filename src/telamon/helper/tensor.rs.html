@@ -337,7 +337,7 @@
 <span class="doccomment">/// A tensor allocated in main memory.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Tensor</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">S</span>: <span class="ident">ScalarArgument</span><span class="op">&gt;</span> {
     <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">str</span>,
-    <span class="ident">mem_id</span>: <span class="ident">ir</span>::<span class="ident">mem</span>::<span class="ident">Id</span>,
+    <span class="ident">mem_id</span>: <span class="ident">ir</span>::<span class="ident">MemId</span>,
     <span class="ident">array</span>: <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ArrayArgument</span> <span class="op">+</span> <span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
     <span class="ident">iter_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">DimSize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">DimSize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
     <span class="ident">read_only</span>: <span class="ident">bool</span>,
@@ -349,7 +349,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">str</span>,
                <span class="ident">dim_sizes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DimSize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
                <span class="ident">read_only</span>: <span class="ident">bool</span>,
-               <span class="ident">mem_id</span>: <span class="ident">ir</span>::<span class="ident">mem</span>::<span class="ident">Id</span>,
+               <span class="ident">mem_id</span>: <span class="ident">ir</span>::<span class="ident">MemId</span>,
                <span class="ident">array</span>: <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ArrayArgument</span> <span class="op">+</span> <span class="lifetime">&#39;a</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">incr</span>: <span class="ident">DimSize</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">S</span>::<span class="ident">t</span>().<span class="ident">len_byte</span>()).<span class="ident">into</span>(); 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">iter_dims</span> <span class="op">=</span> <span class="ident">dim_sizes</span>.<span class="ident">into_iter</span>().<span class="ident">rev</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> {

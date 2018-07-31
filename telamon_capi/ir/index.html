@@ -1,0 +1,316 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API documentation for the Rust `ir` mod in crate `telamon_capi`."><meta name="keywords" content="rust, rustlang, rust-lang, ir"><title>telamon_capi::ir - Rust</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css"><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script src="../../storage.js"></script></head><body class="rustdoc mod"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div><p class='location'>Module ir</p><div class="sidebar-elems"><div class="block items"><ul><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#functions">Functions</a></li></ul></div><p class='location'><a href='../index.html'>telamon_capi</a></p><script>window.sidebarCurrent = {name: 'ir', ty: 'mod', relpath: '../'};</script><script defer src="../sidebar-items.js"></script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><h1 class='fqn'><span class='in-band'>Module <a href='../index.html'>telamon_capi</a>::<wbr><a class="mod" href=''>ir</a></span><span class='out-of-band'><span id='render-detail'><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class='inner'>&#x2212;</span>]</a></span><a class='srclink' href='../../src/telamon_capi/ir.rs.html#1-459' title='goto source code'>[src]</a></span></h1><div class='docblock'><p>C API wrappers to create Telamon Kernels.</p>
+</div><h2 id='structs' class='section-header'><a href="#structs">Structs</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Function.html"
+                                  title='struct telamon_capi::ir::Function'>Function</a></td>
+                           <td class='docblock-short'>
+                                <p>Opaque type that abstracts away the lifetime parameter of <code>ir::Function</code> so that
+cbindgen generates the bindings.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Operand.html"
+                                  title='struct telamon_capi::ir::Operand'>Operand</a></td>
+                           <td class='docblock-short'>
+                                <p>Opaque type that abstracts away the lifetime parameter of <code>ir::Operand</code> so that
+cbindgen can generate bindings.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Operator.html"
+                                  title='struct telamon_capi::ir::Operator'>Operator</a></td>
+                           <td class='docblock-short'>
+                                <p>Opaque type that abstracts away the lifetime parameter of <code>ir::Operator</code> so that
+cbindgen can generate bindings.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="struct" href="struct.Size.html"
+                                  title='struct telamon_capi::ir::Size'>Size</a></td>
+                           <td class='docblock-short'>
+                                <p>Opaque type that abstracts away the lifetime parameter of <code>ir::Size</code> so cbindgen
+can generate bindings.</p>
+
+                           </td>
+                       </tr></table><h2 id='enums' class='section-header'><a href="#enums">Enums</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.Rounding.html"
+                                  title='enum telamon_capi::ir::Rounding'>Rounding</a></td>
+                           <td class='docblock-short'>
+                                <p>The rounding mode of an arithmetic operation.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="enum" href="enum.TelamonStatus.html"
+                                  title='enum telamon_capi::ir::TelamonStatus'>TelamonStatus</a></td>
+                           <td class='docblock-short'>
+                                <p>Indicates if a telamon function exited correctly.</p>
+
+                           </td>
+                       </tr></table><h2 id='functions' class='section-header'><a href="#functions">Functions</a></h2>
+<table>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_function_add_dimension.html"
+                                  title='fn telamon_capi::ir::telamon_ir_function_add_dimension'>telamon_ir_function_add_dimension</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Adds a dimension of the given size to the function. Takes ownership of <code>size</code> and
+writes the unique identifier of the dimension in <code>dim_id</code>. Returns <code>TelamonStatusOk</code>
+except if an error occurs.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_function_add_instruction.html"
+                                  title='fn telamon_capi::ir::telamon_ir_function_add_instruction'>telamon_ir_function_add_instruction</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Adds an instruction performing the given operator in the given dimensions to the
+function. Writes the unique identifier of the instruction in <code>inst_id</code>. Returns
+<code>TelamonStatusOk</code> except if an error occurs. Takes ownership of the operator
+but does not keeps any reference to <code>dimensions</code>.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_function_free.html"
+                                  title='fn telamon_capi::ir::telamon_ir_function_free'>telamon_ir_function_free</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Frees a function allocated with <code>telamon_ir_function_new</code>.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_function_new.html"
+                                  title='fn telamon_capi::ir::telamon_ir_function_new'>telamon_ir_function_new</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Creates a function to optimize. The function must be freed with
+<code>telamon_ir_function_free</code>. <code>signature</code> and <code>device</code> must outlive the function.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_operand_new_float.html"
+                                  title='fn telamon_capi::ir::telamon_ir_operand_new_float'>telamon_ir_operand_new_float</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Creates a constant floating point operand. The provided type must be a float type.
+Returns <code>null</code> if an error is encountered.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_operand_new_index.html"
+                                  title='fn telamon_capi::ir::telamon_ir_operand_new_index'>telamon_ir_operand_new_index</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Creates an operand that returns the current index on a dimension.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_operand_new_inst.html"
+                                  title='fn telamon_capi::ir::telamon_ir_operand_new_inst'>telamon_ir_operand_new_inst</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Creates an operand that references the value of an instruction. The value of the
+instruction is transmitted point-to-point between the source dimensions (<code>src_dims</code>,
+in which the instruction is produced) and destination dimensions (<code>dst_dims</code>, in which
+the operand is used). <code>num_mapped_dims</code> indicates the number of dimensions in
+<code>src_dims</code> and in <code>dst_dims</code>. If <code>allow_tmp_mem</code> is non-zero, Telamon can allocate
+memory to transfer data between the two loop nests. Otherwise, it makes sure the data
+can be stored in registers (for example by fusing or unrolling loops).</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_operand_new_int.html"
+                                  title='fn telamon_capi::ir::telamon_ir_operand_new_int'>telamon_ir_operand_new_int</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Create a constant integer operand. The provided type must be an integer type.
+Returns <code>null</code> if an error is encountered.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_operand_new_parameter.html"
+                                  title='fn telamon_capi::ir::telamon_ir_operand_new_parameter'>telamon_ir_operand_new_parameter</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Creates an operand that fetches the value of a parameter. The created operand holds
+a reference to <code>parameter</code>.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_operand_new_reduction.html"
+                                  title='fn telamon_capi::ir::telamon_ir_operand_new_reduction'>telamon_ir_operand_new_reduction</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Creates an operand that take the value of <code>init_inst</code> the first time is is encountered
+and then reuse the value produced by the instruction using the operand, effectivelly
+creating a reduction. The value is is transmitted point-to-point between the source
+dimensions (<code>src_dims</code>, in which <code>init_inst</code> is produced) and destination dimensions
+(<code>dst_dims</code>, in which the operand is used). <code>num_mapped_dims</code> indicates the number of
+dimensions in <code>src_dims</code> and in <code>dst_dims</code>. <code>reduction_dims</code> indicates on which
+dimensions the reduction occurs: values are not reused accross other dimensions.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_operator_new_binop.html"
+                                  title='fn telamon_capi::ir::telamon_ir_operator_new_binop'>telamon_ir_operator_new_binop</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Creates a binary operator. Takes ownership of the operands.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_operator_new_cast.html"
+                                  title='fn telamon_capi::ir::telamon_ir_operator_new_cast'>telamon_ir_operator_new_cast</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Creates a <code>cast</code> operator. Takes ownership of <code>operand</code>. No reference to <code>return_type</code>
+is hold after the function returns.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_operator_new_mad.html"
+                                  title='fn telamon_capi::ir::telamon_ir_operator_new_mad'>telamon_ir_operator_new_mad</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Creates a <code>mad</code> operator, that computes <code>mul_lhs * mul_rhs + add_rhs</code>. If the operator
+operates on integer, the type of <code>add_rhs</code> can either be the type of both <code>mul_lhs</code>
+and <code>mul_rhs</code> or an integer type having twice the size of the multiplied types. Takes
+ownership of <code>mul_lhs</code>, <code>mul_rhs</code> and <code>add_rhs</code>.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_operator_new_mov.html"
+                                  title='fn telamon_capi::ir::telamon_ir_operator_new_mov'>telamon_ir_operator_new_mov</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Creates a <code>mov</code> operator. Takes ownership of <code>operand</code>.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_operator_new_mul.html"
+                                  title='fn telamon_capi::ir::telamon_ir_operator_new_mul'>telamon_ir_operator_new_mul</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Creates a <code>mul</code> operator. The return type can either be the operands type or, if the
+multplication operates on integers, a type twice the size of the input. Takes
+ownership of both <code>lhs</code> and <code>rhs</code>. No references to <code>return_type</code> is hold after the
+function returns.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_operator_new_tensor_load.html"
+                                  title='fn telamon_capi::ir::telamon_ir_operator_new_tensor_load'>telamon_ir_operator_new_tensor_load</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Creates an operator that loads a tensor stored in memory. Takes the ownership of
+<code>base_address</code> and creates copies of <code>strided_dims</code>, <code>strides</code> and <code>loaded_type</code>.
+This function also adds the necessary address computation code to <code>function</code>.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_operator_new_tensor_store.html"
+                                  title='fn telamon_capi::ir::telamon_ir_operator_new_tensor_store'>telamon_ir_operator_new_tensor_store</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Creates an operator that stores a tensor in memory. Takes the ownership of
+<code>base_address</code> and <code>value</code> and creates copies of <code>strided_dims</code>, <code>strides</code> and
+<code>loaded_type</code>. This function also adds the necessary address computation code to
+<code>function</code>.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_signature_add_array.html"
+                                  title='fn telamon_capi::ir::telamon_ir_signature_add_array'>telamon_ir_signature_add_array</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Adds an array parameter to the function signature.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_signature_add_scalar.html"
+                                  title='fn telamon_capi::ir::telamon_ir_signature_add_scalar'>telamon_ir_signature_add_scalar</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Adds a scalar parameter to the function signature.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_signature_free.html"
+                                  title='fn telamon_capi::ir::telamon_ir_signature_free'>telamon_ir_signature_free</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Deallocates a signature created with <code>telamon_ir_signature_new</code>.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_signature_new.html"
+                                  title='fn telamon_capi::ir::telamon_ir_signature_new'>telamon_ir_signature_new</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Creates a function signature that must be deallocated with
+<code>telamon_ir_signature_free</code>.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_signature_param.html"
+                                  title='fn telamon_capi::ir::telamon_ir_signature_param'>telamon_ir_signature_param</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Returns the parameter at the given position.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_size_free.html"
+                                  title='fn telamon_capi::ir::telamon_ir_size_free'>telamon_ir_size_free</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Frees a size allocated with <code>telamon_ir_size_new</code>.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_size_new.html"
+                                  title='fn telamon_capi::ir::telamon_ir_size_new'>telamon_ir_size_new</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Create a size equal to:</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_strerror.html"
+                                  title='fn telamon_capi::ir::telamon_ir_strerror'>telamon_ir_strerror</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Prints the error message in a string. Returns <code>null</code> if no error was present. The
+caller is responsible for freeing the string with <code>free</code>.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_type_free.html"
+                                  title='fn telamon_capi::ir::telamon_ir_type_free'>telamon_ir_type_free</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Frees a type allocated with <code>telamon_ir_type_new_int</code> or <code>telamon_ir_type_new_float</code>.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_type_new_float.html"
+                                  title='fn telamon_capi::ir::telamon_ir_type_new_float'>telamon_ir_type_new_float</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Creates a floating point type that must be freed with <code>telamon_ir_type_free</code>.</p>
+
+                           </td>
+                       </tr>
+                       <tr class=' module-item'>
+                           <td><a class="fn" href="fn.telamon_ir_type_new_int.html"
+                                  title='fn telamon_capi::ir::telamon_ir_type_new_int'>telamon_ir_type_new_int</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
+                           <td class='docblock-short'>
+                                <p>Creates an integer type that must be freed with <code>telamon_ir_type_free</code>.</p>
+
+                           </td>
+                       </tr></table></section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g. <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g. <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g. <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../";window.currentCrate = "telamon_capi";</script><script src="../../aliases.js"></script><script src="../../main.js"></script><script defer src="../../search-index.js"></script></body></html>

@@ -94,7 +94,7 @@
 
 <span class="doccomment">/// Lowers a layout</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lower_layout</span>(<span class="ident">fun</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">Function</span>, <span class="ident">mem</span>: <span class="ident">ir</span>::<span class="ident">mem</span>::<span class="ident">InternalId</span>,
-                    <span class="ident">st_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span><span class="op">&gt;</span>, <span class="ident">ld_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span><span class="op">&gt;</span>,
+                    <span class="ident">st_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>, <span class="ident">ld_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
                     <span class="ident">domain</span>: <span class="kw-2">&amp;</span><span class="ident">DomainStore</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
     <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;lower_layout({:?}) triggered&quot;</span>, <span class="ident">mem</span>);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">actions</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
@@ -147,7 +147,7 @@
 }
 
 <span class="doccomment">/// Trigger to call when two dimensions are not mapped.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dim_not_mapped</span>(<span class="ident">lhs</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">rhs</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">fun</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">Function</span>)
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dim_not_mapped</span>(<span class="ident">lhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">rhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">fun</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">Function</span>)
     <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">NewObjs</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span>), ()<span class="op">&gt;</span>
 {
     <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;dim_not_mapped({:?}, {:?}) triggered&quot;</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>);
@@ -163,7 +163,7 @@
 }
 
 <span class="doccomment">/// Trigger to call when two dimensions are not merged.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dim_not_merged</span>(<span class="ident">lhs</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">rhs</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">fun</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">Function</span>)
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dim_not_merged</span>(<span class="ident">lhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">rhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">fun</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">Function</span>)
     <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">NewObjs</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span>), ()<span class="op">&gt;</span>
 {
     <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;dim_not_merged({:?}, {:?}) triggered&quot;</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>);

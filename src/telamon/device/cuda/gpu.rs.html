@@ -807,7 +807,7 @@
 
     <span class="doccomment">/// Retruns the overhead for a single instance of the instruction.</span>
     <span class="kw">fn</span> <span class="ident">inst_pressure</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
-                     <span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
+                     <span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
                      <span class="ident">inst</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Instruction</span>,
                      <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">HwPressure</span> {
         <span class="kw">use</span> <span class="ident">ir</span>::<span class="ident">Operator</span>::<span class="kw-2">*</span>;
@@ -950,7 +950,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">hw_pressure</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
-                   <span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
+                   <span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
                    <span class="ident">_nesting</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">BBId</span>, <span class="ident">model</span>::<span class="ident">Nesting</span><span class="op">&gt;</span>,
                    <span class="ident">bb</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">BasicBlock</span>,
                    <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">model</span>::<span class="ident">HwPressure</span> {

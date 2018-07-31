@@ -127,11 +127,12 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">access_pattern</span>::{<span class="ident">Stride</span>, <span class="ident">AccessPattern</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">basic_block</span>::{<span class="ident">BasicBlock</span>, <span class="ident">BBId</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">dim_map</span>::<span class="ident">DimMap</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">dimension</span>::<span class="ident">Dimension</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">dimension</span>::{<span class="ident">DimId</span>, <span class="ident">Dimension</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">error</span>::{<span class="ident">Error</span>, <span class="ident">TypeError</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">function</span>::{<span class="ident">Function</span>, <span class="ident">Signature</span>, <span class="ident">Parameter</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">instruction</span>::{<span class="ident">InstId</span>, <span class="ident">Instruction</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">induction_var</span>::{<span class="ident">IndVarId</span>, <span class="ident">InductionVar</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">mem</span>::<span class="ident">MemId</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">operand</span>::{<span class="ident">Operand</span>, <span class="ident">DimMapScope</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">operator</span>::{<span class="ident">BinOp</span>, <span class="ident">Operator</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">size</span>::<span class="ident">Size</span>;
@@ -141,7 +142,6 @@
 
 <span class="doccomment">/// Defines iteration dimensions properties.</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">dim</span> {
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">dimension</span>::<span class="ident">Id</span>;
     <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">dim_map</span>::<span class="ident">DimMap</span> <span class="kw">as</span> <span class="ident">Map</span>;
 }
 
@@ -162,13 +162,13 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">NewObjs</span> {
     <span class="kw">pub</span> <span class="ident">instructions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InstId</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">dimensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">dim</span>::<span class="ident">Id</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">dimensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DimId</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">basic_blocks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BBId</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">mem_blocks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">mem</span>::<span class="ident">Id</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">mem_blocks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MemId</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">internal_mem_blocks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">mem</span>::<span class="ident">InternalId</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">mem_insts</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InstId</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">iteration_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">InstId</span>, <span class="ident">dim</span>::<span class="ident">Id</span>)<span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">thread_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">dim</span>::<span class="ident">Id</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">iteration_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">InstId</span>, <span class="ident">DimId</span>)<span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">thread_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DimId</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">NewObjs</span> {
@@ -198,12 +198,12 @@
     }
 
     <span class="doccomment">/// Sets a dimension as a new iteration dimension.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_iteration_dim</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">inst</span>: <span class="ident">InstId</span>, <span class="ident">dim</span>: <span class="ident">dim</span>::<span class="ident">Id</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_iteration_dim</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">inst</span>: <span class="ident">InstId</span>, <span class="ident">dim</span>: <span class="ident">DimId</span>) {
         <span class="self">self</span>.<span class="ident">iteration_dims</span>.<span class="ident">push</span>((<span class="ident">inst</span>, <span class="ident">dim</span>));
     }
 
     <span class="doccomment">/// Sets a dimension as a new thread dimension.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_thread_dim</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">dim</span>: <span class="ident">dim</span>::<span class="ident">Id</span>) { <span class="self">self</span>.<span class="ident">thread_dims</span>.<span class="ident">push</span>(<span class="ident">dim</span>) }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_thread_dim</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">dim</span>: <span class="ident">DimId</span>) { <span class="self">self</span>.<span class="ident">thread_dims</span>.<span class="ident">push</span>(<span class="ident">dim</span>) }
 
     <span class="doccomment">/// Registers a new memory block.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_mem_block</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">id</span>: <span class="ident">mem</span>::<span class="ident">InternalId</span>) {
@@ -217,7 +217,7 @@
     <span class="kw">pub</span> <span class="ident">mem</span>: <span class="ident">mem</span>::<span class="ident">InternalId</span>,
     <span class="kw">pub</span> <span class="ident">store</span>: <span class="ident">InstId</span>,
     <span class="kw">pub</span> <span class="ident">load</span>: <span class="ident">InstId</span>,
-    <span class="kw">pub</span> <span class="ident">dimensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">dim</span>::<span class="ident">Id</span>)<span class="op">&gt;</span>
+    <span class="kw">pub</span> <span class="ident">dimensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">DimId</span>, <span class="ident">DimId</span>)<span class="op">&gt;</span>
 }
 
 <span class="comment">// TODO(perf): group static computations</span>

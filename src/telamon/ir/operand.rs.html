@@ -126,7 +126,7 @@
 <span id="126">126</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Describes the different kinds of operands an instruction can have.</span>
-<span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">Instruction</span>, <span class="ident">InstId</span>, <span class="ident">Parameter</span>, <span class="ident">DimMap</span>, <span class="ident">Type</span>, <span class="ident">dim</span>, <span class="ident">mem</span>};
+<span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">Instruction</span>, <span class="ident">InstId</span>, <span class="ident">Parameter</span>, <span class="ident">DimMap</span>, <span class="ident">Type</span>, <span class="ident">mem</span>};
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">bigint</span>::<span class="ident">BigInt</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">rational</span>::<span class="ident">Ratio</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">traits</span>::{<span class="ident">Signed</span>, <span class="ident">Zero</span>};
@@ -154,13 +154,13 @@
     <span class="doccomment">/// lowered.</span>
     <span class="ident">Inst</span>(<span class="ident">InstId</span>, <span class="ident">Type</span>, <span class="ident">DimMap</span>, <span class="ident">DimMapScope</span>),
     <span class="doccomment">/// The current index in a loop.</span>
-    <span class="ident">Index</span>(<span class="ident">dim</span>::<span class="ident">Id</span>),
+    <span class="ident">Index</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>),
     <span class="doccomment">/// A parameter of the function.</span>
     <span class="ident">Param</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Parameter</span>),
     <span class="doccomment">/// The address of a memory block.</span>
     <span class="ident">Addr</span>(<span class="ident">mem</span>::<span class="ident">InternalId</span>),
     <span class="doccomment">/// The value of the current instruction at a previous iteration.</span>
-    <span class="ident">Reduce</span>(<span class="ident">InstId</span>, <span class="ident">Type</span>, <span class="ident">DimMap</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span><span class="op">&gt;</span>),
+    <span class="ident">Reduce</span>(<span class="ident">InstId</span>, <span class="ident">Type</span>, <span class="ident">DimMap</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>),
     <span class="doccomment">/// A variable increased by a fixed amount at every step of some loops.</span>
     <span class="ident">InductionVar</span>(<span class="ident">ir</span>::<span class="ident">IndVarId</span>, <span class="ident">Type</span>),
 }
@@ -189,7 +189,7 @@
     }
 
     <span class="doccomment">/// Creates a reduce operand from an instruction and a set of dimensions to reduce on.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_reduce</span>(<span class="ident">init</span>: <span class="kw-2">&amp;</span><span class="ident">Instruction</span>, <span class="ident">dim_map</span>: <span class="ident">DimMap</span>, <span class="ident">dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span><span class="op">&gt;</span>)
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_reduce</span>(<span class="ident">init</span>: <span class="kw-2">&amp;</span><span class="ident">Instruction</span>, <span class="ident">dim_map</span>: <span class="ident">DimMap</span>, <span class="ident">dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>)
             <span class="op">-&gt;</span> <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
         <span class="ident">Reduce</span>(<span class="ident">init</span>.<span class="ident">id</span>(), <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">init</span>.<span class="ident">t</span>()), <span class="ident">dim_map</span>, <span class="ident">dims</span>)
     }
@@ -206,7 +206,7 @@
     }
 
     <span class="doccomment">/// Renames a basic block id.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">merge_dims</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">lhs</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">rhs</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">merge_dims</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">lhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">rhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>) {
         <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
             <span class="ident">Inst</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">dim_map</span>, <span class="kw">_</span>) <span class="op">|</span>
             <span class="ident">Reduce</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">dim_map</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> { <span class="ident">dim_map</span>.<span class="ident">merge_dims</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>); },
@@ -215,7 +215,7 @@
     }
 
     <span class="doccomment">/// Indicates if a `DimMap` should be lowered if lhs and rhs are not mapped.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">should_lower_map</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">lhs</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">rhs</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">should_lower_map</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">lhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">rhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
         <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
             <span class="ident">Inst</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">dim_map</span>, <span class="kw">_</span>) <span class="op">|</span>
             <span class="ident">Reduce</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">dim_map</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> {
@@ -226,7 +226,7 @@
     }
 
     <span class="doccomment">/// If the operand is a reduction, returns the instruction initializing the reduction.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_reduction</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">InstId</span>, <span class="kw-2">&amp;</span><span class="ident">DimMap</span>, <span class="kw-2">&amp;</span>[<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>])<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_reduction</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">InstId</span>, <span class="kw-2">&amp;</span><span class="ident">DimMap</span>, <span class="kw-2">&amp;</span>[<span class="ident">ir</span>::<span class="ident">DimId</span>])<span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Reduce</span>(<span class="ident">id</span>, <span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">dim_map</span>, <span class="kw-2">ref</span> <span class="ident">dims</span>) <span class="op">=</span> <span class="kw-2">*</span><span class="self">self</span> {
             <span class="prelude-val">Some</span>((<span class="ident">id</span>, <span class="ident">dim_map</span>, <span class="ident">dims</span>))
         } <span class="kw">else</span> { <span class="prelude-val">None</span> }

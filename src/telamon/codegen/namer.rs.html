@@ -355,7 +355,7 @@
 <span class="doccomment">/// A value that can be named.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Value</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="ident">InductionLevel</span>(<span class="ident">ir</span>::<span class="ident">IndVarId</span>, <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>),
+    <span class="ident">InductionLevel</span>(<span class="ident">ir</span>::<span class="ident">IndVarId</span>, <span class="ident">ir</span>::<span class="ident">DimId</span>),
     <span class="ident">Operand</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>),
 }
 
@@ -377,9 +377,9 @@
     <span class="doccomment">/// Provides fresh names.</span>
     <span class="ident">namer</span>: <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefCell</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw-2">mut</span> <span class="ident">Namer</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Keeps track of the name of the values produced by instructions.</span>
-    <span class="ident">insts</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">InstId</span>, (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">dim</span>::<span class="ident">Id</span><span class="op">&gt;</span>, <span class="ident">NDArray</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
+    <span class="ident">insts</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">InstId</span>, (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>, <span class="ident">NDArray</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// Keeps track of loop index names.</span>
-    <span class="ident">indexes</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">RcStr</span><span class="op">&gt;</span>,
+    <span class="ident">indexes</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">RcStr</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Keeps track of parameter names, both in the code and in the arguments.</span>
     <span class="ident">params</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ParamValKey</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, (<span class="ident">String</span>, <span class="ident">String</span>)<span class="op">&gt;</span>,
     <span class="doccomment">/// Keeps track of memory block address names.</span>
@@ -387,13 +387,13 @@
     <span class="doccomment">/// Keeps track of the next fresh ID that can be assigned to a loop.</span>
     <span class="ident">num_loop</span>: <span class="ident">u32</span>,
     <span class="doccomment">/// Tracks the current index on expanded dimensions.</span>
-    <span class="ident">current_indexes</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
+    <span class="ident">current_indexes</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Total number threads.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span><span class="op">=</span><span class="string">&quot;mppa&quot;</span>)]</span>
     <span class="ident">total_num_threads</span>: <span class="ident">u32</span>,
     <span class="doccomment">/// Tracks the name of induction variables partial names.</span>
     <span class="ident">induction_vars</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">IndVarId</span>, <span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="ident">induction_levels</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">IndVarId</span>, <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>), <span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="ident">induction_levels</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">IndVarId</span>, <span class="ident">ir</span>::<span class="ident">DimId</span>), <span class="ident">String</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Casted sizes.</span>
     <span class="ident">size_casts</span>: <span class="ident">HashMap</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">codegen</span>::<span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">ir</span>::<span class="ident">Type</span>), <span class="ident">String</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Guard to use in front of instructions with side effects.</span>
@@ -579,12 +579,12 @@
 
     <span class="doccomment">/// Returns the ids and the sizes of the dimensions on which the instructions must be</span>
     <span class="doccomment">/// named.</span>
-    <span class="kw">fn</span> <span class="ident">inst_name_dims</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">inst</span>: <span class="kw-2">&amp;</span><span class="ident">Instruction</span>) <span class="op">-&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">dim</span>::<span class="ident">Id</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>) {
+    <span class="kw">fn</span> <span class="ident">inst_name_dims</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">inst</span>: <span class="kw-2">&amp;</span><span class="ident">Instruction</span>) <span class="op">-&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>) {
         <span class="ident">inst</span>.<span class="ident">instantiation_dims</span>().<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">dim</span>, <span class="ident">size</span>)<span class="op">|</span> (<span class="ident">dim</span>, <span class="ident">size</span> <span class="kw">as</span> <span class="ident">usize</span>)).<span class="ident">unzip</span>()
     }
 
     <span class="doccomment">/// Returns the name of an index.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">name_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dim_id</span>: <span class="ident">dim</span>::<span class="ident">Id</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">str</span> { <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">indexes</span>[<span class="kw-2">&amp;</span><span class="ident">dim_id</span>] }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">name_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dim_id</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">str</span> { <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">indexes</span>[<span class="kw-2">&amp;</span><span class="ident">dim_id</span>] }
 
     <span class="doccomment">/// Set the current index of an unrolled dimension.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_current_index</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">dim</span>: <span class="kw-2">&amp;</span><span class="ident">Dimension</span>, <span class="ident">idx</span>: <span class="ident">u32</span>) {
@@ -597,7 +597,7 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">indexed_inst_name</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">inst</span>: <span class="kw-2">&amp;</span><span class="ident">Instruction</span>,
-                             <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">idx</span>: <span class="ident">u32</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
+                             <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">idx</span>: <span class="ident">u32</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
         <span class="self">self</span>.<span class="ident">current_indexes</span>.<span class="ident">insert</span>(<span class="ident">dim</span>, <span class="ident">idx</span>);
         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">name_inst</span>(<span class="ident">inst</span>).<span class="ident">to_string</span>();
         <span class="self">self</span>.<span class="ident">current_indexes</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">dim</span>);
@@ -605,7 +605,7 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">indexed_op_name</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">op</span>: <span class="kw-2">&amp;</span><span class="ident">Operand</span>,
-                           <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">idx</span>: <span class="ident">u32</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
+                           <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">idx</span>: <span class="ident">u32</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
         <span class="self">self</span>.<span class="ident">current_indexes</span>.<span class="ident">insert</span>(<span class="ident">dim</span>, <span class="ident">idx</span>);
         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">name_op</span>(<span class="ident">op</span>).<span class="ident">to_string</span>();
         <span class="self">self</span>.<span class="ident">current_indexes</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">dim</span>);
@@ -631,7 +631,7 @@
 
     <span class="doccomment">/// Assigns a name to an induction variable.</span>
     <span class="comment">// TODO(cleanup): split into name induction var and name induction level</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">name_induction_var</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">var</span>: <span class="ident">ir</span>::<span class="ident">IndVarId</span>, <span class="ident">dim</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span><span class="op">&gt;</span>)
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">name_induction_var</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">var</span>: <span class="ident">ir</span>::<span class="ident">IndVarId</span>, <span class="ident">dim</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>)
             <span class="op">-&gt;</span> <span class="ident">Cow</span><span class="op">&lt;</span><span class="ident">str</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">dim</span>) <span class="op">=</span> <span class="ident">dim</span> {
             <span class="ident">Cow</span>::<span class="ident">Borrowed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">induction_levels</span>[<span class="kw-2">&amp;</span>(<span class="ident">var</span>, <span class="ident">dim</span>)])

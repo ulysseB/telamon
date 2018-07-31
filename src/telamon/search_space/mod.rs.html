@@ -156,8 +156,8 @@
     }
 
     <span class="doccomment">/// Triggers a layout lowering.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lower_layout</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">mem</span>: <span class="ident">ir</span>::<span class="ident">mem</span>::<span class="ident">InternalId</span>, <span class="ident">st_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span><span class="op">&gt;</span>,
-                        <span class="ident">ld_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lower_layout</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">mem</span>: <span class="ident">ir</span>::<span class="ident">mem</span>::<span class="ident">InternalId</span>, <span class="ident">st_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
+                        <span class="ident">ld_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">actions</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">ir_instance</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">ir_instance</span>);
             <span class="ident">dim_map</span>::<span class="ident">lower_layout</span>(<span class="ident">ir_instance</span>, <span class="ident">mem</span>, <span class="ident">st_dims</span>, <span class="ident">ld_dims</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">domain</span>)<span class="question-mark">?</span>
@@ -183,7 +183,7 @@
 }
 
 <span class="doccomment">/// Trigger to call when two dimensions are merged.</span>
-<span class="kw">fn</span> <span class="ident">merge_dims</span>(<span class="ident">lhs</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">rhs</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">Function</span>)
+<span class="kw">fn</span> <span class="ident">merge_dims</span>(<span class="ident">lhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">rhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">Function</span>)
     <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">NewObjs</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Action</span><span class="op">&gt;</span>), ()<span class="op">&gt;</span>
 {
     <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;merge {:?} and {:?}&quot;</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>);
@@ -193,7 +193,7 @@
 
 <span class="doccomment">/// Adds a iteration dimension to a basic block.</span>
 <span class="kw">fn</span> <span class="ident">add_iteration_dim</span>(<span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">Function</span>,
-                     <span class="ident">inst</span>: <span class="ident">ir</span>::<span class="ident">InstId</span>, <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">NewObjs</span> {
+                     <span class="ident">inst</span>: <span class="ident">ir</span>::<span class="ident">InstId</span>, <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">NewObjs</span> {
     <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;set {:?} as iteration dim of inst {:?}&quot;</span>, <span class="ident">dim</span>, <span class="ident">inst</span>);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_objs</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">NewObjs</span>::<span class="ident">default</span>();
     <span class="kw">if</span> <span class="ident">ir_instance</span>.<span class="ident">set_iteration_dim</span>(<span class="ident">inst</span>, <span class="ident">dim</span>) {
@@ -203,7 +203,7 @@
 }
 
 <span class="doccomment">/// Adds a dimension to the list of thread dimensions.</span>
-<span class="kw">fn</span> <span class="ident">add_thread_dim</span>(<span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">Function</span>, <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">NewObjs</span> {
+<span class="kw">fn</span> <span class="ident">add_thread_dim</span>(<span class="ident">ir_instance</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">Function</span>, <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">NewObjs</span> {
     <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;set {:?} as a thread dimension&quot;</span>, <span class="ident">dim</span>);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_objs</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">NewObjs</span>::<span class="ident">default</span>();
     <span class="kw">if</span> <span class="ident">ir_instance</span>.<span class="ident">add_thread_dim</span>(<span class="ident">dim</span>) { <span class="ident">new_objs</span>.<span class="ident">add_thread_dim</span>(<span class="ident">dim</span>); }

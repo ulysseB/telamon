@@ -477,8 +477,8 @@
 <span class="doccomment">/// Describes the program points encountered when walking a CFG.</span>
 <span class="kw">enum</span> <span class="ident">CfgEvent</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="ident">Exec</span>(<span class="ident">Instruction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>),
-    <span class="ident">Enter</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">EntryEvent</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>),
-    <span class="ident">Exit</span>(<span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span>, <span class="ident">ExitEvent</span>),
+    <span class="ident">Enter</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">EntryEvent</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>),
+    <span class="ident">Exit</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ExitEvent</span>),
 }
 
 <span class="doccomment">/// An event to process when entering a dimension.</span>

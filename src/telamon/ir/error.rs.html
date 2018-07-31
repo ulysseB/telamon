@@ -72,6 +72,16 @@
 <span id="72">72</span>
 <span id="73">73</span>
 <span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Error management for IR creation.</span>
 <span class="kw">use</span> <span class="ident">ir</span>;
@@ -107,6 +117,13 @@
             <span class="prelude-val">Err</span>(<span class="ident">TypeError</span>::<span class="ident">WrongType</span> { <span class="ident">given</span>, <span class="ident">expected</span>: <span class="ident">ExpectedType</span>::<span class="ident">Integer</span> })
         }
     }
+
+    <span class="doccomment">/// Ensures the given type is a floating point type.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">check_float</span>(<span class="ident">given</span>: <span class="ident">ir</span>::<span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="self">Self</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="ident">given</span>.<span class="ident">is_float</span>() { <span class="prelude-val">Ok</span>(()) } <span class="kw">else</span> {
+            <span class="prelude-val">Err</span>(<span class="ident">TypeError</span>::<span class="ident">WrongType</span> { <span class="ident">given</span>, <span class="ident">expected</span>: <span class="ident">ExpectedType</span>::<span class="ident">Float</span> })
+        }
+    }
 }
 
 <span class="doccomment">/// Indicates what kind of type was expected.</span>
@@ -114,6 +131,8 @@
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExpectedType</span> {
     <span class="doccomment">/// An integer type was expected.</span>
     <span class="ident">Integer</span>,
+    <span class="doccomment">/// A floating point type was expeccted.</span>
+    <span class="ident">Float</span>,
     <span class="doccomment">/// A specific type was expected.</span>
     <span class="ident">Specific</span>(<span class="ident">ir</span>::<span class="ident">Type</span>),
 }
@@ -122,6 +141,7 @@
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">ExpectedType</span>::<span class="ident">Integer</span> <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;an integer type&quot;</span>),
+            <span class="ident">ExpectedType</span>::<span class="ident">Float</span> <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;a floating point type&quot;</span>),
             <span class="ident">ExpectedType</span>::<span class="ident">Specific</span>(<span class="ident">t</span>) <span class="op">=&gt;</span> <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;type `{}`&quot;</span>, <span class="ident">t</span>),
         }
     }
@@ -139,9 +159,9 @@
     <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span><span class="op">=</span><span class="string">&quot;dimensions must have a size of at least 2&quot;</span>)]</span>
     <span class="ident">InvalidDimSize</span>,
     <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span><span class="op">=</span><span class="string">&quot;dimension {} appears twice in the increment list&quot;</span>, <span class="ident">dim</span>)]</span>
-    <span class="ident">DuplicateIncrement</span> { <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span> },
+    <span class="ident">DuplicateIncrement</span> { <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">DimId</span> },
     <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span><span class="op">=</span><span class="string">&quot;the access pattern references dimension {}, but is not nested inside&quot;</span>, <span class="ident">dim</span>)]</span>
-    <span class="ident">InvalidDimInPattern</span> { <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Id</span> },
+    <span class="ident">InvalidDimInPattern</span> { <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">DimId</span> },
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">TypeError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Error</span> {
