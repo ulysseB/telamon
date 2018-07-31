@@ -46,7 +46,9 @@ impl TypingContext {
     pub fn finalize(mut self) -> (ir::IrDesc, Vec<TypedConstraint>) {
         for def in std::mem::replace(&mut self.set_defs, vec![]) {
             self.type_set_def(def.name.data, def.arg, def.superset,
-                              def.keys, def.disjoint, def.quotient);
+                              def.keys.into_iter()
+                                      .map(|(k, v, s)| (k.data, v, s))
+                                      .collect::<Vec<_>>(), def.disjoint, def.quotient);
         }
         for choice_def in std::mem::replace(&mut self.choice_defs, vec![]) {
             match choice_def {
