@@ -1,5 +1,6 @@
 //! Prints the domain store definition.
 use proc_macro2::{Ident, Span};
+use print;
 
 /// Returns the name of the getter method for `choice`. If `get_old` is true, the method
 /// will only take into account decisions that have been propagated.
@@ -19,7 +20,6 @@ use itertools::Itertools;
 use print::value_set;
 use print::ast::{self, Variable, LoopNest};
 use print::choice::Ast as ChoiceAst;
-use print::choice::CounterValue;
 use std::iter;
 use utils::*;
 
@@ -108,13 +108,20 @@ pub fn incr_iterators<'a>(ir_desc: &'a ir::IrDesc) -> Vec<IncrIterator<'a>> {
                 let incr_condition = RcStr::new(value_set::print(incr_condition, ctx).to_string());
                 let incr = ast::ChoiceInstance::new(incr, ctx);
                 let set_ast = ast::SetDef::new(set.def());
+                let incr_amount_getter = print::counter::increment_amount(value, true, ctx);
+                let incr_amount_type = incr_amount_getter.value_type().clone();
+                let incr_amount = print::Value::ident("incr_value", incr_amount_type);
+                let min_incr_amount = incr_amount.get_min(ctx);
+                let max_incr_amount = incr_amount.get_max(ctx);
                 let incr_iterator = IncrIterator {
                     iter: PartialIterator { loop_nest, set: set_ast, arg_conflicts },
                     incr, incr_condition, visibility, kind,
+                    incr_amount: quote!(#incr_amount_getter).to_string(),
                     zero: kind.zero(),
-                    value: CounterValue::new(value, ctx),
                     counter: ast::ChoiceInstance::new(counter, ctx),
                     counter_type: ast::ValueType::new(counter_type.clone(), ctx),
+                    min_incr_amount: quote!(#min_incr_amount).to_string(),
+                    max_incr_amount: quote!(#max_incr_amount).to_string(),
                 };
                 out.push(incr_iterator);
             }
@@ -127,7 +134,9 @@ pub fn incr_iterators<'a>(ir_desc: &'a ir::IrDesc) -> Vec<IncrIterator<'a>> {
 #[derive(Serialize)]
 pub struct IncrIterator<'a> {
     iter: PartialIterator<'a>,
-    value: CounterValue<'a>,
+    incr_amount: String,
+    min_incr_amount: String,
+    max_incr_amount: String,
     counter: ast::ChoiceInstance<'a>,
     kind: ir::CounterKind,
     zero: u32,

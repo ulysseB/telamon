@@ -281,7 +281,7 @@ impl<'a> ChoiceAction<'a> {
                 let arguments = ast::vars_with_sets(counter_choice, &counter.vars, ctx);
                 let adaptator = ir::Adaptator::from_arguments(&counter.vars);
                 let counter_type = counter_def.value_type().adapt(&adaptator);
-                let value_getter = print::counter::counter_value(value, ctx);
+                let value_getter = print::counter::increment_amount(value, true, ctx);
                 let value = print::Value::ident("value", value_getter.value_type().clone());
                 let min = value.get_min(ctx);
                 let max = value.get_max(ctx);
@@ -404,14 +404,16 @@ impl<'a> FilterRef<'a> {
 
 #[derive(Serialize)]
 struct RestrictCounter<'a> {
-    amount: CounterValue<'a>,
     incr: ast::ChoiceInstance<'a>,
+    incr_amount: String,
     incr_iter: ast::LoopNest<'a>,
     incr_type: ast::ValueType,
     incr_condition: String,
     is_half: bool,
     op: String,
     neg_op: &'static str,
+    min: String,
+    max: String,
 }
 
 impl<'a> RestrictCounter<'a> {
@@ -426,9 +428,14 @@ impl<'a> RestrictCounter<'a> {
             let forall_vars = (0..incr_iter.len()).map(ir::Variable::Forall);
             let incr_iter = ast::LoopNest::new(forall_vars, &ctx, &mut conflicts, false);
             let incr = ast::ChoiceInstance::new(incr, &ctx);
+            let incr_amount_getter = print::counter::increment_amount(value, false, &ctx);
+            let incr_amount_type = incr_amount_getter.value_type().clone();
+            let incr_amount = print::Value::ident("incr_amount", incr_amount_type);
+            let min_incr_amount = incr_amount.get_min(&ctx);
+            let max_incr_amount = incr_amount.get_max(&ctx);
             Some(RestrictCounter {
-                amount: CounterValue::new(value, &ctx),
                 incr, incr_iter,
+                incr_amount: quote!(#incr_amount_getter).to_string(),
                 incr_type: ast::ValueType::new(incr_condition.t(), &ctx),
                 incr_condition: value_set::print(&incr_condition, &ctx).to_string(),
                 is_half: visibility == ir::CounterVisibility::NoMax,
@@ -437,33 +444,9 @@ impl<'a> RestrictCounter<'a> {
                     ir::CounterKind::Add => "-",
                     ir::CounterKind::Mul => "/",
                 },
+                min: quote!(#min_incr_amount).to_string(),
+                max: quote!(#max_incr_amount).to_string(),
             })
         } else { None }
-    }
-}
-
-#[derive(Serialize)]
-pub enum CounterValue<'a> {
-    Code(String),
-    Choice {
-        name: &'a str,
-        arguments:  Vec<(ast::Variable<'a>, ast::Set<'a>)>,
-        full_type: ast::ValueType,
-    }
-}
-
-impl<'a> CounterValue<'a> {
-    pub fn new(value: &'a ir::CounterVal, ctx: &ast::Context<'a>) -> Self {
-        match *value {
-            ir::CounterVal::Code(ref code) => CounterValue::Code(ast::code(code, ctx)),
-            ir::CounterVal::Choice(ref counter) => {
-                let choice = ctx.ir_desc.get_choice(&counter.choice);
-                let arguments = ast::vars_with_sets(choice, &counter.vars, ctx);
-                let full_type = choice.choice_def().value_type().full_type();
-                let adaptator = ir::Adaptator::from_arguments(&counter.vars);
-                let full_type = ast::ValueType::new(full_type.adapt(&adaptator), ctx);
-                CounterValue::Choice { arguments, full_type, name: choice.name() }
-            },
-        }
     }
 }

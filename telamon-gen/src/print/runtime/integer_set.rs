@@ -259,9 +259,9 @@ pub fn get() -> TokenStream {
                     eq
                 } else {
                     let mut values = [0; NumericSet::MAX_LEN];
-                    let start = universe.binary_search(&min.min(eq_universe))
+                    let start = universe.binary_search(&eq.min(eq_universe))
                         .unwrap_or_else(|x| x);
-                    let len = universe.binary_search(&max.max(eq_universe))
+                    let len = universe.binary_search(&eq.max(eq_universe))
                         .unwrap_or_else(|x| x) - start;
                     for i in 0..len { values[i] = universe[start+i]; }
                     NumericSet { values, len }

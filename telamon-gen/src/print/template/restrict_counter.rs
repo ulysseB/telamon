@@ -3,16 +3,16 @@
 {{/each~}}
 {{#>loop_nest incr_iter}}
 let incr_status = {{>choice.getter incr}}.is({{incr_condition}});
-let incr_amount = {{>counter_value amount use_old=false}};
+let incr_amount = {{incr_amount}};
 if incr_status.is_maybe() {
     debug!("restrict incr {{incr.name}}{:?} to {:?} with amount={:?}",
            ({{>choice.arg_ids incr}}), new_values, incr_amount);
     let mut val = {{>value_type.full_domain incr_type}};
-    if current.min {{op}} NumSet::min(&incr_amount, {{>value_type.univers incr_type}}) > new_values.max {
+    if current.min {{op}} {{min}} > new_values.max {
         val.restrict(!({{incr_condition}}));
     }
     {{#unless is_half~}}
-    if current.max < new_values.min {{op}} NumSet::max(&incr_amount, {{>value_type.univers incr_type}}) {
+    if current.max < new_values.min {{op}} {{max}} {
         val.restrict({{incr_condition}});
     }
     {{~/unless}}
@@ -25,8 +25,7 @@ if incr_status.is_maybe() {
 }
 {{~#if amount.Choice~}}
     else if incr_status.is_true() {
-        let max_val = new_values.max{{neg_op}}current.min{{op~}}
-        NumSet::min(&incr_amount, {{>value_type.univers incr_type}});
+        let max_val = new_values.max{{neg_op}}current.min{{op~}} {{min}};
         let val = {{>value_type.num_constructor t=amount.Choice.full_type
                     fun="new_leq" value="max_val"}};
         {{#if delayed~}}

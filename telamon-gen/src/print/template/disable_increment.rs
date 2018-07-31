@@ -4,7 +4,8 @@
 {{~/ifeq}}
 {{#ifeq visibility "HiddenMax"~}}
     let incr = {{>choice.getter incr use_old=true}}.is({{incr_condition}});
-    let max_incr_value = NumSet::max(&{{>counter_value value use_old=true}});
+    let incr_value = {{incr_amount}};
+    let max_incr_value = {{max_incr_amount}};
     let mut counter_value = {{>choice.getter counter}};
     {{#ifeq kind "Add"~}}
         counter_value.max += max_incr_value;

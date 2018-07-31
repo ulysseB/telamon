@@ -14,7 +14,7 @@ pub fn compute_counter_body(
     visibility: ir::CounterVisibility,
     ctx: &print::Context,
 ) -> TokenStream {
-    let value_getter = counter_value(value, ctx);
+    let value_getter = increment_amount(value, true, ctx);
     let value = print::Value::ident("value", value_getter.value_type().clone());
     let value_min = value.get_min(ctx);
     let value_max = value.get_max(ctx);
@@ -37,12 +37,16 @@ pub fn compute_counter_body(
     }
 }
 
-/// Prints the value of a counter increment. Only takes into account decisions that have
-/// been propagated.
-pub fn counter_value(value: &ir::CounterVal, ctx: &print::Context) -> print::Value {
+/// Prints the value of a counter increment. If `use_old` is true, only takes into account
+/// decisions that have been propagated.
+pub fn increment_amount(
+    value: &ir::CounterVal,
+    use_old: bool,
+    ctx: &print::Context
+) -> print::Value {
     match value {
         ir::CounterVal::Code(code) => print::Value::new_const(code, ctx),
-        ir::CounterVal::Choice(choice) => print::Value::from_store(choice, true, ctx),
+        ir::CounterVal::Choice(choice) => print::Value::from_store(choice, use_old, ctx),
     }
 }
 
