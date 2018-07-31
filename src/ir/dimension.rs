@@ -3,15 +3,10 @@ use ir::{self, BasicBlock};
 use std::fmt;
 
 /// Provides a unique identifier for iteration dimensions.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize)]
 #[repr(C)]
 pub struct DimId(pub u32);
-
-impl fmt::Debug  for DimId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ir::DimId({})", self.0)
-    }
-}
 
 impl fmt::Display for DimId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.0.fmt(f) }

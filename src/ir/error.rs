@@ -33,7 +33,7 @@ impl TypeError {
         }
     }
 
-    /// Ensures the given type is an floating-point type.
+    /// Ensures the given type is a floating point type.
     pub fn check_float(given: ir::Type) -> Result<(), Self> {
         if given.is_float() { Ok(()) } else {
             Err(TypeError::WrongType { given, expected: ExpectedType::Float })
@@ -46,7 +46,7 @@ impl TypeError {
 pub enum ExpectedType {
     /// An integer type was expected.
     Integer,
-    /// A floating-point type was expeccted.
+    /// A floating point type was expeccted.
     Float,
     /// A specific type was expected.
     Specific(ir::Type),
@@ -56,7 +56,7 @@ impl std::fmt::Display for ExpectedType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             ExpectedType::Integer => write!(f, "an integer type"),
-            ExpectedType::Float => write!(f, "an floating-point type"),
+            ExpectedType::Float => write!(f, "a floating point type"),
             ExpectedType::Specific(t) => write!(f, "type `{}`", t),
         }
     }

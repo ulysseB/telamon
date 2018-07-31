@@ -476,7 +476,7 @@ char *telamon_ir_strerror(void);
 void telamon_ir_type_free(Type *t);
 
 /*
- * Creates a floating-point type that must be freed with `telamon_ir_type_free`.
+ * Creates a floating point type that must be freed with `telamon_ir_type_free`.
  */
 Type *telamon_ir_type_new_float(uint16_t num_bits);
 

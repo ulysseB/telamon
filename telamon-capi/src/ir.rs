@@ -102,7 +102,7 @@ pub unsafe extern "C" fn telamon_ir_type_new_int(
     Box::into_raw(Box::new(ir::Type::I(num_bits)))
 }
 
-/// Creates a floating-point type that must be freed with `telamon_ir_type_free`.
+/// Creates a floating point type that must be freed with `telamon_ir_type_free`.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_type_new_float(
     num_bits: u16,
