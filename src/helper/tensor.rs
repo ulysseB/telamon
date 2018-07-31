@@ -107,7 +107,7 @@ impl<'a> TensorBuilder<'a> {
 /// A tensor allocated in main memory.
 pub struct Tensor<'a, S: ScalarArgument> {
     name: &'a str,
-    mem_id: ir::mem::Id,
+    mem_id: ir::MemId,
     array: std::sync::Arc<ArrayArgument + 'a>,
     iter_dims: Vec<(DimSize<'a>, DimSize<'a>)>,
     read_only: bool,
@@ -119,7 +119,7 @@ impl<'a, S> Tensor<'a, S> where S: ScalarArgument {
     pub fn new(name: &'a str,
                dim_sizes: Vec<DimSize<'a>>,
                read_only: bool,
-               mem_id: ir::mem::Id,
+               mem_id: ir::MemId,
                array: std::sync::Arc<ArrayArgument + 'a>) -> Self {
         let mut incr: DimSize = unwrap!(S::t().len_byte()).into(); 
         let mut iter_dims = dim_sizes.into_iter().rev().map(|s| {

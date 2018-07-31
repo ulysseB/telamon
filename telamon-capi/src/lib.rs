@@ -3,14 +3,17 @@
 //! The goal of the C API is to provide thin wrappers over existing Rust
 //! functionality, and only provides some cosmetic improvements to try and
 //! provide a somewhat idiomatic C interface.
-
 extern crate env_logger;
 extern crate libc;
+extern crate num;
 extern crate telamon;
 extern crate telamon_kernels;
+#[macro_use]
+extern crate telamon_utils;
 
 #[cfg(feature = "cuda")]
 pub mod cuda;
+pub mod ir;
 
 use libc::{c_char, c_int, c_uint, size_t, uint32_t};
 use telamon::device;

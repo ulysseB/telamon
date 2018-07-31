@@ -38,7 +38,7 @@ impl CodePoint {
 
     /// Indicates if the code point is before a given set of dimensions.
     pub fn is_before_dims(&self, space: &SearchSpace, levels: &[Level],
-                      dims: &[ir::dim::Id]) -> bool {
+                      dims: &[ir::DimId]) -> bool {
         if *self == CodePoint::LevelExit(0) { return false; }
         let lesser_conds = self.lesser_greater_conds().0;
         self.blocks(levels).into_iter().cartesian_product(dims).all(|(lhs, &rhs)| {

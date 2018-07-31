@@ -273,7 +273,7 @@ impl<'a> InternalMemBlock<'a> {
 /// An instruction to execute.
 pub struct Instruction<'a> {
     instruction: &'a ir::Instruction<'a>,
-    instantiation_dims: Vec<(ir::dim::Id, u32)>,
+    instantiation_dims: Vec<(ir::DimId, u32)>,
     mem_flag: Option<search_space::InstFlag>,
     t: Option<ir::Type>,
 }
@@ -314,7 +314,7 @@ impl<'a> Instruction<'a> {
     pub fn operator(&self) -> &ir::Operator { self.instruction.operator() }
 
     /// Returns the dimensions on which to instantiate the instruction.
-    pub fn instantiation_dims(&self) -> &[(ir::dim::Id, u32)] { &self.instantiation_dims }
+    pub fn instantiation_dims(&self) -> &[(ir::DimId, u32)] { &self.instantiation_dims }
 
     /// Indicates if the instruction performs a reduction, in wich case it returns the
     /// instruction that initializes the reduction, the `DimMap` to readh it and the

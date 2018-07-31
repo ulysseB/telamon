@@ -48,8 +48,8 @@ fn inst_dim_order() {
     let mut builder = helper::Builder::new(&signature, context.device());
     let dim0 = builder.open_dim(Size::new(64, vec![], 1));
     let inst0 = builder.mov(&0i32);
-    let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
-    let addr = builder.cast(&0i64, ir::Type::PtrTo(ir::mem::Id::External(0)));
+    let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
+    let addr = builder.cast(&0i64, ir::Type::PtrTo(ir::MemId::External(0)));
     let inst1 = builder.st(&addr, &0i32, pattern);
     builder.close_dim(&dim0);
     let dim1 = builder.open_dim(Size::new(64, vec![], 1));
@@ -157,7 +157,7 @@ fn vector_dims() {
     let _ = env_logger::try_init();
     let context = fake::Context::default();
     let signature = empty_signature(1);
-    let mem_block = ir::mem::Id::External(0);
+    let mem_block = ir::MemId::External(0);
     let mut builder = helper::Builder::new(&signature, context.device());
     let base_addr = builder.cast(&0i64, ir::Type::PtrTo(mem_block));
     let d0 = builder.open_dim(Size::new(4, vec![], 1));
@@ -208,9 +208,9 @@ fn reduce_dim_invariants() {
     let context = fake::Context::default();
     let signature = empty_signature(1);
     let mut builder = helper::Builder::new(&signature, context.device());
-    let init = builder.cast(&0i64, ir::Type::PtrTo(ir::mem::Id::External(0)));
+    let init = builder.cast(&0i64, ir::Type::PtrTo(ir::MemId::External(0)));
     let d0 = builder.open_dim(Size::new(4, vec![], 1));
-    let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
+    let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
     let reduce = builder.ld(Type::I(64), &helper::Reduce(init), pattern);
 
     let d1 = builder.open_dim(Size::new(4, vec![], 1));

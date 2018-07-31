@@ -20,7 +20,7 @@ use utils::*;
 #[derive(Debug)]
 pub struct Level {
     /// The dimensions the level iterates on.
-    pub dims: VecSet<ir::dim::Id>,
+    pub dims: VecSet<ir::DimId>,
     /// The latency of a single iteration of the level.
     pub latency: FastBound,
     /// The latency overhead at the end of each iteration.
@@ -38,7 +38,7 @@ impl Level {
     fn new(device: &Device,
            space: &SearchSpace,
            local_info: &LocalInfo,
-           dims: VecSet<ir::dim::Id>) -> Self {
+           dims: VecSet<ir::DimId>) -> Self {
         // Compute the thread-level pressure.
         let thread_rates = device.thread_rates();
         let pressure = sum_pressure(
@@ -63,7 +63,7 @@ pub fn sum_pressure(device: &Device,
                     space: &SearchSpace,
                     local_info: &LocalInfo,
                     bound_level: BottleneckLevel,
-                    dims: &[ir::dim::Id]) -> HwPressure {
+                    dims: &[ir::DimId]) -> HwPressure {
     // Compute the pressure induced by the dimensions overhead.
     let mut pressure = HwPressure::min(dims.iter().map(|d| &local_info.dim_overhead[d].0))
         .unwrap_or_else(|| HwPressure::zero(device));
@@ -147,7 +147,7 @@ fn intersect_sets<'a, T, IT>(mut it: IT) -> Option<VecSet<T>>
 
 /// Generates a bound based on the pressure produced by a block of threads.
 fn block_bound(device: &Device, space: &SearchSpace, info: &LocalInfo,
-               dims: &[ir::dim::Id]) -> FastBound {
+               dims: &[ir::DimId]) -> FastBound {
     // Compute the pressure on the execution units in a single iteration.
     let mut pressure = sum_pressure(device, space, info, BottleneckLevel::Block, dims);
     // Repeat the pressure by the number of iterations of the level and compute the bound.
@@ -157,7 +157,7 @@ fn block_bound(device: &Device, space: &SearchSpace, info: &LocalInfo,
 }
 
 /// Indicates if a dimension should be considered for dimension levels.
-pub fn must_consider_dim(space :&SearchSpace, dim: ir::dim::Id) -> bool {
+pub fn must_consider_dim(space :&SearchSpace, dim: ir::DimId) -> bool {
     let kind = space.domain().get_dim_kind(dim);
     kind != DimKind::BLOCK && !kind.intersects(DimKind::VECTOR)
 }
@@ -239,8 +239,8 @@ pub fn generate(space: &SearchSpace, device: &Device,
 pub struct DimMap {
     pub src: ir::InstId,
     pub dst: ir::InstId,
-    pub src_dims: VecSet<ir::dim::Id>,
-    pub dst_dims: VecSet<ir::dim::Id>,
+    pub src_dims: VecSet<ir::DimId>,
+    pub dst_dims: VecSet<ir::DimId>,
 }
 
 /// Lists the dim maps that must be considered by the performance model.
@@ -295,7 +295,7 @@ impl RepeatLevel {
 /// Exposes the levels application order.
 #[derive(Debug)]
 pub struct LevelDag {
-    node_ids: HashMap<VecSet<ir::dim::Id>, usize>,
+    node_ids: HashMap<VecSet<ir::DimId>, usize>,
     nodes: Vec<(Vec<RepeatLevel>, Vec<DimMap>, DependencyMap)>,
 }
 
@@ -334,7 +334,7 @@ impl LevelDag {
         dag
     }
 
-    fn gen_node_id(&mut self, local_info: &LocalInfo, level_dims: &[ir::dim::Id],
+    fn gen_node_id(&mut self, local_info: &LocalInfo, level_dims: &[ir::DimId],
                    dep_map_size: usize) -> usize {
         let before = level_dims.iter().map(|&d| {
             &local_info.nesting[&d.into()].before_self
@@ -347,7 +347,7 @@ impl LevelDag {
     }
 
     /// Adds a dependency to all nodes that where the given dimensions are processed.
-    pub fn add_if_processed(&mut self, dims: &VecSet<ir::dim::Id>,
+    pub fn add_if_processed(&mut self, dims: &VecSet<ir::DimId>,
                             dep_start: usize, dep_end: usize, dep_lat: &FastBound) {
         for (node_dims, &node_id) in &self.node_ids {
             if dims <= node_dims {

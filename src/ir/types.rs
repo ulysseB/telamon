@@ -11,7 +11,7 @@ pub enum Type {
     /// Type for floating point values, with a fixed number of bits.
     F(u16),
     /// Pointer type of the given memory space.
-    PtrTo(ir::mem::Id),
+    PtrTo(ir::MemId),
 }
 
 impl Type {

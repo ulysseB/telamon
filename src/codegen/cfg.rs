@@ -171,8 +171,8 @@ pub fn build<'a>(space: &'a SearchSpace<'a>,
 /// Describes the program points encountered when walking a CFG.
 enum CfgEvent<'a> {
     Exec(Instruction<'a>),
-    Enter(ir::dim::Id, EntryEvent<'a>),
-    Exit(ir::dim::Id, ExitEvent),
+    Enter(ir::DimId, EntryEvent<'a>),
+    Exit(ir::DimId, ExitEvent),
 }
 
 /// An event to process when entering a dimension.
