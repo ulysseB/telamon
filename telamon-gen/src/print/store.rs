@@ -105,7 +105,7 @@ pub fn incr_iterators<'a>(ir_desc: &'a ir::IrDesc) -> Vec<IncrIterator<'a>> {
                 let mut loop_nest = ast::LoopNest::new(counter_loops, ctx, conflicts, true);
                 conflicts.extend(PartialIterator::new_objs_conflicts(ir_desc, set));
                 loop_nest.extend(incr_loops, ctx, conflicts, false);
-                let incr_condition = RcStr::new(value_set::print(incr_condition, ctx));
+                let incr_condition = RcStr::new(value_set::print(incr_condition, ctx).to_string());
                 let incr = ast::ChoiceInstance::new(incr, ctx);
                 let set_ast = ast::SetDef::new(set.def());
                 let incr_iterator = IncrIterator {

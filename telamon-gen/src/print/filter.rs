@@ -66,7 +66,7 @@ impl<'a> PositiveFilter<'a> {
                 if r.alternatives.is_empty() {
                     PositiveFilter::Empty
                 } else {
-                    let values = value_set::print(&r.alternatives, ctx);
+                    let values = value_set::print(&r.alternatives, ctx).to_string();
                     PositiveFilter::AllowValues { var, values }
                 }
             },
@@ -89,7 +89,7 @@ impl<'a> PositiveFilter<'a> {
                 let cases = cases.iter().map(|&(ref values, ref sub_filter)| {
                     let sub_filter = PositiveFilter::new(
                         sub_filter, choice, ctx, set.clone());
-                    (value_set::print(values, ctx), sub_filter)
+                    (value_set::print(values, ctx).to_string(), sub_filter)
                 }).collect();
                 PositiveFilter::Switch { var: ctx.input_name(switch), cases }
             },
@@ -107,7 +107,7 @@ pub struct Rule<'a> {
 
 impl<'a> Rule<'a> {
     pub fn new(var: ast::Variable<'a>, rule: &'a ir::Rule, ctx: &Context<'a>) -> Rule<'a> {
-        let values = value_set::print(&rule.alternatives, ctx);
+        let values = value_set::print(&rule.alternatives, ctx).to_string();
         let conditions = rule.conditions.iter()
             .map(|c| condition(c, ctx).to_string()).collect();
         let set_conditions = ast::SetConstraint::new(&rule.set_constraints, ctx);
@@ -128,8 +128,7 @@ pub fn condition(cond: &ir::Condition, ctx: &Context) -> TokenStream {
             let input = ctx.input(*input);
             let enum_def = ctx.ir_desc.get_enum(unwrap!(input.value_type().as_enum()));
             let set = ir::normalized_enum_set(values, !*negate, *inverse, enum_def);
-            // TODO(cleanup): do the parsing beforhand
-            let value_set: TokenStream = unwrap!(value_set::print(&set, ctx).parse());
+            let value_set = value_set::print(&set, ctx);
             quote!(!#input.intersects(#value_set))
         }
         ir::Condition::CmpCode { lhs, rhs, op } => {

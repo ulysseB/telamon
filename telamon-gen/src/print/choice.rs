@@ -6,9 +6,12 @@ use proc_macro2::TokenStream;
 /// Prints the ids of the variables of a `ChoiceInstance`.
 pub fn ids(choice_instance: &ir::ChoiceInstance, ctx: &print::Context) -> TokenStream {
     let choice = ctx.ir_desc.get_choice(&choice_instance.choice);
-    let ids = choice_instance.vars.iter().zip_eq(choice.arguments().sets())
+    let arg_sets = choice.arguments().sets();
+    let ids = choice_instance.vars.iter().zip_eq(arg_sets).map(|(&var, set)| {
         // TODO(cleanup): parse beforehand
-        .map(|(var, set)| print::set::id(unwrap!(var.to_string().parse()), set));
+        let var = unwrap!(ctx.var_name(var).to_string().parse());
+        print::set::id(var, set)
+    });
     quote!(#(#ids,)*)
 }
 
@@ -143,12 +146,9 @@ impl<'a> FilterAction<'a> {
 #[derive(Serialize)]
 struct ComputeCounter<'a> {
     base: String,
-    nest: ast::LoopNest<'a>,
-    incr: ast::ChoiceInstance<'a>,
-    incr_condition: String,
-    value: CounterValue<'a>,
-    op: String,
     half: bool,
+    nest: ast::LoopNest<'a>,
+    body: String,
 }
 
 impl<'a> ComputeCounter<'a> {
@@ -164,14 +164,13 @@ impl<'a> ComputeCounter<'a> {
             let forall_vars = (0..incr_iter.len()).map(ir::Variable::Forall);
             let nest_builder = ast::LoopNest::new(
                 forall_vars, &ctx, &mut conflicts, false);
+            let body = print::counter::compute_counter_body(
+                value, incr, incr_condition, kind, visibility, &ctx);
             Some(ComputeCounter {
                 base: ast::code(base, &ctx),
-                incr: ast::ChoiceInstance::new(incr, &ctx),
-                incr_condition: value_set::print(incr_condition, &ctx),
-                nest: nest_builder,
-                value: CounterValue::new(value, &ctx),
-                op: kind.to_string(),
                 half: visibility == ir::CounterVisibility::NoMax,
+                nest: nest_builder,
+                body: body.to_string(),
             })
         } else { None }
     }
@@ -283,7 +282,7 @@ impl<'a> ChoiceAction<'a> {
                 if let ir::ChoiceDef::Counter { kind, visibility, .. } = *counter_def {
                     ChoiceAction::IncrCounter {
                         counter_name: &counter.choice,
-                        incr_condition: value_set::print(incr_condition, ctx),
+                        incr_condition: value_set::print(incr_condition, ctx).to_string(),
                         counter_type: ast::ValueType::new(counter_type, ctx),
                         arguments,
                         value: CounterValue::new(value, ctx),
@@ -304,7 +303,7 @@ impl<'a> ChoiceAction<'a> {
                     ChoiceAction::UpdateCounter {
                         name: &counter.choice,
                         incr_name: &incr.choice,
-                        incr_condition: value_set::print(incr_condition, ctx),
+                        incr_condition: value_set::print(incr_condition, ctx).to_string(),
                         is_half: visibility == ir::CounterVisibility::NoMax,
                         zero: kind.zero(),
                         counter_type: ast::ValueType::new(counter_type, ctx),
@@ -333,7 +332,7 @@ impl<'a> ChoiceAction<'a> {
                 trigger_calls.push(call);
                 ChoiceAction::Trigger {
                     call_id, others_conditions, inputs, arguments,
-                    self_condition: value_set::print(&self_condition, ctx),
+                    self_condition: value_set::print(&self_condition, ctx).to_string(),
                 }
             },
         }
@@ -423,7 +422,7 @@ impl<'a> RestrictCounter<'a> {
                 amount: CounterValue::new(value, &ctx),
                 incr, incr_iter,
                 incr_type: ast::ValueType::new(incr_condition.t(), &ctx),
-                incr_condition: value_set::print(&incr_condition, &ctx),
+                incr_condition: value_set::print(&incr_condition, &ctx).to_string(),
                 is_half: visibility == ir::CounterVisibility::NoMax,
                 op: kind.to_string(),
                 neg_op: match kind {

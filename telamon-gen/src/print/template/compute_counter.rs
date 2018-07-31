@@ -11,16 +11,7 @@ pub fn compute_counter({{>choice.arg_defs ../this}}
         Range::new_eq(&(), {{base}}, &());
     {{~/if~}}
     {{#>loop_nest nest}}
-        let value = {{>counter_value value use_old=true}};
-        let incr = {{>choice.getter incr use_old=true}};
-        {{#unless half~}}
-            if ({{incr_condition}}).intersects(incr) {
-                counter_val.max {{op}}= NumSet::max(&value);
-            }
-        {{/unless~}}
-        if ({{incr_condition}}).contains(incr) {
-            counter_val.min {{op}}= NumSet::min(&value);
-        }
+        {{body}}
     {{/loop_nest}}
     counter_val
 }

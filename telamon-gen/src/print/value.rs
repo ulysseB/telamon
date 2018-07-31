@@ -27,6 +27,13 @@ impl Value {
         Self::new(quote!(#ident), value_type)
     }
 
+    /// Creates a value with the given name.
+    pub fn ident(name: &str, value_type: ir::ValueType) -> Self {
+        // TODO(span): get the real span from the lexer
+        let ident = Ident::new(name, Span::call_site());
+        Self::new(quote!(#ident), value_type)
+    }
+
     /// Creates a new user-provided constant value.
     pub fn new_const(code: &ir::Code, ctx: &print::Context) -> Self {
         // TODO(cleanup): parse in the lexer rather than here
@@ -43,7 +50,8 @@ impl Value {
     ) -> Self {
         let getter = print::store::getter_name(&choice_instance.choice, get_old);
         let ids = print::choice::ids(choice_instance, ctx);
-        let tokens = quote!(store.#getter(#(#ids,)*));
+        let diff = if get_old { quote!(diff) } else { quote!() };
+        let tokens = quote!(store.#getter(#ids#diff));
         Self::new(tokens, choice_instance.value_type(ctx.ir_desc))
     }
 
@@ -64,6 +72,20 @@ impl Value {
             let tokens = &self.tokens;
             quote!(!#tokens)
         };
+    }
+
+    /// Returns the minimum of an integer domain.
+    pub fn get_min(&self, ctx: &print::Context) -> Self {
+        let universe = universe(self.value_type(), ctx);
+        let tokens = quote!(NumSet::min(&#self, #universe));
+        Value::new(tokens, ir::ValueType::Constant)
+    }
+
+    /// Returns the maximum of an integer domain.
+    pub fn get_max(&self, ctx: &print::Context) -> Self {
+        let universe = universe(self.value_type(), ctx);
+        let tokens = quote!(NumSet::max(&#self, #universe));
+        Value::new(tokens, ir::ValueType::Constant)
     }
 }
 

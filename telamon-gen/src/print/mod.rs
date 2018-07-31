@@ -1,4 +1,5 @@
 //! Print the IR description in rust.
+mod counter;
 mod runtime;
 mod set;
 mod value;
