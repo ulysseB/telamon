@@ -498,7 +498,9 @@ impl ValueSet {
                     universe: t.clone().full_type(),
                 }
             },
-            ir::ValueType::Constant => panic!("a set cannot have a `Constant` type")
+            ir::ValueType::Constant => {
+                panic!("the `Constant` type is reserved for user-provided values")
+            }
         }
 
     }
@@ -529,7 +531,9 @@ impl ValueSet {
                     }
                 } else { ValueSet::empty(t) }
             },
-            ir::ValueType::Constant => panic!("a set cannot have a `Constant` type")
+            ir::ValueType::Constant => {
+                panic!("the `Constant` type is reserved for user-provided values")
+            }
         }
     }
 
@@ -559,7 +563,9 @@ impl ValueSet {
             ir::ValueType::Range { is_half: true } => {
                 panic!("Cannot compare HalfRanges to inputs")
             }
-            ir::ValueType::Constant => panic!("a set cannot have a `Constant` type")
+            ir::ValueType::Constant => {
+                panic!("the `Constant` type is reserved for user-provided values")
+            }
         }
     }
 

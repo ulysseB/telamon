@@ -23,18 +23,5 @@ if incr_status.is_maybe() {
         store.restrict_{{incr.name}}({{>choice.arg_ids incr}}val, diff)?;
     {{~/if}}
 }
-{{~#if amount.Choice~}}
-    else if incr_status.is_true() {
-        let max_val = new_values.max{{neg_op}}current.min{{op~}} {{min}};
-        let val = {{>value_type.num_constructor t=amount.Choice.full_type
-                    fun="new_leq" value="max_val"}};
-        {{#if delayed~}}
-            actions.extend({{amount.Choice.name}}::restrict_delayed(
-                    {{~>choice.arg_ids amount.Choice~}} ir_instance, store, val)?);
-        {{else~}}
-            {{amount.Choice.name}}::restrict({{>choice.arg_ids amount.Choice~}}
-                                              ir_instance, store, val, diff)?;
-        {{/if~}}
-    }
-{{/if}}
+{{#if delayed}}{{restrict_amount_delayed}}{{else}}{{restrict_amount}}{{/if}}
 {{/loop_nest}}

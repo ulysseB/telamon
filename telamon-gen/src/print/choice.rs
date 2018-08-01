@@ -1,7 +1,7 @@
 //! Prints the definition and manipulation of choices.
 use ir;
 use print;
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, Span, TokenStream};
 
 /// Prints the ids of the variables of a `ChoiceInstance`.
 pub fn ids(choice_instance: &ir::ChoiceInstance, ctx: &print::Context) -> TokenStream {
@@ -13,6 +13,25 @@ pub fn ids(choice_instance: &ir::ChoiceInstance, ctx: &print::Context) -> TokenS
         print::set::id(var, set)
     });
     quote!(#(#ids,)*)
+}
+
+/// Restricts a choice to `value`. If `delayed` is true, actions are put in the
+/// `actions` vector instead of being directly applied.
+pub fn restrict(
+    choice_instance: &ir::ChoiceInstance,
+    value: &print::Value,
+    delayed: bool,
+    ctx: &print::Context,
+) -> TokenStream {
+    assert_eq!(&choice_instance.value_type(ctx.ir_desc), value.value_type());
+    // TODO(span): keep the real span.
+    let name = Ident::new(&choice_instance.choice, Span::call_site());
+    let ids = ids(choice_instance, ctx);
+    if delayed {
+        quote!(actions.extend(#name::restrict_delayed(#ids ir_instance, store, #value)?);)
+    } else {
+        quote!(#name::restrict(#ids ir_instance, store, #value, diff)?;)
+    }
 }
 
 
@@ -149,6 +168,7 @@ struct ComputeCounter<'a> {
     half: bool,
     nest: ast::LoopNest<'a>,
     body: String,
+    op: String,
 }
 
 impl<'a> ComputeCounter<'a> {
@@ -171,6 +191,7 @@ impl<'a> ComputeCounter<'a> {
                 half: visibility == ir::CounterVisibility::NoMax,
                 nest: nest_builder,
                 body: body.to_string(),
+                op: kind.to_string(),
             })
         } else { None }
     }
@@ -414,6 +435,8 @@ struct RestrictCounter<'a> {
     neg_op: &'static str,
     min: String,
     max: String,
+    restrict_amount: String,
+    restrict_amount_delayed: String,
 }
 
 impl<'a> RestrictCounter<'a> {
@@ -433,6 +456,18 @@ impl<'a> RestrictCounter<'a> {
             let incr_amount = print::Value::ident("incr_amount", incr_amount_type);
             let min_incr_amount = incr_amount.get_min(&ctx);
             let max_incr_amount = incr_amount.get_max(&ctx);
+            let restrict_amount = if let ir::CounterVal::Choice(choice) = value {
+                Some(print::counter::restrict_incr_amount(
+                        choice, &incr_amount, kind, false, &ctx))
+            } else {
+                None
+            };
+            let restrict_amount_delayed = if let ir::CounterVal::Choice(choice) = value {
+                Some(print::counter::restrict_incr_amount(
+                        choice, &incr_amount, kind, true, &ctx))
+            } else {
+                None
+            };
             Some(RestrictCounter {
                 incr, incr_iter,
                 incr_amount: quote!(#incr_amount_getter).to_string(),
@@ -446,6 +481,8 @@ impl<'a> RestrictCounter<'a> {
                 },
                 min: quote!(#min_incr_amount).to_string(),
                 max: quote!(#max_incr_amount).to_string(),
+                restrict_amount: quote!(#restrict_amount).to_string(),
+                restrict_amount_delayed: quote!(#restrict_amount_delayed).to_string(),
             })
         } else { None }
     }

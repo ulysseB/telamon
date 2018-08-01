@@ -55,6 +55,12 @@ impl Value {
         Self::new(tokens, choice_instance.value_type(ctx.ir_desc))
     }
 
+    /// Creates a new value that has the same type that this one, but with an identifier
+    /// in place of the expression.
+    pub fn with_name(&self, name: &str) -> Self {
+        Self::ident(name, self.value_type().clone())
+    }
+
     /// Returns the type taken by the value.
     pub fn value_type(&self) -> &ir::ValueType { &self.value_type }
 

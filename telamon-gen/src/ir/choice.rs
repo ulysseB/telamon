@@ -204,8 +204,7 @@ impl ChoiceDef {
         match *self {
             ChoiceDef::Enum(ref name) => ValueType::Enum(name.clone()),
             ChoiceDef::Counter { visibility, .. } => {
-                let is_half = visibility == CounterVisibility::NoMax;
-                ValueType::Range { is_half }
+                ValueType::Range { is_half: visibility == CounterVisibility::NoMax }
             }
             ChoiceDef::Number { ref universe, .. } =>
                 ValueType::NumericSet(universe.clone()),
