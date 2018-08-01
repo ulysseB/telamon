@@ -55,8 +55,9 @@ pub fn restrict_incr_amount(
 ) -> TokenStream {
     let max_val = print::Value::ident("max_val", ir::ValueType::Constant);
     let neg_op = inverse_operator(op);
+    let restricted_value_type = incr_amount.value_type(ctx.ir_desc).full_type();
     let restricted_value = print::value::integer_domain_constructor(
-        ir::CmpOp::Leq, &max_val, incr_amount.value_type(ctx.ir_desc), ctx);
+        ir::CmpOp::Leq, &max_val, restricted_value_type, ctx);
     let restricted_value_name = restricted_value.with_name("value");
     let apply_restriction = print::choice::restrict(
         incr_amount, &restricted_value_name, delayed, ctx);

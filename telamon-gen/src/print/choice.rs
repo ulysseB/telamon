@@ -23,7 +23,7 @@ pub fn restrict(
     delayed: bool,
     ctx: &print::Context,
 ) -> TokenStream {
-    assert_eq!(&choice_instance.value_type(ctx.ir_desc), value.value_type());
+    assert_eq!(&choice_instance.value_type(ctx.ir_desc).full_type(), value.value_type());
     // TODO(span): keep the real span.
     let name = Ident::new(&choice_instance.choice, Span::call_site());
     let ids = ids(choice_instance, ctx);
