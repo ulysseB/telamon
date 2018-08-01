@@ -10,7 +10,7 @@ use utils::*;
 
 /// Helper to build a `Function`.
 pub struct Builder<'a> {
-    function: Function<'a>,
+    function: Function<'a, ()>,
     open_dims: HashMap<ir::DimId, ir::DimId>,
     actions: Vec<Action>,
 }
@@ -38,7 +38,7 @@ impl<'a> Builder<'a> {
     }
 
     /// Returns an operand from an `AutoOperand`.
-    fn get_op<'b: 'a>(&self, op: &AutoOperand<'b>) -> Operand<'a> {
+    fn get_op<'b: 'a>(&self, op: &AutoOperand<'b>) -> Operand<'a, ()> {
         op.get(&self.function, &self.open_dims)
     }
 
@@ -177,7 +177,7 @@ impl<'a> Builder<'a> {
     }
 
     /// Inserts an instruction in the function.
-    fn inst(&mut self, op: Operator<'a>) -> InstId {
+    fn inst(&mut self, op: Operator<'a, ()>) -> InstId {
         let open_dims = self.open_dims.iter().map(|(&x, _)| x).collect();
         unwrap!(self.function.add_inst(op, open_dims))
     }
@@ -327,7 +327,7 @@ impl<'a> Builder<'a> {
     /// Creates a dim-map operand.
     pub fn dim_map(&self, base: ir::InstId,
                    dim_map: &[(&MetaDimension, &MetaDimension)],
-                   scope: ir::DimMapScope) -> ir::Operand<'a> {
+                   scope: ir::DimMapScope<()>) -> ir::Operand<'a, ()> {
         let dim_map = dim_map.iter().flat_map(|&(lhs, rhs)| lhs.ids().zip_eq(rhs.ids()));
         let inst = self.function.inst(base);
         ir::Operand::new_inst(inst, ir::DimMap::new(dim_map), scope)

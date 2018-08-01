@@ -1,7 +1,7 @@
 //! Provides a representation of functions.
 use device::Device;
 use ir::{self, BasicBlock, BBId, Dimension, InstId, Instruction, Operator};
-use ir::{AccessPattern, Operand, Size, Type, dim, mem};
+use ir::{AccessPattern, Operand, Size, Type, dim, mem, SparseVec};
 use ir::mem::Block;
 use itertools::Itertools;
 use std;
@@ -49,29 +49,29 @@ impl Signature {
 
 /// Describes a function and the set of its possible implementation.
 #[derive(Clone)]
-pub struct Function<'a> {
+pub struct Function<'a, L = ir::LoweringMap> {
     signature: &'a Signature,
     device: &'a Device,
-    insts: Vec<Instruction<'a>>,
-    dims: Vec<Dimension<'a>>,
+    insts: SparseVec<ir::InstId, Instruction<'a, L>>,
+    dims: SparseVec<ir::DimId, Dimension<'a>>,
     static_dims: Vec<ir::DimId>,
     thread_dims: VecSet<ir::DimId>,
     mem_insts: Vec<ir::InstId>,
     mem_blocks: mem::BlockMap,
     layouts_to_lower: Vec<ir::mem::InternalId>,
-    induction_vars: Vec<ir::InductionVar<'a>>,
+    induction_vars: Vec<ir::InductionVar<'a, L>>,
 }
 
-impl<'a> Function<'a> {
+impl<'a, L> Function<'a, L> {
     /// Creates a new function.
     pub fn new(signature: &'a Signature, device: &'a Device) -> Self {
         let mem_blocks = mem::BlockMap::new(signature.mem_blocks);
         Function {
             signature,
             device,
-            insts: vec![],
+            insts: SparseVec::new(),
             mem_insts: vec![],
-            dims: vec![],
+            dims: SparseVec::new(),
             static_dims: vec![],
             thread_dims: VecSet::default(),
             mem_blocks,
@@ -86,11 +86,16 @@ impl<'a> Function<'a> {
     /// Returns the device the function is compiled for.
     pub fn device(&self) -> &'a Device { self.device }
 
-    /// Adds an instruction to the function.
-    pub fn add_inst(&mut self, op: Operator<'a>, iter_dims: HashSet<ir::DimId>)
-        -> Result<InstId, ir::Error>
-    {
-        let id = ir::InstId(self.insts.len() as u32);
+    /// Creates a new instruction (with given ID) without adding it to
+    /// the `insts` vector. Used as an internal helper for when either
+    /// adding a new instruction (`add_inst`) or filling an existing
+    /// hole in the instructions vector.
+    fn create_inst(
+        &mut self,
+        id: InstId,
+        op: Operator<'a, L>,
+        iter_dims: HashSet<ir::DimId>,
+    ) -> Result<ir::Instruction<'a, L>, ir::Error> {
         let inst = ir::Instruction::new(op, id, iter_dims, self.device)?;
         // Register the instruction in iteration dimensions.
         for &dim in inst.iteration_dims() { self.dim_mut(dim).add_iterated(id.into()); }
@@ -99,33 +104,18 @@ impl<'a> Function<'a> {
             self.mem_insts.push(id);
             self.mem_blocks.register_use(mem_id, id);
         }
-        self.insts.push(inst);
-        Ok(id)
-    }
-
-    /// Creates a new dimension.
-    pub fn add_dim(&mut self, size: Size<'a>) -> Result<ir::DimId, ir::Error> {
-        let id = ir::DimId(self.dims.len() as u32);
-        let dim = Dimension::new(size, id)?;
-        if dim.possible_sizes().is_some() { self.static_dims.push(id); }
-        self.dims.push(dim);
-        Ok(id)
-    }
-
-    /// Allocates a new memory block.
-    pub fn add_mem_block(&mut self, size: u32) -> mem::InternalId {
-        self.mem_blocks.alloc_block(size, None)
+        Ok(inst)
     }
 
     /// Adds an induction variable.
-    pub fn add_ind_var(&mut self, ind_var: ir::InductionVar<'a>) -> ir::IndVarId {
+    pub fn add_ind_var(&mut self, ind_var: ir::InductionVar<'a, L>) -> ir::IndVarId {
         let id = ir::IndVarId(self.induction_vars.len() as u32);
         self.induction_vars.push(ind_var);
         id
     }
 
     /// Returns the list of instructions of the function.
-    pub fn insts<'b>(&'b self) -> impl Iterator<Item=&'b Instruction<'a>> {
+    pub fn insts<'b>(&'b self) -> impl Iterator<Item=&'b Instruction<'a, L>> {
         self.insts.iter()
     }
 
@@ -139,38 +129,27 @@ impl<'a> Function<'a> {
         self.static_dims.iter().map(move |&id| self.dim(id))
     }
 
-    /// Lists all `BasicBlock`s.
-    pub fn blocks<'b>(&'b self) -> impl Iterator<Item=&'b BasicBlock<'a>> {
-        self.insts.iter().map(|x| x as _).chain(self.dims.iter().map(|x| x as _))
-    }
-
     /// Returns the list of thread dimensions.
     pub fn thread_dims(&self) -> impl Iterator<Item=&Dimension<'a>> {
         self.thread_dims.iter().map(move |&d| self.dim(d))
     }
 
     /// Returns an instruction given its id.
-    pub fn inst(&self, id: InstId) -> &Instruction<'a> { &self.insts[id.0 as usize] }
+    pub fn inst(&self, id: InstId) -> &Instruction<'a, L> { &self.insts[id] }
 
     /// Returns a mutable reference to an instruction given its id.
-    fn inst_mut(&mut self, id: InstId) -> &mut Instruction<'a> {
-        &mut self.insts[id.0 as usize]
+    fn inst_mut(&mut self, id: InstId) -> &mut Instruction<'a, L> {
+        &mut self.insts[id]
     }
 
     /// Retuns a dimension given its id.
-    pub fn dim(&self, id: ir::DimId) -> &Dimension<'a> { &self.dims[id.0 as usize] }
+    pub fn dim(&self, id: ir::DimId) -> &Dimension<'a> {
+        &self.dims[id]
+    }
 
     /// Returns a mutable reference to a dimension given its ID.
     fn dim_mut(&mut self, id: ir::DimId) -> &mut Dimension<'a> {
-        &mut self.dims[id.0 as usize]
-    }
-
-    /// Returns a `BasicBlock` given its id.
-    pub fn block(&self, id: BBId) -> &BasicBlock<'a> {
-        match id {
-            BBId::Inst(id) => &self.insts[id.0 as usize],
-            BBId::Dim(id) => self.dim(id),
-        }
+        &mut self.dims[id]
     }
 
     /// Returns the list of memory blocks. The block with id `i` is in i-th position.
@@ -179,7 +158,7 @@ impl<'a> Function<'a> {
     }
 
     /// Iterates over memory instructions.
-    pub fn mem_insts<'b>(&'b self) -> impl Iterator<Item=&'b Instruction<'a>> + 'b {
+    pub fn mem_insts<'b>(&'b self) -> impl Iterator<Item=&'b Instruction<'a, L>> + 'b {
         self.mem_insts.iter().map(move |&id| self.inst(id))
     }
 
@@ -198,13 +177,13 @@ impl<'a> Function<'a> {
     }
 
     /// Retrieves an induction variable given its Id.
-    pub fn induction_var(&self, id: ir::IndVarId) -> &ir::InductionVar {
+    pub fn induction_var(&self, id: ir::IndVarId) -> &ir::InductionVar<'_, L> {
         &self.induction_vars[id.0 as usize]
     }
 
     /// Iterates over induction variables.
     pub fn induction_vars<'b>(&'b self)
-            -> impl Iterator<Item=(ir::IndVarId, &'b ir::InductionVar<'a>)> {
+            -> impl Iterator<Item=(ir::IndVarId, &'b ir::InductionVar<'a, L>)> {
         self.induction_vars.iter().enumerate().map(|(id, v)| (ir::IndVarId(id as u32), v))
     }
 
@@ -228,36 +207,37 @@ impl<'a> Function<'a> {
     // TODO(cleanup): externalize in the search space the merging of dimensions in dim
     // maps.
     pub(crate) fn merge(&mut self, src: ir::DimId, dst: ir::DimId) {
-        for inst in &mut self.insts { inst.merge_dims(src, dst); }
+        for inst in self.insts.iter_mut() { inst.merge_dims(src, dst); }
         for var in &mut self.induction_vars { var.merge_dims(src, dst); }
         self.layouts_to_lower.extend(self.mem_blocks.merge_dims(src, dst));
     }
 
     /// Lowers a layout into conventional memory accesses.
     pub(crate) fn lower_layout(&mut self, id: mem::InternalId, st_dims: Vec<ir::DimId>,
-                        ld_dims: Vec<ir::DimId>) {
+                               ld_dims: Vec<ir::DimId>)
+    where L: Clone {
         let pos = unwrap!(self.layouts_to_lower.iter().position(|&x| x == id));
         self.layouts_to_lower.swap_remove(pos);
         self.mem_blocks.lower_layout(id);
         let (st_index, st_pattern) = self.gen_internal_index(id, st_dims);
         let (ld_index, ld_pattern) = self.gen_internal_index(id, ld_dims);
         for &mem_use in self.mem_blocks.internal_block(id).uses() {
-            self.insts[mem_use.0 as usize].lower_layout(ld_index.clone(),
+            self.insts[mem_use].lower_layout(ld_index.clone(),
                 ld_pattern.clone(), st_index.clone(), st_pattern.clone());
         }
     }
 
     /// Generates an operand repesenting a pointer to a cell of a memory block.
     fn gen_internal_index(&mut self, id: mem::InternalId, dims: Vec<ir::DimId>)
-            -> (Operand<'a>, AccessPattern<'a>) {
+            -> (Operand<'a, L>, AccessPattern<'a>) {
         let ty_len = self.mem_blocks.internal_block(id).base_size();
         self.gen_index(id.into(), ty_len, Operand::Addr(id), dims)
     }
 
     /// Generates an access pattern and the corresponding induction variable to access a
     /// memory block.
-    fn gen_index(&mut self, mem: ir::MemId, base_incr: u32, base_addr: Operand<'a>,
-                     dims: Vec<ir::DimId>) -> (Operand<'a>, AccessPattern<'a>) {
+    fn gen_index(&mut self, mem: ir::MemId, base_incr: u32, base_addr: Operand<'a, L>,
+                     dims: Vec<ir::DimId>) -> (Operand<'a, L>, AccessPattern<'a>) {
         let var_type = base_addr.t();
         let base_size = ir::Size::new(base_incr, vec![], 1);
         let increments = dims.iter().rev().scan(base_size, |size, &dim| {
@@ -275,15 +255,114 @@ impl<'a> Function<'a> {
         (addr, pattern)
     }
 
+    /// Trigger to call when two dimensions are not merged.
+    pub(crate) fn dim_not_merged(&mut self, lhs: ir::DimId, rhs: ir::DimId) {
+        let to_lower = self.mem_blocks.not_merged(&self.dims[lhs], rhs);
+        self.layouts_to_lower.extend(to_lower);
+    }
+
+    /// Returns the list of layouts to lower.
+    pub(crate) fn layouts_to_lower(&self) -> &[ir::mem::InternalId] { &self.layouts_to_lower }
+}
+
+impl<'a> Function<'a, ()> {
+    /// Adds an instruction to the function.
+    pub fn add_inst(&mut self, op: Operator<'a, ()>, iter_dims: HashSet<ir::DimId>)
+        -> Result<InstId, ir::Error>
+    {
+        let id = ir::InstId(self.insts.len() as u32);
+        let inst = self.create_inst(id, op, iter_dims)?;
+        self.insts.push(inst);
+        Ok(id)
+    }
+
+    /// Creates a new dimension.
+    pub fn add_dim(&mut self, size: Size<'a>) -> Result<ir::DimId, ir::Error> {
+        let id = ir::DimId(self.dims.len() as u32);
+        let dim = Dimension::new(size, id)?;
+        if dim.possible_sizes().is_some() { self.static_dims.push(id); }
+        self.dims.push(dim);
+        Ok(id)
+    }
+
+    /// Allocates a new memory block.
+    pub fn add_mem_block(&mut self, size: u32) -> mem::InternalId {
+        self.mem_blocks.alloc_block(size, None)
+    }
+
+    pub(crate) fn freeze(self) -> Function<'a> {
+        let mut counter = ir::Counter {
+            next_mem: self.mem_blocks.num_internal_blocks(),
+            next_inst: self.insts.len(),
+            next_dim: self.dims.len(),
+        };
+        let Function {
+            signature,
+            device,
+            insts,
+            mut dims,
+            static_dims,
+            thread_dims,
+            mem_insts,
+            mut mem_blocks,
+            layouts_to_lower,
+            induction_vars
+        } = self;
+
+        let mut insts =
+            SparseVec::from_vec(
+                insts.into_iter().map(|inst| {
+                    inst.map(|inst| inst.freeze(&mut counter))
+                }).collect());
+        let induction_vars: Vec<_> =
+            induction_vars.into_iter().map(|induction_var| {
+                induction_var.freeze(&mut counter)
+            }).collect();
+
+        let ir::Counter { next_mem, next_inst, next_dim } = counter;
+        insts.expand_to(next_inst);
+        dims.expand_to(next_dim);
+        mem_blocks.expand_internal_blocks_to(next_mem);
+
+        Function {
+            signature,
+            device,
+            insts,
+            dims,
+            static_dims,
+            thread_dims,
+            mem_insts,
+            mem_blocks,
+            layouts_to_lower,
+            induction_vars,
+        }
+    }
+}
+
+impl<'a> Function<'a> {
+    /// Returns a `BasicBlock` given its id.
+    pub fn block(&self, id: BBId) -> &BasicBlock<'a> {
+        match id {
+            BBId::Inst(id) => &self.insts[id],
+            BBId::Dim(id) => self.dim(id),
+        }
+    }
+
+    /// Lists all `BasicBlock`s.
+    pub fn blocks<'b>(&'b self) -> impl Iterator<Item=&'b BasicBlock<'a>> {
+        self.insts.iter().map(|x| x as _).chain(self.dims().map(|x| x as _))
+    }
+
     /// Lowers a dim map into a partially defined layout.
     pub(crate) fn lower_dim_map(&mut self, dst_inst: InstId, dst_operand_pos: usize)
         -> Result<ir::LoweredDimMap, ()> {
         // TODO(search_space): allow temporary memory generation for reduce operators.
-        let (src_inst, data_type, src_dims, dst_dims): (_, _, Vec<_>, Vec<_>) = {
-            match *self.inst(dst_inst).operands()[dst_operand_pos] {
-                Operand::Inst(ref src_id, t, ref dim_map, ir::DimMapScope::Global) => {
-                    let (src_dims, dst_dims) = dim_map.iter().cloned().unzip();
-                    (*src_id, t, src_dims, dst_dims)
+        let (src_inst, data_type, dims, lowered) = {
+            match *self.insts[dst_inst].operands()[dst_operand_pos] {
+                Operand::Inst(
+                    ref src_id, t, ref dim_map, ir::DimMapScope::Global(ref lowering)) => {
+                    let lowered = lowering.lower(dim_map);
+                    (*src_id, t, dim_map.iter().cloned().unzip(), lowered)
                 },
                 Operand::Inst(_, _, _, _) => {
                     debug!("The dimension mapping {:?}.{} cannot be lowered",
@@ -294,43 +373,54 @@ impl<'a> Function<'a> {
                 _ => panic!(),
             }
         };
-        let st_dims = self.spawn_mapped_dims(&src_dims);
-        let ld_dims = self.spawn_mapped_dims(&dst_dims);
-        // Build the temporary memory block.
-        let dims = st_dims.iter().cloned().zip_eq(ld_dims.iter().cloned()).collect_vec();
-        let tmp_mem = self.mem_blocks.new_tmp(data_type, dims.iter().cloned());
-        // Build the store.
+        // Flattens the dimensions
+        let (src_dims, dst_dims): (Vec<_>, Vec<_>) = dims;
+        let (st_dims, ld_dims): (Vec<_>, Vec<_>) =
+            lowered.dimensions.iter().cloned().unzip();
+
+        // Activate the new dimensions
+        for (&src_dim, &st_dim) in src_dims.iter().zip_eq(&st_dims) {
+            let dimension = Dimension::with_same_size(
+                st_dim, &self.dims[src_dim]);
+            if dimension.possible_sizes().is_some() {
+                self.static_dims.push(st_dim);
+            }
+            self.dims.set_lazy(st_dim, dimension);
+        }
+
+        for (&dst_dim, &ld_dim) in dst_dims.iter().zip_eq(&ld_dims) {
+            let dimension = Dimension::with_same_size(
+                ld_dim, &self.dims[dst_dim]);
+            if dimension.possible_sizes().is_some() {
+                self.static_dims.push(ld_dim);
+            }
+            self.dims.set_lazy(ld_dim, dimension);
+        }
+
+        // Activate the temporary memory block
+        self.mem_blocks.set_lazy_tmp(
+            lowered.mem, data_type, lowered.dimensions.iter().cloned());
+
+        // Build and activate the store instruction
         let st_dim_map = dim::Map::new(src_dims.iter().zip_eq(&st_dims).map(clone_pair));
         let st_operand =  Operand::new_inst(
             self.inst(src_inst), st_dim_map, ir::DimMapScope::Local);
         let st_dim_set = st_dims.iter().cloned().collect();
-        let st = self.add_inst(Operator::TmpSt(st_operand, tmp_mem.into()), st_dim_set);
-        let st = unwrap!(st);
-        // Build the load
+        let st = unwrap!(self.create_inst(
+            lowered.store, Operator::TmpSt(st_operand, lowered.mem.into()), st_dim_set));
+        self.insts.set_lazy(lowered.store, st);
+
+        // Build and activate the load instruction
         let ld_dim_map = dim::Map::new(ld_dims.iter().zip_eq(&dst_dims).map(clone_pair));
         let ld_dim_set = ld_dims.iter().cloned().collect();
-        let ld = self.add_inst(Operator::TmpLd(data_type, tmp_mem.into()), ld_dim_set);
-        let ld = unwrap!(ld);
-        self.insts[dst_inst.0 as usize].lower_dim_map(dst_operand_pos, ld, ld_dim_map);
-        Ok(ir::LoweredDimMap { mem: tmp_mem, store: st, load: ld, dimensions: dims })
-    }
+        let ld = unwrap!(self.create_inst(
+            lowered.load, Operator::TmpLd(data_type, lowered.mem.into()), ld_dim_set));
+        self.insts.set_lazy(lowered.load, ld);
+        self.insts[dst_inst].lower_dim_map(
+            dst_operand_pos, lowered.load, ld_dim_map);
 
-    /// Adds multiple dimensions at once, using the sizes of the given dimensions.
-    fn spawn_mapped_dims(&mut self, old_dims: &[ir::DimId]) -> Vec<ir::DimId> {
-        old_dims.iter().map(|&old_dim| {
-            let size = self.dim(old_dim).size().clone();
-            unwrap!(self.add_dim(size))
-        }).collect()
+        Ok(lowered)
     }
-
-    /// Trigger to call when two dimensions are not merged.
-    pub(crate) fn dim_not_merged(&mut self, lhs: ir::DimId, rhs: ir::DimId) {
-        let to_lower = self.mem_blocks.not_merged(&self.dims[lhs.0 as usize], rhs);
-        self.layouts_to_lower.extend(to_lower);
-    }
-
-    /// Returns the list of layouts to lower.
-    pub(crate) fn layouts_to_lower(&self) -> &[ir::mem::InternalId] { &self.layouts_to_lower }
 }
 
 impl<'a> std::ops::Deref for Function<'a> {
