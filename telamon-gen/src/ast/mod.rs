@@ -7,7 +7,7 @@ mod trigger;
 mod choice;
 mod context;
 mod constrain;
-mod typing;
+mod typing_context;
 
 use constraint::Constraint as TypedConstraint;
 use constraint::dedup_inputs;
@@ -28,7 +28,7 @@ pub use self::choice::ChoiceDef;
 use self::trigger::TriggerDef;
 use self::context::TypingContext;
 pub use self::constrain::Constraint;
-use self::typing::CheckerContext;
+use self::typing_context::CheckerContext;
 
 pub use super::lexer::{Position, Spanned};
 
