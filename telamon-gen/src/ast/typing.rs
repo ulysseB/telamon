@@ -12,29 +12,26 @@ pub struct CheckerContext {
 impl CheckerContext {
 
     /// This checks the redefinition of SetDef.
-    pub fn declare_set(&mut self, statement: &Statement) -> Result<(), TypeError> {
-        if let Statement::SetDef(set) = statement {
-            if let Some(pre) = self.hash_set.insert(
-                set.name.data.to_owned(),
-                set.name.with_data(Hint::Set)
-            ) {
-                Err(TypeError::Redefinition(pre, set.name.to_owned()))?;
-            }
+    pub fn declare_set(&mut self, set: &SetDef) -> Result<(), TypeError> {
+        if let Some(pre) = self.hash_set.insert(
+            set.name.data.to_owned(), set.name.with_data(Hint::Set)
+        ) {
+            Err(TypeError::Redefinition(pre, set.name.to_owned()))
+        } else {
+            Ok(())
         }
-        Ok(())
     }
 
     /// This checks the redefinition of ChoiceDef (EnumDef and IntegerDef).
-    pub fn declare_choice(&mut self, statement: &Statement) -> Result<(), TypeError> {
-        if let Statement::ChoiceDef(choice) = statement {
-            if let Some(pre) = self.hash_choice.insert(
-                choice.get_name().data.to_owned(),
-                choice.get_name().with_data(Hint::from(choice))
-            ) {
-                Err(TypeError::Redefinition(pre, choice.get_name()))?;
-            }
+    pub fn declare_choice(&mut self, choice: &ChoiceDef) -> Result<(), TypeError> {
+        if let Some(pre) = self.hash_choice.insert(
+            choice.get_name().data.to_owned(),
+            choice.get_name().with_data(Hint::from(choice))
+        ) {
+            Err(TypeError::Redefinition(pre, choice.get_name()))
+        } else {
+            Ok(())
         }
-        Ok(())
     }
 
     /// This checks the undefined of SetDef superset and arg.
@@ -92,9 +89,11 @@ impl CheckerContext {
     
     /// Type checks the declare's condition.
     pub fn declare(&mut self, statement: &Statement) -> Result<(), TypeError> {
-        self.declare_set(&statement)?;
-        self.declare_choice(&statement)?;
-        Ok(())
+        match statement {
+            Statement::SetDef(def) => self.declare_set(def),
+            Statement::ChoiceDef(def) => self.declare_choice(def),
+            _ => Ok(()),
+        }
     }
     
     /// Type checks the define's condition.
