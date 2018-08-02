@@ -51,7 +51,7 @@ unsafe impl<'a> Sync for Context<'a> {}
 impl<'a> Context<'a> {
     /// Creates a new `Context`. Blocks until the MPPA device is ready to be used.
     pub fn new() -> Self {
-        let mut executor = telajax::Device::get();
+        let executor = telajax::Device::get();
         let writeback_slots = MsQueue::new();
         for _ in 0..EXECUTION_QUEUE_SIZE {
             writeback_slots.push(executor.alloc(8));
@@ -69,17 +69,15 @@ impl<'a> Context<'a> {
         self.parameters.insert(name, value);
     }
 
+
     /// Compiles and sets the arguments of a kernel.
     fn setup_kernel(&self, fun: &device::Function<'a>)
             -> (telajax::Kernel, telajax::Mem) 
             {
         let mut code: Vec<u8> = Vec::new();
         let mut printer = MppaPrinter::default();
-        let mut namer = mppa::Namer::default();
-        let mut name_map = codegen::NameMap::new(fun, &mut namer);
-        let wrapper = self.get_wrapper(fun, &mut namer, &mut name_map);
-        //mppa::printer::print(fun, true, &mut code).unwrap();
-        let kernel_code: String = printer.wrapper_function(fun, &mut namer, &mut name_map);
+        let kernel_code = printer.wrapper_function(fun);
+        let wrapper = self.get_wrapper(fun);
         //let code = std::ffi::CString::new(code).unwrap();
         //debug!("{}", code.clone().into_string().unwrap()); // DEBUG
         let cflags = std::ffi::CString::new("").unwrap();
@@ -99,13 +97,13 @@ impl<'a> Context<'a> {
     }
 
     /// Returns the wrapper for the given signature.
-    //fn get_wrapper<'b>(&self, sig: &ir::Signature) -> Arc<telajax::Wrapper> {
-    fn get_wrapper<'b, 'c>(&self, fun: &device::Function, namer: &mut mppa::Namer, name_map: &'b mut codegen::NameMap<'b, 'c>) -> Arc<telajax::Wrapper> {
+    fn get_wrapper(&self, fun: &device::Function) -> Arc<telajax::Wrapper>  {
         // TODO: There was a memoization here that allowed to cache a result for an already
         // generated signature wrapper. Maybe reimplement it
         let mut printer = MppaPrinter::default();
-        let mut ocl_code: Vec<u8> = Vec::new();
-        printer.print_ocl_wrapper(fun, namer, name_map);
+        let mut namer = mppa::Namer::default();
+        let mut name_map = codegen::NameMap::new(fun, &mut namer);
+        let ocl_code = printer.print_ocl_wrapper(fun, &mut name_map);
         let name = std::ffi::CString::new("wrapper").unwrap();
         let ocl_code = std::ffi::CString::new(ocl_code).unwrap();
         debug!("{}", ocl_code.clone().into_string().unwrap());
@@ -126,8 +124,8 @@ impl<'a> device::Context for Context<'a> {
 
 
     fn evaluate(&self, fun: &device::Function, _mode: EvalMode) -> Result<f64, ()> {
-        let (kernel, out_mem) = self.setup_kernel(fun);
-        self.executor.execute_kernel(&kernel);
+        let (mut kernel, out_mem) = self.setup_kernel(fun);
+        self.executor.execute_kernel(&mut kernel);
         let mut t: [u64; 1] = [0];
         self.executor.read_buffer(&out_mem, &mut t, &[]);
         self.writeback_slots.push(out_mem);
@@ -156,10 +154,10 @@ impl<'a> device::Context for Context<'a> {
             // Start the evaluation thread.
             let eval_thread_name = "Telamon - CPU Evaluation Thread".to_string();
             unwrap!(scope.builder().name(eval_thread_name).spawn(move || {
-                while let Ok((candidate, kernel, callback)) = recv.recv() {
+                while let Ok((candidate, mut kernel, callback)) = recv.recv() {
                     // TODO: measure time directly on MPPA
                     let t0 = Instant::now();
-                    self.executor.execute_kernel(&kernel);
+                    self.executor.execute_kernel(&mut kernel);
                     let t = Instant::now() - t0;
                     callback.call(candidate, t.subsec_nanos() as f64);
                 }

@@ -28,24 +28,16 @@ impl MppaPrinter {
 
 
     /// Declared all variables that have been required from the namer
-    fn var_decls(&mut self, namer: &Namer) -> String {
-        let print_decl = |(&t, &n)| {
-            match t {
-                Type::PtrTo(..) => String::new(),
-                _ => {
-                    let prefix = Namer::gen_prefix(&t);
-                    let mut s = format!("{} ", Self::get_type(t));
-                    s.push_str(&(0..n).map(|i| format!("{}{}", prefix, i)).collect_vec().join(", "));
-                    s.push_str(";\n  ");
-                    s
-                }
-            }
+    fn var_decls(&mut self, name_map: &NameMap) -> String {
+        let print_decl = |&(t, n) | {
+            let prefix = Namer::gen_prefix(t);
+            let mut s = format!("{} ", Namer::get_string(t));
+            s.push_str(&(0..n).map(|i| format!("{}{}", prefix, i)).collect_vec().join(", "));
+            s.push_str(";\n  ");
+            s
         };
-        let other_var_decl = namer.num_var.iter().map(print_decl).collect_vec().join("\n  ");
-        format!("intptr_t {};\n{}",
-            &(0..namer.num_glob_ptr).map( |i| format!("ptr{}", i)).collect_vec().join(", "),
-            other_var_decl,
-            )
+        let var_decl = name_map.get_declared_variables().iter().map(print_decl).collect_vec().join("\n  ");
+        var_decl
     }
 
     /// Declares block and thread indexes.
@@ -61,13 +53,13 @@ impl MppaPrinter {
 
 
     /// Prints a `Function`.
-    pub fn function<'a, 'b>(&mut self, function: &'a Function<'a>, namer: &mut Namer, name_map: &'a mut NameMap<'a, 'b>) -> String {
-        //let mut namer = Namer::default();
+    pub fn function<'a, 'b>(&mut self, function: &'a Function<'a>) -> String {
+        let mut namer = Namer::default();
+        let mut name_map = NameMap::new(function, &mut namer);
         let mut return_string;
         {
-            //let name_map = &mut NameMap::new(function, &mut namer);
             let param_decls = function.device_code_args()
-                .map(|v| self.param_decl(v, name_map))
+                .map(|v| self.param_decl(v, &mut name_map))
                 .collect_vec().join(",\n  ");
             // SIGNATURE AND OPEN BRACKET
             return_string = format!(include_str!("template/signature.c.template"),
@@ -75,7 +67,7 @@ impl MppaPrinter {
             params = param_decls
             );
             // INDEX LOADS
-            let idx_loads = self.decl_par_indexes(function, name_map);
+            let idx_loads = self.decl_par_indexes(function, &mut name_map);
             unwrap!(writeln!(self.out_function, "{}", idx_loads));
             // LOAD PARAM
             for val in function.device_code_args() {
@@ -89,7 +81,7 @@ impl MppaPrinter {
                     AllocationScheme::Shared =>
                         panic!("No shared mem in cpu!!"),
                     AllocationScheme::PrivatisedGlobal =>
-                        self.privatise_global_block(block, name_map, function),
+                        self.privatise_global_block(block, &mut name_map, function),
                     AllocationScheme::Global => (),
                 }
             };
@@ -110,12 +102,12 @@ impl MppaPrinter {
             let ind_levels = function.init_induction_levels().into_iter()
                 .chain(function.block_dims().iter().flat_map(|d| d.induction_levels()));
             for level in ind_levels {
-                self.parallel_induction_level(level, name_map);
+                self.parallel_induction_level(level, &mut name_map);
             }
             // BODY
-            self.cfg(function, function.cfg(), name_map);
+            self.cfg(function, function.cfg(), &mut name_map);
         }
-        let var_decls = self.var_decls(namer);
+        let var_decls = self.var_decls(&mut name_map);
         return_string.push_str(&var_decls);
         return_string.push_str(&self.out_function);
         // Close function bracket
@@ -248,8 +240,8 @@ impl MppaPrinter {
     }
 
     /// wrap the kernel call into a function with a fixed interface
-    pub fn wrapper_function<'a, 'b>(&mut self, func: &'a Function<'a>, namer: &mut Namer, name_map: &'a mut NameMap<'a, 'b>) -> String {
-        let fun_str = self.function(func, namer, name_map);
+    pub fn wrapper_function<'a>(&mut self, func: &Function<'a>) -> String {
+        let fun_str = self.function(func);
         let fun_params = self.params_call(func);
         format!(include_str!("template/host.c.template"),
             fun_name = func.name,
@@ -291,7 +283,7 @@ impl MppaPrinter {
     }
     /// Prints the OpenCL wrapper for a candidate implementation.
     //pub fn print_ocl_wrapper(signature: &ir::Signature)
-    pub fn print_ocl_wrapper(&mut self, fun: &Function, namer: &mut Namer, name_map: &mut NameMap)
+    pub fn print_ocl_wrapper(&mut self, fun: &Function, name_map: &mut NameMap)
         -> String {
             let get_p_name = |p| {match p {
                 ParamVal::External(par, t) => (),

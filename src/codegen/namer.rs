@@ -17,8 +17,18 @@ pub enum Value<'a> {
     Operand(&'a ir::Operand<'a>),
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum VarType {
+    /// Type for integer values, with a fixed number of bits.
+    I(u16),
+    /// Type for floating point values, with a fixed number of bits.
+    F(u16),
+    /// Pointer type of the given memory space.
+    Ptr,
+}
+
 /// Assign names to variables.
-pub trait Namer {
+pub trait Namer  {
     /// Provides a name for a variable of the given type.
     fn name(&mut self, t: Type) -> String;
     /// Generates a name for a parameter.
@@ -27,6 +37,8 @@ pub trait Namer {
     fn name_float(&self, &Ratio<BigInt>, u16) -> String;
     /// Provides a name for an integer constant.
     fn name_int(&self, &BigInt, u16) -> String;
+    /// Returns an iterator on tuples (type t, number of declared variables of type t)
+    fn get_declared_variables(&self) -> Vec<(VarType, usize)>;
 }
 
 /// Maps variables to names.
@@ -334,5 +346,9 @@ impl<'a, 'b> NameMap<'a, 'b> {
     /// Sets the predicate to use in front of side-effect instruction.
     pub fn set_side_effect_guard(&mut self, guard: Option<RcStr>) {
         self.side_effect_guard = guard;
+    }
+
+    pub fn get_declared_variables(&self) -> Vec<(VarType, usize)> {
+        self.namer.borrow().get_declared_variables()
     }
 }

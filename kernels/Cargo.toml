@@ -23,10 +23,14 @@ path = "../"
 [dependencies.telamon-utils]
 path = "../telamon-utils"
 
+
 [features]
 cuda = [
     "telamon/cuda",
     "cuda-sys",
+]
+mppa = [
+    "telamon/mppa",
 ]
 
 [[bench]]

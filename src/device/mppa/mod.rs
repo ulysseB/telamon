@@ -13,33 +13,46 @@ pub use self::context::Context;
 pub use self::mppa::Mppa;
 pub use self::printer::MppaPrinter;
 
-use codegen;
+use codegen::{self, VarType};
 use ir;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::ToPrimitive;
 use utils::*;
+use itertools::Itertools;
 
 #[derive(Default)]
 pub struct Namer {
-    num_var: HashMap<ir::Type, usize>,
+    num_var: HashMap<VarType, usize>,
     num_sizes: usize,
-    num_glob_ptr: usize,
 }
 
 impl Namer {
-    /// Generate a variable name prefix from a type.
-    fn gen_prefix(t: &ir::Type) -> &'static str {
-        match *t {
-            ir::Type::I(1) => "p",
-            ir::Type::I(8) => "c",
-            ir::Type::I(16) => "s",
-            ir::Type::I(32) => "r",
-            ir::Type::I(64) => "rd",
-            ir::Type::F(16) => "h",
-            ir::Type::F(32) => "f",
-            ir::Type::F(64) => "d",
-            ir::Type::PtrTo(..) =>  "ptr",
+    pub fn gen_prefix(t: VarType) -> &'static str {
+        match t {
+            VarType::I(1) => "p",
+            VarType::I(8) => "c",
+            VarType::I(16) => "s",
+            VarType::I(32) => "r",
+            VarType::I(64) => "rd",
+            VarType::F(16) => "h",
+            VarType::F(32) => "f",
+            VarType::F(64) => "d",
+            VarType::Ptr =>  "ptr",
+            _ => panic!("invalid CPU type"),
+        }
+    }
+
+    pub fn get_string(t: VarType) -> &'static str {
+        match t {
+            VarType::Ptr => "intptr_t",
+            VarType::F(32) => "float",
+            VarType::F(64) => "double",
+            VarType::I(1) => "int8_t",
+            VarType::I(8) => "int8_t",
+            VarType::I(16) => "int16_t",
+            VarType::I(32) => "int32_t",
+            VarType::I(64) => "int64_t",
             _ => panic!("invalid CPU type"),
         }
     }
@@ -47,20 +60,17 @@ impl Namer {
 
 impl codegen::Namer for Namer {
     fn name(&mut self, t: ir::Type) -> String {
-        let prefix = Namer::gen_prefix(&t);
-        match t {
-            ir::Type::PtrTo(..) => {
-                let name = format!("{}{}", prefix, self.num_glob_ptr);
-                self.num_glob_ptr += 1;
-                name
-            }
-            _ => {
-                let entry = self.num_var.entry(t).or_insert(0);
-                let name = format!("{}{}", prefix, *entry);
-                *entry += 1;
-                name
-            }
-        }
+        let cpu_t = match t {
+            ir::Type::Void => panic!("Should not get Void here"),
+            ir::Type::I(size) => VarType::I(size),
+            ir::Type::F(size) => VarType::F(size),
+            ir::Type::PtrTo(..) => VarType::Ptr,
+        };
+        let prefix = Namer::gen_prefix(cpu_t);
+        let entry = self.num_var.entry(cpu_t).or_insert(0);
+        let name = format!("{}{}", prefix, *entry);
+        *entry += 1;
+        name
     }
 
     fn name_float(&self, val: &Ratio<BigInt>, len: u16) -> String {
@@ -83,5 +93,8 @@ impl codegen::Namer for Namer {
                 format!("_size_{}", self.num_sizes-1)
             },
         }
+    }
+    fn get_declared_variables(&self) -> Vec<(VarType, usize)> {
+        self.num_var.iter().map(|(&t, &n)| (t, n)).collect_vec()
     }
 }

@@ -44,8 +44,7 @@ pub trait Printer {
 
     /// Print return_id = mlhs * mrhs + arhs
     fn print_mad(&mut self, ret_type: Type, round: op::Rounding, mul_mode: MulMode, return_id: &str,  mlhs: &str, mrhs: &str, arhs: &str);
-
-    /// Print return_id = op 
+/// Print return_id = op 
     fn print_mov(&mut self, return_type: Type, return_id: &str, op: &str);
 
     /// Print return_id = load [addr] 

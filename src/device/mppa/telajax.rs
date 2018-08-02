@@ -115,7 +115,7 @@ impl Device {
     }
 
     /// Executes a `Kernel`.
-    pub fn execute_kernel(&self, kernel: &Kernel) {
+    pub fn execute_kernel(&self, kernel: &mut Kernel) {
         unsafe {
             let mut event: Event = std::mem::uninitialized();
             assert_eq!(telajax_kernel_enqueue(&mut kernel.0 as *mut _, &self.inner as *const _ as *mut _, &mut event.0), 0);
@@ -151,7 +151,9 @@ impl Device {
         let wait_n = wait_events.len() as libc::c_uint;
         let wait_ptr = wait_events.as_ptr() as *const event_t;
         unsafe {
-            let mut event: Event = std::mem::uninitialized();
+            let event_ptr: *mut _cl_event = std::mem::uninitialized();
+            let mut event = Event::new(event_ptr);
+            //let mut event = Event::new(std::mem::uninitialized() as *mut _cl_event);
             let res = telajax_device_mem_write(
                 &self.inner as *const _ as *mut _, mem.ptr, data_ptr, size, wait_n, wait_ptr, &mut event.0);
             assert_eq!(res, 0);
@@ -302,6 +304,12 @@ impl Drop for Mem {
 /// An event triggered at the end of a memory operation or kernel execution.
 #[repr(C)]
 pub struct Event(*mut _cl_event);
+
+impl Event {
+    fn new(ev_ptr : *mut _cl_event) -> Self {
+        Event(ev_ptr)
+    }
+}
 
 impl Drop for Event {
     fn drop(&mut self) {

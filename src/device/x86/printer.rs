@@ -29,23 +29,15 @@ impl X86printer {
 
     /// Declared all variables that have been required from the namer
     fn var_decls(&mut self, namer: &Namer) -> String {
-        let print_decl = |(&t, &n)| {
-            match t {
-                Type::PtrTo(..) => String::new(),
-                _ => {
-                    let prefix = Namer::gen_prefix(&t);
-                    let mut s = format!("{} ", Self::get_type(t));
-                    s.push_str(&(0..n).map(|i| format!("{}{}", prefix, i)).collect_vec().join(", "));
-                    s.push_str(";\n  ");
-                    s
-                }
-            }
+        let print_decl = |(&t, &n): (&VarType, &usize)| {
+            let prefix = Namer::gen_prefix(t);
+            let mut s = format!("{} ", Namer::get_string(t));
+            s.push_str(&(0..n).map(|i| format!("{}{}", prefix, i)).collect_vec().join(", "));
+            s.push_str(";\n  ");
+            s
         };
         let other_var_decl = namer.num_var.iter().map(print_decl).collect_vec().join("\n  ");
-        format!("intptr_t {};\n{}",
-            &(0..namer.num_glob_ptr).map( |i| format!("ptr{}", i)).collect_vec().join(", "),
-            other_var_decl,
-            )
+        other_var_decl
     }
 
     /// Declares block and thread indexes.
@@ -275,7 +267,6 @@ impl Printer for X86printer {
     fn get_type(t: Type) -> String {
         match t {
             Type::Void => String::from("void"),
-            //Type::PtrTo(..) => " uint8_t *",
             Type::PtrTo(..) => String::from("intptr_t"),
             Type::F(32) => String::from("float"),
             Type::F(64) => String::from("double"),

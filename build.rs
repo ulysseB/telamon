@@ -7,6 +7,8 @@ extern crate cmake;
 extern crate bindgen;
 
 use std::path::{PathBuf, Path};
+use std::fs;
+
 
 /// Orders to Cargo to link a library.
 fn add_lib(lib: &str) { println!("cargo:rustc-link-lib={}", lib); }
@@ -31,6 +33,13 @@ fn compile_and_link_telajax() {
         .build();
     println!("cargo:rustc-link-search={}", dst.join("lib64/").display());
     println!("cargo:rustc-link-search=/usr/local/k1tools/lib64/");
+}
+
+fn add_telajax_dependencies()  {
+    for f in fs::read_dir("telajax/src").unwrap() {
+        let filepath = format!("{}", f.unwrap().path().display());
+        add_dependency(&filepath);
+    }
 }
 
 fn bind_telajax() {
@@ -77,5 +86,6 @@ fn main() {
         bind_telajax();
         add_lib("telajax");
         add_lib("OpenCL");
+        add_telajax_dependencies();
     }
 }

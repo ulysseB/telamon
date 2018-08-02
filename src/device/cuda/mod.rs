@@ -75,4 +75,7 @@ impl codegen::Namer for Namer {
             },
         }
     }
+    fn get_declared_variables(&self) -> Vec<(ir::Type, usize)> {
+        unimplemented!()
+    }
 }
