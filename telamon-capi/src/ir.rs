@@ -3,51 +3,11 @@ use Device;
 use libc;
 use num::rational::Ratio;
 use std;
-use std::cell::RefCell;
 use telamon::ir;
 
 pub use telamon::ir::op::Rounding;
 
-thread_local! {
-    static ERROR: RefCell<Option<ir::Error>> = RefCell::new(None);
-}
-
-/// Indicates if a telamon function exited correctly.
-#[repr(C)]
-pub enum TelamonStatus { TelamonStatusOk, TelamonStatusFail }
-
-/// Helper macro that unwraps a result. Exits with `$error` and sets the global `ERROR`
-/// variable when an error is encountered.
-///
-/// When no value is specified for `$error`, returns with `TELAMON_STATUS_FAIL`. When `null` is
-/// specified instead, exits with a null mutable pointer.
-macro_rules! unwrap_or_exit {
-    ($result:expr) => { unwrap_or_exit!($result, TelamonStatus::TelamonStatusOk) };
-    ($result:expr, null) => { unwrap_or_exit!($result, std::ptr::null_mut()) };
-    ($result:expr, $error:expr) => {
-        match $result {
-            Ok(data) => data,
-            Err(error) => {
-                ERROR.with(|error_var| {
-                    *error_var.borrow_mut() = Some(error.into());
-                });
-                return $error
-            }
-        }
-    };
-}
-
-/// Prints the error message in a string. Returns `null` if no error was present. The
-/// caller is responsible for freeing the string with `free`.
-#[no_mangle]
-pub unsafe extern "C" fn telamon_ir_strerror() -> *mut libc::c_char {
-    ERROR.with(|error| {
-        error.borrow().as_ref().map(|error| {
-            let string = unwrap!(std::ffi::CString::new(error.to_string()));
-            libc::strdup(string.as_ptr())
-        }).unwrap_or(std::ptr::null_mut())
-    })
-}
+use super::error::TelamonStatus;
 
 /// Creates a function signature that must be deallocated with
 /// `telamon_ir_signature_free`.
@@ -119,7 +79,14 @@ pub unsafe extern "C" fn telamon_ir_type_free(t: *mut ir::Type) {
 
 /// Opaque type that abstracts away the lifetime parameter of `ir::Function` so that
 /// cbindgen generates the bindings.
+#[derive(Clone)]
 pub struct Function(ir::Function<'static, ()>);
+
+impl Into<ir::Function<'static, ()>> for Function {
+    fn into(self) -> ir::Function<'static, ()> {
+        self.0
+    }
+}
 
 /// Creates a function to optimize. The function must be freed with
 /// `telamon_ir_function_free`. `signature` and `device` must outlive the function.

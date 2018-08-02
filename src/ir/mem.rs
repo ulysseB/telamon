@@ -7,9 +7,15 @@ use utils::*;
 /// Uniquely identifies a block.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 #[repr(C)]
-pub enum MemId { Internal(u32), External(u32) }
+pub enum MemId {
+    /// cbindgen:field-names=[id]
+    Internal(u32),
+    /// cbindgen:field-names=[id]
+    External(u32),
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+/// cbindgen:field-names=[id]
 pub struct InternalId(pub u32);
 
 impl Into<usize> for InternalId {

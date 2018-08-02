@@ -40,6 +40,50 @@ typedef enum {
 } DeviceId;
 
 /*
+ * Indicates how to choose between nodes of the search tree when no children have been
+ * evaluated.
+ */
+typedef enum {
+    /*
+     * Consider the nodes in the order given by the search space API.
+     */
+    Api,
+    /*
+     * Consider the nodes in a random order.
+     */
+    Random,
+    /*
+     * Consider the nodes with the lowest bound first.
+     */
+    Bound,
+    /*
+     * Consider the nodes with a probability proportional to the distance between the
+     * cut and the bound.
+     */
+    WeightedRandom,
+} NewNodeOrder;
+
+/*
+ * Indicates how to choose between nodes of the search tree with at least one descendent
+ * evaluated.
+ */
+typedef enum {
+    /*
+     * Use the weights from the bandit algorithm.
+     */
+    Bandit,
+    /*
+     * Take the candidate with the best bound.
+     */
+    Bound,
+    /*
+     * Consider the nodes with a probability proportional to the distance between the
+     * cut and the bound.
+     */
+    WeightedRandom,
+} OldNodeOrder;
+
+/*
  * The rounding mode of an arithmetic operation.
  */
 typedef enum {
@@ -74,8 +118,13 @@ typedef enum {
 } TelamonStatus;
 
 /*
- * Description of the evaluation context. In particular, in contains the mapping between
- * argument names and argument values.
+ * Provides a unique identifer for a basic block.
+ */
+typedef struct BBId BBId;
+
+/*
+ * Description of the evaluation context. In particular, in contains the
+ * mapping between argument names and argument values.
  */
 typedef struct Context Context;
 
@@ -94,6 +143,8 @@ typedef struct Device Device;
  */
 typedef struct Function Function;
 
+typedef struct InternalId InternalId;
+
 /*
  * Supported kernels.
  */
@@ -111,10 +162,21 @@ typedef struct Operand Operand;
  */
 typedef struct Operator Operator;
 
+typedef struct Option_f64 Option_f64;
+
+typedef struct Option_u64 Option_u64;
+
+typedef struct Option_usize Option_usize;
+
 /*
  * Represents an argument of a function.
  */
 typedef struct Parameter Parameter;
+
+/*
+ * A partially specified implementation.
+ */
+typedef struct SearchSpace SearchSpace;
 
 /*
  * Holds the signature of a function.
@@ -128,23 +190,121 @@ typedef struct Signature Signature;
  */
 typedef struct Size Size;
 
+typedef struct String String;
+
 /*
  * Values and intructions types.
  */
 typedef struct Type Type;
 
 /*
+ * Configuration parameters specific to the multi-armed bandit algorithm.
+ */
+typedef struct {
+    /*
+     * Indicates how to select between nodes of the search tree when none of their
+     * children have been evaluated.
+     */
+    NewNodeOrder new_nodes_order;
+    /*
+     * Indicates how to choose between nodes with at least one children evaluated.
+     */
+    OldNodeOrder old_nodes_order;
+    /*
+     * The number of best execution times to remember.
+     */
+    uintptr_t threshold;
+    /*
+     * The biggest delta is, the more focused on the previous best candidates the
+     * exploration is.
+     */
+    double delta;
+    /*
+     * If true, does not expand tree until end - instead, starts a montecarlo descend after each
+     * expansion of a node
+     */
+    bool monte_carlo;
+} BanditConfig;
+
+/*
+ * Exploration algorithm to use.
+ */
+typedef enum {
+    /*
+     * Evaluate all the candidates that cannot be pruned.
+     */
+    BoundOrder,
+    /*
+     * Use a multi-armed bandit algorithm.
+     */
+    MultiArmedBandit,
+} SearchAlgorithm_Tag;
+
+typedef struct {
+    BanditConfig _0;
+} MultiArmedBandit_Body;
+
+typedef struct {
+    SearchAlgorithm_Tag tag;
+    union {
+        MultiArmedBandit_Body multi_armed_bandit;
+    };
+} SearchAlgorithm;
+
+/*
+ * Stores the configuration of the exploration.
+ */
+typedef struct {
+    /*
+     * Name of the file in wich to store the logs.
+     */
+    String log_file;
+    /*
+     * Name of the file in which to store the binary event log.
+     */
+    String event_log;
+    /*
+     * Number of exploration threads.
+     */
+    uintptr_t num_workers;
+    /*
+     * Indicates the search must be stopped if a candidate with an execution time better
+     * than the bound (in ns) is found.
+     */
+    Option_f64 stop_bound;
+    /*
+     * Indicates the search must be stopped after the given number of minutes.
+     */
+    Option_u64 timeout;
+    /*
+     * Indicates the search must be stopped after the given number of
+     * candidates have been evaluated.
+     */
+    Option_usize max_evaluations;
+    /*
+     * A percentage cut indicate that we only care to find a candidate that is in a
+     * certain range above the best Therefore, if cut_under is 20%, we can discard any
+     * candidate whose bound is above 80% of the current best.
+     */
+    Option_f64 distance_to_best;
+    /*
+     * Exploration algorithm to use. Needs to be last for TOML serialization, because it is a table.
+     */
+    SearchAlgorithm algorithm;
+} Config;
+
+/*
  * Provides a unique identifier for iteration dimensions.
  */
 typedef struct {
-    uint32_t _0;
+    uint32_t id;
 } DimId;
 
 /*
  * Uniquely identifies an instruction.
  */
 typedef struct {
-    uint32_t _0;
+    uint32_t id;
 } InstId;
 
 /*
@@ -156,11 +316,11 @@ typedef enum {
 } MemId_Tag;
 
 typedef struct {
-    uint32_t _0;
+    uint32_t id;
 } Internal_Body;
 
 typedef struct {
-    uint32_t _0;
+    uint32_t id;
 } External_Body;
 
 typedef struct {
@@ -170,6 +330,225 @@ typedef struct {
         External_Body external;
     };
 } MemId;
+
+typedef struct {
+    uint8_t bits;
+} Bool;
+
+/*
+ * Specifies how iteration dimensions are implemented.
+ */
+typedef struct {
+    uint8_t bits;
+} DimKind;
+
+/*
+ * Indicates where a memory block is located.
+ */
+typedef struct {
+    uint8_t bits;
+} MemSpace;
+
+/*
+ * Specifies the version of an instruction to use.
+ */
+typedef struct {
+    uint8_t bits;
+} InstFlag;
+
+/*
+ * Defines how two basic blocks are ordered.
+ */
+typedef struct {
+    uint8_t bits;
+} Order;
+
+/*
+ * Specifies the valid mappings between two dimensions.
+ */
+typedef struct {
+    uint8_t bits;
+} DimMapping;
+
+/*
+ * Indicates how are thread dimensions mapped on the GPU.
+ */
+typedef struct {
+    uint8_t bits;
+} ThreadMapping;
+
+/*
+ * Abstracts integer choices by a range, but only store `min`.
+ */
+typedef struct {
+    uint32_t min;
+} HalfRange;
+
+/*
+ * Abstracts integer choices by a range.
+ */
+typedef struct {
+    uint32_t min;
+    uint32_t max;
+} Range;
+
+/*
+ * A decision to apply to the domain.
+ */
+typedef enum {
+    IsIterationDim,
+    IsThreadDim,
+    DimKind,
+    MemSpace,
+    InstFlag,
+    Order,
+    DimMapping,
+    ThreadMapping,
+    NumThreads,
+    NumThreadDims,
+    IncrementUnrollFactor,
+    UnrollFactor,
+    IncrementNumBlockDims,
+    NumBlockDims,
+    NumNestedInst,
+    IncrementMemSize,
+    MemSize,
+    SharedMemUsed,
+    IsIterationDimClassCounter,
+    IsThreadDimClassCounter,
+} Action_Tag;
+
+typedef struct {
+    InstId inst;
+    DimId dim;
+    Bool domain;
+} IsIterationDim_Body;
+
+typedef struct {
+    DimId dim;
+    Bool domain;
+} IsThreadDim_Body;
+
+typedef struct {
+    DimId dim;
+    DimKind domain;
+} DimKind_Body;
+
+typedef struct {
+    MemId mem;
+    MemSpace domain;
+} MemSpace_Body;
+
+typedef struct {
+    InstId inst;
+    InstFlag domain;
+} InstFlag_Body;
+
+typedef struct {
+    BBId lhs;
+    BBId rhs;
+    Order domain;
+} Order_Body;
+
+typedef struct {
+    DimId lhs;
+    DimId rhs;
+    DimMapping domain;
+} DimMapping_Body;
+
+typedef struct {
+    DimId lhs;
+    DimId rhs;
+    ThreadMapping domain;
+} ThreadMapping_Body;
+
+typedef struct {
+    HalfRange domain;
+} NumThreads_Body;
+
+typedef struct {
+    HalfRange domain;
+} NumThreadDims_Body;
+
+typedef struct {
+    InstId inst;
+    DimId dim;
+    Bool domain;
+} IncrementUnrollFactor_Body;
+
+typedef struct {
+    InstId inst;
+    HalfRange domain;
+} UnrollFactor_Body;
+
+typedef struct {
+    InstId inst;
+    DimId dim;
+    Bool domain;
+} IncrementNumBlockDims_Body;
+
+typedef struct {
+    InstId inst;
+    HalfRange domain;
+} NumBlockDims_Body;
+
+typedef struct {
+    DimId dim;
+    HalfRange domain;
+} NumNestedInst_Body;
+
+typedef struct {
+    InternalId mem;
+    DimId lhs;
+    DimId rhs;
+    Bool domain;
+} IncrementMemSize_Body;
+
+typedef struct {
+    InternalId mem;
+    HalfRange domain;
+} MemSize_Body;
+
+typedef struct {
+    HalfRange domain;
+} SharedMemUsed_Body;
+
+typedef struct {
+    InstId inst;
+    DimId dim;
+    Range domain;
+} IsIterationDimClassCounter_Body;
+
+typedef struct {
+    DimId dim;
+    Range domain;
+} IsThreadDimClassCounter_Body;
+
+typedef struct {
+    Action_Tag tag;
+    union {
+        IsIterationDim_Body is_iteration_dim;
+        IsThreadDim_Body is_thread_dim;
+        DimKind_Body dim_kind;
+        MemSpace_Body mem_space;
+        InstFlag_Body inst_flag;
+        Order_Body order;
+        DimMapping_Body dim_mapping;
+        ThreadMapping_Body thread_mapping;
+        NumThreads_Body num_threads;
+        NumThreadDims_Body num_thread_dims;
+        IncrementUnrollFactor_Body increment_unroll_factor;
+        UnrollFactor_Body unroll_factor;
+        IncrementNumBlockDims_Body increment_num_block_dims;
+        NumBlockDims_Body num_block_dims;
+        NumNestedInst_Body num_nested_inst;
+        IncrementMemSize_Body increment_mem_size;
+        MemSize_Body mem_size;
+        SharedMemUsed_Body shared_mem_used;
+        IsIterationDimClassCounter_Body is_iteration_dim_class_counter;
+        IsThreadDimClassCounter_Body is_thread_dim_class_counter;
+    };
+} Action;
 
 /*
  * Initializes the logger.
@@ -213,6 +592,20 @@ bool kernel_optimize(KernelParameters *params,
                      DeviceId device,
                      const char *config_data,
                      size_t config_len);
+
+/*
+ * Frees an explorer configuration.
+ */
+TelamonStatus telamon_config_free(Config *config);
+
+/*
+ * Allocate a new explorer configuration object with suitable
+ * defaults.
+ *
+ * The resulting config object must be freed using
+ * `telamon_config_free`.
+ */
+Config *telamon_config_new(void);
 
 /*
  * Allocates and binds an array to the given parameter. `size` is given in bytes.
@@ -272,6 +665,25 @@ const Context *telamon_cuda_get_context(const CudaEnvironment *env);
  * Returns a pointer to the description of the target device.
  */
 const Device *telamon_cuda_get_device(const CudaEnvironment *env);
+
+/*
+ * Run the exploration according to the configuration.
+ *
+ * Does not take ownership of any of its arguments. The caller is
+ * responsible for freeing them after `telamon_explore_all` returns.
+ *
+ * # Safety
+ *
+ * * `config` and `context` must point to valid objects of their
+ * respective types.
+ * * `num_search_spaces` must be non-zero.
+ * * `search_space` must point to a sequence of at least
+ * `num_search_spaces` valid `SearchSpace` objects.
+ */
+SearchSpace *telamon_explore(const Config *config,
+                             const Context *context,
+                             uintptr_t num_search_spaces,
+                             const SearchSpace *search_space);
 
 /*
  * Adds a dimension of the given size to the function. Takes ownership of `size` and
@@ -469,12 +881,6 @@ Size *telamon_ir_size_new(uint32_t const_factor,
                           uintptr_t num_params);
 
 /*
- * Prints the error message in a string. Returns `null` if no error was present. The
- * caller is responsible for freeing the string with `free`.
- */
-char *telamon_ir_strerror(void);
-
-/*
  * Frees a type allocated with `telamon_ir_type_new_int` or `telamon_ir_type_new_float`.
  */
 void telamon_ir_type_free(Type *t);
@@ -488,5 +894,66 @@ Type *telamon_ir_type_new_float(uint16_t num_bits);
  * Creates an integer type that must be freed with `telamon_ir_type_free`.
  */
 Type *telamon_ir_type_new_int(uint16_t num_bits);
+
+/*
+ * Apply a sequence of actions to a search space.
+ *
+ * # Safety
+ *
+ * * `search_space` must be a valid pointer containing a valid
+ * `SearchSpace` value.
+ * * `num_actions` must be non-zero.
+ * * `actions` must point to a sequence of at least `num_actions`
+ * valid `Action` values.
+ */
+TelamonStatus telamon_search_space_apply(SearchSpace *search_space,
+                                         uintptr_t num_actions,
+                                         const Action *actions);
+
+/*
+ * Frees a search space instance allocated through
+ * `telamon_search_space_new`.
+ *
+ * # Safety
+ *
+ * `search_space` must point to a `SearchSpace` object created by
+ * `telamon_search_space_new` which has not yet been freed.
+ */
+TelamonStatus telamon_search_space_free(SearchSpace *search_space);
+
+/*
+ * Creates a new search space from an IR function. The caller stays
+ * is responsible for freeing the instance and action pointers; the
+ * created search space does not keep references to them.
+ *
+ * Must be freed using `telamon_search_space_free`.
+ *
+ * # Safety
+ *
+ * * `ir_instance` must point to a valid `Function` value.
+ * * `actions` must point to a sequence of at least `num_actions`
+ * valid `Action` values, unless `num_actions` is 0 in which case
+ * `actions` is not used.
+ */
+SearchSpace *telamon_search_space_new(const Function *ir_instance,
+                                      uintptr_t num_actions,
+                                      const Action *actions);
+
+/*
+ * Prints the error message in a string. Returns `null` if no error was
+ * present. The caller is responsible for freeing the string with `free`.
+ */
+char *telamon_strerror(void);
+
+/*
+ * Copy a C string pointer into a Rust String object. Use this to set
+ * string-valued configuration options.
+ *
+ * # Safety
+ *
+ * `dst` must point to a valid Rust String object and `src` must
+ * point to a NULL-terminated C string.
+ */
+TelamonStatus telamon_string_copy(String *dst, const char *src);
 
 #endif /* TELAMON_CAPI_H */

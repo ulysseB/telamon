@@ -1,7 +1,9 @@
 /// A decision to apply to the domain.
 #[derive(PartialEq, Eq, Debug, Clone, Copy, Serialize, Deserialize)]
+#[repr(C)]
 pub enum Action {
     {{~#each choices}}
+        /// cbindgen:field-names=[{{~#each arguments}}{{this.[0]}}, {{/each~}}domain]
         {{to_type_name name}}(
         {{~#each arguments}}{{this.[1].def.keys.IdType}},{{/each~}}
         {{>value_type.name value_type}}),
