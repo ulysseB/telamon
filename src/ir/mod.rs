@@ -51,6 +51,7 @@ pub mod prelude {
 pub struct NewObjs {
     pub instructions: Vec<InstId>,
     pub dimensions: Vec<DimId>,
+    pub static_dims: Vec<DimId>,
     pub basic_blocks: Vec<BBId>,
     pub mem_blocks: Vec<MemId>,
     pub internal_mem_blocks: Vec<mem::InternalId>,
@@ -77,6 +78,7 @@ impl NewObjs {
     pub fn add_dimension(&mut self, dim: &Dimension) {
         self.add_bb(dim);
         self.dimensions.push(dim.id());
+        if dim.possible_sizes().is_some() { self.static_dims.push(dim.id()); }
         if dim.is_thread_dim() { self.add_thread_dim(dim.id()); }
     }
 

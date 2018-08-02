@@ -15,8 +15,9 @@ impl fmt::Display for DimId {
 /// Represents an iteration dimension.
 #[derive(Clone, Debug)]
 pub struct Dimension<'a> {
-    size: ir::Size<'a>,
     id: DimId,
+    size: ir::Size<'a>,
+    possible_sizes: Vec<u32>,
     iterated: Vec<ir::InstId>,
     is_thread_dim: bool,
 }
@@ -24,11 +25,14 @@ pub struct Dimension<'a> {
 impl<'a> Dimension<'a> {
     /// Creates a new dimension.
     pub fn new(size: ir::Size, id: DimId) -> Result<Dimension, ir::Error> {
-        if size.as_int().map(|i| i <= 1).unwrap_or(false) {
-            return Err(ir::Error::InvalidDimSize);
-        }
+        let possible_sizes = if let Some(size) = size.as_int() {
+            if size == 1 { return Err(ir::Error::InvalidDimSize); }
+            vec![size]
+        } else {
+            vec![]
+        };
         Ok(Dimension {
-            size, id,
+            size, id, possible_sizes,
             iterated: Vec::new(),
             is_thread_dim: false,
         })
@@ -36,6 +40,11 @@ impl<'a> Dimension<'a> {
 
     /// Retruns the size of the dimension.
     pub fn size(&self) -> &ir::Size<'a> { &self.size }
+
+    /// Returns the values the size can take, if it is statically known.
+    pub fn possible_sizes(&self) -> Option<&[u32]> {
+        if self.possible_sizes.is_empty() { None } else { Some(&self.possible_sizes) }
+    }
 
     /// Returns the id of the dimension.
     pub fn id(&self) -> DimId { self.id }

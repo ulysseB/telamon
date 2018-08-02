@@ -53,10 +53,10 @@ impl<'a> Cfg<'a> {
                 Box::new(levels) as Box<Iterator<Item=_>>
             }
             Cfg::Root(ref body) =>
-                Box::new(body.iter().flat_map(|c| c.induction_levels())), 
+                Box::new(body.iter().flat_map(|c| c.induction_levels())),
             Cfg::Loop(ref dim, ref body) =>
                 Box::new(body.iter().flat_map(|c| c.induction_levels())
-                         .chain(dim.induction_levels())), 
+                         .chain(dim.induction_levels())),
             Cfg::Instruction(..) => Box::new(std::iter::empty())
         }
     }

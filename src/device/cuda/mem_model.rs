@@ -165,6 +165,9 @@ fn external_thread_dims<'a>(inst: &'a ir::Instruction, space: &'a SearchSpace)
 {
     space.ir_instance().thread_dims().flat_map(move |dim| {
         let is_mapped = inst.iteration_dims().iter().map(|&other| {
+            if space.ir_instance().dim(other).possible_sizes().is_none() {
+                return Trivalent::False;
+            }
             if dim.id() == other { return Trivalent::True; }
             let mapping = space.domain().get_thread_mapping(dim.id(), other);
             mapping.is(ThreadMapping::MAPPED)
@@ -181,7 +184,7 @@ fn external_thread_dims<'a>(inst: &'a ir::Instruction, space: &'a SearchSpace)
 /// respect dependencies since we don't know the exact order and it would be too costly to
 /// explore all of them (exponential). Instead we compute the minimal number of inner
 /// thread dimension for each dimension and ensure this amount is respected.
-/// 
+///
 /// Because we only support tensor accesses, bigger strides are multiples of smaller
 /// strides. Thus smaller stride will lead to less replays.
 fn sort_thread_dims(dims: Vec<ThreadDimInfo>,
