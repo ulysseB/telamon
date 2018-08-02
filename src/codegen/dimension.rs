@@ -9,15 +9,15 @@ use utils::*;
 #[derive(Debug)]
 pub struct Dimension<'a> {
     kind: DimKind,
-    representant: ir::dim::Id,
-    other_dims: Vec<ir::dim::Id>,
+    representant: ir::DimId,
+    other_dims: Vec<ir::DimId>,
     induction_levels: Vec<InductionLevel<'a>>,
     size: codegen::Size<'a>,
 }
 
 impl<'a> Dimension<'a> {
     /// Returns the ID of the representant.
-    pub fn id(&self) -> ir::dim::Id { self.representant }
+    pub fn id(&self) -> ir::DimId { self.representant }
 
     /// Returns the kind of the dimension.
     pub fn kind(&self) -> DimKind { self.kind }
@@ -26,7 +26,7 @@ impl<'a> Dimension<'a> {
     pub fn size(&self) -> &codegen::Size<'a> { &self.size }
 
     /// Returns the ids of the `ir::Dimensions` represented by this dimension.
-    pub fn dim_ids(&self) -> impl Iterator<Item=ir::dim::Id> {
+    pub fn dim_ids(&self) -> impl Iterator<Item=ir::DimId> {
         std::iter::once(self.representant).chain(self.other_dims.clone())
     }
 
@@ -106,7 +106,7 @@ pub fn group_merged_dimensions<'a>(space: &'a SearchSpace<'a>) -> Vec<Dimension<
 #[derive(Debug)]
 pub struct InductionLevel<'a> {
     pub ind_var: ir::IndVarId,
-    pub increment: Option<(ir::dim::Id, codegen::Size<'a>)>,
+    pub increment: Option<(ir::DimId, codegen::Size<'a>)>,
     pub base: InductionVarValue<'a>,
 }
 
@@ -144,7 +144,7 @@ impl<'a> InductionVar<'a> {
 #[derive(Debug)]
 pub struct InductionVarValue<'a> {
     ind_var: ir::IndVarId,
-    outer_level: Option<ir::dim::Id>,
+    outer_level: Option<ir::DimId>,
     operand: Option<&'a ir::Operand<'a>>,
     t: ir::Type,
 }
@@ -177,7 +177,7 @@ impl<'a> InductionVarValue<'a> {
 
     /// Return the current value so it can be used by a level and point the new level
     /// instead. Keep the operand if the level doesn't uses it.
-    fn apply_level(&mut self, level: ir::dim::Id, use_operand: bool) -> Self {
+    fn apply_level(&mut self, level: ir::DimId, use_operand: bool) -> Self {
         use std::mem::replace;
         InductionVarValue {
             outer_level: replace(&mut self.outer_level, Some(level)),
@@ -238,7 +238,7 @@ pub fn register_induction_vars<'a>(dims: &mut Vec<Dimension<'a>>,
     (ind_vars, precomputed_levels)
 }
 
-type IndVarIncrement<'a> = (ir::dim::Id, codegen::Size<'a>);
+type IndVarIncrement<'a> = (ir::DimId, codegen::Size<'a>);
 
 /// Retrieves the list of induction levels that can be computed at the beginning of the
 /// thread and the induction levels that are updated during loops. Both lists are sorted
@@ -256,7 +256,7 @@ fn get_ind_var_levels<'a>(ind_var: &'a ir::InductionVar<'a>, space: &SearchSpace
             x => panic!("unspecified dim kind {:?}", x),
         }
     }
-    let cmp =  |lhs: ir::dim::Id, rhs: ir::dim::Id| {
+    let cmp =  |lhs: ir::DimId, rhs: ir::DimId| {
         if lhs == rhs { return std::cmp::Ordering::Equal; }
         match space.domain().get_order(lhs.into(), rhs.into()) {
             Order::INNER => std::cmp::Ordering::Greater,

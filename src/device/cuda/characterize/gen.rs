@@ -14,14 +14,14 @@ use utils::*;
 
 /// Generates a function base with the given arguments.
 pub fn base(params: &[(&str, ir::Type)], arrays: &[&str])
-    -> (Signature, Vec<ir::mem::Id>)
+    -> (Signature, Vec<ir::MemId>)
 {
     let mut p = params.iter().map(|&(name, t)| {
         ir::Parameter { name: name.to_string(), t }
     }).collect_vec();
     let mut mem_blocks = 0;
     let mem_ids = arrays.iter().map(|name| {
-        let id = ir::mem::Id::External(mem_blocks);
+        let id = ir::MemId::External(mem_blocks);
         mem_blocks += 1;
         p.push(ir::Parameter { name: name.to_string(), t: ir::Type::PtrTo(id) });
         id
@@ -61,7 +61,7 @@ pub fn two_empty_loops<'a>(base: &'a Signature, device: &'a Device,
 /// Generates a kernel with chained adds in a loop.
 pub fn loop_chained_adds<'a>(base: &'a Signature, device: &'a Device,
                              size: &str, chained: u32,
-                             out: &str, out_id: ir::mem::Id) -> SearchSpace<'a> {
+                             out: &str, out_id: ir::MemId) -> SearchSpace<'a> {
     let mut builder = Builder::new(base, device);
     let init = builder.mov(&0f32);
     let loop_size = builder.param_size(size);
@@ -102,7 +102,7 @@ pub fn inst_chain<'a, T>(signature: &'a Signature, device: &'a Device,
     builder.order(&d0, &d1, Order::OUTER);
     builder.close_dim(&d0);
     builder.close_dim(&d1);
-    let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
+    let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
     builder.st_ex(&out, &acc, true, pattern, InstFlag::MEM_CS);
     builder.get()
 }
@@ -110,7 +110,7 @@ pub fn inst_chain<'a, T>(signature: &'a Signature, device: &'a Device,
 /// Generates a function that initializes an array with addresses pointing to the same
 /// array, `stride` cells further.
 pub fn init_stride_array<'a>(signature: &'a Signature, device: &'a Device,
-                             mem_id: ir::mem::Id, array: &str, n: u32, stride: i32
+                             mem_id: ir::MemId, array: &str, n: u32, stride: i32
                             ) -> SearchSpace<'a> {
     let byte_stride = stride * 8;
     let mut builder = Builder::new(signature, device);
@@ -136,7 +136,7 @@ pub fn init_stride_array<'a>(signature: &'a Signature, device: &'a Device,
 #[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
 pub fn load_chain<'a>(signature: &'a Signature, device: &'a Device,
                       n_threads: u32, n_iter: &str, n_chained: u32,
-                      mem_id: ir::mem::Id, array: &str, out_id: ir::mem::Id, out: &str
+                      mem_id: ir::MemId, array: &str, out_id: ir::MemId, out: &str
                      ) -> SearchSpace<'a> {
     let mut builder = Builder::new(signature, device);
     let init = builder.mov(&array);
@@ -161,7 +161,7 @@ pub fn load_chain<'a>(signature: &'a Signature, device: &'a Device,
 /// Generates chained loads from shared memory.
 pub fn shared_load_chain<'a>(signature: &'a Signature, device: &'a Device,
                              n_iter: &str, n_chained: u32,
-                             array_size: u32, out_id: ir::mem::Id, out: &str
+                             array_size: u32, out_id: ir::MemId, out: &str
                             ) -> SearchSpace<'a> {
     let mut builder = Builder::new(signature, device);
     let array_dim_size = builder.cst_size(array_size);
@@ -197,8 +197,8 @@ pub fn shared_load_chain<'a>(signature: &'a Signature, device: &'a Device,
 #[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
 pub fn parallel_load<'a>(signature: &'a Signature, gpu: &'a Gpu, num_blocks: &str,
                          n: &str, n_chained: u32, n_unroll: u32, num_wraps: u32, stride: u32,
-                         mem_id: ir::mem::Id, array: &str,
-                         out_id: ir::mem::Id, out: &str) -> SearchSpace<'a> {
+                         mem_id: ir::MemId, array: &str,
+                         out_id: ir::MemId, out: &str) -> SearchSpace<'a> {
     assert!(stride*4 <= gpu.l1_cache_line);
     let mut builder = Builder::new(signature, gpu);
     let block_size = builder.param_size(num_blocks);
@@ -254,7 +254,7 @@ pub fn parallel_load<'a>(signature: &'a Signature, gpu: &'a Gpu, num_blocks: &st
 #[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
 pub fn parallel_store<'a>(signature: &'a Signature, gpu: &'a Gpu, num_blocks: &str,
                           n: &str, n_chained: u32, n_unroll: u32, num_wraps: u32, stride: u32,
-                          mem_id: ir::mem::Id, array: &str) -> SearchSpace<'a> {
+                          mem_id: ir::MemId, array: &str) -> SearchSpace<'a> {
     assert!(stride*4 <= gpu.l1_cache_line);
     let mut builder = Builder::new(signature, gpu);
     let block_size = builder.param_size(num_blocks);
@@ -318,7 +318,7 @@ pub fn syncthread<'a>(signature: &'a Signature, device: &'a Device,
 #[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
 pub fn chain_in_syncthread<'a>(signature: &'a Signature, device: &'a Device, n_iter: &str,
                                sync_chained: u32, add_chained: u32, wrap_size: u32,
-                               out: &str, out_id: ir::mem::Id) -> SearchSpace<'a> {
+                               out: &str, out_id: ir::MemId) -> SearchSpace<'a> {
     let mut builder = Builder::new(signature, device);
     let loop_size = builder.param_size(n_iter);
     let sync_unroll_size = builder.cst_size(sync_chained);
@@ -354,7 +354,7 @@ pub fn chain_in_syncthread<'a>(signature: &'a Signature, device: &'a Device, n_i
 
 /// Generates a global memory load in a loop.
 pub fn load_in_loop<'a>(signature: &'a Signature, device: &'a Device, threads: u32,
-                        out: &str, out_id: ir::mem::Id) -> SearchSpace<'a> {
+                        out: &str, out_id: ir::MemId) -> SearchSpace<'a> {
         let mut builder = Builder::new(signature, device);
         let size_4 = builder.cst_size(4);
         let tmp_mem_size = 4*4*threads;

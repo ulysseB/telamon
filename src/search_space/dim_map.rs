@@ -7,7 +7,7 @@ use itertools::Itertools;
 
 /// Lowers a layout
 pub fn lower_layout(fun: &mut ir::Function, mem: ir::mem::InternalId,
-                    st_dims: Vec<ir::dim::Id>, ld_dims: Vec<ir::dim::Id>,
+                    st_dims: Vec<ir::DimId>, ld_dims: Vec<ir::DimId>,
                     domain: &DomainStore) -> Result<Vec<Action>, ()> {
     debug!("lower_layout({:?}) triggered", mem);
     let mut actions = Vec::new();
@@ -60,7 +60,7 @@ fn lower_dim_map(fun: &mut ir::Function, inst: ir::InstId, operand: usize,
 }
 
 /// Trigger to call when two dimensions are not mapped.
-pub fn dim_not_mapped(lhs: ir::dim::Id, rhs: ir::dim::Id, fun: &mut ir::Function)
+pub fn dim_not_mapped(lhs: ir::DimId, rhs: ir::DimId, fun: &mut ir::Function)
     -> Result<(ir::NewObjs, Vec<Action>), ()>
 {
     debug!("dim_not_mapped({:?}, {:?}) triggered", lhs, rhs);
@@ -76,7 +76,7 @@ pub fn dim_not_mapped(lhs: ir::dim::Id, rhs: ir::dim::Id, fun: &mut ir::Function
 }
 
 /// Trigger to call when two dimensions are not merged.
-pub fn dim_not_merged(lhs: ir::dim::Id, rhs: ir::dim::Id, fun: &mut ir::Function)
+pub fn dim_not_merged(lhs: ir::DimId, rhs: ir::DimId, fun: &mut ir::Function)
     -> Result<(ir::NewObjs, Vec<Action>), ()>
 {
     debug!("dim_not_merged({:?}, {:?}) triggered", lhs, rhs);

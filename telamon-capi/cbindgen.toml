@@ -1,0 +1,17 @@
+autogen_warning = """/* DO NOT MODIFY THIS MANUALLY!
+ * This file has been generated usin cbindgen.
+ *
+ * To generate this file:
+ *  1. Get the latest cbindgen using `cargo install --force cbindgen --git https://github.com/Elarnon/cbindgen`
+ *  2. Run `rustup run nightly cbindgen telamon-capi -o telamon-capi/include/telamon.h`
+ */"""
+include_guard = "TELAMON_CAPI_H"
+language = "C"
+tab_width = 4
+
+[parse]
+parse_deps = true
+include = ["telamon"]
+
+[parse.expand]
+crates = ["telamon"]

@@ -6,6 +6,7 @@ use device::cuda::api::{self, Argument};
 use device::cuda::kernel::Thunk;
 use explorer;
 use ir;
+use itertools::{Itertools, process_results};
 use std;
 use std::f64;
 use std::sync::{atomic, mpsc, Arc};
@@ -16,6 +17,15 @@ use device::context::AsyncCallback;
 const EVAL_BUFFER_SIZE: usize = 100;
 // TODO(perf): enable optimizations when possible
 const JIT_OPT_LEVEL: usize = 2;
+
+/// Candidates with a runtime above `SKIP_THRESHOLD * cut` are skipped after the first
+/// evaluation.
+const SKIP_THRESHOLD: f64 = 3.;
+// FIXME: tune values + add a second threshold after a few iterations
+/// Number of evaluations of perform on each candidate.
+const NUM_EVALS: usize = 20;
+/// Number of outlier evaluations to discard.
+const NUM_OUTLIERS: usize = 4;
 
 /// A CUDA evaluation context.
 pub struct Context<'a> {
@@ -60,6 +70,40 @@ impl<'a> Context<'a> {
             EvalMode::FindBest | EvalMode::TestEval => JIT_OPT_LEVEL,
         }
     }
+
+    /// Evaluates `thunk` multiple times to obtain accurate execution times.
+    fn eval_runtime(&self, thunk: &Thunk,
+                    bound: f64,
+                    current_best: f64,
+                    mode: EvalMode) -> Result<f64, ()> {
+        if bound >= current_best && mode.skip_bad_candidates() {
+            info!("candidate skipped because of its bound");
+            return Ok(std::f64::INFINITY);
+        }
+        let t0 = self.ticks_to_ns(unwrap!(thunk.execute()));
+        if mode.skip_bad_candidates() && t0 * SKIP_THRESHOLD >= bound {
+            info!("candidate skipped after its first evaluation");
+            return Ok(t0);
+        }
+        // TODO(cc_perf): becomes the limiting factor after a few hours. We should stop
+        // earlier and make tests to know when (for example, measure the MAX delta between
+        // min and median with N outliers).
+        let runtimes = (0..NUM_EVALS).map(|_| thunk.execute());
+        let runtimes_by_value = process_results(runtimes, |iter| iter.sorted())?;
+        let median = self.ticks_to_ns(runtimes_by_value[NUM_EVALS/2]);
+        let runtimes_by_delta = runtimes_by_value.into_iter()
+            .map(|t| self.ticks_to_ns(t))
+            .sorted_by(|lhs, rhs| cmp_f64((lhs-median).abs(), (rhs-median).abs()));
+        let num_samples = NUM_EVALS - NUM_OUTLIERS;
+        let average = runtimes_by_delta[..num_samples].iter().cloned()
+            .sum::<f64>() / num_samples as f64;
+        Ok(average)
+    }
+
+    /// Converts a number of clock ticks into a number of nanoseconds.
+    fn ticks_to_ns(&self, ticks: u64) -> f64 {
+        ticks as f64 / self.gpu_model.smx_clock
+    }
 }
 
 
@@ -89,7 +133,7 @@ impl<'a> device::Context for Context<'a> {
     fn evaluate(&self, function: &device::Function, mode: EvalMode) -> Result<f64, ()> {
         let gpu = &self.gpu_model;
         let kernel = Kernel::compile(function, gpu, self.executor, Self::opt_level(mode));
-        Ok(kernel.evaluate(self)? as f64 / self.gpu_model.smx_clock)
+        kernel.evaluate(self).map(|t| t as f64 / self.gpu_model.smx_clock)
     }
 
     fn benchmark(&self, function: &device::Function, num_samples: usize) -> Vec<f64> {
@@ -103,7 +147,6 @@ impl<'a> device::Context for Context<'a> {
         // Setup the evaluator.
         let blocked_time = &atomic::AtomicUsize::new(0);
         let (send, recv) = mpsc::sync_channel(EVAL_BUFFER_SIZE);
-        let clock_rate = self.gpu_model.smx_clock;
         // Correct because the thread handle is not escaped.
         crossbeam::scope(move |scope| {
             // Start the explorer threads.
@@ -123,16 +166,9 @@ impl<'a> device::Context for Context<'a> {
                 let mut best_eval = std::f64::INFINITY;
                 while let Ok((candidate, thunk, callback)) = recv.recv() {
                     let bound = candidate.bound.value();
-                    let eval = if best_eval <= bound && mode.skip_bad_candidates() {
-                        info!("candidate skipped because of bounds");
-                        Ok(std::f64::INFINITY)
-                    } else {
-                        thunk.execute().map(|t| t as f64 / clock_rate)
-                    };
-                    let eval = eval.unwrap_or_else(|()| {
-                        panic!("evaluation failed for actions {:?}, with kernel {:?}",
-                               candidate.actions, thunk)
-                    });
+                    let eval = unwrap!(self.eval_runtime(&thunk, bound, best_eval, mode),
+                        "evaluation failed for actions {:?}, with kernel {:?}",
+                        candidate.actions, thunk);
                     if eval < best_eval {
                         best_eval = eval;
                     }

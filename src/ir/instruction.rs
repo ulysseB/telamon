@@ -6,6 +6,7 @@ use utils::*;
 
 /// Uniquely identifies an instruction.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[repr(C)]
 pub struct InstId(pub u32);
 
 impl std::fmt::Display for InstId {
@@ -19,12 +20,12 @@ impl std::fmt::Display for InstId {
 pub struct Instruction<'a> {
     operator: Operator<'a>,
     id: InstId,
-    iter_dims: HashSet<ir::dim::Id>,
+    iter_dims: HashSet<ir::DimId>,
 }
 
 impl<'a> Instruction<'a> {
     /// Creates a new instruction and type-check the operands.
-    pub fn new(operator: Operator<'a>, id: InstId, iter_dims: HashSet<ir::dim::Id>,
+    pub fn new(operator: Operator<'a>, id: InstId, iter_dims: HashSet<ir::DimId>,
                device: &Device) -> Result<Instruction<'a>, ir::Error> {
         operator.check(&iter_dims, device)?;
         Ok(Instruction { operator, id, iter_dims })
@@ -78,7 +79,7 @@ impl<'a> Instruction<'a> {
 
     /// Indicates the operands for wich a `DimMap` must be lowered if lhs and rhs are
     /// not mapped.
-    pub fn dim_maps_to_lower(&self, lhs: ir::dim::Id, rhs: ir::dim::Id) -> Vec<usize> {
+    pub fn dim_maps_to_lower(&self, lhs: ir::DimId, rhs: ir::DimId) -> Vec<usize> {
         self.operator().operands().iter().enumerate()
             .filter(|&(_, op)| op.should_lower_map(lhs, rhs))
             .map(|(id, _)| id).collect()
@@ -90,29 +91,29 @@ impl<'a> Instruction<'a> {
     }
 
     /// Indicates if the instruction performs a reduction.
-    pub fn as_reduction(&self) -> Option<(InstId, &ir::DimMap, &[ir::dim::Id])> {
+    pub fn as_reduction(&self) -> Option<(InstId, &ir::DimMap, &[ir::DimId])> {
         at_most_one(self.operands().iter().flat_map(|x| x.as_reduction()))
     }
 
     /// Returns 'true' if `self` is a reduction initialized by init, and if 'dim' should
     /// have the same nesting with 'init' that with 'self'.
-    pub fn is_reduction_common_dim(&self, init: InstId, dim: ir::dim::Id) -> bool {
+    pub fn is_reduction_common_dim(&self, init: InstId, dim: ir::DimId) -> bool {
         self.as_reduction().map(|(i, map, rd)| {
             i == init && !rd.contains(&dim) && map.iter().all(|&(_, rhs)| dim != rhs)
         }).unwrap_or(false)
     }
 
     /// Rename a dimension to another ID.
-    pub fn merge_dims(&mut self, lhs: ir::dim::Id, rhs: ir::dim::Id) {
+    pub fn merge_dims(&mut self, lhs: ir::DimId, rhs: ir::DimId) {
         self.operator.merge_dims(lhs, rhs);
     }
 
     /// The list of dimensions the instruction must be nested in.
-    pub fn iteration_dims(&self) -> &HashSet<ir::dim::Id> { &self.iter_dims }
+    pub fn iteration_dims(&self) -> &HashSet<ir::DimId> { &self.iter_dims }
 
     /// Adds a new iteration dimension. Indicates if the dimension was not already an
     /// iteration dimension.
-    pub fn add_iteration_dimension(&mut self, dim: ir::dim::Id) -> bool {
+    pub fn add_iteration_dimension(&mut self, dim: ir::DimId) -> bool {
         self.iter_dims.insert(dim)
     }
 }

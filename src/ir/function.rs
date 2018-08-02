@@ -39,8 +39,8 @@ impl Signature {
     }
 
     /// Adds a parameter with the given name and type to the signature.
-    pub fn add_array(&mut self, name: String) -> ir::mem::Id {
-        let id = mem::Id::External(self.mem_blocks);
+    pub fn add_array(&mut self, name: String) -> ir::MemId {
+        let id = ir::MemId::External(self.mem_blocks);
         self.mem_blocks += 1;
         self.params.push(Parameter { name, t: ir::Type::PtrTo(id) });
         id
@@ -54,7 +54,7 @@ pub struct Function<'a> {
     device: &'a Device,
     insts: Vec<Instruction<'a>>,
     dims: Vec<Dimension<'a>>,
-    thread_dims: VecSet<ir::dim::Id>,
+    thread_dims: VecSet<ir::DimId>,
     mem_insts: Vec<ir::InstId>,
     mem_blocks: mem::BlockMap,
     layouts_to_lower: Vec<ir::mem::InternalId>,
@@ -85,7 +85,7 @@ impl<'a> Function<'a> {
     pub fn device(&self) -> &'a Device { self.device }
 
     /// Adds an instruction to the function.
-    pub fn add_inst(&mut self, op: Operator<'a>, iter_dims: HashSet<dim::Id>)
+    pub fn add_inst(&mut self, op: Operator<'a>, iter_dims: HashSet<ir::DimId>)
         -> Result<InstId, ir::Error>
     {
         let id = ir::InstId(self.insts.len() as u32);
@@ -102,8 +102,8 @@ impl<'a> Function<'a> {
     }
 
     /// Creates a new dimension.
-    pub fn add_dim(&mut self, size: Size<'a>) -> Result<dim::Id, ir::Error> {
-        let id = dim::Id(self.dims.len() as u32);
+    pub fn add_dim(&mut self, size: Size<'a>) -> Result<ir::DimId, ir::Error> {
+        let id = ir::DimId(self.dims.len() as u32);
         self.dims.push(Dimension::new(size, id)?);
         Ok(id)
     }
@@ -149,10 +149,10 @@ impl<'a> Function<'a> {
     }
 
     /// Retuns a dimension given its id.
-    pub fn dim(&self, id: dim::Id) -> &Dimension<'a> { &self.dims[id.0 as usize] }
+    pub fn dim(&self, id: ir::DimId) -> &Dimension<'a> { &self.dims[id.0 as usize] }
 
     /// Returns a mutable reference to a dimension given its ID.
-    fn dim_mut(&mut self, id: dim::Id) -> &mut Dimension<'a> {
+    fn dim_mut(&mut self, id: ir::DimId) -> &mut Dimension<'a> {
         &mut self.dims[id.0 as usize]
     }
 
@@ -181,7 +181,7 @@ impl<'a> Function<'a> {
     }
 
     /// Returns a memory block given its id.
-    pub fn mem_block(&self, id: mem::Id) -> &mem::Block { self.mem_blocks.block(id) }
+    pub fn mem_block(&self, id: ir::MemId) -> &mem::Block { self.mem_blocks.block(id) }
 
     /// Returns an internal memory block given its id.
     pub fn internal_mem_block(&self, id: mem::InternalId) -> &mem::InternalBlock {
@@ -201,7 +201,7 @@ impl<'a> Function<'a> {
 
     /// Sets a dimension as an iteration dimension for an instruction. Indicates if the
     /// iteration dimension was not aleady present in the set.
-    pub fn set_iteration_dim(&mut self, inst: ir::InstId, dim: ir::dim::Id) -> bool {
+    pub fn set_iteration_dim(&mut self, inst: ir::InstId, dim: ir::DimId) -> bool {
         if self.inst_mut(inst).add_iteration_dimension(dim) {
             self.dim_mut(dim).add_iterated(inst);
             true
@@ -210,7 +210,7 @@ impl<'a> Function<'a> {
 
     /// Adds a thread dimension. Indicates if the the dimension was not already present
     /// in the set.
-    pub fn add_thread_dim(&mut self, dim: ir::dim::Id) -> bool {
+    pub fn add_thread_dim(&mut self, dim: ir::DimId) -> bool {
         self.dim_mut(dim).set_thread_dim();
         self.thread_dims.insert(dim)
     }
@@ -218,15 +218,15 @@ impl<'a> Function<'a> {
     /// Trigger to call when two dimensions are merged.
     // TODO(cleanup): externalize in the search space the merging of dimensions in dim
     // maps.
-    pub(crate) fn merge(&mut self, src: ir::dim::Id, dst: ir::dim::Id) {
+    pub(crate) fn merge(&mut self, src: ir::DimId, dst: ir::DimId) {
         for inst in &mut self.insts { inst.merge_dims(src, dst); }
         for var in &mut self.induction_vars { var.merge_dims(src, dst); }
         self.layouts_to_lower.extend(self.mem_blocks.merge_dims(src, dst));
     }
 
     /// Lowers a layout into conventional memory accesses.
-    pub(crate) fn lower_layout(&mut self, id: mem::InternalId, st_dims: Vec<ir::dim::Id>,
-                        ld_dims: Vec<ir::dim::Id>) {
+    pub(crate) fn lower_layout(&mut self, id: mem::InternalId, st_dims: Vec<ir::DimId>,
+                        ld_dims: Vec<ir::DimId>) {
         let pos = unwrap!(self.layouts_to_lower.iter().position(|&x| x == id));
         self.layouts_to_lower.swap_remove(pos);
         self.mem_blocks.lower_layout(id);
@@ -239,7 +239,7 @@ impl<'a> Function<'a> {
     }
 
     /// Generates an operand repesenting a pointer to a cell of a memory block.
-    fn gen_internal_index(&mut self, id: mem::InternalId, dims: Vec<dim::Id>)
+    fn gen_internal_index(&mut self, id: mem::InternalId, dims: Vec<ir::DimId>)
             -> (Operand<'a>, AccessPattern<'a>) {
         let ty_len = self.mem_blocks.internal_block(id).base_size();
         self.gen_index(id.into(), ty_len, Operand::Addr(id), dims)
@@ -247,8 +247,8 @@ impl<'a> Function<'a> {
 
     /// Generates an access pattern and the corresponding induction variable to access a
     /// memory block.
-    fn gen_index(&mut self, mem: mem::Id, base_incr: u32, base_addr: Operand<'a>,
-                     dims: Vec<dim::Id>) -> (Operand<'a>, AccessPattern<'a>) {
+    fn gen_index(&mut self, mem: ir::MemId, base_incr: u32, base_addr: Operand<'a>,
+                     dims: Vec<ir::DimId>) -> (Operand<'a>, AccessPattern<'a>) {
         let var_type = base_addr.t();
         let base_size = ir::Size::new(base_incr, vec![], 1);
         let increments = dims.iter().rev().scan(base_size, |size, &dim| {
@@ -307,7 +307,7 @@ impl<'a> Function<'a> {
     }
 
     /// Adds multiple dimensions at once, using the sizes of the given dimensions.
-    fn spawn_mapped_dims(&mut self, old_dims: &[dim::Id]) -> Vec<dim::Id> {
+    fn spawn_mapped_dims(&mut self, old_dims: &[ir::DimId]) -> Vec<ir::DimId> {
         old_dims.iter().map(|&old_dim| {
             let size = self.dim(old_dim).size().clone();
             unwrap!(self.add_dim(size))
@@ -315,7 +315,7 @@ impl<'a> Function<'a> {
     }
 
     /// Trigger to call when two dimensions are not merged.
-    pub(crate) fn dim_not_merged(&mut self, lhs: dim::Id, rhs: dim::Id) {
+    pub(crate) fn dim_not_merged(&mut self, lhs: ir::DimId, rhs: ir::DimId) {
         let to_lower = self.mem_blocks.not_merged(&self.dims[lhs.0 as usize], rhs);
         self.layouts_to_lower.extend(to_lower);
     }

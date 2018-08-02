@@ -50,8 +50,8 @@ impl<'a> SearchSpace<'a> {
     }
 
     /// Triggers a layout lowering.
-    pub fn lower_layout(&mut self, mem: ir::mem::InternalId, st_dims: Vec<ir::dim::Id>,
-                        ld_dims: Vec<ir::dim::Id>) -> Result<(), ()> {
+    pub fn lower_layout(&mut self, mem: ir::mem::InternalId, st_dims: Vec<ir::DimId>,
+                        ld_dims: Vec<ir::DimId>) -> Result<(), ()> {
         let actions = {
             let ir_instance = Arc::make_mut(&mut self.ir_instance);
             dim_map::lower_layout(ir_instance, mem, st_dims, ld_dims, &self.domain)?
@@ -77,7 +77,7 @@ fn process_lowering(ir_instance: &mut ir::Function,
 }
 
 /// Trigger to call when two dimensions are merged.
-fn merge_dims(lhs: ir::dim::Id, rhs: ir::dim::Id, ir_instance: &mut ir::Function)
+fn merge_dims(lhs: ir::DimId, rhs: ir::DimId, ir_instance: &mut ir::Function)
     -> Result<(ir::NewObjs, Vec<Action>), ()>
 {
     debug!("merge {:?} and {:?}", lhs, rhs);
@@ -87,7 +87,7 @@ fn merge_dims(lhs: ir::dim::Id, rhs: ir::dim::Id, ir_instance: &mut ir::Function
 
 /// Adds a iteration dimension to a basic block.
 fn add_iteration_dim(ir_instance: &mut ir::Function,
-                     inst: ir::InstId, dim: ir::dim::Id) -> ir::NewObjs {
+                     inst: ir::InstId, dim: ir::DimId) -> ir::NewObjs {
     debug!("set {:?} as iteration dim of inst {:?}", dim, inst);
     let mut new_objs = ir::NewObjs::default();
     if ir_instance.set_iteration_dim(inst, dim) {
@@ -97,7 +97,7 @@ fn add_iteration_dim(ir_instance: &mut ir::Function,
 }
 
 /// Adds a dimension to the list of thread dimensions.
-fn add_thread_dim(ir_instance: &mut ir::Function, dim: ir::dim::Id) -> ir::NewObjs {
+fn add_thread_dim(ir_instance: &mut ir::Function, dim: ir::DimId) -> ir::NewObjs {
     debug!("set {:?} as a thread dimension", dim);
     let mut new_objs = ir::NewObjs::default();
     if ir_instance.add_thread_dim(dim) { new_objs.add_thread_dim(dim); }
