@@ -49,7 +49,7 @@ end
 /// The set of dimensions for which the sizes it can take is statically known.
 set StaticDims subsetof Dimensions:
   item_type = "ir::Dimension"
-  id_type = "ir::dim::Id"
+  id_type = "ir::DimId"
   item_getter = "$fun.dim($id)"
   id_getter = "$item.id()"
   iterator = "$fun.static_dims()"
