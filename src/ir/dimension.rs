@@ -6,6 +6,7 @@ use std::fmt;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[derive(Serialize, Deserialize)]
 #[repr(C)]
+/// cbindgen:field-names=[id]
 pub struct DimId(pub u32);
 
 impl Into<usize> for DimId {

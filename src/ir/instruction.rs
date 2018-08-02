@@ -7,6 +7,7 @@ use utils::*;
 /// Uniquely identifies an instruction.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[repr(C)]
+/// cbindgen:field-names=[id]
 pub struct InstId(pub u32);
 
 impl Into<usize> for InstId {

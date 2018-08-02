@@ -10,10 +10,17 @@ extern crate telamon;
 extern crate telamon_kernels;
 #[macro_use]
 extern crate telamon_utils;
+#[macro_use]
+extern crate failure;
+
+#[macro_use]
+pub mod error;
 
 #[cfg(feature = "cuda")]
 pub mod cuda;
 pub mod ir;
+pub mod search_space;
+pub mod explorer;
 
 use libc::{c_char, c_int, c_uint, size_t, uint32_t};
 use telamon::device;
@@ -21,14 +28,15 @@ use telamon::device::x86;
 use telamon::explorer::config::Config;
 pub use telamon_kernels::{linalg, Kernel};
 
-// Pointers to `device::Context` and `device::Device` are not C-like pointers. Instead,
-// they are fat pointers containing both a regular pointer to the object and a pointer to
-// the vtable. Thus, we define wrappers to encapsulate the pointers in an opaque type and
-// we return pointers to the wrappers to C users.
+// Pointers to `device::Context` and `device::Device` are not C-like pointers.
+// Instead, they are fat pointers containing both a regular pointer to the
+// object and a pointer to the vtable. Thus, we define wrappers to encapsulate
+// the pointers in an opaque type and we return pointers to the wrappers to C
+// users.
 
-/// Description of the evaluation context. In particular, in contains the mapping between
-/// argument names and argument values.
-pub struct Context(*const device::Context);
+/// Description of the evaluation context. In particular, in contains the
+/// mapping between argument names and argument values.
+pub struct Context(pub(crate) *const device::Context);
 
 /// Description of the targeted device.
 pub struct Device(*const device::Device);
