@@ -71,6 +71,7 @@ std-semaphore = "0.1.0"
 tempfile = "3.0.1"
 toml = "0.4"
 xdg = "^2.1"
+flate2 = "1.0.2"
 
 [dependencies.telamon-utils]
 path = "telamon-utils"

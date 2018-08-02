@@ -9,6 +9,7 @@ extern crate serde;
 extern crate serde_derive;
 #[macro_use]
 extern crate failure;
+extern crate flate2;
 
 mod cache;
 mod dag;

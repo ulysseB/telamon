@@ -1,12 +1,17 @@
-use explorer::config::Config;
-use explorer::monitor;
-use serde::ser::Serialize;
-use bincode;
+use std::ffi::OsStr;
 use std::fs::File;
-use std::io;
-use std::io::{BufWriter, Write};
+use std::io::{self, BufWriter, Write};
+use std::path::Path;
 use std::sync::mpsc;
 use std::time::Duration;
+
+use bincode;
+use explorer::config::Config;
+use explorer::monitor;
+use flate2::write::{GzEncoder, ZlibEncoder};
+use flate2::Compression;
+use serde::ser::Serialize;
+
 use utils::tfrecord;
 use utils::tfrecord::RecordWriter;
 
@@ -61,7 +66,7 @@ pub fn log<E: Send + Serialize>(
     config: &Config,
     recv: mpsc::Receiver<LogMessage<E>>,
 ) -> Result<(), LogError> {
-    let mut record_writer = File::create(&config.event_log)?;
+    let mut record_writer = init_eventlog(config)?;
     let mut write_buffer = init_log(config)?;
     while let Ok(message) = recv.recv() {
         match message {
@@ -80,9 +85,19 @@ pub fn log<E: Send + Serialize>(
             }
         }
     }
-    record_writer.flush()?;
+    record_writer.finish_box()?.flush()?;
     write_buffer.flush()?;
     return Ok(());
+}
+
+fn init_eventlog(config: &Config) -> io::Result<Box<dyn RecordWriter<Writer = File>>> {
+    let path = Path::new(&config.event_log);
+    let raw_file = File::create(&path)?;
+    Ok(match path.extension().and_then(OsStr::to_str) {
+        Some("gz") => Box::new(GzEncoder::new(raw_file, Compression::default())),
+        Some("zz") => Box::new(ZlibEncoder::new(raw_file, Compression::default())),
+        _ => Box::new(raw_file),
+    })
 }
 
 fn init_log(config: &Config) -> io::Result<BufWriter<File>> {

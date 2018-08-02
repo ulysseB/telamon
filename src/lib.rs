@@ -57,6 +57,7 @@ extern crate bincode;
 #[macro_use]
 extern crate telamon_utils as utils;
 extern crate xdg;
+extern crate flate2;
 
 pub mod codegen;
 #[macro_use]
