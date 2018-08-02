@@ -579,7 +579,7 @@
 
 <span class="doccomment">/// Opaque type that abstracts away the lifetime parameter of `ir::Function` so that</span>
 <span class="doccomment">/// cbindgen generates the bindings.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Function</span>(<span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Function</span>(<span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, ()<span class="op">&gt;</span>);
 
 <span class="doccomment">/// Creates a function to optimize. The function must be freed with</span>
 <span class="doccomment">/// `telamon_ir_function_free`. `signature` and `device` must outlive the function.</span>
@@ -660,7 +660,7 @@
 
 <span class="doccomment">/// Opaque type that abstracts away the lifetime parameter of `ir::Operand` so that</span>
 <span class="doccomment">/// cbindgen can generate bindings.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Operand</span>(<span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Operand</span>(<span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, ()<span class="op">&gt;</span>);
 
 <span class="doccomment">/// Create a constant integer operand. The provided type must be an integer type.</span>
 <span class="doccomment">/// Returns `null` if an error is encountered.</span>
@@ -727,7 +727,7 @@
     <span class="kw">let</span> <span class="ident">dim_map_scope</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">allow_tmp_mem</span> <span class="op">==</span> <span class="number">0</span> {
         <span class="ident">ir</span>::<span class="ident">DimMapScope</span>::<span class="ident">Thread</span>
     } <span class="kw">else</span> {
-        <span class="ident">ir</span>::<span class="ident">DimMapScope</span>::<span class="ident">Global</span>
+        <span class="ident">ir</span>::<span class="ident">DimMapScope</span>::<span class="ident">Global</span>(())
     };
     <span class="kw">let</span> <span class="ident">operand</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">new_inst</span>(<span class="ident">inst</span>, <span class="ident">dim_map</span>, <span class="ident">dim_map_scope</span>);
     <span class="ident">Box</span>::<span class="ident">into_raw</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">Operand</span>(<span class="ident">operand</span>)))
@@ -773,7 +773,7 @@
 
 <span class="doccomment">/// Opaque type that abstracts away the lifetime parameter of `ir::Operator` so that</span>
 <span class="doccomment">/// cbindgen can generate bindings.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Operator</span>(<span class="ident">ir</span>::<span class="ident">Operator</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Operator</span>(<span class="ident">ir</span>::<span class="ident">Operator</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, ()<span class="op">&gt;</span>);
 
 <span class="doccomment">/// Creates a `mov` operator. Takes ownership of `operand`.</span>
 <span class="attribute">#[<span class="ident">no_mangle</span>]</span>
@@ -897,7 +897,7 @@
     <span class="ident">strided_dims</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">ir</span>::<span class="ident">DimId</span>,
     <span class="ident">strides</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">Size</span>,
     <span class="ident">num_strided_dims</span>: <span class="ident">usize</span>
-) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>, <span class="ident">ir</span>::<span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>), <span class="ident">ir</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, ()<span class="op">&gt;</span>, <span class="ident">ir</span>::<span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span>), <span class="ident">ir</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">base_address</span> <span class="op">=</span> <span class="ident">Box</span>::<span class="ident">from_raw</span>(<span class="ident">base_address</span>).<span class="number">0</span>;
     <span class="kw">let</span> <span class="ident">strided_dims</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">slice</span>::<span class="ident">from_raw_parts</span>(<span class="ident">strided_dims</span>, <span class="ident">num_strided_dims</span>);
     <span class="kw">let</span> <span class="ident">strides</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">slice</span>::<span class="ident">from_raw_parts</span>(<span class="ident">strides</span>, <span class="ident">num_strided_dims</span>);
