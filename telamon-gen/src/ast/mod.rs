@@ -91,15 +91,11 @@ impl Ast {
 
         // declare
         for statement in self.statements.iter() {
-            checker.declare(statement)?;
-        }
-        for statement in self.statements.iter() {
-            statement.declare()?;
+            statement.declare(&mut checker)?;
         }
         // define
         for statement in self.statements.iter() {
-            checker.define(statement)?;
-            statement.define()?;
+            statement.define(&mut checker)?;
         }
         // typing context
         for statement in self.statements {
@@ -123,7 +119,8 @@ pub enum Statement {
 }
 
 impl Statement {
-    pub fn declare(&self) -> Result<(), TypeError> {
+    pub fn declare(&self, type_checker: &mut CheckerContext) -> Result<(), TypeError> {
+        type_checker.declare(self)?;
         match self {
             Statement::SetDef(def) => def.declare(),
             Statement::ChoiceDef(def) => def.declare(),
@@ -131,7 +128,8 @@ impl Statement {
         }
     }
 
-    pub fn define(&self) -> Result<(), TypeError> {
+    pub fn define(&self, type_checker: &mut CheckerContext) -> Result<(), TypeError> {
+        type_checker.define(self)?;
         match self {
             Statement::SetDef(def) => def.define(),
             Statement::ChoiceDef(def) => def.define(),
