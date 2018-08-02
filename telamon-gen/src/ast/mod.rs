@@ -7,6 +7,7 @@ mod trigger;
 mod choice;
 mod context;
 mod constrain;
+mod error;
 
 use constraint::Constraint as TypedConstraint;
 use constraint::dedup_inputs;
@@ -28,51 +29,9 @@ pub use self::choice::ChoiceDef;
 use self::trigger::TriggerDef;
 use self::context::TypingContext;
 pub use self::constrain::Constraint;
+pub use self::error::{Hint, TypeError};
 
 pub use super::lexer::{Position, Spanned};
-
-/// Hint is a token representation.
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum Hint {
-    /// Set interface.
-    Set,
-    /// Set attribute.
-    SetAttribute,
-    /// Enum interface.
-    Enum,
-    /// Enum attribute.
-    EnumAttribute,
-    /// Integer interface.
-    Integer,
-    /// Integer attribute.
-    IntegerAttribute,
-}
-
-impl Hint {
-    fn from(statement: &Statement) -> Self {
-        match statement {
-            Statement::SetDef(..) => Hint::Set,
-            Statement::ChoiceDef(ChoiceDef::EnumDef(..)) => Hint::Enum,
-            Statement::ChoiceDef(ChoiceDef::IntegerDef(..)) => Hint::Integer,
-            _ => unreachable!(),
-        }
-    }
-}
-
-/// TypeEror is the error representation of telamon's.
-#[derive(Debug, PartialEq)]
-pub enum TypeError {
-    /// Redefinition of a name and hint..
-    Redefinition(Spanned<Hint>, Spanned<String>),
-    /// Undefinition of set, enum or field.
-    Undefined(Spanned<String>),
-    /// Unvalid arguments of a symmetric enum.
-    BadSymmetricArg(Spanned<String>, Vec<VarDef>),
-    /// Missing
-    MissingEntry(String, Spanned<String>),
-    /// Conflict between incompatible keywords.
-    Conflict(Spanned<String>, Spanned<String>),
-}
 
 /// CheckContext is a type system.
 #[derive(Debug, Default)]
@@ -88,19 +47,15 @@ impl CheckerContext {
     ) -> Result<(), TypeError> {
         match statement {
             ChoiceDef::EnumDef(EnumDef {
-                name: Spanned { ref beg, ref end, data: _ },
-                doc: _, ref variables,
-            .. }) |
+                name: ref spanned, doc: _, ref variables, .. }) |
             ChoiceDef::IntegerDef(IntegerDef {
-                name: Spanned { ref beg, ref end, data: _ }, doc: _, ref variables,
-            .. }) => {
+                name: ref spanned, doc: _, ref variables, .. }) => {
                 for VarDef { name: _, set: SetRef { name, .. } } in variables {
                     let name: &String = name.deref();
                     if !self.hash.contains_key(name) {
-                        Err(TypeError::Undefined(Spanned {
-                            beg: beg.to_owned(), end: end.to_owned(),
-                            data: name.to_owned(),
-                        }))?;
+                        Err(TypeError::Undefined {
+                            object_name: spanned.with_data(name.to_owned()),
+                        })?;
                     }
                 }
             },
@@ -114,24 +69,21 @@ impl CheckerContext {
         &self, statement: &SetDef
     ) -> Result<(), TypeError> {
         match statement {
-            SetDef { name: Spanned { beg, end, data: ref name },
-            doc: _, arg, superset, disjoint: _, keys, ..  } => {
+            SetDef { name: spanned, doc: _, arg, superset, disjoint: _, keys, ..  } => {
                 if let Some(VarDef { name: _, set: SetRef { name, .. } }) = arg {
                     let name: &String = name.deref();
                     if !self.hash.contains_key(name) {
-                        Err(TypeError::Undefined(Spanned {
-                            beg: beg.to_owned(), end: end.to_owned(),
-                            data: name.to_owned(),
-                        }))?;
+                        Err(TypeError::Undefined {
+                            object_name: spanned.with_data(name.to_owned()),
+                        })?;
                     }
                 }
                 if let Some(SetRef { name: supername, .. }) = superset {
                     let name: &String = supername.deref();
                     if !self.hash.contains_key(name) {
-                        Err(TypeError::Undefined(Spanned {
-                            beg: beg.to_owned(), end: end.to_owned(),
-                            data: name.to_owned(),
-                        }))?;
+                        Err(TypeError::Undefined {
+                            object_name: spanned.with_data(name.to_owned()),
+                        })?;
                     }
                 }
             },
@@ -144,21 +96,17 @@ impl CheckerContext {
         &mut self, statement: &Statement
     ) -> Result<(), TypeError> {
         match statement {
-            Statement::SetDef(SetDef { name: Spanned { beg, end, data: name }, .. }) |
-            Statement::ChoiceDef(ChoiceDef::EnumDef(
-                EnumDef { name: Spanned { beg, end, data: name }, ..  })) |
+            Statement::SetDef(SetDef { name: spanned, .. }) |
+            Statement::ChoiceDef(ChoiceDef::EnumDef( EnumDef { name: spanned, ..  })) |
             Statement::ChoiceDef(ChoiceDef::IntegerDef(
-                IntegerDef { name: Spanned { beg, end, data: name }, .. })) => {
-                let data: Hint = Hint::from(&statement);
-                let value: Spanned<Hint> = Spanned {
-                    beg: beg.to_owned(), end: end.to_owned(),
-                    data,
-                };
-                if let Some(pre) = self.hash.insert(name.to_owned(), value) {
-                    Err(TypeError::Redefinition(pre, Spanned {
-                        beg: beg.to_owned(), end: end.to_owned(),
-                        data: name.to_owned(),
-                    }))
+                IntegerDef { name: spanned, .. })) => {
+                let data: Hint = Hint::from(statement);
+                let value: Spanned<Hint> = spanned.with_data(data);
+                if let Some(pre) = self.hash.insert(spanned.data.to_owned(), value) {
+                    Err(TypeError::Redefinition {
+                        object_kind: pre,
+                        object_name: spanned.with_data(spanned.data.to_owned())
+                    })
                 } else {
                     Ok(())
                 }

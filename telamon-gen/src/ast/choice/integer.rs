@@ -3,7 +3,6 @@ use super::*;
 /// A toplevel integer
 #[derive(Clone, Debug)]
 pub struct IntegerDef {
-    /// Name of Interger.
     pub name: Spanned<String>,
     pub doc: Option<String>,
     pub variables: Vec<VarDef>,
