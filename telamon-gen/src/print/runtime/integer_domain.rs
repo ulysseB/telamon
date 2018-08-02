@@ -12,8 +12,21 @@ pub fn get() -> TokenStream {
             fn min(&self, universe: &Self::Universe) -> u32;
             /// Returns the minimum value in the domain.
             fn max(&self, universe: &Self::Universe) -> u32;
-            /// Returns the domain as a `NumericSet`, if applicable.
-            fn as_num_set(&self) -> Option<NumericSet> { None }
+
+            /// Converts the domain into a numeric set with the given domain. Values that
+            /// are not in `new_universe` are skipped.
+            fn into_num_set(
+                &self,
+                self_universe: &Self::Universe,
+                new_universe: &[u32]
+            ) -> NumericSet {
+                let start = new_universe.binary_search(&self.min(self_universe))
+                    .unwrap_or_else(|x| x);
+                let len = new_universe.binary_search(&self.max(self_universe))
+                    .unwrap_or_else(|x| x) - start;
+                let enabled_values = ((1 << len) - 1) << start;
+                NumericSet { enabled_values }
+            }
 
             /// Returns the value of the domain, if it is constrained.
             fn as_constrained(&self, universe: &Self::Universe) -> Option<u32> {
@@ -95,11 +108,17 @@ pub fn get() -> TokenStream {
                 if self.is_empty() { 0 } else { self[self.len()-1] }
             }
 
-            fn as_num_set(&self) -> Option<NumericSet> {
-                assert!(self.len() < NumericSet::MAX_LEN);
-                let mut values = [0; NumericSet::MAX_LEN];
-                for i in 0..self.len() { values[i] = self[i] }
-                Some(NumericSet { len: self.len(), values })
+            fn into_num_set(&self, _: &(), universe: &[u32]) -> NumericSet {
+                let mut idx = 0;
+                let mut enabled_values = 0;
+                'values: for &value in *self {
+                    while {
+                        if idx >= universe.len() { break 'values; }
+                        universe[idx] < value
+                    } { idx = idx+1; }
+                    if universe[idx] == value { enabled_values |= 1 << idx; }
+                }
+                NumericSet { enabled_values }
             }
         }
     }
