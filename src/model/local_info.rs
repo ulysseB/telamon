@@ -16,10 +16,10 @@ pub struct LocalInfo {
     /// The pressure incured by a signle instance of each BB.
     pub hw_pressure: HashMap<ir::BBId, HwPressure>,
     /// The size of each dimensions.
-    pub dim_sizes: HashMap<ir::dim::Id, u32>,
+    pub dim_sizes: HashMap<ir::DimId, u32>,
     /// The pressure induced by a single iteration of each dimension and the exit latency
     /// of the loop.
-    pub dim_overhead: HashMap<ir::dim::Id, (HwPressure, HwPressure)>,
+    pub dim_overhead: HashMap<ir::DimId, (HwPressure, HwPressure)>,
     /// The overhead to initialize a thread.
     pub thread_overhead: HwPressure,
     /// Available parallelism in the kernel.
@@ -73,10 +73,10 @@ impl LocalInfo {
 
 fn add_indvar_pressure(device: &Device,
                        space: &SearchSpace,
-                       dim_sizes: &HashMap<ir::dim::Id, u32>,
+                       dim_sizes: &HashMap<ir::DimId, u32>,
                        indvar: &ir::InductionVar,
                        hw_pressure: &mut HashMap<ir::BBId, HwPressure>,
-                       dim_overhead: &mut HashMap<ir::dim::Id, (HwPressure, HwPressure)>,
+                       dim_overhead: &mut HashMap<ir::DimId, (HwPressure, HwPressure)>,
                        thread_overhead: &mut HwPressure) {
    for &(dim, _) in indvar.dims() {
        let dim_kind = space.domain().get_dim_kind(dim);
@@ -108,17 +108,17 @@ fn add_indvar_pressure(device: &Device,
 #[derive(Debug)]
 pub struct Nesting {
     /// Dimensions nested inside the current BB.
-    pub inner_dims: VecSet<ir::dim::Id>,
+    pub inner_dims: VecSet<ir::DimId>,
     /// Basic blocks nested inside the current BB.
     pub inner_bbs: VecSet<ir::BBId>,
     /// Dimensions nested outsidethe current BB.
-    pub outer_dims: VecSet<ir::dim::Id>,
+    pub outer_dims: VecSet<ir::DimId>,
     /// Dimensions to be processed before the current BB.
-    pub before_self: VecSet<ir::dim::Id>,
+    pub before_self: VecSet<ir::DimId>,
     /// Dimensions that should not take the current BB into account when processed.
-    pub after_self: VecSet<ir::dim::Id>,
+    pub after_self: VecSet<ir::DimId>,
     /// The dimensions that can be merged to this one and have a bigger ID.
-    pub bigger_merged_dims: VecSet<ir::dim::Id>,
+    pub bigger_merged_dims: VecSet<ir::DimId>,
     /// Indicates if the block may have thread dimensions nested inside it.
     /// Only consider thread dimensions that are sure to be mapped to threads.
     has_inner_thread_dims: bool,
@@ -132,7 +132,7 @@ pub struct Nesting {
 impl Nesting {
     /// Computes the nesting of a `BasicBlock`.
     fn compute(space: &SearchSpace, bb: ir::BBId,
-               dim_sizes: &HashMap<ir::dim::Id, u32>) -> Self {
+               dim_sizes: &HashMap<ir::DimId, u32>) -> Self {
         let mut inner_dims = Vec::new();
         let mut inner_bbs = Vec::new();
         let mut before_self = Vec::new();
@@ -185,7 +185,7 @@ impl Nesting {
     }
 
     /// Computess the list of iteration dimensions of a `BasicBlock`.
-    fn get_iteration_dims(space: &SearchSpace, bb: ir::BBId) -> VecSet<ir::dim::Id> {
+    fn get_iteration_dims(space: &SearchSpace, bb: ir::BBId) -> VecSet<ir::DimId> {
         let dims = if let ir::BBId::Inst(inst) = bb {
             space.ir_instance().inst(inst).iteration_dims().iter().cloned().collect()
         } else {
@@ -194,7 +194,7 @@ impl Nesting {
                 if bb == dim.into() { continue; }
                 let order = space.domain().get_order(dim.into(), bb);
                 if Order::OUTER.contains(order) {
-                    if outer.iter().cloned().all(|outer: ir::dim::Id| {
+                    if outer.iter().cloned().all(|outer: ir::DimId| {
                         let ord = space.domain().get_order(dim.into(), outer.into());
                         !ord.contains(Order::MERGED)
                     }) { outer.push(dim); }
@@ -226,7 +226,7 @@ impl Default for Parallelism {
 
 /// Computes the minimal and maximal parallelism accross instructions.
 fn parallelism(space: &SearchSpace, nesting: &HashMap<ir::BBId, Nesting>,
-               dim_sizes: &HashMap<ir::dim::Id, u32>) -> Parallelism {
+               dim_sizes: &HashMap<ir::DimId, u32>) -> Parallelism {
     space.ir_instance().insts().map(|inst| {
         let mut par = Parallelism::default();
         for &dim in &nesting[&inst.bb_id()].outer_dims {

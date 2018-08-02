@@ -30,7 +30,7 @@ pub struct MemInfo {
 pub fn analyse(space: &SearchSpace,
                gpu: &cuda::Gpu,
                inst: &ir::Instruction,
-               sizes: &HashMap<ir::dim::Id, u32>,
+               sizes: &HashMap<ir::DimId, u32>,
                ctx: &Context) -> MemInfo {
     let flag = space.domain().get_inst_flag(inst.id());
     let info = match *inst.operator() {
@@ -84,10 +84,10 @@ fn unknown_info(is_shared_access: Trivalent, gpu: &cuda::Gpu) -> MemInfo {
 // it makes debugging the performance model harder.
 fn info(space: &SearchSpace,
         inst: &ir::Instruction,
-        dims: &HashMap<ir::dim::Id, ir::Size>,
+        dims: &HashMap<ir::DimId, ir::Size>,
         is_shared_access: Trivalent,
         gpu: &cuda::Gpu,
-        sizes: &HashMap<ir::dim::Id, u32>,
+        sizes: &HashMap<ir::DimId, u32>,
         ctx: &Context) -> MemInfo {
     let mut info = NO_ACCESS_INFO;
     let thread_dims = tensor_thread_dims(space, inst, dims, sizes, gpu, ctx);
@@ -121,7 +121,7 @@ fn info(space: &SearchSpace,
 
 #[derive(Debug)]
 struct ThreadDimInfo {
-    id: ir::dim::Id,
+    id: ir::DimId,
     is_active_thread: bool,
     size: u64,
     stride: u64,
@@ -133,8 +133,8 @@ struct ThreadDimInfo {
 /// order guarantees that `d0 < d1`.
 fn tensor_thread_dims(space: &SearchSpace,
                       inst: &ir::Instruction,
-                      tensor_dims: &HashMap<ir::dim::Id, ir::Size>,
-                      sizes: &HashMap<ir::dim::Id, u32>,
+                      tensor_dims: &HashMap<ir::DimId, ir::Size>,
+                      sizes: &HashMap<ir::DimId, u32>,
                       gpu: &cuda::Gpu,
                       ctx: &Context) -> Vec<ThreadDimInfo> {
     let external_dims = external_thread_dims(inst, space);
@@ -161,7 +161,7 @@ fn tensor_thread_dims(space: &SearchSpace,
 /// under this instruction. The returned boolean indicates if the thread dimension cannot
 /// be mapped to an active dimension and if the dimension is predicated.
 fn external_thread_dims<'a>(inst: &'a ir::Instruction, space: &'a SearchSpace)
-    -> impl Iterator<Item=(ir::dim::Id, bool)> + 'a
+    -> impl Iterator<Item=(ir::DimId, bool)> + 'a
 {
     space.ir_instance().thread_dims().flat_map(move |dim| {
         let is_mapped = inst.iteration_dims().iter().map(|&other| {
@@ -235,8 +235,8 @@ fn wrap_access_offsets(thread_dims: &[ThreadDimInfo], gpu: &cuda::Gpu) -> Vec<u6
 
 /// Computes the replay factor for a shared memory access.
 fn shared_replay_factor(offsets: &[u64],
-                        tensor_dims: &HashMap<ir::dim::Id, ir::Size>,
-                        dim_sizes: &HashMap<ir::dim::Id, u32>,
+                        tensor_dims: &HashMap<ir::DimId, ir::Size>,
+                        dim_sizes: &HashMap<ir::DimId, u32>,
                         space: &SearchSpace, gpu: &cuda::Gpu) -> f64 {
     // We only need to account for hits on the first bank. Other banks will have a smaller
     // replay factor.
@@ -278,7 +278,7 @@ fn miss_ratios(inst: &ir::Instruction,
                pattern: &ir::AccessPattern,
                space: &SearchSpace,
                gpu: &cuda::Gpu,
-               sizes: &HashMap<ir::dim::Id, u32>) -> f64 {
+               sizes: &HashMap<ir::DimId, u32>) -> f64 {
     // Compute MSHR, without taking other accesses into account.
     // (1) Find accesses to the sane memory block.
     let other_accesses = space.ir_instance().insts().filter(|other_inst| {
@@ -329,7 +329,7 @@ fn reuse_distance(inst: &ir::Instruction,
                   dim: &ir::Dimension,
                   pattern: &ir::AccessPattern,
                   space: &SearchSpace,
-                  sizes: &HashMap<ir::dim::Id, u32>,
+                  sizes: &HashMap<ir::DimId, u32>,
                   gpu: &cuda::Gpu) -> u32 {
     space.ir_instance().dims().filter(|&other_dim| {
         other_dim.id() != dim.id() &&
@@ -344,8 +344,8 @@ fn reuse_distance(inst: &ir::Instruction,
 
 /// Evaluate the stride of an access pattern of a given dimension.
 fn eval_stride(pattern: &ir::AccessPattern,
-               dim: ir::dim::Id,
-               sizes: &HashMap<ir::dim::Id, u32>) -> ir::Stride {
+               dim: ir::DimId,
+               sizes: &HashMap<ir::DimId, u32>) -> ir::Stride {
     match *pattern {
         ir::AccessPattern::Unknown { .. } => ir::Stride::Unknown,
         ir::AccessPattern::Tensor { ref stride, ref dims, .. } => {
@@ -408,17 +408,17 @@ mod tests {
     /// Generates function with a load in two thread dimensions, with non-coalesced
     /// accessed on the first one.
     fn gen_function<'a>(signature: &'a ir::Signature, gpu: &'a Gpu, d0_d1_order: Order)
-            -> (SearchSpace<'a>, ir::InstId, HashMap<ir::dim::Id, u32>) {
+            -> (SearchSpace<'a>, ir::InstId, HashMap<ir::DimId, u32>) {
         let mut builder = helper::Builder::new(&signature, gpu);
         let t = ir::Type::F(32);
         let size = builder.cst_size(gpu.wrap_size);
-        let addr_base = builder.cast(&0i64, ir::Type::PtrTo(ir::mem::Id::External(0)));
+        let addr_base = builder.cast(&0i64, ir::Type::PtrTo(ir::MemId::External(0)));
         let d0 = builder.open_dim_ex(size.clone(), DimKind::THREAD);
         let d1 = builder.open_dim_ex(size.clone(), DimKind::THREAD);
         let addr = builder.mad(&d0, &(gpu.l1_cache_line as i32), &addr_base);
         let stride = ir::Size::new(gpu.l1_cache_line, vec![], 1);
         let pattern = ir::AccessPattern::Tensor {
-            mem_id: ir::mem::Id::External(0),
+            mem_id: ir::MemId::External(0),
             dims: std::iter::once((d0, stride)).collect(),
         };
         let ld = builder.ld_ex(t, &addr, pattern, InstFlag::MEM_CG);

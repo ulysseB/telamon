@@ -46,7 +46,7 @@ pub trait Device: Sync {
     /// Returns the pressure cause by a `BasicBlock`. For a dimension, returns the pressure
     /// for the full loop execution.
     fn hw_pressure(&self, space: &SearchSpace,
-                   dim_sizes: &HashMap<ir::dim::Id, u32>,
+                   dim_sizes: &HashMap<ir::DimId, u32>,
                    nesting: &HashMap<ir::BBId, Nesting>,
                    bb: &ir::BasicBlock,
                    ctx: &Context) -> HwPressure;

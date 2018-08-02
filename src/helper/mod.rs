@@ -15,44 +15,44 @@ use std;
 /// A logical dimension, possible composed of multiple nested dimensions.
 pub trait MetaDimension {
     /// Returns the ids of the underlying dimensions.
-    fn ids<'a>(&'a self) -> Box<DoubleEndedIterator<Item=ir::dim::Id> + 'a>;
+    fn ids<'a>(&'a self) -> Box<DoubleEndedIterator<Item=ir::DimId> + 'a>;
 }
 
-impl MetaDimension for ir::dim::Id {
-    fn ids<'a>(&'a self) -> Box<DoubleEndedIterator<Item=ir::dim::Id> + 'a> {
+impl MetaDimension for ir::DimId {
+    fn ids<'a>(&'a self) -> Box<DoubleEndedIterator<Item=ir::DimId> + 'a> {
         Box::new(std::iter::once(*self))
     }
 }
 
 /// A groups of dimensions that act as a single logical dimension.
 #[derive(Clone, Default)]
-pub struct DimGroup { dims: Vec<ir::dim::Id> }
+pub struct DimGroup { dims: Vec<ir::DimId> }
 
 impl DimGroup {
     /// Creates a dimension group containing the given dimensions.
-    pub fn new(dims: Vec<ir::dim::Id>) -> Self { DimGroup { dims } }
+    pub fn new(dims: Vec<ir::DimId>) -> Self { DimGroup { dims } }
 
     /// Iterates over the sub-dimensions of the group.
-    pub fn iter(&self) -> std::iter::Cloned<std::slice::Iter<ir::dim::Id>> {
+    pub fn iter(&self) -> std::iter::Cloned<std::slice::Iter<ir::DimId>> {
         self.into_iter()
     }
 }
 
 impl MetaDimension for DimGroup {
-    fn ids<'a>(&'a self) -> Box<DoubleEndedIterator<Item=ir::dim::Id> + 'a> {
+    fn ids<'a>(&'a self) -> Box<DoubleEndedIterator<Item=ir::DimId> + 'a> {
         Box::new(self.dims.iter().cloned())
     }
 }
 
 impl std::ops::Index<usize> for DimGroup {
-    type Output = ir::dim::Id;
+    type Output = ir::DimId;
 
-    fn index(&self, index: usize) -> &ir::dim::Id { &self.dims[index] }
+    fn index(&self, index: usize) -> &ir::DimId { &self.dims[index] }
 }
 
 impl<'a> IntoIterator for &'a DimGroup {
-    type Item = ir::dim::Id;
-    type IntoIter = std::iter::Cloned<std::slice::Iter<'a, ir::dim::Id>>;
+    type Item = ir::DimId;
+    type IntoIter = std::iter::Cloned<std::slice::Iter<'a, ir::DimId>>;
 
     fn into_iter(self) -> Self::IntoIter { self.dims.iter().cloned() }
 }

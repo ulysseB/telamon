@@ -1,5 +1,5 @@
 //! Describes the different kinds of operands an instruction can have.
-use ir::{self, Instruction, InstId, Parameter, DimMap, Type, dim, mem};
+use ir::{self, Instruction, InstId, Parameter, DimMap, Type, mem};
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::traits::{Signed, Zero};
@@ -27,13 +27,13 @@ pub enum Operand<'a> {
     /// lowered.
     Inst(InstId, Type, DimMap, DimMapScope),
     /// The current index in a loop.
-    Index(dim::Id),
+    Index(ir::DimId),
     /// A parameter of the function.
     Param(&'a Parameter),
     /// The address of a memory block.
     Addr(mem::InternalId),
     /// The value of the current instruction at a previous iteration.
-    Reduce(InstId, Type, DimMap, Vec<ir::dim::Id>),
+    Reduce(InstId, Type, DimMap, Vec<ir::DimId>),
     /// A variable increased by a fixed amount at every step of some loops.
     InductionVar(ir::IndVarId, Type),
 }
@@ -62,7 +62,7 @@ impl<'a> Operand<'a> {
     }
 
     /// Creates a reduce operand from an instruction and a set of dimensions to reduce on.
-    pub fn new_reduce(init: &Instruction, dim_map: DimMap, dims: Vec<ir::dim::Id>)
+    pub fn new_reduce(init: &Instruction, dim_map: DimMap, dims: Vec<ir::DimId>)
             -> Operand<'a> {
         Reduce(init.id(), unwrap!(init.t()), dim_map, dims)
     }
@@ -79,7 +79,7 @@ impl<'a> Operand<'a> {
     }
 
     /// Renames a basic block id.
-    pub fn merge_dims(&mut self, lhs: ir::dim::Id, rhs: ir::dim::Id) {
+    pub fn merge_dims(&mut self, lhs: ir::DimId, rhs: ir::DimId) {
         match *self {
             Inst(_, _, ref mut dim_map, _) |
             Reduce(_, _, ref mut dim_map, _) => { dim_map.merge_dims(lhs, rhs); },
@@ -88,7 +88,7 @@ impl<'a> Operand<'a> {
     }
 
     /// Indicates if a `DimMap` should be lowered if lhs and rhs are not mapped.
-    pub fn should_lower_map(&self, lhs: ir::dim::Id, rhs: ir::dim::Id) -> bool {
+    pub fn should_lower_map(&self, lhs: ir::DimId, rhs: ir::DimId) -> bool {
         match *self {
             Inst(_, _, ref dim_map, _) |
             Reduce(_, _, ref dim_map, _) => {
@@ -99,7 +99,7 @@ impl<'a> Operand<'a> {
     }
 
     /// If the operand is a reduction, returns the instruction initializing the reduction.
-    pub fn as_reduction(&self) -> Option<(InstId, &DimMap, &[ir::dim::Id])> {
+    pub fn as_reduction(&self) -> Option<(InstId, &DimMap, &[ir::DimId])> {
         if let Reduce(id, _, ref dim_map, ref dims) = *self {
             Some((id, dim_map, dims))
         } else { None }

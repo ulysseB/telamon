@@ -13,7 +13,7 @@ use utils::*;
 /// A value that can be named.
 #[derive(Copy, Clone)]
 pub enum Value<'a> {
-    InductionLevel(ir::IndVarId, ir::dim::Id),
+    InductionLevel(ir::IndVarId, ir::DimId),
     Operand(&'a ir::Operand<'a>),
 }
 
@@ -35,9 +35,9 @@ pub struct NameMap<'a, 'b> {
     /// Provides fresh names.
     namer: std::cell::RefCell<&'b mut Namer>,
     /// Keeps track of the name of the values produced by instructions.
-    insts: HashMap<InstId, (Vec<dim::Id>, NDArray<String>)>,
+    insts: HashMap<InstId, (Vec<ir::DimId>, NDArray<String>)>,
     /// Keeps track of loop index names.
-    indexes: HashMap<dim::Id, RcStr>,
+    indexes: HashMap<ir::DimId, RcStr>,
     /// Keeps track of parameter names, both in the code and in the arguments.
     params: HashMap<ParamValKey<'a>, (String, String)>,
     /// Keeps track of memory block address names.
@@ -45,13 +45,13 @@ pub struct NameMap<'a, 'b> {
     /// Keeps track of the next fresh ID that can be assigned to a loop.
     num_loop: u32,
     /// Tracks the current index on expanded dimensions.
-    current_indexes: HashMap<dim::Id, u32>,
+    current_indexes: HashMap<ir::DimId, u32>,
     /// Total number threads.
     #[cfg(feature="mppa")]
     total_num_threads: u32,
     /// Tracks the name of induction variables partial names.
     induction_vars: HashMap<ir::IndVarId, String>,
-    induction_levels: HashMap<(ir::IndVarId, ir::dim::Id), String>,
+    induction_levels: HashMap<(ir::IndVarId, ir::DimId), String>,
     /// Casted sizes.
     size_casts: HashMap<(&'a codegen::Size<'a>, ir::Type), String>,
     /// Guard to use in front of instructions with side effects.
@@ -237,12 +237,12 @@ impl<'a, 'b> NameMap<'a, 'b> {
 
     /// Returns the ids and the sizes of the dimensions on which the instructions must be
     /// named.
-    fn inst_name_dims(&self, inst: &Instruction) -> (Vec<dim::Id>, Vec<usize>) {
+    fn inst_name_dims(&self, inst: &Instruction) -> (Vec<ir::DimId>, Vec<usize>) {
         inst.instantiation_dims().iter().map(|&(dim, size)| (dim, size as usize)).unzip()
     }
 
     /// Returns the name of an index.
-    pub fn name_index(&self, dim_id: dim::Id) -> &str { &self.indexes[&dim_id] }
+    pub fn name_index(&self, dim_id: ir::DimId) -> &str { &self.indexes[&dim_id] }
 
     /// Set the current index of an unrolled dimension.
     pub fn set_current_index(&mut self, dim: &Dimension, idx: u32) {
@@ -255,7 +255,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     pub fn indexed_inst_name(&mut self, inst: &Instruction,
-                             dim: ir::dim::Id, idx: u32) -> String {
+                             dim: ir::DimId, idx: u32) -> String {
         self.current_indexes.insert(dim, idx);
         let name = self.name_inst(inst).to_string();
         self.current_indexes.remove(&dim);
@@ -263,7 +263,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     pub fn indexed_op_name(&mut self, op: &Operand,
-                           dim: ir::dim::Id, idx: u32) -> String {
+                           dim: ir::DimId, idx: u32) -> String {
         self.current_indexes.insert(dim, idx);
         let name = self.name_op(op).to_string();
         self.current_indexes.remove(&dim);
@@ -289,7 +289,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
 
     /// Assigns a name to an induction variable.
     // TODO(cleanup): split into name induction var and name induction level
-    pub fn name_induction_var(&self, var: ir::IndVarId, dim: Option<ir::dim::Id>)
+    pub fn name_induction_var(&self, var: ir::IndVarId, dim: Option<ir::DimId>)
             -> Cow<str> {
         if let Some(dim) = dim {
             Cow::Borrowed(&self.induction_levels[&(var, dim)])

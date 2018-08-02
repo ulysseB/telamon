@@ -1,7 +1,7 @@
 //! Helper struct to build a `Function`.
 use device::Device;
 use ir::{AccessPattern, Function, Signature, InstId, Operand, Operator};
-use ir::{self, Parameter, Size, Type, dim, mem, op};
+use ir::{self, Parameter, Size, Type, mem, op};
 use itertools::Itertools;
 use helper::{AutoOperand, DimGroup, MetaDimension, MetaBasicBlock};
 use search_space::{Action, Order, DimKind, InstFlag, MemSpace, SearchSpace};
@@ -11,7 +11,7 @@ use utils::*;
 /// Helper to build a `Function`.
 pub struct Builder<'a> {
     function: Function<'a>,
-    open_dims: HashMap<dim::Id, dim::Id>,
+    open_dims: HashMap<ir::DimId, ir::DimId>,
     actions: Vec<Action>,
 }
 
@@ -185,7 +185,7 @@ impl<'a> Builder<'a> {
     /// Builds both an induction variable for a tensor memory access and the corresponding
     /// access pattern.
     pub fn tensor_access(&mut self, addr: &AutoOperand<'a>,
-                         mem: ir::mem::Id,
+                         mem: ir::MemId,
                          t: &ir::Type,
                          dims: &[&MetaDimension])
         -> (ir::IndVarId, ir::AccessPattern<'a>)
@@ -205,14 +205,14 @@ impl<'a> Builder<'a> {
     pub fn action(&mut self, action: Action) { self.actions.push(action) }
 
     /// Opens a new dimension.
-    pub fn open_dim(&mut self, size: Size<'a>) -> dim::Id {
+    pub fn open_dim(&mut self, size: Size<'a>) -> ir::DimId {
         let id = unwrap!(self.function.add_dim(size));
         self.open_dims.insert(id, id);
         id
     }
 
     /// Opens a nest of new dimension with the given kinds and sizes.
-    pub fn open_dim_ex(&mut self, size: Size<'a>, kind: DimKind) -> dim::Id {
+    pub fn open_dim_ex(&mut self, size: Size<'a>, kind: DimKind) -> ir::DimId {
         let id = self.open_dim(size);
         self.actions.push(Action::DimKind(id, kind));
         id
@@ -299,14 +299,14 @@ impl<'a> Builder<'a> {
     }
 
     /// Generates an access paterns with all the strides unknown on the opened dimensions.
-    pub fn unknown_access_pattern(&self, mem: mem::Id) -> AccessPattern<'static> {
+    pub fn unknown_access_pattern(&self, mem: ir::MemId) -> AccessPattern<'static> {
         AccessPattern::Unknown { mem_id: mem }
     }
 
     /// Generates the access pattern corresponding to accessing a tensor of the given
     /// type. The data is assumed to be laid out contiguously in the order given by
     /// dimensions. The last dimension is the major order.
-    pub fn tensor_access_pattern(&self, mem: mem::Id, t: &Type, dims: &[&MetaDimension])
+    pub fn tensor_access_pattern(&self, mem: ir::MemId, t: &Type, dims: &[&MetaDimension])
             -> AccessPattern<'a> {
         let data_size = self.cst_size(unwrap!(t.len_byte()));
         let dims = dims.iter().flat_map(|d| d.ids()).rev().scan(data_size, |size, dim| {
@@ -319,7 +319,7 @@ impl<'a> Builder<'a> {
 
     /// Builds an induction variable.
     pub fn induction_var(&mut self, base: &AutoOperand<'a>,
-                         dims: Vec<(dim::Id, ir::Size<'a>)>) -> ir::IndVarId {
+                         dims: Vec<(ir::DimId, ir::Size<'a>)>) -> ir::IndVarId {
         let base = self.get_op(base);
         self.function.add_ind_var(unwrap!(ir::InductionVar::new(dims, base)))
     }

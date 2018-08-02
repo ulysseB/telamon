@@ -15,8 +15,8 @@ pub enum ActionEx {
     Action(Action),
     LowerLayout {
         mem: ir::mem::InternalId,
-        st_dims: Vec<ir::dim::Id>,
-        ld_dims: Vec<ir::dim::Id>,
+        st_dims: Vec<ir::DimId>,
+        ld_dims: Vec<ir::DimId>,
     }
 }
 

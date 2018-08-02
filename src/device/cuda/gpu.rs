@@ -289,7 +289,7 @@ impl Gpu {
 
     /// Retruns the overhead for a single instance of the instruction.
     fn inst_pressure(&self, space: &SearchSpace,
-                     dim_sizes: &HashMap<ir::dim::Id, u32>,
+                     dim_sizes: &HashMap<ir::DimId, u32>,
                      inst: &ir::Instruction,
                      ctx: &device::Context) -> HwPressure {
         use ir::Operator::*;
@@ -432,7 +432,7 @@ impl device::Device for Gpu {
     }
 
     fn hw_pressure(&self, space: &SearchSpace,
-                   dim_sizes: &HashMap<ir::dim::Id, u32>,
+                   dim_sizes: &HashMap<ir::DimId, u32>,
                    _nesting: &HashMap<ir::BBId, model::Nesting>,
                    bb: &ir::BasicBlock,
                    ctx: &device::Context) -> model::HwPressure {

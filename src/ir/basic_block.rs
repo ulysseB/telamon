@@ -4,14 +4,14 @@ use std;
 
 /// Provides a unique identifer for a basic block.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub enum BBId { Inst(ir::InstId), Dim(ir::dim::Id) }
+pub enum BBId { Inst(ir::InstId), Dim(ir::DimId) }
 
 impl From<ir::InstId> for BBId {
     fn from(id: ir::InstId) -> Self { BBId::Inst(id) }
 }
 
-impl From<ir::dim::Id> for BBId {
-    fn from(id: ir::dim::Id) -> Self { BBId::Dim(id) }
+impl From<ir::DimId> for BBId {
+    fn from(id: ir::DimId) -> Self { BBId::Dim(id) }
 }
 
 /// Represents a basic block in an Exhaust function.
