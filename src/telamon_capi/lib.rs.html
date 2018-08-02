@@ -154,6 +154,14 @@
 <span id="154">154</span>
 <span id="155">155</span>
 <span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! C API wrappers for calling Telamon through FFI.</span>
 <span class="doccomment">//!</span>
@@ -167,10 +175,17 @@
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">telamon_kernels</span>;
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">telamon_utils</span>;
+<span class="attribute">#[<span class="ident">macro_use</span>]</span>
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">failure</span>;
+
+<span class="attribute">#[<span class="ident">macro_use</span>]</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">error</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cuda&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">cuda</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">ir</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">search_space</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">explorer</span>;
 
 <span class="kw">use</span> <span class="ident">libc</span>::{<span class="ident">c_char</span>, <span class="ident">c_int</span>, <span class="ident">c_uint</span>, <span class="ident">size_t</span>, <span class="ident">uint32_t</span>};
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">device</span>;
@@ -178,14 +193,15 @@
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">explorer</span>::<span class="ident">config</span>::<span class="ident">Config</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">telamon_kernels</span>::{<span class="ident">linalg</span>, <span class="ident">Kernel</span>};
 
-<span class="comment">// Pointers to `device::Context` and `device::Device` are not C-like pointers. Instead,</span>
-<span class="comment">// they are fat pointers containing both a regular pointer to the object and a pointer to</span>
-<span class="comment">// the vtable. Thus, we define wrappers to encapsulate the pointers in an opaque type and</span>
-<span class="comment">// we return pointers to the wrappers to C users.</span>
+<span class="comment">// Pointers to `device::Context` and `device::Device` are not C-like pointers.</span>
+<span class="comment">// Instead, they are fat pointers containing both a regular pointer to the</span>
+<span class="comment">// object and a pointer to the vtable. Thus, we define wrappers to encapsulate</span>
+<span class="comment">// the pointers in an opaque type and we return pointers to the wrappers to C</span>
+<span class="comment">// users.</span>
 
-<span class="doccomment">/// Description of the evaluation context. In particular, in contains the mapping between</span>
-<span class="doccomment">/// argument names and argument values.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Context</span>(<span class="kw-2">*</span><span class="kw">const</span> <span class="ident">device</span>::<span class="ident">Context</span>);
+<span class="doccomment">/// Description of the evaluation context. In particular, in contains the</span>
+<span class="doccomment">/// mapping between argument names and argument values.</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Context</span>(<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">device</span>::<span class="ident">Context</span>);
 
 <span class="doccomment">/// Description of the targeted device.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Device</span>(<span class="kw-2">*</span><span class="kw">const</span> <span class="ident">device</span>::<span class="ident">Device</span>);

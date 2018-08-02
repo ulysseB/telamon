@@ -424,90 +424,17 @@
 <span id="424">424</span>
 <span id="425">425</span>
 <span id="426">426</span>
-<span id="427">427</span>
-<span id="428">428</span>
-<span id="429">429</span>
-<span id="430">430</span>
-<span id="431">431</span>
-<span id="432">432</span>
-<span id="433">433</span>
-<span id="434">434</span>
-<span id="435">435</span>
-<span id="436">436</span>
-<span id="437">437</span>
-<span id="438">438</span>
-<span id="439">439</span>
-<span id="440">440</span>
-<span id="441">441</span>
-<span id="442">442</span>
-<span id="443">443</span>
-<span id="444">444</span>
-<span id="445">445</span>
-<span id="446">446</span>
-<span id="447">447</span>
-<span id="448">448</span>
-<span id="449">449</span>
-<span id="450">450</span>
-<span id="451">451</span>
-<span id="452">452</span>
-<span id="453">453</span>
-<span id="454">454</span>
-<span id="455">455</span>
-<span id="456">456</span>
-<span id="457">457</span>
-<span id="458">458</span>
-<span id="459">459</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! C API wrappers to create Telamon Kernels.</span>
 <span class="kw">use</span> <span class="ident">Device</span>;
 <span class="kw">use</span> <span class="ident">libc</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">rational</span>::<span class="ident">Ratio</span>;
 <span class="kw">use</span> <span class="ident">std</span>;
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefCell</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">ir</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">ir</span>::<span class="ident">op</span>::<span class="ident">Rounding</span>;
 
-<span class="macro">thread_local</span><span class="macro">!</span> {
-    <span class="kw">static</span> <span class="ident">ERROR</span>: <span class="ident">RefCell</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Error</span><span class="op">&gt;&gt;</span> <span class="op">=</span> <span class="ident">RefCell</span>::<span class="ident">new</span>(<span class="prelude-val">None</span>);
-}
-
-<span class="doccomment">/// Indicates if a telamon function exited correctly.</span>
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TelamonStatus</span> { <span class="ident">TelamonStatusOk</span>, <span class="ident">TelamonStatusFail</span> }
-
-<span class="doccomment">/// Helper macro that unwraps a result. Exits with `$error` and sets the global `ERROR`</span>
-<span class="doccomment">/// variable when an error is encountered.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// When no value is specified for `$error`, returns with `TELAMON_STATUS_FAIL`. When `null` is</span>
-<span class="doccomment">/// specified instead, exits with a null mutable pointer.</span>
-<span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">unwrap_or_exit</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">result</span>:<span class="ident">expr</span>) <span class="op">=&gt;</span> { <span class="macro">unwrap_or_exit</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">result</span>, <span class="ident">TelamonStatus</span>::<span class="ident">TelamonStatusOk</span>) };
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">result</span>:<span class="ident">expr</span>, <span class="ident">null</span>) <span class="op">=&gt;</span> { <span class="macro">unwrap_or_exit</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">result</span>, <span class="ident">std</span>::<span class="ident">ptr</span>::<span class="ident">null_mut</span>()) };
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">result</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">error</span>:<span class="ident">expr</span>) <span class="op">=&gt;</span> {
-        <span class="kw">match</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">result</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">data</span>) <span class="op">=&gt;</span> <span class="ident">data</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">error</span>) <span class="op">=&gt;</span> {
-                <span class="ident">ERROR</span>.<span class="ident">with</span>(<span class="op">|</span><span class="ident">error_var</span><span class="op">|</span> {
-                    <span class="kw-2">*</span><span class="ident">error_var</span>.<span class="ident">borrow_mut</span>() <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">error</span>.<span class="ident">into</span>());
-                });
-                <span class="kw">return</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">error</span>
-            }
-        }
-    };
-}
-
-<span class="doccomment">/// Prints the error message in a string. Returns `null` if no error was present. The</span>
-<span class="doccomment">/// caller is responsible for freeing the string with `free`.</span>
-<span class="attribute">#[<span class="ident">no_mangle</span>]</span>
-<span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">extern</span> <span class="string">&quot;C&quot;</span> <span class="kw">fn</span> <span class="ident">telamon_ir_strerror</span>() <span class="op">-&gt;</span> <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">libc</span>::<span class="ident">c_char</span> {
-    <span class="ident">ERROR</span>.<span class="ident">with</span>(<span class="op">|</span><span class="ident">error</span><span class="op">|</span> {
-        <span class="ident">error</span>.<span class="ident">borrow</span>().<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">error</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">string</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">std</span>::<span class="ident">ffi</span>::<span class="ident">CString</span>::<span class="ident">new</span>(<span class="ident">error</span>.<span class="ident">to_string</span>()));
-            <span class="ident">libc</span>::<span class="ident">strdup</span>(<span class="ident">string</span>.<span class="ident">as_ptr</span>())
-        }).<span class="ident">unwrap_or</span>(<span class="ident">std</span>::<span class="ident">ptr</span>::<span class="ident">null_mut</span>())
-    })
-}
+<span class="kw">use</span> <span class="kw">super</span>::<span class="ident">error</span>::<span class="ident">TelamonStatus</span>;
 
 <span class="doccomment">/// Creates a function signature that must be deallocated with</span>
 <span class="doccomment">/// `telamon_ir_signature_free`.</span>
@@ -579,7 +506,14 @@
 
 <span class="doccomment">/// Opaque type that abstracts away the lifetime parameter of `ir::Function` so that</span>
 <span class="doccomment">/// cbindgen generates the bindings.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Function</span>(<span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, ()<span class="op">&gt;</span>);
+
+<span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, ()<span class="op">&gt;&gt;</span> <span class="kw">for</span> <span class="ident">Function</span> {
+    <span class="kw">fn</span> <span class="ident">into</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span>, ()<span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="number">0</span>
+    }
+}
 
 <span class="doccomment">/// Creates a function to optimize. The function must be freed with</span>
 <span class="doccomment">/// `telamon_ir_function_free`. `signature` and `device` must outlive the function.</span>

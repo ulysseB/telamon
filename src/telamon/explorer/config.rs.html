@@ -255,6 +255,11 @@
 <span id="255">255</span>
 <span id="256">256</span>
 <span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Defines a structure to store the configuration of the exploration. The configuration</span>
 <span class="doccomment">//! is read from the `Setting.toml` file if it exists. Some parameters can be overridden</span>
@@ -273,6 +278,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span>)]</span>
 <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">deny_unknown_fields</span>)]</span>
+<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Config</span> {
     <span class="doccomment">/// Name of the file in wich to store the logs.</span>
     <span class="kw">pub</span> <span class="ident">log_file</span>: <span class="ident">String</span>,
@@ -398,6 +404,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">tag</span><span class="op">=</span><span class="string">&quot;type&quot;</span>)]</span>
 <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span><span class="op">=</span><span class="string">&quot;snake_case&quot;</span>)]</span>
+<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SearchAlgorithm</span> {
     <span class="doccomment">/// Evaluate all the candidates that cannot be pruned.</span>
     <span class="ident">BoundOrder</span>,
@@ -431,6 +438,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span>)]</span>
 <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">deny_unknown_fields</span>)]</span>
+<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BanditConfig</span> {
     <span class="doccomment">/// Indicates how to select between nodes of the search tree when none of their</span>
     <span class="doccomment">/// children have been evaluated.</span>
@@ -480,6 +488,7 @@
 <span class="doccomment">/// evaluated.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span><span class="op">=</span><span class="string">&quot;snake_case&quot;</span>)]</span>
+<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">NewNodeOrder</span> {
     <span class="doccomment">/// Consider the nodes in the order given by the search space API.</span>
     <span class="ident">Api</span>,
@@ -500,6 +509,7 @@
 <span class="doccomment">/// evaluated.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span><span class="op">=</span><span class="string">&quot;snake_case&quot;</span>)]</span>
+<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">OldNodeOrder</span> {
     <span class="doccomment">/// Use the weights from the bandit algorithm.</span>
     <span class="ident">Bandit</span>,

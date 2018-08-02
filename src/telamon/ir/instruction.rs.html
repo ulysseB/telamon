@@ -142,6 +142,7 @@
 <span id="142">142</span>
 <span id="143">143</span>
 <span id="144">144</span>
+<span id="145">145</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Describes the instructions.</span>
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">Device</span>;
@@ -152,6 +153,7 @@
 <span class="doccomment">/// Uniquely identifies an instruction.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
+<span class="doccomment">/// cbindgen:field-names=[id]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">InstId</span>(<span class="kw">pub</span> <span class="ident">u32</span>);
 
 <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">InstId</span> {

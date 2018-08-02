@@ -1,0 +1,1 @@
+initSidebarItems({"constant":[["ERROR",""]],"enum":[["Error",""],["TelamonStatus","Indicates if a telamon function exited correctly."]],"fn":[["telamon_strerror","Prints the error message in a string. Returns `null` if no error was present. The caller is responsible for freeing the string with `free`."]]});
