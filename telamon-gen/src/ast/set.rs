@@ -14,7 +14,7 @@ pub struct SetDef {
 impl SetDef {
 
     /// This checks that thereisn't any keys doublon.
-    fn check_declare(&self) -> Result<(), TypeError> {
+    fn check_redefinition_key(&self) -> Result<(), TypeError> {
         let mut hash: HashMap<_, Spanned<()>> = HashMap::default();
         for (key, ..) in self.keys.iter() {
             if let Some(pre) = hash.insert(key.data.to_owned(), key.with_data(())) {
@@ -80,13 +80,14 @@ impl SetDef {
     }
 
     /// Type checks the declare's condition.
-    pub fn declare(&self) -> Result<(), TypeError> {
-        self.check_declare()?;
-        Ok(())
+    pub fn declare(&self, context: &mut CheckerContext) -> Result<(), TypeError> {
+        context.declare_set(self.name.to_owned())
     }
 
     /// Type checks the define's condition.
-    pub fn define(&self) -> Result<(), TypeError> {
+    pub fn define(&self, context: &CheckerContext) -> Result<(), TypeError> {
+        context.check_set_define(&self.name, &self.arg, &self.superset)?;
+        self.check_redefinition_key()?;
         self.check_missing_entry()?;
         Ok(())
     }

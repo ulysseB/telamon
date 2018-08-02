@@ -13,27 +13,22 @@ pub enum ChoiceDef {
 }
 
 impl ChoiceDef {
-    pub fn declare(&self) -> Result<(), TypeError> {
+    pub fn declare(&self, context: &mut CheckerContext) -> Result<(), TypeError> {
         match self {
-            ChoiceDef::CounterDef(_) => Ok(()),
-            ChoiceDef::IntegerDef(integer_def) => integer_def.declare(),
-            ChoiceDef::EnumDef(enum_def) => enum_def.declare(),
+            ChoiceDef::IntegerDef(choice) => context.declare_choice(
+                choice.name.to_owned(), Hint::Integer),
+            ChoiceDef::EnumDef(choice) => context.declare_choice(
+                choice.name.to_owned(), Hint::Enum),
+            ChoiceDef::CounterDef(choice) => context.declare_choice(
+                choice.name.with_data(choice.name.data.to_string()), Hint::Counter),
         }
     }
 
-    pub fn define(&self) -> Result<(), TypeError> {
+    pub fn define(&self, context: &CheckerContext) -> Result<(), TypeError> {
         match self {
             ChoiceDef::CounterDef(_) => Ok(()),
-            ChoiceDef::IntegerDef(integer_def) => integer_def.define(),
-            ChoiceDef::EnumDef(enum_def) => enum_def.define(),
-        }
-    }
-
-    pub fn get_name(&self) -> Spanned<String> {
-        match self {
-            ChoiceDef::IntegerDef(choice) => choice.name.to_owned(),
-            ChoiceDef::EnumDef(choice) => choice.name.to_owned(),
-            ChoiceDef::CounterDef(choice) => choice.name.with_data(choice.name.data.to_string()),
+            ChoiceDef::IntegerDef(integer_def) => integer_def.define(context),
+            ChoiceDef::EnumDef(enum_def) => enum_def.define(context),
         }
     }
 }

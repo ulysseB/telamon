@@ -12,7 +12,7 @@ pub struct EnumDef {
 impl EnumDef {
 
     /// This checks that there isn't any doublon in the field list.
-    fn check_declare_field(&self) -> Result<(), TypeError> {
+    fn check_redefinition_field(&self) -> Result<(), TypeError> {
         let mut hash: HashMap<String, _> = HashMap::default();
         let mut symmetric: Option<Spanned<()>> = None;
         let mut antisymmetric: Option<Spanned<()>> = None;
@@ -57,7 +57,7 @@ impl EnumDef {
     }
 
     /// This checks that there isn't any doublon in parameter list.
-    fn check_declare_parameter(&self) -> Result<(), TypeError> {
+    fn check_redefinition_parameter(&self) -> Result<(), TypeError> {
         let mut hash: HashMap<String, _> = HashMap::default();
         for VarDef { name, .. } in self.variables.as_slice() {
             if let Some(before) = hash.insert(name.data.to_string(),
@@ -189,14 +189,15 @@ impl EnumDef {
     }
 
     /// Type checks the declare's condition.
-    pub fn declare(&self) -> Result<(), TypeError> {
-        self.check_declare_parameter()?;
-        self.check_declare_field()?;
+    pub fn declare(&self, context: &mut CheckerContext) -> Result<(), TypeError> {
         Ok(())
     }
 
     /// Type checks the define's condition.
-    pub fn define(&self) -> Result<(), TypeError> {
+    pub fn define(&self, context: &CheckerContext) -> Result<(), TypeError> {
+        context.check_choice_define(&self.name, &self.variables)?;
+        self.check_redefinition_parameter()?;
+        self.check_redefinition_field()?;
         self.check_field()?;
         self.check_two_parameter()?;
         self.check_same_parameter()?;

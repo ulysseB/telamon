@@ -12,15 +12,17 @@ pub struct IntegerDef {
 impl IntegerDef {
 
     /// Type checks the declare's condition.
-    pub fn declare(&self) -> Result<(), TypeError> {
+    pub fn declare(&self, context: &mut CheckerContext) -> Result<(), TypeError> {
         Ok(())
     }
 
     /// Type checks the define's condition.
-    pub fn define(&self) -> Result<(), TypeError> {
+    pub fn define(&self, context: &CheckerContext) -> Result<(), TypeError> {
+        context.check_choice_define(&self.name, &self.variables)?;
         Ok(())
     }
 }
+
 impl PartialEq for IntegerDef {
     fn eq(&self, rhs: &Self) -> bool {
         self.name == rhs.name

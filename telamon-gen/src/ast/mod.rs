@@ -77,20 +77,18 @@ pub enum Statement {
 }
 
 impl Statement {
-    pub fn declare(&self, type_checker: &mut CheckerContext) -> Result<(), TypeError> {
-        type_checker.declare(self)?;
+    pub fn declare(&self, context: &mut CheckerContext) -> Result<(), TypeError> {
         match self {
-            Statement::SetDef(def) => def.declare(),
-            Statement::ChoiceDef(def) => def.declare(),
+            Statement::SetDef(def) => def.declare(context),
+            Statement::ChoiceDef(def) => def.declare(context),
             _ => Ok(()),
         }
     }
 
-    pub fn define(&self, type_checker: &mut CheckerContext) -> Result<(), TypeError> {
-        type_checker.define(self)?;
+    pub fn define(&self, context: &mut CheckerContext) -> Result<(), TypeError> {
         match self {
-            Statement::SetDef(def) => def.define(),
-            Statement::ChoiceDef(def) => def.define(),
+            Statement::SetDef(def) => def.define(context),
+            Statement::ChoiceDef(def) => def.define(context),
             _ => Ok(()),
         }
     }
