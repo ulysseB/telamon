@@ -36,16 +36,12 @@ impl CheckerContext {
     /// This checks the undefined of SetDef superset and arg.
     fn check_set_define(&self, statement: &SetDef) -> Result<(), TypeError> {
         match statement {
-            SetDef { name: Spanned { beg, end, data: ref name },
-            doc: _, arg, superset, disjoint: _, keys, ..  } => {
+            SetDef { name: spanned, doc: _, arg, superset, disjoint: _, keys, ..  } => {
                 if let Some(VarDef { name: _, set: SetRef { name, .. } }) = arg {
                     let name: &String = name.deref();
                     if !self.hash_set.contains_key(name) {
                         Err(TypeError::Undefined {
-                            object_name: Spanned {
-                                beg: beg.to_owned(), end: end.to_owned(),
-                                data: name.to_owned(),
-                            }
+                            object_name: spanned.with_data(name.to_owned()),
                         })?;
                     }
                 }
@@ -53,10 +49,7 @@ impl CheckerContext {
                     let name: &String = supername.deref();
                     if !self.hash_set.contains_key(name) {
                         Err(TypeError::Undefined {
-                            object_name: Spanned {
-                                beg: beg.to_owned(), end: end.to_owned(),
-                                data: name.to_owned(),
-                            }
+                            object_name: spanned.with_data(name.to_owned()),
                         })?;
                     }
                 }
@@ -68,21 +61,13 @@ impl CheckerContext {
     /// This checks the undefined of EnumDef or IntegerDef.
     fn check_choice_define(&self, statement: ChoiceDef) -> Result<(), TypeError> {
         match statement {
-            ChoiceDef::EnumDef(EnumDef {
-                name: Spanned { ref beg, ref end, data: _ },
-                doc: _, ref variables,
-            .. }) |
-            ChoiceDef::IntegerDef(IntegerDef {
-                name: Spanned { ref beg, ref end, data: _ }, doc: _, ref variables,
-            .. }) => {
+            ChoiceDef::EnumDef(EnumDef { name: spanned, doc: _, ref variables, .. }) |
+            ChoiceDef::IntegerDef(IntegerDef { name: spanned, doc: _, ref variables, .. }) => {
                 for VarDef { name: _, set: SetRef { name, .. } } in variables {
                     let name: &String = name.deref();
                     if !self.hash_set.contains_key(name) {
                         Err(TypeError::Undefined {
-                            object_name: Spanned {
-                                beg: beg.to_owned(), end: end.to_owned(),
-                                data: name.to_owned(),
-                            }
+                            object_name: spanned.with_data(name.to_owned()),
                         })?;
                     }
                 }
