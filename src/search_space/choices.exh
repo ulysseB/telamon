@@ -253,6 +253,7 @@ define enum dim_mapping($lhs in Dimensions, $rhs in Dimensions):
     requires dim_kind($lhs) is UNROLL | VECTOR || order($lhs, $rhs) is MERGED
   /// Values may be transmitted using one register for each thread.
   value THREAD_MAP:
+    requires dim_kind($lhs) is THREAD
   /// Values are transmitted through registers.
   alias MAPPED = UNROLL_MAP | THREAD_MAP:
     requires "$lhs.size() == $rhs.size()"
