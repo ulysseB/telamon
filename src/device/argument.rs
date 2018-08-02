@@ -19,7 +19,7 @@ pub unsafe trait ScalarArgument: Sync + Send + Copy + PartialEq + Display + 'sta
     /// Returns a raw pointer to the object.
     fn raw_ptr(&self) -> *const libc::c_void;
     /// Returns an operand holding the argument value as a constant.
-    fn as_operand(&self) -> ir::Operand<'static>;
+    fn as_operand<L>(&self) -> ir::Operand<'static, L>;
     /// Generates a random instance of the argument type.
     fn gen_random<R: Rng>(&mut R) -> Self;
 }
@@ -31,7 +31,7 @@ unsafe impl ScalarArgument for f32 {
         self as *const f32 as *const libc::c_void
     }
 
-    fn as_operand(&self) -> ir::Operand<'static> {
+    fn as_operand<L>(&self) -> ir::Operand<'static, L> {
         ir::Operand::new_float(unwrap!(Ratio::from_float(*self)), 32)
     }
 
@@ -45,7 +45,7 @@ unsafe impl ScalarArgument for f64 {
         self as *const f64 as *const libc::c_void
     }
 
-    fn as_operand(&self) -> ir::Operand<'static> {
+    fn as_operand<L>(&self) -> ir::Operand<'static, L> {
         ir::Operand::new_float(unwrap!(Ratio::from_float(*self)), 64)
     }
 
@@ -61,7 +61,7 @@ unsafe impl ScalarArgument for i8 {
         self as *const i8 as *const libc::c_void
     }
 
-    fn as_operand(&self) -> ir::Operand<'static> {
+    fn as_operand<L>(&self) -> ir::Operand<'static, L> {
         ir::Operand::new_int(unwrap!(BigInt::from_i8(*self)), 8)
     }
 
@@ -77,7 +77,7 @@ unsafe impl ScalarArgument for i16 {
         self as *const i16 as *const libc::c_void
     }
 
-    fn as_operand(&self) -> ir::Operand<'static> {
+    fn as_operand<L>(&self) -> ir::Operand<'static, L> {
         ir::Operand::new_int(unwrap!(BigInt::from_i16(*self)), 16)
     }
 
@@ -93,7 +93,7 @@ unsafe impl ScalarArgument for i32 {
         self as *const i32 as *const libc::c_void
     }
 
-    fn as_operand(&self) -> ir::Operand<'static> {
+    fn as_operand<L>(&self) -> ir::Operand<'static, L> {
         ir::Operand::new_int(unwrap!(BigInt::from_i32(*self)), 32)
     }
 
@@ -109,7 +109,7 @@ unsafe impl ScalarArgument for i64 {
         self as *const i64 as *const libc::c_void
     }
 
-    fn as_operand(&self) -> ir::Operand<'static> {
+    fn as_operand<L>(&self) -> ir::Operand<'static, L> {
         ir::Operand::new_int(unwrap!(BigInt::from_i64(*self)), 64)
     }
 

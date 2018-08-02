@@ -1,6 +1,6 @@
 //! Defines operators.
 use device::Device;
-use ir::{self, AccessPattern, Operand, Type};
+use ir::{self, AccessPattern, Operand, Type, LoweringMap};
 use itertools::Itertools;
 use std;
 use std::borrow::Cow;
@@ -70,31 +70,31 @@ impl BinOp {
 
 /// The operation performed by an instruction.
 #[derive(Clone, Debug)]
-pub enum Operator<'a> {
+pub enum Operator<'a, L = LoweringMap> {
     /// A binary arithmetic operator.
-    BinOp(BinOp, Operand<'a>, Operand<'a>, Rounding),
+    BinOp(BinOp, Operand<'a, L>, Operand<'a, L>, Rounding),
     /// Performs a multiplication with the given return type.
-    Mul(Operand<'a>, Operand<'a>, Rounding, Type),
+    Mul(Operand<'a, L>, Operand<'a, L>, Rounding, Type),
     /// Performs s multiplication between the first two operands and adds the
     /// result to the third.
-    Mad(Operand<'a>, Operand<'a>, Operand<'a>, Rounding),
+    Mad(Operand<'a, L>, Operand<'a, L>, Operand<'a, L>, Rounding),
     /// Moves a value into a register.
-    Mov(Operand<'a>),
+    Mov(Operand<'a, L>),
     /// Loads a value of the given type from the given address.
-    Ld(Type, Operand<'a>, AccessPattern<'a>),
+    Ld(Type, Operand<'a, L>, AccessPattern<'a>),
     /// Stores the second operand at the address given by the first.
     /// The boolean specifies if the instruction has side effects. A store has no side
     /// effects when it writes into a cell that previously had an undefined value.
-    St(Operand<'a>, Operand<'a>, bool, AccessPattern<'a>),
+    St(Operand<'a, L>, Operand<'a, L>, bool, AccessPattern<'a>),
     /// Represents a load from a temporary memory that is not fully defined yet.
     TmpLd(Type, ir::MemId),
     /// Represents a store to a temporary memory that is not fully defined yet.
-    TmpSt(Operand<'a>, ir::MemId),
+    TmpSt(Operand<'a, L>, ir::MemId),
     /// Casts a value into another type.
-    Cast(Operand<'a>, Type),
+    Cast(Operand<'a, L>, Type),
 }
 
-impl<'a> Operator<'a> {
+impl<'a, L> Operator<'a, L> {
     /// Ensures the types of the operands are valid.
     pub fn check(&self, iter_dims: &HashSet<ir::DimId>, device: &Device)
         -> Result<(), ir::Error>
@@ -151,7 +151,7 @@ impl<'a> Operator<'a> {
     }
 
     /// Retruns the list of operands.
-    pub fn operands(&self) -> Vec<&Operand<'a>> {
+    pub fn operands(&self) -> Vec<&Operand<'a, L>> {
         match *self {
             BinOp(_, ref lhs, ref rhs, _) |
             Mul(ref lhs, ref rhs, _, _) |
@@ -167,7 +167,7 @@ impl<'a> Operator<'a> {
     }
 
     /// Retruns the list of mutable references to operands.
-    pub fn operands_mut<'b>(&'b mut self) -> Vec<&'b mut Operand<'a>> {
+    pub fn operands_mut<'b>(&'b mut self) -> Vec<&'b mut Operand<'a, L>> {
         match *self {
             BinOp(_, ref mut lhs, ref mut rhs, _) |
             Mul(ref mut lhs, ref mut rhs, _, _) |
@@ -223,6 +223,57 @@ impl<'a> Operator<'a> {
     /// Indicates if the operator supports non-coherent memory accesses.
     pub fn supports_nc_access(&self) -> bool {
         if let Ld(..) = *self { true } else { false }
+    }
+
+    pub fn map_operands<T, F>(self, mut f: F) -> Operator<'a, T>
+    where F: FnMut(Operand<'a, L>) -> Operand<'a, T>
+    {
+        match self {
+            BinOp(op, oper1, oper2, rounding) => {
+                let oper1 = f(oper1);
+                let oper2 = f(oper2);
+                BinOp(op, oper1, oper2, rounding)
+            },
+            Mul(oper1, oper2, rounding, t) => {
+                let oper1 = f(oper1);
+                let oper2 = f(oper2);
+                Mul(oper1, oper2, rounding, t)
+            },
+            Mad(oper1, oper2, oper3, rounding) => {
+                let oper1 = f(oper1);
+                let oper2 = f(oper2);
+                let oper3 = f(oper3);
+                Mad(oper1, oper2, oper3, rounding)
+            },
+            Mov(oper1) => {
+                let oper1 = f(oper1);
+                Mov(oper1)
+            },
+            Ld(t, oper1, ap) => {
+                let oper1 = f(oper1);
+                Ld(t, oper1, ap)
+            },
+            St(oper1, oper2, side_effects, ap) => {
+                let oper1 = f(oper1);
+                let oper2 = f(oper2);
+                St(oper1, oper2, side_effects, ap)
+            },
+            TmpLd(t, id) => TmpLd(t, id),
+            TmpSt(oper1, id) => {
+                let oper1 = f(oper1);
+                TmpSt(oper1, id)
+            },
+            Cast(oper1, t) => {
+                let oper1 = f(oper1);
+                Cast(oper1, t)
+            },
+        }
+    }
+}
+
+impl<'a> Operator<'a, ()> {
+    pub fn freeze(self, cnt: &mut ir::Counter) -> Operator<'a> {
+        self.map_operands(|oper| oper.freeze(cnt))
     }
 }
 

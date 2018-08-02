@@ -20,8 +20,11 @@ pub struct SearchSpace<'a> {
 
 impl<'a> SearchSpace<'a> {
     /// Creates a new `SearchSpace` for the given `ir_instance`.
-    pub fn new(mut ir_instance: ir::Function<'a>,
+    pub fn new(ir_instance: ir::Function<'a, ()>,
                mut actions: Vec<Action>) -> Result<Self, ()> {
+        // Pre-allocate IDs for future lowerings.
+        let mut ir_instance = ir_instance.freeze();
+
         let mut domain = DomainStore::new(&ir_instance);
         // Enforce invariants.
         for inst in ir_instance.insts() {

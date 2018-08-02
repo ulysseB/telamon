@@ -119,7 +119,7 @@ pub unsafe extern "C" fn telamon_ir_type_free(t: *mut ir::Type) {
 
 /// Opaque type that abstracts away the lifetime parameter of `ir::Function` so that
 /// cbindgen generates the bindings.
-pub struct Function(ir::Function<'static>);
+pub struct Function(ir::Function<'static, ()>);
 
 /// Creates a function to optimize. The function must be freed with
 /// `telamon_ir_function_free`. `signature` and `device` must outlive the function.
@@ -200,7 +200,7 @@ pub unsafe extern "C" fn telamon_ir_size_free(size: *mut Size) {
 
 /// Opaque type that abstracts away the lifetime parameter of `ir::Operand` so that
 /// cbindgen can generate bindings.
-pub struct Operand(ir::Operand<'static>);
+pub struct Operand(ir::Operand<'static, ()>);
 
 /// Create a constant integer operand. The provided type must be an integer type.
 /// Returns `null` if an error is encountered.
@@ -267,7 +267,7 @@ pub unsafe extern "C" fn telamon_ir_operand_new_inst(
     let dim_map_scope = if allow_tmp_mem == 0 {
         ir::DimMapScope::Thread
     } else {
-        ir::DimMapScope::Global
+        ir::DimMapScope::Global(())
     };
     let operand = ir::Operand::new_inst(inst, dim_map, dim_map_scope);
     Box::into_raw(Box::new(Operand(operand)))
@@ -313,7 +313,7 @@ unsafe fn dim_map_from_arrays(
 
 /// Opaque type that abstracts away the lifetime parameter of `ir::Operator` so that
 /// cbindgen can generate bindings.
-pub struct Operator(ir::Operator<'static>);
+pub struct Operator(ir::Operator<'static, ()>);
 
 /// Creates a `mov` operator. Takes ownership of `operand`.
 #[no_mangle]
@@ -437,7 +437,7 @@ unsafe fn tensor_access(
     strided_dims: *const ir::DimId,
     strides: *const Size,
     num_strided_dims: usize
-) -> Result<(ir::Operand<'static>, ir::AccessPattern<'static>), ir::Error> {
+) -> Result<(ir::Operand<'static, ()>, ir::AccessPattern<'static>), ir::Error> {
     let base_address = Box::from_raw(base_address).0;
     let strided_dims = std::slice::from_raw_parts(strided_dims, num_strided_dims);
     let strides = std::slice::from_raw_parts(strides, num_strided_dims);

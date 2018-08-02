@@ -187,8 +187,8 @@ impl VirtualTensor {
     /// Creates an operand that yeilds the values of the tensor in the given loop nest.
     pub fn dim_map<'a>(&self,
                        dims: &[&MetaDimension],
-                       scope: ir::DimMapScope,
-                       builder: &mut Builder<'a>) -> ir::Operand<'a>
+                       scope: ir::DimMapScope<()>,
+                       builder: &mut Builder<'a>) -> ir::Operand<'a, ()>
     {
         let mapping = self.dims.iter().map(|x| x as &MetaDimension)
             .zip_eq(dims.iter().cloned()).collect_vec();

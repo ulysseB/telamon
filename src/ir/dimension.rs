@@ -8,6 +8,12 @@ use std::fmt;
 #[repr(C)]
 pub struct DimId(pub u32);
 
+impl Into<usize> for DimId {
+    fn into(self) -> usize {
+        self.0 as usize
+    }
+}
+
 impl fmt::Display for DimId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.0.fmt(f) }
 }
@@ -36,6 +42,17 @@ impl<'a> Dimension<'a> {
             iterated: Vec::new(),
             is_thread_dim: false,
         })
+    }
+
+    /// Creates a new dimension with the same size as an existing one.
+    pub fn with_same_size(id: DimId, other: &Self) -> Self {
+        Dimension {
+            size: other.size().clone(),
+            possible_sizes: other.possible_sizes.clone(),
+            id: id,
+            iterated: Vec::new(),
+            is_thread_dim: false,
+        }
     }
 
     /// Retruns the size of the dimension.

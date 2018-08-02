@@ -7,7 +7,7 @@ use search_space::choices::{Action, DimKind, DimMapping, Order};
 pub fn invariants(fun: &ir::Function, op: &ir::Operand, user: ir::BBId) -> Vec<Action> {
     match *op {
         Int(..) | Float(..) | Param(..) | Addr(..) => vec![],
-        Inst(src, _, ref dim_map, scope) => {
+        Inst(src, _, ref dim_map, ref scope) => {
             // Order dimensions in the dim map.
             let order = Order::BEFORE | Order::MERGED;
             let mut actions = Vec::new();
@@ -16,7 +16,7 @@ pub fn invariants(fun: &ir::Function, op: &ir::Operand, user: ir::BBId) -> Vec<A
                 let mapping = match scope {
                     DimMapScope::Local => DimMapping::UNROLL_MAP,
                     DimMapScope::Thread => DimMapping::MAPPED,
-                    DimMapScope::Global => DimMapping::ALL,
+                    DimMapScope::Global(..) => DimMapping::ALL,
                 };
                 actions.push(Action::DimMapping(lhs, rhs, mapping));
                 // FIXME: allow tmp mem with dynamic size when the scope is global.

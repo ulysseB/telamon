@@ -243,25 +243,33 @@ pub struct DimMap {
     pub dst_dims: VecSet<ir::DimId>,
 }
 
+fn list_dim_map(
+    space: &SearchSpace,
+    src: ir::InstId,
+    dst: ir::InstId,
+    dim_map: &ir::DimMap,
+) -> Option<DimMap> {
+    let src_dims = dim_map.iter().map(|x| x.0)
+        .filter(|&d| must_consider_dim(space, d))
+        .collect::<VecSet<_>>();
+    let dst_dims = dim_map.iter().map(|x| x.1)
+        .filter(|&d| must_consider_dim(space, d))
+        .collect::<VecSet<_>>();
+    if dst_dims.is_empty() || src_dims.is_empty() {
+        None
+    } else {
+        Some(DimMap { src, dst, src_dims, dst_dims })
+    }
+}
+
 /// Lists the dim maps that must be considered by the performance model.
 fn list_dim_maps(space: &SearchSpace) -> Vec<DimMap> {
     space.ir_instance().insts().flat_map(|inst| {
         let dst = inst.id();
         inst.operands().into_iter().flat_map(move |op| match *op {
             ir::Operand::Inst(src, _, ref dim_map, _) |
-            ir::Operand::Reduce(src, _, ref dim_map, _) => {
-                let src_dims = dim_map.iter().map(|x| x.0)
-                    .filter(|&d| must_consider_dim(space, d))
-                    .collect::<VecSet<_>>();
-                let dst_dims = dim_map.iter().map(|x| x.1)
-                    .filter(|&d| must_consider_dim(space, d))
-                    .collect::<VecSet<_>>();
-                if dst_dims.is_empty() || src_dims.is_empty() {
-                    None
-                } else {
-                    Some(DimMap { src, dst, src_dims, dst_dims })
-                }
-            },
+            ir::Operand::Reduce(src, _, ref dim_map, _) =>
+                list_dim_map(space, src, dst, dim_map),
             _ => None,
         })
     }).collect()

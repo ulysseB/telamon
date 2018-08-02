@@ -15,11 +15,11 @@ impl From<ir::DimId> for BBId {
 }
 
 /// Represents a basic block in an Exhaust function.
-pub trait BasicBlock<'a>: std::fmt::Debug {
+pub trait BasicBlock<'a, L = ir ::LoweringMap>: std::fmt::Debug {
     /// Returns the unique identifier of the `BasicBlock`.
     fn bb_id(&self) -> BBId;
     /// Returns 'self' if it is an instruction.
-    fn as_inst(&self) -> Option<&ir::Instruction<'a>> { None }
+    fn as_inst(&self) -> Option<&ir::Instruction<'a, L>> { None }
     /// Returns 'self' if it is a dimension
     fn as_dim(&self) -> Option<&ir::Dimension<'a>> { None }
 }

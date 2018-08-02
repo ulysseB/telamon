@@ -50,8 +50,8 @@ impl<'a, S> Kernel<'a> for Axpy<'a, S> where S: Scalar {
             let ld_x = self.x.load(&[&tiling], &mut builder);
             let ld_y = self.y.load(&[&tiling], &mut builder);
             let mad_dim = builder.open_mapped_dim(&ld_x[0]);
-            let x_op = ld_x.dim_map(&[&mad_dim], GlobalScope, &mut builder);
-            let y_op = ld_y.dim_map(&[&mad_dim], GlobalScope, &mut builder);
+            let x_op = ld_x.dim_map(&[&mad_dim], GlobalScope(()), &mut builder);
+            let y_op = ld_y.dim_map(&[&mad_dim], GlobalScope(()), &mut builder);
             let mad = VirtualTensor::new(builder.mad(&x_op, &"alpha", &y_op), vec![mad_dim]);
             mad.store(&self.z, &mut builder);
             build_candidate(builder.get(), ctx, vec![tiling])
@@ -118,8 +118,8 @@ impl <'a, S> Kernel<'a> for MatVec<'a, S> where S: Scalar {
             let init = builder.mov(&0f32);
             let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
             let acc_dim_n = builder.open_mapped_dim(&ld_x[0]);
-            let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_n], GlobalScope, &mut builder);
-            let x_op = ld_x.dim_map(&[&acc_dim_n], GlobalScope, &mut builder);
+            let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_n], GlobalScope(()), &mut builder);
+            let x_op = ld_x.dim_map(&[&acc_dim_n], GlobalScope(()), &mut builder);
             let acc = builder.mad(&a_op, &x_op, &helper::Reduce(init));
             builder.close_dim(&acc_dim_n);
             let sum = VirtualTensor::new(acc, vec![acc_dim_m]);
@@ -209,9 +209,9 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
             let init_b = builder.mov(&0f32);
             let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
             let acc_dim_n = builder.open_mapped_dim(&ld_x[0]);
-            let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_n], GlobalScope, &mut builder);
-            let b_op = ld_b.dim_map(&[&acc_dim_m, &acc_dim_n], GlobalScope, &mut builder);
-            let x_op = ld_x.dim_map(&[&acc_dim_n], GlobalScope, &mut builder);
+            let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_n], GlobalScope(()), &mut builder);
+            let b_op = ld_b.dim_map(&[&acc_dim_m, &acc_dim_n], GlobalScope(()), &mut builder);
+            let x_op = ld_x.dim_map(&[&acc_dim_n], GlobalScope(()), &mut builder);
             let acc_a = builder.mad(&a_op, &x_op, &helper::Reduce(init_a));
             let acc_b = builder.mad(&b_op, &x_op, &helper::Reduce(init_b));
             builder.close_dim(&acc_dim_n);
@@ -360,8 +360,8 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
             let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
             let acc_dim_n = builder.open_mapped_dim(&init_dim_n);
             let acc_dim_k = builder.open_mapped_dim(&ld_a[1]);
-            let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_k], GlobalScope, &mut builder);
-            let b_op = ld_b.dim_map(&[&acc_dim_k, &acc_dim_n], GlobalScope, &mut builder);
+            let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_k], GlobalScope(()), &mut builder);
+            let b_op = ld_b.dim_map(&[&acc_dim_k, &acc_dim_n], GlobalScope(()), &mut builder);
             let acc = builder.mad(&a_op, &b_op, &helper::Reduce(acc_init));
             builder.close_dim(&acc_dim_k);
 
@@ -549,11 +549,11 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
             let acc_dim_n = builder.open_mapped_dim(&init_dim_n);
             let acc_dim_k = builder.open_mapped_dim(&ld_a[2]);
             let a_op = ld_a.dim_map(&[&acc_batch, &acc_dim_m, &acc_dim_k],
-                                    GlobalScope, &mut builder);
+                                    GlobalScope(()), &mut builder);
             let b_op = {
                 let b_dims = [&acc_batch as &MetaDimension, &acc_dim_k, &acc_dim_n];
                 let b_dims = if self.params.batch_b { &b_dims } else { &b_dims[1..] };
-                ld_b.dim_map(b_dims, GlobalScope, &mut builder)
+                ld_b.dim_map(b_dims, GlobalScope(()), &mut builder)
             };
             let acc = builder.mad(&a_op, &b_op, &helper::Reduce(acc_init));
             builder.close_dim(&acc_dim_k);
