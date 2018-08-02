@@ -53,10 +53,10 @@ impl<'a> Cfg<'a> {
                 Box::new(levels) as Box<Iterator<Item=_>>
             }
             Cfg::Root(ref body) =>
-                Box::new(body.iter().flat_map(|c| c.induction_levels())), 
+                Box::new(body.iter().flat_map(|c| c.induction_levels())),
             Cfg::Loop(ref dim, ref body) =>
                 Box::new(body.iter().flat_map(|c| c.induction_levels())
-                         .chain(dim.induction_levels())), 
+                         .chain(dim.induction_levels())),
             Cfg::Instruction(..) => Box::new(std::iter::empty())
         }
     }
@@ -171,8 +171,8 @@ pub fn build<'a>(space: &'a SearchSpace<'a>,
 /// Describes the program points encountered when walking a CFG.
 enum CfgEvent<'a> {
     Exec(Instruction<'a>),
-    Enter(ir::dim::Id, EntryEvent<'a>),
-    Exit(ir::dim::Id, ExitEvent),
+    Enter(ir::DimId, EntryEvent<'a>),
+    Exit(ir::DimId, ExitEvent),
 }
 
 /// An event to process when entering a dimension.

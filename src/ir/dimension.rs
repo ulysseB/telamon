@@ -3,36 +3,36 @@ use ir::{self, BasicBlock};
 use std::fmt;
 
 /// Provides a unique identifier for iteration dimensions.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct Id(pub u32);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize)]
+#[repr(C)]
+pub struct DimId(pub u32);
 
-impl fmt::Debug  for Id {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "dim::Id({})", self.0)
-    }
-}
-
-impl fmt::Display for Id {
+impl fmt::Display for DimId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.0.fmt(f) }
 }
 
 /// Represents an iteration dimension.
 #[derive(Clone, Debug)]
 pub struct Dimension<'a> {
+    id: DimId,
     size: ir::Size<'a>,
-    id: Id,
+    possible_sizes: Vec<u32>,
     iterated: Vec<ir::InstId>,
     is_thread_dim: bool,
 }
 
 impl<'a> Dimension<'a> {
     /// Creates a new dimension.
-    pub fn new(size: ir::Size, id: Id) -> Result<Dimension, ir::Error> {
-        if size.as_int().map(|i| i <= 1).unwrap_or(false) {
-            return Err(ir::Error::InvalidDimSize);
-        }
+    pub fn new(size: ir::Size, id: DimId) -> Result<Dimension, ir::Error> {
+        let possible_sizes = if let Some(size) = size.as_int() {
+            if size == 1 { return Err(ir::Error::InvalidDimSize); }
+            vec![size]
+        } else {
+            vec![]
+        };
         Ok(Dimension {
-            size, id,
+            size, id, possible_sizes,
             iterated: Vec::new(),
             is_thread_dim: false,
         })
@@ -41,8 +41,13 @@ impl<'a> Dimension<'a> {
     /// Retruns the size of the dimension.
     pub fn size(&self) -> &ir::Size<'a> { &self.size }
 
+    /// Returns the values the size can take, if it is statically known.
+    pub fn possible_sizes(&self) -> Option<&[u32]> {
+        if self.possible_sizes.is_empty() { None } else { Some(&self.possible_sizes) }
+    }
+
     /// Returns the id of the dimension.
-    pub fn id(&self) -> Id { self.id }
+    pub fn id(&self) -> DimId { self.id }
 
     /// Returns the constructs iterated along this dimension.
     pub fn iterated<'b>(&'b self) -> impl Iterator<Item=ir::InstId> + 'b {

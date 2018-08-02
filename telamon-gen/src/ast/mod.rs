@@ -8,6 +8,7 @@ mod choice;
 mod context;
 mod constrain;
 mod typing_context;
+mod error;
 
 use constraint::Constraint as TypedConstraint;
 use constraint::dedup_inputs;
@@ -28,53 +29,10 @@ pub use self::choice::ChoiceDef;
 use self::trigger::TriggerDef;
 use self::context::TypingContext;
 pub use self::constrain::Constraint;
+pub use self::error::{Hint, TypeError};
 use self::typing_context::CheckerContext;
 
 pub use super::lexer::{Position, Spanned};
-
-/// Hint is a token representation.
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum Hint {
-    /// Set interface.
-    Set,
-    /// Set attribute.
-    SetAttribute,
-    /// Enum interface.
-    Enum,
-    /// Enum attribute.
-    EnumAttribute,
-    /// Integer interface.
-    Integer,
-    /// Integer attribute.
-    IntegerAttribute,
-    /// Integer interface.
-    Counter,
-}
-
-impl Hint {
-    fn from(statement: &ChoiceDef) -> Self {
-        match statement {
-            ChoiceDef::EnumDef(..) => Hint::Enum,
-            ChoiceDef::IntegerDef(..) => Hint::Integer,
-            ChoiceDef::CounterDef(..) => Hint::Counter,
-        }
-    }
-}
-
-/// TypeEror is the error representation of telamon's.
-#[derive(Debug, PartialEq)]
-pub enum TypeError {
-    /// Redefinition of a name and hint..
-    Redefinition(Spanned<Hint>, Spanned<String>),
-    /// Undefinition of set, enum or field.
-    Undefined(Spanned<String>),
-    /// Unvalid arguments of a symmetric enum.
-    BadSymmetricArg(Spanned<String>, Vec<VarDef>),
-    /// Missing
-    MissingEntry(String, Spanned<String>),
-    /// Conflict between incompatible keywords.
-    Conflict(Spanned<String>, Spanned<String>),
-}
 
 #[derive(Debug)]
 pub struct Ast { 

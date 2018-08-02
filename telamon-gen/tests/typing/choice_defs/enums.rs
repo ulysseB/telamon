@@ -18,17 +18,19 @@ mod undefined {
                     value A:
                     value B:
               end".to_vec())).unwrap().type_check().err(),
-            Some(TypeError::Undefined(Spanned {
-                beg: Position {
-                  position: LexerPosition { line: 0, column: 12 },
-                  ..Default::default()
-                },
-                end: Position {
-                  position: LexerPosition { line: 0, column: 15 },
-                  ..Default::default()
-                },
-                data: String::from("BasicBlock"),
-            }))
+            Some(TypeError::Undefined{
+                object_name: Spanned {
+                    beg: Position {
+                      position: LexerPosition { line: 0, column: 12 },
+                      ..Default::default()
+                    },
+                    end: Position {
+                      position: LexerPosition { line: 0, column: 15 },
+                      ..Default::default()
+                    },
+                    data: String::from("BasicBlock"),
+                }
+            })
         );
     }
 
@@ -40,17 +42,19 @@ mod undefined {
                 value A:
                 alias AB = A | B:
               end".to_vec())).unwrap().type_check().err(),
-            Some(TypeError::Undefined(Spanned {
-                beg: Position {
-                  position: LexerPosition { line: 2, column: 22 },
-                  ..Default::default()
-                },
-                end: Position {
-                  position: LexerPosition { line: 2, column: 24 },
-                  ..Default::default()
-                },
-                data: String::from("B"),
-            }))
+            Some(TypeError::Undefined {
+                object_name: Spanned {
+                    beg: Position {
+                      position: LexerPosition { line: 2, column: 22 },
+                      ..Default::default()
+                    },
+                    end: Position {
+                      position: LexerPosition { line: 2, column: 24 },
+                      ..Default::default()
+                    },
+                    data: String::from("B"),
+                }
+            })
         );
         assert_eq!(parser::parse_ast(Lexer::new(
             b"set BasicBlock:
@@ -67,11 +71,13 @@ mod undefined {
                   A -> B
                 value A:
               end".to_vec())).unwrap().type_check().err(),
-            Some(TypeError::Undefined(Spanned {
-                beg: Position::new_optional(LexerPosition::new(10, 16), None),
-                end: Position::new_optional(LexerPosition::new(11, 24), None),
-                data: String::from("B"),
-            }))
+            Some(TypeError::Undefined {
+                object_name: Spanned {
+                    beg: Position::new_optional(LexerPosition::new(10, 16), None),
+                    end: Position::new_optional(LexerPosition::new(11, 24), None),
+                    data: String::from("B"),
+                }
+            })
         );
     }
 }
@@ -99,15 +105,18 @@ mod redefinition {
                 value A:
                 value B:
               end".to_vec())).unwrap().type_check().err(),
-            Some(TypeError::Redefinition(Spanned {
-                beg: Position::new_optional(LexerPosition::new(9, 30), None),
-                end: Position::new_optional(LexerPosition::new(9, 34), None),
-                data: Hint::EnumAttribute,
-            }, Spanned {
-                beg: Position::new_optional(LexerPosition::new(9, 50), None),
-                end: Position::new_optional(LexerPosition::new(9, 54), None),
-                data: String::from("lhs"),
-            }))
+            Some(TypeError::Redefinition {
+                object_kind: Spanned {
+                    beg: Position::new_optional(LexerPosition::new(9, 30), None),
+                    end: Position::new_optional(LexerPosition::new(9, 34), None),
+                    data: Hint::EnumAttribute,
+                },
+                object_name: Spanned {
+                    beg: Position::new_optional(LexerPosition::new(9, 50), None),
+                    end: Position::new_optional(LexerPosition::new(9, 54), None),
+                    data: String::from("lhs"),
+                }
+            })
         );
     }
 
@@ -120,27 +129,30 @@ mod redefinition {
 
               define enum foo():
               end".to_vec())).unwrap().type_check().err(),
-            Some(TypeError::Redefinition(Spanned {
-                beg: Position {
-                  position: LexerPosition { line: 0, column: 12 },
-                  ..Default::default()
+            Some(TypeError::Redefinition {
+                object_kind: Spanned {
+                    beg: Position {
+                      position: LexerPosition { line: 0, column: 12 },
+                      ..Default::default()
+                    },
+                    end: Position {
+                      position: LexerPosition { line: 0, column: 15 },
+                      ..Default::default()
+                    },
+                    data: Hint::Enum,
                 },
-                end: Position {
-                  position: LexerPosition { line: 0, column: 15 },
-                  ..Default::default()
-                },
-                data: Hint::Enum,
-            }, Spanned {
-                beg: Position {
-                  position: LexerPosition { line: 3, column: 26 },
-                  ..Default::default()
-                },
-                end: Position {
-                  position: LexerPosition { line: 3, column: 29 },
-                  ..Default::default()
-                },
-                data: String::from("foo"),
-            }))
+                object_name: Spanned {
+                    beg: Position {
+                      position: LexerPosition { line: 3, column: 26 },
+                      ..Default::default()
+                    },
+                    end: Position {
+                      position: LexerPosition { line: 3, column: 29 },
+                      ..Default::default()
+                    },
+                    data: String::from("foo"),
+                }
+            })
         );
     }
 
@@ -156,27 +168,30 @@ mod redefinition {
                 alias AB = A | B:
                 alias AB = A | B:
               end".to_vec())).unwrap().type_check().err(),
-            Some(TypeError::Redefinition(Spanned {
-                beg: Position {
-                  position: LexerPosition { line: 4, column: 22  },
-                   ..Default::default()
+            Some(TypeError::Redefinition {
+                object_kind: Spanned {
+                    beg: Position {
+                      position: LexerPosition { line: 4, column: 22  },
+                       ..Default::default()
+                    },
+                    end: Position {
+                      position: LexerPosition { line: 4, column: 24  },
+                       ..Default::default()
+                    },
+                    data: Hint::EnumAttribute,
                 },
-                end: Position {
-                  position: LexerPosition { line: 4, column: 24  },
-                   ..Default::default()
-                },
-                data: Hint::EnumAttribute,
-            }, Spanned {
-                beg: Position {
-                  position: LexerPosition { line: 5, column: 22  },
-                   ..Default::default()
-                },
-                end: Position {
-                  position: LexerPosition { line: 5, column: 24  },
-                   ..Default::default()
-                },
-                data: String::from("AB"),
-            }))
+                object_name: Spanned {
+                    beg: Position {
+                      position: LexerPosition { line: 5, column: 22  },
+                       ..Default::default()
+                    },
+                    end: Position {
+                      position: LexerPosition { line: 5, column: 24  },
+                       ..Default::default()
+                    },
+                    data: String::from("AB"),
+                }
+            })
         );
 
         /// Redefinition of the A field Value.
@@ -186,27 +201,30 @@ mod redefinition {
                 value B:
                 value A:
               end".to_vec())).unwrap().type_check().err(),
-            Some(TypeError::Redefinition(Spanned {
-                beg: Position {
-                  position: LexerPosition { line: 1, column: 22  },
-                   ..Default::default()
+            Some(TypeError::Redefinition {
+                object_kind: Spanned {
+                    beg: Position {
+                      position: LexerPosition { line: 1, column: 22  },
+                       ..Default::default()
+                    },
+                    end: Position {
+                      position: LexerPosition { line: 1, column: 23  },
+                       ..Default::default()
+                    },
+                    data: Hint::EnumAttribute,
                 },
-                end: Position {
-                  position: LexerPosition { line: 1, column: 23  },
-                   ..Default::default()
-                },
-                data: Hint::EnumAttribute,
-            }, Spanned {
-                beg: Position {
-                  position: LexerPosition { line: 3, column: 22  },
-                   ..Default::default()
-                },
-                end: Position {
-                  position: LexerPosition { line: 3, column: 23  },
-                   ..Default::default()
-                },
-                data: String::from("A"),
-            }))
+                object_name: Spanned {
+                    beg: Position {
+                      position: LexerPosition { line: 3, column: 22  },
+                       ..Default::default()
+                    },
+                    end: Position {
+                      position: LexerPosition { line: 3, column: 23  },
+                       ..Default::default()
+                    },
+                    data: String::from("A"),
+                }
+            })
         );
 
         /// Redefinition of the field Antisymmetric.
@@ -228,15 +246,18 @@ mod redefinition {
                 value A:
                 value B:
               end".to_vec())).unwrap().type_check().err(),
-            Some(TypeError::Redefinition(Spanned {
-                beg: Position::new_optional(LexerPosition::new(10, 16), None),
-                end: Position::new_optional(LexerPosition::new(11, 24), None),
-                data: Hint::EnumAttribute,
-            }, Spanned {
-                beg: Position::new_optional(LexerPosition::new(12, 16), None),
-                end: Position::new_optional(LexerPosition::new(13, 24), None),
-                data: String::from("Antisymmetric"),
-            }))
+            Some(TypeError::Redefinition {
+                object_kind: Spanned {
+                    beg: Position::new_optional(LexerPosition::new(10, 16), None),
+                    end: Position::new_optional(LexerPosition::new(11, 24), None),
+                    data: Hint::EnumAttribute,
+                },
+                object_name: Spanned {
+                    beg: Position::new_optional(LexerPosition::new(12, 16), None),
+                    end: Position::new_optional(LexerPosition::new(13, 24), None),
+                    data: String::from("Antisymmetric"),
+                }
+            })
         );
     }
 
@@ -262,15 +283,18 @@ mod redefinition {
                     value A:
                     value B:
                   end".to_vec())).unwrap().type_check().err(),
-                Some(TypeError::Redefinition(Spanned {
-                    beg: Position::new_optional(LexerPosition::new(10, 20), None),
-                    end: Position::new_optional(LexerPosition::new(10, 29), None),
-                    data: Hint::EnumAttribute,
-                }, Spanned {
-                    beg: Position::new_optional(LexerPosition::new(11, 20), None),
-                    end: Position::new_optional(LexerPosition::new(11, 29), None),
-                    data: String::from("Symmetric"),
-                }))
+                Some(TypeError::Redefinition {
+                    object_kind: Spanned {
+                        beg: Position::new_optional(LexerPosition::new(10, 20), None),
+                        end: Position::new_optional(LexerPosition::new(10, 29), None),
+                        data: Hint::EnumAttribute,
+                    },
+                    object_name: Spanned {
+                        beg: Position::new_optional(LexerPosition::new(11, 20), None),
+                        end: Position::new_optional(LexerPosition::new(11, 29), None),
+                        data: String::from("Symmetric"),
+                    }
+                })
             );
         }
     }
@@ -295,11 +319,14 @@ mod parameter {
                     value A:
                     value B:
                   end".to_vec())).unwrap().type_check().err(),
-                Some(TypeError::BadSymmetricArg(Spanned {
-                    beg: Position::new_optional(LexerPosition::new(0, 12), None),
-                    end: Position::new_optional(LexerPosition::new(0, 15), None),
-                    data: String::from("foo"),
-                }, vec![]))
+                Some(TypeError::BadSymmetricArg {
+                    object_name: Spanned {
+                        beg: Position::new_optional(LexerPosition::new(0, 12), None),
+                        end: Position::new_optional(LexerPosition::new(0, 15), None),
+                        data: String::from("foo"),
+                    },
+                    object_variables: vec![]
+                })
             );
             assert_eq!(parser::parse_ast(Lexer::new(
                 b"set BasicBlock:
@@ -317,25 +344,28 @@ mod parameter {
                     value A:
                     value B:
                   end".to_vec())).unwrap().type_check().err(),
-                Some(TypeError::BadSymmetricArg(Spanned {
-                    beg: Position::new_optional(LexerPosition::new(9, 30), None),
-                    end: Position::new_optional(LexerPosition::new(9, 33), None),
-                    data: String::from("foo"),
-                }, vec![
-                    VarDef {
-                        name: Spanned {
-                            beg: Position::new_optional(LexerPosition::new(9, 34),
-                                None),
-                            end: Position::new_optional(LexerPosition::new(9, 38),
-                                None),
-                            data: RcStr::new(String::from("lhs"))
-                        },
-                        set: SetRef {
-                            name: RcStr::new(String::from("BasicBlock")),
-                            var: None
+                Some(TypeError::BadSymmetricArg {
+                    object_name: Spanned {
+                        beg: Position::new_optional(LexerPosition::new(9, 30), None),
+                        end: Position::new_optional(LexerPosition::new(9, 33), None),
+                        data: String::from("foo"),
+                    },
+                    object_variables: vec![
+                        VarDef {
+                            name: Spanned {
+                                beg: Position::new_optional(LexerPosition::new(9, 34),
+                                    None),
+                                end: Position::new_optional(LexerPosition::new(9, 38),
+                                    None),
+                                data: RcStr::new(String::from("lhs"))
+                            },
+                            set: SetRef {
+                                name: RcStr::new(String::from("BasicBlock")),
+                                var: None
+                            }
                         }
-                    }
-                ]))
+                    ]
+                })
             );
         }
 
@@ -367,11 +397,13 @@ mod parameter {
                     value A:
                     value B:
                   end".to_vec())).unwrap().type_check().err(),
-                Some(TypeError::BadSymmetricArg(Spanned {
-                    beg: Position::new_optional(LexerPosition::new(18, 30), None),
-                    end: Position::new_optional(LexerPosition::new(18, 33), None),
-                    data: String::from("foo"),
-                }, vec![
+                Some(TypeError::BadSymmetricArg {
+                    object_name: Spanned {
+                        beg: Position::new_optional(LexerPosition::new(18, 30), None),
+                        end: Position::new_optional(LexerPosition::new(18, 33), None),
+                        data: String::from("foo"),
+                    },
+                    object_variables: vec![
                     VarDef {
                         name: Spanned {
                             beg: Position::new_optional(LexerPosition::new(18, 34),
@@ -398,7 +430,7 @@ mod parameter {
                             var: None
                         }
                     }
-                ]))
+                ]})
             );
         }
     }
@@ -416,11 +448,14 @@ mod parameter {
                     value A:
                     value B:
                   end".to_vec())).unwrap().type_check().err(),
-                Some(TypeError::BadSymmetricArg(Spanned {
-                    beg: Position::new_optional(LexerPosition::new(0, 12), None),
-                    end: Position::new_optional(LexerPosition::new(0, 15), None),
-                    data: String::from("foo"),
-                }, vec![]))
+                Some(TypeError::BadSymmetricArg {
+                    object_name: Spanned {
+                        beg: Position::new_optional(LexerPosition::new(0, 12), None),
+                        end: Position::new_optional(LexerPosition::new(0, 15), None),
+                        data: String::from("foo"),
+                    },
+                    object_variables: vec![]
+                })
             );
             assert_eq!(parser::parse_ast(Lexer::new(
                 b"set BasicBlock:
@@ -437,25 +472,28 @@ mod parameter {
                     value A:
                     value B:
                   end".to_vec())).unwrap().type_check().err(),
-                Some(TypeError::BadSymmetricArg(Spanned {
-                    beg: Position::new_optional(LexerPosition::new(9, 30), None),
-                    end: Position::new_optional(LexerPosition::new(9, 33), None),
-                    data: String::from("foo"),
-                }, vec![
-                    VarDef {
-                        name: Spanned {
-                            beg: Position::new_optional(LexerPosition::new(9, 34),
-                                None),
-                            end: Position::new_optional(LexerPosition::new(9, 38),
-                                None),
-                            data: RcStr::new(String::from("lhs"))
-                        },
-                        set: SetRef {
-                            name: RcStr::new(String::from("BasicBlock")),
-                            var: None
+                Some(TypeError::BadSymmetricArg {
+                    object_name: Spanned {
+                        beg: Position::new_optional(LexerPosition::new(9, 30), None),
+                        end: Position::new_optional(LexerPosition::new(9, 33), None),
+                        data: String::from("foo"),
+                    },
+                    object_variables: vec![
+                        VarDef {
+                            name: Spanned {
+                                beg: Position::new_optional(LexerPosition::new(9, 34),
+                                    None),
+                                end: Position::new_optional(LexerPosition::new(9, 38),
+                                    None),
+                                data: RcStr::new(String::from("lhs"))
+                            },
+                            set: SetRef {
+                                name: RcStr::new(String::from("BasicBlock")),
+                                var: None
+                            }
                         }
-                    }
-                ]))
+                    ]
+                })
             );
             assert_eq!(parser::parse_ast(Lexer::new(
                 b"set BasicBlock:
@@ -474,51 +512,54 @@ mod parameter {
                     value A:
                     value B:
                   end".to_vec())).unwrap().type_check().err(),
-                Some(TypeError::BadSymmetricArg(Spanned {
-                    beg: Position::new_optional(LexerPosition::new(9, 30), None),
-                    end: Position::new_optional(LexerPosition::new(9, 33), None),
-                    data: String::from("foo"),
-                }, vec![
-                    VarDef {
-                        name: Spanned {
-                            beg: Position::new_optional(LexerPosition::new(9, 34),
-                                None),
-                            end: Position::new_optional(LexerPosition::new(9, 38),
-                                None),
-                            data: RcStr::new(String::from("lhs"))
-                        },
-                        set: SetRef {
-                            name: RcStr::new(String::from("BasicBlock")),
-                            var: None
-                        }
+                Some(TypeError::BadSymmetricArg {
+                    object_name: Spanned {
+                        beg: Position::new_optional(LexerPosition::new(9, 30), None),
+                        end: Position::new_optional(LexerPosition::new(9, 33), None),
+                        data: String::from("foo"),
                     },
-                    VarDef {
-                        name: Spanned {
-                            beg: Position::new_optional(LexerPosition::new(10, 34),
-                                None),
-                            end: Position::new_optional(LexerPosition::new(10, 38),
-                                None),
-                            data: RcStr::new(String::from("chs"))
+                    object_variables: vec![
+                        VarDef {
+                            name: Spanned {
+                                beg: Position::new_optional(LexerPosition::new(9, 34),
+                                    None),
+                                end: Position::new_optional(LexerPosition::new(9, 38),
+                                    None),
+                                data: RcStr::new(String::from("lhs"))
+                            },
+                            set: SetRef {
+                                name: RcStr::new(String::from("BasicBlock")),
+                                var: None
+                            }
                         },
-                        set: SetRef {
-                            name: RcStr::new(String::from("BasicBlock")),
-                            var: None
-                        }
-                    },
-                    VarDef {
-                        name: Spanned {
-                            beg: Position::new_optional(LexerPosition::new(11, 34),
-                                None),
-                            end: Position::new_optional(LexerPosition::new(11, 38),
-                                None),
-                            data: RcStr::new(String::from("rhs"))
+                        VarDef {
+                            name: Spanned {
+                                beg: Position::new_optional(LexerPosition::new(10, 34),
+                                    None),
+                                end: Position::new_optional(LexerPosition::new(10, 38),
+                                    None),
+                                data: RcStr::new(String::from("chs"))
+                            },
+                            set: SetRef {
+                                name: RcStr::new(String::from("BasicBlock")),
+                                var: None
+                            }
                         },
-                        set: SetRef {
-                            name: RcStr::new(String::from("BasicBlock")),
-                            var: None
-                        }
-                    },
-                ]))
+                        VarDef {
+                            name: Spanned {
+                                beg: Position::new_optional(LexerPosition::new(11, 34),
+                                    None),
+                                end: Position::new_optional(LexerPosition::new(11, 38),
+                                    None),
+                                data: RcStr::new(String::from("rhs"))
+                            },
+                            set: SetRef {
+                                name: RcStr::new(String::from("BasicBlock")),
+                                var: None
+                            }
+                        },
+                    ]
+                })
             );
         }
 
@@ -549,38 +590,41 @@ mod parameter {
                     value A:
                     value B:
                   end".to_vec())).unwrap().type_check().err(),
-                Some(TypeError::BadSymmetricArg(Spanned {
-                    beg: Position::new_optional(LexerPosition::new(18, 30), None),
-                    end: Position::new_optional(LexerPosition::new(18, 33), None),
-                    data: String::from("foo"),
-                }, vec![
-                    VarDef {
-                        name: Spanned {
-                            beg: Position::new_optional(LexerPosition::new(18, 34),
-                                None),
-                            end: Position::new_optional(LexerPosition::new(18, 38),
-                                None),
-                            data: RcStr::new(String::from("lhs"))
-                        },
-                        set: SetRef {
-                            name: RcStr::new(String::from("BasicBlock")),
-                            var: None
-                        }
+                Some(TypeError::BadSymmetricArg {
+                    object_name: Spanned {
+                        beg: Position::new_optional(LexerPosition::new(18, 30), None),
+                        end: Position::new_optional(LexerPosition::new(18, 33), None),
+                        data: String::from("foo"),
                     },
-                    VarDef {
-                        name: Spanned {
-                            beg: Position::new_optional(LexerPosition::new(18, 54),
-                                None),
-                            end: Position::new_optional(LexerPosition::new(18, 58),
-                                None),
-                            data: RcStr::new(String::from("rhs"))
+                    object_variables: vec![
+                        VarDef {
+                            name: Spanned {
+                                beg: Position::new_optional(LexerPosition::new(18, 34),
+                                    None),
+                                end: Position::new_optional(LexerPosition::new(18, 38),
+                                    None),
+                                data: RcStr::new(String::from("lhs"))
+                            },
+                            set: SetRef {
+                                name: RcStr::new(String::from("BasicBlock")),
+                                var: None
+                            }
                         },
-                        set: SetRef {
-                            name: RcStr::new(String::from("BasicBlock2")),
-                            var: None
+                        VarDef {
+                            name: Spanned {
+                                beg: Position::new_optional(LexerPosition::new(18, 54),
+                                    None),
+                                end: Position::new_optional(LexerPosition::new(18, 58),
+                                    None),
+                                data: RcStr::new(String::from("rhs"))
+                            },
+                            set: SetRef {
+                                name: RcStr::new(String::from("BasicBlock2")),
+                                var: None
+                            }
                         }
-                    }
-                ]))
+                    ]
+                })
             );
         }
     }
@@ -607,14 +651,16 @@ fn conflict() {
             value A:
             value B:
           end".to_vec())).unwrap().type_check().err(),
-        Some(TypeError::Conflict(Spanned {
-            beg: Position::new_optional(LexerPosition::new(10, 12), None),
-            end: Position::new_optional(LexerPosition::new(10, 21), None),
-            data: String::from("Symmetric"),
-        }, Spanned {
-            beg: Position::new_optional(LexerPosition::new(11, 12), None),
-            end: Position::new_optional(LexerPosition::new(12, 20), None),
-            data: String::from("Antisymmetric"),
-        }))
+        Some(TypeError::Conflict {
+            object_fields: (Spanned {
+                beg: Position::new_optional(LexerPosition::new(10, 12), None),
+                end: Position::new_optional(LexerPosition::new(10, 21), None),
+                data: String::from("Symmetric"),
+            }, Spanned {
+                beg: Position::new_optional(LexerPosition::new(11, 12), None),
+                end: Position::new_optional(LexerPosition::new(12, 20), None),
+                data: String::from("Antisymmetric"),
+            })
+        })
     )
-} 
+}

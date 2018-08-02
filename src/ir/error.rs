@@ -32,6 +32,13 @@ impl TypeError {
             Err(TypeError::WrongType { given, expected: ExpectedType::Integer })
         }
     }
+
+    /// Ensures the given type is a floating point type.
+    pub fn check_float(given: ir::Type) -> Result<(), Self> {
+        if given.is_float() { Ok(()) } else {
+            Err(TypeError::WrongType { given, expected: ExpectedType::Float })
+        }
+    }
 }
 
 /// Indicates what kind of type was expected.
@@ -39,6 +46,8 @@ impl TypeError {
 pub enum ExpectedType {
     /// An integer type was expected.
     Integer,
+    /// A floating point type was expeccted.
+    Float,
     /// A specific type was expected.
     Specific(ir::Type),
 }
@@ -47,6 +56,7 @@ impl std::fmt::Display for ExpectedType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             ExpectedType::Integer => write!(f, "an integer type"),
+            ExpectedType::Float => write!(f, "a floating point type"),
             ExpectedType::Specific(t) => write!(f, "type `{}`", t),
         }
     }
@@ -64,9 +74,9 @@ pub enum Error {
     #[fail(display="dimensions must have a size of at least 2")]
     InvalidDimSize,
     #[fail(display="dimension {} appears twice in the increment list", dim)]
-    DuplicateIncrement { dim: ir::dim::Id },
+    DuplicateIncrement { dim: ir::DimId },
     #[fail(display="the access pattern references dimension {}, but is not nested inside", dim)]
-    InvalidDimInPattern { dim: ir::dim::Id },
+    InvalidDimInPattern { dim: ir::DimId },
 }
 
 impl From<TypeError> for Error {

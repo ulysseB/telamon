@@ -31,27 +31,30 @@ mod redefinition {
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
             end".to_vec())).unwrap().type_check().err(),
-            Some(TypeError::Redefinition(Spanned {
-                beg: Position {
-                  position: LexerPosition { line: 0, column: 4 },
-                  ..Default::default()
+            Some(TypeError::Redefinition {
+                object_kind: Spanned {
+                    beg: Position {
+                      position: LexerPosition { line: 0, column: 4 },
+                      ..Default::default()
+                    },
+                    end: Position {
+                      position: LexerPosition { line: 0, column: 7 },
+                      ..Default::default()
+                    },
+                    data: Hint::Set,
                 },
-                end: Position {
-                  position: LexerPosition { line: 0, column: 7 },
-                  ..Default::default()
-                },
-                data: Hint::Set,
-            }, Spanned {
-                beg: Position {
-                  position: LexerPosition { line: 9, column: 16 },
-                  ..Default::default()
-                },
-                end: Position {
-                  position: LexerPosition { line: 9, column: 19 },
-                  ..Default::default()
-                },
-                data:  String::from("Foo"),
-            }))
+                object_name: Spanned {
+                    beg: Position {
+                      position: LexerPosition { line: 9, column: 16 },
+                      ..Default::default()
+                    },
+                    end: Position {
+                      position: LexerPosition { line: 9, column: 19 },
+                      ..Default::default()
+                    },
+                    data:  String::from("Foo"),
+                }
+            })
         );
     }
 
@@ -69,27 +72,30 @@ mod redefinition {
                 new_objs = \"$objs.inst\"
                 new_objs = \"$objs.inst\"
             end".to_vec())).unwrap().type_check().err(),
-            Some(TypeError::Redefinition(Spanned {
-                beg: Position {
-                  position: LexerPosition { line: 7, column: 16 },
-                  ..Default::default()
+            Some(TypeError::Redefinition {
+                object_kind: Spanned {
+                    beg: Position {
+                      position: LexerPosition { line: 7, column: 16 },
+                      ..Default::default()
+                    },
+                    end: Position {
+                      position: LexerPosition { line: 7, column: 24 },
+                      ..Default::default()
+                    },
+                    data: Hint::Set,
                 },
-                end: Position {
-                  position: LexerPosition { line: 7, column: 24 },
-                  ..Default::default()
-                },
-                data: Hint::Set,
-            }, Spanned {
-                beg: Position {
-                  position: LexerPosition { line: 8, column: 16 },
-                  ..Default::default()
-                },
-                end: Position {
-                  position: LexerPosition { line: 8, column: 24 },
-                  ..Default::default()
-                },
-                data:  String::from("NewObjs"),
-            }))
+                object_name: Spanned {
+                    beg: Position {
+                      position: LexerPosition { line: 8, column: 16 },
+                      ..Default::default()
+                    },
+                    end: Position {
+                      position: LexerPosition { line: 8, column: 24 },
+                      ..Default::default()
+                    },
+                    data:  String::from("NewObjs"),
+                }
+            })
         );
     }
 }
@@ -112,17 +118,19 @@ mod undefined {
                 var_prefix = \"op\"
                 new_objs = \"$objs.operand\"
               end".to_vec())).unwrap().type_check().err(),
-            Some(TypeError::Undefined(Spanned {
-                beg: Position {
-                  position: LexerPosition { line: 0, column: 4 },
-                  ..Default::default()
-                },
-                end: Position {
-                  position: LexerPosition { line: 0, column: 11 },
-                  ..Default::default()
-                },
-                data: String::from("Instruction"),
-            }))
+            Some(TypeError::Undefined {
+                object_name: Spanned {
+                    beg: Position {
+                      position: LexerPosition { line: 0, column: 4 },
+                      ..Default::default()
+                    },
+                    end: Position {
+                      position: LexerPosition { line: 0, column: 11 },
+                      ..Default::default()
+                    },
+                    data: String::from("Instruction"),
+                }
+            })
         );
     }
 
@@ -140,17 +148,19 @@ mod undefined {
                 new_objs = \"$objs.inst\"
                 from_superset = \"ir::inst::from_superset($fun, $item)\"
              end".to_vec())).unwrap().type_check().err(),
-            Some(TypeError::Undefined(Spanned {
-                beg: Position {
-                  position: LexerPosition { line: 0, column: 4 },
-                  ..Default::default()
-                },
-                end: Position {
-                  position: LexerPosition { line: 0, column: 15 },
-                  ..Default::default()
-                },
-                data: String::from("BasicBlock"),
-            }))
+            Some(TypeError::Undefined {
+                object_name: Spanned {
+                    beg: Position {
+                      position: LexerPosition { line: 0, column: 4 },
+                      ..Default::default()
+                    },
+                    end: Position {
+                      position: LexerPosition { line: 0, column: 15 },
+                      ..Default::default()
+                    },
+                    data: String::from("BasicBlock"),
+                }
+            })
         );
     }
 }
@@ -172,17 +182,20 @@ mod missing_entry {
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
               end".to_vec())).unwrap().type_check().err(),
-            Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
-                beg: Position {
-                  position: LexerPosition { line: 0, column: 4 },
-                  ..Default::default()
-                },
-                end: Position {
-                  position: LexerPosition { line: 0, column: 15 },
-                  ..Default::default()
-                },
-                data: ir::SetDefKey::ItemType.to_string(),
-            }))
+            Some(TypeError::MissingEntry {
+                object_name: String::from("Instruction"),
+                object_field: Spanned {
+                    beg: Position {
+                      position: LexerPosition { line: 0, column: 4 },
+                      ..Default::default()
+                    },
+                    end: Position {
+                      position: LexerPosition { line: 0, column: 15 },
+                      ..Default::default()
+                    },
+                    data: ir::SetDefKey::ItemType.to_string(),
+                }
+            })
         );
     }
 
@@ -198,17 +211,20 @@ mod missing_entry {
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
               end".to_vec())).unwrap().type_check().err(),
-            Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
-                beg: Position {
-                  position: LexerPosition { line: 0, column: 4 },
-                  ..Default::default()
-                },
-                end: Position {
-                  position: LexerPosition { line: 0, column: 15 },
-                  ..Default::default()
-                },
-                data: ir::SetDefKey::IdType.to_string(),
-            }))
+            Some(TypeError::MissingEntry {
+                object_name: String::from("Instruction"),
+                object_field: Spanned {
+                    beg: Position {
+                      position: LexerPosition { line: 0, column: 4 },
+                      ..Default::default()
+                    },
+                    end: Position {
+                      position: LexerPosition { line: 0, column: 15 },
+                      ..Default::default()
+                    },
+                    data: ir::SetDefKey::IdType.to_string(),
+                }
+            })
         );
     }
 
@@ -224,17 +240,20 @@ mod missing_entry {
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
               end".to_vec())).unwrap().type_check().err(),
-            Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
-                beg: Position {
-                  position: LexerPosition { line: 0, column: 4 },
-                  ..Default::default()
-                },
-                end: Position {
-                  position: LexerPosition { line: 0, column: 15 },
-                  ..Default::default()
-                },
-                data: ir::SetDefKey::ItemGetter.to_string(),
-            }))
+            Some(TypeError::MissingEntry {
+                object_name: String::from("Instruction"),
+                object_field: Spanned {
+                    beg: Position {
+                      position: LexerPosition { line: 0, column: 4 },
+                      ..Default::default()
+                    },
+                    end: Position {
+                      position: LexerPosition { line: 0, column: 15 },
+                      ..Default::default()
+                    },
+                    data: ir::SetDefKey::ItemGetter.to_string(),
+                }
+            })
         );
     }
 
@@ -250,17 +269,20 @@ mod missing_entry {
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
               end".to_vec())).unwrap().type_check().err(),
-            Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
-                beg: Position {
-                  position: LexerPosition { line: 0, column: 4 },
-                  ..Default::default()
-                },
-                end: Position {
-                  position: LexerPosition { line: 0, column: 15 },
-                  ..Default::default()
-                },
-                data: ir::SetDefKey::IdGetter.to_string(),
-            }))
+            Some(TypeError::MissingEntry {
+                object_name: String::from("Instruction"),
+                object_field: Spanned {
+                    beg: Position {
+                      position: LexerPosition { line: 0, column: 4 },
+                      ..Default::default()
+                    },
+                    end: Position {
+                      position: LexerPosition { line: 0, column: 15 },
+                      ..Default::default()
+                    },
+                    data: ir::SetDefKey::IdGetter.to_string(),
+                }
+            })
         );
     }
 
@@ -276,17 +298,20 @@ mod missing_entry {
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
               end".to_vec())).unwrap().type_check().err(),
-            Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
-                beg: Position {
-                  position: LexerPosition { line: 0, column: 4 },
-                  ..Default::default()
-                },
-                end: Position {
-                  position: LexerPosition { line: 0, column: 15 },
-                  ..Default::default()
-                },
-                data: ir::SetDefKey::Iter.to_string(),
-            }))
+            Some(TypeError::MissingEntry {
+                object_name: String::from("Instruction"),
+                object_field: Spanned {
+                    beg: Position {
+                      position: LexerPosition { line: 0, column: 4 },
+                      ..Default::default()
+                    },
+                    end: Position {
+                      position: LexerPosition { line: 0, column: 15 },
+                      ..Default::default()
+                    },
+                    data: ir::SetDefKey::Iter.to_string(),
+                }
+            })
         );
     }
 
@@ -313,17 +338,20 @@ mod missing_entry {
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
              end".to_vec())).unwrap().type_check().err(),
-            Some(TypeError::MissingEntry(String::from("Instruction"), Spanned {
-                beg: Position {
-                  position: LexerPosition { line: 10, column: 18 },
-                  ..Default::default()
-                },
-                end: Position {
-                  position: LexerPosition { line: 10, column: 29 },
-                  ..Default::default()
-                },
-                data: ir::SetDefKey::FromSuperset.to_string(),
-            }))
+            Some(TypeError::MissingEntry {
+                object_name: String::from("Instruction"),
+                object_field: Spanned {
+                    beg: Position {
+                      position: LexerPosition { line: 10, column: 18 },
+                      ..Default::default()
+                    },
+                    end: Position {
+                      position: LexerPosition { line: 10, column: 29 },
+                      ..Default::default()
+                    },
+                    data: ir::SetDefKey::FromSuperset.to_string(),
+                }
+            })
         );
     }
 }

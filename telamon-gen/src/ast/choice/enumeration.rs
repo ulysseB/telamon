@@ -21,18 +21,21 @@ impl EnumDef {
             match stmt {
                 EnumStatement::AntiSymmetric(spanned) => {
                     if let Some(ref before) = antisymmetric {
-                        Err(TypeError::Redefinition(
-                                before.with_data(Hint::EnumAttribute),
-                                spanned.with_data(String::from("Antisymmetric"))))?;
+                        Err(TypeError::Redefinition {
+                            object_kind: before.with_data(Hint::EnumAttribute),
+                            object_name: spanned.with_data(
+                                String::from("Antisymmetric"))
+                        })?;
                     } else {
                         antisymmetric = Some(spanned.with_data(()));
                     }
                 },
                 EnumStatement::Symmetric(spanned) => {
                     if let Some(ref before) = symmetric {
-                        Err(TypeError::Redefinition(
-                                before.with_data(Hint::EnumAttribute),
-                                spanned.with_data(String::from("Symmetric"))))?;
+                        Err(TypeError::Redefinition {
+                            object_kind: before.with_data(Hint::EnumAttribute),
+                            object_name: spanned.with_data(String::from("Symmetric"))
+                        })?;
                     } else {
                         symmetric = Some(spanned.with_data(()));
                     }
@@ -41,10 +44,10 @@ impl EnumDef {
                 EnumStatement::Alias(spanned, ..) => {
                     if let Some(before) = hash.insert(spanned.data.to_owned(),
                                                       spanned.with_data(())) {
-                        Err(TypeError::Redefinition(
-                            before.with_data(Hint::EnumAttribute),
-                            spanned.with_data(spanned.data.to_owned())
-                        ))?;
+                        Err(TypeError::Redefinition {
+                            object_kind: before.with_data(Hint::EnumAttribute),
+                            object_name: spanned.with_data(spanned.data.to_owned())
+                        })?;
                     }
                 },
             }
@@ -59,10 +62,10 @@ impl EnumDef {
         for VarDef { name, .. } in self.variables.as_slice() {
             if let Some(before) = hash.insert(name.data.to_string(),
                                               name.with_data(())) {
-                Err(TypeError::Redefinition(
-                    before.with_data(Hint::EnumAttribute),
-                    name.with_data(name.data.to_string())
-                ))?;
+                Err(TypeError::Redefinition {
+                    object_kind: before.with_data(Hint::EnumAttribute),
+                    object_name: name.with_data(name.data.to_string())
+                })?;
             }
         }
         Ok(())
@@ -78,20 +81,24 @@ impl EnumDef {
             match stmt {
                 EnumStatement::AntiSymmetric(spanned) => {
                     if let Some(ref symmetric) = symmetric {
-                        Err(TypeError::Conflict(
-                            symmetric.with_data(String::from("Symmetric")),
-                            spanned.with_data(String::from("Antisymmetric")),
-                        ))?;
+                        Err(TypeError::Conflict {
+                            object_fields: (
+                                symmetric.with_data(String::from("Symmetric")),
+                                spanned.with_data(String::from("Antisymmetric"))
+                            )
+                        })?;
                     } else {
                         antisymmetric = Some(spanned.with_data(()));
                     }
                 },
                 EnumStatement::Symmetric(spanned) => {
                     if let Some(ref antisymmetric) = antisymmetric {
-                        Err(TypeError::Conflict(
-                            antisymmetric.with_data(String::from("Antisymmetric")),
-                            spanned.with_data(String::from("Symmetric")),
-                        ))?;
+                        Err(TypeError::Conflict {
+                            object_fields: (
+                                antisymmetric.with_data(String::from("Antisymmetric")),
+                                spanned.with_data(String::from("Symmetric"))
+                            )
+                        })?;
                     } else {
                         symmetric = Some(spanned.with_data(()));
                     }
@@ -120,20 +127,24 @@ impl EnumDef {
                 EnumStatement::AntiSymmetric(spanned) => {
                     for (first, second) in spanned.data.iter() {
                         if !hash.contains_key(&first.to_owned()) {
-                            Err(TypeError::Undefined(
-                                spanned.with_data(first.to_owned())))?;
+                            Err(TypeError::Undefined {
+                                object_name: spanned.with_data(first.to_owned())
+                            })?;
                         }
                         if !hash.contains_key(&second.to_owned()) {
-                            Err(TypeError::Undefined(
-                                spanned.with_data(second.to_owned())))?;
+                            Err(TypeError::Undefined {
+                                object_name: spanned.with_data(second.to_owned())
+                            })?;
+
                         }
                     }
                 },
                 EnumStatement::Alias(spanned, _, sets, ..) => {
                     for set in sets {
                         if !hash.contains_key(&set.to_owned()) {
-                            Err(TypeError::Undefined(
-                                spanned.with_data(set.to_owned())))?;
+                            Err(TypeError::Undefined {
+                                object_name: spanned.with_data(set.to_owned())
+                            })?;
                         }
                     }
                 },
@@ -148,10 +159,10 @@ impl EnumDef {
         if self.statements.iter().find(|item| item.is_symmetric()
                                            || item.is_antisymmetric()).is_some() {
             if self.variables.len() != 2 {
-                Err(TypeError::BadSymmetricArg(
-                        self.name.to_owned(),
-                        self.variables.to_owned())
-                )?;
+                Err(TypeError::BadSymmetricArg {
+                        object_name: self.name.to_owned(),
+                        object_variables: self.variables.to_owned()
+                })?;
             }
         }
         Ok(())
@@ -165,10 +176,10 @@ impl EnumDef {
                 [VarDef { name: _, set: SetRef { name, .. } },
                  VarDef { name: _, set: SetRef { name: rhs_name, .. } }] => {
                     if name != rhs_name {
-                        Err(TypeError::BadSymmetricArg(
-                                self.name.to_owned(),
-                                self.variables.to_owned())
-                        )?;
+                        Err(TypeError::BadSymmetricArg {
+                            object_name: self.name.to_owned(),
+                            object_variables: self.variables.to_owned()
+                        })?;
                     }
                 },
                 _ => {},

@@ -1,6 +1,6 @@
 //! Defines operators.
 use device::Device;
-use ir::{self, AccessPattern, mem, Operand, Type};
+use ir::{self, AccessPattern, Operand, Type};
 use itertools::Itertools;
 use std;
 use std::borrow::Cow;
@@ -9,6 +9,7 @@ use utils::*;
 
 /// The rounding mode of an arithmetic operation.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[repr(C)]
 pub enum Rounding {
     /// No rounding occurs.
     Exact,
@@ -46,6 +47,7 @@ impl Rounding {
 
 /// Represents binary arithmetic operators.
 #[derive(Clone, Copy, Debug)]
+#[repr(C)]
 pub enum BinOp {
     /// Adds two operands.
     Add,
@@ -85,16 +87,16 @@ pub enum Operator<'a> {
     /// effects when it writes into a cell that previously had an undefined value.
     St(Operand<'a>, Operand<'a>, bool, AccessPattern<'a>),
     /// Represents a load from a temporary memory that is not fully defined yet.
-    TmpLd(Type, mem::Id),
+    TmpLd(Type, ir::MemId),
     /// Represents a store to a temporary memory that is not fully defined yet.
-    TmpSt(Operand<'a>, mem::Id),
+    TmpSt(Operand<'a>, ir::MemId),
     /// Casts a value into another type.
     Cast(Operand<'a>, Type),
 }
 
 impl<'a> Operator<'a> {
     /// Ensures the types of the operands are valid.
-    pub fn check(&self, iter_dims: &HashSet<ir::dim::Id>, device: &Device)
+    pub fn check(&self, iter_dims: &HashSet<ir::DimId>, device: &Device)
         -> Result<(), ir::Error>
     {
         self.t().map(|t| device.check_type(t)).unwrap_or(Ok(()))?;
@@ -196,7 +198,7 @@ impl<'a> Operator<'a> {
     }
 
     /// Renames a basic block.
-    pub fn merge_dims(&mut self, lhs: ir::dim::Id, rhs: ir::dim::Id) {
+    pub fn merge_dims(&mut self, lhs: ir::DimId, rhs: ir::DimId) {
         self.operands_mut().iter_mut().foreach(|x| x.merge_dims(lhs, rhs));
     }
 
@@ -214,7 +216,7 @@ impl<'a> Operator<'a> {
     }
 
     /// Returns the memory blocks referenced by the instruction.
-    pub fn mem_used(&self) -> Option<mem::Id> {
+    pub fn mem_used(&self) -> Option<ir::MemId> {
         self.mem_access_pattern().map(|p| p.mem_block())
     }
 

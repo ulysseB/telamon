@@ -24,7 +24,7 @@ impl PerfModelTest for EmptyLoop {
 }
 
 /// Tests the latency of two nested empty loops.
-pub struct TwoEmptyLoop { d0: ir::dim::Id,  d1: ir::dim::Id }
+pub struct TwoEmptyLoop { d0: ir::DimId,  d1: ir::DimId }
 
 impl PerfModelTest for TwoEmptyLoop {
     fn name() -> &'static str { "latency_two_empty_loop" }
@@ -67,7 +67,7 @@ impl PerfModelTest for InstChain {
         let i1 = builder.mul(&"x", &i0);
         let i2 = builder.mul(&"x", &i1);
         builder.close_dim(&d0);
-        let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
+        let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
         builder.st_ex(&"out", &i2, true, pattern, InstFlag::MEM_CS);
         InstChain
     }
@@ -93,14 +93,14 @@ impl PerfModelTest for LongInstChain {
             inst = builder.mul(&"x", &inst);
         }
         builder.close_dim(&d0);
-        let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
+        let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
         builder.st_ex(&"out", &inst, true, pattern, InstFlag::MEM_CS);
         LongInstChain
     }
 }
 
 /// Tests the latency on an unrolled reduction loop.
-pub struct UnrollReduction { d0: ir::dim::Id, d1: ir::dim::Id }
+pub struct UnrollReduction { d0: ir::DimId, d1: ir::DimId }
 
 impl PerfModelTest for UnrollReduction {
     fn name() -> &'static str { "unroll_reduction" }
@@ -120,7 +120,7 @@ impl PerfModelTest for UnrollReduction {
         let inst = builder.add(&"x", &Reduce(init));
         builder.close_dim(&d0);
         builder.close_dim(&d1);
-        let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
+        let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
         builder.st_ex(&"out", &inst, true, pattern, InstFlag::MEM_CS);
         UnrollReduction { d0, d1 }
     }
@@ -179,7 +179,7 @@ impl PerfModelTest for OrderedThreadDims {
         let size_2 = builder.cst_size(64);
         builder.open_dim_ex(size_n, DimKind::LOOP);
         let d1 = builder.open_dim_ex(size_0.clone(), DimKind::THREAD);
-        let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
+        let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
         let init = builder.ld_ex(ir::Type::I(32), &"out", pattern, InstFlag::MEM_CG);
         let d1_1 = builder.open_dim_ex(size_1.clone(), DimKind::LOOP);
         let d1_2 = builder.open_dim_ex(size_2.clone(), DimKind::UNROLL);
@@ -189,7 +189,7 @@ impl PerfModelTest for OrderedThreadDims {
         let d2 = builder.open_dim_ex(size_0.clone(), DimKind::THREAD);
         let d2_1 = builder.open_dim_ex(size_1.clone(), DimKind::LOOP);
         let d2_2 = builder.open_dim_ex(size_2.clone(), DimKind::UNROLL);
-        let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
+        let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
         builder.st_ex(&"out", &inst, true, pattern, InstFlag::MEM_CG);
 
         builder.order(&d1, &d1_1, Order::OUTER);
@@ -227,7 +227,7 @@ impl PerfModelTest for DimMap {
         let op = builder.dim_map(i1, &[(&d1, &d2)], ir::DimMapScope::Thread);
         let i2 = builder.mad(&op, &op, &Reduce(init2));
         builder.close_dim(&DimGroup::new(vec![d2, d0]));
-        let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
+        let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
         builder.st_ex(&"out", &i2, true, pattern, InstFlag::MEM_CS);
         builder.order(&d1, &d2, Order::BEFORE);
         DimMap
@@ -255,7 +255,7 @@ impl PerfModelTest for OperandPositionSlow {
         let inst = builder.mad(&Reduce(init), &"x", &"x");
         builder.close_dim(&d0);
         builder.close_dim(&d1);
-        let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
+        let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
         builder.st_ex(&"out", &inst, true, pattern, InstFlag::MEM_CS);
         builder.order(&d0, &d1, Order::OUTER);
         OperandPositionSlow
@@ -283,7 +283,7 @@ impl PerfModelTest for OperandPositionFast {
         let inst = builder.mad(&"x", &"x", &Reduce(init));
         builder.close_dim(&d0);
         builder.close_dim(&d1);
-        let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
+        let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
         builder.st_ex(&"out", &inst, true, pattern, InstFlag::MEM_CS);
         builder.order(&d0, &d1, Order::OUTER);
         OperandPositionFast

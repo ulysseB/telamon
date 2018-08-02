@@ -33,8 +33,8 @@ impl PerfModelTest for Test0 {
         let n_tiled = builder.tile_size("n", tile_1 * tile_2);
         let k_tiled = builder.tile_size("k", tile_1);
 
-        let a = ir::mem::Id::External(0);
-        let b = ir::mem::Id::External(1);
+        let a = ir::MemId::External(0);
+        let b = ir::MemId::External(1);
 
         let b0 = builder.open_dim_ex(n_tiled, DimKind::BLOCK);
         let b1 = builder.open_dim_ex(m_tiled, DimKind::BLOCK);
@@ -105,7 +105,7 @@ impl PerfModelTest for Test1 {
         let tile_2_size = builder.cst_size(tile_2);
         let tmp_mem_size = 4*tile_1*tile_2;
         let a_tmp_mem = builder.allocate(tmp_mem_size, true);
-        let out = ir::mem::Id::External(0);
+        let out = ir::MemId::External(0);
 
         // Configure dimension sizes
         let thread_dim_1_0 = builder.open_dim_ex(tile_1_size.clone(), DimKind::THREAD);
@@ -162,7 +162,7 @@ impl PerfModelTest for Test2 {
         let tmp_mem_size = 4*tile_1*tile_2;
         let a_tmp_mem = builder.allocate(tmp_mem_size, true);
         let b_tmp_mem = builder.allocate(tmp_mem_size, true);
-        let out = ir::mem::Id::External(0);
+        let out = ir::MemId::External(0);
 
         // Configure dimension sizes
         let m_tiled = builder.tile_size("m", tile_1 * tile_2);

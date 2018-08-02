@@ -16,7 +16,7 @@ impl CheckerContext {
         if let Some(pre) = self.hash_set.insert(
             set.name.data.to_owned(), set.name.with_data(Hint::Set)
         ) {
-            Err(TypeError::Redefinition(pre, set.name.to_owned()))
+            Err(TypeError::Redefinition { object_kind: pre, object_name: set.name.to_owned() })
         } else {
             Ok(())
         }
@@ -25,10 +25,9 @@ impl CheckerContext {
     /// This checks the redefinition of ChoiceDef (EnumDef and IntegerDef).
     pub fn declare_choice(&mut self, choice: &ChoiceDef) -> Result<(), TypeError> {
         if let Some(pre) = self.hash_choice.insert(
-            choice.get_name().data.to_owned(),
-            choice.get_name().with_data(Hint::from(choice))
+            choice.get_name().data.to_owned(), choice.get_name().with_data(Hint::from_choice(choice))
         ) {
-            Err(TypeError::Redefinition(pre, choice.get_name()))
+            Err(TypeError::Redefinition { object_kind: pre, object_name: choice.get_name() })
         } else {
             Ok(())
         }
@@ -42,19 +41,23 @@ impl CheckerContext {
                 if let Some(VarDef { name: _, set: SetRef { name, .. } }) = arg {
                     let name: &String = name.deref();
                     if !self.hash_set.contains_key(name) {
-                        Err(TypeError::Undefined(Spanned {
-                            beg: beg.to_owned(), end: end.to_owned(),
-                            data: name.to_owned(),
-                        }))?;
+                        Err(TypeError::Undefined {
+                            object_name: Spanned {
+                                beg: beg.to_owned(), end: end.to_owned(),
+                                data: name.to_owned(),
+                            }
+                        })?;
                     }
                 }
                 if let Some(SetRef { name: supername, .. }) = superset {
                     let name: &String = supername.deref();
                     if !self.hash_set.contains_key(name) {
-                        Err(TypeError::Undefined(Spanned {
-                            beg: beg.to_owned(), end: end.to_owned(),
-                            data: name.to_owned(),
-                        }))?;
+                        Err(TypeError::Undefined {
+                            object_name: Spanned {
+                                beg: beg.to_owned(), end: end.to_owned(),
+                                data: name.to_owned(),
+                            }
+                        })?;
                     }
                 }
             },
@@ -75,10 +78,12 @@ impl CheckerContext {
                 for VarDef { name: _, set: SetRef { name, .. } } in variables {
                     let name: &String = name.deref();
                     if !self.hash_set.contains_key(name) {
-                        Err(TypeError::Undefined(Spanned {
-                            beg: beg.to_owned(), end: end.to_owned(),
-                            data: name.to_owned(),
-                        }))?;
+                        Err(TypeError::Undefined {
+                            object_name: Spanned {
+                                beg: beg.to_owned(), end: end.to_owned(),
+                                data: name.to_owned(),
+                            }
+                        })?;
                     }
                 }
             },
