@@ -14,17 +14,19 @@ mod undefined {
         assert_eq!(parser::parse_ast(Lexer::new(
             b"define integer foo($arg in MySet): \"mycode\"
               end".to_vec())).unwrap().type_check().err(),
-            Some(TypeError::Undefined(Spanned {
-                beg: Position {
-                    position: LexerPosition { line: 0, column: 15 },
-                    ..Default::default()
-                },
-                end: Position {
-                    position: LexerPosition { line: 0, column: 18 },
-                    ..Default::default()
-                },
-                data: String::from("MySet"),
-            }))
+            Some(TypeError::Undefined {
+                object_name: Spanned {
+                    beg: Position {
+                        position: LexerPosition { line: 0, column: 15 },
+                        ..Default::default()
+                    },
+                    end: Position {
+                        position: LexerPosition { line: 0, column: 18 },
+                        ..Default::default()
+                    },
+                    data: String::from("MySet"),
+                }
+            })
         );
     }
 }
@@ -41,27 +43,30 @@ mod redefinition {
               end
               define integer foo(): \"mycode\"
               end".to_vec())).unwrap().type_check().err(),
-            Some(TypeError::Redefinition(Spanned {
-                beg: Position {
-                    position: LexerPosition { line: 0, column: 15 },
-                    ..Default::default()
+            Some(TypeError::Redefinition {
+                object_kind: Spanned {
+                    beg: Position {
+                        position: LexerPosition { line: 0, column: 15 },
+                        ..Default::default()
+                    },
+                    end: Position {
+                        position: LexerPosition { line: 0, column: 18 },
+                        ..Default::default()
+                    },
+                    data: Hint::Integer,
                 },
-                end: Position {
-                    position: LexerPosition { line: 0, column: 18 },
-                    ..Default::default()
-                },
-                data: Hint::Integer,
-            }, Spanned {
-                beg: Position {
-                    position: LexerPosition { line: 2, column: 29 },
-                    ..Default::default()
-                },
-                end: Position {
-                    position: LexerPosition { line: 2, column: 32 },
-                    ..Default::default()
-                },
-                data:  String::from("foo"),
-            }))
+                object_name: Spanned {
+                    beg: Position {
+                        position: LexerPosition { line: 2, column: 29 },
+                        ..Default::default()
+                    },
+                    end: Position {
+                        position: LexerPosition { line: 2, column: 32 },
+                        ..Default::default()
+                    },
+                    data:  String::from("foo"),
+                }
+            })
         );
     }
 }
