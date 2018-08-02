@@ -125,7 +125,7 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             log_file: String::from("watch.log"),
-            event_log: String::from("eventlog.tfrecord"),
+            event_log: String::from("eventlog.tfrecord.gz"),
             num_workers: num_cpus::get(),
             algorithm: SearchAlgorithm::default(),
             stop_bound: None,
