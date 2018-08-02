@@ -40,9 +40,9 @@ pub enum TypeError {
     /// Unvalid arguments of a symmetric enum.
     BadSymmetricArg { object_name: Spanned<String>, object_variables: Vec<VarDef> },
     /// Missing
-    /// Append when the Set's object has a missing field.
+    /// Happens when the Set's object has a missing field.
     MissingEntry { object_name: String, object_field: Spanned<String> },
     /// Conflict between incompatible keywords.
-    /// Append when the object has symmetric and antisimmetric fields. 
+    /// Happens when the object has symmetric and antisimmetric fields. 
     Conflict { object_fields: (Spanned<String>, Spanned<String>) },
 }
