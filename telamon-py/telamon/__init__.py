@@ -32,9 +32,9 @@ def device(device_spec: str):
     """
 
     if device_spec.upper() == "CPU":
-        device_id = lib.X86
+        device_id = lib.DeviceId_X86
     elif device_spec.upper() == "GPU":
-        device_id = lib.Cuda
+        device_id = lib.DeviceId_Cuda
     else:
         raise ValueError(
             'Invalid device specification: {}; expected "CPU" or "GPU"'.format(
@@ -51,7 +51,7 @@ def device(device_spec: str):
 
 
 def _get_current_device_id():
-    return lib.X86 if not _DEVICE_STACK else _DEVICE_STACK[-1]
+    return lib.DeviceId_X86 if not _DEVICE_STACK else _DEVICE_STACK[-1]
 
 
 class RustObject:

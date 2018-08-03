@@ -64,7 +64,7 @@ pub unsafe extern "C" fn telamon_search_space_apply(
             .0
             .apply_decisions(std::slice::from_raw_parts(actions, num_actions).to_vec())
     );
-    TelamonStatus::TelamonStatusOk
+    TelamonStatus::Ok
 }
 
 /// Frees a search space instance allocated through
@@ -79,5 +79,5 @@ pub unsafe extern "C" fn telamon_search_space_free(
     search_space: *mut SearchSpace,
 ) -> TelamonStatus {
     std::mem::drop(Box::from_raw(search_space));
-    TelamonStatus::TelamonStatusOk
+    TelamonStatus::Ok
 }

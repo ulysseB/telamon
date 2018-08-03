@@ -15,6 +15,7 @@ pub enum MemId {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+#[repr(C)]
 /// cbindgen:field-names=[id]
 pub struct InternalId(pub u32);
 

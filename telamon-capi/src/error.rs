@@ -8,8 +8,8 @@ use telamon;
 /// Indicates if a telamon function exited correctly.
 #[repr(C)]
 pub enum TelamonStatus {
-    TelamonStatusOk,
-    TelamonStatusFail,
+    Ok,
+    Fail,
 }
 
 #[derive(Debug, Fail)]
@@ -80,7 +80,7 @@ thread_local! {
 #[macro_export]
 macro_rules! unwrap_or_exit {
     ($result:expr) => {
-        unwrap_or_exit!($result, $crate::error::TelamonStatus::TelamonStatusFail)
+        unwrap_or_exit!($result, $crate::error::TelamonStatus::Fail)
     };
     ($result:expr,null) => {
         unwrap_or_exit!($result, ::std::ptr::null_mut())
@@ -96,7 +96,7 @@ macro_rules! unwrap_or_exit {
 #[macro_export]
 macro_rules! exit {
     ($errno:expr) => {
-        exit!($errno, $crate::error::TelamonStatus::TelamonStatusFail)
+        exit!($errno, $crate::error::TelamonStatus::Fail)
     };
     ($errno:expr,null) => {
         exit!($errno, ::std::ptr::null_mut())
@@ -113,7 +113,7 @@ macro_rules! exit {
 #[macro_export]
 macro_rules! exit_if_null {
     ($e:expr) => {
-        exit_if_null!($e, $crate::error::TelamonStatus::TelamonStatusFail)
+        exit_if_null!($e, $crate::error::TelamonStatus::Fail)
     };
     ($e:expr,null) => {
         exit_if_null!($e, ::std::ptr::null_mut())
