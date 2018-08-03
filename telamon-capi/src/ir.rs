@@ -106,7 +106,7 @@ pub unsafe extern "C" fn telamon_ir_function_free(function: *mut Function) {
 
 /// Adds an instruction performing the given operator in the given dimensions to the
 /// function. Writes the unique identifier of the instruction in `inst_id`. Returns
-/// `TelamonStatusOk` except if an error occurs. Takes ownership of the operator
+/// `Ok` except if an error occurs. Takes ownership of the operator
 /// but does not keeps any reference to `dimensions`.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_function_add_instruction(
@@ -120,11 +120,11 @@ pub unsafe extern "C" fn telamon_ir_function_add_instruction(
     let dim_set = dimensions.iter().cloned().collect();
     let operator = Box::from_raw(operator).0;
     *inst_id = unwrap_or_exit!((*function).0.add_inst(operator, dim_set));
-    TelamonStatus::TelamonStatusOk
+    TelamonStatus::Ok
 }
 
 /// Adds a dimension of the given size to the function. Takes ownership of `size` and
-/// writes the unique identifier of the dimension in `dim_id`. Returns `TelamonStatusOk`
+/// writes the unique identifier of the dimension in `dim_id`. Returns `Ok`
 /// except if an error occurs.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_function_add_dimension(
@@ -133,7 +133,7 @@ pub unsafe extern "C" fn telamon_ir_function_add_dimension(
     dim_id: *mut ir::DimId,
 ) -> TelamonStatus {
     *dim_id = unwrap_or_exit!((*function).0.add_dim(Box::from_raw(size).0));
-    TelamonStatus::TelamonStatusOk
+    TelamonStatus::Ok
 }
 
 /// Opaque type that abstracts away the lifetime parameter of `ir::Size` so cbindgen

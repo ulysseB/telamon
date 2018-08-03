@@ -69,8 +69,8 @@ typedef enum {
  * Indicates if a telamon function exited correctly.
  */
 typedef enum {
-    TelamonStatus_TelamonStatusOk,
-    TelamonStatus_TelamonStatusFail,
+    TelamonStatus_Ok,
+    TelamonStatus_Fail,
 } TelamonStatus;
 
 /*
@@ -567,7 +567,7 @@ SearchSpace *telamon_explore(const Config *config,
 
 /*
  * Adds a dimension of the given size to the function. Takes ownership of `size` and
- * writes the unique identifier of the dimension in `dim_id`. Returns `TelamonStatusOk`
+ * writes the unique identifier of the dimension in `dim_id`. Returns `Ok`
  * except if an error occurs.
  */
 TelamonStatus telamon_ir_function_add_dimension(Function *function, Size *size, DimId *dim_id);
@@ -575,7 +575,7 @@ TelamonStatus telamon_ir_function_add_dimension(Function *function, Size *size, 
 /*
  * Adds an instruction performing the given operator in the given dimensions to the
  * function. Writes the unique identifier of the instruction in `inst_id`. Returns
- * `TelamonStatusOk` except if an error occurs. Takes ownership of the operator
+ * `Ok` except if an error occurs. Takes ownership of the operator
  * but does not keeps any reference to `dimensions`.
  */
 TelamonStatus telamon_ir_function_add_instruction(Function *function,

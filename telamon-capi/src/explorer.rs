@@ -37,7 +37,7 @@ pub unsafe extern "C" fn telamon_string_copy(
     src: *const c_char,
 ) -> TelamonStatus {
     *dst = unwrap_or_exit!(CStr::from_ptr(src).to_str()).to_string();
-    TelamonStatus::TelamonStatusOk
+    TelamonStatus::Ok
 }
 
 /// Run the exploration according to the configuration.
