@@ -1184,14 +1184,17 @@ mod integer_set {
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert_eq!(store.get_sum_int2(), Range { min: 9, max: 15 });
 
-        let actions = vec![Action::Int2(obj0, NumericSet::all(&[4]))];
+        let only_4 = NumericSet::new_eq(&INT1_DOMAIN, &[4][..], &());
+        let actions = vec![Action::Int2(obj0, only_4)];
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert_eq!(store.get_sum_int2(), Range { min: 10, max: 14 });
 
-        let actions = vec![Action::Int2(obj1, NumericSet::all(&[5]))];
+        let only_5 = NumericSet::new_eq(&INT1_DOMAIN, &[5][..], &());
+        let actions = vec![Action::Int2(obj1, only_5)];
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert_eq!(store.get_sum_int2(), Range { min: 12, max: 12 });
-        assert_eq!(store.get_int2(obj2), NumericSet::all(&[3]));
+        let only_3 = NumericSet::new_eq(&INT1_DOMAIN, &[3][..], &());
+        assert_eq!(store.get_int2(obj2), only_3);
 
     }
 }
