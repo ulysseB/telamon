@@ -15,3 +15,6 @@ include = ["telamon"]
 
 [parse.expand]
 crates = ["telamon"]
+
+[enum]
+prefix_with_name = true

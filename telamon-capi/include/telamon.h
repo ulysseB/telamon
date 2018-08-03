@@ -20,68 +20,24 @@ typedef enum {
     /*
      * Adds two operands.
      */
-    Add,
+    BinOp_Add,
     /*
      * Substracts two operands.
      */
-    Sub,
+    BinOp_Sub,
     /*
      * Divides two operands,
      */
-    Div,
+    BinOp_Div,
 } BinOp;
 
 /*
  * Supported device types for running kernels.
  */
 typedef enum {
-    X86,
-    Cuda,
+    DeviceId_X86,
+    DeviceId_Cuda,
 } DeviceId;
-
-/*
- * Indicates how to choose between nodes of the search tree when no children have been
- * evaluated.
- */
-typedef enum {
-    /*
-     * Consider the nodes in the order given by the search space API.
-     */
-    Api,
-    /*
-     * Consider the nodes in a random order.
-     */
-    Random,
-    /*
-     * Consider the nodes with the lowest bound first.
-     */
-    Bound,
-    /*
-     * Consider the nodes with a probability proportional to the distance between the
-     * cut and the bound.
-     */
-    WeightedRandom,
-} NewNodeOrder;
-
-/*
- * Indicates how to choose between nodes of the search tree with at least one descendent
- * evaluated.
- */
-typedef enum {
-    /*
-     * Use the weights from the bandit algorithm.
-     */
-    Bandit,
-    /*
-     * Take the candidate with the best bound.
-     */
-    Bound,
-    /*
-     * Consider the nodes with a probability proportional to the distance between the
-     * cut and the bound.
-     */
-    WeightedRandom,
-} OldNodeOrder;
 
 /*
  * The rounding mode of an arithmetic operation.
@@ -90,37 +46,37 @@ typedef enum {
     /*
      * No rounding occurs.
      */
-    Exact,
+    Rounding_Exact,
     /*
      * Rounds toward the nearest number.
      */
-    Nearest,
+    Rounding_Nearest,
     /*
      * Rounds toward zero.
      */
-    Zero,
+    Rounding_Zero,
     /*
      * Rounds toward positive infinite.
      */
-    Positive,
+    Rounding_Positive,
     /*
      * Rounds toward negative infinite.
      */
-    Negative,
+    Rounding_Negative,
 } Rounding;
 
 /*
  * Indicates if a telamon function exited correctly.
  */
 typedef enum {
-    TelamonStatusOk,
-    TelamonStatusFail,
+    TelamonStatus_TelamonStatusOk,
+    TelamonStatus_TelamonStatusFail,
 } TelamonStatus;
 
 /*
- * Provides a unique identifer for a basic block.
+ * Stores the configuration of the exploration.
  */
-typedef struct BBId BBId;
+typedef struct Config Config;
 
 /*
  * Description of the evaluation context. In particular, in contains the
@@ -143,8 +99,6 @@ typedef struct Device Device;
  */
 typedef struct Function Function;
 
-typedef struct InternalId InternalId;
-
 /*
  * Supported kernels.
  */
@@ -161,12 +115,6 @@ typedef struct Operand Operand;
  * cbindgen can generate bindings.
  */
 typedef struct Operator Operator;
-
-typedef struct Option_f64 Option_f64;
-
-typedef struct Option_u64 Option_u64;
-
-typedef struct Option_usize Option_usize;
 
 /*
  * Represents an argument of a function.
@@ -198,102 +146,6 @@ typedef struct String String;
 typedef struct Type Type;
 
 /*
- * Configuration parameters specific to the multi-armed bandit algorithm.
- */
-typedef struct {
-    /*
-     * Indicates how to select between nodes of the search tree when none of their
-     * children have been evaluated.
-     */
-    NewNodeOrder new_nodes_order;
-    /*
-     * Indicates how to choose between nodes with at least one children evaluated.
-     */
-    OldNodeOrder old_nodes_order;
-    /*
-     * The number of best execution times to remember.
-     */
-    uintptr_t threshold;
-    /*
-     * The biggest delta is, the more focused on the previous best candidates the
-     * exploration is.
-     */
-    double delta;
-    /*
-     * If true, does not expand tree until end - instead, starts a montecarlo descend after each
-     * expansion of a node
-     */
-    bool monte_carlo;
-} BanditConfig;
-
-/*
- * Exploration algorithm to use.
- */
-typedef enum {
-    /*
-     * Evaluate all the candidates that cannot be pruned.
-     */
-    BoundOrder,
-    /*
-     * Use a multi-armed bandit algorithm.
-     */
-    MultiArmedBandit,
-} SearchAlgorithm_Tag;
-
-typedef struct {
-    BanditConfig _0;
-} MultiArmedBandit_Body;
-
-typedef struct {
-    SearchAlgorithm_Tag tag;
-    union {
-        MultiArmedBandit_Body multi_armed_bandit;
-    };
-} SearchAlgorithm;
-
-/*
- * Stores the configuration of the exploration.
- */
-typedef struct {
-    /*
-     * Name of the file in wich to store the logs.
-     */
-    String log_file;
-    /*
-     * Name of the file in which to store the binary event log.
-     */
-    String event_log;
-    /*
-     * Number of exploration threads.
-     */
-    uintptr_t num_workers;
-    /*
-     * Indicates the search must be stopped if a candidate with an execution time better
-     * than the bound (in ns) is found.
-     */
-    Option_f64 stop_bound;
-    /*
-     * Indicates the search must be stopped after the given number of minutes.
-     */
-    Option_u64 timeout;
-    /*
-     * Indicates the search must be stopped after the given number of
-     * candidates have been evaluated.
-     */
-    Option_usize max_evaluations;
-    /*
-     * A percentage cut indicate that we only care to find a candidate that is in a
-     * certain range above the best Therefore, if cut_under is 20%, we can discard any
-     * candidate whose bound is above 80% of the current best.
-     */
-    Option_f64 distance_to_best;
-    /*
-     * Exploration algorithm to use. Needs to be last for TOML serialization, because it is a table.
-     */
-    SearchAlgorithm algorithm;
-} Config;
-
-/*
  * Provides a unique identifier for iteration dimensions.
  */
 typedef struct {
@@ -311,23 +163,23 @@ typedef struct {
  * Uniquely identifies a block.
  */
 typedef enum {
-    Internal,
-    External,
+    MemId_Internal,
+    MemId_External,
 } MemId_Tag;
 
 typedef struct {
     uint32_t id;
-} Internal_Body;
+} MemId_Internal_Body;
 
 typedef struct {
     uint32_t id;
-} External_Body;
+} MemId_External_Body;
 
 typedef struct {
     MemId_Tag tag;
     union {
-        Internal_Body internal;
-        External_Body external;
+        MemId_Internal_Body internal;
+        MemId_External_Body external;
     };
 } MemId;
 
@@ -357,6 +209,30 @@ typedef struct {
 } InstFlag;
 
 /*
+ * Provides a unique identifer for a basic block.
+ */
+typedef enum {
+    BBId_Inst,
+    BBId_Dim,
+} BBId_Tag;
+
+typedef struct {
+    InstId id;
+} BBId_Inst_Body;
+
+typedef struct {
+    DimId id;
+} BBId_Dim_Body;
+
+typedef struct {
+    BBId_Tag tag;
+    union {
+        BBId_Inst_Body inst;
+        BBId_Dim_Body dim;
+    };
+} BBId;
+
+/*
  * Defines how two basic blocks are ordered.
  */
 typedef struct {
@@ -384,6 +260,10 @@ typedef struct {
     uint32_t min;
 } HalfRange;
 
+typedef struct {
+    uint32_t id;
+} InternalId;
+
 /*
  * Abstracts integer choices by a range.
  */
@@ -396,157 +276,157 @@ typedef struct {
  * A decision to apply to the domain.
  */
 typedef enum {
-    IsIterationDim,
-    IsThreadDim,
-    DimKind,
-    MemSpace,
-    InstFlag,
-    Order,
-    DimMapping,
-    ThreadMapping,
-    NumThreads,
-    NumThreadDims,
-    IncrementUnrollFactor,
-    UnrollFactor,
-    IncrementNumBlockDims,
-    NumBlockDims,
-    NumNestedInst,
-    IncrementMemSize,
-    MemSize,
-    SharedMemUsed,
-    IsIterationDimClassCounter,
-    IsThreadDimClassCounter,
+    Action_IsIterationDim,
+    Action_IsThreadDim,
+    Action_DimKind,
+    Action_MemSpace,
+    Action_InstFlag,
+    Action_Order,
+    Action_DimMapping,
+    Action_ThreadMapping,
+    Action_NumThreads,
+    Action_NumThreadDims,
+    Action_IncrementUnrollFactor,
+    Action_UnrollFactor,
+    Action_IncrementNumBlockDims,
+    Action_NumBlockDims,
+    Action_NumNestedInst,
+    Action_IncrementMemSize,
+    Action_MemSize,
+    Action_SharedMemUsed,
+    Action_IsIterationDimClassCounter,
+    Action_IsThreadDimClassCounter,
 } Action_Tag;
 
 typedef struct {
     InstId inst;
     DimId dim;
     Bool domain;
-} IsIterationDim_Body;
+} Action_IsIterationDim_Body;
 
 typedef struct {
     DimId dim;
     Bool domain;
-} IsThreadDim_Body;
+} Action_IsThreadDim_Body;
 
 typedef struct {
     DimId dim;
     DimKind domain;
-} DimKind_Body;
+} Action_DimKind_Body;
 
 typedef struct {
     MemId mem;
     MemSpace domain;
-} MemSpace_Body;
+} Action_MemSpace_Body;
 
 typedef struct {
     InstId inst;
     InstFlag domain;
-} InstFlag_Body;
+} Action_InstFlag_Body;
 
 typedef struct {
     BBId lhs;
     BBId rhs;
     Order domain;
-} Order_Body;
+} Action_Order_Body;
 
 typedef struct {
     DimId lhs;
     DimId rhs;
     DimMapping domain;
-} DimMapping_Body;
+} Action_DimMapping_Body;
 
 typedef struct {
     DimId lhs;
     DimId rhs;
     ThreadMapping domain;
-} ThreadMapping_Body;
+} Action_ThreadMapping_Body;
 
 typedef struct {
     HalfRange domain;
-} NumThreads_Body;
+} Action_NumThreads_Body;
 
 typedef struct {
     HalfRange domain;
-} NumThreadDims_Body;
+} Action_NumThreadDims_Body;
 
 typedef struct {
     InstId inst;
     DimId dim;
     Bool domain;
-} IncrementUnrollFactor_Body;
+} Action_IncrementUnrollFactor_Body;
 
 typedef struct {
     InstId inst;
     HalfRange domain;
-} UnrollFactor_Body;
+} Action_UnrollFactor_Body;
 
 typedef struct {
     InstId inst;
     DimId dim;
     Bool domain;
-} IncrementNumBlockDims_Body;
+} Action_IncrementNumBlockDims_Body;
 
 typedef struct {
     InstId inst;
     HalfRange domain;
-} NumBlockDims_Body;
+} Action_NumBlockDims_Body;
 
 typedef struct {
     DimId dim;
     HalfRange domain;
-} NumNestedInst_Body;
+} Action_NumNestedInst_Body;
 
 typedef struct {
     InternalId mem;
     DimId lhs;
     DimId rhs;
     Bool domain;
-} IncrementMemSize_Body;
+} Action_IncrementMemSize_Body;
 
 typedef struct {
     InternalId mem;
     HalfRange domain;
-} MemSize_Body;
+} Action_MemSize_Body;
 
 typedef struct {
     HalfRange domain;
-} SharedMemUsed_Body;
+} Action_SharedMemUsed_Body;
 
 typedef struct {
     InstId inst;
     DimId dim;
     Range domain;
-} IsIterationDimClassCounter_Body;
+} Action_IsIterationDimClassCounter_Body;
 
 typedef struct {
     DimId dim;
     Range domain;
-} IsThreadDimClassCounter_Body;
+} Action_IsThreadDimClassCounter_Body;
 
 typedef struct {
     Action_Tag tag;
     union {
-        IsIterationDim_Body is_iteration_dim;
-        IsThreadDim_Body is_thread_dim;
-        DimKind_Body dim_kind;
-        MemSpace_Body mem_space;
-        InstFlag_Body inst_flag;
-        Order_Body order;
-        DimMapping_Body dim_mapping;
-        ThreadMapping_Body thread_mapping;
-        NumThreads_Body num_threads;
-        NumThreadDims_Body num_thread_dims;
-        IncrementUnrollFactor_Body increment_unroll_factor;
-        UnrollFactor_Body unroll_factor;
-        IncrementNumBlockDims_Body increment_num_block_dims;
-        NumBlockDims_Body num_block_dims;
-        NumNestedInst_Body num_nested_inst;
-        IncrementMemSize_Body increment_mem_size;
-        MemSize_Body mem_size;
-        SharedMemUsed_Body shared_mem_used;
-        IsIterationDimClassCounter_Body is_iteration_dim_class_counter;
-        IsThreadDimClassCounter_Body is_thread_dim_class_counter;
+        Action_IsIterationDim_Body is_iteration_dim;
+        Action_IsThreadDim_Body is_thread_dim;
+        Action_DimKind_Body dim_kind;
+        Action_MemSpace_Body mem_space;
+        Action_InstFlag_Body inst_flag;
+        Action_Order_Body order;
+        Action_DimMapping_Body dim_mapping;
+        Action_ThreadMapping_Body thread_mapping;
+        Action_NumThreads_Body num_threads;
+        Action_NumThreadDims_Body num_thread_dims;
+        Action_IncrementUnrollFactor_Body increment_unroll_factor;
+        Action_UnrollFactor_Body unroll_factor;
+        Action_IncrementNumBlockDims_Body increment_num_block_dims;
+        Action_NumBlockDims_Body num_block_dims;
+        Action_NumNestedInst_Body num_nested_inst;
+        Action_IncrementMemSize_Body increment_mem_size;
+        Action_MemSize_Body mem_size;
+        Action_SharedMemUsed_Body shared_mem_used;
+        Action_IsIterationDimClassCounter_Body is_iteration_dim_class_counter;
+        Action_IsThreadDimClassCounter_Body is_thread_dim_class_counter;
     };
 } Action;
 
@@ -596,7 +476,7 @@ bool kernel_optimize(KernelParameters *params,
 /*
  * Frees an explorer configuration.
  */
-TelamonStatus telamon_config_free(Config *config);
+void telamon_config_free(Config *config);
 
 /*
  * Allocate a new explorer configuration object with suitable

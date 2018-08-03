@@ -15,7 +15,6 @@ use num_cpus;
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
-#[repr(C)]
 pub struct Config {
     /// Name of the file in wich to store the logs.
     pub log_file: String,
@@ -141,7 +140,6 @@ impl Default for Config {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(tag="type")]
 #[serde(rename_all="snake_case")]
-#[repr(C)]
 pub enum SearchAlgorithm {
     /// Evaluate all the candidates that cannot be pruned.
     BoundOrder,
@@ -175,7 +173,6 @@ impl Default for SearchAlgorithm {
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
-#[repr(C)]
 pub struct BanditConfig {
     /// Indicates how to select between nodes of the search tree when none of their
     /// children have been evaluated.
@@ -225,7 +222,6 @@ impl Default for BanditConfig {
 /// evaluated.
 #[derive(Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all="snake_case")]
-#[repr(C)]
 pub enum NewNodeOrder {
     /// Consider the nodes in the order given by the search space API.
     Api,
@@ -246,7 +242,6 @@ impl Default for NewNodeOrder {
 /// evaluated.
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all="snake_case")]
-#[repr(C)]
 pub enum OldNodeOrder {
     /// Use the weights from the bandit algorithm.
     Bandit,
