@@ -110,7 +110,7 @@
     <span class="ident">src</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">c_char</span>,
 ) <span class="op">-&gt;</span> <span class="ident">TelamonStatus</span> {
     <span class="kw-2">*</span><span class="ident">dst</span> <span class="op">=</span> <span class="macro">unwrap_or_exit</span><span class="macro">!</span>(<span class="ident">CStr</span>::<span class="ident">from_ptr</span>(<span class="ident">src</span>).<span class="ident">to_str</span>()).<span class="ident">to_string</span>();
-    <span class="ident">TelamonStatus</span>::<span class="ident">TelamonStatusOk</span>
+    <span class="ident">TelamonStatus</span>::<span class="prelude-val">Ok</span>
 }
 
 <span class="doccomment">/// Run the exploration according to the configuration.</span>

@@ -52,7 +52,7 @@ can generate bindings.</p>
                                   title='fn telamon_capi::ir::telamon_ir_function_add_dimension'>telamon_ir_function_add_dimension</a><a title='unsafe function' href='#'><sup>⚠</sup></a></td>
                            <td class='docblock-short'>
                                 <p>Adds a dimension of the given size to the function. Takes ownership of <code>size</code> and
-writes the unique identifier of the dimension in <code>dim_id</code>. Returns <code>TelamonStatusOk</code>
+writes the unique identifier of the dimension in <code>dim_id</code>. Returns <code>Ok</code>
 except if an error occurs.</p>
 
                            </td>
@@ -63,7 +63,7 @@ except if an error occurs.</p>
                            <td class='docblock-short'>
                                 <p>Adds an instruction performing the given operator in the given dimensions to the
 function. Writes the unique identifier of the instruction in <code>inst_id</code>. Returns
-<code>TelamonStatusOk</code> except if an error occurs. Takes ownership of the operator
+<code>Ok</code> except if an error occurs. Takes ownership of the operator
 but does not keeps any reference to <code>dimensions</code>.</p>
 
                            </td>

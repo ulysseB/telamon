@@ -23,6 +23,12 @@
 <span id="23">23</span>
 <span id="24">24</span>
 <span id="25">25</span>
+<span id="26">26</span>
+<span id="27">27</span>
+<span id="28">28</span>
+<span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Provides a generic decription of basic blocks.</span>
 <span class="kw">use</span> <span class="ident">ir</span>;
@@ -30,7 +36,13 @@
 
 <span class="doccomment">/// Provides a unique identifer for a basic block.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">BBId</span> { <span class="ident">Inst</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>), <span class="ident">Dim</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>) }
+<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">BBId</span> {
+    <span class="doccomment">/// cbindgen:field-names=[id]</span>
+    <span class="ident">Inst</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>),
+    <span class="doccomment">/// cbindgen:field-names=[id]</span>
+    <span class="ident">Dim</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>),
+}
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">InstId</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">BBId</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">id</span>: <span class="ident">ir</span>::<span class="ident">InstId</span>) <span class="op">-&gt;</span> <span class="self">Self</span> { <span class="ident">BBId</span>::<span class="ident">Inst</span>(<span class="ident">id</span>) }

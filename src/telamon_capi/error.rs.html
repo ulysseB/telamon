@@ -135,8 +135,8 @@
 <span class="doccomment">/// Indicates if a telamon function exited correctly.</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TelamonStatus</span> {
-    <span class="ident">TelamonStatusOk</span>,
-    <span class="ident">TelamonStatusFail</span>,
+    <span class="prelude-val">Ok</span>,
+    <span class="ident">Fail</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Fail</span>)]</span>
@@ -207,7 +207,7 @@
 <span class="attribute">#[<span class="ident">macro_export</span>]</span>
 <span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">unwrap_or_exit</span> {
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">result</span>:<span class="ident">expr</span>) <span class="op">=&gt;</span> {
-        <span class="macro">unwrap_or_exit</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">result</span>, <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">error</span>::<span class="ident">TelamonStatus</span>::<span class="ident">TelamonStatusFail</span>)
+        <span class="macro">unwrap_or_exit</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">result</span>, <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">error</span>::<span class="ident">TelamonStatus</span>::<span class="ident">Fail</span>)
     };
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">result</span>:<span class="ident">expr</span>,<span class="ident">null</span>) <span class="op">=&gt;</span> {
         <span class="macro">unwrap_or_exit</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">result</span>, ::<span class="ident">std</span>::<span class="ident">ptr</span>::<span class="ident">null_mut</span>())
@@ -223,7 +223,7 @@
 <span class="attribute">#[<span class="ident">macro_export</span>]</span>
 <span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">exit</span> {
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">errno</span>:<span class="ident">expr</span>) <span class="op">=&gt;</span> {
-        <span class="macro">exit</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">errno</span>, <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">error</span>::<span class="ident">TelamonStatus</span>::<span class="ident">TelamonStatusFail</span>)
+        <span class="macro">exit</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">errno</span>, <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">error</span>::<span class="ident">TelamonStatus</span>::<span class="ident">Fail</span>)
     };
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">errno</span>:<span class="ident">expr</span>,<span class="ident">null</span>) <span class="op">=&gt;</span> {
         <span class="macro">exit</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">errno</span>, ::<span class="ident">std</span>::<span class="ident">ptr</span>::<span class="ident">null_mut</span>())
@@ -240,7 +240,7 @@
 <span class="attribute">#[<span class="ident">macro_export</span>]</span>
 <span class="macro">macro_rules</span><span class="macro">!</span> <span class="ident">exit_if_null</span> {
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>) <span class="op">=&gt;</span> {
-        <span class="macro">exit_if_null</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>, <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">error</span>::<span class="ident">TelamonStatus</span>::<span class="ident">TelamonStatusFail</span>)
+        <span class="macro">exit_if_null</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>, <span class="macro-nonterminal">$</span><span class="kw">crate</span>::<span class="macro-nonterminal">error</span>::<span class="ident">TelamonStatus</span>::<span class="ident">Fail</span>)
     };
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>,<span class="ident">null</span>) <span class="op">=&gt;</span> {
         <span class="macro">exit_if_null</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>, ::<span class="ident">std</span>::<span class="ident">ptr</span>::<span class="ident">null_mut</span>())

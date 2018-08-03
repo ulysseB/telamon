@@ -533,7 +533,7 @@
 
 <span class="doccomment">/// Adds an instruction performing the given operator in the given dimensions to the</span>
 <span class="doccomment">/// function. Writes the unique identifier of the instruction in `inst_id`. Returns</span>
-<span class="doccomment">/// `TelamonStatusOk` except if an error occurs. Takes ownership of the operator</span>
+<span class="doccomment">/// `Ok` except if an error occurs. Takes ownership of the operator</span>
 <span class="doccomment">/// but does not keeps any reference to `dimensions`.</span>
 <span class="attribute">#[<span class="ident">no_mangle</span>]</span>
 <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">extern</span> <span class="string">&quot;C&quot;</span> <span class="kw">fn</span> <span class="ident">telamon_ir_function_add_instruction</span>(
@@ -547,11 +547,11 @@
     <span class="kw">let</span> <span class="ident">dim_set</span> <span class="op">=</span> <span class="ident">dimensions</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>();
     <span class="kw">let</span> <span class="ident">operator</span> <span class="op">=</span> <span class="ident">Box</span>::<span class="ident">from_raw</span>(<span class="ident">operator</span>).<span class="number">0</span>;
     <span class="kw-2">*</span><span class="ident">inst_id</span> <span class="op">=</span> <span class="macro">unwrap_or_exit</span><span class="macro">!</span>((<span class="kw-2">*</span><span class="ident">function</span>).<span class="number">0</span>.<span class="ident">add_inst</span>(<span class="ident">operator</span>, <span class="ident">dim_set</span>));
-    <span class="ident">TelamonStatus</span>::<span class="ident">TelamonStatusOk</span>
+    <span class="ident">TelamonStatus</span>::<span class="prelude-val">Ok</span>
 }
 
 <span class="doccomment">/// Adds a dimension of the given size to the function. Takes ownership of `size` and</span>
-<span class="doccomment">/// writes the unique identifier of the dimension in `dim_id`. Returns `TelamonStatusOk`</span>
+<span class="doccomment">/// writes the unique identifier of the dimension in `dim_id`. Returns `Ok`</span>
 <span class="doccomment">/// except if an error occurs.</span>
 <span class="attribute">#[<span class="ident">no_mangle</span>]</span>
 <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">extern</span> <span class="string">&quot;C&quot;</span> <span class="kw">fn</span> <span class="ident">telamon_ir_function_add_dimension</span>(
@@ -560,7 +560,7 @@
     <span class="ident">dim_id</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">DimId</span>,
 ) <span class="op">-&gt;</span> <span class="ident">TelamonStatus</span> {
     <span class="kw-2">*</span><span class="ident">dim_id</span> <span class="op">=</span> <span class="macro">unwrap_or_exit</span><span class="macro">!</span>((<span class="kw-2">*</span><span class="ident">function</span>).<span class="number">0</span>.<span class="ident">add_dim</span>(<span class="ident">Box</span>::<span class="ident">from_raw</span>(<span class="ident">size</span>).<span class="number">0</span>));
-    <span class="ident">TelamonStatus</span>::<span class="ident">TelamonStatusOk</span>
+    <span class="ident">TelamonStatus</span>::<span class="prelude-val">Ok</span>
 }
 
 <span class="doccomment">/// Opaque type that abstracts away the lifetime parameter of `ir::Size` so cbindgen</span>

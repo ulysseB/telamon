@@ -243,6 +243,7 @@
 <span id="243">243</span>
 <span id="244">244</span>
 <span id="245">245</span>
+<span id="246">246</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! A module for handling accesses to the device memory.</span>
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">InstId</span>, <span class="ident">Type</span>, <span class="ident">dim</span>};
@@ -261,6 +262,7 @@
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
 <span class="doccomment">/// cbindgen:field-names=[id]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">InternalId</span>(<span class="kw">pub</span> <span class="ident">u32</span>);
 
