@@ -109,7 +109,7 @@ pub fn get() -> TokenStream {
                 'values: for (idx, &value) in num_set_universe.iter().enumerate() {
                     while {
                         if self_idx >= universe.len() { break 'values; }
-                        (self.enabled_values & (1 << self_idx)) != 0
+                        (self.enabled_values & (1 << self_idx)) == 0
                             || universe[self_idx] < value
                     } { self_idx += 1; }
                     if universe[self_idx] == value { enabled_values |= 1 << idx; }
