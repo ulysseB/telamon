@@ -12,11 +12,16 @@ pub struct Function<'a> {
     thread_dims: Vec<Dimension<'a>>,
     block_dims: Vec<Dimension<'a>>,
     device_code_args: Vec<ParamVal<'a>>,
-    induction_vars: Vec<InductionVar<'a>>,
-    mem_blocks: Vec<InternalMemBlock<'a>>,
+    induction_vars: Vec<InductionVar<'a>>, mem_blocks: Vec<InternalMemBlock<'a>>, 
     init_induction_levels: Vec<InductionLevel<'a>>,
     // TODO(cleanup): remove dependency on the search space
     space: &'a SearchSpace<'a>,
+}
+
+impl<'a> std::fmt::Debug for Function<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Codegen Function")
+    }
 }
 
 impl<'a> Function<'a> {

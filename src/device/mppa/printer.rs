@@ -282,28 +282,19 @@ impl MppaPrinter {
         }
     }
     /// Prints the OpenCL wrapper for a candidate implementation.
-    //pub fn print_ocl_wrapper(signature: &ir::Signature)
-    pub fn print_ocl_wrapper(&mut self, fun: &Function, name_map: &mut NameMap)
-        -> String {
-            let get_p_name = |p| {match p {
-                ParamVal::External(par, t) => (),
-                ParamVal::Size(size) => (),
-                ParamVal::GlobalMem(id, size, t) => (),
-            }};
-            //let arg_names = signature.params.iter().format_with("", |p, f| {
-            let arg_names = fun.device_code_args().format_with("", |p, f| {
-                f(&format_args!("{}, ", self.param_decl(p, name_map)))
-            });
-            //let cl_arg_defs = signature.params.iter().format_with("", |p, f| {
-            let cl_arg_defs = fun.device_code_args().format_with("", |p, f| {
-                f(&format_args!("{},", Self::cl_type_name(&p.t())))
-            }).to_string();
-            format!(include_str!("ocl_wrapper_template.cl"),
-            name = fun.name,
-            arg_names = arg_names,
-            cl_arg_defs = cl_arg_defs,
-            )
-        }
+    pub fn print_ocl_wrapper(&mut self, fun: &Function, name_map: &mut NameMap) -> String {
+        let arg_names = fun.device_code_args().format_with(", ", |p, f| {
+            f(&format_args!("{}", name_map.name_param(p.key())))
+        });
+        let cl_arg_defs = fun.device_code_args().format_with(", ", |p, f| {
+            f(&format_args!("{} {}", Self::cl_type_name(&p.t()), name_map.name_param(p.key())))
+        }).to_string();
+        format!(include_str!("ocl_wrapper_template.cl"),
+        name = fun.name,
+        arg_names = arg_names,
+        cl_arg_defs = cl_arg_defs,
+        )
+    }
 }
 
 impl Printer for MppaPrinter {
@@ -410,4 +401,3 @@ impl Printer for MppaPrinter {
         unwrap!(writeln!(self.out_function, "pthread_barrier_wait(tid.barrier);"));
     }
 }
-

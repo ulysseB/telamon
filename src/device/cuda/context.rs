@@ -24,7 +24,6 @@ pub struct Context<'a> {
     parameters: HashMap<String, Arc<Argument + 'a>>,
 }
 
-unsafe impl<'a> Sync for Context<'a> {}
 
 impl<'a> Context<'a> {
     /// Create a new evaluation context. The GPU model if infered.

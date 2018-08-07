@@ -71,20 +71,23 @@ impl<'a> Context<'a> {
 
 
     /// Compiles and sets the arguments of a kernel.
-    fn setup_kernel(&self, fun: &device::Function<'a>)
+    fn setup_kernel(&self, fun: &codegen::Function<'a>)
             -> (telajax::Kernel, telajax::Mem) 
             {
+        println!("{:?}", fun);
         let mut code: Vec<u8> = Vec::new();
         let mut printer = MppaPrinter::default();
         let kernel_code = printer.wrapper_function(fun);
         let wrapper = self.get_wrapper(fun);
-        //let code = std::ffi::CString::new(code).unwrap();
-        //debug!("{}", code.clone().into_string().unwrap()); // DEBUG
         let cflags = std::ffi::CString::new("").unwrap();
         let lflags = std::ffi::CString::new("").unwrap();
         let kernel_code = unwrap!(std::ffi::CString::new(kernel_code));
         let mut kernel = self.executor.build_kernel(&kernel_code, &cflags, &lflags, &*wrapper);
         kernel.set_num_clusters(1);
+        for p in fun.params.iter() {
+            println!("{}", p.name);
+        }
+        //panic!();
         let (mut arg_sizes, mut args): (Vec<_>, Vec<_>) = fun.params.iter().map(|p| {
             let arg = self.get_param(&p.name);
             (unwrap!(arg.as_size()) as usize, arg.raw_ptr())
@@ -106,7 +109,6 @@ impl<'a> Context<'a> {
         let ocl_code = printer.print_ocl_wrapper(fun, &mut name_map);
         let name = std::ffi::CString::new("wrapper").unwrap();
         let ocl_code = std::ffi::CString::new(ocl_code).unwrap();
-        debug!("{}", ocl_code.clone().into_string().unwrap());
         Arc::new(self.executor.build_wrapper(&name, &ocl_code))
     }
 
@@ -201,6 +203,7 @@ impl<'a, 'b, 'c> device::AsyncEvaluator<'a, 'c> for AsyncEvaluator<'a, 'b>
     where 'a: 'b, 'c: 'b {
     fn add_kernel(&mut self, candidate: explorer::Candidate<'a>, callback: device::AsyncCallback<'a, 'b>) {
         let (kernel, out_mem) = {
+            panic!();
             let dev_fun = device::Function::build(&candidate.space);
             self.context.setup_kernel(&dev_fun)
         };
@@ -217,44 +220,3 @@ impl Argument for Buffer {
         self.mem.read().unwrap().raw_ptr()
     }
 }
-
-
-///// Buffer in MPPA RAM.
-//pub struct Buffer<'a> {
-//    mem: std::sync::RwLock<telajax::Mem>,
-//    executor: &'a std::sync::MutexGuard<'static, telajax::Device>,
-//}
-//
-//impl<'a> Buffer<'a> {
-//    fn new(len : usize, executor: &'a std::sync::MutexGuard<'static, telajax::Device>) -> Self {
-//        let mem_block = executor.alloc(len);
-//        Buffer {
-//            mem : std::sync::RwLock::new(mem_block),
-//            executor: executor,
-//        }
-//    }
-//}
-//
-//impl<'a> Argument for Buffer<'a> {
-//    fn as_size(&self) -> Option<u32> {
-//        Some(self.mem.read().unwrap().len() as u32)
-//    }
-//
-//    fn raw_ptr(&self) -> *const libc::c_void {
-//        self.mem.read().unwrap().raw_ptr()
-//    }
-//}
-//
-//impl<'a> device::ArrayArgument for Buffer<'a> {
-//    fn read_i8(&self) -> Vec<i8> {
-//        let mem_block = unwrap!(self.mem.read());
-//        let mut read_buffer = vec![0; mem_block.len()];
-//        self.executor.read_buffer::<i8>(&mem_block, &mut read_buffer, &[]);
-//        read_buffer
-//    }
-//
-//    fn write_i8(&self, slice: &[i8]) {
-//        let mut mem_block = unwrap!(self.mem.write());
-//        self.executor.write_buffer::<i8>(slice, &mut mem_block, &[]);
-//    }
-//}

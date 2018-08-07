@@ -148,7 +148,6 @@ enum ThunkArg {
 /// returns the time elapsed. Converts ThunkArgs to HoldTHunk as we want to allocate memory for
 /// temporary arrays at the last possible moment
 fn function_evaluate(fun_str: &String, args: &Vec<ThunkArg>) -> Result<f64, ()> {
-    println!("{}", fun_str);
     let temp_dir = tempfile::tempdir().unwrap();
     let templib_name = temp_dir.path().join("lib_compute.so").to_string_lossy().into_owned();
     let mut source_file = tempfile::tempfile().unwrap();

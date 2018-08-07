@@ -1,5 +1,6 @@
 //! Unsafe wrapper around  library from Kalray.
 #![allow(dead_code)]
+#![allow(non_snake_case)]
 use libc;
 use parking_lot;
 use std::ffi::CStr;
@@ -11,6 +12,10 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 lazy_static! {
     static ref DEVICE: Device = Device::init();
+}
+
+lazy_static! {
+    static ref MEM_MUTEX: std::sync::Mutex<()> = std::sync::Mutex::new(());
 }
 
 unsafe impl Sync for Device {}
@@ -54,8 +59,9 @@ pub struct Device {
 
 
 impl Device {
-    /// Returns a reference to the `Device`. Guarantees unique access to the device.
-    //pub fn get() -> std::sync::MutexGuard<'static, Device> { DEVICE.lock().unwrap() }
+    /// Returns a reference to the `Device`. As Telajax implementation is supposed to be
+    /// thread-safe, it should be therefore safe to call this api from different threads. These
+    /// calls are done through a static immutable reference
     pub fn get() -> &'static Device { &DEVICE }
 
     /// Initializes the device.
@@ -97,6 +103,7 @@ impl Device {
         // TODO(cc_perf): use double pipes in telajax
         // TODO(cc_perf): avoid collisions in kernel evaluations
         let mut error = 0;
+        let lock = MEM_MUTEX.lock().unwrap();
         let kernel = unsafe {
             telajax_kernel_build(code.as_ptr(), cflags.as_ptr(), lflags.as_ptr(),
                                  &wrapper.0 as *const _ as *mut _, &self.inner as *const _ as *mut _, &mut error)
@@ -107,6 +114,7 @@ impl Device {
 
     /// Asynchronously executes a `Kernel`.
     pub fn enqueue_kernel(&self, kernel: &mut Kernel) -> Event {
+        let lock = MEM_MUTEX.lock().unwrap();
         unsafe {
             let mut event_ptr = std::mem::uninitialized();
             assert_eq!(telajax_kernel_enqueue(&mut kernel.0 as *mut _, &self.inner as *const _ as *mut _, &mut event_ptr), 0);
@@ -116,6 +124,7 @@ impl Device {
 
     /// Executes a `Kernel`.
     pub fn execute_kernel(&self, kernel: &mut Kernel) {
+        let lock = MEM_MUTEX.lock().unwrap();
         unsafe {
             let mut event: Event = std::mem::uninitialized();
             assert_eq!(telajax_kernel_enqueue(&mut kernel.0 as *mut _, &self.inner as *const _ as *mut _, &mut event.0), 0);
@@ -133,6 +142,7 @@ impl Device {
     /// Allocates a memory buffer.
     pub fn alloc(&self, size: usize) -> Mem {
         let mut error = 0;
+        let lock = MEM_MUTEX.lock().unwrap();
         let mem = unsafe {
             telajax_device_mem_alloc(size, 1 << 0, &self.inner as *const _ as *mut _, &mut error)
         };
@@ -150,10 +160,10 @@ impl Device {
         let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
         let wait_n = wait_events.len() as libc::c_uint;
         let wait_ptr = wait_events.as_ptr() as *const event_t;
+        let lock = MEM_MUTEX.lock().unwrap();
         unsafe {
             let event_ptr: *mut _cl_event = std::mem::uninitialized();
             let mut event = Event::new(event_ptr);
-            //let mut event = Event::new(std::mem::uninitialized() as *mut _cl_event);
             let res = telajax_device_mem_write(
                 &self.inner as *const _ as *mut _, mem.ptr, data_ptr, size, wait_n, wait_ptr, &mut event.0);
             assert_eq!(res, 0);
@@ -170,11 +180,19 @@ impl Device {
         assert!(size <= mem.len);
         let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
         let wait_n = wait_events.len() as libc::c_uint;
-        let wait_ptr = wait_events.as_ptr() as *const event_t;
+        let wait_ptr = if wait_n == 0 {
+            std::ptr::null() as *const event_t
+        } else {
+            wait_events.as_ptr() as *const event_t
+        };
+        let lock = MEM_MUTEX.lock().unwrap();
         unsafe {
             let null_mut = std::ptr::null_mut();
             let res = telajax_device_mem_write(
                 &self.inner as *const _ as *mut _, mem.ptr, data_ptr, size, wait_n, wait_ptr, null_mut);
+            if res != 0 {
+                panic!("device mem write failed !!");
+            }
             assert_eq!(res, 0);
         }
     }
@@ -188,7 +206,12 @@ impl Device {
         assert!(size <= mem.len);
         let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
         let wait_n = wait_events.len() as std::os::raw::c_uint;
-        let wait_ptr = wait_events.as_ptr() as *const event_t;
+        let lock = MEM_MUTEX.lock().unwrap();
+        let wait_ptr = if wait_n == 0 {
+            std::ptr::null() as *const event_t
+        } else {
+            wait_events.as_ptr() as *const event_t
+        };
         unsafe {
             let mut event: Event = std::mem::uninitialized();
             let res = telajax_device_mem_read(
@@ -203,10 +226,15 @@ impl Device {
         let size = data.len() * std::mem::size_of::<T>();
         assert!(size <= mem.len);
         let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
+        let null_mut = std::ptr::null_mut();
+        let wait_n = wait_events.len() as std::os::raw::c_uint;
+        let lock = MEM_MUTEX.lock().unwrap();
+        let wait_ptr = if wait_n == 0 {
+            std::ptr::null() as *const event_t
+        } else {
+            wait_events.as_ptr() as *const event_t
+        };
         unsafe {
-            let null_mut = std::ptr::null_mut();
-            let wait_n = wait_events.len() as std::os::raw::c_uint;
-            let wait_ptr = wait_events.as_ptr() as *const event_t;
             let res = telajax_device_mem_read(
                 &self.inner as *const _ as *mut _, mem.ptr, data_ptr, size, wait_n, wait_ptr, null_mut);
             assert_eq!(res, 0);
@@ -219,6 +247,7 @@ impl Device {
         let callback_data = CallbackData { closure, rwlock: &*self.rwlock };
         let data_ptr = Box::into_raw(Box::new(callback_data));
         let callback = callback_wrapper::<F>;
+        let lock = MEM_MUTEX.lock().unwrap();
         unsafe {
             self.rwlock.raw_read();
             let data_ptr = data_ptr as *mut std::os::raw::c_void;
@@ -278,13 +307,13 @@ impl Drop for Kernel {
 
 /// A buffer allocated on the device.
 pub struct Mem {
-    ptr: *mut _cl_mem,
+    ptr: mem_t,
     len: usize,
 }
 
 impl Mem {
     pub fn raw_ptr(&self) -> *const libc::c_void {
-        &self.ptr as *const _ as *const libc::c_void
+        self.ptr as *const _ as *const libc::c_void
     }
     
     pub fn len(&self) -> usize {
@@ -295,9 +324,13 @@ impl Mem {
 unsafe impl Sync for Mem {}
 unsafe impl Send for Mem {}
 
+
 impl Drop for Mem {
     fn drop(&mut self) {
-        unsafe { assert_eq!(telajax_device_mem_release(self.ptr), 0); }
+        unsafe { 
+            let lock = MEM_MUTEX.lock().unwrap();
+            assert_eq!(telajax_device_mem_release(self.ptr), 0); 
+        }
     }
 }
 
