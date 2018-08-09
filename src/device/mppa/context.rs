@@ -11,6 +11,7 @@ use explorer;
 use ir;
 use libc;
 use search_space::SearchSpace;
+use search_space::DimKind;
 use std;
 use std::sync::{mpsc, Arc};
 use std::time::Instant;
@@ -71,11 +72,7 @@ impl<'a> Context<'a> {
 
 
     /// Compiles and sets the arguments of a kernel.
-    fn setup_kernel(&self, fun: &codegen::Function<'a>)
-            -> (telajax::Kernel, telajax::Mem) 
-            {
-        println!("{:?}", fun);
-        let mut code: Vec<u8> = Vec::new();
+    fn setup_kernel(&self, fun: &codegen::Function<'a>) -> (telajax::Kernel, telajax::Mem) {
         let mut printer = MppaPrinter::default();
         let kernel_code = printer.wrapper_function(fun);
         let wrapper = self.get_wrapper(fun);
@@ -84,18 +81,16 @@ impl<'a> Context<'a> {
         let kernel_code = unwrap!(std::ffi::CString::new(kernel_code));
         let mut kernel = self.executor.build_kernel(&kernel_code, &cflags, &lflags, &*wrapper);
         kernel.set_num_clusters(1);
-        for p in fun.params.iter() {
-            println!("{}", p.name);
-        }
-        //panic!();
         let (mut arg_sizes, mut args): (Vec<_>, Vec<_>) = fun.params.iter().map(|p| {
             let arg = self.get_param(&p.name);
-            (unwrap!(arg.as_size()) as usize, arg.raw_ptr())
+            println!("arg: {}, size: {}", p.name, get_type_size(p.t));
+            //(unwrap!(arg.as_size()) as usize, arg.raw_ptr())
+            (get_type_size(p.t), arg.raw_ptr())
         }).unzip();
         let out_mem = self.writeback_slots.pop();
-        arg_sizes.push(std::mem::size_of::<*mut libc::c_void>());
-        args.push(out_mem.raw_ptr());
-        kernel.set_args(&arg_sizes[..], &args[..]);
+        //arg_sizes.push(std::mem::size_of::<*mut libc::c_void>());
+        //args.push(out_mem.raw_ptr());
+        //kernel.set_args(&arg_sizes[..], &args[..]);
         (kernel, out_mem)
     }
 
@@ -114,6 +109,14 @@ impl<'a> Context<'a> {
 
     /// Returns a parameter given its name.
     pub fn get_param(&self, name: &str) -> &Argument { self.parameters[name].as_ref() }
+}
+
+fn get_type_size(t: ir::Type) -> usize {
+    match t {
+            ir::Type::I(u) | ir::Type::F(u) => (u / 8) as usize,
+            ir::Type::PtrTo(_) => self::telajax::Mem::get_mem_size(),
+            _ => panic!()
+    }
 }
 
 impl<'a> device::Context for Context<'a> {
@@ -203,7 +206,6 @@ impl<'a, 'b, 'c> device::AsyncEvaluator<'a, 'c> for AsyncEvaluator<'a, 'b>
     where 'a: 'b, 'c: 'b {
     fn add_kernel(&mut self, candidate: explorer::Candidate<'a>, callback: device::AsyncCallback<'a, 'b>) {
         let (kernel, out_mem) = {
-            panic!();
             let dev_fun = device::Function::build(&candidate.space);
             self.context.setup_kernel(&dev_fun)
         };

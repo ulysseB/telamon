@@ -1,5 +1,7 @@
 //! Unsafe wrapper around  library from Kalray.
 #![allow(dead_code)]
+#![allow(non_upper_case_globals)]
+#![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 use libc;
 use parking_lot;
@@ -103,32 +105,56 @@ impl Device {
         // TODO(cc_perf): use double pipes in telajax
         // TODO(cc_perf): avoid collisions in kernel evaluations
         let mut error = 0;
-        let lock = MEM_MUTEX.lock().unwrap();
+        let _lock = MEM_MUTEX.lock().unwrap();
         let kernel = unsafe {
             telajax_kernel_build(code.as_ptr(), cflags.as_ptr(), lflags.as_ptr(),
                                  &wrapper.0 as *const _ as *mut _, &self.inner as *const _ as *mut _, &mut error)
         };
+        if error != 0 {
+            std::mem::drop(_lock);
+        }
         assert_eq!(error, 0);
         Kernel(kernel)
     }
 
     /// Asynchronously executes a `Kernel`.
     pub fn enqueue_kernel(&self, kernel: &mut Kernel) -> Event {
-        let lock = MEM_MUTEX.lock().unwrap();
+        let _lock = MEM_MUTEX.lock().unwrap();
         unsafe {
             let mut event_ptr = std::mem::uninitialized();
-            assert_eq!(telajax_kernel_enqueue(&mut kernel.0 as *mut _, &self.inner as *const _ as *mut _, &mut event_ptr), 0);
+            //assert_eq!(telajax_kernel_enqueue(&mut kernel.0 as *mut _, &self.inner as *const _ as *mut _, &mut event_ptr), 0);
+            let err = telajax_kernel_enqueue(&mut kernel.0 as *mut _, &self.inner as *const _ as *mut _, &mut event_ptr);
+            if err != 0 {
+                std::mem::drop(_lock);
+                assert_eq!(err, 0);
+                //panic!("Error in kernel enqueue");
+            }
             Event(event_ptr)
         }
     }
 
-    /// Executes a `Kernel`.
+    /// Executes a `Kernel` and then wait for completion.
     pub fn execute_kernel(&self, kernel: &mut Kernel) {
-        let lock = MEM_MUTEX.lock().unwrap();
+        let _lock = MEM_MUTEX.lock().unwrap();
         unsafe {
             let mut event: Event = std::mem::uninitialized();
-            assert_eq!(telajax_kernel_enqueue(&mut kernel.0 as *mut _, &self.inner as *const _ as *mut _, &mut event.0), 0);
-            assert_eq!(telajax_event_wait(1, &event.0 as *const _), 0);
+            let err = telajax_kernel_enqueue(&mut kernel.0 as *mut _, &self.inner as *const _ as *mut _, &mut event.0);
+            if err != 0 {
+                // Apparently destructor calls in panic is not reliable (to be confirmed, but rust
+                // explictly tells that there is no guarantee that a destructor shall be called in
+                // every cases - maybe limited to abort though)... We must at least explicitly call
+                // drop on _lock before dropping event as event drop will try to take the lock in
+                // turn. Dropping event seems unnecessary but it happens to prevent a segfault that
+                // would occur if it was called by panic
+                std::mem::drop(_lock);
+                std::mem::drop(event);
+                panic!("error in execute_kernel after kernel_enqueue");
+            }
+            let err = telajax_event_wait(1, &event.0 as *const _);
+            if err != 0 {
+                std::mem::drop(_lock);
+                panic!("error in event_wait");
+            }
         }
 
     }
@@ -142,7 +168,7 @@ impl Device {
     /// Allocates a memory buffer.
     pub fn alloc(&self, size: usize) -> Mem {
         let mut error = 0;
-        let lock = MEM_MUTEX.lock().unwrap();
+        let _lock = MEM_MUTEX.lock().unwrap();
         let mem = unsafe {
             telajax_device_mem_alloc(size, 1 << 0, &self.inner as *const _ as *mut _, &mut error)
         };
@@ -160,12 +186,25 @@ impl Device {
         let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
         let wait_n = wait_events.len() as libc::c_uint;
         let wait_ptr = wait_events.as_ptr() as *const event_t;
-        let lock = MEM_MUTEX.lock().unwrap();
+        let _lock = MEM_MUTEX.lock().unwrap();
         unsafe {
             let event_ptr: *mut _cl_event = std::mem::uninitialized();
             let mut event = Event::new(event_ptr);
             let res = telajax_device_mem_write(
                 &self.inner as *const _ as *mut _, mem.ptr, data_ptr, size, wait_n, wait_ptr, &mut event.0);
+            if err != 0 {
+                // Apparently destructor calls in panic is not reliable (to be confirmed, but rust
+                // explicitely tells that there is no guarantee that a destructor shall be called in
+                // every cases - maybe limited to abort though)...  See this :
+                // https://github.com/rust-lang/rfcs/pull/1066
+                // We must at least explicitly call drop on _lock before dropping event as event
+                // drop will try to take the lock in turn, thus causing a deadlock. Dropping event
+                // seems unnecessary but it happens to prevent a segfault that would occur if it
+                // was called by panic
+                std::mem::drop(_lock);
+                std::mem::drop(event);
+                panic!("error in mem write");
+            }
             assert_eq!(res, 0);
             event
         }
@@ -185,14 +224,11 @@ impl Device {
         } else {
             wait_events.as_ptr() as *const event_t
         };
-        let lock = MEM_MUTEX.lock().unwrap();
+        let _lock = MEM_MUTEX.lock().unwrap();
         unsafe {
             let null_mut = std::ptr::null_mut();
             let res = telajax_device_mem_write(
                 &self.inner as *const _ as *mut _, mem.ptr, data_ptr, size, wait_n, wait_ptr, null_mut);
-            if res != 0 {
-                panic!("device mem write failed !!");
-            }
             assert_eq!(res, 0);
         }
     }
@@ -206,7 +242,7 @@ impl Device {
         assert!(size <= mem.len);
         let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
         let wait_n = wait_events.len() as std::os::raw::c_uint;
-        let lock = MEM_MUTEX.lock().unwrap();
+        let _lock = MEM_MUTEX.lock().unwrap();
         let wait_ptr = if wait_n == 0 {
             std::ptr::null() as *const event_t
         } else {
@@ -228,7 +264,7 @@ impl Device {
         let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
         let null_mut = std::ptr::null_mut();
         let wait_n = wait_events.len() as std::os::raw::c_uint;
-        let lock = MEM_MUTEX.lock().unwrap();
+        let _lock = MEM_MUTEX.lock().unwrap();
         let wait_ptr = if wait_n == 0 {
             std::ptr::null() as *const event_t
         } else {
@@ -247,7 +283,7 @@ impl Device {
         let callback_data = CallbackData { closure, rwlock: &*self.rwlock };
         let data_ptr = Box::into_raw(Box::new(callback_data));
         let callback = callback_wrapper::<F>;
-        let lock = MEM_MUTEX.lock().unwrap();
+        let _lock = MEM_MUTEX.lock().unwrap();
         unsafe {
             self.rwlock.raw_read();
             let data_ptr = data_ptr as *mut std::os::raw::c_void;
@@ -282,6 +318,9 @@ impl Kernel {
         assert_eq!(sizes.len(), args.len());
         let num_arg = sizes.len() as i32;
         let sizes_ptr = sizes.as_ptr();
+        for s in sizes {
+            println!("arg size: {}", s);
+        }
         unsafe {
             // Needs *mut ptr mostly because they were not specified as const in original c api
             assert_eq!(telajax_kernel_set_args(num_arg, sizes_ptr as *const _ as *mut _, args.as_ptr() as *const _ as *mut _, &mut self.0 as *mut _), 0);
@@ -312,6 +351,10 @@ pub struct Mem {
 }
 
 impl Mem {
+    pub fn get_mem_size() -> usize {
+        std::mem::size_of::<mem_t>()
+    }
+
     pub fn raw_ptr(&self) -> *const libc::c_void {
         self.ptr as *const _ as *const libc::c_void
     }
@@ -328,7 +371,7 @@ unsafe impl Send for Mem {}
 impl Drop for Mem {
     fn drop(&mut self) {
         unsafe { 
-            let lock = MEM_MUTEX.lock().unwrap();
+            let _lock = MEM_MUTEX.lock().unwrap();
             assert_eq!(telajax_device_mem_release(self.ptr), 0); 
         }
     }
@@ -346,6 +389,8 @@ impl Event {
 
 impl Drop for Event {
     fn drop(&mut self) {
+        let _lock = MEM_MUTEX.lock().unwrap();
+        //println!("took LOCK in event release");
         unsafe { telajax_event_release(self.0); }
     }
 }
