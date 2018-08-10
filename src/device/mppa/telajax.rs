@@ -122,7 +122,6 @@ impl Device {
         let _lock = MEM_MUTEX.lock().unwrap();
         unsafe {
             let mut event_ptr = std::mem::uninitialized();
-            //assert_eq!(telajax_kernel_enqueue(&mut kernel.0 as *mut _, &self.inner as *const _ as *mut _, &mut event_ptr), 0);
             let err = telajax_kernel_enqueue(&mut kernel.0 as *mut _, &self.inner as *const _ as *mut _, &mut event_ptr);
             if err != 0 {
                 std::mem::drop(_lock);
@@ -135,19 +134,19 @@ impl Device {
 
     /// Executes a `Kernel` and then wait for completion.
     pub fn execute_kernel(&self, kernel: &mut Kernel) {
-        let _lock = MEM_MUTEX.lock().unwrap();
         unsafe {
+            // We MUST make sure that drop is called on lock before it is called on event, else we
+            // will get a deadlock as event drop will try to take the lock
             let mut event: Event = std::mem::uninitialized();
+            let _lock = MEM_MUTEX.lock().unwrap();
             let err = telajax_kernel_enqueue(&mut kernel.0 as *mut _, &self.inner as *const _ as *mut _, &mut event.0);
             if err != 0 {
                 // Apparently destructor calls in panic is not reliable (to be confirmed, but rust
                 // explictly tells that there is no guarantee that a destructor shall be called in
                 // every cases - maybe limited to abort though)... We must at least explicitly call
                 // drop on _lock before dropping event as event drop will try to take the lock in
-                // turn. Dropping event seems unnecessary but it happens to prevent a segfault that
-                // would occur if it was called by panic
+                // turn. 
                 std::mem::drop(_lock);
-                std::mem::drop(event);
                 panic!("error in execute_kernel after kernel_enqueue");
             }
             let err = telajax_event_wait(1, &event.0 as *const _);
@@ -186,23 +185,21 @@ impl Device {
         let data_ptr = data.as_ptr() as *mut std::os::raw::c_void;
         let wait_n = wait_events.len() as libc::c_uint;
         let wait_ptr = wait_events.as_ptr() as *const event_t;
-        let _lock = MEM_MUTEX.lock().unwrap();
         unsafe {
             let event_ptr: *mut _cl_event = std::mem::uninitialized();
             let mut event = Event::new(event_ptr);
+            let _lock = MEM_MUTEX.lock().unwrap();
             let res = telajax_device_mem_write(
                 &self.inner as *const _ as *mut _, mem.ptr, data_ptr, size, wait_n, wait_ptr, &mut event.0);
-            if err != 0 {
+            if res != 0 {
                 // Apparently destructor calls in panic is not reliable (to be confirmed, but rust
                 // explicitely tells that there is no guarantee that a destructor shall be called in
                 // every cases - maybe limited to abort though)...  See this :
                 // https://github.com/rust-lang/rfcs/pull/1066
                 // We must at least explicitly call drop on _lock before dropping event as event
-                // drop will try to take the lock in turn, thus causing a deadlock. Dropping event
-                // seems unnecessary but it happens to prevent a segfault that would occur if it
-                // was called by panic
+                // drop will try to take the lock in turn, thus causing a deadlock. 
                 std::mem::drop(_lock);
-                std::mem::drop(event);
+                //std::mem::drop(event);
                 panic!("error in mem write");
             }
             assert_eq!(res, 0);

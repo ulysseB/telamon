@@ -1,5 +1,5 @@
 //! MPPA evaluation context.
-use codegen;
+use codegen::{self, ParamVal};
 use crossbeam::sync::MsQueue;
 use crossbeam;
 use device::{self, ScalarArgument, ArrayArgument, mppa, EvalMode};
@@ -81,16 +81,28 @@ impl<'a> Context<'a> {
         let kernel_code = unwrap!(std::ffi::CString::new(kernel_code));
         let mut kernel = self.executor.build_kernel(&kernel_code, &cflags, &lflags, &*wrapper);
         kernel.set_num_clusters(1);
-        let (mut arg_sizes, mut args): (Vec<_>, Vec<_>) = fun.params.iter().map(|p| {
-            let arg = self.get_param(&p.name);
-            println!("arg: {}, size: {}", p.name, get_type_size(p.t));
-            //(unwrap!(arg.as_size()) as usize, arg.raw_ptr())
-            (get_type_size(p.t), arg.raw_ptr())
+        let mut namer = mppa::Namer::default();
+        let mut name_map = codegen::NameMap::new(fun, &mut namer);
+        let (mut arg_sizes, mut args): (Vec<_>, Vec<_>) = fun.device_code_args().map(|p| {
+            let name = name_map.name_param(p.key());
+            match p {
+                ParamVal::External(par, _) => println!("External {}", name),
+                ParamVal::GlobalMem(_, size, _) => println!("GlobalMem {}", name),
+                ParamVal::Size(size) => println!("Size {}", name)
+            };
+            let arg = self.get_param(&name);
+            (get_type_size(p.t()), arg.raw_ptr())
         }).unzip();
+        //let (mut arg_sizes, mut args): (Vec<_>, Vec<_>) = fun.params.iter().map(|p| {
+        //    let arg = self.get_param(&p.name);
+        //    println!("arg: {}, size: {}", p.name, get_type_size(p.t));
+        //    //(unwrap!(arg.as_size()) as usize, arg.raw_ptr())
+        //    (get_type_size(p.t), arg.raw_ptr())
+        //}).unzip();
         let out_mem = self.writeback_slots.pop();
         //arg_sizes.push(std::mem::size_of::<*mut libc::c_void>());
         //args.push(out_mem.raw_ptr());
-        //kernel.set_args(&arg_sizes[..], &args[..]);
+        kernel.set_args(&arg_sizes[..], &args[..]);
         (kernel, out_mem)
     }
 
@@ -102,6 +114,7 @@ impl<'a> Context<'a> {
         let mut namer = mppa::Namer::default();
         let mut name_map = codegen::NameMap::new(fun, &mut namer);
         let ocl_code = printer.print_ocl_wrapper(fun, &mut name_map);
+        println!("{}", ocl_code);
         let name = std::ffi::CString::new("wrapper").unwrap();
         let ocl_code = std::ffi::CString::new(ocl_code).unwrap();
         Arc::new(self.executor.build_wrapper(&name, &ocl_code))
@@ -118,6 +131,7 @@ fn get_type_size(t: ir::Type) -> usize {
             _ => panic!()
     }
 }
+
 
 impl<'a> device::Context for Context<'a> {
     fn device(&self) -> &device::Device { &self.device }
@@ -187,7 +201,6 @@ impl< 'a> device::ArgMap for Context<'a> {
         -> Arc<Self::Array>
     {
         let size = len * std::mem::size_of::<S>();
-        //let buffer_arc: Arc<Buffer<'a>> = Arc::new(self.executor.allocate_array(size));
         let buffer_arc = Arc::new(Buffer::new(self.executor, size));
         self.bind_param(param.name.clone(), buffer_arc.clone());
         buffer_arc
