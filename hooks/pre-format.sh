@@ -7,16 +7,17 @@
 # ln -n hooks/pre-format.sh .git/hooks/pre-commit
 # ```
 
-# rustfmt § Installation https://github.com/rust-lang-nursery/rustfmt#installation
+# rustfmt § Quick start ; https://github.com/rust-lang-nursery/rustfmt#quick-start
+# setup rustfmt(1) if uninstalled.
 if ! command -v rustfmt >/dev/null; then
-    cargo install rustfmt
+    rustup component add rustfmt-preview
 fi
 
-# quiet option to suppress output/
-# don't reformat child modules.
+# All changed files will be reformated by rustfmt.
 for file in $(git diff --name-only --cached); do
     if [ ${file: -3} == ".rs" ]; then
-        rustfmt --quiet --skip-children $file
+        # quiet option to suppress output.
+        cargo fmt --quiet $file
     fi
 done
 
