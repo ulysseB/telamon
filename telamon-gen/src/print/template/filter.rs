@@ -1,8 +1,8 @@
 /// Restricts the values `{{../name}}` can take.
 #[allow(unused_variables, unused_mut, unused_parens)]
 pub fn filter_{{id}}({{>choice.arg_defs}}ir_instance: &ir::Function,
-                     store: &DomainStore) -> {{type_name}} {
-    let mut values = {{type_name}}::FAILED;
+                     store: &DomainStore) -> {{>value_type.name type_name}} {
+    let mut values = {{>value_type.name type_name}}::FAILED;
     {{#each bindings~}}
         let {{this.[0]}} = {{>choice.getter this.[1]}};
     {{/each~}}

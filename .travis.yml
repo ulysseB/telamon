@@ -1,0 +1,47 @@
+branches:
+  only:
+    # This is where pull requests from "bors r+" are built.
+    - staging
+    # This is where pull requests from "bors try" are built.
+    - trying
+    # Also build commits on master. Remove this if we choose to protect master
+    - master
+language: rust
+cache: cargo
+sudo: false
+rust:
+  - stable
+addons:
+  apt:
+    packages:
+      - flex
+before_script:
+  - flex --version
+jobs:
+  include:
+    - stage: test
+      script: cargo test
+    - script: cd telamon-utils && cargo test
+    - script: cd telamon-gen && cargo test
+    - script: cd telamon-gen/cc_tests && cargo test
+    - script: cd kernels && cargo test --release
+    - script: cd telamon-gen && LEX="flex" cargo build --features "lex"
+    - stage: documentation
+      if: branch IN (master, staging)
+      script: cargo doc --no-deps --all
+      deploy:
+        provider: pages
+        local-dir: target/doc
+        target-branch: gh-pages
+        skip-cleanup: true
+        keep-history: true
+        github-token: "$GITHUB_TOKEN"
+notifications:
+  slack:
+    rooms:
+      secure: bhOU59RYPbvA8GXYtL4JTGjKRbrOFyni2wjAV0gWQqwP9lkzYWlYDlsoHOFIR+DLhwN0Or2d5Sw47Ic3NLGrzhPOFcXNBhoRUy4QBUPWaKETEJbqjG/UvYRbfGr7ajosQdL1pDMuem8NFXdNcSCgnHu9Wgtim1EjO82rdc4YGPSCcHkfHpCncM435vXcDhtdz/ks9pF4igmJH0frhXTAkngckggaR2xx1cUAlrc4ztc03goe+uFC3Iti1QAp2DGMFx9hLvV1CjATeqSA4/65idUS0aEWccK2tNwLjp3nL3LAwwymCr4OWS8wCD0p1lk3Fvcc3FTX2fw6TfGciaFNCwAO+0FD5tJD+Uez+QllN4cufKrbwQo9ZlRP0fFsx38QJ1FeK8k/uk0hR7MzqypzkCNwG6NBI98L71P2sFvA15gELuI9sWhx655PwFzmjNwYw/zCeimp9pi+bNbYoWjckkwbN7ArwJjPt47vv/bIJbo/NrmNxFghZm4RTQW45prolMUqGO9AeIMf7oP24pPdEv3v9oH7lF/97tCBLt9Nd7LhwizK6nG/VFFCofwdIfBqlGDwJufN3UoMqVezkHqRuZa+tDgU9SuUrfAe1XnAc1+HbDzza55LM+3tzHn4sPr1jmlLIEHww2Yub4GpxBJYl+8MhusRbGhedqtpqeLk3LE=
+    on_success: never
+    on_failure: change
+env:
+  global:
+    secure: ZLjUSECDu2ewLa2eJ8DepE7b3tuQxR81tbUxFtSBKKj6IVZPppzS7CUcVZxE46Xp+pug9KKApACOfqfqil5hRaSHKtqoVoOf/sYPJs+xA3JdmVBmqVYj0YViCA5WCxVU1J5BIEDVLTqJy7y3zBy8OYP2fNquNLEBUL7r0jn/+tjbuZfrwzN2PUqL/l7YyQVT/UgdpaXzVkvAcjGEL4nXpcSLb+a0g49PSQNcJhoLiYoZziUZH6buKllBzyBszBk4f/yO+wrvs334FaVw0DBbngIyUcQyzJT56eck22AJXlTl88DpJOUPakFTTJ1oa7UG6MTD46QMp2F/LK+ASNXwT5Q1OIsk67/CltZiWLXGBmdaAX2CJXor5vClNX3kEs0jCVCxMAOwfCmbTAz9cklb0rsoHXWYO3E39L3JhcVeZjwIvfI31d1cFrTjEwIVnUBQLmPYJyp9ndjc4kj7X/NUwD9SqrquIoEDW6mtCHlGmIDnkMJYQXNEwnoenFsSA+nbq9f/zoZVYUxmPYmRyHTCSNHVABUKYp3sK7HsRREwYwLm5slADH+K5loNYcxPgVJuH+mP7SAnJ6A8BTe4qxZK/bxjGr3ltSumWN2Ao9eC+PiAxG2QXGXHNeBtnrX0QxGkYZ5hjZndfAovjxjSsQ1kObnOOdwCSw4V93zFNzHthOQ=

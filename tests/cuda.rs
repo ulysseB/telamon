@@ -8,7 +8,7 @@ extern crate telamon_utils as utils;
 mod common;
 
 use common::*;
-use telamon::device::{Context, cuda};
+use telamon::device::{read_array, write_array, Context, cuda};
 use telamon::{ir, helper};
 use telamon::search_space::{Action, DimKind, InstFlag, Order};
 use itertools::Itertools;
@@ -52,7 +52,7 @@ fn params() {
     let mut context = cuda::Context::new(&executor);
     let signature = {
         let mut builder = helper::SignatureBuilder::new("params", &mut context);
-        builder.param("a", 42);
+        builder.scalar("a", 42);
         builder.get()
     };
     let mut builder = helper::Builder::new(&signature, context.device());
@@ -67,8 +67,8 @@ fn context() {
     let executor = cuda::Executor::init();
     let mut context = cuda::Context::new(&executor);
     let mut builder = helper::SignatureBuilder::new("params", &mut context);
-    builder.param("scalar", 42);
-    builder.array("array", 4*1024);
+    builder.scalar("scalar", 42);
+    builder.array::<i32>("array", 1024);
 }
 
 /// Ensure cache directives are working properly.
@@ -80,7 +80,7 @@ fn cache_directive() {
     let mem_id;
     let signature = {
         let mut builder = helper::SignatureBuilder::new("params", &mut context);
-        mem_id = builder.array("a", 4);
+        mem_id = builder.array::<f32>("a", 1).0;
         builder.get()
     };
     let mut builder = helper::Builder::new(&signature, context.device());
@@ -136,14 +136,12 @@ fn inst_order() {
 fn induction_var_nested() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
-    let out_array = executor.allocate_array::<i32>(1);
     let out;
     let mut context = cuda::Context::new(&executor);
     let signature = {
         let mut builder = helper::SignatureBuilder::new("ind_var_test", &mut context);
-        builder.param("k", 12i32);
-        out = cuda::ArrayArg(out_array, builder.alloc_array_id());
-        builder.param("out", &out);
+        builder.scalar("k", 12i32);
+        out = builder.array::<i32>("out", 1);
         builder.get()
     };
     let mut builder = helper::Builder::new(&signature, context.device());
@@ -157,11 +155,11 @@ fn induction_var_nested() {
     let d2 = builder.open_dim_ex(size_5, DimKind::UNROLL);
     let ind_var = builder.induction_var(&0i32,
         vec![(d0, size_1), (d1, size_k_tile_4), (d2, size_k)]);
-    let pattern = builder.unknown_access_pattern(out.1);
+    let pattern = builder.unknown_access_pattern(out.0);
     let _ = builder.st(&"out", &ind_var, pattern);
 
     check_candidates(builder.get(), &context, || {
-       let res = out.0.to_host();
+       let res = read_array::<i32>(out.1.as_ref());
        // 1*(k/4 - 1) + (k/4)*(4 - 1) + k*(5 - 1) = 5*k - 1 = 59
        assert_eq!(res[0], 59);
     });
@@ -172,13 +170,11 @@ fn induction_var_nested() {
 fn induction_var_simple() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
-    let out_array = executor.allocate_array::<i32>(1);
     let out;
     let mut context = cuda::Context::new(&executor);
     let signature = {
         let mut builder = helper::SignatureBuilder::new("ind_var_test", &mut context);
-        out = cuda::ArrayArg(out_array, builder.alloc_array_id());
-        builder.param("out", &out);
+        out = builder.array::<i32>("out", 1);
         builder.get()
     };
     let mut builder = helper::Builder::new(&signature, context.device());
@@ -186,11 +182,11 @@ fn induction_var_simple() {
     let size_4 = builder.cst_size(4);
     let d0 = builder.open_dim_ex(size_3, DimKind::LOOP);
     let ind_var = builder.induction_var(&0i32, vec![(d0, size_4)]);
-    let pattern = builder.unknown_access_pattern(out.1);
+    let pattern = builder.unknown_access_pattern(out.0);
     let _ = builder.st(&"out", &ind_var, pattern);
 
     check_candidates(builder.get(), &context, || {
-       let res = out.0.to_host();
+       let res = read_array::<i32>(out.1.as_ref());
        assert_eq!(res[0], 8);
     });
 }
@@ -203,36 +199,32 @@ fn global_vector_load() {
 
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
-    let in_array = executor.allocate_array::<i32>(D0_LEN as usize);
-    in_array.from_host(&((0..D0_LEN).map(|i| i as i32+10).collect_vec()));
-    let out_array = executor.allocate_array::<i32>(1);
     let (input, output);
 
     let mut context = cuda::Context::new(&executor);
-    let ref signature = {
+    let signature = {
         let mut builder = helper::SignatureBuilder::new("sgemm", &mut context);
-        input = cuda::ArrayArg(in_array, builder.alloc_array_id());
-        output = cuda::ArrayArg(out_array, builder.alloc_array_id());
-        builder.param("input", &input);
-        builder.param("output", &output);
+        input = builder.array::<i32>("input", D0_LEN as usize);
+        output = builder.array::<i32>("output", 1);
         builder.get()
     };
+    write_array(input.1.as_ref(), &(0..D0_LEN).map(|i| i as i32+10).collect_vec()[..]);
 
     let mut builder = helper::Builder::new(&signature, context.device());
     // Load B from global memory
     let d0_size = builder.cst_size(D0_LEN);
     let d0 = builder.open_dim_ex(d0_size, DimKind::VECTOR);
-        let input_pattern = builder.tensor_access_pattern(input.1, &DATA_TYPE, &[&d0]);
+        let input_pattern = builder.tensor_access_pattern(input.0, &DATA_TYPE, &[&d0]);
         let data_size = builder.cst_size(DATA_TYPE.len_byte().unwrap());
         let addr = builder.induction_var(&"input", vec![(d0, data_size.clone())]);
         let ld = builder.ld_ex(DATA_TYPE, &addr, input_pattern, InstFlag::MEM_CS);
     builder.close_dim(&d0);
     // Store B in shared memory.
-    let output_pattern = builder.unknown_access_pattern(output.1);
+    let output_pattern = builder.unknown_access_pattern(output.0);
     builder.st_ex(&"output", &ld, true, output_pattern, InstFlag::MEM_CS);
 
     check_candidates(builder.get(), &context, || {
-        let res = output.0.to_host()[0];
+        let res = read_array::<i32>(output.1.as_ref())[0];
         assert_eq!(res, 13);
     });
 }
@@ -242,13 +234,11 @@ fn global_vector_load() {
 fn size_cast() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
-    let out_array = executor.allocate_array::<i64>(1);
     let out;
     let mut context = cuda::Context::new(&executor);
     let signature = {
         let mut builder = helper::SignatureBuilder::new("ind_var_test", &mut context);
-        out = cuda::ArrayArg(out_array, builder.alloc_array_id());
-        builder.param("out", &out);
+        out = builder.array::<i64>("out", 1);
         builder.get()
     };
     let mut builder = helper::Builder::new(&signature, context.device());
@@ -256,11 +246,11 @@ fn size_cast() {
     let size_4 = builder.cst_size(4);
     let d0 = builder.open_dim_ex(size_3, DimKind::LOOP);
     let ind_var = builder.induction_var(&0i64, vec![(d0, size_4)]);
-    let pattern = builder.unknown_access_pattern(out.1);
+    let pattern = builder.unknown_access_pattern(out.0);
     let _ = builder.st(&"out", &ind_var, pattern);
 
     check_candidates(builder.get(), &context, || {
-       let res = out.0.to_host();
+       let res = read_array::<i64>(out.1.as_ref());
        assert_eq!(res[0], 8);
     });
 }
@@ -270,14 +260,11 @@ fn size_cast() {
 fn perf_model_0() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
-    let in_array = executor.allocate_array::<i32>(1024 * 1024);
-    let input;
     let mut context = cuda::Context::new(&executor);
-    let ref signature = {
+    let signature = {
         let mut builder = helper::SignatureBuilder::new("test", &mut context);
-        input = cuda::ArrayArg(in_array, builder.alloc_array_id());
-        builder.param("n", 16);
-        builder.param("input", &input);
+        builder.scalar("n", 16);
+        builder.array::<i32>("input", 1024*1024);
         builder.get()
     };
 
@@ -468,14 +455,14 @@ fn dim_map_active() {
     let mut builder = helper::Builder::new(&signature, context.device());
     let size_32 = builder.cst_size(32);
 
-    let d0 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD_X);
-    let d1 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD_Y);
+    let d0 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
+    let d1 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
         let a = builder.mov(&0f32);
     builder.close_dim(&d0);
     builder.close_dim(&d1);
 
-    let d2 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD_X);
-    let _d3 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD_Y);
+    let d2 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
+    let _d3 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
     let d4 = builder.open_dim_ex(size_32.clone(), DimKind::UNROLL);
         let op = builder.dim_map(a, &[(&d0, &d2), (&d1, &d4)], ir::DimMapScope::Global);
         builder.mov(&op);
@@ -493,14 +480,14 @@ fn test0() {
     let mut builder = helper::Builder::new(&signature, context.device());
     let size_32 = builder.cst_size(32);
 
-    let d0 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD_X);
+    let d0 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
     let d1 = builder.open_dim(size_32.clone());
         let i0 = builder.mov(&0f32);
     builder.close_dim(&d0);
     builder.close_dim(&d1);
 
-    let _d2 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD_X);
-    let d3 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD_Y);
+    let _d2 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
+    let d3 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
     let d4 = builder.open_dim_ex(size_32.clone(), DimKind::SEQUENTIAL);
     let op = builder.dim_map(i0, &[(&d0, &d3), (&d1, &d4)], ir::DimMapScope::Global);
     let i1 = builder.mov(&op);

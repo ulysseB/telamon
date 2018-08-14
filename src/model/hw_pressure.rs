@@ -69,7 +69,7 @@ impl FastBound {
     pub fn iterate(self, iterations: u32, level: usize) -> Self {
         let origin = FastOrigin::Loop { iterations, level, inner: self.origin };
         FastBound {
-            value: self.value * iterations as f64,
+            value: self.value * f64::from(iterations),
             origin: Rc::new(origin),
             size: self.size + 1,
         }
@@ -135,7 +135,7 @@ pub enum FastOrigin {
 }
 
 /// The level at which a bottleneck is computed.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BottleneckLevel { Global, Block, Thread }
 
 impl BottleneckLevel {
@@ -190,16 +190,17 @@ impl FastOrigin {
 }
 
 /// A `CodePoint`, but based on dimension ids rather than level ids.
-pub enum Point { Inst(ir::InstId), Entry(Vec<ir::dim::Id>), Exit(Vec<ir::dim::Id>) }
+#[derive(Clone)]
+pub enum Point { Inst(ir::InstId), Entry(Vec<ir::DimId>), Exit(Vec<ir::DimId>) }
 
 impl fmt::Display for Point {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Point::Inst(id) => write!(f, "instruction {}", id.id),
+            Point::Inst(id) => write!(f, "instruction {}", id.0),
             Point::Entry(ref dims) =>
-                write!(f, "the entry of dims [{:?}]", dims.iter().format(", ")),
+                write!(f, "the entry of dims [{}]", dims.iter().format(", ")),
             Point::Exit(ref dims) =>
-                write!(f, "the exit of dims [{:?}]", dims.iter().format(", ")),
+                write!(f, "the exit of dims [{}]", dims.iter().format(", ")),
         }
     }
 }
@@ -217,13 +218,14 @@ fn convert_point(levels: &[Level], point: CodePoint) -> Point {
 
 /// The justification behind a lower bound. Is slower to handle than `FastOrigin`
 /// but does not refer internal information.
+#[derive(Clone)]
 pub enum Origin {
     /// The bound is caused by the latency between two instructions.
     Latency,
     /// The bound is caused by a bottleneck.
     Bottleneck(&'static str, BottleneckLevel),
     /// The bound is repeated in a loop.
-    Loop { dims: Vec<ir::dim::Id>, iterations: u32, inner: Box<Origin> },
+    Loop { dims: Vec<ir::DimId>, iterations: u32, inner: Box<Origin> },
     /// The bound is caused by a dependency chain.
     Chain { before: Box<Bound>, mid_point: Point, after: Box<Bound> },
     /// The bound is scalled to account for a parallelism level.
@@ -240,6 +242,7 @@ impl Origin {
             x @ Origin::Latency |
             x @ Origin::Bottleneck(..) |
             x @ Origin::HardwareEvaluation => (false, x, false),
+            Origin::Loop { iterations: 0, .. } => (true, Origin::Latency, true),
             Origin::Loop { dims, iterations, inner } => {
                 let inner = Box::new(inner.simplify().1);
                 (true, Origin::Loop { dims, iterations, inner }, true)
@@ -248,7 +251,9 @@ impl Origin {
                 let inner = Box::new(inner.simplify().1);
                 (false, Origin::Scale { inner, factor }, false)
             },
-            Origin::Chain { box before, mid_point, box after } => {
+            Origin::Chain { before, mid_point, after } => {
+                let after = *after;
+                let before = *before;
                 let (trim_preds, before_origin, trim_after) = before.origin.simplify();
                 let (trim_before, after_origin, trim_succs) = after.origin.simplify();
                 let trim_preds = trim_preds || before.value == 0f64;
@@ -269,9 +274,9 @@ impl Origin {
                         size: before.size,
                     };
                     let origin = Origin::Chain {
-                        before: box before,
+                        before: Box::new(before),
                         mid_point,
-                        after: box after,
+                        after: Box::new(after),
                     };
                     (trim_preds, origin, trim_succs)
                 }
@@ -288,11 +293,11 @@ impl fmt::Display for Origin {
                 write!(f, "the pressure on {} at the {}", name, level),
             Origin::HardwareEvaluation => write!(f, "the evaluation on the hardware"),
             Origin::Loop { ref dims, iterations, ref inner } => {
-                write!(f, "{} iterations along dimensions [{:?}] of {}",
+                write!(f, "{} iterations along dimensions [{}] of {{ {} }}",
                     iterations, dims.iter().format(", "), inner)
             },
             Origin::Scale { ref inner, factor } =>
-                write!(f, "scale by {:.2e}:  {}", factor, inner),
+                write!(f, "scale by {:.2e}: {}", factor, inner),
             Origin::Chain { ref before, ref mid_point, ref after } => {
                 display_inline_chain(before, f)?;
                 write!(f, " to {}, then ", mid_point)?;
@@ -308,7 +313,7 @@ fn display_inline_chain(bound: &Bound, f: &mut fmt::Formatter) -> fmt::Result {
     if let Origin::Chain { .. } = bound.origin {
         write!(f, "{}", bound.origin)
     } else {
-        write!(f, "{:.2e}ns ({})", bound.value, bound.origin)
+        write!(f, "{:.2e}ns: {}", bound.value, bound.origin)
     }
 }
 
@@ -388,5 +393,17 @@ impl HwPressure {
             for other in it { pressure.minimize(other) }
             pressure
         })
+    }
+
+    /// Returns the pressure on a bottleneck.
+    #[cfg(test)]
+    pub fn get_bottleneck(&self, index: usize) -> f64 { self.bottlenecks[index] }
+
+    /// Pointwise multiplication of the pressure on each resource.
+    pub fn multiply(&mut self, other: &HwPressure) {
+        self.latency *= other.latency;
+        for (b, &other_b) in self.bottlenecks.iter_mut().zip_eq(&other.bottlenecks) {
+            *b *= other_b;
+        }
     }
 }

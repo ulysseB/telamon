@@ -2,9 +2,10 @@
 use codegen;
 use device;
 use device::Context as ContextTrait;
-use device::cuda::{api, ArrayArg, Context, Gpu, PerfCounterSet, JITDaemon};
+use device::cuda::{api, Context, Gpu, JITDaemon};
+#[cfg(feature="cuda")]
+use device::cuda::PerfCounterSet;
 use codegen::ParamVal;
-use ir;
 use itertools::Itertools;
 use std;
 
@@ -19,15 +20,16 @@ pub struct Kernel<'a, 'b> {
 
 impl<'a, 'b> Kernel<'a, 'b> {
     /// Compiles a device function.
-    pub fn compile(fun: &'b device::Function<'b>, gpu: &Gpu, executor: &'a api::Executor)
-            -> Self {
+    pub fn compile(fun: &'b device::Function<'b>,
+                   gpu: &Gpu,
+                   executor: &'a api::Executor,
+                   opt_level: usize) -> Self {
         let ptx = gpu.print_ptx(fun);
         Kernel {
-            executor: executor,
-            module: executor.compile_ptx(&ptx),
+            module: executor.compile_ptx(&ptx, opt_level),
+            executor, ptx,
             function: fun,
             expected_blocks_per_smx: gpu.blocks_per_smx(fun.space()),
-            ptx,
         }
     }
 
@@ -43,13 +45,21 @@ impl<'a, 'b> Kernel<'a, 'b> {
         }
     }
 
-    /// Runs a kernel and returns the number of cycles it takes to execute.
+    /// Runs a kernel and returns the number of cycles it takes to execute in cycles.
     pub fn evaluate(&self, args: &Context) -> Result<u64, ()> {
         let cuda_kernel = self.module.kernel(&self.function.name);
         self.gen_args(args).execute(&cuda_kernel, self.executor)
     }
 
+    /// Runs a kernel and returns the number of cycles it takes to execute in nanoseconds,
+    /// measured using cuda event rather than hardware counters.
+    pub fn evaluate_real(&self, args: &Context, num_samples: usize) -> Vec<f64> {
+        let cuda_kernel = self.module.kernel(&self.function.name);
+        self.gen_args(args).time_in_real_conds(&cuda_kernel, num_samples, self.executor)
+    }
+
     /// Instruments the kernel with the given performance counters.
+    #[cfg(feature="cuda")]
     pub fn instrument(&self, args: &Context, counters: &PerfCounterSet) -> Vec<u64> {
         let cuda_kernel = self.module.kernel(&self.function.name);
         self.gen_args(args).instrument(&cuda_kernel, counters, self.executor)
@@ -72,17 +82,17 @@ impl<'a, 'b> Kernel<'a, 'b> {
         let thread_sizes = get_sizes(self.function.thread_dims().iter().rev(), args);
         let mut tmp_arrays = vec![];
         let params = self.function.device_code_args().map(|x| match *x {
-            ParamVal::External(p) => ThunkArg::ArgRef(args.get_param(&p.name)),
-            ParamVal::Size(s) => ThunkArg::Size(args.eval_size(s) as i32),
-            ParamVal::GlobalMem(block, ref size) => {
-                tmp_arrays.push((args.eval_size(size) as usize, block));
+            ParamVal::External(p, _) => ThunkArg::ArgRef(args.get_param(&p.name)),
+            ParamVal::Size(ref s) => ThunkArg::Size(args.eval_size(s) as i32),
+            ParamVal::GlobalMem(_, ref size, _) => {
+                tmp_arrays.push(args.eval_size(size) as usize);
                 ThunkArg::TmpArray(tmp_arrays.len() - 1)
             },
         }).collect_vec();
         ThunkArgs {
             blocks: block_sizes,
             threads: thread_sizes,
-            tmp_arrays: tmp_arrays,
+            tmp_arrays,
             args: params,
             expected_blocks_per_smx: self.expected_blocks_per_smx,
         }
@@ -131,7 +141,7 @@ impl<'a> std::fmt::Debug for Thunk<'a> {
 struct ThunkArgs<'a> {
     blocks: [u32; 3],
     threads: [u32; 3],
-    tmp_arrays: Vec<(usize, ir::mem::InternalId)>,
+    tmp_arrays: Vec<usize>,
     args: Vec<ThunkArg<'a>>,
     expected_blocks_per_smx: u32,
 }
@@ -142,8 +152,8 @@ impl<'a> ThunkArgs<'a> {
         -> Result<u64, ()>
     {
         self.check_blocks_per_smx(cuda_kernel);
-        let tmp_arrays = self.tmp_arrays.iter().map(|&(size, id)| {
-            ArrayArg(executor.allocate_array::<i8>(size), id.into())
+        let tmp_arrays = self.tmp_arrays.iter().map(|&size| {
+            executor.allocate_array::<i8>(size)
         }).collect_vec();
         let params = self.args.iter().map(|x| match *x {
             ThunkArg::ArgRef(arg) => arg,
@@ -154,11 +164,12 @@ impl<'a> ThunkArgs<'a> {
     }
 
     /// Instruments the kernel.
+    #[cfg(feature="cuda")]
     pub fn instrument(&self, cuda_kernel: &api::Kernel, counters: &PerfCounterSet,
                       executor: &api::Executor) -> Vec<u64> {
         self.check_blocks_per_smx(cuda_kernel);
-        let tmp_arrays = self.tmp_arrays.iter().map(|&(size, id)| {
-            ArrayArg(executor.allocate_array::<i8>(size) , id.into())
+        let tmp_arrays = self.tmp_arrays.iter().map(|&size| {
+            executor.allocate_array::<i8>(size)
         }).collect_vec();
         let params = self.args.iter().map(|x| match *x {
             ThunkArg::ArgRef(arg) => arg,
@@ -166,6 +177,30 @@ impl<'a> ThunkArgs<'a> {
             ThunkArg::TmpArray(id) => &tmp_arrays[id],
         }).collect_vec();
         cuda_kernel.instrument(&self.blocks, &self.threads, &params, counters)
+    }
+
+    /// Evaluates the execution time of the kernel usig events rather than hardware
+    /// counter.
+    fn time_in_real_conds(&self, cuda_kernel: &api::Kernel, num_samples: usize,
+                          executor: &api::Executor)
+        -> Vec<f64>
+    {
+        let tmp_arrays = self.tmp_arrays.iter().map(|&size| {
+            executor.allocate_array::<i8>(size)
+        }).collect_vec();
+        let params = self.args.iter().map(|x| match *x {
+            ThunkArg::ArgRef(arg) => arg,
+            ThunkArg::Size(ref arg) => arg,
+            ThunkArg::TmpArray(id) => &tmp_arrays[id],
+        }).collect_vec();
+        // Heat-up caches.
+        for _ in 0..100 {
+            cuda_kernel.time_real_conds(&self.blocks, &self.threads, &params);
+        }
+        // Generate the samples.
+        (0..num_samples).map(|_| {
+            cuda_kernel.time_real_conds(&self.blocks, &self.threads, &params)
+        }).collect()
     }
 
     fn check_blocks_per_smx(&self, cuda_kernel: &api::Kernel) {
@@ -186,7 +221,7 @@ impl<'a> std::fmt::Debug for ThunkArgs<'a> {
 }
 
 /// An argument of a kernel ready to evaluate.
-enum ThunkArg<'a> { ArgRef(&'a device::Argument), Size(i32), TmpArray(usize) }
+enum ThunkArg<'a> { ArgRef(&'a api::Argument), Size(i32), TmpArray(usize) }
 
 impl<'a> std::fmt::Debug for ThunkArg<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {

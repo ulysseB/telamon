@@ -77,8 +77,8 @@ impl<T> Dag<T> {
             .collect_vec();
         // Inverse before to compute after.
         let mut after = new_nodes.iter().map(|_| Vec::new()).collect_vec();
-        for after_id in 0..new_nodes.len() {
-            for &before_id in &before[after_id] {
+        for (after_id, before_ids) in before[0..new_nodes.len()].iter().enumerate() {
+            for &before_id in before_ids {
                 after[before_id].push(after_id);
             }
         }

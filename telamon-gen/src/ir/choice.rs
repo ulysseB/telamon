@@ -36,7 +36,7 @@ impl Choice {
             on_change: Vec::new(),
             filter_actions: Vec::new(),
             filters: Vec::new(),
-            no_propagate_values: ir::ValueSet::empty(value_type),
+            no_propagate_values: ir::ValueSet::empty(&value_type),
         }
     }
 
@@ -76,9 +76,6 @@ impl Choice {
     /// Adds an action to perform when the `Choice` is constrained.
     pub fn add_onchange(&mut self, action: OnChangeAction) {
         // TODO(cc_perf): normalize and merge forall vars when possible
-        if self.arguments().is_symmetric() && action.applies_to_symmetric() {
-            self.on_change.push(action.inverse());
-        }
         self.on_change.push(action);
     }
 
@@ -184,11 +181,14 @@ pub enum ChoiceDef {
         visibility: CounterVisibility,
         base: ir::Code,
     },
+    /// The `Choice` can take a small set of dynamically defined numeric values.
+    Number { universe: ir::Code },
 }
 
 /// Indicates how a counter exposes how its maximum value. The variants are ordered by
 /// increasing amount of information available.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[repr(C)]
 pub enum CounterVisibility {
     /// Only the minimal value is computed and stored.
     NoMax,
@@ -206,6 +206,8 @@ impl ChoiceDef {
             ChoiceDef::Counter { visibility: CounterVisibility::NoMax, .. } =>
                 ValueType::HalfRange,
             ChoiceDef::Counter { .. } => ValueType::Range,
+            ChoiceDef::Number { ref universe, .. } =>
+                ValueType::NumericSet(universe.clone()),
         }
     }
 
@@ -225,32 +227,49 @@ impl ChoiceDef {
             ChoiceDef::Enum(..) => op == ir::CmpOp::Eq || op == ir::CmpOp::Neq,
             ChoiceDef::Counter { visibility: CounterVisibility::Full, .. } => true,
             ChoiceDef::Counter { .. } => op == ir::CmpOp::Lt || op == ir::CmpOp::Leq,
+            ChoiceDef::Number { .. } => true,
         }
     }
 }
 
 /// The value of the increments of a counter.
 #[derive(Clone, Debug)]
-pub enum CounterVal { Code(ir::Code), Counter(ir::ChoiceInstance) }
+pub enum CounterVal { Code(ir::Code), Choice(ir::ChoiceInstance) }
 
 impl Adaptable for CounterVal {
     fn adapt(&self, adaptator: &ir::Adaptator) -> Self {
         match *self {
             CounterVal::Code(ref code) => CounterVal::Code(code.adapt(adaptator)),
-            CounterVal::Counter(ref choice_instance) =>
-                CounterVal::Counter(choice_instance.adapt(adaptator)),
+            CounterVal::Choice(ref choice_instance) =>
+                CounterVal::Choice(choice_instance.adapt(adaptator)),
         }
     }
 }
-
-/// Specifies the type of the values a choice can take.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum ValueType { Enum(RcStr), Range, HalfRange }
 
 impl ValueType {
     /// Returns the full type, instead of a the trimmed one.
     pub fn full_type(self) -> Self {
         if self == ValueType::HalfRange { ValueType::Range } else { self }
+    }
+
+    /// Returns the enum name, if applicable.
+    pub fn as_enum(&self) -> Option<&RcStr> {
+        if let ValueType::Enum(ref name) = *self { Some(name) } else { None }
+    }
+}
+
+/// Specifies the type of the values a choice can take.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ValueType { Enum(RcStr), Range, HalfRange, NumericSet(ir::Code) }
+
+impl Adaptable for ValueType {
+    fn adapt(&self, adaptator: &ir::Adaptator) -> Self {
+        match *self {
+            ref t @ ValueType::Enum(..) |
+            ref t @ ValueType::Range |
+            ref t @ ValueType::HalfRange => t.clone(),
+            ValueType::NumericSet(ref uni) => ValueType::NumericSet(uni.adapt(adaptator)),
+        }
     }
 }
 
@@ -301,15 +320,15 @@ pub struct OnChangeAction {
 impl OnChangeAction {
     /// Indicates if the action sould also be registered for the symmetric of the choice,
     /// if applicable.
-    fn applies_to_symmetric(&self) -> bool { self.action.applies_to_symmetric() }
+    pub fn applies_to_symmetric(&self) -> bool { self.action.applies_to_symmetric() }
 
     /// Returns the action for the symmetric of the choice.
-    fn inverse(&self) -> Self {
+    pub fn inverse(&self, ir_desc: &ir::IrDesc) -> Self {
         let ref mut adaptator = ir::Adaptator::default();
         adaptator.set_variable(ir::Variable::Arg(0), ir::Variable::Arg(1));
         adaptator.set_variable(ir::Variable::Arg(1), ir::Variable::Arg(0));
         let mut out = self.adapt(adaptator);
-        out.action.inverse_self();
+        out.action.inverse_self(ir_desc);
         out
     }
 }
@@ -327,10 +346,23 @@ impl Adaptable for OnChangeAction {
 /// An action to perform,
 #[derive(Clone, Debug)]
 pub enum ChoiceAction {
+    /// The choice runs all its filters on itself.
     FilterSelf,
+    /// The choice runs a filter on another choice.
     Filter { choice: ir::ChoiceInstance, filter: FilterCall },
-    IncrCounter { choice: ir::ChoiceInstance, value: ir::CounterVal, },
-    UpdateCounter { counter: ir::ChoiceInstance, incr: ir::ChoiceInstance, to_half: bool },
+    /// Increments a counter if the increment condition is statisfied.
+    IncrCounter {
+        counter: ir::ChoiceInstance,
+        value: ir::CounterVal,
+        incr_condition: ir::ValueSet,
+    },
+    /// Update a counter after the increment value is changed.
+    UpdateCounter {
+        counter: ir::ChoiceInstance,
+        incr: ir::ChoiceInstance,
+        incr_condition: ir::ValueSet,
+    },
+    /// Triggers a lowering.
     Trigger {
         id: usize,
         condition: ir::ChoiceCondition,
@@ -354,11 +386,11 @@ impl ChoiceAction {
     pub fn variables<'a>(&'a self) -> Box<Iterator<Item=&'a ir::Set> + 'a> {
         match *self {
             ChoiceAction::Filter { ref filter, .. } =>
-                box filter.forall_vars.iter() as Box<_>,
+                Box::new(filter.forall_vars.iter()) as Box<_>,
             ChoiceAction::Trigger { .. } |
             ChoiceAction::IncrCounter { .. } |
             ChoiceAction::UpdateCounter { .. } |
-            ChoiceAction::FilterSelf => box std::iter::empty() as Box<_>,
+            ChoiceAction::FilterSelf => Box::new(std::iter::empty()) as Box<_>,
         }
     }
 
@@ -371,10 +403,13 @@ impl ChoiceAction {
     }
 
     /// Inverse references to the value of the choice the action is registered in.
-    pub fn inverse_self(&mut self) {
-        match *self {
-            ChoiceAction::Trigger { ref mut inverse_self_cond, .. } =>
+    pub fn inverse_self(&mut self, ir_desc: &ir::IrDesc) {
+        match self {
+            ChoiceAction::Trigger { inverse_self_cond, .. } =>
                 *inverse_self_cond = !*inverse_self_cond,
+            ChoiceAction::IncrCounter { incr_condition, .. } |
+            ChoiceAction::UpdateCounter { incr_condition, .. } =>
+                incr_condition.inverse(ir_desc),
             _ => (),
         }
     }
@@ -383,26 +418,26 @@ impl ChoiceAction {
 impl Adaptable for ChoiceAction {
     fn adapt(&self, adaptator: &ir::Adaptator) -> Self {
         use self::ChoiceAction::*;
-        match *self {
+        match self {
             FilterSelf => FilterSelf,
-            Filter { ref choice, ref filter } => Filter {
+            Filter { choice, filter } => Filter {
                 choice: choice.adapt(adaptator),
                 filter: filter.adapt(adaptator),
             },
-            IncrCounter { ref choice, ref value } => IncrCounter {
-                choice: choice.adapt(adaptator),
+            IncrCounter { counter, value, incr_condition } => IncrCounter {
+                counter: counter.adapt(adaptator),
                 value: value.adapt(adaptator),
+                incr_condition: incr_condition.adapt(adaptator),
             },
-            UpdateCounter { ref counter, ref incr, to_half } => UpdateCounter {
+            UpdateCounter { counter, incr, incr_condition } => UpdateCounter {
                 counter: counter.adapt(adaptator),
                 incr: incr.adapt(adaptator),
-                to_half
+                incr_condition: incr_condition.adapt(adaptator),
             },
-            Trigger { id, ref condition, ref code, inverse_self_cond } => Trigger {
-                // FIXME: must inverse self condition
+            Trigger { id, condition, code, inverse_self_cond } => Trigger {
                 condition: condition.adapt(adaptator),
                 code: code.adapt(adaptator),
-                id, inverse_self_cond,
+                id: *id, inverse_self_cond: *inverse_self_cond,
             },
         }
     }
@@ -419,7 +454,8 @@ pub struct ChoiceCondition {
 impl ChoiceCondition {
     /// Adapt the list of conditions to be from the point of view of the given choice.
    pub fn new(ir_desc: &ir::IrDesc,
-              mut inputs: Vec<ir::ChoiceInstance>, self_id: usize,
+              mut inputs: Vec<ir::ChoiceInstance>,
+              self_id: usize,
               conditions: &[ir::Condition],
               env: HashMap<ir::Variable, ir::Set>)
         -> (Vec<ir::Set>, ir::SetConstraints, Self, ir::Adaptator)
@@ -432,9 +468,10 @@ impl ChoiceCondition {
         let inputs = inputs.into_iter().map(|i| i.adapt(&adaptator)).collect();
         // Extract the constraints on the considered input.
         let choice = ir_desc.get_choice(&choice);
-        let mut self_condition = ir::ValueSet::empty(choice.value_type());
+        let value_type = choice.value_type().adapt(&adaptator);
+        let mut self_condition = ir::ValueSet::empty(&value_type);
         let others_conditions = conditions.iter().flat_map(|condition| {
-            let alternatives = condition.alternatives_of(self_id, choice, ir_desc);
+            let alternatives = condition.alternatives_of(self_id, &value_type, ir_desc);
             if let Some(alternatives) = alternatives {
                 self_condition.extend(alternatives.adapt(&adaptator));
                 None

@@ -1,4 +1,5 @@
 //! Tests the latency model.
+use telamon::device::{ArgMap, Context};
 use telamon::helper::{SignatureBuilder, Builder, DimGroup, Reduce};
 use telamon::ir;
 use telamon::search_space::{Action, DimKind, InstFlag, Order};
@@ -10,8 +11,8 @@ pub struct EmptyLoop;
 impl PerfModelTest for EmptyLoop {
     fn name() -> &'static str { "latency_empty_loop" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 1000000i32);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 1_000_000i32);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -23,13 +24,13 @@ impl PerfModelTest for EmptyLoop {
 }
 
 /// Tests the latency of two nested empty loops.
-pub struct TwoEmptyLoop { d0: ir::dim::Id,  d1: ir::dim::Id }
+pub struct TwoEmptyLoop { d0: ir::DimId,  d1: ir::DimId }
 
 impl PerfModelTest for TwoEmptyLoop {
     fn name() -> &'static str { "latency_two_empty_loop" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 1000i32);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 1000i32);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -37,7 +38,7 @@ impl PerfModelTest for TwoEmptyLoop {
         let d0 = builder.open_dim_ex(size.clone(), DimKind::LOOP);
         let d1 = builder.open_dim_ex(size, DimKind::LOOP);
         builder.mov(&0i32);
-        TwoEmptyLoop { d0: d0, d1: d1 }
+        TwoEmptyLoop { d0, d1 }
     }
 
     fn get_actions(&self) -> Vec<Action> {
@@ -53,10 +54,10 @@ pub struct InstChain;
 impl PerfModelTest for InstChain {
     fn name() -> &'static str { "inst_chain" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 1000000i32);
-        builder.param("x", 1i32);
-        builder.array("out", 8);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 1_000_000i32);
+        builder.scalar("x", 1i32);
+        builder.array::<i64>("out", 1);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -66,7 +67,7 @@ impl PerfModelTest for InstChain {
         let i1 = builder.mul(&"x", &i0);
         let i2 = builder.mul(&"x", &i1);
         builder.close_dim(&d0);
-        let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
+        let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
         builder.st_ex(&"out", &i2, true, pattern, InstFlag::MEM_CS);
         InstChain
     }
@@ -78,10 +79,10 @@ pub struct LongInstChain;
 impl PerfModelTest for LongInstChain {
     fn name() -> &'static str { "long_inst_chain" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 10000i32);
-        builder.param("x", 1i64);
-        builder.array("out", 8);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 10000i32);
+        builder.scalar("x", 1i64);
+        builder.array::<i64>("out", 1);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -92,22 +93,22 @@ impl PerfModelTest for LongInstChain {
             inst = builder.mul(&"x", &inst);
         }
         builder.close_dim(&d0);
-        let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
+        let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
         builder.st_ex(&"out", &inst, true, pattern, InstFlag::MEM_CS);
         LongInstChain
     }
 }
 
 /// Tests the latency on an unrolled reduction loop.
-pub struct UnrollReduction { d0: ir::dim::Id, d1: ir::dim::Id }
+pub struct UnrollReduction { d0: ir::DimId, d1: ir::DimId }
 
 impl PerfModelTest for UnrollReduction {
     fn name() -> &'static str { "unroll_reduction" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 10000i32);
-        builder.param("x", 1i32);
-        builder.array("out", 4);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 10000i32);
+        builder.scalar("x", 1i32);
+        builder.array::<i32>("out", 1);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -119,7 +120,7 @@ impl PerfModelTest for UnrollReduction {
         let inst = builder.add(&"x", &Reduce(init));
         builder.close_dim(&d0);
         builder.close_dim(&d1);
-        let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
+        let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
         builder.st_ex(&"out", &inst, true, pattern, InstFlag::MEM_CS);
         UnrollReduction { d0, d1 }
     }
@@ -137,10 +138,10 @@ pub struct OrderedLoops;
 impl PerfModelTest for OrderedLoops {
     fn name() -> &'static str { "ordered_loops" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 1000i32);
-        builder.param("k", 1000i32);
-        builder.param("m", 1000i32);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 1000i32);
+        builder.scalar("k", 1000i32);
+        builder.scalar("m", 1000i32);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -164,11 +165,11 @@ pub struct OrderedThreadDims;
 impl PerfModelTest for OrderedThreadDims {
     fn name() -> &'static str { "ordered_thread_dims" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 1000i32);
-        builder.param("k", 100i32);
-        builder.param("x", 1i32);
-        builder.array("out", 4);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 1000i32);
+        builder.scalar("k", 100i32);
+        builder.scalar("x", 1i32);
+        builder.array::<i32>("out", 1);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -178,7 +179,7 @@ impl PerfModelTest for OrderedThreadDims {
         let size_2 = builder.cst_size(64);
         builder.open_dim_ex(size_n, DimKind::LOOP);
         let d1 = builder.open_dim_ex(size_0.clone(), DimKind::THREAD);
-        let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
+        let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
         let init = builder.ld_ex(ir::Type::I(32), &"out", pattern, InstFlag::MEM_CG);
         let d1_1 = builder.open_dim_ex(size_1.clone(), DimKind::LOOP);
         let d1_2 = builder.open_dim_ex(size_2.clone(), DimKind::UNROLL);
@@ -188,7 +189,7 @@ impl PerfModelTest for OrderedThreadDims {
         let d2 = builder.open_dim_ex(size_0.clone(), DimKind::THREAD);
         let d2_1 = builder.open_dim_ex(size_1.clone(), DimKind::LOOP);
         let d2_2 = builder.open_dim_ex(size_2.clone(), DimKind::UNROLL);
-        let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
+        let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
         builder.st_ex(&"out", &inst, true, pattern, InstFlag::MEM_CG);
 
         builder.order(&d1, &d1_1, Order::OUTER);
@@ -200,16 +201,16 @@ impl PerfModelTest for OrderedThreadDims {
     }
 }
 
-/// Test the latency in presence of a DimMap.
+/// Test the latency in presence of point to point communication between loops.
 pub struct DimMap;
 
 impl PerfModelTest for DimMap {
     fn name() -> &'static str { "dim_map" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 10000i32);
-        builder.param("x", 1i64);
-        builder.array("out", 8);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 10000i32);
+        builder.scalar("x", 1i64);
+        builder.array::<i64>("out", 1);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -226,7 +227,7 @@ impl PerfModelTest for DimMap {
         let op = builder.dim_map(i1, &[(&d1, &d2)], ir::DimMapScope::Thread);
         let i2 = builder.mad(&op, &op, &Reduce(init2));
         builder.close_dim(&DimGroup::new(vec![d2, d0]));
-        let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
+        let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
         builder.st_ex(&"out", &i2, true, pattern, InstFlag::MEM_CS);
         builder.order(&d1, &d2, Order::BEFORE);
         DimMap
@@ -239,10 +240,10 @@ pub struct OperandPositionSlow;
 impl PerfModelTest for OperandPositionSlow {
     fn name() -> &'static str { "operand_position_slow" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 10000i32);
-        builder.param("x", 1i64);
-        builder.array("out", 8);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 10000i32);
+        builder.scalar("x", 1i64);
+        builder.array::<i64>("out", 1);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -254,7 +255,7 @@ impl PerfModelTest for OperandPositionSlow {
         let inst = builder.mad(&Reduce(init), &"x", &"x");
         builder.close_dim(&d0);
         builder.close_dim(&d1);
-        let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
+        let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
         builder.st_ex(&"out", &inst, true, pattern, InstFlag::MEM_CS);
         builder.order(&d0, &d1, Order::OUTER);
         OperandPositionSlow
@@ -267,10 +268,10 @@ pub struct OperandPositionFast;
 impl PerfModelTest for OperandPositionFast {
     fn name() -> &'static str { "operand_position_fast" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
-        builder.param("n", 10000i32);
-        builder.param("x", 1i64);
-        builder.array("out", 8);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
+        builder.scalar("n", 10000i32);
+        builder.scalar("x", 1i64);
+        builder.array::<i64>("out", 1);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -282,7 +283,7 @@ impl PerfModelTest for OperandPositionFast {
         let inst = builder.mad(&"x", &"x", &Reduce(init));
         builder.close_dim(&d0);
         builder.close_dim(&d1);
-        let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
+        let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
         builder.st_ex(&"out", &inst, true, pattern, InstFlag::MEM_CS);
         builder.order(&d0, &d1, Order::OUTER);
         OperandPositionFast

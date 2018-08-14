@@ -1,3 +1,0 @@
-[submodule "lib/rustlex"]
-	path = lib/rustlex
-	url = https://github.com/ulysseB/rustlex.git

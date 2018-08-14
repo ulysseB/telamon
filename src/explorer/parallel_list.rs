@@ -1,25 +1,31 @@
 //! Exploration of the search space.
+pub use explorer::candidate::Candidate;
 
 use device::Context;
+use explorer::choice;
+use explorer::store::Store;
 use interval_heap::IntervalHeap;
+use rpds::List;
 use std;
 use std::f64;
 
-pub use explorer::candidate::Candidate;
-use explorer::config::Config;
-use explorer::choice;
-use explorer::store::Store;
-
 impl<'a> Store<'a> for ParallelCandidateList<'a> {
     type PayLoad = ();
+
+    type Event = ();
 
     fn update_cut(&self, new_cut: f64) {
         self.lock().0.update_cut(new_cut);
     }
 
-    fn commit_evaluation(&self, _: &Config, (): Self::PayLoad, _: f64) { }
+    fn commit_evaluation(
+        &self,
+        _actions: &List<choice::ActionEx>,
+        (): Self::PayLoad,
+        _: f64)
+    { }
 
-    fn explore(&self, _config: &Config, context: &Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
+    fn explore(&self, context: &Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
         loop {
             if let Some(candidate) = self.pop() {
                 let choice_opt = choice::list(&candidate.space).next();
@@ -49,12 +55,6 @@ impl<'a> ParallelCandidateList<'a> {
         }
     }
 
-    /// Drop all candidates in list (ends the search)
-    pub fn drop_all(&self) {
-        self.lock().0.drop_all();
-        self.wakeup.notify_all();
-    }
-
     /// Insert a candidate to process.
     pub fn insert(&self, candidate: Candidate<'a>) {
         self.lock().0.insert(candidate);
@@ -82,14 +82,14 @@ impl<'a> ParallelCandidateList<'a> {
                 return None;
             }
             lock.1 -= 1;
-            lock = self.wakeup.wait(lock).unwrap();
+            lock = unwrap!(self.wakeup.wait(lock));
             lock.1 += 1;
         }
     }
 
     /// Acquire the lock to the candidate list
     fn lock(&self) -> std::sync::MutexGuard<(CandidateList<'a>, usize)> {
-        self.mutex.lock().unwrap()
+        unwrap!(self.mutex.lock())
     }
 }
 
@@ -118,10 +118,6 @@ impl<'a> CandidateList<'a> {
         }
     }
 
-    pub fn drop_all(&mut self) {
-        self.queue.clear();
-    }
-
     /// Inserts a candidate to process.
     pub fn insert(&mut self, candidate: Candidate<'a>) {
         self.n_candidate += 1;
@@ -138,7 +134,7 @@ impl<'a> CandidateList<'a> {
     pub fn update_cut(&mut self, new_cut: f64) {
         self.cut = new_cut;
         while self.queue.max().map_or(false, |x| x.bound.value() >= new_cut) {
-            let candidate = self.queue.pop_max().unwrap();
+            let candidate = unwrap!(self.queue.pop_max());
             self.drop_candidate(candidate);
         }
     }
@@ -162,11 +158,5 @@ impl<'a> CandidateList<'a> {
         info!("dropping candidate: {:.4e}ns >= {:.4e}ns.",
               candidate.bound.value(), self.cut);
         self.n_dropped += 1;
-    }
-
-    /// Prints the exploration stats.
-    fn print_stats(&self) {
-        warn!("{} candidates generated, including {} leaves and {} dropped",
-              self.n_candidate, self.n_leaf, self.n_dropped);
     }
 }

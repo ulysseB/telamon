@@ -239,28 +239,28 @@ impl Condition {
 
     /// Returns allowed alternatives for the given input. Returns None if the condition
     /// is not on the given input.
-    pub fn alternatives_of(&self, input_id: usize, choice: &ir::Choice,
+    pub fn alternatives_of(&self, input_id: usize, t: &ir::ValueType,
                            ir_desc: &ir::IrDesc) -> Option<ValueSet> {
         match *self {
             Condition::Enum { input, ref values, negate, inverse } if input_id == input => {
-                let enum_ = ir_desc.get_enum(choice.choice_def().as_enum().unwrap());
+                let enum_ = ir_desc.get_enum(unwrap!(t.as_enum()));
                 Some(normalized_enum_set(values, negate, inverse, enum_))
             },
             Condition::CmpCode { lhs, op, ref rhs } if lhs == input_id => {
                 let cmp_code = std::iter::once((op, rhs.clone())).collect();
                 let cmp_inputs = BTreeSet::default();
-                Some(ValueSet::Range { is_full: false, cmp_inputs, cmp_code })
+                let universe = t.clone().full_type();
+                Some(ValueSet::Integer { is_full: false, cmp_inputs, cmp_code, universe })
             },
             Condition::CmpCode { .. } => None,
             Condition::CmpInput { lhs, rhs, op, inverse } => {
-                let value_type = choice.value_type();
                 if input_id == lhs && input_id == rhs {
                     let is_eq = op.allows_eq();
-                    Some(ValueSet::from_properties(value_type, is_eq, inverse, ir_desc))
+                    Some(ValueSet::from_properties(t, is_eq, inverse, ir_desc))
                 } else if input_id == lhs {
-                    Some(ValueSet::from_input(value_type, rhs, op, inverse))
+                    Some(ValueSet::from_input(t, rhs, op, inverse))
                 } else if input_id == rhs {
-                    Some(ValueSet::from_input(value_type, lhs, op.inverse(), inverse))
+                    Some(ValueSet::from_input(t, lhs, op.inverse(), inverse))
                 } else {
                     None
                 }
@@ -380,6 +380,7 @@ impl Adaptable for Condition {
 
 /// A compariason operator.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(C)]
 pub enum CmpOp { Lt, Gt, Leq, Geq, Eq, Neq }
 
 impl CmpOp {
@@ -451,7 +452,7 @@ pub fn normalized_enum_set<'a, IT>(values: IT, negate: bool, inverse: bool,
 }
 
 /// Represents a set of values a choice can take.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ValueSet {
     // TODO(cc_perf): detect when an input and its negation are included.
     Enum {
@@ -463,29 +464,33 @@ pub enum ValueSet {
         /// value should be negated or inversed.
         inputs: BTreeSet<(usize, bool, bool)>,
     },
-    Range {
+    Integer {
         is_full: bool,
         cmp_inputs: BTreeSet<(CmpOp, usize)>,
         cmp_code: BTreeSet<(CmpOp, Code)>,
-    }
+        universe: ir::ValueType,
+    },
 }
 
 impl ValueSet {
     /// Creates an enmpty `ValueSet` of the given type.
-    pub fn empty(t: ir::ValueType) -> Self {
+    pub fn empty(t: &ir::ValueType) -> Self {
         match t {
             ir::ValueType::Enum(name) => {
                 ValueSet::Enum {
-                    enum_name: name,
+                    enum_name: name.clone(),
                     values: BTreeSet::default(),
                     inputs: BTreeSet::default()
                 }
             },
-            ir::ValueType::Range | ir::ValueType::HalfRange => {
-                ValueSet::Range {
+            t @ ir::ValueType::Range |
+            t @ ir::ValueType::HalfRange |
+            t @ ir::ValueType::NumericSet(..) => {
+                ValueSet::Integer {
                     is_full: false,
                     cmp_inputs: BTreeSet::default(),
                     cmp_code: BTreeSet::default(),
+                    universe: t.clone().full_type(),
                 }
             },
         }
@@ -493,11 +498,11 @@ impl ValueSet {
     }
 
     /// Computes a `ValueSet` from the properties it must respect.
-    pub fn from_properties(t: ir::ValueType, is_eq: bool, is_inv: bool,
+    pub fn from_properties(t: &ir::ValueType, is_eq: bool, is_inv: bool,
                            ir_desc: &ir::IrDesc) -> Self {
         match t {
             ir::ValueType::Enum(name) => {
-                let enum_ = ir_desc.get_enum(&name);
+                let enum_ = ir_desc.get_enum(name);
                 if is_inv {
                     let values = enum_.values().keys()
                         .filter(|&v| enum_.inverse(v) == v);
@@ -506,13 +511,16 @@ impl ValueSet {
                     normalized_enum_set(vec![], is_eq, false, enum_)
                 }
             },
-            ir::ValueType::Range | ir::ValueType::HalfRange => {
+            t @ ir::ValueType::Range |
+            t @ ir::ValueType::HalfRange |
+            t @ ir::ValueType::NumericSet(..) => {
                 assert!(!is_inv);
                 if is_eq {
-                    ValueSet::Range {
+                    ValueSet::Integer {
                         is_full: true,
                         cmp_inputs: BTreeSet::default(),
                         cmp_code: BTreeSet::default(),
+                        universe: t.clone().full_type(),
                     }
                 } else { ValueSet::empty(t) }
             },
@@ -525,19 +533,20 @@ impl ValueSet {
     }
 
     /// Creates a `ValueSet` from the given input.
-    pub fn from_input(t: ir::ValueType, input: usize, op: CmpOp, inverse: bool) -> Self {
+    pub fn from_input(t: &ir::ValueType, input: usize, op: CmpOp, inverse: bool) -> Self {
         match t {
             ir::ValueType::Enum(enum_name) => ValueSet::Enum {
-                enum_name: enum_name,
+                enum_name: enum_name.clone(),
                 values: Default::default(),
                 inputs: std::iter::once((input, op == CmpOp::Neq, inverse)).collect(),
             },
-            ir::ValueType::Range => {
+            t @ ir::ValueType::Range | t @ ir::ValueType::NumericSet(..) => {
                 assert!(!inverse);
-                ValueSet::Range {
+                ValueSet::Integer {
                     is_full: false,
                     cmp_inputs: std::iter::once((op, input)).collect(),
                     cmp_code: BTreeSet::default(),
+                    universe: t.clone().full_type(),
                 }
             },
             ir::ValueType::HalfRange => panic!("Cannot compare HalfRanges to inputs"),
@@ -549,7 +558,7 @@ impl ValueSet {
         match *self {
             ValueSet::Enum { ref values, ref inputs, .. } =>
                 values.is_empty() && inputs.is_empty(),
-            ValueSet::Range { is_full, ref cmp_inputs, ref cmp_code } =>
+            ValueSet::Integer { is_full, ref cmp_inputs, ref cmp_code, universe: _ } =>
                 !is_full && cmp_inputs.is_empty() && cmp_code.is_empty()
         }
     }
@@ -560,7 +569,7 @@ impl ValueSet {
         match *self {
             ValueSet::Enum { ref values, ref enum_name, .. } =>
                 ir_desc.get_enum(enum_name).values().len() == values.len(),
-            ValueSet::Range { is_full, .. } => is_full,
+            ValueSet::Integer { is_full, .. } => is_full,
         }
     }
 
@@ -573,7 +582,7 @@ impl ValueSet {
             ValueSet::Enum { ref values, ref inputs, .. } if values.is_empty() => {
                 if inputs.len() == 1 { Trivalent::True } else { Trivalent::False }
             },
-            ValueSet::Enum { .. } | ValueSet::Range { .. } => Trivalent::Maybe,
+            ValueSet::Enum { .. } | ValueSet::Integer { .. } => Trivalent::Maybe,
         }
     }
 
@@ -585,11 +594,20 @@ impl ValueSet {
                     values.extend(other_values);
                     inputs.extend(other_inputs);
                 },
-                ValueSet::Range { .. } => panic!(),
+                ValueSet::Integer { .. } => panic!(),
             },
-            ValueSet::Range { ref mut is_full, ref mut cmp_inputs, ref mut cmp_code } => {
-                if let ValueSet::Range { is_full: other_full, cmp_inputs: other_inputs,
-                                         cmp_code: other_code } = other {
+            ValueSet::Integer {
+                ref mut is_full,
+                ref mut cmp_inputs,
+                ref mut cmp_code,
+                universe: _,
+            } => {
+                if let ValueSet::Integer {
+                    is_full: other_full,
+                    cmp_inputs: other_inputs,
+                    cmp_code: other_code,
+                    universe: _,
+                } = other {
                     if *is_full || other_full { *is_full = true } else {
                         cmp_inputs.extend(other_inputs);
                         cmp_code.extend(other_code);
@@ -610,13 +628,13 @@ impl ValueSet {
                     true
                 } else { false }
             },
-            (s @ &mut ValueSet::Range { is_full: true, .. }, other) => {
+            (s @ &mut ValueSet::Integer { is_full: true, .. }, other) => {
                 *s = other;
                 true
             },
-            (_, ValueSet::Range { is_full: true, .. }) => true,
-            (&mut ValueSet::Range { ref mut cmp_inputs, ref mut cmp_code, .. },
-             ValueSet::Range { cmp_inputs: ref mut ins1, cmp_code: ref mut code1, .. }) => {
+            (_, ValueSet::Integer { is_full: true, .. }) => true,
+            (&mut ValueSet::Integer { ref mut cmp_inputs, ref mut cmp_code, .. },
+             ValueSet::Integer { cmp_inputs: ref mut ins1, cmp_code: ref mut code1, .. }) => {
                  if ins1.is_subset(cmp_inputs) && code1.is_subset(cmp_code) {
                      std::mem::swap(cmp_inputs, ins1);
                      std::mem::swap(cmp_code, code1);
@@ -666,7 +684,7 @@ impl ValueSet {
                     inputs: new_inputs,
                 }
             },
-            ValueSet::Range { .. } => self.clone(), // Cannot be instantiated
+            ValueSet::Integer { .. } => self.clone(), // Cannot be instantiated
         }
     }
 
@@ -679,7 +697,7 @@ impl ValueSet {
                 *inputs = inputs.iter().map(|&(id, neg, inverse)| (id, neg, !inverse))
                     .collect();
             },
-            ValueSet::Range { .. } => panic!(),
+            ValueSet::Integer { .. } => panic!(),
         }
     }
 
@@ -705,8 +723,8 @@ impl ValueSet {
     /// Returns the type of the values.
     pub fn t(&self) -> ir::ValueType {
         match *self {
-            ValueSet::Enum { ref enum_name, .. } =>ir::ValueType::Enum(enum_name.clone()),
-            ValueSet::Range {..} => ir::ValueType::Range,
+            ValueSet::Enum { ref enum_name, .. } => ir::ValueType::Enum(enum_name.clone()),
+            ValueSet::Integer { ref universe, ..} => universe.clone(),
         }
     }
 }
@@ -722,13 +740,19 @@ impl Adaptable for ValueSet {
                 }).collect();
                 ValueSet::Enum { inputs, enum_name: enum_name.clone(), values }
             },
-            ValueSet::Range { ref cmp_inputs, ref cmp_code, is_full } => {
+            ValueSet::Integer { ref cmp_inputs, ref cmp_code, is_full, ref universe } => {
                 let cmp_inputs = cmp_inputs.iter().cloned().map(|(op, input)| {
                     let (new_input, inversed) = adaptator.input(input);
                     assert!(!inversed);
                     (op, new_input)
                 }).collect();
-                ValueSet::Range { cmp_inputs, cmp_code: cmp_code.clone(), is_full }
+                let cmp_code = cmp_code.iter().map(|(op, code)| {
+                    (*op, code.adapt(adaptator))
+                }).collect();
+                ValueSet::Integer {
+                    is_full, cmp_inputs, cmp_code,
+                    universe: universe.adapt(adaptator),
+                }
             },
         }
     }
@@ -741,7 +765,7 @@ pub mod test {
 
     /// Creates a set from of values.
     pub fn mk_enum_values_set(enum_: &str, values: &[&str]) -> ir::ValueSet {
-        let values = values.iter().map(|x| x.into::<RcStr>()).collect();
+        let values = values.iter().map(|&x| x.into()).collect();
         ir::ValueSet::enum_values(enum_.into(), values)
     }
 
@@ -788,19 +812,19 @@ pub mod test {
         let a_mapping = std::iter::once((0, &a_set)).collect();
         let c_mapping = std::iter::once((0, &c_set)).collect();
         // Eq, not inversed.
-        let set = ValueSet::from_input(t.clone(), 0, CmpOp::Eq, false);
+        let set = ValueSet::from_input(&t, 0, CmpOp::Eq, false);
         assert_eq!(set.instantiate(&a_mapping, &ir_desc), a_set);
         // Eq, 'a' inversed.
-        let set = ValueSet::from_input(t.clone(), 0, CmpOp::Eq, true);
+        let set = ValueSet::from_input(&t, 0, CmpOp::Eq, true);
         assert_eq!(set.instantiate(&a_mapping, &ir_desc), b_set);
         // Eq, 'c' inversed.
-        let set = ValueSet::from_input(t.clone(), 0, CmpOp::Eq, true);
+        let set = ValueSet::from_input(&t, 0, CmpOp::Eq, true);
         assert_eq!(set.instantiate(&c_mapping, &ir_desc), c_set);
         // NEq, not inversed.
-        let set = ValueSet::from_input(t.clone(), 0, CmpOp::Neq, false);
+        let set = ValueSet::from_input(&t, 0, CmpOp::Neq, false);
         assert_eq!(set.instantiate(&a_mapping, &ir_desc), bc_set);
         // NEq, inversed.
-        let set = ValueSet::from_input(t.clone(), 0, CmpOp::Neq, true);
+        let set = ValueSet::from_input(&t, 0, CmpOp::Neq, true);
         assert_eq!(set.instantiate(&a_mapping, &ir_desc), ac_set);
     }
 }

@@ -1,30 +1,34 @@
-//! Exploration of the search space.
+//! exploration of the search space.
 mod candidate;
 mod parallel_list;
-pub mod choice;
 mod bandit_arm;
-mod config;
 mod store;
 mod monitor;
 mod logger;
 
-use self::monitor::monitor;
-use self::monitor::MonitorMessage;
+pub mod config;
+pub mod choice;
+pub mod local_selection;
 
-use crossbeam;
-
+pub use self::config::{Config, SearchAlgorithm};
 pub use self::candidate::Candidate;
+pub use self::bandit_arm::TreeEvent;
+pub use self::logger::LogMessage;
 
+use self::choice::fix_order;
+use self::monitor::{monitor, MonitorMessage};
 use self::parallel_list::ParallelCandidateList;
-use self::choice::{fix_order};
-use device::Context;
+use self::store::Store;
+
+use boxfnonce::SendBoxFnOnce;
+use crossbeam;
+use device::{Context, EvalMode};
 use model::bound;
 use search_space::SearchSpace;
-use std::sync::mpsc;
-
-use self::bandit_arm::{SafeTree, SearchTree};
-pub use self::config::{Config, SearchAlgorithm};
-use self::store::Store;
+use std::sync;
+use futures::prelude::*;
+use futures::{channel, SinkExt};
+use futures::executor::block_on;
 
 // TODO(cc_perf): To improve performances, the following should be considered:
 // * choices should be ranked once and then reused for multiple steps.
@@ -34,58 +38,91 @@ use self::store::Store;
 //   be beneficial.
 
 
-pub fn find_best<'a, 'b>(config: &Config, 
-                         context: &'b Context<'b>, 
-                         search_space: Vec<SearchSpace<'a>>) -> Option<SearchSpace<'a>> { 
+/// Entry point of the exploration. This function returns the best candidate that it has found in
+/// the given time (or at whatever point we decided to stop the search - potentially after an
+/// exhaustive search)
+pub fn find_best<'a>(config: &Config, 
+                     context: &Context,
+                     search_space: Vec<SearchSpace<'a>>) -> Option<SearchSpace<'a>> {
+    let candidates = search_space.into_iter().map(|space| {
+        let bound = bound(&space, context);
+        Candidate::new(space, bound)
+    }).collect();
+    find_best_ex(config, context, candidates).map(|c| c.space)
+}
+
+/// Same as `find_best`, but allows to specify pre-existing actions and also returns the
+/// actionsfor the best candidate.
+pub fn find_best_ex<'a>(config: &Config, 
+                        context: &Context,
+                        candidates: Vec<Candidate<'a>>) -> Option<Candidate<'a>> { 
     match config.algorithm {
         config::SearchAlgorithm::MultiArmedBandit(ref band_config) => {
-            let new_candidates = search_space.into_iter().map(|space| {
-                let bound = bound(&space, context);
-                Candidate::new(space, bound)
-            }).collect();
-            let root = SearchTree::new(new_candidates, context);
-            let safe_tree = SafeTree::new(root, band_config);
-            launch_search(config, safe_tree, context)
-        }
+            crossbeam::scope(|scope| {
+                let (log_sender, log_receiver) = sync::mpsc::sync_channel(100);
+                unwrap!(scope.builder().name("Telamon - Logger".to_string())
+                        .spawn( || (unwrap!(logger::log(config, log_receiver)))));
+
+                let tree = bandit_arm::Tree::new(
+                    candidates, band_config, log_sender.clone());
+                unwrap!(scope.builder().name("Telamon - Search".to_string())
+                    .spawn(move || launch_search(config, tree, context, log_sender)))
+            }).join()
+        },
         config::SearchAlgorithm::BoundOrder => {
-            let candidate_list = ParallelCandidateList::new(config.num_workers);
-            for space in search_space {
-                let bound = bound(&space, context);
-                candidate_list.insert(Candidate::new(space, bound));
-            }
-            launch_search(config, candidate_list, context)
-        }
+            crossbeam::scope(|scope| {
+                let (log_sender, log_receiver) = sync::mpsc::sync_channel(100);
+                unwrap!(scope.builder().name("Telamon - Logger".to_string())
+                        .spawn( || (unwrap!(logger::log(config, log_receiver)))));
+
+                let candidate_list = ParallelCandidateList::new(config.num_workers);
+                unwrap!(scope.builder().name("Telamon - Search".to_string())
+                    .spawn(move || launch_search(config, candidate_list, context, log_sender)))
+            }).join()
+        },
     }
 }
 
 /// Launch all threads needed for the search. wait for each one of them to finish. Monitor is
 /// supposed to return the best candidate found
-fn launch_search<'a, T>(config: &Config, candidate_store: T, context: &Context) 
-    -> Option<SearchSpace<'a>> where T: Store<'a>  
+fn launch_search<'a, T: Store<'a>>(
+    config: &Config,
+    candidate_store: T,
+    context: &Context,
+    log_sender: sync::mpsc::SyncSender<LogMessage<T::Event>>,
+) -> Option<Candidate<'a>>
 {
-    let (monitor_sender, monitor_receiver) = mpsc::sync_channel(100);
-    let (log_sender, log_receiver) = mpsc::sync_channel(100);
-    crossbeam::scope( |scope| {
-        scope.spawn( || logger::log(config, log_receiver));
-        let best_cand_opt = scope.spawn(|| monitor(config, &candidate_store, monitor_receiver, log_sender));
+    let (monitor_sender, monitor_receiver) = channel::mpsc::channel(100);
+    let maybe_candidate = crossbeam::scope( |scope| {
+        let best_cand_opt = scope.builder().name("Telamon - Monitor".to_string()).
+            spawn(|| monitor(config, &candidate_store, monitor_receiver, log_sender));
         explore_space(config, &candidate_store, monitor_sender, context);
-        best_cand_opt
-    }).join()
+        unwrap!(best_cand_opt)
+    }).join();
+    // At this point all threads have ended and nobody is going to be
+    // exploring the candidate store anymore, so the stats printer
+    // should have a consistent view on the tree.
+    candidate_store.print_stats();
+    maybe_candidate
 }
 
+/// Defines the work that explorer threads will do in a closure that will be passed to
+/// context.async_eval. Also defines a callback that will be executed by the evaluator
 fn explore_space<'a, T>(config: &Config, 
                         candidate_store: &T, 
-                        eval_sender: mpsc::SyncSender<MonitorMessage<'a, T>>, 
+                        eval_sender: channel::mpsc::Sender<MonitorMessage<'a, T>>, 
                         context: &Context) where T: Store<'a> 
 {
-    context.async_eval(config.num_workers, &|evaluator| {
-        while let Some((cand, payload)) = candidate_store.explore(config, context) {
+    context.async_eval(config.num_workers, EvalMode::FindBest, &|evaluator| {
+        while let Some((cand, payload)) = candidate_store.explore(context) {
             let space = fix_order(cand.space);
             let eval_sender = eval_sender.clone();
-            let callback = move |leaf, eval, cpt| {
-                eval_sender.send((leaf, eval, cpt, payload)).unwrap();
+            let callback = move |leaf, eval| {
+                if let Err(err) = block_on(eval_sender.send((leaf, eval, payload))
+                                           .map(|_| ()))
+                { warn!("Got disconnected , {:?}", err);}
             };
-            evaluator.add_kernel(Candidate {space, .. cand }, Box::new(callback));
+            evaluator.add_kernel(Candidate {space, .. cand }, SendBoxFnOnce::from(callback));
         }
     });
 } 

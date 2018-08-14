@@ -1,0 +1,27 @@
+set Set0:
+  item_type = "ir::set0::Obj"
+  id_type = "ir::set0::Id"
+  item_getter = "ir::set0::get($fun, $id)"
+  id_getter = "ir::set0::Obj::id($item)"
+  iterator = "ir::set0::iter($fun)"
+  new_objs = "$objs.set0"
+end
+
+define integer int0(): "&::integer_set::INT0_DOMAIN" end
+
+define integer int1($arg in Set0): "&::integer_set::int1_domain($fun, $arg)" end
+
+require int0() < "5"
+
+require forall $lhs in Set0:
+  forall $rhs in Set0:
+    int1($lhs) == int1($rhs)
+
+define integer int2($arg in Set0): "&::integer_set::int1_domain($fun, $arg)" end
+
+define counter sum_int2():
+  forall $arg in Set0:
+    sum int2($arg) when:
+end
+
+require sum_int2() <= "12"

@@ -1,6 +1,7 @@
 //! An array with a variable number of dimensions.
 use itertools::Itertools;
 use num::Integer;
+use std;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 
@@ -147,7 +148,7 @@ impl<'a, T> ViewMut<'a, T> {
             .iter()
             .enumerate()
             .position(|(fixed_pos, &(raw_pos, _))| fixed_pos + logical_dim < raw_pos)
-            .unwrap_or(self.fixed_indexes.len());
+            .unwrap_or_else(|| self.fixed_indexes.len());
         let raw_dim = pos_in_fixed_indexes + logical_dim;
         // at cell i: (dim, _) in fixed_indexes, dim - i = number of outer mouving dims
         // Spawn the views
@@ -193,10 +194,10 @@ impl<'a, T> ViewMut<'a, T> {
     }
 
     /// Produces mutable references to the elements, with their indexes.
-    pub fn enumerate_mut<'b>(
-        &'b mut self,
-    ) -> impl Iterator<Item = (Vec<usize>, &'b mut T)> + 'b {
-        let self_ptr: *mut _ = self;
+    pub fn enumerate_mut<'b>(&'b mut self)
+        -> impl Iterator<Item = (Vec<usize>, &'b mut T)> + 'b
+    {
+        let self_ptr: *mut ViewMut<'b, _> = unsafe { std::mem::transmute(self as *mut _) };
         NDRange::new(&self.bounds).map(move |idx| {
             let item = unsafe { (*self_ptr).index_mut(&idx[..]) };
             (idx, item)

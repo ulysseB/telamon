@@ -1,13 +1,15 @@
 //! Defines operators.
 use device::Device;
-use ir::{self, AccessPattern, Dimension, mem, Operand, Stride, Type};
+use ir::{self, AccessPattern, Operand, Type, LoweringMap};
 use itertools::Itertools;
+use std;
 use std::borrow::Cow;
-use std::fmt;
 use self::Operator::*;
+use utils::*;
 
 /// The rounding mode of an arithmetic operation.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[repr(C)]
 pub enum Rounding {
     /// No rounding occurs.
     Exact,
@@ -21,107 +23,138 @@ pub enum Rounding {
     Negative,
 }
 
+impl std::fmt::Display for Rounding {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let name = match self {
+            Rounding::Exact => "exact",
+            Rounding::Nearest => "toward nearest",
+            Rounding::Zero => "toward zero",
+            Rounding::Positive => "toward +inf",
+            Rounding::Negative => "toward -inf",
+        };
+        write!(f, "{}", name)
+    }
+}
+
+impl Rounding {
+    /// Ensures the rounding policy applies to the given type.
+    fn check(&self, t: ir::Type) -> Result<(), ir::TypeError> {
+        if t.is_float() ^ (*self == Rounding::Exact) { Ok(()) } else {
+            Err(ir::TypeError::InvalidRounding { rounding: *self, t })
+        }
+    }
+}
+
+/// Represents binary arithmetic operators.
+#[derive(Clone, Copy, Debug)]
+#[repr(C)]
+pub enum BinOp {
+    /// Adds two operands.
+    Add,
+    /// Substracts two operands.
+    Sub,
+    /// Divides two operands,
+    Div,
+}
+
+impl BinOp {
+    /// Returns a string representing the operator.
+    fn as_str(&self) -> &'static str {
+        match *self {
+            BinOp::Add => "add",
+            BinOp::Sub => "sub",
+            BinOp::Div => "div",
+        }
+    }
+}
+
 /// The operation performed by an instruction.
 #[derive(Clone, Debug)]
-pub enum Operator<'a> {
-    /// Adds two operands.
-    Add(Operand<'a>, Operand<'a>, Rounding),
-    /// Substracts two operands.
-    Sub(Operand<'a>, Operand<'a>, Rounding),
+pub enum Operator<'a, L = LoweringMap> {
+    /// A binary arithmetic operator.
+    BinOp(BinOp, Operand<'a, L>, Operand<'a, L>, Rounding),
     /// Performs a multiplication with the given return type.
-    Mul(Operand<'a>, Operand<'a>, Rounding, Type),
+    Mul(Operand<'a, L>, Operand<'a, L>, Rounding, Type),
     /// Performs s multiplication between the first two operands and adds the
     /// result to the third.
-    Mad(Operand<'a>, Operand<'a>, Operand<'a>, Rounding),
-    /// Performs a division.
-    Div(Operand<'a>, Operand<'a>, Rounding),
+    Mad(Operand<'a, L>, Operand<'a, L>, Operand<'a, L>, Rounding),
     /// Moves a value into a register.
-    Mov(Operand<'a>),
+    Mov(Operand<'a, L>),
     /// Loads a value of the given type from the given address.
-    Ld(Type, Operand<'a>, AccessPattern),
+    Ld(Type, Operand<'a, L>, AccessPattern<'a>),
     /// Stores the second operand at the address given by the first.
     /// The boolean specifies if the instruction has side effects. A store has no side
     /// effects when it writes into a cell that previously had an undefined value.
-    St(Operand<'a>, Operand<'a>, bool, AccessPattern),
+    St(Operand<'a, L>, Operand<'a, L>, bool, AccessPattern<'a>),
     /// Represents a load from a temporary memory that is not fully defined yet.
-    TmpLd(Type, mem::Id),
+    TmpLd(Type, ir::MemId),
     /// Represents a store to a temporary memory that is not fully defined yet.
-    TmpSt(Operand<'a>, mem::Id),
+    TmpSt(Operand<'a, L>, ir::MemId),
     /// Casts a value into another type.
-    Cast(Operand<'a>, Type),
+    Cast(Operand<'a, L>, Type),
 }
 
-impl<'a> Operator<'a> {
+impl<'a, L> Operator<'a, L> {
     /// Ensures the types of the operands are valid.
-    pub fn type_check(&self, device: &Device) {
-        assert!(device.is_valid_type(&self.t()));
-        // Check operand types.
-        for operand in self.operands() {
-            let t = operand.t();
-            assert_ne!(t, Type::Void);
-            assert!(device.is_valid_type(&t));
-        }
+    pub fn check(&self, iter_dims: &HashSet<ir::DimId>, device: &Device)
+        -> Result<(), ir::Error>
+    {
+        self.t().map(|t| device.check_type(t)).unwrap_or(Ok(()))?;
+        for operand in self.operands() { device.check_type(operand.t())?; }
         match *self {
-            Add(ref lhs, ref rhs, rounding) |
-            Sub(ref lhs, ref rhs, rounding) |
-            Div(ref lhs, ref rhs, rounding) => {
-                assert!(lhs.t().is_float() ^ (rounding == Rounding::Exact));
-                assert_eq!(lhs.t(), rhs.t());
+            BinOp(_, ref lhs, ref rhs, rounding) => {
+                rounding.check(lhs.t())?;
+                ir::TypeError::check_equals(lhs.t(), rhs.t())?;
             },
-            Mul(ref lhs, ref rhs, rounding, ref res_type) => {
-                assert!(lhs.t().is_float() ^ (rounding == Rounding::Exact));
-                match (lhs.t(), rhs.t(), res_type) {
-                    (ref x, ref y, z) if x == y && y == z => (),
-                    (Type::I(32), Type::I(32), &Type::I(64)) |
-                    (Type::I(32), Type::I(32), &Type::PtrTo(_)) => (),
-                    _ => panic!(),
+            Mul(ref lhs, ref rhs, rounding, res_type) => {
+                rounding.check(lhs.t())?;
+                ir::TypeError::check_equals(lhs.t(), rhs.t())?;
+                match (lhs.t(), res_type) {
+                    (x, z) if x == z => (),
+                    (Type::I(32), Type::I(64)) |
+                    (Type::I(32), Type::PtrTo(_)) => (),
+                    (_, t) => Err(ir::TypeError::UnexpectedType { t })?,
                 }
             }
             Mad(ref mul_lhs, ref mul_rhs, ref add_rhs, rounding) => {
-                assert!(mul_lhs.t().is_float() ^ (rounding == Rounding::Exact));
-                match (mul_lhs.t(), mul_rhs.t(), add_rhs.t()) {
-                    (ref x, ref y, ref z) if x == y && y == z => (),
-                    (Type::I(32), Type::I(32), Type::I(64)) |
-                    (Type::I(32), Type::I(32), Type::PtrTo(_)) => (),
-                    _ => panic!(),
+                rounding.check(mul_lhs.t())?;
+                ir::TypeError::check_equals(mul_lhs.t(), mul_rhs.t())?;
+                match (mul_lhs.t(), add_rhs.t()) {
+                    (ref x, ref z) if x == z => (),
+                    (Type::I(32), Type::I(64)) |
+                    (Type::I(32), Type::PtrTo(_)) => (),
+                    (_, t) => Err(ir::TypeError::UnexpectedType { t })?,
                 }
             },
-            Ld(ref t, ref addr, ref pattern) => {
-                assert_ne!(*t, Type::Void);
-                assert_eq!(addr.t(), Type::PtrTo(pattern.mem_block()));
+            Ld(_, ref addr, ref pattern) => {
+                pattern.check(iter_dims)?;
+                ir::TypeError::check_equals(addr.t(), Type::PtrTo(pattern.mem_block()))?;
             },
-            St(ref addr, _, _, ref pattern) =>
-                assert_eq!(addr.t(), Type::PtrTo(pattern.mem_block())),
-            TmpLd(ref t, _) => assert_ne!(*t, Type::Void),
-            Cast(ref src, ref t) => {
-                assert_ne!(src.t(), Type::Void);
-                assert_ne!(*t, Type::Void);
+            St(ref addr, _, _, ref pattern) => {
+                pattern.check(iter_dims)?;
+                ir::TypeError::check_equals(addr.t(), Type::PtrTo(pattern.mem_block()))?;
             },
-            Mov(..) | TmpSt(..) => (),
+            TmpLd(..) | Cast(..) | Mov(..) | TmpSt(..) => (),
         }
+        Ok(())
     }
 
     /// Returns the type of the value produced.
-    pub fn t(&self) -> Type {
+    pub fn t(&self) -> Option<Type> {
         match *self {
-            Add(ref op, _, _) |
-            Sub(ref op, _, _) |
+            BinOp(_, ref op, ..) |
             Mov(ref op) |
-            Mad(_, _, ref op, _) |
-            Div(ref op, _, _) => op.t(),
-            Ld(ref t, ..) | TmpLd(ref t, _) | Cast(_, ref t) | Mul(.., ref t) =>
-                t.clone(),
-            St(..) | TmpSt(..) => Type::Void,
+            Mad(_, _, ref op, _) => Some(op.t()),
+            Ld(t, ..) | TmpLd(t, _) | Cast(_, t) | Mul(.., t) => Some(t),
+            St(..) | TmpSt(..) => None,
         }
     }
 
     /// Retruns the list of operands.
-    pub fn operands<'b>(&'b self) -> Vec<&'b Operand<'a>> {
+    pub fn operands(&self) -> Vec<&Operand<'a, L>> {
         match *self {
-            Add(ref lhs, ref rhs, _) |
-            Sub(ref lhs, ref rhs, _) |
+            BinOp(_, ref lhs, ref rhs, _) |
             Mul(ref lhs, ref rhs, _, _) |
-            Div(ref lhs, ref rhs, _) |
             St(ref lhs, ref rhs, _, _) => vec![lhs, rhs],
             Mad(ref mul_lhs, ref mul_rhs, ref add_rhs, _) =>
                 vec![mul_lhs, mul_rhs, add_rhs],
@@ -134,12 +167,10 @@ impl<'a> Operator<'a> {
     }
 
     /// Retruns the list of mutable references to operands.
-    pub fn operands_mut<'b>(&'b mut self) -> Vec<&'b mut Operand<'a>> {
+    pub fn operands_mut<'b>(&'b mut self) -> Vec<&'b mut Operand<'a, L>> {
         match *self {
-            Add(ref mut lhs, ref mut rhs, _) |
-            Sub(ref mut lhs, ref mut rhs, _) |
+            BinOp(_, ref mut lhs, ref mut rhs, _) |
             Mul(ref mut lhs, ref mut rhs, _, _) |
-            Div(ref mut lhs, ref mut rhs, _) |
             St(ref mut lhs, ref mut rhs, _, _) => vec![lhs, rhs],
             Mad(ref mut mul_lhs, ref mut mul_rhs, ref mut add_rhs, _) =>
                 vec![mul_lhs, mul_rhs, add_rhs],
@@ -155,12 +186,10 @@ impl<'a> Operator<'a> {
     pub fn has_side_effects(&self) -> bool {
         match *self {
             St(_, _, b, _) => b,
-            Add(..) |
-            Sub(..) |
+            BinOp(..) |
             Mul(..) |
             Mad(..) |
             Mov(..) |
-            Div(..) |
             Ld(..) |
             TmpLd(..) |
             TmpSt(..) |
@@ -168,37 +197,8 @@ impl<'a> Operator<'a> {
         }
     }
 
-    /// Returns true if the operator is vectorizable on the given dimension.
-    pub fn is_vectorizable(&self, dim: &Dimension) -> bool {
-        // TODO(search_space): compute vectorizable info for tmp Ld/St. On vectorization,
-        // the layout must be constrained.
-        match *self {
-            St(_, ref operand, _, ref pattern) => {
-                if let Some(type_len) = operand.t().len_byte() {
-                    dim.size().as_int().into_iter().any(|x| x == 2 || x == 4) &&
-                        pattern.stride(dim.id()) == Stride::Int(type_len as i32)
-                } else { false }
-            },
-            Ld(ref t, _, ref pattern) => {
-                if let Some(type_len) = t.len_byte() {
-                    dim.size().as_int().into_iter().any(|x| x == 2 || x == 4) &&
-                        pattern.stride(dim.id()) == Stride::Int(type_len as i32)
-                } else { false }
-            },
-            Add(..) |
-            Sub(..) |
-            Mul(..) |
-            Mad(..) |
-            Div(..) |
-            Mov(..) |
-            Cast(..) => false,
-            TmpLd(..) |
-            TmpSt(..) => dim.size().as_int().into_iter().any(|x| x == 2 || x == 4),
-        }
-    }
-
     /// Renames a basic block.
-    pub fn merge_dims(&mut self, lhs: ir::dim::Id, rhs: ir::dim::Id) {
+    pub fn merge_dims(&mut self, lhs: ir::DimId, rhs: ir::DimId) {
         self.operands_mut().iter_mut().foreach(|x| x.merge_dims(lhs, rhs));
     }
 
@@ -209,14 +209,14 @@ impl<'a> Operator<'a> {
             St(_, _, _, ref pattern) => Some(Cow::Borrowed(pattern)),
             TmpLd(_, mem_id) |
             TmpSt(_, mem_id) => {
-                Some(Cow::Owned(AccessPattern::Unknown { mem_id: mem_id }))
+                Some(Cow::Owned(AccessPattern::Unknown { mem_id }))
             },
             _ => None,
         }
     }
 
     /// Returns the memory blocks referenced by the instruction.
-    pub fn mem_used(&self) -> Option<mem::Id> {
+    pub fn mem_used(&self) -> Option<ir::MemId> {
         self.mem_access_pattern().map(|p| p.mem_block())
     }
 
@@ -224,17 +224,66 @@ impl<'a> Operator<'a> {
     pub fn supports_nc_access(&self) -> bool {
         if let Ld(..) = *self { true } else { false }
     }
+
+    pub fn map_operands<T, F>(self, mut f: F) -> Operator<'a, T>
+    where F: FnMut(Operand<'a, L>) -> Operand<'a, T>
+    {
+        match self {
+            BinOp(op, oper1, oper2, rounding) => {
+                let oper1 = f(oper1);
+                let oper2 = f(oper2);
+                BinOp(op, oper1, oper2, rounding)
+            },
+            Mul(oper1, oper2, rounding, t) => {
+                let oper1 = f(oper1);
+                let oper2 = f(oper2);
+                Mul(oper1, oper2, rounding, t)
+            },
+            Mad(oper1, oper2, oper3, rounding) => {
+                let oper1 = f(oper1);
+                let oper2 = f(oper2);
+                let oper3 = f(oper3);
+                Mad(oper1, oper2, oper3, rounding)
+            },
+            Mov(oper1) => {
+                let oper1 = f(oper1);
+                Mov(oper1)
+            },
+            Ld(t, oper1, ap) => {
+                let oper1 = f(oper1);
+                Ld(t, oper1, ap)
+            },
+            St(oper1, oper2, side_effects, ap) => {
+                let oper1 = f(oper1);
+                let oper2 = f(oper2);
+                St(oper1, oper2, side_effects, ap)
+            },
+            TmpLd(t, id) => TmpLd(t, id),
+            TmpSt(oper1, id) => {
+                let oper1 = f(oper1);
+                TmpSt(oper1, id)
+            },
+            Cast(oper1, t) => {
+                let oper1 = f(oper1);
+                Cast(oper1, t)
+            },
+        }
+    }
 }
 
-impl<'a> fmt::Display for Operator<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl<'a> Operator<'a, ()> {
+    pub fn freeze(self, cnt: &mut ir::Counter) -> Operator<'a> {
+        self.map_operands(|oper| oper.freeze(cnt))
+    }
+}
+
+impl<'a> std::fmt::Display for Operator<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let name = match *self {
-            Add(..) => "add",
-            Sub(..) => "sub",
+            BinOp(op, ..) => op.as_str(),
             Mul(..) => "mul",
             Mad(..) => "mad",
             Mov(..) => "mov",
-            Div(..) => "div",
             Ld(..) => "ld",
             St(..) => "st",
             TmpLd(..) => "tmp_ld",

@@ -144,7 +144,7 @@ pub fn print(fun: &Function, time: bool, out: &mut io::Write) -> io::Result<()> 
 }
 
 /// Prints a multiplicative induction var level.
-fn parallel_induction_level(dim: ir::dim::Id, level: &InductionVarLevel,
+fn parallel_induction_level(dim: ir::DimId, level: &InductionVarLevel,
                             name_map: &NameMap, out: &mut fmt::Write) -> fmt::Result {
     let index = name_map.name_index(dim);
     let var = name_map.name_induction_var(level.var, Some(dim));

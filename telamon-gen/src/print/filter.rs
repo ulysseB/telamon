@@ -1,6 +1,7 @@
 ///! Filter code generation.
 use ir;
 use print::ast::{self, Context};
+use print::value_set;
 use std::fmt::{Display, Formatter, Result};
 
 /// Ast for a filtering funtion.
@@ -8,7 +9,7 @@ use std::fmt::{Display, Formatter, Result};
 pub struct Filter<'a> {
     id: usize,
     arguments: Vec<(ast::Variable<'a>, ast::Set<'a>)>,
-    type_name: ir::ValueType,
+    type_name: ast::ValueType,
     bindings: Vec<(ast::Variable<'a>, ast::ChoiceInstance<'a>)>,
     body: PositiveFilter<'a>,
 }
@@ -16,6 +17,7 @@ pub struct Filter<'a> {
 impl<'a> Filter<'a> {
     pub fn new(filter: &'a ir::Filter, id: usize, choice: &'a ir::Choice,
                ir_desc: &'a ir::IrDesc) -> Self {
+        trace!("filter {}_{}", choice.name(), id);
         let arguments = &filter.arguments[choice.arguments().len()..];
         let ref ctx = Context::new(ir_desc, choice, arguments, &filter.inputs);
         let arguments = filter.arguments.iter().enumerate().map(|(pos, t)| {
@@ -31,7 +33,7 @@ impl<'a> Filter<'a> {
         }).collect();
         let values_var = ast::Variable::with_name("values");
         let body = PositiveFilter::new(&filter.rules, choice, &ctx, values_var.clone());
-        let type_name = choice.value_type().full_type();
+        let type_name = ast::ValueType::new(choice.value_type().full_type(), ctx);
         Filter { id, arguments, body, bindings, type_name }
     }
 }
@@ -41,9 +43,9 @@ impl<'a> Filter<'a> {
 enum PositiveFilter<'a> {
     Switch { var: ast::Variable<'a>, cases: Vec<(String, PositiveFilter<'a>)> },
     AllowValues { var: ast::Variable<'a>, values: String },
-    AllowAll { var: ast::Variable<'a>, value_type: ir::ValueType },
+    AllowAll { var: ast::Variable<'a>, value_type: ast::ValueType },
     Rules {
-        value_type: ir::ValueType,
+        value_type: ast::ValueType,
         old_var: ast::Variable<'a>,
         new_var: ast::Variable<'a>,
         rules: Vec<Rule<'a>>,
@@ -55,14 +57,14 @@ impl<'a> PositiveFilter<'a> {
     /// Creates a `PositiveFilter` enforcing a set of rules.
     fn rules(rules: &'a [ir::Rule], choice: &'a ir::Choice, ctx: &Context<'a>,
              var: ast::Variable<'a>) -> Self {
-        let value_type = choice.value_type().full_type();
+        let value_type = ast::ValueType::new(choice.value_type().full_type(), ctx);
         match *rules {
             [] => PositiveFilter::AllowAll { var, value_type },
             [ref r] if r.conditions.is_empty() && r.set_constraints.is_empty() => {
                 if r.alternatives.is_empty() {
                     PositiveFilter::Empty
                 } else {
-                    let values = ast::value_set(&r.alternatives, ctx);
+                    let values = value_set::print(&r.alternatives, ctx);
                     PositiveFilter::AllowValues { var, values }
                 }
             },
@@ -85,7 +87,7 @@ impl<'a> PositiveFilter<'a> {
                 let cases = cases.iter().map(|&(ref values, ref sub_filter)| {
                     let sub_filter = PositiveFilter::new(
                         sub_filter, choice, ctx, set.clone());
-                    (ast::value_set(values, ctx), sub_filter)
+                    (value_set::print(values, ctx), sub_filter)
                 }).collect();
                 PositiveFilter::Switch { var: ctx.input_name(switch), cases }
             },
@@ -103,7 +105,7 @@ pub struct Rule<'a> {
 
 impl<'a> Rule<'a> {
     pub fn new(var: ast::Variable<'a>, rule: &'a ir::Rule, ctx: &Context<'a>) -> Rule<'a> {
-        let values = ast::value_set(&rule.alternatives, ctx);
+        let values = value_set::print(&rule.alternatives, ctx);
         let conditions = rule.conditions.iter().map(|c| condition(c, ctx)).collect();
         let set_conditions = ast::SetConstraint::new(&rule.set_constraints, ctx);
         Rule { var, conditions, set_conditions, values }
@@ -126,14 +128,11 @@ pub fn condition<'a>(cond: &'a ir::Condition, ctx: &Context<'a>) -> String {
             let input_type = ctx.ir_desc.get_enum(enum_name);
             let name = ctx.input_name(input);
             let set = ir::normalized_enum_set(values, !negate, inverse, input_type);
-            let set = ast::value_set(&set, ctx);
+            let set = value_set::print(&set, ctx);
             format!("!{}.intersects({})", name, set)
         },
         ir::Condition::CmpCode { lhs, ref rhs, op } => {
-            let mut rhs = ast::code(rhs, ctx);
-            if ctx.input_choice_def(lhs).is_counter() {
-                rhs = format!("Range::new_eq({})", rhs);
-            }
+            let rhs = ast::code(rhs, ctx);
             let lhs = ctx.input_name(lhs);
             format!("{lhs}.{op}({rhs})", lhs = lhs, rhs = rhs, op = op)
         },

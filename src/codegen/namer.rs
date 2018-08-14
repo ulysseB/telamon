@@ -1,6 +1,5 @@
-use codegen::{Dimension, Function, ParamVal, AllocationScheme};
-use ir::{self, dim, DimMap, InstId, Instruction, mem, Operand, Size, Type, BasicBlock};
-use search_space::{DimKind, Domain};
+use codegen::{self, Dimension, Function, ParamValKey, AllocationScheme, Instruction};
+use ir::{self, dim, DimMap, InstId, mem, Operand, Type};
 use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
@@ -14,7 +13,7 @@ use utils::*;
 /// A value that can be named.
 #[derive(Copy, Clone)]
 pub enum Value<'a> {
-    InductionLevel(ir::IndVarId, ir::dim::Id),
+    InductionLevel(ir::IndVarId, ir::DimId),
     Operand(&'a ir::Operand<'a>),
 }
 
@@ -23,7 +22,7 @@ pub trait Namer {
     /// Provides a name for a variable of the given type.
     fn name(&mut self, t: Type) -> String;
     /// Generates a name for a parameter.
-    fn name_param(&mut self, p: &ParamVal) -> String;
+    fn name_param(&mut self, p: ParamValKey) -> String;
     /// Provides a name for a floating point constant.
     fn name_float(&self, &Ratio<BigInt>, u16) -> String;
     /// Provides a name for an integer constant.
@@ -36,26 +35,27 @@ pub struct NameMap<'a, 'b> {
     /// Provides fresh names.
     namer: std::cell::RefCell<&'b mut Namer>,
     /// Keeps track of the name of the values produced by instructions.
-    insts: HashMap<InstId, (Vec<dim::Id>, NDArray<String>)>,
+    insts: HashMap<InstId, (Vec<ir::DimId>, NDArray<String>)>,
     /// Keeps track of loop index names.
-    indexes: HashMap<dim::Id, RcStr>,
+    indexes: HashMap<ir::DimId, RcStr>,
     /// Keeps track of parameter names, both in the code and in the arguments.
-    params: HashMap<&'a ParamVal<'a>, (String, String)>,
+    params: HashMap<ParamValKey<'a>, (String, String)>,
     /// Keeps track of memory block address names.
     mem_blocks: HashMap<mem::InternalId, String>,
     /// Keeps track of the next fresh ID that can be assigned to a loop.
-    #[cfg(feature = "cuda")]
     num_loop: u32,
     /// Tracks the current index on expanded dimensions.
-    current_indexes: HashMap<dim::Id, u32>,
+    current_indexes: HashMap<ir::DimId, u32>,
     /// Total number threads.
     #[cfg(feature="mppa")]
     total_num_threads: u32,
     /// Tracks the name of induction variables partial names.
     induction_vars: HashMap<ir::IndVarId, String>,
-    induction_levels: HashMap<(ir::IndVarId, ir::dim::Id), String>,
+    induction_levels: HashMap<(ir::IndVarId, ir::DimId), String>,
     /// Casted sizes.
-    size_casts: HashMap<(&'a ir::Size<'a>, ir::Type), String>,
+    size_casts: HashMap<(&'a codegen::Size<'a>, ir::Type), String>,
+    /// Guard to use in front of instructions with side effects.
+    side_effect_guard: Option<RcStr>,
 }
 
 impl<'a, 'b> NameMap<'a, 'b> {
@@ -65,11 +65,11 @@ impl<'a, 'b> NameMap<'a, 'b> {
         // Setup parameters names.
         let params = function.device_code_args().map(|val| {
             let var_name = namer.name(val.t());
-            let param_name = namer.name_param(val);
-            if let ParamVal::GlobalMem(id, _) = *val {
+            let param_name = namer.name_param(val.key());
+            if let ParamValKey::GlobalMem(id) = val.key() {
                 mem_blocks.insert(id, var_name.clone());
             }
-            (val, (var_name, param_name))
+            (val.key(), (var_name, param_name))
         }).collect();
         // Name dimensions indexes.
         let mut indexes = HashMap::default();
@@ -91,7 +91,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
         // Name shared memory blocks. Global mem blocks are named by parameters.
         for mem_block in function.mem_blocks() {
             if mem_block.alloc_scheme() == AllocationScheme::Shared {
-                let name = namer.name(Type::PtrTo(mem_block.id().into()));
+                let name = namer.name(mem_block.ptr_type());
                 mem_blocks.insert(mem_block.id(), name);
             }
         }
@@ -99,16 +99,13 @@ impl<'a, 'b> NameMap<'a, 'b> {
         let mut name_map = NameMap {
             namer: std::cell::RefCell::new(namer),
             insts: HashMap::default(),
-            indexes,
-            params: params,
-            mem_blocks,
-            #[cfg(feature = "cuda")]
             num_loop: 0,
             current_indexes: HashMap::default(),
             #[cfg(feature="mppa")]
             total_num_threads: function.num_threads(),
-            induction_vars, induction_levels,
             size_casts: HashMap::default(),
+            indexes, params, mem_blocks, induction_vars, induction_levels,
+            side_effect_guard: None,
         };
         // Setup induction variables.
         for var in function.induction_vars() {
@@ -124,11 +121,11 @@ impl<'a, 'b> NameMap<'a, 'b> {
             };
         }
         // Setup the name of variables holding instruction results.
-        for inst in function.insts() {
-            if let Some((inst_id, dim_map, _)) = inst.as_reduction() {
-                name_map.decl_alias(inst, inst_id, dim_map, function);
-            } else if inst.t() != Type::Void {
-                name_map.decl_inst(inst, function);
+        for inst in function.cfg().instructions() {
+            if let Some((inst_id, dim_map)) = inst.as_reduction() {
+                name_map.decl_alias(inst, inst_id, dim_map);
+            } else if inst.t().is_some() {
+                name_map.decl_inst(inst);
             }
         }
         name_map
@@ -142,7 +139,6 @@ impl<'a, 'b> NameMap<'a, 'b> {
     pub fn gen_name(&self, t: Type) -> String { self.namer.borrow_mut().name(t) }
 
     /// Generates an ID for a loop.
-    #[cfg(feature = "cuda")]
     pub fn gen_loop_id(&mut self) -> u32 {
         let id = self.num_loop;
         self.num_loop += 1;
@@ -177,8 +173,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
                 } else {
                     Cow::Borrowed(&self.indexes[&id])
                 },
-            Operand::Size(ref size) => self.name_size(size, &Type::I(32)),
-            Operand::Param(p) => self.name_param_val(&ParamVal::External(p)),
+            Operand::Param(p) => self.name_param_val(ParamValKey::External(p)),
             Operand::Addr(id) => self.name_addr(id),
             Operand::InductionVar(id, _) => self.name_induction_var(id, None),
         }
@@ -202,18 +197,19 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     /// Declares an instruction to the namer.
-    fn decl_inst(&mut self, inst: &Instruction, fun: &Function) {
-        let (dim_ids, dim_sizes) = self.inst_name_dims(inst, fun);
+    fn decl_inst(&mut self, inst: &Instruction) {
+        let (dim_ids, dim_sizes) = self.inst_name_dims(inst);
         let num_name = dim_sizes.iter().product();
-        let names = (0 .. num_name).map(|_| self.gen_name(inst.t())).collect_vec();
+        let names = (0 .. num_name).map(|_| {
+            self.gen_name(unwrap!(inst.t()))
+        }).collect_vec();
         let array = NDArray::new(dim_sizes, names);
         assert!(self.insts.insert(inst.id(), (dim_ids, array)).is_none());
     }
 
     /// Declares an instruction as an alias of another.
-    fn decl_alias(&mut self, alias: &Instruction, base: InstId, dim_map: &DimMap
-                  , fun: &Function) {
-        let (dim_ids, dim_sizes) = self.inst_name_dims(alias, fun);
+    fn decl_alias(&mut self, alias: &Instruction, base: InstId, dim_map: &DimMap) {
+        let (dim_ids, dim_sizes) = self.inst_name_dims(alias);
         let names = {
             let (ref base_dims, ref base_names) = self.insts[&base];
             let permutation = {
@@ -241,16 +237,12 @@ impl<'a, 'b> NameMap<'a, 'b> {
 
     /// Returns the ids and the sizes of the dimensions on which the instructions must be
     /// named.
-    fn inst_name_dims(&self, inst: &Instruction, fun: &Function
-                      ) -> (Vec<dim::Id>, Vec<usize>) {
-        inst.iteration_dims().iter().filter(|&&dim| {
-            let kind = fun.decisions().get_dim_kind(dim);
-            unwrap!(kind.is(DimKind::VECTOR | DimKind::UNROLL).as_bool())
-        }).map(|&dim| (dim, unwrap!(fun.dim(dim).size().as_int()) as usize)).unzip()
+    fn inst_name_dims(&self, inst: &Instruction) -> (Vec<ir::DimId>, Vec<usize>) {
+        inst.instantiation_dims().iter().map(|&(dim, size)| (dim, size as usize)).unzip()
     }
 
     /// Returns the name of an index.
-    pub fn name_index(&self, dim_id: dim::Id) -> &str { &self.indexes[&dim_id] }
+    pub fn name_index(&self, dim_id: ir::DimId) -> &str { &self.indexes[&dim_id] }
 
     /// Set the current index of an unrolled dimension.
     pub fn set_current_index(&mut self, dim: &Dimension, idx: u32) {
@@ -263,7 +255,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     pub fn indexed_inst_name(&mut self, inst: &Instruction,
-                             dim: ir::dim::Id, idx: u32) -> String {
+                             dim: ir::DimId, idx: u32) -> String {
         self.current_indexes.insert(dim, idx);
         let name = self.name_inst(inst).to_string();
         self.current_indexes.remove(&dim);
@@ -271,7 +263,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     pub fn indexed_op_name(&mut self, op: &Operand,
-                           dim: ir::dim::Id, idx: u32) -> String {
+                           dim: ir::DimId, idx: u32) -> String {
         self.current_indexes.insert(dim, idx);
         let name = self.name_op(op).to_string();
         self.current_indexes.remove(&dim);
@@ -279,15 +271,15 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     /// Returns the name of a variable representing a parameter.
-    pub fn name_param(&self, param: &ParamVal) -> Cow<str> {
-        let param: &'a ParamVal<'a> = unsafe { std::mem::transmute(param) };
-        Cow::Borrowed(&self.params[param].1)
+    pub fn name_param(&self, param: ParamValKey) -> Cow<str> {
+        let param = unsafe { std::mem::transmute(param) };
+        Cow::Borrowed(&self.params[&param].1)
     }
 
     /// Returns the name of a variable representing a parameter value.
-    pub fn name_param_val(&self, param: &ParamVal) -> Cow<str> {
-        let param: &'a ParamVal<'a> = unsafe { std::mem::transmute(param) };
-        Cow::Borrowed(&self.params[param].0)
+    pub fn name_param_val(&self, param: ParamValKey) -> Cow<str> {
+        let param = unsafe { std::mem::transmute(param) };
+        Cow::Borrowed(&self.params[&param].0)
     }
 
     /// Returns the name of the address of a memory block.
@@ -297,7 +289,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
 
     /// Assigns a name to an induction variable.
     // TODO(cleanup): split into name induction var and name induction level
-    pub fn name_induction_var(&self, var: ir::IndVarId, dim: Option<ir::dim::Id>)
+    pub fn name_induction_var(&self, var: ir::IndVarId, dim: Option<ir::DimId>)
             -> Cow<str> {
         if let Some(dim) = dim {
             Cow::Borrowed(&self.induction_levels[&(var, dim)])
@@ -308,9 +300,11 @@ impl<'a, 'b> NameMap<'a, 'b> {
 
     /// Declares a size cast. Returns the name of the variable only if a new variable was
     /// allcoated.
-    pub fn declare_size_cast(&mut self, size: &'a Size<'a>, t: ir::Type) -> Option<String> {
+    pub fn declare_size_cast(&mut self, size: &'a codegen::Size<'a>, t: ir::Type)
+        -> Option<String>
+    {
         if size.dividend().is_empty() || t == Type::I(32) { return None; }
-        match self.size_casts.entry((size, t.clone())) {
+        match self.size_casts.entry((size, t)) {
             hash_map::Entry::Occupied(..) => None,
             hash_map::Entry::Vacant(entry) =>
                 Some(entry.insert(self.namer.borrow_mut().name(t)).to_string()),
@@ -318,20 +312,30 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     /// Assigns a name of a value to a size.
-    pub fn name_size(&self, size: &Size, expected_t: &ir::Type) -> Cow<str> {
-        let size: &'a Size<'a> = unsafe { std::mem::transmute(size) };
+    pub fn name_size(&self, size: &codegen::Size, expected_t: ir::Type) -> Cow<str> {
+        let size: &'a codegen::Size<'a> = unsafe { std::mem::transmute(size) };
         match (size.dividend(), expected_t) {
             (&[], _) => {
                 assert_eq!(size.divisor(), 1);
                 Cow::Owned(size.factor().to_string())
             },
-            (&[p], &Type::I(32)) if size.factor() == 1 && size.divisor() == 1 =>
-                self.name_param_val(&ParamVal::External(p)),
-            (_, &Type::I(32)) => self.name_param_val(&ParamVal::Size(size)),
+            (&[p], Type::I(32)) if size.factor() == 1 && size.divisor() == 1 =>
+                self.name_param_val(ParamValKey::External(p)),
+            (_, Type::I(32)) => self.name_param_val(ParamValKey::Size(size)),
             _ => {
-                let size = unwrap!(self.size_casts.get(&(size, expected_t.clone())));
+                let size = unwrap!(self.size_casts.get(&(size, expected_t)));
                 Cow::Borrowed(size)
             },
         }
+    }
+
+    /// Returns the side-effect guard, if any is set.
+    pub fn side_effect_guard(&self) -> Option<RcStr> {
+        self.side_effect_guard.clone()
+    }
+
+    /// Sets the predicate to use in front of side-effect instruction.
+    pub fn set_side_effect_guard(&mut self, guard: Option<RcStr>) {
+        self.side_effect_guard = guard;
     }
 }

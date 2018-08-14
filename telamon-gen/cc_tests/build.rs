@@ -14,6 +14,6 @@ fn main() {
         let file_name = src_path.file_name().unwrap();
         println!("cargo:rerun-if-changed={}", file_name.to_str().unwrap());
         let dst_path = Path::new(&out_dir).join(&file_name).with_extension("rs");
-        telamon_gen::process_file(&src_path, &dst_path, !cfg!(feature="noformat_exh"));
+        telamon_gen::process_file(&src_path, &dst_path, !cfg!(feature="noformat_exh")).unwrap();
     }
 }

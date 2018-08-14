@@ -3,7 +3,7 @@ use num;
 use std;
 
 /// The size of an iteration dimension. The size is of the form:
-/// (factor * dividend_0 * dividend_1 * ...)) / divisor
+/// `(factor * dividend_0 * dividend_1 * ...)) / divisor`
 /// where the reminder of the division is null.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Size<'a> {
@@ -43,6 +43,13 @@ impl<'a> Size<'a> {
     pub fn mul_divisor(&mut self, d: u32) {
         assert_ne!(d, 0);
         self.divisor *= d;
+        self.simplify();
+    }
+
+    /// Multiplies the factor by the given factor.
+    pub fn mul_factor(&mut self, d: u32) {
+        assert_ne!(d, 0);
+        self.factor *= d;
         self.simplify();
     }
 

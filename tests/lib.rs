@@ -28,13 +28,13 @@ fn two_add() {
     let mut context = fake::Context::default();
     let signature = {
         let mut builder = helper::SignatureBuilder::new("two_add", &mut context);
-        builder.param("a", 42);
+        builder.scalar("a", 42);
         builder.get()
     };
     gen_best(&context, {
         let mut builder = helper::Builder::new(&signature, context.device());
         builder.add(&"a", &2);
-        builder.add(&3.14f32, &1.0f32);
+        builder.add(&std::f32::consts::PI, &1.0f32);
         builder.get()
     });
 }
@@ -48,39 +48,45 @@ fn inst_dim_order() {
     let mut builder = helper::Builder::new(&signature, context.device());
     let dim0 = builder.open_dim(Size::new(64, vec![], 1));
     let inst0 = builder.mov(&0i32);
-    let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
-    let addr = builder.cast(&0i64, ir::Type::PtrTo(ir::mem::Id::External(0)));
+    let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
+    let addr = builder.cast(&0i64, ir::Type::PtrTo(ir::MemId::External(0)));
     let inst1 = builder.st(&addr, &0i32, pattern);
     builder.close_dim(&dim0);
     let dim1 = builder.open_dim(Size::new(64, vec![], 1));
     let _ = builder.mov(&0i32);
     let space = builder.get();
-    // TODO(cleanup): find a way to detect earlier that THREAD_Z is forbidden
     assert_eq!(space.domain().get_dim_kind(dim0), !DimKind::VECTOR);
-    // TODO(cleanup): find a way to detect earlier that THREAD_Z is forbidden
     assert_eq!(space.domain().get_dim_kind(dim1), !DimKind::VECTOR);
-    let (inst0, inst1) = (inst0.into(), inst1.into());
     assert_eq!(space.domain().get_is_iteration_dim(inst0, dim0), Bool::TRUE);
     assert_eq!(space.domain().get_is_iteration_dim(inst0, dim0), Bool::TRUE);
-    assert_eq!(space.domain().get_order(inst0, dim1.into()), Order::INNER | Order::ORDERED);
+    assert_eq!(space.domain().get_order(inst0.into(), dim1.into()),
+               Order::INNER | Order::ORDERED);
     assert_eq!(space.domain().get_is_iteration_dim(inst1, dim1), Bool::FALSE);
-    assert_eq!(space.domain().get_order(inst1, dim1.into()), Order::INNER | Order::ORDERED);
+    assert_eq!(space.domain().get_order(inst1.into(), dim1.into()),
+               Order::INNER | Order::ORDERED);
     gen_best(&context, space);
 }
 
 /// Ensures nested thread dimensions are packed and that their number is limited.
 #[test]
 fn nested_thread_dims() {
-    // FIXME: revert to old
     let _ = env_logger::try_init();
     let context = fake::Context::default();
     let signature = empty_signature(0);
     let mut builder = helper::Builder::new(&signature, context.device());
-    let d0 = builder.open_dim_ex(Size::new(4, vec![], 1), DimKind::LOOP);
-    let d1 = builder.open_dim_ex(Size::new(512, vec![], 1), DimKind::LOOP);
+    let size4 = builder.cst_size(4);
+    let d0 = builder.open_dim_ex(size4.clone(), DimKind::THREAD);
+    let d1 = builder.open_dim_ex(size4.clone(), DimKind::THREAD);
+    let d2 = builder.open_dim_ex(size4, DimKind::THREAD);
+    let size512 = builder.cst_size(512);
+    let d3 = builder.open_dim(size512);
     builder.mov(&0i32);
-    builder.order(&d0, &d1, Order::INNER);
+    builder.order(&d0, &d3, Order::INNER);
     let space = builder.get();
+    assert!(!space.domain().get_dim_kind(d3).intersects(DimKind::THREAD));
+    assert_eq!(space.domain().get_order(d0.into(), d3.into()), Order::INNER);
+    assert_eq!(space.domain().get_order(d1.into(), d3.into()), Order::INNER);
+    assert_eq!(space.domain().get_order(d2.into(), d3.into()), Order::INNER);
     gen_best(&context, space);
 }
 
@@ -122,7 +128,7 @@ fn block_dims() {
     let mut context = fake::Context::default();
     let signature = {
         let mut builder = helper::SignatureBuilder::new("block_dims", &mut context);
-        builder.param("n", 64);
+        builder.scalar("n", 64);
         builder.get()
     };
     let mut builder = helper::Builder::new(&signature, context.device());
@@ -138,10 +144,7 @@ fn block_dims() {
     assert_eq!(space.domain().get_is_iteration_dim(inst.into(), d2), Bool::TRUE);
     assert_eq!(space.domain().get_is_iteration_dim(inst.into(), d3), Bool::TRUE);
     assert_eq!(space.domain().get_dim_kind(d0),
-               DimKind::LOOP | DimKind::THREAD_X | DimKind::UNROLL);
-    assert_eq!(space.domain().get_is_iteration_dim(d0.into(), d1), Bool::TRUE);
-    assert_eq!(space.domain().get_is_iteration_dim(d0.into(), d2), Bool::TRUE);
-    assert_eq!(space.domain().get_is_iteration_dim(d0.into(), d3), Bool::TRUE);
+               DimKind::LOOP | DimKind::THREAD | DimKind::UNROLL);
     assert_eq!(space.domain().get_order(d1.into(), d2.into()), Order::NESTED);
     assert_eq!(space.domain().get_order(d1.into(), d3.into()), Order::NESTED);
     assert_eq!(space.domain().get_order(d2.into(), d3.into()), Order::NESTED);
@@ -154,7 +157,7 @@ fn vector_dims() {
     let _ = env_logger::try_init();
     let context = fake::Context::default();
     let signature = empty_signature(1);
-    let mem_block = ir::mem::Id::External(0);
+    let mem_block = ir::MemId::External(0);
     let mut builder = helper::Builder::new(&signature, context.device());
     let base_addr = builder.cast(&0i64, ir::Type::PtrTo(mem_block));
     let d0 = builder.open_dim(Size::new(4, vec![], 1));
@@ -182,7 +185,7 @@ fn unroll_dims() {
     let mut context = fake::Context::default();
     let signature = {
         let mut builder = helper::SignatureBuilder::new("unroll_dims", &mut context);
-        builder.param("n", 64);
+        builder.scalar("n", 64);
         builder.get()
     };
     let mut builder = helper::Builder::new(&signature, context.device());
@@ -205,9 +208,9 @@ fn reduce_dim_invariants() {
     let context = fake::Context::default();
     let signature = empty_signature(1);
     let mut builder = helper::Builder::new(&signature, context.device());
-    let init = builder.cast(&0i64, ir::Type::PtrTo(ir::mem::Id::External(0)));
+    let init = builder.cast(&0i64, ir::Type::PtrTo(ir::MemId::External(0)));
     let d0 = builder.open_dim(Size::new(4, vec![], 1));
-    let pattern = builder.unknown_access_pattern(ir::mem::Id::External(0));
+    let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
     let reduce = builder.ld(Type::I(64), &helper::Reduce(init), pattern);
 
     let d1 = builder.open_dim(Size::new(4, vec![], 1));

@@ -1,17 +1,17 @@
 //! Helper struct to build a `Function`.
 use device::Device;
 use ir::{AccessPattern, Function, Signature, InstId, Operand, Operator};
-use ir::{self, Parameter, Size, Type, dim, mem, op};
+use ir::{self, Parameter, Size, Type, mem, op};
 use itertools::Itertools;
 use helper::{AutoOperand, DimGroup, MetaDimension, MetaBasicBlock};
-use search_space::{Action, Order, DimKind, Domain, InstFlag, MemSpace, SearchSpace};
+use search_space::{Action, Order, DimKind, InstFlag, MemSpace, SearchSpace};
 use std::borrow::Borrow;
 use utils::*;
 
 /// Helper to build a `Function`.
 pub struct Builder<'a> {
-    function: Function<'a>,
-    open_dims: HashMap<dim::Id, dim::Id>,
+    function: Function<'a, ()>,
+    open_dims: HashMap<ir::DimId, ir::DimId>,
     actions: Vec<Action>,
 }
 
@@ -38,26 +38,32 @@ impl<'a> Builder<'a> {
     }
 
     /// Returns an operand from an `AutoOperand`.
-    fn get_op<'b: 'a>(&self, op: &AutoOperand<'b>) -> Operand<'a> {
+    fn get_op<'b: 'a>(&self, op: &AutoOperand<'b>) -> Operand<'a, ()> {
         op.get(&self.function, &self.open_dims)
     }
 
-    /// Adds an `Add` instruction to the fuction.
-    pub fn add<'b: 'a>(&mut self, lhs: &AutoOperand<'b>, rhs: &AutoOperand<'b>
-                      ) -> InstId {
+    /// Creates a binary operator.
+    pub fn binop<'b: 'a>(&mut self,
+                         op: ir::BinOp,
+                         lhs: &AutoOperand<'b>,
+                         rhs: &AutoOperand<'b>) -> InstId {
         let lhs_op = self.get_op(lhs);
         let rhs_op = self.get_op(rhs);
         let rounding = default_rounding(&lhs_op.t());
-        self.inst(op::Add(lhs_op, rhs_op, rounding))
+        self.inst(op::BinOp(op, lhs_op, rhs_op, rounding))
+    }
+
+    /// Adds an `Add` instruction to the fuction.
+    pub fn add<'b: 'a>(&mut self, lhs: &AutoOperand<'b>, rhs: &AutoOperand<'b>)
+        -> InstId
+    {
+        self.binop(ir::BinOp::Add, lhs, rhs)
     }
 
     /// Adds a `Sub` instruction to the function.
     pub fn sub<'b: 'a>(&mut self, lhs: &AutoOperand<'b>, rhs: &AutoOperand<'b>
                       ) -> InstId {
-        let lhs_op = self.get_op(lhs);
-        let rhs_op = self.get_op(rhs);
-        let rounding = default_rounding(&lhs_op.t());
-        self.inst(op::Sub(lhs_op, rhs_op, rounding))
+        self.binop(ir::BinOp::Sub, lhs, rhs)
     }
 
     /// Adds a `Mul` instruction to the function. Defaults to low mode.
@@ -95,10 +101,7 @@ impl<'a> Builder<'a> {
     /// Adds a `Div` instruction to the fuction.
     pub fn div<'b: 'a>(&mut self, lhs: &AutoOperand<'b>, rhs: &AutoOperand<'b>
                       ) -> InstId {
-        let lhs_op = self.get_op(lhs);
-        let rhs_op = self.get_op(rhs);
-        let rounding = default_rounding(&lhs_op.t());
-        self.inst(op::Div(lhs_op, rhs_op, rounding))
+        self.binop(ir::BinOp::Div, lhs, rhs)
     }
 
     /// Adds a `Mov` instruction to the function.
@@ -109,13 +112,13 @@ impl<'a> Builder<'a> {
 
     /// Adds a coherent load from global memory instruction to the function.
     pub fn ld<'b: 'a>(&mut self, ret_type: Type, addr: &AutoOperand<'b>,
-                      pattern: AccessPattern) -> InstId {
+                      pattern: AccessPattern<'a>) -> InstId {
         self.ld_ex(ret_type, addr, pattern, InstFlag::MEM_COHERENT)
     }
 
     /// Adds a non-coherent load from global memory instruction to the function.
     pub fn ld_nc<'b: 'a>(&mut self, ret_type: Type, addr: &AutoOperand<'b>,
-                        pattern: AccessPattern) -> InstId {
+                        pattern: AccessPattern<'a>) -> InstId {
         self.ld_ex(ret_type, addr, pattern, InstFlag::ALL)
     }
 
@@ -123,7 +126,7 @@ impl<'a> Builder<'a> {
     pub fn ld_ex<'b: 'a>(&mut self,
                          ret_type: Type,
                          addr: &AutoOperand<'b>,
-                         pattern: AccessPattern,
+                         pattern: AccessPattern<'a>,
                          flags: InstFlag) -> InstId {
         let addr_op = self.get_op(addr);
         let inst_id = self.inst(op::Ld(ret_type, addr_op, pattern));
@@ -133,7 +136,7 @@ impl<'a> Builder<'a> {
 
     /// Adds a store instruction.
     pub fn st<'b: 'a>(&mut self, addr: &AutoOperand<'b>, val: &AutoOperand<'b>,
-                      pattern: AccessPattern) -> InstId {
+                      pattern: AccessPattern<'a>) -> InstId {
         self.st_ex(addr, val, true, pattern, InstFlag::ALL)
     }
 
@@ -142,7 +145,7 @@ impl<'a> Builder<'a> {
                          addr: &AutoOperand<'b>,
                          val: &AutoOperand<'b>,
                          side_effect: bool,
-                         pattern: AccessPattern,
+                         pattern: AccessPattern<'a>,
                          flags: InstFlag,
                         ) -> InstId {
         let addr_op = self.get_op(addr);
@@ -174,17 +177,20 @@ impl<'a> Builder<'a> {
     }
 
     /// Inserts an instruction in the function.
-    fn inst(&mut self, op: Operator<'a>) -> InstId {
-        self.function.add_inst(op, self.open_dims.iter().map(|(&x, _)| x).collect())
+    fn inst(&mut self, op: Operator<'a, ()>) -> InstId {
+        let open_dims = self.open_dims.iter().map(|(&x, _)| x).collect();
+        unwrap!(self.function.add_inst(op, open_dims))
     }
 
     /// Builds both an induction variable for a tensor memory access and the corresponding
     /// access pattern.
     pub fn tensor_access(&mut self, addr: &AutoOperand<'a>,
-                         mem: ir::mem::Id,
+                         mem: ir::MemId,
                          t: &ir::Type,
-                         dims: &[&MetaDimension]) -> (ir::IndVarId, ir::AccessPattern) {
-        let data_size = self.cst_size(t.len_byte().unwrap());
+                         dims: &[&MetaDimension])
+        -> (ir::IndVarId, ir::AccessPattern<'a>)
+    {
+        let data_size = self.cst_size(unwrap!(t.len_byte()));
         let induction_dims = dims.iter().flat_map(|d| d.ids()).rev()
             .scan(data_size, |size, dim| {
                 let increment = size.clone();
@@ -199,14 +205,14 @@ impl<'a> Builder<'a> {
     pub fn action(&mut self, action: Action) { self.actions.push(action) }
 
     /// Opens a new dimension.
-    pub fn open_dim(&mut self, size: Size<'a>) -> dim::Id {
-        let id = self.function.add_dim(size);
+    pub fn open_dim(&mut self, size: Size<'a>) -> ir::DimId {
+        let id = unwrap!(self.function.add_dim(size));
         self.open_dims.insert(id, id);
         id
     }
 
     /// Opens a nest of new dimension with the given kinds and sizes.
-    pub fn open_dim_ex(&mut self, size: Size<'a>, kind: DimKind) -> dim::Id {
+    pub fn open_dim_ex(&mut self, size: Size<'a>, kind: DimKind) -> ir::DimId {
         let id = self.open_dim(size);
         self.actions.push(Action::DimKind(id, kind));
         id
@@ -235,7 +241,7 @@ impl<'a> Builder<'a> {
         DimGroup::new(old_dim.ids().map(|old_id| {
             self.open_dims.remove(&old_id);
             let size = self.function.dim(old_id).size().clone();
-            let new_id = self.function.add_dim(size);
+            let new_id = unwrap!(self.function.add_dim(size));
             self.open_dims.insert(new_id, old_id);
             new_id
         }).collect())
@@ -280,51 +286,56 @@ impl<'a> Builder<'a> {
     }
 
     /// Allocates a memory block in shared memory.
-    pub fn allocate_shared(&mut self, size: Size<'a>) -> mem::InternalId {
+    pub fn allocate_shared(&mut self, size: u32) -> mem::InternalId {
         let id = self.allocate(size, true);
         self.actions.push(Action::MemSpace(id.into(), MemSpace::SHARED));
         id
     }
 
     /// Allocates a memory block.
-    pub fn allocate(&mut self, size: Size<'a>, private: bool) -> mem::InternalId {
-        self.function.add_mem_block(size, private)
+    pub fn allocate(&mut self, size: u32, private: bool) -> mem::InternalId {
+        assert!(private, "allocating non-private memory is not yet supported");
+        self.function.add_mem_block(size)
     }
 
     /// Generates an access paterns with all the strides unknown on the opened dimensions.
-    pub fn unknown_access_pattern(&self, mem: mem::Id) -> AccessPattern {
+    pub fn unknown_access_pattern(&self, mem: ir::MemId) -> AccessPattern<'static> {
         AccessPattern::Unknown { mem_id: mem }
     }
 
     /// Generates the access pattern corresponding to accessing a tensor of the given
-    /// type. The data is assumed to be laid out contiguously in the order given by dimensions.
-    /// The last dimension is the major order.
-    pub fn tensor_access_pattern(&self, mem: mem::Id, t: &Type, dims: &[&MetaDimension])
-            -> AccessPattern {
-        let type_len = t.len_byte().unwrap() as i32;
-        let dims = dims.iter().flat_map(|d| d.ids()).collect();
-        AccessPattern::Tensor { mem_id: mem, stride: type_len, dims }
+    /// type. The data is assumed to be laid out contiguously in the order given by
+    /// dimensions. The last dimension is the major order.
+    pub fn tensor_access_pattern(&self, mem: ir::MemId, t: &Type, dims: &[&MetaDimension])
+            -> AccessPattern<'a> {
+        let data_size = self.cst_size(unwrap!(t.len_byte()));
+        let dims = dims.iter().flat_map(|d| d.ids()).rev().scan(data_size, |size, dim| {
+            let increment = size.clone();
+            *size *= self.function.dim(dim).size();
+            Some((dim, increment))
+        }).collect();
+        AccessPattern::Tensor { mem_id: mem, dims }
     }
 
     /// Builds an induction variable.
     pub fn induction_var(&mut self, base: &AutoOperand<'a>,
-                         dims: Vec<(dim::Id, ir::Size<'a>)>) -> ir::IndVarId {
+                         dims: Vec<(ir::DimId, ir::Size<'a>)>) -> ir::IndVarId {
         let base = self.get_op(base);
-        self.function.add_ind_var(ir::InductionVar::new(dims, base))
+        self.function.add_ind_var(unwrap!(ir::InductionVar::new(dims, base)))
     }
 
     /// Creates a dim-map operand.
     pub fn dim_map(&self, base: ir::InstId,
                    dim_map: &[(&MetaDimension, &MetaDimension)],
-                   scope: ir::DimMapScope) -> ir::Operand<'a> {
+                   scope: ir::DimMapScope<()>) -> ir::Operand<'a, ()> {
         let dim_map = dim_map.iter().flat_map(|&(lhs, rhs)| lhs.ids().zip_eq(rhs.ids()));
         let inst = self.function.inst(base);
         ir::Operand::new_inst(inst, ir::DimMap::new(dim_map), scope)
     }
 
     /// Finds a paramter given its name.
-    fn find_param(&self, param: &str) -> &'a Parameter {
-        self.function.signature().params.iter().find(|p| p.name == param).unwrap()
+    pub fn find_param(&self, param: &str) -> &'a Parameter {
+        unwrap!(self.function.signature().params.iter().find(|p| p.name == param))
     }
 }
 

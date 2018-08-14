@@ -5,15 +5,22 @@ pub fn compute_counter({{>choice.arg_defs ../this}}
                        diff: &DomainDiff)
         -> {{~#if half}} HalfRange {{else}} Range {{/if}}
 {
-    let mut counter_val =
-        {{~#if half}}HalfRange::new_geq{{else}}Range::new_eq{{/if}}({{base}});
+    let mut counter_val = {{~#if half~}}
+        HalfRange::new_eq(&HalfRange::ALL, {{base}});
+    {{~else~}}
+        Range::new_eq(&Range::ALL, {{base}});
+    {{~/if~}}
     {{#>loop_nest nest}}
         let value = {{>counter_value value use_old=true}};
         let incr = {{>choice.getter incr use_old=true}};
         {{#unless half~}}
-            if ({{incr_condition}}).intersects(incr) { counter_val.max {{op}}= value.max; }
+            if ({{incr_condition}}).intersects(incr) {
+                counter_val.max {{op}}= NumDomain::max(&value);
+            }
         {{/unless~}}
-        if ({{incr_condition}}).contains(incr) { counter_val.min {{op}}= value.min; }
+        if ({{incr_condition}}).contains(incr) {
+            counter_val.min {{op}}= NumDomain::min(&value);
+        }
     {{/loop_nest}}
     counter_val
 }

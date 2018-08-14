@@ -1,28 +1,61 @@
 //! Defines a structure to store the configuration of the exploration. The configuration
 //! is read from the `Setting.toml` file if it exists. Some parameters can be overridden
 //! from the command line.
+
+extern crate toml;
+
 use config;
 use std;
+use std::fmt;
 use getopts;
 use itertools::Itertools;
+use num_cpus;
 
 /// Stores the configuration of the exploration.
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct Config {
     /// Name of the file in wich to store the logs.
     pub log_file: String,
+    /// Name of the file in which to store the binary event log.
+    pub event_log: String,
     /// Number of exploration threads.
     pub num_workers: usize,
-    /// Exploration algorithm to use.
-    pub algorithm: SearchAlgorithm,
-    /// Indicates the search must be stoped if a candidate with an execution time better
+    /// Indicates the search must be stopped if a candidate with an execution time better
     /// than the bound (in ns) is found.
     pub stop_bound: Option<f64>,
-    /// Indicates the search must be stoped after the given number of minutes.
+    /// Indicates the search must be stopped after the given number of minutes.
     pub timeout: Option<u64>,
+    /// Indicates the search must be stopped after the given number of
+    /// candidates have been evaluated.
+    pub max_evaluations: Option<usize>,
+    /// A percentage cut indicate that we only care to find a candidate that is in a
+    /// certain range above the best Therefore, if cut_under is 20%, we can discard any
+    /// candidate whose bound is above 80% of the current best.
+    pub distance_to_best: Option<f64>,
+    /// Exploration algorithm to use. Needs to be last for TOML serialization, because it is a table.
+    pub algorithm: SearchAlgorithm,
 }
 
 impl Config {
+    fn create_parser() -> config::Config {
+        let mut config_parser = config::Config::new();
+        // If there is nothing in the config, the parser fails by
+        // saying that it found a unit value where it expected a
+        // Config (see
+        // https://github.com/mehcode/config-rs/issues/60). As a
+        // workaround, we set an explicit default for the "timeout"
+        // option, which makes the parsing succeed even if there is
+        // nothing to parse.
+        unwrap!(config_parser.set_default::<Option<f64>>("timeout", None));
+        let config_path = std::path::Path::new("Settings.toml");
+        if config_path.exists() {
+            unwrap!(config_parser.merge(config::File::from(config_path)));
+        }
+        config_parser
+    }
+
     /// Reads the configuration from the "Settings.toml" file and from the command line.
     pub fn read() -> Self {
         let arg_parser = Self::setup_args_parser();
@@ -36,33 +69,23 @@ impl Config {
             println!("{}", arg_parser.usage(&brief));
             std::process::exit(0);
         }
-        let mut config_parser = Self::setup_config_parser();
-        let config_path = std::path::Path::new("Settings.toml");
-        if config_path.exists() {
-            unwrap!(config_parser.merge(config::File::from(config_path)));
-        }
+        let mut config_parser = Self::create_parser();
         Self::parse_arguments(&arg_matches, &mut config_parser);
-        Self::parse_config(&config_parser)
+        unwrap!(config_parser.try_into::<Self>())
     }
 
-    /// Sets up the parser of the configuration file.
-    fn setup_config_parser() -> config::Config {
-        let mut parser = config::Config::new();
-        unwrap!(parser.set_default("log_file", String::from("watch.log")));
-        unwrap!(parser.set_default("num_workers", 1));
-        SearchAlgorithm::setup_config_parser(&mut parser);
-        parser
+    /// Extract the configuration from the configuration file, if any.
+    pub fn read_from_file() -> Self {
+        unwrap!(Self::create_parser().try_into::<Self>())
     }
 
-    /// Extracts the parameters from the configuration file.
-    fn parse_config(parser: &config::Config) -> Self {
-        Config {
-            log_file: unwrap!(parser.get_str("log_file")),
-            num_workers: unwrap!(parser.get_int("num_workers")) as usize,
-            algorithm: SearchAlgorithm::parse_config(parser),
-            stop_bound: optional_param(parser.get_float("stop_bound")),
-            timeout: optional_param(parser.get_int("timeout")).map(|x| x as u64),
-        }
+    /// Parse the configuration from a JSON string. Primary user is
+    /// the Python API (through the C API).
+    pub fn from_json(json: &str) -> Self {
+        let mut parser = Self::create_parser();
+        unwrap!(parser.merge(
+            config::File::from_str(json, config::FileFormat::Json)));
+        unwrap!(parser.try_into::<Self>())
     }
 
     /// Sets up the parser of command line arguments.
@@ -91,31 +114,37 @@ impl Config {
     }
 }
 
-fn optional_param<T>(res: Result<T, config::ConfigError>) -> Option<T> {
-    match res {
-        Ok(t) => Some(t),
-        Err(config::ConfigError::NotFound(_)) => None,
-        Err(err) => panic!(err),
+
+impl fmt::Display for Config {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", unwrap!(toml::to_string(self)))
     }
 }
 
-impl std::fmt::Display for Config {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "log_file = \"{}\"", self.log_file)?;
-        writeln!(f, "num_workers = {}", self.num_workers)?;
-        if let Some(b) = self.stop_bound { writeln!(f, "stop_bound = {}", b)?; }
-        if let Some(b) = self.timeout { writeln!(f, "timeout = {}", b)?; }
-        self.algorithm.fmt(f)?;
-        Ok(())
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            log_file: String::from("watch.log"),
+            event_log: String::from("eventlog.tfrecord.gz"),
+            num_workers: num_cpus::get(),
+            algorithm: SearchAlgorithm::default(),
+            stop_bound: None,
+            timeout: None,
+            max_evaluations: None,
+            distance_to_best: None,
+        }
     }
 }
 
 /// Exploration algorithm to use.
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(tag="type")]
+#[serde(rename_all="snake_case")]
 pub enum SearchAlgorithm {
     /// Evaluate all the candidates that cannot be pruned.
     BoundOrder,
     /// Use a multi-armed bandit algorithm.
+    #[serde(rename="bandit")]
     MultiArmedBandit(BanditConfig),
 }
 
@@ -134,41 +163,16 @@ impl SearchAlgorithm {
         }
         BanditConfig::parse_arguments(arguments, config);
     }
-
-    /// Sets up the parser of the configuration file.
-    fn setup_config_parser(parser: &mut config::Config) {
-        unwrap!(parser.set_default("algorithm", String::from("bound_order")));
-        BanditConfig::setup_config_parser(parser);
-    }
-
-    /// Extracts the parameters from the configuration file.
-    fn parse_config(parser: &config::Config) -> Self {
-        match &unwrap!(parser.get_str("algorithm")) as &str {
-            "bound_order" => SearchAlgorithm::BoundOrder,
-            "bandit" => {
-                let bandit_config = BanditConfig::parse_config(parser);
-                SearchAlgorithm::MultiArmedBandit(bandit_config)
-            },
-            algo => panic!("invalid search algorithm: {}. \
-                           Must be algorithm=bound_order|bandit", algo),
-        }
-    }
 }
 
-impl std::fmt::Display for SearchAlgorithm {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match *self {
-            SearchAlgorithm::BoundOrder => writeln!(f, "algorithm = \"bound_order\""),
-            SearchAlgorithm::MultiArmedBandit(ref config) => {
-                writeln!(f, "algorithm = \"bandit\"")?;
-                config.fmt(f)
-            },
-        }
-    }
+impl Default for SearchAlgorithm {
+    fn default() -> Self { SearchAlgorithm::MultiArmedBandit(BanditConfig::default()) }
 }
 
 /// Configuration parameters specific to the multi-armed bandit algorithm.
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(default)]
+#[serde(deny_unknown_fields)]
 pub struct BanditConfig {
     /// Indicates how to select between nodes of the search tree when none of their
     /// children have been evaluated.
@@ -180,13 +184,16 @@ pub struct BanditConfig {
     /// The biggest delta is, the more focused on the previous best candidates the
     /// exploration is.
     pub delta: f64,
+    /// If true, does not expand tree until end - instead, starts a montecarlo descend after each
+    /// expansion of a node
+    pub monte_carlo: bool,
 }
 
 impl BanditConfig {
     /// Sets up the options that can be passed on the command line.
     fn setup_args_parser(opts: &mut getopts::Options) {
         opts.optopt("s", "default_node_selection",
-                    "selection algorithm for nodes without evaulations: \
+                    "selection algorithm for nodes without evaluations: \
                     api, random, bound, weighted_random",
                     "api|random|bound|weighted_random");
     }
@@ -197,39 +204,24 @@ impl BanditConfig {
             unwrap!(config.set("new_nodes_order", algo));
         }
     }
-
-    /// Sets up the parser of the configuration file.
-    fn setup_config_parser(parser: &mut config::Config) {
-        NewNodeOrder::setup_config_parser(parser);
-        OldNodeOrder::setup_config_parser(parser);
-        unwrap!(parser.set_default("threshold", 10));
-        unwrap!(parser.set_default("delta", 0.001));
-    }
-
-    /// Extracts the parameters from the configuration file.
-    fn parse_config(parser: &config::Config) -> Self {
-        BanditConfig {
-            new_nodes_order: NewNodeOrder::parse_config(parser),
-            old_nodes_order: OldNodeOrder::parse_config(parser),
-            threshold: unwrap!(parser.get_int("threshold")) as usize,
-            delta: unwrap!(parser.get_float("delta")),
-        }
-    }
 }
 
-impl std::fmt::Display for BanditConfig {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "new_nodes_order = \"{}\"", self.new_nodes_order)?;
-        writeln!(f, "old_nodes_order = \"{}\"", self.old_nodes_order)?;
-        writeln!(f, "threshold = {}", self.threshold)?;
-        writeln!(f, "delta = {}", self.delta)?;
-        Ok(())
+impl Default for BanditConfig {
+    fn default() -> Self {
+        BanditConfig {
+            new_nodes_order: NewNodeOrder::default(),
+            old_nodes_order: OldNodeOrder::default(),
+            threshold: 10,
+            delta: 1.,
+            monte_carlo: true,
+        }
     }
 }
 
 /// Indicates how to choose between nodes of the search tree when no children have been
 /// evaluated.
-#[derive(Clone)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all="snake_case")]
 pub enum NewNodeOrder {
     /// Consider the nodes in the order given by the search space API.
     Api,
@@ -242,39 +234,14 @@ pub enum NewNodeOrder {
     WeightedRandom,
 }
 
-impl NewNodeOrder {
-    /// Sets up the parser of the configuration file.
-    fn setup_config_parser(parser: &mut config::Config) {
-        unwrap!(parser.set_default("new_nodes_order", "weighted_random"));
-    }
-
-    /// Extracts the parameters from the configuration file.
-    fn parse_config(parser: &config::Config) -> Self {
-        match &unwrap!(parser.get_str("new_nodes_order")) as &str {
-            "api" => NewNodeOrder::Api,
-            "random" => NewNodeOrder::Random,
-            "bound" => NewNodeOrder::Bound,
-            "weighted_random" => NewNodeOrder::WeightedRandom,
-            _ => panic!("Wrong new_nodes_order option, \
-                       must be new_nodes_order = api|random|bound|weighted_random")
-        }
-    }
-}
-
-impl std::fmt::Display for NewNodeOrder {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match *self {
-            NewNodeOrder::Api => "api",
-            NewNodeOrder::Random => "random",
-            NewNodeOrder::Bound => "bound",
-            NewNodeOrder::WeightedRandom => "weighted_random",
-        }.fmt(f)
-    }
+impl Default for NewNodeOrder {
+    fn default() -> Self { NewNodeOrder::WeightedRandom }
 }
 
 /// Indicates how to choose between nodes of the search tree with at least one descendent
 /// evaluated.
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all="snake_case")]
 pub enum OldNodeOrder {
     /// Use the weights from the bandit algorithm.
     Bandit,
@@ -285,30 +252,6 @@ pub enum OldNodeOrder {
     WeightedRandom,
 }
 
-impl OldNodeOrder {
-    /// Sets up the parser of the configuration file.
-    fn setup_config_parser(parser: &mut config::Config) {
-        unwrap!(parser.set_default("old_nodes_order", "bandit"));
-    }
-
-    /// Extracts the parameters from the configuration file.
-    fn parse_config(parser: &config::Config) -> Self {
-        match &unwrap!(parser.get_str("old_nodes_order")) as &str {
-            "bandit" => OldNodeOrder::Bandit,
-            "bound" => OldNodeOrder::Bound,
-            "weighted_random" => OldNodeOrder::WeightedRandom,
-            _ =>  panic!("Wrong old_nodes_order option, \
-                         must be old_nodes_order = bound|bandit|weighted_random")
-        }
-    }
-}
-
-impl std::fmt::Display for OldNodeOrder {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match *self {
-            OldNodeOrder::Bandit => "bandit",
-            OldNodeOrder::Bound => "bound",
-            OldNodeOrder::WeightedRandom => "weighted_random",
-        }.fmt(f)
-    }
+impl Default for OldNodeOrder {
+    fn default() -> Self { OldNodeOrder::Bandit }
 }

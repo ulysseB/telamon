@@ -1,5 +1,6 @@
 /// Provides a way to represent the stride of a given variable.
 use ir;
+use utils::*;
 
 /// A stride on a given dimensions.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
@@ -10,55 +11,51 @@ pub enum Stride {
     Unknown,
 }
 
-impl Stride {
-    /// Unwrap the stride or return the given value.
-    pub fn unwrap_or(self, default: i32) -> i32 {
-        match self {
-            Stride::Int(stride) => stride,
-            Stride::Unknown => default,
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum AccessPattern {
+#[derive(Clone, Debug)]
+pub enum AccessPattern<'a> {
     /// Unknown access pattern.
-    Unknown { mem_id: ir::mem::Id },
-    /// Corresponds to accessing a tensor stored in a contiguous array in memory.
-    Tensor { mem_id: ir::mem::Id, stride: i32, dims: Vec<ir::dim::Id> },
+    Unknown { mem_id: ir::MemId },
+    /// Access with a fixed stride on each dimensions. Accesses on two different
+    /// dimensions should not overlap.
+    Tensor { mem_id: ir::MemId, dims: HashMap<ir::DimId, ir::Size<'a>> },
 }
 
-impl AccessPattern {
-    /// Returns the stride on a given dimension.
-    pub fn stride(&self, dim: ir::dim::Id) -> Stride {
-        match *self {
-            AccessPattern::Unknown { .. } => Stride::Unknown,
-            AccessPattern::Tensor { stride, ref dims, .. } => {
-                if dims.last() == Some(&dim) {
-                    Stride::Int(stride)
-                } else if dims.iter().any(|x| *x == dim) {
-                    Stride::Unknown
-                } else {
-                    Stride::Int(0)
-                }
+impl<'a> AccessPattern<'a> {
+    /// Indicates if memory accesses access to consecutive elements on the given dimension.
+    pub fn is_consecutive(&self, dim: ir::DimId, t: &ir::Type) -> bool {
+        match self {
+            AccessPattern::Unknown { .. } => false,
+            AccessPattern::Tensor { dims, .. } => {
+                dims.get(&dim).and_then(|stride| stride.as_int())
+                    .map(|stride| Some(stride) == t.len_byte())
+                    .unwrap_or(false)
             },
         }
     }
 
-    /// Renames a basic block in the stride map.
-    pub fn rename(&mut self, old: ir::dim::Id, new: ir::dim::Id) {
-        match *self {
-            AccessPattern::Unknown { .. } => (),
-            AccessPattern::Tensor { ref mut dims, .. } =>
-                for dim in dims { if *dim == old { *dim = new; } },
-        }
-    }
-
     /// Returns the id of the memory block accessed.
-    pub fn mem_block(&self) -> ir::mem::Id {
+    pub fn mem_block(&self) -> ir::MemId {
         match *self {
             AccessPattern::Unknown { mem_id } |
             AccessPattern::Tensor { mem_id, .. } => mem_id,
+        }
+    }
+
+    /// Ensure the access pattern is valid for an instruction nested in the dimensions
+    /// given in `iter_dims`.
+    pub fn check(&self, iter_dims: &HashSet<ir::DimId>) -> Result<(), ir::Error> {
+        match self {
+            AccessPattern::Unknown { .. } => Ok(()),
+            AccessPattern::Tensor { dims, .. } => {
+                // Ensures all dimensions referenced in the pattern are nested outside
+                // the access pattern.
+                for (&dim, _) in dims {
+                    if !iter_dims.contains(&dim) {
+                        return Err(ir::Error::InvalidDimInPattern { dim });
+                    }
+                }
+                Ok(())
+            },
         }
     }
 }

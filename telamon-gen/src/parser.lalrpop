@@ -1,7 +1,8 @@
 //! Lalrpop parser for constraints description.
 use ast;
 use ir;
-use lexer::Token;
+
+use lexer::*;
 use utils::*;
 
 grammar;
@@ -9,56 +10,40 @@ grammar;
 pub ast: ast::Ast = { statement* => ast::Ast { statements: <> } };
 
 statement: ast::Statement = {
-    <doc: doc?> set <name: set_ident> <arg: ("(" <var_def> ")")?>
-            <superset: (subsetof <set_ref>)?> ":"
-            <disjoint: set_disjoint?>
-            <keys: set_def_map*> end => {
-        let disjoint = disjoint.unwrap_or(Vec::new());
-        ast::Statement::SetDef { name, doc, arg, superset, keys, disjoint, quotient: None }
+    stmt_set => {
+        ast::Statement::SetDef(<>)
     },
-    <doc: doc?> quotient <name: set_ident> <arg: ("(" <var_def> ")")?>
-        of <dividend: var_def> ":"
-        <representant: choice_ident> "=" <conditions: list<condition, and>> "/"
-        <equiv: choice_ident> is <equiv_cond: value_set>
-        <disjoint: set_disjoint?> <keys: set_def_map*> end =>
-    {
-        let superset = Some(dividend.set.clone());
-        let equiv_cond = equiv_cond.into_iter().map(RcStr::new).collect();
-        let quotient = Some(ast::Quotient {
-            item: dividend,
-            equiv_relation: (equiv, equiv_cond),
-            conditions,
-            representant: RcStr::new(representant),
-        });
-        let disjoint = disjoint.unwrap_or(Vec::new());
-        ast::Statement::SetDef { name, doc, arg, superset, keys, disjoint, quotient }
+    stmt_quotient => {
+        ast::Statement::SetDef(<>)
     },
-    <doc: doc?> define enum_ <name: choice_ident> "(" <vars: choice_vars> ")" ":"
-        <stmts: enum_stmt*> end => {
-        ast::Statement::EnumDef {
-            name: name,
-            doc: doc,
-            variables: vars,
-            statements: stmts,
-        }
+    stmt_integer => {
+        ast::Statement::ChoiceDef(<>)
     },
-    trigger <foralls: (forall <var_def> ":")*> <code: code> when
-        <conditions: non_empty_list<condition, and>> =>
-    {
-        ast::Statement::TriggerDef { foralls, conditions, code }
+    stmt_enum => {
+        ast::Statement::ChoiceDef(<>)
     },
-    <doc: doc?> define <visibility: counter_visibility?> counter <name: choice_ident>
-        "(" <vars: choice_vars> ")" ":" <body: counter_body> end =>
-    {
+    spanned<trigger> <foralls: (forall <var_def> ":")*> <code: code> when
+        <conditions: non_empty_list<condition, and>> => {
+            ast::Statement::TriggerDef { foralls, conditions, code }
+    },
+    <doc: doc?> spanned<define> <visibility: counter_visibility?> counter
+                <name: choice_ident>
+        "(" <vars: choice_vars> ")" ":" <body: counter_body> end => {
         let name = RcStr::new(name);
         let visibility = visibility.unwrap_or(ir::CounterVisibility::Full);
-        ast::Statement::CounterDef { name, doc, vars, visibility, body, }
+            ast::Statement::ChoiceDef(ast::ChoiceDef::CounterDef(
+                ast::CounterDef {
+                    name, doc, visibility, vars, body,
+                }
+            ))
     },
-    require <constraint> => ast::Statement::Require(<>),
+    spanned<require> <constraint> => {
+        ast::Statement::Require(<>)
+    },
 };
 
-set_def_map: (ir::SetDefKey, Option<ast::VarDef>, String) = {
-    <key: set_def_key> <var: (forall <var_def>)?> "=" <val: code> => (key, var, val),
+set_def_map: (Spanned<ir::SetDefKey>, Option<ast::VarDef>, String) = {
+    <key: spanned<set_def_key>> <var: (forall <var_def>)?> "=" <val: code> => (key, var, val),
 };
 
 set_disjoint: Vec<String> = {
@@ -67,9 +52,13 @@ set_disjoint: Vec<String> = {
 
 choice_vars = { list<var_def, ","> };
 
+rc_var: RcStr = {
+    <name: var> => RcStr::new(name),
+};
+
 var_def: ast::VarDef = {
-    <name: var> in_ <set: set_ref> => {
-        ast::VarDef { name: RcStr::new(name), set }
+    <spanned_name: spanned<rc_var>> in_ <set: set_ref> => {
+        ast::VarDef { name: spanned_name, set }
     },
 };
 
@@ -80,22 +69,35 @@ set_ref: ast::SetRef = {
 };
 
 enum_stmt: ast::EnumStatement = {
-    <doc: doc?> value <name: val_ident> ":" <reqs: (requires <constraint>)*> => {
+    <doc: doc?> value <name: spanned<val_ident>> ":"
+    <reqs: (requires <constraint>)*> => {
         ast::EnumStatement::Value(name, doc, reqs)
     },
-    <doc: doc?> alias <name: val_ident> "=" <set: value_set> ":"
+    <doc: doc?> alias <name: spanned<val_ident>> "=" <set: value_set> ":"
             <reqs: (requires <constraint>)*> => {
         ast::EnumStatement::Alias(name, doc, set, reqs)
     },
-    symmetric => ast::EnumStatement::Symmetric,
-    antisymmetric ":" <(<val_ident> "->" <val_ident>)*> => {
-        ast::EnumStatement::AntiSymmetric(<>)
+    <spanned_symmetric: spanned<stmt_symmetric>> => {
+        ast::EnumStatement::Symmetric(spanned_symmetric)
+    },
+    <spanned_antisymmetric: spanned<stmt_antisymmetric>> => {
+        ast::EnumStatement::AntiSymmetric(spanned_antisymmetric)
     },
 };
 
+stmt_symmetric: () = {
+    symmetric => (),
+};
+
+stmt_antisymmetric: Vec<(String, String)>  = {
+    antisymmetric ":" <(<val_ident> "->" <val_ident>)*> => {
+        (<>)
+    }
+};
+
 counter_body: ast::CounterBody = {
-    <base: (base <code>)?>
-    <iter_vars: (forall <var_def> ":")*> <kind: counter_kind> <value: counter_val> when ":"
+    <base: (base <code>)?> <iter_vars: (forall <var_def> ":")*>
+    <kind: counter_kind> <value: counter_val> when ":"
         <conditions: condition*> =>
     {
         let base = base.unwrap_or(kind.zero().to_string());
@@ -105,7 +107,7 @@ counter_body: ast::CounterBody = {
 
 counter_val: ast::CounterVal = {
     code => ast::CounterVal::Code(<>),
-    choice_instance => ast::CounterVal::Counter(<>),
+    choice_instance => ast::CounterVal::Choice(<>),
 };
 
 value_set = { non_empty_list<val_ident, "|"> };
@@ -138,6 +140,12 @@ choice_instance: ast::ChoiceInstance = {
     },
 };
 
+doc: String = {
+    <lines: (<doc_line>)+> => {
+        lines.concat()
+    }
+};
+
 #[inline]
 non_empty_list<T, SEP>: Vec<T> = {
     <v: (<T> SEP)*> <e: T> => {
@@ -151,14 +159,84 @@ list<T, SEP>: Vec<T> = {
   non_empty_list<T, SEP>? => { <>.unwrap_or(Vec::new()) }
 };
 
+#[inline]
+spanned<T>: Spanned<T> = {
+    <beg: @L> <data: T> <end: @R> => {
+        Spanned {
+            beg,
+            end,
+            data,
+        }
+    }
+};
+
+stmt_set: ast::SetDef = {
+    <doc: doc?> set <name: spanned<set_ident>> <arg: ("(" <var_def> ")")?>
+                <superset: (subsetof <set_ref>)?> ":" <disjoint: set_disjoint?>
+                <keys: set_def_map*> end => {
+        let disjoint = disjoint.unwrap_or(Vec::new());
+        ast::SetDef {
+              name, doc, arg, superset, keys, disjoint, quotient: None
+        }
+    }
+};
+
+stmt_quotient: ast::SetDef = {
+    <doc: doc?> quotient <name: spanned<set_ident>> <arg: ("(" <var_def> ")")?> of
+                <dividend: var_def> ":"
+                <representant: choice_ident> "=" <conditions: list<condition, and>> "/"
+                <equiv: choice_ident> is <equiv_cond: value_set>
+                <disjoint: set_disjoint?> <keys: set_def_map*> end => {
+        let superset = Some(dividend.set.clone());
+        let equiv_cond = equiv_cond.into_iter().map(RcStr::new).collect();
+        let quotient = Some(ast::Quotient {
+            item: dividend,
+            equiv_relation: (equiv, equiv_cond),
+            conditions,
+            representant: RcStr::new(representant),
+        });
+        let disjoint = disjoint.unwrap_or(Vec::new());
+        ast::SetDef {
+            name, doc, arg, superset, keys, disjoint, quotient
+        }
+    }
+};
+
+stmt_enum: ast::ChoiceDef = {
+    <doc: doc?> define enum_ <name: spanned<choice_ident>> "("
+                                       <vars: choice_vars> ")" ":"
+                <stmts: enum_stmt*> end => {
+        ast::ChoiceDef::EnumDef(
+            ast::EnumDef {
+                name, doc, variables: vars, statements: stmts,
+            }
+        ) 
+    }
+};
+
+stmt_integer: ast::ChoiceDef = {
+    <doc: doc?> define integer
+                <name: spanned<choice_ident>> "(" <vars: choice_vars> ")" ":"
+                <universe: code> end => {
+        ast::ChoiceDef::IntegerDef(
+            ast::IntegerDef {
+                name, doc, variables: vars, code: universe,
+            }
+        )
+    },
+};
+
 extern {
+    type Location = Position;
+    type Error = LexicalError;
+
     enum Token {
         choice_ident => Token::ChoiceIdent(<String>),
         val_ident => Token::ValueIdent(<String>),
         set_ident => Token::SetIdent(<String>),
         var => Token::Var(<String>),
         code => Token::Code(<String>),
-        doc => Token::Doc(<String>),
+        doc_line => Token::Doc(<String>),
         boolean => Token::Bool(<bool>),
         counter_kind => Token::CounterKind(<ir::CounterKind>),
         cmp_op => Token::CmpOp(<ir::CmpOp>),
@@ -188,6 +266,7 @@ extern {
         and => Token::And,
         of => Token::Of,
         quotient => Token::Quotient,
+        integer => Token::Integer,
 
         ":" => Token::Colon,
         "," => Token::Comma,

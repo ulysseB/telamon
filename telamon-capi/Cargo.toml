@@ -1,0 +1,29 @@
+[package]
+authors = ["Basile Clement <basile@clement.pm>"]
+name = "telamon-capi"
+version = "0.1.0"
+
+[dependencies]
+env_logger = "0.5.9"
+libc = "0.2"
+num = "0.2.0"
+failure = "0.1.1"
+
+[dependencies.telamon]
+path = "../"
+
+[dependencies.telamon-kernels]
+path = "../kernels"
+
+[dependencies.telamon-utils]
+path = "../telamon-utils"
+
+[features]
+cuda = [
+    "telamon/cuda",
+    "telamon-kernels/cuda",
+]
+
+[lib]
+crate-type = ["cdylib"]
+name = "telamon_capi"

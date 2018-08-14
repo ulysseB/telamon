@@ -1,5 +1,4 @@
 //! Generic helper functions.
-#![feature(conservative_impl_trait, box_syntax)]
 extern crate fnv;
 extern crate itertools;
 extern crate linked_hash_map;
@@ -8,21 +7,27 @@ extern crate num;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate failure;
+extern crate flate2;
 
 mod cache;
 mod dag;
 pub mod ndarray;
 mod iterator;
-mod multimap;
+pub mod multimap;
 mod vec_set;
 #[macro_use]
 pub mod unwrap;
+pub mod sequence;
+pub mod tfrecord;
 
 pub use self::cache::Cache;
 pub use self::dag::Dag;
 pub use self::iterator::*;
 pub use self::ndarray::{NDArray, NDRange};
 pub use self::vec_set::VecSet;
+pub use self::sequence::Sequence;
 use fnv::FnvHasher;
 use num::Integer;
 use std::hash::BuildHasherDefault;
@@ -75,6 +80,10 @@ impl std::fmt::Display for RcStr {
 
 impl PartialEq<str> for RcStr {
     fn eq(&self, other: &str) -> bool { self.0.as_ref().eq(other) }
+}
+
+impl From<String> for RcStr {
+    fn from(s: String) -> RcStr { RcStr::new(s) }
 }
 
 /// Booleans enhanced with a third `Maybe` value.
@@ -170,7 +179,16 @@ pub fn log2_u32(x: u32) -> Option<u32> {
 #[macro_export]
 macro_rules! generated_file {
     ($name:ident) => {
-        include!(concat!(env!("OUT_DIR"), "/", stringify!($name), ".rs"));
+        #[cfg_attr(feature = "cargo-clippy", allow(clippy))]
+        mod $name {
+            include!(concat!(env!("OUT_DIR"), "/", stringify!($name), ".rs"));
+        }
+    };
+    (pub $name:ident) => {
+        #[cfg_attr(feature = "cargo-clippy", allow(clippy))]
+        pub mod $name {
+            include!(concat!(env!("OUT_DIR"), "/", stringify!($name), ".rs"));
+        }
     }
 }
 
@@ -179,19 +197,43 @@ pub fn clone_pair<T1: Clone, T2: Clone>(p: (&T1, &T2)) -> (T1, T2) {
     (p.0.clone(), p.1.clone())
 }
 
-/// Defines equality from a key.
+/// Derives `Eq` based on a method that returns a key for the object.
+///
+/// # Example
+/// ```
+/// # #[macro_use] extern crate telamon_utils;
+/// struct MyType<T> { id: usize, data: T }
+///
+/// impl<T> MyType<T> {
+///     fn key(&self) -> usize { self.id }
+/// }
+///
+/// eq_from_key!(MyType<T>, MyType::key, T);
+/// ```
 #[macro_export]
 macro_rules! eq_from_key {
     ($ty:ty, $key:path $(, $args:tt)*) => {
         impl<$($args),*> ::std::cmp::PartialEq for $ty {
-            fn eq(&self, other: &$ty) -> bool { $key(self).eq($key(other)) }
+            fn eq(&self, other: &$ty) -> bool { (&$key(self)).eq(&$key(other)) }
         }
 
         impl<$($args),*> ::std::cmp::Eq for $ty {}
     }
 }
 
-/// Defines equality and hash from a key.
+/// Derives `Eq` and `Hash` based on a method that returns a key for the object.
+///
+/// # Example
+/// ```
+/// # #[macro_use] extern crate telamon_utils;
+/// struct MyType<T> { id: usize, data: T }
+///
+/// impl<T> MyType<T> {
+///     fn key(&self) -> usize { self.id }
+/// }
+///
+/// hash_from_key!(MyType<T>, MyType::key, T);
+/// ```
 #[macro_export]
 macro_rules! hash_from_key {
     ($ty:ty, $key:path $(, $args:tt)*) => {
@@ -217,5 +259,37 @@ pub fn cmp_f64(a: f64, b: f64) -> std::cmp::Ordering {
         std::cmp::Ordering::Equal
     } else {
         std::cmp::Ordering::Greater
+    }
+}
+
+/// A trait that implements useful methods on builders.
+pub trait BuilderTrait: Sized {
+    /// Runs the closure if the bool is true.
+    fn doif<F>(&mut self, flag: bool, f: F) -> &mut Self
+        where F: FnOnce(&mut Self) -> &mut Self
+    {
+        if flag { f(self) } else { self }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn hash_from_key() {
+        #[derive(Debug)]
+        struct Foo<T>(usize, T);
+
+        impl<T> Foo<T> {
+            fn key(&self) -> usize { self.0 }
+        }
+
+        hash_from_key!(Foo<T>, Foo::key, T);
+
+        let f0_0 = Foo(0, 0);
+        let f0_1 = Foo(0, 1);
+        let f1 = Foo(1, 0);
+
+        assert_eq!(f0_0, f0_1);
+        assert_ne!(f0_0, f1);
     }
 }

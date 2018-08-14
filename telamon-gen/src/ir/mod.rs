@@ -1,6 +1,8 @@
 //! The constraint description for the ir.
 use std;
+
 use itertools::Itertools;
+use indexmap::IndexMap;
 use utils::*;
 
 mod adaptator;
@@ -15,9 +17,9 @@ pub use self::adaptator::*;
 
 /// Describes the choices that constitute the IR.
 pub struct IrDesc {
-    choices: HashMap<RcStr, Choice>,
-    enums: HashMap<RcStr, Enum>,
-    set_defs: HashMap<RcStr, std::rc::Rc<SetDef>>,
+    choices: IndexMap<RcStr, Choice>,
+    enums: IndexMap<RcStr, Enum>,
+    set_defs: IndexMap<RcStr, std::rc::Rc<SetDef>>,
     triggers: Vec<Trigger>,
 }
 
@@ -96,7 +98,14 @@ impl IrDesc {
     }
 
     pub fn add_onchange(&mut self, choice: &str, action: OnChangeAction) {
-        self.choices.get_mut(choice).unwrap().add_onchange(action);
+        let inverse = if action.applies_to_symmetric()
+            && self.get_choice(choice).arguments().is_symmetric()
+        {
+            Some(action.inverse(self))
+        } else { None };
+        let choice = unwrap!(self.choices.get_mut(choice));
+        choice.add_onchange(action);
+        if let Some(action) = inverse { choice.add_onchange(action); }
     }
 
     /// Registers an filter call action for a filter on a choice.
@@ -189,7 +198,7 @@ impl IrDesc {
                 set_constraints.push((Variable::Arg(arg_id), expected_set.clone()));
             }
         }
-        // Add the remaining variables as foralls. We keep the foralls in the order thwy were
+        // Add the remaining variables as foralls. We keep the foralls in the order they were
         // given, so the sets are still defined after their parameters.
         let vars = vars.into_iter().sorted_by_key(|x| x.0);
         for (forall_id, (mapped_var, set)) in vars.into_iter().enumerate() {
@@ -207,24 +216,32 @@ impl IrDesc {
         }
         // Reverse the set constraints when the set parameter is defined in the foralls.
         // TODO(cleanup): make the reversing code readable
-        for _ in set_constraints.drain_filter(|&mut (var, ref mut set)| {
+        // TODO(cleanup): reimplemente `drain_filter` when stable rust will be ready.
+        for (var, ref mut set) in set_constraints.iter_mut() {
             // Reverse the set if its parameter if defined after the constraints.
             if let Some(Variable::Forall(forall_id)) = (&*set).arg() {
                 // Assign the reverse set to foralls.
                 let forall = if forall_id < arg_foralls.len() {
                     &mut arg_foralls[forall_id]
                 } else { &mut other_foralls[forall_id-arg_foralls.len()] };
-                let (superset, reverse_set) = set.reverse(var, &forall).unwrap();
+                let (superset, reverse_set) = set.reverse(*var, &forall).unwrap();
                 *forall = reverse_set;
                 // Use the superset as the constraint is enforced by the forall.
                 assert!((&superset).arg().is_none());
                 *set = superset;
+            }
+        }
+        set_constraints.retain(|&(var, ref set)| {
+            if let Some(Variable::Forall(_)) = (&*set).arg() {
                 if let Variable::Arg(arg_id) = var {
                     let given_set = target.arguments().get(arg_id).1;
-                    given_set.is_subset_of_def(set)
+                    !given_set.is_subset_of_def(set)
                 } else { panic!() }
-            } else { false }
-        }) {};
+            } else {
+                true
+            }
+        });
+
         (arg_foralls, other_foralls, SetConstraints::new(set_constraints), adaptator)
     }
 }
@@ -232,9 +249,9 @@ impl IrDesc {
 impl Default for IrDesc {
     fn default() -> Self {
        let mut ir_desc =  IrDesc {
-           choices: HashMap::default(),
-           enums: HashMap::default(),
-           set_defs: HashMap::default(),
+           choices: IndexMap::default(),
+           enums: IndexMap::default(),
+           set_defs: IndexMap::default(),
            triggers: Vec::new(),
        };
        let mut bool_enum = Enum::new("Bool".into(), None, None);
@@ -247,6 +264,7 @@ impl Default for IrDesc {
 
 /// Indicates whether a counter sums or adds.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[repr(C)]
 pub enum CounterKind { Add, Mul }
 
 impl CounterKind {
@@ -264,8 +282,8 @@ impl CounterKind {
 pub struct Enum {
     name: RcStr,
     doc: Option<RcStr>,
-    values: HashMap<RcStr, Option<String>>,
-    aliases: HashMap<RcStr, (HashSet<RcStr>, Option<String>)>,
+    values: IndexMap<RcStr, Option<String>>,
+    aliases: IndexMap<RcStr, (HashSet<RcStr>, Option<String>)>,
     inverse: Option<Vec<(RcStr, RcStr)>>,
 }
 
@@ -277,8 +295,8 @@ impl Enum {
             name: name,
             doc: doc,
             inverse: inverse,
-            values: HashMap::default(),
-            aliases: HashMap::default(),
+            values: IndexMap::default(),
+            aliases: IndexMap::default(),
         }
     }
 
@@ -298,7 +316,7 @@ impl Enum {
     }
 
     /// Lists the aliases.
-    pub fn aliases(&self) -> &HashMap<RcStr, (HashSet<RcStr>, Option<String>)> {
+    pub fn aliases(&self) -> &IndexMap<RcStr, (HashSet<RcStr>, Option<String>)> {
         &self.aliases
     }
 
@@ -306,7 +324,7 @@ impl Enum {
     pub fn doc(&self) -> Option<&str> { self.doc.as_ref().map(|x| x as &str) }
 
     /// Returns the values the enum can take, and their associated comment.
-    pub fn values(&self) -> &HashMap<RcStr, Option<String>> { &self.values }
+    pub fn values(&self) -> &IndexMap<RcStr, Option<String>> { &self.values }
 
     /// Replaces aliases by the corresponding values.
     pub fn expand<IT: IntoIterator<Item=RcStr>>(&self, set: IT) -> HashSet<RcStr> {
@@ -381,11 +399,11 @@ pub mod test {
         }
 
         pub fn eval_rule_aux(&self, conditions: &'a [Condition],
-                          set_constraints: &'a [(Variable, Set)],
-                          alternatives: ValueSet,
-                          valid_values: &mut ValueSet) {
-            for &(var, ref t) in set_constraints {
-                if !self.var_sets[&var].is_subset_of(t) { return; }
+                             set_constraints: &'a SetConstraints,
+                             alternatives: ValueSet,
+                             valid_values: &mut ValueSet) {
+            for &(var, ref t) in set_constraints.constraints() {
+                if !(&self.var_sets[&var]).is_subset_of(t) { return; }
             }
             if conditions.iter().all(|c| self.eval_cond(c)) {
                 valid_values.intersect(alternatives);
@@ -408,7 +426,7 @@ pub mod test {
                 SubFilter::Rules(ref rules) => self.eval_rules(rules),
                 SubFilter::Switch { switch, ref cases } => {
                     let t = ValueType::Enum(self.enum_.name().clone());
-                    let mut value_set = ValueSet::empty(t);
+                    let mut value_set = ValueSet::empty(&t);
                     for &(ref guard, ref filter) in cases {
                         if self.input_values[switch].is(guard).maybe_true() {
                             value_set.extend(self.eval_subfilter(filter));

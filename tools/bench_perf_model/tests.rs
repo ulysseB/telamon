@@ -1,3 +1,4 @@
+use telamon::device::{ArgMap, Context};
 use telamon::helper::{SignatureBuilder, Builder, MetaDimension, Reduce};
 use telamon::ir;
 use telamon::search_space::{Action, DimKind, Order, InstFlag};
@@ -8,15 +9,15 @@ pub struct Test0;
 impl PerfModelTest for Test0 {
     fn name() -> &'static str { "test_0" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         const M: i32 = 1024;
         const N: i32 = 1024;
         const K: i32 = 1024;
-        builder.param("m", M);
-        builder.param("n", N);
-        builder.param("k", K);
-        builder.array("a", 4*(M*K) as usize);
-        builder.array("b", 4*(K*N) as usize);
+        builder.scalar("m", M);
+        builder.scalar("n", N);
+        builder.scalar("k", K);
+        builder.array::<f32>("a", (M*K) as usize);
+        builder.array::<f32>("b", (K*N) as usize);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -24,16 +25,16 @@ impl PerfModelTest for Test0 {
         let tile_2 = 4;
         let tile_1_size = builder.cst_size(tile_1);
         let tile_2_size = builder.cst_size(tile_2);
-        let tmp_mem_size = builder.cst_size(4*tile_1*tile_1*tile_2);
-        let a_tmp_mem = builder.allocate_shared(tmp_mem_size.clone());
+        let tmp_mem_size = 4*tile_1*tile_1*tile_2;
+        let a_tmp_mem = builder.allocate_shared(tmp_mem_size);
         let b_tmp_mem = builder.allocate_shared(tmp_mem_size);
         // Configure dimension sizes
         let m_tiled = builder.tile_size("m", tile_1 * tile_2);
         let n_tiled = builder.tile_size("n", tile_1 * tile_2);
         let k_tiled = builder.tile_size("k", tile_1);
 
-        let a = ir::mem::Id::External(0);
-        let b = ir::mem::Id::External(1);
+        let a = ir::MemId::External(0);
+        let b = ir::MemId::External(1);
 
         let b0 = builder.open_dim_ex(n_tiled, DimKind::BLOCK);
         let b1 = builder.open_dim_ex(m_tiled, DimKind::BLOCK);
@@ -87,14 +88,14 @@ pub struct Test1;
 impl PerfModelTest for Test1 {
     fn name() -> &'static str { "test_1" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         const M: i32 = 1024;
         const N: i32 = 1024;
         const K: i32 = 1024;
-        builder.param("m", M);
-        builder.param("n", N);
-        builder.param("k", K);
-        builder.array("out", 4*32*32*4*4 as usize);
+        builder.scalar("m", M);
+        builder.scalar("n", N);
+        builder.scalar("k", K);
+        builder.array::<f32>("out", 4*32*32*4 as usize);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -102,9 +103,9 @@ impl PerfModelTest for Test1 {
         let tile_2 = 4;
         let tile_1_size = builder.cst_size(tile_1);
         let tile_2_size = builder.cst_size(tile_2);
-        let tmp_mem_size = builder.cst_size(4*tile_1*tile_2);
-        let a_tmp_mem = builder.allocate(tmp_mem_size.clone(), true);
-        let out = ir::mem::Id::External(0);
+        let tmp_mem_size = 4*tile_1*tile_2;
+        let a_tmp_mem = builder.allocate(tmp_mem_size, true);
+        let out = ir::MemId::External(0);
 
         // Configure dimension sizes
         let thread_dim_1_0 = builder.open_dim_ex(tile_1_size.clone(), DimKind::THREAD);
@@ -143,14 +144,14 @@ pub struct Test2;
 impl PerfModelTest for Test2 {
     fn name() -> &'static str { "test_2" }
 
-    fn gen_signature(builder: &mut SignatureBuilder) {
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         const M: i32 = 1024;
         const N: i32 = 1024;
         const K: i32 = 1024;
-        builder.param("m", M);
-        builder.param("n", N);
-        builder.param("k", K);
-        builder.array("out", 4*32*32*4*4 as usize);
+        builder.scalar("m", M);
+        builder.scalar("n", N);
+        builder.scalar("k", K);
+        builder.array::<f32>("out", 4*32*32*4 as usize);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -158,10 +159,10 @@ impl PerfModelTest for Test2 {
         let tile_2 = 4;
         let tile_1_size = builder.cst_size(tile_1);
         let tile_2_size = builder.cst_size(tile_2);
-        let tmp_mem_size = builder.cst_size(4*tile_1*tile_2);
-        let a_tmp_mem = builder.allocate(tmp_mem_size.clone(), true);
+        let tmp_mem_size = 4*tile_1*tile_2;
+        let a_tmp_mem = builder.allocate(tmp_mem_size, true);
         let b_tmp_mem = builder.allocate(tmp_mem_size, true);
-        let out = ir::mem::Id::External(0);
+        let out = ir::MemId::External(0);
 
         // Configure dimension sizes
         let m_tiled = builder.tile_size("m", tile_1 * tile_2);

@@ -1,5 +1,6 @@
 //! Interface with CUDA Modules and Kernels.
-use device::Argument;
+use device;
+#[cfg(feature="cuda")]
 use device::cuda::api::PerfCounterSet;
 use device::cuda::api::wrapper::*;
 use itertools::Itertools;
@@ -14,11 +15,11 @@ pub struct Module<'a> {
 
 impl<'a> Module<'a> {
     /// Creates a new `Module`.
-    pub fn new(context: &'a CudaContext, code: &str) -> Self {
+    pub fn new(context: &'a CudaContext, code: &str, opt_level: usize) -> Self {
         debug!("compiling... {}", code);
         let c_str = unwrap!(CString::new(code));
-        let module = unsafe { compile_ptx(context, c_str.as_ptr()) };
-        Module { module: module, context: context }
+        let module = unsafe { compile_ptx(context, c_str.as_ptr(), opt_level) };
+        Module { module, context }
     }
 
     /// Creates a `Module` from a cubin image.
@@ -35,7 +36,7 @@ impl<'a> Module<'a> {
         let function = unsafe {
             get_function(self.context, self.module, name_c_str.as_ptr())
         };
-        Kernel { function: function, context: self.context }
+        Kernel { function, context: self.context }
     }
 }
 
@@ -73,10 +74,27 @@ impl<'a> Kernel<'a> {
     }
 
     /// Instruments the kernel with the given performance counters.
+    #[cfg(feature="cuda")]
     pub fn instrument(&self, blocks: &[u32; 3], threads: &[u32; 3], args: &[&Argument],
                       counters: &PerfCounterSet) -> Vec<u64> {
         counters.instrument( unsafe { &*self.function }, blocks, threads, args)
     }
+
+    /// Runs a kernel and returns the number of nanoseconds it takes to execute,
+    /// measured using cuda event rather than hardware counters.
+    pub fn time_real_conds(&self, blocks: &[u32; 3],
+                           threads: &[u32; 3],
+                           args: &[&Argument]) -> f64 {
+        unsafe {
+            let arg_raw_ptrs = args.iter().map(|x| x.raw_ptr()).collect_vec();
+            time_with_events(self.context,
+                             self.function,
+                             blocks.as_ptr(),
+                             threads.as_ptr(),
+                             arg_raw_ptrs.as_ptr())
+        }
+    }
+
 
     /// Indicates the number of active block of threads per multiprocessors.
     pub fn blocks_per_smx(&self, threads: &[u32; 3]) -> u32 {
@@ -93,3 +111,21 @@ impl<'a> Drop for Kernel<'a> {
 
 unsafe impl<'a> Sync for Kernel<'a> {}
 unsafe impl<'a> Send for Kernel<'a> {}
+
+/// An object that can be passed to a CUDA kernel.
+pub trait Argument: Sync + Send {
+    /// Returns a pointer to the object.
+    fn raw_ptr(&self) -> *const libc::c_void;
+    /// Returns the argument value if it can represent a size.
+    fn as_size(&self) -> Option<u32> { None }
+}
+
+impl<T> Argument for T where T: device::ScalarArgument {
+    fn raw_ptr(&self) -> *const libc::c_void {
+        device::ScalarArgument::raw_ptr(self)
+    }
+
+    fn as_size(&self) -> Option<u32> {
+        device::ScalarArgument::as_size(self)
+    }
+}

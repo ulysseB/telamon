@@ -1,6 +1,5 @@
 //! Tests the accuracy of the performance model. A pattern can be passed as argument to
 //! specify the tests to run.
-#![feature(stmt_expr_attributes)]
 extern crate env_logger;
 extern crate telamon;
 extern crate regex;
@@ -13,7 +12,7 @@ mod latency;
 mod memory;
 mod tests;
 
-use telamon::device::Context;
+use telamon::device::{self, ArgMap, Context};
 use telamon::helper;
 use telamon::model::bound;
 use telamon::search_space::Action;
@@ -30,7 +29,7 @@ trait PerfModelTest {
     fn name() -> &'static str;
 
     /// Generates the base of the function to evaluate.
-    fn gen_signature(builder: &mut helper::SignatureBuilder);
+    fn gen_signature<AM: ArgMap + Context>(builder: &mut helper::SignatureBuilder<AM>);
 
     /// Generates the function to evaluate.
     fn gen_function(builder: &mut helper::Builder) -> Self;
@@ -54,7 +53,7 @@ fn run<T: PerfModelTest>(pattern: &Regex) {
     let actions = T::get_actions(&state);
 
     let mut early_model_perf = None;
-    if actions.len() != 0 {
+    if !actions.is_empty() {
         early_model_perf = Some(bound(&builder.get_clone(), &context).value());
         for action in actions {
             builder.action(action);
@@ -63,7 +62,7 @@ fn run<T: PerfModelTest>(pattern: &Regex) {
     let fun = builder.get();
     let model_perf = bound(&fun, &context);
     let dev_fun = telamon::codegen::Function::build(&fun);
-    let run_perf = unwrap!(context.evaluate(&dev_fun));
+    let run_perf = unwrap!(context.evaluate(&dev_fun, device::EvalMode::TestBound));
 
     if let Some(early_model_perf) = early_model_perf {
         info!("bound: {}", model_perf);
@@ -83,8 +82,8 @@ fn run<T: PerfModelTest>(pattern: &Regex) {
 }
 
 fn main() {
-    let _ = env_logger::init();
-    let arg = std::env::args().nth(1).unwrap_or(String::new());
+    env_logger::init();
+    let arg = std::env::args().nth(1).unwrap_or_default();
     let pattern = match Regex::new(&arg) {
         Ok(x) => x,
         Err(e) => {

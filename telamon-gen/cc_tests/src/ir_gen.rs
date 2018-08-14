@@ -69,7 +69,7 @@ macro_rules! define_ir {
     // Defines the set ID.
     (@id_def trait $name:ident, $x:tt) => { define_ir!(@id_def struct $name, $x); };
     (@id_def struct $name:ident, $x:tt) => {
-        #[derive(Clone, Copy, Hash, Debug, PartialEq, Eq, PartialOrd, Ord)]
+        #[derive(Clone, Copy, Hash, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
         pub struct Id(pub usize);
     };
     (@id_def type $name:ident, $super:ident) => { pub use super::$super::Id as Id; };
@@ -240,8 +240,8 @@ macro_rules! define_ir {
     (@reverse_def $name:ident, @, $($rest:tt)*) => { };
     (@reverse_def $name:ident, $param:ident, @, $($rest:tt)*) => { };
     (@reverse_def $name:ident, $param:ident, $super:ident, $reverse:ident) => {
-        pub fn reverse<'a>(fun: &'a super::Function, reverse_param: super::$reverse::Id)
-            -> impl Iterator<Item=&'a super::$param::Obj>
+        pub fn reverse(fun: &super::Function, reverse_param: super::$reverse::Id)
+            -> impl Iterator<Item=&super::$param::Obj>
         {
             fun.$name.keys().filter(move |&&(_, id)| id.0 == reverse_param.0)
                 .map(move |&(p_id, _)| &*fun.$param[&p_id])

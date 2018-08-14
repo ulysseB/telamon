@@ -1,11 +1,6 @@
 //! Declarations of foreign functions and structs.
 use libc;
 
-// FIXME:
-// - move the return value of functions that can fail to the arguments
-// - return a success flag instead
-// - convert the succes flag to an error
-
 pub enum CuptiEventGroupSets {}
 pub enum CudaContext {}
 pub enum CudaModule {}
@@ -25,7 +20,8 @@ extern {
     pub fn free_cuda(context: *mut CudaContext);
     pub fn device_name(context: *const CudaContext) -> *mut libc::c_char;
     pub fn compile_ptx(context: *const CudaContext,
-                       ptx_code: *const libc::c_char) -> *mut CudaModule;
+                       ptx_code: *const libc::c_char,
+                       opt_level: libc::size_t) -> *mut CudaModule;
     pub fn load_cubin(context: *const CudaContext,
                       image: *const libc::c_void) -> *mut CudaModule;
     pub fn free_module(module: *mut CudaModule);
@@ -38,6 +34,11 @@ extern {
                          threads: *const u32,
                          params: *const *const libc::c_void,
                          out: *mut u64) -> i32;
+    pub fn time_with_events(context: *const CudaContext,
+                            function: *mut CudaFunction,
+                            blocks: *const u32,
+                            threads: *const u32,
+                            params: *const *const libc::c_void) -> f64;
     pub fn instrument_kernel(context: *const CudaContext,
                              function: *const CudaFunction,
                              blocks: *const u32,
@@ -71,8 +72,10 @@ extern {
                                     sets: *mut CuptiEventGroupSets);
     pub fn max_active_blocks_per_smx(function: *const CudaFunction, block_size: u32,
                                      dynamic_smem_size: libc::size_t) -> u32;
-    pub fn compile_ptx_to_cubin(ctx: *const CudaContext, code: *const libc::c_char,
-                                code_size: libc::size_t) -> CubinObject;
+    pub fn compile_ptx_to_cubin(ctx: *const CudaContext,
+                                code: *const libc::c_char,
+                                code_size: libc::size_t,
+                                opt_level: libc::size_t) -> CubinObject;
     pub fn free_cubin_object(object: CubinObject);
 }
 

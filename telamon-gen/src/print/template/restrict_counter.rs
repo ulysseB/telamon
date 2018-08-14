@@ -7,12 +7,12 @@ let incr_amount = {{>counter_value amount use_old=false}};
 if incr_status.is_maybe() {
     debug!("restrict incr {{incr.name}}{:?} to {:?} with amount={:?}",
            ({{>choice.arg_ids incr}}), new_values, incr_amount);
-    let mut val = {{incr_type}}::ALL;
-    if current.min {{op}} incr_amount.min > new_values.max {
+    let mut val = {{>value_type.full_domain incr_type}};
+    if current.min {{op}} NumDomain::min(&incr_amount) > new_values.max {
         val.restrict(!({{incr_condition}}));
     }
     {{#unless is_half~}}
-    if current.max < new_values.min {{op}} incr_amount.max {
+    if current.max < new_values.min {{op}} NumDomain::max(&incr_amount) {
         val.restrict({{incr_condition}});
     }
     {{~/unless}}
@@ -23,14 +23,16 @@ if incr_status.is_maybe() {
         store.restrict_{{incr.name}}({{>choice.arg_ids incr}}val, diff)?;
     {{~/if}}
 }
-{{~#if amount.Counter~}}
+{{~#if amount.Choice~}}
     else if incr_status.is_true() {
-        let val = Range::new_leq(new_values.max{{neg_op}}current.min{{op}}incr_amount.min);
+        let max_val = new_values.max{{neg_op}}current.min{{op}}NumDomain::min(&incr_amount);
+        let val = {{>value_type.num_constructor t=amount.Choice.full_type
+                    fun="new_leq" value="max_val"}};
         {{#if delayed~}}
-            actions.extend({{amount.Counter.name}}::restrict_delayed(
-                    {{~>choice.arg_ids amount.Counter~}} ir_instance, store, val)?);
+            actions.extend({{amount.Choice.name}}::restrict_delayed(
+                    {{~>choice.arg_ids amount.Choice~}} ir_instance, store, val)?);
         {{else~}}
-            {{amount.Counter.name}}::restrict({{>choice.arg_ids amount.Counter~}}
+            {{amount.Choice.name}}::restrict({{>choice.arg_ids amount.Choice~}}
                                               ir_instance, store, val, diff)?;
         {{/if~}}
     }

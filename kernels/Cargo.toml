@@ -1,0 +1,58 @@
+[package]
+authors = ["Ulysse Beaugnon <ulysse.beaugnon@ens.fr>"]
+name = "telamon-kernels"
+version = "0.1.0"
+
+[dependencies]
+env_logger = "0.5.9"
+itertools = "0.7.8"
+libc = "0.2.40"
+log = "0.4.1"
+ndarray = "0.11.2"
+num = "0.2.0"
+num_cpus = "1.8.0"
+rayon = "1.0.1"
+rand = "0.4.2"
+
+[dev-dependencies]
+futures = "0.1.23"
+
+[dependencies.cuda-sys]
+optional = true
+version = "0.1.0"
+
+[dependencies.telamon]
+path = "../"
+
+[dependencies.telamon-utils]
+path = "../telamon-utils"
+
+[features]
+cuda = [
+    "telamon/cuda",
+    "cuda-sys",
+]
+
+[[bench]]
+name = "cuda-search"
+path = "benches/cuda_search.rs"
+harness = false
+required-features = ["cuda"]
+
+[[bench]]
+name = "cuda-deadend"
+path = "benches/cuda_deadend.rs"
+harness = false
+required-features = ["cuda"]
+
+[[bench]]
+name = "cuda-bound"
+path = "benches/cuda_bound.rs"
+harness = false
+required-features = ["cuda"]
+
+[[bench]]
+name = "cuda-variance"
+path = "benches/cuda_variance.rs"
+harness = false
+required-features = ["cuda"]

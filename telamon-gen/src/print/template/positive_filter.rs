@@ -7,10 +7,10 @@
     {{var}}.insert({{values}});
 {{/with~}}
 {{#with AllowAll~}}
-    {{var}}.insert({{value_type}}::ALL);
+    {{var}}.insert({{>value_type.full_domain value_type}});
 {{/with~}}
 {{#with Rules~}}
-    let mut {{new_var}} = {{value_type}}::ALL;
+    let mut {{new_var}} = {{>value_type.full_domain value_type}};
     {{#each rules~}}
         {{>rule}}
     {{/each~}}

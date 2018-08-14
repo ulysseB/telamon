@@ -30,14 +30,16 @@ impl Drop for JITDaemon {
         unwrap!(self.ptx_sender.send(&[]));
         unsafe {
             if libc::waitpid(self.daemon, std::ptr::null_mut(), 0) == -1 {
-                panic!("unable to kill jit process: {}", errno());
+                info!("unable to kill jit process: {}", errno());
             }
         }
     }
 }
 
 /// A function that listen for incomming PTX code and compiles it.
-fn daemon(receiver: ipc::IpcBytesReceiver, sender: ipc::IpcBytesSender) {
+fn daemon(receiver: &ipc::IpcBytesReceiver,
+          sender: &ipc::IpcBytesSender,
+          opt_level: usize) {
     unsafe {
         let ctx = init_cuda(0);
         loop {
@@ -51,7 +53,7 @@ fn daemon(receiver: ipc::IpcBytesReceiver, sender: ipc::IpcBytesSender) {
             }
             let code_len = code.len();
             let code = unwrap!(CString::new(code));
-            let cubin = compile_ptx_to_cubin(ctx, code.as_ptr(), code_len);
+            let cubin = compile_ptx_to_cubin(ctx, code.as_ptr(), code_len, opt_level);
             unwrap!(sender.send(slice::from_raw_parts(cubin.data, cubin.data_size)));
             free_cubin_object(cubin);
         }
@@ -61,7 +63,7 @@ fn daemon(receiver: ipc::IpcBytesReceiver, sender: ipc::IpcBytesSender) {
 /// Spawns daemons from a separate process, so a CUDA context can be created in the main
 /// process without problems for the child processes.
 pub struct DaemonSpawner {
-    sender: ipc::IpcSender<Option<(ipc::IpcBytesReceiver, ipc::IpcBytesSender)>>,
+    sender: ipc::IpcSender<Option<(ipc::IpcBytesReceiver, ipc::IpcBytesSender, usize)>>,
     receiver: ipc::IpcReceiver<libc::pid_t>,
     pid: libc::pid_t,
 }
@@ -80,7 +82,7 @@ impl DaemonSpawner {
         let pid = unsafe {
             fork_function(|| {
                 loop {
-                    let (receiver, sender) = match channel_receiver.recv() {
+                    let (receiver, sender, opt_level) = match channel_receiver.recv() {
                         Ok(Some(msg)) => msg,
                         Ok(None) => {
                             trace!("exiting PTX daemon spawner");
@@ -94,7 +96,7 @@ impl DaemonSpawner {
                     // We daemonize the JIT so it is attached to the closet subreaper
                     // process, i.e. the main process.
                     let tmp_pid = fork_function(|| {
-                        let pid = fork_function(|| daemon(receiver, sender));
+                        let pid = fork_function(|| daemon(&receiver, &sender, opt_level));
                         if let Err(err) = pid_sender.send(pid) {
                             error!("error in PTX daemon spawner (sending PID): {:?}", err);
                             return;
@@ -110,10 +112,10 @@ impl DaemonSpawner {
     }
 
     /// Creates a new `JITDaemon`.
-    pub fn spawn_jit(&self) -> JITDaemon {
+    pub fn spawn_jit(&self, opt_level: usize) -> JITDaemon {
         let (ptx_sender, ptx_receiver) = unwrap!(ipc::bytes_channel());
         let (cubin_sender, cubin_receiver) = unwrap!(ipc::bytes_channel());
-        unwrap!(self.sender.send(Some((ptx_receiver, cubin_sender))));
+        unwrap!(self.sender.send(Some((ptx_receiver, cubin_sender, opt_level))));
         let daemon = unwrap!(self.receiver.recv());
         JITDaemon { daemon, ptx_sender, cubin_receiver }
     }

@@ -1,5 +1,5 @@
 //! Allows the execution of kernels on the GPU.
-use device;
+use device::cuda::api::Argument;
 use device::cuda::api::wrapper::*;
 use itertools::Itertools;
 use std::ffi::CString;
@@ -31,15 +31,13 @@ impl<'a> PerfCounterSet<'a> {
         let event_pos = event_ids.into_iter().enumerate().map(|(x, y)| (y, x)).collect();
         PerfCounterSet {
             num_event: counters.len(),
-            event_sets: event_sets,
-            event_pos: event_pos,
-            context: context,
+            event_sets, event_pos, context,
         }
     }
 
     /// Instrument a `CudaFunction`.
     pub fn instrument(&self, fun: &CudaFunction, blocks: &[u32], threads: &[u32],
-                      args: &[&device::Argument]) -> Vec<u64> {
+                      args: &[&Argument]) -> Vec<u64> {
         let mut event_ids: Vec<u32> = Vec::with_capacity(self.num_event);
         let mut event_values: Vec<u64> = Vec::with_capacity(self.num_event);
         let mut ordered_values: Vec<u64> = Vec::with_capacity(self.num_event);

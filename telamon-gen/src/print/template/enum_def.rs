@@ -1,9 +1,23 @@
 {doc_comment}
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[repr(C)]
 pub struct {type_name} {{ bits: {bits_type} }}
 
 impl {type_name} {{
     {value_defs}{alias_defs}
+
+    pub const ALL: {type_name} = {type_name} {{ bits: {all_bits} }};
+
+    /// Returns the empty domain.
+    pub const FAILED: {type_name} = {type_name} {{ bits: 0 }};
+
+    /// Returns the full domain.
+    pub fn all() -> Self {{ Self::ALL }}
+
+    /// Insert values in the domain.
+    pub fn insert(&mut self, alternatives: Self) {{
+        self.bits |= alternatives.bits
+    }}
 
     /// Lists the alternatives contained in the domain.
     pub fn list<'a>(&self) -> impl Iterator<Item=Self> + 'static {{
@@ -13,14 +27,20 @@ impl {type_name} {{
             .map(|x| {type_name} {{ bits: x }})
     }}
 
+    /// Indicates if two choices will have the same value.
+    pub fn eq(&self, other: Self) -> bool {{
+        self.is_constrained() && *self == other
+    }}
+
+    /// Indicates if two choices cannot be equal.
+    pub fn neq(&self, other: Self) -> bool {{
+        !self.intersects(other)
+    }}
+
     {inverse}
 }}
 
 impl Domain for {type_name} {{
-    const FAILED: {type_name} = {type_name} {{ bits: 0 }};
-
-    const ALL: {type_name} = {type_name} {{ bits: {all_bits} }};
-
     fn is_failed(&self) -> bool {{ self.bits == 0 }}
 
     fn is_constrained(&self) -> bool {{ self.bits.count_ones() <= 1 }}
@@ -35,10 +55,6 @@ impl Domain for {type_name} {{
 
     fn restrict(&mut self, alternatives: Self) {{
         self.bits &= alternatives.bits
-    }}
-
-    fn insert(&mut self, alternatives: Self) {{
-        self.bits |= alternatives.bits
     }}
 }}
 

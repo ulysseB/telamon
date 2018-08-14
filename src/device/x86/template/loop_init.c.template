@@ -1,0 +1,2 @@
+d{ind} = 0;
+{loop_type}_LOOP_BEGIN_{ind}:
