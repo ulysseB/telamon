@@ -1,37 +1,30 @@
 //! Prints the manipulation of individual domains.
 use ir;
 use print;
-use proc_macro2::{Ident, Span, TokenStream};
-use quote;
+use proc_macro2::{Delimiter, Group, Ident, Span, TokenStream};
+use quote::{self, ToTokens};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 /// A value that a domain can take.
 #[derive(Debug, Clone)]
 pub struct Value {
-    tokens: TokenStream,
+    tokens: Group,
     value_type: ir::ValueType,
 }
 
 impl Value {
+    // The delimiter to use around the value. Currently set to `Braces` since we
+    // cannot use `None`. Indeed, it is not preserved when the token-stream is printed.
+    // We may later use it if we rely on procedural macros instead of just printing code
+    // in a string.
+    const DELIMITER: Delimiter = Delimiter::Brace;
+
     /// Create a new value.
     pub fn new(tokens: TokenStream, value_type: ir::ValueType) -> Self {
+        // Adds braces around the expression to preserve operator priority
+        // independently of the context.
+        let tokens = Group::new(Self::DELIMITER, tokens);
         Value { tokens, value_type }
-    }
-
-    /// Creates a new value with a unique name.
-    pub fn new_ident(prefix: &str, value_type: ir::ValueType) -> Self {
-        lazy_static! { static ref NEXT_ID: AtomicUsize = AtomicUsize::new(0); }
-        let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-        // TODO(span): get the real span from the lexer
-        let ident = Ident::new(&format!("{}_{}", prefix, id), Span::call_site());
-        Self::new(quote!(#ident), value_type)
-    }
-
-    /// Creates a value with the given name.
-    pub fn ident(name: &str, value_type: ir::ValueType) -> Self {
-        // TODO(span): get the real span from the lexer
-        let ident = Ident::new(name, Span::call_site());
-        Self::new(quote!(#ident), value_type)
     }
 
     /// Creates a new user-provided constant value.
@@ -57,8 +50,8 @@ impl Value {
 
     /// Creates a new value that has the same type that this one, but with an identifier
     /// in place of the expression.
-    pub fn with_name(&self, name: &str) -> Self {
-        Self::ident(name, self.value_type().clone())
+    pub fn create_ident(&self, name: &str) -> ValueIdent {
+        ValueIdent::new(name, self.value_type().clone())
     }
 
     /// Returns the type taken by the value.
@@ -68,7 +61,7 @@ impl Value {
     pub fn inverse(&mut self) {
         self.tokens = {
             let tokens = &self.tokens;
-            quote!((#tokens).inverse())
+            Group::new(Self::DELIMITER, quote!(#tokens.inverse()))
         };
     }
 
@@ -76,7 +69,7 @@ impl Value {
     pub fn negate(&mut self) {
         self.tokens = {
             let tokens = &self.tokens;
-            quote!(!(#tokens))
+            Group::new(Self::DELIMITER, quote!(!(#tokens)))
         };
     }
 
@@ -101,10 +94,51 @@ impl quote::ToTokens for Value {
     }
 }
 
+/// A variable holding a `Value`.
+#[derive(Debug, Clone)]
+pub struct ValueIdent {
+    ident: Ident,
+    value_type: ir::ValueType,
+}
+
+impl ValueIdent {
+    /// Creates a new value with a unique name.
+    pub fn new_ident(prefix: &str, value_type: ir::ValueType) -> Self {
+        lazy_static! { static ref NEXT_ID: AtomicUsize = AtomicUsize::new(0); }
+        let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
+        Self::new(&format!("{}_{}", prefix, id), value_type)
+    }
+
+    /// Creates a value with the given name.
+    pub fn new(name: &str, value_type: ir::ValueType) -> Self {
+        // TODO(span): get the real span from the lexer
+        let ident = Ident::new(name, Span::call_site());
+        ValueIdent { ident, value_type }
+    }
+
+    /// Returns the type taken by the value.
+    pub fn value_type(&self) -> &ir::ValueType { &self.value_type }
+}
+
+impl From<ValueIdent> for Value {
+    fn from(ident: ValueIdent) -> Value {
+        Value {
+            tokens: Group::new(Delimiter::None, ident.ident.into_token_stream()),
+            value_type: ident.value_type,
+        }
+    }
+}
+
+impl quote::ToTokens for ValueIdent {
+    fn to_tokens(&self, stream: &mut TokenStream) {
+        self.ident.to_tokens(stream)
+    }
+}
+
 /// Prints the universe of a `ValueType`.
 pub fn universe(value_type: &ir::ValueType, ctx: &print::Context) -> Value {
     match value_type {
-        ir::ValueType::Enum(..) => panic!("only intger domains have a universe"),
+        ir::ValueType::Enum(..) => panic!("only integer domains have a universe"),
         ir::ValueType::Range { .. } | ir::ValueType::Constant => {
             Value::new(quote!(&()), ir::ValueType::Constant)
         }
@@ -129,7 +163,7 @@ pub fn integer_domain_constructor(
 
 /// Returns the name of te integer domain constructor to call to obatain the domain
 /// that respects the condition `op` with regard to another domain.
-pub fn constructor_from_op(op: ir::CmpOp) -> Ident {
+fn constructor_from_op(op: ir::CmpOp) -> Ident {
     let name = match op {
         ir::CmpOp::Lt => "new_lt",
         ir::CmpOp::Gt => "new_gt",

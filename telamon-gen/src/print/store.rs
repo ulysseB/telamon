@@ -1,6 +1,7 @@
 //! Prints the domain store definition.
 use proc_macro2::{Ident, Span};
 use print;
+use quote::ToTokens;
 
 /// Returns the name of the getter method for `choice`. If `get_old` is true, the method
 /// will only take into account decisions that have been propagated.
@@ -109,19 +110,19 @@ pub fn incr_iterators<'a>(ir_desc: &'a ir::IrDesc) -> Vec<IncrIterator<'a>> {
                 let incr = ast::ChoiceInstance::new(incr, ctx);
                 let set_ast = ast::SetDef::new(set.def());
                 let incr_amount_getter = print::counter::increment_amount(value, true, ctx);
-                let incr_amount_type = incr_amount_getter.value_type().clone();
-                let incr_amount = print::Value::ident("incr_value", incr_amount_type);
+                let incr_amount: print::Value = incr_amount_getter
+                    .create_ident("incr_value").into();
                 let min_incr_amount = incr_amount.get_min(ctx);
                 let max_incr_amount = incr_amount.get_max(ctx);
                 let incr_iterator = IncrIterator {
                     iter: PartialIterator { loop_nest, set: set_ast, arg_conflicts },
                     incr, incr_condition, visibility, kind,
-                    incr_amount: quote!(#incr_amount_getter).to_string(),
+                    incr_amount: incr_amount_getter.into_token_stream().to_string(),
                     zero: kind.zero(),
                     counter: ast::ChoiceInstance::new(counter, ctx),
                     counter_type: ast::ValueType::new(counter_type.clone(), ctx),
-                    min_incr_amount: quote!(#min_incr_amount).to_string(),
-                    max_incr_amount: quote!(#max_incr_amount).to_string(),
+                    min_incr_amount: min_incr_amount.into_token_stream().to_string(),
+                    max_incr_amount: max_incr_amount.into_token_stream().to_string(),
                 };
                 out.push(incr_iterator);
             }

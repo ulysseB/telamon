@@ -132,12 +132,13 @@ pub fn condition(cond: &ir::Condition, ctx: &Context) -> TokenStream {
             quote!(!#input.intersects(#value_set))
         }
         ir::Condition::CmpCode { lhs, rhs, op } => {
-            comparison(*op, ctx.input(*lhs), &print::Value::new_const(rhs, ctx), ctx)
+            let rhs = print::Value::new_const(rhs, ctx);
+            comparison(*op, &ctx.input(*lhs).clone().into(), &rhs, ctx)
         }
         ir::Condition::CmpInput { lhs, rhs, op, inverse } => {
-            let mut rhs = ctx.input(*rhs).clone();
+            let mut rhs: print::Value = ctx.input(*rhs).clone().into();
             if *inverse { rhs.inverse() }
-            comparison(*op, ctx.input(*lhs), &rhs, ctx)
+            comparison(*op, &ctx.input(*lhs).clone().into(), &rhs, ctx)
         }
     }
 }

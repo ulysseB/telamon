@@ -3,6 +3,7 @@ use ir;
 use ir::SetRef;
 use itertools::Itertools;
 use print;
+use quote::ToTokens;
 use serde::{Serialize, Serializer};
 use std::fmt::{self, Display, Formatter};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -60,7 +61,7 @@ pub struct Context<'a> {
     pub ir_desc: &'a ir::IrDesc,
     pub choice: &'a ir::Choice,
     vars: HashMap<ir::Variable, (Variable<'a>, &'a ir::Set)>,
-    inputs: Vec<print::Value>,
+    inputs: Vec<print::ValueIdent>,
 }
 
 impl<'a> Context<'a> {
@@ -77,7 +78,7 @@ impl<'a> Context<'a> {
             vars.insert(ir::Variable::Forall(id), (Variable::with_set(set), set));
         }
         let inputs = input_defs.iter().map(|input| {
-            print::Value::new_ident(&input.choice, input.value_type(ir_desc))
+            print::ValueIdent::new_ident(&input.choice, input.value_type(ir_desc))
         }).collect();
         Context { ir_desc, choice, vars, inputs }
     }
@@ -107,12 +108,13 @@ impl<'a> Context<'a> {
     /// Returns the name of an input.
     // TODO(cleanup): deprecate to use `input` instead
     pub fn input_name(&self, id: usize) -> Variable<'a> {
+        // FIXME: doesn't work with group
         let name = &self.inputs[id];
-        Variable::with_string(quote!(#name).to_string())
+        Variable::with_string(name.into_token_stream().to_string())
     }
 
-    /// Returns the choice definition of an input.
-    pub fn input(&self, id: usize) -> &print::Value { &self.inputs[id] }
+    /// Returns the value representing an input of an input.
+    pub fn input(&self, id: usize) -> &print::ValueIdent { &self.inputs[id] }
 }
 
 /// An instance of a choice.

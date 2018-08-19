@@ -2,6 +2,7 @@
 use ir;
 use print;
 use proc_macro2::{Ident, Span, TokenStream};
+use quote::ToTokens;
 
 /// Prints the ids of the variables of a `ChoiceInstance`.
 pub fn ids(choice_instance: &ir::ChoiceInstance, ctx: &print::Context) -> TokenStream {
@@ -303,7 +304,7 @@ impl<'a> ChoiceAction<'a> {
                 let adaptator = ir::Adaptator::from_arguments(&counter.vars);
                 let counter_type = counter_def.value_type().adapt(&adaptator);
                 let value_getter = print::counter::increment_amount(value, true, ctx);
-                let value = print::Value::ident("value", value_getter.value_type().clone());
+                let value: print::Value = value_getter.create_ident("value").into();
                 let min = value.get_min(ctx);
                 let max = value.get_max(ctx);
                 if let ir::ChoiceDef::Counter { kind, visibility, .. } = *counter_def {
@@ -312,11 +313,11 @@ impl<'a> ChoiceAction<'a> {
                         incr_condition: value_set::print(incr_condition, ctx).to_string(),
                         counter_type: ast::ValueType::new(counter_type, ctx),
                         arguments,
-                        value_getter: quote!(#value_getter).to_string(),
+                        value_getter: value_getter.into_token_stream().to_string(),
                         is_half: visibility == ir::CounterVisibility::NoMax,
                         zero: kind.zero(),
-                        min: quote!(#min).to_string(),
-                        max: quote!(#max).to_string(),
+                        min: min.into_token_stream().to_string(),
+                        max: max.into_token_stream().to_string(),
                     }
                 } else { panic!() }
             },
@@ -452,8 +453,8 @@ impl<'a> RestrictCounter<'a> {
             let incr_iter = ast::LoopNest::new(forall_vars, &ctx, &mut conflicts, false);
             let incr = ast::ChoiceInstance::new(incr, &ctx);
             let incr_amount_getter = print::counter::increment_amount(value, false, &ctx);
-            let incr_amount_type = incr_amount_getter.value_type().clone();
-            let incr_amount = print::Value::ident("incr_amount", incr_amount_type);
+            let incr_amount: print::Value = incr_amount_getter
+                .create_ident("incr_amount").into();
             let min_incr_amount = incr_amount.get_min(&ctx);
             let max_incr_amount = incr_amount.get_max(&ctx);
             let restrict_amount = if let ir::CounterVal::Choice(choice) = value {
@@ -470,7 +471,7 @@ impl<'a> RestrictCounter<'a> {
             };
             Some(RestrictCounter {
                 incr, incr_iter,
-                incr_amount: quote!(#incr_amount_getter).to_string(),
+                incr_amount: incr_amount_getter.into_token_stream().to_string(),
                 incr_type: ast::ValueType::new(incr_condition.t(), &ctx),
                 incr_condition: value_set::print(&incr_condition, &ctx).to_string(),
                 is_half: visibility == ir::CounterVisibility::NoMax,
@@ -479,10 +480,11 @@ impl<'a> RestrictCounter<'a> {
                     ir::CounterKind::Add => "-",
                     ir::CounterKind::Mul => "/",
                 },
-                min: quote!(#min_incr_amount).to_string(),
-                max: quote!(#max_incr_amount).to_string(),
-                restrict_amount: quote!(#restrict_amount).to_string(),
-                restrict_amount_delayed: quote!(#restrict_amount_delayed).to_string(),
+                min: min_incr_amount.into_token_stream().to_string(),
+                max: max_incr_amount.into_token_stream().to_string(),
+                restrict_amount: restrict_amount.into_token_stream().to_string(),
+                restrict_amount_delayed: restrict_amount_delayed
+                    .into_token_stream().to_string(),
             })
         } else { None }
     }

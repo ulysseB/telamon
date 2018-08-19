@@ -145,4 +145,6 @@ pub fn init_domain_partial(store: &mut DomainStore,
 {{#each triggers~}}
     {{>trigger_check}}
 {{/each~}}
+
 // TODO(cleanup): generate (IrInstance, Domain) pair here.
+{{runtime}}

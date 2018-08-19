@@ -6,7 +6,7 @@ mod value;
 
 // Re-export commonly used items.
 use print::ast::Context;
-use print::value::Value;
+use print::value::{Value, ValueIdent};
 
 use handlebars::{self, Handlebars, Helper, Renderable, RenderContext, RenderError};
 use ir;

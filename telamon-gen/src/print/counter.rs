@@ -53,14 +53,14 @@ pub fn restrict_incr_amount(
     delayed: bool,
     ctx: &print::Context
 ) -> TokenStream {
-    let max_val = print::Value::ident("max_val", ir::ValueType::Constant);
+    let max_val = print::ValueIdent::new("max_val", ir::ValueType::Constant);
     let neg_op = inverse_operator(op);
     let restricted_value_type = incr_amount.value_type(ctx.ir_desc).full_type();
     let restricted_value = print::value::integer_domain_constructor(
-        ir::CmpOp::Leq, &max_val, restricted_value_type, ctx);
-    let restricted_value_name = restricted_value.with_name("value");
+        ir::CmpOp::Leq, &max_val.into(), restricted_value_type, ctx);
+    let restricted_value_name = restricted_value.create_ident("value");
     let apply_restriction = print::choice::restrict(
-        incr_amount, &restricted_value_name, delayed, ctx);
+        incr_amount, &restricted_value_name.into(), delayed, ctx);
     let min_incr_amount = current_incr_amount.get_min(ctx);
     quote! {
         else if incr_status.is_true() {
@@ -84,7 +84,7 @@ pub fn compute_counter_body(
     ctx: &print::Context,
 ) -> TokenStream {
     let value_getter = increment_amount(value, true, ctx);
-    let value = print::Value::ident("value", value_getter.value_type().clone());
+    let value: print::Value = value_getter.create_ident("value").into();
     let value_min = value.get_min(ctx);
     let value_max = value.get_max(ctx);
     let incr_getter = print::Value::from_store(incr, true, ctx);

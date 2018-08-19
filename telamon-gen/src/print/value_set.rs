@@ -5,15 +5,13 @@ use print;
 use print::ast::{self, Context};
 use proc_macro2::TokenStream;
 use std::collections::BTreeSet;
-use std::borrow::Cow;
 use utils::*;
 
 /// Prints a `ValueSet`.
 pub fn print(set: &ir::ValueSet, ctx: &Context) -> TokenStream {
-    let t = ast::ValueType::new(set.t(), ctx);
     if set.is_empty() {
-        // TODO(cleanup): return a token stream instead of parsing
-        unwrap!(format!("{}::FAILED", t).parse())
+        let t = set.t();
+        quote! { #t::FAILED }
     } else {
         match *set {
             ir::ValueSet::Enum { ref enum_name, ref values, ref inputs } => {
@@ -22,15 +20,16 @@ pub fn print(set: &ir::ValueSet, ctx: &Context) -> TokenStream {
             }
             ir::ValueSet::Integer { is_full: true, .. } => {
                 // TODO(cleanup): return a token stream instead of parsing
+                let t = ast::ValueType::new(set.t(), ctx);
                 unwrap!(render!(value_type/full_domain, t).parse())
             },
             ir::ValueSet::Integer { ref cmp_inputs, ref cmp_code, .. } => {
-                // FIXME: The set might not be restriceted enough when combining range
+                // FIXME: The set might not be restricted enough when combining range
                 // sets: should limit to the current domain.
                 let parts = cmp_inputs.iter().map(|&(op, input)| {
-                    (op, Cow::Borrowed(ctx.input(input)))
+                    (op, ctx.input(input).clone().into())
                 }).chain(cmp_code.iter().map(|&(op, ref code)| {
-                    (op, Cow::Owned(print::Value::new_const(code, ctx)))
+                    (op, print::Value::new_const(code, ctx))
                 })).map(|(op, from)| {
                     print::value::integer_domain_constructor(op, &from, set.t(), ctx)
                 });
