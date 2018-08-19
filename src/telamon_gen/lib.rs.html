@@ -181,12 +181,20 @@
 <span id="181">181</span>
 <span id="182">182</span>
 <span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
 </pre><pre class="rust ">
+<span class="comment">// Enables `quote!` to work on bigger chunks of code.</span>
+<span class="attribute">#![<span class="ident">recursion_limit</span><span class="op">=</span><span class="string">&quot;256&quot;</span>]</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span> <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">env_logger</span>;
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">handlebars</span>;
 <span class="attribute">#[<span class="ident">macro_use</span>]</span> <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">lazy_static</span>;
 <span class="attribute">#[<span class="ident">macro_use</span>]</span> <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">log</span>;
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">itertools</span>;
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">proc_macro2</span>;
+<span class="attribute">#[<span class="ident">macro_use</span>]</span> <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">quote</span>;
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">regex</span>;
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">rustfmt</span>;
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">serde</span>;
@@ -314,7 +322,7 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">print</span>::<span class="ident">Variable</span>;
+    <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">print</span>;
     <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">Cursor</span>;
     <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">path</span>::<span class="ident">Path</span>;
 
@@ -330,7 +338,7 @@
         <span class="comment">// Ideally we would want to run this loop more than once, but</span>
         <span class="comment">// generation is currently too slow to be worth it.</span>
         <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">1</span> {
-            <span class="ident">Variable</span>::<span class="ident">reset_prefix</span>();
+            <span class="ident">print</span>::<span class="ident">reset</span>();
             <span class="ident">in_buf</span>.<span class="ident">set_position</span>(<span class="number">0</span>);
 
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">out_buf</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
