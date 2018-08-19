@@ -20,7 +20,7 @@ impl<'a> Variable<'a> {
     /// Reset the prefix counter. This is meant for use in tests only.
     #[cfg(test)]
     #[doc(hidden)]
-    pub(crate) fn reset_prefix() {
+    pub fn reset_prefix() {
         NEXT_VAR_ID.store(0, Ordering::SeqCst);
     }
 
@@ -108,7 +108,6 @@ impl<'a> Context<'a> {
     /// Returns the name of an input.
     // TODO(cleanup): deprecate to use `input` instead
     pub fn input_name(&self, id: usize) -> Variable<'a> {
-        // FIXME: doesn't work with group
         let name = &self.inputs[id];
         Variable::with_string(name.into_token_stream().to_string())
     }

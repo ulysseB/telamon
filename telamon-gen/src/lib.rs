@@ -134,7 +134,7 @@ pub fn process<'a, T: io::Write>(
 
 #[cfg(test)]
 mod tests {
-    use super::print::Variable;
+    use super::print;
     use std::io::Cursor;
     use std::path::Path;
 
@@ -150,7 +150,7 @@ mod tests {
         // Ideally we would want to run this loop more than once, but
         // generation is currently too slow to be worth it.
         for _ in 0..1 {
-            Variable::reset_prefix();
+            print::reset();
             in_buf.set_position(0);
 
             let mut out_buf = Vec::new();

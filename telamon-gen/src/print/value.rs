@@ -101,11 +101,19 @@ pub struct ValueIdent {
     value_type: ir::ValueType,
 }
 
+lazy_static! { static ref NEXT_IDENT_ID: AtomicUsize = AtomicUsize::new(0); }
+
+/// Resets the counter used to attribute name to identifiers.
+#[cfg(test)]
+#[doc(hidden)]
+pub fn reset_ident_counter() {
+    NEXT_IDENT_ID.store(0, Ordering::SeqCst);
+}
+
 impl ValueIdent {
     /// Creates a new value with a unique name.
     pub fn new_ident(prefix: &str, value_type: ir::ValueType) -> Self {
-        lazy_static! { static ref NEXT_ID: AtomicUsize = AtomicUsize::new(0); }
-        let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
+        let id = NEXT_IDENT_ID.fetch_add(1, Ordering::Relaxed);
         Self::new(&format!("{}_{}", prefix, id), value_type)
     }
 

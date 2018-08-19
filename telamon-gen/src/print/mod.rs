@@ -8,6 +8,17 @@ mod value;
 use print::ast::Context;
 use print::value::{Value, ValueIdent};
 
+/// Reset the state of the printer. This should only be used for testing purpose, when
+/// one whats to compare the outputs of the printer oer sevral runs.
+#[cfg(test)]
+#[doc(hidden)]
+pub fn reset() {
+    value::reset_ident_counter();
+    ast::Variable::reset_prefix();
+}
+
+
+// TODO(cleanup): rewrite the fllowing with token streams instead of string templates
 use handlebars::{self, Handlebars, Helper, Renderable, RenderContext, RenderError};
 use ir;
 use itertools::Itertools;
@@ -214,8 +225,6 @@ mod store;
 mod value_set;
 
 use self::store::PartialIterator;
-#[cfg(test)]
-pub(crate) use self::ast::Variable;
 
 /// Generate the trigger code to add a representant to a quotient set.
 pub fn add_to_quotient(set: &ir::SetDef,
