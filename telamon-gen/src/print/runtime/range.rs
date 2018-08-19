@@ -5,14 +5,14 @@ use proc_macro2::TokenStream;
 pub fn get() -> TokenStream {
     quote! {
         /// Abstracts integer choices by a range.
-        #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+        #[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+        #[repr(C)]
         pub struct Range {
             pub min: u32,
             pub max: u32,
         }
 
         #[allow(dead_code)]
-        #[repr(C)]
         impl Range {
             pub const ALL: Range = Range { min: 0, max: std::u32::MAX };
 
@@ -125,11 +125,11 @@ pub fn get() -> TokenStream {
         }
 
         /// Abstracts integer choices by a range, but only store `min`.
-        #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+        #[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+        #[repr(C)]
         pub struct HalfRange { pub min: u32 }
 
         #[allow(dead_code)]
-        #[repr(C)]
         impl HalfRange {
             pub const ALL: HalfRange = HalfRange { min: 0 };
 
