@@ -1,34 +1,39 @@
 //! Prints sets of values.
 use ir;
 use itertools::Itertools;
+use print;
 use print::ast::{self, Context};
+use proc_macro2::TokenStream;
 use std::collections::BTreeSet;
 use utils::*;
 
 /// Prints a `ValueSet`.
-pub fn print(set: &ir::ValueSet, ctx: &Context) -> String {
-    let t = ast::ValueType::new(set.t(), ctx);
+pub fn print(set: &ir::ValueSet, ctx: &Context) -> TokenStream {
     if set.is_empty() {
-        format!("{}::FAILED", t)
+        let t = set.t();
+        quote! { #t::FAILED }
     } else {
-        // FIXME: The set might not be restriceted enough when combining range sets.
-        // - should limit to the current domain.
-        // TODO(cc_perf): might be faster to limit to the current domain rather than the
-        // full universe.
         match *set {
-            ir::ValueSet::Enum { ref enum_name, ref values, ref inputs } =>
-                enum_set(enum_name, values, inputs, ctx),
+            ir::ValueSet::Enum { ref enum_name, ref values, ref inputs } => {
+                // TODO(cleanup): return a token stream instead of parsing
+                unwrap!(enum_set(enum_name, values, inputs, ctx).parse())
+            }
             ir::ValueSet::Integer { is_full: true, .. } => {
-                render!(value_type/full_domain, t)
+                // TODO(cleanup): return a token stream instead of parsing
+                let t = ast::ValueType::new(set.t(), ctx);
+                unwrap!(render!(value_type/full_domain, t).parse())
             },
             ir::ValueSet::Integer { ref cmp_inputs, ref cmp_code, .. } => {
-                cmp_inputs.iter().map(|&(op, input)| {
-                    (op, ctx.input_name(input).to_string())
+                // FIXME: The set might not be restricted enough when combining range
+                // sets: should limit to the current domain.
+                let parts = cmp_inputs.iter().map(|&(op, input)| {
+                    (op, ctx.input(input).clone().into())
                 }).chain(cmp_code.iter().map(|&(op, ref code)| {
-                    (op, ast::code(code, ctx))
-                })).map(|(op, val)| {
-                    universe_fun(&t, cmp_op_fun_name(op), &val)
-                }).format("|").to_string()
+                    (op, print::Value::new_const(code, ctx))
+                })).map(|(op, from)| {
+                    print::value::integer_domain_constructor(op, &from, set.t(), ctx)
+                });
+                quote!(#(#parts)|*)
             },
         }
     }
@@ -49,24 +54,4 @@ fn enum_set(name: &str,
         format!("{}{}{}", neg_str, var, inv_str)
     }).collect_vec();
     values.into_iter().chain(inputs).format("|").to_string()
-}
-
-/// Returns the function to call to implement the given operator.
-fn cmp_op_fun_name(op: ir::CmpOp) -> &'static str {
-    match op {
-        ir::CmpOp::Lt => "new_lt",
-        ir::CmpOp::Gt => "new_gt",
-        ir::CmpOp::Leq => "new_leq",
-        ir::CmpOp::Geq => "new_geq",
-        ir::CmpOp::Eq => "new_eq",
-        ir::CmpOp::Neq => panic!("neq operations on numeric domains are not supported"),
-    }
-}
-
-fn universe_fun(t: &ast::ValueType, fun: &str, arg: &str,) -> String {
-    match t {
-        ast::ValueType::NumericSet(universe) =>
-            format!("{}::{}({},{})", t, fun, universe, arg),
-        t => format!("{}::{}(&{}::ALL,{})", t, fun, t, arg),
-    }
 }

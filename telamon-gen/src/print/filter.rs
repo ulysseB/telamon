@@ -1,8 +1,10 @@
 ///! Filter code generation.
 use ir;
+use print;
 use print::ast::{self, Context};
 use print::value_set;
-use std::fmt::{Display, Formatter, Result};
+use proc_macro2::{Ident, Span, TokenStream};
+use quote;
 
 /// Ast for a filtering funtion.
 #[derive(Serialize)]
@@ -64,7 +66,7 @@ impl<'a> PositiveFilter<'a> {
                 if r.alternatives.is_empty() {
                     PositiveFilter::Empty
                 } else {
-                    let values = value_set::print(&r.alternatives, ctx);
+                    let values = value_set::print(&r.alternatives, ctx).to_string();
                     PositiveFilter::AllowValues { var, values }
                 }
             },
@@ -87,7 +89,7 @@ impl<'a> PositiveFilter<'a> {
                 let cases = cases.iter().map(|&(ref values, ref sub_filter)| {
                     let sub_filter = PositiveFilter::new(
                         sub_filter, choice, ctx, set.clone());
-                    (value_set::print(values, ctx), sub_filter)
+                    (value_set::print(values, ctx).to_string(), sub_filter)
                 }).collect();
                 PositiveFilter::Switch { var: ctx.input_name(switch), cases }
             },
@@ -105,56 +107,65 @@ pub struct Rule<'a> {
 
 impl<'a> Rule<'a> {
     pub fn new(var: ast::Variable<'a>, rule: &'a ir::Rule, ctx: &Context<'a>) -> Rule<'a> {
-        let values = value_set::print(&rule.alternatives, ctx);
-        let conditions = rule.conditions.iter().map(|c| condition(c, ctx)).collect();
+        let values = value_set::print(&rule.alternatives, ctx).to_string();
+        let conditions = rule.conditions.iter()
+            .map(|c| condition(c, ctx).to_string()).collect();
         let set_conditions = ast::SetConstraint::new(&rule.set_constraints, ctx);
         Rule { var, conditions, set_conditions, values }
     }
 }
 
-pub fn condition<'a>(cond: &'a ir::Condition, ctx: &Context<'a>) -> String {
-    match *cond {
-        ir::Condition::Bool(b) => format!("{}", b),
-        ir::Condition::Code { ref code, negate: false } => {
-            let code = ast::code(code, ctx);
-            format!("({})", code)
-        },
-        ir::Condition::Code { ref code, negate: true } => {
-            let code = ast::code(code, ctx);
-            format!("!({})", code)
-        },
-        ir::Condition::Enum { input, ref values, negate, inverse } => {
-            let enum_name = ctx.input_choice_def(input).as_enum().unwrap();
-            let input_type = ctx.ir_desc.get_enum(enum_name);
-            let name = ctx.input_name(input);
-            let set = ir::normalized_enum_set(values, !negate, inverse, input_type);
-            let set = value_set::print(&set, ctx);
-            format!("!{}.intersects({})", name, set)
-        },
-        ir::Condition::CmpCode { lhs, ref rhs, op } => {
-            let rhs = ast::code(rhs, ctx);
-            let lhs = ctx.input_name(lhs);
-            format!("{lhs}.{op}({rhs})", lhs = lhs, rhs = rhs, op = op)
-        },
+/// Prints an `ir::Condition`.
+pub fn condition(cond: &ir::Condition, ctx: &Context) -> TokenStream {
+    match cond {
+        ir::Condition::Bool(b) => quote!(#b),
+        ir::Condition::Code { code, negate } => {
+            let mut code = print::Value::new_const(code, ctx);
+            if *negate { code.negate(); }
+            quote!(#code)
+        }
+        ir::Condition::Enum { input, values, negate, inverse } => {
+            let input = ctx.input(*input);
+            let enum_def = ctx.ir_desc.get_enum(unwrap!(input.value_type().as_enum()));
+            let set = ir::normalized_enum_set(values, !*negate, *inverse, enum_def);
+            let value_set = value_set::print(&set, ctx);
+            quote!(!#input.intersects(#value_set))
+        }
+        ir::Condition::CmpCode { lhs, rhs, op } => {
+            let rhs = print::Value::new_const(rhs, ctx);
+            comparison(*op, &ctx.input(*lhs).clone().into(), &rhs, ctx)
+        }
         ir::Condition::CmpInput { lhs, rhs, op, inverse } => {
-            let inverse_str = if inverse { ".inverse()" } else { "" };
-            let lhs = ctx.input_name(lhs);
-            let rhs = ctx.input_name(rhs);
-            format!("{lhs}.{op}({rhs}{inverse})",
-                lhs = lhs, rhs = rhs, op = op, inverse = inverse_str)
-        },
+            let mut rhs: print::Value = ctx.input(*rhs).clone().into();
+            if *inverse { rhs.inverse() }
+            comparison(*op, &ctx.input(*lhs).clone().into(), &rhs, ctx)
+        }
     }
 }
 
-impl<'a> Display for ir::CmpOp {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        match *self {
+/// Produces code that compares to domains.
+fn comparison(
+    op: ir::CmpOp,
+    lhs: &print::Value,
+    rhs: &print::Value,
+    ctx: &Context,
+) -> TokenStream {
+    let lhs_universe = print::value::universe(lhs.value_type(), ctx);
+    let rhs_universe = print::value::universe(rhs.value_type(), ctx);
+    quote!(#lhs.#op(#lhs_universe, #rhs, #rhs_universe))
+}
+
+impl quote::ToTokens for ir::CmpOp {
+    fn to_tokens(&self, stream: &mut TokenStream) {
+        let name = match self {
             ir::CmpOp::Eq => "eq",
             ir::CmpOp::Neq => "neq",
             ir::CmpOp::Lt => "lt",
             ir::CmpOp::Gt => "gt",
             ir::CmpOp::Leq => "leq",
             ir::CmpOp::Geq => "geq",
-        }.fmt(f)
+        };
+        // TODO(span): get the real span from the lexer
+        Ident::new(name, Span::call_site()).to_tokens(stream);
     }
 }

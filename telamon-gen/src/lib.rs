@@ -1,8 +1,12 @@
+// Enables `quote!` to work on bigger chunks of code.
+#![recursion_limit="256"]
 #[cfg(test)] extern crate env_logger;
 extern crate handlebars;
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate log;
 extern crate itertools;
+extern crate proc_macro2;
+#[macro_use] extern crate quote;
 extern crate regex;
 extern crate rustfmt;
 extern crate serde;
@@ -130,7 +134,7 @@ pub fn process<'a, T: io::Write>(
 
 #[cfg(test)]
 mod tests {
-    use super::print::Variable;
+    use super::print;
     use std::io::Cursor;
     use std::path::Path;
 
@@ -146,7 +150,7 @@ mod tests {
         // Ideally we would want to run this loop more than once, but
         // generation is currently too slow to be worth it.
         for _ in 0..1 {
-            Variable::reset_prefix();
+            print::reset();
             in_buf.set_position(0);
 
             let mut out_buf = Vec::new();
