@@ -11,7 +11,10 @@ pub struct Table<T: std::fmt::Display> {
 impl<T: std::fmt::Display> Table<T> {
     /// Creates an empty table with the given headers.
     pub fn new(header: Vec<String>) -> Self {
-        Table { header, data: vec![] }
+        Table {
+            header,
+            data: vec![],
+        }
     }
 
     /// Inserts an entry into the table.
@@ -31,7 +34,7 @@ impl<T: std::fmt::Display> Table<T> {
     }
 
     /// Returns a column of the table.
-    pub fn column(&self, id: usize) -> impl Iterator<Item=&T> {
+    pub fn column(&self, id: usize) -> impl Iterator<Item = &T> {
         self.data.iter().map(move |x| &x[id])
     }
 
@@ -45,12 +48,16 @@ impl<T: std::fmt::Display> IntoIterator for Table<T> {
     type Item = Vec<T>;
     type IntoIter = std::vec::IntoIter<Vec<T>>;
 
-    fn into_iter(self) -> Self::IntoIter { self.data.into_iter() }
+    fn into_iter(self) -> Self::IntoIter {
+        self.data.into_iter()
+    }
 }
 
 impl<'a, T: std::fmt::Display> IntoIterator for &'a Table<T> {
     type Item = &'a Vec<T>;
     type IntoIter = std::slice::Iter<'a, Vec<T>>;
 
-    fn into_iter(self) -> Self::IntoIter { self.data.iter() }
+    fn into_iter(self) -> Self::IntoIter {
+        self.data.iter()
+    }
 }

@@ -1,8 +1,8 @@
 //! Representation and manipulation of a set of possible implementation.
 mod access_pattern;
 mod basic_block;
-mod dimension;
 mod dim_map;
+mod dimension;
 mod error;
 mod function;
 mod induction_var;
@@ -14,16 +14,16 @@ mod types;
 
 use std::marker::PhantomData;
 
-pub use self::access_pattern::{Stride, AccessPattern};
-pub use self::basic_block::{BasicBlock, BBId};
+pub use self::access_pattern::{AccessPattern, Stride};
+pub use self::basic_block::{BBId, BasicBlock};
 pub use self::dim_map::DimMap;
 pub use self::dimension::{DimId, Dimension};
 pub use self::error::{Error, TypeError};
-pub use self::function::{Function, Signature, Parameter};
-pub use self::instruction::{InstId, Instruction};
+pub use self::function::{Function, Parameter, Signature};
 pub use self::induction_var::{IndVarId, InductionVar};
+pub use self::instruction::{InstId, Instruction};
 pub use self::mem::MemId;
-pub use self::operand::{Operand, DimMapScope, LoweringMap};
+pub use self::operand::{DimMapScope, LoweringMap, Operand};
 pub use self::operator::{BinOp, Operator};
 pub use self::size::Size;
 pub use self::types::Type;
@@ -37,9 +37,9 @@ pub mod dim {
 
 /// Defines operators.
 pub mod op {
+    pub use super::operator::BinOp;
     pub use super::operator::Operator::*;
     pub use super::operator::Rounding;
-    pub use super::operator::BinOp;
 }
 
 /// Defines traits to import in the environment to use the IR.
@@ -66,7 +66,9 @@ impl NewObjs {
     /// Registers a new instruction.
     pub fn add_instruction(&mut self, inst: &Instruction) {
         self.add_bb(inst);
-        for &dim in inst.iteration_dims() { self.iteration_dims.push((inst.id(), dim)); }
+        for &dim in inst.iteration_dims() {
+            self.iteration_dims.push((inst.id(), dim));
+        }
         self.instructions.push(inst.id());
     }
 
@@ -80,8 +82,12 @@ impl NewObjs {
     pub fn add_dimension(&mut self, dim: &Dimension) {
         self.add_bb(dim);
         self.dimensions.push(dim.id());
-        if dim.possible_sizes().is_some() { self.static_dims.push(dim.id()); }
-        if dim.is_thread_dim() { self.add_thread_dim(dim.id()); }
+        if dim.possible_sizes().is_some() {
+            self.static_dims.push(dim.id());
+        }
+        if dim.is_thread_dim() {
+            self.add_thread_dim(dim.id());
+        }
     }
 
     /// Registers a new basic block.
@@ -95,7 +101,9 @@ impl NewObjs {
     }
 
     /// Sets a dimension as a new thread dimension.
-    pub fn add_thread_dim(&mut self, dim: DimId) { self.thread_dims.push(dim) }
+    pub fn add_thread_dim(&mut self, dim: DimId) {
+        self.thread_dims.push(dim)
+    }
 
     /// Registers a new memory block.
     pub fn add_mem_block(&mut self, id: mem::InternalId) {
@@ -109,7 +117,7 @@ pub struct LoweredDimMap {
     pub mem: mem::InternalId,
     pub store: InstId,
     pub load: InstId,
-    pub dimensions: Vec<(DimId, DimId)>
+    pub dimensions: Vec<(DimId, DimId)>,
 }
 
 /// A vector with holes. This provides a similar interface as a
@@ -129,7 +137,8 @@ pub(crate) struct SparseVec<I, T> {
 }
 
 impl<T, I> SparseVec<I, T>
-where I: Into<usize>
+where
+    I: Into<usize>,
 {
     /// Creates a new sparse vector.
     pub fn new() -> Self {
@@ -222,7 +231,8 @@ impl<I, T> IntoIterator for SparseVec<I, T> {
 /// be of type `I` as declared in the `SparseVec` type. Panics when
 /// accessing an index which is out of bounds *or* contains a hole.
 impl<T, I> ::std::ops::Index<I> for SparseVec<I, T>
-where I: Into<usize>
+where
+    I: Into<usize>,
 {
     type Output = T;
 
@@ -236,7 +246,8 @@ where I: Into<usize>
 /// type. Panics when accessing an index which is out of bounds *or*
 /// contains a hole.
 impl<T, I> ::std::ops::IndexMut<I> for SparseVec<I, T>
-where I: Into<usize>
+where
+    I: Into<usize>,
 {
     fn index_mut(&mut self, index: I) -> &mut T {
         unwrap!(self.vec[index.into()].as_mut())

@@ -1,6 +1,6 @@
 extern crate env_logger;
-extern crate telamon;
 extern crate serde_json;
+extern crate telamon;
 #[macro_use]
 extern crate telamon_utils;
 

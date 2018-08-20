@@ -1,5 +1,48 @@
-//! Prints the definition of a choice.
+//! Prints the definition and manipulation of choices.
 use ir;
+use print;
+use proc_macro2::{Ident, Span, TokenStream};
+use quote::ToTokens;
+
+/// Prints the ids of the variables of a `ChoiceInstance`.
+pub fn ids(choice_instance: &ir::ChoiceInstance, ctx: &print::Context) -> TokenStream {
+    let choice = ctx.ir_desc.get_choice(&choice_instance.choice);
+    let arg_sets = choice.arguments().sets();
+    let ids = choice_instance
+        .vars
+        .iter()
+        .zip_eq(arg_sets)
+        .map(|(&var, set)| {
+            // TODO(cleanup): parse beforehand
+            let var = unwrap!(ctx.var_name(var).to_string().parse());
+            print::set::id(var, set)
+        });
+    quote!(#(#ids,)*)
+}
+
+/// Restricts a choice to `value`. If `delayed` is true, actions are put in the
+/// `actions` vector instead of being directly applied.
+pub fn restrict(
+    choice_instance: &ir::ChoiceInstance,
+    value: &print::Value,
+    delayed: bool,
+    ctx: &print::Context,
+) -> TokenStream {
+    assert_eq!(
+        &choice_instance.value_type(ctx.ir_desc).full_type(),
+        value.value_type()
+    );
+    // TODO(span): keep the real span.
+    let name = Ident::new(&choice_instance.choice, Span::call_site());
+    let ids = ids(choice_instance, ctx);
+    if delayed {
+        quote!(actions.extend(#name::restrict_delayed(#ids ir_instance, store, #value)?);)
+    } else {
+        quote!(#name::restrict(#ids ir_instance, store, #value, diff)?;)
+    }
+}
+
+// TODO(cleanup): use TokenStream insted of templates
 use ir::Adaptable;
 use itertools::Itertools;
 use print::{ast, filter, value_set};
@@ -44,17 +87,28 @@ impl<'a> Ast<'a> {
             ir::ChoiceArguments::Plain { .. } => (false, false),
             ir::ChoiceArguments::Symmetric { inverse, .. } => (true, inverse),
         };
-        let filter_actions = choice.filter_actions()
-            .map(move |action| FilterAction::new(action, choice, ir_desc)).collect();
+        let filter_actions = choice
+            .filter_actions()
+            .map(move |action| FilterAction::new(action, choice, ir_desc))
+            .collect();
         let mut trigger_calls = Vec::new();
-        let on_change = choice.on_change().map(|action| {
-            OnChangeAction::new(action, choice, ir_desc, &mut trigger_calls)
-        }).collect();
-        let filters = choice.filters().enumerate()
-            .map(|(id, f)| filter::Filter::new(f, id, choice, ir_desc)).collect();
+        let on_change = choice
+            .on_change()
+            .map(|action| {
+                OnChangeAction::new(action, choice, ir_desc, &mut trigger_calls)
+            })
+            .collect();
+        let filters = choice
+            .filters()
+            .enumerate()
+            .map(|(id, f)| filter::Filter::new(f, id, choice, ir_desc))
+            .collect();
         let ref ctx = ast::Context::new(ir_desc, choice, &[], &[]);
-        let arguments = choice.arguments().iter()
-            .map(|(n, s)| (n as &str, ast::Set::new(s, ctx))).collect();
+        let arguments = choice
+            .arguments()
+            .iter()
+            .map(|(n, s)| (n as &str, ast::Set::new(s, ctx)))
+            .collect();
         Ast {
             name: choice.name(),
             doc: choice.doc(),
@@ -64,12 +118,19 @@ impl<'a> Ast<'a> {
             restrict_counter: RestrictCounter::new(choice, ir_desc),
             iteration_space: self::iteration_space(ctx),
             compute_counter: ComputeCounter::new(choice, ir_desc),
-            arguments, trigger_calls, is_symmetric, is_antisymmetric,
-            on_change, filter_actions, filters
+            arguments,
+            trigger_calls,
+            is_symmetric,
+            is_antisymmetric,
+            on_change,
+            filter_actions,
+            filters,
         }
     }
 
-    pub fn name(&self) -> &str { self.name }
+    pub fn name(&self) -> &str {
+        self.name
+    }
 }
 
 /// Returns the iteration space associated to a choice.
@@ -78,7 +139,7 @@ fn iteration_space<'a>(ctx: &ast::Context<'a>) -> ast::LoopNest<'a> {
         ref args @ ir::ChoiceArguments::Plain { .. } => {
             let args = (0..args.len()).map(ir::Variable::Arg);
             ast::LoopNest::new(args, ctx, &mut vec![], false)
-        },
+        }
         ir::ChoiceArguments::Symmetric { .. } => {
             ast::LoopNest::triangular(ir::Variable::Arg(0), ir::Variable::Arg(1), ctx)
         }
@@ -86,7 +147,11 @@ fn iteration_space<'a>(ctx: &ast::Context<'a>) -> ast::LoopNest<'a> {
 }
 
 #[derive(Serialize)]
-enum ChoiceDef { Enum, Counter { kind: ir::CounterKind }, Integer }
+enum ChoiceDef {
+    Enum,
+    Counter { kind: ir::CounterKind },
+    Integer,
+}
 
 impl ChoiceDef {
     fn new(def: &ir::ChoiceDef) -> Self {
@@ -114,8 +179,11 @@ struct FilterAction<'a> {
 }
 
 impl<'a> FilterAction<'a> {
-    fn new(action: &'a ir::FilterAction, choice: &'a ir::Choice,
-           ir_desc: &'a ir::IrDesc) -> Self {
+    fn new(
+        action: &'a ir::FilterAction,
+        choice: &'a ir::Choice,
+        ir_desc: &'a ir::IrDesc,
+    ) -> Self {
         let set = ast::Variable::with_name("values");
         let forall_vars = &action.filter.forall_vars;
         let ref ctx = ast::Context::new(ir_desc, choice, forall_vars, &[]);
@@ -129,12 +197,10 @@ impl<'a> FilterAction<'a> {
 #[derive(Serialize)]
 struct ComputeCounter<'a> {
     base: String,
-    nest: ast::LoopNest<'a>,
-    incr: ast::ChoiceInstance<'a>,
-    incr_condition: String,
-    value: CounterValue<'a>,
-    op: String,
     half: bool,
+    nest: ast::LoopNest<'a>,
+    body: String,
+    op: String,
 }
 
 impl<'a> ComputeCounter<'a> {
@@ -142,24 +208,38 @@ impl<'a> ComputeCounter<'a> {
         use ir::ChoiceDef::Counter;
         let def = choice.choice_def();
         if let Counter {
-            ref incr_iter, kind, ref value, ref incr, ref incr_condition, visibility,
-            ref base
-        } = *def {
+            ref incr_iter,
+            kind,
+            ref value,
+            ref incr,
+            ref incr_condition,
+            visibility,
+            ref base,
+        } = *def
+        {
             let ctx = ast::Context::new(ir_desc, choice, incr_iter, &[]);
             let mut conflicts = ast::Conflict::choice_args(choice, &ctx);
             let forall_vars = (0..incr_iter.len()).map(ir::Variable::Forall);
-            let nest_builder = ast::LoopNest::new(
-                forall_vars, &ctx, &mut conflicts, false);
+            let nest_builder =
+                ast::LoopNest::new(forall_vars, &ctx, &mut conflicts, false);
+            let body = print::counter::compute_counter_body(
+                value,
+                incr,
+                incr_condition,
+                kind,
+                visibility,
+                &ctx,
+            );
             Some(ComputeCounter {
                 base: ast::code(base, &ctx),
-                incr: ast::ChoiceInstance::new(incr, &ctx),
-                incr_condition: value_set::print(incr_condition, &ctx),
-                nest: nest_builder,
-                value: CounterValue::new(value, &ctx),
-                op: kind.to_string(),
                 half: visibility == ir::CounterVisibility::NoMax,
+                nest: nest_builder,
+                body: body.to_string(),
+                op: kind.to_string(),
             })
-        } else { None }
+        } else {
+            None
+        }
     }
 }
 
@@ -174,8 +254,12 @@ struct OnChangeAction<'a> {
 
 impl<'a> OnChangeAction<'a> {
     /// Generates the AST for an action to perform when `choice` is restricted.
-    fn new(action: &'a ir::OnChangeAction, choice: &'a ir::Choice,
-           ir_desc: &'a ir::IrDesc, trigger_calls: &mut Vec<TriggerCall<'a>>) -> Self {
+    fn new(
+        action: &'a ir::OnChangeAction,
+        choice: &'a ir::Choice,
+        ir_desc: &'a ir::IrDesc,
+        trigger_calls: &mut Vec<TriggerCall<'a>>,
+    ) -> Self {
         // TODO(cc_perf): if the other is symmetric -> need to iterate only on part of it.
         // Setup the context and variable names.
         let forall_vars = action.forall_vars.iter().chain(action.action.variables());
@@ -190,9 +274,19 @@ impl<'a> OnChangeAction<'a> {
         // Build the body.
         let constraints = ast::SetConstraint::new(&action.set_constraints, ctx);
         let forall_offset = action.forall_vars.len();
-        let action = ChoiceAction::new(&action.action, forall_offset,
-            &action.set_constraints, conflicts, ctx, trigger_calls);
-        OnChangeAction { constraints, loop_nest, action }
+        let action = ChoiceAction::new(
+            &action.action,
+            forall_offset,
+            &action.set_constraints,
+            conflicts,
+            ctx,
+            trigger_calls,
+        );
+        OnChangeAction {
+            constraints,
+            loop_nest,
+            action,
+        }
     }
 }
 
@@ -211,10 +305,12 @@ enum ChoiceAction<'a> {
         counter_name: &'a str,
         arguments: Vec<(ast::Variable<'a>, ast::Set<'a>)>,
         incr_condition: String,
-        value: CounterValue<'a>,
+        value_getter: String,
         counter_type: ast::ValueType,
         is_half: bool,
         zero: u32,
+        min: String,
+        max: String,
     },
     UpdateCounter {
         name: &'a str,
@@ -222,7 +318,8 @@ enum ChoiceAction<'a> {
         incr_args: Vec<(ast::Variable<'a>, ast::Set<'a>)>,
         incr_condition: String,
         arguments: Vec<(ast::Variable<'a>, ast::Set<'a>)>,
-        value_type: ast::ValueType,
+        counter_type: ast::ValueType,
+        incr_type: ast::ValueType,
         is_half: bool,
         zero: u32,
     },
@@ -237,18 +334,24 @@ enum ChoiceAction<'a> {
 
 /// Prints an action performed by a choice.
 impl<'a> ChoiceAction<'a> {
-    fn new(action: &'a ir::ChoiceAction,
-           forall_offset: usize,
-           set_constraints: &'a ir::SetConstraints,
-           conflicts: Vec<ast::Conflict<'a>>,
-           ctx: &ast::Context<'a>,
-           trigger_calls: &mut Vec<TriggerCall<'a>>) -> Self {
+    fn new(
+        action: &'a ir::ChoiceAction,
+        forall_offset: usize,
+        set_constraints: &'a ir::SetConstraints,
+        conflicts: Vec<ast::Conflict<'a>>,
+        ctx: &ast::Context<'a>,
+        trigger_calls: &mut Vec<TriggerCall<'a>>,
+    ) -> Self {
         match action {
             ir::ChoiceAction::FilterSelf => ChoiceAction::FilterSelf,
-            ir::ChoiceAction::Filter { choice: choice_instance, filter } => {
+            ir::ChoiceAction::Filter {
+                choice: choice_instance,
+                filter,
+            } => {
                 let set = ast::Variable::with_name("values");
                 let choice = ctx.ir_desc.get_choice(&choice_instance.choice);
-                let filter_call = FilterCall::new(filter, set, conflicts, forall_offset, ctx);
+                let filter_call =
+                    FilterCall::new(filter, set, conflicts, forall_offset, ctx);
                 let arguments = ast::vars_with_sets(choice, &choice_instance.vars, ctx);
                 let adaptator = ir::Adaptator::from_arguments(&choice_instance.vars);
                 let full_type = choice.value_type().full_type().adapt(&adaptator);
@@ -256,70 +359,127 @@ impl<'a> ChoiceAction<'a> {
                     is_symmetric: choice.arguments().is_symmetric(),
                     choice: choice.name(),
                     choice_full_type: ast::ValueType::new(full_type, ctx),
-                    filter_call, arguments,
+                    filter_call,
+                    arguments,
                 }
-            },
-            ir::ChoiceAction::IncrCounter { counter, value, incr_condition } => {
+            }
+            ir::ChoiceAction::IncrCounter {
+                counter,
+                value,
+                incr_condition,
+            } => {
                 let counter_choice = ctx.ir_desc.get_choice(&counter.choice);
                 let counter_def = counter_choice.choice_def();
                 let arguments = ast::vars_with_sets(counter_choice, &counter.vars, ctx);
                 let adaptator = ir::Adaptator::from_arguments(&counter.vars);
                 let counter_type = counter_def.value_type().adapt(&adaptator);
-                if let ir::ChoiceDef::Counter { kind, visibility, .. } = *counter_def {
+                let value_getter = print::counter::increment_amount(value, true, ctx);
+                let value: print::Value = value_getter.create_ident("value").into();
+                let min = value.get_min(ctx);
+                let max = value.get_max(ctx);
+                if let ir::ChoiceDef::Counter {
+                    kind, visibility, ..
+                } = *counter_def
+                {
                     ChoiceAction::IncrCounter {
                         counter_name: &counter.choice,
-                        incr_condition: value_set::print(incr_condition, ctx),
+                        incr_condition: value_set::print(incr_condition, ctx).to_string(),
                         counter_type: ast::ValueType::new(counter_type, ctx),
                         arguments,
-                        value: CounterValue::new(value, ctx),
+                        value_getter: value_getter.into_token_stream().to_string(),
                         is_half: visibility == ir::CounterVisibility::NoMax,
                         zero: kind.zero(),
+                        min: min.into_token_stream().to_string(),
+                        max: max.into_token_stream().to_string(),
                     }
-                } else { panic!() }
-            },
-            ir::ChoiceAction::UpdateCounter { counter, incr, incr_condition } => {
+                } else {
+                    panic!()
+                }
+            }
+            ir::ChoiceAction::UpdateCounter {
+                counter,
+                incr,
+                incr_condition,
+            } => {
                 let counter_choice = ctx.ir_desc.get_choice(&counter.choice);
                 let counter_def = counter_choice.choice_def();
                 let incr_choice = ctx.ir_desc.get_choice(&incr.choice);
                 let arguments = ast::vars_with_sets(counter_choice, &counter.vars, ctx);
                 let incr_args = ast::vars_with_sets(incr_choice, &incr.vars, ctx);
                 let adaptator = ir::Adaptator::from_arguments(&counter.vars);
-                let value_type = counter_def.value_type().adapt(&adaptator);
-                if let ir::ChoiceDef::Counter { kind, visibility, .. } = *counter_def {
+                let counter_type = counter_def.value_type().adapt(&adaptator);
+                if let ir::ChoiceDef::Counter {
+                    kind, visibility, ..
+                } = *counter_def
+                {
                     ChoiceAction::UpdateCounter {
                         name: &counter.choice,
                         incr_name: &incr.choice,
-                        incr_condition: value_set::print(incr_condition, ctx),
+                        incr_condition: value_set::print(incr_condition, ctx).to_string(),
                         is_half: visibility == ir::CounterVisibility::NoMax,
                         zero: kind.zero(),
-                        value_type: ast::ValueType::new(value_type, ctx),
-                        incr_args, arguments,
+                        counter_type: ast::ValueType::new(counter_type, ctx),
+                        incr_type: ast::ValueType::new(ctx.choice.value_type(), ctx),
+                        incr_args,
+                        arguments,
                     }
-                } else { panic!() }
-            },
-            ir::ChoiceAction::Trigger { id, condition, code, inverse_self_cond } => {
-                let others_conditions = condition.others_conditions.iter()
-                    .map(|c| filter::condition(c, ctx)).collect();
-                let inputs = condition.inputs.iter().enumerate().map(|(pos, input)| {
-                    (ctx.input_name(pos), ast::ChoiceInstance::new(input, ctx))
-                }).collect();
-                let arguments = (0..ctx.choice.arguments().len()).map(ir::Variable::Arg)
+                } else {
+                    panic!()
+                }
+            }
+            ir::ChoiceAction::Trigger {
+                id,
+                condition,
+                code,
+                inverse_self_cond,
+            } => {
+                let others_conditions = condition
+                    .others_conditions
+                    .iter()
+                    .map(|c| filter::condition(c, ctx).to_string())
+                    .collect();
+                let inputs = condition
+                    .inputs
+                    .iter()
+                    .enumerate()
+                    .map(|(pos, input)| {
+                        (ctx.input_name(pos), ast::ChoiceInstance::new(input, ctx))
+                    })
+                    .collect();
+                let arguments = (0..ctx.choice.arguments().len())
+                    .map(ir::Variable::Arg)
                     .chain((0..forall_offset).map(ir::Variable::Forall))
                     .map(|v| {
                         let (name, set) = ctx.var_def(v);
-                        (name, ast::Set::new(set_constraints.find_set(v).unwrap_or(set), ctx))
-                    }).collect_vec();
+                        (
+                            name,
+                            ast::Set::new(
+                                set_constraints.find_set(v).unwrap_or(set),
+                                ctx,
+                            ),
+                        )
+                    })
+                    .collect_vec();
                 let code = ast::code(code, ctx);
                 let call_id = trigger_calls.len();
                 let mut self_condition = condition.self_condition.clone();
-                if *inverse_self_cond { self_condition.inverse(ctx.ir_desc); }
-                let call = TriggerCall { id: *id, code, arguments: arguments.clone() };
+                if *inverse_self_cond {
+                    self_condition.inverse(ctx.ir_desc);
+                }
+                let call = TriggerCall {
+                    id: *id,
+                    code,
+                    arguments: arguments.clone(),
+                };
                 trigger_calls.push(call);
                 ChoiceAction::Trigger {
-                    call_id, others_conditions, inputs, arguments,
-                    self_condition: value_set::print(&self_condition, ctx),
+                    call_id,
+                    others_conditions,
+                    inputs,
+                    arguments,
+                    self_condition: value_set::print(&self_condition, ctx).to_string(),
                 }
-            },
+            }
         }
     }
 }
@@ -332,63 +492,92 @@ struct FilterCall<'a> {
 }
 
 impl<'a> FilterCall<'a> {
-    fn new(filter_call: &'a ir::FilterCall,
-           value_var: ast::Variable<'a>,
-           mut conflicts: Vec<ast::Conflict<'a>>,
-           forall_offset: usize,
-           ctx: &ast::Context<'a>) -> Self {
+    fn new(
+        filter_call: &'a ir::FilterCall,
+        value_var: ast::Variable<'a>,
+        mut conflicts: Vec<ast::Conflict<'a>>,
+        forall_offset: usize,
+        ctx: &ast::Context<'a>,
+    ) -> Self {
         let num_foralls = filter_call.forall_vars.len();
-        let foralls = (0..num_foralls).map(|i| ir::Variable::Forall(i+forall_offset));
+        let foralls = (0..num_foralls).map(|i| ir::Variable::Forall(i + forall_offset));
         let filter_ref = FilterRef::new(&filter_call.filter_ref, value_var.clone(), ctx);
         let loop_nest = ast::LoopNest::new(foralls, ctx, &mut conflicts, false);
-        FilterCall { loop_nest, filter_ref }
+        FilterCall {
+            loop_nest,
+            filter_ref,
+        }
     }
 }
 
 /// AST for an `ir::FilterRef`.
 #[derive(Serialize)]
 enum FilterRef<'a> {
-    Inline { rules: Vec<filter::Rule<'a>> },
+    Inline {
+        rules: Vec<filter::Rule<'a>>,
+    },
     Call {
         choice: &'a str,
         id: usize,
         arguments: Vec<(ast::Variable<'a>,)>,
-        value_var: ast::Variable<'a>
+        value_var: ast::Variable<'a>,
     },
 }
 
 impl<'a> FilterRef<'a> {
-    fn new(filter_ref: &'a ir::FilterRef, value_var: ast::Variable<'a>,
-                  ctx: &ast::Context<'a>) -> Self {
+    fn new(
+        filter_ref: &'a ir::FilterRef,
+        value_var: ast::Variable<'a>,
+        ctx: &ast::Context<'a>,
+    ) -> Self {
         match *filter_ref {
             ir::FilterRef::Inline(ref rules) => {
-                let rules = rules.iter().map(|r| {
-                    filter::Rule::new(value_var.clone(), r, ctx)
-                }).collect();
+                let rules = rules
+                    .iter()
+                    .map(|r| filter::Rule::new(value_var.clone(), r, ctx))
+                    .collect();
                 FilterRef::Inline { rules }
-            },
+            }
             ir::FilterRef::Local { id, ref args } => {
                 let arguments = args.iter().map(|&v| (ctx.var_name(v),)).collect();
-                FilterRef::Call { choice: "self", id, arguments, value_var }
-            },
-            ir::FilterRef::Remote { ref choice, id, ref args } => {
+                FilterRef::Call {
+                    choice: "self",
+                    id,
+                    arguments,
+                    value_var,
+                }
+            }
+            ir::FilterRef::Remote {
+                ref choice,
+                id,
+                ref args,
+            } => {
                 let arguments = args.iter().map(|&v| (ctx.var_name(v),)).collect();
-                FilterRef::Call { choice, id, arguments, value_var }
-            },
+                FilterRef::Call {
+                    choice,
+                    id,
+                    arguments,
+                    value_var,
+                }
+            }
         }
     }
 }
 
 #[derive(Serialize)]
 struct RestrictCounter<'a> {
-    amount: CounterValue<'a>,
     incr: ast::ChoiceInstance<'a>,
+    incr_amount: String,
     incr_iter: ast::LoopNest<'a>,
     incr_type: ast::ValueType,
     incr_condition: String,
     is_half: bool,
     op: String,
     neg_op: &'static str,
+    min: String,
+    max: String,
+    restrict_amount: String,
+    restrict_amount_delayed: String,
 }
 
 impl<'a> RestrictCounter<'a> {
@@ -396,51 +585,68 @@ impl<'a> RestrictCounter<'a> {
         use ir::ChoiceDef::Counter;
         let def = choice.choice_def();
         if let Counter {
-            ref incr_iter, kind, ref value, ref incr, ref incr_condition, visibility, ..
-        } = *def {
+            ref incr_iter,
+            kind,
+            ref value,
+            ref incr,
+            ref incr_condition,
+            visibility,
+            ..
+        } = *def
+        {
             let ctx = ast::Context::new(ir_desc, choice, incr_iter, &[]);
             let mut conflicts = ast::Conflict::choice_args(choice, &ctx);
             let forall_vars = (0..incr_iter.len()).map(ir::Variable::Forall);
             let incr_iter = ast::LoopNest::new(forall_vars, &ctx, &mut conflicts, false);
             let incr = ast::ChoiceInstance::new(incr, &ctx);
+            let incr_amount_getter = print::counter::increment_amount(value, false, &ctx);
+            let incr_amount: print::Value =
+                incr_amount_getter.create_ident("incr_amount").into();
+            let min_incr_amount = incr_amount.get_min(&ctx);
+            let max_incr_amount = incr_amount.get_max(&ctx);
+            let restrict_amount = if let ir::CounterVal::Choice(choice) = value {
+                Some(print::counter::restrict_incr_amount(
+                    choice,
+                    &incr_amount,
+                    kind,
+                    false,
+                    &ctx,
+                ))
+            } else {
+                None
+            };
+            let restrict_amount_delayed = if let ir::CounterVal::Choice(choice) = value {
+                Some(print::counter::restrict_incr_amount(
+                    choice,
+                    &incr_amount,
+                    kind,
+                    true,
+                    &ctx,
+                ))
+            } else {
+                None
+            };
             Some(RestrictCounter {
-                amount: CounterValue::new(value, &ctx),
-                incr, incr_iter,
+                incr,
+                incr_iter,
+                incr_amount: incr_amount_getter.into_token_stream().to_string(),
                 incr_type: ast::ValueType::new(incr_condition.t(), &ctx),
-                incr_condition: value_set::print(&incr_condition, &ctx),
+                incr_condition: value_set::print(&incr_condition, &ctx).to_string(),
                 is_half: visibility == ir::CounterVisibility::NoMax,
                 op: kind.to_string(),
                 neg_op: match kind {
                     ir::CounterKind::Add => "-",
                     ir::CounterKind::Mul => "/",
                 },
+                min: min_incr_amount.into_token_stream().to_string(),
+                max: max_incr_amount.into_token_stream().to_string(),
+                restrict_amount: restrict_amount.into_token_stream().to_string(),
+                restrict_amount_delayed: restrict_amount_delayed
+                    .into_token_stream()
+                    .to_string(),
             })
-        } else { None }
-    }
-}
-
-#[derive(Serialize)]
-pub enum CounterValue<'a> {
-    Code(String),
-    Choice {
-        name: &'a str,
-        arguments:  Vec<(ast::Variable<'a>, ast::Set<'a>)>,
-        full_type: ast::ValueType,
-    }
-}
-
-impl<'a> CounterValue<'a> {
-    pub fn new(value: &'a ir::CounterVal, ctx: &ast::Context<'a>) -> Self {
-        match *value {
-            ir::CounterVal::Code(ref code) => CounterValue::Code(ast::code(code, ctx)),
-            ir::CounterVal::Choice(ref counter) => {
-                let choice = ctx.ir_desc.get_choice(&counter.choice);
-                let arguments = ast::vars_with_sets(choice, &counter.vars, ctx);
-                let full_type = choice.choice_def().value_type().full_type();
-                let adaptator = ir::Adaptator::from_arguments(&counter.vars);
-                let full_type = ast::ValueType::new(full_type.adapt(&adaptator), ctx);
-                CounterValue::Choice { arguments, full_type, name: choice.name() }
-            },
+        } else {
+            None
         }
     }
 }

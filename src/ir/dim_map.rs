@@ -11,7 +11,6 @@ pub struct DimMap {
     map: LinkedList<(ir::DimId, ir::DimId)>,
 }
 
-
 // TODO(cleanup): Send should be derived for LinkedList.
 unsafe impl Send for DimMap {}
 unsafe impl Sync for DimMap {}

@@ -9,7 +9,8 @@ pub struct VecSet<T> {
 }
 
 impl<T> VecSet<T>
-where T: Ord
+where
+    T: Ord,
 {
     /// Creates a new `VecSet` with the given data.
     pub fn new(mut data: Vec<T>) -> Self {
@@ -19,13 +20,19 @@ where T: Ord
     }
 
     /// Indicates if the `VecSet` is empty.
-    pub fn is_empty(&self) -> bool { self.data.is_empty() }
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
 
     /// Returns the number of elements in the set.
-    pub fn len(&self) -> usize { self.data.len() }
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
 
     /// Iterates over the set, in order.
-    pub fn iter(&self) -> std::slice::Iter<T> { self.data.iter() }
+    pub fn iter(&self) -> std::slice::Iter<T> {
+        self.data.iter()
+    }
 
     /// Returns the elements in self but not in other.
     pub fn difference<'a>(&'a self, other: &'a VecSet<T>) -> Difference<T> {
@@ -67,20 +74,24 @@ where T: Ord
                 match (*lhs).cmp(&*rhs) {
                     std::cmp::Ordering::Less => {
                         if lhs_del > 0 {
-                            let lhs_dst = self.data.as_mut_ptr()
+                            let lhs_dst = self
+                                .data
+                                .as_mut_ptr()
                                 .offset((lhs_idx - lhs_del) as isize);
                             std::ptr::copy_nonoverlapping(lhs, lhs_dst, 1);
                         }
                         lhs_idx += 1;
-                    },
+                    }
                     std::cmp::Ordering::Greater => {
                         if rhs_del > 0 {
-                            let rhs_dst = other.data.as_mut_ptr()
+                            let rhs_dst = other
+                                .data
+                                .as_mut_ptr()
                                 .offset((rhs_idx - rhs_del) as isize);
                             std::ptr::copy_nonoverlapping(rhs, rhs_dst, 1);
                         }
                         rhs_idx += 1;
-                    },
+                    }
                     std::cmp::Ordering::Equal => {
                         std::ptr::drop_in_place(lhs);
                         std::ptr::drop_in_place(rhs);
@@ -99,7 +110,8 @@ where T: Ord
             }
             if rhs_idx < rhs_old_len && rhs_del > 0 {
                 let rhs_src = other.data.as_ptr().offset(rhs_idx as isize);
-                let rhs_dst = other.data.as_mut_ptr().offset((rhs_idx - rhs_del) as isize);
+                let rhs_dst =
+                    other.data.as_mut_ptr().offset((rhs_idx - rhs_del) as isize);
                 std::ptr::copy(rhs_src, rhs_dst, rhs_old_len - rhs_idx);
             }
             // Set the size of vectors to the correct size since we can now safely panic.
@@ -140,7 +152,9 @@ where T: Ord
     /// Returns a set containing the elements present in either self` or
     /// `other`.
     pub fn union(&self, other: &VecSet<T>) -> VecSet<T>
-    where T: Clone {
+    where
+        T: Clone,
+    {
         let mut data = Vec::new();
         let mut self_cursor = 0;
         let mut other_cursor = 0;
@@ -174,7 +188,8 @@ where T: Ord
         P: FnMut(&T) -> bool,
     {
         VecSet {
-            data: self.data
+            data: self
+                .data
                 .iter()
                 .filter(|&x| predicate(x))
                 .cloned()
@@ -184,7 +199,9 @@ where T: Ord
 
     /// Filters out elements for wich the predicate returns false.
     pub fn retain<P>(&mut self, predicate: P)
-    where P: FnMut(&T) -> bool {
+    where
+        P: FnMut(&T) -> bool,
+    {
         self.data.retain(predicate);
     }
 
@@ -196,23 +213,29 @@ where T: Ord
             Err(pos) => {
                 self.data.insert(pos, item);
                 true
-            },
+            }
         }
     }
 }
 
 impl<T> Default for VecSet<T> {
-    fn default() -> Self { VecSet { data: Vec::new() } }
+    fn default() -> Self {
+        VecSet { data: Vec::new() }
+    }
 }
 
 impl<T> std::fmt::Debug for VecSet<T>
-where T: std::fmt::Debug
+where
+    T: std::fmt::Debug,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { self.data.fmt(f) }
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.data.fmt(f)
+    }
 }
 
 impl<T> PartialOrd for VecSet<T>
-where T: Ord
+where
+    T: Ord,
 {
     fn partial_cmp(&self, other: &VecSet<T>) -> Option<Ordering> {
         let mut self_cursor = 0;
@@ -263,21 +286,28 @@ impl<T> std::iter::IntoIterator for VecSet<T> {
     type Item = T;
     type IntoIter = std::vec::IntoIter<T>;
 
-    fn into_iter(self) -> Self::IntoIter { self.data.into_iter() }
+    fn into_iter(self) -> Self::IntoIter {
+        self.data.into_iter()
+    }
 }
 
 impl<'a, T> std::iter::IntoIterator for &'a VecSet<T> {
     type Item = &'a T;
     type IntoIter = std::slice::Iter<'a, T>;
 
-    fn into_iter(self) -> Self::IntoIter { self.data.iter() }
+    fn into_iter(self) -> Self::IntoIter {
+        self.data.iter()
+    }
 }
 
 impl<T> std::iter::FromIterator<T> for VecSet<T>
-where T: Ord
+where
+    T: Ord,
 {
     fn from_iter<IT>(iter: IT) -> Self
-    where IT: IntoIterator<Item = T> {
+    where
+        IT: IntoIterator<Item = T>,
+    {
         VecSet::new(Vec::from_iter(iter))
     }
 }
@@ -285,7 +315,9 @@ where T: Ord
 impl<T> std::ops::Deref for VecSet<T> {
     type Target = [T];
 
-    fn deref(&self) -> &[T] { &self.data }
+    fn deref(&self) -> &[T] {
+        &self.data
+    }
 }
 
 pub struct Difference<'a, T: 'a> {
@@ -296,7 +328,8 @@ pub struct Difference<'a, T: 'a> {
 }
 
 impl<'a, T> Iterator for Difference<'a, T>
-where T: Ord + 'a
+where
+    T: Ord + 'a,
 {
     type Item = &'a T;
 
@@ -327,7 +360,8 @@ pub struct Intersection<'a, T: 'a> {
 }
 
 impl<'a, T> Iterator for Intersection<'a, T>
-where T: Ord + 'a
+where
+    T: Ord + 'a,
 {
     type Item = &'a T;
 

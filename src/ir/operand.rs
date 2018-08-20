@@ -1,25 +1,25 @@
 //! Describes the different kinds of operands an instruction can have.
-use ir::{self, Instruction, InstId, Parameter, DimMap, Type, mem};
+use self::Operand::*;
+use ir::{self, mem, DimMap, InstId, Instruction, Parameter, Type};
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::traits::{Signed, Zero};
-use self::Operand::*;
 use utils::HashMap;
 
 #[derive(Clone, Debug)]
 pub struct LoweringMap {
-        /// Memory ID to use for the temporary array
-        mem_id: ir::mem::InternalId,
-        /// Instruction ID to use for the `store` instruction when
-        /// lowering.
-        st_inst: ir::InstId,
-        /// Maps the lhs dimensions in `map` to their lowered dimension.
-        st_map: HashMap<ir::DimId, ir::DimId>,
-        /// Instruction ID to use for the `load` instruction when
-        /// lowering.
-        ld_inst: ir::InstId,
-        /// Maps the rhs dimensions in `map` to their lowered dimension.
-        ld_map: HashMap<ir::DimId, ir::DimId>,
+    /// Memory ID to use for the temporary array
+    mem_id: ir::mem::InternalId,
+    /// Instruction ID to use for the `store` instruction when
+    /// lowering.
+    st_inst: ir::InstId,
+    /// Maps the lhs dimensions in `map` to their lowered dimension.
+    st_map: HashMap<ir::DimId, ir::DimId>,
+    /// Instruction ID to use for the `load` instruction when
+    /// lowering.
+    ld_inst: ir::InstId,
+    /// Maps the rhs dimensions in `map` to their lowered dimension.
+    ld_map: HashMap<ir::DimId, ir::DimId>,
 }
 
 impl LoweringMap {
@@ -31,12 +31,16 @@ impl LoweringMap {
         let mem_id = cnt.next_mem();
         let st_inst = cnt.next_inst();
         let ld_inst = cnt.next_inst();
-        let (st_map, ld_map) = dim_map.iter().cloned().map(|(src, dst)| {
-            let st_dim = cnt.next_dim();
-            let ld_dim = cnt.next_dim();
-            ((src, st_dim), (dst, ld_dim))
-        }).unzip();
-        
+        let (st_map, ld_map) = dim_map
+            .iter()
+            .cloned()
+            .map(|(src, dst)| {
+                let st_dim = cnt.next_dim();
+                let ld_dim = cnt.next_dim();
+                ((src, st_dim), (dst, ld_dim))
+            })
+            .unzip();
+
         LoweringMap {
             mem_id,
             st_inst,
@@ -56,10 +60,15 @@ impl LoweringMap {
             mem: self.mem_id,
             store: self.st_inst,
             load: self.ld_inst,
-            dimensions: map.iter().map(|(src, dst)| {
-                (unwrap!(self.st_map.get(src)).clone(),
-                 unwrap!(self.ld_map.get(dst)).clone())
-            }).collect(),
+            dimensions: map
+                .iter()
+                .map(|(src, dst)| {
+                    (
+                        unwrap!(self.st_map.get(src)).clone(),
+                        unwrap!(self.ld_map.get(dst)).clone(),
+                    )
+                })
+                .collect(),
         }
     }
 }
@@ -117,8 +126,11 @@ impl<'a, L> Operand<'a, L> {
     }
 
     /// Create an operand from an instruction.
-    pub fn new_inst(inst: &Instruction<L>, dim_map: DimMap, mut scope: DimMapScope<L>)
-            -> Self {
+    pub fn new_inst(
+        inst: &Instruction<L>,
+        dim_map: DimMap,
+        mut scope: DimMapScope<L>,
+    ) -> Self {
         // A temporary array can only be generated if the type size is known.
         if let DimMapScope::Global(_) = scope {
             if unwrap!(inst.t()).len_byte().is_none() {
@@ -130,8 +142,11 @@ impl<'a, L> Operand<'a, L> {
     }
 
     /// Creates a reduce operand from an instruction and a set of dimensions to reduce on.
-    pub fn new_reduce(init: &Instruction<L>, dim_map: DimMap, dims: Vec<ir::DimId>)
-            -> Self {
+    pub fn new_reduce(
+        init: &Instruction<L>,
+        dim_map: DimMap,
+        dims: Vec<ir::DimId>,
+    ) -> Self {
         Reduce(init.id(), unwrap!(init.t()), dim_map, dims)
     }
 
@@ -149,8 +164,9 @@ impl<'a, L> Operand<'a, L> {
     /// Renames a basic block id.
     pub fn merge_dims(&mut self, lhs: ir::DimId, rhs: ir::DimId) {
         match *self {
-            Inst(_, _, ref mut dim_map, _) |
-            Reduce(_, _, ref mut dim_map, _) => { dim_map.merge_dims(lhs, rhs); },
+            Inst(_, _, ref mut dim_map, _) | Reduce(_, _, ref mut dim_map, _) => {
+                dim_map.merge_dims(lhs, rhs);
+            }
             _ => (),
         }
     }
@@ -158,10 +174,9 @@ impl<'a, L> Operand<'a, L> {
     /// Indicates if a `DimMap` should be lowered if lhs and rhs are not mapped.
     pub fn should_lower_map(&self, lhs: ir::DimId, rhs: ir::DimId) -> bool {
         match *self {
-            Inst(_, _, ref dim_map, _) |
-            Reduce(_, _, ref dim_map, _) => {
-                dim_map.iter().any(|&pair| pair == (lhs, rhs) || pair == (rhs, lhs))
-            },
+            Inst(_, _, ref dim_map, _) | Reduce(_, _, ref dim_map, _) => dim_map
+                .iter()
+                .any(|&pair| pair == (lhs, rhs) || pair == (rhs, lhs)),
             _ => false,
         }
     }
@@ -170,7 +185,9 @@ impl<'a, L> Operand<'a, L> {
     pub fn as_reduction(&self) -> Option<(InstId, &DimMap, &[ir::DimId])> {
         if let Reduce(id, _, ref dim_map, ref dims) = *self {
             Some((id, dim_map, dims))
-        } else { None }
+        } else {
+            None
+        }
     }
 
     /// Indicates if the operand stays constant during the execution.
@@ -188,14 +205,15 @@ impl<'a> Operand<'a, ()> {
             Int(val, len) => Int(val, len),
             Float(val, len) => Float(val, len),
             Inst(id, t, dim_map, DimMapScope::Global(())) => {
-                let lowering_map = LoweringMap::for_dim_map(
-                    &dim_map, cnt);
+                let lowering_map = LoweringMap::for_dim_map(&dim_map, cnt);
                 Inst(id, t, dim_map, DimMapScope::Global(lowering_map))
-            },
-            Inst(id, t, dim_map, DimMapScope::Local) =>
-                Inst(id, t, dim_map, DimMapScope::Local),
-            Inst(id, t, dim_map, DimMapScope::Thread) =>
-                Inst(id, t, dim_map, DimMapScope::Thread),
+            }
+            Inst(id, t, dim_map, DimMapScope::Local) => {
+                Inst(id, t, dim_map, DimMapScope::Local)
+            }
+            Inst(id, t, dim_map, DimMapScope::Thread) => {
+                Inst(id, t, dim_map, DimMapScope::Thread)
+            }
             Index(id) => Index(id),
             Param(param) => Param(param),
             Addr(id) => Addr(id),

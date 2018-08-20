@@ -1,7 +1,9 @@
 let incr = store.get_old_{{incr_name}}({{>choice.arg_ids arguments=incr_args}}diff);
 let (mut old_incr, mut new_incr) = (
-    {{~>value_type.num_constructor t=value_type fun="new_eq" value="old"}},
-    {{~>value_type.num_constructor t=value_type fun="new_eq" value="new"}});
+    {{~>value_type.num_constructor
+         t=counter_type fun="new_eq" value="old" value_type=incr_type}},
+    {{~>value_type.num_constructor
+         t=counter_type fun="new_eq" value="new" value_type=incr_type}});
 let is_incr = incr.is({{incr_condition}});
 if is_incr.maybe_false() {
     old_incr.min = {{zero}};

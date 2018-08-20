@@ -1,5 +1,24 @@
 //! Print the IR description in rust.
-use handlebars::{self, Handlebars, Helper, Renderable, RenderContext, RenderError};
+mod counter;
+mod runtime;
+mod set;
+mod value;
+
+// Re-export commonly used items.
+use print::ast::Context;
+use print::value::{Value, ValueIdent};
+
+/// Reset the state of the printer. This should only be used for testing purpose, when
+/// one whats to compare the outputs of the printer oer sevral runs.
+#[cfg(test)]
+#[doc(hidden)]
+pub fn reset() {
+    value::reset_ident_counter();
+    ast::Variable::reset_prefix();
+}
+
+// TODO(cleanup): rewrite the fllowing with token streams instead of string templates
+use handlebars::{self, Handlebars, Helper, RenderContext, RenderError, Renderable};
 use ir;
 use itertools::Itertools;
 use serde_json::value::Value as JsonValue;
@@ -70,11 +89,11 @@ lazy_static! {
         register_template!(engine, actions);
         register_template!(engine, choice_def);
         register_template!(engine, choice_filter);
-        register_template!(engine, choice/arg_names);
-        register_template!(engine, choice/arg_defs);
-        register_template!(engine, choice/arg_ids);
-        register_template!(engine, choice/complement);
-        register_template!(engine, choice/getter);
+        register_template!(engine, choice / arg_names);
+        register_template!(engine, choice / arg_defs);
+        register_template!(engine, choice / arg_ids);
+        register_template!(engine, choice / complement);
+        register_template!(engine, choice / getter);
         register_template!(engine, compute_counter);
         register_template!(engine, conflict);
         register_template!(engine, counter_value);
@@ -83,10 +102,10 @@ lazy_static! {
         register_template!(engine, filter_action);
         register_template!(engine, filter_call);
         register_template!(engine, filter_self);
-        register_template!(engine, value_type/full_domain);
-        register_template!(engine, value_type/name);
-        register_template!(engine, value_type/num_constructor);
-        register_template!(engine, value_type/univers);
+        register_template!(engine, value_type / full_domain);
+        register_template!(engine, value_type / name);
+        register_template!(engine, value_type / num_constructor);
+        register_template!(engine, value_type / univers);
         register_template!(engine, getter);
         register_template!(engine, incr_counter);
         register_template!(engine, iter_new_objects);
@@ -99,11 +118,11 @@ lazy_static! {
         register_template!(engine, rule);
         register_template!(engine, run_filters);
         register_template!(engine, set_constraints);
-        register_template!(engine, set/from_superset);
-        register_template!(engine, set/id_getter);
-        register_template!(engine, set/item_getter);
-        register_template!(engine, set/iterator);
-        register_template!(engine, set/new_objs);
+        register_template!(engine, set / from_superset);
+        register_template!(engine, set / id_getter);
+        register_template!(engine, set / item_getter);
+        register_template!(engine, set / iterator);
+        register_template!(engine, set / new_objs);
         register_template!(engine, store);
         register_template!(engine, trigger_call);
         register_template!(engine, trigger_check);
@@ -117,20 +136,25 @@ type RenderResult = Result<(), RenderError>;
 
 /// Performs string substitution.
 fn replace(h: &Helper, _: &Handlebars, rc: &mut RenderContext) -> RenderResult {
-    if h.is_block() { return Err(RenderError::new("replace is not valid on blocks")); }
+    if h.is_block() {
+        return Err(RenderError::new("replace is not valid on blocks"));
+    }
     let mut string = match h.param(0).map(|p| p.value()) {
         None => return Err(RenderError::new("missing argument for replace")),
         Some(&JsonValue::String(ref string)) => string.clone(),
         Some(x) => {
             debug!("replace argument = {}", x);
             debug!("in context {:?}", rc.context());
-            return Err(RenderError::new("replace expects string arguments"))
-        },
+            return Err(RenderError::new("replace expects string arguments"));
+        }
     };
     for (key, value) in h.hash() {
         let value = value.value().as_str().ok_or_else(|| {
-            let err = format!("replace maps strings to strings (got {:?}), in context {:?}",
-                value, rc.context());
+            let err = format!(
+                "replace maps strings to strings (got {:?}), in context {:?}",
+                value,
+                rc.context()
+            );
             RenderError::new(err)
         })?;
         string = string.replace(key, value);
@@ -141,7 +165,9 @@ fn replace(h: &Helper, _: &Handlebars, rc: &mut RenderContext) -> RenderResult {
 
 /// Prints a variable of the context.
 fn debug(h: &Helper, _: &Handlebars, rc: &mut RenderContext) -> RenderResult {
-    if h.is_block() { return Err(RenderError::new("debug is not valid on blocks")); }
+    if h.is_block() {
+        return Err(RenderError::new("debug is not valid on blocks"));
+    }
     match h.param(0) {
         None => debug!("context {:?}", rc.context()),
         Some(x) => debug!("value {:?}", x.value()),
@@ -151,27 +177,30 @@ fn debug(h: &Helper, _: &Handlebars, rc: &mut RenderContext) -> RenderResult {
 
 /// Converts a choice name to a rust type name.
 fn to_type_name(h: &Helper, _: &Handlebars, rc: &mut RenderContext) -> RenderResult {
-    if h.is_block() { return Err(RenderError::new("to_type_name is not valid on blocks")); }
+    if h.is_block() {
+        return Err(RenderError::new("to_type_name is not valid on blocks"));
+    }
     let string = match h.param(0).map(|p| p.value()) {
         None => return Err(RenderError::new("missing argument for to_type_name")),
         Some(&JsonValue::String(ref string)) => string.clone(),
         Some(x) => {
             debug!("replace argument = {}", x);
-            return Err(RenderError::new("to_type_name expects a string argument"))
-        },
+            return Err(RenderError::new("to_type_name expects a string argument"));
+        }
     };
-    rc.writer.write_all(::to_type_name(&string).into_bytes().as_ref())?;
+    rc.writer
+        .write_all(::to_type_name(&string).into_bytes().as_ref())?;
     Ok(())
 }
 
 /// Prints the template if the a value is equal to another.
 fn ifeq(h: &Helper, r: &Handlebars, rc: &mut RenderContext) -> RenderResult {
-    let param = h.param(0).ok_or_else(|| {
-        RenderError::new("Param 0 not found for helper \"ifeq\"")
-    })?;
-    let value = h.param(1).ok_or_else(|| {
-        RenderError::new("Param 1 not found for helper \"ifeq\"")
-    })?;
+    let param = h
+        .param(0)
+        .ok_or_else(|| RenderError::new("Param 0 not found for helper \"ifeq\""))?;
+    let value = h
+        .param(1)
+        .ok_or_else(|| RenderError::new("Param 1 not found for helper \"ifeq\""))?;
     let template = if param.value() == value.value() {
         h.template()
     } else {
@@ -195,7 +224,9 @@ macro_rules! iter_printer {
 struct Printer<T: Fn(&mut Formatter) -> fmt::Result>(T);
 
 impl<T: Fn(&mut Formatter) -> fmt::Result> Display for Printer<T> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result { self.0(f) }
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        self.0(f)
+    }
 }
 
 mod ast;
@@ -205,15 +236,15 @@ mod store;
 mod value_set;
 
 use self::store::PartialIterator;
-#[cfg(test)]
-pub(crate) use self::ast::Variable;
 
 /// Generate the trigger code to add a representant to a quotient set.
-pub fn add_to_quotient(set: &ir::SetDef,
-                       repr_name: &str,
-                       counter_name: &str,
-                       item: &str,
-                       var: &Option<RcStr>) -> String {
+pub fn add_to_quotient(
+    set: &ir::SetDef,
+    repr_name: &str,
+    counter_name: &str,
+    item: &str,
+    var: &Option<RcStr>,
+) -> String {
     let mut add_to_set = set.attributes()[&ir::SetDefKey::AddToSet]
         .replace("$item", &format!("${}", item));
     if let Some(ref var) = *var {
@@ -231,18 +262,23 @@ pub fn add_to_quotient(set: &ir::SetDef,
 pub fn print(ir_desc: &ir::IrDesc) -> String {
     let dummy_choice = &ir::dummy_choice();
     let choices = order_choices(ir_desc)
-        .map(|c| choice::Ast::new(c, ir_desc)).collect_vec();
+        .map(|c| choice::Ast::new(c, ir_desc))
+        .collect_vec();
     let partials = store::partial_iterators(&choices, ir_desc);
     let incr_iterators = store::incr_iterators(ir_desc);
-    let triggers = ir_desc.triggers().enumerate()
-        .map(|(id, t)| Trigger::new(id, t, dummy_choice, ir_desc)).collect();
+    let triggers = ir_desc
+        .triggers()
+        .enumerate()
+        .map(|(id, t)| Trigger::new(id, t, dummy_choice, ir_desc))
+        .collect();
     type PartialIters<'a> = Vec<(store::PartialIterator<'a>, store::NewChoice<'a>)>;
     render!(main, <'a>,
         choices: &'a [choice::Ast<'a>] = &choices,
         enums: String = ir_desc.enums().format("\n\n").to_string(),
         partial_iterators: PartialIters<'a> = partials,
         incr_iterators: Vec<store::IncrIterator<'a>> = incr_iterators,
-        triggers: Vec<Trigger<'a>> = triggers
+        triggers: Vec<Trigger<'a>> = triggers,
+        runtime: String = runtime::get().to_string()
     )
 }
 
@@ -439,7 +475,8 @@ mod stable_topological_sort_tests {
     fn stable_no_deps() {
         assert_eq!(
             stable_topological_sort(&vec!["a", "b", "c", "d", "e"], |_| vec![]),
-            Ok(vec!["a", "b", "c", "d", "e"]))
+            Ok(vec!["a", "b", "c", "d", "e"])
+        )
     }
 
     /// Sorting an array which is already in topological order, even in
@@ -447,13 +484,12 @@ mod stable_topological_sort_tests {
     #[test]
     fn stable_deps() {
         assert_eq!(
-            stable_topological_sort(&vec!["a", "b", "c:b", "d"], |&node| {
-                match node {
-                    "c:b" => vec!["b"],
-                    _ => vec![],
-                }
+            stable_topological_sort(&vec!["a", "b", "c:b", "d"], |&node| match node {
+                "c:b" => vec!["b"],
+                _ => vec![],
             }),
-            Ok(vec!["a", "b", "c:b", "d"]))
+            Ok(vec!["a", "b", "c:b", "d"])
+        )
     }
 
     /// Elements which have a dependency are sorted immediately after
@@ -461,13 +497,15 @@ mod stable_topological_sort_tests {
     #[test]
     fn right_after_dep() {
         assert_eq!(
-            stable_topological_sort(&vec!["a", "b:d", "c", "d", "e"], |&node| {
-                match node {
+            stable_topological_sort(
+                &vec!["a", "b:d", "c", "d", "e"],
+                |&node| match node {
                     "b:d" => vec!["d"],
                     _ => vec![],
                 }
-            }),
-            Ok(vec!["a", "c", "d", "b:d", "e"]))
+            ),
+            Ok(vec!["a", "c", "d", "b:d", "e"])
+        )
     }
 
     /// If multiple independent elements share a dependency, their
@@ -475,14 +513,16 @@ mod stable_topological_sort_tests {
     #[test]
     fn indep_after_dep() {
         assert_eq!(
-            stable_topological_sort(&vec!["a", "b:d", "c:d", "d", "e"], |&node| {
-                match node {
+            stable_topological_sort(
+                &vec!["a", "b:d", "c:d", "d", "e"],
+                |&node| match node {
                     "b:d" => vec!["d"],
                     "c:d" => vec!["d"],
                     _ => vec![],
                 }
-            }),
-            Ok(vec!["a", "d", "b:d", "c:d", "e"]))
+            ),
+            Ok(vec!["a", "d", "b:d", "c:d", "e"])
+        )
     }
 
     /// If multiple elements share a dependency, their own dependencies
@@ -497,12 +537,15 @@ mod stable_topological_sort_tests {
                     _ => vec![],
                 }
             }),
-            Ok(vec!["a", "d", "c:d", "b:d,c", "e"]))
+            Ok(vec!["a", "d", "c:d", "b:d,c", "e"])
+        )
     }
 }
 
 /// Order the choices so that they are computed in the right order to avoid overflows.
-fn order_choices<'a>(ir_desc: &'a ir::IrDesc) -> impl Iterator<Item=&'a ir::Choice> +'a {
+fn order_choices<'a>(
+    ir_desc: &'a ir::IrDesc,
+) -> impl Iterator<Item = &'a ir::Choice> + 'a {
     let names = ir_desc.choices().map(|c| c.name()).collect_vec();
     let sorted = stable_topological_sort(&names, |choice| {
         let def = ir_desc.get_choice(choice).choice_def();
@@ -513,7 +556,9 @@ fn order_choices<'a>(ir_desc: &'a ir::IrDesc) -> impl Iterator<Item=&'a ir::Choi
         }
         None
     });
-    unwrap!(sorted).into_iter().map(move |c| ir_desc.get_choice(c))
+    unwrap!(sorted)
+        .into_iter()
+        .map(move |c| ir_desc.get_choice(c))
 }
 
 #[derive(Debug, Serialize)]
@@ -528,52 +573,89 @@ struct Trigger<'a> {
 }
 
 impl<'a> Trigger<'a> {
-    fn new(id: usize, trigger: &'a ir::Trigger, dummy_choice: &'a ir::Choice,
-           ir_desc: &'a ir::IrDesc) -> Self {
+    fn new(
+        id: usize,
+        trigger: &'a ir::Trigger,
+        dummy_choice: &'a ir::Choice,
+        ir_desc: &'a ir::IrDesc,
+    ) -> Self {
         let inputs = &trigger.inputs;
         let ctx = &ast::Context::new(ir_desc, dummy_choice, &trigger.foralls, inputs);
-        let inputs = trigger.inputs.iter().enumerate().map(|(pos, input)| {
-            (ctx.input_name(pos), ast::ChoiceInstance::new(input, ctx))
-        }).collect();
+        let inputs = trigger
+            .inputs
+            .iter()
+            .enumerate()
+            .map(|(pos, input)| {
+                (ctx.input_name(pos), ast::ChoiceInstance::new(input, ctx))
+            })
+            .collect();
         let foralls = (0..trigger.foralls.len()).map(ir::Variable::Forall);
         let loop_nest = ast::LoopNest::new(foralls.clone(), ctx, &mut vec![], false);
-        let arguments = foralls.clone().map(|v| ctx.var_def(v))
-            .map(|(v, set)| (v, ast::Set::new(set, ctx))).collect();
-        let conditions = trigger.conditions.iter()
-            .map(|c| filter::condition(c, ctx)).collect();
+        let arguments = foralls
+            .clone()
+            .map(|v| ctx.var_def(v))
+            .map(|(v, set)| (v, ast::Set::new(set, ctx)))
+            .collect();
+        let conditions = trigger
+            .conditions
+            .iter()
+            .map(|c| filter::condition(c, ctx).to_string())
+            .collect();
         let code = ast::code(&trigger.code, ctx);
         let vars = foralls.map(|v| (v, ctx.var_def(v).1)).collect_vec();
         let partial_iters = PartialIterator::generate(&vars, false, ir_desc, ctx);
-        let partial_iterators = partial_iters.into_iter().map(|(iter, ctx)| {
-            (iter, vars.iter().map(|&(v, _)| ctx.var_name(v)).collect())
-        }).collect();
-        Trigger { id, loop_nest, partial_iterators, arguments, inputs, conditions, code }
+        let partial_iterators = partial_iters
+            .into_iter()
+            .map(|(iter, ctx)| {
+                (iter, vars.iter().map(|&(v, _)| ctx.var_name(v)).collect())
+            })
+            .collect();
+        Trigger {
+            id,
+            loop_nest,
+            partial_iterators,
+            arguments,
+            inputs,
+            conditions,
+            code,
+        }
     }
 }
-
 
 impl Display for ir::Enum {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         let n_values = self.values().len();
-        let value_defs = iter_printer!(value_def_order(self).enumerate(),
+        let value_defs =
+            iter_printer!(value_def_order(self).enumerate(),
             (pos, (name, doc)),
             "{doc}pub const {name}: {t_name} = {t_name} {{ bits: 0b1{pos_zero} }};\n\n",
             doc = iter_printer!(doc, doc, "///{}\n", doc),
             name = name,
             t_name = self.name(),
             pos_zero = (0..pos).map(|_| "0").collect::<String>());
-        let alias_defs = iter_printer!(self.aliases(), (name, &(ref values, ref doc)),
+        let alias_defs = iter_printer!(
+            self.aliases(),
+            (name, &(ref values, ref doc)),
             "{doc}pub const {name}: {t_name} = {t_name} {{ bits: {values} }};\n\n",
-            doc = doc.iter().format_with("", |doc, f| f(&format_args!("///{}\n", doc))),
+            doc = doc
+                .iter()
+                .format_with("", |doc, f| f(&format_args!("///{}\n", doc))),
             name = name,
             t_name = self.name(),
             values = values.iter().format_with(" | ", |v, f| {
                 f(&format_args!("{}::{}.bits", self.name(), v))
-            }));
-        let printers = iter_printer!(self.values(), (v, _),
+            })
+        );
+        let printers = iter_printer!(
+            self.values(),
+            (v, _),
             "if self.intersects({t}::{v}) {{ values.push(\"{v}\"); }}",
-            t=self.name(), v=v);
-        write!(f, include_str!("template/enum_def.rs"),
+            t = self.name(),
+            v = v
+        );
+        write!(
+            f,
+            include_str!("template/enum_def.rs"),
             type_name = self.name(),
             doc_comment = iter_printer!(self.doc(), doc, "///{}\n", doc),
             value_defs = value_defs,
@@ -600,25 +682,47 @@ fn inverse(enum_: &ir::Enum, f: &mut Formatter) -> fmt::Result {
             high.push(rhs);
         }
         let n = enum_.name();
-        let same_bits = if values.is_empty() { "0".to_string() } else {
-            values.iter().map(|v| format!("{}::{}.bits", n, v)).format(" | ").to_string()
+        let same_bits = if values.is_empty() {
+            "0".to_string()
+        } else {
+            values
+                .iter()
+                .map(|v| format!("{}::{}.bits", n, v))
+                .format(" | ")
+                .to_string()
         };
-        write!(f, include_str!("template/inverse.rs"),
+        write!(
+            f,
+            include_str!("template/inverse.rs"),
             type_name = enum_.name(),
-            high_bits = high.iter().map(|v| format!("{}::{}.bits", n, v)).format(" | "),
-            low_bits = low.iter().map(|v| format!("{}::{}.bits", n, v)).format(" | "),
-            same_bits = same_bits)?;
+            high_bits = high
+                .iter()
+                .map(|v| format!("{}::{}.bits", n, v))
+                .format(" | "),
+            low_bits = low
+                .iter()
+                .map(|v| format!("{}::{}.bits", n, v))
+                .format(" | "),
+            same_bits = same_bits
+        )?;
     }
     Ok(())
 }
 
-fn value_def_order<'a>(enum_: &'a ir::Enum)
-        -> impl Iterator<Item=(&'a RcStr, &'a Option<String>)> +'a {
+fn value_def_order<'a>(
+    enum_: &'a ir::Enum,
+) -> impl Iterator<Item = (&'a RcStr, &'a Option<String>)> + 'a {
     if let Some(mapping) = enum_.inverse_mapping() {
         let mut values: IndexMap<_, _> = enum_.values().iter().collect();
-        Box::new(mapping.iter().flat_map(|&(ref x, ref y)| vec![x, y])
-            .map(|x| (x, values.remove(x).unwrap())).collect_vec().into_iter()
-            .chain(values)) as Box<Iterator<Item=_>>
+        Box::new(
+            mapping
+                .iter()
+                .flat_map(|&(ref x, ref y)| vec![x, y])
+                .map(|x| (x, values.remove(x).unwrap()))
+                .collect_vec()
+                .into_iter()
+                .chain(values),
+        ) as Box<Iterator<Item = _>>
     } else {
         Box::new(enum_.values().iter())
     }
@@ -642,18 +746,18 @@ fn bits_type(num_values: usize) -> &'static str {
 #[cfg(test)]
 /// Printing for test structures.
 mod test {
+    use super::ENGINE;
     use ir::test::{EvalContext, StaticCond};
     use itertools::Itertools;
     use print;
     use std;
-    use super::ENGINE;
 
     impl<'a> std::fmt::Display for EvalContext<'a> {
         fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
             for (input, values) in self.inputs_def.iter().zip_eq(&self.input_values) {
                 let choice = self.ir_desc.get_choice(&input.choice);
-                let ctx = print::ast::Context::new(self.ir_desc, choice, &[],
-                                                   self.inputs_def);
+                let ctx =
+                    print::ast::Context::new(self.ir_desc, choice, &[], self.inputs_def);
                 let values = print::value_set::print(values, &ctx);
                 write!(f, " {} = {},", input.choice, values)?;
             }
@@ -676,7 +780,9 @@ mod test {
     #[test]
     fn replace() {
         let _ = ::env_logger::try_init();
-        let out = ENGINE.template_render("{{replace \"foobar\" foo=\"bar\"}}", &()).unwrap();
+        let out = ENGINE
+            .template_render("{{replace \"foobar\" foo=\"bar\"}}", &())
+            .unwrap();
         assert_eq!(out, "barbar");
     }
 }

@@ -1,15 +1,15 @@
-#![cfg(feature="mppa")]
+#![cfg(feature = "mppa")]
 extern crate env_logger;
+extern crate libc;
 extern crate telamon;
 extern crate tempdir;
-extern crate libc;
 
 mod common;
 
 use common::*;
 use telamon::device::{self, Context};
-use telamon::ir;
 use telamon::helper;
+use telamon::ir;
 
 /// Executes an empty kernel.
 #[test]

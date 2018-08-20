@@ -11,25 +11,27 @@ mod common;
 
 /// Configure the bencher.
 fn config_criterion() -> Criterion {
-    Criterion::default()
-        .sample_size(50)
-        .configure_from_args()
+    Criterion::default().sample_size(50).configure_from_args()
 }
 
 /// Benchmarks full descents in the search tree.
 fn mm_descent(c: &mut Criterion) {
     let _ = env_logger::try_init();
-    c.bench_function("mm descent without copies", |b| b.iter(|| {
-        common::descend_without_copies(common::MM.clone());
-    }));
+    c.bench_function("mm descent without copies", |b| {
+        b.iter(|| {
+            common::descend_without_copies(common::MM.clone());
+        })
+    });
 }
 
 /// Benchmarks full descents in the search tree, with a copy at each level.
 fn mm_descent_copy(c: &mut Criterion) {
     let _ = env_logger::try_init();
-    c.bench_function("mm descent with copy", |b| b.iter(|| {
-        common::descend_with_copies(common::MM.clone());
-    }));
+    c.bench_function("mm descent with copy", |b| {
+        b.iter(|| {
+            common::descend_with_copies(common::MM.clone());
+        })
+    });
 }
 
 criterion_group! {

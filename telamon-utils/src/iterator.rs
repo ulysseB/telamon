@@ -1,8 +1,8 @@
 //! Extension of the iterator library.
-use HashMap;
 use itertools::Itertools;
 use linked_list;
 use std;
+use HashMap;
 
 /// Iterates over a linked list while removing some items.
 pub fn filter_list<'a, T, F>(
@@ -30,7 +30,8 @@ where
 }
 
 impl<'a, T, F> Iterator for FilterList<'a, T, F>
-where F: FnMut(&mut T) -> bool
+where
+    F: FnMut(&mut T) -> bool,
 {
     type Item = T;
 
@@ -113,7 +114,9 @@ impl<T: Clone + Ord> PartialPermutations<T> {
     /// Returns an iterator of the partial permuations of size `k` of values. Permutations
     /// are returned in lexicographical order.
     pub fn new<IT>(values: IT, k: usize) -> Self
-    where IT: IntoIterator<Item = T> {
+    where
+        IT: IntoIterator<Item = T>,
+    {
         let mut values = values.into_iter().sorted();
         if k < values.len() {
             values[k..].reverse();
@@ -141,7 +144,8 @@ impl<T: Clone + Ord> Iterator for PartialPermutations<T> {
         if i == 0 {
             self.finished = true;
         } else {
-            let swap_id = self.permutation
+            let swap_id = self
+                .permutation
                 .iter()
                 .rposition(|x| *x > self.permutation[i - 1])
                 .unwrap();
