@@ -39,13 +39,13 @@ modifications and precisions:
 
 [official_guide]:(https://github.com/rust-lang-nursery/fmt-rfcs/blob/master/guide/guide.md)
 
-# Hook
+# Hook
 
-To help the coding formatting, the [pre_format](pre-format) script hook is mountable activable with this command line.
+To help the coding formatting, the [pre format] script hook is mountable activable with this command line.
 ```bash
 ln -n hooks/pre-format.sh .git/hooks/pre-commit
 ```
 It's will install the [rustfmt] if needed and will format any modified rust file to next commits.
 
-[pre_format]:(https://github.com/ulysseB/telamon/blob/master/hooks/pre-format.sh)
-[rustfmt](https://github.com/rust-lang-nursery/rustfmt)
+[pre format]: https://github.com/ulysseB/telamon/blob/master/hooks/pre-format.sh
+[rustfmt]: https://github.com/rust-lang-nursery/rustfmt
