@@ -1,4 +1,24 @@
 //! Print the IR description in rust.
+mod counter;
+mod runtime;
+mod set;
+mod value;
+
+// Re-export commonly used items.
+use print::ast::Context;
+use print::value::{Value, ValueIdent};
+
+/// Reset the state of the printer. This should only be used for testing purpose, when
+/// one whats to compare the outputs of the printer oer sevral runs.
+#[cfg(test)]
+#[doc(hidden)]
+pub fn reset() {
+    value::reset_ident_counter();
+    ast::Variable::reset_prefix();
+}
+
+
+// TODO(cleanup): rewrite the fllowing with token streams instead of string templates
 use handlebars::{self, Handlebars, Helper, Renderable, RenderContext, RenderError};
 use ir;
 use itertools::Itertools;
@@ -205,8 +225,6 @@ mod store;
 mod value_set;
 
 use self::store::PartialIterator;
-#[cfg(test)]
-pub(crate) use self::ast::Variable;
 
 /// Generate the trigger code to add a representant to a quotient set.
 pub fn add_to_quotient(set: &ir::SetDef,
@@ -242,7 +260,8 @@ pub fn print(ir_desc: &ir::IrDesc) -> String {
         enums: String = ir_desc.enums().format("\n\n").to_string(),
         partial_iterators: PartialIters<'a> = partials,
         incr_iterators: Vec<store::IncrIterator<'a>> = incr_iterators,
-        triggers: Vec<Trigger<'a>> = triggers
+        triggers: Vec<Trigger<'a>> = triggers,
+        runtime: String = runtime::get().to_string()
     )
 }
 
@@ -540,7 +559,7 @@ impl<'a> Trigger<'a> {
         let arguments = foralls.clone().map(|v| ctx.var_def(v))
             .map(|(v, set)| (v, ast::Set::new(set, ctx))).collect();
         let conditions = trigger.conditions.iter()
-            .map(|c| filter::condition(c, ctx)).collect();
+            .map(|c| filter::condition(c, ctx).to_string()).collect();
         let code = ast::code(&trigger.code, ctx);
         let vars = foralls.map(|v| (v, ctx.var_def(v).1)).collect_vec();
         let partial_iters = PartialIterator::generate(&vars, false, ir_desc, ctx);

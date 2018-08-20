@@ -21,6 +21,7 @@ mod single_enum {
     define_ir!();
     generated_file!(single_enum);
     use self::single_enum::*;
+    use itertools::Itertools;
     use utils::*;
 
     /// Ensures basic operations on enum domains are working.
@@ -72,46 +73,49 @@ mod single_enum {
     #[test]
     fn numeric_operation() {
         let _ = ::env_logger::try_init();
-        let all0 = NumericSet::all(&[1, 2, 4, 8]);
-        let all1 = NumericSet::all(&[2, 3, 4]);
-        let inter01 = NumericSet::all(&[2, 4]);
-        let empty = NumericSet::all(&[]);
+        let universe = &[1, 3, 4, 5, 8];
+        let universe2 = &[2, 3, 5, 9];
+        let all = NumericSet::all(universe);
+        let all2 = NumericSet::all(universe2);
 
         // Test set operations.
-        assert!(all0 != all1);
-        assert!(!(all0.contains(all1)));
-        assert!(all0.contains(inter01));
-        assert!(empty.is_failed());
-
-        let mut restrict = all0;
-        restrict.restrict(all1);
-        assert_eq!(restrict, inter01);
-
-        let mut all0_2 = all0;
-        all0_2.insert(all0);
-        assert_eq!(all0_2, all0);
-
-        // Test action complement.
-        let fun = ir::Function::default();
-        assert_eq!(Action::Bar(NumericSet::all(&[1, 4])).complement(&fun),
-                   Some(Action::Bar(NumericSet::all(&[2, 8]))));
+        let all_subset = NumericSet::new_eq(universe, &[1, 6, 8][..], &());
+        assert!(NumericSet::FAILED.is_failed());
+        assert!(all.contains(all_subset));
+        assert!(!all_subset.contains(all));
+        assert_eq!(all_subset.list_values(universe).collect_vec(), vec![1, 8]);
+        let mut all_subset2 = all_subset;
+        all_subset2.insert(all);
+        assert_eq!(all_subset2, all);
+        assert_eq!(NumericSet::new_eq(universe, &[4, 8][..], &()).gcd(universe), 4);
+        assert_eq!(all.lcm(universe), 120);
 
         // Test comparison operators.
-        assert!(all0.lt(Range::new_eq(&Range::ALL, 9)));
-        assert!(!all0.lt(Range::new_eq(&Range::ALL, 8)));
-        assert!(all0.gt(Range::new_eq(&Range::ALL, 0)));
-        assert!(!all0.gt(Range::new_eq(&Range::ALL, 1)));
-        assert!(all0.leq(Range::new_eq(&Range::ALL, 8)));
-        assert!(!all0.leq(Range::new_eq(&Range::ALL, 7)));
-        assert!(all0.geq(Range::new_eq(&Range::ALL, 1)));
-        assert!(!all0.geq(Range::new_eq(&Range::ALL, 2)));
-
-        assert!(all0.neq(NumericSet::all(&[5, 7])));
-        assert!(!all0.neq(NumericSet::all(&[4, 7])));
+        assert!(all.lt(universe, Range::new_eq(&(), 9, &()), &()));
+        assert!(!all.lt(universe, Range::new_eq(&(), 8, &()), &()));
+        assert!(all.gt(universe, Range::new_eq(&(), 0, &()), &()));
+        assert!(!all.gt(universe, Range::new_eq(&(), 1, &()), &()));
+        assert!(all.leq(universe, Range::new_eq(&(), 8, &()), &()));
+        assert!(!all.leq(universe, Range::new_eq(&(), 7, &()), &()));
+        assert!(all.geq(universe, Range::new_eq(&(), 1, &()), &()));
+        assert!(!all.geq(universe, Range::new_eq(&(), 2, &()), &()));
+        assert!(all.neq(universe, &[6, 7][..], &()));
+        assert!(!all.neq(universe, &[4, 7][..], &()));
+        let uni2_minus_uni1 = NumericSet::new_eq(universe2, &[2, 9][..], &());
+        assert!(all.neq(universe, uni2_minus_uni1, universe2));
 
         // Test constructors.
-        assert_eq!(NumericSet::new_lt(&[2, 4, 6], 5), NumericSet::all(&[2, 4]));
-        assert_eq!(NumericSet::new_gt(&[2, 4, 6], 3), NumericSet::all(&[4, 6]));
+        assert_eq!(NumericSet::new_lt(universe, 5, &()),
+                   NumericSet::new_eq(universe, &[1, 3, 4][..], &()));
+        assert_eq!(NumericSet::new_gt(universe, 5, &()),
+                   NumericSet::new_eq(universe, &[8][..], &()));
+        assert_eq!(NumericSet::new_leq(universe, 5, &()),
+                   NumericSet::new_eq(universe, &[1, 3, 4, 5][..], &()));
+        assert_eq!(NumericSet::new_geq(universe, 5, &()),
+                   NumericSet::new_eq(universe, &[5, 8][..], &()));
+        assert_eq!(NumericSet::new_eq(universe, all, universe), all);
+        let expected = NumericSet::new_eq(universe, &[3, 5][..], &());
+        assert_eq!(NumericSet::new_eq(universe, all2, universe2), expected);
     }
 }
 
@@ -1157,13 +1161,13 @@ mod integer_set {
         let obj1 = ir::set0::create(&mut fun, false);
 
         let store = &mut DomainStore::new(&fun);
-        store.set_int1(obj0, NumericSet::all(&[4]));
+        store.set_int1(obj0, NumericSet::new_eq(&INT1_DOMAIN, &[4][..], &()));
         let actions = init_domain(store, &mut fun).unwrap();
         let fun = &mut Arc::new(fun);
         assert!(apply_decisions(actions, fun, store).is_ok());
 
-        assert_eq!(store.get_int0(), NumericSet::all(&[2, 4]));
-        assert_eq!(store.get_int1(obj1), NumericSet::all(&[4]));
+        assert_eq!(store.get_int0(), NumericSet::new_eq(&INT0_DOMAIN, &[2, 4][..], &()));
+        assert_eq!(store.get_int1(obj1), NumericSet::new_eq(&INT1_DOMAIN, &[4][..], &()));
     }
 
     #[test]
@@ -1180,14 +1184,17 @@ mod integer_set {
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert_eq!(store.get_sum_int2(), Range { min: 9, max: 15 });
 
-        let actions = vec![Action::Int2(obj0, NumericSet::all(&[4]))];
+        let only_4 = NumericSet::new_eq(&INT1_DOMAIN, &[4][..], &());
+        let actions = vec![Action::Int2(obj0, only_4)];
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert_eq!(store.get_sum_int2(), Range { min: 10, max: 14 });
 
-        let actions = vec![Action::Int2(obj1, NumericSet::all(&[5]))];
+        let only_5 = NumericSet::new_eq(&INT1_DOMAIN, &[5][..], &());
+        let actions = vec![Action::Int2(obj1, only_5)];
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert_eq!(store.get_sum_int2(), Range { min: 12, max: 12 });
-        assert_eq!(store.get_int2(obj2), NumericSet::all(&[3]));
+        let only_3 = NumericSet::new_eq(&INT1_DOMAIN, &[3][..], &());
+        assert_eq!(store.get_int2(obj2), only_3);
 
     }
 }

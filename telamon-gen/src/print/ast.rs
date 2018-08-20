@@ -2,6 +2,8 @@
 use ir;
 use ir::SetRef;
 use itertools::Itertools;
+use print;
+use quote::ToTokens;
 use serde::{Serialize, Serializer};
 use std::fmt::{self, Display, Formatter};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -18,7 +20,7 @@ impl<'a> Variable<'a> {
     /// Reset the prefix counter. This is meant for use in tests only.
     #[cfg(test)]
     #[doc(hidden)]
-    pub(crate) fn reset_prefix() {
+    pub fn reset_prefix() {
         NEXT_VAR_ID.store(0, Ordering::SeqCst);
     }
 
@@ -59,8 +61,7 @@ pub struct Context<'a> {
     pub ir_desc: &'a ir::IrDesc,
     pub choice: &'a ir::Choice,
     vars: HashMap<ir::Variable, (Variable<'a>, &'a ir::Set)>,
-    input_names: Vec<Variable<'a>>,
-    input_defs: &'a [ir::ChoiceInstance],
+    inputs: Vec<print::ValueIdent>,
 }
 
 impl<'a> Context<'a> {
@@ -76,9 +77,10 @@ impl<'a> Context<'a> {
         for (id, set) in foralls.into_iter().enumerate() {
             vars.insert(ir::Variable::Forall(id), (Variable::with_set(set), set));
         }
-        let input_names = input_defs.iter()
-            .map(|i| Variable::with_prefix(&i.choice)).collect();
-        Context { ir_desc, choice, vars, input_names, input_defs }
+        let inputs = input_defs.iter().map(|input| {
+            print::ValueIdent::new_ident(&input.choice, input.value_type(ir_desc))
+        }).collect();
+        Context { ir_desc, choice, vars, inputs }
     }
 
     /// Sets the name of a variable.
@@ -104,14 +106,14 @@ impl<'a> Context<'a> {
     }
 
     /// Returns the name of an input.
+    // TODO(cleanup): deprecate to use `input` instead
     pub fn input_name(&self, id: usize) -> Variable<'a> {
-        self.input_names[id].clone()
+        let name = &self.inputs[id];
+        Variable::with_string(name.into_token_stream().to_string())
     }
 
-    /// Returns the choice definition of an input.
-    pub fn input_choice_def(&self, id: usize) -> &'a ir::ChoiceDef {
-        self.ir_desc.get_choice(&self.input_defs[id].choice).choice_def()
-    }
+    /// Returns the value representing an input of an input.
+    pub fn input(&self, id: usize) -> &print::ValueIdent { &self.inputs[id] }
 }
 
 /// An instance of a choice.
@@ -286,10 +288,11 @@ impl ValueType {
     pub fn new(t: ir::ValueType, ctx: &Context) -> Self {
         match t {
             ir::ValueType::Enum(name) => ValueType::Enum(name.clone()),
-            ir::ValueType::Range => ValueType::Range,
-            ir::ValueType::HalfRange => ValueType::HalfRange,
+            ir::ValueType::Range { is_half: false } => ValueType::Range,
+            ir::ValueType::Range { is_half: true } => ValueType::HalfRange,
             ir::ValueType::NumericSet(univers) =>
                 ValueType::NumericSet(code(&univers, ctx)),
+            ir::ValueType::Constant => panic!("user-provided values type is unspecified"),
         }
     }
 }

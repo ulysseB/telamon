@@ -1,13 +1,29 @@
 //! Prints the domain store definition.
+use proc_macro2::{Ident, Span};
+use print;
+use quote::ToTokens;
+
+/// Returns the name of the getter method for `choice`. If `get_old` is true, the method
+/// will only take into account decisions that have been propagated.
+pub fn getter_name(choice: &str, get_old: bool) -> Ident {
+    let name = if get_old {
+        format!("get_old_{}", choice)
+    } else {
+        format!("get_{}", choice)
+    };
+    Ident::new(&name, Span::call_site())
+}
+
+//TODO(cleanup): use TokenStream instead of templates
 use ir;
 use ir::SetRef;
 use itertools::Itertools;
 use print::value_set;
 use print::ast::{self, Variable, LoopNest};
 use print::choice::Ast as ChoiceAst;
-use print::choice::CounterValue;
 use std::iter;
 use utils::*;
+
 
 /// Returns the partial iterators over the choices.
 // TODO(cleanup): do not use ChoiceAst so we can directly iterate on IR choices.
@@ -90,16 +106,23 @@ pub fn incr_iterators<'a>(ir_desc: &'a ir::IrDesc) -> Vec<IncrIterator<'a>> {
                 let mut loop_nest = ast::LoopNest::new(counter_loops, ctx, conflicts, true);
                 conflicts.extend(PartialIterator::new_objs_conflicts(ir_desc, set));
                 loop_nest.extend(incr_loops, ctx, conflicts, false);
-                let incr_condition = RcStr::new(value_set::print(incr_condition, ctx));
+                let incr_condition = RcStr::new(value_set::print(incr_condition, ctx).to_string());
                 let incr = ast::ChoiceInstance::new(incr, ctx);
                 let set_ast = ast::SetDef::new(set.def());
+                let incr_amount_getter = print::counter::increment_amount(value, true, ctx);
+                let incr_amount: print::Value = incr_amount_getter
+                    .create_ident("incr_value").into();
+                let min_incr_amount = incr_amount.get_min(ctx);
+                let max_incr_amount = incr_amount.get_max(ctx);
                 let incr_iterator = IncrIterator {
                     iter: PartialIterator { loop_nest, set: set_ast, arg_conflicts },
                     incr, incr_condition, visibility, kind,
+                    incr_amount: incr_amount_getter.into_token_stream().to_string(),
                     zero: kind.zero(),
-                    value: CounterValue::new(value, ctx),
                     counter: ast::ChoiceInstance::new(counter, ctx),
                     counter_type: ast::ValueType::new(counter_type.clone(), ctx),
+                    min_incr_amount: min_incr_amount.into_token_stream().to_string(),
+                    max_incr_amount: max_incr_amount.into_token_stream().to_string(),
                 };
                 out.push(incr_iterator);
             }
@@ -112,7 +135,9 @@ pub fn incr_iterators<'a>(ir_desc: &'a ir::IrDesc) -> Vec<IncrIterator<'a>> {
 #[derive(Serialize)]
 pub struct IncrIterator<'a> {
     iter: PartialIterator<'a>,
-    value: CounterValue<'a>,
+    incr_amount: String,
+    min_incr_amount: String,
+    max_incr_amount: String,
     counter: ast::ChoiceInstance<'a>,
     kind: ir::CounterKind,
     zero: u32,
