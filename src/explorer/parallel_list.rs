@@ -22,8 +22,9 @@ impl<'a> Store<'a> for ParallelCandidateList<'a> {
         &self,
         _actions: &List<choice::ActionEx>,
         (): Self::PayLoad,
-        _: f64)
-    { }
+        _: f64,
+    ) {
+    }
 
     fn explore(&self, context: &Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
         loop {
@@ -34,8 +35,9 @@ impl<'a> Store<'a> for ParallelCandidateList<'a> {
                 } else {
                     return Some((candidate, ()));
                 }
+            } else {
+                return None;
             }
-            else {return None;}
         }
     }
 }
@@ -64,10 +66,11 @@ impl<'a> ParallelCandidateList<'a> {
     /// Insert multiple candidates to process.
     pub fn insert_many(&self, candidates: Vec<Candidate<'a>>) {
         let mut lock = self.lock();
-        for candidate in candidates { lock.0.insert(candidate); }
+        for candidate in candidates {
+            lock.0.insert(candidate);
+        }
         self.wakeup.notify_all();
     }
-
 
     /// Returns a candidate to process or `None` if the queue has been entirely processed.
     pub fn pop(&self) -> Option<Candidate<'a>> {
@@ -123,8 +126,13 @@ impl<'a> CandidateList<'a> {
         self.n_candidate += 1;
         if candidate.bound.value() < self.cut {
             let bound = candidate.bound.value();
-            info!("inserting candidate {}: {:.4e}ns < {:.4e}ns, {} in queue",
-                  self.n_candidate, bound, self.cut, self.queue.len());
+            info!(
+                "inserting candidate {}: {:.4e}ns < {:.4e}ns, {} in queue",
+                self.n_candidate,
+                bound,
+                self.cut,
+                self.queue.len()
+            );
             self.queue.push(candidate);
         } else {
             self.drop_candidate(candidate);
@@ -133,13 +141,15 @@ impl<'a> CandidateList<'a> {
 
     pub fn update_cut(&mut self, new_cut: f64) {
         self.cut = new_cut;
-        while self.queue.max().map_or(false, |x| x.bound.value() >= new_cut) {
+        while self
+            .queue
+            .max()
+            .map_or(false, |x| x.bound.value() >= new_cut)
+        {
             let candidate = unwrap!(self.queue.pop_max());
             self.drop_candidate(candidate);
         }
     }
-
-
 
     /// Returns a candidate to process.
     pub fn pop(&mut self) -> Option<Candidate<'a>> {
@@ -152,11 +162,13 @@ impl<'a> CandidateList<'a> {
         candidate
     }
 
-
     /// Drops a candiate.
     fn drop_candidate(&mut self, candidate: Candidate<'a>) {
-        info!("dropping candidate: {:.4e}ns >= {:.4e}ns.",
-              candidate.bound.value(), self.cut);
+        info!(
+            "dropping candidate: {:.4e}ns >= {:.4e}ns.",
+            candidate.bound.value(),
+            self.cut
+        );
         self.n_dropped += 1;
     }
 }

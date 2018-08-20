@@ -1,11 +1,11 @@
 //! C API wrappers for manipulating Telamon CUDA context through FFI.
-use Context;
-use Device;
 use env_logger;
 use libc;
 use std;
 use telamon::device::{cuda, ArgMap};
 use telamon::ir;
+use Context;
+use Device;
 
 /// Opaque type that contains the mapping of kernel parameters to actual values.
 pub struct CudaEnvironment {
@@ -49,17 +49,17 @@ pub unsafe extern "C" fn telamon_cuda_environment_free(env: *mut CudaEnvironment
 
 /// Returns a pointer to ithe evaluation context.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_cuda_get_context(env: *const CudaEnvironment)
-    -> *const Context
-{
-        &(*env).context_ref
+pub unsafe extern "C" fn telamon_cuda_get_context(
+    env: *const CudaEnvironment,
+) -> *const Context {
+    &(*env).context_ref
 }
 
 /// Returns a pointer to the description of the target device.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_cuda_get_device(env: *const CudaEnvironment)
-    -> *const Device
-{
+pub unsafe extern "C" fn telamon_cuda_get_device(
+    env: *const CudaEnvironment,
+) -> *const Device {
     &(*env).device_ref
 }
 
@@ -68,56 +68,70 @@ pub unsafe extern "C" fn telamon_cuda_get_device(env: *const CudaEnvironment)
 /// The allocated array is managed by the context and doesn't need to be explicitely
 /// destroyed.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_cuda_bind_array(env: *mut CudaEnvironment,
-                                                 param: *const ir::Parameter,
-                                                 size: libc::size_t) {
+pub unsafe extern "C" fn telamon_cuda_bind_array(
+    env: *mut CudaEnvironment,
+    param: *const ir::Parameter,
+    size: libc::size_t,
+) {
     (*env).context.bind_array::<i8>(&*param, size);
 }
 
 /// Binds an `int8_t` to a parameter.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_cuda_bind_int8(env: *mut CudaEnvironment,
-                                                param: *const ir::Parameter,
-                                                value: libc::int8_t) {
+pub unsafe extern "C" fn telamon_cuda_bind_int8(
+    env: *mut CudaEnvironment,
+    param: *const ir::Parameter,
+    value: libc::int8_t,
+) {
     (*env).context.bind_scalar::<i8>(&*param, value);
 }
 
 /// Binds an `int16_t` to a parameter.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_cuda_bind_int16(env: *mut CudaEnvironment,
-                                                param: *const ir::Parameter,
-                                                value: libc::int16_t) {
+pub unsafe extern "C" fn telamon_cuda_bind_int16(
+    env: *mut CudaEnvironment,
+    param: *const ir::Parameter,
+    value: libc::int16_t,
+) {
     (*env).context.bind_scalar::<i16>(&*param, value);
 }
 
 /// Binds an `int32_t` to a parameter.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_cuda_bind_int32(env: *mut CudaEnvironment,
-                                                param: *const ir::Parameter,
-                                                value: libc::int32_t) {
+pub unsafe extern "C" fn telamon_cuda_bind_int32(
+    env: *mut CudaEnvironment,
+    param: *const ir::Parameter,
+    value: libc::int32_t,
+) {
     (*env).context.bind_scalar::<i32>(&*param, value);
 }
 
 /// Binds an `int64_t` to a parameter.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_cuda_bind_int64(env: *mut CudaEnvironment,
-                                                param: *const ir::Parameter,
-                                                value: libc::int64_t) {
+pub unsafe extern "C" fn telamon_cuda_bind_int64(
+    env: *mut CudaEnvironment,
+    param: *const ir::Parameter,
+    value: libc::int64_t,
+) {
     (*env).context.bind_scalar::<i64>(&*param, value);
 }
 
 /// Binds a `float` to a parameter.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_cuda_bind_float(env: *mut CudaEnvironment,
-                                                param: *const ir::Parameter,
-                                                value: libc::c_float) {
+pub unsafe extern "C" fn telamon_cuda_bind_float(
+    env: *mut CudaEnvironment,
+    param: *const ir::Parameter,
+    value: libc::c_float,
+) {
     (*env).context.bind_scalar::<f32>(&*param, value);
 }
 
 /// Binds a `double` to a parameter.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_cuda_bind_double(env: *mut CudaEnvironment,
-                                                param: *const ir::Parameter,
-                                                value: libc::c_double) {
+pub unsafe extern "C" fn telamon_cuda_bind_double(
+    env: *mut CudaEnvironment,
+    param: *const ir::Parameter,
+    value: libc::c_double,
+) {
     (*env).context.bind_scalar::<f64>(&*param, value);
 }

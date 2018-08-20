@@ -7,10 +7,10 @@ extern crate telamon_utils as utils;
 mod common;
 
 use common::*;
-use telamon::ir::{self, Size, Type};
-use telamon::search_space::{Action, DimKind, Domain, Order, Bool};
 use telamon::device::Context;
 use telamon::helper;
+use telamon::ir::{self, Size, Type};
+use telamon::search_space::{Action, Bool, DimKind, Domain, Order};
 
 /// Obtains the best implementation for an empty function.
 #[test]
@@ -18,7 +18,10 @@ fn empty() {
     let _ = env_logger::try_init();
     let context = fake::Context::default();
     let signature = empty_signature(0);
-    gen_best(&context, helper::Builder::new(&signature, context.device()).get());
+    gen_best(
+        &context,
+        helper::Builder::new(&signature, context.device()).get(),
+    );
 }
 
 /// Obtains the best implementation for two add instructions.
@@ -59,11 +62,18 @@ fn inst_dim_order() {
     assert_eq!(space.domain().get_dim_kind(dim1), !DimKind::VECTOR);
     assert_eq!(space.domain().get_is_iteration_dim(inst0, dim0), Bool::TRUE);
     assert_eq!(space.domain().get_is_iteration_dim(inst0, dim0), Bool::TRUE);
-    assert_eq!(space.domain().get_order(inst0.into(), dim1.into()),
-               Order::INNER | Order::ORDERED);
-    assert_eq!(space.domain().get_is_iteration_dim(inst1, dim1), Bool::FALSE);
-    assert_eq!(space.domain().get_order(inst1.into(), dim1.into()),
-               Order::INNER | Order::ORDERED);
+    assert_eq!(
+        space.domain().get_order(inst0.into(), dim1.into()),
+        Order::INNER | Order::ORDERED
+    );
+    assert_eq!(
+        space.domain().get_is_iteration_dim(inst1, dim1),
+        Bool::FALSE
+    );
+    assert_eq!(
+        space.domain().get_order(inst1.into(), dim1.into()),
+        Order::INNER | Order::ORDERED
+    );
     gen_best(&context, space);
 }
 
@@ -133,21 +143,44 @@ fn block_dims() {
     };
     let mut builder = helper::Builder::new(&signature, context.device());
     let d0 = builder.open_dim(Size::new(4, vec![], 1));
-    let inst =  builder.mov(&0i32);
+    let inst = builder.mov(&0i32);
     let s1 = builder.param_size("n");
     let d1 = builder.open_dim_ex(s1, DimKind::BLOCK);
     let d2 = builder.open_dim_ex(Size::new(2, vec![], 1), DimKind::BLOCK);
     let d3 = builder.open_dim_ex(Size::new(3, vec![], 1), DimKind::BLOCK);
     let space = builder.get();
-    assert_eq!(space.domain().get_is_iteration_dim(inst.into(), d0), Bool::TRUE);
-    assert_eq!(space.domain().get_is_iteration_dim(inst.into(), d1), Bool::TRUE);
-    assert_eq!(space.domain().get_is_iteration_dim(inst.into(), d2), Bool::TRUE);
-    assert_eq!(space.domain().get_is_iteration_dim(inst.into(), d3), Bool::TRUE);
-    assert_eq!(space.domain().get_dim_kind(d0),
-               DimKind::LOOP | DimKind::THREAD | DimKind::UNROLL);
-    assert_eq!(space.domain().get_order(d1.into(), d2.into()), Order::NESTED);
-    assert_eq!(space.domain().get_order(d1.into(), d3.into()), Order::NESTED);
-    assert_eq!(space.domain().get_order(d2.into(), d3.into()), Order::NESTED);
+    assert_eq!(
+        space.domain().get_is_iteration_dim(inst.into(), d0),
+        Bool::TRUE
+    );
+    assert_eq!(
+        space.domain().get_is_iteration_dim(inst.into(), d1),
+        Bool::TRUE
+    );
+    assert_eq!(
+        space.domain().get_is_iteration_dim(inst.into(), d2),
+        Bool::TRUE
+    );
+    assert_eq!(
+        space.domain().get_is_iteration_dim(inst.into(), d3),
+        Bool::TRUE
+    );
+    assert_eq!(
+        space.domain().get_dim_kind(d0),
+        DimKind::LOOP | DimKind::THREAD | DimKind::UNROLL
+    );
+    assert_eq!(
+        space.domain().get_order(d1.into(), d2.into()),
+        Order::NESTED
+    );
+    assert_eq!(
+        space.domain().get_order(d1.into(), d3.into()),
+        Order::NESTED
+    );
+    assert_eq!(
+        space.domain().get_order(d2.into(), d3.into()),
+        Order::NESTED
+    );
     gen_best(&context, space);
 }
 
@@ -165,7 +198,13 @@ fn vector_dims() {
     let pattern = builder.tensor_access_pattern(mem_block, &Type::I(8), &[&d0]);
     let addr = builder.induction_var(&base_addr, vec![(d0, ir::Size::new(1, vec![], 1))]);
     builder.ld(Type::I(8), &addr, pattern.clone());
-    assert!(builder.get_clone().domain().get_dim_kind(d0).intersects(DimKind::VECTOR));
+    assert!(
+        builder
+            .get_clone()
+            .domain()
+            .get_dim_kind(d0)
+            .intersects(DimKind::VECTOR)
+    );
     // Test with two insts and a non-vectorizable inst.
     builder.ld(Type::I(8), &addr, pattern);
     builder.close_dim(&d0);
@@ -218,10 +257,19 @@ fn reduce_dim_invariants() {
     let d2 = builder.open_dim(Size::new(4, vec![], 1));
     builder.order(&d2, &init, !Order::OUTER);
     let space = builder.get();
-    assert_eq!(space.domain().get_dim_kind(d0), DimKind::LOOP | DimKind::UNROLL);
-    assert_eq!(space.domain().get_order(d0.into(), init.into()), Order::AFTER);
+    assert_eq!(
+        space.domain().get_dim_kind(d0),
+        DimKind::LOOP | DimKind::UNROLL
+    );
+    assert_eq!(
+        space.domain().get_order(d0.into(), init.into()),
+        Order::AFTER
+    );
     assert!(Order::OUTER.contains(space.domain().get_order(d1.into(), init.into())));
-    assert_eq!(space.domain().get_is_iteration_dim(reduce.into(), d2), Bool::FALSE);
+    assert_eq!(
+        space.domain().get_is_iteration_dim(reduce.into(), d2),
+        Bool::FALSE
+    );
     gen_best(&context, space);
 }
 

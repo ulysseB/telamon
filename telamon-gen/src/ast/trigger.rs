@@ -1,5 +1,5 @@
-use super::VarDef;
 use super::Condition;
+use super::VarDef;
 
 #[derive(Debug)]
 pub struct TriggerDef {

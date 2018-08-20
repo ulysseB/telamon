@@ -4,24 +4,24 @@ mod array;
 mod counter;
 mod error;
 mod executor;
+mod jit_daemon;
 mod module;
 mod wrapper;
-mod jit_daemon;
 
 pub use self::array::Array;
+pub use self::counter::{PerfCounter, PerfCounterSet};
 pub use self::error::*;
 pub use self::executor::*;
-pub use self::counter::{PerfCounter, PerfCounterSet};
-pub use self::module::{Module, Kernel, Argument};
 pub use self::jit_daemon::JITDaemon;
+pub use self::module::{Argument, Kernel, Module};
 
 use self::jit_daemon::DaemonSpawner;
 
 #[cfg(test)]
-#[cfg(feature="cuda")]
+#[cfg(feature = "cuda")]
 mod tests {
-    use super::*;
     use super::array;
+    use super::*;
 
     /// Tries to initialize a CUDA execution context.
     #[test]
@@ -39,8 +39,9 @@ mod tests {
     /// Tries to compile an empty PTX module.
     #[test]
     fn test_empty_module() {
-      let executor = Executor::init();
-      let _ = executor.compile_ptx(".version 3.0\n.target sm_30\n.address_size 64\n", 1);
+        let executor = Executor::init();
+        let _ =
+            executor.compile_ptx(".version 3.0\n.target sm_30\n.address_size 64\n", 1);
     }
 
     /// Tries to compile an empty PTX kernel and execute it.
@@ -49,9 +50,11 @@ mod tests {
         let executor = Executor::init();
         let module = executor.compile_ptx(
             ".version 3.0\n.target sm_30\n.address_size 64\n
-            .entry empty_fun() { ret; }", 1);
+            .entry empty_fun() { ret; }",
+            1,
+        );
         let kernel = module.kernel("empty_fun");
-        let _ = kernel.execute(&[1,1,1], &[1,1,1], &mut []);
+        let _ = kernel.execute(&[1, 1, 1], &[1, 1, 1], &mut []);
     }
 
     /// Tries to allocate an array.
@@ -64,10 +67,10 @@ mod tests {
     /// Allocates two identical arrays and ensures they are equal.
     #[test]
     fn test_array_copy() {
-      let executor = Executor::init();
-      let src = executor.allocate_array::<f32>(1024);
-      let dst = src.clone();
-      assert!(array::compare_f32(&src, &dst) < 1e-5);
+        let executor = Executor::init();
+        let src = executor.allocate_array::<f32>(1024);
+        let dst = src.clone();
+        assert!(array::compare_f32(&src, &dst) < 1e-5);
     }
 
     /// Alocates a random array and copies using a PTX kernel.
@@ -95,10 +98,15 @@ mod tests {
                 ld.global.f32 %f, [%rd2];
                 st.global.f32 [%rd3], %f;
                 ret;
-            }", 1);
+            }",
+            1,
+        );
         let kernel = module.kernel("copy");
-        unwrap!(kernel.execute(&[block_dim, 1, 1], &[1, 1, 1],
-                               &mut [&mut src, &mut dst]));
+        unwrap!(kernel.execute(
+            &[block_dim, 1, 1],
+            &[1, 1, 1],
+            &mut [&mut src, &mut dst]
+        ));
         assert!(array::compare_f32(&src, &dst) < 1e-5);
     }
 }

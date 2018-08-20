@@ -1,5 +1,5 @@
-use codegen::{self, Dimension, Function, ParamValKey, AllocationScheme, Instruction};
-use ir::{self, dim, DimMap, InstId, mem, Operand, Type};
+use codegen::{self, AllocationScheme, Dimension, Function, Instruction, ParamValKey};
+use ir::{self, dim, mem, DimMap, InstId, Operand, Type};
 use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
@@ -47,7 +47,7 @@ pub struct NameMap<'a, 'b> {
     /// Tracks the current index on expanded dimensions.
     current_indexes: HashMap<ir::DimId, u32>,
     /// Total number threads.
-    #[cfg(feature="mppa")]
+    #[cfg(feature = "mppa")]
     total_num_threads: u32,
     /// Tracks the name of induction variables partial names.
     induction_vars: HashMap<ir::IndVarId, String>,
@@ -63,19 +63,24 @@ impl<'a, 'b> NameMap<'a, 'b> {
     pub fn new(function: &'a Function<'a>, namer: &'b mut Namer) -> Self {
         let mut mem_blocks = HashMap::default();
         // Setup parameters names.
-        let params = function.device_code_args().map(|val| {
-            let var_name = namer.name(val.t());
-            let param_name = namer.name_param(val.key());
-            if let ParamValKey::GlobalMem(id) = val.key() {
-                mem_blocks.insert(id, var_name.clone());
-            }
-            (val.key(), (var_name, param_name))
-        }).collect();
+        let params = function
+            .device_code_args()
+            .map(|val| {
+                let var_name = namer.name(val.t());
+                let param_name = namer.name_param(val.key());
+                if let ParamValKey::GlobalMem(id) = val.key() {
+                    mem_blocks.insert(id, var_name.clone());
+                }
+                (val.key(), (var_name, param_name))
+            })
+            .collect();
         // Name dimensions indexes.
         let mut indexes = HashMap::default();
         for dim in function.dimensions() {
             let name = RcStr::new(namer.name(Type::I(32)));
-            for id in dim.dim_ids() { indexes.insert(id, name.clone()); }
+            for id in dim.dim_ids() {
+                indexes.insert(id, name.clone());
+            }
         }
         // Name induction levels.
         let mut induction_levels = HashMap::default();
@@ -101,10 +106,14 @@ impl<'a, 'b> NameMap<'a, 'b> {
             insts: HashMap::default(),
             num_loop: 0,
             current_indexes: HashMap::default(),
-            #[cfg(feature="mppa")]
+            #[cfg(feature = "mppa")]
             total_num_threads: function.num_threads(),
             size_casts: HashMap::default(),
-            indexes, params, mem_blocks, induction_vars, induction_levels,
+            indexes,
+            params,
+            mem_blocks,
+            induction_vars,
+            induction_levels,
             side_effect_guard: None,
         };
         // Setup induction variables.
@@ -115,9 +124,11 @@ impl<'a, 'b> NameMap<'a, 'b> {
                 [value] => {
                     let name = name_map.name(value).to_string();
                     name_map.induction_vars.insert(var.id, name);
-                },
-                _ => panic!("inductions variables with more than two components must be
-                            computed by the outermost induction level")
+                }
+                _ => panic!(
+                    "inductions variables with more than two components must be
+                            computed by the outermost induction level"
+                ),
             };
         }
         // Setup the name of variables holding instruction results.
@@ -132,11 +143,15 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     /// Returns the total number of threads.
-    #[cfg(feature="mppa")]
-    pub fn total_num_threads(&self) -> u32 { self.total_num_threads }
+    #[cfg(feature = "mppa")]
+    pub fn total_num_threads(&self) -> u32 {
+        self.total_num_threads
+    }
 
     /// Generates a variable of the given `Type`.
-    pub fn gen_name(&self, t: Type) -> String { self.namer.borrow_mut().name(t) }
+    pub fn gen_name(&self, t: Type) -> String {
+        self.namer.borrow_mut().name(t)
+    }
 
     /// Generates an ID for a loop.
     pub fn gen_loop_id(&mut self) -> u32 {
@@ -147,32 +162,37 @@ impl<'a, 'b> NameMap<'a, 'b> {
 
     /// Allocate a predicate name.
     #[cfg(feature = "cuda")]
-    pub fn allocate_pred(&self) -> String { self.namer.borrow_mut().name(Type::I(1)) }
+    pub fn allocate_pred(&self) -> String {
+        self.namer.borrow_mut().name(Type::I(1))
+    }
 
     pub fn name(&self, value: Value) -> Cow<str> {
         match value {
             Value::Operand(op) => self.name_op(op),
-            Value::InductionLevel(ind_var, level) =>
-                self.name_induction_var(ind_var, Some(level)),
+            Value::InductionLevel(ind_var, level) => {
+                self.name_induction_var(ind_var, Some(level))
+            }
         }
     }
 
     /// Asigns a name to an operand.
     pub fn name_op(&self, operand: &Operand) -> Cow<str> {
         match *operand {
-            Operand::Int(ref val, len) =>
-                Cow::Owned(self.namer.borrow().name_int(val, len)),
-            Operand::Float(ref val, len) =>
-                Cow::Owned(self.namer.borrow().name_float(val, len)),
-            Operand::Inst(id, _, ref dim_map, _) |
-            Operand::Reduce(id, _, ref dim_map, _) =>
-                Cow::Borrowed(self.name_inst_id(id, dim_map)),
-            Operand::Index(id) =>
-                if let Some(idx) =  self.current_indexes.get(&id) {
-                    Cow::Owned(format!("{}", idx))
-                } else {
-                    Cow::Borrowed(&self.indexes[&id])
-                },
+            Operand::Int(ref val, len) => {
+                Cow::Owned(self.namer.borrow().name_int(val, len))
+            }
+            Operand::Float(ref val, len) => {
+                Cow::Owned(self.namer.borrow().name_float(val, len))
+            }
+            Operand::Inst(id, _, ref dim_map, _)
+            | Operand::Reduce(id, _, ref dim_map, _) => {
+                Cow::Borrowed(self.name_inst_id(id, dim_map))
+            }
+            Operand::Index(id) => if let Some(idx) = self.current_indexes.get(&id) {
+                Cow::Owned(format!("{}", idx))
+            } else {
+                Cow::Borrowed(&self.indexes[&id])
+            },
             Operand::Param(p) => self.name_param_val(ParamValKey::External(p)),
             Operand::Addr(id) => self.name_addr(id),
             Operand::InductionVar(id, _) => self.name_induction_var(id, None),
@@ -191,8 +211,10 @@ impl<'a, 'b> NameMap<'a, 'b> {
             indexes.remove(&rhs).map(|idx| indexes.insert(lhs, idx));
         }
         let (ref dims, ref name_array) = self.insts[&id];
-        let idx_vals = dims.iter().zip(name_array.dims.iter())
-            .map(|(x, s)| indexes.get(x).map_or(s-1, |x| *x as usize));
+        let idx_vals = dims
+            .iter()
+            .zip(name_array.dims.iter())
+            .map(|(x, s)| indexes.get(x).map_or(s - 1, |x| *x as usize));
         &name_array[&idx_vals.collect_vec()[..]]
     }
 
@@ -200,9 +222,9 @@ impl<'a, 'b> NameMap<'a, 'b> {
     fn decl_inst(&mut self, inst: &Instruction) {
         let (dim_ids, dim_sizes) = self.inst_name_dims(inst);
         let num_name = dim_sizes.iter().product();
-        let names = (0 .. num_name).map(|_| {
-            self.gen_name(unwrap!(inst.t()))
-        }).collect_vec();
+        let names = (0..num_name)
+            .map(|_| self.gen_name(unwrap!(inst.t())))
+            .collect_vec();
         let array = NDArray::new(dim_sizes, names);
         assert!(self.insts.insert(inst.id(), (dim_ids, array)).is_none());
     }
@@ -213,16 +235,20 @@ impl<'a, 'b> NameMap<'a, 'b> {
         let names = {
             let (ref base_dims, ref base_names) = self.insts[&base];
             let permutation = {
-                let mut base_pos: HashMap<_, _> = base_dims.iter().enumerate()
-                    .map(|(i, x)| (*x, i)).collect();
+                let mut base_pos: HashMap<_, _> =
+                    base_dims.iter().enumerate().map(|(i, x)| (*x, i)).collect();
                 for &(lhs, rhs) in dim_map.iter() {
                     base_pos.remove(&lhs).map(|pos| base_pos.insert(rhs, pos));
                 }
-                dim_ids.iter().map(|dim| base_pos.get(dim)).enumerate()
-                    .flat_map(|(src, dst)| dst.map(|x| (src, *x))).collect_vec()
+                dim_ids
+                    .iter()
+                    .map(|dim| base_pos.get(dim))
+                    .enumerate()
+                    .flat_map(|(src, dst)| dst.map(|x| (src, *x)))
+                    .collect_vec()
             };
             let mut names = vec![];
-            let mut base_indexes = base_names.dims.iter().map(|x| x-1).collect_vec();
+            let mut base_indexes = base_names.dims.iter().map(|x| x - 1).collect_vec();
             for nd_index in NDRange::new(&dim_sizes) {
                 for &(src, dst) in &permutation {
                     base_indexes[dst] = nd_index[src];
@@ -238,32 +264,44 @@ impl<'a, 'b> NameMap<'a, 'b> {
     /// Returns the ids and the sizes of the dimensions on which the instructions must be
     /// named.
     fn inst_name_dims(&self, inst: &Instruction) -> (Vec<ir::DimId>, Vec<usize>) {
-        inst.instantiation_dims().iter().map(|&(dim, size)| (dim, size as usize)).unzip()
+        inst.instantiation_dims()
+            .iter()
+            .map(|&(dim, size)| (dim, size as usize))
+            .unzip()
     }
 
     /// Returns the name of an index.
-    pub fn name_index(&self, dim_id: ir::DimId) -> &str { &self.indexes[&dim_id] }
+    pub fn name_index(&self, dim_id: ir::DimId) -> &str {
+        &self.indexes[&dim_id]
+    }
 
     /// Set the current index of an unrolled dimension.
     pub fn set_current_index(&mut self, dim: &Dimension, idx: u32) {
-        for id in dim.dim_ids() { self.current_indexes.insert(id, idx); }
+        for id in dim.dim_ids() {
+            self.current_indexes.insert(id, idx);
+        }
     }
 
     /// Unset the current index of an unrolled dimension.
     pub fn unset_current_index(&mut self, dim: &Dimension) {
-        for id in dim.dim_ids() { assert!(self.current_indexes.remove(&id).is_some()); }
+        for id in dim.dim_ids() {
+            assert!(self.current_indexes.remove(&id).is_some());
+        }
     }
 
-    pub fn indexed_inst_name(&mut self, inst: &Instruction,
-                             dim: ir::DimId, idx: u32) -> String {
+    pub fn indexed_inst_name(
+        &mut self,
+        inst: &Instruction,
+        dim: ir::DimId,
+        idx: u32,
+    ) -> String {
         self.current_indexes.insert(dim, idx);
         let name = self.name_inst(inst).to_string();
         self.current_indexes.remove(&dim);
         name
     }
 
-    pub fn indexed_op_name(&mut self, op: &Operand,
-                           dim: ir::DimId, idx: u32) -> String {
+    pub fn indexed_op_name(&mut self, op: &Operand, dim: ir::DimId, idx: u32) -> String {
         self.current_indexes.insert(dim, idx);
         let name = self.name_op(op).to_string();
         self.current_indexes.remove(&dim);
@@ -289,8 +327,11 @@ impl<'a, 'b> NameMap<'a, 'b> {
 
     /// Assigns a name to an induction variable.
     // TODO(cleanup): split into name induction var and name induction level
-    pub fn name_induction_var(&self, var: ir::IndVarId, dim: Option<ir::DimId>)
-            -> Cow<str> {
+    pub fn name_induction_var(
+        &self,
+        var: ir::IndVarId,
+        dim: Option<ir::DimId>,
+    ) -> Cow<str> {
         if let Some(dim) = dim {
             Cow::Borrowed(&self.induction_levels[&(var, dim)])
         } else {
@@ -300,14 +341,19 @@ impl<'a, 'b> NameMap<'a, 'b> {
 
     /// Declares a size cast. Returns the name of the variable only if a new variable was
     /// allcoated.
-    pub fn declare_size_cast(&mut self, size: &'a codegen::Size<'a>, t: ir::Type)
-        -> Option<String>
-    {
-        if size.dividend().is_empty() || t == Type::I(32) { return None; }
+    pub fn declare_size_cast(
+        &mut self,
+        size: &'a codegen::Size<'a>,
+        t: ir::Type,
+    ) -> Option<String> {
+        if size.dividend().is_empty() || t == Type::I(32) {
+            return None;
+        }
         match self.size_casts.entry((size, t)) {
             hash_map::Entry::Occupied(..) => None,
-            hash_map::Entry::Vacant(entry) =>
-                Some(entry.insert(self.namer.borrow_mut().name(t)).to_string()),
+            hash_map::Entry::Vacant(entry) => {
+                Some(entry.insert(self.namer.borrow_mut().name(t)).to_string())
+            }
         }
     }
 
@@ -318,14 +364,15 @@ impl<'a, 'b> NameMap<'a, 'b> {
             (&[], _) => {
                 assert_eq!(size.divisor(), 1);
                 Cow::Owned(size.factor().to_string())
-            },
-            (&[p], Type::I(32)) if size.factor() == 1 && size.divisor() == 1 =>
-                self.name_param_val(ParamValKey::External(p)),
+            }
+            (&[p], Type::I(32)) if size.factor() == 1 && size.divisor() == 1 => {
+                self.name_param_val(ParamValKey::External(p))
+            }
             (_, Type::I(32)) => self.name_param_val(ParamValKey::Size(size)),
             _ => {
                 let size = unwrap!(self.size_casts.get(&(size, expected_t)));
                 Cow::Borrowed(size)
-            },
+            }
         }
     }
 

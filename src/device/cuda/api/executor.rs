@@ -1,6 +1,6 @@
 //! Allows the execution of kernels on the GPU.
-use device::cuda::api::*;
 use device::cuda::api::wrapper::*;
+use device::cuda::api::*;
 use libc;
 use std::ffi::CStr;
 use std::sync::Mutex;
@@ -16,13 +16,17 @@ pub struct Executor {
 
 impl Executor {
     /// Tries to initialize the `Executor` and panics if it fails.
-    pub fn init() -> Executor { unwrap!(Self::try_init()) }
+    pub fn init() -> Executor {
+        unwrap!(Self::try_init())
+    }
 
     /// Initializes the `Executor`.
     pub fn try_init() -> Result<Executor, InitError> {
         // The daemon must be spawned before init_cuda is called.
         let _ = unwrap!(JIT_SPAWNER.lock());
-        Ok(Executor { context: unsafe { init_cuda(0) } })
+        Ok(Executor {
+            context: unsafe { init_cuda(0) },
+        })
     }
 
     /// Spawns a `JITDaemon`.
@@ -32,17 +36,17 @@ impl Executor {
 
     /// Compiles a PTX module.
     pub fn compile_ptx<'a>(&'a self, code: &str, opt_level: usize) -> Module<'a> {
-        Module::new(unsafe { &*self.context as &'a _}, code, opt_level)
+        Module::new(unsafe { &*self.context as &'a _ }, code, opt_level)
     }
 
     /// Compiles a PTX module using a separate process.
     pub fn compile_remote<'a>(&'a self, jit: &mut JITDaemon, code: &str) -> Module<'a> {
-        jit.compile(unsafe { &*self.context as &'a _}, code)
+        jit.compile(unsafe { &*self.context as &'a _ }, code)
     }
 
     /// Allocates an array on the CUDA device.
     pub fn allocate_array<T>(&self, len: usize) -> Array<T> {
-        let context = unsafe { &*self.context as &_};
+        let context = unsafe { &*self.context as &_ };
         Array::new(context, len)
     }
 
@@ -57,9 +61,11 @@ impl Executor {
     }
 
     /// Creates a new set of performance counters.
-    pub fn create_perf_counter_set<'a>(&'a self, counters: &[PerfCounter]
-                                      ) -> PerfCounterSet<'a> {
-        PerfCounterSet::new(unsafe { &*self.context as &'a _}, counters)
+    pub fn create_perf_counter_set<'a>(
+        &'a self,
+        counters: &[PerfCounter],
+    ) -> PerfCounterSet<'a> {
+        PerfCounterSet::new(unsafe { &*self.context as &'a _ }, counters)
     }
 
     /// Returns the value of a CUDA device attribute.
@@ -70,7 +76,9 @@ impl Executor {
 
 impl Drop for Executor {
     fn drop(&mut self) {
-        unsafe { free_cuda(self.context); }
+        unsafe {
+            free_cuda(self.context);
+        }
     }
 }
 

@@ -15,7 +15,9 @@ pub struct Dag<T> {
 impl<T> Dag<T> {
     /// Computes a minimal DAG from a partial order.
     pub fn from_order<C>(mut nodes: Vec<T>, cmp: C) -> Dag<T>
-    where C: Fn(&T, &T) -> Option<Ordering> {
+    where
+        C: Fn(&T, &T) -> Option<Ordering>,
+    {
         // Compute the set of nodes lesser than other nodes.
         let mut lesser_than = nodes.iter().map(|_| HashSet::default()).collect_vec();
         let mut is_duplicate = nodes.iter().map(|_| false).collect_vec();
@@ -91,13 +93,19 @@ impl<T> Dag<T> {
     }
 
     /// Returns the list of nodes, in increasing order.
-    pub fn nodes(&self) -> &[T] { &self.nodes }
+    pub fn nodes(&self) -> &[T] {
+        &self.nodes
+    }
 
     /// Returns the predecessors of the given node.
-    pub fn before(&self, id: usize) -> &[usize] { &self.before[id] }
+    pub fn before(&self, id: usize) -> &[usize] {
+        &self.before[id]
+    }
 
     /// Returns the successors of the given node.
-    pub fn after(&self, id: usize) -> &[usize] { &self.after[id] }
+    pub fn after(&self, id: usize) -> &[usize] {
+        &self.after[id]
+    }
 
     /// Returns the id of nodes without predecessors.
     pub fn minima(&self) -> Vec<usize> {

@@ -17,7 +17,10 @@ pub enum AccessPattern<'a> {
     Unknown { mem_id: ir::MemId },
     /// Access with a fixed stride on each dimensions. Accesses on two different
     /// dimensions should not overlap.
-    Tensor { mem_id: ir::MemId, dims: HashMap<ir::DimId, ir::Size<'a>> },
+    Tensor {
+        mem_id: ir::MemId,
+        dims: HashMap<ir::DimId, ir::Size<'a>>,
+    },
 }
 
 impl<'a> AccessPattern<'a> {
@@ -25,19 +28,20 @@ impl<'a> AccessPattern<'a> {
     pub fn is_consecutive(&self, dim: ir::DimId, t: &ir::Type) -> bool {
         match self {
             AccessPattern::Unknown { .. } => false,
-            AccessPattern::Tensor { dims, .. } => {
-                dims.get(&dim).and_then(|stride| stride.as_int())
-                    .map(|stride| Some(stride) == t.len_byte())
-                    .unwrap_or(false)
-            },
+            AccessPattern::Tensor { dims, .. } => dims
+                .get(&dim)
+                .and_then(|stride| stride.as_int())
+                .map(|stride| Some(stride) == t.len_byte())
+                .unwrap_or(false),
         }
     }
 
     /// Returns the id of the memory block accessed.
     pub fn mem_block(&self) -> ir::MemId {
         match *self {
-            AccessPattern::Unknown { mem_id } |
-            AccessPattern::Tensor { mem_id, .. } => mem_id,
+            AccessPattern::Unknown { mem_id } | AccessPattern::Tensor { mem_id, .. } => {
+                mem_id
+            }
         }
     }
 
@@ -55,7 +59,7 @@ impl<'a> AccessPattern<'a> {
                     }
                 }
                 Ok(())
-            },
+            }
         }
     }
 }

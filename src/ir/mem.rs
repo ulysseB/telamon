@@ -1,5 +1,5 @@
 //! A module for handling accesses to the device memory.
-use ir::{self, InstId, Type, dim};
+use ir::{self, dim, InstId, Type};
 use utils::*;
 
 // TODO(cleanup): move layouts into internal blocks.
@@ -26,7 +26,9 @@ impl Into<usize> for InternalId {
 }
 
 impl From<InternalId> for MemId {
-    fn from(id: InternalId) -> Self { MemId::Internal(id.0) }
+    fn from(id: InternalId) -> Self {
+        MemId::Internal(id.0)
+    }
 }
 
 /// Represents a memory block.
@@ -34,7 +36,9 @@ pub trait Block {
     /// The ID of the block.
     fn mem_id(&self) -> MemId;
     /// Returns self if it is an internal memory block.
-    fn as_internal(&self) -> Option<&InternalBlock> { None }
+    fn as_internal(&self) -> Option<&InternalBlock> {
+        None
+    }
     /// The list of instructions referencing the memory block.
     fn uses(&self) -> &[InstId];
     /// Add a use to the block.
@@ -61,43 +65,67 @@ pub struct ExternalBlock {
 
 impl InternalBlock {
     /// Returns the unique identifer of the memory block.
-    pub fn id(&self) -> InternalId { self.id }
+    pub fn id(&self) -> InternalId {
+        self.id
+    }
 
     /// Returns true if the layout is ready to be lowered.
-    fn is_ready(&self) -> bool { self.maybe_mapped.is_empty() }
+    fn is_ready(&self) -> bool {
+        self.maybe_mapped.is_empty()
+    }
 
     /// Indicates if two dimensions are mapped by a temporary memory block.
     pub fn maps_dims(&self, lhs: ir::DimId, rhs: ir::DimId) -> bool {
-        self.mapped_dims.contains(&(lhs, rhs)) ||
-            self.maybe_mapped.iter().any(|&x| x == (lhs, rhs))
+        self.mapped_dims.contains(&(lhs, rhs))
+            || self.maybe_mapped.iter().any(|&x| x == (lhs, rhs))
     }
 
     /// Returns the list of mapped dimensions.
-    pub fn mapped_dims(&self) -> &[(ir::DimId, ir::DimId)] { &self.mapped_dims }
+    pub fn mapped_dims(&self) -> &[(ir::DimId, ir::DimId)] {
+        &self.mapped_dims
+    }
 
     /// Indicates if the block is privatised per block of thread.
-    pub fn is_private(&self) -> bool { true }
+    pub fn is_private(&self) -> bool {
+        true
+    }
 
     /// Return the base size of the block, if it is statically known.
-    pub fn base_size(&self) -> u32 { self.base_size }
+    pub fn base_size(&self) -> u32 {
+        self.base_size
+    }
 }
 
 impl Block for InternalBlock {
-    fn mem_id(&self) -> MemId { MemId::Internal(self.id.0) }
+    fn mem_id(&self) -> MemId {
+        MemId::Internal(self.id.0)
+    }
 
-    fn as_internal(&self) -> Option<&InternalBlock> { Some(self) }
+    fn as_internal(&self) -> Option<&InternalBlock> {
+        Some(self)
+    }
 
-    fn uses(&self) -> &[InstId] { &self.uses }
+    fn uses(&self) -> &[InstId] {
+        &self.uses
+    }
 
-    fn add_use(&mut self, inst: InstId) { self.uses.push(inst); }
+    fn add_use(&mut self, inst: InstId) {
+        self.uses.push(inst);
+    }
 }
 
 impl Block for ExternalBlock {
-    fn mem_id(&self) -> MemId { self.id }
+    fn mem_id(&self) -> MemId {
+        self.id
+    }
 
-    fn uses(&self) -> &[InstId] { &self.uses }
+    fn uses(&self) -> &[InstId] {
+        &self.uses
+    }
 
-    fn add_use(&mut self, inst: InstId) { self.uses.push(inst); }
+    fn add_use(&mut self, inst: InstId) {
+        self.uses.push(inst);
+    }
 }
 
 /// Holds the blocks of memory to allocate on the device.
@@ -111,9 +139,12 @@ pub struct BlockMap {
 impl BlockMap {
     /// Creates a new `BlocksMap`.
     pub fn new(num_external: u32) -> Self {
-        let external_blocks = (0..num_external).map(|id| {
-            ExternalBlock { id: MemId::External(id), uses: vec![] }
-        }).collect();
+        let external_blocks = (0..num_external)
+            .map(|id| ExternalBlock {
+                id: MemId::External(id),
+                uses: vec![],
+            })
+            .collect();
         BlockMap {
             internal_blocks: ir::SparseVec::new(),
             external_blocks,
@@ -127,9 +158,11 @@ impl BlockMap {
 
     /// Allocates a new `Block` with the given type and sizes. Must call not merged on
     /// the dimensions that cannot be merged upon creation.
-    pub fn alloc_block(&mut self, base_size: u32, maybe_mapped: Option<ir::DimMap>)
-        -> InternalId
-    {
+    pub fn alloc_block(
+        &mut self,
+        base_size: u32,
+        maybe_mapped: Option<ir::DimMap>,
+    ) -> InternalId {
         let id = InternalId(self.internal_blocks.len() as u32);
         let block = self.create_block(id, base_size, maybe_mapped);
         self.internal_blocks.push(block);
@@ -162,9 +195,11 @@ impl BlockMap {
     /// Inserts a new temporary memory. Must be inserted before not_merged is called
     /// on dimensions.
     pub fn set_lazy_tmp<IT>(&mut self, id: InternalId, t: Type, dims: IT)
-            where IT: Iterator<Item=(ir::DimId, ir::DimId)> {
-        let block = self.create_block(
-            id, unwrap!(t.len_byte()), Some(ir::DimMap::new(dims)));
+    where
+        IT: Iterator<Item = (ir::DimId, ir::DimId)>,
+    {
+        let block =
+            self.create_block(id, unwrap!(t.len_byte()), Some(ir::DimMap::new(dims)));
         self.internal_blocks.set_lazy(id, block);
     }
 
@@ -195,13 +230,15 @@ impl BlockMap {
     }
 
     /// Retuns the list of internal blocks.
-    pub fn internal_blocks<'b>(&'b self) -> impl Iterator<Item=&'b InternalBlock> {
+    pub fn internal_blocks<'b>(&'b self) -> impl Iterator<Item = &'b InternalBlock> {
         self.internal_blocks.iter()
     }
 
     /// Returns the list of memory blocks.
-    pub fn blocks<'b>(&'b self) -> impl Iterator<Item=&'b Block> {
-        self.internal_blocks.iter().map(|b| b as &Block)
+    pub fn blocks<'b>(&'b self) -> impl Iterator<Item = &'b Block> {
+        self.internal_blocks
+            .iter()
+            .map(|b| b as &Block)
             .chain(self.external_blocks.iter().map(|b| b as &Block))
     }
 
@@ -218,8 +255,11 @@ impl BlockMap {
 
     /// Registers that two dimensions may not be merged. Returns a list of dimensions
     /// removed from the memory blocks and a list of layouts to lower.
-    pub fn not_merged(&mut self, lhs_dim: &ir::Dimension, rhs: ir::DimId)
-            -> Vec<InternalId> {
+    pub fn not_merged(
+        &mut self,
+        lhs_dim: &ir::Dimension,
+        rhs: ir::DimId,
+    ) -> Vec<InternalId> {
         let lhs = lhs_dim.id();
         let mut to_lower = Vec::new();
         for &id in &self.layouts {
@@ -231,7 +271,9 @@ impl BlockMap {
                 block.mapped_dims.push(pair);
                 changed = true;
             }
-            if changed && block.is_ready() { to_lower.push(id); }
+            if changed && block.is_ready() {
+                to_lower.push(id);
+            }
         }
         to_lower
     }

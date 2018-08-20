@@ -15,9 +15,10 @@ pub struct InductionVar<'a, L = ir::LoweringMap> {
 impl<'a, L> InductionVar<'a, L> {
     /// Creates a new induction var. Size represents the increment over each diemnsion
     /// taken independenly.
-    pub fn new(dims: Vec<(ir::DimId, ir::Size<'a>)>, base: ir::Operand<'a, L>)
-        -> Result<Self, ir::Error>
-    {
+    pub fn new(
+        dims: Vec<(ir::DimId, ir::Size<'a>)>,
+        base: ir::Operand<'a, L>,
+    ) -> Result<Self, ir::Error> {
         ir::TypeError::check_integer(base.t())?;
         // Assert dimensions are unique.
         let mut dim_ids = HashSet::default();
@@ -44,14 +45,21 @@ impl<'a, L> InductionVar<'a, L> {
     }
 
     /// Returns the base operand of the induction variable.
-    pub fn base(&self) -> &ir::Operand<'a, L> { &self.base }
+    pub fn base(&self) -> &ir::Operand<'a, L> {
+        &self.base
+    }
 
     /// Returns the list of induction dimensions along with the corresponding increments.
-    pub fn dims(&self) -> &[(ir::DimId, ir::Size<'a>)] { &self.dims }
+    pub fn dims(&self) -> &[(ir::DimId, ir::Size<'a>)] {
+        &self.dims
+    }
 }
 
 impl<'a> InductionVar<'a, ()> {
     pub fn freeze(self, cnt: &mut ir::Counter) -> InductionVar<'a> {
-        InductionVar { dims: self.dims, base: self.base.freeze(cnt) }
+        InductionVar {
+            dims: self.dims,
+            base: self.base.freeze(cnt),
+        }
     }
 }

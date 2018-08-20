@@ -4,7 +4,7 @@ mod device;
 mod printer;
 mod telajax;
 
-pub use self::context::{Context, Buffer};
+pub use self::context::{Buffer, Context};
 pub use self::device::MPPA;
 
 // TODO(mppa): improve the IR.

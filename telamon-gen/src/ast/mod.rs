@@ -2,34 +2,34 @@
 
 //! Syntaxic tree for the constraint description.
 
+mod choice;
+mod constrain;
+mod context;
+mod error;
 mod set;
 mod trigger;
-mod choice;
-mod context;
-mod constrain;
-mod error;
 
-use constraint::Constraint as TypedConstraint;
 use constraint::dedup_inputs;
+use constraint::Constraint as TypedConstraint;
+use indexmap::IndexMap;
 use ir;
 use itertools::Itertools;
 use print;
 use regex::Regex;
 use std;
+use std::collections::{hash_map, BTreeSet};
 use std::fmt;
-use std::collections::{BTreeSet, hash_map};
 use std::ops::Deref;
 use utils::*;
-use indexmap::IndexMap;
 
-pub use self::set::SetDef;
-pub use self::choice::integer::IntegerDef;
 pub use self::choice::enumeration::EnumDef;
+pub use self::choice::integer::IntegerDef;
 pub use self::choice::ChoiceDef;
-use self::trigger::TriggerDef;
-use self::context::TypingContext;
 pub use self::constrain::Constraint;
+use self::context::TypingContext;
 pub use self::error::{Hint, TypeError};
+pub use self::set::SetDef;
+use self::trigger::TriggerDef;
 
 pub use super::lexer::{Position, Spanned};
 
@@ -42,15 +42,25 @@ struct CheckerContext {
 
 impl CheckerContext {
     /// This checks the undefined of EnumDef or IntegerDef.
-    fn check_undefined_choicedef(
-        &self, statement: ChoiceDef
-    ) -> Result<(), TypeError> {
+    fn check_undefined_choicedef(&self, statement: ChoiceDef) -> Result<(), TypeError> {
         match statement {
             ChoiceDef::EnumDef(EnumDef {
-                name: ref spanned, doc: _, ref variables, .. }) |
-            ChoiceDef::IntegerDef(IntegerDef {
-                name: ref spanned, doc: _, ref variables, .. }) => {
-                for VarDef { name: _, set: SetRef { name, .. } } in variables {
+                name: ref spanned,
+                doc: _,
+                ref variables,
+                ..
+            })
+            | ChoiceDef::IntegerDef(IntegerDef {
+                name: ref spanned,
+                doc: _,
+                ref variables,
+                ..
+            }) => {
+                for VarDef {
+                    name: _,
+                    set: SetRef { name, .. },
+                } in variables
+                {
                     let name: &String = name.deref();
                     if !self.hash.contains_key(name) {
                         Err(TypeError::Undefined {
@@ -58,19 +68,29 @@ impl CheckerContext {
                         })?;
                     }
                 }
-            },
-            _ => {},
+            }
+            _ => {}
         }
         Ok(())
     }
 
     /// This checks the undefined of SetDef superset and arg.
-    fn check_undefined_setdef(
-        &self, statement: &SetDef
-    ) -> Result<(), TypeError> {
+    fn check_undefined_setdef(&self, statement: &SetDef) -> Result<(), TypeError> {
         match statement {
-            SetDef { name: spanned, doc: _, arg, superset, disjoint: _, keys, ..  } => {
-                if let Some(VarDef { name: _, set: SetRef { name, .. } }) = arg {
+            SetDef {
+                name: spanned,
+                doc: _,
+                arg,
+                superset,
+                disjoint: _,
+                keys,
+                ..
+            } => {
+                if let Some(VarDef {
+                    name: _,
+                    set: SetRef { name, .. },
+                }) = arg
+                {
                     let name: &String = name.deref();
                     if !self.hash.contains_key(name) {
                         Err(TypeError::Undefined {
@@ -78,7 +98,10 @@ impl CheckerContext {
                         })?;
                     }
                 }
-                if let Some(SetRef { name: supername, .. }) = superset {
+                if let Some(SetRef {
+                    name: supername, ..
+                }) = superset
+                {
                     let name: &String = supername.deref();
                     if !self.hash.contains_key(name) {
                         Err(TypeError::Undefined {
@@ -86,69 +109,64 @@ impl CheckerContext {
                         })?;
                     }
                 }
-            },
+            }
         }
         Ok(())
     }
-    
+
     /// This checks the redefinition of SetDef, EnumDef and IntegerDef.
-    fn check_redefinition(
-        &mut self, statement: &Statement
-    ) -> Result<(), TypeError> {
+    fn check_redefinition(&mut self, statement: &Statement) -> Result<(), TypeError> {
         match statement {
-            Statement::SetDef(SetDef { name: spanned, .. }) |
-            Statement::ChoiceDef(ChoiceDef::EnumDef( EnumDef { name: spanned, ..  })) |
-            Statement::ChoiceDef(ChoiceDef::IntegerDef(
-                IntegerDef { name: spanned, .. })) => {
+            Statement::SetDef(SetDef { name: spanned, .. })
+            | Statement::ChoiceDef(ChoiceDef::EnumDef(EnumDef {
+                name: spanned, ..
+            }))
+            | Statement::ChoiceDef(ChoiceDef::IntegerDef(IntegerDef {
+                name: spanned,
+                ..
+            })) => {
                 let data: Hint = Hint::from(statement);
                 let value: Spanned<Hint> = spanned.with_data(data);
                 if let Some(pre) = self.hash.insert(spanned.data.to_owned(), value) {
                     Err(TypeError::Redefinition {
                         object_kind: pre,
-                        object_name: spanned.with_data(spanned.data.to_owned())
+                        object_name: spanned.with_data(spanned.data.to_owned()),
                     })
                 } else {
                     Ok(())
                 }
-            },
+            }
             _ => Ok(()),
         }
     }
 
     /// Type checks the condition.
-    pub fn type_check(
-        &mut self, statement: &Statement
-    ) -> Result<(), TypeError> {
+    pub fn type_check(&mut self, statement: &Statement) -> Result<(), TypeError> {
         self.check_redefinition(&statement)?;
         match statement {
             Statement::ChoiceDef(ChoiceDef::EnumDef(ref enumeration)) => {
-                self.check_undefined_choicedef(
-                    ChoiceDef::EnumDef(enumeration.clone()))?;
-            },
-            Statement::ChoiceDef(
-                ChoiceDef::IntegerDef(ref integer)
-            ) => {
-                self.check_undefined_choicedef(
-                    ChoiceDef::IntegerDef(integer.clone()))?;
-            },
+                self.check_undefined_choicedef(ChoiceDef::EnumDef(enumeration.clone()))?;
+            }
+            Statement::ChoiceDef(ChoiceDef::IntegerDef(ref integer)) => {
+                self.check_undefined_choicedef(ChoiceDef::IntegerDef(integer.clone()))?;
+            }
             Statement::SetDef(ref set) => {
                 self.check_undefined_setdef(set)?;
-            },
-            _ => {},
+            }
+            _ => {}
         }
         Ok(())
     }
 }
 
 #[derive(Debug)]
-pub struct Ast { 
+pub struct Ast {
     pub statements: Vec<Statement>,
 }
 
 impl Ast {
     /// Generate the defintion of choices and the list of constraints.
-    pub fn type_check(self)
-        -> Result<(ir::IrDesc, Vec<TypedConstraint>), TypeError> {
+    pub fn type_check(self) -> Result<(ir::IrDesc, Vec<TypedConstraint>), TypeError> {
         let mut checker = CheckerContext::default();
         let mut context = TypingContext::default();
 
@@ -202,8 +220,10 @@ impl Check {
     /// Performs the check.
     fn check(&self, ir_desc: &ir::IrDesc) {
         match *self {
-            Check::IsSymmetric { ref choice, ref values } =>
-                Check::is_symmetric(ir_desc, choice, values),
+            Check::IsSymmetric {
+                ref choice,
+                ref values,
+            } => Check::is_symmetric(ir_desc, choice, values),
         }
     }
 
@@ -230,7 +250,10 @@ pub struct CounterBody {
 
 /// Indicates if an enum exhibits symmetry.
 #[derive(Debug)]
-pub enum Symmetry { Symmetric, AntiSymmetric(Vec<(RcStr, RcStr)>) }
+pub enum Symmetry {
+    Symmetric,
+    AntiSymmetric(Vec<(RcStr, RcStr)>),
+}
 
 /// References a set.
 #[derive(Clone, Debug)]
@@ -281,7 +304,7 @@ struct VarMap {
 
 impl VarMap {
     /// Declares a new argument variable.
-    fn decl_argument(&mut self, ir_desc: &ir::IrDesc,  var_def: VarDef) -> ir::Set {
+    fn decl_argument(&mut self, ir_desc: &ir::IrDesc, var_def: VarDef) -> ir::Set {
         let var = ir::Variable::Arg(self.next_arg_id);
         self.next_arg_id += 1;
         self.decl_var(ir_desc, var_def, var)
@@ -295,32 +318,46 @@ impl VarMap {
     }
 
     /// Declares a variable.
-    fn decl_var(&mut self, ir_desc: &ir::IrDesc, var_def: VarDef,
-                var: ir::Variable) -> ir::Set {
+    fn decl_var(
+        &mut self,
+        ir_desc: &ir::IrDesc,
+        var_def: VarDef,
+        var: ir::Variable,
+    ) -> ir::Set {
         let set = var_def.set.type_check(ir_desc, self);
         match self.map.entry(var_def.name.data.clone()) {
-            hash_map::Entry::Occupied(..) =>
-                panic!("variable {} defined twice", var_def.name.data),
-            hash_map::Entry::Vacant(entry) => { entry.insert((var, set.clone())); },
+            hash_map::Entry::Occupied(..) => {
+                panic!("variable {} defined twice", var_def.name.data)
+            }
+            hash_map::Entry::Vacant(entry) => {
+                entry.insert((var, set.clone()));
+            }
         };
         set
     }
 
     /// Returns the variable associated with a name,
-    fn get_var(&self, name: &str) -> ir::Variable { self.map[name].0 }
+    fn get_var(&self, name: &str) -> ir::Variable {
+        self.map[name].0
+    }
 
     /// Returns the variable associated with a name and checks its set.
     fn type_check(&self, name: &str, expected: &ir::Set) -> ir::Variable {
         let &(var, ref given_t) = self.get(name);
-        assert!(given_t.is_subset_of_def(expected), "{:?} !< {:?}", given_t, expected);
+        assert!(
+            given_t.is_subset_of_def(expected),
+            "{:?} !< {:?}",
+            given_t,
+            expected
+        );
         var
     }
 
     /// Returns the entry for a variable given its name.
     fn get(&self, name: &str) -> &(ir::Variable, ir::Set) {
-        self.map.get(name).unwrap_or_else(|| {
-            panic!("undefined variable {}", name)
-        })
+        self.map
+            .get(name)
+            .unwrap_or_else(|| panic!("undefined variable {}", name))
     }
 
     /// Returns the maping of variables to sets.
@@ -332,25 +369,46 @@ impl VarMap {
 /// One of the condition that has to be respected by a constraint.
 #[derive(Debug, Clone)]
 pub enum Condition {
-    Is { lhs: ChoiceInstance, rhs: Vec<RcStr>, is: bool },
+    Is {
+        lhs: ChoiceInstance,
+        rhs: Vec<RcStr>,
+        is: bool,
+    },
     Code(RcStr, bool),
     Bool(bool),
-    CmpCode { lhs: ChoiceInstance, rhs: RcStr, op: ir::CmpOp },
-    CmpInput { lhs: ChoiceInstance, rhs: ChoiceInstance, op: ir::CmpOp },
+    CmpCode {
+        lhs: ChoiceInstance,
+        rhs: RcStr,
+        op: ir::CmpOp,
+    },
+    CmpInput {
+        lhs: ChoiceInstance,
+        rhs: ChoiceInstance,
+        op: ir::CmpOp,
+    },
 }
 
 impl Condition {
     fn new_is_bool(choice: ChoiceInstance, is: bool) -> Self {
-        Condition::Is { lhs: choice, rhs: vec!["TRUE".into()], is }
+        Condition::Is {
+            lhs: choice,
+            rhs: vec!["TRUE".into()],
+            is,
+        }
     }
 
     /// Type checks the condition.
-    fn type_check(self, ir_desc: &ir::IrDesc, var_map: &VarMap,
-                  inputs: &mut Vec<ir::ChoiceInstance>)
-            -> ir::Condition {
+    fn type_check(
+        self,
+        ir_desc: &ir::IrDesc,
+        var_map: &VarMap,
+        inputs: &mut Vec<ir::ChoiceInstance>,
+    ) -> ir::Condition {
         match self {
-            Condition::Code(code, negate) =>
-                ir::Condition::Code { code: type_check_code(code, var_map), negate },
+            Condition::Code(code, negate) => ir::Condition::Code {
+                code: type_check_code(code, var_map),
+                negate,
+            },
             Condition::Is { lhs, rhs, is } => {
                 let choice = ir_desc.get_choice(&lhs.name);
                 let enum_ = ir_desc.get_enum(choice.choice_def().as_enum().unwrap());
@@ -359,9 +417,9 @@ impl Condition {
                     input: input_id,
                     values: type_check_enum_values(enum_, rhs),
                     negate: !is,
-                    inverse: false
+                    inverse: false,
                 }
-            },
+            }
             Condition::CmpCode { lhs, rhs, op } => {
                 let choice = ir_desc.get_choice(&lhs.name);
                 choice.choice_def().is_valid_operator(op);
@@ -373,7 +431,7 @@ impl Condition {
                     rhs: type_check_code(rhs, var_map),
                     op: op,
                 }
-            },
+            }
             Condition::CmpInput { lhs, rhs, op } => {
                 assert_eq!(lhs.name, rhs.name);
                 let choice = ir_desc.get_choice(&lhs.name);
@@ -385,9 +443,9 @@ impl Condition {
                     lhs: lhs_input,
                     rhs: rhs_input,
                     op: op,
-                    inverse: false
+                    inverse: false,
                 }
-            },
+            }
             Condition::Bool(b) => ir::Condition::Bool(b),
         }
     }
@@ -395,24 +453,36 @@ impl Condition {
     /// Negates the condition.
     fn negate(&mut self) {
         match *self {
-            Condition::Is { is: ref mut negate, .. } |
-            Condition::Code(_, ref mut negate) => *negate = !*negate,
-            Condition::CmpCode { ref mut op, .. } |
-            Condition::CmpInput { ref mut op, .. } => op.negate(),
+            Condition::Is {
+                is: ref mut negate, ..
+            }
+            | Condition::Code(_, ref mut negate) => *negate = !*negate,
+            Condition::CmpCode { ref mut op, .. }
+            | Condition::CmpInput { ref mut op, .. } => op.negate(),
             Condition::Bool(ref mut b) => *b = !*b,
         }
     }
 }
 
 /// Typecheck and adds an input to the inputs vector.
-fn add_input(choice: ChoiceInstance, ir_desc: &ir::IrDesc, var_map: &VarMap,
-             inputs: &mut Vec<ir::ChoiceInstance>) -> usize {
+fn add_input(
+    choice: ChoiceInstance,
+    ir_desc: &ir::IrDesc,
+    var_map: &VarMap,
+    inputs: &mut Vec<ir::ChoiceInstance>,
+) -> usize {
     let choice_def = ir_desc.get_choice(&choice.name);
-    let vars = choice.vars.iter().zip_eq(choice_def.arguments().sets())
+    let vars = choice
+        .vars
+        .iter()
+        .zip_eq(choice_def.arguments().sets())
         .map(|(v, expected_t)| var_map.type_check(v, expected_t))
         .collect();
     let input_id = inputs.len();
-    inputs.push(ir::ChoiceInstance { choice: choice.name, vars: vars });
+    inputs.push(ir::ChoiceInstance {
+        choice: choice.name,
+        vars: vars,
+    });
     input_id
 }
 
@@ -427,9 +497,16 @@ impl ChoiceInstance {
     /// Type check the choice instance.
     fn type_check(&self, ir_desc: &ir::IrDesc, var_map: &VarMap) -> ir::ChoiceInstance {
         let choice = ir_desc.get_choice(&self.name);
-        let vars = self.vars.iter().zip_eq(choice.arguments().sets())
-            .map(|(v, s)| var_map.type_check(v, s)).collect();
-        ir::ChoiceInstance { choice: self.name.clone(), vars }
+        let vars = self
+            .vars
+            .iter()
+            .zip_eq(choice.arguments().sets())
+            .map(|(v, s)| var_map.type_check(v, s))
+            .collect();
+        ir::ChoiceInstance {
+            choice: self.name.clone(),
+            vars,
+        }
     }
 }
 
@@ -443,23 +520,33 @@ fn get_code_vars(code: &str) -> HashSet<String> {
 }
 
 fn type_check_code(code: RcStr, var_map: &VarMap) -> ir::Code {
-    let vars = get_code_vars(&code).into_iter().flat_map(|var| {
-        if var == "fun" { None } else {
-            Some((var_map.get_var(&var), RcStr::new(var)))
-        }
-    }).collect();
+    let vars = get_code_vars(&code)
+        .into_iter()
+        .flat_map(|var| {
+            if var == "fun" {
+                None
+            } else {
+                Some((var_map.get_var(&var), RcStr::new(var)))
+            }
+        })
+        .collect();
     ir::Code { code, vars }
 }
 
 fn type_check_enum_values(enum_: &ir::Enum, values: Vec<RcStr>) -> BTreeSet<RcStr> {
     let values = enum_.expand(values).into_iter().collect();
-    for value in &values { assert!(enum_.values().contains_key(value)); }
+    for value in &values {
+        assert!(enum_.values().contains_key(value));
+    }
     values
 }
 
 /// The value of a counter increment.
 #[derive(Clone, Debug)]
-pub enum CounterVal { Code(String), Choice(ChoiceInstance) }
+pub enum CounterVal {
+    Code(String),
+    Choice(ChoiceInstance),
+}
 
 /// A statement in an enum definition.
 #[derive(Clone, Debug)]
@@ -467,7 +554,12 @@ pub enum EnumStatement {
     /// Defines a possible decision for th enum.
     Value(Spanned<String>, Option<String>, Vec<Constraint>),
     /// Defines a set of possible decisions for the enum.
-    Alias(Spanned<String>, Option<String>, Vec<String>, Vec<Constraint>),
+    Alias(
+        Spanned<String>,
+        Option<String>,
+        Vec<String>,
+        Vec<Constraint>,
+    ),
     /// Specifies that the enum is symmetric.
     Symmetric(Spanned<()>),
     /// Specifies that the enum is antisymmetric and given the inverse function.
@@ -506,14 +598,11 @@ impl fmt::Display for EnumStatement {
 impl PartialEq for EnumStatement {
     fn eq(&self, rhs: &Self) -> bool {
         match (self, rhs) {
-            (EnumStatement::Value(name, .. ),
-             EnumStatement::Value(rhs_name, .. )) |
-            (EnumStatement::Alias(name, .. ),
-             EnumStatement::Alias(rhs_name, .. )) => {
+            (EnumStatement::Value(name, ..), EnumStatement::Value(rhs_name, ..))
+            | (EnumStatement::Alias(name, ..), EnumStatement::Alias(rhs_name, ..)) => {
                 name.data.eq(&rhs_name.data)
-            },
-            (EnumStatement::Symmetric(..),
-             EnumStatement::Symmetric(..)) => true,
+            }
+            (EnumStatement::Symmetric(..), EnumStatement::Symmetric(..)) => true,
             _ => false,
         }
     }
@@ -539,24 +628,31 @@ impl EnumStatements {
             EnumStatement::Value(name, doc, constraints) => {
                 let name = RcStr::new(name.data);
                 assert!(self.values.insert(name.clone(), doc).is_none());
-                for c in constraints { self.constraints.push((name.clone(), c)); }
-            },
+                for c in constraints {
+                    self.constraints.push((name.clone(), c));
+                }
+            }
             EnumStatement::Alias(name, doc, values, constraints) => {
                 let name = RcStr::new(name.data);
                 let values = values.into_iter().map(RcStr::new).collect();
                 assert!(self.aliases.insert(name.clone(), (doc, values)).is_none());
-                for c in constraints { self.constraints.push((name.clone(), c)); }
-            },
+                for c in constraints {
+                    self.constraints.push((name.clone(), c));
+                }
+            }
             EnumStatement::Symmetric(..) => {
                 assert!(self.symmetry.is_none());
                 self.symmetry = Some(Symmetry::Symmetric);
-            },
+            }
             EnumStatement::AntiSymmetric(mapping) => {
                 assert!(self.symmetry.is_none());
-                let mapping = mapping.data.into_iter()
-                    .map(|(x, y)| (RcStr::new(x), RcStr::new(y))).collect();
+                let mapping = mapping
+                    .data
+                    .into_iter()
+                    .map(|(x, y)| (RcStr::new(x), RcStr::new(y)))
+                    .collect();
                 self.symmetry = Some(Symmetry::AntiSymmetric(mapping));
-            },
+            }
         }
     }
 }

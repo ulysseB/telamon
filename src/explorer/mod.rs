@@ -1,18 +1,18 @@
 //! exploration of the search space.
-mod candidate;
-mod parallel_list;
 mod bandit_arm;
-mod store;
-mod monitor;
+mod candidate;
 mod logger;
+mod monitor;
+mod parallel_list;
+mod store;
 
-pub mod config;
 pub mod choice;
+pub mod config;
 pub mod local_selection;
 
-pub use self::config::{Config, SearchAlgorithm};
-pub use self::candidate::Candidate;
 pub use self::bandit_arm::TreeEvent;
+pub use self::candidate::Candidate;
+pub use self::config::{Config, SearchAlgorithm};
 pub use self::logger::LogMessage;
 
 use self::choice::fix_order;
@@ -23,12 +23,12 @@ use self::store::Store;
 use boxfnonce::SendBoxFnOnce;
 use crossbeam;
 use device::{Context, EvalMode};
+use futures::executor::block_on;
+use futures::prelude::*;
+use futures::{channel, SinkExt};
 use model::bound;
 use search_space::SearchSpace;
 use std::sync;
-use futures::prelude::*;
-use futures::{channel, SinkExt};
-use futures::executor::block_on;
 
 // TODO(cc_perf): To improve performances, the following should be considered:
 // * choices should be ranked once and then reused for multiple steps.
@@ -37,49 +37,66 @@ use futures::executor::block_on;
 // * avoid one copy of the candidate by reusing previous one when applying a choice might
 //   be beneficial.
 
-
 /// Entry point of the exploration. This function returns the best candidate that it has found in
 /// the given time (or at whatever point we decided to stop the search - potentially after an
 /// exhaustive search)
-pub fn find_best<'a>(config: &Config, 
-                     context: &Context,
-                     search_space: Vec<SearchSpace<'a>>) -> Option<SearchSpace<'a>> {
-    let candidates = search_space.into_iter().map(|space| {
-        let bound = bound(&space, context);
-        Candidate::new(space, bound)
-    }).collect();
+pub fn find_best<'a>(
+    config: &Config,
+    context: &Context,
+    search_space: Vec<SearchSpace<'a>>,
+) -> Option<SearchSpace<'a>> {
+    let candidates = search_space
+        .into_iter()
+        .map(|space| {
+            let bound = bound(&space, context);
+            Candidate::new(space, bound)
+        })
+        .collect();
     find_best_ex(config, context, candidates).map(|c| c.space)
 }
 
 /// Same as `find_best`, but allows to specify pre-existing actions and also returns the
 /// actionsfor the best candidate.
-pub fn find_best_ex<'a>(config: &Config, 
-                        context: &Context,
-                        candidates: Vec<Candidate<'a>>) -> Option<Candidate<'a>> { 
+pub fn find_best_ex<'a>(
+    config: &Config,
+    context: &Context,
+    candidates: Vec<Candidate<'a>>,
+) -> Option<Candidate<'a>> {
     match config.algorithm {
         config::SearchAlgorithm::MultiArmedBandit(ref band_config) => {
             crossbeam::scope(|scope| {
                 let (log_sender, log_receiver) = sync::mpsc::sync_channel(100);
-                unwrap!(scope.builder().name("Telamon - Logger".to_string())
-                        .spawn( || (unwrap!(logger::log(config, log_receiver)))));
+                unwrap!(
+                    scope
+                        .builder()
+                        .name("Telamon - Logger".to_string())
+                        .spawn(|| (unwrap!(logger::log(config, log_receiver))))
+                );
 
-                let tree = bandit_arm::Tree::new(
-                    candidates, band_config, log_sender.clone());
-                unwrap!(scope.builder().name("Telamon - Search".to_string())
-                    .spawn(move || launch_search(config, tree, context, log_sender)))
+                let tree =
+                    bandit_arm::Tree::new(candidates, band_config, log_sender.clone());
+                unwrap!(
+                    scope
+                        .builder()
+                        .name("Telamon - Search".to_string())
+                        .spawn(move || launch_search(config, tree, context, log_sender))
+                )
             }).join()
-        },
-        config::SearchAlgorithm::BoundOrder => {
-            crossbeam::scope(|scope| {
-                let (log_sender, log_receiver) = sync::mpsc::sync_channel(100);
-                unwrap!(scope.builder().name("Telamon - Logger".to_string())
-                        .spawn( || (unwrap!(logger::log(config, log_receiver)))));
+        }
+        config::SearchAlgorithm::BoundOrder => crossbeam::scope(|scope| {
+            let (log_sender, log_receiver) = sync::mpsc::sync_channel(100);
+            unwrap!(
+                scope
+                    .builder()
+                    .name("Telamon - Logger".to_string())
+                    .spawn(|| (unwrap!(logger::log(config, log_receiver))))
+            );
 
-                let candidate_list = ParallelCandidateList::new(config.num_workers);
-                unwrap!(scope.builder().name("Telamon - Search".to_string())
-                    .spawn(move || launch_search(config, candidate_list, context, log_sender)))
-            }).join()
-        },
+            let candidate_list = ParallelCandidateList::new(config.num_workers);
+            unwrap!(scope.builder().name("Telamon - Search".to_string()).spawn(
+                move || launch_search(config, candidate_list, context, log_sender)
+            ))
+        }).join(),
     }
 }
 
@@ -90,12 +107,13 @@ fn launch_search<'a, T: Store<'a>>(
     candidate_store: T,
     context: &Context,
     log_sender: sync::mpsc::SyncSender<LogMessage<T::Event>>,
-) -> Option<Candidate<'a>>
-{
+) -> Option<Candidate<'a>> {
     let (monitor_sender, monitor_receiver) = channel::mpsc::channel(100);
-    let maybe_candidate = crossbeam::scope( |scope| {
-        let best_cand_opt = scope.builder().name("Telamon - Monitor".to_string()).
-            spawn(|| monitor(config, &candidate_store, monitor_receiver, log_sender));
+    let maybe_candidate = crossbeam::scope(|scope| {
+        let best_cand_opt = scope
+            .builder()
+            .name("Telamon - Monitor".to_string())
+            .spawn(|| monitor(config, &candidate_store, monitor_receiver, log_sender));
         explore_space(config, &candidate_store, monitor_sender, context);
         unwrap!(best_cand_opt)
     }).join();
@@ -108,29 +126,41 @@ fn launch_search<'a, T: Store<'a>>(
 
 /// Defines the work that explorer threads will do in a closure that will be passed to
 /// context.async_eval. Also defines a callback that will be executed by the evaluator
-fn explore_space<'a, T>(config: &Config, 
-                        candidate_store: &T, 
-                        eval_sender: channel::mpsc::Sender<MonitorMessage<'a, T>>, 
-                        context: &Context) where T: Store<'a> 
+fn explore_space<'a, T>(
+    config: &Config,
+    candidate_store: &T,
+    eval_sender: channel::mpsc::Sender<MonitorMessage<'a, T>>,
+    context: &Context,
+) where
+    T: Store<'a>,
 {
     context.async_eval(config.num_workers, EvalMode::FindBest, &|evaluator| {
         while let Some((cand, payload)) = candidate_store.explore(context) {
             let space = fix_order(cand.space);
             let eval_sender = eval_sender.clone();
             let callback = move |leaf, eval| {
-                if let Err(err) = block_on(eval_sender.send((leaf, eval, payload))
-                                           .map(|_| ()))
-                { warn!("Got disconnected , {:?}", err);}
+                if let Err(err) =
+                    block_on(eval_sender.send((leaf, eval, payload)).map(|_| ()))
+                {
+                    warn!("Got disconnected , {:?}", err);
+                }
             };
-            evaluator.add_kernel(Candidate {space, .. cand }, SendBoxFnOnce::from(callback));
+            evaluator
+                .add_kernel(Candidate { space, ..cand }, SendBoxFnOnce::from(callback));
         }
     });
-} 
-
+}
 
 /// Explores the full search space.
-pub fn gen_space<F, G>(context: &Context, space: SearchSpace, mut on_node: F, mut on_leaf: G)
-        where F: FnMut(&Candidate), G: FnMut(&Candidate) {
+pub fn gen_space<F, G>(
+    context: &Context,
+    space: SearchSpace,
+    mut on_node: F,
+    mut on_leaf: G,
+) where
+    F: FnMut(&Candidate),
+    G: FnMut(&Candidate),
+{
     let perf_bound = bound(&space, context);
     let mut stack = vec![Candidate::new(space, perf_bound)];
     let mut total = 0;
@@ -138,14 +168,16 @@ pub fn gen_space<F, G>(context: &Context, space: SearchSpace, mut on_node: F, mu
     info!("Beginning exploration");
     while let Some(candidate) = stack.pop() {
         total += 1;
-        if total % 10 == 0 { warn!("{} candidates", total); }
+        if total % 10 == 0 {
+            warn!("{} candidates", total);
+        }
         let choice_opt = choice::list(&candidate.space).next();
         if let Some(choice) = choice_opt {
             on_node(&candidate);
             stack.extend(candidate.apply_choice(context, choice));
         } else {
             let space = fix_order(candidate.space);
-            on_leaf(&Candidate { space, .. candidate });
+            on_leaf(&Candidate { space, ..candidate });
         }
     }
     info!("{} candidates explored", total);

@@ -1,14 +1,18 @@
 //! `DimMap` and layout lowering.
 use ir;
-use search_space::{Action, DimKind, DomainStore, InstFlag, Order};
-use search_space::operand;
-use search_space::choices::dim_kind;
 use itertools::Itertools;
+use search_space::choices::dim_kind;
+use search_space::operand;
+use search_space::{Action, DimKind, DomainStore, InstFlag, Order};
 
 /// Lowers a layout
-pub fn lower_layout(fun: &mut ir::Function, mem: ir::mem::InternalId,
-                    st_dims: Vec<ir::DimId>, ld_dims: Vec<ir::DimId>,
-                    domain: &DomainStore) -> Result<Vec<Action>, ()> {
+pub fn lower_layout(
+    fun: &mut ir::Function,
+    mem: ir::mem::InternalId,
+    st_dims: Vec<ir::DimId>,
+    ld_dims: Vec<ir::DimId>,
+    domain: &DomainStore,
+) -> Result<Vec<Action>, ()> {
     debug!("lower_layout({:?}) triggered", mem);
     let mut actions = Vec::new();
     // TODO(automate): vectorization disabled -> express as an additional constraint
@@ -30,26 +34,45 @@ pub fn lower_layout(fun: &mut ir::Function, mem: ir::mem::InternalId,
 }
 
 /// Lowers a `DimMap`.
-fn lower_dim_map(fun: &mut ir::Function, inst: ir::InstId, operand: usize,
-                 new_objs: &mut ir::NewObjs) -> Result<Vec<Action>, ()> {
+fn lower_dim_map(
+    fun: &mut ir::Function,
+    inst: ir::InstId,
+    operand: usize,
+    new_objs: &mut ir::NewObjs,
+) -> Result<Vec<Action>, ()> {
     debug!("lower_dim_map({:?}, {}) triggered", inst, operand);
     let lowered_dim_map = fun.lower_dim_map(inst, operand)?;
     let mut actions = Vec::new();
     // Order the store and load loop nests.
     for &(src, dst) in &lowered_dim_map.dimensions {
-        actions.push(Action::Order(src.into(), dst.into(), Order::BEFORE | Order::MERGED));
+        actions.push(Action::Order(
+            src.into(),
+            dst.into(),
+            Order::BEFORE | Order::MERGED,
+        ));
     }
     // FIXME: allow global memory
-    actions.push(Action::InstFlag(lowered_dim_map.store, InstFlag::MEM_SHARED));
+    actions.push(Action::InstFlag(
+        lowered_dim_map.store,
+        InstFlag::MEM_SHARED,
+    ));
     actions.push(Action::InstFlag(lowered_dim_map.load, InstFlag::MEM_SHARED));
     //actions.push(Action::InstFlag(st, InstFlag::MEM_COHERENT));
     //actions.push(Action::InstFlag(ld, InstFlag::MEM_COHERENT));
     let store = lowered_dim_map.store;
-    actions.push(Action::Order(store.into(), lowered_dim_map.load.into(), Order::BEFORE));
+    actions.push(Action::Order(
+        store.into(),
+        lowered_dim_map.load.into(),
+        Order::BEFORE,
+    ));
     let operand = fun.inst(inst).operands()[operand];
     actions.extend(operand::invariants(fun, operand, inst.into()));
     // Update the list of new objets
-    for dim in lowered_dim_map.dimensions.iter().flat_map(|&(x, y)| vec![x, y]) {
+    for dim in lowered_dim_map
+        .dimensions
+        .iter()
+        .flat_map(|&(x, y)| vec![x, y])
+    {
         new_objs.add_dimension(fun.dim(dim));
     }
     new_objs.add_mem_instruction(fun.inst(lowered_dim_map.store));
@@ -60,13 +83,20 @@ fn lower_dim_map(fun: &mut ir::Function, inst: ir::InstId, operand: usize,
 }
 
 /// Trigger to call when two dimensions are not mapped.
-pub fn dim_not_mapped(lhs: ir::DimId, rhs: ir::DimId, fun: &mut ir::Function)
-    -> Result<(ir::NewObjs, Vec<Action>), ()>
-{
+pub fn dim_not_mapped(
+    lhs: ir::DimId,
+    rhs: ir::DimId,
+    fun: &mut ir::Function,
+) -> Result<(ir::NewObjs, Vec<Action>), ()> {
     debug!("dim_not_mapped({:?}, {:?}) triggered", lhs, rhs);
-    let to_lower = fun.insts().flat_map(|inst| {
-        inst.dim_maps_to_lower(lhs, rhs).into_iter().map(move |op_id| (inst.id(), op_id))
-    }).collect_vec();
+    let to_lower = fun
+        .insts()
+        .flat_map(|inst| {
+            inst.dim_maps_to_lower(lhs, rhs)
+                .into_iter()
+                .map(move |op_id| (inst.id(), op_id))
+        })
+        .collect_vec();
     let mut new_objs = ir::NewObjs::default();
     let mut actions = Vec::new();
     for (inst, operand) in to_lower {
@@ -76,9 +106,11 @@ pub fn dim_not_mapped(lhs: ir::DimId, rhs: ir::DimId, fun: &mut ir::Function)
 }
 
 /// Trigger to call when two dimensions are not merged.
-pub fn dim_not_merged(lhs: ir::DimId, rhs: ir::DimId, fun: &mut ir::Function)
-    -> Result<(ir::NewObjs, Vec<Action>), ()>
-{
+pub fn dim_not_merged(
+    lhs: ir::DimId,
+    rhs: ir::DimId,
+    fun: &mut ir::Function,
+) -> Result<(ir::NewObjs, Vec<Action>), ()> {
     debug!("dim_not_merged({:?}, {:?}) triggered", lhs, rhs);
     fun.dim_not_merged(lhs, rhs);
     // TODO(cc_perf): avoid creating a 'NewObjs' object.
