@@ -9,7 +9,7 @@ use quote;
 pub fn increment_amount(
     value: &ir::CounterVal,
     use_old: bool,
-    ctx: &print::Context
+    ctx: &print::Context,
 ) -> print::Value {
     match value {
         ir::CounterVal::Code(code) => print::Value::new_const(code, ctx),
@@ -51,16 +51,20 @@ pub fn restrict_incr_amount(
     current_incr_amount: &print::Value,
     op: ir::CounterKind,
     delayed: bool,
-    ctx: &print::Context
+    ctx: &print::Context,
 ) -> TokenStream {
     let max_val = print::ValueIdent::new("max_val", ir::ValueType::Constant);
     let neg_op = inverse_operator(op);
     let restricted_value_type = incr_amount.value_type(ctx.ir_desc).full_type();
     let restricted_value = print::value::integer_domain_constructor(
-        ir::CmpOp::Leq, &max_val.into(), restricted_value_type, ctx);
+        ir::CmpOp::Leq,
+        &max_val.into(),
+        restricted_value_type,
+        ctx,
+    );
     let restricted_value_name = restricted_value.create_ident("value");
-    let apply_restriction = print::choice::restrict(
-        incr_amount, &restricted_value_name.into(), delayed, ctx);
+    let apply_restriction =
+        print::choice::restrict(incr_amount, &restricted_value_name.into(), delayed, ctx);
     let min_incr_amount = current_incr_amount.get_min(ctx);
     quote! {
         else if incr_status.is_true() {
@@ -105,4 +109,3 @@ pub fn compute_counter_body(
         if (#incr_condition).contains(incr) { counter_val.min #op_eq #value_min; }
     }
 }
-

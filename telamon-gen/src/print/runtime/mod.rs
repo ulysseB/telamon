@@ -1,7 +1,7 @@
 //! Defines types required at exploration runtime.
-mod range;
-mod integer_set;
 mod integer_domain;
+mod integer_set;
+mod range;
 
 use proc_macro2::TokenStream;
 

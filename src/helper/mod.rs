@@ -6,8 +6,8 @@ mod signature;
 pub mod tensor;
 
 pub use self::builder::Builder;
-pub use self::signature::Builder as SignatureBuilder;
 pub use self::operand::{AutoOperand, Reduce, TmpArray};
+pub use self::signature::Builder as SignatureBuilder;
 
 use ir;
 use std;
@@ -15,22 +15,26 @@ use std;
 /// A logical dimension, possible composed of multiple nested dimensions.
 pub trait MetaDimension {
     /// Returns the ids of the underlying dimensions.
-    fn ids<'a>(&'a self) -> Box<DoubleEndedIterator<Item=ir::DimId> + 'a>;
+    fn ids<'a>(&'a self) -> Box<DoubleEndedIterator<Item = ir::DimId> + 'a>;
 }
 
 impl MetaDimension for ir::DimId {
-    fn ids<'a>(&'a self) -> Box<DoubleEndedIterator<Item=ir::DimId> + 'a> {
+    fn ids<'a>(&'a self) -> Box<DoubleEndedIterator<Item = ir::DimId> + 'a> {
         Box::new(std::iter::once(*self))
     }
 }
 
 /// A groups of dimensions that act as a single logical dimension.
 #[derive(Clone, Default)]
-pub struct DimGroup { dims: Vec<ir::DimId> }
+pub struct DimGroup {
+    dims: Vec<ir::DimId>,
+}
 
 impl DimGroup {
     /// Creates a dimension group containing the given dimensions.
-    pub fn new(dims: Vec<ir::DimId>) -> Self { DimGroup { dims } }
+    pub fn new(dims: Vec<ir::DimId>) -> Self {
+        DimGroup { dims }
+    }
 
     /// Iterates over the sub-dimensions of the group.
     pub fn iter(&self) -> std::iter::Cloned<std::slice::Iter<ir::DimId>> {
@@ -39,7 +43,7 @@ impl DimGroup {
 }
 
 impl MetaDimension for DimGroup {
-    fn ids<'a>(&'a self) -> Box<DoubleEndedIterator<Item=ir::DimId> + 'a> {
+    fn ids<'a>(&'a self) -> Box<DoubleEndedIterator<Item = ir::DimId> + 'a> {
         Box::new(self.dims.iter().cloned())
     }
 }
@@ -47,36 +51,43 @@ impl MetaDimension for DimGroup {
 impl std::ops::Index<usize> for DimGroup {
     type Output = ir::DimId;
 
-    fn index(&self, index: usize) -> &ir::DimId { &self.dims[index] }
+    fn index(&self, index: usize) -> &ir::DimId {
+        &self.dims[index]
+    }
 }
 
 impl<'a> IntoIterator for &'a DimGroup {
     type Item = ir::DimId;
     type IntoIter = std::iter::Cloned<std::slice::Iter<'a, ir::DimId>>;
 
-    fn into_iter(self) -> Self::IntoIter { self.dims.iter().cloned() }
+    fn into_iter(self) -> Self::IntoIter {
+        self.dims.iter().cloned()
+    }
 }
 
 /// A logical basic block, that can actually be implemented by multiple ones.
 pub trait MetaBasicBlock {
     /// Returns the ids on the underlying basic blocks.
-    fn ids<'a>(&'a self) -> Box<Iterator<Item=ir::BBId> + 'a>;
+    fn ids<'a>(&'a self) -> Box<Iterator<Item = ir::BBId> + 'a>;
 }
 
 impl MetaBasicBlock for ir::BBId {
-    fn ids<'a>(&'a self) -> Box<Iterator<Item=ir::BBId> + 'a> {
+    fn ids<'a>(&'a self) -> Box<Iterator<Item = ir::BBId> + 'a> {
         Box::new(std::iter::once(*self))
     }
 }
 
 impl MetaBasicBlock for ir::InstId {
-    fn ids<'a>(&'a self) -> Box<Iterator<Item=ir::BBId> + 'a> {
+    fn ids<'a>(&'a self) -> Box<Iterator<Item = ir::BBId> + 'a> {
         Box::new(std::iter::once((*self).into()))
     }
 }
 
-impl<T> MetaBasicBlock for T where T: MetaDimension {
-    fn ids<'a>(&'a self) -> Box<Iterator<Item=ir::BBId> + 'a> {
+impl<T> MetaBasicBlock for T
+where
+    T: MetaDimension,
+{
+    fn ids<'a>(&'a self) -> Box<Iterator<Item = ir::BBId> + 'a> {
         Box::new(MetaDimension::ids(self).map(|x| x.into()))
     }
 }

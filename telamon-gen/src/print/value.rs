@@ -39,7 +39,7 @@ impl Value {
     pub fn from_store(
         choice_instance: &ir::ChoiceInstance,
         get_old: bool,
-        ctx: &print::Context
+        ctx: &print::Context,
     ) -> Self {
         let getter = print::store::getter_name(&choice_instance.choice, get_old);
         let ids = print::choice::ids(choice_instance, ctx);
@@ -55,7 +55,9 @@ impl Value {
     }
 
     /// Returns the type taken by the value.
-    pub fn value_type(&self) -> &ir::ValueType { &self.value_type }
+    pub fn value_type(&self) -> &ir::ValueType {
+        &self.value_type
+    }
 
     /// Returns the antisymmetric of the value instead of the value.
     pub fn inverse(&mut self) {
@@ -101,7 +103,9 @@ pub struct ValueIdent {
     value_type: ir::ValueType,
 }
 
-lazy_static! { static ref NEXT_IDENT_ID: AtomicUsize = AtomicUsize::new(0); }
+lazy_static! {
+    static ref NEXT_IDENT_ID: AtomicUsize = AtomicUsize::new(0);
+}
 
 /// Resets the counter used to attribute name to identifiers.
 #[cfg(test)]
@@ -125,7 +129,9 @@ impl ValueIdent {
     }
 
     /// Returns the type taken by the value.
-    pub fn value_type(&self) -> &ir::ValueType { &self.value_type }
+    pub fn value_type(&self) -> &ir::ValueType {
+        &self.value_type
+    }
 }
 
 impl From<ValueIdent> for Value {
@@ -160,7 +166,7 @@ pub fn integer_domain_constructor(
     constructor_op: ir::CmpOp,
     from: &Value,
     to_type: ir::ValueType,
-    ctx: &print::Context
+    ctx: &print::Context,
 ) -> Value {
     let constructor = constructor_from_op(constructor_op);
     let to_universe = universe(&to_type, ctx);

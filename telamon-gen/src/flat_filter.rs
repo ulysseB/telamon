@@ -11,9 +11,13 @@ pub fn merge(mut filters: Vec<FlatFilter>, ir_desc: &ir::IrDesc) -> Vec<FlatFilt
     for filter in filters.into_iter().rev() {
         let mut merged = false;
         for other_filter in &mut merged_filters {
-            if other_filter.try_merge(&filter, ir_desc) { merged = true; }
+            if other_filter.try_merge(&filter, ir_desc) {
+                merged = true;
+            }
         }
-        if !merged { merged_filters.push(filter); }
+        if !merged {
+            merged_filters.push(filter);
+        }
     }
     merged_filters
 }
@@ -29,34 +33,55 @@ pub struct FlatFilter {
 
 impl FlatFilter {
     /// Builds a `FlatFilter`. The inputs are normalized.
-    pub fn new(vars: Vec<ir::Set>,
-               mut inputs: Vec<ir::ChoiceInstance>,
-               rules: Vec<ir::Rule>,
-               set_constraints: ir::SetConstraints,
-               ir_desc: &ir::IrDesc) -> Self {
+    pub fn new(
+        vars: Vec<ir::Set>,
+        mut inputs: Vec<ir::ChoiceInstance>,
+        rules: Vec<ir::Rule>,
+        set_constraints: ir::SetConstraints,
+        ir_desc: &ir::IrDesc,
+    ) -> Self {
         let mut adaptator = ir::Adaptator::default();
         for (pos, input) in inputs.iter_mut().enumerate() {
-            if input.normalize(ir_desc) { adaptator.set_inversed(pos); }
+            if input.normalize(ir_desc) {
+                adaptator.set_inversed(pos);
+            }
         }
         let rules = rules.iter().map(|r| r.adapt(&adaptator)).collect();
-        FlatFilter { vars, inputs, rules, set_constraints }
+        FlatFilter {
+            vars,
+            inputs,
+            rules,
+            set_constraints,
+        }
     }
 
     /// Returns the composants of the 'FlatFilter'
-    pub fn deconstruct(self) -> (Vec<ir::Set>,
-                             Vec<ir::ChoiceInstance>,
-                             Vec<ir::Rule>,
-                             ir::SetConstraints) {
+    pub fn deconstruct(
+        self,
+    ) -> (
+        Vec<ir::Set>,
+        Vec<ir::ChoiceInstance>,
+        Vec<ir::Rule>,
+        ir::SetConstraints,
+    ) {
         (self.vars, self.inputs, self.rules, self.set_constraints)
     }
 
     /// Try to merge another filter into `Self`.
     fn try_merge(&mut self, other: &FlatFilter, ir_desc: &ir::IrDesc) -> bool {
-        if self.inputs.is_empty() != other.inputs.is_empty() { return false; }
-        if self.set_constraints != other.set_constraints { return false; }
+        if self.inputs.is_empty() != other.inputs.is_empty() {
+            return false;
+        }
+        if self.set_constraints != other.set_constraints {
+            return false;
+        }
         let mut merged = false;
-        let input_map: HashMap<_, _> = self.inputs.iter().enumerate()
-            .map(|(x, y)| (y, x)).collect();
+        let input_map: HashMap<_, _> = self
+            .inputs
+            .iter()
+            .enumerate()
+            .map(|(x, y)| (y, x))
+            .collect();
         let var_maps = PartialPermutations::new(0..self.vars.len(), other.vars.len());
         // Try every mapping of variable and merge each time it is possible
         'var_maps: for var_map in var_maps {
@@ -72,7 +97,9 @@ impl FlatFilter {
             // Find the input mapping.
             for (old_id, input) in other.inputs.iter().enumerate() {
                 let mut new_input = input.adapt(&adaptator);
-                if new_input.normalize(ir_desc) { adaptator.set_inversed(old_id); }
+                if new_input.normalize(ir_desc) {
+                    adaptator.set_inversed(old_id);
+                }
                 if let Some(&new_id) = input_map.get(&new_input) {
                     adaptator.set_input(old_id, new_id);
                 } else {
@@ -80,9 +107,12 @@ impl FlatFilter {
                 }
             }
             // Adapt and merge the rules.
-            self.rules.extend(other.rules.iter().map(|r| r.adapt(&adaptator)));
+            self.rules
+                .extend(other.rules.iter().map(|r| r.adapt(&adaptator)));
             // Early exit for static filters.
-            if self.inputs.is_empty() { return true; }
+            if self.inputs.is_empty() {
+                return true;
+            }
             merged = true;
         }
         merged
@@ -93,12 +123,22 @@ impl FlatFilter {
         let mut adaptator = ir::Adaptator::default();
         adaptator.set_variable(ir::Variable::Arg(0), ir::Variable::Arg(1));
         adaptator.set_variable(ir::Variable::Arg(1), ir::Variable::Arg(0));
-        let rules = self.rules.iter().map(|old_rule| {
-            let mut rule = old_rule.adapt(&adaptator);
-            if antisymmetric { rule.alternatives.inverse(ir_desc); }
-            rule
-        }).collect();
-        let inputs = self.inputs.iter().map(|input| input.adapt(&adaptator)).collect();
+        let rules = self
+            .rules
+            .iter()
+            .map(|old_rule| {
+                let mut rule = old_rule.adapt(&adaptator);
+                if antisymmetric {
+                    rule.alternatives.inverse(ir_desc);
+                }
+                rule
+            })
+            .collect();
+        let inputs = self
+            .inputs
+            .iter()
+            .map(|input| input.adapt(&adaptator))
+            .collect();
         let constraints = self.set_constraints.adapt(&adaptator);
         FlatFilter::new(self.vars.clone(), inputs, rules, constraints, ir_desc)
     }

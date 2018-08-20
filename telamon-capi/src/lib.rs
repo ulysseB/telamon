@@ -18,9 +18,9 @@ pub mod error;
 
 #[cfg(feature = "cuda")]
 pub mod cuda;
+pub mod explorer;
 pub mod ir;
 pub mod search_space;
-pub mod explorer;
 
 use libc::{c_char, c_int, c_uint, size_t, uint32_t};
 use telamon::device;

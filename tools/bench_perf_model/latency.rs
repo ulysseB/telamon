@@ -1,6 +1,6 @@
 //! Tests the latency model.
 use telamon::device::{ArgMap, Context};
-use telamon::helper::{SignatureBuilder, Builder, DimGroup, Reduce};
+use telamon::helper::{Builder, DimGroup, Reduce, SignatureBuilder};
 use telamon::ir;
 use telamon::search_space::{Action, DimKind, InstFlag, Order};
 use PerfModelTest;
@@ -9,7 +9,9 @@ use PerfModelTest;
 pub struct EmptyLoop;
 
 impl PerfModelTest for EmptyLoop {
-    fn name() -> &'static str { "latency_empty_loop" }
+    fn name() -> &'static str {
+        "latency_empty_loop"
+    }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", 1_000_000i32);
@@ -24,10 +26,15 @@ impl PerfModelTest for EmptyLoop {
 }
 
 /// Tests the latency of two nested empty loops.
-pub struct TwoEmptyLoop { d0: ir::DimId,  d1: ir::DimId }
+pub struct TwoEmptyLoop {
+    d0: ir::DimId,
+    d1: ir::DimId,
+}
 
 impl PerfModelTest for TwoEmptyLoop {
-    fn name() -> &'static str { "latency_two_empty_loop" }
+    fn name() -> &'static str {
+        "latency_two_empty_loop"
+    }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", 1000i32);
@@ -52,7 +59,9 @@ impl PerfModelTest for TwoEmptyLoop {
 pub struct InstChain;
 
 impl PerfModelTest for InstChain {
-    fn name() -> &'static str { "inst_chain" }
+    fn name() -> &'static str {
+        "inst_chain"
+    }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", 1_000_000i32);
@@ -77,7 +86,9 @@ impl PerfModelTest for InstChain {
 pub struct LongInstChain;
 
 impl PerfModelTest for LongInstChain {
-    fn name() -> &'static str { "long_inst_chain" }
+    fn name() -> &'static str {
+        "long_inst_chain"
+    }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", 10000i32);
@@ -100,10 +111,15 @@ impl PerfModelTest for LongInstChain {
 }
 
 /// Tests the latency on an unrolled reduction loop.
-pub struct UnrollReduction { d0: ir::DimId, d1: ir::DimId }
+pub struct UnrollReduction {
+    d0: ir::DimId,
+    d1: ir::DimId,
+}
 
 impl PerfModelTest for UnrollReduction {
-    fn name() -> &'static str { "unroll_reduction" }
+    fn name() -> &'static str {
+        "unroll_reduction"
+    }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", 10000i32);
@@ -136,7 +152,9 @@ impl PerfModelTest for UnrollReduction {
 pub struct OrderedLoops;
 
 impl PerfModelTest for OrderedLoops {
-    fn name() -> &'static str { "ordered_loops" }
+    fn name() -> &'static str {
+        "ordered_loops"
+    }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", 1000i32);
@@ -163,7 +181,9 @@ impl PerfModelTest for OrderedLoops {
 pub struct OrderedThreadDims;
 
 impl PerfModelTest for OrderedThreadDims {
-    fn name() -> &'static str { "ordered_thread_dims" }
+    fn name() -> &'static str {
+        "ordered_thread_dims"
+    }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", 1000i32);
@@ -205,7 +225,9 @@ impl PerfModelTest for OrderedThreadDims {
 pub struct DimMap;
 
 impl PerfModelTest for DimMap {
-    fn name() -> &'static str { "dim_map" }
+    fn name() -> &'static str {
+        "dim_map"
+    }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", 10000i32);
@@ -238,7 +260,9 @@ impl PerfModelTest for DimMap {
 pub struct OperandPositionSlow;
 
 impl PerfModelTest for OperandPositionSlow {
-    fn name() -> &'static str { "operand_position_slow" }
+    fn name() -> &'static str {
+        "operand_position_slow"
+    }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", 10000i32);
@@ -266,7 +290,9 @@ impl PerfModelTest for OperandPositionSlow {
 pub struct OperandPositionFast;
 
 impl PerfModelTest for OperandPositionFast {
-    fn name() -> &'static str { "operand_position_fast" }
+    fn name() -> &'static str {
+        "operand_position_fast"
+    }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", 10000i32);

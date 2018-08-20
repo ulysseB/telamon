@@ -1,6 +1,6 @@
 //! Tests the memory model.
 use telamon::device::{ArgMap, Context};
-use telamon::helper::{SignatureBuilder, Builder, DimGroup, Reduce};
+use telamon::helper::{Builder, DimGroup, Reduce, SignatureBuilder};
 use telamon::ir;
 use telamon::search_space::{Action, DimKind, InstFlag, Order};
 use PerfModelTest;
@@ -9,11 +9,13 @@ use PerfModelTest;
 pub struct L1LinesPressure;
 
 impl PerfModelTest for L1LinesPressure {
-    fn name() -> &'static str { "l1_lines_pressure" }
+    fn name() -> &'static str {
+        "l1_lines_pressure"
+    }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", 100i32);
-        builder.array::<f32>("array", 128*32*32*32);
+        builder.array::<f32>("array", 128 * 32 * 32 * 32);
         builder.array::<f32>("out", 1);
     }
 
@@ -25,8 +27,10 @@ impl PerfModelTest for L1LinesPressure {
 
         let t = ir::Type::F(32);
         let size_n = builder.param_size("n");
-        let d1_0 = builder.open_dim_ex(ir::Size::new(THREAD_Y, vec![], 1), DimKind::THREAD);
-        let d2_0 = builder.open_dim_ex(ir::Size::new(THREAD_X, vec![], 1), DimKind::THREAD);
+        let d1_0 =
+            builder.open_dim_ex(ir::Size::new(THREAD_Y, vec![], 1), DimKind::THREAD);
+        let d2_0 =
+            builder.open_dim_ex(ir::Size::new(THREAD_X, vec![], 1), DimKind::THREAD);
         let init = builder.mov(&0f32);
 
         let d0 = builder.open_dim_ex(size_n.clone(), DimKind::LOOP);
@@ -34,9 +38,9 @@ impl PerfModelTest for L1LinesPressure {
         let d2_1 = builder.open_mapped_dim(&d2_0)[0];
         let d3 = builder.open_dim_ex(ir::Size::new(UNROLL, vec![], 1), DimKind::UNROLL);
         let strides = vec![
-            (d3, ir::Size::new(THREAD_Y*THREAD_X*32*4, vec![], 1)),
-            (d1_1, ir::Size::new(THREAD_X*32*4, vec![], 1)),
-            (d2_1, ir::Size::new(STRIDE*4, vec![], 1)),
+            (d3, ir::Size::new(THREAD_Y * THREAD_X * 32 * 4, vec![], 1)),
+            (d1_1, ir::Size::new(THREAD_X * 32 * 4, vec![], 1)),
+            (d2_1, ir::Size::new(STRIDE * 4, vec![], 1)),
         ];
         let pattern = ir::AccessPattern::Tensor {
             mem_id: ir::MemId::External(0),
@@ -67,11 +71,13 @@ impl PerfModelTest for L1LinesPressure {
 pub struct L2LinesPressure;
 
 impl PerfModelTest for L2LinesPressure {
-    fn name() -> &'static str { "l2_lines_pressure" }
+    fn name() -> &'static str {
+        "l2_lines_pressure"
+    }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", 100i32);
-        builder.array::<f32>("array", 128*32*32*8);
+        builder.array::<f32>("array", 128 * 32 * 32 * 8);
         builder.array::<f32>("out", 1);
     }
 
@@ -83,8 +89,10 @@ impl PerfModelTest for L2LinesPressure {
 
         let t = ir::Type::F(32);
         let size_n = builder.param_size("n");
-        let d1_0 = builder.open_dim_ex(ir::Size::new(THREAD_Y, vec![], 1), DimKind::THREAD);
-        let d2_0 = builder.open_dim_ex(ir::Size::new(THREAD_X, vec![], 1), DimKind::THREAD);
+        let d1_0 =
+            builder.open_dim_ex(ir::Size::new(THREAD_Y, vec![], 1), DimKind::THREAD);
+        let d2_0 =
+            builder.open_dim_ex(ir::Size::new(THREAD_X, vec![], 1), DimKind::THREAD);
         let init = builder.mov(&0f32);
 
         let d0 = builder.open_dim_ex(size_n.clone(), DimKind::LOOP);
@@ -92,9 +100,9 @@ impl PerfModelTest for L2LinesPressure {
         let d2_1 = builder.open_mapped_dim(&d2_0)[0];
         let d3 = builder.open_dim_ex(ir::Size::new(UNROLL, vec![], 1), DimKind::UNROLL);
         let strides = vec![
-            (d3, ir::Size::new(THREAD_Y*THREAD_X*8*4, vec![], 1)),
-            (d1_1, ir::Size::new(THREAD_X*8*4, vec![], 1)),
-            (d2_1, ir::Size::new(STRIDE*4, vec![], 1)),
+            (d3, ir::Size::new(THREAD_Y * THREAD_X * 8 * 4, vec![], 1)),
+            (d1_1, ir::Size::new(THREAD_X * 8 * 4, vec![], 1)),
+            (d2_1, ir::Size::new(STRIDE * 4, vec![], 1)),
         ];
         let pattern = ir::AccessPattern::Tensor {
             mem_id: ir::MemId::External(0),
@@ -129,7 +137,9 @@ pub struct SharedLoad {
 }
 
 impl PerfModelTest for SharedLoad {
-    fn name() -> &'static str { "shared_load" }
+    fn name() -> &'static str {
+        "shared_load"
+    }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", 1000i32);
@@ -141,7 +151,7 @@ impl PerfModelTest for SharedLoad {
         let size_0 = builder.cst_size(32);
         let size_1 = builder.cst_size(32);
         let size_2 = builder.param_size("n");
-        let mem = builder.allocate_shared(8*32*32*4);
+        let mem = builder.allocate_shared(8 * 32 * 32 * 4);
         let d0 = builder.open_dim_ex(size_0, DimKind::THREAD);
         let d1 = builder.open_dim_ex(size_1, DimKind::THREAD);
         let ptr_to_mem_type = builder.type_of(&mem);
@@ -153,8 +163,8 @@ impl PerfModelTest for SharedLoad {
         let d3_size = builder.cst_size(100);
         let d3 = builder.open_dim_ex(d3_size, DimKind::UNROLL);
         let ptr = builder.add(&Reduce(ptr_0), &ptr_zero);
-        let pattern = builder.tensor_access_pattern(
-            mem.into(), &ir::Type::F(64), &[&d1, &d0]);
+        let pattern =
+            builder.tensor_access_pattern(mem.into(), &ir::Type::F(64), &[&d1, &d0]);
         let ld = builder.ld(ir::Type::F(32), &ptr, pattern);
         let acc = builder.add(&Reduce(acc_0), &ld);
         builder.close_dim(&d2);
@@ -166,9 +176,11 @@ impl PerfModelTest for SharedLoad {
     }
 
     fn get_actions(&self) -> Vec<Action> {
-        vec![Action::Order(self.d0.into(), self.d1.into(), Order::OUTER),
-             Action::Order(self.d1.into(), self.d2.into(), Order::OUTER),
-             Action::Order(self.d2.into(), self.d3.into(), Order::OUTER)]
+        vec![
+            Action::Order(self.d0.into(), self.d1.into(), Order::OUTER),
+            Action::Order(self.d1.into(), self.d2.into(), Order::OUTER),
+            Action::Order(self.d2.into(), self.d3.into(), Order::OUTER),
+        ]
     }
 }
 
@@ -180,7 +192,9 @@ pub struct VectorSharedLoad {
 }
 
 impl PerfModelTest for VectorSharedLoad {
-    fn name() -> &'static str { "vector_shared_load" }
+    fn name() -> &'static str {
+        "vector_shared_load"
+    }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", 1000i32);
@@ -192,15 +206,15 @@ impl PerfModelTest for VectorSharedLoad {
         let size_0 = builder.cst_size(32);
         let size_1 = builder.cst_size(32);
         let size_2 = builder.param_size("n");
-        let mem = builder.allocate_shared(64*4*4);
+        let mem = builder.allocate_shared(64 * 4 * 4);
         let d0 = builder.open_dim_ex(size_0, DimKind::THREAD);
         let d1 = builder.open_dim_ex(size_1, DimKind::THREAD);
         let acc_0 = builder.mov(&0f32);
         let d2 = builder.open_dim_ex(size_2, DimKind::LOOP);
         let d3 = builder.open_dim_ex(ir::Size::new(64, vec![], 1), DimKind::UNROLL);
         let d4 = builder.open_dim_ex(ir::Size::new(4, vec![], 1), DimKind::VECTOR);
-        let (addr, pattern) = builder.tensor_access(
-            &mem, mem.into(), &ir::Type::F(32), &[&d3, &d4]);
+        let (addr, pattern) =
+            builder.tensor_access(&mem, mem.into(), &ir::Type::F(32), &[&d3, &d4]);
         let ld = builder.ld(ir::Type::F(32), &addr, pattern);
         let d4_2 = builder.open_mapped_dim(&d4)[0];
         let acc = builder.add(&Reduce(acc_0), &ld);
@@ -212,16 +226,20 @@ impl PerfModelTest for VectorSharedLoad {
     }
 
     fn get_actions(&self) -> Vec<Action> {
-        vec![Action::Order(self.d0.into(), self.d1.into(), Order::OUTER),
-             Action::Order(self.d1.into(), self.d2.into(), Order::OUTER),
-             Action::Order(self.d2.into(), self.d3.into(), Order::OUTER)]
+        vec![
+            Action::Order(self.d0.into(), self.d1.into(), Order::OUTER),
+            Action::Order(self.d1.into(), self.d2.into(), Order::OUTER),
+            Action::Order(self.d2.into(), self.d3.into(), Order::OUTER),
+        ]
     }
 }
 
 pub struct SharedReplay;
 
 impl PerfModelTest for SharedReplay {
-    fn name() -> &'static str { "shared_replay" }
+    fn name() -> &'static str {
+        "shared_replay"
+    }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", 1000i32);
@@ -233,7 +251,7 @@ impl PerfModelTest for SharedReplay {
         let size_0 = builder.cst_size(32);
         let size_1 = builder.cst_size(32);
         let size_2 = builder.param_size("n");
-        let mem = builder.allocate_shared(8*32*32*4);
+        let mem = builder.allocate_shared(8 * 32 * 32 * 4);
         let d0 = builder.open_dim_ex(size_0, DimKind::THREAD);
         let d1 = builder.open_dim_ex(size_1, DimKind::THREAD);
         let ptr_to_mem_type = builder.type_of(&mem);
@@ -241,8 +259,8 @@ impl PerfModelTest for SharedReplay {
         let init = builder.mov(&0f32);
         let idx = builder.mad(&d0, &32i32, &d1);
         let addr_0 = builder.mad(&idx, &8i32, &mem);
-        let pattern = builder.tensor_access_pattern(
-            mem.into(), &ir::Type::F(64), &[&d0, &d1]);
+        let pattern =
+            builder.tensor_access_pattern(mem.into(), &ir::Type::F(64), &[&d0, &d1]);
         let d2 = builder.open_dim_ex(size_2, DimKind::LOOP);
         let d4 = builder.open_dim_ex(ir::Size::new(32, vec![], 1), DimKind::UNROLL);
         let d3_0 = builder.open_dim_ex(ir::Size::new(4, vec![], 1), DimKind::UNROLL);
@@ -266,7 +284,9 @@ impl PerfModelTest for SharedReplay {
 pub struct VectorSharedReplay;
 
 impl PerfModelTest for VectorSharedReplay {
-    fn name() -> &'static str { "vector_shared_replay" }
+    fn name() -> &'static str {
+        "vector_shared_replay"
+    }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
         builder.scalar("n", 1000i32);
@@ -278,7 +298,7 @@ impl PerfModelTest for VectorSharedReplay {
         let size_0 = builder.cst_size(32);
         let size_1 = builder.cst_size(32);
         let size_2 = builder.param_size("n");
-        let mem_size = 8*32*32*4;
+        let mem_size = 8 * 32 * 32 * 4;
         let mem = builder.allocate_shared(mem_size);
         let d0 = builder.open_dim_ex(size_0, DimKind::THREAD);
         let d1 = builder.open_dim_ex(size_1, DimKind::THREAD);
@@ -292,7 +312,10 @@ impl PerfModelTest for VectorSharedReplay {
         let addr = builder.add(&Reduce(addr_0), &ptr_zero);
         let d3_0 = builder.open_dim_ex(ir::Size::new(4, vec![], 1), DimKind::VECTOR);
         let pattern = builder.tensor_access_pattern(
-            mem.into(), &ir::Type::F(32), &[&d0, &d1, &d3_0]);
+            mem.into(),
+            &ir::Type::F(32),
+            &[&d0, &d1, &d3_0],
+        );
         let val = builder.ld(ir::Type::F(32), &addr, pattern);
         let d3_1 = builder.open_mapped_dim(&d3_0)[0];
         let acc = builder.add(&val, &Reduce(init));

@@ -4,10 +4,10 @@ extern crate env_logger;
 
 pub mod fake;
 
-use telamon::device::{Context, EvalMode};
-use telamon::{explorer, ir, codegen};
-use telamon::search_space::SearchSpace;
 use std::io::sink;
+use telamon::device::{Context, EvalMode};
+use telamon::search_space::SearchSpace;
+use telamon::{codegen, explorer, ir};
 
 /// Returns an empty function base.
 pub fn empty_signature(num_block: u32) -> ir::Signature {
@@ -28,10 +28,17 @@ pub fn gen_best(context: &Context, space: SearchSpace) {
 
 /// Checks the result of all valid candidates.
 pub fn check_candidates<F>(space: SearchSpace, ctx: &Context, mut check: F)
-        where F: FnMut() {
-    explorer::gen_space(ctx, space, |_| (), |candidate| {
-        let fun = codegen::Function::build(&candidate.space);
-        ctx.evaluate(&fun, EvalMode::FindBest).unwrap();
-        check();
-    });
+where
+    F: FnMut(),
+{
+    explorer::gen_space(
+        ctx,
+        space,
+        |_| (),
+        |candidate| {
+            let fun = codegen::Function::build(&candidate.space);
+            ctx.evaluate(&fun, EvalMode::FindBest).unwrap();
+            check();
+        },
+    );
 }

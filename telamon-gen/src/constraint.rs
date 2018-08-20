@@ -1,7 +1,7 @@
 //! Constraint representation and manipulation.
 use flat_filter::FlatFilter;
-use ir::{self, Adaptable};
 use ir::SetRef;
+use ir::{self, Adaptable};
 use std;
 use utils::*;
 
@@ -21,7 +21,11 @@ impl Constraint {
         let old_inputs = std::mem::replace(&mut self.inputs, Vec::new());
         let (new_inputs, adaptator) = dedup_inputs(old_inputs, ir_desc);
         self.inputs = new_inputs;
-        self.conditions = self.conditions.iter().map(|x| x.adapt(&adaptator)).collect();
+        self.conditions = self
+            .conditions
+            .iter()
+            .map(|x| x.adapt(&adaptator))
+            .collect();
     }
 
     /// Generate filters to enforce the constraint.
@@ -30,14 +34,16 @@ impl Constraint {
         for (input_id, input) in self.inputs.iter().enumerate() {
             let filter = if let Some(filter) = gen_flat_filter(self, input_id, ir_desc) {
                 filter
-            } else { continue; };
+            } else {
+                continue;
+            };
             let choice = ir_desc.get_choice(&input.choice);
             match *choice.arguments() {
                 ir::ChoiceArguments::Plain { .. } => (),
                 ir::ChoiceArguments::Symmetric { inverse, .. } => {
                     let filter = filter.inverse(inverse, ir_desc);
                     filters.push((input.choice.clone(), filter));
-                },
+                }
             }
             filters.push((input.choice.clone(), filter));
         }
@@ -46,12 +52,16 @@ impl Constraint {
 }
 
 /// Normalizes a list of inputs.
-pub fn dedup_inputs(mut inputs: Vec<ir::ChoiceInstance>, ir_desc: &ir::IrDesc)
-        -> (Vec<ir::ChoiceInstance>, ir::Adaptator) {
+pub fn dedup_inputs(
+    mut inputs: Vec<ir::ChoiceInstance>,
+    ir_desc: &ir::IrDesc,
+) -> (Vec<ir::ChoiceInstance>, ir::Adaptator) {
     let mut adaptator = ir::Adaptator::default();
     // Normalize inputs.
     for (pos, input) in inputs.iter_mut().enumerate() {
-        if input.normalize(ir_desc) { adaptator.set_inversed(pos); }
+        if input.normalize(ir_desc) {
+            adaptator.set_inversed(pos);
+        }
     }
     let mut new_input_defs;
     // Assign new positions.
@@ -65,29 +75,47 @@ pub fn dedup_inputs(mut inputs: Vec<ir::ChoiceInstance>, ir_desc: &ir::IrDesc)
         new_input_defs = Vec::with_capacity(input_map.len());
     }
     // Build the new input vector.
-    for (old_pos, input)  in inputs.into_iter().enumerate() {
+    for (old_pos, input) in inputs.into_iter().enumerate() {
         let (new_pos, _) = adaptator.input(old_pos);
-        if new_pos == new_input_defs.len() { new_input_defs.push(input); }
+        if new_pos == new_input_defs.len() {
+            new_input_defs.push(input);
+        }
     }
     (new_input_defs, adaptator)
 }
 
 /// Generates a filter for the given input from from the given constraint.
-fn gen_flat_filter(constraint: &Constraint, input_id: usize, ir_desc: &ir::IrDesc)
-        -> Option<FlatFilter> {
+fn gen_flat_filter(
+    constraint: &Constraint,
+    input_id: usize,
+    ir_desc: &ir::IrDesc,
+) -> Option<FlatFilter> {
     let choice = ir_desc.get_choice(&constraint.inputs[input_id].choice);
     // Extract the conditions on the given input.
-    let env = constraint.vars.iter().enumerate()
+    let env = constraint
+        .vars
+        .iter()
+        .enumerate()
         .map(|(i, set)| (ir::Variable::Forall(i), set.clone()))
         .collect::<HashMap<_, _>>();
-    let (foralls, all_set_constraints, mut conditions, _) =
-        ir::ChoiceCondition::new(ir_desc, constraint.inputs.clone(), input_id,
-                                 &constraint.conditions, env);
+    let (foralls, all_set_constraints, mut conditions, _) = ir::ChoiceCondition::new(
+        ir_desc,
+        constraint.inputs.clone(),
+        input_id,
+        &constraint.conditions,
+        env,
+    );
     if !constraint.restrict_fragile {
-        conditions.self_condition.extend(choice.fragile_values().clone());
+        conditions
+            .self_condition
+            .extend(choice.fragile_values().clone());
     }
-    if conditions.self_condition.is_full(ir_desc) { return None; }
-    for cond in &mut conditions.others_conditions { cond.negate(); }
+    if conditions.self_condition.is_full(ir_desc) {
+        return None;
+    }
+    for cond in &mut conditions.others_conditions {
+        cond.negate();
+    }
     // Detect the set constraints that must be applied before fetching the inputs.
     let mut input_set_constraints = Vec::new();
     let mut inner_set_constraints = Vec::new();
@@ -104,7 +132,10 @@ fn gen_flat_filter(constraint: &Constraint, input_id: usize, ir_desc: &ir::IrDes
                     continue 'iter_constraints;
                 }
             }
-            let is_used = input_set_constraints.iter().map(|x| &x.1).chain(&foralls)
+            let is_used = input_set_constraints
+                .iter()
+                .map(|x| &x.1)
+                .chain(&foralls)
                 .filter(|s| s.arg().map(|v| v == var).unwrap_or(false))
                 .map(|s| unwrap!(s.def().arg()))
                 .any(|s| !given_set.is_subset_of(s));
@@ -122,9 +153,14 @@ fn gen_flat_filter(constraint: &Constraint, input_id: usize, ir_desc: &ir::IrDes
     let rule = ir::Rule {
         conditions: conditions.others_conditions,
         alternatives: conditions.self_condition,
-        set_constraints
+        set_constraints,
     };
     let input_set_constraints = ir::SetConstraints::new(input_set_constraints);
     Some(FlatFilter::new(
-        foralls, conditions.inputs, vec![rule], input_set_constraints, ir_desc))
+        foralls,
+        conditions.inputs,
+        vec![rule],
+        input_set_constraints,
+        ir_desc,
+    ))
 }

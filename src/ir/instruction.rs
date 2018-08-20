@@ -1,11 +1,12 @@
 //! Describes the instructions.
 use device::Device;
-use ir::{self, BasicBlock, BBId, Operand, Operator, Type, LoweringMap, DimMapScope};
+use ir::{self, BBId, BasicBlock, DimMapScope, LoweringMap, Operand, Operator, Type};
 use std;
 use utils::*;
 
 /// Uniquely identifies an instruction.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize,
+         Deserialize)]
 #[repr(C)]
 /// cbindgen:field-names=[id]
 pub struct InstId(pub u32);
@@ -32,51 +33,78 @@ pub struct Instruction<'a, L = LoweringMap> {
 
 impl<'a, L> Instruction<'a, L> {
     /// Creates a new instruction and type-check the operands.
-    pub fn new(operator: Operator<'a, L>, id: InstId, iter_dims: HashSet<ir::DimId>,
-               device: &Device) -> Result<Self, ir::Error> {
+    pub fn new(
+        operator: Operator<'a, L>,
+        id: InstId,
+        iter_dims: HashSet<ir::DimId>,
+        device: &Device,
+    ) -> Result<Self, ir::Error> {
         operator.check(&iter_dims, device)?;
-        Ok(Instruction { operator, id, iter_dims })
+        Ok(Instruction {
+            operator,
+            id,
+            iter_dims,
+        })
     }
 
     /// Returns an iterator over the operands of this instruction.
-    pub fn operands(&self) -> Vec<&Operand<'a, L>> { self.operator.operands() }
+    pub fn operands(&self) -> Vec<&Operand<'a, L>> {
+        self.operator.operands()
+    }
 
     /// Returns the type of the value produced by an instruction.
-    pub fn t(&self) -> Option<Type> { self.operator.t() }
+    pub fn t(&self) -> Option<Type> {
+        self.operator.t()
+    }
 
     /// Returns the operator of the instruction.
-    pub fn operator(&self) -> &Operator<'_, L> { &self.operator }
+    pub fn operator(&self) -> &Operator<'_, L> {
+        &self.operator
+    }
 
     /// Returns the `InstId` representing the instruction.
-    pub fn id(&self) -> InstId { self.id }
+    pub fn id(&self) -> InstId {
+        self.id
+    }
 
     /// Returns true if the instruction has side effects.
-    pub fn has_side_effects(&self) -> bool { self.operator.has_side_effects() }
+    pub fn has_side_effects(&self) -> bool {
+        self.operator.has_side_effects()
+    }
 
     /// Applies the lowering of a layout to the instruction.
-    pub fn lower_layout(&mut self,
-                        ld_idx: Operand<'a, L>, ld_pattern: ir::AccessPattern<'a>,
-                        st_idx: Operand<'a, L>, st_pattern: ir::AccessPattern<'a>)
-    where L: Clone {
+    pub fn lower_layout(
+        &mut self,
+        ld_idx: Operand<'a, L>,
+        ld_pattern: ir::AccessPattern<'a>,
+        st_idx: Operand<'a, L>,
+        st_pattern: ir::AccessPattern<'a>,
+    ) where
+        L: Clone,
+    {
         self.operator = match self.operator.clone() {
             Operator::TmpLd(t, id2) => {
                 assert_eq!(ld_pattern.mem_block(), id2);
                 Operator::Ld(t, ld_idx, ld_pattern)
-            },
+            }
             Operator::TmpSt(val, id2) => {
                 assert_eq!(st_pattern.mem_block(), id2);
                 Operator::St(st_idx, val, false, st_pattern)
-            },
-            _ => panic!("Only TmpLd/TmpSt are changed on a layout lowering")
+            }
+            _ => panic!("Only TmpLd/TmpSt are changed on a layout lowering"),
         };
     }
 
     /// Indicates the operands for wich a `DimMap` must be lowered if lhs and rhs are
     /// not mapped.
     pub fn dim_maps_to_lower(&self, lhs: ir::DimId, rhs: ir::DimId) -> Vec<usize> {
-        self.operator().operands().iter().enumerate()
+        self.operator()
+            .operands()
+            .iter()
+            .enumerate()
             .filter(|&(_, op)| op.should_lower_map(lhs, rhs))
-            .map(|(id, _)| id).collect()
+            .map(|(id, _)| id)
+            .collect()
     }
 
     /// Returns 'self' if it is a memory instruction.
@@ -92,9 +120,11 @@ impl<'a, L> Instruction<'a, L> {
     /// Returns 'true' if `self` is a reduction initialized by init, and if 'dim' should
     /// have the same nesting with 'init' that with 'self'.
     pub fn is_reduction_common_dim(&self, init: InstId, dim: ir::DimId) -> bool {
-        self.as_reduction().map(|(i, map, rd)| {
-            i == init && !rd.contains(&dim) && map.iter().all(|&(_, rhs)| dim != rhs)
-        }).unwrap_or(false)
+        self.as_reduction()
+            .map(|(i, map, rd)| {
+                i == init && !rd.contains(&dim) && map.iter().all(|&(_, rhs)| dim != rhs)
+            })
+            .unwrap_or(false)
     }
 
     /// Rename a dimension to another ID.
@@ -103,7 +133,9 @@ impl<'a, L> Instruction<'a, L> {
     }
 
     /// The list of dimensions the instruction must be nested in.
-    pub fn iteration_dims(&self) -> &HashSet<ir::DimId> { &self.iter_dims }
+    pub fn iteration_dims(&self) -> &HashSet<ir::DimId> {
+        &self.iter_dims
+    }
 
     /// Adds a new iteration dimension. Indicates if the dimension was not already an
     /// iteration dimension.
@@ -124,22 +156,30 @@ impl<'a> Instruction<'a, ()> {
 
 impl<'a> Instruction<'a> {
     /// Lowers the `DimMap` of an operand into an access to a temporary memory.
-    pub fn lower_dim_map(&mut self, op_id: usize, new_src: InstId,
-                         new_dim_map: ir::DimMap) {
+    pub fn lower_dim_map(
+        &mut self,
+        op_id: usize,
+        new_src: InstId,
+        new_dim_map: ir::DimMap,
+    ) {
         let operand = &mut *self.operator.operands_mut()[op_id];
         match *operand {
             Operand::Inst(ref mut src, _, ref mut dim_map, ref mut can_lower) => {
                 *src = new_src;
                 *dim_map = new_dim_map;
                 *can_lower = DimMapScope::Local;
-            },
-            _ => panic!()
+            }
+            _ => panic!(),
         }
     }
 }
 
 impl<'a> BasicBlock<'a> for Instruction<'a> {
-    fn bb_id(&self) -> BBId { self.id.into() }
+    fn bb_id(&self) -> BBId {
+        self.id.into()
+    }
 
-    fn as_inst(&self) -> Option<&Instruction<'a>> { Some(self) }
+    fn as_inst(&self) -> Option<&Instruction<'a>> {
+        Some(self)
+    }
 }
