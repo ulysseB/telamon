@@ -212,10 +212,25 @@
 <span id="212">212</span>
 <span id="213">213</span>
 <span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
 </pre><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-<span class="kw">use</span> ::<span class="ident">libc</span>;
-<span class="kw">use</span> ::<span class="ident">ir</span>;
+<span class="kw">use</span> <span class="ident">ir</span>;
+<span class="kw">use</span> <span class="ident">libc</span>;
 
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">path</span>::<span class="ident">PathBuf</span>;
@@ -255,13 +270,9 @@
 }
 
 <span class="kw">impl</span> <span class="ident">LexerPosition</span> {
-
     <span class="comment">// Returns a LexerPosition interface from a couple of line/column.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">line</span>: <span class="ident">libc</span>::<span class="ident">c_uint</span>, <span class="ident">column</span>: <span class="ident">libc</span>::<span class="ident">c_uint</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="ident">LexerPosition</span> {
-            <span class="ident">line</span>,
-            <span class="ident">column</span>
-        }
+        <span class="ident">LexerPosition</span> { <span class="ident">line</span>, <span class="ident">column</span> }
     }
 }
 
@@ -307,7 +318,11 @@
 
 <span class="kw">impl</span> <span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Position</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
-        <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;position: {:?}, filename: {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">position</span>, <span class="self">self</span>.<span class="ident">filename</span>)
+        <span class="macro">write</span><span class="macro">!</span>(
+            <span class="ident">f</span>,
+            <span class="string">&quot;position: {:?}, filename: {:?}&quot;</span>,
+            <span class="self">self</span>.<span class="ident">position</span>, <span class="self">self</span>.<span class="ident">filename</span>
+        )
     }
 }
 
@@ -348,8 +363,8 @@
     <span class="kw">pub</span> <span class="ident">data</span>: <span class="ident">Y</span>,
 }
 
-<span class="kw">impl</span> <span class="op">&lt;</span><span class="ident">Y</span><span class="op">&gt;</span> <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">Y</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_data</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">data</span>: <span class="ident">T</span>)  <span class="op">-&gt;</span> <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Y</span><span class="op">&gt;</span> <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">Y</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_data</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">data</span>: <span class="ident">T</span>) <span class="op">-&gt;</span> <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
         <span class="ident">Spanned</span> {
             <span class="ident">beg</span>: <span class="self">self</span>.<span class="ident">beg</span>.<span class="ident">to_owned</span>(),
             <span class="ident">end</span>: <span class="self">self</span>.<span class="ident">end</span>.<span class="ident">to_owned</span>(),
@@ -412,12 +427,27 @@
     <span class="ident">EOF</span> <span class="op">=</span> <span class="ident">libc</span>::<span class="ident">EOF</span> <span class="kw">as</span> <span class="kw">_</span>,
 }
 
-<span class="kw">extern</span> {
+<span class="kw">extern</span> <span class="string">&quot;C&quot;</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">yylex_init</span>(<span class="ident">scanner</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">YyScan</span>) <span class="op">-&gt;</span> <span class="ident">libc</span>::<span class="ident">c_int</span>;
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">yy_scan_string</span>(<span class="ident">yy_str</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">libc</span>::<span class="ident">c_char</span>, <span class="ident">yyscanner</span>: <span class="ident">YyScan</span>) <span class="op">-&gt;</span> <span class="ident">YyBufferState</span>;
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">yy_scan_buffer</span>(<span class="ident">base</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">libc</span>::<span class="ident">c_char</span>, <span class="ident">size</span>: <span class="ident">YySize</span>, <span class="ident">yyscanner</span>: <span class="ident">YyScan</span>) <span class="op">-&gt;</span> <span class="ident">YyBufferState</span>;
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">yy_scan_bytes</span>(<span class="ident">base</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">libc</span>::<span class="ident">c_char</span>, <span class="ident">len</span>: <span class="ident">libc</span>::<span class="ident">c_int</span>, <span class="ident">yyscanner</span>: <span class="ident">YyScan</span>) <span class="op">-&gt;</span> <span class="ident">YyBufferState</span>;
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">yy_create_buffer</span>(<span class="ident">file</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">libc</span>::<span class="ident">FILE</span>, <span class="ident">size</span>: <span class="ident">libc</span>::<span class="ident">c_int</span>, <span class="ident">yyscanner</span>: <span class="ident">YyScan</span>) <span class="op">-&gt;</span> <span class="ident">YyBufferState</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">yy_scan_string</span>(
+        <span class="ident">yy_str</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">libc</span>::<span class="ident">c_char</span>,
+        <span class="ident">yyscanner</span>: <span class="ident">YyScan</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">YyBufferState</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">yy_scan_buffer</span>(
+        <span class="ident">base</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">libc</span>::<span class="ident">c_char</span>,
+        <span class="ident">size</span>: <span class="ident">YySize</span>,
+        <span class="ident">yyscanner</span>: <span class="ident">YyScan</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">YyBufferState</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">yy_scan_bytes</span>(
+        <span class="ident">base</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">libc</span>::<span class="ident">c_char</span>,
+        <span class="ident">len</span>: <span class="ident">libc</span>::<span class="ident">c_int</span>,
+        <span class="ident">yyscanner</span>: <span class="ident">YyScan</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">YyBufferState</span>;
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">yy_create_buffer</span>(
+        <span class="ident">file</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">libc</span>::<span class="ident">FILE</span>,
+        <span class="ident">size</span>: <span class="ident">libc</span>::<span class="ident">c_int</span>,
+        <span class="ident">yyscanner</span>: <span class="ident">YyScan</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">YyBufferState</span>;
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">yypush_buffer_state</span>(<span class="ident">buffer</span>: <span class="ident">YyBufferState</span>, <span class="ident">yyscanner</span>: <span class="ident">YyScan</span>) <span class="op">-&gt;</span> <span class="ident">libc</span>::<span class="ident">c_void</span>;
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">yypop_buffer_state</span>(<span class="ident">yyscanner</span>: <span class="ident">YyScan</span>) <span class="op">-&gt;</span> <span class="ident">libc</span>::<span class="ident">c_void</span>;
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">yyget_extra</span>(<span class="ident">yyscanner</span>: <span class="ident">YyScan</span>) <span class="op">-&gt;</span> <span class="ident">YyExtraType</span>;

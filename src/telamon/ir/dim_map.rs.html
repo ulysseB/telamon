@@ -76,7 +76,6 @@
 <span id="76">76</span>
 <span id="77">77</span>
 <span id="78">78</span>
-<span id="79">79</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">ir</span>;
 <span class="kw">use</span> <span class="ident">linked_list</span>;
@@ -90,7 +89,6 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DimMap</span> {
     <span class="ident">map</span>: <span class="ident">LinkedList</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">DimId</span>)<span class="op">&gt;</span>,
 }
-
 
 <span class="comment">// TODO(cleanup): Send should be derived for LinkedList.</span>
 <span class="kw">unsafe</span> <span class="kw">impl</span> <span class="ident">Send</span> <span class="kw">for</span> <span class="ident">DimMap</span> {}

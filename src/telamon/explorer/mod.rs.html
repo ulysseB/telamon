@@ -150,22 +150,54 @@
 <span id="150">150</span>
 <span id="151">151</span>
 <span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! exploration of the search space.</span>
-<span class="kw">mod</span> <span class="ident">candidate</span>;
-<span class="kw">mod</span> <span class="ident">parallel_list</span>;
 <span class="kw">mod</span> <span class="ident">bandit_arm</span>;
-<span class="kw">mod</span> <span class="ident">store</span>;
-<span class="kw">mod</span> <span class="ident">monitor</span>;
+<span class="kw">mod</span> <span class="ident">candidate</span>;
 <span class="kw">mod</span> <span class="ident">logger</span>;
+<span class="kw">mod</span> <span class="ident">monitor</span>;
+<span class="kw">mod</span> <span class="ident">parallel_list</span>;
+<span class="kw">mod</span> <span class="ident">store</span>;
 
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">choice</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">local_selection</span>;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">SearchAlgorithm</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">candidate</span>::<span class="ident">Candidate</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">bandit_arm</span>::<span class="ident">TreeEvent</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">candidate</span>::<span class="ident">Candidate</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">SearchAlgorithm</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">logger</span>::<span class="ident">LogMessage</span>;
 
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">choice</span>::<span class="ident">fix_order</span>;
@@ -176,12 +208,12 @@
 <span class="kw">use</span> <span class="ident">boxfnonce</span>::<span class="ident">SendBoxFnOnce</span>;
 <span class="kw">use</span> <span class="ident">crossbeam</span>;
 <span class="kw">use</span> <span class="ident">device</span>::{<span class="ident">Context</span>, <span class="ident">EvalMode</span>};
+<span class="kw">use</span> <span class="ident">futures</span>::<span class="ident">executor</span>::<span class="ident">block_on</span>;
+<span class="kw">use</span> <span class="ident">futures</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">channel</span>, <span class="ident">SinkExt</span>};
 <span class="kw">use</span> <span class="ident">model</span>::<span class="ident">bound</span>;
 <span class="kw">use</span> <span class="ident">search_space</span>::<span class="ident">SearchSpace</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>;
-<span class="kw">use</span> <span class="ident">futures</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">futures</span>::{<span class="ident">channel</span>, <span class="ident">SinkExt</span>};
-<span class="kw">use</span> <span class="ident">futures</span>::<span class="ident">executor</span>::<span class="ident">block_on</span>;
 
 <span class="comment">// TODO(cc_perf): To improve performances, the following should be considered:</span>
 <span class="comment">// * choices should be ranked once and then reused for multiple steps.</span>
@@ -190,49 +222,66 @@
 <span class="comment">// * avoid one copy of the candidate by reusing previous one when applying a choice might</span>
 <span class="comment">//   be beneficial.</span>
 
-
 <span class="doccomment">/// Entry point of the exploration. This function returns the best candidate that it has found in</span>
 <span class="doccomment">/// the given time (or at whatever point we decided to stop the search - potentially after an</span>
 <span class="doccomment">/// exhaustive search)</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">find_best</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>, 
-                     <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
-                     <span class="ident">search_space</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
-    <span class="kw">let</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">search_space</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">space</span><span class="op">|</span> {
-        <span class="kw">let</span> <span class="ident">bound</span> <span class="op">=</span> <span class="ident">bound</span>(<span class="kw-2">&amp;</span><span class="ident">space</span>, <span class="ident">context</span>);
-        <span class="ident">Candidate</span>::<span class="ident">new</span>(<span class="ident">space</span>, <span class="ident">bound</span>)
-    }).<span class="ident">collect</span>();
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">find_best</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+    <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>,
+    <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
+    <span class="ident">search_space</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
+) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
+    <span class="kw">let</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">search_space</span>
+        .<span class="ident">into_iter</span>()
+        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">space</span><span class="op">|</span> {
+            <span class="kw">let</span> <span class="ident">bound</span> <span class="op">=</span> <span class="ident">bound</span>(<span class="kw-2">&amp;</span><span class="ident">space</span>, <span class="ident">context</span>);
+            <span class="ident">Candidate</span>::<span class="ident">new</span>(<span class="ident">space</span>, <span class="ident">bound</span>)
+        })
+        .<span class="ident">collect</span>();
     <span class="ident">find_best_ex</span>(<span class="ident">config</span>, <span class="ident">context</span>, <span class="ident">candidates</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">space</span>)
 }
 
 <span class="doccomment">/// Same as `find_best`, but allows to specify pre-existing actions and also returns the</span>
 <span class="doccomment">/// actionsfor the best candidate.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">find_best_ex</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>, 
-                        <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
-                        <span class="ident">candidates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> { 
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">find_best_ex</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+    <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>,
+    <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
+    <span class="ident">candidates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
+) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
     <span class="kw">match</span> <span class="ident">config</span>.<span class="ident">algorithm</span> {
         <span class="ident">config</span>::<span class="ident">SearchAlgorithm</span>::<span class="ident">MultiArmedBandit</span>(<span class="kw-2">ref</span> <span class="ident">band_config</span>) <span class="op">=&gt;</span> {
             <span class="ident">crossbeam</span>::<span class="ident">scope</span>(<span class="op">|</span><span class="ident">scope</span><span class="op">|</span> {
                 <span class="kw">let</span> (<span class="ident">log_sender</span>, <span class="ident">log_receiver</span>) <span class="op">=</span> <span class="ident">sync</span>::<span class="ident">mpsc</span>::<span class="ident">sync_channel</span>(<span class="number">100</span>);
-                <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">scope</span>.<span class="ident">builder</span>().<span class="ident">name</span>(<span class="string">&quot;Telamon - Logger&quot;</span>.<span class="ident">to_string</span>())
-                        .<span class="ident">spawn</span>( <span class="op">||</span> (<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">logger</span>::<span class="ident">log</span>(<span class="ident">config</span>, <span class="ident">log_receiver</span>)))));
+                <span class="macro">unwrap</span><span class="macro">!</span>(
+                    <span class="ident">scope</span>
+                        .<span class="ident">builder</span>()
+                        .<span class="ident">name</span>(<span class="string">&quot;Telamon - Logger&quot;</span>.<span class="ident">to_string</span>())
+                        .<span class="ident">spawn</span>(<span class="op">||</span> (<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">logger</span>::<span class="ident">log</span>(<span class="ident">config</span>, <span class="ident">log_receiver</span>))))
+                );
 
-                <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="ident">bandit_arm</span>::<span class="ident">Tree</span>::<span class="ident">new</span>(
-                    <span class="ident">candidates</span>, <span class="ident">band_config</span>, <span class="ident">log_sender</span>.<span class="ident">clone</span>());
-                <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">scope</span>.<span class="ident">builder</span>().<span class="ident">name</span>(<span class="string">&quot;Telamon - Search&quot;</span>.<span class="ident">to_string</span>())
-                    .<span class="ident">spawn</span>(<span class="kw">move</span> <span class="op">||</span> <span class="ident">launch_search</span>(<span class="ident">config</span>, <span class="ident">tree</span>, <span class="ident">context</span>, <span class="ident">log_sender</span>)))
+                <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span>
+                    <span class="ident">bandit_arm</span>::<span class="ident">Tree</span>::<span class="ident">new</span>(<span class="ident">candidates</span>, <span class="ident">band_config</span>, <span class="ident">log_sender</span>.<span class="ident">clone</span>());
+                <span class="macro">unwrap</span><span class="macro">!</span>(
+                    <span class="ident">scope</span>
+                        .<span class="ident">builder</span>()
+                        .<span class="ident">name</span>(<span class="string">&quot;Telamon - Search&quot;</span>.<span class="ident">to_string</span>())
+                        .<span class="ident">spawn</span>(<span class="kw">move</span> <span class="op">||</span> <span class="ident">launch_search</span>(<span class="ident">config</span>, <span class="ident">tree</span>, <span class="ident">context</span>, <span class="ident">log_sender</span>))
+                )
             }).<span class="ident">join</span>()
-        },
-        <span class="ident">config</span>::<span class="ident">SearchAlgorithm</span>::<span class="ident">BoundOrder</span> <span class="op">=&gt;</span> {
-            <span class="ident">crossbeam</span>::<span class="ident">scope</span>(<span class="op">|</span><span class="ident">scope</span><span class="op">|</span> {
-                <span class="kw">let</span> (<span class="ident">log_sender</span>, <span class="ident">log_receiver</span>) <span class="op">=</span> <span class="ident">sync</span>::<span class="ident">mpsc</span>::<span class="ident">sync_channel</span>(<span class="number">100</span>);
-                <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">scope</span>.<span class="ident">builder</span>().<span class="ident">name</span>(<span class="string">&quot;Telamon - Logger&quot;</span>.<span class="ident">to_string</span>())
-                        .<span class="ident">spawn</span>( <span class="op">||</span> (<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">logger</span>::<span class="ident">log</span>(<span class="ident">config</span>, <span class="ident">log_receiver</span>)))));
+        }
+        <span class="ident">config</span>::<span class="ident">SearchAlgorithm</span>::<span class="ident">BoundOrder</span> <span class="op">=&gt;</span> <span class="ident">crossbeam</span>::<span class="ident">scope</span>(<span class="op">|</span><span class="ident">scope</span><span class="op">|</span> {
+            <span class="kw">let</span> (<span class="ident">log_sender</span>, <span class="ident">log_receiver</span>) <span class="op">=</span> <span class="ident">sync</span>::<span class="ident">mpsc</span>::<span class="ident">sync_channel</span>(<span class="number">100</span>);
+            <span class="macro">unwrap</span><span class="macro">!</span>(
+                <span class="ident">scope</span>
+                    .<span class="ident">builder</span>()
+                    .<span class="ident">name</span>(<span class="string">&quot;Telamon - Logger&quot;</span>.<span class="ident">to_string</span>())
+                    .<span class="ident">spawn</span>(<span class="op">||</span> (<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">logger</span>::<span class="ident">log</span>(<span class="ident">config</span>, <span class="ident">log_receiver</span>))))
+            );
 
-                <span class="kw">let</span> <span class="ident">candidate_list</span> <span class="op">=</span> <span class="ident">ParallelCandidateList</span>::<span class="ident">new</span>(<span class="ident">config</span>.<span class="ident">num_workers</span>);
-                <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">scope</span>.<span class="ident">builder</span>().<span class="ident">name</span>(<span class="string">&quot;Telamon - Search&quot;</span>.<span class="ident">to_string</span>())
-                    .<span class="ident">spawn</span>(<span class="kw">move</span> <span class="op">||</span> <span class="ident">launch_search</span>(<span class="ident">config</span>, <span class="ident">candidate_list</span>, <span class="ident">context</span>, <span class="ident">log_sender</span>)))
-            }).<span class="ident">join</span>()
-        },
+            <span class="kw">let</span> <span class="ident">candidate_list</span> <span class="op">=</span> <span class="ident">ParallelCandidateList</span>::<span class="ident">new</span>(<span class="ident">config</span>.<span class="ident">num_workers</span>);
+            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">scope</span>.<span class="ident">builder</span>().<span class="ident">name</span>(<span class="string">&quot;Telamon - Search&quot;</span>.<span class="ident">to_string</span>()).<span class="ident">spawn</span>(
+                <span class="kw">move</span> <span class="op">||</span> <span class="ident">launch_search</span>(<span class="ident">config</span>, <span class="ident">candidate_list</span>, <span class="ident">context</span>, <span class="ident">log_sender</span>)
+            ))
+        }).<span class="ident">join</span>(),
     }
 }
 
@@ -243,12 +292,13 @@
     <span class="ident">candidate_store</span>: <span class="ident">T</span>,
     <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
     <span class="ident">log_sender</span>: <span class="ident">sync</span>::<span class="ident">mpsc</span>::<span class="ident">SyncSender</span><span class="op">&lt;</span><span class="ident">LogMessage</span><span class="op">&lt;</span><span class="ident">T</span>::<span class="ident">Event</span><span class="op">&gt;&gt;</span>,
-) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>
-{
+) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
     <span class="kw">let</span> (<span class="ident">monitor_sender</span>, <span class="ident">monitor_receiver</span>) <span class="op">=</span> <span class="ident">channel</span>::<span class="ident">mpsc</span>::<span class="ident">channel</span>(<span class="number">100</span>);
-    <span class="kw">let</span> <span class="ident">maybe_candidate</span> <span class="op">=</span> <span class="ident">crossbeam</span>::<span class="ident">scope</span>( <span class="op">|</span><span class="ident">scope</span><span class="op">|</span> {
-        <span class="kw">let</span> <span class="ident">best_cand_opt</span> <span class="op">=</span> <span class="ident">scope</span>.<span class="ident">builder</span>().<span class="ident">name</span>(<span class="string">&quot;Telamon - Monitor&quot;</span>.<span class="ident">to_string</span>()).
-            <span class="ident">spawn</span>(<span class="op">||</span> <span class="ident">monitor</span>(<span class="ident">config</span>, <span class="kw-2">&amp;</span><span class="ident">candidate_store</span>, <span class="ident">monitor_receiver</span>, <span class="ident">log_sender</span>));
+    <span class="kw">let</span> <span class="ident">maybe_candidate</span> <span class="op">=</span> <span class="ident">crossbeam</span>::<span class="ident">scope</span>(<span class="op">|</span><span class="ident">scope</span><span class="op">|</span> {
+        <span class="kw">let</span> <span class="ident">best_cand_opt</span> <span class="op">=</span> <span class="ident">scope</span>
+            .<span class="ident">builder</span>()
+            .<span class="ident">name</span>(<span class="string">&quot;Telamon - Monitor&quot;</span>.<span class="ident">to_string</span>())
+            .<span class="ident">spawn</span>(<span class="op">||</span> <span class="ident">monitor</span>(<span class="ident">config</span>, <span class="kw-2">&amp;</span><span class="ident">candidate_store</span>, <span class="ident">monitor_receiver</span>, <span class="ident">log_sender</span>));
         <span class="ident">explore_space</span>(<span class="ident">config</span>, <span class="kw-2">&amp;</span><span class="ident">candidate_store</span>, <span class="ident">monitor_sender</span>, <span class="ident">context</span>);
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">best_cand_opt</span>)
     }).<span class="ident">join</span>();
@@ -261,29 +311,41 @@
 
 <span class="doccomment">/// Defines the work that explorer threads will do in a closure that will be passed to</span>
 <span class="doccomment">/// context.async_eval. Also defines a callback that will be executed by the evaluator</span>
-<span class="kw">fn</span> <span class="ident">explore_space</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>, 
-                        <span class="ident">candidate_store</span>: <span class="kw-2">&amp;</span><span class="ident">T</span>, 
-                        <span class="ident">eval_sender</span>: <span class="ident">channel</span>::<span class="ident">mpsc</span>::<span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">MonitorMessage</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;&gt;</span>, 
-                        <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>) <span class="kw">where</span> <span class="ident">T</span>: <span class="ident">Store</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> 
+<span class="kw">fn</span> <span class="ident">explore_space</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;</span>(
+    <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>,
+    <span class="ident">candidate_store</span>: <span class="kw-2">&amp;</span><span class="ident">T</span>,
+    <span class="ident">eval_sender</span>: <span class="ident">channel</span>::<span class="ident">mpsc</span>::<span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">MonitorMessage</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;&gt;</span>,
+    <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
+) <span class="kw">where</span>
+    <span class="ident">T</span>: <span class="ident">Store</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
 {
     <span class="ident">context</span>.<span class="ident">async_eval</span>(<span class="ident">config</span>.<span class="ident">num_workers</span>, <span class="ident">EvalMode</span>::<span class="ident">FindBest</span>, <span class="kw-2">&amp;</span><span class="op">|</span><span class="ident">evaluator</span><span class="op">|</span> {
         <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">cand</span>, <span class="ident">payload</span>)) <span class="op">=</span> <span class="ident">candidate_store</span>.<span class="ident">explore</span>(<span class="ident">context</span>) {
             <span class="kw">let</span> <span class="ident">space</span> <span class="op">=</span> <span class="ident">fix_order</span>(<span class="ident">cand</span>.<span class="ident">space</span>);
             <span class="kw">let</span> <span class="ident">eval_sender</span> <span class="op">=</span> <span class="ident">eval_sender</span>.<span class="ident">clone</span>();
             <span class="kw">let</span> <span class="ident">callback</span> <span class="op">=</span> <span class="kw">move</span> <span class="op">|</span><span class="ident">leaf</span>, <span class="ident">eval</span><span class="op">|</span> {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span> <span class="ident">block_on</span>(<span class="ident">eval_sender</span>.<span class="ident">send</span>((<span class="ident">leaf</span>, <span class="ident">eval</span>, <span class="ident">payload</span>))
-                                           .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ()))
-                { <span class="macro">warn</span><span class="macro">!</span>(<span class="string">&quot;Got disconnected , {:?}&quot;</span>, <span class="ident">err</span>);}
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span>
+                    <span class="ident">block_on</span>(<span class="ident">eval_sender</span>.<span class="ident">send</span>((<span class="ident">leaf</span>, <span class="ident">eval</span>, <span class="ident">payload</span>)).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ()))
+                {
+                    <span class="macro">warn</span><span class="macro">!</span>(<span class="string">&quot;Got disconnected , {:?}&quot;</span>, <span class="ident">err</span>);
+                }
             };
-            <span class="ident">evaluator</span>.<span class="ident">add_kernel</span>(<span class="ident">Candidate</span> {<span class="ident">space</span>, .. <span class="ident">cand</span> }, <span class="ident">SendBoxFnOnce</span>::<span class="ident">from</span>(<span class="ident">callback</span>));
+            <span class="ident">evaluator</span>
+                .<span class="ident">add_kernel</span>(<span class="ident">Candidate</span> { <span class="ident">space</span>, ..<span class="ident">cand</span> }, <span class="ident">SendBoxFnOnce</span>::<span class="ident">from</span>(<span class="ident">callback</span>));
         }
     });
-} 
-
+}
 
 <span class="doccomment">/// Explores the full search space.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gen_space</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">G</span><span class="op">&gt;</span>(<span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>, <span class="ident">space</span>: <span class="ident">SearchSpace</span>, <span class="kw-2">mut</span> <span class="ident">on_node</span>: <span class="ident">F</span>, <span class="kw-2">mut</span> <span class="ident">on_leaf</span>: <span class="ident">G</span>)
-        <span class="kw">where</span> <span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="kw-2">&amp;</span><span class="ident">Candidate</span>), <span class="ident">G</span>: <span class="ident">FnMut</span>(<span class="kw-2">&amp;</span><span class="ident">Candidate</span>) {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gen_space</span><span class="op">&lt;</span><span class="ident">F</span>, <span class="ident">G</span><span class="op">&gt;</span>(
+    <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
+    <span class="ident">space</span>: <span class="ident">SearchSpace</span>,
+    <span class="kw-2">mut</span> <span class="ident">on_node</span>: <span class="ident">F</span>,
+    <span class="kw-2">mut</span> <span class="ident">on_leaf</span>: <span class="ident">G</span>,
+) <span class="kw">where</span>
+    <span class="ident">F</span>: <span class="ident">FnMut</span>(<span class="kw-2">&amp;</span><span class="ident">Candidate</span>),
+    <span class="ident">G</span>: <span class="ident">FnMut</span>(<span class="kw-2">&amp;</span><span class="ident">Candidate</span>),
+{
     <span class="kw">let</span> <span class="ident">perf_bound</span> <span class="op">=</span> <span class="ident">bound</span>(<span class="kw-2">&amp;</span><span class="ident">space</span>, <span class="ident">context</span>);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stack</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Candidate</span>::<span class="ident">new</span>(<span class="ident">space</span>, <span class="ident">perf_bound</span>)];
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">total</span> <span class="op">=</span> <span class="number">0</span>;
@@ -291,14 +353,16 @@
     <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;Beginning exploration&quot;</span>);
     <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">candidate</span>) <span class="op">=</span> <span class="ident">stack</span>.<span class="ident">pop</span>() {
         <span class="ident">total</span> <span class="op">+=</span> <span class="number">1</span>;
-        <span class="kw">if</span> <span class="ident">total</span> <span class="op">%</span> <span class="number">10</span> <span class="op">==</span> <span class="number">0</span> { <span class="macro">warn</span><span class="macro">!</span>(<span class="string">&quot;{} candidates&quot;</span>, <span class="ident">total</span>); }
+        <span class="kw">if</span> <span class="ident">total</span> <span class="op">%</span> <span class="number">10</span> <span class="op">==</span> <span class="number">0</span> {
+            <span class="macro">warn</span><span class="macro">!</span>(<span class="string">&quot;{} candidates&quot;</span>, <span class="ident">total</span>);
+        }
         <span class="kw">let</span> <span class="ident">choice_opt</span> <span class="op">=</span> <span class="ident">choice</span>::<span class="ident">list</span>(<span class="kw-2">&amp;</span><span class="ident">candidate</span>.<span class="ident">space</span>).<span class="ident">next</span>();
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">choice</span>) <span class="op">=</span> <span class="ident">choice_opt</span> {
             <span class="ident">on_node</span>(<span class="kw-2">&amp;</span><span class="ident">candidate</span>);
             <span class="ident">stack</span>.<span class="ident">extend</span>(<span class="ident">candidate</span>.<span class="ident">apply_choice</span>(<span class="ident">context</span>, <span class="ident">choice</span>));
         } <span class="kw">else</span> {
             <span class="kw">let</span> <span class="ident">space</span> <span class="op">=</span> <span class="ident">fix_order</span>(<span class="ident">candidate</span>.<span class="ident">space</span>);
-            <span class="ident">on_leaf</span>(<span class="kw-2">&amp;</span><span class="ident">Candidate</span> { <span class="ident">space</span>, .. <span class="ident">candidate</span> });
+            <span class="ident">on_leaf</span>(<span class="kw-2">&amp;</span><span class="ident">Candidate</span> { <span class="ident">space</span>, ..<span class="ident">candidate</span> });
         }
     }
     <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;{} candidates explored&quot;</span>, <span class="ident">total</span>);

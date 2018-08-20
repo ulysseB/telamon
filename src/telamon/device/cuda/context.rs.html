@@ -214,21 +214,73 @@
 <span id="214">214</span>
 <span id="215">215</span>
 <span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
 </pre><pre class="rust ">
 <span class="doccomment">///! Defines the CUDA evaluation context.</span>
 <span class="kw">use</span> <span class="ident">crossbeam</span>;
-<span class="kw">use</span> <span class="ident">device</span>::{<span class="self">self</span>, <span class="ident">Device</span>, <span class="ident">EvalMode</span>, <span class="ident">ScalarArgument</span>};
-<span class="kw">use</span> <span class="ident">device</span>::<span class="ident">cuda</span>::{<span class="ident">Executor</span>, <span class="ident">Gpu</span>, <span class="ident">Kernel</span>, <span class="ident">JITDaemon</span>};
+<span class="kw">use</span> <span class="ident">device</span>::<span class="ident">context</span>::<span class="ident">AsyncCallback</span>;
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">cuda</span>::<span class="ident">api</span>::{<span class="self">self</span>, <span class="ident">Argument</span>};
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">cuda</span>::<span class="ident">kernel</span>::<span class="ident">Thunk</span>;
+<span class="kw">use</span> <span class="ident">device</span>::<span class="ident">cuda</span>::{<span class="ident">Executor</span>, <span class="ident">Gpu</span>, <span class="ident">JITDaemon</span>, <span class="ident">Kernel</span>};
+<span class="kw">use</span> <span class="ident">device</span>::{<span class="self">self</span>, <span class="ident">Device</span>, <span class="ident">EvalMode</span>, <span class="ident">ScalarArgument</span>};
 <span class="kw">use</span> <span class="ident">explorer</span>;
 <span class="kw">use</span> <span class="ident">ir</span>;
-<span class="kw">use</span> <span class="ident">itertools</span>::{<span class="ident">Itertools</span>, <span class="ident">process_results</span>};
+<span class="kw">use</span> <span class="ident">itertools</span>::{<span class="ident">process_results</span>, <span class="ident">Itertools</span>};
 <span class="kw">use</span> <span class="ident">std</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">f64</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::{<span class="ident">atomic</span>, <span class="ident">mpsc</span>, <span class="ident">Arc</span>};
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">device</span>::<span class="ident">context</span>::<span class="ident">AsyncCallback</span>;
 
 <span class="doccomment">/// Max number of candidates waiting to be evaluated.</span>
 <span class="kw">const</span> <span class="ident">EVAL_BUFFER_SIZE</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">100</span>;
@@ -263,17 +315,27 @@
 
     <span class="doccomment">/// Creates a context from the given GPU.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_gpu</span>(<span class="ident">gpu</span>: <span class="ident">Gpu</span>, <span class="ident">executor</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Executor</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="ident">Context</span> { <span class="ident">gpu_model</span>: <span class="ident">gpu</span>, <span class="ident">executor</span>, <span class="ident">parameters</span>: <span class="ident">HashMap</span>::<span class="ident">default</span>() }
+        <span class="ident">Context</span> {
+            <span class="ident">gpu_model</span>: <span class="ident">gpu</span>,
+            <span class="ident">executor</span>,
+            <span class="ident">parameters</span>: <span class="ident">HashMap</span>::<span class="ident">default</span>(),
+        }
     }
 
     <span class="doccomment">/// Returns the GPU description.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gpu</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Gpu</span> { <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">gpu_model</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gpu</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Gpu</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">gpu_model</span>
+    }
 
     <span class="doccomment">/// Returns the execution queue.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">executor</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Executor</span> { <span class="self">self</span>.<span class="ident">executor</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">executor</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Executor</span> {
+        <span class="self">self</span>.<span class="ident">executor</span>
+    }
 
     <span class="doccomment">/// Returns a parameter given its name.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_param</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Argument</span> { <span class="self">self</span>.<span class="ident">parameters</span>[<span class="ident">name</span>].<span class="ident">as_ref</span>() }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_param</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Argument</span> {
+        <span class="self">self</span>.<span class="ident">parameters</span>[<span class="ident">name</span>].<span class="ident">as_ref</span>()
+    }
 
     <span class="doccomment">/// Binds a parameter to the gien name.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bind_param</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">name</span>: <span class="ident">String</span>, <span class="ident">arg</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Argument</span> <span class="op">+</span> <span class="lifetime">&#39;a</span><span class="op">&gt;</span>) {
@@ -289,10 +351,13 @@
     }
 
     <span class="doccomment">/// Evaluates `thunk` multiple times to obtain accurate execution times.</span>
-    <span class="kw">fn</span> <span class="ident">eval_runtime</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">thunk</span>: <span class="kw-2">&amp;</span><span class="ident">Thunk</span>,
-                    <span class="ident">bound</span>: <span class="ident">f64</span>,
-                    <span class="ident">current_best</span>: <span class="ident">f64</span>,
-                    <span class="ident">mode</span>: <span class="ident">EvalMode</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">f64</span>, ()<span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">eval_runtime</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">thunk</span>: <span class="kw-2">&amp;</span><span class="ident">Thunk</span>,
+        <span class="ident">bound</span>: <span class="ident">f64</span>,
+        <span class="ident">current_best</span>: <span class="ident">f64</span>,
+        <span class="ident">mode</span>: <span class="ident">EvalMode</span>,
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">f64</span>, ()<span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">bound</span> <span class="op">&gt;=</span> <span class="ident">current_best</span> <span class="op">&amp;&amp;</span> <span class="ident">mode</span>.<span class="ident">skip_bad_candidates</span>() {
             <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;candidate skipped because of its bound&quot;</span>);
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span>);
@@ -307,12 +372,15 @@
         <span class="comment">// min and median with N outliers).</span>
         <span class="kw">let</span> <span class="ident">runtimes</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">NUM_EVALS</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">thunk</span>.<span class="ident">execute</span>());
         <span class="kw">let</span> <span class="ident">runtimes_by_value</span> <span class="op">=</span> <span class="ident">process_results</span>(<span class="ident">runtimes</span>, <span class="op">|</span><span class="ident">iter</span><span class="op">|</span> <span class="ident">iter</span>.<span class="ident">sorted</span>())<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">median</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ticks_to_ns</span>(<span class="ident">runtimes_by_value</span>[<span class="ident">NUM_EVALS</span><span class="op">/</span><span class="number">2</span>]);
-        <span class="kw">let</span> <span class="ident">runtimes_by_delta</span> <span class="op">=</span> <span class="ident">runtimes_by_value</span>.<span class="ident">into_iter</span>()
+        <span class="kw">let</span> <span class="ident">median</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ticks_to_ns</span>(<span class="ident">runtimes_by_value</span>[<span class="ident">NUM_EVALS</span> <span class="op">/</span> <span class="number">2</span>]);
+        <span class="kw">let</span> <span class="ident">runtimes_by_delta</span> <span class="op">=</span> <span class="ident">runtimes_by_value</span>
+            .<span class="ident">into_iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">ticks_to_ns</span>(<span class="ident">t</span>))
-            .<span class="ident">sorted_by</span>(<span class="op">|</span><span class="ident">lhs</span>, <span class="ident">rhs</span><span class="op">|</span> <span class="ident">cmp_f64</span>((<span class="ident">lhs</span><span class="op">-</span><span class="ident">median</span>).<span class="ident">abs</span>(), (<span class="ident">rhs</span><span class="op">-</span><span class="ident">median</span>).<span class="ident">abs</span>()));
+            .<span class="ident">sorted_by</span>(<span class="op">|</span><span class="ident">lhs</span>, <span class="ident">rhs</span><span class="op">|</span> <span class="ident">cmp_f64</span>((<span class="ident">lhs</span> <span class="op">-</span> <span class="ident">median</span>).<span class="ident">abs</span>(), (<span class="ident">rhs</span> <span class="op">-</span> <span class="ident">median</span>).<span class="ident">abs</span>()));
         <span class="kw">let</span> <span class="ident">num_samples</span> <span class="op">=</span> <span class="ident">NUM_EVALS</span> <span class="op">-</span> <span class="ident">NUM_OUTLIERS</span>;
-        <span class="kw">let</span> <span class="ident">average</span> <span class="op">=</span> <span class="ident">runtimes_by_delta</span>[..<span class="ident">num_samples</span>].<span class="ident">iter</span>().<span class="ident">cloned</span>()
+        <span class="kw">let</span> <span class="ident">average</span> <span class="op">=</span> <span class="ident">runtimes_by_delta</span>[..<span class="ident">num_samples</span>]
+            .<span class="ident">iter</span>()
+            .<span class="ident">cloned</span>()
             .<span class="ident">sum</span>::<span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>() <span class="op">/</span> <span class="ident">num_samples</span> <span class="kw">as</span> <span class="ident">f64</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">average</span>)
     }
@@ -323,7 +391,6 @@
     }
 }
 
-
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">device</span>::<span class="ident">ArgMap</span> <span class="kw">for</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">type</span> <span class="ident">Array</span> <span class="op">=</span> <span class="ident">api</span>::<span class="ident">Array</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">i8</span><span class="op">&gt;</span>;
 
@@ -332,9 +399,11 @@
         <span class="self">self</span>.<span class="ident">bind_param</span>(<span class="ident">param</span>.<span class="ident">name</span>.<span class="ident">clone</span>(), <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">value</span>));
     }
 
-    <span class="kw">fn</span> <span class="ident">bind_array</span><span class="op">&lt;</span><span class="ident">S</span>: <span class="ident">ScalarArgument</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">param</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Parameter</span>, <span class="ident">len</span>: <span class="ident">usize</span>)
-        <span class="op">-&gt;</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="self">Self</span>::<span class="ident">Array</span><span class="op">&gt;</span>
-    {
+    <span class="kw">fn</span> <span class="ident">bind_array</span><span class="op">&lt;</span><span class="ident">S</span>: <span class="ident">ScalarArgument</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">param</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Parameter</span>,
+        <span class="ident">len</span>: <span class="ident">usize</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="self">Self</span>::<span class="ident">Array</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">len</span> <span class="op">*</span> <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">size_of</span>::<span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>();
         <span class="kw">let</span> <span class="ident">array</span> <span class="op">=</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">executor</span>.<span class="ident">allocate_array</span>::<span class="op">&lt;</span><span class="ident">i8</span><span class="op">&gt;</span>(<span class="ident">size</span>));
         <span class="self">self</span>.<span class="ident">bind_param</span>(<span class="ident">param</span>.<span class="ident">name</span>.<span class="ident">clone</span>(), <span class="ident">array</span>.<span class="ident">clone</span>());
@@ -343,14 +412,20 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">device</span>::<span class="ident">Context</span> <span class="kw">for</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">device</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Device</span> { <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">gpu_model</span> }
+    <span class="kw">fn</span> <span class="ident">device</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Device</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">gpu_model</span>
+    }
 
-    <span class="kw">fn</span> <span class="ident">param_as_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span> { <span class="self">self</span>.<span class="ident">get_param</span>(<span class="ident">name</span>).<span class="ident">as_size</span>() }
+    <span class="kw">fn</span> <span class="ident">param_as_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">get_param</span>(<span class="ident">name</span>).<span class="ident">as_size</span>()
+    }
 
     <span class="kw">fn</span> <span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">function</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Function</span>, <span class="ident">mode</span>: <span class="ident">EvalMode</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">f64</span>, ()<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">gpu</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">gpu_model</span>;
         <span class="kw">let</span> <span class="ident">kernel</span> <span class="op">=</span> <span class="ident">Kernel</span>::<span class="ident">compile</span>(<span class="ident">function</span>, <span class="ident">gpu</span>, <span class="self">self</span>.<span class="ident">executor</span>, <span class="self">Self</span>::<span class="ident">opt_level</span>(<span class="ident">mode</span>));
-        <span class="ident">kernel</span>.<span class="ident">evaluate</span>(<span class="self">self</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="ident">t</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">/</span> <span class="self">self</span>.<span class="ident">gpu_model</span>.<span class="ident">smx_clock</span>)
+        <span class="ident">kernel</span>
+            .<span class="ident">evaluate</span>(<span class="self">self</span>)
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="ident">t</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">/</span> <span class="self">self</span>.<span class="ident">gpu_model</span>.<span class="ident">smx_clock</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">benchmark</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">function</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Function</span>, <span class="ident">num_samples</span>: <span class="ident">usize</span>) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span> {
@@ -359,8 +434,12 @@
         <span class="ident">kernel</span>.<span class="ident">evaluate_real</span>(<span class="self">self</span>, <span class="ident">num_samples</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">async_eval</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;c</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">num_workers</span>: <span class="ident">usize</span>, <span class="ident">mode</span>: <span class="ident">EvalMode</span>,
-                          <span class="ident">inner</span>: <span class="kw-2">&amp;</span>(<span class="ident">Fn</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">device</span>::<span class="ident">AsyncEvaluator</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;c</span><span class="op">&gt;</span>) <span class="op">+</span> <span class="ident">Sync</span>)){
+    <span class="kw">fn</span> <span class="ident">async_eval</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;c</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">num_workers</span>: <span class="ident">usize</span>,
+        <span class="ident">mode</span>: <span class="ident">EvalMode</span>,
+        <span class="ident">inner</span>: <span class="kw-2">&amp;</span>(<span class="ident">Fn</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">device</span>::<span class="ident">AsyncEvaluator</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;c</span><span class="op">&gt;</span>) <span class="op">+</span> <span class="ident">Sync</span>),
+    ) {
         <span class="comment">// Setup the evaluator.</span>
         <span class="kw">let</span> <span class="ident">blocked_time</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">atomic</span>::<span class="ident">AtomicUsize</span>::<span class="ident">new</span>(<span class="number">0</span>);
         <span class="kw">let</span> (<span class="ident">send</span>, <span class="ident">recv</span>) <span class="op">=</span> <span class="ident">mpsc</span>::<span class="ident">sync_channel</span>(<span class="ident">EVAL_BUFFER_SIZE</span>);
@@ -374,8 +453,12 @@
                     <span class="ident">ptx_daemon</span>: <span class="self">self</span>.<span class="ident">executor</span>.<span class="ident">spawn_jit</span>(<span class="self">Self</span>::<span class="ident">opt_level</span>(<span class="ident">mode</span>)),
                     <span class="ident">blocked_time</span>,
                 };
-                <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">scope</span>.<span class="ident">builder</span>().<span class="ident">name</span>(<span class="string">&quot;Telamon - Explorer Thread&quot;</span>.<span class="ident">to_string</span>())
-                        .<span class="ident">spawn</span>(<span class="kw">move</span> <span class="op">||</span> <span class="ident">inner</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">evaluator</span>)));
+                <span class="macro">unwrap</span><span class="macro">!</span>(
+                    <span class="ident">scope</span>
+                        .<span class="ident">builder</span>()
+                        .<span class="ident">name</span>(<span class="string">&quot;Telamon - Explorer Thread&quot;</span>.<span class="ident">to_string</span>())
+                        .<span class="ident">spawn</span>(<span class="kw">move</span> <span class="op">||</span> <span class="ident">inner</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">evaluator</span>))
+                );
             }
             <span class="comment">// Start the evaluation thread.</span>
             <span class="kw">let</span> <span class="ident">eval_thread_name</span> <span class="op">=</span> <span class="string">&quot;Telamon - GPU Evaluation Thread&quot;</span>.<span class="ident">to_string</span>();
@@ -383,9 +466,12 @@
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">best_eval</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span>;
                 <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>((<span class="ident">candidate</span>, <span class="ident">thunk</span>, <span class="ident">callback</span>)) <span class="op">=</span> <span class="ident">recv</span>.<span class="ident">recv</span>() {
                     <span class="kw">let</span> <span class="ident">bound</span> <span class="op">=</span> <span class="ident">candidate</span>.<span class="ident">bound</span>.<span class="ident">value</span>();
-                    <span class="kw">let</span> <span class="ident">eval</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">eval_runtime</span>(<span class="kw-2">&amp;</span><span class="ident">thunk</span>, <span class="ident">bound</span>, <span class="ident">best_eval</span>, <span class="ident">mode</span>),
+                    <span class="kw">let</span> <span class="ident">eval</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(
+                        <span class="self">self</span>.<span class="ident">eval_runtime</span>(<span class="kw-2">&amp;</span><span class="ident">thunk</span>, <span class="ident">bound</span>, <span class="ident">best_eval</span>, <span class="ident">mode</span>),
                         <span class="string">&quot;evaluation failed for actions {:?}, with kernel {:?}&quot;</span>,
-                        <span class="ident">candidate</span>.<span class="ident">actions</span>, <span class="ident">thunk</span>);
+                        <span class="ident">candidate</span>.<span class="ident">actions</span>,
+                        <span class="ident">thunk</span>
+                    );
                     <span class="kw">if</span> <span class="ident">eval</span> <span class="op">&lt;</span> <span class="ident">best_eval</span> {
                         <span class="ident">best_eval</span> <span class="op">=</span> <span class="ident">eval</span>;
                     }
@@ -396,39 +482,57 @@
             <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">drop</span>(<span class="ident">send</span>);
         });
         <span class="kw">let</span> <span class="ident">blocked_time</span> <span class="op">=</span> <span class="ident">blocked_time</span>.<span class="ident">load</span>(<span class="ident">atomic</span>::<span class="ident">Ordering</span>::<span class="ident">SeqCst</span>);
-        <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;Total time blocked on `add_kernel`: {:.4e}ns&quot;</span>, <span class="ident">blocked_time</span> <span class="kw">as</span> <span class="ident">f64</span>);
+        <span class="macro">info</span><span class="macro">!</span>(
+            <span class="string">&quot;Total time blocked on `add_kernel`: {:.4e}ns&quot;</span>,
+            <span class="ident">blocked_time</span> <span class="kw">as</span> <span class="ident">f64</span>
+        );
     }
 }
 
 <span class="kw">type</span> <span class="ident">AsyncPayload</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span> <span class="op">=</span> (<span class="ident">explorer</span>::<span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">Thunk</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>, <span class="ident">AsyncCallback</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span>);
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AsyncEvaluator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span> <span class="kw">where</span> <span class="lifetime">&#39;a</span>: <span class="lifetime">&#39;b</span> {
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AsyncEvaluator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span>
+<span class="kw">where</span>
+    <span class="lifetime">&#39;a</span>: <span class="lifetime">&#39;b</span>,
+{
     <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">Context</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
     <span class="ident">sender</span>: <span class="ident">mpsc</span>::<span class="ident">SyncSender</span><span class="op">&lt;</span><span class="ident">AsyncPayload</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;&gt;</span>,
     <span class="ident">ptx_daemon</span>: <span class="ident">JITDaemon</span>,
-    <span class="ident">blocked_time</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">atomic</span>::<span class="ident">AtomicUsize</span>
+    <span class="ident">blocked_time</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">atomic</span>::<span class="ident">AtomicUsize</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;c</span><span class="op">&gt;</span> <span class="ident">device</span>::<span class="ident">AsyncEvaluator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;c</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">AsyncEvaluator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span>
-    <span class="kw">where</span> <span class="lifetime">&#39;a</span>: <span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;c</span>: <span class="lifetime">&#39;b</span>
+<span class="kw">where</span>
+    <span class="lifetime">&#39;a</span>: <span class="lifetime">&#39;b</span>,
+    <span class="lifetime">&#39;c</span>: <span class="lifetime">&#39;b</span>,
 {
-    <span class="kw">fn</span> <span class="ident">add_kernel</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">candidate</span>: <span class="ident">explorer</span>::<span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
-                  <span class="ident">callback</span>: <span class="ident">device</span>::<span class="ident">AsyncCallback</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;c</span><span class="op">&gt;</span> ) {
+    <span class="kw">fn</span> <span class="ident">add_kernel</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">candidate</span>: <span class="ident">explorer</span>::<span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+        <span class="ident">callback</span>: <span class="ident">device</span>::<span class="ident">AsyncCallback</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;c</span><span class="op">&gt;</span>,
+    ) {
         <span class="kw">let</span> <span class="ident">thunk</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">dev_fun</span> <span class="op">=</span> <span class="ident">device</span>::<span class="ident">Function</span>::<span class="ident">build</span>(<span class="kw-2">&amp;</span><span class="ident">candidate</span>.<span class="ident">space</span>);
             <span class="kw">let</span> <span class="ident">gpu</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">context</span>.<span class="ident">gpu</span>();
-            <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;compiling kernel with bound {} and actions {:?}&quot;</span>,
-                   <span class="ident">candidate</span>.<span class="ident">bound</span>, <span class="ident">candidate</span>.<span class="ident">actions</span>);
+            <span class="macro">debug</span><span class="macro">!</span>(
+                <span class="string">&quot;compiling kernel with bound {} and actions {:?}&quot;</span>,
+                <span class="ident">candidate</span>.<span class="ident">bound</span>, <span class="ident">candidate</span>.<span class="ident">actions</span>
+            );
             <span class="comment">// TODO(cc_perf): cuModuleLoadData is waiting the end of any running kernel</span>
             <span class="kw">let</span> <span class="ident">kernel</span> <span class="op">=</span> <span class="ident">Kernel</span>::<span class="ident">compile_remote</span>(
-                <span class="kw-2">&amp;</span><span class="ident">dev_fun</span>, <span class="ident">gpu</span>, <span class="self">self</span>.<span class="ident">context</span>.<span class="ident">executor</span>(), <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">ptx_daemon</span>);
+                <span class="kw-2">&amp;</span><span class="ident">dev_fun</span>,
+                <span class="ident">gpu</span>,
+                <span class="self">self</span>.<span class="ident">context</span>.<span class="ident">executor</span>(),
+                <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">ptx_daemon</span>,
+            );
             <span class="ident">kernel</span>.<span class="ident">gen_thunk</span>(<span class="self">self</span>.<span class="ident">context</span>)
         };
         <span class="kw">let</span> <span class="ident">t0</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Instant</span>::<span class="ident">now</span>();
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">sender</span>.<span class="ident">send</span>((<span class="ident">candidate</span>, <span class="ident">thunk</span>, <span class="ident">callback</span>)));
         <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">time</span>::<span class="ident">Instant</span>::<span class="ident">now</span>() <span class="op">-</span> <span class="ident">t0</span>;
         <span class="kw">let</span> <span class="ident">t_usize</span> <span class="op">=</span> <span class="ident">t</span>.<span class="ident">as_secs</span>() <span class="kw">as</span> <span class="ident">usize</span> <span class="op">*</span> <span class="number">1_000_000_000</span> <span class="op">+</span> <span class="ident">t</span>.<span class="ident">subsec_nanos</span>() <span class="kw">as</span> <span class="ident">usize</span>;
-        <span class="self">self</span>.<span class="ident">blocked_time</span>.<span class="ident">fetch_add</span>(<span class="ident">t_usize</span>, <span class="ident">atomic</span>::<span class="ident">Ordering</span>::<span class="ident">Relaxed</span>);
+        <span class="self">self</span>.<span class="ident">blocked_time</span>
+            .<span class="ident">fetch_add</span>(<span class="ident">t_usize</span>, <span class="ident">atomic</span>::<span class="ident">Ordering</span>::<span class="ident">Relaxed</span>);
     }
 }
 </pre>

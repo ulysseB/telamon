@@ -699,6 +699,93 @@
 <span id="699">699</span>
 <span id="700">700</span>
 <span id="701">701</span>
+<span id="702">702</span>
+<span id="703">703</span>
+<span id="704">704</span>
+<span id="705">705</span>
+<span id="706">706</span>
+<span id="707">707</span>
+<span id="708">708</span>
+<span id="709">709</span>
+<span id="710">710</span>
+<span id="711">711</span>
+<span id="712">712</span>
+<span id="713">713</span>
+<span id="714">714</span>
+<span id="715">715</span>
+<span id="716">716</span>
+<span id="717">717</span>
+<span id="718">718</span>
+<span id="719">719</span>
+<span id="720">720</span>
+<span id="721">721</span>
+<span id="722">722</span>
+<span id="723">723</span>
+<span id="724">724</span>
+<span id="725">725</span>
+<span id="726">726</span>
+<span id="727">727</span>
+<span id="728">728</span>
+<span id="729">729</span>
+<span id="730">730</span>
+<span id="731">731</span>
+<span id="732">732</span>
+<span id="733">733</span>
+<span id="734">734</span>
+<span id="735">735</span>
+<span id="736">736</span>
+<span id="737">737</span>
+<span id="738">738</span>
+<span id="739">739</span>
+<span id="740">740</span>
+<span id="741">741</span>
+<span id="742">742</span>
+<span id="743">743</span>
+<span id="744">744</span>
+<span id="745">745</span>
+<span id="746">746</span>
+<span id="747">747</span>
+<span id="748">748</span>
+<span id="749">749</span>
+<span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
+<span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
+<span id="778">778</span>
+<span id="779">779</span>
+<span id="780">780</span>
+<span id="781">781</span>
+<span id="782">782</span>
+<span id="783">783</span>
+<span id="784">784</span>
+<span id="785">785</span>
+<span id="786">786</span>
+<span id="787">787</span>
+<span id="788">788</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Print the IR description in rust.</span>
 <span class="kw">mod</span> <span class="ident">counter</span>;
@@ -719,9 +806,8 @@
     <span class="ident">ast</span>::<span class="ident">Variable</span>::<span class="ident">reset_prefix</span>();
 }
 
-
 <span class="comment">// TODO(cleanup): rewrite the fllowing with token streams instead of string templates</span>
-<span class="kw">use</span> <span class="ident">handlebars</span>::{<span class="self">self</span>, <span class="ident">Handlebars</span>, <span class="ident">Helper</span>, <span class="ident">Renderable</span>, <span class="ident">RenderContext</span>, <span class="ident">RenderError</span>};
+<span class="kw">use</span> <span class="ident">handlebars</span>::{<span class="self">self</span>, <span class="ident">Handlebars</span>, <span class="ident">Helper</span>, <span class="ident">RenderContext</span>, <span class="ident">RenderError</span>, <span class="ident">Renderable</span>};
 <span class="kw">use</span> <span class="ident">ir</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">serde_json</span>::<span class="ident">value</span>::<span class="ident">Value</span> <span class="kw">as</span> <span class="ident">JsonValue</span>;
@@ -792,11 +878,11 @@
         <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">actions</span>);
         <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">choice_def</span>);
         <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">choice_filter</span>);
-        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">choice</span><span class="op">/</span><span class="ident">arg_names</span>);
-        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">choice</span><span class="op">/</span><span class="ident">arg_defs</span>);
-        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">choice</span><span class="op">/</span><span class="ident">arg_ids</span>);
-        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">choice</span><span class="op">/</span><span class="ident">complement</span>);
-        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">choice</span><span class="op">/</span><span class="ident">getter</span>);
+        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">choice</span> <span class="op">/</span> <span class="ident">arg_names</span>);
+        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">choice</span> <span class="op">/</span> <span class="ident">arg_defs</span>);
+        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">choice</span> <span class="op">/</span> <span class="ident">arg_ids</span>);
+        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">choice</span> <span class="op">/</span> <span class="ident">complement</span>);
+        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">choice</span> <span class="op">/</span> <span class="ident">getter</span>);
         <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">compute_counter</span>);
         <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">conflict</span>);
         <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">counter_value</span>);
@@ -805,10 +891,10 @@
         <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">filter_action</span>);
         <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">filter_call</span>);
         <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">filter_self</span>);
-        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">value_type</span><span class="op">/</span><span class="ident">full_domain</span>);
-        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">value_type</span><span class="op">/</span><span class="ident">name</span>);
-        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">value_type</span><span class="op">/</span><span class="ident">num_constructor</span>);
-        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">value_type</span><span class="op">/</span><span class="ident">univers</span>);
+        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">value_type</span> <span class="op">/</span> <span class="ident">full_domain</span>);
+        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">value_type</span> <span class="op">/</span> <span class="ident">name</span>);
+        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">value_type</span> <span class="op">/</span> <span class="ident">num_constructor</span>);
+        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">value_type</span> <span class="op">/</span> <span class="ident">univers</span>);
         <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">getter</span>);
         <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">incr_counter</span>);
         <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">iter_new_objects</span>);
@@ -821,11 +907,11 @@
         <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">rule</span>);
         <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">run_filters</span>);
         <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">set_constraints</span>);
-        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">set</span><span class="op">/</span><span class="ident">from_superset</span>);
-        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">set</span><span class="op">/</span><span class="ident">id_getter</span>);
-        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">set</span><span class="op">/</span><span class="ident">item_getter</span>);
-        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">set</span><span class="op">/</span><span class="ident">iterator</span>);
-        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">set</span><span class="op">/</span><span class="ident">new_objs</span>);
+        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">set</span> <span class="op">/</span> <span class="ident">from_superset</span>);
+        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">set</span> <span class="op">/</span> <span class="ident">id_getter</span>);
+        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">set</span> <span class="op">/</span> <span class="ident">item_getter</span>);
+        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">set</span> <span class="op">/</span> <span class="ident">iterator</span>);
+        <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">set</span> <span class="op">/</span> <span class="ident">new_objs</span>);
         <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">store</span>);
         <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">trigger_call</span>);
         <span class="macro">register_template</span><span class="macro">!</span>(<span class="ident">engine</span>, <span class="ident">trigger_check</span>);
@@ -839,20 +925,25 @@
 
 <span class="doccomment">/// Performs string substitution.</span>
 <span class="kw">fn</span> <span class="ident">replace</span>(<span class="ident">h</span>: <span class="kw-2">&amp;</span><span class="ident">Helper</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">Handlebars</span>, <span class="ident">rc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">RenderContext</span>) <span class="op">-&gt;</span> <span class="ident">RenderResult</span> {
-    <span class="kw">if</span> <span class="ident">h</span>.<span class="ident">is_block</span>() { <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">RenderError</span>::<span class="ident">new</span>(<span class="string">&quot;replace is not valid on blocks&quot;</span>)); }
+    <span class="kw">if</span> <span class="ident">h</span>.<span class="ident">is_block</span>() {
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">RenderError</span>::<span class="ident">new</span>(<span class="string">&quot;replace is not valid on blocks&quot;</span>));
+    }
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">string</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">h</span>.<span class="ident">param</span>(<span class="number">0</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">value</span>()) {
         <span class="prelude-val">None</span> <span class="op">=&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">RenderError</span>::<span class="ident">new</span>(<span class="string">&quot;missing argument for replace&quot;</span>)),
         <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">JsonValue</span>::<span class="ident">String</span>(<span class="kw-2">ref</span> <span class="ident">string</span>)) <span class="op">=&gt;</span> <span class="ident">string</span>.<span class="ident">clone</span>(),
         <span class="prelude-val">Some</span>(<span class="ident">x</span>) <span class="op">=&gt;</span> {
             <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;replace argument = {}&quot;</span>, <span class="ident">x</span>);
             <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;in context {:?}&quot;</span>, <span class="ident">rc</span>.<span class="ident">context</span>());
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">RenderError</span>::<span class="ident">new</span>(<span class="string">&quot;replace expects string arguments&quot;</span>))
-        },
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">RenderError</span>::<span class="ident">new</span>(<span class="string">&quot;replace expects string arguments&quot;</span>));
+        }
     };
     <span class="kw">for</span> (<span class="ident">key</span>, <span class="ident">value</span>) <span class="kw">in</span> <span class="ident">h</span>.<span class="ident">hash</span>() {
         <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">value</span>().<span class="ident">as_str</span>().<span class="ident">ok_or_else</span>(<span class="op">||</span> {
-            <span class="kw">let</span> <span class="ident">err</span> <span class="op">=</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;replace maps strings to strings (got {:?}), in context {:?}&quot;</span>,
-                <span class="ident">value</span>, <span class="ident">rc</span>.<span class="ident">context</span>());
+            <span class="kw">let</span> <span class="ident">err</span> <span class="op">=</span> <span class="macro">format</span><span class="macro">!</span>(
+                <span class="string">&quot;replace maps strings to strings (got {:?}), in context {:?}&quot;</span>,
+                <span class="ident">value</span>,
+                <span class="ident">rc</span>.<span class="ident">context</span>()
+            );
             <span class="ident">RenderError</span>::<span class="ident">new</span>(<span class="ident">err</span>)
         })<span class="question-mark">?</span>;
         <span class="ident">string</span> <span class="op">=</span> <span class="ident">string</span>.<span class="ident">replace</span>(<span class="ident">key</span>, <span class="ident">value</span>);
@@ -863,7 +954,9 @@
 
 <span class="doccomment">/// Prints a variable of the context.</span>
 <span class="kw">fn</span> <span class="ident">debug</span>(<span class="ident">h</span>: <span class="kw-2">&amp;</span><span class="ident">Helper</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">Handlebars</span>, <span class="ident">rc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">RenderContext</span>) <span class="op">-&gt;</span> <span class="ident">RenderResult</span> {
-    <span class="kw">if</span> <span class="ident">h</span>.<span class="ident">is_block</span>() { <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">RenderError</span>::<span class="ident">new</span>(<span class="string">&quot;debug is not valid on blocks&quot;</span>)); }
+    <span class="kw">if</span> <span class="ident">h</span>.<span class="ident">is_block</span>() {
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">RenderError</span>::<span class="ident">new</span>(<span class="string">&quot;debug is not valid on blocks&quot;</span>));
+    }
     <span class="kw">match</span> <span class="ident">h</span>.<span class="ident">param</span>(<span class="number">0</span>) {
         <span class="prelude-val">None</span> <span class="op">=&gt;</span> <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;context {:?}&quot;</span>, <span class="ident">rc</span>.<span class="ident">context</span>()),
         <span class="prelude-val">Some</span>(<span class="ident">x</span>) <span class="op">=&gt;</span> <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;value {:?}&quot;</span>, <span class="ident">x</span>.<span class="ident">value</span>()),
@@ -873,27 +966,30 @@
 
 <span class="doccomment">/// Converts a choice name to a rust type name.</span>
 <span class="kw">fn</span> <span class="ident">to_type_name</span>(<span class="ident">h</span>: <span class="kw-2">&amp;</span><span class="ident">Helper</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="ident">Handlebars</span>, <span class="ident">rc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">RenderContext</span>) <span class="op">-&gt;</span> <span class="ident">RenderResult</span> {
-    <span class="kw">if</span> <span class="ident">h</span>.<span class="ident">is_block</span>() { <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">RenderError</span>::<span class="ident">new</span>(<span class="string">&quot;to_type_name is not valid on blocks&quot;</span>)); }
+    <span class="kw">if</span> <span class="ident">h</span>.<span class="ident">is_block</span>() {
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">RenderError</span>::<span class="ident">new</span>(<span class="string">&quot;to_type_name is not valid on blocks&quot;</span>));
+    }
     <span class="kw">let</span> <span class="ident">string</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">h</span>.<span class="ident">param</span>(<span class="number">0</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">value</span>()) {
         <span class="prelude-val">None</span> <span class="op">=&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">RenderError</span>::<span class="ident">new</span>(<span class="string">&quot;missing argument for to_type_name&quot;</span>)),
         <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">JsonValue</span>::<span class="ident">String</span>(<span class="kw-2">ref</span> <span class="ident">string</span>)) <span class="op">=&gt;</span> <span class="ident">string</span>.<span class="ident">clone</span>(),
         <span class="prelude-val">Some</span>(<span class="ident">x</span>) <span class="op">=&gt;</span> {
             <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;replace argument = {}&quot;</span>, <span class="ident">x</span>);
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">RenderError</span>::<span class="ident">new</span>(<span class="string">&quot;to_type_name expects a string argument&quot;</span>))
-        },
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">RenderError</span>::<span class="ident">new</span>(<span class="string">&quot;to_type_name expects a string argument&quot;</span>));
+        }
     };
-    <span class="ident">rc</span>.<span class="ident">writer</span>.<span class="ident">write_all</span>(::<span class="ident">to_type_name</span>(<span class="kw-2">&amp;</span><span class="ident">string</span>).<span class="ident">into_bytes</span>().<span class="ident">as_ref</span>())<span class="question-mark">?</span>;
+    <span class="ident">rc</span>.<span class="ident">writer</span>
+        .<span class="ident">write_all</span>(::<span class="ident">to_type_name</span>(<span class="kw-2">&amp;</span><span class="ident">string</span>).<span class="ident">into_bytes</span>().<span class="ident">as_ref</span>())<span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>(())
 }
 
 <span class="doccomment">/// Prints the template if the a value is equal to another.</span>
 <span class="kw">fn</span> <span class="ident">ifeq</span>(<span class="ident">h</span>: <span class="kw-2">&amp;</span><span class="ident">Helper</span>, <span class="ident">r</span>: <span class="kw-2">&amp;</span><span class="ident">Handlebars</span>, <span class="ident">rc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">RenderContext</span>) <span class="op">-&gt;</span> <span class="ident">RenderResult</span> {
-    <span class="kw">let</span> <span class="ident">param</span> <span class="op">=</span> <span class="ident">h</span>.<span class="ident">param</span>(<span class="number">0</span>).<span class="ident">ok_or_else</span>(<span class="op">||</span> {
-        <span class="ident">RenderError</span>::<span class="ident">new</span>(<span class="string">&quot;Param 0 not found for helper \&quot;ifeq\&quot;&quot;</span>)
-    })<span class="question-mark">?</span>;
-    <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="ident">h</span>.<span class="ident">param</span>(<span class="number">1</span>).<span class="ident">ok_or_else</span>(<span class="op">||</span> {
-        <span class="ident">RenderError</span>::<span class="ident">new</span>(<span class="string">&quot;Param 1 not found for helper \&quot;ifeq\&quot;&quot;</span>)
-    })<span class="question-mark">?</span>;
+    <span class="kw">let</span> <span class="ident">param</span> <span class="op">=</span> <span class="ident">h</span>
+        .<span class="ident">param</span>(<span class="number">0</span>)
+        .<span class="ident">ok_or_else</span>(<span class="op">||</span> <span class="ident">RenderError</span>::<span class="ident">new</span>(<span class="string">&quot;Param 0 not found for helper \&quot;ifeq\&quot;&quot;</span>))<span class="question-mark">?</span>;
+    <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="ident">h</span>
+        .<span class="ident">param</span>(<span class="number">1</span>)
+        .<span class="ident">ok_or_else</span>(<span class="op">||</span> <span class="ident">RenderError</span>::<span class="ident">new</span>(<span class="string">&quot;Param 1 not found for helper \&quot;ifeq\&quot;&quot;</span>))<span class="question-mark">?</span>;
     <span class="kw">let</span> <span class="ident">template</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">param</span>.<span class="ident">value</span>() <span class="op">==</span> <span class="ident">value</span>.<span class="ident">value</span>() {
         <span class="ident">h</span>.<span class="ident">template</span>()
     } <span class="kw">else</span> {
@@ -917,7 +1013,9 @@
 <span class="kw">struct</span> <span class="ident">Printer</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Fn</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span><span class="op">&gt;</span>(<span class="ident">T</span>);
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Fn</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span><span class="op">&gt;</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Printer</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> { <span class="self">self</span>.<span class="number">0</span>(<span class="ident">f</span>) }
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
+        <span class="self">self</span>.<span class="number">0</span>(<span class="ident">f</span>)
+    }
 }
 
 <span class="kw">mod</span> <span class="ident">ast</span>;
@@ -929,11 +1027,13 @@
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">store</span>::<span class="ident">PartialIterator</span>;
 
 <span class="doccomment">/// Generate the trigger code to add a representant to a quotient set.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_to_quotient</span>(<span class="ident">set</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">SetDef</span>,
-                       <span class="ident">repr_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-                       <span class="ident">counter_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-                       <span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-                       <span class="ident">var</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RcStr</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_to_quotient</span>(
+    <span class="ident">set</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">SetDef</span>,
+    <span class="ident">repr_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+    <span class="ident">counter_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+    <span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+    <span class="ident">var</span>: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RcStr</span><span class="op">&gt;</span>,
+) <span class="op">-&gt;</span> <span class="ident">String</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">add_to_set</span> <span class="op">=</span> <span class="ident">set</span>.<span class="ident">attributes</span>()[<span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">SetDefKey</span>::<span class="ident">AddToSet</span>]
         .<span class="ident">replace</span>(<span class="string">&quot;$item&quot;</span>, <span class="kw-2">&amp;</span><span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;${}&quot;</span>, <span class="ident">item</span>));
     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">var</span>) <span class="op">=</span> <span class="kw-2">*</span><span class="ident">var</span> {
@@ -951,11 +1051,15 @@
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">print</span>(<span class="ident">ir_desc</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">IrDesc</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
     <span class="kw">let</span> <span class="ident">dummy_choice</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">dummy_choice</span>();
     <span class="kw">let</span> <span class="ident">choices</span> <span class="op">=</span> <span class="ident">order_choices</span>(<span class="ident">ir_desc</span>)
-        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">choice</span>::<span class="ident">Ast</span>::<span class="ident">new</span>(<span class="ident">c</span>, <span class="ident">ir_desc</span>)).<span class="ident">collect_vec</span>();
+        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">choice</span>::<span class="ident">Ast</span>::<span class="ident">new</span>(<span class="ident">c</span>, <span class="ident">ir_desc</span>))
+        .<span class="ident">collect_vec</span>();
     <span class="kw">let</span> <span class="ident">partials</span> <span class="op">=</span> <span class="ident">store</span>::<span class="ident">partial_iterators</span>(<span class="kw-2">&amp;</span><span class="ident">choices</span>, <span class="ident">ir_desc</span>);
     <span class="kw">let</span> <span class="ident">incr_iterators</span> <span class="op">=</span> <span class="ident">store</span>::<span class="ident">incr_iterators</span>(<span class="ident">ir_desc</span>);
-    <span class="kw">let</span> <span class="ident">triggers</span> <span class="op">=</span> <span class="ident">ir_desc</span>.<span class="ident">triggers</span>().<span class="ident">enumerate</span>()
-        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">id</span>, <span class="ident">t</span>)<span class="op">|</span> <span class="ident">Trigger</span>::<span class="ident">new</span>(<span class="ident">id</span>, <span class="ident">t</span>, <span class="ident">dummy_choice</span>, <span class="ident">ir_desc</span>)).<span class="ident">collect</span>();
+    <span class="kw">let</span> <span class="ident">triggers</span> <span class="op">=</span> <span class="ident">ir_desc</span>
+        .<span class="ident">triggers</span>()
+        .<span class="ident">enumerate</span>()
+        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">id</span>, <span class="ident">t</span>)<span class="op">|</span> <span class="ident">Trigger</span>::<span class="ident">new</span>(<span class="ident">id</span>, <span class="ident">t</span>, <span class="ident">dummy_choice</span>, <span class="ident">ir_desc</span>))
+        .<span class="ident">collect</span>();
     <span class="kw">type</span> <span class="ident">PartialIters</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">store</span>::<span class="ident">PartialIterator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">store</span>::<span class="ident">NewChoice</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>)<span class="op">&gt;</span>;
     <span class="macro">render</span><span class="macro">!</span>(<span class="ident">main</span>, <span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
         <span class="ident">choices</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">choice</span>::<span class="ident">Ast</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>] <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">choices</span>,
@@ -1160,7 +1264,8 @@
     <span class="kw">fn</span> <span class="ident">stable_no_deps</span>() {
         <span class="macro">assert_eq</span><span class="macro">!</span>(
             <span class="ident">stable_topological_sort</span>(<span class="kw-2">&amp;</span><span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;a&quot;</span>, <span class="string">&quot;b&quot;</span>, <span class="string">&quot;c&quot;</span>, <span class="string">&quot;d&quot;</span>, <span class="string">&quot;e&quot;</span>], <span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">vec</span><span class="macro">!</span>[]),
-            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;a&quot;</span>, <span class="string">&quot;b&quot;</span>, <span class="string">&quot;c&quot;</span>, <span class="string">&quot;d&quot;</span>, <span class="string">&quot;e&quot;</span>]))
+            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;a&quot;</span>, <span class="string">&quot;b&quot;</span>, <span class="string">&quot;c&quot;</span>, <span class="string">&quot;d&quot;</span>, <span class="string">&quot;e&quot;</span>])
+        )
     }
 
     <span class="doccomment">/// Sorting an array which is already in topological order, even in</span>
@@ -1168,13 +1273,12 @@
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">stable_deps</span>() {
         <span class="macro">assert_eq</span><span class="macro">!</span>(
-            <span class="ident">stable_topological_sort</span>(<span class="kw-2">&amp;</span><span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;a&quot;</span>, <span class="string">&quot;b&quot;</span>, <span class="string">&quot;c:b&quot;</span>, <span class="string">&quot;d&quot;</span>], <span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">node</span><span class="op">|</span> {
-                <span class="kw">match</span> <span class="ident">node</span> {
-                    <span class="string">&quot;c:b&quot;</span> <span class="op">=&gt;</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;b&quot;</span>],
-                    <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">vec</span><span class="macro">!</span>[],
-                }
+            <span class="ident">stable_topological_sort</span>(<span class="kw-2">&amp;</span><span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;a&quot;</span>, <span class="string">&quot;b&quot;</span>, <span class="string">&quot;c:b&quot;</span>, <span class="string">&quot;d&quot;</span>], <span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">node</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">node</span> {
+                <span class="string">&quot;c:b&quot;</span> <span class="op">=&gt;</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;b&quot;</span>],
+                <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">vec</span><span class="macro">!</span>[],
             }),
-            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;a&quot;</span>, <span class="string">&quot;b&quot;</span>, <span class="string">&quot;c:b&quot;</span>, <span class="string">&quot;d&quot;</span>]))
+            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;a&quot;</span>, <span class="string">&quot;b&quot;</span>, <span class="string">&quot;c:b&quot;</span>, <span class="string">&quot;d&quot;</span>])
+        )
     }
 
     <span class="doccomment">/// Elements which have a dependency are sorted immediately after</span>
@@ -1182,13 +1286,15 @@
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">right_after_dep</span>() {
         <span class="macro">assert_eq</span><span class="macro">!</span>(
-            <span class="ident">stable_topological_sort</span>(<span class="kw-2">&amp;</span><span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;a&quot;</span>, <span class="string">&quot;b:d&quot;</span>, <span class="string">&quot;c&quot;</span>, <span class="string">&quot;d&quot;</span>, <span class="string">&quot;e&quot;</span>], <span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">node</span><span class="op">|</span> {
-                <span class="kw">match</span> <span class="ident">node</span> {
+            <span class="ident">stable_topological_sort</span>(
+                <span class="kw-2">&amp;</span><span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;a&quot;</span>, <span class="string">&quot;b:d&quot;</span>, <span class="string">&quot;c&quot;</span>, <span class="string">&quot;d&quot;</span>, <span class="string">&quot;e&quot;</span>],
+                <span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">node</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">node</span> {
                     <span class="string">&quot;b:d&quot;</span> <span class="op">=&gt;</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;d&quot;</span>],
                     <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">vec</span><span class="macro">!</span>[],
                 }
-            }),
-            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;a&quot;</span>, <span class="string">&quot;c&quot;</span>, <span class="string">&quot;d&quot;</span>, <span class="string">&quot;b:d&quot;</span>, <span class="string">&quot;e&quot;</span>]))
+            ),
+            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;a&quot;</span>, <span class="string">&quot;c&quot;</span>, <span class="string">&quot;d&quot;</span>, <span class="string">&quot;b:d&quot;</span>, <span class="string">&quot;e&quot;</span>])
+        )
     }
 
     <span class="doccomment">/// If multiple independent elements share a dependency, their</span>
@@ -1196,14 +1302,16 @@
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">indep_after_dep</span>() {
         <span class="macro">assert_eq</span><span class="macro">!</span>(
-            <span class="ident">stable_topological_sort</span>(<span class="kw-2">&amp;</span><span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;a&quot;</span>, <span class="string">&quot;b:d&quot;</span>, <span class="string">&quot;c:d&quot;</span>, <span class="string">&quot;d&quot;</span>, <span class="string">&quot;e&quot;</span>], <span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">node</span><span class="op">|</span> {
-                <span class="kw">match</span> <span class="ident">node</span> {
+            <span class="ident">stable_topological_sort</span>(
+                <span class="kw-2">&amp;</span><span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;a&quot;</span>, <span class="string">&quot;b:d&quot;</span>, <span class="string">&quot;c:d&quot;</span>, <span class="string">&quot;d&quot;</span>, <span class="string">&quot;e&quot;</span>],
+                <span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">node</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">node</span> {
                     <span class="string">&quot;b:d&quot;</span> <span class="op">=&gt;</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;d&quot;</span>],
                     <span class="string">&quot;c:d&quot;</span> <span class="op">=&gt;</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;d&quot;</span>],
                     <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">vec</span><span class="macro">!</span>[],
                 }
-            }),
-            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;a&quot;</span>, <span class="string">&quot;d&quot;</span>, <span class="string">&quot;b:d&quot;</span>, <span class="string">&quot;c:d&quot;</span>, <span class="string">&quot;e&quot;</span>]))
+            ),
+            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;a&quot;</span>, <span class="string">&quot;d&quot;</span>, <span class="string">&quot;b:d&quot;</span>, <span class="string">&quot;c:d&quot;</span>, <span class="string">&quot;e&quot;</span>])
+        )
     }
 
     <span class="doccomment">/// If multiple elements share a dependency, their own dependencies</span>
@@ -1218,12 +1326,15 @@
                     <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">vec</span><span class="macro">!</span>[],
                 }
             }),
-            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;a&quot;</span>, <span class="string">&quot;d&quot;</span>, <span class="string">&quot;c:d&quot;</span>, <span class="string">&quot;b:d,c&quot;</span>, <span class="string">&quot;e&quot;</span>]))
+            <span class="prelude-val">Ok</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="string">&quot;a&quot;</span>, <span class="string">&quot;d&quot;</span>, <span class="string">&quot;c:d&quot;</span>, <span class="string">&quot;b:d,c&quot;</span>, <span class="string">&quot;e&quot;</span>])
+        )
     }
 }
 
 <span class="doccomment">/// Order the choices so that they are computed in the right order to avoid overflows.</span>
-<span class="kw">fn</span> <span class="ident">order_choices</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="ident">ir_desc</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">IrDesc</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span><span class="op">=</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Choice</span><span class="op">&gt;</span> <span class="op">+</span><span class="lifetime">&#39;a</span> {
+<span class="kw">fn</span> <span class="ident">order_choices</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+    <span class="ident">ir_desc</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">IrDesc</span>,
+) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Choice</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;a</span> {
     <span class="kw">let</span> <span class="ident">names</span> <span class="op">=</span> <span class="ident">ir_desc</span>.<span class="ident">choices</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">name</span>()).<span class="ident">collect_vec</span>();
     <span class="kw">let</span> <span class="ident">sorted</span> <span class="op">=</span> <span class="ident">stable_topological_sort</span>(<span class="kw-2">&amp;</span><span class="ident">names</span>, <span class="op">|</span><span class="ident">choice</span><span class="op">|</span> {
         <span class="kw">let</span> <span class="ident">def</span> <span class="op">=</span> <span class="ident">ir_desc</span>.<span class="ident">get_choice</span>(<span class="ident">choice</span>).<span class="ident">choice_def</span>();
@@ -1234,7 +1345,9 @@
         }
         <span class="prelude-val">None</span>
     });
-    <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">sorted</span>).<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">ir_desc</span>.<span class="ident">get_choice</span>(<span class="ident">c</span>))
+    <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">sorted</span>)
+        .<span class="ident">into_iter</span>()
+        .<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">ir_desc</span>.<span class="ident">get_choice</span>(<span class="ident">c</span>))
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>)]</span>
@@ -1249,52 +1362,89 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Trigger</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">id</span>: <span class="ident">usize</span>, <span class="ident">trigger</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Trigger</span>, <span class="ident">dummy_choice</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Choice</span>,
-           <span class="ident">ir_desc</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">IrDesc</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">id</span>: <span class="ident">usize</span>,
+        <span class="ident">trigger</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Trigger</span>,
+        <span class="ident">dummy_choice</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Choice</span>,
+        <span class="ident">ir_desc</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">IrDesc</span>,
+    ) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">inputs</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">trigger</span>.<span class="ident">inputs</span>;
         <span class="kw">let</span> <span class="ident">ctx</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">ast</span>::<span class="ident">Context</span>::<span class="ident">new</span>(<span class="ident">ir_desc</span>, <span class="ident">dummy_choice</span>, <span class="kw-2">&amp;</span><span class="ident">trigger</span>.<span class="ident">foralls</span>, <span class="ident">inputs</span>);
-        <span class="kw">let</span> <span class="ident">inputs</span> <span class="op">=</span> <span class="ident">trigger</span>.<span class="ident">inputs</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">pos</span>, <span class="ident">input</span>)<span class="op">|</span> {
-            (<span class="ident">ctx</span>.<span class="ident">input_name</span>(<span class="ident">pos</span>), <span class="ident">ast</span>::<span class="ident">ChoiceInstance</span>::<span class="ident">new</span>(<span class="ident">input</span>, <span class="ident">ctx</span>))
-        }).<span class="ident">collect</span>();
+        <span class="kw">let</span> <span class="ident">inputs</span> <span class="op">=</span> <span class="ident">trigger</span>
+            .<span class="ident">inputs</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">enumerate</span>()
+            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">pos</span>, <span class="ident">input</span>)<span class="op">|</span> {
+                (<span class="ident">ctx</span>.<span class="ident">input_name</span>(<span class="ident">pos</span>), <span class="ident">ast</span>::<span class="ident">ChoiceInstance</span>::<span class="ident">new</span>(<span class="ident">input</span>, <span class="ident">ctx</span>))
+            })
+            .<span class="ident">collect</span>();
         <span class="kw">let</span> <span class="ident">foralls</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">trigger</span>.<span class="ident">foralls</span>.<span class="ident">len</span>()).<span class="ident">map</span>(<span class="ident">ir</span>::<span class="ident">Variable</span>::<span class="ident">Forall</span>);
         <span class="kw">let</span> <span class="ident">loop_nest</span> <span class="op">=</span> <span class="ident">ast</span>::<span class="ident">LoopNest</span>::<span class="ident">new</span>(<span class="ident">foralls</span>.<span class="ident">clone</span>(), <span class="ident">ctx</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="macro">vec</span><span class="macro">!</span>[], <span class="bool-val">false</span>);
-        <span class="kw">let</span> <span class="ident">arguments</span> <span class="op">=</span> <span class="ident">foralls</span>.<span class="ident">clone</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">ctx</span>.<span class="ident">var_def</span>(<span class="ident">v</span>))
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">v</span>, <span class="ident">set</span>)<span class="op">|</span> (<span class="ident">v</span>, <span class="ident">ast</span>::<span class="ident">Set</span>::<span class="ident">new</span>(<span class="ident">set</span>, <span class="ident">ctx</span>))).<span class="ident">collect</span>();
-        <span class="kw">let</span> <span class="ident">conditions</span> <span class="op">=</span> <span class="ident">trigger</span>.<span class="ident">conditions</span>.<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">filter</span>::<span class="ident">condition</span>(<span class="ident">c</span>, <span class="ident">ctx</span>).<span class="ident">to_string</span>()).<span class="ident">collect</span>();
+        <span class="kw">let</span> <span class="ident">arguments</span> <span class="op">=</span> <span class="ident">foralls</span>
+            .<span class="ident">clone</span>()
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">ctx</span>.<span class="ident">var_def</span>(<span class="ident">v</span>))
+            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">v</span>, <span class="ident">set</span>)<span class="op">|</span> (<span class="ident">v</span>, <span class="ident">ast</span>::<span class="ident">Set</span>::<span class="ident">new</span>(<span class="ident">set</span>, <span class="ident">ctx</span>)))
+            .<span class="ident">collect</span>();
+        <span class="kw">let</span> <span class="ident">conditions</span> <span class="op">=</span> <span class="ident">trigger</span>
+            .<span class="ident">conditions</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">filter</span>::<span class="ident">condition</span>(<span class="ident">c</span>, <span class="ident">ctx</span>).<span class="ident">to_string</span>())
+            .<span class="ident">collect</span>();
         <span class="kw">let</span> <span class="ident">code</span> <span class="op">=</span> <span class="ident">ast</span>::<span class="ident">code</span>(<span class="kw-2">&amp;</span><span class="ident">trigger</span>.<span class="ident">code</span>, <span class="ident">ctx</span>);
         <span class="kw">let</span> <span class="ident">vars</span> <span class="op">=</span> <span class="ident">foralls</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> (<span class="ident">v</span>, <span class="ident">ctx</span>.<span class="ident">var_def</span>(<span class="ident">v</span>).<span class="number">1</span>)).<span class="ident">collect_vec</span>();
         <span class="kw">let</span> <span class="ident">partial_iters</span> <span class="op">=</span> <span class="ident">PartialIterator</span>::<span class="ident">generate</span>(<span class="kw-2">&amp;</span><span class="ident">vars</span>, <span class="bool-val">false</span>, <span class="ident">ir_desc</span>, <span class="ident">ctx</span>);
-        <span class="kw">let</span> <span class="ident">partial_iterators</span> <span class="op">=</span> <span class="ident">partial_iters</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">iter</span>, <span class="ident">ctx</span>)<span class="op">|</span> {
-            (<span class="ident">iter</span>, <span class="ident">vars</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">v</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">ctx</span>.<span class="ident">var_name</span>(<span class="ident">v</span>)).<span class="ident">collect</span>())
-        }).<span class="ident">collect</span>();
-        <span class="ident">Trigger</span> { <span class="ident">id</span>, <span class="ident">loop_nest</span>, <span class="ident">partial_iterators</span>, <span class="ident">arguments</span>, <span class="ident">inputs</span>, <span class="ident">conditions</span>, <span class="ident">code</span> }
+        <span class="kw">let</span> <span class="ident">partial_iterators</span> <span class="op">=</span> <span class="ident">partial_iters</span>
+            .<span class="ident">into_iter</span>()
+            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">iter</span>, <span class="ident">ctx</span>)<span class="op">|</span> {
+                (<span class="ident">iter</span>, <span class="ident">vars</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">v</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">ctx</span>.<span class="ident">var_name</span>(<span class="ident">v</span>)).<span class="ident">collect</span>())
+            })
+            .<span class="ident">collect</span>();
+        <span class="ident">Trigger</span> {
+            <span class="ident">id</span>,
+            <span class="ident">loop_nest</span>,
+            <span class="ident">partial_iterators</span>,
+            <span class="ident">arguments</span>,
+            <span class="ident">inputs</span>,
+            <span class="ident">conditions</span>,
+            <span class="ident">code</span>,
+        }
     }
 }
-
 
 <span class="kw">impl</span> <span class="ident">Display</span> <span class="kw">for</span> <span class="ident">ir</span>::<span class="ident">Enum</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
         <span class="kw">let</span> <span class="ident">n_values</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">values</span>().<span class="ident">len</span>();
-        <span class="kw">let</span> <span class="ident">value_defs</span> <span class="op">=</span> <span class="macro">iter_printer</span><span class="macro">!</span>(<span class="ident">value_def_order</span>(<span class="self">self</span>).<span class="ident">enumerate</span>(),
+        <span class="kw">let</span> <span class="ident">value_defs</span> <span class="op">=</span>
+            <span class="macro">iter_printer</span><span class="macro">!</span>(<span class="ident">value_def_order</span>(<span class="self">self</span>).<span class="ident">enumerate</span>(),
             (<span class="ident">pos</span>, (<span class="ident">name</span>, <span class="ident">doc</span>)),
             <span class="string">&quot;{doc}pub const {name}: {t_name} = {t_name} {{ bits: 0b1{pos_zero} }};\n\n&quot;</span>,
             <span class="ident">doc</span> <span class="op">=</span> <span class="macro">iter_printer</span><span class="macro">!</span>(<span class="ident">doc</span>, <span class="ident">doc</span>, <span class="string">&quot;///{}\n&quot;</span>, <span class="ident">doc</span>),
             <span class="ident">name</span> <span class="op">=</span> <span class="ident">name</span>,
             <span class="ident">t_name</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">name</span>(),
             <span class="ident">pos_zero</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">pos</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="string">&quot;0&quot;</span>).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>());
-        <span class="kw">let</span> <span class="ident">alias_defs</span> <span class="op">=</span> <span class="macro">iter_printer</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">aliases</span>(), (<span class="ident">name</span>, <span class="kw-2">&amp;</span>(<span class="kw-2">ref</span> <span class="ident">values</span>, <span class="kw-2">ref</span> <span class="ident">doc</span>)),
+        <span class="kw">let</span> <span class="ident">alias_defs</span> <span class="op">=</span> <span class="macro">iter_printer</span><span class="macro">!</span>(
+            <span class="self">self</span>.<span class="ident">aliases</span>(),
+            (<span class="ident">name</span>, <span class="kw-2">&amp;</span>(<span class="kw-2">ref</span> <span class="ident">values</span>, <span class="kw-2">ref</span> <span class="ident">doc</span>)),
             <span class="string">&quot;{doc}pub const {name}: {t_name} = {t_name} {{ bits: {values} }};\n\n&quot;</span>,
-            <span class="ident">doc</span> <span class="op">=</span> <span class="ident">doc</span>.<span class="ident">iter</span>().<span class="ident">format_with</span>(<span class="string">&quot;&quot;</span>, <span class="op">|</span><span class="ident">doc</span>, <span class="ident">f</span><span class="op">|</span> <span class="ident">f</span>(<span class="kw-2">&amp;</span><span class="macro">format_args</span><span class="macro">!</span>(<span class="string">&quot;///{}\n&quot;</span>, <span class="ident">doc</span>))),
+            <span class="ident">doc</span> <span class="op">=</span> <span class="ident">doc</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">format_with</span>(<span class="string">&quot;&quot;</span>, <span class="op">|</span><span class="ident">doc</span>, <span class="ident">f</span><span class="op">|</span> <span class="ident">f</span>(<span class="kw-2">&amp;</span><span class="macro">format_args</span><span class="macro">!</span>(<span class="string">&quot;///{}\n&quot;</span>, <span class="ident">doc</span>))),
             <span class="ident">name</span> <span class="op">=</span> <span class="ident">name</span>,
             <span class="ident">t_name</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">name</span>(),
             <span class="ident">values</span> <span class="op">=</span> <span class="ident">values</span>.<span class="ident">iter</span>().<span class="ident">format_with</span>(<span class="string">&quot; | &quot;</span>, <span class="op">|</span><span class="ident">v</span>, <span class="ident">f</span><span class="op">|</span> {
                 <span class="ident">f</span>(<span class="kw-2">&amp;</span><span class="macro">format_args</span><span class="macro">!</span>(<span class="string">&quot;{}::{}.bits&quot;</span>, <span class="self">self</span>.<span class="ident">name</span>(), <span class="ident">v</span>))
-            }));
-        <span class="kw">let</span> <span class="ident">printers</span> <span class="op">=</span> <span class="macro">iter_printer</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">values</span>(), (<span class="ident">v</span>, <span class="kw">_</span>),
+            })
+        );
+        <span class="kw">let</span> <span class="ident">printers</span> <span class="op">=</span> <span class="macro">iter_printer</span><span class="macro">!</span>(
+            <span class="self">self</span>.<span class="ident">values</span>(),
+            (<span class="ident">v</span>, <span class="kw">_</span>),
             <span class="string">&quot;if self.intersects({t}::{v}) {{ values.push(\&quot;{v}\&quot;); }}&quot;</span>,
-            <span class="ident">t</span><span class="op">=</span><span class="self">self</span>.<span class="ident">name</span>(), <span class="ident">v</span><span class="op">=</span><span class="ident">v</span>);
-        <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="macro">include_str</span><span class="macro">!</span>(<span class="string">&quot;template/enum_def.rs&quot;</span>),
+            <span class="ident">t</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">name</span>(),
+            <span class="ident">v</span> <span class="op">=</span> <span class="ident">v</span>
+        );
+        <span class="macro">write</span><span class="macro">!</span>(
+            <span class="ident">f</span>,
+            <span class="macro">include_str</span><span class="macro">!</span>(<span class="string">&quot;template/enum_def.rs&quot;</span>),
             <span class="ident">type_name</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">name</span>(),
             <span class="ident">doc_comment</span> <span class="op">=</span> <span class="macro">iter_printer</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">doc</span>(), <span class="ident">doc</span>, <span class="string">&quot;///{}\n&quot;</span>, <span class="ident">doc</span>),
             <span class="ident">value_defs</span> <span class="op">=</span> <span class="ident">value_defs</span>,
@@ -1321,25 +1471,47 @@
             <span class="ident">high</span>.<span class="ident">push</span>(<span class="ident">rhs</span>);
         }
         <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">enum_</span>.<span class="ident">name</span>();
-        <span class="kw">let</span> <span class="ident">same_bits</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">values</span>.<span class="ident">is_empty</span>() { <span class="string">&quot;0&quot;</span>.<span class="ident">to_string</span>() } <span class="kw">else</span> {
-            <span class="ident">values</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}::{}.bits&quot;</span>, <span class="ident">n</span>, <span class="ident">v</span>)).<span class="ident">format</span>(<span class="string">&quot; | &quot;</span>).<span class="ident">to_string</span>()
+        <span class="kw">let</span> <span class="ident">same_bits</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">values</span>.<span class="ident">is_empty</span>() {
+            <span class="string">&quot;0&quot;</span>.<span class="ident">to_string</span>()
+        } <span class="kw">else</span> {
+            <span class="ident">values</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}::{}.bits&quot;</span>, <span class="ident">n</span>, <span class="ident">v</span>))
+                .<span class="ident">format</span>(<span class="string">&quot; | &quot;</span>)
+                .<span class="ident">to_string</span>()
         };
-        <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="macro">include_str</span><span class="macro">!</span>(<span class="string">&quot;template/inverse.rs&quot;</span>),
+        <span class="macro">write</span><span class="macro">!</span>(
+            <span class="ident">f</span>,
+            <span class="macro">include_str</span><span class="macro">!</span>(<span class="string">&quot;template/inverse.rs&quot;</span>),
             <span class="ident">type_name</span> <span class="op">=</span> <span class="ident">enum_</span>.<span class="ident">name</span>(),
-            <span class="ident">high_bits</span> <span class="op">=</span> <span class="ident">high</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}::{}.bits&quot;</span>, <span class="ident">n</span>, <span class="ident">v</span>)).<span class="ident">format</span>(<span class="string">&quot; | &quot;</span>),
-            <span class="ident">low_bits</span> <span class="op">=</span> <span class="ident">low</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}::{}.bits&quot;</span>, <span class="ident">n</span>, <span class="ident">v</span>)).<span class="ident">format</span>(<span class="string">&quot; | &quot;</span>),
-            <span class="ident">same_bits</span> <span class="op">=</span> <span class="ident">same_bits</span>)<span class="question-mark">?</span>;
+            <span class="ident">high_bits</span> <span class="op">=</span> <span class="ident">high</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}::{}.bits&quot;</span>, <span class="ident">n</span>, <span class="ident">v</span>))
+                .<span class="ident">format</span>(<span class="string">&quot; | &quot;</span>),
+            <span class="ident">low_bits</span> <span class="op">=</span> <span class="ident">low</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}::{}.bits&quot;</span>, <span class="ident">n</span>, <span class="ident">v</span>))
+                .<span class="ident">format</span>(<span class="string">&quot; | &quot;</span>),
+            <span class="ident">same_bits</span> <span class="op">=</span> <span class="ident">same_bits</span>
+        )<span class="question-mark">?</span>;
     }
     <span class="prelude-val">Ok</span>(())
 }
 
-<span class="kw">fn</span> <span class="ident">value_def_order</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="ident">enum_</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Enum</span>)
-        <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span><span class="op">=</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">RcStr</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>)<span class="op">&gt;</span> <span class="op">+</span><span class="lifetime">&#39;a</span> {
+<span class="kw">fn</span> <span class="ident">value_def_order</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+    <span class="ident">enum_</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Enum</span>,
+) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> (<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">RcStr</span>, <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>)<span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;a</span> {
     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">mapping</span>) <span class="op">=</span> <span class="ident">enum_</span>.<span class="ident">inverse_mapping</span>() {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">values</span>: <span class="ident">IndexMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">enum_</span>.<span class="ident">values</span>().<span class="ident">iter</span>().<span class="ident">collect</span>();
-        <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">mapping</span>.<span class="ident">iter</span>().<span class="ident">flat_map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="kw-2">ref</span> <span class="ident">x</span>, <span class="kw-2">ref</span> <span class="ident">y</span>)<span class="op">|</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">x</span>, <span class="ident">y</span>])
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> (<span class="ident">x</span>, <span class="ident">values</span>.<span class="ident">remove</span>(<span class="ident">x</span>).<span class="ident">unwrap</span>())).<span class="ident">collect_vec</span>().<span class="ident">into_iter</span>()
-            .<span class="ident">chain</span>(<span class="ident">values</span>)) <span class="kw">as</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span><span class="op">=</span><span class="kw">_</span><span class="op">&gt;&gt;</span>
+        <span class="ident">Box</span>::<span class="ident">new</span>(
+            <span class="ident">mapping</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">flat_map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="kw-2">ref</span> <span class="ident">x</span>, <span class="kw-2">ref</span> <span class="ident">y</span>)<span class="op">|</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">x</span>, <span class="ident">y</span>])
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> (<span class="ident">x</span>, <span class="ident">values</span>.<span class="ident">remove</span>(<span class="ident">x</span>).<span class="ident">unwrap</span>()))
+                .<span class="ident">collect_vec</span>()
+                .<span class="ident">into_iter</span>()
+                .<span class="ident">chain</span>(<span class="ident">values</span>),
+        ) <span class="kw">as</span> <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw">_</span><span class="op">&gt;&gt;</span>
     } <span class="kw">else</span> {
         <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">enum_</span>.<span class="ident">values</span>().<span class="ident">iter</span>())
     }
@@ -1363,18 +1535,18 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="doccomment">/// Printing for test structures.</span>
 <span class="kw">mod</span> <span class="ident">test</span> {
+    <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ENGINE</span>;
     <span class="kw">use</span> <span class="ident">ir</span>::<span class="ident">test</span>::{<span class="ident">EvalContext</span>, <span class="ident">StaticCond</span>};
     <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
     <span class="kw">use</span> <span class="ident">print</span>;
     <span class="kw">use</span> <span class="ident">std</span>;
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ENGINE</span>;
 
     <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">EvalContext</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
         <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
             <span class="kw">for</span> (<span class="ident">input</span>, <span class="ident">values</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">inputs_def</span>.<span class="ident">iter</span>().<span class="ident">zip_eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">input_values</span>) {
                 <span class="kw">let</span> <span class="ident">choice</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ir_desc</span>.<span class="ident">get_choice</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>.<span class="ident">choice</span>);
-                <span class="kw">let</span> <span class="ident">ctx</span> <span class="op">=</span> <span class="ident">print</span>::<span class="ident">ast</span>::<span class="ident">Context</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">ir_desc</span>, <span class="ident">choice</span>, <span class="kw-2">&amp;</span>[],
-                                                   <span class="self">self</span>.<span class="ident">inputs_def</span>);
+                <span class="kw">let</span> <span class="ident">ctx</span> <span class="op">=</span>
+                    <span class="ident">print</span>::<span class="ident">ast</span>::<span class="ident">Context</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">ir_desc</span>, <span class="ident">choice</span>, <span class="kw-2">&amp;</span>[], <span class="self">self</span>.<span class="ident">inputs_def</span>);
                 <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">print</span>::<span class="ident">value_set</span>::<span class="ident">print</span>(<span class="ident">values</span>, <span class="kw-2">&amp;</span><span class="ident">ctx</span>);
                 <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot; {} = {},&quot;</span>, <span class="ident">input</span>.<span class="ident">choice</span>, <span class="ident">values</span>)<span class="question-mark">?</span>;
             }
@@ -1397,7 +1569,9 @@
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">replace</span>() {
         <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> ::<span class="ident">env_logger</span>::<span class="ident">try_init</span>();
-        <span class="kw">let</span> <span class="ident">out</span> <span class="op">=</span> <span class="ident">ENGINE</span>.<span class="ident">template_render</span>(<span class="string">&quot;{{replace \&quot;foobar\&quot; foo=\&quot;bar\&quot;}}&quot;</span>, <span class="kw-2">&amp;</span>()).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">out</span> <span class="op">=</span> <span class="ident">ENGINE</span>
+            .<span class="ident">template_render</span>(<span class="string">&quot;{{replace \&quot;foobar\&quot; foo=\&quot;bar\&quot;}}&quot;</span>, <span class="kw-2">&amp;</span>())
+            .<span class="ident">unwrap</span>();
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">out</span>, <span class="string">&quot;barbar&quot;</span>);
     }
 }

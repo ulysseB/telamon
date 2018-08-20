@@ -199,6 +199,12 @@
 <span id="199">199</span>
 <span id="200">200</span>
 <span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Prints the manipulation of individual domains.</span>
 <span class="kw">use</span> <span class="ident">ir</span>;
@@ -241,7 +247,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_store</span>(
         <span class="ident">choice_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">ChoiceInstance</span>,
         <span class="ident">get_old</span>: <span class="ident">bool</span>,
-        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">print</span>::<span class="ident">Context</span>
+        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">print</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">getter</span> <span class="op">=</span> <span class="ident">print</span>::<span class="ident">store</span>::<span class="ident">getter_name</span>(<span class="kw-2">&amp;</span><span class="ident">choice_instance</span>.<span class="ident">choice</span>, <span class="ident">get_old</span>);
         <span class="kw">let</span> <span class="ident">ids</span> <span class="op">=</span> <span class="ident">print</span>::<span class="ident">choice</span>::<span class="ident">ids</span>(<span class="ident">choice_instance</span>, <span class="ident">ctx</span>);
@@ -257,7 +263,9 @@
     }
 
     <span class="doccomment">/// Returns the type taken by the value.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">value_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">ValueType</span> { <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value_type</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">value_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">ValueType</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value_type</span>
+    }
 
     <span class="doccomment">/// Returns the antisymmetric of the value instead of the value.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">inverse</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
@@ -303,7 +311,9 @@
     <span class="ident">value_type</span>: <span class="ident">ir</span>::<span class="ident">ValueType</span>,
 }
 
-<span class="macro">lazy_static</span><span class="macro">!</span> { <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">NEXT_IDENT_ID</span>: <span class="ident">AtomicUsize</span> <span class="op">=</span> <span class="ident">AtomicUsize</span>::<span class="ident">new</span>(<span class="number">0</span>); }
+<span class="macro">lazy_static</span><span class="macro">!</span> {
+    <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">NEXT_IDENT_ID</span>: <span class="ident">AtomicUsize</span> <span class="op">=</span> <span class="ident">AtomicUsize</span>::<span class="ident">new</span>(<span class="number">0</span>);
+}
 
 <span class="doccomment">/// Resets the counter used to attribute name to identifiers.</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
@@ -327,7 +337,9 @@
     }
 
     <span class="doccomment">/// Returns the type taken by the value.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">value_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">ValueType</span> { <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value_type</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">value_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">ValueType</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value_type</span>
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ValueIdent</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Value</span> {
@@ -362,7 +374,7 @@
     <span class="ident">constructor_op</span>: <span class="ident">ir</span>::<span class="ident">CmpOp</span>,
     <span class="ident">from</span>: <span class="kw-2">&amp;</span><span class="ident">Value</span>,
     <span class="ident">to_type</span>: <span class="ident">ir</span>::<span class="ident">ValueType</span>,
-    <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">print</span>::<span class="ident">Context</span>
+    <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">print</span>::<span class="ident">Context</span>,
 ) <span class="op">-&gt;</span> <span class="ident">Value</span> {
     <span class="kw">let</span> <span class="ident">constructor</span> <span class="op">=</span> <span class="ident">constructor_from_op</span>(<span class="ident">constructor_op</span>);
     <span class="kw">let</span> <span class="ident">to_universe</span> <span class="op">=</span> <span class="ident">universe</span>(<span class="kw-2">&amp;</span><span class="ident">to_type</span>, <span class="ident">ctx</span>);

@@ -269,11 +269,75 @@
 <span id="269">269</span>
 <span id="270">270</span>
 <span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">codegen</span>;
 <span class="kw">use</span> <span class="ident">ir</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
-<span class="kw">use</span> <span class="ident">search_space</span>::{<span class="ident">Domain</span>, <span class="ident">SearchSpace</span>, <span class="ident">DimKind</span>, <span class="ident">Order</span>};
+<span class="kw">use</span> <span class="ident">search_space</span>::{<span class="ident">DimKind</span>, <span class="ident">Domain</span>, <span class="ident">Order</span>, <span class="ident">SearchSpace</span>};
 <span class="kw">use</span> <span class="ident">std</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
@@ -289,21 +353,29 @@
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Returns the ID of the representant.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">DimId</span> { <span class="self">self</span>.<span class="ident">representant</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">DimId</span> {
+        <span class="self">self</span>.<span class="ident">representant</span>
+    }
 
     <span class="doccomment">/// Returns the kind of the dimension.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">kind</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">DimKind</span> { <span class="self">self</span>.<span class="ident">kind</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">kind</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">DimKind</span> {
+        <span class="self">self</span>.<span class="ident">kind</span>
+    }
 
     <span class="doccomment">/// Returns the size of the dimensions.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">codegen</span>::<span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> { <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">size</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">codegen</span>::<span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">size</span>
+    }
 
     <span class="doccomment">/// Returns the ids of the `ir::Dimensions` represented by this dimension.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dim_ids</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span><span class="op">=</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dim_ids</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span> {
         <span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">once</span>(<span class="self">self</span>.<span class="ident">representant</span>).<span class="ident">chain</span>(<span class="self">self</span>.<span class="ident">other_dims</span>.<span class="ident">clone</span>())
     }
 
     <span class="doccomment">/// Returns the induction levels handled by this loop.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">induction_levels</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">InductionLevel</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>] { <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">induction_levels</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">induction_levels</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">InductionLevel</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">induction_levels</span>
+    }
 
     <span class="doccomment">/// Gives the ownership on the induction levels computed by the dimension.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">drain_induction_levels</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InductionLevel</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
@@ -320,13 +392,18 @@
     }
 
     <span class="doccomment">/// Returns the values to pass from the host to the device to implement `self`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">host_values</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="self">self</span>, <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">SearchSpace</span>)
-        <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span><span class="op">=</span><span class="ident">codegen</span>::<span class="ident">ParamVal</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;b</span>
-    {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">host_values</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="self">self</span>,
+        <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">SearchSpace</span>,
+    ) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">codegen</span>::<span class="ident">ParamVal</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;b</span> {
         <span class="kw">let</span> <span class="ident">size_param</span> <span class="op">=</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">kind</span> <span class="op">==</span> <span class="ident">DimKind</span>::<span class="ident">LOOP</span> {
             <span class="ident">codegen</span>::<span class="ident">ParamVal</span>::<span class="ident">from_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">size</span>)
-        } <span class="kw">else</span> { <span class="prelude-val">None</span> };
-        <span class="self">self</span>.<span class="ident">induction_levels</span>.<span class="ident">iter</span>().<span class="ident">flat_map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span>.<span class="ident">host_values</span>(<span class="ident">space</span>))
+        } <span class="kw">else</span> {
+            <span class="prelude-val">None</span>
+        };
+        <span class="self">self</span>.<span class="ident">induction_levels</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">flat_map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span>.<span class="ident">host_values</span>(<span class="ident">space</span>))
             .<span class="ident">chain</span>(<span class="ident">size_param</span>)
     }
 
@@ -339,13 +416,15 @@
             <span class="ident">representant</span>: <span class="ident">dim</span>.<span class="ident">id</span>(),
             <span class="ident">size</span>: <span class="ident">codegen</span>::<span class="ident">Size</span>::<span class="ident">from_ir</span>(<span class="ident">dim</span>.<span class="ident">size</span>(), <span class="ident">space</span>),
             <span class="ident">other_dims</span>: <span class="macro">vec</span><span class="macro">!</span>[],
-            <span class="ident">induction_levels</span>: <span class="macro">vec</span><span class="macro">!</span>[]
+            <span class="ident">induction_levels</span>: <span class="macro">vec</span><span class="macro">!</span>[],
         }
     }
 
     <span class="doccomment">/// Adds `dim` to the list of fused dimensions if it is indeed the case.</span>
     <span class="kw">fn</span> <span class="ident">try_add_fused_dim</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">dim</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Dimension</span>, <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
-        <span class="kw">let</span> <span class="ident">order</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_order</span>(<span class="self">self</span>.<span class="ident">representant</span>.<span class="ident">into</span>(), <span class="ident">dim</span>.<span class="ident">id</span>().<span class="ident">into</span>());
+        <span class="kw">let</span> <span class="ident">order</span> <span class="op">=</span> <span class="ident">space</span>
+            .<span class="ident">domain</span>()
+            .<span class="ident">get_order</span>(<span class="self">self</span>.<span class="ident">representant</span>.<span class="ident">into</span>(), <span class="ident">dim</span>.<span class="ident">id</span>().<span class="ident">into</span>());
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">order</span>.<span class="ident">is_constrained</span>());
         <span class="kw">if</span> <span class="ident">order</span> <span class="op">==</span> <span class="ident">Order</span>::<span class="ident">MERGED</span> {
             <span class="self">self</span>.<span class="ident">other_dims</span>.<span class="ident">push</span>(<span class="ident">dim</span>.<span class="ident">id</span>());
@@ -358,7 +437,9 @@
                 }
             }
             <span class="bool-val">true</span>
-        } <span class="kw">else</span> { <span class="bool-val">false</span> }
+        } <span class="kw">else</span> {
+            <span class="bool-val">false</span>
+        }
     }
 }
 
@@ -367,7 +448,9 @@
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">groups</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Dimension</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
     <span class="lifetime">&#39;dim</span>: <span class="kw">for</span> <span class="ident">dim</span> <span class="kw">in</span> <span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">dims</span>() {
         <span class="kw">for</span> <span class="ident">group</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">groups</span> {
-            <span class="kw">if</span> <span class="ident">group</span>.<span class="ident">try_add_fused_dim</span>(<span class="ident">dim</span>, <span class="ident">space</span>) { <span class="kw">continue</span> <span class="lifetime">&#39;dim</span>; }
+            <span class="kw">if</span> <span class="ident">group</span>.<span class="ident">try_add_fused_dim</span>(<span class="ident">dim</span>, <span class="ident">space</span>) {
+                <span class="kw">continue</span> <span class="lifetime">&#39;dim</span>;
+            }
         }
         <span class="ident">groups</span>.<span class="ident">push</span>(<span class="ident">Dimension</span>::<span class="ident">new</span>(<span class="ident">dim</span>, <span class="ident">space</span>));
     }
@@ -384,15 +467,20 @@
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">InductionLevel</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Returns the type of the value created by the induction level.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">t</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span> { <span class="self">self</span>.<span class="ident">base</span>.<span class="ident">t</span>() }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">t</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span> {
+        <span class="self">self</span>.<span class="ident">base</span>.<span class="ident">t</span>()
+    }
 
     <span class="doccomment">/// Returns the values to pass from the host to the device to implement `self`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">host_values</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>)
-        <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span><span class="op">=</span><span class="ident">codegen</span>::<span class="ident">ParamVal</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>
-    {
-        <span class="self">self</span>.<span class="ident">increment</span>.<span class="ident">as_ref</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">s</span>)<span class="op">|</span> {
-            <span class="ident">codegen</span>::<span class="ident">ParamVal</span>::<span class="ident">from_size</span>(<span class="ident">s</span>)
-        }).<span class="ident">into_iter</span>().<span class="ident">chain</span>(<span class="self">self</span>.<span class="ident">base</span>.<span class="ident">host_values</span>(<span class="ident">space</span>))
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">host_values</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
+    ) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">codegen</span>::<span class="ident">ParamVal</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
+        <span class="self">self</span>.<span class="ident">increment</span>
+            .<span class="ident">as_ref</span>()
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">s</span>)<span class="op">|</span> <span class="ident">codegen</span>::<span class="ident">ParamVal</span>::<span class="ident">from_size</span>(<span class="ident">s</span>))
+            .<span class="ident">into_iter</span>()
+            .<span class="ident">chain</span>(<span class="self">self</span>.<span class="ident">base</span>.<span class="ident">host_values</span>(<span class="ident">space</span>))
     }
 }
 
@@ -404,9 +492,10 @@
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">InductionVar</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Returns the values to pass from the host to the device to implement `self`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">host_values</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="self">self</span>, <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>)
-        <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span><span class="op">=</span><span class="ident">codegen</span>::<span class="ident">ParamVal</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>
-    {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">host_values</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="self">self</span>,
+        <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
+    ) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">codegen</span>::<span class="ident">ParamVal</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
         <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">host_values</span>(<span class="ident">space</span>).<span class="ident">into_iter</span>()
     }
 }
@@ -423,28 +512,43 @@
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">InductionVarValue</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Returns the additive components of the induction variable value.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">components</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span><span class="op">=</span><span class="ident">codegen</span>::<span class="ident">Value</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">components</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">codegen</span>::<span class="ident">Value</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
         <span class="kw">let</span> <span class="ident">ind_var</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ind_var</span>;
-        <span class="self">self</span>.<span class="ident">outer_level</span>.<span class="ident">into_iter</span>()
+        <span class="self">self</span>.<span class="ident">outer_level</span>
+            .<span class="ident">into_iter</span>()
             .<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">dim</span><span class="op">|</span> <span class="ident">codegen</span>::<span class="ident">Value</span>::<span class="ident">InductionLevel</span>(<span class="ident">ind_var</span>, <span class="ident">dim</span>))
             .<span class="ident">chain</span>(<span class="self">self</span>.<span class="ident">operand</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">codegen</span>::<span class="ident">Value</span>::<span class="ident">Operand</span>))
     }
 
     <span class="doccomment">/// Returns the type of the value.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">t</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span> { <span class="self">self</span>.<span class="ident">t</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">t</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span> {
+        <span class="self">self</span>.<span class="ident">t</span>
+    }
 
     <span class="doccomment">/// Returns and induction var value that just contains an operand.</span>
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">ind_var</span>: <span class="ident">ir</span>::<span class="ident">IndVarId</span>,
-           <span class="ident">operand</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
-           <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">ind_var</span>: <span class="ident">ir</span>::<span class="ident">IndVarId</span>,
+        <span class="ident">operand</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+        <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
+    ) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">device</span>().<span class="ident">lower_type</span>(<span class="ident">operand</span>.<span class="ident">t</span>(), <span class="ident">space</span>));
-        <span class="ident">InductionVarValue</span> { <span class="ident">ind_var</span>, <span class="ident">outer_level</span>: <span class="prelude-val">None</span>, <span class="ident">operand</span>: <span class="prelude-val">Some</span>(<span class="ident">operand</span>), <span class="ident">t</span> }
+        <span class="ident">InductionVarValue</span> {
+            <span class="ident">ind_var</span>,
+            <span class="ident">outer_level</span>: <span class="prelude-val">None</span>,
+            <span class="ident">operand</span>: <span class="prelude-val">Some</span>(<span class="ident">operand</span>),
+            <span class="ident">t</span>,
+        }
     }
 
     <span class="doccomment">/// The value is assigned elsewhere.</span>
     <span class="kw">fn</span> <span class="ident">computed_elsewhere</span>(<span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">ind_var</span> <span class="op">=</span> <span class="ident">other</span>.<span class="ident">ind_var</span>;
-        <span class="ident">InductionVarValue</span> { <span class="ident">ind_var</span>, <span class="ident">outer_level</span>: <span class="prelude-val">None</span>, <span class="ident">operand</span>: <span class="prelude-val">None</span>, <span class="ident">t</span>: <span class="ident">other</span>.<span class="ident">t</span>() }
+        <span class="ident">InductionVarValue</span> {
+            <span class="ident">ind_var</span>,
+            <span class="ident">outer_level</span>: <span class="prelude-val">None</span>,
+            <span class="ident">operand</span>: <span class="prelude-val">None</span>,
+            <span class="ident">t</span>: <span class="ident">other</span>.<span class="ident">t</span>(),
+        }
     }
 
     <span class="doccomment">/// Return the current value so it can be used by a level and point the new level</span>
@@ -453,34 +557,47 @@
         <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">replace</span>;
         <span class="ident">InductionVarValue</span> {
             <span class="ident">outer_level</span>: <span class="ident">replace</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">outer_level</span>, <span class="prelude-val">Some</span>(<span class="ident">level</span>)),
-            <span class="ident">operand</span>: <span class="kw">if</span> <span class="ident">use_operand</span> { <span class="ident">replace</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">operand</span>, <span class="prelude-val">None</span>) } <span class="kw">else</span> { <span class="prelude-val">None</span> },
-            <span class="ident">t</span>: <span class="self">self</span>.<span class="ident">t</span>, <span class="ident">ind_var</span>: <span class="self">self</span>.<span class="ident">ind_var</span>,
+            <span class="ident">operand</span>: <span class="kw">if</span> <span class="ident">use_operand</span> {
+                <span class="ident">replace</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">operand</span>, <span class="prelude-val">None</span>)
+            } <span class="kw">else</span> {
+                <span class="prelude-val">None</span>
+            },
+            <span class="ident">t</span>: <span class="self">self</span>.<span class="ident">t</span>,
+            <span class="ident">ind_var</span>: <span class="self">self</span>.<span class="ident">ind_var</span>,
         }
     }
 
     <span class="doccomment">/// Returns the values to pass from the host to the device to implement `self`.</span>
     <span class="kw">fn</span> <span class="ident">host_values</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">codegen</span>::<span class="ident">ParamVal</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
-        <span class="self">self</span>.<span class="ident">operand</span>.<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">codegen</span>::<span class="ident">ParamVal</span>::<span class="ident">from_operand</span>(<span class="ident">x</span>, <span class="ident">space</span>))
+        <span class="self">self</span>.<span class="ident">operand</span>
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">codegen</span>::<span class="ident">ParamVal</span>::<span class="ident">from_operand</span>(<span class="ident">x</span>, <span class="ident">space</span>))
     }
 }
 
 <span class="doccomment">/// Register the induction variables in the dimensions where they must be incremented.</span>
 <span class="doccomment">/// Returns the induction variables and the levels to compute at the begining of the</span>
 <span class="doccomment">/// kernel.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">register_induction_vars</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="ident">dims</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
-                                   <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>)
-    <span class="op">-&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InductionVar</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InductionLevel</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>)
-{
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">register_induction_vars</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+    <span class="ident">dims</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
+    <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+) <span class="op">-&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InductionVar</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InductionLevel</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>) {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ind_levels_map</span> <span class="op">=</span> <span class="ident">MultiHashMap</span>::<span class="ident">default</span>();
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ind_vars</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">precomputed_levels</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
     <span class="kw">for</span> (<span class="ident">id</span>, <span class="ident">ind_var</span>) <span class="kw">in</span> <span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">induction_vars</span>() {
         <span class="kw">let</span> (<span class="ident">const_levels</span>, <span class="ident">mut_levels</span>) <span class="op">=</span> <span class="ident">get_ind_var_levels</span>(<span class="ident">ind_var</span>, <span class="ident">space</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">outer_value</span> <span class="op">=</span> <span class="ident">InductionVarValue</span>::<span class="ident">new</span>(<span class="ident">id</span>, <span class="ident">ind_var</span>.<span class="ident">base</span>(), <span class="ident">space</span>);
-        <span class="kw">let</span> <span class="ident">precomputed</span> <span class="op">=</span> <span class="ident">const_levels</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">dim</span>, <span class="ident">increment</span>)<span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">base</span> <span class="op">=</span> <span class="ident">outer_value</span>.<span class="ident">apply_level</span>(<span class="ident">dim</span>, <span class="bool-val">false</span>);
-            <span class="ident">InductionLevel</span> { <span class="ident">ind_var</span>: <span class="ident">id</span>, <span class="ident">increment</span>: <span class="prelude-val">Some</span>((<span class="ident">dim</span>, <span class="ident">increment</span>)), <span class="ident">base</span> }
-        }).<span class="ident">collect_vec</span>();
+        <span class="kw">let</span> <span class="ident">precomputed</span> <span class="op">=</span> <span class="ident">const_levels</span>
+            .<span class="ident">into_iter</span>()
+            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">dim</span>, <span class="ident">increment</span>)<span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">base</span> <span class="op">=</span> <span class="ident">outer_value</span>.<span class="ident">apply_level</span>(<span class="ident">dim</span>, <span class="bool-val">false</span>);
+                <span class="ident">InductionLevel</span> {
+                    <span class="ident">ind_var</span>: <span class="ident">id</span>,
+                    <span class="ident">increment</span>: <span class="prelude-val">Some</span>((<span class="ident">dim</span>, <span class="ident">increment</span>)),
+                    <span class="ident">base</span>,
+                }
+            })
+            .<span class="ident">collect_vec</span>();
         <span class="kw">for</span> (<span class="ident">dim</span>, <span class="ident">increment</span>) <span class="kw">in</span> <span class="ident">mut_levels</span> {
             <span class="kw">let</span> <span class="ident">level</span> <span class="op">=</span> <span class="ident">InductionLevel</span> {
                 <span class="ident">ind_var</span>: <span class="ident">id</span>,
@@ -494,17 +611,25 @@
         <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">outer_value</span>.<span class="ident">components</span>().<span class="ident">count</span>() <span class="op">&gt;</span> <span class="number">1</span> {
             <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="ident">InductionVarValue</span>::<span class="ident">computed_elsewhere</span>(<span class="kw-2">&amp;</span><span class="ident">outer_value</span>);
             <span class="kw">let</span> <span class="ident">base</span> <span class="op">=</span> <span class="ident">outer_value</span>;
-            <span class="kw">let</span> <span class="ident">level</span> <span class="op">=</span> <span class="ident">InductionLevel</span> { <span class="ident">ind_var</span>: <span class="ident">id</span>, <span class="ident">increment</span>: <span class="prelude-val">None</span>, <span class="ident">base</span> };
+            <span class="kw">let</span> <span class="ident">level</span> <span class="op">=</span> <span class="ident">InductionLevel</span> {
+                <span class="ident">ind_var</span>: <span class="ident">id</span>,
+                <span class="ident">increment</span>: <span class="prelude-val">None</span>,
+                <span class="ident">base</span>,
+            };
             <span class="kw">let</span> <span class="ident">dim</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">precomputed</span>.<span class="ident">last</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">increment</span>.<span class="ident">as_ref</span>())).<span class="number">0</span>;
             <span class="ident">ind_levels_map</span>.<span class="ident">insert</span>(<span class="ident">dim</span>, <span class="ident">level</span>);
             <span class="ident">value</span>
-        } <span class="kw">else</span> { <span class="ident">outer_value</span> };
+        } <span class="kw">else</span> {
+            <span class="ident">outer_value</span>
+        };
         <span class="ident">precomputed_levels</span>.<span class="ident">extend</span>(<span class="ident">precomputed</span>);
         <span class="ident">ind_vars</span>.<span class="ident">push</span>(<span class="ident">InductionVar</span> { <span class="ident">id</span>, <span class="ident">value</span> });
     }
     <span class="kw">for</span> <span class="ident">dim_group</span> <span class="kw">in</span> <span class="ident">dims</span> {
         <span class="kw">for</span> <span class="ident">dim_id</span> <span class="kw">in</span> <span class="ident">dim_group</span>.<span class="ident">dim_ids</span>() {
-            <span class="ident">dim_group</span>.<span class="ident">induction_levels</span>.<span class="ident">extend</span>(<span class="ident">ind_levels_map</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">dim_id</span>));
+            <span class="ident">dim_group</span>
+                .<span class="ident">induction_levels</span>
+                .<span class="ident">extend</span>(<span class="ident">ind_levels_map</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">dim_id</span>));
         }
     }
     (<span class="ident">ind_vars</span>, <span class="ident">precomputed_levels</span>)
@@ -515,9 +640,10 @@
 <span class="doccomment">/// Retrieves the list of induction levels that can be computed at the beginning of the</span>
 <span class="doccomment">/// thread and the induction levels that are updated during loops. Both lists are sorted</span>
 <span class="doccomment">/// in the order in which levels should be computed.</span>
-<span class="kw">fn</span> <span class="ident">get_ind_var_levels</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="ident">ind_var</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">InductionVar</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>)
-    <span class="op">-&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IndVarIncrement</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IndVarIncrement</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>)
-{
+<span class="kw">fn</span> <span class="ident">get_ind_var_levels</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+    <span class="ident">ind_var</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">InductionVar</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+    <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
+) <span class="op">-&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IndVarIncrement</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IndVarIncrement</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>) {
     <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">const_levels</span>, <span class="kw-2">mut</span> <span class="ident">mut_levels</span>) <span class="op">=</span> (<span class="ident">Vec</span>::<span class="ident">new</span>(), <span class="ident">Vec</span>::<span class="ident">new</span>());
     <span class="kw">for</span> <span class="kw-2">&amp;</span>(<span class="ident">dim</span>, <span class="kw-2">ref</span> <span class="ident">size</span>) <span class="kw">in</span> <span class="ident">ind_var</span>.<span class="ident">dims</span>() {
         <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">codegen</span>::<span class="ident">Size</span>::<span class="ident">from_ir</span>(<span class="ident">size</span>, <span class="ident">space</span>);
@@ -528,8 +654,10 @@
             <span class="ident">x</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;unspecified dim kind {:?}&quot;</span>, <span class="ident">x</span>),
         }
     }
-    <span class="kw">let</span> <span class="ident">cmp</span> <span class="op">=</span>  <span class="op">|</span><span class="ident">lhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">rhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">|</span> {
-        <span class="kw">if</span> <span class="ident">lhs</span> <span class="op">==</span> <span class="ident">rhs</span> { <span class="kw">return</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">Ordering</span>::<span class="ident">Equal</span>; }
+    <span class="kw">let</span> <span class="ident">cmp</span> <span class="op">=</span> <span class="op">|</span><span class="ident">lhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">rhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">|</span> {
+        <span class="kw">if</span> <span class="ident">lhs</span> <span class="op">==</span> <span class="ident">rhs</span> {
+            <span class="kw">return</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">Ordering</span>::<span class="ident">Equal</span>;
+        }
         <span class="kw">match</span> <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_order</span>(<span class="ident">lhs</span>.<span class="ident">into</span>(), <span class="ident">rhs</span>.<span class="ident">into</span>()) {
             <span class="ident">Order</span>::<span class="ident">INNER</span> <span class="op">=&gt;</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">Ordering</span>::<span class="ident">Greater</span>,
             <span class="ident">Order</span>::<span class="ident">OUTER</span> <span class="op">=&gt;</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">Ordering</span>::<span class="ident">Less</span>,

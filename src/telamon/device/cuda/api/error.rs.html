@@ -8,7 +8,7 @@
 <span class="doccomment">/// Error created when initializing the Executor.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Fail</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">InitError</span> {
-    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span><span class="op">=</span><span class="string">&quot;must be compiled with --feature=cuda to use cuda&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;must be compiled with --feature=cuda to use cuda&quot;</span>)]</span>
     <span class="ident">NeedsCudaFeature</span>,
 }
 </pre>

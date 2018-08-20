@@ -80,10 +80,21 @@
 <span id="80">80</span>
 <span id="81">81</span>
 <span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
+<span id="91">91</span>
+<span id="92">92</span>
+<span id="93">93</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Describes the context for which a function must be optimized.</span>
-<span class="kw">use</span> <span class="ident">device</span>::{<span class="ident">Device</span>, <span class="ident">ScalarArgument</span>, <span class="ident">ArrayArgument</span>};
 <span class="kw">use</span> <span class="ident">codegen</span>::{<span class="self">self</span>, <span class="ident">Function</span>};
+<span class="kw">use</span> <span class="ident">device</span>::{<span class="ident">ArrayArgument</span>, <span class="ident">Device</span>, <span class="ident">ScalarArgument</span>};
 <span class="kw">use</span> <span class="ident">explorer</span>::<span class="ident">Candidate</span>;
 <span class="kw">use</span> <span class="ident">ir</span>;
 <span class="kw">use</span> <span class="ident">num</span>;
@@ -99,7 +110,7 @@
     <span class="doccomment">/// Returns the description of the device the code runs on.</span>
     <span class="kw">fn</span> <span class="ident">device</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Device</span>;
     <span class="doccomment">/// Returns the execution time of a fully specified implementation in nanoseconds.</span>
-    <span class="doccomment">/// </span>
+    <span class="doccomment">///</span>
     <span class="doccomment">/// This function should be called multiple times to obtain accurate execution time.</span>
     <span class="doccomment">/// Indeed, it only executes the code once, without warming the GPU first.</span>
     <span class="kw">fn</span> <span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">Function</span>, <span class="ident">mode</span>: <span class="ident">EvalMode</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">f64</span>, ()<span class="op">&gt;</span>;
@@ -109,8 +120,12 @@
     <span class="doccomment">/// Calls the `inner` closure in parallel, and gives it a pointer to an `AsyncEvaluator`</span>
     <span class="doccomment">/// to evaluate candidates in the context. `skip_bad_bounds` indicates than candidates</span>
     <span class="doccomment">/// whose bound is aboive the best candidate should be skiped.</span>
-    <span class="kw">fn</span> <span class="ident">async_eval</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">num_workers</span>: <span class="ident">usize</span>, <span class="ident">mode</span>: <span class="ident">EvalMode</span>,
-                          <span class="ident">inner</span>: <span class="kw-2">&amp;</span>(<span class="ident">Fn</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AsyncEvaluator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span>) <span class="op">+</span> <span class="ident">Sync</span>)) ;
+    <span class="kw">fn</span> <span class="ident">async_eval</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">num_workers</span>: <span class="ident">usize</span>,
+        <span class="ident">mode</span>: <span class="ident">EvalMode</span>,
+        <span class="ident">inner</span>: <span class="kw-2">&amp;</span>(<span class="ident">Fn</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AsyncEvaluator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span><span class="op">&gt;</span>) <span class="op">+</span> <span class="ident">Sync</span>),
+    );
     <span class="doccomment">/// Returns a parameter interpreted as a size, if possible.</span>
     <span class="kw">fn</span> <span class="ident">param_as_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>;
 
@@ -119,9 +134,13 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dividend</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">size</span>.<span class="ident">factor</span>();
         <span class="kw">for</span> <span class="ident">p</span> <span class="kw">in</span> <span class="ident">size</span>.<span class="ident">dividend</span>() {
             <span class="ident">dividend</span> <span class="op">*=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">param_as_size</span>(<span class="kw-2">&amp;</span><span class="ident">p</span>.<span class="ident">name</span>));
-        };
+        }
         <span class="kw">let</span> (<span class="ident">result</span>, <span class="ident">remider</span>) <span class="op">=</span> <span class="ident">num</span>::<span class="ident">integer</span>::<span class="ident">div_rem</span>(<span class="ident">dividend</span>, <span class="ident">size</span>.<span class="ident">divisor</span>());
-        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">remider</span>, <span class="number">0</span>, <span class="string">&quot;invalid size: {:?} (dividend = {})&quot;</span>, <span class="ident">size</span>, <span class="ident">dividend</span>);
+        <span class="macro">assert_eq</span><span class="macro">!</span>(
+            <span class="ident">remider</span>, <span class="number">0</span>,
+            <span class="string">&quot;invalid size: {:?} (dividend = {})&quot;</span>,
+            <span class="ident">size</span>, <span class="ident">dividend</span>
+        );
         <span class="ident">result</span>
     }
 }
@@ -133,8 +152,11 @@
     <span class="doccomment">/// Binds a parameter to a given value.</span>
     <span class="kw">fn</span> <span class="ident">bind_scalar</span><span class="op">&lt;</span><span class="ident">S</span>: <span class="ident">ScalarArgument</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">param</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Parameter</span>, <span class="ident">value</span>: <span class="ident">S</span>);
     <span class="doccomment">/// Allocates an array of the given size in bytes.</span>
-    <span class="kw">fn</span> <span class="ident">bind_array</span><span class="op">&lt;</span><span class="ident">S</span>: <span class="ident">ScalarArgument</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">param</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Parameter</span>, <span class="ident">size</span>: <span class="ident">usize</span>)
-        <span class="op">-&gt;</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="self">Self</span>::<span class="ident">Array</span><span class="op">&gt;</span>;
+    <span class="kw">fn</span> <span class="ident">bind_array</span><span class="op">&lt;</span><span class="ident">S</span>: <span class="ident">ScalarArgument</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">param</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Parameter</span>,
+        <span class="ident">size</span>: <span class="ident">usize</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="self">Self</span>::<span class="ident">Array</span><span class="op">&gt;</span>;
 }
 
 <span class="doccomment">/// An evaluation context that runs kernels asynchronously on the target device.</span>

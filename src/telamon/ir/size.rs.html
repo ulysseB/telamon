@@ -69,6 +69,22 @@
 <span id="69">69</span>
 <span id="70">70</span>
 <span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">ir</span>;
 <span class="kw">use</span> <span class="ident">num</span>;
@@ -89,27 +105,43 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">factor</span>: <span class="ident">u32</span>, <span class="ident">dividend</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Parameter</span><span class="op">&gt;</span>, <span class="ident">divisor</span>: <span class="ident">u32</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">factor</span> <span class="op">!=</span> <span class="number">0</span>);
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">divisor</span> <span class="op">!=</span> <span class="number">0</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new</span> <span class="op">=</span> <span class="ident">Size</span> { <span class="ident">factor</span>, <span class="ident">dividend</span>, <span class="ident">divisor</span> };
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new</span> <span class="op">=</span> <span class="ident">Size</span> {
+            <span class="ident">factor</span>,
+            <span class="ident">dividend</span>,
+            <span class="ident">divisor</span>,
+        };
         <span class="ident">new</span>.<span class="ident">simplify</span>();
         <span class="ident">new</span>
     }
 
     <span class="doccomment">/// Returns the size of a dimension if it is staticaly known.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_int</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">dividend</span>.<span class="ident">is_empty</span>() { <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">factor</span>) } <span class="kw">else</span> { <span class="prelude-val">None</span> }
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">dividend</span>.<span class="ident">is_empty</span>() {
+            <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">factor</span>)
+        } <span class="kw">else</span> {
+            <span class="prelude-val">None</span>
+        }
     }
 
     <span class="doccomment">/// Indicates if the size is constant.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_constant</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> { <span class="self">self</span>.<span class="ident">dividend</span>.<span class="ident">is_empty</span>() }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_constant</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">dividend</span>.<span class="ident">is_empty</span>()
+    }
 
     <span class="doccomment">/// Returns the dividends.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dividend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Parameter</span>] { <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">dividend</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dividend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Parameter</span>] {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">dividend</span>
+    }
 
     <span class="doccomment">/// Returns the divisor.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">divisor</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> { <span class="self">self</span>.<span class="ident">divisor</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">divisor</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
+        <span class="self">self</span>.<span class="ident">divisor</span>
+    }
 
     <span class="doccomment">/// Returns the factor.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">factor</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> { <span class="self">self</span>.<span class="ident">factor</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">factor</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
+        <span class="self">self</span>.<span class="ident">factor</span>
+    }
 
     <span class="doccomment">/// Multiplies the divisor by the given factor.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">mul_divisor</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">d</span>: <span class="ident">u32</span>) {

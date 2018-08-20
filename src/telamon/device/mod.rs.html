@@ -84,24 +84,30 @@
 <span id="84">84</span>
 <span id="85">85</span>
 <span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
+<span id="91">91</span>
+<span id="92">92</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Code generation and candidate evaluation for specific targets.</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">cuda</span>;
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span><span class="op">=</span><span class="string">&quot;mppa&quot;</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;mppa&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">mppa</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">x86</span>;
 
 <span class="kw">mod</span> <span class="ident">argument</span>;
 <span class="kw">mod</span> <span class="ident">context</span>;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">argument</span>::{<span class="ident">ScalarArgument</span>, <span class="ident">ArrayArgument</span>, <span class="ident">read_array</span>, <span class="ident">write_array</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">context</span>::{<span class="ident">Context</span>, <span class="ident">EvalMode</span>, <span class="ident">ArgMap</span>, <span class="ident">AsyncCallback</span>, <span class="ident">AsyncEvaluator</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">argument</span>::{<span class="ident">read_array</span>, <span class="ident">write_array</span>, <span class="ident">ArrayArgument</span>, <span class="ident">ScalarArgument</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">context</span>::{<span class="ident">ArgMap</span>, <span class="ident">AsyncCallback</span>, <span class="ident">AsyncEvaluator</span>, <span class="ident">Context</span>, <span class="ident">EvalMode</span>};
 
 <span class="kw">use</span> <span class="ident">codegen</span>::<span class="ident">Function</span>;
 <span class="kw">use</span> <span class="ident">ir</span>;
-<span class="kw">use</span> <span class="ident">search_space</span>::{<span class="ident">SearchSpace</span>, <span class="ident">DimKind</span>};
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">Write</span>;
 <span class="kw">use</span> <span class="ident">model</span>::{<span class="ident">HwPressure</span>, <span class="ident">Nesting</span>};
+<span class="kw">use</span> <span class="ident">search_space</span>::{<span class="ident">DimKind</span>, <span class="ident">SearchSpace</span>};
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">Write</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// Holds the specifications of a target.</span>
@@ -132,18 +138,21 @@
 
     <span class="doccomment">/// Returns the pressure cause by a `BasicBlock`. For a dimension, returns the pressure</span>
     <span class="doccomment">/// for the full loop execution.</span>
-    <span class="kw">fn</span> <span class="ident">hw_pressure</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
-                   <span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
-                   <span class="ident">nesting</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">BBId</span>, <span class="ident">Nesting</span><span class="op">&gt;</span>,
-                   <span class="ident">bb</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">BasicBlock</span>,
-                   <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">HwPressure</span>;
+    <span class="kw">fn</span> <span class="ident">hw_pressure</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
+        <span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
+        <span class="ident">nesting</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">BBId</span>, <span class="ident">Nesting</span><span class="op">&gt;</span>,
+        <span class="ident">bb</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">BasicBlock</span>,
+        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">HwPressure</span>;
     <span class="doccomment">/// Returns the pressure produced by a single iteration of a loop and the latency</span>
     <span class="doccomment">/// overhead of iterations.</span>
     <span class="kw">fn</span> <span class="ident">loop_iter_pressure</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">kind</span>: <span class="ident">DimKind</span>) <span class="op">-&gt;</span> (<span class="ident">HwPressure</span>, <span class="ident">HwPressure</span>);
     <span class="doccomment">/// Returns the processing rates of a single thread, in units/ns</span>
     <span class="kw">fn</span> <span class="ident">thread_rates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">HwPressure</span>;
     <span class="doccomment">/// Returns the processing rates of a single block, in units/ns.</span>
-    <span class="kw">fn</span> <span class="ident">block_rates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>,) <span class="op">-&gt;</span> <span class="ident">HwPressure</span>;
+    <span class="kw">fn</span> <span class="ident">block_rates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">HwPressure</span>;
     <span class="doccomment">/// Returns the processing rates of the whole accelerator un units/ns.</span>
     <span class="kw">fn</span> <span class="ident">total_rates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">HwPressure</span>;
     <span class="doccomment">/// Returns the names of potential bottlenecks.</span>
@@ -157,9 +166,12 @@
     <span class="doccomment">/// Adds the overhead (per instance) due to partial wraps and predicated dimensions to</span>
     <span class="doccomment">/// the pressure. If the instruction is not predicated, `predicated_dims_size` should</span>
     <span class="doccomment">/// be `1`.</span>
-    <span class="kw">fn</span> <span class="ident">add_block_overhead</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">predicated_dims_size</span>: <span class="ident">u64</span>,
-                          <span class="ident">max_threads_per_blocks</span>: <span class="ident">u64</span>,
-                          <span class="ident">pressure</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">HwPressure</span>);
+    <span class="kw">fn</span> <span class="ident">add_block_overhead</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">predicated_dims_size</span>: <span class="ident">u64</span>,
+        <span class="ident">max_threads_per_blocks</span>: <span class="ident">u64</span>,
+        <span class="ident">pressure</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">HwPressure</span>,
+    );
 
     <span class="doccomment">/// Lowers a type using the memory space information. Returns `None` if some</span>
     <span class="doccomment">/// information is not yet specified.</span>

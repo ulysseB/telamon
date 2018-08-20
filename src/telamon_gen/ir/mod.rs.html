@@ -494,12 +494,161 @@
 <span id="494">494</span>
 <span id="495">495</span>
 <span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
+<span id="594">594</span>
+<span id="595">595</span>
+<span id="596">596</span>
+<span id="597">597</span>
+<span id="598">598</span>
+<span id="599">599</span>
+<span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
+<span id="611">611</span>
+<span id="612">612</span>
+<span id="613">613</span>
+<span id="614">614</span>
+<span id="615">615</span>
+<span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
+<span id="620">620</span>
+<span id="621">621</span>
+<span id="622">622</span>
+<span id="623">623</span>
+<span id="624">624</span>
+<span id="625">625</span>
+<span id="626">626</span>
+<span id="627">627</span>
+<span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
+<span id="636">636</span>
+<span id="637">637</span>
+<span id="638">638</span>
+<span id="639">639</span>
+<span id="640">640</span>
+<span id="641">641</span>
+<span id="642">642</span>
+<span id="643">643</span>
+<span id="644">644</span>
+<span id="645">645</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! The constraint description for the ir.</span>
 <span class="kw">use</span> <span class="ident">std</span>;
 
-<span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">indexmap</span>::<span class="ident">IndexMap</span>;
+<span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
 <span class="kw">mod</span> <span class="ident">adaptator</span>;
@@ -507,10 +656,10 @@
 <span class="kw">mod</span> <span class="ident">filter</span>;
 <span class="kw">mod</span> <span class="ident">set</span>;
 
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">adaptator</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">choice</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">filter</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">set</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">adaptator</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// Describes the choices that constitute the IR.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IrDesc</span> {
@@ -532,15 +681,19 @@
     }
 
     <span class="doccomment">/// List the choice definitions.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">choices</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span><span class="op">=</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Choice</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">choices</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Choice</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">choices</span>.<span class="ident">values</span>()
     }
 
     <span class="doccomment">/// List the enum definitions.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">enums</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span><span class="op">=</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Enum</span><span class="op">&gt;</span> { <span class="self">self</span>.<span class="ident">enums</span>.<span class="ident">values</span>() }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">enums</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Enum</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">enums</span>.<span class="ident">values</span>()
+    }
 
     <span class="doccomment">/// Returns the enum with the given name.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_enum</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Enum</span> { <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">enums</span>[<span class="ident">name</span>] }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_enum</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Enum</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">enums</span>[<span class="ident">name</span>]
+    }
 
     <span class="doccomment">/// Returns the choice with the given name.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_choice</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Choice</span> {
@@ -548,7 +701,7 @@
     }
 
     <span class="doccomment">/// Iterates over all the sets.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_defs</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span><span class="op">=</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">std</span>::<span class="ident">rc</span>::<span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">SetDef</span><span class="op">&gt;&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;a</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_defs</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">std</span>::<span class="ident">rc</span>::<span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">SetDef</span><span class="op">&gt;&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;a</span> {
         <span class="self">self</span>.<span class="ident">set_defs</span>.<span class="ident">values</span>()
     }
 
@@ -560,38 +713,66 @@
 
     <span class="doccomment">/// Returns the set definition associated with a name.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_set_def</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">std</span>::<span class="ident">rc</span>::<span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">SetDef</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">set_defs</span>.<span class="ident">get</span>(<span class="ident">name</span>).<span class="ident">unwrap_or_else</span>(<span class="op">||</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Undefined set {}&quot;</span>, <span class="ident">name</span>))
+        <span class="self">self</span>.<span class="ident">set_defs</span>
+            .<span class="ident">get</span>(<span class="ident">name</span>)
+            .<span class="ident">unwrap_or_else</span>(<span class="op">||</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Undefined set {}&quot;</span>, <span class="ident">name</span>))
     }
 
     <span class="doccomment">/// Adds a filter to a choice.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_filter</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-                      <span class="ident">choice</span>: <span class="ident">RcStr</span>,
-                      <span class="ident">filter</span>: <span class="ident">Filter</span>,
-                      <span class="ident">forall_vars</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&gt;</span>,
-                      <span class="ident">set_constraints</span>: <span class="ident">SetConstraints</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_filter</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">choice</span>: <span class="ident">RcStr</span>,
+        <span class="ident">filter</span>: <span class="ident">Filter</span>,
+        <span class="ident">forall_vars</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&gt;</span>,
+        <span class="ident">set_constraints</span>: <span class="ident">SetConstraints</span>,
+    ) {
         <span class="comment">// Register the filter and add the `OnChangeAction`s.</span>
         <span class="kw">let</span> <span class="ident">filter_ref</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">filter</span>.<span class="ident">inputs</span>.<span class="ident">is_empty</span>() {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">SubFilter</span>::<span class="ident">Rules</span>(<span class="ident">rules</span>) <span class="op">=</span> <span class="ident">filter</span>.<span class="ident">rules</span> { <span class="ident">FilterRef</span>::<span class="ident">Inline</span>(<span class="ident">rules</span>) }
-            <span class="kw">else</span> { <span class="macro">panic</span><span class="macro">!</span>() }
+            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">SubFilter</span>::<span class="ident">Rules</span>(<span class="ident">rules</span>) <span class="op">=</span> <span class="ident">filter</span>.<span class="ident">rules</span> {
+                <span class="ident">FilterRef</span>::<span class="ident">Inline</span>(<span class="ident">rules</span>)
+            } <span class="kw">else</span> {
+                <span class="macro">panic</span><span class="macro">!</span>()
+            }
         } <span class="kw">else</span> {
             <span class="kw">let</span> <span class="ident">inputs</span> <span class="op">=</span> <span class="ident">filter</span>.<span class="ident">inputs</span>.<span class="ident">clone</span>();
             <span class="kw">let</span> <span class="ident">filter_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">choices</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">choice</span>).<span class="ident">unwrap</span>().<span class="ident">add_filter</span>(<span class="ident">filter</span>);
             <span class="comment">// Ensure the filter is called when other choices are restricted.</span>
             <span class="kw">for</span> <span class="ident">input</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">inputs</span> {
                 <span class="self">self</span>.<span class="ident">register_filter_call</span>(
-                    <span class="kw-2">&amp;</span><span class="ident">choice</span>, <span class="ident">filter_id</span>, <span class="ident">input</span>, <span class="kw-2">&amp;</span><span class="ident">forall_vars</span>, <span class="kw-2">&amp;</span><span class="ident">set_constraints</span>);
+                    <span class="kw-2">&amp;</span><span class="ident">choice</span>,
+                    <span class="ident">filter_id</span>,
+                    <span class="ident">input</span>,
+                    <span class="kw-2">&amp;</span><span class="ident">forall_vars</span>,
+                    <span class="kw-2">&amp;</span><span class="ident">set_constraints</span>,
+                );
             }
             <span class="comment">// Call the filter on initialization.</span>
-            <span class="kw">let</span> <span class="ident">arguments</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_choice</span>(<span class="kw-2">&amp;</span><span class="ident">choice</span>).<span class="ident">arguments</span>().<span class="ident">iter</span>().<span class="ident">enumerate</span>()
+            <span class="kw">let</span> <span class="ident">arguments</span> <span class="op">=</span> <span class="self">self</span>
+                .<span class="ident">get_choice</span>(<span class="kw-2">&amp;</span><span class="ident">choice</span>)
+                .<span class="ident">arguments</span>()
+                .<span class="ident">iter</span>()
+                .<span class="ident">enumerate</span>()
                 .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">Variable</span>::<span class="ident">Arg</span>(<span class="ident">i</span>))
                 .<span class="ident">chain</span>((<span class="number">0</span>..<span class="ident">forall_vars</span>.<span class="ident">len</span>()).<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">Variable</span>::<span class="ident">Forall</span>(<span class="ident">i</span>)))
                 .<span class="ident">collect</span>();
-            <span class="ident">FilterRef</span>::<span class="ident">Local</span> { <span class="ident">id</span>: <span class="ident">filter_id</span>, <span class="ident">args</span>: <span class="ident">arguments</span> }
+            <span class="ident">FilterRef</span>::<span class="ident">Local</span> {
+                <span class="ident">id</span>: <span class="ident">filter_id</span>,
+                <span class="ident">args</span>: <span class="ident">arguments</span>,
+            }
         };
         <span class="comment">// Add the init call.</span>
-        <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">FilterCall</span> { <span class="ident">forall_vars</span>, <span class="ident">filter_ref</span> };
-        <span class="kw">let</span> <span class="ident">filter_action</span> <span class="op">=</span> <span class="ident">FilterAction</span> { <span class="ident">filter</span>, <span class="ident">set_constraints</span> };
-        <span class="self">self</span>.<span class="ident">choices</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">choice</span>).<span class="ident">unwrap</span>().<span class="ident">add_filter_action</span>(<span class="ident">filter_action</span>);
+        <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">FilterCall</span> {
+            <span class="ident">forall_vars</span>,
+            <span class="ident">filter_ref</span>,
+        };
+        <span class="kw">let</span> <span class="ident">filter_action</span> <span class="op">=</span> <span class="ident">FilterAction</span> {
+            <span class="ident">filter</span>,
+            <span class="ident">set_constraints</span>,
+        };
+        <span class="self">self</span>.<span class="ident">choices</span>
+            .<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">choice</span>)
+            .<span class="ident">unwrap</span>()
+            .<span class="ident">add_filter_action</span>(<span class="ident">filter_action</span>);
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_onchange</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">choice</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">action</span>: <span class="ident">OnChangeAction</span>) {
@@ -599,56 +780,105 @@
             <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">get_choice</span>(<span class="ident">choice</span>).<span class="ident">arguments</span>().<span class="ident">is_symmetric</span>()
         {
             <span class="prelude-val">Some</span>(<span class="ident">action</span>.<span class="ident">inverse</span>(<span class="self">self</span>))
-        } <span class="kw">else</span> { <span class="prelude-val">None</span> };
+        } <span class="kw">else</span> {
+            <span class="prelude-val">None</span>
+        };
         <span class="kw">let</span> <span class="ident">choice</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">choices</span>.<span class="ident">get_mut</span>(<span class="ident">choice</span>));
         <span class="ident">choice</span>.<span class="ident">add_onchange</span>(<span class="ident">action</span>);
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">action</span>) <span class="op">=</span> <span class="ident">inverse</span> { <span class="ident">choice</span>.<span class="ident">add_onchange</span>(<span class="ident">action</span>); }
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">action</span>) <span class="op">=</span> <span class="ident">inverse</span> {
+            <span class="ident">choice</span>.<span class="ident">add_onchange</span>(<span class="ident">action</span>);
+        }
     }
 
     <span class="doccomment">/// Registers an filter call action for a filter on a choice.</span>
-    <span class="kw">fn</span> <span class="ident">register_filter_call</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">filtered</span>: <span class="kw-2">&amp;</span><span class="ident">RcStr</span>, <span class="ident">filter_id</span>: <span class="ident">usize</span>,
-                            <span class="ident">changed</span>: <span class="kw-2">&amp;</span><span class="ident">ChoiceInstance</span>,
-                            <span class="ident">foralls</span>: <span class="kw-2">&amp;</span>[<span class="ident">Set</span>],
-                            <span class="ident">set_constraints</span>: <span class="kw-2">&amp;</span><span class="ident">SetConstraints</span>) {
-        <span class="kw">let</span> <span class="ident">env</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_choice</span>(<span class="kw-2">&amp;</span><span class="ident">filtered</span>).<span class="ident">arguments</span>().<span class="ident">sets</span>().<span class="ident">enumerate</span>()
+    <span class="kw">fn</span> <span class="ident">register_filter_call</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">filtered</span>: <span class="kw-2">&amp;</span><span class="ident">RcStr</span>,
+        <span class="ident">filter_id</span>: <span class="ident">usize</span>,
+        <span class="ident">changed</span>: <span class="kw-2">&amp;</span><span class="ident">ChoiceInstance</span>,
+        <span class="ident">foralls</span>: <span class="kw-2">&amp;</span>[<span class="ident">Set</span>],
+        <span class="ident">set_constraints</span>: <span class="kw-2">&amp;</span><span class="ident">SetConstraints</span>,
+    ) {
+        <span class="kw">let</span> <span class="ident">env</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">get_choice</span>(<span class="kw-2">&amp;</span><span class="ident">filtered</span>)
+            .<span class="ident">arguments</span>()
+            .<span class="ident">sets</span>()
+            .<span class="ident">enumerate</span>()
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="ident">set</span>)<span class="op">|</span> (<span class="ident">Variable</span>::<span class="ident">Arg</span>(<span class="ident">i</span>), <span class="ident">set</span>))
-            .<span class="ident">chain</span>(<span class="ident">foralls</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="ident">set</span>)<span class="op">|</span> (<span class="ident">Variable</span>::<span class="ident">Forall</span>(<span class="ident">i</span>), <span class="ident">set</span>)))
+            .<span class="ident">chain</span>(
+                <span class="ident">foralls</span>
+                    .<span class="ident">iter</span>()
+                    .<span class="ident">enumerate</span>()
+                    .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">i</span>, <span class="ident">set</span>)<span class="op">|</span> (<span class="ident">Variable</span>::<span class="ident">Forall</span>(<span class="ident">i</span>), <span class="ident">set</span>)),
+            )
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">v</span>, <span class="ident">set</span>)<span class="op">|</span> (<span class="ident">v</span>, <span class="ident">set_constraints</span>.<span class="ident">find_set</span>(<span class="ident">v</span>).<span class="ident">unwrap_or</span>(<span class="ident">set</span>).<span class="ident">clone</span>()))
             .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;&gt;</span>();
         <span class="comment">// If the changed choice is symmetric, the inverse filter should also be called.</span>
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">get_choice</span>(<span class="kw-2">&amp;</span><span class="ident">changed</span>.<span class="ident">choice</span>).<span class="ident">arguments</span>().<span class="ident">is_symmetric</span>() {
             <span class="kw">let</span> <span class="ident">vars</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">changed</span>.<span class="ident">vars</span>[<span class="number">1</span>], <span class="ident">changed</span>.<span class="ident">vars</span>[<span class="number">0</span>]];
-            <span class="kw">let</span> <span class="kw-2">ref</span> <span class="ident">changed</span> <span class="op">=</span> <span class="ident">ChoiceInstance</span> { <span class="ident">choice</span>: <span class="ident">changed</span>.<span class="ident">choice</span>.<span class="ident">clone</span>(), <span class="ident">vars</span> };
+            <span class="kw">let</span> <span class="kw-2">ref</span> <span class="ident">changed</span> <span class="op">=</span> <span class="ident">ChoiceInstance</span> {
+                <span class="ident">choice</span>: <span class="ident">changed</span>.<span class="ident">choice</span>.<span class="ident">clone</span>(),
+                <span class="ident">vars</span>,
+            };
             <span class="kw">let</span> <span class="ident">action</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">gen_filter_call_action</span>(
-                <span class="ident">filtered</span>.<span class="ident">clone</span>(), <span class="ident">filter_id</span>, <span class="ident">changed</span>, <span class="ident">env</span>.<span class="ident">clone</span>(), <span class="ident">foralls</span>.<span class="ident">len</span>());
+                <span class="ident">filtered</span>.<span class="ident">clone</span>(),
+                <span class="ident">filter_id</span>,
+                <span class="ident">changed</span>,
+                <span class="ident">env</span>.<span class="ident">clone</span>(),
+                <span class="ident">foralls</span>.<span class="ident">len</span>(),
+            );
             <span class="self">self</span>.<span class="ident">add_onchange</span>(<span class="kw-2">&amp;</span><span class="ident">changed</span>.<span class="ident">choice</span>, <span class="ident">action</span>);
         }
         <span class="kw">let</span> <span class="ident">action</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">gen_filter_call_action</span>(
-            <span class="ident">filtered</span>.<span class="ident">clone</span>(), <span class="ident">filter_id</span>, <span class="kw-2">&amp;</span><span class="ident">changed</span>, <span class="ident">env</span>, <span class="ident">foralls</span>.<span class="ident">len</span>());
+            <span class="ident">filtered</span>.<span class="ident">clone</span>(),
+            <span class="ident">filter_id</span>,
+            <span class="kw-2">&amp;</span><span class="ident">changed</span>,
+            <span class="ident">env</span>,
+            <span class="ident">foralls</span>.<span class="ident">len</span>(),
+        );
         <span class="self">self</span>.<span class="ident">add_onchange</span>(<span class="kw-2">&amp;</span><span class="ident">changed</span>.<span class="ident">choice</span>, <span class="ident">action</span>);
-
     }
 
     <span class="doccomment">/// Generates an `OnChangeAction`.</span>
-    <span class="kw">fn</span> <span class="ident">gen_filter_call_action</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filtered</span>: <span class="ident">RcStr</span>, <span class="ident">id</span>: <span class="ident">usize</span>,
-                              <span class="ident">changed</span>: <span class="kw-2">&amp;</span><span class="ident">ChoiceInstance</span>,
-                              <span class="ident">env</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Variable</span>, <span class="ident">Set</span><span class="op">&gt;</span>,
-                              <span class="ident">num_foralls</span>: <span class="ident">usize</span>) <span class="op">-&gt;</span> <span class="ident">OnChangeAction</span> {
+    <span class="kw">fn</span> <span class="ident">gen_filter_call_action</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">filtered</span>: <span class="ident">RcStr</span>,
+        <span class="ident">id</span>: <span class="ident">usize</span>,
+        <span class="ident">changed</span>: <span class="kw-2">&amp;</span><span class="ident">ChoiceInstance</span>,
+        <span class="ident">env</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Variable</span>, <span class="ident">Set</span><span class="op">&gt;</span>,
+        <span class="ident">num_foralls</span>: <span class="ident">usize</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">OnChangeAction</span> {
         <span class="comment">// TODO(cc_perf): no need to iterate on the full domain for symmetric choices.</span>
         <span class="kw">let</span> (<span class="ident">choice_foralls</span>, <span class="ident">filter_foralls</span>, <span class="ident">set_constraints</span>, <span class="ident">adaptator</span>) <span class="op">=</span>
             <span class="self">self</span>.<span class="ident">adapt_env_ext</span>(<span class="ident">env</span>, <span class="ident">changed</span>);
         <span class="comment">// Generate the action.</span>
         <span class="kw">let</span> <span class="ident">num_args</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_choice</span>(<span class="kw-2">&amp;</span><span class="ident">filtered</span>).<span class="ident">arguments</span>().<span class="ident">len</span>();
-        <span class="kw">let</span> <span class="ident">args</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">num_args</span>).<span class="ident">map</span>(<span class="ident">Variable</span>::<span class="ident">Arg</span>)
+        <span class="kw">let</span> <span class="ident">args</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">num_args</span>)
+            .<span class="ident">map</span>(<span class="ident">Variable</span>::<span class="ident">Arg</span>)
             .<span class="ident">chain</span>((<span class="number">0</span>..<span class="ident">num_foralls</span>).<span class="ident">map</span>(<span class="ident">Variable</span>::<span class="ident">Forall</span>))
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">adaptator</span>.<span class="ident">variable</span>(<span class="ident">v</span>)).<span class="ident">collect</span>();
-        <span class="kw">let</span> <span class="ident">filter_ref</span> <span class="op">=</span> <span class="ident">FilterRef</span>::<span class="ident">Remote</span> { <span class="ident">choice</span>: <span class="ident">filtered</span>.<span class="ident">clone</span>(), <span class="ident">id</span>, <span class="ident">args</span> };
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">adaptator</span>.<span class="ident">variable</span>(<span class="ident">v</span>))
+            .<span class="ident">collect</span>();
+        <span class="kw">let</span> <span class="ident">filter_ref</span> <span class="op">=</span> <span class="ident">FilterRef</span>::<span class="ident">Remote</span> {
+            <span class="ident">choice</span>: <span class="ident">filtered</span>.<span class="ident">clone</span>(),
+            <span class="ident">id</span>,
+            <span class="ident">args</span>,
+        };
         <span class="kw">let</span> <span class="ident">filtered_args</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">num_args</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">adaptator</span>.<span class="ident">variable</span>(<span class="ident">Variable</span>::<span class="ident">Arg</span>(<span class="ident">i</span>)));
         <span class="kw">let</span> <span class="ident">action</span> <span class="op">=</span> <span class="ident">ChoiceAction</span>::<span class="ident">Filter</span> {
-            <span class="ident">choice</span>: <span class="ident">ChoiceInstance</span> { <span class="ident">choice</span>: <span class="ident">filtered</span>, <span class="ident">vars</span>: <span class="ident">filtered_args</span>.<span class="ident">collect</span>() },
-            <span class="ident">filter</span>: <span class="ident">FilterCall</span> { <span class="ident">forall_vars</span>: <span class="ident">filter_foralls</span>, <span class="ident">filter_ref</span> },
+            <span class="ident">choice</span>: <span class="ident">ChoiceInstance</span> {
+                <span class="ident">choice</span>: <span class="ident">filtered</span>,
+                <span class="ident">vars</span>: <span class="ident">filtered_args</span>.<span class="ident">collect</span>(),
+            },
+            <span class="ident">filter</span>: <span class="ident">FilterCall</span> {
+                <span class="ident">forall_vars</span>: <span class="ident">filter_foralls</span>,
+                <span class="ident">filter_ref</span>,
+            },
         };
-        <span class="ident">OnChangeAction</span> { <span class="ident">forall_vars</span>: <span class="ident">choice_foralls</span>, <span class="ident">set_constraints</span>, <span class="ident">action</span> }
+        <span class="ident">OnChangeAction</span> {
+            <span class="ident">forall_vars</span>: <span class="ident">choice_foralls</span>,
+            <span class="ident">set_constraints</span>,
+            <span class="ident">action</span>,
+        }
     }
 
     <span class="doccomment">/// Adds a trigger to a choice.</span>
@@ -659,14 +889,17 @@
     }
 
     <span class="doccomment">/// Iterates on the triggers.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">triggers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span><span class="op">=</span><span class="kw-2">&amp;</span><span class="ident">Trigger</span><span class="op">&gt;</span> { <span class="self">self</span>.<span class="ident">triggers</span>.<span class="ident">iter</span>() }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">triggers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">Trigger</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">triggers</span>.<span class="ident">iter</span>()
+    }
 
     <span class="doccomment">/// Generates the list of sets to iterate and to constraints to iterate on the given</span>
     <span class="doccomment">/// context, but from the point of view of the given choice instance.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">adapt_env</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">vars</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Variable</span>, <span class="ident">Set</span><span class="op">&gt;</span>,
-                     <span class="ident">choice_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ChoiceInstance</span>)
-        <span class="op">-&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&gt;</span>, <span class="ident">SetConstraints</span>, <span class="ident">Adaptator</span>)
-    {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">adapt_env</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">vars</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Variable</span>, <span class="ident">Set</span><span class="op">&gt;</span>,
+        <span class="ident">choice_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ChoiceInstance</span>,
+    ) <span class="op">-&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&gt;</span>, <span class="ident">SetConstraints</span>, <span class="ident">Adaptator</span>) {
         <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">arg_foralls</span>, <span class="ident">other_foralls</span>, <span class="ident">set_constraints</span>, <span class="ident">adaptator</span>) <span class="op">=</span>
             <span class="self">self</span>.<span class="ident">adapt_env_ext</span>(<span class="ident">vars</span>, <span class="ident">choice_instance</span>);
         <span class="ident">arg_foralls</span>.<span class="ident">extend</span>(<span class="ident">other_foralls</span>);
@@ -677,17 +910,21 @@
     <span class="doccomment">/// environement, but from the point of view of the given choice instance. The new</span>
     <span class="doccomment">/// foralls iterating on current arguments are returned in a separate list than the</span>
     <span class="doccomment">/// ones issued from foralls.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">adapt_env_ext</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">vars</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Variable</span>, <span class="ident">Set</span><span class="op">&gt;</span>,
-                         <span class="ident">choice_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ChoiceInstance</span>)
-        <span class="op">-&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&gt;</span>, <span class="ident">SetConstraints</span>, <span class="ident">Adaptator</span>)
-    {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">adapt_env_ext</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="kw-2">mut</span> <span class="ident">vars</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Variable</span>, <span class="ident">Set</span><span class="op">&gt;</span>,
+        <span class="ident">choice_instance</span>: <span class="kw-2">&amp;</span><span class="ident">ChoiceInstance</span>,
+    ) <span class="op">-&gt;</span> (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&gt;</span>, <span class="ident">SetConstraints</span>, <span class="ident">Adaptator</span>) {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">arg_foralls</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">other_foralls</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">set_constraints</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">adaptator</span> <span class="op">=</span> <span class="ident">Adaptator</span>::<span class="ident">default</span>();
         <span class="comment">// Set the mapping of the target choice arguments.</span>
         <span class="kw">let</span> <span class="ident">target</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_choice</span>(<span class="kw-2">&amp;</span><span class="ident">choice_instance</span>.<span class="ident">choice</span>);
-        <span class="kw">let</span> <span class="ident">src_vars</span> <span class="op">=</span> <span class="ident">choice_instance</span>.<span class="ident">vars</span>.<span class="ident">iter</span>().<span class="ident">zip_eq</span>(<span class="ident">target</span>.<span class="ident">arguments</span>().<span class="ident">sets</span>());
+        <span class="kw">let</span> <span class="ident">src_vars</span> <span class="op">=</span> <span class="ident">choice_instance</span>
+            .<span class="ident">vars</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">zip_eq</span>(<span class="ident">target</span>.<span class="ident">arguments</span>().<span class="ident">sets</span>());
         <span class="kw">for</span> (<span class="ident">arg_id</span>, (<span class="kw-2">&amp;</span><span class="ident">mapped_var</span>, <span class="ident">given_set</span>)) <span class="kw">in</span> <span class="ident">src_vars</span>.<span class="ident">enumerate</span>() {
             <span class="kw">let</span> <span class="ident">expected_set</span> <span class="op">=</span> <span class="ident">vars</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">mapped_var</span>).<span class="ident">unwrap</span>();
             <span class="ident">adaptator</span>.<span class="ident">set_variable</span>(<span class="ident">mapped_var</span>, <span class="ident">Variable</span>::<span class="ident">Arg</span>(<span class="ident">arg_id</span>));
@@ -706,10 +943,13 @@
             }
         }
         <span class="comment">// Adapt the set constraints to the new environement.</span>
-        <span class="kw">for</span> <span class="ident">set</span> <span class="kw">in</span> <span class="ident">set_constraints</span>.<span class="ident">iter_mut</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">x</span>.<span class="number">1</span>)
-            .<span class="ident">chain</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">arg_foralls</span>).<span class="ident">chain</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">other_foralls</span>)
+        <span class="kw">for</span> <span class="ident">set</span> <span class="kw">in</span> <span class="ident">set_constraints</span>
+            .<span class="ident">iter_mut</span>()
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">x</span>.<span class="number">1</span>)
+            .<span class="ident">chain</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">arg_foralls</span>)
+            .<span class="ident">chain</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">other_foralls</span>)
         {
-                <span class="kw-2">*</span><span class="ident">set</span> <span class="op">=</span> <span class="ident">set</span>.<span class="ident">adapt</span>(<span class="kw-2">&amp;</span><span class="ident">adaptator</span>);
+            <span class="kw-2">*</span><span class="ident">set</span> <span class="op">=</span> <span class="ident">set</span>.<span class="ident">adapt</span>(<span class="kw-2">&amp;</span><span class="ident">adaptator</span>);
         }
         <span class="comment">// Reverse the set constraints when the set parameter is defined in the foralls.</span>
         <span class="comment">// TODO(cleanup): make the reversing code readable</span>
@@ -720,7 +960,9 @@
                 <span class="comment">// Assign the reverse set to foralls.</span>
                 <span class="kw">let</span> <span class="ident">forall</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">forall_id</span> <span class="op">&lt;</span> <span class="ident">arg_foralls</span>.<span class="ident">len</span>() {
                     <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">arg_foralls</span>[<span class="ident">forall_id</span>]
-                } <span class="kw">else</span> { <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">other_foralls</span>[<span class="ident">forall_id</span><span class="op">-</span><span class="ident">arg_foralls</span>.<span class="ident">len</span>()] };
+                } <span class="kw">else</span> {
+                    <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">other_foralls</span>[<span class="ident">forall_id</span> <span class="op">-</span> <span class="ident">arg_foralls</span>.<span class="ident">len</span>()]
+                };
                 <span class="kw">let</span> (<span class="ident">superset</span>, <span class="ident">reverse_set</span>) <span class="op">=</span> <span class="ident">set</span>.<span class="ident">reverse</span>(<span class="kw-2">*</span><span class="ident">var</span>, <span class="kw-2">&amp;</span><span class="ident">forall</span>).<span class="ident">unwrap</span>();
                 <span class="kw-2">*</span><span class="ident">forall</span> <span class="op">=</span> <span class="ident">reverse_set</span>;
                 <span class="comment">// Use the superset as the constraint is enforced by the forall.</span>
@@ -733,36 +975,46 @@
                 <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Variable</span>::<span class="ident">Arg</span>(<span class="ident">arg_id</span>) <span class="op">=</span> <span class="ident">var</span> {
                     <span class="kw">let</span> <span class="ident">given_set</span> <span class="op">=</span> <span class="ident">target</span>.<span class="ident">arguments</span>().<span class="ident">get</span>(<span class="ident">arg_id</span>).<span class="number">1</span>;
                     <span class="op">!</span><span class="ident">given_set</span>.<span class="ident">is_subset_of_def</span>(<span class="ident">set</span>)
-                } <span class="kw">else</span> { <span class="macro">panic</span><span class="macro">!</span>() }
+                } <span class="kw">else</span> {
+                    <span class="macro">panic</span><span class="macro">!</span>()
+                }
             } <span class="kw">else</span> {
                 <span class="bool-val">true</span>
             }
         });
 
-        (<span class="ident">arg_foralls</span>, <span class="ident">other_foralls</span>, <span class="ident">SetConstraints</span>::<span class="ident">new</span>(<span class="ident">set_constraints</span>), <span class="ident">adaptator</span>)
+        (
+            <span class="ident">arg_foralls</span>,
+            <span class="ident">other_foralls</span>,
+            <span class="ident">SetConstraints</span>::<span class="ident">new</span>(<span class="ident">set_constraints</span>),
+            <span class="ident">adaptator</span>,
+        )
     }
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">IrDesc</span> {
     <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
-       <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ir_desc</span> <span class="op">=</span>  <span class="ident">IrDesc</span> {
-           <span class="ident">choices</span>: <span class="ident">IndexMap</span>::<span class="ident">default</span>(),
-           <span class="ident">enums</span>: <span class="ident">IndexMap</span>::<span class="ident">default</span>(),
-           <span class="ident">set_defs</span>: <span class="ident">IndexMap</span>::<span class="ident">default</span>(),
-           <span class="ident">triggers</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
-       };
-       <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bool_enum</span> <span class="op">=</span> <span class="ident">Enum</span>::<span class="ident">new</span>(<span class="string">&quot;Bool&quot;</span>.<span class="ident">into</span>(), <span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
-       <span class="ident">bool_enum</span>.<span class="ident">add_value</span>(<span class="string">&quot;TRUE&quot;</span>.<span class="ident">into</span>(), <span class="prelude-val">None</span>);
-       <span class="ident">bool_enum</span>.<span class="ident">add_value</span>(<span class="string">&quot;FALSE&quot;</span>.<span class="ident">into</span>(), <span class="prelude-val">None</span>);
-       <span class="ident">ir_desc</span>.<span class="ident">add_enum</span>(<span class="ident">bool_enum</span>);
-       <span class="ident">ir_desc</span>
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ir_desc</span> <span class="op">=</span> <span class="ident">IrDesc</span> {
+            <span class="ident">choices</span>: <span class="ident">IndexMap</span>::<span class="ident">default</span>(),
+            <span class="ident">enums</span>: <span class="ident">IndexMap</span>::<span class="ident">default</span>(),
+            <span class="ident">set_defs</span>: <span class="ident">IndexMap</span>::<span class="ident">default</span>(),
+            <span class="ident">triggers</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
+        };
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bool_enum</span> <span class="op">=</span> <span class="ident">Enum</span>::<span class="ident">new</span>(<span class="string">&quot;Bool&quot;</span>.<span class="ident">into</span>(), <span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
+        <span class="ident">bool_enum</span>.<span class="ident">add_value</span>(<span class="string">&quot;TRUE&quot;</span>.<span class="ident">into</span>(), <span class="prelude-val">None</span>);
+        <span class="ident">bool_enum</span>.<span class="ident">add_value</span>(<span class="string">&quot;FALSE&quot;</span>.<span class="ident">into</span>(), <span class="prelude-val">None</span>);
+        <span class="ident">ir_desc</span>.<span class="ident">add_enum</span>(<span class="ident">bool_enum</span>);
+        <span class="ident">ir_desc</span>
     }
 }
 
 <span class="doccomment">/// Indicates whether a counter sums or adds.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CounterKind</span> { <span class="ident">Add</span>, <span class="ident">Mul</span> }
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CounterKind</span> {
+    <span class="ident">Add</span>,
+    <span class="ident">Mul</span>,
+}
 
 <span class="kw">impl</span> <span class="ident">CounterKind</span> {
     <span class="doccomment">/// Returns the neutral element of the operand.</span>
@@ -786,8 +1038,11 @@
 
 <span class="kw">impl</span> <span class="ident">Enum</span> {
     <span class="doccomment">/// Creates a new enum definition.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">name</span>: <span class="ident">RcStr</span>, <span class="ident">doc</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RcStr</span><span class="op">&gt;</span>,
-               <span class="ident">inverse</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">RcStr</span>, <span class="ident">RcStr</span>)<span class="op">&gt;&gt;</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">name</span>: <span class="ident">RcStr</span>,
+        <span class="ident">doc</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RcStr</span><span class="op">&gt;</span>,
+        <span class="ident">inverse</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">RcStr</span>, <span class="ident">RcStr</span>)<span class="op">&gt;&gt;</span>,
+    ) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="ident">Enum</span> {
             <span class="ident">name</span>: <span class="ident">name</span>,
             <span class="ident">doc</span>: <span class="ident">doc</span>,
@@ -798,7 +1053,9 @@
     }
 
     <span class="doccomment">/// Returns the name of the enum.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">RcStr</span> { <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">name</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">RcStr</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">name</span>
+    }
 
     <span class="doccomment">/// Adds a possible value to the enum.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_value</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">name</span>: <span class="ident">RcStr</span>, <span class="ident">doc</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) {
@@ -818,13 +1075,17 @@
     }
 
     <span class="doccomment">/// Returns the documentation associated with the enum.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">doc</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> { <span class="self">self</span>.<span class="ident">doc</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span> <span class="kw">as</span> <span class="kw-2">&amp;</span><span class="ident">str</span>) }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">doc</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">doc</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span> <span class="kw">as</span> <span class="kw-2">&amp;</span><span class="ident">str</span>)
+    }
 
     <span class="doccomment">/// Returns the values the enum can take, and their associated comment.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">values</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">IndexMap</span><span class="op">&lt;</span><span class="ident">RcStr</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;&gt;</span> { <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">values</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">values</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">IndexMap</span><span class="op">&lt;</span><span class="ident">RcStr</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;&gt;</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">values</span>
+    }
 
     <span class="doccomment">/// Replaces aliases by the corresponding values.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">expand</span><span class="op">&lt;</span><span class="ident">IT</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span><span class="op">=</span><span class="ident">RcStr</span><span class="op">&gt;&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">set</span>: <span class="ident">IT</span>) <span class="op">-&gt;</span> <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">RcStr</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">expand</span><span class="op">&lt;</span><span class="ident">IT</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">RcStr</span><span class="op">&gt;&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">set</span>: <span class="ident">IT</span>) <span class="op">-&gt;</span> <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">RcStr</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_set</span> <span class="op">=</span> <span class="ident">HashSet</span>::<span class="ident">default</span>();
         <span class="kw">for</span> <span class="ident">alias</span> <span class="kw">in</span> <span class="ident">set</span> {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>(<span class="kw-2">ref</span> <span class="ident">alias_set</span>, <span class="kw">_</span>)) <span class="op">=</span> <span class="self">self</span>.<span class="ident">aliases</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">alias</span>) {
@@ -840,8 +1101,12 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">inverse</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">RcStr</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">RcStr</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">mapping</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">inverse</span> {
             <span class="kw">for</span> <span class="kw-2">&amp;</span>(<span class="kw-2">ref</span> <span class="ident">lhs</span>, <span class="kw-2">ref</span> <span class="ident">rhs</span>) <span class="kw">in</span> <span class="ident">mapping</span> {
-                <span class="kw">if</span> <span class="ident">lhs</span> <span class="op">==</span> <span class="ident">value</span> { <span class="kw">return</span> <span class="ident">rhs</span>; }
-                <span class="kw">if</span> <span class="ident">rhs</span> <span class="op">==</span> <span class="ident">value</span> { <span class="kw">return</span> <span class="ident">lhs</span>; }
+                <span class="kw">if</span> <span class="ident">lhs</span> <span class="op">==</span> <span class="ident">value</span> {
+                    <span class="kw">return</span> <span class="ident">rhs</span>;
+                }
+                <span class="kw">if</span> <span class="ident">rhs</span> <span class="op">==</span> <span class="ident">value</span> {
+                    <span class="kw">return</span> <span class="ident">lhs</span>;
+                }
             }
         }
         <span class="ident">value</span>
@@ -852,7 +1117,6 @@
         <span class="self">self</span>.<span class="ident">inverse</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">x</span>[..])
     }
 }
-
 
 <span class="doccomment">/// A piece of host code called when a list of conditions are met.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Trigger</span> {
@@ -866,8 +1130,8 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">test</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">std</span>;
     <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
+    <span class="kw">use</span> <span class="ident">std</span>;
 
     <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">filter</span>::<span class="ident">test</span>::<span class="kw-2">*</span>;
 
@@ -885,7 +1149,8 @@
         <span class="doccomment">/// Evaluate a condition.</span>
         <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">eval_cond</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">cond</span>: <span class="kw-2">&amp;</span><span class="ident">Condition</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
             <span class="kw">let</span> <span class="ident">mapping</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">input_values</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>().<span class="ident">collect</span>();
-            <span class="ident">cond</span>.<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inputs_def</span>, <span class="kw-2">&amp;</span><span class="ident">mapping</span>, <span class="self">self</span>.<span class="ident">ir_desc</span>).<span class="ident">is_true</span>()
+            <span class="ident">cond</span>.<span class="ident">evaluate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">inputs_def</span>, <span class="kw-2">&amp;</span><span class="ident">mapping</span>, <span class="self">self</span>.<span class="ident">ir_desc</span>)
+                .<span class="ident">is_true</span>()
         }
 
         <span class="doccomment">/// Filters the list of valid values according to the given rule.</span>
@@ -895,12 +1160,17 @@
             <span class="self">self</span>.<span class="ident">eval_rule_aux</span>(<span class="kw-2">&amp;</span><span class="ident">rule</span>.<span class="ident">conditions</span>, <span class="kw-2">&amp;</span><span class="ident">rule</span>.<span class="ident">set_constraints</span>, <span class="ident">set</span>, <span class="ident">out</span>);
         }
 
-        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">eval_rule_aux</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">conditions</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">Condition</span>],
-                             <span class="ident">set_constraints</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">SetConstraints</span>,
-                             <span class="ident">alternatives</span>: <span class="ident">ValueSet</span>,
-                             <span class="ident">valid_values</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ValueSet</span>) {
+        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">eval_rule_aux</span>(
+            <span class="kw-2">&amp;</span><span class="self">self</span>,
+            <span class="ident">conditions</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">Condition</span>],
+            <span class="ident">set_constraints</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">SetConstraints</span>,
+            <span class="ident">alternatives</span>: <span class="ident">ValueSet</span>,
+            <span class="ident">valid_values</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ValueSet</span>,
+        ) {
             <span class="kw">for</span> <span class="kw-2">&amp;</span>(<span class="ident">var</span>, <span class="kw-2">ref</span> <span class="ident">t</span>) <span class="kw">in</span> <span class="ident">set_constraints</span>.<span class="ident">constraints</span>() {
-                <span class="kw">if</span> <span class="op">!</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">var_sets</span>[<span class="kw-2">&amp;</span><span class="ident">var</span>]).<span class="ident">is_subset_of</span>(<span class="ident">t</span>) { <span class="kw">return</span>; }
+                <span class="kw">if</span> <span class="op">!</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">var_sets</span>[<span class="kw-2">&amp;</span><span class="ident">var</span>]).<span class="ident">is_subset_of</span>(<span class="ident">t</span>) {
+                    <span class="kw">return</span>;
+                }
             }
             <span class="kw">if</span> <span class="ident">conditions</span>.<span class="ident">iter</span>().<span class="ident">all</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">eval_cond</span>(<span class="ident">c</span>)) {
                 <span class="ident">valid_values</span>.<span class="ident">intersect</span>(<span class="ident">alternatives</span>);
@@ -909,11 +1179,15 @@
 
         <span class="doccomment">/// Returns the list of valid values according the given rules.</span>
         <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">eval_rules</span><span class="op">&lt;</span><span class="ident">IT</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">rules</span>: <span class="ident">IT</span>) <span class="op">-&gt;</span> <span class="ident">ValueSet</span>
-                <span class="kw">where</span> <span class="ident">IT</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span><span class="op">=</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Rule</span><span class="op">&gt;</span> {
+        <span class="kw">where</span>
+            <span class="ident">IT</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Rule</span><span class="op">&gt;</span>,
+        {
             <span class="kw">let</span> <span class="ident">enum_values</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">enum_</span>.<span class="ident">values</span>().<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>();
             <span class="kw">let</span> <span class="ident">enum_name</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">enum_</span>.<span class="ident">name</span>().<span class="ident">clone</span>();
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">value_set</span> <span class="op">=</span> <span class="ident">ValueSet</span>::<span class="ident">enum_values</span>(<span class="ident">enum_name</span>, <span class="ident">enum_values</span>);
-            <span class="kw">for</span> <span class="ident">rule</span> <span class="kw">in</span> <span class="ident">rules</span> { <span class="self">self</span>.<span class="ident">eval_rule</span>(<span class="ident">rule</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">value_set</span>); }
+            <span class="kw">for</span> <span class="ident">rule</span> <span class="kw">in</span> <span class="ident">rules</span> {
+                <span class="self">self</span>.<span class="ident">eval_rule</span>(<span class="ident">rule</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">value_set</span>);
+            }
             <span class="ident">value_set</span>
         }
 
@@ -930,53 +1204,77 @@
                         }
                     }
                     <span class="ident">value_set</span>
-                },
+                }
             }
         }
 
         <span class="doccomment">/// Returns an iterator over all possible totaly specified contexts.</span>
-        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">iter_contexts</span>(<span class="ident">ir_desc</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">IrDesc</span>, <span class="ident">enum_</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Enum</span>,
-                             <span class="ident">inputs_def</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">ChoiceInstance</span>],
-                             <span class="ident">static_conds</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">StaticCond</span>])
-                <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span><span class="op">=</span><span class="ident">EvalContext</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;a</span> {
-            <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">inputs_def</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">input</span><span class="op">|</span> {
-                <span class="kw">match</span> <span class="ident">ir_desc</span>.<span class="ident">get_choice</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>.<span class="ident">choice</span>).<span class="ident">value_type</span>() {
-                    <span class="ident">ValueType</span>::<span class="ident">Enum</span>(<span class="kw-2">ref</span> <span class="ident">name</span>) <span class="op">=&gt;</span>
-                        <span class="ident">ir_desc</span>.<span class="ident">get_enum</span>(<span class="ident">name</span>).<span class="ident">values</span>().<span class="ident">keys</span>().<span class="ident">collect_vec</span>(),
-                    <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(),
-                }
-            }).<span class="ident">collect_vec</span>();
-            <span class="kw">let</span> <span class="ident">num_values</span> <span class="op">=</span> <span class="ident">values</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">len</span>()).<span class="ident">collect_vec</span>();
-            <span class="ident">NDRange</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">num_values</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">indexes</span><span class="op">|</span> {
-                <span class="ident">values</span>.<span class="ident">iter</span>().<span class="ident">zip_eq</span>(<span class="ident">indexes</span>).<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">x</span>, <span class="ident">y</span>)<span class="op">|</span> <span class="ident">x</span>[<span class="ident">y</span>]).<span class="ident">collect_vec</span>()
-            }).<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">values</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">cond_vec</span> <span class="op">=</span> <span class="ident">static_conds</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="number">2</span>).<span class="ident">collect_vec</span>();
-                <span class="ident">NDRange</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">cond_vec</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">cond_values</span><span class="op">|</span> {
-                    <span class="kw">let</span> <span class="ident">cond_values</span> <span class="op">=</span> <span class="ident">cond_values</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">x</span> {
-                        <span class="number">0</span> <span class="op">=&gt;</span> <span class="bool-val">false</span>,
-                        <span class="number">1</span> <span class="op">=&gt;</span> <span class="bool-val">true</span>,
+        <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">iter_contexts</span>(
+            <span class="ident">ir_desc</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">IrDesc</span>,
+            <span class="ident">enum_</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Enum</span>,
+            <span class="ident">inputs_def</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">ChoiceInstance</span>],
+            <span class="ident">static_conds</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">StaticCond</span>],
+        ) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">EvalContext</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;a</span> {
+            <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">inputs_def</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">map</span>(
+                    <span class="op">|</span><span class="ident">input</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">ir_desc</span>.<span class="ident">get_choice</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>.<span class="ident">choice</span>).<span class="ident">value_type</span>() {
+                        <span class="ident">ValueType</span>::<span class="ident">Enum</span>(<span class="kw-2">ref</span> <span class="ident">name</span>) <span class="op">=&gt;</span> {
+                            <span class="ident">ir_desc</span>.<span class="ident">get_enum</span>(<span class="ident">name</span>).<span class="ident">values</span>().<span class="ident">keys</span>().<span class="ident">collect_vec</span>()
+                        }
                         <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(),
-                    });
-                    <span class="kw">let</span> <span class="ident">input_values</span> <span class="op">=</span> <span class="ident">values</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">v</span><span class="op">|</span> {
-                        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">once</span>(<span class="ident">v</span>.<span class="ident">clone</span>()).<span class="ident">collect</span>();
-                        <span class="ident">ValueSet</span>::<span class="ident">enum_values</span>(<span class="ident">enum_</span>.<span class="ident">name</span>().<span class="ident">clone</span>(), <span class="ident">v</span>)
-                    }).<span class="ident">collect</span>();
-                    <span class="ident">EvalContext</span> {
-                        <span class="ident">ir_desc</span>: <span class="ident">ir_desc</span>,
-                        <span class="ident">enum_</span>: <span class="ident">enum_</span>,
-                        <span class="ident">var_sets</span>: <span class="ident">HashMap</span>::<span class="ident">default</span>(),
-                        <span class="ident">inputs_def</span>: <span class="ident">inputs_def</span>,
-                        <span class="ident">input_values</span>: <span class="ident">input_values</span>,
-                        <span class="ident">static_conds</span>: <span class="ident">static_conds</span>.<span class="ident">iter</span>().<span class="ident">zip_eq</span>(<span class="ident">cond_values</span>).<span class="ident">collect</span>(),
-                    }
-                }).<span class="ident">collect_vec</span>()
-            }).<span class="ident">collect_vec</span>().<span class="ident">into_iter</span>()
+                    },
+                )
+                .<span class="ident">collect_vec</span>();
+            <span class="kw">let</span> <span class="ident">num_values</span> <span class="op">=</span> <span class="ident">values</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">len</span>()).<span class="ident">collect_vec</span>();
+            <span class="ident">NDRange</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">num_values</span>)
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">indexes</span><span class="op">|</span> {
+                    <span class="ident">values</span>
+                        .<span class="ident">iter</span>()
+                        .<span class="ident">zip_eq</span>(<span class="ident">indexes</span>)
+                        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">x</span>, <span class="ident">y</span>)<span class="op">|</span> <span class="ident">x</span>[<span class="ident">y</span>])
+                        .<span class="ident">collect_vec</span>()
+                })
+                .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">values</span><span class="op">|</span> {
+                    <span class="kw">let</span> <span class="ident">cond_vec</span> <span class="op">=</span> <span class="ident">static_conds</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="number">2</span>).<span class="ident">collect_vec</span>();
+                    <span class="ident">NDRange</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">cond_vec</span>)
+                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">cond_values</span><span class="op">|</span> {
+                            <span class="kw">let</span> <span class="ident">cond_values</span> <span class="op">=</span> <span class="ident">cond_values</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">x</span> {
+                                <span class="number">0</span> <span class="op">=&gt;</span> <span class="bool-val">false</span>,
+                                <span class="number">1</span> <span class="op">=&gt;</span> <span class="bool-val">true</span>,
+                                <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(),
+                            });
+                            <span class="kw">let</span> <span class="ident">input_values</span> <span class="op">=</span> <span class="ident">values</span>
+                                .<span class="ident">iter</span>()
+                                .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">v</span><span class="op">|</span> {
+                                    <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">once</span>(<span class="ident">v</span>.<span class="ident">clone</span>()).<span class="ident">collect</span>();
+                                    <span class="ident">ValueSet</span>::<span class="ident">enum_values</span>(<span class="ident">enum_</span>.<span class="ident">name</span>().<span class="ident">clone</span>(), <span class="ident">v</span>)
+                                })
+                                .<span class="ident">collect</span>();
+                            <span class="ident">EvalContext</span> {
+                                <span class="ident">ir_desc</span>: <span class="ident">ir_desc</span>,
+                                <span class="ident">enum_</span>: <span class="ident">enum_</span>,
+                                <span class="ident">var_sets</span>: <span class="ident">HashMap</span>::<span class="ident">default</span>(),
+                                <span class="ident">inputs_def</span>: <span class="ident">inputs_def</span>,
+                                <span class="ident">input_values</span>: <span class="ident">input_values</span>,
+                                <span class="ident">static_conds</span>: <span class="ident">static_conds</span>
+                                    .<span class="ident">iter</span>()
+                                    .<span class="ident">zip_eq</span>(<span class="ident">cond_values</span>)
+                                    .<span class="ident">collect</span>(),
+                            }
+                        })
+                        .<span class="ident">collect_vec</span>()
+                })
+                .<span class="ident">collect_vec</span>()
+                .<span class="ident">into_iter</span>()
         }
     }
 
     <span class="doccomment">/// A condition with a value fixed before exploration.</span>
     <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Debug</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">StaticCond</span> { <span class="ident">Code</span>(<span class="ident">Code</span>) }
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">StaticCond</span> {
+        <span class="ident">Code</span>(<span class="ident">Code</span>),
+    }
 
     <span class="doccomment">/// Generates an enum.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gen_enum</span>(<span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">num_values</span>: <span class="ident">usize</span>, <span class="ident">ir_desc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">IrDesc</span>) {

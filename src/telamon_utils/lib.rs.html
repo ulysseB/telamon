@@ -293,6 +293,39 @@
 <span id="293">293</span>
 <span id="294">294</span>
 <span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Generic helper functions.</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">fnv</span>;
@@ -309,9 +342,9 @@
 
 <span class="kw">mod</span> <span class="ident">cache</span>;
 <span class="kw">mod</span> <span class="ident">dag</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">ndarray</span>;
 <span class="kw">mod</span> <span class="ident">iterator</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">multimap</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">ndarray</span>;
 <span class="kw">mod</span> <span class="ident">vec_set</span>;
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">unwrap</span>;
@@ -322,8 +355,8 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">dag</span>::<span class="ident">Dag</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">iterator</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">ndarray</span>::{<span class="ident">NDArray</span>, <span class="ident">NDRange</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">vec_set</span>::<span class="ident">VecSet</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">sequence</span>::<span class="ident">Sequence</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">vec_set</span>::<span class="ident">VecSet</span>;
 <span class="kw">use</span> <span class="ident">fnv</span>::<span class="ident">FnvHasher</span>;
 <span class="kw">use</span> <span class="ident">num</span>::<span class="ident">Integer</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">hash</span>::<span class="ident">BuildHasherDefault</span>;
@@ -343,11 +376,15 @@
 
 <span class="kw">impl</span> <span class="ident">RcStr</span> {
     <span class="doccomment">/// Creates a new reference-counted string.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">s</span>: <span class="ident">String</span>) <span class="op">-&gt;</span> <span class="self">Self</span> { <span class="ident">RcStr</span>(<span class="ident">std</span>::<span class="ident">rc</span>::<span class="ident">Rc</span>::<span class="ident">new</span>(<span class="ident">s</span>)) }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">s</span>: <span class="ident">String</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="ident">RcStr</span>(<span class="ident">std</span>::<span class="ident">rc</span>::<span class="ident">Rc</span>::<span class="ident">new</span>(<span class="ident">s</span>))
+    }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">str</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">RcStr</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">str</span>) <span class="op">-&gt;</span> <span class="self">Self</span> { <span class="self">Self</span>::<span class="ident">new</span>(<span class="ident">s</span>.<span class="ident">to_string</span>()) }
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">str</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="self">Self</span>::<span class="ident">new</span>(<span class="ident">s</span>.<span class="ident">to_string</span>())
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">serde</span>::<span class="ident">Serialize</span> <span class="kw">for</span> <span class="ident">RcStr</span> {
@@ -357,29 +394,41 @@
 }
 
 <span class="kw">impl</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Borrow</span><span class="op">&lt;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">RcStr</span> {
-    <span class="kw">fn</span> <span class="ident">borrow</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">str</span> { <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span> }
+    <span class="kw">fn</span> <span class="ident">borrow</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">str</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Borrow</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">RcStr</span> {
-    <span class="kw">fn</span> <span class="ident">borrow</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">String</span> { <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span> }
+    <span class="kw">fn</span> <span class="ident">borrow</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">String</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">std</span>::<span class="ident">ops</span>::<span class="ident">Deref</span> <span class="kw">for</span> <span class="ident">RcStr</span> {
     <span class="kw">type</span> <span class="ident">Target</span> <span class="op">=</span> <span class="ident">String</span>;
 
-    <span class="kw">fn</span> <span class="ident">deref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">String</span> { <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span> }
+    <span class="kw">fn</span> <span class="ident">deref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">String</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">RcStr</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="prelude-ty">Result</span> { <span class="self">self</span>.<span class="number">0</span>.<span class="ident">fmt</span>(<span class="ident">f</span>) }
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">fmt</span>(<span class="ident">f</span>)
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">PartialEq</span><span class="op">&lt;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">RcStr</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> { <span class="self">self</span>.<span class="number">0</span>.<span class="ident">as_ref</span>().<span class="ident">eq</span>(<span class="ident">other</span>) }
+    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">as_ref</span>().<span class="ident">eq</span>(<span class="ident">other</span>)
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">RcStr</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">s</span>: <span class="ident">String</span>) <span class="op">-&gt;</span> <span class="ident">RcStr</span> { <span class="ident">RcStr</span>::<span class="ident">new</span>(<span class="ident">s</span>) }
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">s</span>: <span class="ident">String</span>) <span class="op">-&gt;</span> <span class="ident">RcStr</span> {
+        <span class="ident">RcStr</span>::<span class="ident">new</span>(<span class="ident">s</span>)
+    }
 }
 
 <span class="doccomment">/// Booleans enhanced with a third `Maybe` value.</span>
@@ -401,19 +450,29 @@
     }
 
     <span class="doccomment">/// Returns `true` if the underlying boolean might be `true`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">maybe_true</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> { <span class="kw-2">*</span><span class="self">self</span> <span class="op">!=</span> <span class="ident">Trivalent</span>::<span class="ident">False</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">maybe_true</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="kw-2">*</span><span class="self">self</span> <span class="op">!=</span> <span class="ident">Trivalent</span>::<span class="ident">False</span>
+    }
 
     <span class="doccomment">/// Returns `true` if the underlying boolean might be `false`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">maybe_false</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> { <span class="kw-2">*</span><span class="self">self</span> <span class="op">!=</span> <span class="ident">Trivalent</span>::<span class="ident">True</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">maybe_false</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="kw-2">*</span><span class="self">self</span> <span class="op">!=</span> <span class="ident">Trivalent</span>::<span class="ident">True</span>
+    }
 
     <span class="doccomment">/// Returns `true` if the underlying boolean is `true`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_true</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> { <span class="kw-2">*</span><span class="self">self</span> <span class="op">==</span> <span class="ident">Trivalent</span>::<span class="ident">True</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_true</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="kw-2">*</span><span class="self">self</span> <span class="op">==</span> <span class="ident">Trivalent</span>::<span class="ident">True</span>
+    }
 
     <span class="doccomment">/// Returns `true` if the underlying boolean is `false`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_false</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> { <span class="kw-2">*</span><span class="self">self</span> <span class="op">==</span> <span class="ident">Trivalent</span>::<span class="ident">False</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_false</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="kw-2">*</span><span class="self">self</span> <span class="op">==</span> <span class="ident">Trivalent</span>::<span class="ident">False</span>
+    }
 
     <span class="doccomment">/// Returns `true` if the underlying boolean might be `true` and `false`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_maybe</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> { <span class="kw-2">*</span><span class="self">self</span> <span class="op">==</span> <span class="ident">Trivalent</span>::<span class="ident">Maybe</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_maybe</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="kw-2">*</span><span class="self">self</span> <span class="op">==</span> <span class="ident">Trivalent</span>::<span class="ident">Maybe</span>
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">std</span>::<span class="ident">ops</span>::<span class="ident">BitAnd</span> <span class="kw">for</span> <span class="ident">Trivalent</span> {
@@ -485,7 +544,7 @@
         <span class="kw">pub</span> <span class="kw">mod</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span> {
             <span class="macro">include</span><span class="macro">!</span>(<span class="macro">concat</span><span class="macro">!</span>(<span class="macro">env</span><span class="macro">!</span>(<span class="string">&quot;OUT_DIR&quot;</span>), <span class="string">&quot;/&quot;</span>, <span class="macro">stringify</span><span class="macro">!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>), <span class="string">&quot;.rs&quot;</span>));
         }
-    }
+    };
 }
 
 <span class="doccomment">/// Clones a pair of reference.</span>
@@ -562,9 +621,14 @@
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">BuilderTrait</span>: <span class="ident">Sized</span> {
     <span class="doccomment">/// Runs the closure if the bool is true.</span>
     <span class="kw">fn</span> <span class="ident">doif</span><span class="op">&lt;</span><span class="ident">F</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">flag</span>: <span class="ident">bool</span>, <span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">Self</span>
-        <span class="kw">where</span> <span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">Self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">Self</span>
+    <span class="kw">where</span>
+        <span class="ident">F</span>: <span class="ident">FnOnce</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">Self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">Self</span>,
     {
-        <span class="kw">if</span> <span class="ident">flag</span> { <span class="ident">f</span>(<span class="self">self</span>) } <span class="kw">else</span> { <span class="self">self</span> }
+        <span class="kw">if</span> <span class="ident">flag</span> {
+            <span class="ident">f</span>(<span class="self">self</span>)
+        } <span class="kw">else</span> {
+            <span class="self">self</span>
+        }
     }
 }
 
@@ -576,7 +640,9 @@
         <span class="kw">struct</span> <span class="ident">Foo</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="ident">usize</span>, <span class="ident">T</span>);
 
         <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="ident">Foo</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
-            <span class="kw">fn</span> <span class="ident">key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">usize</span> { <span class="self">self</span>.<span class="number">0</span> }
+            <span class="kw">fn</span> <span class="ident">key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">usize</span> {
+                <span class="self">self</span>.<span class="number">0</span>
+            }
         }
 
         <span class="macro">hash_from_key</span><span class="macro">!</span>(<span class="ident">Foo</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>, <span class="ident">Foo</span>::<span class="ident">key</span>, <span class="ident">T</span>);

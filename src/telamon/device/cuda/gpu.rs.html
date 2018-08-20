@@ -515,13 +515,83 @@
 <span id="515">515</span>
 <span id="516">516</span>
 <span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Describes CUDA-enabled GPUs.</span>
 <span class="kw">use</span> <span class="ident">codegen</span>::<span class="ident">Function</span>;
-<span class="kw">use</span> <span class="ident">device</span>::{<span class="self">self</span>, <span class="ident">cuda</span>, <span class="ident">Device</span>};
-<span class="kw">use</span> <span class="ident">device</span>::<span class="ident">cuda</span>::<span class="ident">CudaPrinter</span>;
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">cuda</span>::<span class="ident">mem_model</span>::{<span class="self">self</span>, <span class="ident">MemInfo</span>};
-<span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">Type</span>, <span class="ident">Operator</span>};
+<span class="kw">use</span> <span class="ident">device</span>::<span class="ident">cuda</span>::<span class="ident">CudaPrinter</span>;
+<span class="kw">use</span> <span class="ident">device</span>::{<span class="self">self</span>, <span class="ident">cuda</span>, <span class="ident">Device</span>};
+<span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">Operator</span>, <span class="ident">Type</span>};
 <span class="kw">use</span> <span class="ident">model</span>::{<span class="self">self</span>, <span class="ident">HwPressure</span>};
 <span class="kw">use</span> <span class="ident">search_space</span>::{<span class="ident">DimKind</span>, <span class="ident">Domain</span>, <span class="ident">InstFlag</span>, <span class="ident">MemSpace</span>, <span class="ident">SearchSpace</span>};
 <span class="kw">use</span> <span class="ident">std</span>;
@@ -673,15 +743,15 @@
 
 <span class="kw">impl</span> <span class="ident">Gpu</span> {
     <span class="doccomment">/// Returns the GPU model corresponding to `name.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span><span class="op">=</span><span class="string">&quot;cuda&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cuda&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_executor</span>(<span class="ident">executor</span>: <span class="kw-2">&amp;</span><span class="ident">cuda</span>::<span class="ident">Executor</span>) <span class="op">-&gt;</span> <span class="ident">Gpu</span> {
         <span class="ident">cuda</span>::<span class="ident">characterize</span>::<span class="ident">get_gpu_desc</span>(<span class="ident">executor</span>)
     }
 
     <span class="doccomment">/// Returns the GPU model corresponding to `name.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span><span class="op">=</span><span class="string">&quot;cuda&quot;</span>))]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cuda&quot;</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_executor</span>(<span class="ident">executor</span>: <span class="kw-2">&amp;</span><span class="ident">cuda</span>::<span class="ident">Executor</span>) <span class="op">-&gt;</span> <span class="ident">Gpu</span> {
-        <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">executor</span> { }
+        <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">executor</span> {}
     }
 
     <span class="doccomment">/// Creates a dummy GPU, to use for tests and benchmarks without evaluation.</span>
@@ -750,26 +820,35 @@
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">InstFlag</span>::<span class="ident">MEM_COHERENT</span>.<span class="ident">contains</span>(<span class="ident">flags</span>));
         <span class="comment">// Compute possible latencies.</span>
         <span class="kw">let</span> <span class="ident">gbl_latency</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">flags</span>.<span class="ident">intersects</span>(<span class="ident">InstFlag</span>::<span class="ident">MEM_GLOBAL</span>) {
-            <span class="kw">let</span> <span class="ident">miss</span> <span class="op">=</span> <span class="ident">mem_info</span>.<span class="ident">l2_miss_ratio</span><span class="op">/</span><span class="ident">mem_info</span>.<span class="ident">l2_coalescing</span>;
-            <span class="ident">miss</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">load_ram_latency</span> <span class="op">+</span> (<span class="number">1.0</span><span class="op">-</span><span class="ident">miss</span>)<span class="kw-2">*</span><span class="self">self</span>.<span class="ident">load_l2_latency</span>
-        } <span class="kw">else</span> { <span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span> };
+            <span class="kw">let</span> <span class="ident">miss</span> <span class="op">=</span> <span class="ident">mem_info</span>.<span class="ident">l2_miss_ratio</span> <span class="op">/</span> <span class="ident">mem_info</span>.<span class="ident">l2_coalescing</span>;
+            <span class="ident">miss</span> <span class="op">*</span> <span class="self">self</span>.<span class="ident">load_ram_latency</span> <span class="op">+</span> (<span class="number">1.0</span> <span class="op">-</span> <span class="ident">miss</span>) <span class="op">*</span> <span class="self">self</span>.<span class="ident">load_l2_latency</span>
+        } <span class="kw">else</span> {
+            <span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span>
+        };
         <span class="kw">let</span> <span class="ident">shared_latency</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">flags</span>.<span class="ident">intersects</span>(<span class="ident">InstFlag</span>::<span class="ident">MEM_SHARED</span>) {
             <span class="self">self</span>.<span class="ident">load_shared_latency</span> <span class="kw">as</span> <span class="ident">f64</span>
-        } <span class="kw">else</span> { <span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span> };
+        } <span class="kw">else</span> {
+            <span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span>
+        };
         <span class="comment">// Compute the smx bandwidth used.</span>
         <span class="kw">let</span> <span class="ident">l1_lines_from_l2</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">flags</span>.<span class="ident">intersects</span>(<span class="ident">InstFlag</span>::<span class="ident">MEM_SHARED</span>) {
             <span class="number">0.0</span>
-        } <span class="kw">else</span> { <span class="ident">mem_info</span>.<span class="ident">l1_coalescing</span> };
+        } <span class="kw">else</span> {
+            <span class="ident">mem_info</span>.<span class="ident">l1_coalescing</span>
+        };
         <span class="kw">let</span> <span class="ident">l2_lines_read</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">flags</span>.<span class="ident">intersects</span>(<span class="ident">InstFlag</span>::<span class="ident">MEM_SHARED</span>) {
             <span class="number">0.0</span>
-        } <span class="kw">else</span> { <span class="ident">mem_info</span>.<span class="ident">l2_coalescing</span> };
+        } <span class="kw">else</span> {
+            <span class="ident">mem_info</span>.<span class="ident">l2_coalescing</span>
+        };
         <span class="ident">InstDesc</span> {
             <span class="ident">latency</span>: <span class="ident">f64</span>::<span class="ident">min</span>(<span class="ident">gbl_latency</span>, <span class="ident">shared_latency</span>),
             <span class="ident">issue</span>: <span class="ident">mem_info</span>.<span class="ident">replay_factor</span>,
             <span class="ident">mem</span>: <span class="ident">mem_info</span>.<span class="ident">replay_factor</span>,
-            <span class="ident">l1_lines_from_l2</span>, <span class="ident">l2_lines_read</span>,
+            <span class="ident">l1_lines_from_l2</span>,
+            <span class="ident">l2_lines_read</span>,
             <span class="ident">ram_bw</span>: <span class="ident">mem_info</span>.<span class="ident">l2_miss_ratio</span> <span class="op">*</span> <span class="ident">f64</span>::<span class="ident">from</span>(<span class="self">self</span>.<span class="ident">l2_cache_line</span>),
-            .. <span class="ident">InstDesc</span>::<span class="ident">default</span>()
+            ..<span class="ident">InstDesc</span>::<span class="ident">default</span>()
         }
     }
 
@@ -780,14 +859,16 @@
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">InstFlag</span>::<span class="ident">MEM_COHERENT</span>.<span class="ident">contains</span>(<span class="ident">flags</span>));
         <span class="kw">let</span> <span class="ident">l2_lines_stored</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">flags</span>.<span class="ident">intersects</span>(<span class="ident">InstFlag</span>::<span class="ident">MEM_SHARED</span>) {
             <span class="number">0.0</span>
-        } <span class="kw">else</span> { <span class="ident">mem_info</span>.<span class="ident">l2_coalescing</span> };
+        } <span class="kw">else</span> {
+            <span class="ident">mem_info</span>.<span class="ident">l2_coalescing</span>
+        };
         <span class="comment">// L1 lines per L2 is not limiting.</span>
         <span class="ident">InstDesc</span> {
             <span class="ident">issue</span>: <span class="ident">mem_info</span>.<span class="ident">replay_factor</span>,
             <span class="ident">mem</span>: <span class="ident">mem_info</span>.<span class="ident">replay_factor</span>,
             <span class="ident">l2_lines_stored</span>,
             <span class="ident">ram_bw</span>: <span class="number">2.0</span> <span class="op">*</span> <span class="ident">mem_info</span>.<span class="ident">l2_miss_ratio</span> <span class="op">*</span> <span class="ident">f64</span>::<span class="ident">from</span>(<span class="self">self</span>.<span class="ident">l2_cache_line</span>),
-            .. <span class="ident">InstDesc</span>::<span class="ident">default</span>()
+            ..<span class="ident">InstDesc</span>::<span class="ident">default</span>()
         }
     }
 
@@ -802,29 +883,35 @@
             <span class="comment">// The repetition along the thread is taken into account by</span>
             <span class="comment">// `num_unmapped_thread` as the current thread is accounted as not mapped.</span>
             <span class="self">self</span>.<span class="ident">syncthread_inst</span>.<span class="ident">into</span>()
-        } <span class="kw">else</span> { <span class="ident">HwPressure</span>::<span class="ident">zero</span>(<span class="self">self</span>) }
+        } <span class="kw">else</span> {
+            <span class="ident">HwPressure</span>::<span class="ident">zero</span>(<span class="self">self</span>)
+        }
     }
 
     <span class="doccomment">/// Retruns the overhead for a single instance of the instruction.</span>
-    <span class="kw">fn</span> <span class="ident">inst_pressure</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
-                     <span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
-                     <span class="ident">inst</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Instruction</span>,
-                     <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">HwPressure</span> {
+    <span class="kw">fn</span> <span class="ident">inst_pressure</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
+        <span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
+        <span class="ident">inst</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Instruction</span>,
+        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">HwPressure</span> {
         <span class="kw">use</span> <span class="ident">ir</span>::<span class="ident">Operator</span>::<span class="kw-2">*</span>;
         <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="ident">inst</span>.<span class="ident">t</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">lower_type</span>(<span class="ident">t</span>, <span class="ident">space</span>).<span class="ident">unwrap_or</span>(<span class="ident">t</span>));
         <span class="kw">match</span> (<span class="ident">inst</span>.<span class="ident">operator</span>(), <span class="ident">t</span>) {
-            (<span class="kw-2">&amp;</span><span class="ident">BinOp</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span>, ..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">32</span>))) <span class="op">|</span>
-            (<span class="kw-2">&amp;</span><span class="ident">BinOp</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Sub</span>, ..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">32</span>))) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">add_f32_inst</span>.<span class="ident">into</span>(),
-            (<span class="kw-2">&amp;</span><span class="ident">BinOp</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span>, ..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">64</span>))) <span class="op">|</span>
-            (<span class="kw-2">&amp;</span><span class="ident">BinOp</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Sub</span>, ..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">64</span>))) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">add_f64_inst</span>.<span class="ident">into</span>(),
-            (<span class="kw-2">&amp;</span><span class="ident">BinOp</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span>, ..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>))) <span class="op">|</span>
-            (<span class="kw-2">&amp;</span><span class="ident">BinOp</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Sub</span>, ..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>))) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">add_i32_inst</span>.<span class="ident">into</span>(),
-            (<span class="kw-2">&amp;</span><span class="ident">BinOp</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span>, ..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">64</span>))) <span class="op">|</span>
-            (<span class="kw-2">&amp;</span><span class="ident">BinOp</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Sub</span>, ..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">64</span>))) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">add_i64_inst</span>.<span class="ident">into</span>(),
+            (<span class="kw-2">&amp;</span><span class="ident">BinOp</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span>, ..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">32</span>)))
+            <span class="op">|</span> (<span class="kw-2">&amp;</span><span class="ident">BinOp</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Sub</span>, ..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">32</span>))) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">add_f32_inst</span>.<span class="ident">into</span>(),
+            (<span class="kw-2">&amp;</span><span class="ident">BinOp</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span>, ..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">64</span>)))
+            <span class="op">|</span> (<span class="kw-2">&amp;</span><span class="ident">BinOp</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Sub</span>, ..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">64</span>))) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">add_f64_inst</span>.<span class="ident">into</span>(),
+            (<span class="kw-2">&amp;</span><span class="ident">BinOp</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span>, ..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>)))
+            <span class="op">|</span> (<span class="kw-2">&amp;</span><span class="ident">BinOp</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Sub</span>, ..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>))) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">add_i32_inst</span>.<span class="ident">into</span>(),
+            (<span class="kw-2">&amp;</span><span class="ident">BinOp</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span>, ..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">64</span>)))
+            <span class="op">|</span> (<span class="kw-2">&amp;</span><span class="ident">BinOp</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Sub</span>, ..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">64</span>))) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">add_i64_inst</span>.<span class="ident">into</span>(),
             (<span class="kw-2">&amp;</span><span class="ident">Mul</span>(..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">32</span>))) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">mul_f32_inst</span>.<span class="ident">into</span>(),
             (<span class="kw-2">&amp;</span><span class="ident">Mul</span>(..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">64</span>))) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">mul_f64_inst</span>.<span class="ident">into</span>(),
-            (<span class="kw-2">&amp;</span><span class="ident">Mul</span>(..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>))) <span class="op">|</span>
-            (<span class="kw-2">&amp;</span><span class="ident">Mul</span>(..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">PtrTo</span>(<span class="kw">_</span>))) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">mul_i32_inst</span>.<span class="ident">into</span>(),
+            (<span class="kw-2">&amp;</span><span class="ident">Mul</span>(..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>))) <span class="op">|</span> (<span class="kw-2">&amp;</span><span class="ident">Mul</span>(..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">PtrTo</span>(<span class="kw">_</span>))) <span class="op">=&gt;</span> {
+                <span class="self">self</span>.<span class="ident">mul_i32_inst</span>.<span class="ident">into</span>()
+            }
             (<span class="kw-2">&amp;</span><span class="ident">Mul</span>(<span class="kw-2">ref</span> <span class="ident">op</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">64</span>))) <span class="op">=&gt;</span> {
                 <span class="kw">let</span> <span class="ident">op_t</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">lower_type</span>(<span class="ident">op</span>.<span class="ident">t</span>(), <span class="ident">space</span>).<span class="ident">unwrap_or_else</span>(<span class="op">||</span> <span class="ident">op</span>.<span class="ident">t</span>());
                 <span class="kw">if</span> <span class="ident">op_t</span> <span class="op">==</span> <span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">64</span>) {
@@ -832,11 +919,12 @@
                 } <span class="kw">else</span> {
                     <span class="self">self</span>.<span class="ident">mul_wide_inst</span>.<span class="ident">into</span>()
                 }
-            },
+            }
             (<span class="kw-2">&amp;</span><span class="ident">Mad</span>(..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">32</span>))) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">mad_f32_inst</span>.<span class="ident">into</span>(),
             (<span class="kw-2">&amp;</span><span class="ident">Mad</span>(..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">64</span>))) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">mad_f64_inst</span>.<span class="ident">into</span>(),
-            (<span class="kw-2">&amp;</span><span class="ident">Mad</span>(..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>))) <span class="op">|</span>
-            (<span class="kw-2">&amp;</span><span class="ident">Mad</span>(..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">PtrTo</span>(<span class="kw">_</span>))) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">mad_i32_inst</span>.<span class="ident">into</span>(),
+            (<span class="kw-2">&amp;</span><span class="ident">Mad</span>(..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>))) <span class="op">|</span> (<span class="kw-2">&amp;</span><span class="ident">Mad</span>(..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">PtrTo</span>(<span class="kw">_</span>))) <span class="op">=&gt;</span> {
+                <span class="self">self</span>.<span class="ident">mad_i32_inst</span>.<span class="ident">into</span>()
+            }
             (<span class="kw-2">&amp;</span><span class="ident">Mad</span>(<span class="kw-2">ref</span> <span class="ident">op</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">64</span>))) <span class="op">=&gt;</span> {
                 <span class="kw">let</span> <span class="ident">op_t</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">lower_type</span>(<span class="ident">op</span>.<span class="ident">t</span>(), <span class="ident">space</span>).<span class="ident">unwrap_or_else</span>(<span class="op">||</span> <span class="ident">op</span>.<span class="ident">t</span>());
                 <span class="kw">if</span> <span class="ident">op_t</span> <span class="op">==</span> <span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">64</span>) {
@@ -844,7 +932,7 @@
                 } <span class="kw">else</span> {
                     <span class="self">self</span>.<span class="ident">mad_wide_inst</span>.<span class="ident">into</span>()
                 }
-            },
+            }
             (<span class="kw-2">&amp;</span><span class="ident">BinOp</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Div</span>, ..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">32</span>))) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">div_f32_inst</span>.<span class="ident">into</span>(),
             (<span class="kw-2">&amp;</span><span class="ident">BinOp</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Div</span>, ..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">64</span>))) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">div_f64_inst</span>.<span class="ident">into</span>(),
             (<span class="kw-2">&amp;</span><span class="ident">BinOp</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Div</span>, ..), <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>))) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">div_i32_inst</span>.<span class="ident">into</span>(),
@@ -853,14 +941,14 @@
                 <span class="kw">let</span> <span class="ident">flag</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_inst_flag</span>(<span class="ident">inst</span>.<span class="ident">id</span>());
                 <span class="kw">let</span> <span class="ident">mem_info</span> <span class="op">=</span> <span class="ident">mem_model</span>::<span class="ident">analyse</span>(<span class="ident">space</span>, <span class="self">self</span>, <span class="ident">inst</span>, <span class="ident">dim_sizes</span>, <span class="ident">ctx</span>);
                 <span class="self">self</span>.<span class="ident">load_desc</span>(<span class="kw-2">&amp;</span><span class="ident">mem_info</span>, <span class="ident">flag</span>).<span class="ident">into</span>()
-            },
+            }
             (<span class="kw-2">&amp;</span><span class="ident">St</span>(..), <span class="kw">_</span>) <span class="op">|</span> (<span class="kw-2">&amp;</span><span class="ident">TmpSt</span>(..), <span class="kw">_</span>) <span class="op">=&gt;</span> {
                 <span class="kw">let</span> <span class="ident">flag</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_inst_flag</span>(<span class="ident">inst</span>.<span class="ident">id</span>());
                 <span class="kw">let</span> <span class="ident">mem_info</span> <span class="op">=</span> <span class="ident">mem_model</span>::<span class="ident">analyse</span>(<span class="ident">space</span>, <span class="self">self</span>, <span class="ident">inst</span>, <span class="ident">dim_sizes</span>, <span class="ident">ctx</span>);
                 <span class="self">self</span>.<span class="ident">store_desc</span>(<span class="kw-2">&amp;</span><span class="ident">mem_info</span>, <span class="ident">flag</span>).<span class="ident">into</span>()
-            },
+            }
             <span class="comment">// TODO(model): Instruction description for mov and cast.</span>
-            (<span class="kw-2">&amp;</span><span class="ident">Mov</span>(..), <span class="kw">_</span>) <span class="op">|</span> (<span class="kw-2">&amp;</span><span class="ident">Cast</span>(..), <span class="kw">_</span>) <span class="op">=&gt;</span>  <span class="ident">HwPressure</span>::<span class="ident">zero</span>(<span class="self">self</span>),
+            (<span class="kw-2">&amp;</span><span class="ident">Mov</span>(..), <span class="kw">_</span>) <span class="op">|</span> (<span class="kw-2">&amp;</span><span class="ident">Cast</span>(..), <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="ident">HwPressure</span>::<span class="ident">zero</span>(<span class="self">self</span>),
             <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(),
         }
     }
@@ -869,28 +957,37 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">blocks_per_smx</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">block_per_smx</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">max_block_per_smx</span>;
         <span class="kw">let</span> <span class="ident">num_thread</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_num_threads</span>().<span class="ident">min</span>;
-        <span class="ident">min_assign</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">block_per_smx</span>, <span class="self">self</span>.<span class="ident">thread_per_smx</span><span class="op">/</span><span class="ident">num_thread</span>);
+        <span class="ident">min_assign</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">block_per_smx</span>, <span class="self">self</span>.<span class="ident">thread_per_smx</span> <span class="op">/</span> <span class="ident">num_thread</span>);
         <span class="kw">let</span> <span class="ident">shared_mem_used</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_shared_mem_used</span>().<span class="ident">min</span>;
         <span class="kw">if</span> <span class="ident">shared_mem_used</span> <span class="op">!=</span> <span class="number">0</span> {
-            <span class="ident">min_assign</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">block_per_smx</span>, <span class="self">self</span>.<span class="ident">shared_mem_per_smx</span><span class="op">/</span><span class="ident">shared_mem_used</span>);
+            <span class="ident">min_assign</span>(
+                <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">block_per_smx</span>,
+                <span class="self">self</span>.<span class="ident">shared_mem_per_smx</span> <span class="op">/</span> <span class="ident">shared_mem_used</span>,
+            );
         }
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">block_per_smx</span> <span class="op">&gt;</span> <span class="number">0</span>,
-                <span class="string">&quot;not enough resources per block: shared mem used = {}, num threads = {}&quot;</span>,
-                <span class="ident">shared_mem_used</span>, <span class="ident">num_thread</span>);
+        <span class="macro">assert</span><span class="macro">!</span>(
+            <span class="ident">block_per_smx</span> <span class="op">&gt;</span> <span class="number">0</span>,
+            <span class="string">&quot;not enough resources per block: shared mem used = {}, num threads = {}&quot;</span>,
+            <span class="ident">shared_mem_used</span>,
+            <span class="ident">num_thread</span>
+        );
         <span class="ident">block_per_smx</span>
     }
 
     <span class="doccomment">/// Returns the pressure of an an instruction skipped by a predicate.</span>
     <span class="kw">fn</span> <span class="ident">skipped_pressure</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">HwPressure</span> {
-        (<span class="ident">InstDesc</span> { <span class="ident">issue</span>: <span class="number">1.0</span>, .. <span class="ident">InstDesc</span>::<span class="ident">default</span>() }).<span class="ident">into</span>()
+        (<span class="ident">InstDesc</span> {
+            <span class="ident">issue</span>: <span class="number">1.0</span>,
+            ..<span class="ident">InstDesc</span>::<span class="ident">default</span>()
+        }).<span class="ident">into</span>()
     }
 
     <span class="doccomment">/// Computes the ratio `num_wraps*wrap_size/num_threads`. This ratio may be `&gt;1`</span>
     <span class="doccomment">/// because the hardware creates additionnal threads to fill the wraps.</span>
     <span class="kw">fn</span> <span class="ident">waste_ratio</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">lcm_threads_per_block</span>: <span class="ident">u64</span>) <span class="op">-&gt;</span> <span class="ident">f64</span> {
         <span class="kw">let</span> <span class="ident">wrap_size</span> <span class="op">=</span> <span class="ident">u64</span>::<span class="ident">from</span>(<span class="self">self</span>.<span class="ident">wrap_size</span>);
-        <span class="kw">let</span> <span class="ident">n_wraps</span> <span class="op">=</span> (<span class="ident">lcm_threads_per_block</span> <span class="op">+</span> <span class="ident">wrap_size</span> <span class="op">-</span> <span class="number">1</span>)<span class="op">/</span><span class="ident">wrap_size</span>;
-        (<span class="ident">n_wraps</span> <span class="op">*</span> <span class="ident">wrap_size</span>) <span class="kw">as</span> <span class="ident">f64</span><span class="op">/</span><span class="ident">lcm_threads_per_block</span> <span class="kw">as</span> <span class="ident">f64</span>
+        <span class="kw">let</span> <span class="ident">n_wraps</span> <span class="op">=</span> (<span class="ident">lcm_threads_per_block</span> <span class="op">+</span> <span class="ident">wrap_size</span> <span class="op">-</span> <span class="number">1</span>) <span class="op">/</span> <span class="ident">wrap_size</span>;
+        (<span class="ident">n_wraps</span> <span class="op">*</span> <span class="ident">wrap_size</span>) <span class="kw">as</span> <span class="ident">f64</span> <span class="op">/</span> <span class="ident">lcm_threads_per_block</span> <span class="kw">as</span> <span class="ident">f64</span>
     }
 }
 
@@ -908,87 +1005,122 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">max_block_dims</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> { <span class="number">3</span> }
+    <span class="kw">fn</span> <span class="ident">max_block_dims</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
+        <span class="number">3</span>
+    }
 
-    <span class="kw">fn</span> <span class="ident">max_threads</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> { <span class="number">1024</span> }
+    <span class="kw">fn</span> <span class="ident">max_threads</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
+        <span class="number">1024</span>
+    }
 
-    <span class="kw">fn</span> <span class="ident">max_unrolling</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> { <span class="number">512</span> }
+    <span class="kw">fn</span> <span class="ident">max_unrolling</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
+        <span class="number">512</span>
+    }
 
     <span class="kw">fn</span> <span class="ident">vectorization_factors</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dim</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Dimension</span>, <span class="ident">op</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Operator</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u32</span>] {
         <span class="kw">const</span> <span class="ident">LD_ST_FACTORS</span>: [<span class="ident">u32</span>; <span class="number">2</span>] <span class="op">=</span> [<span class="number">2</span>, <span class="number">4</span>];
         <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">op</span> {
             <span class="ident">Operator</span>::<span class="ident">TmpLd</span>(..) <span class="op">|</span> <span class="ident">Operator</span>::<span class="ident">TmpSt</span>(..) <span class="op">=&gt;</span> <span class="kw-2">&amp;</span><span class="ident">LD_ST_FACTORS</span>,
-            <span class="ident">Operator</span>::<span class="ident">Ld</span>(<span class="kw-2">ref</span> <span class="ident">t</span>, <span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">pattern</span>) <span class="kw">if</span> <span class="ident">pattern</span>.<span class="ident">is_consecutive</span>(<span class="ident">dim</span>.<span class="ident">id</span>(), <span class="ident">t</span>) <span class="op">=&gt;</span>
-                <span class="kw-2">&amp;</span><span class="ident">LD_ST_FACTORS</span>,
+            <span class="ident">Operator</span>::<span class="ident">Ld</span>(<span class="kw-2">ref</span> <span class="ident">t</span>, <span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">pattern</span>)
+                <span class="kw">if</span> <span class="ident">pattern</span>.<span class="ident">is_consecutive</span>(<span class="ident">dim</span>.<span class="ident">id</span>(), <span class="ident">t</span>) <span class="op">=&gt;</span>
+            {
+                <span class="kw-2">&amp;</span><span class="ident">LD_ST_FACTORS</span>
+            }
             <span class="ident">Operator</span>::<span class="ident">St</span>(<span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">operand</span>, <span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">pattern</span>)
-                <span class="kw">if</span> <span class="ident">pattern</span>.<span class="ident">is_consecutive</span>(<span class="ident">dim</span>.<span class="ident">id</span>(), <span class="kw-2">&amp;</span><span class="ident">operand</span>.<span class="ident">t</span>()) <span class="op">=&gt;</span> <span class="kw-2">&amp;</span><span class="ident">LD_ST_FACTORS</span>,
+                <span class="kw">if</span> <span class="ident">pattern</span>.<span class="ident">is_consecutive</span>(<span class="ident">dim</span>.<span class="ident">id</span>(), <span class="kw-2">&amp;</span><span class="ident">operand</span>.<span class="ident">t</span>()) <span class="op">=&gt;</span>
+            {
+                <span class="kw-2">&amp;</span><span class="ident">LD_ST_FACTORS</span>
+            }
             <span class="kw">_</span> <span class="op">=&gt;</span> <span class="kw-2">&amp;</span>[],
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">shared_mem</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> { <span class="self">self</span>.<span class="ident">shared_mem_per_block</span> }
+    <span class="kw">fn</span> <span class="ident">shared_mem</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
+        <span class="self">self</span>.<span class="ident">shared_mem_per_block</span>
+    }
 
-    <span class="kw">fn</span> <span class="ident">supports_nc_access</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> { <span class="self">self</span>.<span class="ident">allow_nc_load</span> }
+    <span class="kw">fn</span> <span class="ident">supports_nc_access</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">allow_nc_load</span>
+    }
 
-    <span class="kw">fn</span> <span class="ident">supports_l1_access</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> { <span class="self">self</span>.<span class="ident">allow_l1_for_global_mem</span> }
+    <span class="kw">fn</span> <span class="ident">supports_l1_access</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">allow_l1_for_global_mem</span>
+    }
 
-    <span class="kw">fn</span> <span class="ident">supports_l2_access</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> { <span class="bool-val">true</span> }
+    <span class="kw">fn</span> <span class="ident">supports_l2_access</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="bool-val">true</span>
+    }
 
-    <span class="kw">fn</span> <span class="ident">name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">str</span> { <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">name</span> }
+    <span class="kw">fn</span> <span class="ident">name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">str</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">name</span>
+    }
 
     <span class="kw">fn</span> <span class="ident">lower_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>, <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Type</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">t</span> {
-            <span class="ident">Type</span>::<span class="ident">PtrTo</span>(<span class="ident">mem_id</span>) <span class="op">=&gt;</span> {
-                <span class="kw">match</span> <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_mem_space</span>(<span class="ident">mem_id</span>) {
-                    <span class="ident">MemSpace</span>::<span class="ident">GLOBAL</span> <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="self">self</span>.<span class="ident">addr_size</span>)),
-                    <span class="ident">MemSpace</span>::<span class="ident">SHARED</span> <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>)),
-                    <span class="kw">_</span> <span class="op">=&gt;</span> <span class="prelude-val">None</span>,
-                }
+            <span class="ident">Type</span>::<span class="ident">PtrTo</span>(<span class="ident">mem_id</span>) <span class="op">=&gt;</span> <span class="kw">match</span> <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_mem_space</span>(<span class="ident">mem_id</span>) {
+                <span class="ident">MemSpace</span>::<span class="ident">GLOBAL</span> <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="self">self</span>.<span class="ident">addr_size</span>)),
+                <span class="ident">MemSpace</span>::<span class="ident">SHARED</span> <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>)),
+                <span class="kw">_</span> <span class="op">=&gt;</span> <span class="prelude-val">None</span>,
             },
             <span class="kw">_</span> <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">t</span>),
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">hw_pressure</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
-                   <span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
-                   <span class="ident">_nesting</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">BBId</span>, <span class="ident">model</span>::<span class="ident">Nesting</span><span class="op">&gt;</span>,
-                   <span class="ident">bb</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">BasicBlock</span>,
-                   <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">model</span>::<span class="ident">HwPressure</span> {
+    <span class="kw">fn</span> <span class="ident">hw_pressure</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
+        <span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
+        <span class="ident">_nesting</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">BBId</span>, <span class="ident">model</span>::<span class="ident">Nesting</span><span class="op">&gt;</span>,
+        <span class="ident">bb</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">BasicBlock</span>,
+        <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">model</span>::<span class="ident">HwPressure</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">inst</span>) <span class="op">=</span> <span class="ident">bb</span>.<span class="ident">as_inst</span>() {
             <span class="self">self</span>.<span class="ident">inst_pressure</span>(<span class="ident">space</span>, <span class="ident">dim_sizes</span>, <span class="ident">inst</span>, <span class="ident">ctx</span>)
         } <span class="kw">else</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">dim</span>) <span class="op">=</span> <span class="ident">bb</span>.<span class="ident">as_dim</span>() {
             <span class="kw">let</span> <span class="ident">kind</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_dim_kind</span>(<span class="ident">dim</span>.<span class="ident">id</span>());
             <span class="self">self</span>.<span class="ident">dim_pressure</span>(<span class="ident">kind</span>, <span class="ident">dim_sizes</span>[<span class="kw-2">&amp;</span><span class="ident">dim</span>.<span class="ident">id</span>()])
-        } <span class="kw">else</span> { <span class="macro">panic</span><span class="macro">!</span>() }
+        } <span class="kw">else</span> {
+            <span class="macro">panic</span><span class="macro">!</span>()
+        }
     }
 
     <span class="kw">fn</span> <span class="ident">loop_iter_pressure</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">kind</span>: <span class="ident">DimKind</span>) <span class="op">-&gt;</span> (<span class="ident">HwPressure</span>, <span class="ident">HwPressure</span>) {
         <span class="kw">if</span> <span class="ident">kind</span> <span class="op">==</span> <span class="ident">DimKind</span>::<span class="ident">LOOP</span> {
             <span class="kw">let</span> <span class="ident">end_pressure</span> <span class="op">=</span> <span class="ident">InstDesc</span> {
                 <span class="ident">latency</span>: <span class="self">self</span>.<span class="ident">loop_end_latency</span>,
-                .. <span class="ident">InstDesc</span>::<span class="ident">default</span>()
+                ..<span class="ident">InstDesc</span>::<span class="ident">default</span>()
             };
             (<span class="self">self</span>.<span class="ident">loop_iter_overhead</span>.<span class="ident">into</span>(), <span class="ident">end_pressure</span>.<span class="ident">into</span>())
         } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">DimKind</span>::<span class="ident">THREAD</span>.<span class="ident">contains</span>(<span class="ident">kind</span>) {
             (<span class="self">self</span>.<span class="ident">syncthread_inst</span>.<span class="ident">into</span>(), <span class="ident">HwPressure</span>::<span class="ident">zero</span>(<span class="self">self</span>))
-        } <span class="kw">else</span> { (<span class="ident">HwPressure</span>::<span class="ident">zero</span>(<span class="self">self</span>), <span class="ident">HwPressure</span>::<span class="ident">zero</span>(<span class="self">self</span>)) }
+        } <span class="kw">else</span> {
+            (<span class="ident">HwPressure</span>::<span class="ident">zero</span>(<span class="self">self</span>), <span class="ident">HwPressure</span>::<span class="ident">zero</span>(<span class="self">self</span>))
+        }
     }
 
-    <span class="kw">fn</span> <span class="ident">thread_rates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">HwPressure</span> { <span class="self">self</span>.<span class="ident">thread_rates</span>.<span class="ident">into</span>() }
+    <span class="kw">fn</span> <span class="ident">thread_rates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">HwPressure</span> {
+        <span class="self">self</span>.<span class="ident">thread_rates</span>.<span class="ident">into</span>()
+    }
 
-    <span class="kw">fn</span> <span class="ident">block_rates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">HwPressure</span> { <span class="self">self</span>.<span class="ident">smx_rates</span>.<span class="ident">into</span>() }
+    <span class="kw">fn</span> <span class="ident">block_rates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">HwPressure</span> {
+        <span class="self">self</span>.<span class="ident">smx_rates</span>.<span class="ident">into</span>()
+    }
 
-    <span class="kw">fn</span> <span class="ident">total_rates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">HwPressure</span> { <span class="self">self</span>.<span class="ident">gpu_rates</span>.<span class="ident">into</span>() }
+    <span class="kw">fn</span> <span class="ident">total_rates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">HwPressure</span> {
+        <span class="self">self</span>.<span class="ident">gpu_rates</span>.<span class="ident">into</span>()
+    }
 
     <span class="kw">fn</span> <span class="ident">bottlenecks</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>] {
-        <span class="kw-2">&amp;</span>[<span class="string">&quot;issue&quot;</span>,
-          <span class="string">&quot;alu&quot;</span>,
-          <span class="string">&quot;syncthread&quot;</span>,
-          <span class="string">&quot;mem_units&quot;</span>,
-          <span class="string">&quot;l1_lines_from_l2&quot;</span>,
-          <span class="string">&quot;l2_lines_read&quot;</span>,
-          <span class="string">&quot;l2_lines_stored&quot;</span>,
-          <span class="string">&quot;bandwidth&quot;</span>]
+        <span class="kw-2">&amp;</span>[
+            <span class="string">&quot;issue&quot;</span>,
+            <span class="string">&quot;alu&quot;</span>,
+            <span class="string">&quot;syncthread&quot;</span>,
+            <span class="string">&quot;mem_units&quot;</span>,
+            <span class="string">&quot;l1_lines_from_l2&quot;</span>,
+            <span class="string">&quot;l2_lines_read&quot;</span>,
+            <span class="string">&quot;l2_lines_stored&quot;</span>,
+            <span class="string">&quot;bandwidth&quot;</span>,
+        ]
     }
 
     <span class="kw">fn</span> <span class="ident">block_parallelism</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
@@ -1011,12 +1143,16 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">add_block_overhead</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">predicated_dims_size</span>: <span class="ident">u64</span>,
-                          <span class="ident">max_threads_per_blocks</span>: <span class="ident">u64</span>,
-                          <span class="ident">pressure</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">HwPressure</span>) {
+    <span class="kw">fn</span> <span class="ident">add_block_overhead</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">predicated_dims_size</span>: <span class="ident">u64</span>,
+        <span class="ident">max_threads_per_blocks</span>: <span class="ident">u64</span>,
+        <span class="ident">pressure</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">HwPressure</span>,
+    ) {
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">predicated_dims_size</span> <span class="op">&gt;</span> <span class="number">0</span>);
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">max_threads_per_blocks</span> <span class="op">&gt;</span> <span class="number">0</span>);
-        <span class="kw">let</span> <span class="ident">active_ratio</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">waste_ratio</span>(<span class="ident">max_threads_per_blocks</span><span class="op">/</span><span class="ident">predicated_dims_size</span>);
+        <span class="kw">let</span> <span class="ident">active_ratio</span> <span class="op">=</span>
+            <span class="self">self</span>.<span class="ident">waste_ratio</span>(<span class="ident">max_threads_per_blocks</span> <span class="op">/</span> <span class="ident">predicated_dims_size</span>);
         <span class="ident">pressure</span>.<span class="ident">multiply</span>(<span class="kw-2">&amp;</span><span class="ident">InstDesc</span>::<span class="ident">wasted_ratio</span>(<span class="ident">active_ratio</span>).<span class="ident">into</span>());
         <span class="kw">if</span> <span class="ident">predicated_dims_size</span> <span class="op">&gt;</span> <span class="number">1</span> {
             <span class="kw">let</span> <span class="ident">full_ratio</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">waste_ratio</span>(<span class="ident">max_threads_per_blocks</span>);
@@ -1028,7 +1164,11 @@
 }
 
 <span class="doccomment">/// Asigns min(lhs, rhs) to lhs.</span>
-<span class="kw">fn</span> <span class="ident">min_assign</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">Ord</span><span class="op">&gt;</span>(<span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">T</span>, <span class="ident">rhs</span>: <span class="ident">T</span>) { <span class="kw">if</span> <span class="ident">rhs</span> <span class="op">&lt;</span> <span class="kw-2">*</span><span class="ident">lhs</span> { <span class="kw-2">*</span><span class="ident">lhs</span> <span class="op">=</span> <span class="ident">rhs</span>; } }
+<span class="kw">fn</span> <span class="ident">min_assign</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">Ord</span><span class="op">&gt;</span>(<span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">T</span>, <span class="ident">rhs</span>: <span class="ident">T</span>) {
+    <span class="kw">if</span> <span class="ident">rhs</span> <span class="op">&lt;</span> <span class="kw-2">*</span><span class="ident">lhs</span> {
+        <span class="kw-2">*</span><span class="ident">lhs</span> <span class="op">=</span> <span class="ident">rhs</span>;
+    }
+}
 
 <span class="comment">// TODO(model): On the Quadro K4000:</span>
 <span class="comment">// * The Mul wide latency is unknown.</span>

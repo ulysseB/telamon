@@ -343,14 +343,100 @@
 <span id="343">343</span>
 <span id="344">344</span>
 <span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Helper struct to build a `Function`.</span>
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">Device</span>;
-<span class="kw">use</span> <span class="ident">ir</span>::{<span class="ident">AccessPattern</span>, <span class="ident">Function</span>, <span class="ident">Signature</span>, <span class="ident">InstId</span>, <span class="ident">Operand</span>, <span class="ident">Operator</span>};
-<span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">Parameter</span>, <span class="ident">Size</span>, <span class="ident">Type</span>, <span class="ident">mem</span>, <span class="ident">op</span>};
+<span class="kw">use</span> <span class="ident">helper</span>::{<span class="ident">AutoOperand</span>, <span class="ident">DimGroup</span>, <span class="ident">MetaBasicBlock</span>, <span class="ident">MetaDimension</span>};
+<span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">mem</span>, <span class="ident">op</span>, <span class="ident">Parameter</span>, <span class="ident">Size</span>, <span class="ident">Type</span>};
+<span class="kw">use</span> <span class="ident">ir</span>::{<span class="ident">AccessPattern</span>, <span class="ident">Function</span>, <span class="ident">InstId</span>, <span class="ident">Operand</span>, <span class="ident">Operator</span>, <span class="ident">Signature</span>};
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
-<span class="kw">use</span> <span class="ident">helper</span>::{<span class="ident">AutoOperand</span>, <span class="ident">DimGroup</span>, <span class="ident">MetaDimension</span>, <span class="ident">MetaBasicBlock</span>};
-<span class="kw">use</span> <span class="ident">search_space</span>::{<span class="ident">Action</span>, <span class="ident">Order</span>, <span class="ident">DimKind</span>, <span class="ident">InstFlag</span>, <span class="ident">MemSpace</span>, <span class="ident">SearchSpace</span>};
+<span class="kw">use</span> <span class="ident">search_space</span>::{<span class="ident">Action</span>, <span class="ident">DimKind</span>, <span class="ident">InstFlag</span>, <span class="ident">MemSpace</span>, <span class="ident">Order</span>, <span class="ident">SearchSpace</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Borrow</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
@@ -389,10 +475,12 @@
     }
 
     <span class="doccomment">/// Creates a binary operator.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">binop</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-                         <span class="ident">op</span>: <span class="ident">ir</span>::<span class="ident">BinOp</span>,
-                         <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
-                         <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">binop</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">op</span>: <span class="ident">ir</span>::<span class="ident">BinOp</span>,
+        <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+        <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
         <span class="kw">let</span> <span class="ident">lhs_op</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_op</span>(<span class="ident">lhs</span>);
         <span class="kw">let</span> <span class="ident">rhs_op</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_op</span>(<span class="ident">rhs</span>);
         <span class="kw">let</span> <span class="ident">rounding</span> <span class="op">=</span> <span class="ident">default_rounding</span>(<span class="kw-2">&amp;</span><span class="ident">lhs_op</span>.<span class="ident">t</span>());
@@ -400,21 +488,29 @@
     }
 
     <span class="doccomment">/// Adds an `Add` instruction to the fuction.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>)
-        <span class="op">-&gt;</span> <span class="ident">InstId</span>
-    {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+        <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
         <span class="self">self</span>.<span class="ident">binop</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>)
     }
 
     <span class="doccomment">/// Adds a `Sub` instruction to the function.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sub</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>
-                      ) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sub</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+        <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
         <span class="self">self</span>.<span class="ident">binop</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Sub</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>)
     }
 
     <span class="doccomment">/// Adds a `Mul` instruction to the function. Defaults to low mode.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">mul</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>
-                      ) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">mul</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+        <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
         <span class="kw">let</span> <span class="ident">lhs_op</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_op</span>(<span class="ident">lhs</span>);
         <span class="kw">let</span> <span class="ident">rhs_op</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_op</span>(<span class="ident">rhs</span>);
         <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="ident">lhs_op</span>.<span class="ident">t</span>();
@@ -423,8 +519,12 @@
     }
 
     <span class="doccomment">/// Adds a &#39;Mul` instruction with a wide mode to the function.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">mul_ex</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
-                          <span class="ident">t</span>: <span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">mul_ex</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+        <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+        <span class="ident">t</span>: <span class="ident">Type</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
         <span class="kw">let</span> <span class="ident">lhs_op</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_op</span>(<span class="ident">lhs</span>);
         <span class="kw">let</span> <span class="ident">rhs_op</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_op</span>(<span class="ident">rhs</span>);
         <span class="kw">let</span> <span class="ident">rounding</span> <span class="op">=</span> <span class="ident">default_rounding</span>(<span class="kw-2">&amp;</span><span class="ident">t</span>);
@@ -434,8 +534,12 @@
 
     <span class="doccomment">/// Adds a `Mad` or `Fma` instruction to the function. Defaults to low or wide mode</span>
     <span class="doccomment">/// depending on the operand types.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">mad</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">mul_lhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>, <span class="ident">mul_rhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
-                       <span class="ident">add_rhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">mad</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">mul_lhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+        <span class="ident">mul_rhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+        <span class="ident">add_rhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
         <span class="kw">let</span> <span class="ident">mul_lhs_op</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_op</span>(<span class="ident">mul_lhs</span>);
         <span class="kw">let</span> <span class="ident">mul_rhs_op</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_op</span>(<span class="ident">mul_rhs</span>);
         <span class="kw">let</span> <span class="ident">add_rhs_op</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_op</span>(<span class="ident">add_rhs</span>);
@@ -445,8 +549,11 @@
     }
 
     <span class="doccomment">/// Adds a `Div` instruction to the fuction.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">div</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>
-                      ) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">div</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+        <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
         <span class="self">self</span>.<span class="ident">binop</span>(<span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Div</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>)
     }
 
@@ -457,23 +564,33 @@
     }
 
     <span class="doccomment">/// Adds a coherent load from global memory instruction to the function.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ld</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">ret_type</span>: <span class="ident">Type</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
-                      <span class="ident">pattern</span>: <span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ld</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">ret_type</span>: <span class="ident">Type</span>,
+        <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+        <span class="ident">pattern</span>: <span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
         <span class="self">self</span>.<span class="ident">ld_ex</span>(<span class="ident">ret_type</span>, <span class="ident">addr</span>, <span class="ident">pattern</span>, <span class="ident">InstFlag</span>::<span class="ident">MEM_COHERENT</span>)
     }
 
     <span class="doccomment">/// Adds a non-coherent load from global memory instruction to the function.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ld_nc</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">ret_type</span>: <span class="ident">Type</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
-                        <span class="ident">pattern</span>: <span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ld_nc</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">ret_type</span>: <span class="ident">Type</span>,
+        <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+        <span class="ident">pattern</span>: <span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
         <span class="self">self</span>.<span class="ident">ld_ex</span>(<span class="ident">ret_type</span>, <span class="ident">addr</span>, <span class="ident">pattern</span>, <span class="ident">InstFlag</span>::<span class="ident">ALL</span>)
     }
 
     <span class="doccomment">/// Adds a load instruction with the given flags and memory block.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ld_ex</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-                         <span class="ident">ret_type</span>: <span class="ident">Type</span>,
-                         <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
-                         <span class="ident">pattern</span>: <span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
-                         <span class="ident">flags</span>: <span class="ident">InstFlag</span>) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ld_ex</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">ret_type</span>: <span class="ident">Type</span>,
+        <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+        <span class="ident">pattern</span>: <span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+        <span class="ident">flags</span>: <span class="ident">InstFlag</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
         <span class="kw">let</span> <span class="ident">addr_op</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_op</span>(<span class="ident">addr</span>);
         <span class="kw">let</span> <span class="ident">inst_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inst</span>(<span class="ident">op</span>::<span class="ident">Ld</span>(<span class="ident">ret_type</span>, <span class="ident">addr_op</span>, <span class="ident">pattern</span>));
         <span class="self">self</span>.<span class="ident">actions</span>.<span class="ident">push</span>(<span class="ident">Action</span>::<span class="ident">InstFlag</span>(<span class="ident">inst_id</span>, <span class="ident">flags</span>));
@@ -481,19 +598,24 @@
     }
 
     <span class="doccomment">/// Adds a store instruction.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">st</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>, <span class="ident">val</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
-                      <span class="ident">pattern</span>: <span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">st</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+        <span class="ident">val</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+        <span class="ident">pattern</span>: <span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
         <span class="self">self</span>.<span class="ident">st_ex</span>(<span class="ident">addr</span>, <span class="ident">val</span>, <span class="bool-val">true</span>, <span class="ident">pattern</span>, <span class="ident">InstFlag</span>::<span class="ident">ALL</span>)
     }
 
     <span class="doccomment">/// Adds a store instruction with the given flags and memory block.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">st_ex</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span> :<span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-                         <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
-                         <span class="ident">val</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
-                         <span class="ident">side_effect</span>: <span class="ident">bool</span>,
-                         <span class="ident">pattern</span>: <span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
-                         <span class="ident">flags</span>: <span class="ident">InstFlag</span>,
-                        ) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">st_ex</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>: <span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+        <span class="ident">val</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>,
+        <span class="ident">side_effect</span>: <span class="ident">bool</span>,
+        <span class="ident">pattern</span>: <span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+        <span class="ident">flags</span>: <span class="ident">InstFlag</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
         <span class="kw">let</span> <span class="ident">addr_op</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_op</span>(<span class="ident">addr</span>);
         <span class="kw">let</span> <span class="ident">val_op</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_op</span>(<span class="ident">val</span>);
         <span class="kw">let</span> <span class="ident">inst_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inst</span>(<span class="ident">op</span>::<span class="ident">St</span>(<span class="ident">addr_op</span>, <span class="ident">val_op</span>, <span class="ident">side_effect</span>, <span class="ident">pattern</span>));
@@ -530,25 +652,32 @@
 
     <span class="doccomment">/// Builds both an induction variable for a tensor memory access and the corresponding</span>
     <span class="doccomment">/// access pattern.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">tensor_access</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
-                         <span class="ident">mem</span>: <span class="ident">ir</span>::<span class="ident">MemId</span>,
-                         <span class="ident">t</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Type</span>,
-                         <span class="ident">dims</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">MetaDimension</span>])
-        <span class="op">-&gt;</span> (<span class="ident">ir</span>::<span class="ident">IndVarId</span>, <span class="ident">ir</span>::<span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>)
-    {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">tensor_access</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+        <span class="ident">mem</span>: <span class="ident">ir</span>::<span class="ident">MemId</span>,
+        <span class="ident">t</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Type</span>,
+        <span class="ident">dims</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">MetaDimension</span>],
+    ) <span class="op">-&gt;</span> (<span class="ident">ir</span>::<span class="ident">IndVarId</span>, <span class="ident">ir</span>::<span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) {
         <span class="kw">let</span> <span class="ident">data_size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cst_size</span>(<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">t</span>.<span class="ident">len_byte</span>()));
-        <span class="kw">let</span> <span class="ident">induction_dims</span> <span class="op">=</span> <span class="ident">dims</span>.<span class="ident">iter</span>().<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">d</span><span class="op">|</span> <span class="ident">d</span>.<span class="ident">ids</span>()).<span class="ident">rev</span>()
+        <span class="kw">let</span> <span class="ident">induction_dims</span> <span class="op">=</span> <span class="ident">dims</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">d</span><span class="op">|</span> <span class="ident">d</span>.<span class="ident">ids</span>())
+            .<span class="ident">rev</span>()
             .<span class="ident">scan</span>(<span class="ident">data_size</span>, <span class="op">|</span><span class="ident">size</span>, <span class="ident">dim</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="ident">increment</span> <span class="op">=</span> <span class="ident">size</span>.<span class="ident">clone</span>();
                 <span class="kw-2">*</span><span class="ident">size</span> <span class="op">*=</span> <span class="self">self</span>.<span class="ident">function</span>.<span class="ident">dim</span>(<span class="ident">dim</span>).<span class="ident">size</span>();
                 <span class="prelude-val">Some</span>((<span class="ident">dim</span>, <span class="ident">increment</span>))
-            }).<span class="ident">collect</span>();
+            })
+            .<span class="ident">collect</span>();
         <span class="kw">let</span> <span class="ident">index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">induction_var</span>(<span class="ident">addr</span>, <span class="ident">induction_dims</span>);
         (<span class="ident">index</span>, <span class="self">self</span>.<span class="ident">tensor_access_pattern</span>(<span class="ident">mem</span>, <span class="ident">t</span>, <span class="ident">dims</span>))
     }
 
     <span class="doccomment">/// Applies an action on the function.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">action</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">action</span>: <span class="ident">Action</span>) { <span class="self">self</span>.<span class="ident">actions</span>.<span class="ident">push</span>(<span class="ident">action</span>) }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">action</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">action</span>: <span class="ident">Action</span>) {
+        <span class="self">self</span>.<span class="ident">actions</span>.<span class="ident">push</span>(<span class="ident">action</span>)
+    }
 
     <span class="doccomment">/// Opens a new dimension.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">open_dim</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">size</span>: <span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">DimId</span> {
@@ -567,7 +696,7 @@
     <span class="doccomment">/// Open multiple dimensions to represent a tiled dimension.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">open_tiled_dim</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">size</span>: <span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">tiling</span>: <span class="kw-2">&amp;</span>[<span class="ident">u32</span>]) <span class="op">-&gt;</span> <span class="ident">DimGroup</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tiling_factor</span> <span class="op">=</span> <span class="number">1</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dims</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">with_capacity</span>(<span class="ident">tiling</span>.<span class="ident">len</span>()<span class="op">+</span><span class="number">1</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dims</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">with_capacity</span>(<span class="ident">tiling</span>.<span class="ident">len</span>() <span class="op">+</span> <span class="number">1</span>);
         <span class="kw">for</span> <span class="ident">tile_size</span> <span class="kw">in</span> <span class="ident">tiling</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">rev</span>() {
             <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">tile_size</span> <span class="op">&gt;</span> <span class="number">1</span>);
             <span class="ident">tiling_factor</span> <span class="op">*=</span> <span class="ident">tile_size</span>;
@@ -584,18 +713,25 @@
     <span class="doccomment">/// The size of the new dim is inherited from the mapped dim.</span>
     <span class="doccomment">/// The dimension mapped to is closed if needed.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">open_mapped_dim</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">old_dim</span>: <span class="kw-2">&amp;</span><span class="ident">MetaDimension</span>) <span class="op">-&gt;</span> <span class="ident">DimGroup</span> {
-        <span class="ident">DimGroup</span>::<span class="ident">new</span>(<span class="ident">old_dim</span>.<span class="ident">ids</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">old_id</span><span class="op">|</span> {
-            <span class="self">self</span>.<span class="ident">open_dims</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">old_id</span>);
-            <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">function</span>.<span class="ident">dim</span>(<span class="ident">old_id</span>).<span class="ident">size</span>().<span class="ident">clone</span>();
-            <span class="kw">let</span> <span class="ident">new_id</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">function</span>.<span class="ident">add_dim</span>(<span class="ident">size</span>));
-            <span class="self">self</span>.<span class="ident">open_dims</span>.<span class="ident">insert</span>(<span class="ident">new_id</span>, <span class="ident">old_id</span>);
-            <span class="ident">new_id</span>
-        }).<span class="ident">collect</span>())
+        <span class="ident">DimGroup</span>::<span class="ident">new</span>(
+            <span class="ident">old_dim</span>
+                .<span class="ident">ids</span>()
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">old_id</span><span class="op">|</span> {
+                    <span class="self">self</span>.<span class="ident">open_dims</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">old_id</span>);
+                    <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">function</span>.<span class="ident">dim</span>(<span class="ident">old_id</span>).<span class="ident">size</span>().<span class="ident">clone</span>();
+                    <span class="kw">let</span> <span class="ident">new_id</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">function</span>.<span class="ident">add_dim</span>(<span class="ident">size</span>));
+                    <span class="self">self</span>.<span class="ident">open_dims</span>.<span class="ident">insert</span>(<span class="ident">new_id</span>, <span class="ident">old_id</span>);
+                    <span class="ident">new_id</span>
+                })
+                .<span class="ident">collect</span>(),
+        )
     }
 
     <span class="doccomment">/// Opens an existing dimension.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">reopen_dim</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">dim</span>: <span class="kw-2">&amp;</span><span class="ident">MetaDimension</span>) {
-        <span class="kw">for</span> <span class="ident">id</span> <span class="kw">in</span> <span class="ident">dim</span>.<span class="ident">ids</span>() { <span class="self">self</span>.<span class="ident">open_dims</span>.<span class="ident">insert</span>(<span class="ident">id</span>, <span class="ident">id</span>); }
+        <span class="kw">for</span> <span class="ident">id</span> <span class="kw">in</span> <span class="ident">dim</span>.<span class="ident">ids</span>() {
+            <span class="self">self</span>.<span class="ident">open_dims</span>.<span class="ident">insert</span>(<span class="ident">id</span>, <span class="ident">id</span>);
+        }
     }
 
     <span class="doccomment">/// Opens an existing dimension and maps it to another one.</span>
@@ -609,11 +745,15 @@
 
     <span class="doccomment">/// Closes a dimension.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">close_dim</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">dims</span>: <span class="kw-2">&amp;</span><span class="ident">MetaDimension</span>) {
-        <span class="kw">for</span> <span class="ident">dim</span> <span class="kw">in</span> <span class="ident">dims</span>.<span class="ident">ids</span>() { <span class="macro">assert</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">open_dims</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">dim</span>).<span class="ident">is_some</span>()); }
+        <span class="kw">for</span> <span class="ident">dim</span> <span class="kw">in</span> <span class="ident">dims</span>.<span class="ident">ids</span>() {
+            <span class="macro">assert</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">open_dims</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">dim</span>).<span class="ident">is_some</span>());
+        }
     }
 
     <span class="doccomment">/// Returns a constant size.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cst_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">size</span>: <span class="ident">u32</span>) <span class="op">-&gt;</span> <span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> { <span class="ident">Size</span>::<span class="ident">new</span>(<span class="ident">size</span>, <span class="macro">vec</span><span class="macro">!</span>[], <span class="number">1</span>) }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">cst_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">size</span>: <span class="ident">u32</span>) <span class="op">-&gt;</span> <span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+        <span class="ident">Size</span>::<span class="ident">new</span>(<span class="ident">size</span>, <span class="macro">vec</span><span class="macro">!</span>[], <span class="number">1</span>)
+    }
 
     <span class="doccomment">/// Returns a parameter size.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">param_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">param</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-&gt;</span> <span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
@@ -634,13 +774,17 @@
     <span class="doccomment">/// Allocates a memory block in shared memory.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">allocate_shared</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">size</span>: <span class="ident">u32</span>) <span class="op">-&gt;</span> <span class="ident">mem</span>::<span class="ident">InternalId</span> {
         <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">allocate</span>(<span class="ident">size</span>, <span class="bool-val">true</span>);
-        <span class="self">self</span>.<span class="ident">actions</span>.<span class="ident">push</span>(<span class="ident">Action</span>::<span class="ident">MemSpace</span>(<span class="ident">id</span>.<span class="ident">into</span>(), <span class="ident">MemSpace</span>::<span class="ident">SHARED</span>));
+        <span class="self">self</span>.<span class="ident">actions</span>
+            .<span class="ident">push</span>(<span class="ident">Action</span>::<span class="ident">MemSpace</span>(<span class="ident">id</span>.<span class="ident">into</span>(), <span class="ident">MemSpace</span>::<span class="ident">SHARED</span>));
         <span class="ident">id</span>
     }
 
     <span class="doccomment">/// Allocates a memory block.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">allocate</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">size</span>: <span class="ident">u32</span>, <span class="ident">private</span>: <span class="ident">bool</span>) <span class="op">-&gt;</span> <span class="ident">mem</span>::<span class="ident">InternalId</span> {
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">private</span>, <span class="string">&quot;allocating non-private memory is not yet supported&quot;</span>);
+        <span class="macro">assert</span><span class="macro">!</span>(
+            <span class="ident">private</span>,
+            <span class="string">&quot;allocating non-private memory is not yet supported&quot;</span>
+        );
         <span class="self">self</span>.<span class="ident">function</span>.<span class="ident">add_mem_block</span>(<span class="ident">size</span>)
     }
 
@@ -652,42 +796,70 @@
     <span class="doccomment">/// Generates the access pattern corresponding to accessing a tensor of the given</span>
     <span class="doccomment">/// type. The data is assumed to be laid out contiguously in the order given by</span>
     <span class="doccomment">/// dimensions. The last dimension is the major order.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">tensor_access_pattern</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">mem</span>: <span class="ident">ir</span>::<span class="ident">MemId</span>, <span class="ident">t</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>, <span class="ident">dims</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">MetaDimension</span>])
-            <span class="op">-&gt;</span> <span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">tensor_access_pattern</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">mem</span>: <span class="ident">ir</span>::<span class="ident">MemId</span>,
+        <span class="ident">t</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>,
+        <span class="ident">dims</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">MetaDimension</span>],
+    ) <span class="op">-&gt;</span> <span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">data_size</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cst_size</span>(<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">t</span>.<span class="ident">len_byte</span>()));
-        <span class="kw">let</span> <span class="ident">dims</span> <span class="op">=</span> <span class="ident">dims</span>.<span class="ident">iter</span>().<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">d</span><span class="op">|</span> <span class="ident">d</span>.<span class="ident">ids</span>()).<span class="ident">rev</span>().<span class="ident">scan</span>(<span class="ident">data_size</span>, <span class="op">|</span><span class="ident">size</span>, <span class="ident">dim</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">increment</span> <span class="op">=</span> <span class="ident">size</span>.<span class="ident">clone</span>();
-            <span class="kw-2">*</span><span class="ident">size</span> <span class="op">*=</span> <span class="self">self</span>.<span class="ident">function</span>.<span class="ident">dim</span>(<span class="ident">dim</span>).<span class="ident">size</span>();
-            <span class="prelude-val">Some</span>((<span class="ident">dim</span>, <span class="ident">increment</span>))
-        }).<span class="ident">collect</span>();
+        <span class="kw">let</span> <span class="ident">dims</span> <span class="op">=</span> <span class="ident">dims</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">d</span><span class="op">|</span> <span class="ident">d</span>.<span class="ident">ids</span>())
+            .<span class="ident">rev</span>()
+            .<span class="ident">scan</span>(<span class="ident">data_size</span>, <span class="op">|</span><span class="ident">size</span>, <span class="ident">dim</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">increment</span> <span class="op">=</span> <span class="ident">size</span>.<span class="ident">clone</span>();
+                <span class="kw-2">*</span><span class="ident">size</span> <span class="op">*=</span> <span class="self">self</span>.<span class="ident">function</span>.<span class="ident">dim</span>(<span class="ident">dim</span>).<span class="ident">size</span>();
+                <span class="prelude-val">Some</span>((<span class="ident">dim</span>, <span class="ident">increment</span>))
+            })
+            .<span class="ident">collect</span>();
         <span class="ident">AccessPattern</span>::<span class="ident">Tensor</span> { <span class="ident">mem_id</span>: <span class="ident">mem</span>, <span class="ident">dims</span> }
     }
 
     <span class="doccomment">/// Builds an induction variable.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">induction_var</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">base</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
-                         <span class="ident">dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>)<span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">IndVarId</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">induction_var</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">base</span>: <span class="kw-2">&amp;</span><span class="ident">AutoOperand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+        <span class="ident">dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>)<span class="op">&gt;</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">IndVarId</span> {
         <span class="kw">let</span> <span class="ident">base</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_op</span>(<span class="ident">base</span>);
-        <span class="self">self</span>.<span class="ident">function</span>.<span class="ident">add_ind_var</span>(<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">ir</span>::<span class="ident">InductionVar</span>::<span class="ident">new</span>(<span class="ident">dims</span>, <span class="ident">base</span>)))
+        <span class="self">self</span>.<span class="ident">function</span>
+            .<span class="ident">add_ind_var</span>(<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">ir</span>::<span class="ident">InductionVar</span>::<span class="ident">new</span>(<span class="ident">dims</span>, <span class="ident">base</span>)))
     }
 
     <span class="doccomment">/// Creates a dim-map operand.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dim_map</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">base</span>: <span class="ident">ir</span>::<span class="ident">InstId</span>,
-                   <span class="ident">dim_map</span>: <span class="kw-2">&amp;</span>[(<span class="kw-2">&amp;</span><span class="ident">MetaDimension</span>, <span class="kw-2">&amp;</span><span class="ident">MetaDimension</span>)],
-                   <span class="ident">scope</span>: <span class="ident">ir</span>::<span class="ident">DimMapScope</span><span class="op">&lt;</span>()<span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">dim_map</span> <span class="op">=</span> <span class="ident">dim_map</span>.<span class="ident">iter</span>().<span class="ident">flat_map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>)<span class="op">|</span> <span class="ident">lhs</span>.<span class="ident">ids</span>().<span class="ident">zip_eq</span>(<span class="ident">rhs</span>.<span class="ident">ids</span>()));
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dim_map</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">base</span>: <span class="ident">ir</span>::<span class="ident">InstId</span>,
+        <span class="ident">dim_map</span>: <span class="kw-2">&amp;</span>[(<span class="kw-2">&amp;</span><span class="ident">MetaDimension</span>, <span class="kw-2">&amp;</span><span class="ident">MetaDimension</span>)],
+        <span class="ident">scope</span>: <span class="ident">ir</span>::<span class="ident">DimMapScope</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, ()<span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">dim_map</span> <span class="op">=</span> <span class="ident">dim_map</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">flat_map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>)<span class="op">|</span> <span class="ident">lhs</span>.<span class="ident">ids</span>().<span class="ident">zip_eq</span>(<span class="ident">rhs</span>.<span class="ident">ids</span>()));
         <span class="kw">let</span> <span class="ident">inst</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">function</span>.<span class="ident">inst</span>(<span class="ident">base</span>);
         <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">new_inst</span>(<span class="ident">inst</span>, <span class="ident">ir</span>::<span class="ident">DimMap</span>::<span class="ident">new</span>(<span class="ident">dim_map</span>), <span class="ident">scope</span>)
     }
 
     <span class="doccomment">/// Finds a paramter given its name.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">find_param</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">param</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Parameter</span> {
-        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">function</span>.<span class="ident">signature</span>().<span class="ident">params</span>.<span class="ident">iter</span>().<span class="ident">find</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">name</span> <span class="op">==</span> <span class="ident">param</span>))
+        <span class="macro">unwrap</span><span class="macro">!</span>(
+            <span class="self">self</span>.<span class="ident">function</span>
+                .<span class="ident">signature</span>()
+                .<span class="ident">params</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">find</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">name</span> <span class="op">==</span> <span class="ident">param</span>)
+        )
     }
 }
 
 <span class="doccomment">/// Returns the default rounding for a given operand type.</span>
 <span class="kw">fn</span> <span class="ident">default_rounding</span>(<span class="ident">t</span>: <span class="kw-2">&amp;</span><span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="ident">op</span>::<span class="ident">Rounding</span> {
-    <span class="kw">if</span> <span class="ident">t</span>.<span class="ident">is_integer</span>() { <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span> } <span class="kw">else</span> { <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Nearest</span> }
+    <span class="kw">if</span> <span class="ident">t</span>.<span class="ident">is_integer</span>() {
+        <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span>
+    } <span class="kw">else</span> {
+        <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Nearest</span>
+    }
 }
 </pre>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g. <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g. <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g. <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../../";window.currentCrate = "telamon";</script><script src="../../../aliases.js"></script><script src="../../../main.js"></script><script defer src="../../../search-index.js"></script></body></html>
