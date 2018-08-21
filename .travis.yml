@@ -26,7 +26,7 @@ jobs:
     - script: cd telamon-gen/cc_tests && cargo test
     - script: cd kernels && cargo test --release
     - script: cd telamon-gen && LEX="flex" cargo build --features "lex"
-      before_script:
+    - before_script:
         - export PATH="$PATH:$HOME/.cargo/bin"
         - which rustfmt || cargo install rustfmt-nightly
     - script: cargo fmt --all -- --check
