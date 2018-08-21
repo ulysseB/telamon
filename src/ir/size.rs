@@ -75,6 +75,13 @@ impl<'a> Size<'a> {
         self.factor /= gcd;
         self.divisor /= gcd;
     }
+
+    /// Indicates if the dimension can be merged with another, assuming they have the
+    /// same tiling factor and size choice value.
+    pub fn is_compatible_with(&self, other: &ir::Size) -> bool {
+        self.factor == other.factor && self.divisor == other.divisor
+            && self.dividend == other.dividend
+    }
 }
 
 impl<'a, 'b> std::ops::MulAssign<&'b Size<'a>> for Size<'a> {
