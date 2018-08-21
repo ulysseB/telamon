@@ -106,6 +106,9 @@ quotient ThreadDims of $dim in StaticDims:
   add_to_set = "::search_space::add_thread_dim($fun, $item)"
 end
 
+/// Strip-mining factor of a striped-mined dimension.
+define integer size($dim in StaticDims): "unwrap!($dim.possible_sizes())" end
+
 /// Specifies how iteration dimensions are implemented.
 define enum dim_kind($dim in Dimensions):
   /// The dimension is implemented as a regular loop.
@@ -121,16 +124,6 @@ define enum dim_kind($dim in Dimensions):
     requires "$dim.possible_sizes().is_some()"
     requires forall $other_dim in Dimensions:
       order($dim, $other_dim) is not OUTER
-    // This constraint effectively forbids VECTOR dimensions to be merged as dimensions
-    // that originates from other loop nests will not be declared in the access pattern
-    // and thus will have no possible vectorization factors.
-    //
-    // If we ever want to merge VECTOR dimensions, we will need to restric this constraint
-    // to iteration dimensions.
-    requires forall $inst in Instructions:
-      order($dim, $inst) is not OUTER || "$dim.size().as_int().map(|s| \
-        $fun.device().vectorization_factors($dim, $inst.operator()).contains(&s)) \
-        .unwrap_or(false)"
   /// The dimension is mapped to a block dimension on the device.
   value BLOCK:
     requires forall $other_dim in Dimensions:
@@ -240,8 +233,13 @@ require forall $inst in Instructions:
 require forall $lhs in Dimensions:
   forall $rhs in Dimensions:
     // Merge constraitns
-    "$lhs.size() == $rhs.size()" || order($lhs, $rhs) is not MERGED
+    "$lhs.size().is_compatible_with($rhs.size())" || order($lhs, $rhs) is not MERGED
     dim_kind($lhs) == dim_kind($rhs) || order($lhs, $rhs) is not MERGED
+
+// Merge constraint for static dimensions.
+require forall $lhs in StaticDims:
+  forall $rhs in StaticDims:
+    size($lhs) == size($rhs) || order($lhs, $rhs) is not MERGED
 
 /// Specifies the valid mappings between two dimensions.
 define enum dim_mapping($lhs in Dimensions, $rhs in Dimensions):
@@ -256,12 +254,12 @@ define enum dim_mapping($lhs in Dimensions, $rhs in Dimensions):
     requires dim_kind($lhs) is THREAD
   /// Values are transmitted through registers.
   alias MAPPED = UNROLL_MAP | THREAD_MAP:
-    requires "$lhs.size() == $rhs.size()"
 end
 
 require forall $lhs in StaticDims:
   forall $rhs in StaticDims:
     dim_mapping($lhs, $rhs) is not THREAD_MAP || thread_mapping($lhs, $rhs) is MAPPED
+    thread_mapping($lhs, $rhs) is not MAPPED || size($lhs) == size($rhs)
 
 /// Indicates how are thread dimensions mapped on the GPU.
 define enum thread_mapping($lhs in StaticDims, $rhs in StaticDims):
@@ -275,7 +273,7 @@ define enum thread_mapping($lhs in StaticDims, $rhs in StaticDims):
     requires dim_kind($lhs) is THREAD
     requires dim_kind($rhs) is THREAD
     requires order($lhs, $rhs) is MERGED | ORDERED
-    requires "$lhs.size() == $rhs.size()"
+    requires size($lhs) == size($rhs)
   /// The two dimensions are threads, but `lhs` is mapped to a dimension outside of `rhs`.
   value MAPPED_OUT:
     requires dim_kind($lhs) is THREAD
@@ -310,7 +308,7 @@ require forall $outer in StaticDims:
 require forall $outer in StaticDims:
   forall $inner in StaticDims:
     thread_mapping($outer, $inner) is not MAPPED_OUT
-      || "unwrap!($outer.size().as_int()) <= 64"
+      || size($outer) <= "64"
 
 // A basic block nested with a thread dimension is nested or merged with the other
 require forall $bb in BasicBlocks:
@@ -330,7 +328,7 @@ require forall $bb in BasicBlocks:
 /// were threads.
 define half counter num_threads():
   forall $dim in StaticDims:
-    mul "unwrap!($dim.size().as_int())" when:
+    mul size($dim) when:
       is_thread_dim($dim) is TRUE
 end
 
@@ -352,7 +350,7 @@ require num_thread_dims() <= "3"
 /// Limits the number of nested unrolled loop.
 define half counter unroll_factor($inst in Instructions):
   forall $dim in StaticDims:
-    mul "unwrap!($dim.size().as_int())" when:
+    mul size($dim) when:
       is_iteration_dim($inst, $dim) is TRUE
       dim_kind($dim) is UNROLL
 end
@@ -376,8 +374,19 @@ define half counter num_nested_inst($dim in StaticDims):
       order($dim, $inst) is OUTER
 end
 
+// Vectorization constraints.
 require forall $dim in StaticDims:
   dim_kind($dim) is not VECTOR || num_nested_inst($dim) <= "1"
+require forall $dim in StaticDims:
+  forall $inst in Instructions:
+    // This constraint effectively forbids VECTOR dimensions to be merged as dimensions
+    // that originates from other loop nests will not be declared in the access pattern
+    // and thus will have no possible vectorization factors.
+    //
+    // If we ever want to merge VECTOR dimensions, we will need to restric this constraint
+    // to iteration dimensions.
+    dim_kind($dim) is not VECTOR || order($dim, $inst) is not OUTER
+      || size($dim) == "$fun.device().vectorization_factors($dim, $inst.operator())"
 
 require forall $dim in Dimensions:
   forall $init in Instructions:
@@ -410,7 +419,7 @@ define half counter mem_size($mem in InternalMemBlocks):
   base "$mem.base_size()"
   forall $lhs in StaticDims:
     forall $rhs in StaticDims:
-      mul "unwrap!($lhs.size().as_int())" when:
+      mul size($lhs) when:
         "$mem.maps_dims($lhs.id(), $rhs.id())"
         order($lhs, $rhs) is not MERGED
 end
