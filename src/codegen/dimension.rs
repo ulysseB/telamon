@@ -309,12 +309,12 @@ fn get_ind_var_levels<'a>(
     space: &SearchSpace,
 ) -> (Vec<IndVarIncrement<'a>>, Vec<IndVarIncrement<'a>>) {
     let (mut const_levels, mut mut_levels) = (Vec::new(), Vec::new());
-    for &(dim, ref size) in ind_var.dims() {
-        let size = codegen::Size::from_ir(size, space);
+    for &(dim, ref stride) in ind_var.dims() {
+        let stride = codegen::Size::from_ir(stride, space);
         match space.domain().get_dim_kind(dim) {
             DimKind::VECTOR => (),
-            DimKind::LOOP | DimKind::UNROLL => mut_levels.push((dim, size)),
-            DimKind::BLOCK | DimKind::THREAD => const_levels.push((dim, size)),
+            DimKind::LOOP | DimKind::UNROLL => mut_levels.push((dim, stride)),
+            DimKind::BLOCK | DimKind::THREAD => const_levels.push((dim, stride)),
             x => panic!("unspecified dim kind {:?}", x),
         }
     }

@@ -7,10 +7,10 @@
 //! times while when considering the intersection of the bodies, we consider it is
 //! repeated N x M times.
 
-use device::Device;
+use device::Context;
 use ir;
 use itertools::{self, Itertools};
-use model::{BottleneckLevel, DependencyMap, FastBound, HwPressure, LocalInfo};
+use model::{size, BottleneckLevel, DependencyMap, FastBound, HwPressure, LocalInfo};
 use search_space::{DimKind, Domain, SearchSpace};
 use std;
 use std::cmp::Ordering;
@@ -36,15 +36,21 @@ impl Level {
     /// Creates a level iterating on the given dimensions. If no dimension is given,
     /// the level containts the whole program.
     fn new(
-        device: &Device,
+        ctx: &Context,
         space: &SearchSpace,
         local_info: &LocalInfo,
         dims: VecSet<ir::DimId>,
     ) -> Self {
         // Compute the thread-level pressure.
-        let thread_rates = device.thread_rates();
-        let pressure =
-            sum_pressure(device, space, local_info, BottleneckLevel::Thread, &dims);
+        let thread_rates = ctx.device().thread_rates();
+        let pressure = sum_pressure(
+            ctx,
+            space,
+            local_info,
+            BottleneckLevel::Thread,
+            &dims,
+            &ir::Size::one(),
+        );
         let end_latency = dims
             .iter()
             .map(|d| {
@@ -60,7 +66,7 @@ impl Level {
             .iter()
             .all(|&d| DimKind::THREAD.contains(space.domain().get_dim_kind(d)));
         let repeated_latency = if only_threads {
-            Some(block_bound(device, space, local_info, &dims))
+            Some(block_bound(ctx, space, local_info, &dims))
         } else {
             None
         };
@@ -76,33 +82,34 @@ impl Level {
 
 /// Computes the `HwPressure` caused by the intersection of the bodies of the given loops.
 pub fn sum_pressure(
-    device: &Device,
+    ctx: &Context,
     space: &SearchSpace,
     local_info: &LocalInfo,
     bound_level: BottleneckLevel,
-    dims: &[ir::DimId],
+    nest: &[ir::DimId],
+    repeat: &ir::Size,
 ) -> HwPressure {
     // Compute the pressure induced by the dimensions overhead.
     let mut pressure = HwPressure::min(
-        dims.iter().map(|d| &local_info.dim_overhead[d].0),
-    ).unwrap_or_else(|| HwPressure::zero(device));
-    if dims.is_empty() {
-        let threads_per_block = space.domain().get_num_threads().min as u64;
-        let num_threads = match bound_level {
-            BottleneckLevel::Global => {
-                threads_per_block * local_info.parallelism.min_num_blocks
-            }
-            BottleneckLevel::Block => threads_per_block,
+        nest.iter().map(|d| &local_info.dim_overhead[d].0),
+    ).unwrap_or_else(|| HwPressure::zero(ctx.device()));
+    if nest.is_empty() {
+        let min_num_threads = match bound_level {
+            BottleneckLevel::Global => local_info.parallelism.min_threads,
+            BottleneckLevel::Block => local_info.parallelism.min_threads_per_block,
             BottleneckLevel::Thread => 1,
         };
         let mut init_pressure = local_info.thread_overhead.clone();
         if bound_level <= BottleneckLevel::Block {
-            device.add_block_overhead(1, num_threads, &mut init_pressure);
+            let threads = size::FactorRange::new_fixed(min_num_threads);
+            let one = size::Range::ONE;
+            ctx.device()
+                .add_block_overhead(threads, threads, one, &mut init_pressure);
         }
-        pressure.repeat_and_add_bottlenecks(num_threads as f64, &init_pressure);
+        pressure.repeat_and_add_bottlenecks(min_num_threads as f64, &init_pressure);
     }
     // Get the list of inner dimensions and inner dimensions on wich the pressure is summed.
-    let inner_dim_sets = dims
+    let inner_dim_sets = nest
         .iter()
         .map(|&d| &local_info.nesting[&d.into()].inner_dims);
     let inner_dims = intersect_sets(inner_dim_sets)
@@ -110,7 +117,7 @@ pub fn sum_pressure(
     let inner_sum_dims = inner_dims
         .filter(|&d| bound_level.accounts_for_dim(space.domain().get_dim_kind(d)));
     // Get the list of inner basic blocks.
-    let inner_bbs_sets = dims
+    let inner_bbs_sets = nest
         .iter()
         .map(|&d| &local_info.nesting[&d.into()].inner_bbs);
     let inner_bbs = intersect_sets(inner_bbs_sets)
@@ -129,8 +136,8 @@ pub fn sum_pressure(
         // Compute the pressure of a single instance and the number of instances.
         let mut num_instances = inner_sum_dims
             .intersection(&local_info.nesting[&bb].outer_dims)
-            .map(|d| f64::from(local_info.dim_sizes[d]))
-            .product::<f64>();
+            .map(|&d| space.ir_instance().dim(d).size())
+            .product::<ir::Size>() * repeat;
         let mut bb_pressure = if let ir::BBId::Dim(dim) = bb {
             let kind = space.domain().get_dim_kind(dim);
             if !bound_level.accounts_for_dim(kind) {
@@ -146,22 +153,34 @@ pub fn sum_pressure(
         // special care as they are only active on the dimensions they are nested on. Other
         // threads just skip the instruction.
         if bound_level <= BottleneckLevel::Block {
+            let unmapped_threads = &nesting.num_unmapped_threads;
+            let max_threads = &nesting.max_threads_per_block * unmapped_threads;
+            let max_threads = size::factors(&max_threads, space, ctx);
+            let (max_active_threads, predication_factor);
             let is_predicated = space
                 .ir_instance()
                 .block(bb)
                 .as_inst()
                 .map(|i| i.has_side_effects())
                 .unwrap_or(false);
-            let predicated_size = if is_predicated {
-                nesting.num_unmapped_threads as u64
+            if is_predicated {
+                let threads_per_block = &nesting.max_threads_per_block;
+                max_active_threads = size::factors(threads_per_block, space, ctx);
+                predication_factor = size::bounds(unmapped_threads, space, ctx);
             } else {
-                num_instances *= nesting.num_unmapped_threads as f64;
-                1
-            };
-            let max_threads = nesting.max_threads_per_block;
-            device.add_block_overhead(predicated_size, max_threads, &mut bb_pressure);
+                num_instances *= &nesting.num_unmapped_threads;
+                predication_factor = size::Range::ONE;
+                max_active_threads = max_threads;
+            }
+            ctx.device().add_block_overhead(
+                max_active_threads,
+                max_threads,
+                predication_factor,
+                &mut bb_pressure,
+            );
         }
-        pressure.repeat_and_add_bottlenecks(num_instances, &bb_pressure);
+        let num_instances = size::bounds(&num_instances, space, ctx).min;
+        pressure.repeat_and_add_bottlenecks(num_instances as f64, &bb_pressure);
     }
     pressure
 }
@@ -183,20 +202,18 @@ where
 
 /// Generates a bound based on the pressure produced by a block of threads.
 fn block_bound(
-    device: &Device,
+    ctx: &Context,
     space: &SearchSpace,
     info: &LocalInfo,
     dims: &[ir::DimId],
 ) -> FastBound {
-    // Compute the pressure on the execution units in a single iteration.
-    let mut pressure = sum_pressure(device, space, info, BottleneckLevel::Block, dims);
     // Repeat the pressure by the number of iterations of the level and compute the bound.
     let n_iters = dims
         .iter()
-        .map(|&d| u64::from(info.dim_sizes[&d]))
-        .product::<u64>();
-    pressure.repeat_parallel(n_iters as f64);
-    pressure.bound(BottleneckLevel::Block, &device.block_rates())
+        .map(|&d| space.ir_instance().dim(d).size())
+        .product();
+    let pressure = sum_pressure(ctx, space, info, BottleneckLevel::Block, dims, &n_iters);
+    pressure.bound(BottleneckLevel::Block, &ctx.device().block_rates())
 }
 
 /// Indicates if a dimension should be considered for dimension levels.
@@ -218,7 +235,7 @@ pub fn must_consider_dim(space: &SearchSpace, dim: ir::DimId) -> bool {
 /// between the nestings at each end of the edge.
 pub fn generate(
     space: &SearchSpace,
-    device: &Device,
+    ctx: &Context,
     local_info: &LocalInfo,
 ) -> (Vec<Level>, Vec<DimMap>) {
     // Build the list of nestings, exclude block and vector dimensions.
@@ -314,7 +331,7 @@ pub fn generate(
         .chain(dim_levels)
         .unique();
     let levels = levels
-        .map(|dims| Level::new(device, space, local_info, dims))
+        .map(|dims| Level::new(ctx, space, local_info, dims))
         .collect();
     (levels, dim_maps)
 }
@@ -387,19 +404,20 @@ pub struct RepeatLevel {
 impl RepeatLevel {
     pub fn new(
         space: &SearchSpace,
-        local_info: &LocalInfo,
+        ctx: &Context,
         level_id: usize,
         level: &Level,
     ) -> Option<Self> {
-        let iterations: u32 = level
+        let iterations = level
             .dims
             .iter()
             .filter(|&&d| {
                 let kind = space.domain().get_dim_kind(d);
                 (kind & !DimKind::BLOCK).is(DimKind::SEQUENTIAL).is_true()
             })
-            .map(|d| local_info.dim_sizes[d])
-            .product();
+            .map(|&d| space.ir_instance().dim(d).size())
+            .product::<ir::Size>();
+        let iterations = size::bounds(&iterations, space, ctx).min as u32;
         if iterations <= 1 {
             None
         } else {
@@ -446,6 +464,7 @@ impl LevelDag {
         levels: &[Level],
         dim_maps: Vec<DimMap>,
         dep_map_size: usize,
+        ctx: &Context,
     ) -> Self {
         let mut dag = LevelDag::new(space, dep_map_size);
         for (level_id, level) in levels.iter().enumerate() {
@@ -453,7 +472,7 @@ impl LevelDag {
                 continue;
             }
             let node_id = dag.gen_node_id(local_info, &level.dims, dep_map_size);
-            let repeat = RepeatLevel::new(space, local_info, level_id, level);
+            let repeat = RepeatLevel::new(space, ctx, level_id, level);
             dag.nodes[node_id].0.extend(repeat);
         }
         for dim_map in dim_maps {

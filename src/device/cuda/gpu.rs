@@ -285,10 +285,10 @@ impl Gpu {
     }
 
     /// Returns the overhead induced by all the iterations of a loop.
-    fn dim_pressure(&self, kind: DimKind, size: u32) -> HwPressure {
+    fn dim_pressure(&self, kind: DimKind, size: model::size::Range) -> HwPressure {
         if kind == DimKind::LOOP {
             let mut pressure: HwPressure = self.loop_iter_overhead.into();
-            pressure.repeat_sequential(f64::from(size));
+            pressure.repeat_sequential(size.min as f64);
             pressure.add_sequential(&self.loop_init_overhead.into());
             pressure
         } else if DimKind::THREAD.contains(kind) {
@@ -304,7 +304,7 @@ impl Gpu {
     fn inst_pressure(
         &self,
         space: &SearchSpace,
-        dim_sizes: &HashMap<ir::DimId, u32>,
+        dim_sizes: &HashMap<ir::DimId, model::size::Range>,
         inst: &ir::Instruction,
         ctx: &device::Context,
     ) -> HwPressure {
@@ -481,7 +481,7 @@ impl device::Device for Gpu {
     fn hw_pressure(
         &self,
         space: &SearchSpace,
-        dim_sizes: &HashMap<ir::DimId, u32>,
+        dim_sizes: &HashMap<ir::DimId, model::size::Range>,
         _nesting: &HashMap<ir::BBId, model::Nesting>,
         bb: &ir::BasicBlock,
         ctx: &device::Context,
@@ -557,19 +557,19 @@ impl device::Device for Gpu {
 
     fn add_block_overhead(
         &self,
-        predicated_dims_size: u64,
-        max_threads_per_blocks: u64,
+        max_active_threads: model::size::FactorRange,
+        max_threads: model::size::FactorRange,
+        predication_factor: model::size::Range,
         pressure: &mut HwPressure,
     ) {
-        assert!(predicated_dims_size > 0);
-        assert!(max_threads_per_blocks > 0);
-        let active_ratio =
-            self.waste_ratio(max_threads_per_blocks / predicated_dims_size);
+        let active_ratio = self.waste_ratio(max_active_threads.lcm);
         pressure.multiply(&InstDesc::wasted_ratio(active_ratio).into());
-        if predicated_dims_size > 1 {
-            let full_ratio = self.waste_ratio(max_threads_per_blocks);
-            let num_skipped = full_ratio * predicated_dims_size as f64 - active_ratio;
-            assert!(num_skipped >= 0.);
+        // Account for inactive wraps.
+        let total_ratio = self.waste_ratio(max_threads.lcm);
+        // TODO(model): might be able to do better since `predication_factor` value is
+        // linked to `max_threads` value.
+        let num_skipped = total_ratio * predication_factor.min as f64 - active_ratio;
+        if num_skipped > 0. {
             pressure.repeat_and_add_bottlenecks(num_skipped, &self.skipped_pressure());
         }
     }

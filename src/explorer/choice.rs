@@ -2,6 +2,7 @@
 use ir::mem::Block;
 use ir::{self, BasicBlock};
 use itertools::Itertools;
+use search_space::NumDomain;
 use search_space::{Action, Domain, Order, SearchSpace};
 
 /// Represents a choice that splits a search space in multiple ones.
@@ -11,7 +12,6 @@ pub type Choice = Vec<ActionEx>;
 /// Either a regular action or a manually applied action.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ActionEx {
-    TileSizes(Vec<Vec<u32>>),
     Action(Action),
     LowerLayout {
         mem: ir::mem::InternalId,
@@ -26,6 +26,10 @@ pub fn list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item = Choice> + 'a
     fun.layouts_to_lower()
         .iter()
         .map(move |&layout| lower_layout_choice(space, layout))
+        .chain(static_dims.clone().flat_map(move |dim| {
+            let possible_sizes = space.domain().get_size(dim.id());
+            gen_choice(possible_sizes.list(), &|s| Action::Size(dim.id(), s))
+        }))
         .chain(fun.dims().flat_map(move |dim| {
             let kinds = space.domain().get_dim_kind(dim.id());
             gen_choice(kinds.list(), &|k| Action::DimKind(dim.id(), k))
@@ -139,7 +143,7 @@ fn lower_layout_choice(space: &SearchSpace, mem: ir::mem::InternalId) -> Vec<Act
                 let mut remaining_dims = remaining_dims.clone();
                 let mut ordered_dims = ordered_dims.clone();
                 let dim_pair = remaining_dims.swap_remove(i);
-                let size = unwrap!(space.ir_instance().dim(dim_pair.0).size().as_int());
+                let size = space.domain().get_size(dim_pair.0).min();
                 let ordered_size = ordered_size * size;
                 ordered_dims.push(dim_pair);
                 to_process.push((ordered_dims, remaining_dims, ordered_size));

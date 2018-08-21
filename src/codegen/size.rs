@@ -28,17 +28,23 @@ impl<'a> Size<'a> {
     }
 
     /// Converts an `ir::Size` to `Self`.
-    pub fn from_ir(size: &ir::Size<'a>, _: &SearchSpace) -> Self {
-        Size::new(
-            size.factor(),
-            size.dividend().iter().cloned().collect(),
-            size.divisor(),
-        )
+    pub fn from_ir(size: &ir::Size<'a>, space: &SearchSpace) -> Self {
+        let (mut factor, params, dividend, divisor) = size.members();
+        factor *= dividend
+            .iter()
+            .map(|&d| unwrap!(space.domain().get_size(d).as_constrained()))
+            .product::<u32>();
+        let divisor = divisor
+            .iter()
+            .map(|&d| unwrap!(space.domain().get_size(d).as_constrained()))
+            .product();
+        Size::new(factor, params.iter().cloned().collect(), divisor)
     }
 
     /// Returns the size of a dimension if it is staticaly known.
     pub fn as_int(&self) -> Option<u32> {
         if self.dividend.is_empty() {
+            assert_eq!(self.divisor, 1);
             Some(self.factor)
         } else {
             None
@@ -74,17 +80,5 @@ impl<'a, 'b> std::ops::MulAssign<&'b Size<'a>> for Size<'a> {
         self.dividend.extend(rhs.dividend.iter().cloned());
         self.divisor *= rhs.divisor;
         self.simplify();
-    }
-}
-
-// TODO(cleanup): remove the temporary implementation of From<ir::Size> for codgen::Size.
-// This is only needed until we have mechanism in `model::*` to handle sizes.
-impl<'a> From<ir::Size<'a>> for Size<'a> {
-    fn from(s: ir::Size<'a>) -> Size<'a> {
-        Size::new(
-            s.factor(),
-            s.dividend().iter().cloned().collect(),
-            s.divisor(),
-        )
     }
 }

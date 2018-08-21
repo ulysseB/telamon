@@ -2,21 +2,18 @@
 use device::{Context, Device};
 use ir::{self, BasicBlock};
 use itertools::Itertools;
-use model::HwPressure;
+use model::{size, HwPressure};
 use num::integer::lcm;
 use search_space::{DimKind, Domain, Order, SearchSpace, ThreadMapping};
-use std;
 use utils::*;
 
 /// Local information on the different objects.
 #[derive(Debug)]
-pub struct LocalInfo {
+pub struct LocalInfo<'a> {
     /// The loops inside and outside each BB.
-    pub nesting: HashMap<ir::BBId, Nesting>,
+    pub nesting: HashMap<ir::BBId, Nesting<'a>>,
     /// The pressure incured by a signle instance of each BB.
     pub hw_pressure: HashMap<ir::BBId, HwPressure>,
-    /// The size of each dimensions.
-    pub dim_sizes: HashMap<ir::DimId, u32>,
     /// The pressure induced by a single iteration of each dimension and the exit latency
     /// of the loop.
     pub dim_overhead: HashMap<ir::DimId, (HwPressure, HwPressure)>,
@@ -26,18 +23,18 @@ pub struct LocalInfo {
     pub parallelism: Parallelism,
 }
 
-impl LocalInfo {
+impl<'a> LocalInfo<'a> {
     /// Compute the local information for the given search space, in the context.
-    pub fn compute(space: &SearchSpace, context: &Context) -> Self {
+    pub fn compute(space: &SearchSpace<'a>, context: &Context) -> Self {
         let dim_sizes = space
             .ir_instance()
             .dims()
-            .map(|d| (d.id(), context.eval_size(&d.size().clone().into())))
+            .map(|d| (d.id(), size::bounds(d.size(), space, context)))
             .collect();
         let nesting: HashMap<_, _> = space
             .ir_instance()
             .blocks()
-            .map(|bb| (bb.bb_id(), Nesting::compute(space, bb.bb_id(), &dim_sizes)))
+            .map(|bb| (bb.bb_id(), Nesting::compute(space, bb.bb_id())))
             .collect();
         let mut hw_pressure = space
             .ir_instance()
@@ -76,7 +73,7 @@ impl LocalInfo {
                 }
             })
             .collect();
-        let parallelism = parallelism(space, &nesting, &dim_sizes);
+        let parallelism = parallelism(&nesting, space, context);
         // Add the pressure induced by induction variables.
         let mut thread_overhead = HwPressure::zero(context.device());
         for (_, var) in space.ir_instance().induction_vars() {
@@ -91,7 +88,6 @@ impl LocalInfo {
             );
         }
         LocalInfo {
-            dim_sizes,
             nesting,
             hw_pressure,
             dim_overhead,
@@ -104,7 +100,7 @@ impl LocalInfo {
 fn add_indvar_pressure(
     device: &Device,
     space: &SearchSpace,
-    dim_sizes: &HashMap<ir::DimId, u32>,
+    dim_sizes: &HashMap<ir::DimId, size::Range>,
     indvar: &ir::InductionVar,
     hw_pressure: &mut HashMap<ir::BBId, HwPressure>,
     dim_overhead: &mut HashMap<ir::DimId, (HwPressure, HwPressure)>,
@@ -128,23 +124,24 @@ fn add_indvar_pressure(
         } else {
             device.multiplicative_indvar_pressure(&t)
         };
-        let size = dim_sizes[&dim];
+        let size = dim_sizes[&dim].min;
         if dim_kind.intersects(DimKind::THREAD | DimKind::BLOCK) {
             thread_overhead.add_parallel(&overhead);
-        } else if size > 1 {
-            overhead.repeat_parallel(f64::from(size - 1));
-            unwrap!(hw_pressure.get_mut(&dim.into())).add_parallel(&overhead);
-            overhead.repeat_parallel(1.0 / f64::from(size - 1));
+        } else {
             unwrap!(dim_overhead.get_mut(&dim))
                 .0
                 .add_parallel(&overhead);
+            if size > 1 {
+                overhead.repeat_parallel((size - 1) as f64);
+                unwrap!(hw_pressure.get_mut(&dim.into())).add_parallel(&overhead);
+            }
         }
     }
 }
 
 /// Nesting of an object.
 #[derive(Debug)]
-pub struct Nesting {
+pub struct Nesting<'a> {
     /// Dimensions nested inside the current BB.
     pub inner_dims: VecSet<ir::DimId>,
     /// Basic blocks nested inside the current BB.
@@ -161,19 +158,14 @@ pub struct Nesting {
     /// Only consider thread dimensions that are sure to be mapped to threads.
     has_inner_thread_dims: bool,
     /// Number of threads that are not represented in the active dimensions of the block.
-    pub num_unmapped_threads: u32,
-    /// Maximal number of threads this block can be in, considering only outer and mapped
-    /// out dimensions.
-    pub max_threads_per_block: u64,
+    pub num_unmapped_threads: ir::Size<'a>,
+    /// Maximal number of threads in the block, considering only outer dimensions.
+    pub max_threads_per_block: ir::Size<'a>,
 }
 
-impl Nesting {
+impl<'a> Nesting<'a> {
     /// Computes the nesting of a `BasicBlock`.
-    fn compute(
-        space: &SearchSpace,
-        bb: ir::BBId,
-        dim_sizes: &HashMap<ir::DimId, u32>,
-    ) -> Self {
+    fn compute(space: &SearchSpace<'a>, bb: ir::BBId) -> Self {
         let mut inner_dims = Vec::new();
         let mut inner_bbs = Vec::new();
         let mut before_self = Vec::new();
@@ -225,15 +217,14 @@ impl Nesting {
                     mapping.intersects(ThreadMapping::MAPPED)
                 })
             })
-            .map(|d| dim_sizes[&d.id()])
-            .product::<u32>();
+            .map(|d| d.size())
+            .product::<ir::Size>();
         let max_threads_per_block = outer_dims
             .iter()
             .cloned()
             .filter(|&d| space.domain().get_dim_kind(d).intersects(DimKind::THREAD))
-            .map(|d| dim_sizes[&d] as u64)
-            .product::<u64>()
-            * num_unmapped_threads as u64;
+            .map(|d| space.ir_instance().dim(d).size())
+            .product::<ir::Size>();
         Nesting {
             inner_dims: VecSet::new(inner_dims),
             inner_bbs: VecSet::new(inner_bbs),
@@ -282,47 +273,76 @@ impl Nesting {
 /// Minimum and maximum parallelism in the whole GPU.
 #[derive(Debug)]
 pub struct Parallelism {
+    /// Minimal number of threads per block.
+    pub min_threads_per_block: u64,
+    /// Minimal number of threads.
+    pub min_threads: u64,
     /// Minimal number of block of threads.
-    pub min_num_blocks: u64,
+    pub min_blocks: u64,
     /// Maximal number of blocks of threads.
-    pub lcm_num_blocks: u64,
+    pub lcm_blocks: u64,
+}
+
+impl Parallelism {
+    fn combine_with(self, rhs: Parallelism) -> Self {
+        let min_threads_per_block =
+            self.min_threads_per_block.min(rhs.min_threads_per_block);
+        Parallelism {
+            min_threads_per_block,
+            min_threads: self.min_threads.min(rhs.min_threads),
+            min_blocks: self.min_blocks.min(rhs.min_blocks),
+            lcm_blocks: lcm(self.lcm_blocks, rhs.lcm_blocks),
+        }
+    }
 }
 
 impl Default for Parallelism {
     fn default() -> Self {
         Parallelism {
-            min_num_blocks: 1,
-            lcm_num_blocks: 1,
+            min_threads_per_block: 1,
+            min_threads: 1,
+            min_blocks: 1,
+            lcm_blocks: 1,
         }
     }
 }
 
 /// Computes the minimal and maximal parallelism accross instructions.
 fn parallelism(
-    space: &SearchSpace,
     nesting: &HashMap<ir::BBId, Nesting>,
-    dim_sizes: &HashMap<ir::DimId, u32>,
+    space: &SearchSpace,
+    ctx: &Context,
 ) -> Parallelism {
+    let min_threads_per_block_size = space
+        .ir_instance()
+        .thread_dims()
+        .map(|d| d.size())
+        .product::<ir::Size>();
+    let min_threads_per_block = size::bounds(&min_threads_per_block_size, space, ctx).min;
     space
         .ir_instance()
         .insts()
         .map(|inst| {
-            let mut par = Parallelism::default();
+            let mut min_blocks = ir::Size::one();
+            let mut max_blocks = ir::Size::one();
             for &dim in &nesting[&inst.bb_id()].outer_dims {
                 let kind = space.domain().get_dim_kind(dim);
-                let size = u64::from(dim_sizes[&dim]);
-                if kind == DimKind::BLOCK {
-                    par.min_num_blocks *= size;
-                }
                 if kind.intersects(DimKind::BLOCK) {
-                    par.lcm_num_blocks *= size;
+                    let size = space.ir_instance().dim(dim).size();
+                    max_blocks *= size;
+                    if kind == DimKind::BLOCK {
+                        min_blocks *= size;
+                    }
                 }
             }
-            par
+            let min_total_threads_size = &min_blocks * &min_threads_per_block_size;
+            Parallelism {
+                min_threads: size::bounds(&min_total_threads_size, space, ctx).min,
+                min_threads_per_block,
+                min_blocks: size::bounds(&min_blocks, space, ctx).min,
+                lcm_blocks: size::factors(&max_blocks, space, ctx).lcm,
+            }
         })
-        .fold1(|lhs, rhs| Parallelism {
-            min_num_blocks: std::cmp::min(lhs.min_num_blocks, rhs.min_num_blocks),
-            lcm_num_blocks: lcm(lhs.lcm_num_blocks, rhs.lcm_num_blocks),
-        })
+        .fold1(|lhs, rhs| lhs.combine_with(rhs))
         .unwrap_or(Parallelism::default())
 }

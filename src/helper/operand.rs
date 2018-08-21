@@ -43,7 +43,7 @@ impl<'a, L> AutoOperand<'a, L> for Reduce {
                 reduce_dims.push(new_dim);
             }
         }
-        Operand::new_reduce(inst, dim::Map::new(mapped_dims), reduce_dims)
+        Operand::new_reduce(inst, dim::Map::new(mapped_dims), reduce_dims, fun)
     }
 }
 
@@ -108,7 +108,12 @@ impl<'a> AutoOperand<'a, ()> for InstId {
                 None
             }
         });
-        Operand::new_inst(inst, dim::Map::new(mapped_dims), ir::DimMapScope::Thread)
+        Operand::new_inst(
+            inst,
+            dim::Map::new(mapped_dims),
+            ir::DimMapScope::Thread,
+            fun,
+        )
     }
 }
 
@@ -133,6 +138,7 @@ impl<'a> AutoOperand<'a, ()> for TmpArray {
             inst,
             dim::Map::new(mapped_dims),
             ir::DimMapScope::Global(()),
+            fun,
         )
     }
 }

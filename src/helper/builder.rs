@@ -1,6 +1,6 @@
 //! Helper struct to build a `Function`.
 use device::Device;
-use helper::{AutoOperand, DimGroup, MetaBasicBlock, MetaDimension};
+use helper::{AutoOperand, LogicalDim, MetaBasicBlock, MetaDimension};
 use ir::{self, mem, op, Parameter, Size, Type};
 use ir::{AccessPattern, Function, InstId, Operand, Operator, Signature};
 use itertools::Itertools;
@@ -40,6 +40,11 @@ impl<'a> Builder<'a> {
     /// Returns an operand from an `AutoOperand`.
     fn get_op<'b: 'a>(&self, op: &AutoOperand<'b>) -> Operand<'a, ()> {
         op.get(&self.function, &self.open_dims)
+    }
+
+    /// Returns the size of a dimension.
+    pub fn dim_size(&self, dim: ir::dim::Id) -> &ir::Size<'a> {
+        self.function.dim(dim).size()
     }
 
     /// Creates a binary operator.
@@ -212,6 +217,19 @@ impl<'a> Builder<'a> {
         }
     }
 
+    /// Register that two dimensions are mapped.
+    pub fn map_dims(&mut self, lhs: &MetaDimension, rhs: &MetaDimension) {
+        for (lhs, rhs) in lhs.ids().zip_eq(rhs.ids()) {
+            let should_map = {
+                let lhs_dim = self.function.dim(lhs);
+                lhs_dim.possible_sizes().is_some() && !lhs_dim.is_mapped_dim(rhs)
+            };
+            if should_map {
+                self.function.set_dims_mapped(lhs, rhs);
+            }
+        }
+    }
+
     /// Inserts an instruction in the function.
     fn inst(&mut self, op: Operator<'a, ()>) -> InstId {
         let open_dims = self.open_dims.iter().map(|(&x, _)| x).collect();
@@ -262,37 +280,80 @@ impl<'a> Builder<'a> {
     }
 
     /// Open multiple dimensions to represent a tiled dimension.
-    pub fn open_tiled_dim(&mut self, mut size: Size<'a>, tiling: &[u32]) -> DimGroup {
-        let mut tiling_factor = 1;
-        let mut dims = Vec::with_capacity(tiling.len() + 1);
-        for tile_size in tiling.iter().cloned().rev() {
-            assert!(tile_size > 1);
-            tiling_factor *= tile_size;
-            dims.push(self.open_dim(Size::new(tile_size, vec![], 1)));
+    pub fn open_tiled_dim(
+        &mut self,
+        size: Size<'a>,
+        tiling_factors: Vec<u32>,
+        num_tile_dims: usize,
+    ) -> LogicalDim<'a> {
+        if num_tile_dims == 0 {
+            LogicalDim::Simple(self.open_dim(size))
+        } else {
+            let (id, dims) = unwrap!(self.function.add_logical_dim(
+                size.clone(),
+                tiling_factors.clone(),
+                num_tile_dims
+            ));
+            self.open_dims.extend(dims.iter().map(|&id| (id, id)));
+            LogicalDim::Composite {
+                id,
+                dims,
+                size,
+                tiling_factors,
+            }
         }
-        size.mul_divisor(tiling_factor);
-        dims.push(self.open_dim(size));
-        dims.reverse();
-        DimGroup::new(dims)
     }
 
     /// Opens a new dimension mapped to an existing one.
     ///
     /// The size of the new dim is inherited from the mapped dim.
     /// The dimension mapped to is closed if needed.
-    pub fn open_mapped_dim(&mut self, old_dim: &MetaDimension) -> DimGroup {
-        DimGroup::new(
-            old_dim
-                .ids()
-                .map(|old_id| {
-                    self.open_dims.remove(&old_id);
-                    let size = self.function.dim(old_id).size().clone();
-                    let new_id = unwrap!(self.function.add_dim(size));
-                    self.open_dims.insert(new_id, old_id);
-                    new_id
-                })
-                .collect(),
-        )
+    pub fn open_mapped_dim(&mut self, old_dim: &LogicalDim<'a>) -> LogicalDim<'a> {
+        let new_dim = match old_dim {
+            LogicalDim::Simple(old_id) => {
+                self.open_dims.remove(old_id);
+                let size = {
+                    let dim = self.function.dim(*old_id);
+                    if let Some(&[size]) = dim.possible_sizes() {
+                        ir::Size::new_const(size)
+                    } else {
+                        dim.size().clone()
+                    }
+                };
+                let new_id = unwrap!(self.function.add_dim(size));
+                self.open_dims.insert(new_id, *old_id);
+                LogicalDim::Simple(new_id)
+            }
+            LogicalDim::Composite {
+                dims: old_dims,
+                size,
+                tiling_factors,
+                ..
+            } => {
+                let (new_id, new_dims) = unwrap!(self.function.add_logical_dim(
+                    size.clone(),
+                    tiling_factors.clone(),
+                    old_dims.len() - 1
+                ));
+                for (&old, &new) in old_dims.iter().zip_eq(&new_dims) {
+                    self.open_dims.remove(&old);
+                    self.open_dims.insert(new, old);
+                }
+                LogicalDim::Composite {
+                    id: new_id,
+                    dims: new_dims,
+                    size: size.clone(),
+                    tiling_factors: tiling_factors.clone(),
+                }
+            }
+        };
+        for (old, new) in MetaDimension::ids(old_dim).zip_eq(MetaDimension::ids(&new_dim))
+        {
+            if self.function.dim(old).possible_sizes().is_some() {
+                self.function.set_dims_mapped(old, new);
+            }
+        }
+        new_dim
     }
 
     /// Opens an existing dimension.
@@ -320,23 +381,12 @@ impl<'a> Builder<'a> {
 
     /// Returns a constant size.
     pub fn cst_size(&self, size: u32) -> Size<'a> {
-        Size::new(size, vec![], 1)
+        Size::new_const(size)
     }
 
     /// Returns a parameter size.
     pub fn param_size(&self, param: &str) -> Size<'a> {
-        Size::new(1, vec![self.find_param(param)], 1)
-    }
-
-    /// Returns a tiled size.
-    pub fn tile_size(&self, param: &str, chunk_size: u32) -> Size<'a> {
-        Size::new(1, vec![self.find_param(param)], chunk_size)
-    }
-
-    /// Returns a size from the given parameters, dividend and divisor.
-    pub fn size(&self, params: &[&str], dividend: u32, divisor: u32) -> Size<'a> {
-        let params = params.iter().map(|&p| self.find_param(p)).collect();
-        Size::new(dividend, params, divisor)
+        Size::new_param(self.find_param(param))
     }
 
     /// Allocates a memory block in shared memory.
@@ -397,16 +447,17 @@ impl<'a> Builder<'a> {
 
     /// Creates a dim-map operand.
     pub fn dim_map(
-        &self,
+        &mut self,
         base: ir::InstId,
         dim_map: &[(&MetaDimension, &MetaDimension)],
         scope: ir::DimMapScope<()>,
-    ) -> ir::Operand<'a, ()> {
-        let dim_map = dim_map
-            .iter()
-            .flat_map(|&(lhs, rhs)| lhs.ids().zip_eq(rhs.ids()));
+    ) -> ir::Operand<'a> {
+        let dim_map = ir::DimMap::new(dim_map.iter().flat_map(|&(lhs, rhs)| {
+            self.map_dims(lhs, rhs);
+            lhs.ids().zip_eq(rhs.ids())
+        }));
         let inst = self.function.inst(base);
-        ir::Operand::new_inst(inst, ir::DimMap::new(dim_map), scope)
+        ir::Operand::new_inst(inst, dim_map, scope, &self.function)
     }
 
     /// Finds a paramter given its name.

@@ -3,7 +3,6 @@
 extern crate cuda_sys;
 extern crate itertools;
 extern crate libc;
-#[macro_use]
 extern crate ndarray;
 extern crate num;
 extern crate num_cpus;
@@ -12,6 +11,8 @@ extern crate rayon;
 extern crate telamon;
 #[macro_use]
 extern crate telamon_utils as utils;
+#[macro_use]
+extern crate log;
 
 mod kernel;
 
@@ -20,26 +21,23 @@ pub mod statistics;
 
 pub use kernel::{analyze_bounds, Kernel};
 
-use num::Integer;
-use rayon::prelude::*;
+use itertools::Itertools;
 use telamon::device::{self, ArgMap, Context};
 use telamon::helper::tensor::DimSize;
-use telamon::helper::SignatureBuilder;
-use telamon::{explorer, model, search_space};
+use telamon::helper::{Builder, LogicalDim, SignatureBuilder};
+use telamon::search_space::*;
+use telamon::{explorer, model};
+
+// FIXME: update the kernel interface so build_body only return one candidates as this
+// simplifies the code.
 
 /// Creates a candidate from the search space and registers the tile sizes in it.
 fn build_candidate<'a>(
-    space: search_space::SearchSpace<'a>,
+    space: SearchSpace<'a>,
     ctx: &device::Context,
-    tile_sizes: Vec<Vec<u32>>,
 ) -> explorer::Candidate<'a> {
     let bound = model::bound(&space, ctx);
-    let mut cand = explorer::Candidate::new(space, bound);
-    let acts = cand
-        .actions
-        .push_front(explorer::choice::ActionEx::TileSizes(tile_sizes));
-    cand.actions = acts;
-    cand
+    explorer::Candidate::new(space, bound)
 }
 
 /// Creates a `DimSize`. If the instantiate flag is true, it uses a constant size,
@@ -61,40 +59,42 @@ where
     }
 }
 
-fn generate_tile_sizes(size: u32, max_tiles: &[u32]) -> Vec<Vec<u32>> {
-    let mut tiles = vec![(size, vec![])];
-    for &max_tile in max_tiles.into_iter().rev() {
-        let old_tiles = std::mem::replace(&mut tiles, vec![(size, vec![])]);
-        for (len, old_tile) in old_tiles {
-            for i in 2..std::cmp::min(max_tile, len / 2) {
-                if let (new_len, 0) = len.div_rem(&i) {
-                    let mut tile = old_tile.clone();
-                    tile.push(i);
-                    tiles.push((new_len, tile));
-                }
-            }
-        }
-    }
-    tiles
-        .into_par_iter()
-        .map(|(_, mut tiling)| {
-            tiling.reverse();
-            tiling
+/// Generates a list of possible tiling factors and set the number of tiling dimension
+/// to a valid value.
+fn generate_tile_sizes(
+    size: u32,
+    max_tiling: u32,
+    max_tile_dims: usize,
+) -> (Vec<u32>, usize) {
+    let tile_sizes = (2..std::cmp::min(max_tiling, size / 2) + 1)
+        .filter(|&t| max_tiling % t == 0)
+        .take(NumericSet::MAX_LEN)
+        .collect_vec();
+    let num_tile_dims = tile_sizes
+        .iter()
+        .take(max_tile_dims)
+        .scan(1, |state, t| {
+            *state *= t;
+            Some(*state)
         })
-        .collect()
+        .take_while(|t| tile_sizes.binary_search(t).is_ok())
+        .count();
+    (tile_sizes, num_tile_dims)
 }
 
-fn par_iter_product<I1, I2>(
-    i1: I1,
-    i2: I2,
-) -> impl ParallelIterator<Item = (I1::Item, I2::Item)>
-where
-    I1: IntoParallelIterator,
-    I1::Item: Clone + Sync,
-    I2: IntoParallelIterator + Clone + Send + Sync,
-{
-    i1.into_par_iter()
-        .flat_map(move |x| i2.clone().into_par_iter().map(move |y| (x.clone(), y)))
+/// Limits the possible sizes of dimensions.
+fn limit_tile_size(dim: &LogicalDim, max_size: &[u32], builder: &mut Builder) {
+    if let LogicalDim::Composite {
+        dims,
+        tiling_factors,
+        ..
+    } = dim
+    {
+        for (id, &max_size) in dims[1..].iter().cloned().zip(max_size) {
+            let factors = NumericSet::new_leq(tiling_factors, max_size);
+            builder.action(Action::Size(id, factors));
+        }
+    }
 }
 
 /// A scalar that can be used as the data type for tests.

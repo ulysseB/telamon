@@ -24,44 +24,68 @@ impl MetaDimension for ir::DimId {
     }
 }
 
-/// A groups of dimensions that act as a single logical dimension.
-#[derive(Clone, Default)]
-pub struct DimGroup {
-    dims: Vec<ir::DimId>,
+impl<T> MetaDimension for T
+where
+    T: std::borrow::Borrow<[ir::dim::Id]>,
+{
+    fn ids<'b>(&'b self) -> Box<DoubleEndedIterator<Item = ir::dim::Id> + 'b> {
+        Box::new(self.borrow().iter().cloned())
+    }
 }
 
-impl DimGroup {
-    /// Creates a dimension group containing the given dimensions.
-    pub fn new(dims: Vec<ir::DimId>) -> Self {
-        DimGroup { dims }
-    }
+/// A groups of dimensions that act as a single logical dimension.
+#[derive(Clone)]
+pub enum LogicalDim<'a> {
+    /// A single concrete dimension.
+    Simple(ir::dim::Id),
+    /// Multiple dimensions forming a single logical once.
+    Composite {
+        id: ir::dim::LogicalId,
+        dims: Vec<ir::dim::Id>,
+        size: ir::Size<'a>,
+        tiling_factors: Vec<u32>,
+    },
+}
 
-    /// Iterates over the sub-dimensions of the group.
-    pub fn iter(&self) -> std::iter::Cloned<std::slice::Iter<ir::DimId>> {
+impl<'b> LogicalDim<'b> {
+    pub fn iter<'a>(&'a self) -> Box<DoubleEndedIterator<Item = ir::dim::Id> + 'a> {
         self.into_iter()
     }
 }
 
-impl MetaDimension for DimGroup {
-    fn ids<'a>(&'a self) -> Box<DoubleEndedIterator<Item = ir::DimId> + 'a> {
-        Box::new(self.dims.iter().cloned())
+impl From<ir::dim::Id> for LogicalDim<'static> {
+    fn from(id: ir::dim::Id) -> Self {
+        LogicalDim::Simple(id)
     }
 }
 
-impl std::ops::Index<usize> for DimGroup {
-    type Output = ir::DimId;
-
-    fn index(&self, index: usize) -> &ir::DimId {
-        &self.dims[index]
+impl<'b> MetaDimension for LogicalDim<'b> {
+    fn ids<'a>(&'a self) -> Box<DoubleEndedIterator<Item = ir::dim::Id> + 'a> {
+        self.into_iter()
     }
 }
 
-impl<'a> IntoIterator for &'a DimGroup {
-    type Item = ir::DimId;
-    type IntoIter = std::iter::Cloned<std::slice::Iter<'a, ir::DimId>>;
+impl<'a> std::ops::Index<usize> for LogicalDim<'a> {
+    type Output = ir::dim::Id;
+
+    fn index(&self, index: usize) -> &ir::dim::Id {
+        match self {
+            LogicalDim::Simple(id) if index == 0 => id,
+            LogicalDim::Simple(_) => panic!("out of bounds index {}", index),
+            LogicalDim::Composite { dims, .. } => &dims[index],
+        }
+    }
+}
+
+impl<'a> IntoIterator for &'a LogicalDim<'a> {
+    type Item = ir::dim::Id;
+    type IntoIter = Box<DoubleEndedIterator<Item = ir::dim::Id> + 'a>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.dims.iter().cloned()
+        match self {
+            LogicalDim::Simple(dim) => Box::new(std::iter::once(*dim)),
+            LogicalDim::Composite { dims, .. } => Box::new(dims.iter().cloned()),
+        }
     }
 }
 

@@ -33,6 +33,8 @@ pub mod mem;
 /// Defines iteration dimensions properties.
 pub mod dim {
     pub use super::dim_map::DimMap as Map;
+    pub use super::dimension::LogicalDim;
+    pub use super::dimension::LogicalId;
 }
 
 /// Defines operators.
@@ -60,6 +62,9 @@ pub struct NewObjs {
     pub mem_insts: Vec<InstId>,
     pub iteration_dims: Vec<(InstId, DimId)>,
     pub thread_dims: Vec<DimId>,
+    pub logical_dims: Vec<dim::LogicalId>,
+    pub static_dims_of: Vec<(dim::LogicalId, DimId)>,
+    pub mapped_dims: Vec<(dim::Id, dim::Id)>,
 }
 
 impl NewObjs {
@@ -87,6 +92,10 @@ impl NewObjs {
         }
         if dim.is_thread_dim() {
             self.add_thread_dim(dim.id());
+        }
+        for other in dim.mapped_dims() {
+            self.mapped_dims.push((dim.id(), other));
+            self.mapped_dims.push((other, dim.id()));
         }
     }
 
@@ -118,6 +127,7 @@ pub struct LoweredDimMap {
     pub store: InstId,
     pub load: InstId,
     pub dimensions: Vec<(DimId, DimId)>,
+    pub new_dims: Vec<DimId>,
 }
 
 /// A vector with holes. This provides a similar interface as a

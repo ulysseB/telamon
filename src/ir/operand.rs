@@ -130,14 +130,20 @@ impl<'a, L> Operand<'a, L> {
         inst: &Instruction<L>,
         dim_map: DimMap,
         mut scope: DimMapScope<L>,
+        function: &ir::Function,
     ) -> Self {
         // A temporary array can only be generated if the type size is known.
         if let DimMapScope::Global(_) = scope {
             if unwrap!(inst.t()).len_byte().is_none() {
                 scope = DimMapScope::Thread;
+        }
+        for &(lhs, rhs) in &dim_map {
+            let lhs_dim = function.dim(lhs);
+            if lhs_dim.possible_sizes().is_some() {
+                assert!(lhs_dim.is_mapped_dim(rhs));
+                assert!(function.dim(rhs).is_mapped_dim(lhs));
             }
         }
-
         Inst(inst.id(), unwrap!(inst.t()), dim_map, scope)
     }
 
@@ -146,7 +152,15 @@ impl<'a, L> Operand<'a, L> {
         init: &Instruction<L>,
         dim_map: DimMap,
         dims: Vec<ir::DimId>,
+        function: &ir::Function,
     ) -> Self {
+        for &(lhs, rhs) in &dim_map {
+            let lhs_dim = function.dim(lhs);
+            if lhs_dim.possible_sizes().is_some() {
+                assert!(lhs_dim.is_mapped_dim(rhs));
+                assert!(function.dim(rhs).is_mapped_dim(lhs));
+            }
+        }
         Reduce(init.id(), unwrap!(init.t()), dim_map, dims)
     }
 

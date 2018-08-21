@@ -370,10 +370,7 @@ impl<'a> Instruction<'a> {
                 let kind = space.domain().get_dim_kind(dim);
                 unwrap!(kind.is(DimKind::VECTOR | DimKind::UNROLL).as_bool())
             })
-            .map(|&dim| {
-                let size = space.ir_instance().dim(dim).size();
-                (dim, unwrap!(codegen::Size::from_ir(size, space).as_int()))
-            })
+            .map(|&dim| (dim, unwrap!(space.domain().get_size(dim).as_constrained())))
             .collect();
         let mem_flag = instruction
             .as_mem_inst()

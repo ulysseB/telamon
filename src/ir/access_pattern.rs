@@ -30,7 +30,7 @@ impl<'a> AccessPattern<'a> {
             AccessPattern::Unknown { .. } => false,
             AccessPattern::Tensor { dims, .. } => dims
                 .get(&dim)
-                .and_then(|stride| stride.as_int())
+                .and_then(|stride| stride.as_fixed())
                 .map(|stride| Some(stride) == t.len_byte())
                 .unwrap_or(false),
         }

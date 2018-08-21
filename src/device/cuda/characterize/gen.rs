@@ -4,7 +4,7 @@ use device::cuda::characterize::Table;
 use device::cuda::{Context, Gpu, Kernel, PerfCounterSet};
 use device::{ArgMap, Device, ScalarArgument};
 use explorer;
-use helper::{AutoOperand, Builder, DimGroup, Reduce};
+use helper::{AutoOperand, Builder, Reduce};
 use ir::{self, Signature};
 use itertools::Itertools;
 use num::Zero;
@@ -154,9 +154,9 @@ pub fn init_stride_array<'a>(
     let (dim, addr) = if n > 1 {
         let dim = builder.open_dim_ex(size, DimKind::LOOP);
         let addr = builder.mad(&dim, &byte_stride, &array);
-        (DimGroup::new(vec![dim]), addr)
+        (vec![dim], addr)
     } else {
-        (DimGroup::default(), builder.mov(&array))
+        (vec![], builder.mov(&array))
     };
     let next_addr = builder.mad(&byte_stride, &1i32, &addr);
     let pattern0 = builder.unknown_access_pattern(mem_id);
@@ -190,7 +190,7 @@ pub fn load_chain<'a>(
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(unroll_size, DimKind::UNROLL);
     if n_threads != 1 {
-        let d = builder.open_dim_ex(ir::Size::new(n_threads, vec![], 1), DimKind::THREAD);
+        let d = builder.open_dim_ex(ir::Size::new_const(n_threads), DimKind::THREAD);
         builder.order(&d, &d0, Order::OUTER);
     }
     let pattern0 = builder.unknown_access_pattern(mem_id);
@@ -265,12 +265,11 @@ pub fn parallel_load<'a>(
     let _ = builder.open_dim_ex(block_size, DimKind::BLOCK);
     // Initialize the result
     let init_size = builder.cst_size(num_wraps * gpu.wrap_size);
-    let thread_tilling = if num_wraps == 1 {
-        vec![]
+    let d1_0 = if num_wraps == 1 {
+        builder.open_tiled_dim(init_size, vec![], 0)
     } else {
-        vec![gpu.wrap_size]
+        builder.open_tiled_dim(init_size, vec![gpu.wrap_size], 1)
     };
-    let d1_0 = builder.open_tiled_dim(init_size, &thread_tilling);
     for d in &d1_0 {
         builder.action(Action::DimKind(d, DimKind::THREAD));
     }
@@ -285,21 +284,17 @@ pub fn parallel_load<'a>(
     for (x, y) in d1_1.iter().tuple_windows() {
         builder.order(&x, &y, Order::OUTER);
     }
-    let d3 = builder.open_dim_ex(ir::Size::new(n_chained, vec![], 1), DimKind::UNROLL);
-    let d4_0 = builder.open_dim_ex(ir::Size::new(n_unroll, vec![], 1), DimKind::UNROLL);
+    let d3 = builder.open_dim_ex(ir::Size::new_const(n_chained), DimKind::UNROLL);
+    let d4_0 = builder.open_dim_ex(ir::Size::new_const(n_unroll), DimKind::UNROLL);
     let pattern = builder.unknown_access_pattern(mem_id);
     let mut strides = vec![
         (
             d3,
-            ir::Size::new(
-                n_unroll * num_wraps * gpu.wrap_size * gpu.l1_cache_line,
-                vec![],
-                1,
-            ),
+            ir::Size::new_const(n_unroll * num_wraps * gpu.wrap_size * gpu.l1_cache_line),
         ),
         (
             d4_0,
-            ir::Size::new(num_wraps * gpu.wrap_size * gpu.l1_cache_line, vec![], 1),
+            ir::Size::new_const(num_wraps * gpu.wrap_size * gpu.l1_cache_line),
         ),
     ];
     if stride != 0 {
@@ -308,17 +303,17 @@ pub fn parallel_load<'a>(
         } else {
             strides.push((
                 d1_1[0],
-                ir::Size::new(gpu.wrap_size * gpu.l1_cache_line, vec![], 1),
+                ir::Size::new_const(gpu.wrap_size * gpu.l1_cache_line),
             ));
             1
         };
-        strides.push((d1_1[i], ir::Size::new(stride * 4, vec![], 1)));
+        strides.push((d1_1[i], ir::Size::new_const(stride * 4)));
     };
     let addr = builder.induction_var(&array, strides);
     let val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_CG);
-    let d4_1 = builder.open_mapped_dim(&d4_0)[0];
+    let d4_1 = builder.open_mapped_dim(&d4_0.into())[0];
     let acc = builder.add(&val, &Reduce(init));
-    builder.close_dim(&DimGroup::new(vec![d0, d3, d4_1]));
+    builder.close_dim(&[d0, d3, d4_1]);
     // Write the result
     let d1_2 = builder.open_mapped_dim(&d1_1);
     for (x, y) in d1_2.iter().tuple_windows() {
@@ -358,13 +353,12 @@ pub fn parallel_store<'a>(
     let loop_size = builder.param_size(n);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
 
-    let thread_tilling = if num_wraps == 1 {
-        vec![]
-    } else {
-        vec![gpu.wrap_size]
-    };
     let thread_size = builder.cst_size(num_wraps * gpu.wrap_size);
-    let d1 = builder.open_tiled_dim(thread_size, &thread_tilling);
+    let d1 = if num_wraps == 1 {
+        builder.open_tiled_dim(thread_size, vec![], 0)
+    } else {
+        builder.open_tiled_dim(thread_size, vec![gpu.wrap_size], 1)
+    };
     for d in &d1 {
         builder.action(Action::DimKind(d, DimKind::THREAD));
     }
@@ -372,21 +366,17 @@ pub fn parallel_store<'a>(
         builder.order(&x, &y, Order::OUTER);
     }
 
-    let d3 = builder.open_dim_ex(ir::Size::new(n_chained, vec![], 1), DimKind::UNROLL);
-    let d4 = builder.open_dim_ex(ir::Size::new(n_unroll, vec![], 1), DimKind::UNROLL);
+    let d3 = builder.open_dim_ex(ir::Size::new_const(n_chained), DimKind::UNROLL);
+    let d4 = builder.open_dim_ex(ir::Size::new_const(n_unroll), DimKind::UNROLL);
     let pattern = builder.unknown_access_pattern(mem_id);
     let mut strides = vec![
         (
             d3,
-            ir::Size::new(
-                n_unroll * num_wraps * gpu.wrap_size * gpu.l1_cache_line,
-                vec![],
-                1,
-            ),
+            ir::Size::new_const(n_unroll * num_wraps * gpu.wrap_size * gpu.l1_cache_line),
         ),
         (
             d4,
-            ir::Size::new(num_wraps * gpu.wrap_size * gpu.l1_cache_line, vec![], 1),
+            ir::Size::new_const(num_wraps * gpu.wrap_size * gpu.l1_cache_line),
         ),
     ];
     if stride != 0 {
@@ -395,15 +385,15 @@ pub fn parallel_store<'a>(
         } else {
             strides.push((
                 d1[0],
-                ir::Size::new(gpu.wrap_size * gpu.l1_cache_line, vec![], 1),
+                ir::Size::new_const(gpu.wrap_size * gpu.l1_cache_line),
             ));
             1
         };
-        strides.push((d1[i], ir::Size::new(stride * 4, vec![], 1)));
+        strides.push((d1[i], ir::Size::new_const(stride * 4)));
     };
     let addr = builder.induction_var(&array, strides);
     builder.st_ex(&addr, &42f32, true, pattern, InstFlag::MEM_CG);
-    builder.close_dim(&DimGroup::new(vec![d0, d3, d4]));
+    builder.close_dim(&[d0, d3, d4]);
 
     builder.order(&d0, &d1, Order::OUTER);
     builder.order(&d1, &d3, Order::OUTER);
@@ -463,12 +453,12 @@ pub fn chain_in_syncthread<'a>(
 
     let d1 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d2 = builder.open_dim_ex(sync_unroll_size, DimKind::UNROLL);
-    let d3 = builder.open_mapped_dim(&d0)[0];
+    let d3 = builder.open_mapped_dim(&d0.into())[0];
     let d4 = builder.open_dim_ex(add_unroll_size, DimKind::UNROLL);
     let acc = builder.add(&Reduce(init), &2f32);
-    builder.close_dim(&DimGroup::new(vec![d1, d2, d3, d4]));
+    builder.close_dim(&[d1, d2, d3, d4]);
 
-    let d5 = builder.open_mapped_dim(&d0)[0];
+    let d5 = builder.open_mapped_dim(&d0.into())[0];
     let pattern = builder.unknown_access_pattern(out_id);
     builder.st_ex(&out, &acc, true, pattern, InstFlag::MEM_CG);
 
@@ -520,7 +510,7 @@ pub fn load_in_loop<'a>(
     let a_val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_CG);
     builder.close_dim(&unroll_dim_a);
     // Mad a and b
-    let unroll_dims_1 = builder.open_mapped_dim(&unroll_dim_0_0);
+    let unroll_dims_1 = builder.open_mapped_dim(&unroll_dim_0_0.into());
     let a_dim_map = ir::dim::Map::new(vec![(unroll_dim_a, unroll_dims_1[0])]);
     let a_op =
         ir::Operand::Inst(a_val, ir::Type::F(32), a_dim_map, ir::DimMapScope::Thread);

@@ -77,6 +77,7 @@ pub trait Kernel<'a>: Sized {
             let candidate = candidates[unwrap!(candidate_idx)].clone();
             let leaf = local_selection::descend(order, context, candidate, CUT);
             if let Some(leaf) = leaf {
+                debug!("compiling candidate with actions {:?}", leaf.actions);
                 let device_fn = codegen::Function::build(&leaf.space);
                 unwrap!(
                     context.evaluate(&device_fn, device::EvalMode::FindBest),
