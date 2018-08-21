@@ -20,7 +20,10 @@ before_script:
 jobs:
   include:
     - stage: test
-      script: cargo test
+      script: 
+      - rustup component add rustfmt-preview
+      - cargo fmt --all -- --check
+    - script: cargo test
     - script: cd telamon-utils && cargo test
     - script: cd telamon-gen && cargo test
     - script: cd telamon-gen/cc_tests && cargo test
