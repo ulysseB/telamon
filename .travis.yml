@@ -20,12 +20,12 @@ before_script:
 jobs:
   include:
     - stage: test
-      before_script:
-        - export PATH="$PATH:$HOME/.cargo/bin"
-        - which rustfmt || cargo install rustfmt-nightly
     - script: echo ok1
     - script: echo ok2
     - script: cargo fmt --all -- --check
+      before_script:
+        - export PATH="$PATH:$HOME/.cargo/bin"
+        - which rustfmt || cargo install rustfmt-nightly
     - stage: documentation
       if: branch IN (master, staging)
       script: cargo doc --no-deps --all
