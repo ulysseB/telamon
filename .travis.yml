@@ -25,7 +25,7 @@ jobs:
     - script: cargo fmt --all -- --check
       before_script:
         - export PATH="$PATH:$HOME/.cargo/bin"
-        - which rustfmt || rustup component add rustfmt-preview
+        - which cargo-fmt || rustup component add rustfmt-preview
     - stage: documentation
       if: branch IN (master, staging)
       script: cargo doc --no-deps --all
