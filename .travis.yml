@@ -20,13 +20,9 @@ before_script:
 jobs:
   include:
     - stage: test
-      script: cargo test
-    - script: cd telamon-utils && cargo test
-    - script: cd telamon-gen && cargo test
-    - script: cd telamon-gen/cc_tests && cargo test
-    - script: cd kernels && cargo test --release
-    - script: cd telamon-gen && LEX="flex" cargo build --features "lex"
-    - before_script:
+      script: echo ok1
+    - script: echo ok2
+      before_script:
         - export PATH="$PATH:$HOME/.cargo/bin"
         - which rustfmt || cargo install rustfmt-nightly
     - script: cargo fmt --all -- --check
