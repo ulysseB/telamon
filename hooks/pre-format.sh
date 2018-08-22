@@ -17,7 +17,7 @@ fi
 for file in $(git diff --name-only --cached); do
     if [ ${file: -3} == ".rs" ]; then
         # quiet option to suppress output.
-        cargo fmt --quiet $file
+        rustfmt --quiet $file
     fi
 done
 
