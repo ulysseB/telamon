@@ -399,6 +399,43 @@ mod missing_entry {
         );
     }
 
+    /// Missing the NewObjs's key from Set.
+    #[test]
+    fn new_objs() {
+        assert_eq!(
+            parser::parse_ast(Lexer::new(
+                b"set Instruction:
+                item_type = \"ir::inst::Obj\"
+                id_type = \"ir::inst::Id\"
+                item_getter = \"ir::inst::get($fun, $id)\"
+                id_getter = \"ir::inst::Obj::id($item)\"
+                iterator = \"ir::inst::iter($fun)\"
+                var_prefix = \"inst\"
+              end"
+                    .to_vec()
+            )).unwrap()
+                .type_check()
+                .err(),
+            Some(TypeError::MissingEntry {
+                object_name: String::from("Instruction"),
+                object_field: Spanned {
+                    beg: Position {
+                        position: LexerPosition { line: 0, column: 4 },
+                        ..Default::default()
+                    },
+                    end: Position {
+                        position: LexerPosition {
+                            line: 0,
+                            column: 15
+                        },
+                        ..Default::default()
+                    },
+                    data: ir::SetDefKey::NewObjs.to_string(),
+                }
+            })
+        );
+    }
+
     /// Missing the SetDefKey's key from Set.
     #[test]
     fn from_superset() {

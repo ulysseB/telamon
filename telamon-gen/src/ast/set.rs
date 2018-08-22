@@ -20,36 +20,14 @@ impl SetDef {
             .iter()
             .map(|(k, _, _)| k.data)
             .collect::<Vec<ir::SetDefKey>>();
-
-        if !keys.contains(&&ir::SetDefKey::ItemType) {
-            Err(TypeError::MissingEntry {
-                object_name: self.name.data.to_owned(),
-                object_field: self.name.with_data(ir::SetDefKey::ItemType.to_string()),
-            })?;
-        }
-        if !keys.contains(&&ir::SetDefKey::IdType) {
-            Err(TypeError::MissingEntry {
-                object_name: self.name.data.to_owned(),
-                object_field: self.name.with_data(ir::SetDefKey::IdType.to_string()),
-            })?;
-        }
-        if !keys.contains(&&ir::SetDefKey::ItemGetter) {
-            Err(TypeError::MissingEntry {
-                object_name: self.name.data.to_owned(),
-                object_field: self.name.with_data(ir::SetDefKey::ItemGetter.to_string()),
-            })?;
-        }
-        if !keys.contains(&&ir::SetDefKey::IdGetter) {
-            Err(TypeError::MissingEntry {
-                object_name: self.name.data.to_owned(),
-                object_field: self.name.with_data(ir::SetDefKey::IdGetter.to_string()),
-            })?;
-        }
-        if !keys.contains(&&ir::SetDefKey::Iter) {
-            Err(TypeError::MissingEntry {
-                object_name: self.name.data.to_owned(),
-                object_field: self.name.with_data(ir::SetDefKey::Iter.to_string()),
-            })?;
+    
+        for ref key in ir::SetDefKey::REQUIRED.iter() {
+            if !keys.contains(&key) {
+                Err(TypeError::MissingEntry {
+                    object_name: self.name.data.to_owned(),
+                    object_field: self.name.with_data(key.to_string()),
+                })?;
+            }
         }
         if self.superset.is_some() && !keys.contains(&&ir::SetDefKey::FromSuperset) {
             Err(TypeError::MissingEntry {
