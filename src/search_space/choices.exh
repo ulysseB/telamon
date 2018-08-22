@@ -106,7 +106,7 @@ quotient ThreadDims of $dim in StaticDims:
   add_to_set = "::search_space::add_thread_dim($fun, $item)"
 end
 
-/// Strip-mining factor of a striped-mined dimension.
+/// The size of a dimension with a constant size.
 define integer size($dim in StaticDims): "unwrap!($dim.possible_sizes())" end
 
 /// Specifies how iteration dimensions are implemented.
