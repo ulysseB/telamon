@@ -9,7 +9,6 @@ use errno::Errno;
 #[test]
 fn lexer_initial() {
     // Invalid's Token
-<<<<<<< HEAD
     assert_eq!(Lexer::new(b"!".to_vec()).collect::<Vec<_>>(), vec![
                 Err(LexicalError {
                     cause: Spanned {
@@ -22,22 +21,6 @@ fn lexer_initial() {
                     }
                 })
              ]);
-=======
-    assert_eq!(
-        Lexer::new(b"!".to_vec()).collect::<Vec<_>>(),
-        vec![Err(LexicalError::InvalidToken(
-            Position::default(),
-            Token::InvalidToken(String::from("!")),
-            Position {
-                position: LexerPosition {
-                    column: 1,
-                    ..Default::default()
-                },
-                ..Default::default()
-            },
-        ))]
-    );
->>>>>>> 94b6ae433ce9060913e4f47af35f333acf93d84e
 
     // ChoiceIdent's Token
     assert_eq!(
@@ -1203,7 +1186,6 @@ fn lexer_code_mode() {
 
 #[test]
 fn lexer_include() {
-<<<<<<< HEAD
    // Unexist include.
    assert_eq!(Lexer::new(b"include \"/dev/unexist\"".to_vec()).collect::<Vec<_>>(), 
               vec![Err(LexicalError {
@@ -1221,23 +1203,6 @@ fn lexer_include() {
                       },
                   }
               })]);
-=======
-    // Unexist include.
-    assert_eq!(
-        Lexer::new(b"include \"/dev/unexist\"".to_vec()).collect::<Vec<_>>(),
-        vec![Err(LexicalError::InvalidInclude(
-            Position::default(),
-            Token::InvalidInclude(String::from("/dev/unexist"), Errno(2)),
-            Position {
-                position: LexerPosition {
-                    column: 22,
-                    ..Default::default()
-                },
-                ..Default::default()
-            },
-        ))]
-    );
->>>>>>> 94b6ae433ce9060913e4f47af35f333acf93d84e
 
     // Header include.
     let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/include_foo.exh");

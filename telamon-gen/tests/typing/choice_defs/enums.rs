@@ -160,7 +160,7 @@ mod redefinition {
                 b"define enum foo():
               end
 
-              define enum foo():
+		      define enum foo():
               end"
                     .to_vec()
             )).unwrap()
@@ -188,14 +188,14 @@ mod redefinition {
                     beg: Position {
                         position: LexerPosition {
                             line: 3,
-                            column: 26
+                            column: 20
                         },
                         ..Default::default()
                     },
                     end: Position {
                         position: LexerPosition {
                             line: 3,
-                            column: 29
+                            column: 23
                         },
                         ..Default::default()
                     },
@@ -453,7 +453,6 @@ mod parameter {
                         end: Position::new_optional(LexerPosition::new(9, 33), None),
                         data: String::from("foo"),
                     },
-<<<<<<< HEAD
                     object_variables: vec![(
                         Spanned {
                             beg: Position::new_optional(LexerPosition::new(9, 34),
@@ -464,19 +463,6 @@ mod parameter {
                         },
                         String::from("BasicBlock"),
                     )]
-=======
-                    object_variables: vec![VarDef {
-                        name: Spanned {
-                            beg: Position::new_optional(LexerPosition::new(9, 34), None),
-                            end: Position::new_optional(LexerPosition::new(9, 38), None),
-                            data: RcStr::new(String::from("lhs")),
-                        },
-                        set: SetRef {
-                            name: RcStr::new(String::from("BasicBlock")),
-                            var: None,
-                        },
-                    }],
->>>>>>> 94b6ae433ce9060913e4f47af35f333acf93d84e
                 })
             );
         }
@@ -521,7 +507,6 @@ mod parameter {
                         data: String::from("foo"),
                     },
                     object_variables: vec![
-<<<<<<< HEAD
                         (
                             Spanned {
                                 beg: Position::new_optional(LexerPosition::new(18, 34),
@@ -543,44 +528,7 @@ mod parameter {
                             String::from("BasicBlock2"),
                         )
                     ]
-=======
-                        VarDef {
-                            name: Spanned {
-                                beg: Position::new_optional(
-                                    LexerPosition::new(18, 34),
-                                    None,
-                                ),
-                                end: Position::new_optional(
-                                    LexerPosition::new(18, 38),
-                                    None,
-                                ),
-                                data: RcStr::new(String::from("lhs")),
-                            },
-                            set: SetRef {
-                                name: RcStr::new(String::from("BasicBlock")),
-                                var: None,
-                            },
-                        },
-                        VarDef {
-                            name: Spanned {
-                                beg: Position::new_optional(
-                                    LexerPosition::new(18, 54),
-                                    None,
-                                ),
-                                end: Position::new_optional(
-                                    LexerPosition::new(18, 58),
-                                    None,
-                                ),
-                                data: RcStr::new(String::from("rhs")),
-                            },
-                            set: SetRef {
-                                name: RcStr::new(String::from("BasicBlock2")),
-                                var: None,
-                            },
-                        },
-                    ],
->>>>>>> 94b6ae433ce9060913e4f47af35f333acf93d84e
-                })
+			})
             );
         }
     }
@@ -638,7 +586,6 @@ mod parameter {
                         end: Position::new_optional(LexerPosition::new(9, 33), None),
                         data: String::from("foo"),
                     },
-<<<<<<< HEAD
                     object_variables: vec![(
                         Spanned {
                             beg: Position::new_optional(LexerPosition::new(9, 34),
@@ -649,19 +596,6 @@ mod parameter {
                         },
                         String::from("BasicBlock")
                     )]
-=======
-                    object_variables: vec![VarDef {
-                        name: Spanned {
-                            beg: Position::new_optional(LexerPosition::new(9, 34), None),
-                            end: Position::new_optional(LexerPosition::new(9, 38), None),
-                            data: RcStr::new(String::from("lhs")),
-                        },
-                        set: SetRef {
-                            name: RcStr::new(String::from("BasicBlock")),
-                            var: None,
-                        },
-                    }],
->>>>>>> 94b6ae433ce9060913e4f47af35f333acf93d84e
                 })
             );
             assert_eq!(
@@ -693,7 +627,6 @@ mod parameter {
                         data: String::from("foo"),
                     },
                     object_variables: vec![
-<<<<<<< HEAD
                         (
                             Spanned {
                                 beg: Position::new_optional(LexerPosition::new(9, 34),
@@ -725,60 +658,6 @@ mod parameter {
                             String::from("BasicBlock"),
                         ),
                     ]
-=======
-                        VarDef {
-                            name: Spanned {
-                                beg: Position::new_optional(
-                                    LexerPosition::new(9, 34),
-                                    None,
-                                ),
-                                end: Position::new_optional(
-                                    LexerPosition::new(9, 38),
-                                    None,
-                                ),
-                                data: RcStr::new(String::from("lhs")),
-                            },
-                            set: SetRef {
-                                name: RcStr::new(String::from("BasicBlock")),
-                                var: None,
-                            },
-                        },
-                        VarDef {
-                            name: Spanned {
-                                beg: Position::new_optional(
-                                    LexerPosition::new(10, 34),
-                                    None,
-                                ),
-                                end: Position::new_optional(
-                                    LexerPosition::new(10, 38),
-                                    None,
-                                ),
-                                data: RcStr::new(String::from("chs")),
-                            },
-                            set: SetRef {
-                                name: RcStr::new(String::from("BasicBlock")),
-                                var: None,
-                            },
-                        },
-                        VarDef {
-                            name: Spanned {
-                                beg: Position::new_optional(
-                                    LexerPosition::new(11, 34),
-                                    None,
-                                ),
-                                end: Position::new_optional(
-                                    LexerPosition::new(11, 38),
-                                    None,
-                                ),
-                                data: RcStr::new(String::from("rhs")),
-                            },
-                            set: SetRef {
-                                name: RcStr::new(String::from("BasicBlock")),
-                                var: None,
-                            },
-                        },
-                    ],
->>>>>>> 94b6ae433ce9060913e4f47af35f333acf93d84e
                 })
             );
         }
@@ -822,7 +701,6 @@ mod parameter {
                         data: String::from("foo"),
                     },
                     object_variables: vec![
-<<<<<<< HEAD
                         (
                             Spanned {
                                 beg: Position::new_optional(LexerPosition::new(18, 34),
@@ -844,43 +722,6 @@ mod parameter {
                             String::from("BasicBlock2")
                         )
                     ]
-=======
-                        VarDef {
-                            name: Spanned {
-                                beg: Position::new_optional(
-                                    LexerPosition::new(18, 34),
-                                    None,
-                                ),
-                                end: Position::new_optional(
-                                    LexerPosition::new(18, 38),
-                                    None,
-                                ),
-                                data: RcStr::new(String::from("lhs")),
-                            },
-                            set: SetRef {
-                                name: RcStr::new(String::from("BasicBlock")),
-                                var: None,
-                            },
-                        },
-                        VarDef {
-                            name: Spanned {
-                                beg: Position::new_optional(
-                                    LexerPosition::new(18, 54),
-                                    None,
-                                ),
-                                end: Position::new_optional(
-                                    LexerPosition::new(18, 58),
-                                    None,
-                                ),
-                                data: RcStr::new(String::from("rhs")),
-                            },
-                            set: SetRef {
-                                name: RcStr::new(String::from("BasicBlock2")),
-                                var: None,
-                            },
-                        },
-                    ],
->>>>>>> 94b6ae433ce9060913e4f47af35f333acf93d84e
                 })
             );
         }
