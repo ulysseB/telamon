@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/usr/bin/env bash
 
 # 8.3 Customizing Git - Git Hooks ; https://git-scm.com/book/gr/v2/Customizing-Git-Git-Hooks
 
