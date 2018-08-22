@@ -30,7 +30,9 @@ jobs:
       before_script: rustup component add rustfmt-preview
     - stage: documentation
       if: branch IN (master, staging)
-      script: cargo doc --no-deps --all
+      script:
+          - cargo build --all --verbose
+          - cargo doc --no-deps --all --verbose
       deploy:
         provider: pages
         local-dir: target/doc
