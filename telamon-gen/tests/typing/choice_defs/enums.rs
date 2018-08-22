@@ -453,6 +453,18 @@ mod parameter {
                         end: Position::new_optional(LexerPosition::new(9, 33), None),
                         data: String::from("foo"),
                     },
+<<<<<<< HEAD
+                    object_variables: vec![(
+                        Spanned {
+                            beg: Position::new_optional(LexerPosition::new(9, 34),
+                                None),
+                            end: Position::new_optional(LexerPosition::new(9, 38),
+                                None),
+                            data: String::from("lhs")
+                        },
+                        String::from("BasicBlock"),
+                    )]
+=======
                     object_variables: vec![VarDef {
                         name: Spanned {
                             beg: Position::new_optional(LexerPosition::new(9, 34), None),
@@ -464,6 +476,7 @@ mod parameter {
                             var: None,
                         },
                     }],
+>>>>>>> 94b6ae433ce9060913e4f47af35f333acf93d84e
                 })
             );
         }
@@ -508,6 +521,29 @@ mod parameter {
                         data: String::from("foo"),
                     },
                     object_variables: vec![
+<<<<<<< HEAD
+                        (
+                            Spanned {
+                                beg: Position::new_optional(LexerPosition::new(18, 34),
+                                    None),
+                                end: Position::new_optional(LexerPosition::new(18, 38),
+                                    None),
+                                data: String::from("lhs")
+                            },
+                            String::from("BasicBlock"),
+                        ),
+                        (
+                            Spanned {
+                                beg: Position::new_optional(LexerPosition::new(18, 54),
+                                    None),
+                                end: Position::new_optional(LexerPosition::new(18, 58),
+                                    None),
+                                data: String::from("rhs")
+                            },
+                            String::from("BasicBlock2"),
+                        )
+                    ]
+=======
                         VarDef {
                             name: Spanned {
                                 beg: Position::new_optional(
@@ -543,6 +579,7 @@ mod parameter {
                             },
                         },
                     ],
+>>>>>>> 94b6ae433ce9060913e4f47af35f333acf93d84e
                 })
             );
         }
@@ -601,6 +638,18 @@ mod parameter {
                         end: Position::new_optional(LexerPosition::new(9, 33), None),
                         data: String::from("foo"),
                     },
+<<<<<<< HEAD
+                    object_variables: vec![(
+                        Spanned {
+                            beg: Position::new_optional(LexerPosition::new(9, 34),
+                                None),
+                            end: Position::new_optional(LexerPosition::new(9, 38),
+                                None),
+                            data: String::from("lhs")
+                        },
+                        String::from("BasicBlock")
+                    )]
+=======
                     object_variables: vec![VarDef {
                         name: Spanned {
                             beg: Position::new_optional(LexerPosition::new(9, 34), None),
@@ -612,6 +661,7 @@ mod parameter {
                             var: None,
                         },
                     }],
+>>>>>>> 94b6ae433ce9060913e4f47af35f333acf93d84e
                 })
             );
             assert_eq!(
@@ -643,6 +693,39 @@ mod parameter {
                         data: String::from("foo"),
                     },
                     object_variables: vec![
+<<<<<<< HEAD
+                        (
+                            Spanned {
+                                beg: Position::new_optional(LexerPosition::new(9, 34),
+                                    None),
+                                end: Position::new_optional(LexerPosition::new(9, 38),
+                                    None),
+                                data: String::from("lhs")
+                            },
+                            String::from("BasicBlock"),
+                        ),
+                        (
+                            Spanned {
+                                beg: Position::new_optional(LexerPosition::new(10, 34),
+                                    None),
+                                end: Position::new_optional(LexerPosition::new(10, 38),
+                                    None),
+                                data: String::from("chs")
+                            },
+                            String::from("BasicBlock"),
+                        ),
+                        (
+                            Spanned {
+                                beg: Position::new_optional(LexerPosition::new(11, 34),
+                                    None),
+                                end: Position::new_optional(LexerPosition::new(11, 38),
+                                    None),
+                                data: String::from("rhs")
+                            },
+                            String::from("BasicBlock"),
+                        ),
+                    ]
+=======
                         VarDef {
                             name: Spanned {
                                 beg: Position::new_optional(
@@ -695,6 +778,7 @@ mod parameter {
                             },
                         },
                     ],
+>>>>>>> 94b6ae433ce9060913e4f47af35f333acf93d84e
                 })
             );
         }
@@ -738,6 +822,29 @@ mod parameter {
                         data: String::from("foo"),
                     },
                     object_variables: vec![
+<<<<<<< HEAD
+                        (
+                            Spanned {
+                                beg: Position::new_optional(LexerPosition::new(18, 34),
+                                    None),
+                                end: Position::new_optional(LexerPosition::new(18, 38),
+                                    None),
+                                data: String::from("lhs")
+                            },
+                            String::from("BasicBlock")
+                        ),
+                        (
+                            Spanned {
+                                beg: Position::new_optional(LexerPosition::new(18, 54),
+                                    None),
+                                end: Position::new_optional(LexerPosition::new(18, 58),
+                                    None),
+                                data: String::from("rhs")
+                            },
+                            String::from("BasicBlock2")
+                        )
+                    ]
+=======
                         VarDef {
                             name: Spanned {
                                 beg: Position::new_optional(
@@ -773,6 +880,7 @@ mod parameter {
                             },
                         },
                     ],
+>>>>>>> 94b6ae433ce9060913e4f47af35f333acf93d84e
                 })
             );
         }

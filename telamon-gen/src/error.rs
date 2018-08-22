@@ -1,5 +1,5 @@
 use super::lalrpop_util::*;
-use super::lexer::{LexicalError, Position, Span, Token};
+use super::lexer::{LexicalError, ErrorKind, Spanned, Position, Span, Token};
 
 use std::error::Error;
 use std::{fmt, path};
@@ -44,36 +44,30 @@ impl<'a> From<(path::Display<'a>, ParseError<Position, Token, LexicalError>)>
                 cause: Cause::Parse(parse),
             },
             ParseError::UnrecognizedToken {
-                token:
-                    Some((Position { position: l, .. }, .., Position { position: e, .. })),
-                ..
-            }
-            | ParseError::ExtraToken {
-                token: (Position { position: l, .. }, .., Position { position: e, .. }),
-            }
-            | ParseError::User {
-                error:
-                    LexicalError::UnexpectedToken(
-                        Position { position: l, .. },
-                        ..,
-                        Position { position: e, .. },
-                    ),
-            }
-            | ParseError::User {
-                error:
-                    LexicalError::InvalidInclude(
-                        Position { position: l, .. },
-                        ..,
-                        Position { position: e, .. },
-                    ),
-            }
-            | ParseError::User {
-                error:
-                    LexicalError::InvalidToken(
-                        Position { position: l, .. },
-                        ..,
-                        Position { position: e, .. },
-                    ),
+                token: Some((Position { position: l, .. }, ..,
+                             Position { position: e, .. })), ..
+            } |
+            ParseError::ExtraToken {
+                token: (Position { position: l, .. }, ..,
+                        Position { position: e, .. })
+            } |
+            ParseError::User {
+                error: LexicalError {
+                    cause: Spanned {
+                        beg: Position { position: l, .. },
+                        end: Position { position: e, .. },
+                        data: ErrorKind::InvalidToken { .. },
+                    }
+                }
+            } |
+            ParseError::User {
+                error: LexicalError {
+                    cause: Spanned {
+                        beg: Position { position: l, .. },
+                        end: Position { position: e, .. },
+                        data: ErrorKind::InvalidInclude { .. },
+                    }
+                }
             } => ProcessError {
                 path: path,
                 span: Some(Span {
@@ -89,50 +83,31 @@ impl<'a> From<(path::Display<'a>, ParseError<Position, Token, LexicalError>)>
 impl<'a> fmt::Display for ProcessError<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ProcessError {
-                path,
-                span,
-                cause:
-                    Cause::Parse(ParseError::UnrecognizedToken {
-                        token: Some((_, ref token, _)),
-                        ..
-                    }),
-                ..
-            }
-            | ProcessError {
-                path,
-                span,
-                cause:
-                    Cause::Parse(ParseError::ExtraToken {
-                        token: (_, ref token, _),
-                    }),
-                ..
-            }
-            | ProcessError {
-                path,
-                span,
-                cause:
-                    Cause::Parse(ParseError::User {
-                        error: LexicalError::UnexpectedToken(_, ref token, _),
-                    }),
-                ..
-            }
-            | ProcessError {
-                path,
-                span,
-                cause:
-                    Cause::Parse(ParseError::User {
-                        error: LexicalError::InvalidToken(_, ref token, _),
-                    }),
-                ..
-            } => {
+           ProcessError { path, span, cause: Cause::Parse(
+                ParseError::UnrecognizedToken {
+                    token: Some((_, ref token, _)), ..
+                }), ..} |
+           ProcessError { path, span, cause: Cause::Parse(ParseError::ExtraToken {
+                    token: (_, ref token, _)
+                }), ..} => {
                 if let Some(span) = span {
                     write!(f, "{}, {} -> {}", token, span, path)
                 } else {
                     write!(f, "{} -> {}", token, path)
                 }
-            }
-            _ => Ok(()),
+           },
+           ProcessError { path, span, cause: Cause::Parse(ParseError::User {
+                error: LexicalError{
+                    cause: Spanned { data, .. }
+                }
+           }), ..} => {
+                if let Some(span) = span {
+                    write!(f, "{}, {} -> {}", data, span, path)
+                } else {
+                    write!(f, "{} -> {}", data, path)
+                }
+            },
+           _ => Ok(()),
         }
     }
 }
