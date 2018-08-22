@@ -140,7 +140,7 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Returns the list of logical dimensions.
-    pub fn logical_dims(&self) -> impl Iterator<Item=&ir::LogicalDim> {
+    pub fn logical_dims(&self) -> impl Iterator<Item = &ir::LogicalDim> {
         self.logical_dims.iter()
     }
 
