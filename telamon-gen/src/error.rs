@@ -31,7 +31,7 @@ impl<'a> From<(path::Display<'a>, ParseError<Position, Token, LexicalError>)>
             ParseError::InvalidToken {
                 location: Position { position: beg, .. },
             } => ProcessError {
-                path: path,
+                path,
                 span: Some(Span {
                     beg,
                     ..Default::default()
@@ -39,7 +39,7 @@ impl<'a> From<(path::Display<'a>, ParseError<Position, Token, LexicalError>)>
                 cause: Cause::Parse(parse),
             },
             ParseError::UnrecognizedToken { token: None, .. } => ProcessError {
-                path: path,
+                path,
                 span: None,
                 cause: Cause::Parse(parse),
             },
@@ -69,7 +69,7 @@ impl<'a> From<(path::Display<'a>, ParseError<Position, Token, LexicalError>)>
                     }
                 }
             } => ProcessError {
-                path: path,
+                path,
                 span: Some(Span {
                     beg,
                     end: Some(end),
@@ -96,15 +96,11 @@ impl<'a> fmt::Display for ProcessError<'a> {
                     write!(f, "{} -> {}", token, path)
                 }
            },
-           ProcessError { path, span, cause: Cause::Parse(ParseError::User {
-                error: LexicalError{
-                    cause: Spanned { data, .. }
-                }
-           }), ..} => {
+           ProcessError { path, span, cause: Cause::Parse(error), ..} => {
                 if let Some(span) = span {
-                    write!(f, "{}, {} -> {}", data, span, path)
+                    write!(f, "{}, {} -> {}", error, span, path)
                 } else {
-                    write!(f, "{} -> {}", data, path)
+                    write!(f, "{} -> {}", error, path)
                 }
             },
            _ => Ok(()),
