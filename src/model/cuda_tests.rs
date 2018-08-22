@@ -45,14 +45,14 @@ fn partial_bound_0() {
             &local_info,
             BottleneckLevel::Global,
             &[],
-            )
+        )
     }.get_bottleneck(3);
 
     builder.action(Action::ThreadMapping(
-            dim_z,
-            dim_x,
-            ThreadMapping::MAPPED_OUT,
-            ));
+        dim_z,
+        dim_x,
+        ThreadMapping::MAPPED_OUT,
+    ));
     let final_pressure = {
         let space = builder.get_clone();
         let local_info = LocalInfo::compute(&space, &context);
@@ -63,7 +63,7 @@ fn partial_bound_0() {
             &local_info,
             BottleneckLevel::Global,
             &[],
-            )
+        )
     }.get_bottleneck(3);
 
     assert!(
@@ -71,7 +71,7 @@ fn partial_bound_0() {
         "{} < {}",
         final_pressure,
         partial_pressure
-        );
+    );
 }
 
 #[test]
@@ -106,7 +106,7 @@ fn partial_bound_1() {
             &local_info,
             BottleneckLevel::Global,
             &[],
-            )
+        )
     }.get_bottleneck(5);
 
     builder.action(Action::DimKind(dim_z, DimKind::THREAD));
@@ -120,7 +120,7 @@ fn partial_bound_1() {
             &local_info,
             BottleneckLevel::Global,
             &[],
-            )
+        )
     }.get_bottleneck(5);
 
     assert!(
@@ -128,7 +128,7 @@ fn partial_bound_1() {
         "{} < {}",
         final_pressure,
         partial_pressure
-        );
+    );
 }
 
 #[test]
@@ -164,7 +164,7 @@ fn partial_bound_2() {
         &[&acc_dim_m, &acc_dim_n],
         ir::DimMapScope::Global(()),
         &mut builder,
-        );
+    );
     let x_op = ld_x.dim_map(&[&acc_dim_n], ir::DimMapScope::Global(()), &mut builder);
     let acc = builder.mad(&a_op, &x_op, &Reduce(init));
     builder.close_dim(&acc_dim_n);
@@ -194,7 +194,7 @@ fn partial_bound_2() {
         "{} < {}",
         final_bound,
         partial_bound
-        );
+    );
 }
 
 #[test]
@@ -229,15 +229,15 @@ fn partial_bound_3() {
     builder.action(Action::DimKind(init_dim_m[0], DimKind::THREAD));
     //builder.action(Action::DimKind(init_dim_m[1], DimKind::THREAD));
     builder.action(Action::ThreadMapping(
-            ld_a_dim[0],
-            init_dim_m[0],
-            ThreadMapping::MAPPED,
-            ));
+        ld_a_dim[0],
+        init_dim_m[0],
+        ThreadMapping::MAPPED,
+    ));
     builder.action(Action::ThreadMapping(
-            init_dim_m[0],
-            init_dim_m[1],
-            ThreadMapping::MAPPED_IN,
-            ));
+        init_dim_m[0],
+        init_dim_m[1],
+        ThreadMapping::MAPPED_IN,
+    ));
     builder.action(Action::DimKind(init_dim_n, DimKind::THREAD));
 
     let partial_pressure = {
@@ -249,14 +249,14 @@ fn partial_bound_3() {
             &local_info,
             BottleneckLevel::Global,
             &[],
-            )
+        )
     }.get_bottleneck(4);
 
     builder.action(Action::ThreadMapping(
-            init_dim_n,
-            ld_a_dim[0],
-            ThreadMapping::MAPPED_IN,
-            ));
+        init_dim_n,
+        ld_a_dim[0],
+        ThreadMapping::MAPPED_IN,
+    ));
 
     let final_pressure = {
         let space = builder.get();
@@ -267,7 +267,7 @@ fn partial_bound_3() {
             &local_info,
             BottleneckLevel::Global,
             &[],
-            )
+        )
     }.get_bottleneck(4);
 
     assert!(
@@ -275,7 +275,7 @@ fn partial_bound_3() {
         "{} < {}",
         final_pressure,
         partial_pressure
-        );
+    );
 }
 
 #[test]
@@ -309,14 +309,14 @@ fn partial_bound_4() {
             &local_info,
             BottleneckLevel::Global,
             &[],
-            )
+        )
     }.get_bottleneck(3);
 
     builder.action(Action::ThreadMapping(
-            ld_a[0][0],
-            ld_a[1][0],
-            ThreadMapping::MAPPED_IN,
-            ));
+        ld_a[0][0],
+        ld_a[1][0],
+        ThreadMapping::MAPPED_IN,
+    ));
 
     let final_pressure = {
         let space = builder.get();
@@ -327,7 +327,7 @@ fn partial_bound_4() {
             &local_info,
             BottleneckLevel::Global,
             &[],
-            )
+        )
     }.get_bottleneck(3);
 
     assert!(
@@ -335,7 +335,7 @@ fn partial_bound_4() {
         "{} < {}",
         final_pressure,
         partial_pressure
-        );
+    );
 }
 
 #[test]
@@ -369,7 +369,7 @@ fn partial_bound_5() {
             &local_info,
             BottleneckLevel::Global,
             &[],
-            )
+        )
     }.get_bottleneck(4);
 
     builder.action(Action::DimKind(ld_a[0][0], DimKind::UNROLL));
@@ -383,7 +383,7 @@ fn partial_bound_5() {
             &local_info,
             BottleneckLevel::Global,
             &[],
-            )
+        )
     }.get_bottleneck(4);
 
     assert!(
@@ -391,7 +391,7 @@ fn partial_bound_5() {
         "{} < {}",
         final_pressure,
         partial_pressure
-        );
+    );
 }
 
 #[test]
@@ -422,7 +422,7 @@ fn final_bound_0() {
     let mad = tensor::VirtualTensor::new(
         builder.mad(&x_op, &4.33f32, &y_op),
         vec![mad_dim.clone()],
-        );
+    );
     let st_z = mad.store(&z, &mut builder);
 
     builder.action(Action::DimKind(ld_x[0][2], DimKind::VECTOR));
