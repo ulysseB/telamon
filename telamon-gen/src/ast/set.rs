@@ -20,7 +20,7 @@ impl SetDef {
             .iter()
             .map(|(k, _, _)| k.data)
             .collect::<Vec<ir::SetDefKey>>();
-    
+
         for ref key in ir::SetDefKey::REQUIRED.iter() {
             if !keys.contains(&key) {
                 Err(TypeError::MissingEntry {
