@@ -37,7 +37,7 @@ impl quote::ToTokens for ir::CounterKind {
     fn to_tokens(&self, stream: &mut TokenStream) {
         match *self {
             ir::CounterKind::Add => quote!(+).to_tokens(stream),
-            ir::CounterKind::Mul => quote!(-).to_tokens(stream),
+            ir::CounterKind::Mul => quote!(*).to_tokens(stream),
         }
     }
 }
