@@ -362,7 +362,7 @@ fn dim_map_reduce_0() {
     builder.close_dim(&d1);
 
     let d2 = builder.open_dim_ex(size_16.clone(), DimKind::LOOP);
-    let op = builder.dim_map(inst1, &[(&d1, &d2)], ir::DimMapScope::Global);
+    let op = builder.dim_map(inst1, &[(&d1, &d2)], ir::DimMapScope::Global(()));
     let inst2 = builder.add(&op, &helper::Reduce(inst0));
 
     builder.order(&inst2, &d1, Order::AFTER);
@@ -466,7 +466,7 @@ fn dim_map_active() {
     let d2 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
     let _d3 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
     let d4 = builder.open_dim_ex(size_32.clone(), DimKind::UNROLL);
-    let op = builder.dim_map(a, &[(&d0, &d2), (&d1, &d4)], ir::DimMapScope::Global);
+    let op = builder.dim_map(a, &[(&d0, &d2), (&d1, &d4)], ir::DimMapScope::Global(()));
     builder.mov(&op);
 
     gen_best(&context, builder.get());
@@ -491,7 +491,7 @@ fn test0() {
     let _d2 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
     let d3 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
     let d4 = builder.open_dim_ex(size_32.clone(), DimKind::SEQUENTIAL);
-    let op = builder.dim_map(i0, &[(&d0, &d3), (&d1, &d4)], ir::DimMapScope::Global);
+    let op = builder.dim_map(i0, &[(&d0, &d3), (&d1, &d4)], ir::DimMapScope::Global(()));
     let i1 = builder.mov(&op);
 
     builder.order(&i1, &d0, Order::AFTER);

@@ -513,10 +513,10 @@ mod cuda_tests {
         let acc_dim_n = builder.open_mapped_dim(&ld_x[0]);
         let a_op = ld_a.dim_map(
             &[&acc_dim_m, &acc_dim_n],
-            ir::DimMapScope::Global,
+            ir::DimMapScope::Global(()),
             &mut builder,
         );
-        let x_op = ld_x.dim_map(&[&acc_dim_n], ir::DimMapScope::Global, &mut builder);
+        let x_op = ld_x.dim_map(&[&acc_dim_n], ir::DimMapScope::Global(()), &mut builder);
         let acc = builder.mad(&a_op, &x_op, &Reduce(init));
         builder.close_dim(&acc_dim_n);
 
@@ -768,8 +768,8 @@ mod cuda_tests {
         let ld_x = x.load(&[tiling], &mut builder);
         let ld_y = y.load(&[tiling], &mut builder);
         let mad_dim = builder.open_mapped_dim(&ld_x[0]);
-        let x_op = ld_x.dim_map(&[&mad_dim], ir::DimMapScope::Global, &mut builder);
-        let y_op = ld_y.dim_map(&[&mad_dim], ir::DimMapScope::Global, &mut builder);
+        let x_op = ld_x.dim_map(&[&mad_dim], ir::DimMapScope::Global(()), &mut builder);
+        let y_op = ld_y.dim_map(&[&mad_dim], ir::DimMapScope::Global(()), &mut builder);
         let mad = tensor::VirtualTensor::new(
             builder.mad(&x_op, &4.33f32, &y_op),
             vec![mad_dim.clone()],
