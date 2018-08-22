@@ -67,6 +67,7 @@ pub struct Function<'a, L = ir::LoweringMap> {
     mem_blocks: mem::BlockMap,
     layouts_to_lower: Vec<ir::mem::InternalId>,
     induction_vars: Vec<ir::InductionVar<'a, L>>,
+    logical_dims: Vec<ir::LogicalDim>,
 }
 
 impl<'a, L> Function<'a, L> {
@@ -84,6 +85,7 @@ impl<'a, L> Function<'a, L> {
             mem_blocks,
             layouts_to_lower: Vec::new(),
             induction_vars: Vec::new(),
+            logical_dims: Vec::new(),
         }
     }
 
@@ -137,6 +139,11 @@ impl<'a, L> Function<'a, L> {
         self.dims.iter()
     }
 
+    /// Returns the list of logical dimensions.
+    pub fn logical_dims(&self) -> impl Iterator<Item=&ir::LogicalDim> {
+        self.logical_dims.iter()
+    }
+
     /// Returns the list of stastic dimensions in the function.
     pub fn static_dims<'b>(&'b self) -> impl Iterator<Item = &'b Dimension<'a>> {
         self.static_dims.iter().map(move |&id| self.dim(id))
@@ -165,6 +172,11 @@ impl<'a, L> Function<'a, L> {
     /// Returns a mutable reference to a dimension given its ID.
     fn dim_mut(&mut self, id: ir::DimId) -> &mut Dimension<'a> {
         &mut self.dims[id]
+    }
+
+    /// Retrives a logical dimension given its ID.
+    pub fn logical_dim(&self, id: ir::LogicalId) -> &ir::LogicalDim {
+        &self.logical_dims[id.0 as usize]
     }
 
     /// Returns the list of memory blocks. The block with id `i` is in i-th position.
@@ -363,6 +375,7 @@ impl<'a> Function<'a, ()> {
             mut mem_blocks,
             layouts_to_lower,
             induction_vars,
+            logical_dims,
         } = self;
 
         let mut insts = SparseVec::from_vec(
@@ -396,6 +409,7 @@ impl<'a> Function<'a, ()> {
             mem_blocks,
             layouts_to_lower,
             induction_vars,
+            logical_dims,
         }
     }
 }
