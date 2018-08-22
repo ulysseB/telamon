@@ -68,11 +68,19 @@ impl TypingContext {
         }
         for choice_def in std::mem::replace(&mut self.choice_defs, vec![]) {
             match choice_def {
-                ChoiceDef::EnumDef(EnumDef { name, doc, variables, statements }) =>
-                    self.register_enum(name.data, doc, variables, statements),
-                ChoiceDef::CounterDef(CounterDef { name, doc, visibility,
-                    vars, body, }) =>
-                    self.register_counter(name.data, doc, visibility, vars, body),
+                ChoiceDef::EnumDef(EnumDef {
+                    name,
+                    doc,
+                    variables,
+                    statements,
+                }) => self.register_enum(name.data, doc, variables, statements),
+                ChoiceDef::CounterDef(CounterDef {
+                    name,
+                    doc,
+                    visibility,
+                    vars,
+                    body,
+                }) => self.register_counter(name.data, doc, visibility, vars, body),
                 ChoiceDef::IntegerDef(def) => self.define_integer(def),
             }
         }
@@ -359,7 +367,10 @@ impl TypingContext {
             value: CounterVal::Code("1".to_string()),
         };
         self.choice_defs.push(ChoiceDef::CounterDef(CounterDef {
-            name: Spanned { data: name.clone(), ..Default::default() },
+            name: Spanned {
+                data: name.clone(),
+                ..Default::default()
+            },
             doc: None,
             visibility,
             vars,

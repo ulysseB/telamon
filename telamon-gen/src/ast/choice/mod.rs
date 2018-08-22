@@ -15,12 +15,16 @@ pub enum ChoiceDef {
 impl ChoiceDef {
     pub fn declare(&self, context: &mut CheckerContext) -> Result<(), TypeError> {
         match self {
-            ChoiceDef::IntegerDef(choice) => context.declare_choice(
-                choice.name.to_owned(), Hint::Integer),
-            ChoiceDef::EnumDef(choice) => context.declare_choice(
-                choice.name.to_owned(), Hint::Enum),
+            ChoiceDef::IntegerDef(choice) => {
+                context.declare_choice(choice.name.to_owned(), Hint::Integer)
+            }
+            ChoiceDef::EnumDef(choice) => {
+                context.declare_choice(choice.name.to_owned(), Hint::Enum)
+            }
             ChoiceDef::CounterDef(choice) => context.declare_choice(
-                choice.name.with_data(choice.name.data.to_string()), Hint::Counter),
+                choice.name.with_data(choice.name.data.to_string()),
+                Hint::Counter,
+            ),
         }
     }
 

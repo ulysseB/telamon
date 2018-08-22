@@ -111,11 +111,10 @@ impl EnumDef {
 
         for stmt in self.statements.iter() {
             match stmt {
-                EnumStatement::Value(spanned, ..) |
-                EnumStatement::Alias(spanned, ..) => {
+                EnumStatement::Value(spanned, ..) | EnumStatement::Alias(spanned, ..) => {
                     hash.insert(spanned.data.to_owned(), ());
-                },
-                _ => {},
+                }
+                _ => {}
             }
         }
         for stmt in self.statements.iter() {
@@ -124,27 +123,26 @@ impl EnumDef {
                     for (first, second) in spanned.data.iter() {
                         if !hash.contains_key(&first.to_owned()) {
                             Err(TypeError::Undefined {
-                                object_name: spanned.with_data(first.to_owned())
+                                object_name: spanned.with_data(first.to_owned()),
                             })?;
                         }
                         if !hash.contains_key(&second.to_owned()) {
                             Err(TypeError::Undefined {
-                                object_name: spanned.with_data(second.to_owned())
+                                object_name: spanned.with_data(second.to_owned()),
                             })?;
-
                         }
                     }
-                },
+                }
                 EnumStatement::Alias(spanned, _, sets, ..) => {
                     for set in sets {
                         if !hash.contains_key(&set.to_owned()) {
                             Err(TypeError::Undefined {
-                                object_name: spanned.with_data(set.to_owned())
+                                object_name: spanned.with_data(set.to_owned()),
                             })?;
                         }
                     }
-                },
-                _ => {},
+                }
+                _ => {}
             }
         }
         Ok(())

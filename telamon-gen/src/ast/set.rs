@@ -12,7 +12,6 @@ pub struct SetDef {
 }
 
 impl SetDef {
-
     /// This checks that thereisn't any keys doublon.
     fn check_redefinition_key(&self) -> Result<(), TypeError> {
         let mut hash: HashMap<_, Spanned<()>> = HashMap::default();

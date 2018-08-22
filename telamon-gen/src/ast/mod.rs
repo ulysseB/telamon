@@ -4,11 +4,11 @@
 
 mod choice;
 mod constrain;
-mod typing_context;
 mod context;
 mod error;
 mod set;
 mod trigger;
+mod typing_context;
 
 use constraint::dedup_inputs;
 use constraint::Constraint as TypedConstraint;
@@ -26,10 +26,10 @@ pub use self::choice::enumeration::EnumDef;
 pub use self::choice::integer::IntegerDef;
 pub use self::choice::ChoiceDef;
 pub use self::constrain::Constraint;
-pub use self::set::SetDef;
-use self::trigger::TriggerDef;
 use self::context::TypingContext;
 pub use self::error::{Hint, TypeError};
+pub use self::set::SetDef;
+use self::trigger::TriggerDef;
 use self::typing_context::CheckerContext;
 
 pub use super::lexer::{Position, Spanned};
@@ -42,8 +42,7 @@ pub struct Ast {
 impl Ast {
     /// Generate the defintion of choices and the list of constraints.
     /// TODO: remove typing context
-    pub fn type_check(self)
-        -> Result<(ir::IrDesc, Vec<TypedConstraint>), TypeError> {
+    pub fn type_check(self) -> Result<(ir::IrDesc, Vec<TypedConstraint>), TypeError> {
         let mut checker = CheckerContext::default();
         let mut context = TypingContext::default();
 

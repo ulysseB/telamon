@@ -10,7 +10,6 @@ pub struct IntegerDef {
 }
 
 impl IntegerDef {
-
     /// Type checks the declare's condition.
     pub fn declare(&self, context: &mut CheckerContext) -> Result<(), TypeError> {
         Ok(())

@@ -10,16 +10,16 @@ pub struct CheckerContext {
 }
 
 impl CheckerContext {
-
     /// This checks the redefinition of SetDef.
-    pub fn declare_set(
-        &mut self,
-        object_name: Spanned<String>,
-    ) -> Result<(), TypeError> {
+    pub fn declare_set(&mut self, object_name: Spanned<String>) -> Result<(), TypeError> {
         if let Some(pre) = self.hash_set.insert(
-            object_name.data.to_owned(), object_name.with_data(Hint::Set)
+            object_name.data.to_owned(),
+            object_name.with_data(Hint::Set),
         ) {
-            Err(TypeError::Redefinition { object_kind: pre, object_name })
+            Err(TypeError::Redefinition {
+                object_kind: pre,
+                object_name,
+            })
         } else {
             Ok(())
         }
@@ -32,9 +32,13 @@ impl CheckerContext {
         object_type: Hint,
     ) -> Result<(), TypeError> {
         if let Some(pre) = self.hash_choice.insert(
-            object_name.data.to_owned(), object_name.with_data(object_type)
+            object_name.data.to_owned(),
+            object_name.with_data(object_type),
         ) {
-            Err(TypeError::Redefinition { object_kind: pre, object_name })
+            Err(TypeError::Redefinition {
+                object_kind: pre,
+                object_name,
+            })
         } else {
             Ok(())
         }
@@ -47,7 +51,11 @@ impl CheckerContext {
         field_arg: &Option<VarDef>,
         field_superset: &Option<SetRef>,
     ) -> Result<(), TypeError> {
-        if let Some(VarDef { name: _, set: SetRef { name, .. } }) = field_arg {
+        if let Some(VarDef {
+            name: _,
+            set: SetRef { name, .. },
+        }) = field_arg
+        {
             let name: &String = name.deref();
             if !self.hash_set.contains_key(name) {
                 Err(TypeError::Undefined {
@@ -55,7 +63,10 @@ impl CheckerContext {
                 })?;
             }
         }
-        if let Some(SetRef { name: supername, .. }) = field_superset {
+        if let Some(SetRef {
+            name: supername, ..
+        }) = field_superset
+        {
             let name: &String = supername.deref();
             if !self.hash_set.contains_key(name) {
                 Err(TypeError::Undefined {
@@ -72,7 +83,11 @@ impl CheckerContext {
         object_name: &Spanned<String>,
         field_variables: &Vec<VarDef>,
     ) -> Result<(), TypeError> {
-        for VarDef { name: _, set: SetRef { name, .. } } in field_variables {
+        for VarDef {
+            name: _,
+            set: SetRef { name, .. },
+        } in field_variables
+        {
             let name: &String = name.deref();
             if !self.hash_set.contains_key(name) {
                 Err(TypeError::Undefined {
