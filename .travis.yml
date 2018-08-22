@@ -31,8 +31,8 @@ jobs:
     - stage: documentation
       if: branch IN (master, staging)
       script:
-          - cargo build --all --verbose
-          - cargo doc --no-deps --all --verbose
+        - cargo build --all
+        - cargo doc --no-deps --all
       deploy:
         provider: pages
         local-dir: target/doc
