@@ -1,60 +1,20 @@
 //! C API wrappers to create Telamon Kernels.
-use Device;
 use libc;
 use num::rational::Ratio;
 use std;
-use std::cell::RefCell;
 use telamon::ir;
+use Device;
 
 pub use telamon::ir::op::Rounding;
 
-thread_local! {
-    static ERROR: RefCell<Option<ir::Error>> = RefCell::new(None);
-}
-
-/// Indicates if a telamon function exited correctly.
-#[repr(C)]
-pub enum TelamonStatus { TelamonStatusOk, TelamonStatusFail }
-
-/// Helper macro that unwraps a result. Exits with `$error` and sets the global `ERROR`
-/// variable when an error is encountered.
-///
-/// When no value is specified for `$error`, returns with `TELAMON_STATUS_FAIL`. When `null` is
-/// specified instead, exits with a null mutable pointer.
-macro_rules! unwrap_or_exit {
-    ($result:expr) => { unwrap_or_exit!($result, TelamonStatus::TelamonStatusOk) };
-    ($result:expr, null) => { unwrap_or_exit!($result, std::ptr::null_mut()) };
-    ($result:expr, $error:expr) => {
-        match $result {
-            Ok(data) => data,
-            Err(error) => {
-                ERROR.with(|error_var| {
-                    *error_var.borrow_mut() = Some(error.into());
-                });
-                return $error
-            }
-        }
-    };
-}
-
-/// Prints the error message in a string. Returns `null` if no error was present. The
-/// caller is responsible for freeing the string with `free`.
-#[no_mangle]
-pub unsafe extern "C" fn telamon_ir_strerror() -> *mut libc::c_char {
-    ERROR.with(|error| {
-        error.borrow().as_ref().map(|error| {
-            let string = unwrap!(std::ffi::CString::new(error.to_string()));
-            libc::strdup(string.as_ptr())
-        }).unwrap_or(std::ptr::null_mut())
-    })
-}
+use super::error::TelamonStatus;
 
 /// Creates a function signature that must be deallocated with
 /// `telamon_ir_signature_free`.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_ir_signature_new(name: *const libc::c_char)
-    -> *mut ir::Signature
-{
+pub unsafe extern "C" fn telamon_ir_signature_new(
+    name: *const libc::c_char,
+) -> *mut ir::Signature {
     let name = unwrap!(std::ffi::CStr::from_ptr(name).to_str());
     Box::into_raw(Box::new(ir::Signature::new(name.to_string())))
 }
@@ -69,7 +29,7 @@ pub unsafe extern "C" fn telamon_ir_signature_free(signature: *mut ir::Signature
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_signature_param(
     signature: *const ir::Signature,
-    index: usize
+    index: usize,
 ) -> *const ir::Parameter {
     &(*signature).params[index]
 }
@@ -79,7 +39,7 @@ pub unsafe extern "C" fn telamon_ir_signature_param(
 pub unsafe extern "C" fn telamon_ir_signature_add_scalar(
     signature: *mut ir::Signature,
     name: *const libc::c_char,
-    t: *const ir::Type
+    t: *const ir::Type,
 ) {
     let name = unwrap!(std::ffi::CStr::from_ptr(name).to_str());
     (*signature).add_scalar(name.to_string(), *t);
@@ -97,17 +57,13 @@ pub unsafe extern "C" fn telamon_ir_signature_add_array(
 
 /// Creates an integer type that must be freed with `telamon_ir_type_free`.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_ir_type_new_int(
-    num_bits: u16,
-) -> *mut ir::Type {
+pub unsafe extern "C" fn telamon_ir_type_new_int(num_bits: u16) -> *mut ir::Type {
     Box::into_raw(Box::new(ir::Type::I(num_bits)))
 }
 
 /// Creates a floating point type that must be freed with `telamon_ir_type_free`.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_ir_type_new_float(
-    num_bits: u16,
-) -> *mut ir::Type {
+pub unsafe extern "C" fn telamon_ir_type_new_float(num_bits: u16) -> *mut ir::Type {
     Box::into_raw(Box::new(ir::Type::F(num_bits)))
 }
 
@@ -119,7 +75,14 @@ pub unsafe extern "C" fn telamon_ir_type_free(t: *mut ir::Type) {
 
 /// Opaque type that abstracts away the lifetime parameter of `ir::Function` so that
 /// cbindgen generates the bindings.
-pub struct Function(ir::Function<'static>);
+#[derive(Clone)]
+pub struct Function(ir::Function<'static, ()>);
+
+impl Into<ir::Function<'static, ()>> for Function {
+    fn into(self) -> ir::Function<'static, ()> {
+        self.0
+    }
+}
 
 /// Creates a function to optimize. The function must be freed with
 /// `telamon_ir_function_free`. `signature` and `device` must outlive the function.
@@ -128,7 +91,10 @@ pub unsafe extern "C" fn telamon_ir_function_new(
     signature: *const ir::Signature,
     device: *const Device,
 ) -> *mut Function {
-    Box::into_raw(Box::new(Function(ir::Function::new(&*signature, &*(*device).0))))
+    Box::into_raw(Box::new(Function(ir::Function::new(
+        &*signature,
+        &*(*device).0,
+    ))))
 }
 
 /// Frees a function allocated with `telamon_ir_function_new`.
@@ -139,7 +105,7 @@ pub unsafe extern "C" fn telamon_ir_function_free(function: *mut Function) {
 
 /// Adds an instruction performing the given operator in the given dimensions to the
 /// function. Writes the unique identifier of the instruction in `inst_id`. Returns
-/// `TelamonStatusOk` except if an error occurs. Takes ownership of the operator
+/// `Ok` except if an error occurs. Takes ownership of the operator
 /// but does not keeps any reference to `dimensions`.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_function_add_instruction(
@@ -153,11 +119,11 @@ pub unsafe extern "C" fn telamon_ir_function_add_instruction(
     let dim_set = dimensions.iter().cloned().collect();
     let operator = Box::from_raw(operator).0;
     *inst_id = unwrap_or_exit!((*function).0.add_inst(operator, dim_set));
-    TelamonStatus::TelamonStatusOk
+    TelamonStatus::Ok
 }
 
 /// Adds a dimension of the given size to the function. Takes ownership of `size` and
-/// writes the unique identifier of the dimension in `dim_id`. Returns `TelamonStatusOk`
+/// writes the unique identifier of the dimension in `dim_id`. Returns `Ok`
 /// except if an error occurs.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_function_add_dimension(
@@ -166,7 +132,7 @@ pub unsafe extern "C" fn telamon_ir_function_add_dimension(
     dim_id: *mut ir::DimId,
 ) -> TelamonStatus {
     *dim_id = unwrap_or_exit!((*function).0.add_dim(Box::from_raw(size).0));
-    TelamonStatus::TelamonStatusOk
+    TelamonStatus::Ok
 }
 
 /// Opaque type that abstracts away the lifetime parameter of `ir::Size` so cbindgen
@@ -187,7 +153,9 @@ pub unsafe extern "C" fn telamon_ir_size_new(
     num_params: usize,
 ) -> *mut Size {
     let parameters = std::slice::from_raw_parts(param_factors, num_params)
-        .iter().map(|&ptr| &*ptr).collect();
+        .iter()
+        .map(|&ptr| &*ptr)
+        .collect();
     let size = ir::Size::new(const_factor, parameters, const_divisor);
     Box::into_raw(Box::new(Size(size)))
 }
@@ -200,7 +168,7 @@ pub unsafe extern "C" fn telamon_ir_size_free(size: *mut Size) {
 
 /// Opaque type that abstracts away the lifetime parameter of `ir::Operand` so that
 /// cbindgen can generate bindings.
-pub struct Operand(ir::Operand<'static>);
+pub struct Operand(ir::Operand<'static, ()>);
 
 /// Create a constant integer operand. The provided type must be an integer type.
 /// Returns `null` if an error is encountered.
@@ -211,7 +179,7 @@ pub unsafe extern "C" fn telamon_ir_operand_new_int(
 ) -> *mut Operand {
     unwrap_or_exit!(ir::TypeError::check_integer(*t), null);
     let type_len = unwrap!((*t).len_byte()) as u16;
-    let operand = ir::Operand::new_int(value.into(), 8*type_len);
+    let operand = ir::Operand::new_int(value.into(), 8 * type_len);
     Box::into_raw(Box::new(Operand(operand)))
 }
 
@@ -267,7 +235,7 @@ pub unsafe extern "C" fn telamon_ir_operand_new_inst(
     let dim_map_scope = if allow_tmp_mem == 0 {
         ir::DimMapScope::Thread
     } else {
-        ir::DimMapScope::Global
+        ir::DimMapScope::Global(())
     };
     let operand = ir::Operand::new_inst(inst, dim_map, dim_map_scope);
     Box::into_raw(Box::new(Operand(operand)))
@@ -291,8 +259,8 @@ pub unsafe extern "C" fn telamon_ir_operand_new_reduction(
     num_reduction_dims: usize,
 ) -> *mut Operand {
     let init = (*function).0.inst(init_inst);
-    let reduction_dims = std::slice::from_raw_parts(
-        reduction_dims, num_reduction_dims).to_vec();
+    let reduction_dims =
+        std::slice::from_raw_parts(reduction_dims, num_reduction_dims).to_vec();
     let dim_map = dim_map_from_arrays(src_dims, dst_dims, num_mapped_dims);
     let operand = ir::Operand::new_reduce(init, dim_map, reduction_dims);
     Box::into_raw(Box::new(Operand(operand)))
@@ -313,12 +281,12 @@ unsafe fn dim_map_from_arrays(
 
 /// Opaque type that abstracts away the lifetime parameter of `ir::Operator` so that
 /// cbindgen can generate bindings.
-pub struct Operator(ir::Operator<'static>);
+pub struct Operator(ir::Operator<'static, ()>);
 
 /// Creates a `mov` operator. Takes ownership of `operand`.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_operator_new_mov(
-    operand: *mut Operand
+    operand: *mut Operand,
 ) -> *mut Operator {
     let operator = ir::Operator::Mov(Box::from_raw(operand).0);
     Box::into_raw(Box::new(Operator(operator)))
@@ -398,8 +366,14 @@ pub unsafe extern "C" fn telamon_ir_operator_new_tensor_load(
     num_strided_dims: usize,
     loaded_type: *const ir::Type,
 ) -> *mut Operator {
-    let tensor_access = tensor_access(function, array_id, base_address, strided_dims,
-                                      strides, num_strided_dims);
+    let tensor_access = tensor_access(
+        function,
+        array_id,
+        base_address,
+        strided_dims,
+        strides,
+        num_strided_dims,
+    );
     let (address, access_pattern) = unwrap_or_exit!(tensor_access, null);
     let operator = ir::Operator::Ld(*loaded_type, address, access_pattern);
     Box::into_raw(Box::new(Operator(operator)))
@@ -419,8 +393,14 @@ pub unsafe extern "C" fn telamon_ir_operator_new_tensor_store(
     num_strided_dims: usize,
     value: *mut Operand,
 ) -> *mut Operator {
-    let tensor_access = tensor_access(function, array_id, base_address, strided_dims,
-                                      strides, num_strided_dims);
+    let tensor_access = tensor_access(
+        function,
+        array_id,
+        base_address,
+        strided_dims,
+        strides,
+        num_strided_dims,
+    );
     let (address, access_pattern) = unwrap_or_exit!(tensor_access, null);
     let value = Box::from_raw(value).0;
     let operator = ir::Operator::St(address, value, true, access_pattern);
@@ -436,24 +416,27 @@ unsafe fn tensor_access(
     base_address: *mut Operand,
     strided_dims: *const ir::DimId,
     strides: *const Size,
-    num_strided_dims: usize
-) -> Result<(ir::Operand<'static>, ir::AccessPattern<'static>), ir::Error> {
+    num_strided_dims: usize,
+) -> Result<(ir::Operand<'static, ()>, ir::AccessPattern<'static>), ir::Error> {
     let base_address = Box::from_raw(base_address).0;
     let strided_dims = std::slice::from_raw_parts(strided_dims, num_strided_dims);
     let strides = std::slice::from_raw_parts(strides, num_strided_dims);
     let address = if strided_dims.is_empty() {
         base_address
     } else {
-        let dims = (0..num_strided_dims).map(|i| {
-            (strided_dims[i], strides[i].0.clone())
-        }).collect();
+        let dims = (0..num_strided_dims)
+            .map(|i| (strided_dims[i], strides[i].0.clone()))
+            .collect();
         let ind_var = ir::InductionVar::new(dims, base_address)?;
         let ind_var_id = (*function).0.add_ind_var(ind_var);
         ir::Operand::InductionVar(ind_var_id, ir::Type::PtrTo(array_id))
     };
-    let dims = (0..num_strided_dims).map(|i| {
-        (strided_dims[i], strides[i].0.clone())
-    }).collect();
-    let access_pattern = ir::AccessPattern::Tensor { mem_id: array_id, dims };
+    let dims = (0..num_strided_dims)
+        .map(|i| (strided_dims[i], strides[i].0.clone()))
+        .collect();
+    let access_pattern = ir::AccessPattern::Tensor {
+        mem_id: array_id,
+        dims,
+    };
     Ok((address, access_pattern))
 }

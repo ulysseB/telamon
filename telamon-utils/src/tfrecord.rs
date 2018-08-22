@@ -23,16 +23,19 @@
 extern crate byteorder;
 extern crate crc;
 
+use std::fs::File;
+use std::io::{self, BufWriter, Read, Write};
+
 use self::byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use self::crc::crc32::checksum_castagnoli;
-use std::io::{Read, Write};
+use flate2::write::{GzEncoder, ZlibEncoder};
 
 /// The error type for errors occuring while reading a tfrecord file.
 #[derive(Debug, Fail)]
 pub enum ReadError {
     /// An I/O error occured.
     #[fail(display = "{}", _0)]
-    IOError(#[cause] ::std::io::Error),
+    IOError(#[cause] io::Error),
     /// The underlying data was shorter than advertised in the
     /// header's length field. If this happens because the end-of-file
     /// was reached, an I/O error will be raised instead.
@@ -45,9 +48,9 @@ pub enum ReadError {
 }
 
 /// For usage with ? when creating `ReadError`s.
-impl From<::std::io::Error> for ReadError {
+impl From<io::Error> for ReadError {
     #[inline]
-    fn from(error: ::std::io::Error) -> ReadError {
+    fn from(error: io::Error) -> ReadError {
         ReadError::IOError(error)
     }
 }
@@ -57,13 +60,20 @@ impl From<::std::io::Error> for ReadError {
 pub enum WriteError {
     /// An I/O error occured.
     #[fail(display = "{}", _0)]
-    IOError(#[cause] ::std::io::Error),
+    IOError(#[cause] io::Error),
 }
 
 /// For usage with ? when creating `WriteError`s.
-impl From<::std::io::Error> for WriteError {
-    fn from(error: ::std::io::Error) -> WriteError {
+impl From<io::Error> for WriteError {
+    fn from(error: io::Error) -> WriteError {
         WriteError::IOError(error)
+    }
+}
+
+/// For usage with ? when creating `WriteError`s
+impl<W> From<io::IntoInnerError<W>> for WriteError {
+    fn from(error: io::IntoInnerError<W>) -> WriteError {
+        WriteError::IOError(error.into())
     }
 }
 
@@ -115,6 +125,8 @@ impl<R: Read + ?Sized> RecordReader for R {}
 ///  *
 ///  https://github.com/tensorflow/tensorflow/blob/f318765ad5a50b2fbd7cc08dd4ebc249b3924270/tensorflow/core/lib/io/record_writer.cc
 pub trait RecordWriter: Write {
+    type Writer;
+
     fn write_record(&mut self, bytes: &[u8]) -> Result<(), WriteError> {
         // We use a temporary buffer on the stack for the header
         // because we need to compute its crc32. We `unwrap` here
@@ -131,6 +143,63 @@ pub trait RecordWriter: Write {
         self.write_u32::<LittleEndian>(masked_crc32(bytes))?;
         Ok(())
     }
+
+    /// Writes all output to the file and conclude the stream. Returns
+    /// the underlying writer. *Does not* flush the underlying writer.
+    ///
+    /// This is the conceptual equivalent of RecordWriter::Close in
+    /// TensorFlow's C++ implementation.
+    fn finish(self) -> Result<Self::Writer, WriteError>;
+
+    /// Equivalent to `finish` for boxed trait objects, because we
+    /// otherwise can't move out of the unsized trait object.
+    fn finish_box(self: Box<Self>) -> Result<Self::Writer, WriteError>;
 }
 
-impl<W: Write + ?Sized> RecordWriter for W {}
+impl RecordWriter for File {
+    type Writer = File;
+
+    fn finish(self) -> Result<File, WriteError> {
+        Ok(self)
+    }
+
+    fn finish_box(self: Box<Self>) -> Result<File, WriteError> {
+        RecordWriter::finish(*self)
+    }
+}
+
+impl<W: Write> RecordWriter for BufWriter<W> {
+    type Writer = W;
+
+    fn finish(self) -> Result<W, WriteError> {
+        Ok(BufWriter::into_inner(self)?)
+    }
+
+    fn finish_box(self: Box<Self>) -> Result<W, WriteError> {
+        RecordWriter::finish(*self)
+    }
+}
+
+impl<W: Write> RecordWriter for GzEncoder<W> {
+    type Writer = W;
+
+    fn finish(self) -> Result<W, WriteError> {
+        Ok(GzEncoder::finish(self)?)
+    }
+
+    fn finish_box(self: Box<Self>) -> Result<W, WriteError> {
+        RecordWriter::finish(*self)
+    }
+}
+
+impl<W: Write> RecordWriter for ZlibEncoder<W> {
+    type Writer = W;
+
+    fn finish(self) -> Result<W, WriteError> {
+        Ok(ZlibEncoder::finish(self)?)
+    }
+
+    fn finish_box(self: Box<Self>) -> Result<W, WriteError> {
+        RecordWriter::finish(*self)
+    }
+}

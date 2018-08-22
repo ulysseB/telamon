@@ -5,11 +5,11 @@
 extern crate toml;
 
 use config;
-use std;
-use std::fmt;
 use getopts;
 use itertools::Itertools;
 use num_cpus;
+use std;
+use std::fmt;
 
 /// Stores the configuration of the exploration.
 #[derive(Clone, Serialize, Deserialize)]
@@ -83,8 +83,7 @@ impl Config {
     /// the Python API (through the C API).
     pub fn from_json(json: &str) -> Self {
         let mut parser = Self::create_parser();
-        unwrap!(parser.merge(
-            config::File::from_str(json, config::FileFormat::Json)));
+        unwrap!(parser.merge(config::File::from_str(json, config::FileFormat::Json)));
         unwrap!(parser.try_into::<Self>())
     }
 
@@ -92,7 +91,12 @@ impl Config {
     fn setup_args_parser() -> getopts::Options {
         let mut opts = getopts::Options::new();
         opts.optflag("h", "help", "Print the help menu.");
-        opts.optopt("j", "jobs", "number of explorer working in parallel", "N_THREAD");
+        opts.optopt(
+            "j",
+            "jobs",
+            "number of explorer working in parallel",
+            "N_THREAD",
+        );
         opts.optopt("f", "log_file", "name of watcher file", "string");
         SearchAlgorithm::setup_args_parser(&mut opts);
         opts
@@ -114,7 +118,6 @@ impl Config {
     }
 }
 
-
 impl fmt::Display for Config {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", unwrap!(toml::to_string(self)))
@@ -125,7 +128,7 @@ impl Default for Config {
     fn default() -> Self {
         Config {
             log_file: String::from("watch.log"),
-            event_log: String::from("eventlog.tfrecord"),
+            event_log: String::from("eventlog.tfrecord.gz"),
             num_workers: num_cpus::get(),
             algorithm: SearchAlgorithm::default(),
             stop_bound: None,
@@ -138,21 +141,25 @@ impl Default for Config {
 
 /// Exploration algorithm to use.
 #[derive(Clone, Serialize, Deserialize)]
-#[serde(tag="type")]
-#[serde(rename_all="snake_case")]
+#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
 pub enum SearchAlgorithm {
     /// Evaluate all the candidates that cannot be pruned.
     BoundOrder,
     /// Use a multi-armed bandit algorithm.
-    #[serde(rename="bandit")]
+    #[serde(rename = "bandit")]
     MultiArmedBandit(BanditConfig),
 }
 
 impl SearchAlgorithm {
     /// Sets up the options that can be passed on the command line.
     fn setup_args_parser(opts: &mut getopts::Options) {
-        opts.optopt("a", "algorithm", "exploration algorithm: bound_order or bandit",
-                    "bound_order:bandit");
+        opts.optopt(
+            "a",
+            "algorithm",
+            "exploration algorithm: bound_order or bandit",
+            "bound_order:bandit",
+        );
         BanditConfig::setup_args_parser(opts);
     }
 
@@ -166,7 +173,9 @@ impl SearchAlgorithm {
 }
 
 impl Default for SearchAlgorithm {
-    fn default() -> Self { SearchAlgorithm::MultiArmedBandit(BanditConfig::default()) }
+    fn default() -> Self {
+        SearchAlgorithm::MultiArmedBandit(BanditConfig::default())
+    }
 }
 
 /// Configuration parameters specific to the multi-armed bandit algorithm.
@@ -192,10 +201,13 @@ pub struct BanditConfig {
 impl BanditConfig {
     /// Sets up the options that can be passed on the command line.
     fn setup_args_parser(opts: &mut getopts::Options) {
-        opts.optopt("s", "default_node_selection",
-                    "selection algorithm for nodes without evaluations: \
-                    api, random, bound, weighted_random",
-                    "api|random|bound|weighted_random");
+        opts.optopt(
+            "s",
+            "default_node_selection",
+            "selection algorithm for nodes without evaluations: \
+             api, random, bound, weighted_random",
+            "api|random|bound|weighted_random",
+        );
     }
 
     /// Overwrite the configuration with the parameters from the command line.
@@ -221,7 +233,7 @@ impl Default for BanditConfig {
 /// Indicates how to choose between nodes of the search tree when no children have been
 /// evaluated.
 #[derive(Clone, Copy, Serialize, Deserialize)]
-#[serde(rename_all="snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum NewNodeOrder {
     /// Consider the nodes in the order given by the search space API.
     Api,
@@ -235,13 +247,15 @@ pub enum NewNodeOrder {
 }
 
 impl Default for NewNodeOrder {
-    fn default() -> Self { NewNodeOrder::WeightedRandom }
+    fn default() -> Self {
+        NewNodeOrder::WeightedRandom
+    }
 }
 
 /// Indicates how to choose between nodes of the search tree with at least one descendent
 /// evaluated.
 #[derive(Clone, Serialize, Deserialize)]
-#[serde(rename_all="snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum OldNodeOrder {
     /// Use the weights from the bandit algorithm.
     Bandit,
@@ -253,5 +267,7 @@ pub enum OldNodeOrder {
 }
 
 impl Default for OldNodeOrder {
-    fn default() -> Self { OldNodeOrder::Bandit }
+    fn default() -> Self {
+        OldNodeOrder::Bandit
+    }
 }

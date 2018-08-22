@@ -1,20 +1,20 @@
 //! Code generation and candidate evaluation for specific targets.
 pub mod cuda;
-#[cfg(feature="mppa")]
+#[cfg(feature = "mppa")]
 pub mod mppa;
 pub mod x86;
 
 mod argument;
 mod context;
 
-pub use self::argument::{ScalarArgument, ArrayArgument, read_array, write_array};
-pub use self::context::{Context, EvalMode, ArgMap, AsyncCallback, AsyncEvaluator};
+pub use self::argument::{read_array, write_array, ArrayArgument, ScalarArgument};
+pub use self::context::{ArgMap, AsyncCallback, AsyncEvaluator, Context, EvalMode};
 
 use codegen::Function;
 use ir;
-use search_space::{SearchSpace, DimKind};
-use std::io::Write;
 use model::{HwPressure, Nesting};
+use search_space::{DimKind, SearchSpace};
+use std::io::Write;
 use utils::*;
 
 /// Holds the specifications of a target.
@@ -45,18 +45,21 @@ pub trait Device: Sync {
 
     /// Returns the pressure cause by a `BasicBlock`. For a dimension, returns the pressure
     /// for the full loop execution.
-    fn hw_pressure(&self, space: &SearchSpace,
-                   dim_sizes: &HashMap<ir::DimId, u32>,
-                   nesting: &HashMap<ir::BBId, Nesting>,
-                   bb: &ir::BasicBlock,
-                   ctx: &Context) -> HwPressure;
+    fn hw_pressure(
+        &self,
+        space: &SearchSpace,
+        dim_sizes: &HashMap<ir::DimId, u32>,
+        nesting: &HashMap<ir::BBId, Nesting>,
+        bb: &ir::BasicBlock,
+        ctx: &Context,
+    ) -> HwPressure;
     /// Returns the pressure produced by a single iteration of a loop and the latency
     /// overhead of iterations.
     fn loop_iter_pressure(&self, kind: DimKind) -> (HwPressure, HwPressure);
     /// Returns the processing rates of a single thread, in units/ns
     fn thread_rates(&self) -> HwPressure;
     /// Returns the processing rates of a single block, in units/ns.
-    fn block_rates(&self,) -> HwPressure;
+    fn block_rates(&self) -> HwPressure;
     /// Returns the processing rates of the whole accelerator un units/ns.
     fn total_rates(&self) -> HwPressure;
     /// Returns the names of potential bottlenecks.
@@ -70,9 +73,12 @@ pub trait Device: Sync {
     /// Adds the overhead (per instance) due to partial wraps and predicated dimensions to
     /// the pressure. If the instruction is not predicated, `predicated_dims_size` should
     /// be `1`.
-    fn add_block_overhead(&self, predicated_dims_size: u64,
-                          max_threads_per_blocks: u64,
-                          pressure: &mut HwPressure);
+    fn add_block_overhead(
+        &self,
+        predicated_dims_size: u64,
+        max_threads_per_blocks: u64,
+        pressure: &mut HwPressure,
+    );
 
     /// Lowers a type using the memory space information. Returns `None` if some
     /// information is not yet specified.

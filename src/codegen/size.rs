@@ -1,7 +1,7 @@
 use ir;
 use num;
-use std;
 use search_space::SearchSpace;
+use std;
 
 /// The size of an iteration dimension. The size is of the form:
 /// `(factor * dividend_0 * dividend_1 * ...)) / divisor`
@@ -18,31 +18,47 @@ impl<'a> Size<'a> {
     pub fn new(factor: u32, dividend: Vec<&'a ir::Parameter>, divisor: u32) -> Self {
         assert!(factor != 0);
         assert!(divisor != 0);
-        let mut new = Size { factor, dividend, divisor };
+        let mut new = Size {
+            factor,
+            dividend,
+            divisor,
+        };
         new.simplify();
         new
     }
 
     /// Converts an `ir::Size` to `Self`.
     pub fn from_ir(size: &ir::Size<'a>, _: &SearchSpace) -> Self {
-        Size::new(size.factor(),
-                  size.dividend().iter().cloned().collect(),
-                  size.divisor())
+        Size::new(
+            size.factor(),
+            size.dividend().iter().cloned().collect(),
+            size.divisor(),
+        )
     }
 
     /// Returns the size of a dimension if it is staticaly known.
     pub fn as_int(&self) -> Option<u32> {
-        if self.dividend.is_empty() { Some(self.factor) } else { None }
+        if self.dividend.is_empty() {
+            Some(self.factor)
+        } else {
+            None
+        }
     }
 
     /// Returns the dividends.
-    pub fn dividend(&self) -> &[&'a ir::Parameter] { &self.dividend }
+    pub fn dividend(&self) -> &[&'a ir::Parameter] {
+        &self.dividend
+    }
 
     /// Returns the divisor.
-    pub fn divisor(&self) -> u32 { self.divisor }
+    pub fn divisor(&self) -> u32 {
+        self.divisor
+    }
 
     /// Returns the factor.
-    pub fn factor(&self) -> u32 { self.factor }
+    pub fn factor(&self) -> u32 {
+        self.factor
+    }
 
     /// Simplifies the fraction factor/divisor.
     fn simplify(&mut self) {
@@ -65,6 +81,10 @@ impl<'a, 'b> std::ops::MulAssign<&'b Size<'a>> for Size<'a> {
 // This is only needed until we have mechanism in `model::*` to handle sizes.
 impl<'a> From<ir::Size<'a>> for Size<'a> {
     fn from(s: ir::Size<'a>) -> Size<'a> {
-        Size::new(s.factor(), s.dividend().iter().cloned().collect(), s.divisor())
+        Size::new(
+            s.factor(),
+            s.dividend().iter().cloned().collect(),
+            s.divisor(),
+        )
     }
 }

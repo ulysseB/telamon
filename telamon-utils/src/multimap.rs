@@ -58,20 +58,28 @@ impl<K: Hash + Eq, V, S: BuildHasher> MultiHashMap<K, V, S> {
     }
 
     /// Returns the number of elements the map can hold without reallocating.
-    pub fn capacity(&self) -> usize { self.map.capacity() }
+    pub fn capacity(&self) -> usize {
+        self.map.capacity()
+    }
 
     /// Reserves capacity for at least `additional` more elements to be inserted in the
     /// `MultiHashMap`. The collection may reserve more space to avoid frequent
     /// reallocations.
-    pub fn reserve(&mut self, additional: usize) { self.map.reserve(additional); }
+    pub fn reserve(&mut self, additional: usize) {
+        self.map.reserve(additional);
+    }
 
     /// Shrinks the capacity of the map as much as possible. It will drop down as much as
     /// possible while maintaining the internal rules and possibly leaving some space in
     /// accordance with the resize policy.
-    pub fn shrink_to_fit(&mut self) { self.map.shrink_to_fit(); }
+    pub fn shrink_to_fit(&mut self) {
+        self.map.shrink_to_fit();
+    }
 
     /// An iterator visiting all keys in arbitrary order.
-    pub fn keys(&self) -> hash_map::Keys<K, Vec<V>> { self.map.keys() }
+    pub fn keys(&self) -> hash_map::Keys<K, Vec<V>> {
+        self.map.keys()
+    }
 
     /// An iterator visiting all values in arbitrary order.
     pub fn values(&self) -> impl Iterator<Item = &V> {
@@ -84,20 +92,30 @@ impl<K: Hash + Eq, V, S: BuildHasher> MultiHashMap<K, V, S> {
     }
 
     /// Iterates over all the keys and returns the associated values.
-    pub fn iter(&self) -> hash_map::Iter<K, Vec<V>> { self.map.iter() }
+    pub fn iter(&self) -> hash_map::Iter<K, Vec<V>> {
+        self.map.iter()
+    }
 
     /// Returns the number of keys.
-    pub fn num_keys(&self) -> usize { self.map.len() }
+    pub fn num_keys(&self) -> usize {
+        self.map.len()
+    }
 
     /// Indicates if the map contains no elements.
-    pub fn is_empty(&self) -> bool { self.map.is_empty() }
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
 
     /// Clears the map, returning all key-value pairs as an iterator. Keeps the allocated
     /// memory for reuse.
-    pub fn drain(&mut self) -> hash_map::Drain<K, Vec<V>> { self.map.drain() }
+    pub fn drain(&mut self) -> hash_map::Drain<K, Vec<V>> {
+        self.map.drain()
+    }
 
     /// Clears the map, removing all keys and values.
-    pub fn clear(&mut self) { self.map.clear(); }
+    pub fn clear(&mut self) {
+        self.map.clear();
+    }
 
     /// Returns the values mapped to the key.
     pub fn get<'a, Q: ?Sized>(&'a self, k: &Q) -> impl Iterator<Item = &'a V>
@@ -170,7 +188,9 @@ where
     V: PartialEq,
     S: BuildHasher,
 {
-    fn eq(&self, other: &Self) -> bool { self.map.eq(&other.map) }
+    fn eq(&self, other: &Self) -> bool {
+        self.map.eq(&other.map)
+    }
 }
 
 impl<K, V, S> Eq for MultiHashMap<K, V, S>
@@ -178,8 +198,7 @@ where
     K: Eq + Hash,
     V: Eq,
     S: BuildHasher,
-{
-}
+{}
 
 impl<K, V, S> std::fmt::Debug for MultiHashMap<K, V, S>
 where
@@ -187,7 +206,9 @@ where
     V: std::fmt::Debug,
     S: BuildHasher,
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { self.map.fmt(f) }
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.map.fmt(f)
+    }
 }
 
 impl<K, V, S> Default for MultiHashMap<K, V, S>
@@ -195,7 +216,9 @@ where
     K: Eq + Hash,
     S: BuildHasher + Default,
 {
-    fn default() -> Self { Self::with_hasher(Default::default()) }
+    fn default() -> Self {
+        Self::with_hasher(Default::default())
+    }
 }
 
 impl<'a, K, Q: ?Sized, V, S> std::ops::Index<&'a Q> for MultiHashMap<K, V, S>
@@ -206,7 +229,9 @@ where
 {
     type Output = [V];
 
-    fn index(&self, index: &Q) -> &[V] { self.map.index(index) }
+    fn index(&self, index: &Q) -> &[V] {
+        self.map.index(index)
+    }
 }
 
 impl<'a, K, V, S> IntoIterator for &'a MultiHashMap<K, V, S>
@@ -217,7 +242,9 @@ where
     type Item = (&'a K, &'a Vec<V>);
     type IntoIter = hash_map::Iter<'a, K, Vec<V>>;
 
-    fn into_iter(self) -> Self::IntoIter { self.iter() }
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
 }
 
 impl<K, V, S> IntoIterator for MultiHashMap<K, V, S>
@@ -228,7 +255,9 @@ where
     type Item = (K, Vec<V>);
     type IntoIter = hash_map::IntoIter<K, Vec<V>>;
 
-    fn into_iter(self) -> Self::IntoIter { self.map.into_iter() }
+    fn into_iter(self) -> Self::IntoIter {
+        self.map.into_iter()
+    }
 }
 
 impl<K, V, S> std::iter::FromIterator<(K, V)> for MultiHashMap<K, V, S>
@@ -238,7 +267,9 @@ where
 {
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
         let mut map = MultiHashMap::default();
-        for (k, v) in iter { map.insert(k, v); }
+        for (k, v) in iter {
+            map.insert(k, v);
+        }
         map
     }
 }
@@ -250,7 +281,8 @@ where
 {
     fn from_iter<T: IntoIterator<Item = (K, Vec<V>)>>(iter: T) -> Self {
         MultiHashMap {
-            map: iter.into_iter()
+            map: iter
+                .into_iter()
                 .filter(|&(_, ref vec)| !vec.is_empty())
                 .collect(),
         }

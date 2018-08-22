@@ -1,28 +1,27 @@
 //! Defines the CUDA target.
-#[cfg(feature="cuda")]
+#[cfg(feature = "cuda")]
 mod api;
-#[cfg(not(feature="cuda"))]
+#[cfg(not(feature = "cuda"))]
 mod api {
     mod error;
     mod fake;
-    pub use self::fake::*;
     pub use self::error::*;
+    pub use self::fake::*;
 }
 mod context;
-mod kernel;
 mod gpu;
+mod kernel;
 mod mem_model;
 mod printer;
 
-#[cfg(feature="cuda")]
+#[cfg(feature = "cuda")]
 pub mod characterize;
-
 
 // Constructs to retrieve information on the GPU, that are not needed for the regular
 // operation of Telamon and thus only present if the cuda feature is.
-#[cfg(feature="cuda")]
-pub use self::api::{DeviceAttribute, PerfCounter, PerfCounterSet};
 pub use self::api::{Array, Executor, JITDaemon};
+#[cfg(feature = "cuda")]
+pub use self::api::{DeviceAttribute, PerfCounter, PerfCounterSet};
 pub use self::context::Context;
 pub use self::gpu::{Gpu, InstDesc};
 pub use self::kernel::Kernel;
@@ -86,8 +85,8 @@ impl codegen::Namer for Namer {
             codegen::ParamValKey::GlobalMem(mem) => format!("_gbl_mem_{}", mem.0),
             codegen::ParamValKey::Size(_) => {
                 self.num_sizes += 1;
-                format!("_size_{}", self.num_sizes-1)
-            },
+                format!("_size_{}", self.num_sizes - 1)
+            }
         }
     }
 }

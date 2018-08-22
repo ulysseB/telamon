@@ -20,23 +20,23 @@ typedef enum {
     /*
      * Adds two operands.
      */
-    Add,
+    BinOp_Add,
     /*
      * Substracts two operands.
      */
-    Sub,
+    BinOp_Sub,
     /*
      * Divides two operands,
      */
-    Div,
+    BinOp_Div,
 } BinOp;
 
 /*
  * Supported device types for running kernels.
  */
 typedef enum {
-    X86,
-    Cuda,
+    DeviceId_X86,
+    DeviceId_Cuda,
 } DeviceId;
 
 /*
@@ -46,36 +46,41 @@ typedef enum {
     /*
      * No rounding occurs.
      */
-    Exact,
+    Rounding_Exact,
     /*
      * Rounds toward the nearest number.
      */
-    Nearest,
+    Rounding_Nearest,
     /*
      * Rounds toward zero.
      */
-    Zero,
+    Rounding_Zero,
     /*
      * Rounds toward positive infinite.
      */
-    Positive,
+    Rounding_Positive,
     /*
      * Rounds toward negative infinite.
      */
-    Negative,
+    Rounding_Negative,
 } Rounding;
 
 /*
  * Indicates if a telamon function exited correctly.
  */
 typedef enum {
-    TelamonStatusOk,
-    TelamonStatusFail,
+    TelamonStatus_Ok,
+    TelamonStatus_Fail,
 } TelamonStatus;
 
 /*
- * Description of the evaluation context. In particular, in contains the mapping between
- * argument names and argument values.
+ * Stores the configuration of the exploration.
+ */
+typedef struct Config Config;
+
+/*
+ * Description of the evaluation context. In particular, in contains the
+ * mapping between argument names and argument values.
  */
 typedef struct Context Context;
 
@@ -117,6 +122,11 @@ typedef struct Operator Operator;
 typedef struct Parameter Parameter;
 
 /*
+ * A partially specified implementation.
+ */
+typedef struct SearchSpace SearchSpace;
+
+/*
  * Holds the signature of a function.
  */
 typedef struct Signature Signature;
@@ -128,6 +138,8 @@ typedef struct Signature Signature;
  */
 typedef struct Size Size;
 
+typedef struct String String;
+
 /*
  * Values and intructions types.
  */
@@ -137,39 +149,286 @@ typedef struct Type Type;
  * Provides a unique identifier for iteration dimensions.
  */
 typedef struct {
-    uint32_t _0;
+    uint32_t id;
 } DimId;
 
 /*
  * Uniquely identifies an instruction.
  */
 typedef struct {
-    uint32_t _0;
+    uint32_t id;
 } InstId;
 
 /*
  * Uniquely identifies a block.
  */
 typedef enum {
-    Internal,
-    External,
+    MemId_Internal,
+    MemId_External,
 } MemId_Tag;
 
 typedef struct {
-    uint32_t _0;
-} Internal_Body;
+    uint32_t id;
+} MemId_Internal_Body;
 
 typedef struct {
-    uint32_t _0;
-} External_Body;
+    uint32_t id;
+} MemId_External_Body;
 
 typedef struct {
     MemId_Tag tag;
     union {
-        Internal_Body internal;
-        External_Body external;
+        MemId_Internal_Body internal;
+        MemId_External_Body external;
     };
 } MemId;
+
+typedef struct {
+    uint8_t bits;
+} Bool;
+
+/*
+ * Specifies how iteration dimensions are implemented.
+ */
+typedef struct {
+    uint8_t bits;
+} DimKind;
+
+/*
+ * Indicates where a memory block is located.
+ */
+typedef struct {
+    uint8_t bits;
+} MemSpace;
+
+/*
+ * Specifies the version of an instruction to use.
+ */
+typedef struct {
+    uint8_t bits;
+} InstFlag;
+
+/*
+ * Provides a unique identifer for a basic block.
+ */
+typedef enum {
+    BBId_Inst,
+    BBId_Dim,
+} BBId_Tag;
+
+typedef struct {
+    InstId id;
+} BBId_Inst_Body;
+
+typedef struct {
+    DimId id;
+} BBId_Dim_Body;
+
+typedef struct {
+    BBId_Tag tag;
+    union {
+        BBId_Inst_Body inst;
+        BBId_Dim_Body dim;
+    };
+} BBId;
+
+/*
+ * Defines how two basic blocks are ordered.
+ */
+typedef struct {
+    uint8_t bits;
+} Order;
+
+/*
+ * Specifies the valid mappings between two dimensions.
+ */
+typedef struct {
+    uint8_t bits;
+} DimMapping;
+
+/*
+ * Indicates how are thread dimensions mapped on the GPU.
+ */
+typedef struct {
+    uint8_t bits;
+} ThreadMapping;
+
+/*
+ * Abstracts integer choices by a range, but only store `min`.
+ */
+typedef struct {
+    uint32_t min;
+} HalfRange;
+
+typedef struct {
+    uint32_t id;
+} InternalId;
+
+/*
+ * Abstracts integer choices by a range.
+ */
+typedef struct {
+    uint32_t min;
+    uint32_t max;
+} Range;
+
+/*
+ * A decision to apply to the domain.
+ */
+typedef enum {
+    Action_IsIterationDim,
+    Action_IsThreadDim,
+    Action_DimKind,
+    Action_MemSpace,
+    Action_InstFlag,
+    Action_Order,
+    Action_DimMapping,
+    Action_ThreadMapping,
+    Action_NumThreads,
+    Action_NumThreadDims,
+    Action_IncrementUnrollFactor,
+    Action_UnrollFactor,
+    Action_IncrementNumBlockDims,
+    Action_NumBlockDims,
+    Action_NumNestedInst,
+    Action_IncrementMemSize,
+    Action_MemSize,
+    Action_SharedMemUsed,
+    Action_IsIterationDimClassCounter,
+    Action_IsThreadDimClassCounter,
+} Action_Tag;
+
+typedef struct {
+    InstId inst;
+    DimId dim;
+    Bool domain;
+} Action_IsIterationDim_Body;
+
+typedef struct {
+    DimId dim;
+    Bool domain;
+} Action_IsThreadDim_Body;
+
+typedef struct {
+    DimId dim;
+    DimKind domain;
+} Action_DimKind_Body;
+
+typedef struct {
+    MemId mem;
+    MemSpace domain;
+} Action_MemSpace_Body;
+
+typedef struct {
+    InstId inst;
+    InstFlag domain;
+} Action_InstFlag_Body;
+
+typedef struct {
+    BBId lhs;
+    BBId rhs;
+    Order domain;
+} Action_Order_Body;
+
+typedef struct {
+    DimId lhs;
+    DimId rhs;
+    DimMapping domain;
+} Action_DimMapping_Body;
+
+typedef struct {
+    DimId lhs;
+    DimId rhs;
+    ThreadMapping domain;
+} Action_ThreadMapping_Body;
+
+typedef struct {
+    HalfRange domain;
+} Action_NumThreads_Body;
+
+typedef struct {
+    HalfRange domain;
+} Action_NumThreadDims_Body;
+
+typedef struct {
+    InstId inst;
+    DimId dim;
+    Bool domain;
+} Action_IncrementUnrollFactor_Body;
+
+typedef struct {
+    InstId inst;
+    HalfRange domain;
+} Action_UnrollFactor_Body;
+
+typedef struct {
+    InstId inst;
+    DimId dim;
+    Bool domain;
+} Action_IncrementNumBlockDims_Body;
+
+typedef struct {
+    InstId inst;
+    HalfRange domain;
+} Action_NumBlockDims_Body;
+
+typedef struct {
+    DimId dim;
+    HalfRange domain;
+} Action_NumNestedInst_Body;
+
+typedef struct {
+    InternalId mem;
+    DimId lhs;
+    DimId rhs;
+    Bool domain;
+} Action_IncrementMemSize_Body;
+
+typedef struct {
+    InternalId mem;
+    HalfRange domain;
+} Action_MemSize_Body;
+
+typedef struct {
+    HalfRange domain;
+} Action_SharedMemUsed_Body;
+
+typedef struct {
+    InstId inst;
+    DimId dim;
+    Range domain;
+} Action_IsIterationDimClassCounter_Body;
+
+typedef struct {
+    DimId dim;
+    Range domain;
+} Action_IsThreadDimClassCounter_Body;
+
+typedef struct {
+    Action_Tag tag;
+    union {
+        Action_IsIterationDim_Body is_iteration_dim;
+        Action_IsThreadDim_Body is_thread_dim;
+        Action_DimKind_Body dim_kind;
+        Action_MemSpace_Body mem_space;
+        Action_InstFlag_Body inst_flag;
+        Action_Order_Body order;
+        Action_DimMapping_Body dim_mapping;
+        Action_ThreadMapping_Body thread_mapping;
+        Action_NumThreads_Body num_threads;
+        Action_NumThreadDims_Body num_thread_dims;
+        Action_IncrementUnrollFactor_Body increment_unroll_factor;
+        Action_UnrollFactor_Body unroll_factor;
+        Action_IncrementNumBlockDims_Body increment_num_block_dims;
+        Action_NumBlockDims_Body num_block_dims;
+        Action_NumNestedInst_Body num_nested_inst;
+        Action_IncrementMemSize_Body increment_mem_size;
+        Action_MemSize_Body mem_size;
+        Action_SharedMemUsed_Body shared_mem_used;
+        Action_IsIterationDimClassCounter_Body is_iteration_dim_class_counter;
+        Action_IsThreadDimClassCounter_Body is_thread_dim_class_counter;
+    };
+} Action;
 
 /*
  * Initializes the logger.
@@ -213,6 +472,20 @@ bool kernel_optimize(KernelParameters *params,
                      DeviceId device,
                      const char *config_data,
                      size_t config_len);
+
+/*
+ * Frees an explorer configuration.
+ */
+void telamon_config_free(Config *config);
+
+/*
+ * Allocate a new explorer configuration object with suitable
+ * defaults.
+ *
+ * The resulting config object must be freed using
+ * `telamon_config_free`.
+ */
+Config *telamon_config_new(void);
 
 /*
  * Allocates and binds an array to the given parameter. `size` is given in bytes.
@@ -274,8 +547,27 @@ const Context *telamon_cuda_get_context(const CudaEnvironment *env);
 const Device *telamon_cuda_get_device(const CudaEnvironment *env);
 
 /*
+ * Run the exploration according to the configuration.
+ *
+ * Does not take ownership of any of its arguments. The caller is
+ * responsible for freeing them after `telamon_explore_all` returns.
+ *
+ * # Safety
+ *
+ * * `config` and `context` must point to valid objects of their
+ * respective types.
+ * * `num_search_spaces` must be non-zero.
+ * * `search_space` must point to a sequence of at least
+ * `num_search_spaces` valid `SearchSpace` objects.
+ */
+SearchSpace *telamon_explore(const Config *config,
+                             const Context *context,
+                             uintptr_t num_search_spaces,
+                             const SearchSpace *search_space);
+
+/*
  * Adds a dimension of the given size to the function. Takes ownership of `size` and
- * writes the unique identifier of the dimension in `dim_id`. Returns `TelamonStatusOk`
+ * writes the unique identifier of the dimension in `dim_id`. Returns `Ok`
  * except if an error occurs.
  */
 TelamonStatus telamon_ir_function_add_dimension(Function *function, Size *size, DimId *dim_id);
@@ -283,7 +575,7 @@ TelamonStatus telamon_ir_function_add_dimension(Function *function, Size *size, 
 /*
  * Adds an instruction performing the given operator in the given dimensions to the
  * function. Writes the unique identifier of the instruction in `inst_id`. Returns
- * `TelamonStatusOk` except if an error occurs. Takes ownership of the operator
+ * `Ok` except if an error occurs. Takes ownership of the operator
  * but does not keeps any reference to `dimensions`.
  */
 TelamonStatus telamon_ir_function_add_instruction(Function *function,
@@ -469,12 +761,6 @@ Size *telamon_ir_size_new(uint32_t const_factor,
                           uintptr_t num_params);
 
 /*
- * Prints the error message in a string. Returns `null` if no error was present. The
- * caller is responsible for freeing the string with `free`.
- */
-char *telamon_ir_strerror(void);
-
-/*
  * Frees a type allocated with `telamon_ir_type_new_int` or `telamon_ir_type_new_float`.
  */
 void telamon_ir_type_free(Type *t);
@@ -488,5 +774,66 @@ Type *telamon_ir_type_new_float(uint16_t num_bits);
  * Creates an integer type that must be freed with `telamon_ir_type_free`.
  */
 Type *telamon_ir_type_new_int(uint16_t num_bits);
+
+/*
+ * Apply a sequence of actions to a search space.
+ *
+ * # Safety
+ *
+ * * `search_space` must be a valid pointer containing a valid
+ * `SearchSpace` value.
+ * * `num_actions` must be non-zero.
+ * * `actions` must point to a sequence of at least `num_actions`
+ * valid `Action` values.
+ */
+TelamonStatus telamon_search_space_apply(SearchSpace *search_space,
+                                         uintptr_t num_actions,
+                                         const Action *actions);
+
+/*
+ * Frees a search space instance allocated through
+ * `telamon_search_space_new`.
+ *
+ * # Safety
+ *
+ * `search_space` must point to a `SearchSpace` object created by
+ * `telamon_search_space_new` which has not yet been freed.
+ */
+TelamonStatus telamon_search_space_free(SearchSpace *search_space);
+
+/*
+ * Creates a new search space from an IR function. The caller stays
+ * is responsible for freeing the instance and action pointers; the
+ * created search space does not keep references to them.
+ *
+ * Must be freed using `telamon_search_space_free`.
+ *
+ * # Safety
+ *
+ * * `ir_instance` must point to a valid `Function` value.
+ * * `actions` must point to a sequence of at least `num_actions`
+ * valid `Action` values, unless `num_actions` is 0 in which case
+ * `actions` is not used.
+ */
+SearchSpace *telamon_search_space_new(const Function *ir_instance,
+                                      uintptr_t num_actions,
+                                      const Action *actions);
+
+/*
+ * Prints the error message in a string. Returns `null` if no error was
+ * present. The caller is responsible for freeing the string with `free`.
+ */
+char *telamon_strerror(void);
+
+/*
+ * Copy a C string pointer into a Rust String object. Use this to set
+ * string-valued configuration options.
+ *
+ * # Safety
+ *
+ * `dst` must point to a valid Rust String object and `src` must
+ * point to a NULL-terminated C string.
+ */
+TelamonStatus telamon_string_copy(String *dst, const char *src);
 
 #endif /* TELAMON_CAPI_H */

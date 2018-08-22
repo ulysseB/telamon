@@ -1,9 +1,9 @@
 pub mod enumeration;
 pub mod integer;
 
-pub use super::*;
 pub use self::enumeration::EnumDef;
 pub use self::integer::IntegerDef;
+pub use super::*;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum ChoiceDef {

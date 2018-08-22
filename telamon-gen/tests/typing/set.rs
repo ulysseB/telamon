@@ -1,9 +1,9 @@
 pub use super::utils::RcStr;
 
-pub use super::telamon_gen::lexer::{Lexer, Spanned, Position, LexerPosition};
-pub use super::telamon_gen::parser;
-pub use super::telamon_gen::ir;
 pub use super::telamon_gen::ast::*;
+pub use super::telamon_gen::ir;
+pub use super::telamon_gen::lexer::{Lexer, LexerPosition, Position, Spanned};
+pub use super::telamon_gen::parser;
 
 #[cfg(test)]
 mod redefinition {
@@ -12,8 +12,9 @@ mod redefinition {
     /// Redefinition of the Foo Set.
     #[test]
     fn set() {
-        assert_eq!(parser::parse_ast(Lexer::new(
-          b"set Foo:
+        assert_eq!(
+            parser::parse_ast(Lexer::new(
+                b"set Foo:
                 item_type = \"ir::inst::Obj\"
                 id_type = \"ir::inst::Id\"
                 item_getter = \"ir::inst::get($fun, $id)\"
@@ -30,29 +31,39 @@ mod redefinition {
                 iterator = \"ir::inst::iter($fun)\"
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
-            end".to_vec())).unwrap().type_check().err(),
+            end"
+                    .to_vec()
+            )).unwrap()
+                .type_check()
+                .err(),
             Some(TypeError::Redefinition {
                 object_kind: Spanned {
                     beg: Position {
-                      position: LexerPosition { line: 0, column: 4 },
-                      ..Default::default()
+                        position: LexerPosition { line: 0, column: 4 },
+                        ..Default::default()
                     },
                     end: Position {
-                      position: LexerPosition { line: 0, column: 7 },
-                      ..Default::default()
+                        position: LexerPosition { line: 0, column: 7 },
+                        ..Default::default()
                     },
                     data: Hint::Set,
                 },
                 object_name: Spanned {
                     beg: Position {
-                      position: LexerPosition { line: 9, column: 16 },
-                      ..Default::default()
+                        position: LexerPosition {
+                            line: 9,
+                            column: 16
+                        },
+                        ..Default::default()
                     },
                     end: Position {
-                      position: LexerPosition { line: 9, column: 19 },
-                      ..Default::default()
+                        position: LexerPosition {
+                            line: 9,
+                            column: 19
+                        },
+                        ..Default::default()
                     },
-                    data:  String::from("Foo"),
+                    data: String::from("Foo"),
                 }
             })
         );
@@ -61,8 +72,9 @@ mod redefinition {
     /// Redefinition of the Field from Set.
     #[test]
     fn field() {
-        assert_eq!(parser::parse_ast(Lexer::new(
-          b"set Foo:
+        assert_eq!(
+            parser::parse_ast(Lexer::new(
+                b"set Foo:
                 item_type = \"ir::inst::Obj\"
                 id_type = \"ir::inst::Id\"
                 item_getter = \"ir::inst::get($fun, $id)\"
@@ -71,29 +83,45 @@ mod redefinition {
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
                 new_objs = \"$objs.inst\"
-            end".to_vec())).unwrap().type_check().err(),
+            end"
+                    .to_vec()
+            )).unwrap()
+                .type_check()
+                .err(),
             Some(TypeError::Redefinition {
                 object_kind: Spanned {
                     beg: Position {
-                      position: LexerPosition { line: 7, column: 16 },
-                      ..Default::default()
+                        position: LexerPosition {
+                            line: 7,
+                            column: 16
+                        },
+                        ..Default::default()
                     },
                     end: Position {
-                      position: LexerPosition { line: 7, column: 24 },
-                      ..Default::default()
+                        position: LexerPosition {
+                            line: 7,
+                            column: 24
+                        },
+                        ..Default::default()
                     },
                     data: Hint::Set,
                 },
                 object_name: Spanned {
                     beg: Position {
-                      position: LexerPosition { line: 8, column: 16 },
-                      ..Default::default()
+                        position: LexerPosition {
+                            line: 8,
+                            column: 16
+                        },
+                        ..Default::default()
                     },
                     end: Position {
-                      position: LexerPosition { line: 8, column: 24 },
-                      ..Default::default()
+                        position: LexerPosition {
+                            line: 8,
+                            column: 24
+                        },
+                        ..Default::default()
                     },
-                    data:  String::from("NewObjs"),
+                    data: String::from("NewObjs"),
                 }
             })
         );
@@ -108,8 +136,9 @@ mod undefined {
     /// Missing the set Instruction from a Set
     #[test]
     fn parameter() {
-        assert_eq!(parser::parse_ast(Lexer::new(
-            b"set Operand($inst in Instruction):
+        assert_eq!(
+            parser::parse_ast(Lexer::new(
+                b"set Operand($inst in Instruction):
                 item_type = \"ir::operand::Obj\"
                 id_type = \"ir::operand::Id\"
                 item_getter = \"ir::operand::get($fun, $inst, $id)\"
@@ -117,16 +146,23 @@ mod undefined {
                 iterator = \"ir::operand::iter($fun, ir::inst::Obj::id($inst))\"
                 var_prefix = \"op\"
                 new_objs = \"$objs.operand\"
-              end".to_vec())).unwrap().type_check().err(),
+              end"
+                    .to_vec()
+            )).unwrap()
+                .type_check()
+                .err(),
             Some(TypeError::Undefined {
                 object_name: Spanned {
                     beg: Position {
-                      position: LexerPosition { line: 0, column: 4 },
-                      ..Default::default()
+                        position: LexerPosition { line: 0, column: 4 },
+                        ..Default::default()
                     },
                     end: Position {
-                      position: LexerPosition { line: 0, column: 11 },
-                      ..Default::default()
+                        position: LexerPosition {
+                            line: 0,
+                            column: 11
+                        },
+                        ..Default::default()
                     },
                     data: String::from("Instruction"),
                 }
@@ -137,8 +173,9 @@ mod undefined {
     /// Missing the subset BasicBlock from a Set.
     #[test]
     fn subsetof() {
-        assert_eq!(parser::parse_ast(Lexer::new(
-            b"set Instruction subsetof BasicBlock:
+        assert_eq!(
+            parser::parse_ast(Lexer::new(
+                b"set Instruction subsetof BasicBlock:
                 item_type = \"ir::inst::Obj\"
                 id_type = \"ir::inst::Id\"
                 item_getter = \"ir::inst::get($fun, $id)\"
@@ -147,16 +184,23 @@ mod undefined {
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
                 from_superset = \"ir::inst::from_superset($fun, $item)\"
-             end".to_vec())).unwrap().type_check().err(),
+             end"
+                    .to_vec()
+            )).unwrap()
+                .type_check()
+                .err(),
             Some(TypeError::Undefined {
                 object_name: Spanned {
                     beg: Position {
-                      position: LexerPosition { line: 0, column: 4 },
-                      ..Default::default()
+                        position: LexerPosition { line: 0, column: 4 },
+                        ..Default::default()
                     },
                     end: Position {
-                      position: LexerPosition { line: 0, column: 15 },
-                      ..Default::default()
+                        position: LexerPosition {
+                            line: 0,
+                            column: 15
+                        },
+                        ..Default::default()
                     },
                     data: String::from("BasicBlock"),
                 }
@@ -173,25 +217,33 @@ mod missing_entry {
     /// Missing the ItemType's key from Set.
     #[test]
     fn item_type() {
-        assert_eq!(parser::parse_ast(Lexer::new(
-            b"set Instruction:
+        assert_eq!(
+            parser::parse_ast(Lexer::new(
+                b"set Instruction:
                 id_type = \"ir::inst::Id\"
                 item_getter = \"ir::inst::get($fun, $id)\"
                 id_getter = \"ir::inst::Obj::id($item)\"
                 iterator = \"ir::inst::iter($fun)\"
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
-              end".to_vec())).unwrap().type_check().err(),
+              end"
+                    .to_vec()
+            )).unwrap()
+                .type_check()
+                .err(),
             Some(TypeError::MissingEntry {
                 object_name: String::from("Instruction"),
                 object_field: Spanned {
                     beg: Position {
-                      position: LexerPosition { line: 0, column: 4 },
-                      ..Default::default()
+                        position: LexerPosition { line: 0, column: 4 },
+                        ..Default::default()
                     },
                     end: Position {
-                      position: LexerPosition { line: 0, column: 15 },
-                      ..Default::default()
+                        position: LexerPosition {
+                            line: 0,
+                            column: 15
+                        },
+                        ..Default::default()
                     },
                     data: ir::SetDefKey::ItemType.to_string(),
                 }
@@ -202,25 +254,33 @@ mod missing_entry {
     /// Missing the IdType's key from Set.
     #[test]
     fn id_type() {
-        assert_eq!(parser::parse_ast(Lexer::new(
-            b"set Instruction:
+        assert_eq!(
+            parser::parse_ast(Lexer::new(
+                b"set Instruction:
                 item_type = \"ir::inst::Obj\"
                 item_getter = \"ir::inst::get($fun, $id)\"
                 id_getter = \"ir::inst::Obj::id($item)\"
                 iterator = \"ir::inst::iter($fun)\"
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
-              end".to_vec())).unwrap().type_check().err(),
+              end"
+                    .to_vec()
+            )).unwrap()
+                .type_check()
+                .err(),
             Some(TypeError::MissingEntry {
                 object_name: String::from("Instruction"),
                 object_field: Spanned {
                     beg: Position {
-                      position: LexerPosition { line: 0, column: 4 },
-                      ..Default::default()
+                        position: LexerPosition { line: 0, column: 4 },
+                        ..Default::default()
                     },
                     end: Position {
-                      position: LexerPosition { line: 0, column: 15 },
-                      ..Default::default()
+                        position: LexerPosition {
+                            line: 0,
+                            column: 15
+                        },
+                        ..Default::default()
                     },
                     data: ir::SetDefKey::IdType.to_string(),
                 }
@@ -231,25 +291,33 @@ mod missing_entry {
     /// Missing the ItemGetter's key from Set.
     #[test]
     fn item_getter() {
-        assert_eq!(parser::parse_ast(Lexer::new(
-            b"set Instruction:
+        assert_eq!(
+            parser::parse_ast(Lexer::new(
+                b"set Instruction:
                 item_type = \"ir::inst::Obj\"
                 id_type = \"ir::inst::Id\"
                 id_getter = \"ir::inst::Obj::id($item)\"
                 iterator = \"ir::inst::iter($fun)\"
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
-              end".to_vec())).unwrap().type_check().err(),
+              end"
+                    .to_vec()
+            )).unwrap()
+                .type_check()
+                .err(),
             Some(TypeError::MissingEntry {
                 object_name: String::from("Instruction"),
                 object_field: Spanned {
                     beg: Position {
-                      position: LexerPosition { line: 0, column: 4 },
-                      ..Default::default()
+                        position: LexerPosition { line: 0, column: 4 },
+                        ..Default::default()
                     },
                     end: Position {
-                      position: LexerPosition { line: 0, column: 15 },
-                      ..Default::default()
+                        position: LexerPosition {
+                            line: 0,
+                            column: 15
+                        },
+                        ..Default::default()
                     },
                     data: ir::SetDefKey::ItemGetter.to_string(),
                 }
@@ -260,25 +328,33 @@ mod missing_entry {
     /// Missing the IdGetter's key from Set.
     #[test]
     fn id_getter() {
-        assert_eq!(parser::parse_ast(Lexer::new(
-            b"set Instruction:
+        assert_eq!(
+            parser::parse_ast(Lexer::new(
+                b"set Instruction:
                 item_type = \"ir::inst::Obj\"
                 id_type = \"ir::inst::Id\"
                 item_getter = \"ir::inst::get($fun, $id)\"
                 iterator = \"ir::inst::iter($fun)\"
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
-              end".to_vec())).unwrap().type_check().err(),
+              end"
+                    .to_vec()
+            )).unwrap()
+                .type_check()
+                .err(),
             Some(TypeError::MissingEntry {
                 object_name: String::from("Instruction"),
                 object_field: Spanned {
                     beg: Position {
-                      position: LexerPosition { line: 0, column: 4 },
-                      ..Default::default()
+                        position: LexerPosition { line: 0, column: 4 },
+                        ..Default::default()
                     },
                     end: Position {
-                      position: LexerPosition { line: 0, column: 15 },
-                      ..Default::default()
+                        position: LexerPosition {
+                            line: 0,
+                            column: 15
+                        },
+                        ..Default::default()
                     },
                     data: ir::SetDefKey::IdGetter.to_string(),
                 }
@@ -289,27 +365,72 @@ mod missing_entry {
     /// Missing the Iter's key from Set.
     #[test]
     fn iter() {
-        assert_eq!(parser::parse_ast(Lexer::new(
-            b"set Instruction:
+        assert_eq!(
+            parser::parse_ast(Lexer::new(
+                b"set Instruction:
                 item_type = \"ir::inst::Obj\"
                 id_type = \"ir::inst::Id\"
                 item_getter = \"ir::inst::get($fun, $id)\"
                 id_getter = \"ir::inst::Obj::id($item)\"
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
-              end".to_vec())).unwrap().type_check().err(),
+              end"
+                    .to_vec()
+            )).unwrap()
+                .type_check()
+                .err(),
             Some(TypeError::MissingEntry {
                 object_name: String::from("Instruction"),
                 object_field: Spanned {
                     beg: Position {
-                      position: LexerPosition { line: 0, column: 4 },
-                      ..Default::default()
+                        position: LexerPosition { line: 0, column: 4 },
+                        ..Default::default()
                     },
                     end: Position {
-                      position: LexerPosition { line: 0, column: 15 },
-                      ..Default::default()
+                        position: LexerPosition {
+                            line: 0,
+                            column: 15
+                        },
+                        ..Default::default()
                     },
                     data: ir::SetDefKey::Iter.to_string(),
+                }
+            })
+        );
+    }
+
+    /// Missing the NewObjs's key from Set.
+    #[test]
+    fn new_objs() {
+        assert_eq!(
+            parser::parse_ast(Lexer::new(
+                b"set Instruction:
+                item_type = \"ir::inst::Obj\"
+                id_type = \"ir::inst::Id\"
+                item_getter = \"ir::inst::get($fun, $id)\"
+                id_getter = \"ir::inst::Obj::id($item)\"
+                iterator = \"ir::inst::iter($fun)\"
+                var_prefix = \"inst\"
+              end"
+                    .to_vec()
+            )).unwrap()
+                .type_check()
+                .err(),
+            Some(TypeError::MissingEntry {
+                object_name: String::from("Instruction"),
+                object_field: Spanned {
+                    beg: Position {
+                        position: LexerPosition { line: 0, column: 4 },
+                        ..Default::default()
+                    },
+                    end: Position {
+                        position: LexerPosition {
+                            line: 0,
+                            column: 15
+                        },
+                        ..Default::default()
+                    },
+                    data: ir::SetDefKey::NewObjs.to_string(),
                 }
             })
         );
@@ -318,8 +439,9 @@ mod missing_entry {
     /// Missing the SetDefKey's key from Set.
     #[test]
     fn from_superset() {
-        assert_eq!(parser::parse_ast(Lexer::new(
-            b"set BasicBlock:
+        assert_eq!(
+            parser::parse_ast(Lexer::new(
+                b"set BasicBlock:
                 item_type = \"ir::basic_block::Obj\"
                 id_type = \"ir::basic_block::Id\"
                 item_getter = \"ir::basic_block::get($fun, $id)\"
@@ -337,17 +459,27 @@ mod missing_entry {
                 iterator = \"ir::inst::iter($fun)\"
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
-             end".to_vec())).unwrap().type_check().err(),
+             end"
+                    .to_vec()
+            )).unwrap()
+                .type_check()
+                .err(),
             Some(TypeError::MissingEntry {
                 object_name: String::from("Instruction"),
                 object_field: Spanned {
                     beg: Position {
-                      position: LexerPosition { line: 10, column: 18 },
-                      ..Default::default()
+                        position: LexerPosition {
+                            line: 10,
+                            column: 18
+                        },
+                        ..Default::default()
                     },
                     end: Position {
-                      position: LexerPosition { line: 10, column: 29 },
-                      ..Default::default()
+                        position: LexerPosition {
+                            line: 10,
+                            column: 29
+                        },
+                        ..Default::default()
                     },
                     data: ir::SetDefKey::FromSuperset.to_string(),
                 }

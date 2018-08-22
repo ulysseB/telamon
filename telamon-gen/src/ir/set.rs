@@ -1,9 +1,9 @@
+use indexmap::IndexMap;
 use ir::{self, Adaptable};
 use std;
-use std::fmt;
 use std::borrow::Borrow;
+use std::fmt;
 use utils::*;
-use indexmap::IndexMap;
 
 /// Generic trait for sets.
 pub trait SetRef<'a> {
@@ -18,18 +18,28 @@ pub trait SetRef<'a> {
 
     /// Returns the same set but without reverse constraints.
     fn without_reverse_constraints(&self) -> ir::SetRefImpl<'a> {
-        SetRefImpl { reverse_constraint: None, .. self.as_ref() }
+        SetRefImpl {
+            reverse_constraint: None,
+            ..self.as_ref()
+        }
     }
 
     /// Returns the direct superset of this set, if any.
     fn superset(&self) -> Option<SetRefImpl<'a>> {
-        self.def().superset.as_ref().map(|&Set { ref def, var, .. }| {
-            let var = var.map(|v| {
-                assert_eq!(v, ir::Variable::Arg(0));
-                self.arg().unwrap()
-            });
-            SetRefImpl { def, var, reverse_constraint: None }
-        })
+        self.def()
+            .superset
+            .as_ref()
+            .map(|&Set { ref def, var, .. }| {
+                let var = var.map(|v| {
+                    assert_eq!(v, ir::Variable::Arg(0));
+                    self.arg().unwrap()
+                });
+                SetRefImpl {
+                    def,
+                    var,
+                    reverse_constraint: None,
+                }
+            })
     }
 
     /// Returns the path of sets to access a super-set.
@@ -46,15 +56,24 @@ pub trait SetRef<'a> {
     /// Indicates if the first set is a sub-set of the second.
     fn is_subset_of(&self, other: &Set) -> bool {
         let is_subset = self.as_ref() == other.as_ref()
-            || self.superset().map(|s| s.is_subset_of(other)).unwrap_or(false)
-            || self.reverse_constraint().map_or(false, |s| s.is_subset_of(other));
+            || self
+                .superset()
+                .map(|s| s.is_subset_of(other))
+                .unwrap_or(false)
+            || self
+                .reverse_constraint()
+                .map_or(false, |s| s.is_subset_of(other));
         is_subset && other.reverse_constraint.is_none()
     }
 
     /// Returns the `SetRefImpl` corresponding to this set.
     fn as_ref(&self) -> SetRefImpl<'a> {
         let reverse_constraint = self.reverse_constraint().map(Box::new);
-        SetRefImpl { def: self.def(), var: self.arg(), reverse_constraint }
+        SetRefImpl {
+            def: self.def(),
+            var: self.arg(),
+            reverse_constraint,
+        }
     }
 }
 
@@ -70,13 +89,19 @@ impl Set {
     /// Create a new set instance.
     pub fn new(def: &std::rc::Rc<SetDef>, var: Option<ir::Variable>) -> Self {
         assert_eq!(var.is_some(), def.arg().is_some());
-        Set { def: def.clone(), var, reverse_constraint: None }
+        Set {
+            def: def.clone(),
+            var,
+            reverse_constraint: None,
+        }
     }
 
     /// Indicates if the first set is a sub-set of the second,
     /// without matching argument names.
     pub fn is_subset_of_def(&self, other: &Set) -> bool {
-        self.reverse_constraint.as_ref().map_or(false, |s| s.is_subset_of_def(other))
+        self.reverse_constraint
+            .as_ref()
+            .map_or(false, |s| s.is_subset_of_def(other))
             || self.def.is_subset_of_def(other.def())
     }
 
@@ -103,16 +128,22 @@ impl Set {
                     rhs.1.unwrap()
                 });
                 rhs = (&superset.def, var);
-            } else { return None; }
+            } else {
+                return None;
+            }
         }
         // Check the paths to the superset does not contains disjoint sets.
         for on_lhs_path in lhs_to_superset {
             for &on_rhs_path in &rhs_to_superset {
                 for lhs_disjoint in &on_lhs_path.disjoints {
-                    if on_rhs_path.name() as &str == lhs_disjoint { return None; }
+                    if on_rhs_path.name() as &str == lhs_disjoint {
+                        return None;
+                    }
                 }
                 for rhs_disjoint in &on_rhs_path.disjoints {
-                    if on_lhs_path.name() as &str == rhs_disjoint { return None; }
+                    if on_lhs_path.name() as &str == rhs_disjoint {
+                        return None;
+                    }
                 }
             }
         }
@@ -125,21 +156,29 @@ impl Set {
     /// superset.
     pub fn reverse(&self, self_var: ir::Variable, arg: &Set) -> Option<(Set, Set)> {
         if let Some(reverse_def) = self.def.reverse() {
-            let superset = self.reverse_constraint.as_ref().map(|b| b.borrow())
-                .unwrap_or(reverse_def.arg().unwrap()).clone();
+            let superset = self
+                .reverse_constraint
+                .as_ref()
+                .map(|b| b.borrow())
+                .unwrap_or(reverse_def.arg().unwrap())
+                .clone();
             assert!((&superset).arg().is_none());
             let mut reverse = Set::new(&reverse_def, Some(self_var));
             if !(&reverse).is_subset_of(arg) {
                 reverse.reverse_constraint = Some(Box::new(arg.clone()));
             }
             Some((superset, reverse))
-        } else { None }
+        } else {
+            None
+        }
     }
 }
 
 impl Adaptable for Set {
     fn adapt(&self, adaptator: &ir::Adaptator) -> Self {
-        let reverse_constraint = self.reverse_constraint.as_ref()
+        let reverse_constraint = self
+            .reverse_constraint
+            .as_ref()
             .map(|set| Box::new(set.adapt(adaptator)));
         Set {
             def: self.def.clone(),
@@ -150,12 +189,18 @@ impl Adaptable for Set {
 }
 
 impl<'a> SetRef<'a> for &'a Set {
-    fn def(&self) -> &'a SetDef { &self.def }
+    fn def(&self) -> &'a SetDef {
+        &self.def
+    }
 
-    fn arg(&self) -> Option<ir::Variable> { self.var }
+    fn arg(&self) -> Option<ir::Variable> {
+        self.var
+    }
 
     fn reverse_constraint(&self) -> Option<ir::SetRefImpl<'a>> {
-        self.reverse_constraint.as_ref().map(|s| SetRef::as_ref(&s.as_ref()))
+        self.reverse_constraint
+            .as_ref()
+            .map(|s| SetRef::as_ref(&s.as_ref()))
     }
 }
 
@@ -167,9 +212,13 @@ pub struct SetRefImpl<'a> {
 }
 
 impl<'a> SetRef<'a> for SetRefImpl<'a> {
-    fn def(&self) -> &'a SetDef { self.def }
+    fn def(&self) -> &'a SetDef {
+        self.def
+    }
 
-    fn arg(&self) -> Option<ir::Variable> { self.var }
+    fn arg(&self) -> Option<ir::Variable> {
+        self.var
+    }
 
     fn reverse_constraint(&self) -> Option<ir::SetRefImpl<'a>> {
         self.reverse_constraint.as_ref().map(|s| s.as_ref().clone())
@@ -191,35 +240,59 @@ pub struct SetDef {
 
 impl SetDef {
     /// Creates a new set definition.
-    pub fn new(name: String,
-               arg: Option<ir::Set>,
-               superset: Option<Set>,
-               reverse: Option<(Set, String)>,
-               keys: IndexMap<SetDefKey, String>,
-               disjoints: Vec<String>) -> std::rc::Rc<Self> {
+    pub fn new(
+        name: String,
+        arg: Option<ir::Set>,
+        superset: Option<Set>,
+        reverse: Option<(Set, String)>,
+        keys: IndexMap<SetDefKey, String>,
+        disjoints: Vec<String>,
+    ) -> std::rc::Rc<Self> {
         let name = RcStr::new(name);
-        let reverse = if let Some((set, iter)) = reverse {
-            let name = RcStr::default();
-            let reverse = ReverseSet::None;
-            let superset = arg.as_ref().unwrap().def();
-            let from_superset = keys[&SetDefKey::FromSuperset].replace("$item", "$tmp")
-                .replace("$var", "$item").replace("$tmp", "$var") + ".map(|_| $item)";
-            let reverse_keys = vec![
-                (SetDefKey::ItemType, superset.keys[&SetDefKey::ItemType].clone()),
-                (SetDefKey::IdType, superset.keys[&SetDefKey::IdType].clone()),
-                (SetDefKey::ItemGetter, superset.keys[&SetDefKey::ItemGetter].clone()),
-                (SetDefKey::IdGetter, superset.keys[&SetDefKey::IdGetter].clone()),
-                (SetDefKey::Iter, iter),
-                (SetDefKey::FromSuperset, from_superset),
-            ].into_iter().collect();
-            for key in &[SetDefKey::ItemType, SetDefKey::IdType] {
-                assert_eq!(set.def.keys[key], keys[key],
+        let reverse =
+            if let Some((set, iter)) = reverse {
+                let name = RcStr::default();
+                let reverse = ReverseSet::None;
+                let superset = arg.as_ref().unwrap().def();
+                let from_superset = keys[&SetDefKey::FromSuperset]
+                    .replace("$item", "$tmp")
+                    .replace("$var", "$item")
+                    .replace("$tmp", "$var")
+                    + ".map(|_| $item)";
+                let reverse_keys = vec![
+                    (
+                        SetDefKey::ItemType,
+                        superset.keys[&SetDefKey::ItemType].clone(),
+                    ),
+                    (SetDefKey::IdType, superset.keys[&SetDefKey::IdType].clone()),
+                    (
+                        SetDefKey::ItemGetter,
+                        superset.keys[&SetDefKey::ItemGetter].clone(),
+                    ),
+                    (
+                        SetDefKey::IdGetter,
+                        superset.keys[&SetDefKey::IdGetter].clone(),
+                    ),
+                    (SetDefKey::Iter, iter),
+                    (SetDefKey::FromSuperset, from_superset),
+                ].into_iter()
+                    .collect();
+                for key in &[SetDefKey::ItemType, SetDefKey::IdType] {
+                    assert_eq!(set.def.keys[key], keys[key],
                    "reverse supersets must use the same id and item types than the set");
-            }
-            let def = SetDef::build(
-                name, Some(set), arg.clone(), reverse, reverse_keys, vec![]);
-            ReverseSet::Explicit(std::cell::RefCell::new(std::rc::Rc::new(def)))
-        } else { ReverseSet::None };
+                }
+                let def = SetDef::build(
+                    name,
+                    Some(set),
+                    arg.clone(),
+                    reverse,
+                    reverse_keys,
+                    vec![],
+                );
+                ReverseSet::Explicit(std::cell::RefCell::new(std::rc::Rc::new(def)))
+            } else {
+                ReverseSet::None
+            };
         let def = SetDef::build(name, arg, superset, reverse, keys, disjoints);
         let def = std::rc::Rc::new(def);
         if let ReverseSet::Explicit(ref cell) = def.reverse {
@@ -231,37 +304,61 @@ impl SetDef {
     }
 
     /// Creates a new set definition.
-    fn build(name: RcStr,
-             arg: Option<ir::Set>,
-             superset: Option<Set>,
-             reverse: ReverseSet,
-             keys: IndexMap<SetDefKey, String>,
-             disjoints: Vec<String>) -> Self {
+    fn build(
+        name: RcStr,
+        arg: Option<ir::Set>,
+        superset: Option<Set>,
+        reverse: ReverseSet,
+        keys: IndexMap<SetDefKey, String>,
+        disjoints: Vec<String>,
+    ) -> Self {
         let depth = superset.as_ref().map(|s| s.def.depth + 1).unwrap_or(0);
         let def_order = arg.as_ref().map(|s| s.def.def_order + 1).unwrap_or(0);
-        SetDef { name, arg, superset, keys, disjoints, depth, def_order, reverse }
+        SetDef {
+            name,
+            arg,
+            superset,
+            keys,
+            disjoints,
+            depth,
+            def_order,
+            reverse,
+        }
     }
 
     /// The name of the set.
-    pub fn name(&self) -> &RcStr { &self.name }
+    pub fn name(&self) -> &RcStr {
+        &self.name
+    }
 
     /// Returns the argument of the set, if any.
-    pub fn arg(&self) -> Option<&ir::Set> { self.arg.as_ref() }
+    pub fn arg(&self) -> Option<&ir::Set> {
+        self.arg.as_ref()
+    }
 
     /// Returns the superset of the set, if any.
-    pub fn superset(&self) -> Option<&ir::Set> { self.superset.as_ref() }
+    pub fn superset(&self) -> Option<&ir::Set> {
+        self.superset.as_ref()
+    }
 
     /// The attributes of the set.
-    pub fn attributes(&self) -> &IndexMap<SetDefKey, String> { &self.keys }
+    pub fn attributes(&self) -> &IndexMap<SetDefKey, String> {
+        &self.keys
+    }
 
     /// Suggest a prefix for variables in the set.
     pub fn prefix(&self) -> &str {
-        self.keys.get(&SetDefKey::Prefix).map(|s| s as &str).unwrap_or("obj")
+        self.keys
+            .get(&SetDefKey::Prefix)
+            .map(|s| s as &str)
+            .unwrap_or("obj")
     }
 
     /// Returns an integer that indicates an order in which variables can be defined
     /// to always be defined before any argument of the set they belong into.
-    pub fn def_order(&self) -> usize { self.def_order }
+    pub fn def_order(&self) -> usize {
+        self.def_order
+    }
 
     /// Returns the reverse set, for sets that have both a parameter and a superset.
     fn reverse(&self) -> Option<std::rc::Rc<SetDef>> {
@@ -274,11 +371,13 @@ impl SetDef {
 
     /// Indicates if the first set is a sub-set of the second.
     pub fn is_subset_of_def(&self, other: &SetDef) -> bool {
-        self == other || self.superset.as_ref().map(|s| {
-            s.def.is_subset_of_def(other)
-        }).unwrap_or(false)
+        self == other
+            || self
+                .superset
+                .as_ref()
+                .map(|s| s.def.is_subset_of_def(other))
+                .unwrap_or(false)
     }
-
 }
 
 impl std::fmt::Debug for SetDef {
@@ -296,7 +395,9 @@ impl PartialOrd for SetDef {
 }
 
 impl Ord for SetDef {
-    fn cmp(&self, other: &SetDef) -> std::cmp::Ordering { self.name.cmp(&other.name) }
+    fn cmp(&self, other: &SetDef) -> std::cmp::Ordering {
+        self.name.cmp(&other.name)
+    }
 }
 
 /// A set that lists the arguments of another set.
@@ -343,10 +444,10 @@ impl SetDefKey {
     /// Indicates if the environement contains the set argument.
     pub fn is_arg_in_env(&self) -> bool {
         match *self {
-            SetDefKey::ItemGetter |
-            SetDefKey::Iter |
-            SetDefKey::FromSuperset |
-            SetDefKey::AddToSet => true,
+            SetDefKey::ItemGetter
+            | SetDefKey::Iter
+            | SetDefKey::FromSuperset
+            | SetDefKey::AddToSet => true,
             _ => false,
         }
     }
@@ -367,4 +468,3 @@ impl fmt::Display for SetDefKey {
         write!(f, "{:?}", self)
     }
 }
-            
