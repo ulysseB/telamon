@@ -111,3 +111,63 @@ impl<'a> BasicBlock<'a> for Dimension<'a> {
         Some(self)
     }
 }
+
+/// Provides a unique identifier for logic dimensions.
+#[derive(Clone, Copy, Debug)]
+pub struct LogicalId(pub u32);
+
+/// A logic dimension composed of multiple `Dimension`s.
+#[derive(Clone, Debug)]
+pub struct LogicalDim {
+    id: LogicalId,
+    static_dims: Vec<DimId>,
+    nonstatic_dim: Option<DimId>,
+    possible_tilings: Vec<u32>,
+}
+
+impl LogicalDim {
+    /// Creates a new logical dimension, composed only of static dimensions.
+    pub fn new_static(id: LogicalId, static_dims: Vec<DimId>, total_size: u32) -> Self {
+        LogicalDim {
+            id,
+            static_dims,
+            nonstatic_dim: None,
+            possible_tilings: vec![total_size],
+        }
+    }
+
+    /// Creates a new logical dimension, composed of static dimensions and one
+    /// dynamically-sized dimension.
+    pub fn new_dynamic(
+        id: LogicalId,
+        dynamic_dim: DimId,
+        static_dims: Vec<DimId>,
+        possible_tilings: Vec<u32>,
+    ) -> Self {
+        LogicalDim {
+            id,
+            static_dims,
+            nonstatic_dim: Some(dynamic_dim),
+            possible_tilings,
+        }
+    }
+
+    /// Returns a unique identifier for the logic dimension.
+    pub fn id(&self) -> LogicalId {
+        self.id
+    }
+
+    /// Returns the dimensions with a static size in the logic dimension.
+    pub fn static_dims(&self) -> impl Iterator<Item = DimId> + '_ {
+        self.static_dims.iter().cloned()
+    }
+
+    pub fn nonstatic_dim(&self) -> Option<DimId> {
+        self.nonstatic_dim
+    }
+
+    /// Returns the possible tiling factors.
+    pub fn possible_tilings(&self) -> &[u32] {
+        &self.possible_tilings
+    }
+}
