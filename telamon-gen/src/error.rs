@@ -44,18 +44,18 @@ impl<'a> From<(path::Display<'a>, ParseError<Position, Token, LexicalError>)>
                 cause: Cause::Parse(parse),
             },
             ParseError::UnrecognizedToken {
-                token: Some((Position { position: l, .. }, ..,
-                             Position { position: e, .. })), ..
+			token: Some((Position { position: beg, .. }, ..,
+                             Position { position: end, .. })), ..
             } |
             ParseError::ExtraToken {
-                token: (Position { position: l, .. }, ..,
-                        Position { position: e, .. })
+                token: (Position { position: beg, .. }, ..,
+                        Position { position: end, .. })
             } |
             ParseError::User {
                 error: LexicalError {
                     cause: Spanned {
-                        beg: Position { position: l, .. },
-                        end: Position { position: e, .. },
+                        beg: Position { position: beg, .. },
+                        end: Position { position: end, .. },
                         data: ErrorKind::InvalidToken { .. },
                     }
                 }
@@ -63,16 +63,16 @@ impl<'a> From<(path::Display<'a>, ParseError<Position, Token, LexicalError>)>
             ParseError::User {
                 error: LexicalError {
                     cause: Spanned {
-                        beg: Position { position: l, .. },
-                        end: Position { position: e, .. },
+                        beg: Position { position: beg, .. },
+                        end: Position { position: end, .. },
                         data: ErrorKind::InvalidInclude { .. },
                     }
                 }
             } => ProcessError {
                 path: path,
                 span: Some(Span {
-                    beg: l,
-                    end: Some(e),
+                    beg,
+                    end: Some(end),
                 }),
                 cause: Cause::Parse(parse),
             },
