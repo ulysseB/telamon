@@ -1,8 +1,8 @@
 //! Tests the accuracy of the performance model. A pattern can be passed as argument to
 //! specify the tests to run.
 extern crate env_logger;
-extern crate telamon;
 extern crate regex;
+extern crate telamon;
 #[macro_use]
 extern crate log;
 #[macro_use]
@@ -12,11 +12,11 @@ mod latency;
 mod memory;
 mod tests;
 
+use regex::Regex;
 use telamon::device::{self, ArgMap, Context};
 use telamon::helper;
 use telamon::model::bound;
 use telamon::search_space::Action;
-use regex::Regex;
 
 // TODO(test_model): RAM bandwidth
 // TODO(test_model): L2 bandwidth
@@ -35,12 +35,16 @@ trait PerfModelTest {
     fn gen_function(builder: &mut helper::Builder) -> Self;
 
     /// Returns the actions to apply to the function to constrain it.
-    fn get_actions(&self) -> Vec<Action> { vec![] }
+    fn get_actions(&self) -> Vec<Action> {
+        vec![]
+    }
 }
 
 /// Runs a test.
 fn run<T: PerfModelTest>(pattern: &Regex) {
-    if !pattern.is_match(T::name()) { return; }
+    if !pattern.is_match(T::name()) {
+        return;
+    }
     let executor = telamon::device::cuda::Executor::init();
     let mut context = telamon::device::cuda::Context::new(&executor);
     let base = {
@@ -67,17 +71,29 @@ fn run<T: PerfModelTest>(pattern: &Regex) {
     if let Some(early_model_perf) = early_model_perf {
         info!("bound: {}", model_perf);
         let model_diff = model_perf.value() - run_perf;
-        let model_ratio = - model_diff / run_perf;
+        let model_ratio = -model_diff / run_perf;
         let early_diff = early_model_perf - run_perf;
-        let early_ratio = - early_diff / run_perf;
-        println!("{}: real {:.4e}ns, model {:+.2e} (x{:.2e}), early {:+.2e} (x{:.2e})",
-                 T::name(), run_perf, model_diff, model_ratio, early_diff, early_ratio);
+        let early_ratio = -early_diff / run_perf;
+        println!(
+            "{}: real {:.4e}ns, model {:+.2e} (x{:.2e}), early {:+.2e} (x{:.2e})",
+            T::name(),
+            run_perf,
+            model_diff,
+            model_ratio,
+            early_diff,
+            early_ratio
+        );
     } else {
         info!("bound: {}", model_perf);
         let model_diff = model_perf.value() - run_perf;
-        let model_ratio = - model_diff / run_perf;
-        println!("{}: real {:.4e}ns, model {:+.2e} (x{:.2e})",
-                 T::name(), run_perf, model_diff, model_ratio);
+        let model_ratio = -model_diff / run_perf;
+        println!(
+            "{}: real {:.4e}ns, model {:+.2e} (x{:.2e})",
+            T::name(),
+            run_perf,
+            model_diff,
+            model_ratio
+        );
     }
 }
 

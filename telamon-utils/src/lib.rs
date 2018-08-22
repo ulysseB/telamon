@@ -13,9 +13,9 @@ extern crate flate2;
 
 mod cache;
 mod dag;
-pub mod ndarray;
 mod iterator;
 pub mod multimap;
+pub mod ndarray;
 mod vec_set;
 #[macro_use]
 pub mod unwrap;
@@ -26,8 +26,8 @@ pub use self::cache::Cache;
 pub use self::dag::Dag;
 pub use self::iterator::*;
 pub use self::ndarray::{NDArray, NDRange};
-pub use self::vec_set::VecSet;
 pub use self::sequence::Sequence;
+pub use self::vec_set::VecSet;
 use fnv::FnvHasher;
 use num::Integer;
 use std::hash::BuildHasherDefault;
@@ -47,11 +47,15 @@ pub struct RcStr(std::rc::Rc<String>);
 
 impl RcStr {
     /// Creates a new reference-counted string.
-    pub fn new(s: String) -> Self { RcStr(std::rc::Rc::new(s)) }
+    pub fn new(s: String) -> Self {
+        RcStr(std::rc::Rc::new(s))
+    }
 }
 
 impl<'a> From<&'a str> for RcStr {
-    fn from(s: &'a str) -> Self { Self::new(s.to_string()) }
+    fn from(s: &'a str) -> Self {
+        Self::new(s.to_string())
+    }
 }
 
 impl serde::Serialize for RcStr {
@@ -61,29 +65,41 @@ impl serde::Serialize for RcStr {
 }
 
 impl std::borrow::Borrow<str> for RcStr {
-    fn borrow(&self) -> &str { &self.0 }
+    fn borrow(&self) -> &str {
+        &self.0
+    }
 }
 
 impl std::borrow::Borrow<String> for RcStr {
-    fn borrow(&self) -> &String { &self.0 }
+    fn borrow(&self) -> &String {
+        &self.0
+    }
 }
 
 impl std::ops::Deref for RcStr {
     type Target = String;
 
-    fn deref(&self) -> &String { &self.0 }
+    fn deref(&self) -> &String {
+        &self.0
+    }
 }
 
 impl std::fmt::Display for RcStr {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { self.0.fmt(f) }
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
 }
 
 impl PartialEq<str> for RcStr {
-    fn eq(&self, other: &str) -> bool { self.0.as_ref().eq(other) }
+    fn eq(&self, other: &str) -> bool {
+        self.0.as_ref().eq(other)
+    }
 }
 
 impl From<String> for RcStr {
-    fn from(s: String) -> RcStr { RcStr::new(s) }
+    fn from(s: String) -> RcStr {
+        RcStr::new(s)
+    }
 }
 
 /// Booleans enhanced with a third `Maybe` value.
@@ -105,19 +121,29 @@ impl Trivalent {
     }
 
     /// Returns `true` if the underlying boolean might be `true`.
-    pub fn maybe_true(&self) -> bool { *self != Trivalent::False }
+    pub fn maybe_true(&self) -> bool {
+        *self != Trivalent::False
+    }
 
     /// Returns `true` if the underlying boolean might be `false`.
-    pub fn maybe_false(&self) -> bool { *self != Trivalent::True }
+    pub fn maybe_false(&self) -> bool {
+        *self != Trivalent::True
+    }
 
     /// Returns `true` if the underlying boolean is `true`.
-    pub fn is_true(&self) -> bool { *self == Trivalent::True }
+    pub fn is_true(&self) -> bool {
+        *self == Trivalent::True
+    }
 
     /// Returns `true` if the underlying boolean is `false`.
-    pub fn is_false(&self) -> bool { *self == Trivalent::False }
+    pub fn is_false(&self) -> bool {
+        *self == Trivalent::False
+    }
 
     /// Returns `true` if the underlying boolean might be `true` and `false`.
-    pub fn is_maybe(&self) -> bool { *self == Trivalent::Maybe }
+    pub fn is_maybe(&self) -> bool {
+        *self == Trivalent::Maybe
+    }
 }
 
 impl std::ops::BitAnd for Trivalent {
@@ -189,7 +215,7 @@ macro_rules! generated_file {
         pub mod $name {
             include!(concat!(env!("OUT_DIR"), "/", stringify!($name), ".rs"));
         }
-    }
+    };
 }
 
 /// Clones a pair of reference.
@@ -266,9 +292,14 @@ pub fn cmp_f64(a: f64, b: f64) -> std::cmp::Ordering {
 pub trait BuilderTrait: Sized {
     /// Runs the closure if the bool is true.
     fn doif<F>(&mut self, flag: bool, f: F) -> &mut Self
-        where F: FnOnce(&mut Self) -> &mut Self
+    where
+        F: FnOnce(&mut Self) -> &mut Self,
     {
-        if flag { f(self) } else { self }
+        if flag {
+            f(self)
+        } else {
+            self
+        }
     }
 }
 
@@ -280,7 +311,9 @@ mod tests {
         struct Foo<T>(usize, T);
 
         impl<T> Foo<T> {
-            fn key(&self) -> usize { self.0 }
+            fn key(&self) -> usize {
+                self.0
+            }
         }
 
         hash_from_key!(Foo<T>, Foo::key, T);

@@ -14,34 +14,55 @@ struct TruthTable {
 
 impl TruthTable {
     /// Creates the truth table from the set of rules.
-    fn build(inputs: &[ir::ChoiceInstance], rules: &[ir::Rule],
-             ir_desc: &ir::IrDesc) -> Self {
-        let values = inputs.iter().enumerate().flat_map(|(id, input)| {
-            let choice = ir_desc.get_choice(&input.choice);
-            if !choice.fragile_values().is_empty() { return None; }
-            match *choice.choice_def() {
-                ir::ChoiceDef::Enum(ref name) => {
-                    let sets = ir_desc.get_enum(name).values().keys().map(|v| {
-                        let values = std::iter::once(v.clone()).collect();
-                        ir::ValueSet::enum_values(name.clone(), values)
-                    }).collect_vec();
-                    Some((id, sets))
-                },
-                ir::ChoiceDef::Counter { .. } |
-                ir::ChoiceDef::Number { .. } => None,
-            }
-        }).collect_vec();
+    fn build(
+        inputs: &[ir::ChoiceInstance],
+        rules: &[ir::Rule],
+        ir_desc: &ir::IrDesc,
+    ) -> Self {
+        let values = inputs
+            .iter()
+            .enumerate()
+            .flat_map(|(id, input)| {
+                let choice = ir_desc.get_choice(&input.choice);
+                if !choice.fragile_values().is_empty() {
+                    return None;
+                }
+                match *choice.choice_def() {
+                    ir::ChoiceDef::Enum(ref name) => {
+                        let sets = ir_desc
+                            .get_enum(name)
+                            .values()
+                            .keys()
+                            .map(|v| {
+                                let values = std::iter::once(v.clone()).collect();
+                                ir::ValueSet::enum_values(name.clone(), values)
+                            })
+                            .collect_vec();
+                        Some((id, sets))
+                    }
+                    ir::ChoiceDef::Counter { .. } | ir::ChoiceDef::Number { .. } => None,
+                }
+            })
+            .collect_vec();
         let sizes = values.iter().map(|&(_, ref v)| v.len()).collect_vec();
-        let data = NDRange::new(&sizes).map(|index| {
-            let input_mapping = index.iter().zip_eq(&values)
-                .map(|(&idx, &(input, ref values))| (input, &values[idx]))
-                .collect();
-            let rules = rules.iter()
-                .flat_map(|x| x.instantiate(inputs, &input_mapping, ir_desc))
-                .collect_vec();
-            Cell::build(rules, inputs, ir_desc)
-        }).collect_vec();
-        TruthTable { values, rules: NDArray::new(sizes, data), }
+        let data = NDRange::new(&sizes)
+            .map(|index| {
+                let input_mapping = index
+                    .iter()
+                    .zip_eq(&values)
+                    .map(|(&idx, &(input, ref values))| (input, &values[idx]))
+                    .collect();
+                let rules = rules
+                    .iter()
+                    .flat_map(|x| x.instantiate(inputs, &input_mapping, ir_desc))
+                    .collect_vec();
+                Cell::build(rules, inputs, ir_desc)
+            })
+            .collect_vec();
+        TruthTable {
+            values,
+            rules: NDArray::new(sizes, data),
+        }
     }
 
     /// Returns a view on the entire table.
@@ -65,9 +86,11 @@ struct Cell {
 
 impl Cell {
     /// Creates a cell from the given rules.
-    fn build(rules: Vec<ir::Rule>,
-             inputs: &[ir::ChoiceInstance],
-             ir_desc: &ir::IrDesc) -> Cell {
+    fn build(
+        rules: Vec<ir::Rule>,
+        inputs: &[ir::ChoiceInstance],
+        ir_desc: &ir::IrDesc,
+    ) -> Cell {
         let mut rule_map: HashMap<_, Vec<ir::ValueSet>> = HashMap::default();
         for mut rule in rules {
             rule.normalize(inputs, ir_desc);
@@ -80,11 +103,13 @@ impl Cell {
                             break;
                         }
                     }
-                    if !success { entry.get_mut().push(rule.alternatives); }
-                },
+                    if !success {
+                        entry.get_mut().push(rule.alternatives);
+                    }
+                }
                 hash_map::Entry::Vacant(entry) => {
                     entry.insert(vec![rule.alternatives]);
-                },
+                }
             };
         }
         Cell { rules: rule_map }
@@ -92,20 +117,22 @@ impl Cell {
 
     /// Extracts the rules from the cell. Leaves the cell empty.
     fn extract_rules(&mut self) -> Vec<ir::Rule> {
-        self.rules.drain().flat_map(|((conds, set_conds), alternatives)| {
-            alternatives.into_iter().map(move |alts| {
-                ir::Rule {
+        self.rules
+            .drain()
+            .flat_map(|((conds, set_conds), alternatives)| {
+                alternatives.into_iter().map(move |alts| ir::Rule {
                     conditions: conds.clone(),
                     alternatives: alts,
-                    set_constraints: set_conds.clone()
-                }
+                    set_constraints: set_conds.clone(),
+                })
             })
-        }).collect_vec()
+            .collect_vec()
     }
 
     /// Indicates if the cell allows any alternative,
     fn is_empty(&self) -> bool {
-        self.rules.get(&(vec![], ir::SetConstraints::default()))
+        self.rules
+            .get(&(vec![], ir::SetConstraints::default()))
             .map(|sets| sets.iter().any(|set| set.is_empty()))
             .unwrap_or(false)
     }
@@ -121,21 +148,36 @@ struct TableView<'a> {
 
 impl<'a> TableView<'a> {
     /// Returns the number of inputs of the table.
-    fn num_inputs(&self) -> usize { self.dim_map.len() }
+    fn num_inputs(&self) -> usize {
+        self.dim_map.len()
+    }
 
     /// Returns the input_id associated to a position.
-    fn input_from_pos(&self, input: usize) -> usize { self.values[self.dim_map[input]].0 }
+    fn input_from_pos(&self, input: usize) -> usize {
+        self.values[self.dim_map[input]].0
+    }
 
     /// Instantiate the truth table for each value of a given dimension.
     fn instantiate(&mut self, pos: usize) -> Vec<(&'a ir::ValueSet, TableView)> {
         let dim_map = &self.dim_map;
         let values = &self.values;
-        self.values[self.dim_map[pos]].1.iter().zip_eq(self.view.split(pos))
+        self.values[self.dim_map[pos]]
+            .1
+            .iter()
+            .zip_eq(self.view.split(pos))
             .map(|(value, view)| {
                 let mut dim_map = dim_map.clone();
                 dim_map.remove(pos);
-                (value, TableView { values, dim_map, view })
-            }).collect()
+                (
+                    value,
+                    TableView {
+                        values,
+                        dim_map,
+                        view,
+                    },
+                )
+            })
+            .collect()
     }
 
     /// Indicates if the two view have the same cells.
@@ -144,10 +186,15 @@ impl<'a> TableView<'a> {
     }
 
     /// Indicates if al the cells are empty.
-    fn is_empty(&self) -> bool { self.into_iter().all(|c| c.is_empty()) }
+    fn is_empty(&self) -> bool {
+        self.into_iter().all(|c| c.is_empty())
+    }
 }
 
-impl<'a, 'b> IntoIterator for &'b TableView<'a> where 'a: 'b {
+impl<'a, 'b> IntoIterator for &'b TableView<'a>
+where
+    'a: 'b,
+{
     type Item = &'b Cell;
     type IntoIter = ndarray::ViewMutIter<'b, Cell>;
 
@@ -156,7 +203,10 @@ impl<'a, 'b> IntoIterator for &'b TableView<'a> where 'a: 'b {
     }
 }
 
-impl<'a, 'b> IntoIterator for &'b mut TableView<'a> where 'a: 'b {
+impl<'a, 'b> IntoIterator for &'b mut TableView<'a>
+where
+    'a: 'b,
+{
     type Item = &'b mut Cell;
     type IntoIter = ndarray::ViewIterMut<'a, 'b, Cell>;
 
@@ -166,8 +216,11 @@ impl<'a, 'b> IntoIterator for &'b mut TableView<'a> where 'a: 'b {
 }
 
 /// Optimize the given rules into a sub_filter.
-pub fn opt_rules(inputs: &[ir::ChoiceInstance], rules: Vec<ir::Rule>,
-                      ir_desc: &ir::IrDesc) -> ir::SubFilter {
+pub fn opt_rules(
+    inputs: &[ir::ChoiceInstance],
+    rules: Vec<ir::Rule>,
+    ir_desc: &ir::IrDesc,
+) -> ir::SubFilter {
     if rules.len() == 1 {
         ir::SubFilter::Rules(rules)
     } else {
@@ -187,17 +240,26 @@ fn truth_table_to_filter(table: &mut TableView) -> ir::SubFilter {
     match table_min_split(table).unwrap() {
         TableSplit::Forward { mut sub_view } => truth_table_to_filter(&mut sub_view),
         TableSplit::Switch { input, cases } => {
-            let sub_filters = cases.into_iter().map(|(values, mut view)| {
-                (values, truth_table_to_filter(&mut view))
-            }).collect();
-            ir::SubFilter::Switch { switch: input, cases: sub_filters }
-        },
+            let sub_filters = cases
+                .into_iter()
+                .map(|(values, mut view)| (values, truth_table_to_filter(&mut view)))
+                .collect();
+            ir::SubFilter::Switch {
+                switch: input,
+                cases: sub_filters,
+            }
+        }
     }
 }
 
 enum TableSplit<'a> {
-    Switch { input: usize, cases: Vec<(ir::ValueSet, TableView<'a>)> },
-    Forward { sub_view: TableView<'a> }
+    Switch {
+        input: usize,
+        cases: Vec<(ir::ValueSet, TableView<'a>)>,
+    },
+    Forward {
+        sub_view: TableView<'a>,
+    },
 }
 
 /// Find the input instantiation with the minimal number of instances.
@@ -225,8 +287,14 @@ fn table_min_split<'a, 'b>(table: &'a mut TableView<'b>) -> Option<TableSplit<'a
             }
             forward &= instances.len() == 1;
             // Update the best split.
-            if min_split.as_ref().map(|x| x.1.len() > instances.len()).unwrap_or(true) {
-                let config = instances.into_iter().map(|(values, vpos, _)| (values, vpos));
+            if min_split
+                .as_ref()
+                .map(|x| x.1.len() > instances.len())
+                .unwrap_or(true)
+            {
+                let config = instances
+                    .into_iter()
+                    .map(|(values, vpos, _)| (values, vpos));
                 min_split = Some((pos, config.collect_vec()));
             }
         }
@@ -240,11 +308,14 @@ fn table_min_split<'a, 'b>(table: &'a mut TableView<'b>) -> Option<TableSplit<'a
     min_split.map(move |(pos, config)| {
         let input = table.input_from_pos(pos);
         let mut views = table.instantiate(pos).into_iter().enumerate();
-        let cases = config.into_iter().map(|(values, pos)| {
-            let view = views.find(|&(other_pos, _)| pos == other_pos).unwrap().1;
-            assert!(!view.1.is_empty());
-            (values, view.1)
-        }).collect();
+        let cases = config
+            .into_iter()
+            .map(|(values, pos)| {
+                let view = views.find(|&(other_pos, _)| pos == other_pos).unwrap().1;
+                assert!(!view.1.is_empty());
+                (values, view.1)
+            })
+            .collect();
         TableSplit::Switch { input, cases }
     })
 }
@@ -254,12 +325,11 @@ pub mod test {
     use super::*;
     use constraint::Constraint;
     use ir;
+    use ir::test::{mk_enum_values_set, EvalContext};
     use itertools::Itertools;
-    use ir::test::{EvalContext, mk_enum_values_set};
 
     /// Returns the values allowed by the given `Cell`.
-    fn eval_cell(cell: &Cell, context: &ir::test::EvalContext)
-            -> ir::ValueSet {
+    fn eval_cell(cell: &Cell, context: &ir::test::EvalContext) -> ir::ValueSet {
         let enum_name = context.enum_.name().clone();
         let values = context.enum_.values().keys().cloned().collect();
         let mut valid_values = ir::ValueSet::enum_values(enum_name, values);
@@ -272,19 +342,27 @@ pub mod test {
     }
 
     /// Returns the valid alternatives according to a given table.
-    fn eval_table(table: &TruthTable, context: &ir::test::EvalContext)
-            -> ir::ValueSet {
-        let valid_indexes = table.values.iter().map(|&(input, ref table_values)| {
-            let ctx_values = &context.input_values[input];
-            table_values.iter().enumerate()
-                .filter(|&(_, value)| ctx_values.is(value).maybe_true())
-                .map(|(pos, _)| pos).collect_vec()
-        }).collect_vec();
+    fn eval_table(table: &TruthTable, context: &ir::test::EvalContext) -> ir::ValueSet {
+        let valid_indexes = table
+            .values
+            .iter()
+            .map(|&(input, ref table_values)| {
+                let ctx_values = &context.input_values[input];
+                table_values
+                    .iter()
+                    .enumerate()
+                    .filter(|&(_, value)| ctx_values.is(value).maybe_true())
+                    .map(|(pos, _)| pos)
+                    .collect_vec()
+            })
+            .collect_vec();
         let num_indexes = valid_indexes.iter().map(|x| x.len()).collect_vec();
         let t = ir::ValueType::Enum(context.enum_.name().clone());
         let mut value_set = ir::ValueSet::empty(&t);
         for indexes in NDRange::new(&num_indexes) {
-            let table_index = indexes.iter().zip_eq(&valid_indexes)
+            let table_index = indexes
+                .iter()
+                .zip_eq(&valid_indexes)
                 .map(|(&idx, table_indexes)| table_indexes[idx])
                 .collect_vec();
             value_set.extend(eval_cell(&table.rules[&table_index[..]], context));
@@ -313,7 +391,11 @@ pub mod test {
         ir::test::gen_enum("A", 4, &mut ir_desc);
         let enum_ = ir_desc.get_enum("EnumA");
         let rule0 = mk_rule(vec![], "EnumA", &["A_0", "A_1", "A_2"]);
-        let rule1 = mk_rule(vec![mk_code_cond("code_0")], "EnumA", &["A_1", "A_2", "A_3"]);
+        let rule1 = mk_rule(
+            vec![mk_code_cond("code_0")],
+            "EnumA",
+            &["A_1", "A_2", "A_3"],
+        );
         let rules = [rule0, rule1];
         test_filter(&[], &rules, enum_, &ir_desc);
     }
@@ -327,9 +409,16 @@ pub mod test {
         ir::test::gen_enum("B", 4, &mut ir_desc);
         let enum_a = ir_desc.get_enum("EnumA");
         let rule0 = mk_rule(vec![], "EnumA", &["A_0", "A_1", "A_2"]);
-        let rule1 = mk_rule(vec![mk_enum_cond(0, &["B_0", "B_1"])], "EnumA", &["A_0", "A_1"]);
-        let rule2 = mk_rule(vec![mk_enum_cond(0, &["B_0", "B_2"]),
-                            mk_code_cond("code_0")], "EnumA", &["A_0", "A_2"]);
+        let rule1 = mk_rule(
+            vec![mk_enum_cond(0, &["B_0", "B_1"])],
+            "EnumA",
+            &["A_0", "A_1"],
+        );
+        let rule2 = mk_rule(
+            vec![mk_enum_cond(0, &["B_0", "B_2"]), mk_code_cond("code_0")],
+            "EnumA",
+            &["A_0", "A_2"],
+        );
         let rule3 = mk_rule(vec![mk_enum_cond(0, &["B_3"])], "EnumA", &[]);
         let rules = [rule0, rule1, rule2, rule3];
         test_filter(&[mk_input("enum_b")], &rules, enum_a, &ir_desc)
@@ -350,19 +439,34 @@ pub mod test {
         let cond_c12 = mk_enum_cond(1, &["C_1", "C_2"]);
         let cond_code0 = mk_code_cond("code_0");
         let rules = [
-            mk_rule(vec![mk_enum_cond(0, &["B_0"])], "EnumA", &["A_0", "A_1",]),
+            mk_rule(vec![mk_enum_cond(0, &["B_0"])], "EnumA", &["A_0", "A_1"]),
             mk_rule(vec![cond_b1, cond_c01], "EnumA", &["A_1", "A_2"]),
-            mk_rule(vec![cond_b12, cond_c12, cond_code0], "EnumA", &["A_2", "A_3"]),
+            mk_rule(
+                vec![cond_b12, cond_c12, cond_code0],
+                "EnumA",
+                &["A_2", "A_3"],
+            ),
         ];
         let inputs = [mk_input("enum_b"), mk_input("enum_c")];
         test_filter(&inputs, &rules, enum_a, &ir_desc)
     }
 
-    fn test_filter(inputs: &[ir::ChoiceInstance], rules: &[ir::Rule],
-                   enum_: &ir::Enum, ir_desc: &ir::IrDesc) {
-        let static_conds = rules.iter().flat_map(|rule| {
-            rule.conditions.iter().flat_map(|x| x.as_static_cond()).map(|x| x.0)
-        }).unique().collect_vec();
+    fn test_filter(
+        inputs: &[ir::ChoiceInstance],
+        rules: &[ir::Rule],
+        enum_: &ir::Enum,
+        ir_desc: &ir::IrDesc,
+    ) {
+        let static_conds = rules
+            .iter()
+            .flat_map(|rule| {
+                rule.conditions
+                    .iter()
+                    .flat_map(|x| x.as_static_cond())
+                    .map(|x| x.0)
+            })
+            .unique()
+            .collect_vec();
         // Test the table correctness.
         let mut table = TruthTable::build(inputs, &rules, ir_desc);
         for ctx in EvalContext::iter_contexts(ir_desc, enum_, inputs, &static_conds[..]) {
@@ -403,7 +507,10 @@ pub mod test {
     /// Creates a code condition.
     fn mk_code_cond(code: &str) -> ir::Condition {
         ir::Condition::Code {
-            code: ir::Code { code: code.into(), vars: vec![] },
+            code: ir::Code {
+                code: code.into(),
+                vars: vec![],
+            },
             negate: false,
         }
     }
@@ -420,7 +527,11 @@ pub mod test {
     }
 
     /// Creates a rule.
-    fn mk_rule(conds: Vec<ir::Condition>, enum_: &str, alternatives: &[&str]) -> ir::Rule {
+    fn mk_rule(
+        conds: Vec<ir::Condition>,
+        enum_: &str,
+        alternatives: &[&str],
+    ) -> ir::Rule {
         ir::Rule {
             conditions: conds,
             alternatives: mk_enum_values_set(enum_, alternatives),
@@ -430,6 +541,9 @@ pub mod test {
 
     /// Create a input definition.
     fn mk_input(name: &str) -> ir::ChoiceInstance {
-        ir::ChoiceInstance { choice: name.into(), vars: Vec::new() }
+        ir::ChoiceInstance {
+            choice: name.into(),
+            vars: Vec::new(),
+        }
     }
 }

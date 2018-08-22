@@ -1,5 +1,5 @@
 //! Filter on choices.
-use ir::{self, SetRef, Adaptable};
+use ir::{self, Adaptable, SetRef};
 use itertools::Itertools;
 use std;
 use std::collections::BTreeSet;
@@ -21,7 +21,10 @@ pub struct Filter {
 pub enum SubFilter {
     /// Enumerate the possible values that a input can take, and lists the possible values
     /// for each.
-    Switch { switch: usize, cases: Vec<(ValueSet, SubFilter)> },
+    Switch {
+        switch: usize,
+        cases: Vec<(ValueSet, SubFilter)>,
+    },
     /// Applies a set of negative rules to filter the possible values.
     Rules(Vec<Rule>),
 }
@@ -39,9 +42,12 @@ pub struct Rule {
 
 impl Rule {
     /// Instantiates the rule for a given assignment of the inputs.
-    pub fn instantiate(&self, inputs: &[ChoiceInstance],
-                       input_mapping: &HashMap<usize, &ir::ValueSet>,
-                       ir_desc: &ir::IrDesc) -> Option<Rule> {
+    pub fn instantiate(
+        &self,
+        inputs: &[ChoiceInstance],
+        input_mapping: &HashMap<usize, &ir::ValueSet>,
+        ir_desc: &ir::IrDesc,
+    ) -> Option<Rule> {
         let mut conditions = Vec::new();
         for condition in &self.conditions {
             match condition.instantiate(inputs, input_mapping, ir_desc) {
@@ -52,7 +58,11 @@ impl Rule {
         }
         let alternatives = self.alternatives.instantiate(input_mapping, ir_desc);
         let set_constraints = self.set_constraints.clone();
-        Some(Rule { conditions, alternatives, set_constraints })
+        Some(Rule {
+            conditions,
+            alternatives,
+            set_constraints,
+        })
     }
 
     /// Normalizes the `Rule`.
@@ -90,10 +100,14 @@ impl SetConstraints {
     }
 
     /// Returns the constraints in a legal order.
-    pub fn constraints(&self) -> &[(Variable, ir::Set)] { &self.constraints }
+    pub fn constraints(&self) -> &[(Variable, ir::Set)] {
+        &self.constraints
+    }
 
     /// Indicates if the set of constraints is empty.
-    pub fn is_empty(&self) -> bool { self.constraints.is_empty() }
+    pub fn is_empty(&self) -> bool {
+        self.constraints.is_empty()
+    }
 
     /// Returns the set the given variable is constrained to, if any.
     pub fn find_set(&self, var: Variable) -> Option<&ir::Set> {
@@ -103,9 +117,11 @@ impl SetConstraints {
 
 impl Adaptable for SetConstraints {
     fn adapt(&self, adaptator: &ir::Adaptator) -> Self {
-        let constraints = self.constraints.iter().map(|&(v, ref s)| {
-            (adaptator.variable(v), s.adapt(adaptator))
-        }).collect();
+        let constraints = self
+            .constraints
+            .iter()
+            .map(|&(v, ref s)| (adaptator.variable(v), s.adapt(adaptator)))
+            .collect();
         SetConstraints::new(constraints)
     }
 }
@@ -114,11 +130,16 @@ impl IntoIterator for SetConstraints {
     type Item = (Variable, ir::Set);
     type IntoIter = std::vec::IntoIter<(Variable, ir::Set)>;
 
-    fn into_iter(self) -> Self::IntoIter { self.constraints.into_iter() }
+    fn into_iter(self) -> Self::IntoIter {
+        self.constraints.into_iter()
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum Variable { Arg(usize), Forall(usize) }
+pub enum Variable {
+    Arg(usize),
+    Forall(usize),
+}
 
 impl Adaptable for Variable {
     fn adapt(&self, adaptator: &ir::Adaptator) -> Self {
@@ -156,7 +177,7 @@ impl ChoiceInstance {
     /// inversed.
     pub fn normalize(&mut self, ir_desc: &ir::IrDesc) -> bool {
         match *ir_desc.get_choice(&self.choice).arguments() {
-            ir::ChoiceArguments::Plain {..} => false,
+            ir::ChoiceArguments::Plain { .. } => false,
             ir::ChoiceArguments::Symmetric { inverse, .. } => {
                 assert_eq!(self.vars.len(), 2);
                 if self.vars[0] > self.vars[1] {
@@ -165,8 +186,17 @@ impl ChoiceInstance {
                 } else {
                     false
                 }
-            },
+            }
         }
+    }
+
+    /// Returns the type of the values the chocie takes.
+    pub fn value_type(&self, ir_desc: &ir::IrDesc) -> ir::ValueType {
+        let adaptator = ir::Adaptator::from_arguments(&self.vars);
+        ir_desc
+            .get_choice(&self.choice)
+            .value_type()
+            .adapt(&adaptator)
     }
 }
 
@@ -190,23 +220,32 @@ impl Code {
     /// Normalizes the `Code.
     pub fn normalize(&mut self) {
         let code = &mut self.code;
-        self.vars = self.vars.iter().map(|&(var, ref old_name)| {
-            let old_pattern = "$".to_string() + old_name;
-            let new_name = RcStr::new(var.to_string());
-            let new_pattern = "$".to_string() + &new_name;
-            *code = RcStr::new(code.replace(&old_pattern, &new_pattern));
-            (var, new_name)
-        }).sorted_by(|x, y| std::cmp::Ord::cmp(&x.0, &y.0));
+        self.vars = self
+            .vars
+            .iter()
+            .map(|&(var, ref old_name)| {
+                let old_pattern = "$".to_string() + old_name;
+                let new_name = RcStr::new(var.to_string());
+                let new_pattern = "$".to_string() + &new_name;
+                *code = RcStr::new(code.replace(&old_pattern, &new_pattern));
+                (var, new_name)
+            })
+            .sorted_by(|x, y| std::cmp::Ord::cmp(&x.0, &y.0));
         self.vars.dedup();
     }
 }
 
 impl Adaptable for Code {
     fn adapt(&self, adaptator: &ir::Adaptator) -> Self {
-        let vars = self.vars.iter()
+        let vars = self
+            .vars
+            .iter()
             .map(|&(var, ref name)| (adaptator.variable(var), name.clone()))
             .collect();
-        Code { code: self.code.clone(), vars }
+        Code {
+            code: self.code.clone(),
+            vars,
+        }
     }
 }
 
@@ -216,44 +255,74 @@ pub enum Condition {
     /// Triggers if the given piece of code returns `true`, given the mapping of variables.
     Code { code: Code, negate: bool },
     /// Triggers if the choice can only take the given values.
-    Enum { input: usize, values: BTreeSet<RcStr>, negate: bool, inverse: bool },
+    Enum {
+        input: usize,
+        values: BTreeSet<RcStr>,
+        negate: bool,
+        inverse: bool,
+    },
     /// Always or never triggers.
     Bool(bool),
     /// Triggers if the one inputs respects the comparison operator with some rust code.
     CmpCode { lhs: usize, rhs: Code, op: CmpOp },
     /// Triggers if the two inputs respects the comparison operator.
-    CmpInput { lhs: usize, rhs: usize, op: CmpOp, inverse: bool },
+    CmpInput {
+        lhs: usize,
+        rhs: usize,
+        op: CmpOp,
+        inverse: bool,
+    },
 }
 
 impl Condition {
     /// Negates the condition.
     pub fn negate(&mut self) {
         match *self {
-            Condition::Code { ref mut negate, .. } |
-            Condition::Bool(ref mut negate) |
-            Condition::Enum { ref mut negate, .. } => *negate = !*negate,
-            Condition::CmpCode { ref mut op,  .. } |
-            Condition::CmpInput { ref mut op, .. } => op.negate(),
+            Condition::Code { ref mut negate, .. }
+            | Condition::Bool(ref mut negate)
+            | Condition::Enum { ref mut negate, .. } => *negate = !*negate,
+            Condition::CmpCode { ref mut op, .. }
+            | Condition::CmpInput { ref mut op, .. } => op.negate(),
         }
     }
 
     /// Returns allowed alternatives for the given input. Returns None if the condition
     /// is not on the given input.
-    pub fn alternatives_of(&self, input_id: usize, t: &ir::ValueType,
-                           ir_desc: &ir::IrDesc) -> Option<ValueSet> {
+    pub fn alternatives_of(
+        &self,
+        input_id: usize,
+        t: &ir::ValueType,
+        ir_desc: &ir::IrDesc,
+    ) -> Option<ValueSet> {
         match *self {
-            Condition::Enum { input, ref values, negate, inverse } if input_id == input => {
+            Condition::Enum {
+                input,
+                ref values,
+                negate,
+                inverse,
+            } if input_id == input =>
+            {
                 let enum_ = ir_desc.get_enum(unwrap!(t.as_enum()));
                 Some(normalized_enum_set(values, negate, inverse, enum_))
-            },
+            }
             Condition::CmpCode { lhs, op, ref rhs } if lhs == input_id => {
                 let cmp_code = std::iter::once((op, rhs.clone())).collect();
                 let cmp_inputs = BTreeSet::default();
                 let universe = t.clone().full_type();
-                Some(ValueSet::Integer { is_full: false, cmp_inputs, cmp_code, universe })
-            },
+                Some(ValueSet::Integer {
+                    is_full: false,
+                    cmp_inputs,
+                    cmp_code,
+                    universe,
+                })
+            }
             Condition::CmpCode { .. } => None,
-            Condition::CmpInput { lhs, rhs, op, inverse } => {
+            Condition::CmpInput {
+                lhs,
+                rhs,
+                op,
+                inverse,
+            } => {
                 if input_id == lhs && input_id == rhs {
                     let is_eq = op.allows_eq();
                     Some(ValueSet::from_properties(t, is_eq, inverse, ir_desc))
@@ -264,45 +333,64 @@ impl Condition {
                 } else {
                     None
                 }
-            },
+            }
             _ => None,
         }
     }
 
     /// Instantiate the condition in the given context.
-    pub fn instantiate(&self, inputs: &[ChoiceInstance],
-                       input_mapping: &HashMap<usize, &ir::ValueSet>,
-                       ir_desc: &ir::IrDesc) -> Condition {
-        self.evaluate(inputs, input_mapping, ir_desc).as_bool()
-            .map(|b| Condition::Bool(b)).unwrap_or(self.clone())
+    pub fn instantiate(
+        &self,
+        inputs: &[ChoiceInstance],
+        input_mapping: &HashMap<usize, &ir::ValueSet>,
+        ir_desc: &ir::IrDesc,
+    ) -> Condition {
+        self.evaluate(inputs, input_mapping, ir_desc)
+            .as_bool()
+            .map(|b| Condition::Bool(b))
+            .unwrap_or(self.clone())
     }
 
     /// Evaluates the condition. Requires the mapping to be instantiated.
-    pub fn evaluate(&self, inputs: &[ChoiceInstance],
-                    input_mapping: &HashMap<usize, &ir::ValueSet>,
-                    ir_desc: &ir::IrDesc) -> Trivalent {
+    pub fn evaluate(
+        &self,
+        inputs: &[ChoiceInstance],
+        input_mapping: &HashMap<usize, &ir::ValueSet>,
+        ir_desc: &ir::IrDesc,
+    ) -> Trivalent {
         match *self {
             Condition::Bool(true) => Trivalent::True,
             Condition::Bool(false) => Trivalent::False,
-            Condition::Code { .. } |
-            Condition::CmpCode { .. } => Trivalent::Maybe,
-            Condition::Enum { input, ref values, negate, inverse } => {
+            Condition::Code { .. } | Condition::CmpCode { .. } => Trivalent::Maybe,
+            Condition::Enum {
+                input,
+                ref values,
+                negate,
+                inverse,
+            } => {
                 let choice = ir_desc.get_choice(&inputs[input].choice);
                 let enum_ = ir_desc.get_enum(choice.choice_def().as_enum().unwrap());
                 let values = normalized_enum_set(values, negate, inverse, enum_);
                 let input_val = input_mapping.get(&input);
                 input_val.map(|i| i.is(&values)).unwrap_or(Trivalent::Maybe)
-            },
-            Condition::CmpInput { lhs, rhs, op, inverse } => {
+            }
+            Condition::CmpInput {
+                lhs,
+                rhs,
+                op,
+                inverse,
+            } => {
                 let lhs = input_mapping.get(&lhs);
                 if let (Some(&lhs), Some(&rhs)) = (lhs, input_mapping.get(&rhs)) {
                     let mut lhs = lhs.clone();
-                    if inverse { lhs.inverse(ir_desc); }
+                    if inverse {
+                        lhs.inverse(ir_desc);
+                    }
                     op.evaluate(&lhs, rhs)
                 } else {
                     Trivalent::Maybe
                 }
-            },
+            }
         }
     }
 
@@ -311,12 +399,13 @@ impl Condition {
     #[cfg(test)]
     pub fn as_static_cond(&self) -> Option<(ir::test::StaticCond, bool)> {
         match *self {
-            Condition::Enum { .. } |
-            Condition::Bool(_) |
-            Condition::CmpCode { .. } |
-            Condition::CmpInput { .. } => None,
-            Condition::Code { ref code, negate } =>
-                Some((ir::test::StaticCond::Code(code.clone()), negate)),
+            Condition::Enum { .. }
+            | Condition::Bool(_)
+            | Condition::CmpCode { .. }
+            | Condition::CmpInput { .. } => None,
+            Condition::Code { ref code, negate } => {
+                Some((ir::test::StaticCond::Code(code.clone()), negate))
+            }
         }
     }
 
@@ -324,22 +413,34 @@ impl Condition {
     pub fn normalize(&mut self, inputs: &[ChoiceInstance], ir_desc: &ir::IrDesc) {
         match *self {
             Condition::Bool(..) => (),
-            Condition::CmpInput { ref mut lhs, ref mut rhs, ref mut op, .. } => {
+            Condition::CmpInput {
+                ref mut lhs,
+                ref mut rhs,
+                ref mut op,
+                ..
+            } => {
                 if lhs > rhs {
                     std::mem::swap(lhs, rhs);
                     *op = op.inverse();
                 }
-            },
+            }
             Condition::CmpCode { ref mut rhs, .. } => rhs.normalize(),
             Condition::Code { ref mut code, .. } => code.normalize(),
-            Condition::Enum { input, ref mut values, ref mut negate, ref mut inverse} => {
+            Condition::Enum {
+                input,
+                ref mut values,
+                ref mut negate,
+                ref mut inverse,
+            } => {
                 let choice = ir_desc.get_choice(&inputs[input].choice);
                 let enum_ = ir_desc.get_enum(choice.choice_def().as_enum().unwrap());
                 *values = normalize_values(&*values, *negate, *inverse, enum_)
-                    .into_iter().cloned().collect();
+                    .into_iter()
+                    .cloned()
+                    .collect();
                 *negate = false;
                 *inverse = false;
-            },
+            }
         }
     }
 }
@@ -348,7 +449,12 @@ impl Adaptable for Condition {
     fn adapt(&self, adaptator: &ir::Adaptator) -> Self {
         match *self {
             Condition::Bool(..) => self.clone(),
-            Condition::Enum { input, ref values, negate, inverse } => {
+            Condition::Enum {
+                input,
+                ref values,
+                negate,
+                inverse,
+            } => {
                 let (new_input, inversed) = adaptator.input(input);
                 Condition::Enum {
                     input: new_input,
@@ -356,15 +462,26 @@ impl Adaptable for Condition {
                     negate: negate,
                     inverse: inverse ^ inversed,
                 }
+            }
+            Condition::Code { ref code, negate } => Condition::Code {
+                code: code.adapt(adaptator),
+                negate,
             },
-            Condition::Code { ref code, negate } =>
-                Condition::Code { code: code.adapt(adaptator), negate },
             Condition::CmpCode { lhs, ref rhs, op } => {
                 let (new_lhs, lhs_inversed) = adaptator.input(lhs);
                 assert!(!lhs_inversed);
-                Condition::CmpCode { lhs: new_lhs, rhs: rhs.adapt(adaptator), op: op }
-            },
-            Condition::CmpInput { lhs, rhs, op, inverse } => {
+                Condition::CmpCode {
+                    lhs: new_lhs,
+                    rhs: rhs.adapt(adaptator),
+                    op: op,
+                }
+            }
+            Condition::CmpInput {
+                lhs,
+                rhs,
+                op,
+                inverse,
+            } => {
                 let (new_lhs, lhs_inversed) = adaptator.input(lhs);
                 let (new_rhs, rhs_inversed) = adaptator.input(rhs);
                 Condition::CmpInput {
@@ -373,7 +490,7 @@ impl Adaptable for Condition {
                     op: op,
                     inverse: inverse ^ lhs_inversed ^ rhs_inversed,
                 }
-            },
+            }
         }
     }
 }
@@ -381,7 +498,14 @@ impl Adaptable for Condition {
 /// A compariason operator.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(C)]
-pub enum CmpOp { Lt, Gt, Leq, Geq, Eq, Neq }
+pub enum CmpOp {
+    Lt,
+    Gt,
+    Leq,
+    Geq,
+    Eq,
+    Neq,
+}
 
 impl CmpOp {
     /// Negates the operator.
@@ -428,26 +552,41 @@ impl CmpOp {
 }
 
 /// Normalizes a list of values.
-fn normalize_values<'a, IT>(values: IT, negate: bool, inverse: bool,
-                            choice: &'a ir::Enum) -> HashSet<&'a RcStr>
-    where IT: IntoIterator<Item=&'a RcStr>
+fn normalize_values<'a, IT>(
+    values: IT,
+    negate: bool,
+    inverse: bool,
+    choice: &'a ir::Enum,
+) -> HashSet<&'a RcStr>
+where
+    IT: IntoIterator<Item = &'a RcStr>,
 {
     let inverser = |x| if inverse { choice.inverse(x) } else { x };
     let mut values: HashSet<_> = values.into_iter().map(inverser).collect();
     if negate {
-        values = choice.values().keys().filter(|&x| !values.contains(x)).collect();
+        values = choice
+            .values()
+            .keys()
+            .filter(|&x| !values.contains(x))
+            .collect();
     }
     values
 }
 
-
 /// Creates a `ValueSet` from the list of enum values.
-pub fn normalized_enum_set<'a, IT>(values: IT, negate: bool, inverse: bool,
-                               choice: &'a ir::Enum) -> ValueSet
-    where IT: IntoIterator<Item=&'a RcStr>
+pub fn normalized_enum_set<'a, IT>(
+    values: IT,
+    negate: bool,
+    inverse: bool,
+    choice: &'a ir::Enum,
+) -> ValueSet
+where
+    IT: IntoIterator<Item = &'a RcStr>,
 {
     let values = normalize_values(values, negate, inverse, choice)
-        .into_iter().map(|x| x.clone()).collect();
+        .into_iter()
+        .map(|x| x.clone())
+        .collect();
     ValueSet::enum_values(choice.name().clone(), values)
 }
 
@@ -476,44 +615,43 @@ impl ValueSet {
     /// Creates an enmpty `ValueSet` of the given type.
     pub fn empty(t: &ir::ValueType) -> Self {
         match t {
-            ir::ValueType::Enum(name) => {
-                ValueSet::Enum {
-                    enum_name: name.clone(),
-                    values: BTreeSet::default(),
-                    inputs: BTreeSet::default()
-                }
+            ir::ValueType::Enum(name) => ValueSet::Enum {
+                enum_name: name.clone(),
+                values: BTreeSet::default(),
+                inputs: BTreeSet::default(),
             },
-            t @ ir::ValueType::Range |
-            t @ ir::ValueType::HalfRange |
-            t @ ir::ValueType::NumericSet(..) => {
+            t @ ir::ValueType::Range { .. } | t @ ir::ValueType::NumericSet(..) => {
                 ValueSet::Integer {
                     is_full: false,
                     cmp_inputs: BTreeSet::default(),
                     cmp_code: BTreeSet::default(),
                     universe: t.clone().full_type(),
                 }
-            },
+            }
+            ir::ValueType::Constant => {
+                panic!("the `Constant` type is reserved for user-provided values")
+            }
         }
-
     }
 
     /// Computes a `ValueSet` from the properties it must respect.
-    pub fn from_properties(t: &ir::ValueType, is_eq: bool, is_inv: bool,
-                           ir_desc: &ir::IrDesc) -> Self {
+    pub fn from_properties(
+        t: &ir::ValueType,
+        is_eq: bool,
+        is_inv: bool,
+        ir_desc: &ir::IrDesc,
+    ) -> Self {
         match t {
             ir::ValueType::Enum(name) => {
                 let enum_ = ir_desc.get_enum(name);
                 if is_inv {
-                    let values = enum_.values().keys()
-                        .filter(|&v| enum_.inverse(v) == v);
+                    let values = enum_.values().keys().filter(|&v| enum_.inverse(v) == v);
                     normalized_enum_set(values, !is_eq, false, enum_)
                 } else {
                     normalized_enum_set(vec![], is_eq, false, enum_)
                 }
-            },
-            t @ ir::ValueType::Range |
-            t @ ir::ValueType::HalfRange |
-            t @ ir::ValueType::NumericSet(..) => {
+            }
+            t @ ir::ValueType::Range { .. } | t @ ir::ValueType::NumericSet(..) => {
                 assert!(!is_inv);
                 if is_eq {
                     ValueSet::Integer {
@@ -522,14 +660,23 @@ impl ValueSet {
                         cmp_code: BTreeSet::default(),
                         universe: t.clone().full_type(),
                     }
-                } else { ValueSet::empty(t) }
-            },
+                } else {
+                    ValueSet::empty(t)
+                }
+            }
+            ir::ValueType::Constant => {
+                panic!("the `Constant` type is reserved for user-provided values")
+            }
         }
     }
 
     /// Creates a `ValueSet` from a normalized set of values.
     pub fn enum_values(enum_: RcStr, values: BTreeSet<RcStr>) -> Self {
-        ValueSet::Enum { enum_name: enum_, values: values, inputs: Default::default() }
+        ValueSet::Enum {
+            enum_name: enum_,
+            values: values,
+            inputs: Default::default(),
+        }
     }
 
     /// Creates a `ValueSet` from the given input.
@@ -540,7 +687,8 @@ impl ValueSet {
                 values: Default::default(),
                 inputs: std::iter::once((input, op == CmpOp::Neq, inverse)).collect(),
             },
-            t @ ir::ValueType::Range | t @ ir::ValueType::NumericSet(..) => {
+            t @ ir::ValueType::Range { is_half: false }
+            | t @ ir::ValueType::NumericSet(..) => {
                 assert!(!inverse);
                 ValueSet::Integer {
                     is_full: false,
@@ -548,18 +696,30 @@ impl ValueSet {
                     cmp_code: BTreeSet::default(),
                     universe: t.clone().full_type(),
                 }
-            },
-            ir::ValueType::HalfRange => panic!("Cannot compare HalfRanges to inputs"),
+            }
+            ir::ValueType::Range { is_half: true } => {
+                panic!("Cannot compare HalfRanges to inputs")
+            }
+            ir::ValueType::Constant => {
+                panic!("the `Constant` type is reserved for user-provided values")
+            }
         }
     }
 
     /// Indicates if the set of values is empty.
     pub fn is_empty(&self) -> bool {
         match *self {
-            ValueSet::Enum { ref values, ref inputs, .. } =>
-                values.is_empty() && inputs.is_empty(),
-            ValueSet::Integer { is_full, ref cmp_inputs, ref cmp_code, universe: _ } =>
-                !is_full && cmp_inputs.is_empty() && cmp_code.is_empty()
+            ValueSet::Enum {
+                ref values,
+                ref inputs,
+                ..
+            } => values.is_empty() && inputs.is_empty(),
+            ValueSet::Integer {
+                is_full,
+                ref cmp_inputs,
+                ref cmp_code,
+                universe: _,
+            } => !is_full && cmp_inputs.is_empty() && cmp_code.is_empty(),
         }
     }
 
@@ -567,8 +727,11 @@ impl ValueSet {
     /// set may contain all the values and the function still return false.
     pub fn is_full(&self, ir_desc: &ir::IrDesc) -> bool {
         match *self {
-            ValueSet::Enum { ref values, ref enum_name, .. } =>
-                ir_desc.get_enum(enum_name).values().len() == values.len(),
+            ValueSet::Enum {
+                ref values,
+                ref enum_name,
+                ..
+            } => ir_desc.get_enum(enum_name).values().len() == values.len(),
             ValueSet::Integer { is_full, .. } => is_full,
         }
     }
@@ -576,12 +739,30 @@ impl ValueSet {
     /// Indicates if the set contains a single value.
     pub fn is_constrained(&self) -> Trivalent {
         match *self {
-            ValueSet::Enum { ref values, ref inputs, .. } if inputs.is_empty() => {
-                if values.len() == 1 { Trivalent::True } else { Trivalent::False }
-            },
-            ValueSet::Enum { ref values, ref inputs, .. } if values.is_empty() => {
-                if inputs.len() == 1 { Trivalent::True } else { Trivalent::False }
-            },
+            ValueSet::Enum {
+                ref values,
+                ref inputs,
+                ..
+            } if inputs.is_empty() =>
+            {
+                if values.len() == 1 {
+                    Trivalent::True
+                } else {
+                    Trivalent::False
+                }
+            }
+            ValueSet::Enum {
+                ref values,
+                ref inputs,
+                ..
+            } if values.is_empty() =>
+            {
+                if inputs.len() == 1 {
+                    Trivalent::True
+                } else {
+                    Trivalent::False
+                }
+            }
             ValueSet::Enum { .. } | ValueSet::Integer { .. } => Trivalent::Maybe,
         }
     }
@@ -589,11 +770,19 @@ impl ValueSet {
     /// Extends the `ValueSet` with the values of anther set.
     pub fn extend(&mut self, other: ValueSet) {
         match *self {
-            ValueSet::Enum { ref mut values, ref mut inputs, .. } => match other {
-                ValueSet::Enum { values: other_values, inputs: other_inputs, .. } => {
+            ValueSet::Enum {
+                ref mut values,
+                ref mut inputs,
+                ..
+            } => match other {
+                ValueSet::Enum {
+                    values: other_values,
+                    inputs: other_inputs,
+                    ..
+                } => {
                     values.extend(other_values);
                     inputs.extend(other_inputs);
-                },
+                }
                 ValueSet::Integer { .. } => panic!(),
             },
             ValueSet::Integer {
@@ -607,12 +796,17 @@ impl ValueSet {
                     cmp_inputs: other_inputs,
                     cmp_code: other_code,
                     universe: _,
-                } = other {
-                    if *is_full || other_full { *is_full = true } else {
+                } = other
+                {
+                    if *is_full || other_full {
+                        *is_full = true
+                    } else {
                         cmp_inputs.extend(other_inputs);
                         cmp_code.extend(other_code);
                     }
-                } else { panic!() }
+                } else {
+                    panic!()
+                }
             }
         }
     }
@@ -621,49 +815,91 @@ impl ValueSet {
     /// successful or if the sets should be kept separate.
     pub fn intersect(&mut self, other: ValueSet) -> bool {
         match (self, other) {
-            (&mut ValueSet::Enum { values: ref mut vals0, inputs: ref ins0, .. },
-             ValueSet::Enum { values: ref mut vals1, inputs: ref ins1, .. }) => {
+            (
+                &mut ValueSet::Enum {
+                    values: ref mut vals0,
+                    inputs: ref ins0,
+                    ..
+                },
+                ValueSet::Enum {
+                    values: ref mut vals1,
+                    inputs: ref ins1,
+                    ..
+                },
+            ) => {
                 if ins0.is_empty() && ins1.is_empty() {
-                    *vals0 = vals0.iter().cloned().filter(|v| vals1.contains(v)).collect();
+                    *vals0 = vals0
+                        .iter()
+                        .cloned()
+                        .filter(|v| vals1.contains(v))
+                        .collect();
                     true
-                } else { false }
-            },
+                } else {
+                    false
+                }
+            }
             (s @ &mut ValueSet::Integer { is_full: true, .. }, other) => {
                 *s = other;
                 true
-            },
+            }
             (_, ValueSet::Integer { is_full: true, .. }) => true,
-            (&mut ValueSet::Integer { ref mut cmp_inputs, ref mut cmp_code, .. },
-             ValueSet::Integer { cmp_inputs: ref mut ins1, cmp_code: ref mut code1, .. }) => {
-                 if ins1.is_subset(cmp_inputs) && code1.is_subset(cmp_code) {
-                     std::mem::swap(cmp_inputs, ins1);
-                     std::mem::swap(cmp_code, code1);
-                     true
-                 } else {
-                     cmp_inputs.is_subset(ins1) && cmp_code.is_subset(code1)
-                 }
-             },
-             _ => panic!()
+            (
+                &mut ValueSet::Integer {
+                    ref mut cmp_inputs,
+                    ref mut cmp_code,
+                    ..
+                },
+                ValueSet::Integer {
+                    cmp_inputs: ref mut ins1,
+                    cmp_code: ref mut code1,
+                    ..
+                },
+            ) => {
+                if ins1.is_subset(cmp_inputs) && code1.is_subset(cmp_code) {
+                    std::mem::swap(cmp_inputs, ins1);
+                    std::mem::swap(cmp_code, code1);
+                    true
+                } else {
+                    cmp_inputs.is_subset(ins1) && cmp_code.is_subset(code1)
+                }
+            }
+            _ => panic!(),
         }
     }
 
     /// Instantiates the `ValueSet` for a given input assignment.
-    pub fn instantiate(&self, input_mapping: &HashMap<usize, &ir::ValueSet>,
-                       ir_desc: &ir::IrDesc) -> Self {
+    pub fn instantiate(
+        &self,
+        input_mapping: &HashMap<usize, &ir::ValueSet>,
+        ir_desc: &ir::IrDesc,
+    ) -> Self {
         match *self {
-            ValueSet::Enum { ref enum_name, ref values, ref inputs } => {
+            ValueSet::Enum {
+                ref enum_name,
+                ref values,
+                ref inputs,
+            } => {
                 let mut new_values = values.clone();
                 let enum_ = ir_desc.get_enum(enum_name);
                 let mut new_inputs = BTreeSet::default();
                 for &(input, negate, inverse) in inputs {
                     if let Some(mapping) = input_mapping.get(&input).cloned() {
                         let mut mapping = mapping.clone();
-                        if inverse { mapping.inverse(ir_desc); }
+                        if inverse {
+                            mapping.inverse(ir_desc);
+                        }
                         match mapping {
-                            ValueSet::Enum { ref values, ref inputs, .. } => {
+                            ValueSet::Enum {
+                                ref values,
+                                ref inputs,
+                                ..
+                            } => {
                                 if negate {
-                                    let values = enum_.values().keys()
-                                        .filter(|&v| !values.contains(v)).cloned();
+                                    let values = enum_
+                                        .values()
+                                        .keys()
+                                        .filter(|&v| !values.contains(v))
+                                        .cloned();
                                     new_values.extend(values);
                                 } else {
                                     new_values.extend(values.into_iter().cloned());
@@ -671,7 +907,7 @@ impl ValueSet {
                                 for &(new_input, neg2, inv) in inputs {
                                     new_inputs.insert((new_input, negate ^ neg2, inv));
                                 }
-                            },
+                            }
                             _ => panic!(),
                         }
                     } else {
@@ -683,7 +919,7 @@ impl ValueSet {
                     values: new_values,
                     inputs: new_inputs,
                 }
-            },
+            }
             ValueSet::Integer { .. } => self.clone(), // Cannot be instantiated
         }
     }
@@ -691,12 +927,18 @@ impl ValueSet {
     /// Inverse the `ValueSet`. The choice must be antisymmetric.
     pub fn inverse(&mut self, ir_desc: &ir::IrDesc) {
         match *self {
-            ValueSet::Enum { ref enum_name, ref mut values, ref mut inputs } => {
+            ValueSet::Enum {
+                ref enum_name,
+                ref mut values,
+                ref mut inputs,
+            } => {
                 let enum_ = ir_desc.get_enum(enum_name);
                 *values = values.iter().map(|v| enum_.inverse(&v).clone()).collect();
-                *inputs = inputs.iter().map(|&(id, neg, inverse)| (id, neg, !inverse))
+                *inputs = inputs
+                    .iter()
+                    .map(|&(id, neg, inverse)| (id, neg, !inverse))
                     .collect();
-            },
+            }
             ValueSet::Integer { .. } => panic!(),
         }
     }
@@ -705,8 +947,18 @@ impl ValueSet {
     /// Requires both `self` and `other` to be instantiated.
     pub fn is(&self, other: &ValueSet) -> Trivalent {
         match (self, other) {
-            (&ValueSet::Enum { ref values, ref inputs, .. },
-             &ValueSet::Enum { values: ref values2, inputs: ref inputs2, .. }) => {
+            (
+                &ValueSet::Enum {
+                    ref values,
+                    ref inputs,
+                    ..
+                },
+                &ValueSet::Enum {
+                    values: ref values2,
+                    inputs: ref inputs2,
+                    ..
+                },
+            ) => {
                 assert!(inputs.is_empty() && inputs2.is_empty());
                 if values.is_subset(values2) {
                     Trivalent::True
@@ -715,16 +967,18 @@ impl ValueSet {
                 } else {
                     Trivalent::Maybe
                 }
-            },
-            _ => panic!()
+            }
+            _ => panic!(),
         }
     }
 
     /// Returns the type of the values.
     pub fn t(&self) -> ir::ValueType {
         match *self {
-            ValueSet::Enum { ref enum_name, .. } => ir::ValueType::Enum(enum_name.clone()),
-            ValueSet::Integer { ref universe, ..} => universe.clone(),
+            ValueSet::Enum { ref enum_name, .. } => {
+                ir::ValueType::Enum(enum_name.clone())
+            }
+            ValueSet::Integer { ref universe, .. } => universe.clone(),
         }
     }
 }
@@ -732,32 +986,55 @@ impl ValueSet {
 impl Adaptable for ValueSet {
     fn adapt(&self, adaptator: &ir::Adaptator) -> Self {
         match *self {
-            ValueSet::Enum { ref inputs, ref enum_name, ref values } => {
+            ValueSet::Enum {
+                ref inputs,
+                ref enum_name,
+                ref values,
+            } => {
                 let values = values.clone();
-                let inputs = inputs.iter().cloned().map(|(input, negate, inverse)| {
-                    let (new_input, inversed) = adaptator.input(input);
-                    (new_input, negate, inverse ^ inversed)
-                }).collect();
-                ValueSet::Enum { inputs, enum_name: enum_name.clone(), values }
-            },
-            ValueSet::Integer { ref cmp_inputs, ref cmp_code, is_full, ref universe } => {
-                let cmp_inputs = cmp_inputs.iter().cloned().map(|(op, input)| {
-                    let (new_input, inversed) = adaptator.input(input);
-                    assert!(!inversed);
-                    (op, new_input)
-                }).collect();
-                let cmp_code = cmp_code.iter().map(|(op, code)| {
-                    (*op, code.adapt(adaptator))
-                }).collect();
+                let inputs = inputs
+                    .iter()
+                    .cloned()
+                    .map(|(input, negate, inverse)| {
+                        let (new_input, inversed) = adaptator.input(input);
+                        (new_input, negate, inverse ^ inversed)
+                    })
+                    .collect();
+                ValueSet::Enum {
+                    inputs,
+                    enum_name: enum_name.clone(),
+                    values,
+                }
+            }
+            ValueSet::Integer {
+                ref cmp_inputs,
+                ref cmp_code,
+                is_full,
+                ref universe,
+            } => {
+                let cmp_inputs = cmp_inputs
+                    .iter()
+                    .cloned()
+                    .map(|(op, input)| {
+                        let (new_input, inversed) = adaptator.input(input);
+                        assert!(!inversed);
+                        (op, new_input)
+                    })
+                    .collect();
+                let cmp_code = cmp_code
+                    .iter()
+                    .map(|(op, code)| (*op, code.adapt(adaptator)))
+                    .collect();
                 ValueSet::Integer {
-                    is_full, cmp_inputs, cmp_code,
+                    is_full,
+                    cmp_inputs,
+                    cmp_code,
                     universe: universe.adapt(adaptator),
                 }
-            },
+            }
         }
     }
 }
-
 
 #[cfg(test)]
 pub mod test {
@@ -799,16 +1076,26 @@ pub mod test {
         ir_desc.add_enum(enum_);
         let t = ir::ValueType::Enum(enum_name.clone());
         // Declare reference sets.
-        let a_set = ValueSet::enum_values(enum_name.clone(),
-            std::iter::once(a.clone()).collect());
-        let b_set = ValueSet::enum_values(enum_name.clone(),
-            std::iter::once(b.clone()).collect());
-        let c_set = ValueSet::enum_values(enum_name.clone(),
-            std::iter::once(c.clone()).collect());
-        let ac_set = ValueSet::enum_values(enum_name.clone(),
-            vec![a.clone(), c.clone()].into_iter().collect());
-        let bc_set = ValueSet::enum_values(enum_name.clone(),
-            vec![b.clone(), c.clone()].into_iter().collect());
+        let a_set = ValueSet::enum_values(
+            enum_name.clone(),
+            std::iter::once(a.clone()).collect(),
+        );
+        let b_set = ValueSet::enum_values(
+            enum_name.clone(),
+            std::iter::once(b.clone()).collect(),
+        );
+        let c_set = ValueSet::enum_values(
+            enum_name.clone(),
+            std::iter::once(c.clone()).collect(),
+        );
+        let ac_set = ValueSet::enum_values(
+            enum_name.clone(),
+            vec![a.clone(), c.clone()].into_iter().collect(),
+        );
+        let bc_set = ValueSet::enum_values(
+            enum_name.clone(),
+            vec![b.clone(), c.clone()].into_iter().collect(),
+        );
         let a_mapping = std::iter::once((0, &a_set)).collect();
         let c_mapping = std::iter::once((0, &c_set)).collect();
         // Eq, not inversed.

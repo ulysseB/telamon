@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-use ::libc;
-use ::ir;
+use ir;
+use libc;
 
 use std::fmt;
 use std::path::PathBuf;
@@ -40,13 +40,9 @@ pub struct LexerPosition {
 }
 
 impl LexerPosition {
-
     // Returns a LexerPosition interface from a couple of line/column.
     pub fn new(line: libc::c_uint, column: libc::c_uint) -> Self {
-        LexerPosition {
-            line,
-            column
-        }
+        LexerPosition { line, column }
     }
 }
 
@@ -92,7 +88,11 @@ impl From<LexerPosition> for Position {
 
 impl fmt::Display for Position {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "position: {:?}, filename: {:?}", self.position, self.filename)
+        write!(
+            f,
+            "position: {:?}, filename: {:?}",
+            self.position, self.filename
+        )
     }
 }
 
@@ -133,8 +133,8 @@ pub struct Spanned<Y> {
     pub data: Y,
 }
 
-impl <Y> Spanned<Y> {
-    pub fn with_data<T>(&self, data: T)  -> Spanned<T> {
+impl<Y> Spanned<Y> {
+    pub fn with_data<T>(&self, data: T) -> Spanned<T> {
         Spanned {
             beg: self.beg.to_owned(),
             end: self.end.to_owned(),
@@ -197,12 +197,27 @@ pub enum YyToken {
     EOF = libc::EOF as _,
 }
 
-extern {
+extern "C" {
     pub fn yylex_init(scanner: *const YyScan) -> libc::c_int;
-    pub fn yy_scan_string(yy_str: *const libc::c_char, yyscanner: YyScan) -> YyBufferState;
-    pub fn yy_scan_buffer(base: *const libc::c_char, size: YySize, yyscanner: YyScan) -> YyBufferState;
-    pub fn yy_scan_bytes(base: *const libc::c_char, len: libc::c_int, yyscanner: YyScan) -> YyBufferState;
-    pub fn yy_create_buffer(file: *const libc::FILE, size: libc::c_int, yyscanner: YyScan) -> YyBufferState;
+    pub fn yy_scan_string(
+        yy_str: *const libc::c_char,
+        yyscanner: YyScan,
+    ) -> YyBufferState;
+    pub fn yy_scan_buffer(
+        base: *const libc::c_char,
+        size: YySize,
+        yyscanner: YyScan,
+    ) -> YyBufferState;
+    pub fn yy_scan_bytes(
+        base: *const libc::c_char,
+        len: libc::c_int,
+        yyscanner: YyScan,
+    ) -> YyBufferState;
+    pub fn yy_create_buffer(
+        file: *const libc::FILE,
+        size: libc::c_int,
+        yyscanner: YyScan,
+    ) -> YyBufferState;
     pub fn yypush_buffer_state(buffer: YyBufferState, yyscanner: YyScan) -> libc::c_void;
     pub fn yypop_buffer_state(yyscanner: YyScan) -> libc::c_void;
     pub fn yyget_extra(yyscanner: YyScan) -> YyExtraType;
