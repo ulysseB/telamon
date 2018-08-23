@@ -178,11 +178,11 @@ where
     }
 
     /// Creates a `VirtualTensor` that contains the values of `self`, loaded in registers.
-    pub fn load(
+    pub fn load<'b>(
         &self,
         tiling: &[&[u32]],
-        builder: &mut Builder<'a>,
-    ) -> VirtualTensor<'a> {
+        builder: &mut Builder<'b>,
+    ) -> VirtualTensor<'b> {
         let mut dims = Vec::new();
         let mut induction_levels = Vec::new();
         for (&(ref size, ref stride), tiling) in self.iter_dims.iter().zip_eq(tiling) {

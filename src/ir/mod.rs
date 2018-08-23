@@ -13,7 +13,6 @@ mod size;
 mod types;
 
 // FIXME:
-// - replace dim groups in helper
 // - expose logical dimensions in choices.exh
 // - limit the tilings of logical dims
 
