@@ -13,11 +13,11 @@ mod size;
 mod types;
 
 // FIXME:
-// - logical dims creation
 // - replace dim groups in helper
 // - expose logical dimensions in choices.exh
 // - limit the tilings of logical dims
 
+use std;
 use std::marker::PhantomData;
 
 pub use self::access_pattern::{AccessPattern, Stride};
@@ -171,14 +171,19 @@ where
 
     /// Append an element to the back of the collection.
     pub fn push(&mut self, value: T) {
+        self.make_holes();
+        assert!(self.vec.len() == self.capacity);
+        self.capacity += 1;
+        self.vec.push(Some(value))
+    }
+
+    /// Add holes and the end of the underlying vector so that
+    /// `self.vec.len() == self.capacity`.
+    fn make_holes(&mut self) {
         if self.vec.len() < self.capacity {
             let extra = (self.vec.len()..=self.capacity).map(|_| None);
             self.vec.extend(extra);
         }
-        assert!(self.vec.len() == self.capacity);
-
-        self.capacity += 1;
-        self.vec.push(Some(value))
     }
 
     /// Increase the possible size of the vector by adding holes at
@@ -257,6 +262,18 @@ where
 {
     fn index_mut(&mut self, index: I) -> &mut T {
         unwrap!(self.vec[index.into()].as_mut())
+    }
+}
+
+impl<I, T> std::iter::Extend<T> for SparseVec<I, T>
+where
+    I: Into<usize>
+{
+    fn extend<ITER: IntoIterator<Item=T>>(&mut self, iter: ITER) {
+        self.make_holes();
+        assert!(self.vec.len() == self.capacity);
+        self.vec.extend(iter.into_iter().map(Some));
+        self.capacity = self.vec.len();
     }
 }
 
