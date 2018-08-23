@@ -88,11 +88,11 @@ impl From<LexerPosition> for Position {
 
 impl fmt::Display for Position {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "position: {:?}, filename: {:?}",
-            self.position, self.filename
-        )
+        if let Some(ref filename) = self.filename {
+            write!(f, "{} -> {}", self.position, filename)
+        } else {
+            write!(f, "{}", self.position)
+        }
     }
 }
 
@@ -126,20 +126,26 @@ pub struct LexerSpanned<Y> {
 pub type YyExtraType = LexerSpanned<YyLval>;
 
 #[derive(Default, Clone, PartialEq, Debug)]
-pub struct Spanned<Y> {
+pub struct Spanned<Y> where Y: fmt::Debug {
     pub beg: Position,
     pub end: Position,
     /// Spanned data
     pub data: Y,
 }
 
-impl<Y> Spanned<Y> {
-    pub fn with_data<T>(&self, data: T) -> Spanned<T> {
+impl<Y> Spanned<Y> where Y: fmt::Debug {
+    pub fn with_data<T>(&self, data: T) -> Spanned<T> where T: fmt::Debug {
         Spanned {
             beg: self.beg.to_owned(),
             end: self.end.to_owned(),
             data,
         }
+    }
+}
+
+impl <Y> fmt::Display for Spanned<Y>  where Y: fmt::Debug {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "between {} and {} -> {:?}", self.beg, self.end, self.data)
     }
 }
 

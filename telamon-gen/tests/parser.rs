@@ -34,7 +34,7 @@ fn invalid_token() {
                                error::ProcessError::from(
                                    (Path::new("exh").display(), c)))
                           .err().unwrap()),
-               "invalid token !, between line 0, column 0 and line 0, column 1 -> exh");
+               "invalid token \"!\", between line 0, column 0 and line 0, column 1 -> exh");
 	}
 
 #[test]

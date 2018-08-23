@@ -37,7 +37,7 @@ type YyIn = *mut libc::FILE;
 
 #[derive(Debug, Fail, Clone, PartialEq)]
 pub enum ErrorKind {
-     #[fail(display = "invalid token {}", token)]
+     #[fail(display = "invalid token \"{}\"", token)]
      InvalidToken { token: String },
      #[fail(display = "invalid include header {}", name)]
      InvalidInclude { name: String, code: Errno },
@@ -45,15 +45,13 @@ pub enum ErrorKind {
 
 #[derive(Debug, Fail, Clone, PartialEq)]
 pub struct LexicalError {
-     #[fail(display = "cause {:?}", cause)]
+     #[fail(display = "cause {}", cause)]
      pub cause: Spanned<ErrorKind>
 }
 
 impl fmt::Display for LexicalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "found '{:?}' between {}:{}",
-            self.cause.data, self.cause.beg, self.cause.end
-        )
+        write!(f, "{}", self.cause.data)
     }
 }
 
