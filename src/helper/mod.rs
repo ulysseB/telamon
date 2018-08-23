@@ -15,70 +15,96 @@ use std;
 /// A logical dimension, possible composed of multiple nested dimensions.
 pub trait MetaDimension {
     /// Returns the ids of the underlying dimensions.
-    fn ids<'a>(&'a self) -> Box<DoubleEndedIterator<Item = ir::DimId> + 'a>;
+    fn ids(&self) -> Box<DoubleEndedIterator<Item = ir::DimId> + '_>;
 }
 
 impl MetaDimension for ir::DimId {
-    fn ids<'a>(&'a self) -> Box<DoubleEndedIterator<Item = ir::DimId> + 'a> {
+    fn ids(&self) -> Box<DoubleEndedIterator<Item = ir::DimId> + '_> {
         Box::new(std::iter::once(*self))
     }
 }
 
-/// A groups of dimensions that act as a single logical dimension.
-#[derive(Clone, Default)]
-pub struct DimGroup {
-    dims: Vec<ir::DimId>,
+impl<T> MetaDimension for T
+where
+    T: std::borrow::Borrow<[ir::DimId]>,
+{
+    fn ids(&self) -> Box<DoubleEndedIterator<Item = ir::DimId> + '_> {
+        Box::new(self.borrow().iter().cloned())
+    }
 }
 
-impl DimGroup {
-    /// Creates a dimension group containing the given dimensions.
-    pub fn new(dims: Vec<ir::DimId>) -> Self {
-        DimGroup { dims }
-    }
+/// A groups of dimensions that act as a single logical dimension.
+#[derive(Clone)]
+pub enum LogicalDim<'a> {
+    /// A single concrete dimension.
+    Simple(ir::DimId),
+    /// Multiple dimensions forming a single logical once.
+    Composite {
+        id: ir::LogicalDimId,
+        dims: Vec<ir::DimId>,
+        size: ir::Size<'a>,
+        tiling_factors: Vec<u32>,
+        // TODO(strip-minig): remove this parameter once we enable unconstrained tile sizes.
+        tile_sizes: Vec<u32>,
+    },
+}
 
-    /// Iterates over the sub-dimensions of the group.
-    pub fn iter(&self) -> std::iter::Cloned<std::slice::Iter<ir::DimId>> {
+impl<'b> LogicalDim<'b> {
+    pub fn iter(&self) -> Box<DoubleEndedIterator<Item = ir::DimId> + '_> {
         self.into_iter()
     }
 }
 
-impl MetaDimension for DimGroup {
-    fn ids<'a>(&'a self) -> Box<DoubleEndedIterator<Item = ir::DimId> + 'a> {
-        Box::new(self.dims.iter().cloned())
+impl From<ir::DimId> for LogicalDim<'static> {
+    fn from(id: ir::DimId) -> Self {
+        LogicalDim::Simple(id)
     }
 }
 
-impl std::ops::Index<usize> for DimGroup {
+impl<'b> MetaDimension for LogicalDim<'b> {
+    fn ids(&self) -> Box<DoubleEndedIterator<Item = ir::DimId> + '_> {
+        self.into_iter()
+    }
+}
+
+impl<'a> std::ops::Index<usize> for LogicalDim<'a> {
     type Output = ir::DimId;
 
     fn index(&self, index: usize) -> &ir::DimId {
-        &self.dims[index]
+        match self {
+            LogicalDim::Simple(id) if index == 0 => id,
+            LogicalDim::Simple(_) => panic!("out of bounds index {}", index),
+            LogicalDim::Composite { dims, .. } => &dims[index],
+        }
     }
 }
 
-impl<'a> IntoIterator for &'a DimGroup {
+impl<'a> IntoIterator for &'a LogicalDim<'a> {
     type Item = ir::DimId;
-    type IntoIter = std::iter::Cloned<std::slice::Iter<'a, ir::DimId>>;
+    type IntoIter = Box<DoubleEndedIterator<Item = ir::DimId> + 'a>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.dims.iter().cloned()
+        match self {
+            LogicalDim::Simple(dim) => Box::new(std::iter::once(*dim)),
+            LogicalDim::Composite { dims, .. } => Box::new(dims.iter().cloned()),
+        }
     }
 }
 
 /// A logical basic block, that can actually be implemented by multiple ones.
 pub trait MetaBasicBlock {
     /// Returns the ids on the underlying basic blocks.
-    fn ids<'a>(&'a self) -> Box<Iterator<Item = ir::BBId> + 'a>;
+    fn ids(&self) -> Box<Iterator<Item = ir::BBId> + '_>;
 }
 
 impl MetaBasicBlock for ir::BBId {
-    fn ids<'a>(&'a self) -> Box<Iterator<Item = ir::BBId> + 'a> {
+    fn ids(&self) -> Box<Iterator<Item = ir::BBId> + '_> {
         Box::new(std::iter::once(*self))
     }
 }
 
 impl MetaBasicBlock for ir::InstId {
-    fn ids<'a>(&'a self) -> Box<Iterator<Item = ir::BBId> + 'a> {
+    fn ids(&self) -> Box<Iterator<Item = ir::BBId> + '_> {
         Box::new(std::iter::once((*self).into()))
     }
 }
@@ -87,7 +113,7 @@ impl<T> MetaBasicBlock for T
 where
     T: MetaDimension,
 {
-    fn ids<'a>(&'a self) -> Box<Iterator<Item = ir::BBId> + 'a> {
+    fn ids(&self) -> Box<Iterator<Item = ir::BBId> + '_> {
         Box::new(MetaDimension::ids(self).map(|x| x.into()))
     }
 }

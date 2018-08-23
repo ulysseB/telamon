@@ -23,7 +23,7 @@ use std::marker::PhantomData;
 pub use self::access_pattern::{AccessPattern, Stride};
 pub use self::basic_block::{BBId, BasicBlock};
 pub use self::dim_map::DimMap;
-pub use self::dimension::{DimId, Dimension, LogicalDim, LogicalId};
+pub use self::dimension::{DimId, Dimension, LogicalDim, LogicalDimId};
 pub use self::error::{Error, TypeError};
 pub use self::function::{Function, Parameter, Signature};
 pub use self::induction_var::{IndVarId, InductionVar};

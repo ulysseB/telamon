@@ -114,12 +114,12 @@ impl<'a> BasicBlock<'a> for Dimension<'a> {
 
 /// Provides a unique identifier for logic dimensions.
 #[derive(Clone, Copy, Debug)]
-pub struct LogicalId(pub u32);
+pub struct LogicalDimId(pub u32);
 
 /// A logic dimension composed of multiple `Dimension`s.
 #[derive(Clone, Debug)]
 pub struct LogicalDim {
-    id: LogicalId,
+    id: LogicalDimId,
     static_dims: Vec<DimId>,
     nonstatic_dim: Option<DimId>,
     possible_tilings: Vec<u32>,
@@ -127,7 +127,11 @@ pub struct LogicalDim {
 
 impl LogicalDim {
     /// Creates a new logical dimension, composed only of static dimensions.
-    pub fn new_static(id: LogicalId, static_dims: Vec<DimId>, total_size: u32) -> Self {
+    pub fn new_static(
+        id: LogicalDimId,
+        static_dims: Vec<DimId>,
+        total_size: u32,
+    ) -> Self {
         LogicalDim {
             id,
             static_dims,
@@ -139,7 +143,7 @@ impl LogicalDim {
     /// Creates a new logical dimension, composed of static dimensions and one
     /// dynamically-sized dimension.
     pub fn new_dynamic(
-        id: LogicalId,
+        id: LogicalDimId,
         dynamic_dim: DimId,
         static_dims: Vec<DimId>,
         possible_tilings: Vec<u32>,
@@ -153,7 +157,7 @@ impl LogicalDim {
     }
 
     /// Returns a unique identifier for the logic dimension.
-    pub fn id(&self) -> LogicalId {
+    pub fn id(&self) -> LogicalDimId {
         self.id
     }
 

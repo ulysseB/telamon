@@ -175,7 +175,7 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Retrives a logical dimension given its ID.
-    pub fn logical_dim(&self, id: ir::LogicalId) -> &ir::LogicalDim {
+    pub fn logical_dim(&self, id: ir::LogicalDimId) -> &ir::LogicalDim {
         &self.logical_dims[id.0 as usize]
     }
 
@@ -364,9 +364,9 @@ impl<'a> Function<'a, ()> {
         size: ir::Size<'a>,
         tiling_factors: Vec<u32>,
         tile_sizes: &[u32],
-    ) -> Result<(ir::LogicalId, Vec<ir::DimId>), ir::Error> {
+    ) -> Result<(ir::LogicalDimId, Vec<ir::DimId>), ir::Error> {
         // TODO(strip-mining): allow all tiling factors at all levels
-        let logical_id = ir::LogicalId(self.logical_dims.len() as u32);
+        let logical_id = ir::LogicalDimId(self.logical_dims.len() as u32);
         let dim_ids = (0..tile_sizes.len() + 1)
             .map(|id| ir::DimId((id + self.dims.len()) as u32))
             .collect_vec();
