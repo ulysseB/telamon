@@ -267,9 +267,9 @@ where
 
 impl<I, T> std::iter::Extend<T> for SparseVec<I, T>
 where
-    I: Into<usize>
+    I: Into<usize>,
 {
-    fn extend<ITER: IntoIterator<Item=T>>(&mut self, iter: ITER) {
+    fn extend<ITER: IntoIterator<Item = T>>(&mut self, iter: ITER) {
         self.make_holes();
         assert!(self.vec.len() == self.capacity);
         self.vec.extend(iter.into_iter().map(Some));

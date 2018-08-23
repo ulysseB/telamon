@@ -375,7 +375,7 @@ impl<'a> Function<'a, ()> {
         let mut dims = Vec::new();
         let tiling_factor = tiling_factors.iter().product();
         let logical_dim = if let Some(size) = size.as_int() {
-            let tiled_size = ir::Size::new(size/tiling_factor, vec![], 1);
+            let tiled_size = ir::Size::new(size / tiling_factor, vec![], 1);
             dims.push(Dimension::new(tiled_size, dim_ids[0])?);
             ir::LogicalDim::new_static(logical_id, dim_ids.clone(), size)
         } else {

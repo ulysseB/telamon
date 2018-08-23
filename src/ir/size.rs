@@ -79,7 +79,8 @@ impl<'a> Size<'a> {
     /// Indicates if two sizes may be equal, meaning they are equal appart from the
     /// decisions they depend on.
     pub fn is_compatible_with(&self, other: &ir::Size) -> bool {
-        self.factor == other.factor && self.divisor == other.divisor
+        self.factor == other.factor
+            && self.divisor == other.divisor
             && self.dividend == other.dividend
     }
 }
