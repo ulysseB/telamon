@@ -1205,13 +1205,13 @@ fn lexer_include() {
     );
 
     // Header include.
-    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/include_foo.exh");
+    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/extra/include_foo.exh");
     let include = format!("include \"{}\"", filename);
 
     assert_eq!(Lexer::new(include.as_bytes().to_vec()).count(), 9);
 
     // Two same header include.
-    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/enum_foo.exh");
+    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/extra/enum_foo.exh");
     let include = format!("include \"{}\"", filename);
 
     assert_eq!(Lexer::new(include.as_bytes().to_vec()).count(), 7);
@@ -1219,7 +1219,7 @@ fn lexer_include() {
 
     // Sub header include.
     let filename: &str =
-        concat!(env!("CARGO_MANIFEST_DIR"), "/tests/sub/include_foo.exh");
+        concat!(env!("CARGO_MANIFEST_DIR"), "/tests/extra/sub/include_foo.exh");
     let include = format!("include \"{}\"", filename);
 
     assert_eq!(Lexer::new(include.as_bytes().to_vec()).count(), 7);
@@ -1228,7 +1228,7 @@ fn lexer_include() {
 #[test]
 fn lexer_include_extra() {
     // Header include.
-    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/foo_bar.exh");
+    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/extra/foo_bar.exh");
     let include = format!("include \"{}\"", filename);
 
     assert_eq!(
@@ -1265,7 +1265,7 @@ fn lexer_include_extra() {
 #[ignore]
 fn lexer_include_guard() {
     // double header include.
-    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/include_a.exh");
+    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/extra/include_a.exh");
     let include = format!("include \"{}\"", filename);
 
     let _ = Lexer::new(include.as_bytes().to_vec()).collect::<Vec<_>>();
