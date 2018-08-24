@@ -3,6 +3,8 @@ extern crate env_logger;
 extern crate libc;
 extern crate telamon;
 extern crate telamon_utils as utils;
+#[macro_use]
+extern crate log;
 
 mod common;
 
@@ -309,7 +311,7 @@ fn loop_fusion() {
     let mut builder = helper::Builder::new(&signature, context.device());
     let d0 = builder.open_dim_ex(Size::new(4, vec![], 1), DimKind::LOOP);
     let inst0 = builder.mov(&0i32);
-    let d1 = builder.open_mapped_dim(&d0)[0];
+    let d1 = builder.open_mapped_dim(&d0.into())[0];
     builder.mov(&inst0);
     builder.order(&d0, &d1, Order::MERGED);
     // Ensure no temporary memory has been generated.
@@ -327,7 +329,7 @@ fn unrolled_loop_unfused_simple() {
     let mut builder = helper::Builder::new(&signature, context.device());
     let d0 = builder.open_dim_ex(Size::new(4, vec![], 1), DimKind::UNROLL);
     let inst0 = builder.mov(&0i32);
-    let d1 = builder.open_mapped_dim(&d0)[0];
+    let d1 = builder.open_mapped_dim(&d0.into())[0];
     builder.mov(&inst0);
     builder.order(&d0, &d1, !Order::MERGED);
     // Ensure no temporary memory has been generated.
@@ -345,7 +347,7 @@ fn temporary_memory_gen_simple() {
     let mut builder = helper::Builder::new(&signature, context.device());
     let d0 = builder.open_dim_ex(Size::new(4, vec![], 1), DimKind::LOOP);
     let inst0 = builder.mov(&0i32);
-    let d1 = builder.open_mapped_dim(&d0)[0];
+    let d1 = builder.open_mapped_dim(&d0.into())[0];
     builder.mov(&helper::TmpArray(inst0));
     builder.order(&d0, &d1, !Order::MERGED);
     // Ensure load and store instruction have been generated.
@@ -363,7 +365,7 @@ fn unrolled_loop_unfused_reduction() {
     let mut builder = helper::Builder::new(&signature, context.device());
     let d0 = builder.open_dim_ex(ir::Size::new(4, vec![], 1), DimKind::UNROLL);
     let inst0 = builder.mov(&0i32);
-    builder.open_mapped_dim(&d0);
+    builder.open_mapped_dim(&d0.into());
     let d1 = builder.open_dim_ex(ir::Size::new(1024, vec![], 1), DimKind::LOOP);
     builder.mov(&helper::Reduce(inst0));
 
@@ -385,8 +387,8 @@ fn two_thread_dim_map() {
     let dim0_1 = builder.open_dim_ex(ir::Size::new(32, vec![], 1), DimKind::THREAD);
     let x = builder.mov(&0i32);
     // Transpose twice the variable using temporary memory.
-    let dim1_0 = builder.open_mapped_dim(&dim0_1);
-    let dim1_1 = builder.open_mapped_dim(&dim0_0);
+    let dim1_0 = builder.open_mapped_dim(&dim0_1.into());
+    let dim1_1 = builder.open_mapped_dim(&dim0_0.into());
     builder.mov(&helper::TmpArray(x));
     // Set the nesting order.
     builder.order(&dim0_0, &dim0_1, Order::OUTER);
@@ -408,9 +410,9 @@ fn double_dim_map() {
     let dim0_2 = builder.open_dim_ex(ir::Size::new(4, vec![], 1), DimKind::UNROLL);
     let x = builder.mov(&0i32);
     // Transpose and add a and b. Store the result in a.
-    let dim1_0 = builder.open_mapped_dim(&dim0_1);
-    let dim1_1 = builder.open_mapped_dim(&dim0_0);
-    let dim1_2 = builder.open_mapped_dim(&dim0_2);
+    let dim1_0 = builder.open_mapped_dim(&dim0_1.into());
+    let dim1_1 = builder.open_mapped_dim(&dim0_0.into());
+    let dim1_2 = builder.open_mapped_dim(&dim0_2.into());
     builder.mov(&x);
     builder.mov(&x);
     // Fix the nesting order.

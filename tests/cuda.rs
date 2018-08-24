@@ -4,13 +4,15 @@ extern crate itertools;
 extern crate libc;
 extern crate telamon;
 extern crate telamon_utils as utils;
+#[macro_use]
+extern crate log;
 
 mod common;
 
 use common::*;
 use itertools::Itertools;
 use telamon::device::{cuda, read_array, write_array, Context};
-use telamon::search_space::{Action, DimKind, InstFlag, Order};
+use telamon::search_space::*;
 use telamon::{helper, ir};
 
 /// Tests the printing of unrolled dimensions.
@@ -101,7 +103,7 @@ fn thread_reduction_map() {
     let size_32 = builder.cst_size(32);
     let d0 = builder.open_dim_ex(size_32, DimKind::THREAD);
     let init = builder.mov(&0f32);
-    builder.open_mapped_dim(&d0);
+    builder.open_mapped_dim(&d0.into());
     let cst_size_2 = builder.cst_size(2);
     builder.open_dim_ex(cst_size_2, DimKind::LOOP);
     builder.add(&helper::Reduce(init), &1f32);
@@ -369,83 +371,6 @@ fn dim_map_reduce_0() {
 
     check_candidates(builder.get(), &context, || ());
 }
-
-/*
-#[test]
-fn model_dim_map_0() {
-    let _ = env_logger::try_init();
-    let executor = cuda::Executor::init();
-    let context = cuda::Context::new(&executor);
-    let signature = empty_signature(0);
-    let mut builder = helper::Builder::new(&signature, context.device());
-    let size4 = builder.cst_size(4);
-
-    let d0 = builder.open_dim_ex(size4.clone(), DimKind::UNROLL);
-        let a = builder.mul(&1f32, &2f32);
-
-    let d1 = builder.open_dim_ex(size4.clone(), DimKind::UNROLL);
-    let d2 = builder.open_mapped_dims(&[d0])[0];
-        let _ = builder.mul(&a, &2f32);
-
-
-    builder.order(d0.into(), d2.into(), Order::BEFORE);
-    builder.order(d1.into(), d2.into(), Order::OUTER);
-
-    explorer::test_model(&context, builder.get());
-}
-
-
-#[test]
-fn model_dim_map_1() {
-    let _ = env_logger::try_init();
-    let executor = cuda::Executor::init();
-    let context = cuda::Context::new(&executor);
-    let signature = empty_signature(0);
-    let mut builder = helper::Builder::new(&signature, context.device());
-    let size4 = builder.cst_size(4);
-
-    let _d0 = builder.open_dim_ex(size4.clone(), DimKind::LOOP);
-    let _d1 = builder.open_dim_ex(size4.clone(), DimKind::LOOP);
-    let d2 = builder.open_dim(size4.clone());
-        let a = builder.mul(&1f32, &2f32);
-
-    let _d3 = builder.open_dim_ex(size4.clone(), DimKind::THREAD_X);
-    let d4 = builder.open_mapped_dims(&[d2])[0];
-        let _ = builder.mul(&a, &2f32);
-
-    builder.action(Action::DimKind(d4, DimKind::UNROLL));
-    explorer::test_model(&context, builder.get());
-}
-
-#[test]
-fn model_size_one() {
-    let _ = env_logger::try_init();
-    let executor = cuda::Executor::init();
-    let mut context = cuda::Context::new(&executor);
-    let a;
-    let ref signature = {
-        let mut builder = helper::SignatureBuilder::new("sgemm", &mut context);
-        a = builder.array("a", 4*1024*1024 as usize);
-        builder.get()
-    };
-
-    let mut builder = helper::Builder::new(&signature, context.device());
-    let size_8 = builder.cst_size(8);
-    let size_1 = builder.cst_size(1);
-
-    let d0 = builder.open_dim_ex(size_8.clone(), DimKind::UNROLL);
-        let acc_init = builder.mov(&0f32);
-    let d1 = builder.open_dim_ex(size_1.clone(), DimKind::UNROLL);
-        let a_pattern = builder.unknown_access_pattern(a);
-        let a_ld = builder.ld_nc(ir::Type::F(32), &"a", a_pattern);
-    let d2 = builder.open_mapped_dims(&[d1])[0];
-        let (addr, pattern) = builder.tensor_access(&"a", a, &ir::Type::F(32), vec![d0, d2]);
-        builder.st(&addr, &a_ld, pattern);
-
-    builder.action(Action::InstFlag(a_ld, InstFlag::MEM_CG | InstFlag::MEM_NC));
-
-    explorer::test_model(&context, builder.get());
-}*/
 
 #[test]
 fn dim_map_active() {
