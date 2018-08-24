@@ -4,12 +4,12 @@
 mod ffi;
 mod token;
 
-use std::{io, ptr, fs, path};
-use std::fmt;
-use std::path::{PathBuf, Path};
 use std::ffi::{CStr, CString};
+use std::fmt;
+use std::path::{Path, PathBuf};
+use std::{fs, io, path, ptr};
 
-use ::errno::Errno;
+use errno::Errno;
 
 pub use self::ffi::Spanned;
 pub use self::token::Token;
@@ -37,16 +37,16 @@ type YyIn = *mut libc::FILE;
 
 #[derive(Debug, Fail, Clone, PartialEq)]
 pub enum ErrorKind {
-     #[fail(display = "Invalid token \"{}\"", token)]
-     InvalidToken { token: String },
-     #[fail(display = "Invalid include header {}", name)]
-     InvalidInclude { name: String, code: Errno },
+    #[fail(display = "Invalid token \"{}\"", token)]
+    InvalidToken { token: String },
+    #[fail(display = "Invalid include header {}", name)]
+    InvalidInclude { name: String, code: Errno },
 }
 
 #[derive(Debug, Fail, Clone, PartialEq)]
 pub struct LexicalError {
-     #[fail(display = "cause {}", cause)]
-     pub cause: Spanned<ErrorKind>
+    #[fail(display = "cause {}", cause)]
+    pub cause: Spanned<ErrorKind>,
 }
 
 impl fmt::Display for LexicalError {
@@ -132,16 +132,18 @@ impl Lexer {
                     return Some(Ok((
                         Position::new_optional(extra.beg, self.filename.to_owned()),
                         Token::Code(buffer),
-                        Position::new_optional(acc_end, self.filename.to_owned())
-                    )))
-                },
+                        Position::new_optional(acc_end, self.filename.to_owned()),
+                    )));
+                }
             }
         }
     }
 
     /// Links the new include buffer, Returns the first token from this include.
     fn include_open(
-        &mut self, extra: YyExtraType, filename: CString
+        &mut self,
+        extra: YyExtraType,
+        filename: CString,
     ) -> Option<LexerItem> {
         unsafe {
             // [Multiple Input Buffers](http://westes.github.io/flex/manual/Multiple-Input-Buffers.html#Multiple-Input-Buffers)
@@ -157,18 +159,23 @@ impl Lexer {
                     Some(Err(LexicalError {
                         cause: Spanned {
                             beg: Position::new_optional(
-                                     extra.beg, self.filename.to_owned()),
+                                extra.beg,
+                                self.filename.to_owned(),
+                            ),
                             end: Position::new_optional(
-                                extra.end, self.filename.to_owned()),
+                                extra.end,
+                                self.filename.to_owned(),
+                            ),
                             data: ErrorKind::InvalidInclude {
-                                name: filename.into_string().unwrap(), code: why
+                                name: filename.into_string().unwrap(),
+                                code: why,
                             },
-                        }
+                        },
                     }))
-                },
+                }
                 yyin => {
-                    let buffer: YyBufferState = yy_create_buffer(
-                        yyin, YY_BUF_SIZE, self.scanner);
+                    let buffer: YyBufferState =
+                        yy_create_buffer(yyin, YY_BUF_SIZE, self.scanner);
 
                     yypush_buffer_state(buffer, self.scanner);
                     self.include = Some(Box::new(Lexer {
@@ -235,20 +242,24 @@ impl Iterator for Lexer {
                         YyToken::InvalidToken => {
                             let out = yyget_text(self.scanner);
 
-                            CStr::from_ptr(out)
-                                 .to_str().ok()
-                                 .and_then(|s: &str| Some(Err(LexicalError {
-                                     cause: Spanned {
-                                         beg: Position::new_optional(
-                                             extra.beg, self.filename.to_owned()),
-                                         end: Position::new_optional(
-                                             extra.end, self.filename.to_owned()),
-                                         data: ErrorKind::InvalidToken {
-                                             token: s.to_owned()
-                                         },
-                                     }
-                                 })))
-                        },
+                            CStr::from_ptr(out).to_str().ok().and_then(|s: &str| {
+                                Some(Err(LexicalError {
+                                    cause: Spanned {
+                                        beg: Position::new_optional(
+                                            extra.beg,
+                                            self.filename.to_owned(),
+                                        ),
+                                        end: Position::new_optional(
+                                            extra.end,
+                                            self.filename.to_owned(),
+                                        ),
+                                        data: ErrorKind::InvalidToken {
+                                            token: s.to_owned(),
+                                        },
+                                    },
+                                }))
+                            })
+                        }
                         YyToken::Include => {
                             let out = yyget_text(self.scanner);
 

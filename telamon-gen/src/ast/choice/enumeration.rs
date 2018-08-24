@@ -158,14 +158,16 @@ impl EnumDef {
         {
             if self.variables.len() != 2 {
                 Err(TypeError::BadSymmetricArg {
-                        object_name: self.name.to_owned(),
-                        object_variables:
-                            self.variables.iter()
-                                .map(|variable: &VarDef| {
+                    object_name: self.name.to_owned(),
+                    object_variables: self
+                        .variables
+                        .iter()
+                        .map(|variable: &VarDef| {
                             let set_name: &String = variable.set.name.deref();
 
                             (variable.name.to_owned().into(), set_name.to_owned())
-                        }).collect::<Vec<(Spanned<String>, String)>>()
+                        })
+                        .collect::<Vec<(Spanned<String>, String)>>(),
                 })?;
             }
         }
@@ -191,11 +193,15 @@ impl EnumDef {
                     if name != rhs_name {
                         Err(TypeError::BadSymmetricArg {
                             object_name: self.name.to_owned(),
-                            object_variables: self.variables.iter().map(|variable| {
-                                let set_name: &String = variable.set.name.deref();
-    
-                                (variable.name.to_owned().into(), set_name.to_owned())
-                            }).collect::<Vec<(Spanned<String>, String)>>()
+                            object_variables: self
+                                .variables
+                                .iter()
+                                .map(|variable| {
+                                    let set_name: &String = variable.set.name.deref();
+
+                                    (variable.name.to_owned().into(), set_name.to_owned())
+                                })
+                                .collect::<Vec<(Spanned<String>, String)>>(),
                         })?;
                     }
                 }

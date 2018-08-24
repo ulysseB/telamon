@@ -3,10 +3,10 @@ use ir;
 use libc;
 
 use std::fmt;
-use std::path::PathBuf;
 use std::ops::Deref;
+use std::path::PathBuf;
 
-use ::utils::RcStr;
+use utils::RcStr;
 
 /// A [yyscan](https://westes.github.io/flex/manual/About-yyscan_005ft.html) type is the internal
 /// representation of a [yylex_init](https://westes.github.io/flex/manual/Init-and-Destroy-Functions.html) structure.
@@ -129,15 +129,24 @@ pub struct LexerSpanned<Y> {
 pub type YyExtraType = LexerSpanned<YyLval>;
 
 #[derive(Default, Clone, PartialEq, Debug)]
-pub struct Spanned<Y> where Y: fmt::Debug {
+pub struct Spanned<Y>
+where
+    Y: fmt::Debug,
+{
     pub beg: Position,
     pub end: Position,
     /// Spanned data
     pub data: Y,
 }
 
-impl<Y> Spanned<Y> where Y: fmt::Debug {
-    pub fn with_data<T>(&self, data: T) -> Spanned<T> where T: fmt::Debug {
+impl<Y> Spanned<Y>
+where
+    Y: fmt::Debug,
+{
+    pub fn with_data<T>(&self, data: T) -> Spanned<T>
+    where
+        T: fmt::Debug,
+    {
         Spanned {
             beg: self.beg.to_owned(),
             end: self.end.to_owned(),
@@ -146,9 +155,16 @@ impl<Y> Spanned<Y> where Y: fmt::Debug {
     }
 }
 
-impl <Y> fmt::Display for Spanned<Y>  where Y: fmt::Debug {
+impl<Y> fmt::Display for Spanned<Y>
+where
+    Y: fmt::Debug,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "between {} and {} -> {:?}", self.beg, self.end, self.data)
+        write!(
+            f,
+            "between {} and {} -> {:?}",
+            self.beg, self.end, self.data
+        )
     }
 }
 

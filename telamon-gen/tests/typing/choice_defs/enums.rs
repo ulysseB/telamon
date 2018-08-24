@@ -455,14 +455,12 @@ mod parameter {
                     },
                     object_variables: vec![(
                         Spanned {
-                            beg: Position::new_optional(LexerPosition::new(9, 34),
-                                None),
-                            end: Position::new_optional(LexerPosition::new(9, 38),
-                                None),
-                            data: String::from("lhs")
+                            beg: Position::new_optional(LexerPosition::new(9, 34), None),
+                            end: Position::new_optional(LexerPosition::new(9, 38), None),
+                            data: String::from("lhs"),
                         },
                         String::from("BasicBlock"),
-                    )]
+                    )],
                 })
             );
         }
@@ -509,26 +507,34 @@ mod parameter {
                     object_variables: vec![
                         (
                             Spanned {
-                                beg: Position::new_optional(LexerPosition::new(18, 34),
-                                    None),
-                                end: Position::new_optional(LexerPosition::new(18, 38),
-                                    None),
-                                data: String::from("lhs")
+                                beg: Position::new_optional(
+                                    LexerPosition::new(18, 34),
+                                    None,
+                                ),
+                                end: Position::new_optional(
+                                    LexerPosition::new(18, 38),
+                                    None,
+                                ),
+                                data: String::from("lhs"),
                             },
                             String::from("BasicBlock"),
                         ),
                         (
                             Spanned {
-                                beg: Position::new_optional(LexerPosition::new(18, 54),
-                                    None),
-                                end: Position::new_optional(LexerPosition::new(18, 58),
-                                    None),
-                                data: String::from("rhs")
+                                beg: Position::new_optional(
+                                    LexerPosition::new(18, 54),
+                                    None,
+                                ),
+                                end: Position::new_optional(
+                                    LexerPosition::new(18, 58),
+                                    None,
+                                ),
+                                data: String::from("rhs"),
                             },
                             String::from("BasicBlock2"),
-                        )
-                    ]
-			})
+                        ),
+                    ],
+                })
             );
         }
     }
@@ -588,14 +594,12 @@ mod parameter {
                     },
                     object_variables: vec![(
                         Spanned {
-                            beg: Position::new_optional(LexerPosition::new(9, 34),
-                                None),
-                            end: Position::new_optional(LexerPosition::new(9, 38),
-                                None),
-                            data: String::from("lhs")
+                            beg: Position::new_optional(LexerPosition::new(9, 34), None),
+                            end: Position::new_optional(LexerPosition::new(9, 38), None),
+                            data: String::from("lhs"),
                         },
-                        String::from("BasicBlock")
-                    )]
+                        String::from("BasicBlock"),
+                    )],
                 })
             );
             assert_eq!(
@@ -629,35 +633,47 @@ mod parameter {
                     object_variables: vec![
                         (
                             Spanned {
-                                beg: Position::new_optional(LexerPosition::new(9, 34),
-                                    None),
-                                end: Position::new_optional(LexerPosition::new(9, 38),
-                                    None),
-                                data: String::from("lhs")
+                                beg: Position::new_optional(
+                                    LexerPosition::new(9, 34),
+                                    None,
+                                ),
+                                end: Position::new_optional(
+                                    LexerPosition::new(9, 38),
+                                    None,
+                                ),
+                                data: String::from("lhs"),
                             },
                             String::from("BasicBlock"),
                         ),
                         (
                             Spanned {
-                                beg: Position::new_optional(LexerPosition::new(10, 34),
-                                    None),
-                                end: Position::new_optional(LexerPosition::new(10, 38),
-                                    None),
-                                data: String::from("chs")
+                                beg: Position::new_optional(
+                                    LexerPosition::new(10, 34),
+                                    None,
+                                ),
+                                end: Position::new_optional(
+                                    LexerPosition::new(10, 38),
+                                    None,
+                                ),
+                                data: String::from("chs"),
                             },
                             String::from("BasicBlock"),
                         ),
                         (
                             Spanned {
-                                beg: Position::new_optional(LexerPosition::new(11, 34),
-                                    None),
-                                end: Position::new_optional(LexerPosition::new(11, 38),
-                                    None),
-                                data: String::from("rhs")
+                                beg: Position::new_optional(
+                                    LexerPosition::new(11, 34),
+                                    None,
+                                ),
+                                end: Position::new_optional(
+                                    LexerPosition::new(11, 38),
+                                    None,
+                                ),
+                                data: String::from("rhs"),
                             },
                             String::from("BasicBlock"),
                         ),
-                    ]
+                    ],
                 })
             );
         }
@@ -703,25 +719,33 @@ mod parameter {
                     object_variables: vec![
                         (
                             Spanned {
-                                beg: Position::new_optional(LexerPosition::new(18, 34),
-                                    None),
-                                end: Position::new_optional(LexerPosition::new(18, 38),
-                                    None),
-                                data: String::from("lhs")
+                                beg: Position::new_optional(
+                                    LexerPosition::new(18, 34),
+                                    None,
+                                ),
+                                end: Position::new_optional(
+                                    LexerPosition::new(18, 38),
+                                    None,
+                                ),
+                                data: String::from("lhs"),
                             },
-                            String::from("BasicBlock")
+                            String::from("BasicBlock"),
                         ),
                         (
                             Spanned {
-                                beg: Position::new_optional(LexerPosition::new(18, 54),
-                                    None),
-                                end: Position::new_optional(LexerPosition::new(18, 58),
-                                    None),
-                                data: String::from("rhs")
+                                beg: Position::new_optional(
+                                    LexerPosition::new(18, 54),
+                                    None,
+                                ),
+                                end: Position::new_optional(
+                                    LexerPosition::new(18, 58),
+                                    None,
+                                ),
+                                data: String::from("rhs"),
                             },
-                            String::from("BasicBlock2")
-                        )
-                    ]
+                            String::from("BasicBlock2"),
+                        ),
+                    ],
                 })
             );
         }
