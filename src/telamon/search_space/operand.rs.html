@@ -86,7 +86,7 @@
                 };
                 <span class="ident">actions</span>.<span class="ident">push</span>(<span class="ident">Action</span>::<span class="ident">DimMapping</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>, <span class="ident">mapping</span>));
                 <span class="comment">// FIXME: allow tmp mem with dynamic size when the scope is global.</span>
-                <span class="kw">if</span> <span class="ident">fun</span>.<span class="ident">dim</span>(<span class="ident">lhs</span>).<span class="ident">size</span>().<span class="ident">as_int</span>().<span class="ident">is_none</span>() {
+                <span class="kw">if</span> <span class="ident">fun</span>.<span class="ident">dim</span>(<span class="ident">lhs</span>).<span class="ident">possible_sizes</span>().<span class="ident">is_none</span>() {
                     <span class="ident">actions</span>.<span class="ident">push</span>(<span class="ident">Action</span>::<span class="ident">Order</span>(<span class="ident">lhs</span>.<span class="ident">into</span>(), <span class="ident">rhs</span>.<span class="ident">into</span>(), <span class="ident">Order</span>::<span class="ident">MERGED</span>));
                 }
             }
