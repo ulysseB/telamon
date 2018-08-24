@@ -106,7 +106,7 @@ impl EnumDef {
         Ok(())
     }
 
-    /// This checks the undefined of value or alias from alias or antisymmetric.
+    /// Checks if the values referenced in EnumStatements are defined.
     fn check_field(&self) -> Result<(), TypeError> {
         let mut hash: HashMap<String, _> = HashMap::default();
 
