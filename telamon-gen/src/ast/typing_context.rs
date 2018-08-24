@@ -10,7 +10,7 @@ pub struct CheckerContext {
 }
 
 impl CheckerContext {
-    /// This checks the redefinition of SetDef.
+    /// Declares a set and ensures it is not defined twice.
     pub fn declare_set(&mut self, object_name: Spanned<String>) -> Result<(), TypeError> {
         if let Some(pre) = self.hash_set.insert(
             object_name.data.to_owned(),
@@ -25,7 +25,7 @@ impl CheckerContext {
         }
     }
 
-    /// This checks the redefinition of ChoiceDef (EnumDef and IntegerDef).
+    /// Declares a choice and ensures it is not defined twice.
     pub fn declare_choice(
         &mut self,
         object_name: Spanned<String>,
@@ -44,7 +44,7 @@ impl CheckerContext {
         }
     }
 
-    /// This checks the undefined of SetDef superset and arg.
+    /// Check if the referenced set is defined.
     pub fn check_set_define(&self, subset: &SetRef) -> bool {
         self.hash_set.contains_key(subset.name.deref())
     }
