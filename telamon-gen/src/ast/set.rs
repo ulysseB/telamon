@@ -45,9 +45,7 @@ impl SetDef {
                 })?;
             }
         }
-        if self.superset.is_some() && !keys.contains(
-            &&ir::SetDefKey::FromSuperset
-        ) {
+        if self.superset.is_some() && !keys.contains(&&ir::SetDefKey::FromSuperset) {
             Err(TypeError::MissingEntry {
                 object_name: self.name.data.to_owned(),
                 object_field: self
@@ -60,14 +58,19 @@ impl SetDef {
 
     /// This checks if the argument is defined in the context.
     fn check_undefined_argument(
-        &self, context: &CheckerContext
+        &self,
+        context: &CheckerContext,
     ) -> Result<(), TypeError> {
-        if let Some(VarDef { name: _, set: ref subset })= self.arg {
+        if let Some(VarDef {
+            name: _,
+            set: ref subset,
+        }) = self.arg
+        {
             if !context.check_set_define(subset) {
                 let name: &String = subset.name.deref();
 
                 Err(TypeError::Undefined {
-                   object_name: self.name.with_data(name.to_owned()),
+                    object_name: self.name.with_data(name.to_owned()),
                 })?;
             }
         }
@@ -76,14 +79,15 @@ impl SetDef {
 
     /// This checks if the superset is defined in the context.
     fn check_undefined_superset(
-        &self, context: &CheckerContext
+        &self,
+        context: &CheckerContext,
     ) -> Result<(), TypeError> {
         if let Some(ref subset) = self.superset {
             if !context.check_set_define(subset) {
                 let name: &String = subset.name.deref();
 
                 Err(TypeError::Undefined {
-                   object_name: self.name.with_data(name.to_owned()),
+                    object_name: self.name.with_data(name.to_owned()),
                 })?;
             }
         }
