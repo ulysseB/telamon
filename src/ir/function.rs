@@ -391,7 +391,9 @@ impl<'a> Function<'a, ()> {
         }
         // Register the new objects.
         for dim in &dims {
-            if dim.possible_sizes().is_some() { self.static_dims.push(dim.id()); }
+            if dim.possible_sizes().is_some() {
+                self.static_dims.push(dim.id());
+            }
         }
         self.dims.extend(dims);
         self.logical_dims.push(logical_dim);
