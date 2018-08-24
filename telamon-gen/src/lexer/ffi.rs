@@ -4,6 +4,9 @@ use libc;
 
 use std::fmt;
 use std::path::PathBuf;
+use std::ops::Deref;
+
+use ::utils::RcStr;
 
 /// A [yyscan](https://westes.github.io/flex/manual/About-yyscan_005ft.html) type is the internal
 /// representation of a [yylex_init](https://westes.github.io/flex/manual/Init-and-Destroy-Functions.html) structure.
@@ -146,6 +149,15 @@ impl<Y> Spanned<Y> where Y: fmt::Debug {
 impl <Y> fmt::Display for Spanned<Y>  where Y: fmt::Debug {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "between {} and {} -> {:?}", self.beg, self.end, self.data)
+    }
+}
+
+impl Spanned<RcStr> {
+    // convert RcStr into String
+    pub fn spanned_string(&self) -> Spanned<String> {
+        let name: &String = self.data.deref();
+
+        self.with_data(name.to_owned())
     }
 }
 

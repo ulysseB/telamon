@@ -159,11 +159,12 @@ impl EnumDef {
             if self.variables.len() != 2 {
                 Err(TypeError::BadSymmetricArg {
                         object_name: self.name.to_owned(),
-                        object_variables: self.variables.iter().map(|variable| {
-                            let name: &String = variable.name.data.deref();
+                        object_variables:
+                            self.variables.iter()
+                                .map(|variable: &VarDef| {
                             let set_name: &String = variable.set.name.deref();
-                            (variable.name.with_data(name.to_owned()),
-                             set_name.to_owned())
+
+                            (variable.name.spanned_string(), set_name.to_owned())
                         }).collect::<Vec<(Spanned<String>, String)>>()
                 })?;
             }
@@ -191,10 +192,9 @@ impl EnumDef {
                         Err(TypeError::BadSymmetricArg {
                             object_name: self.name.to_owned(),
                             object_variables: self.variables.iter().map(|variable| {
-                                let name: &String = variable.name.data.deref();
                                 let set_name: &String = variable.set.name.deref();
-                                (variable.name.with_data(name.to_owned()),
-                                 set_name.to_owned())
+    
+                                (variable.name.spanned_string(), set_name.to_owned())
                             }).collect::<Vec<(Spanned<String>, String)>>()
                         })?;
                     }
