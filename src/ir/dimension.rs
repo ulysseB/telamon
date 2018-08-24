@@ -29,6 +29,7 @@ pub struct Dimension<'a> {
     possible_sizes: Vec<u32>,
     iterated: Vec<ir::InstId>,
     is_thread_dim: bool,
+    logical_dim: Option<LogicalDimId>,
 }
 
 impl<'a> Dimension<'a> {
@@ -48,6 +49,7 @@ impl<'a> Dimension<'a> {
             possible_sizes,
             iterated: Vec::new(),
             is_thread_dim: false,
+            logical_dim: None,
         })
     }
 
@@ -59,6 +61,7 @@ impl<'a> Dimension<'a> {
             id: id,
             iterated: Vec::new(),
             is_thread_dim: false,
+            logical_dim: None,
         }
     }
 
@@ -100,6 +103,11 @@ impl<'a> Dimension<'a> {
     pub fn set_thread_dim(&mut self) {
         self.is_thread_dim = true
     }
+
+    /// Returns the logical dimension this dimension is part of, if any.
+    pub fn logical_dim(&self) -> Option<LogicalDimId> {
+        self.logical_dim
+    }
 }
 
 impl<'a> BasicBlock<'a> for Dimension<'a> {
@@ -113,7 +121,8 @@ impl<'a> BasicBlock<'a> for Dimension<'a> {
 }
 
 /// Provides a unique identifier for logic dimensions.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[repr(C)]
 pub struct LogicalDimId(pub u32);
 
 /// A logic dimension composed of multiple `Dimension`s.
@@ -161,12 +170,13 @@ impl LogicalDim {
         self.id
     }
 
-    /// Returns the dimensions with a static size in the logic dimension.
-    pub fn static_dims(&self) -> impl Iterator<Item = DimId> + '_ {
+    /// Returns the tiling dimensions, i.e. the dimensions with a static size.
+    pub fn tile_dimensions(&self) -> impl Iterator<Item = DimId> + '_ {
         self.static_dims.iter().cloned()
     }
 
-    pub fn nonstatic_dim(&self) -> Option<DimId> {
+    /// Return the tiled dimensions, i.e. the dimension with a non-static size, if any.
+    pub fn tiled_dimension(&self) -> Option<DimId> {
         self.nonstatic_dim
     }
 

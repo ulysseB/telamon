@@ -12,10 +12,6 @@ mod operator;
 mod size;
 mod types;
 
-// FIXME:
-// - expose logical dimensions in choices.exh
-// - limit the tilings of logical dims
-
 use std;
 use std::marker::PhantomData;
 
@@ -65,6 +61,9 @@ pub struct NewObjs {
     pub mem_insts: Vec<InstId>,
     pub iteration_dims: Vec<(InstId, DimId)>,
     pub thread_dims: Vec<DimId>,
+    pub logical_dims: Vec<LogicalDimId>,
+    pub tile_dimensions: Vec<(LogicalDimId, DimId)>,
+    pub tiled_dimensions: Vec<(LogicalDimId, DimId)>,
 }
 
 impl NewObjs {
