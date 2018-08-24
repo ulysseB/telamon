@@ -10,7 +10,7 @@ use lalrpop_util::ParseError;
 use std::path::Path;
 
 #[test]
-fn invalid_token() {
+fn parser_invalid_token() {
     assert_eq!(
         parser::parse_ast(Lexer::new(b"!".to_vec())).err(),
         Some(ParseError::User {
@@ -38,10 +38,27 @@ fn invalid_token() {
 }
 
 #[test]
-fn integer_token() {
+fn parser_integer_token() {
     assert!(
         parser::parse_ast(Lexer::new(
             b"define integer mychoice($myarg in MySet): \"mycode\" end".to_vec()
         )).is_ok()
     );
+}
+
+#[test]
+fn parser_include_set() {
+    // Header include.
+    // ```
+    // include ab
+    //      set a
+    //          include c
+    //               set c
+    //      set b
+    // ```
+    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/extra/set/acb.exh");
+    let include = format!("include \"{}\"", filename);
+
+    // test the parse validity.
+    assert_eq!(parser::parse_ast(Lexer::new(include.as_bytes().to_vec())).err(), None);
 }
