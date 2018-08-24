@@ -8,7 +8,7 @@ set A:
   new_objs = "$objs.inst"
 end
 
-include "C.exh"
+include "c.exh"
 
 set B:
   item_type = "ir::inst::Obj"

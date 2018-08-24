@@ -1226,8 +1226,107 @@ fn lexer_include() {
 }
 
 #[test]
-fn lexer_include_extra() {
+fn lexer_include_set() {
     // Header include.
+    // ```
+    // include ab
+    //      set a
+    //          include c
+    //               set c
+    //      set b
+    // ```
+    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/extra/set/acb.exh");
+    let include = format!("include \"{}\"", filename);
+
+    assert_eq!(
+        Lexer::new(include.as_bytes().to_vec())
+            .map(|t| t.unwrap())
+            .map(|(_, t, _)| t)
+            .collect::<Vec<_>>(),
+        vec![
+          Token::Set, Token::ValueIdent(String::from("A")), Token::Colon,
+              Token::SetDefKey(SetDefKey::ItemType),
+              Token::Equal,
+              Token::Code(String::from("ir::inst::Obj")),
+              Token::SetDefKey(SetDefKey::IdType),
+              Token::Equal,
+              Token::Code(String::from("ir::inst::Id")),
+              Token::SetDefKey(SetDefKey::ItemGetter),
+              Token::Equal,
+              Token::Code(String::from("ir::inst::get($fun, $id)")),
+              Token::SetDefKey(SetDefKey::IdGetter),
+              Token::Equal,
+              Token::Code(String::from("ir::inst::Obj::id($item)")),
+              Token::SetDefKey(SetDefKey::Iter),
+              Token::Equal,
+              Token::Code(String::from("ir::inst::iter($fun)")),
+              Token::SetDefKey(SetDefKey::Prefix),
+              Token::Equal,
+              Token::Code(String::from("inst")),
+              Token::SetDefKey(SetDefKey::NewObjs),
+              Token::Equal,
+              Token::Code(String::from("$objs.inst")),
+          Token::End,
+
+          Token::Set, Token::ValueIdent(String::from("C")), Token::Colon,
+              Token::SetDefKey(SetDefKey::ItemType),
+              Token::Equal,
+              Token::Code(String::from("ir::inst::Obj")),
+              Token::SetDefKey(SetDefKey::IdType),
+              Token::Equal,
+              Token::Code(String::from("ir::inst::Id")),
+              Token::SetDefKey(SetDefKey::ItemGetter),
+              Token::Equal,
+              Token::Code(String::from("ir::inst::get($fun, $id)")),
+              Token::SetDefKey(SetDefKey::IdGetter),
+              Token::Equal,
+              Token::Code(String::from("ir::inst::Obj::id($item)")),
+              Token::SetDefKey(SetDefKey::Iter),
+              Token::Equal,
+              Token::Code(String::from("ir::inst::iter($fun)")),
+              Token::SetDefKey(SetDefKey::Prefix),
+              Token::Equal,
+              Token::Code(String::from("inst")),
+              Token::SetDefKey(SetDefKey::NewObjs),
+              Token::Equal,
+              Token::Code(String::from("$objs.inst")),
+          Token::End,
+
+          Token::Set, Token::ValueIdent(String::from("B")), Token::Colon,
+              Token::SetDefKey(SetDefKey::ItemType),
+              Token::Equal,
+              Token::Code(String::from("ir::inst::Obj")),
+              Token::SetDefKey(SetDefKey::IdType),
+              Token::Equal,
+              Token::Code(String::from("ir::inst::Id")),
+              Token::SetDefKey(SetDefKey::ItemGetter),
+              Token::Equal,
+              Token::Code(String::from("ir::inst::get($fun, $id)")),
+              Token::SetDefKey(SetDefKey::IdGetter),
+              Token::Equal,
+              Token::Code(String::from("ir::inst::Obj::id($item)")),
+              Token::SetDefKey(SetDefKey::Iter),
+              Token::Equal,
+              Token::Code(String::from("ir::inst::iter($fun)")),
+              Token::SetDefKey(SetDefKey::Prefix),
+              Token::Equal,
+              Token::Code(String::from("inst")),
+              Token::SetDefKey(SetDefKey::NewObjs),
+              Token::Equal,
+              Token::Code(String::from("$objs.inst")),
+          Token::End
+        ]
+    );
+}
+
+#[test]
+fn lexer_include_enum() {
+    // Header include.
+    // ```
+    // include enum_foo
+    //      enum foo
+    // enum Bar
+    // ```
     let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/extra/foo_bar.exh");
     let include = format!("include \"{}\"", filename);
 
