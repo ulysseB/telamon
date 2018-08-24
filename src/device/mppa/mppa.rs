@@ -24,7 +24,7 @@ impl device::Device for Mppa {
     // block dimensions do not make sense on cpu
     fn max_block_dims(&self) -> u32 { 0 }
 
-    fn max_threads(&self) -> u32 { 16 }
+    fn max_threads(&self) -> u32 { 1 }
 
     fn max_unrolling(&self) -> u32 { 512 }
 

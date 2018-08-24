@@ -9,6 +9,7 @@ use device::mppa::{MppaPrinter, telajax};
 use device::mppa::telajax::Buffer;
 use explorer;
 use ir;
+use itertools::Itertools;
 use libc;
 use search_space::SearchSpace;
 use search_space::DimKind;
@@ -17,7 +18,7 @@ use std::sync::{mpsc, Arc};
 use std::time::Instant;
 use utils::*;
 
-const EXECUTION_QUEUE_SIZE: isize = 512;
+const EXECUTION_QUEUE_SIZE: isize = 32;
 /// Max number of candidates waiting to be evaluated.
 const EVAL_BUFFER_SIZE: usize = 100;
 
@@ -41,13 +42,29 @@ impl<T> Argument for T where T: device::ScalarArgument {
 /// MPPA evaluation context.
 pub struct Context<'a>  {
     device: mppa::Mppa,
-    //executor: std::sync::MutexGuard<'static, telajax::Device>,
     executor: &'static telajax::Device,
     parameters: HashMap<String, Arc<Argument + 'a>>,
     wrappers: Cache<ir::Signature, telajax::Wrapper>,
-    writeback_slots: MsQueue<telajax::Mem>,
+    writeback_slots: MsQueue<telajax::Buffer>,
 }
 unsafe impl<'a> Sync for Context<'a> {}
+
+/// We need to keep the arguments allocated for the kernel somewhere
+enum KernelArg {
+    GlobalMem(telajax::Buffer),
+    Size(u32),
+    External(*const libc::c_void),
+}
+
+impl KernelArg {
+    fn raw_ptr(&self) -> *const libc::c_void {
+        match self {
+            KernelArg::GlobalMem(mem) => mem.raw_ptr(),
+            KernelArg::Size(size) => &size as *const _ as *const libc::c_void,
+            KernelArg::External(ptr) =>  *ptr,
+        }
+    }
+}
 
 impl<'a> Context<'a> {
     /// Creates a new `Context`. Blocks until the MPPA device is ready to be used.
@@ -55,7 +72,7 @@ impl<'a> Context<'a> {
         let executor = telajax::Device::get();
         let writeback_slots = MsQueue::new();
         for _ in 0..EXECUTION_QUEUE_SIZE {
-            writeback_slots.push(executor.alloc(8));
+            writeback_slots.push(executor.allocate_array(8));
         }
         Context {
             device: mppa::Mppa::default(),
@@ -72,38 +89,46 @@ impl<'a> Context<'a> {
 
 
     /// Compiles and sets the arguments of a kernel.
-    fn setup_kernel(&self, fun: &codegen::Function<'a>) -> (telajax::Kernel, telajax::Mem) {
+    fn setup_kernel(&self, fun: &codegen::Function<'a>) -> (telajax::Kernel, Vec<KernelArg>) {
         let mut printer = MppaPrinter::default();
         let kernel_code = printer.wrapper_function(fun);
+        //let kernel_code = printer.function(fun);
+        //let kernel_code = printer.foo_function(fun);
+        println!("KERNEL CODE\n{}", kernel_code);
         let wrapper = self.get_wrapper(fun);
-        let cflags = std::ffi::CString::new("").unwrap();
-        let lflags = std::ffi::CString::new("").unwrap();
+        let cflags = std::ffi::CString::new("-mhypervisor").unwrap();
+        let lflags = std::ffi::CString::new("-mhypervisor -lutask -lvbsp").unwrap();
         let kernel_code = unwrap!(std::ffi::CString::new(kernel_code));
         let mut kernel = self.executor.build_kernel(&kernel_code, &cflags, &lflags, &*wrapper);
         kernel.set_num_clusters(1);
         let mut namer = mppa::Namer::default();
-        let mut name_map = codegen::NameMap::new(fun, &mut namer);
-        let (mut arg_sizes, mut args): (Vec<_>, Vec<_>) = fun.device_code_args().map(|p| {
+        let name_map = codegen::NameMap::new(fun, &mut namer);
+        let (mut arg_sizes, mut kernel_args): (Vec<_>, Vec<_>) = fun.device_code_args().map(|p| {
             let name = name_map.name_param(p.key());
             match p {
-                ParamVal::External(par, _) => println!("External {}", name),
-                ParamVal::GlobalMem(_, size, _) => println!("GlobalMem {}", name),
-                ParamVal::Size(size) => println!("Size {}", name)
-            };
-            let arg = self.get_param(&name);
-            (get_type_size(p.t()), arg.raw_ptr())
+                ParamVal::External(par, _) => {
+                    let name = name_map.name_param(p.key());
+                    let arg = self.get_param(&name);
+                    (get_type_size(p.t()), KernelArg::External(arg.raw_ptr()))
+                },
+                ParamVal::GlobalMem(_, size, _) => {
+                    panic!();
+                    let size = self.eval_size(size);
+                    let mem = self.executor.allocate_array(size as usize);
+                    (self::telajax::Mem::get_mem_size(), KernelArg::GlobalMem(mem))
+                },
+                ParamVal::Size(size) => {
+                    let size = self.eval_size(size);
+                    (get_type_size(p.t()), KernelArg::Size(size))
+                } 
+            }
         }).unzip();
-        //let (mut arg_sizes, mut args): (Vec<_>, Vec<_>) = fun.params.iter().map(|p| {
-        //    let arg = self.get_param(&p.name);
-        //    println!("arg: {}, size: {}", p.name, get_type_size(p.t));
-        //    //(unwrap!(arg.as_size()) as usize, arg.raw_ptr())
-        //    (get_type_size(p.t), arg.raw_ptr())
-        //}).unzip();
         let out_mem = self.writeback_slots.pop();
-        //arg_sizes.push(std::mem::size_of::<*mut libc::c_void>());
-        //args.push(out_mem.raw_ptr());
-        kernel.set_args(&arg_sizes[..], &args[..]);
-        (kernel, out_mem)
+        kernel_args.push(KernelArg::GlobalMem(out_mem));
+        arg_sizes.push(self::telajax::Mem::get_mem_size());
+        let args_ptr = kernel_args.iter().map(|k_arg| k_arg.raw_ptr()).collect_vec();
+        kernel.set_args(&arg_sizes[..], &args_ptr[..]);
+        (kernel, kernel_args)
     }
 
     /// Returns the wrapper for the given signature.
@@ -143,23 +168,19 @@ impl<'a> device::Context for Context<'a> {
 
 
     fn evaluate(&self, fun: &device::Function, _mode: EvalMode) -> Result<f64, ()> {
-        let (mut kernel, out_mem) = self.setup_kernel(fun);
+        let (mut kernel, mut kernel_args) = self.setup_kernel(fun);
+        let out_mem = if let KernelArg::GlobalMem(mem) = kernel_args.pop().unwrap() {mem} else {panic!()};
         self.executor.execute_kernel(&mut kernel);
-        let mut t: [u64; 1] = [0];
-        self.executor.read_buffer(&out_mem, &mut t, &[]);
+        let ptr_i8 = out_mem.read_i8().as_ptr();
+        let res : f64 = unsafe{ *std::mem::transmute::<*const i8, *const f64>(ptr_i8)};
         self.writeback_slots.push(out_mem);
-        Ok(t[0] as f64)
+        Ok(res)
     }
 
     fn async_eval<'c, 'd>(&self, num_workers: usize, _mode: EvalMode,
                           inner: &(Fn(&mut device::AsyncEvaluator<'c, 'd>) + Sync)) {
         // FIXME: execute in parallel
         let (send, recv) = mpsc::sync_channel(EVAL_BUFFER_SIZE);
-        //let mut evaluator = AsyncEvaluator { 
-        //    context: self,
-        //    sender: send};
-        //inner(&mut evaluator);
-        //self.executor.wait_all();
         crossbeam::scope(move |scope| {
             // Start the explorer threads.
             for _ in 0..num_workers {

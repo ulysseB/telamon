@@ -52,61 +52,73 @@ impl MppaPrinter {
     }
 
 
+    pub fn foo_function<'a, 'b>(&mut self, function: &'a Function<'a>) -> String {
+        let mut namer = Namer::default();
+        let mut name_map = NameMap::new(function, &mut namer);
+        let param_decls = function.device_code_args()
+            .map(|v| self.param_decl(v, &mut name_map))
+            .collect_vec().join(",\n  ");
+        // SIGNATURE AND OPEN BRACKET
+        let function_sign = format!(include_str!("template/signature_foo.c.template"),
+        name = function.name,
+        params = param_decls
+        );
+        format!(include_str!("template/foo.c"), fun_sign = function_sign)
+    }
+
     /// Prints a `Function`.
     pub fn function<'a, 'b>(&mut self, function: &'a Function<'a>) -> String {
         let mut namer = Namer::default();
         let mut name_map = NameMap::new(function, &mut namer);
         let mut return_string;
-        {
-            let param_decls = function.device_code_args()
-                .map(|v| self.param_decl(v, &mut name_map))
-                .collect_vec().join(",\n  ");
-            // SIGNATURE AND OPEN BRACKET
-            return_string = format!(include_str!("template/signature.c.template"),
-            name = function.name,
-            params = param_decls
-            );
-            // INDEX LOADS
-            let idx_loads = self.decl_par_indexes(function, &mut name_map);
-            unwrap!(writeln!(self.out_function, "{}", idx_loads));
-            // LOAD PARAM
-            for val in function.device_code_args() {
-                unwrap!(writeln!(self.out_function, "{var_name} = {name};// LD_PARAM",
-                        var_name = name_map.name_param_val(val.key()),
-                        name = name_map.name_param(val.key())));
+        let param_decls = function.device_code_args()
+            .map(|v| self.param_decl(v, &mut name_map))
+            .collect_vec().join(",\n  ");
+        // SIGNATURE AND OPEN BRACKET
+        return_string = format!(include_str!("template/signature.c.template"),
+        name = function.name,
+        params = param_decls
+        );
+        // INDEX LOADS
+        let idx_loads = self.decl_par_indexes(function, &mut name_map);
+        unwrap!(writeln!(self.out_function, "{}", idx_loads));
+        // LOAD PARAM
+        for val in function.device_code_args() {
+            unwrap!(writeln!(self.out_function, "{var_name} = {name};// LD_PARAM",
+                             var_name = name_map.name_param_val(val.key()),
+                             name = name_map.name_param(val.key())));
+        }
+        // MEM DECL
+        for block in function.mem_blocks() {
+            match block.alloc_scheme() {
+                AllocationScheme::Shared =>
+                    panic!("No shared mem in cpu!!"),
+                AllocationScheme::PrivatisedGlobal =>
+                    self.privatise_global_block(block, &mut name_map, function),
+                AllocationScheme::Global => (),
             }
-            // MEM DECL
-            for block in function.mem_blocks() {
-                match block.alloc_scheme() {
-                    AllocationScheme::Shared =>
-                        panic!("No shared mem in cpu!!"),
-                    AllocationScheme::PrivatisedGlobal =>
-                        self.privatise_global_block(block, &mut name_map, function),
-                    AllocationScheme::Global => (),
-                }
-            };
-            // Compute size casts
-            for dim in function.dimensions() {
-                if !dim.kind().intersects(DimKind::UNROLL | DimKind::LOOP) { continue; }
-                for level in dim.induction_levels() {
-                    if let Some((_, incr)) = level.increment {
-                        let name = name_map.declare_size_cast(incr, level.t());
-                        if let Some(name) = name {
-                            let old_name = name_map.name_size(incr, Type::I(32));
-                            self.print_cast(Type::I(32), level.t(), op::Rounding::Exact, &name, &old_name);
-                        }
+        };
+        // Compute size casts
+        for dim in function.dimensions() {
+            if !dim.kind().intersects(DimKind::UNROLL | DimKind::LOOP) { continue; }
+            for level in dim.induction_levels() {
+                if let Some((_, incr)) = level.increment {
+                    let name = name_map.declare_size_cast(incr, level.t());
+                    if let Some(name) = name {
+                        let old_name = name_map.name_size(incr, Type::I(32));
+                        self.print_cast(Type::I(32), level.t(), op::Rounding::Exact, &name, &old_name);
                     }
                 }
             }
-            // INIT
-            let ind_levels = function.init_induction_levels().into_iter()
-                .chain(function.block_dims().iter().flat_map(|d| d.induction_levels()));
-            for level in ind_levels {
-                self.parallel_induction_level(level, &mut name_map);
-            }
-            // BODY
-            self.cfg(function, function.cfg(), &mut name_map);
         }
+        // INIT
+        let ind_levels = function.init_induction_levels().into_iter()
+            .chain(function.block_dims().iter().flat_map(|d| d.induction_levels()));
+        for level in ind_levels {
+            self.parallel_induction_level(level, &mut name_map);
+        }
+        // BODY
+        self.cfg(function, function.cfg(), &mut name_map);
         let var_decls = self.var_decls(&mut name_map);
         return_string.push_str(&var_decls);
         return_string.push_str(&self.out_function);
@@ -122,11 +134,11 @@ impl MppaPrinter {
             .enumerate()
             .map(|(i, v)| match v {
                 ParamVal::External(..) if v.is_pointer() => format!("intptr_t p{i} = (intptr_t)*(args + {i})", i = i),
-                ParamVal::External(_, par_type) => format!("{t} p{i} = *({t}*)*(args + {i})", 
+                ParamVal::External(_, par_type) => format!("{t} p{i} = *({t}*)*(args + {i})",
                                                            t = Self::get_type(*par_type), i = i),
                 ParamVal::Size(_) => format!("uint32_t p{i} = *(uint32_t*)*(args + {i})", i = i),
                 // Are we sure we know the size at compile time ? I think we do
-                ParamVal::GlobalMem(_, _, par_type) => format!("{t} p{i} = ({t})*(args + {i})", 
+                ParamVal::GlobalMem(_, _, par_type) => format!("{t} p{i} = ({t})*(args + {i})",
                                                                t = Self::get_type(*par_type), i = i)
             }
             )
@@ -239,11 +251,37 @@ impl MppaPrinter {
 
     }
 
+    /// Turns the argument of wrapper into an array of void pointers
+    /// Necessary to call pthread with it
+    fn build_ptr_struct(&self, func: &Function) -> String {
+        let mut namer = Namer::default();
+        let name_map = NameMap::new(func, &mut namer);
+        func.device_code_args().enumerate().map( |(i, arg)| {
+            let name = name_map.name_param(arg.key()); 
+            format!("args[{}] = (void *)&{}", i, name)
+        }).join(";\n")
+    }
+
     /// wrap the kernel call into a function with a fixed interface
     pub fn wrapper_function<'a>(&mut self, func: &Function<'a>) -> String {
+        //TODO: clean these NameMap
+        let mut namer = Namer::default();
+        let name_map = NameMap::new(func, &mut namer);
         let fun_str = self.function(func);
         let fun_params = self.params_call(func);
+        let (lower_bound, upper_n_arg) = func.device_code_args().size_hint();
+        let n_args = if let Some(upper_bound) = upper_n_arg {
+            assert_eq!(upper_bound, lower_bound);
+            upper_bound
+        } else { 20 };
+        let cl_arg_def = func.device_code_args()
+            .map(|v| self.param_decl(v, &name_map))
+            .collect_vec().join(",  ");
         format!(include_str!("template/host.c.template"),
+        //format!(include_str!("template/foo_host.c.template"),
+            cl_arg_def = cl_arg_def,
+            n_arg = n_args,
+            build_ptr_struct = self.build_ptr_struct(func),
             fun_name = func.name,
             fun_str = fun_str,
             fun_params_cast = self.fun_params_cast(func),
@@ -285,12 +323,11 @@ impl MppaPrinter {
     pub fn print_ocl_wrapper(&mut self, fun: &Function, name_map: &mut NameMap) -> String {
         let arg_names = fun.device_code_args().format_with(", ", |p, f| {
             f(&format_args!("{}", name_map.name_param(p.key())))
-        });
+        }).to_string();
         let cl_arg_defs = fun.device_code_args().format_with(", ", |p, f| {
             f(&format_args!("{} {}", Self::cl_type_name(&p.t()), name_map.name_param(p.key())))
         }).to_string();
-        format!(include_str!("ocl_wrapper_template.cl"),
-        name = fun.name,
+        format!(include_str!("template/ocl_wrap.c.template"),
         arg_names = arg_names,
         cl_arg_defs = cl_arg_defs,
         )

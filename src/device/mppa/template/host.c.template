@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <pthread.h>
+#include <utask.h>
 
 typedef struct thread_dim_id {{
 pthread_barrier_t * barrier;
@@ -28,8 +29,14 @@ void * exec_wrap(void * args) {{
   return NULL;
 }}
 
-void entry_point(void** args) {{
+void entry_point({cl_arg_def}, void* __timer_ptr) {{
+  unsigned long timestamp;
+  void* args[{n_arg}];
+  {build_ptr_struct};
   pthread_barrier_t barrier;
+  timestamp = __k1_read_dsu_timestamp();
   {gen_threads}
   {thread_join}
+  timestamp = __k1_read_dsu_timestamp() - timestamp;
+  *(unsigned long *)__timer_ptr = timestamp;
 }}

@@ -38,6 +38,10 @@ impl Buffer {
             executor : executor,
         }
     }
+
+    pub fn raw_ptr(&self) -> *const libc::c_void {
+        self.mem.read().unwrap().raw_ptr()
+    }
 }
 impl device::ArrayArgument for Buffer {
     fn read_i8(&self) -> Vec<i8> {
@@ -78,11 +82,7 @@ impl Device {
     }
 
     pub fn allocate_array(&'static self, len: usize) -> Buffer {
-        let mem_block = self.alloc(len);
-        Buffer {
-            mem : RwLock::new(mem_block),
-            executor: self,
-        }
+        Buffer::new(self, len)
     }
 
     /// Build a wrapper for a kernel.
@@ -149,7 +149,9 @@ impl Device {
                 std::mem::drop(_lock);
                 panic!("error in execute_kernel after kernel_enqueue");
             }
+            println!("Waiting for kernel to complete");
             let err = telajax_event_wait(1, &event.0 as *const _);
+            println!("Stopped waiting !!!");
             if err != 0 {
                 std::mem::drop(_lock);
                 panic!("error in event_wait");
@@ -199,7 +201,6 @@ impl Device {
                 // We must at least explicitly call drop on _lock before dropping event as event
                 // drop will try to take the lock in turn, thus causing a deadlock. 
                 std::mem::drop(_lock);
-                //std::mem::drop(event);
                 panic!("error in mem write");
             }
             assert_eq!(res, 0);
@@ -315,9 +316,6 @@ impl Kernel {
         assert_eq!(sizes.len(), args.len());
         let num_arg = sizes.len() as i32;
         let sizes_ptr = sizes.as_ptr();
-        for s in sizes {
-            println!("arg size: {}", s);
-        }
         unsafe {
             // Needs *mut ptr mostly because they were not specified as const in original c api
             assert_eq!(telajax_kernel_set_args(num_arg, sizes_ptr as *const _ as *mut _, args.as_ptr() as *const _ as *mut _, &mut self.0 as *mut _), 0);
@@ -387,7 +385,6 @@ impl Event {
 impl Drop for Event {
     fn drop(&mut self) {
         let _lock = MEM_MUTEX.lock().unwrap();
-        //println!("took LOCK in event release");
         unsafe { telajax_event_release(self.0); }
     }
 }

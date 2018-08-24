@@ -144,7 +144,7 @@ impl X86printer {
     }
 
     /// Build the right call for a nested loop on dimensions with linearized accesses
-    /// that is, for a 3 dimensions arrays a[2][5][3] returns d0 + d1 * 3 + d2 * 5
+    /// that is, for a 3 dimensions arrays a[2][5][3] returns d0 + d1 * 3 + d2 * 5 * 3
     fn build_index_call(&mut self, func: &Function) -> String {
         let mut vec_ret = vec![];
         let dims = func.thread_dims();
