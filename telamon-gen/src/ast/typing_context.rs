@@ -45,36 +45,8 @@ impl CheckerContext {
     }
 
     /// This checks the undefined of SetDef superset and arg.
-    pub fn check_set_define(
-        &self,
-        object_name: &Spanned<String>,
-        field_arg: &Option<VarDef>,
-        field_superset: &Option<SetRef>,
-    ) -> Result<(), TypeError> {
-        if let Some(VarDef {
-            name: _,
-            set: SetRef { name, .. },
-        }) = field_arg
-        {
-            let name: &String = name.deref();
-            if !self.hash_set.contains_key(name) {
-                Err(TypeError::Undefined {
-                    object_name: object_name.with_data(name.to_owned()),
-                })?;
-            }
-        }
-        if let Some(SetRef {
-            name: supername, ..
-        }) = field_superset
-        {
-            let name: &String = supername.deref();
-            if !self.hash_set.contains_key(name) {
-                Err(TypeError::Undefined {
-                    object_name: object_name.with_data(name.to_owned()),
-                })?;
-            }
-        }
-        Ok(())
+    pub fn check_set_define(&self, subset: &SetRef) -> bool {
+        self.hash_set.contains_key(subset.name.deref())
     }
 
     /// This checks the undefined of EnumDef or IntegerDef.

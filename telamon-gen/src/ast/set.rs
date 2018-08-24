@@ -1,4 +1,5 @@
 use super::*;
+use std::ops::Deref;
 
 #[derive(Debug, Clone)]
 pub struct SetDef {
@@ -26,8 +27,9 @@ impl SetDef {
         Ok(())
     }
 
-    /// This checks the presence of keys ItemType, IdType, ItemGetter, IdGetter and Iter.
-    /// When there is a superset, this checks too the presence of FromSuperset keyword.
+    /// This checks the presence of keys ItemType, IdType, ItemGetter,
+    /// IdGetter and Iter. When there is a superset, this checks the
+    /// presence of FromSuperset keyword.
     fn check_missing_entry(&self) -> Result<(), TypeError> {
         let keys = self
             .keys
@@ -43,13 +45,47 @@ impl SetDef {
                 })?;
             }
         }
-        if self.superset.is_some() && !keys.contains(&&ir::SetDefKey::FromSuperset) {
+        if self.superset.is_some() && !keys.contains(
+            &&ir::SetDefKey::FromSuperset
+        ) {
             Err(TypeError::MissingEntry {
                 object_name: self.name.data.to_owned(),
                 object_field: self
                     .name
                     .with_data(ir::SetDefKey::FromSuperset.to_string()),
             })?;
+        }
+        Ok(())
+    }
+
+    /// This checks if the argument is defined in the context.
+    fn check_undefined_argument(
+        &self, context: &CheckerContext
+    ) -> Result<(), TypeError> {
+        if let Some(VarDef { name: _, set: ref subset })= self.arg {
+            if !context.check_set_define(subset) {
+                let name: &String = subset.name.deref();
+
+                Err(TypeError::Undefined {
+                   object_name: self.name.with_data(name.to_owned()),
+                })?;
+            }
+        }
+        Ok(())
+    }
+
+    /// This checks if the superset is defined in the context.
+    fn check_undefined_superset(
+        &self, context: &CheckerContext
+    ) -> Result<(), TypeError> {
+        if let Some(ref subset) = self.superset {
+            if !context.check_set_define(subset) {
+                let name: &String = subset.name.deref();
+
+                Err(TypeError::Undefined {
+                   object_name: self.name.with_data(name.to_owned()),
+                })?;
+            }
         }
         Ok(())
     }
@@ -61,7 +97,8 @@ impl SetDef {
 
     /// Type checks the define's condition.
     pub fn define(&self, context: &CheckerContext) -> Result<(), TypeError> {
-        context.check_set_define(&self.name, &self.arg, &self.superset)?;
+        self.check_undefined_argument(context)?;
+        self.check_undefined_superset(context)?;
         self.check_redefinition_key()?;
         self.check_missing_entry()?;
         Ok(())
