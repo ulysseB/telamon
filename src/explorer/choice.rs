@@ -2,7 +2,7 @@
 use ir::mem::Block;
 use ir::{self, BasicBlock};
 use itertools::Itertools;
-use search_space::{Action, Domain, Order, SearchSpace};
+use search_space::{Action, Domain, NumSet, Order, SearchSpace};
 
 /// Represents a choice that splits a search space in multiple ones.
 // TODO(search_space): explore and lower loayouts directly from the regular actions.
@@ -139,7 +139,9 @@ fn lower_layout_choice(space: &SearchSpace, mem: ir::mem::InternalId) -> Vec<Act
                 let mut remaining_dims = remaining_dims.clone();
                 let mut ordered_dims = ordered_dims.clone();
                 let dim_pair = remaining_dims.swap_remove(i);
-                let size = unwrap!(space.ir_instance().dim(dim_pair.0).size().as_int());
+                let possible_sizes =
+                    unwrap!(space.ir_instance().dim(dim_pair.0).possible_sizes());
+                let size = space.domain().get_size(dim_pair.0).min(possible_sizes);
                 let ordered_size = ordered_size * size;
                 ordered_dims.push(dim_pair);
                 to_process.push((ordered_dims, remaining_dims, ordered_size));
