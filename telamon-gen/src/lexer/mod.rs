@@ -37,9 +37,9 @@ type YyIn = *mut libc::FILE;
 
 #[derive(Debug, Fail, Clone, PartialEq)]
 pub enum ErrorKind {
-     #[fail(display = "invalid token \"{}\"", token)]
+     #[fail(display = "Invalid token \"{}\"", token)]
      InvalidToken { token: String },
-     #[fail(display = "invalid include header {}", name)]
+     #[fail(display = "Invalid include header {}", name)]
      InvalidInclude { name: String, code: Errno },
 }
 

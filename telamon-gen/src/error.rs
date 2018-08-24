@@ -81,9 +81,9 @@ impl<'a> fmt::Display for ProcessError<'a> {
                     token: (_, ref token, _)
                 }, ..} => {
                 if let Some(span) = span {
-                    write!(f, "{:?}, {} -> {}", token, span, path)
+                    write!(f, "Unexpected token '{:?}', {} -> {}", token, span, path)
                 } else {
-                    write!(f, "{:?} -> {}", token, path)
+                    write!(f, "Unexpected token '{:?}' -> {}", token, path)
                 }
            },
            ProcessError { path, span, cause: ParseError::User { error }, ..} => {
