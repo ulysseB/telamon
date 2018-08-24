@@ -216,7 +216,7 @@ require forall $lhs in BasicBlocks:
         || order($mid, $rhs) is not OUTER
       // Two blocks outer a third one are nested.
       order($lhs, $mid) is not OUTER || order($rhs, $mid) is not OUTER
-        || order($lhs, $rhs) is NESTED | MERGED
+        || order($lhs, $rhs) is NESTED | MERGEDLogical dim
       // MERGED requires similar orderings on both sides
       order($lhs, $rhs) is not MERGED || order($rhs, $mid) == order($lhs, $mid)
 
@@ -233,6 +233,7 @@ require forall $inst in Instructions:
 require forall $lhs in Dimensions:
   forall $rhs in Dimensions:
     // Merge constraitns
+    // Merge constraints
     "$lhs.size().is_compatible_with($rhs.size())" || order($lhs, $rhs) is not MERGED
     dim_kind($lhs) == dim_kind($rhs) || order($lhs, $rhs) is not MERGED
 
