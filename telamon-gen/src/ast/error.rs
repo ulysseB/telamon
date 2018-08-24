@@ -16,15 +16,24 @@ pub enum Hint {
     Integer,
     /// Integer attribute.
     IntegerAttribute,
+    /// Counter.
+    Counter,
 }
 
 impl Hint {
     pub fn from(statement: &Statement) -> Self {
         match statement {
             Statement::SetDef(..) => Hint::Set,
-            Statement::ChoiceDef(ChoiceDef::EnumDef(..)) => Hint::Enum,
-            Statement::ChoiceDef(ChoiceDef::IntegerDef(..)) => Hint::Integer,
+            Statement::ChoiceDef(choice) => Hint::from_choice(choice),
             _ => unreachable!(),
+        }
+    }
+
+    pub fn from_choice(choice: &ChoiceDef) -> Self {
+        match choice {
+            ChoiceDef::EnumDef(..) => Hint::Enum,
+            ChoiceDef::IntegerDef(..) => Hint::Integer,
+            ChoiceDef::CounterDef(..) => Hint::Counter,
         }
     }
 }
