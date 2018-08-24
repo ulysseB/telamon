@@ -1,4 +1,5 @@
 use super::*;
+use std::ops::Deref;
 
 /// A toplevel definition or constraint.
 #[derive(Clone, Debug)]
@@ -199,7 +200,7 @@ impl EnumDef {
     fn check_undefined_variables (
         &self, context: &CheckerContext
     ) -> Result<(), TypeError> {
-        for VarDef { name: _, set } in self.variables {
+        for VarDef { name: _, ref set } in self.variables.iter() {
             if !context.check_set_define(set) {
                 let name: &String = set.name.deref();
 
@@ -218,7 +219,7 @@ impl EnumDef {
 
     /// Type checks the define's condition.
     pub fn define(&self, context: &CheckerContext) -> Result<(), TypeError> {
-        context.check_choice_define(&self.name, &self.variables)?;
+        self.check_undefined_variables(context)?;
         self.check_redefinition_parameter()?;
         self.check_redefinition_field()?;
         self.check_field()?;
