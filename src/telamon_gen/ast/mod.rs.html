@@ -562,115 +562,6 @@
 <span id="562">562</span>
 <span id="563">563</span>
 <span id="564">564</span>
-<span id="565">565</span>
-<span id="566">566</span>
-<span id="567">567</span>
-<span id="568">568</span>
-<span id="569">569</span>
-<span id="570">570</span>
-<span id="571">571</span>
-<span id="572">572</span>
-<span id="573">573</span>
-<span id="574">574</span>
-<span id="575">575</span>
-<span id="576">576</span>
-<span id="577">577</span>
-<span id="578">578</span>
-<span id="579">579</span>
-<span id="580">580</span>
-<span id="581">581</span>
-<span id="582">582</span>
-<span id="583">583</span>
-<span id="584">584</span>
-<span id="585">585</span>
-<span id="586">586</span>
-<span id="587">587</span>
-<span id="588">588</span>
-<span id="589">589</span>
-<span id="590">590</span>
-<span id="591">591</span>
-<span id="592">592</span>
-<span id="593">593</span>
-<span id="594">594</span>
-<span id="595">595</span>
-<span id="596">596</span>
-<span id="597">597</span>
-<span id="598">598</span>
-<span id="599">599</span>
-<span id="600">600</span>
-<span id="601">601</span>
-<span id="602">602</span>
-<span id="603">603</span>
-<span id="604">604</span>
-<span id="605">605</span>
-<span id="606">606</span>
-<span id="607">607</span>
-<span id="608">608</span>
-<span id="609">609</span>
-<span id="610">610</span>
-<span id="611">611</span>
-<span id="612">612</span>
-<span id="613">613</span>
-<span id="614">614</span>
-<span id="615">615</span>
-<span id="616">616</span>
-<span id="617">617</span>
-<span id="618">618</span>
-<span id="619">619</span>
-<span id="620">620</span>
-<span id="621">621</span>
-<span id="622">622</span>
-<span id="623">623</span>
-<span id="624">624</span>
-<span id="625">625</span>
-<span id="626">626</span>
-<span id="627">627</span>
-<span id="628">628</span>
-<span id="629">629</span>
-<span id="630">630</span>
-<span id="631">631</span>
-<span id="632">632</span>
-<span id="633">633</span>
-<span id="634">634</span>
-<span id="635">635</span>
-<span id="636">636</span>
-<span id="637">637</span>
-<span id="638">638</span>
-<span id="639">639</span>
-<span id="640">640</span>
-<span id="641">641</span>
-<span id="642">642</span>
-<span id="643">643</span>
-<span id="644">644</span>
-<span id="645">645</span>
-<span id="646">646</span>
-<span id="647">647</span>
-<span id="648">648</span>
-<span id="649">649</span>
-<span id="650">650</span>
-<span id="651">651</span>
-<span id="652">652</span>
-<span id="653">653</span>
-<span id="654">654</span>
-<span id="655">655</span>
-<span id="656">656</span>
-<span id="657">657</span>
-<span id="658">658</span>
-<span id="659">659</span>
-<span id="660">660</span>
-<span id="661">661</span>
-<span id="662">662</span>
-<span id="663">663</span>
-<span id="664">664</span>
-<span id="665">665</span>
-<span id="666">666</span>
-<span id="667">667</span>
-<span id="668">668</span>
-<span id="669">669</span>
-<span id="670">670</span>
-<span id="671">671</span>
-<span id="672">672</span>
-<span id="673">673</span>
 </pre><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">unused_variables</span>)]</span>
 
@@ -682,6 +573,7 @@
 <span class="kw">mod</span> <span class="ident">error</span>;
 <span class="kw">mod</span> <span class="ident">set</span>;
 <span class="kw">mod</span> <span class="ident">trigger</span>;
+<span class="kw">mod</span> <span class="ident">typing_context</span>;
 
 <span class="kw">use</span> <span class="ident">constraint</span>::<span class="ident">dedup_inputs</span>;
 <span class="kw">use</span> <span class="ident">constraint</span>::<span class="ident">Constraint</span> <span class="kw">as</span> <span class="ident">TypedConstraint</span>;
@@ -693,7 +585,6 @@
 <span class="kw">use</span> <span class="ident">std</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">collections</span>::{<span class="ident">hash_map</span>, <span class="ident">BTreeSet</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>;
-<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">ops</span>::<span class="ident">Deref</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">choice</span>::<span class="ident">enumeration</span>::<span class="ident">EnumDef</span>;
@@ -704,134 +595,9 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">error</span>::{<span class="ident">Hint</span>, <span class="ident">TypeError</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">set</span>::<span class="ident">SetDef</span>;
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">trigger</span>::<span class="ident">TriggerDef</span>;
+<span class="kw">use</span> <span class="self">self</span>::<span class="ident">typing_context</span>::<span class="ident">CheckerContext</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">lexer</span>::{<span class="ident">Position</span>, <span class="ident">Spanned</span>};
-
-<span class="doccomment">/// CheckContext is a type system.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
-<span class="kw">struct</span> <span class="ident">CheckerContext</span> {
-    <span class="doccomment">/// Map Name of unique identifiant.</span>
-    <span class="ident">hash</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">Hint</span><span class="op">&gt;&gt;</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">CheckerContext</span> {
-    <span class="doccomment">/// This checks the undefined of EnumDef or IntegerDef.</span>
-    <span class="kw">fn</span> <span class="ident">check_undefined_choicedef</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">statement</span>: <span class="ident">ChoiceDef</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">statement</span> {
-            <span class="ident">ChoiceDef</span>::<span class="ident">EnumDef</span>(<span class="ident">EnumDef</span> {
-                <span class="ident">name</span>: <span class="kw-2">ref</span> <span class="ident">spanned</span>,
-                <span class="ident">doc</span>: <span class="kw">_</span>,
-                <span class="kw-2">ref</span> <span class="ident">variables</span>,
-                ..
-            })
-            <span class="op">|</span> <span class="ident">ChoiceDef</span>::<span class="ident">IntegerDef</span>(<span class="ident">IntegerDef</span> {
-                <span class="ident">name</span>: <span class="kw-2">ref</span> <span class="ident">spanned</span>,
-                <span class="ident">doc</span>: <span class="kw">_</span>,
-                <span class="kw-2">ref</span> <span class="ident">variables</span>,
-                ..
-            }) <span class="op">=&gt;</span> {
-                <span class="kw">for</span> <span class="ident">VarDef</span> {
-                    <span class="ident">name</span>: <span class="kw">_</span>,
-                    <span class="ident">set</span>: <span class="ident">SetRef</span> { <span class="ident">name</span>, .. },
-                } <span class="kw">in</span> <span class="ident">variables</span>
-                {
-                    <span class="kw">let</span> <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">String</span> <span class="op">=</span> <span class="ident">name</span>.<span class="ident">deref</span>();
-                    <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">hash</span>.<span class="ident">contains_key</span>(<span class="ident">name</span>) {
-                        <span class="prelude-val">Err</span>(<span class="ident">TypeError</span>::<span class="ident">Undefined</span> {
-                            <span class="ident">object_name</span>: <span class="ident">spanned</span>.<span class="ident">with_data</span>(<span class="ident">name</span>.<span class="ident">to_owned</span>()),
-                        })<span class="question-mark">?</span>;
-                    }
-                }
-            }
-            <span class="kw">_</span> <span class="op">=&gt;</span> {}
-        }
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="doccomment">/// This checks the undefined of SetDef superset and arg.</span>
-    <span class="kw">fn</span> <span class="ident">check_undefined_setdef</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">statement</span>: <span class="kw-2">&amp;</span><span class="ident">SetDef</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">statement</span> {
-            <span class="ident">SetDef</span> {
-                <span class="ident">name</span>: <span class="ident">spanned</span>,
-                <span class="ident">doc</span>: <span class="kw">_</span>,
-                <span class="ident">arg</span>,
-                <span class="ident">superset</span>,
-                <span class="ident">disjoint</span>: <span class="kw">_</span>,
-                <span class="ident">keys</span>,
-                ..
-            } <span class="op">=&gt;</span> {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">VarDef</span> {
-                    <span class="ident">name</span>: <span class="kw">_</span>,
-                    <span class="ident">set</span>: <span class="ident">SetRef</span> { <span class="ident">name</span>, .. },
-                }) <span class="op">=</span> <span class="ident">arg</span>
-                {
-                    <span class="kw">let</span> <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">String</span> <span class="op">=</span> <span class="ident">name</span>.<span class="ident">deref</span>();
-                    <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">hash</span>.<span class="ident">contains_key</span>(<span class="ident">name</span>) {
-                        <span class="prelude-val">Err</span>(<span class="ident">TypeError</span>::<span class="ident">Undefined</span> {
-                            <span class="ident">object_name</span>: <span class="ident">spanned</span>.<span class="ident">with_data</span>(<span class="ident">name</span>.<span class="ident">to_owned</span>()),
-                        })<span class="question-mark">?</span>;
-                    }
-                }
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">SetRef</span> {
-                    <span class="ident">name</span>: <span class="ident">supername</span>, ..
-                }) <span class="op">=</span> <span class="ident">superset</span>
-                {
-                    <span class="kw">let</span> <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">String</span> <span class="op">=</span> <span class="ident">supername</span>.<span class="ident">deref</span>();
-                    <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">hash</span>.<span class="ident">contains_key</span>(<span class="ident">name</span>) {
-                        <span class="prelude-val">Err</span>(<span class="ident">TypeError</span>::<span class="ident">Undefined</span> {
-                            <span class="ident">object_name</span>: <span class="ident">spanned</span>.<span class="ident">with_data</span>(<span class="ident">name</span>.<span class="ident">to_owned</span>()),
-                        })<span class="question-mark">?</span>;
-                    }
-                }
-            }
-        }
-        <span class="prelude-val">Ok</span>(())
-    }
-
-    <span class="doccomment">/// This checks the redefinition of SetDef, EnumDef and IntegerDef.</span>
-    <span class="kw">fn</span> <span class="ident">check_redefinition</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">statement</span>: <span class="kw-2">&amp;</span><span class="ident">Statement</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">statement</span> {
-            <span class="ident">Statement</span>::<span class="ident">SetDef</span>(<span class="ident">SetDef</span> { <span class="ident">name</span>: <span class="ident">spanned</span>, .. })
-            <span class="op">|</span> <span class="ident">Statement</span>::<span class="ident">ChoiceDef</span>(<span class="ident">ChoiceDef</span>::<span class="ident">EnumDef</span>(<span class="ident">EnumDef</span> {
-                <span class="ident">name</span>: <span class="ident">spanned</span>, ..
-            }))
-            <span class="op">|</span> <span class="ident">Statement</span>::<span class="ident">ChoiceDef</span>(<span class="ident">ChoiceDef</span>::<span class="ident">IntegerDef</span>(<span class="ident">IntegerDef</span> {
-                <span class="ident">name</span>: <span class="ident">spanned</span>,
-                ..
-            })) <span class="op">=&gt;</span> {
-                <span class="kw">let</span> <span class="ident">data</span>: <span class="ident">Hint</span> <span class="op">=</span> <span class="ident">Hint</span>::<span class="ident">from</span>(<span class="ident">statement</span>);
-                <span class="kw">let</span> <span class="ident">value</span>: <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">Hint</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">spanned</span>.<span class="ident">with_data</span>(<span class="ident">data</span>);
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">pre</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">hash</span>.<span class="ident">insert</span>(<span class="ident">spanned</span>.<span class="ident">data</span>.<span class="ident">to_owned</span>(), <span class="ident">value</span>) {
-                    <span class="prelude-val">Err</span>(<span class="ident">TypeError</span>::<span class="ident">Redefinition</span> {
-                        <span class="ident">object_kind</span>: <span class="ident">pre</span>,
-                        <span class="ident">object_name</span>: <span class="ident">spanned</span>.<span class="ident">with_data</span>(<span class="ident">spanned</span>.<span class="ident">data</span>.<span class="ident">to_owned</span>()),
-                    })
-                } <span class="kw">else</span> {
-                    <span class="prelude-val">Ok</span>(())
-                }
-            }
-            <span class="kw">_</span> <span class="op">=&gt;</span> <span class="prelude-val">Ok</span>(()),
-        }
-    }
-
-    <span class="doccomment">/// Type checks the condition.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">type_check</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">statement</span>: <span class="kw-2">&amp;</span><span class="ident">Statement</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">check_redefinition</span>(<span class="kw-2">&amp;</span><span class="ident">statement</span>)<span class="question-mark">?</span>;
-        <span class="kw">match</span> <span class="ident">statement</span> {
-            <span class="ident">Statement</span>::<span class="ident">ChoiceDef</span>(<span class="ident">ChoiceDef</span>::<span class="ident">EnumDef</span>(<span class="kw-2">ref</span> <span class="ident">enumeration</span>)) <span class="op">=&gt;</span> {
-                <span class="self">self</span>.<span class="ident">check_undefined_choicedef</span>(<span class="ident">ChoiceDef</span>::<span class="ident">EnumDef</span>(<span class="ident">enumeration</span>.<span class="ident">clone</span>()))<span class="question-mark">?</span>;
-            }
-            <span class="ident">Statement</span>::<span class="ident">ChoiceDef</span>(<span class="ident">ChoiceDef</span>::<span class="ident">IntegerDef</span>(<span class="kw-2">ref</span> <span class="ident">integer</span>)) <span class="op">=&gt;</span> {
-                <span class="self">self</span>.<span class="ident">check_undefined_choicedef</span>(<span class="ident">ChoiceDef</span>::<span class="ident">IntegerDef</span>(<span class="ident">integer</span>.<span class="ident">clone</span>()))<span class="question-mark">?</span>;
-            }
-            <span class="ident">Statement</span>::<span class="ident">SetDef</span>(<span class="kw-2">ref</span> <span class="ident">set</span>) <span class="op">=&gt;</span> {
-                <span class="self">self</span>.<span class="ident">check_undefined_setdef</span>(<span class="ident">set</span>)<span class="question-mark">?</span>;
-            }
-            <span class="kw">_</span> <span class="op">=&gt;</span> {}
-        }
-        <span class="prelude-val">Ok</span>(())
-    }
-}
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Ast</span> {
@@ -840,13 +606,21 @@
 
 <span class="kw">impl</span> <span class="ident">Ast</span> {
     <span class="doccomment">/// Generate the defintion of choices and the list of constraints.</span>
+    <span class="doccomment">/// TODO: remove typing context</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">type_check</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">IrDesc</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">TypedConstraint</span><span class="op">&gt;</span>), <span class="ident">TypeError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">checker</span> <span class="op">=</span> <span class="ident">CheckerContext</span>::<span class="ident">default</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="ident">TypingContext</span>::<span class="ident">default</span>();
 
+        <span class="comment">// declare</span>
+        <span class="kw">for</span> <span class="ident">statement</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">statements</span>.<span class="ident">iter</span>() {
+            <span class="ident">statement</span>.<span class="ident">declare</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">checker</span>)<span class="question-mark">?</span>;
+        }
+        <span class="comment">// define</span>
+        <span class="kw">for</span> <span class="ident">statement</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">statements</span>.<span class="ident">iter</span>() {
+            <span class="ident">statement</span>.<span class="ident">define</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">checker</span>)<span class="question-mark">?</span>;
+        }
+        <span class="comment">// typing context</span>
         <span class="kw">for</span> <span class="ident">statement</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">statements</span> {
-            <span class="ident">checker</span>.<span class="ident">type_check</span>(<span class="kw-2">&amp;</span><span class="ident">statement</span>)<span class="question-mark">?</span>;
-            <span class="ident">statement</span>.<span class="ident">type_check</span>()<span class="question-mark">?</span>;
             <span class="ident">context</span>.<span class="ident">add_statement</span>(<span class="ident">statement</span>);
         }
         <span class="prelude-val">Ok</span>(<span class="ident">context</span>.<span class="ident">finalize</span>())
@@ -867,10 +641,18 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Statement</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">type_check</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">declare</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">CheckerContext</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Statement</span>::<span class="ident">SetDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">type_check</span>(),
-            <span class="ident">Statement</span>::<span class="ident">ChoiceDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">type_check</span>(),
+            <span class="ident">Statement</span>::<span class="ident">SetDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">declare</span>(<span class="ident">context</span>),
+            <span class="ident">Statement</span>::<span class="ident">ChoiceDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">declare</span>(<span class="ident">context</span>),
+            <span class="kw">_</span> <span class="op">=&gt;</span> <span class="prelude-val">Ok</span>(()),
+        }
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">define</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">CheckerContext</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">Statement</span>::<span class="ident">SetDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">define</span>(<span class="ident">context</span>),
+            <span class="ident">Statement</span>::<span class="ident">ChoiceDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">define</span>(<span class="ident">context</span>),
             <span class="kw">_</span> <span class="op">=&gt;</span> <span class="prelude-val">Ok</span>(()),
         }
     }
@@ -1333,7 +1115,7 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CounterDef</span> {
-    <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">RcStr</span>,
+    <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">RcStr</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">doc</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">visibility</span>: <span class="ident">ir</span>::<span class="ident">CounterVisibility</span>,
     <span class="kw">pub</span> <span class="ident">vars</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">VarDef</span><span class="op">&gt;</span>,

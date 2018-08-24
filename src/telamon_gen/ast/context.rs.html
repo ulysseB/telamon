@@ -889,6 +889,9 @@
 <span id="889">889</span>
 <span id="890">890</span>
 <span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">indexmap</span>::<span class="ident">IndexMap</span>;
@@ -972,7 +975,7 @@
                     <span class="ident">visibility</span>,
                     <span class="ident">vars</span>,
                     <span class="ident">body</span>,
-                }) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">register_counter</span>(<span class="ident">name</span>, <span class="ident">doc</span>, <span class="ident">visibility</span>, <span class="ident">vars</span>, <span class="ident">body</span>),
+                }) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">register_counter</span>(<span class="ident">name</span>.<span class="ident">data</span>, <span class="ident">doc</span>, <span class="ident">visibility</span>, <span class="ident">vars</span>, <span class="ident">body</span>),
                 <span class="ident">ChoiceDef</span>::<span class="ident">IntegerDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">define_integer</span>(<span class="ident">def</span>),
             }
         }
@@ -1259,7 +1262,10 @@
             <span class="ident">value</span>: <span class="ident">CounterVal</span>::<span class="ident">Code</span>(<span class="string">&quot;1&quot;</span>.<span class="ident">to_string</span>()),
         };
         <span class="self">self</span>.<span class="ident">choice_defs</span>.<span class="ident">push</span>(<span class="ident">ChoiceDef</span>::<span class="ident">CounterDef</span>(<span class="ident">CounterDef</span> {
-            <span class="ident">name</span>: <span class="ident">name</span>.<span class="ident">clone</span>(),
+            <span class="ident">name</span>: <span class="ident">Spanned</span> {
+                <span class="ident">data</span>: <span class="ident">name</span>.<span class="ident">clone</span>(),
+                ..<span class="ident">Default</span>::<span class="ident">default</span>()
+            },
             <span class="ident">doc</span>: <span class="prelude-val">None</span>,
             <span class="ident">visibility</span>,
             <span class="ident">vars</span>,
