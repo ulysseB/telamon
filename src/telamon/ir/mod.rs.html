@@ -286,6 +286,27 @@
 <span id="286">286</span>
 <span id="287">287</span>
 <span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Representation and manipulation of a set of possible implementation.</span>
 <span class="kw">mod</span> <span class="ident">access_pattern</span>;
@@ -301,12 +322,13 @@
 <span class="kw">mod</span> <span class="ident">size</span>;
 <span class="kw">mod</span> <span class="ident">types</span>;
 
+<span class="kw">use</span> <span class="ident">std</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">marker</span>::<span class="ident">PhantomData</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">access_pattern</span>::{<span class="ident">AccessPattern</span>, <span class="ident">Stride</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">basic_block</span>::{<span class="ident">BBId</span>, <span class="ident">BasicBlock</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">dim_map</span>::<span class="ident">DimMap</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">dimension</span>::{<span class="ident">DimId</span>, <span class="ident">Dimension</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">dimension</span>::{<span class="ident">DimId</span>, <span class="ident">Dimension</span>, <span class="ident">LogicalDim</span>, <span class="ident">LogicalDimId</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">error</span>::{<span class="ident">Error</span>, <span class="ident">TypeError</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">function</span>::{<span class="ident">Function</span>, <span class="ident">Parameter</span>, <span class="ident">Signature</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">induction_var</span>::{<span class="ident">IndVarId</span>, <span class="ident">InductionVar</span>};
@@ -349,6 +371,9 @@
     <span class="kw">pub</span> <span class="ident">mem_insts</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InstId</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">iteration_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">InstId</span>, <span class="ident">DimId</span>)<span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">thread_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DimId</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">logical_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LogicalDimId</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">tile_dimensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">LogicalDimId</span>, <span class="ident">DimId</span>)<span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">tiled_dimensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">LogicalDimId</span>, <span class="ident">DimId</span>)<span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">NewObjs</span> {
@@ -454,14 +479,19 @@
 
     <span class="doccomment">/// Append an element to the back of the collection.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">push</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">T</span>) {
+        <span class="self">self</span>.<span class="ident">make_holes</span>();
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">vec</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="self">self</span>.<span class="ident">capacity</span>);
+        <span class="self">self</span>.<span class="ident">capacity</span> <span class="op">+=</span> <span class="number">1</span>;
+        <span class="self">self</span>.<span class="ident">vec</span>.<span class="ident">push</span>(<span class="prelude-val">Some</span>(<span class="ident">value</span>))
+    }
+
+    <span class="doccomment">/// Add holes and the end of the underlying vector so that</span>
+    <span class="doccomment">/// `self.vec.len() == self.capacity`.</span>
+    <span class="kw">fn</span> <span class="ident">make_holes</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">vec</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">capacity</span> {
             <span class="kw">let</span> <span class="ident">extra</span> <span class="op">=</span> (<span class="self">self</span>.<span class="ident">vec</span>.<span class="ident">len</span>()..=<span class="self">self</span>.<span class="ident">capacity</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="prelude-val">None</span>);
             <span class="self">self</span>.<span class="ident">vec</span>.<span class="ident">extend</span>(<span class="ident">extra</span>);
         }
-        <span class="macro">assert</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">vec</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="self">self</span>.<span class="ident">capacity</span>);
-
-        <span class="self">self</span>.<span class="ident">capacity</span> <span class="op">+=</span> <span class="number">1</span>;
-        <span class="self">self</span>.<span class="ident">vec</span>.<span class="ident">push</span>(<span class="prelude-val">Some</span>(<span class="ident">value</span>))
     }
 
     <span class="doccomment">/// Increase the possible size of the vector by adding holes at</span>
@@ -540,6 +570,18 @@
 {
     <span class="kw">fn</span> <span class="ident">index_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">index</span>: <span class="ident">I</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">T</span> {
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">vec</span>[<span class="ident">index</span>.<span class="ident">into</span>()].<span class="ident">as_mut</span>())
+    }
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">Extend</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">SparseVec</span><span class="op">&lt;</span><span class="ident">I</span>, <span class="ident">T</span><span class="op">&gt;</span>
+<span class="kw">where</span>
+    <span class="ident">I</span>: <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>,
+{
+    <span class="kw">fn</span> <span class="ident">extend</span><span class="op">&lt;</span><span class="ident">ITER</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">T</span><span class="op">&gt;&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">iter</span>: <span class="ident">ITER</span>) {
+        <span class="self">self</span>.<span class="ident">make_holes</span>();
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">vec</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="self">self</span>.<span class="ident">capacity</span>);
+        <span class="self">self</span>.<span class="ident">vec</span>.<span class="ident">extend</span>(<span class="ident">iter</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="prelude-val">Some</span>));
+        <span class="self">self</span>.<span class="ident">capacity</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">vec</span>.<span class="ident">len</span>();
     }
 }
 
