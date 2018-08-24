@@ -232,7 +232,7 @@ require forall $inst in Instructions:
 
 require forall $lhs in Dimensions:
   forall $rhs in Dimensions:
-    // Merge constraitns
+    // Merge constraints
     "$lhs.size().is_compatible_with($rhs.size())" || order($lhs, $rhs) is not MERGED
     dim_kind($lhs) == dim_kind($rhs) || order($lhs, $rhs) is not MERGED
 
