@@ -164,7 +164,7 @@ impl EnumDef {
                                 .map(|variable: &VarDef| {
                             let set_name: &String = variable.set.name.deref();
 
-                            (variable.name.spanned_string(), set_name.to_owned())
+                            (variable.name.to_owned().into(), set_name.to_owned())
                         }).collect::<Vec<(Spanned<String>, String)>>()
                 })?;
             }
@@ -194,7 +194,7 @@ impl EnumDef {
                             object_variables: self.variables.iter().map(|variable| {
                                 let set_name: &String = variable.set.name.deref();
     
-                                (variable.name.spanned_string(), set_name.to_owned())
+                                (variable.name.to_owned().into(), set_name.to_owned())
                             }).collect::<Vec<(Spanned<String>, String)>>()
                         })?;
                     }

@@ -32,7 +32,8 @@ fn parser_unexpected_token() {
                                error::ProcessError::from(
                                    (Path::new("exh").display(), c)))
                           .err().unwrap()),
-               "Unexpected token 'SetIdent(\"Uper\")', between line 0, column 12 and line 0, column 16 -> exh");
+               "Unexpected token 'SetIdent(\"Uper\")', between line 0, \
+                column 12 and line 0, column 16 -> exh");
 }
 
 #[test]
@@ -60,7 +61,8 @@ fn parser_invalid_token() {
                                error::ProcessError::from(
                                    (Path::new("exh").display(), c)))
                           .err().unwrap()),
-               "Invalid token \"!\", between line 0, column 0 and line 0, column 1 -> exh");
+               "Invalid token \"!\", between line 0, column 0 and line 0, \
+                column 1 -> exh");
 }
 
 #[test]

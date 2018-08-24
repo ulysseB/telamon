@@ -152,12 +152,11 @@ impl <Y> fmt::Display for Spanned<Y>  where Y: fmt::Debug {
     }
 }
 
-impl Spanned<RcStr> {
-    // convert RcStr into String
-    pub fn spanned_string(&self) -> Spanned<String> {
-        let name: &String = self.data.deref();
+impl From<Spanned<RcStr>> for Spanned<String> {
+    fn from(token: Spanned<RcStr>) -> Spanned<String> {
+        let name: &String = token.data.deref();
 
-        self.with_data(name.to_owned())
+        token.with_data(name.to_owned())
     }
 }
 
