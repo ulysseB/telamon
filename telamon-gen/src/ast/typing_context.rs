@@ -48,25 +48,4 @@ impl CheckerContext {
     pub fn check_set_define(&self, subset: &SetRef) -> bool {
         self.hash_set.contains_key(subset.name.deref())
     }
-
-    /// This checks the undefined of EnumDef or IntegerDef.
-    pub fn check_choice_define(
-        &self,
-        object_name: &Spanned<String>,
-        field_variables: &Vec<VarDef>,
-    ) -> Result<(), TypeError> {
-        for VarDef {
-            name: _,
-            set: SetRef { name, .. },
-        } in field_variables
-        {
-            let name: &String = name.deref();
-            if !self.hash_set.contains_key(name) {
-                Err(TypeError::Undefined {
-                    object_name: object_name.with_data(name.to_owned()),
-                })?;
-            }
-        }
-        Ok(())
-    }
 }

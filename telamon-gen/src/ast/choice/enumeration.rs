@@ -195,6 +195,22 @@ impl EnumDef {
         Ok(())
     }
 
+    /// This checks if the variables are defined in the context.
+    fn check_undefined_variables (
+        &self, context: &CheckerContext
+    ) -> Result<(), TypeError> {
+        for VarDef { name: _, set } in self.variables {
+            if !context.check_set_define(set) {
+                let name: &String = set.name.deref();
+
+                Err(TypeError::Undefined {
+                   object_name: self.name.with_data(name.to_owned()),
+                })?;
+            }
+        }
+        Ok(())
+    }
+
     /// Type checks the declare's condition.
     pub fn declare(&self, context: &mut CheckerContext) -> Result<(), TypeError> {
         Ok(())
