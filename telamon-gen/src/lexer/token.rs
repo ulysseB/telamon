@@ -1,15 +1,8 @@
 /// Tokens from the textual representation of constraints.
 use ir;
 
-use errno::Errno;
-use std::fmt;
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
-    /// The token incrimined.
-    InvalidToken(String),
-    /// The errno message of invalid include header file.
-    InvalidInclude(String, Errno),
     ValueIdent(String),
     ChoiceIdent(String),
     Var(String),
@@ -54,10 +47,4 @@ pub enum Token {
     Of,
     Divide,
     Integer,
-}
-
-impl fmt::Display for Token {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
 }
