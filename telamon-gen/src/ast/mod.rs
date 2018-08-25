@@ -8,6 +8,7 @@ mod context;
 mod error;
 mod set;
 mod trigger;
+mod typing_context;
 
 use constraint::dedup_inputs;
 use constraint::Constraint as TypedConstraint;
@@ -19,7 +20,6 @@ use regex::Regex;
 use std;
 use std::collections::{hash_map, BTreeSet};
 use std::fmt;
-use std::ops::Deref;
 use utils::*;
 
 pub use self::choice::enumeration::EnumDef;
@@ -30,134 +30,9 @@ use self::context::TypingContext;
 pub use self::error::{Hint, TypeError};
 pub use self::set::SetDef;
 use self::trigger::TriggerDef;
+use self::typing_context::CheckerContext;
 
 pub use super::lexer::{Position, Spanned};
-
-/// CheckContext is a type system.
-#[derive(Debug, Default)]
-struct CheckerContext {
-    /// Map Name of unique identifiant.
-    hash: HashMap<String, Spanned<Hint>>,
-}
-
-impl CheckerContext {
-    /// This checks the undefined of EnumDef or IntegerDef.
-    fn check_undefined_choicedef(&self, statement: ChoiceDef) -> Result<(), TypeError> {
-        match statement {
-            ChoiceDef::EnumDef(EnumDef {
-                name: ref spanned,
-                doc: _,
-                ref variables,
-                ..
-            })
-            | ChoiceDef::IntegerDef(IntegerDef {
-                name: ref spanned,
-                doc: _,
-                ref variables,
-                ..
-            }) => {
-                for VarDef {
-                    name: _,
-                    set: SetRef { name, .. },
-                } in variables
-                {
-                    let name: &String = name.deref();
-                    if !self.hash.contains_key(name) {
-                        Err(TypeError::Undefined {
-                            object_name: spanned.with_data(name.to_owned()),
-                        })?;
-                    }
-                }
-            }
-            _ => {}
-        }
-        Ok(())
-    }
-
-    /// This checks the undefined of SetDef superset and arg.
-    fn check_undefined_setdef(&self, statement: &SetDef) -> Result<(), TypeError> {
-        match statement {
-            SetDef {
-                name: spanned,
-                doc: _,
-                arg,
-                superset,
-                disjoint: _,
-                keys,
-                ..
-            } => {
-                if let Some(VarDef {
-                    name: _,
-                    set: SetRef { name, .. },
-                }) = arg
-                {
-                    let name: &String = name.deref();
-                    if !self.hash.contains_key(name) {
-                        Err(TypeError::Undefined {
-                            object_name: spanned.with_data(name.to_owned()),
-                        })?;
-                    }
-                }
-                if let Some(SetRef {
-                    name: supername, ..
-                }) = superset
-                {
-                    let name: &String = supername.deref();
-                    if !self.hash.contains_key(name) {
-                        Err(TypeError::Undefined {
-                            object_name: spanned.with_data(name.to_owned()),
-                        })?;
-                    }
-                }
-            }
-        }
-        Ok(())
-    }
-
-    /// This checks the redefinition of SetDef, EnumDef and IntegerDef.
-    fn check_redefinition(&mut self, statement: &Statement) -> Result<(), TypeError> {
-        match statement {
-            Statement::SetDef(SetDef { name: spanned, .. })
-            | Statement::ChoiceDef(ChoiceDef::EnumDef(EnumDef {
-                name: spanned, ..
-            }))
-            | Statement::ChoiceDef(ChoiceDef::IntegerDef(IntegerDef {
-                name: spanned,
-                ..
-            })) => {
-                let data: Hint = Hint::from(statement);
-                let value: Spanned<Hint> = spanned.with_data(data);
-                if let Some(pre) = self.hash.insert(spanned.data.to_owned(), value) {
-                    Err(TypeError::Redefinition {
-                        object_kind: pre,
-                        object_name: spanned.with_data(spanned.data.to_owned()),
-                    })
-                } else {
-                    Ok(())
-                }
-            }
-            _ => Ok(()),
-        }
-    }
-
-    /// Type checks the condition.
-    pub fn type_check(&mut self, statement: &Statement) -> Result<(), TypeError> {
-        self.check_redefinition(&statement)?;
-        match statement {
-            Statement::ChoiceDef(ChoiceDef::EnumDef(ref enumeration)) => {
-                self.check_undefined_choicedef(ChoiceDef::EnumDef(enumeration.clone()))?;
-            }
-            Statement::ChoiceDef(ChoiceDef::IntegerDef(ref integer)) => {
-                self.check_undefined_choicedef(ChoiceDef::IntegerDef(integer.clone()))?;
-            }
-            Statement::SetDef(ref set) => {
-                self.check_undefined_setdef(set)?;
-            }
-            _ => {}
-        }
-        Ok(())
-    }
-}
 
 #[derive(Debug)]
 pub struct Ast {
@@ -166,13 +41,21 @@ pub struct Ast {
 
 impl Ast {
     /// Generate the defintion of choices and the list of constraints.
+    /// TODO: remove typing context
     pub fn type_check(self) -> Result<(ir::IrDesc, Vec<TypedConstraint>), TypeError> {
         let mut checker = CheckerContext::default();
         let mut context = TypingContext::default();
 
+        // declare
+        for statement in self.statements.iter() {
+            statement.declare(&mut checker)?;
+        }
+        // define
+        for statement in self.statements.iter() {
+            statement.define(&mut checker)?;
+        }
+        // typing context
         for statement in self.statements {
-            checker.type_check(&statement)?;
-            statement.type_check()?;
             context.add_statement(statement);
         }
         Ok(context.finalize())
@@ -193,10 +76,18 @@ pub enum Statement {
 }
 
 impl Statement {
-    pub fn type_check(&self) -> Result<(), TypeError> {
+    pub fn declare(&self, context: &mut CheckerContext) -> Result<(), TypeError> {
         match self {
-            Statement::SetDef(def) => def.type_check(),
-            Statement::ChoiceDef(def) => def.type_check(),
+            Statement::SetDef(def) => def.declare(context),
+            Statement::ChoiceDef(def) => def.declare(context),
+            _ => Ok(()),
+        }
+    }
+
+    pub fn define(&self, context: &mut CheckerContext) -> Result<(), TypeError> {
+        match self {
+            Statement::SetDef(def) => def.define(context),
+            Statement::ChoiceDef(def) => def.define(context),
             _ => Ok(()),
         }
     }
@@ -659,7 +550,7 @@ impl EnumStatements {
 
 #[derive(Clone, Debug)]
 pub struct CounterDef {
-    pub name: RcStr,
+    pub name: Spanned<RcStr>,
     pub doc: Option<String>,
     pub visibility: ir::CounterVisibility,
     pub vars: Vec<VarDef>,

@@ -36,6 +36,7 @@ where
         space,
         |_| (),
         |candidate| {
+            debug!("testing candidate with actions {:?}", candidate.actions);
             let fun = codegen::Function::build(&candidate.space);
             ctx.evaluate(&fun, EvalMode::FindBest).unwrap();
             check();

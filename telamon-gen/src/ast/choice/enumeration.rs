@@ -1,4 +1,5 @@
 use super::*;
+use std::ops::Deref;
 
 /// A toplevel definition or constraint.
 #[derive(Clone, Debug)]
@@ -10,49 +11,6 @@ pub struct EnumDef {
 }
 
 impl EnumDef {
-    /// This checks the undefined of value or alias from alias or antisymmetric.
-    fn check_undefined(&self) -> Result<(), TypeError> {
-        let mut hash: HashMap<String, _> = HashMap::default();
-
-        for stmt in self.statements.iter() {
-            match stmt {
-                EnumStatement::Value(spanned, ..) | EnumStatement::Alias(spanned, ..) => {
-                    hash.insert(spanned.data.to_owned(), ());
-                }
-                _ => {}
-            }
-        }
-        for stmt in self.statements.iter() {
-            match stmt {
-                EnumStatement::AntiSymmetric(spanned) => {
-                    for (first, second) in spanned.data.iter() {
-                        if !hash.contains_key(&first.to_owned()) {
-                            Err(TypeError::Undefined {
-                                object_name: spanned.with_data(first.to_owned()),
-                            })?;
-                        }
-                        if !hash.contains_key(&second.to_owned()) {
-                            Err(TypeError::Undefined {
-                                object_name: spanned.with_data(second.to_owned()),
-                            })?;
-                        }
-                    }
-                }
-                EnumStatement::Alias(spanned, _, sets, ..) => {
-                    for set in sets {
-                        if !hash.contains_key(&set.to_owned()) {
-                            Err(TypeError::Undefined {
-                                object_name: spanned.with_data(set.to_owned()),
-                            })?;
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-        Ok(())
-    }
-
     /// This checks that there isn't any doublon in the field list.
     fn check_redefinition_field(&self) -> Result<(), TypeError> {
         let mut hash: HashMap<String, _> = HashMap::default();
@@ -148,6 +106,49 @@ impl EnumDef {
         Ok(())
     }
 
+    /// Checks if the values referenced in EnumStatements are defined.
+    fn check_field(&self) -> Result<(), TypeError> {
+        let mut hash: HashMap<String, _> = HashMap::default();
+
+        for stmt in self.statements.iter() {
+            match stmt {
+                EnumStatement::Value(spanned, ..) | EnumStatement::Alias(spanned, ..) => {
+                    hash.insert(spanned.data.to_owned(), ());
+                }
+                _ => {}
+            }
+        }
+        for stmt in self.statements.iter() {
+            match stmt {
+                EnumStatement::AntiSymmetric(spanned) => {
+                    for (first, second) in spanned.data.iter() {
+                        if !hash.contains_key(&first.to_owned()) {
+                            Err(TypeError::Undefined {
+                                object_name: spanned.with_data(first.to_owned()),
+                            })?;
+                        }
+                        if !hash.contains_key(&second.to_owned()) {
+                            Err(TypeError::Undefined {
+                                object_name: spanned.with_data(second.to_owned()),
+                            })?;
+                        }
+                    }
+                }
+                EnumStatement::Alias(spanned, _, sets, ..) => {
+                    for set in sets {
+                        if !hash.contains_key(&set.to_owned()) {
+                            Err(TypeError::Undefined {
+                                object_name: spanned.with_data(set.to_owned()),
+                            })?;
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+
     /// This checks that there is two parameters if the field symmetric is defined.
     fn check_two_parameter(&self) -> Result<(), TypeError> {
         if self
@@ -159,7 +160,15 @@ impl EnumDef {
             if self.variables.len() != 2 {
                 Err(TypeError::BadSymmetricArg {
                     object_name: self.name.to_owned(),
-                    object_variables: self.variables.to_owned(),
+                    object_variables: self
+                        .variables
+                        .iter()
+                        .map(|variable: &VarDef| {
+                            let set_name: &String = variable.set.name.deref();
+
+                            (variable.name.to_owned().into(), set_name.to_owned())
+                        })
+                        .collect::<Vec<(Spanned<String>, String)>>(),
                 })?;
             }
         }
@@ -185,7 +194,15 @@ impl EnumDef {
                     if name != rhs_name {
                         Err(TypeError::BadSymmetricArg {
                             object_name: self.name.to_owned(),
-                            object_variables: self.variables.to_owned(),
+                            object_variables: self
+                                .variables
+                                .iter()
+                                .map(|variable| {
+                                    let set_name: &String = variable.set.name.deref();
+
+                                    (variable.name.to_owned().into(), set_name.to_owned())
+                                })
+                                .collect::<Vec<(Spanned<String>, String)>>(),
                         })?;
                     }
                 }
@@ -195,11 +212,34 @@ impl EnumDef {
         Ok(())
     }
 
-    /// Type checks the condition.
-    pub fn type_check(&self) -> Result<(), TypeError> {
-        self.check_undefined()?;
+    /// This checks if the variables are defined in the context.
+    fn check_undefined_variables(
+        &self,
+        context: &CheckerContext,
+    ) -> Result<(), TypeError> {
+        for VarDef { name: _, ref set } in self.variables.iter() {
+            if !context.check_set_define(set) {
+                let name: &String = set.name.deref();
+
+                Err(TypeError::Undefined {
+                    object_name: self.name.with_data(name.to_owned()),
+                })?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Type checks the declare's condition.
+    pub fn declare(&self, context: &mut CheckerContext) -> Result<(), TypeError> {
+        Ok(())
+    }
+
+    /// Type checks the define's condition.
+    pub fn define(&self, context: &CheckerContext) -> Result<(), TypeError> {
+        self.check_undefined_variables(context)?;
         self.check_redefinition_parameter()?;
         self.check_redefinition_field()?;
+        self.check_field()?;
         self.check_two_parameter()?;
         self.check_same_parameter()?;
         self.check_conflict()?;

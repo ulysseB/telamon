@@ -3,7 +3,10 @@ use ir;
 use libc;
 
 use std::fmt;
+use std::ops::Deref;
 use std::path::PathBuf;
+
+use utils::RcStr;
 
 /// A [yyscan](https://westes.github.io/flex/manual/About-yyscan_005ft.html) type is the internal
 /// representation of a [yylex_init](https://westes.github.io/flex/manual/Init-and-Destroy-Functions.html) structure.
@@ -88,11 +91,11 @@ impl From<LexerPosition> for Position {
 
 impl fmt::Display for Position {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "position: {:?}, filename: {:?}",
-            self.position, self.filename
-        )
+        if let Some(ref filename) = self.filename {
+            write!(f, "{} -> {}", self.position, filename)
+        } else {
+            write!(f, "{}", self.position)
+        }
     }
 }
 
@@ -126,20 +129,50 @@ pub struct LexerSpanned<Y> {
 pub type YyExtraType = LexerSpanned<YyLval>;
 
 #[derive(Default, Clone, PartialEq, Debug)]
-pub struct Spanned<Y> {
+pub struct Spanned<Y>
+where
+    Y: fmt::Debug,
+{
     pub beg: Position,
     pub end: Position,
     /// Spanned data
     pub data: Y,
 }
 
-impl<Y> Spanned<Y> {
-    pub fn with_data<T>(&self, data: T) -> Spanned<T> {
+impl<Y> Spanned<Y>
+where
+    Y: fmt::Debug,
+{
+    pub fn with_data<T>(&self, data: T) -> Spanned<T>
+    where
+        T: fmt::Debug,
+    {
         Spanned {
             beg: self.beg.to_owned(),
             end: self.end.to_owned(),
             data,
         }
+    }
+}
+
+impl<Y> fmt::Display for Spanned<Y>
+where
+    Y: fmt::Debug,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "between {} and {} -> {:?}",
+            self.beg, self.end, self.data
+        )
+    }
+}
+
+impl From<Spanned<RcStr>> for Spanned<String> {
+    fn from(token: Spanned<RcStr>) -> Spanned<String> {
+        let name: &String = token.data.deref();
+
+        token.with_data(name.to_owned())
     }
 }
 

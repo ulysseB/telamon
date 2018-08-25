@@ -80,7 +80,7 @@ impl TypingContext {
                     visibility,
                     vars,
                     body,
-                }) => self.register_counter(name, doc, visibility, vars, body),
+                }) => self.register_counter(name.data, doc, visibility, vars, body),
                 ChoiceDef::IntegerDef(def) => self.define_integer(def),
             }
         }
@@ -367,7 +367,10 @@ impl TypingContext {
             value: CounterVal::Code("1".to_string()),
         };
         self.choice_defs.push(ChoiceDef::CounterDef(CounterDef {
-            name: name.clone(),
+            name: Spanned {
+                data: name.clone(),
+                ..Default::default()
+            },
             doc: None,
             visibility,
             vars,

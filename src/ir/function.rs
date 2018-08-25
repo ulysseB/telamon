@@ -67,6 +67,7 @@ pub struct Function<'a, L = ir::LoweringMap> {
     mem_blocks: mem::BlockMap,
     layouts_to_lower: Vec<ir::mem::InternalId>,
     induction_vars: Vec<ir::InductionVar<'a, L>>,
+    logical_dims: Vec<ir::LogicalDim>,
 }
 
 impl<'a, L> Function<'a, L> {
@@ -84,6 +85,7 @@ impl<'a, L> Function<'a, L> {
             mem_blocks,
             layouts_to_lower: Vec::new(),
             induction_vars: Vec::new(),
+            logical_dims: Vec::new(),
         }
     }
 
@@ -137,6 +139,11 @@ impl<'a, L> Function<'a, L> {
         self.dims.iter()
     }
 
+    /// Returns the list of logical dimensions.
+    pub fn logical_dims(&self) -> impl Iterator<Item = &ir::LogicalDim> {
+        self.logical_dims.iter()
+    }
+
     /// Returns the list of stastic dimensions in the function.
     pub fn static_dims<'b>(&'b self) -> impl Iterator<Item = &'b Dimension<'a>> {
         self.static_dims.iter().map(move |&id| self.dim(id))
@@ -165,6 +172,11 @@ impl<'a, L> Function<'a, L> {
     /// Returns a mutable reference to a dimension given its ID.
     fn dim_mut(&mut self, id: ir::DimId) -> &mut Dimension<'a> {
         &mut self.dims[id]
+    }
+
+    /// Retrives a logical dimension given its ID.
+    pub fn logical_dim(&self, id: ir::LogicalDimId) -> &ir::LogicalDim {
+        &self.logical_dims[id.0 as usize]
     }
 
     /// Returns the list of memory blocks. The block with id `i` is in i-th position.
@@ -346,6 +358,48 @@ impl<'a> Function<'a, ()> {
         self.mem_blocks.alloc_block(size, None)
     }
 
+    /// Create a new logical dimension and the dimensions that compose it.
+    pub fn add_logical_dim(
+        &mut self,
+        size: ir::Size<'a>,
+        tiling_factors: Vec<u32>,
+        tile_sizes: &[u32],
+    ) -> Result<(ir::LogicalDimId, Vec<ir::DimId>), ir::Error> {
+        // TODO(strip-mining): allow all tiling factors at all levels
+        let logical_id = ir::LogicalDimId(self.logical_dims.len() as u32);
+        let dim_ids = (0..tile_sizes.len() + 1)
+            .map(|id| ir::DimId((id + self.dims.len()) as u32))
+            .collect_vec();
+        // Create the objects, but don't add anythin yet so we can rollback if an error
+        // occurs.
+        let mut dims = Vec::new();
+        let tiling_factor = tiling_factors.iter().product();
+        let logical_dim = if let Some(size) = size.as_int() {
+            let tiled_size = ir::Size::new(size / tiling_factor, vec![], 1);
+            dims.push(Dimension::new(tiled_size, dim_ids[0])?);
+            ir::LogicalDim::new_static(logical_id, dim_ids.clone(), size)
+        } else {
+            let mut tiled_size = size.clone();
+            tiled_size.mul_divisor(tiling_factor);
+            dims.push(Dimension::new(tiled_size, dim_ids[0])?);
+            let factors = tiling_factors;
+            let static_dims = dim_ids[1..].iter().cloned().collect();
+            ir::LogicalDim::new_dynamic(logical_id, dim_ids[0], static_dims, factors)
+        };
+        for (&id, &size) in dim_ids[1..].iter().zip_eq(tile_sizes) {
+            dims.push(Dimension::new(ir::Size::new(size, vec![], 1), id)?);
+        }
+        // Register the new objects.
+        for dim in &dims {
+            if dim.possible_sizes().is_some() {
+                self.static_dims.push(dim.id());
+            }
+        }
+        self.dims.extend(dims);
+        self.logical_dims.push(logical_dim);
+        Ok((logical_id, dim_ids))
+    }
+
     pub(crate) fn freeze(self) -> Function<'a> {
         let mut counter = ir::Counter {
             next_mem: self.mem_blocks.num_internal_blocks(),
@@ -363,6 +417,7 @@ impl<'a> Function<'a, ()> {
             mut mem_blocks,
             layouts_to_lower,
             induction_vars,
+            logical_dims,
         } = self;
 
         let mut insts = SparseVec::from_vec(
@@ -396,6 +451,7 @@ impl<'a> Function<'a, ()> {
             mem_blocks,
             layouts_to_lower,
             induction_vars,
+            logical_dims,
         }
     }
 }

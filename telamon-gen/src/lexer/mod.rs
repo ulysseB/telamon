@@ -4,15 +4,15 @@
 mod ffi;
 mod token;
 
-use std::error::Error;
+use std::ffi::{CStr, CString};
 use std::fmt;
+use std::path::{Path, PathBuf};
 use std::{fs, io, path, ptr};
+
+use errno::Errno;
 
 pub use self::ffi::Spanned;
 pub use self::token::Token;
-
-use std::ffi::{CStr, CString};
-use std::path::{Path, PathBuf};
 
 use self::ffi::{
     yy_create_buffer, yy_delete_buffer, yy_scan_bytes, yyget_extra, yyget_text, yylex,
@@ -35,51 +35,23 @@ pub type LexerItem = ParserSpanned<Token, Position, LexicalError>;
 /// FD of include header.
 type YyIn = *mut libc::FILE;
 
-#[derive(Debug, Clone, PartialEq)]
-/// TODO; struct Error {
-///     
-/// }
-///
-/// LexicalError {
-///     beg
-///     end
-///     cause: ErrorKind
-/// }
-///
-/// enum ErrorKind {
-///     InvalidToken(String)
-///     InvalidInclude(String, Errno)
-/// }
-pub enum LexicalError {
-    InvalidToken(Position, Token, Position),
-    InvalidInclude(Position, Token, Position),
-    UnexpectedToken(Position, Token, Position),
+#[derive(Debug, Fail, Clone, PartialEq)]
+pub enum ErrorKind {
+    #[fail(display = "Invalid token \"{}\"", token)]
+    InvalidToken { token: String },
+    #[fail(display = "Invalid include header {}", name)]
+    InvalidInclude { name: String, code: Errno },
 }
 
-impl Error for LexicalError {
-    fn description(&self) -> &str {
-        match self {
-            LexicalError::InvalidToken(..) => "invalid token",
-            LexicalError::InvalidInclude(..) => "invalid include header",
-            LexicalError::UnexpectedToken(..) => "expected expression",
-        }
-    }
+#[derive(Debug, Fail, Clone, PartialEq)]
+pub struct LexicalError {
+    #[fail(display = "cause {}", cause)]
+    pub cause: Spanned<ErrorKind>,
 }
 
 impl fmt::Display for LexicalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            LexicalError::UnexpectedToken(beg, tok, end)
-            | LexicalError::InvalidInclude(beg, tok, end)
-            | LexicalError::InvalidToken(beg, tok, end) => write!(
-                f,
-                "{}, found '{:?}' between {}:{}",
-                self.description(),
-                tok,
-                beg,
-                end
-            ),
-        }
+        write!(f, "{}", self.cause.data)
     }
 }
 
@@ -184,14 +156,22 @@ impl Lexer {
                     let why = errno();
 
                     set_errno(why);
-                    Some(Err(LexicalError::InvalidInclude(
-                        Position::new_optional(extra.beg, self.filename.to_owned()),
-                        Token::InvalidInclude(
-                            filename.to_str().unwrap().to_string(),
-                            why,
-                        ),
-                        Position::new_optional(extra.end, self.filename.to_owned()),
-                    )))
+                    Some(Err(LexicalError {
+                        cause: Spanned {
+                            beg: Position::new_optional(
+                                extra.beg,
+                                self.filename.to_owned(),
+                            ),
+                            end: Position::new_optional(
+                                extra.end,
+                                self.filename.to_owned(),
+                            ),
+                            data: ErrorKind::InvalidInclude {
+                                name: filename.into_string().unwrap(),
+                                code: why,
+                            },
+                        },
+                    }))
                 }
                 yyin => {
                     let buffer: YyBufferState =
@@ -263,17 +243,21 @@ impl Iterator for Lexer {
                             let out = yyget_text(self.scanner);
 
                             CStr::from_ptr(out).to_str().ok().and_then(|s: &str| {
-                                Some(Err(LexicalError::InvalidToken(
-                                    Position::new_optional(
-                                        extra.beg,
-                                        self.filename.to_owned(),
-                                    ),
-                                    Token::InvalidToken(s.to_owned()),
-                                    Position::new_optional(
-                                        extra.end,
-                                        self.filename.to_owned(),
-                                    ),
-                                )))
+                                Some(Err(LexicalError {
+                                    cause: Spanned {
+                                        beg: Position::new_optional(
+                                            extra.beg,
+                                            self.filename.to_owned(),
+                                        ),
+                                        end: Position::new_optional(
+                                            extra.end,
+                                            self.filename.to_owned(),
+                                        ),
+                                        data: ErrorKind::InvalidToken {
+                                            token: s.to_owned(),
+                                        },
+                                    },
+                                }))
                             })
                         }
                         YyToken::Include => {
