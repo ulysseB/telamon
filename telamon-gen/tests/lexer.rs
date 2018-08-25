@@ -1244,7 +1244,7 @@ fn lexer_include_set() {
             .map(|(_, t, _)| t)
             .collect::<Vec<_>>(),
         vec![
-          Token::Set, Token::ValueIdent(String::from("A")), Token::Colon,
+          Token::Set, Token::SetIdent(String::from("Aa")), Token::Colon,
               Token::SetDefKey(SetDefKey::ItemType),
               Token::Equal,
               Token::Code(String::from("ir::inst::Obj")),
@@ -1268,7 +1268,7 @@ fn lexer_include_set() {
               Token::Code(String::from("$objs.inst")),
           Token::End,
 
-          Token::Set, Token::ValueIdent(String::from("C")), Token::Colon,
+          Token::Set, Token::SetIdent(String::from("Cc")), Token::Colon,
               Token::SetDefKey(SetDefKey::ItemType),
               Token::Equal,
               Token::Code(String::from("ir::inst::Obj")),
@@ -1292,7 +1292,7 @@ fn lexer_include_set() {
               Token::Code(String::from("$objs.inst")),
           Token::End,
 
-          Token::Set, Token::ValueIdent(String::from("B")), Token::Colon,
+          Token::Set, Token::SetIdent(String::from("Bb")), Token::Colon,
               Token::SetDefKey(SetDefKey::ItemType),
               Token::Equal,
               Token::Code(String::from("ir::inst::Obj")),

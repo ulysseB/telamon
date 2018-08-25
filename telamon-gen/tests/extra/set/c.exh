@@ -1,4 +1,4 @@
-set C:
+set Cc:
   item_type = "ir::inst::Obj"
   id_type = "ir::inst::Id"
   item_getter = "ir::inst::get($fun, $id)"
