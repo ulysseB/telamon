@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["Cause",""]],"struct":[["ProcessError",""]]});
+initSidebarItems({"struct":[["ProcessError",""]]});

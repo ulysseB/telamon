@@ -219,6 +219,8 @@
 <span id="219">219</span>
 <span id="220">220</span>
 <span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
 </pre><pre class="rust ">
 <span class="comment">// Enables `quote!` to work on bigger chunks of code.</span>
 <span class="attribute">#![<span class="ident">recursion_limit</span> <span class="op">=</span> <span class="string">&quot;256&quot;</span>]</span>
@@ -242,6 +244,8 @@
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">telamon_utils</span> <span class="kw">as</span> <span class="ident">utils</span>;
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">errno</span>;
+<span class="attribute">#[<span class="ident">macro_use</span>]</span>
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">failure</span>;
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">indexmap</span>;
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">libc</span>;
 

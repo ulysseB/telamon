@@ -65,9 +65,18 @@
 <span id="65">65</span>
 <span id="66">66</span>
 <span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
 </pre><pre class="rust ">
 <span class="doccomment">/// TypeError describes the Ast error top level.</span>
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">ChoiceDef</span>, <span class="ident">Spanned</span>, <span class="ident">Statement</span>, <span class="ident">VarDef</span>};
+<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">ChoiceDef</span>, <span class="ident">Spanned</span>, <span class="ident">Statement</span>};
 
 <span class="doccomment">/// Hint is a token representation.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>)]</span>
@@ -107,28 +116,37 @@
 }
 
 <span class="doccomment">/// TypeEror is the error representation of telamon&#39;s.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Fail</span>, <span class="ident">PartialEq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TypeError</span> {
     <span class="doccomment">/// Redefinition of a name and hint.</span>
+    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;redefinition {:?} and {:?}&quot;</span>, <span class="ident">object_kind</span>, <span class="ident">object_name</span>)]</span>
     <span class="ident">Redefinition</span> {
         <span class="ident">object_kind</span>: <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">Hint</span><span class="op">&gt;</span>,
         <span class="ident">object_name</span>: <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
     },
     <span class="doccomment">/// Undefinition of set, enum or field.</span>
+    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;undefined {:?}&quot;</span>, <span class="ident">object_name</span>)]</span>
     <span class="ident">Undefined</span> { <span class="ident">object_name</span>: <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> },
     <span class="doccomment">/// Unvalid arguments of a symmetric enum.</span>
+    <span class="attribute">#[<span class="ident">fail</span>(
+        <span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;unvalid symmetric arguments {:?} and {:?}&quot;</span>,
+        <span class="ident">object_name</span>,
+        <span class="ident">object_variables</span>
+    )]</span>
     <span class="ident">BadSymmetricArg</span> {
         <span class="ident">object_name</span>: <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-        <span class="ident">object_variables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">VarDef</span><span class="op">&gt;</span>,
+        <span class="ident">object_variables</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">String</span>)<span class="op">&gt;</span>,
     },
     <span class="doccomment">/// Missing</span>
     <span class="doccomment">/// Happens when the Set&#39;s object has a missing field.</span>
+    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;missing entry {:?} of set {:?}&quot;</span>, <span class="ident">object_name</span>, <span class="ident">object_field</span>)]</span>
     <span class="ident">MissingEntry</span> {
         <span class="ident">object_name</span>: <span class="ident">String</span>,
         <span class="ident">object_field</span>: <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
     },
     <span class="doccomment">/// Conflict between incompatible keywords.</span>
     <span class="doccomment">/// Happens when the object has symmetric and antisimmetric fields.</span>
+    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;conflict between {:?}&quot;</span>, <span class="ident">object_fields</span>)]</span>
     <span class="ident">Conflict</span> {
         <span class="ident">object_fields</span>: (<span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
     },
