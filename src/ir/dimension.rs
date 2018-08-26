@@ -25,7 +25,7 @@ impl fmt::Display for DimId {
 #[derive(Clone, Debug)]
 pub struct Dimension<'a> {
     id: DimId,
-    size: ir::Size<'a>,
+    size: ir::PartialSize<'a>,
     possible_sizes: Vec<u32>,
     iterated: Vec<ir::InstId>,
     is_thread_dim: bool,
@@ -34,7 +34,7 @@ pub struct Dimension<'a> {
 
 impl<'a> Dimension<'a> {
     /// Creates a new dimension.
-    pub fn new(size: ir::Size, id: DimId) -> Result<Dimension, ir::Error> {
+    pub fn new(size: ir::PartialSize, id: DimId) -> Result<Dimension, ir::Error> {
         let possible_sizes = if let Some(size) = size.as_int() {
             if size == 1 {
                 return Err(ir::Error::InvalidDimSize);
@@ -66,7 +66,7 @@ impl<'a> Dimension<'a> {
     }
 
     /// Retruns the size of the dimension.
-    pub fn size(&self) -> &ir::Size<'a> {
+    pub fn size(&self) -> &ir::PartialSize<'a> {
         &self.size
     }
 

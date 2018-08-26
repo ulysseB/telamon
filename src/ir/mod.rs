@@ -26,7 +26,7 @@ pub use self::instruction::{InstId, Instruction};
 pub use self::mem::MemId;
 pub use self::operand::{DimMapScope, LoweringMap, Operand};
 pub use self::operator::{BinOp, Operator};
-pub use self::size::Size;
+pub use self::size::{PartialSize, Size};
 pub use self::types::Type;
 
 pub mod mem;

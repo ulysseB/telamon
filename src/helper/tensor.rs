@@ -19,7 +19,7 @@ impl<'a> DimSize<'a> {
     /// Convert the size into the size type used by the IR.
     pub fn into_ir_size<'b>(&self, builder: &Builder<'b>) -> ir::Size<'b> {
         let params = self.params.iter().map(|p| builder.find_param(p)).collect();
-        ir::Size::new(self.factor, params, 1)
+        ir::Size::new(self.factor, params)
     }
 
     /// Converts the size into a numerical value for a given context.
@@ -188,7 +188,7 @@ where
         for (&(ref size, ref stride), tiling) in self.iter_dims.iter().zip_eq(tiling) {
             let size = size.into_ir_size(builder);
             let dim = builder.open_tiled_dim(size, tiling);
-            let mut stride = stride.into_ir_size(builder);
+            let mut stride: ir::PartialSize = stride.into_ir_size(builder).into();
             for (d, &t) in dim.ids().rev().zip(tiling.iter().rev()) {
                 induction_levels.push((d, stride.clone()));
                 stride.mul_factor(t);

@@ -2,7 +2,7 @@
 use device::Device;
 use ir::mem::Block;
 use ir::{self, BBId, Dimension, InstId, Instruction, Operator, Statement};
-use ir::{dim, mem, AccessPattern, Operand, Size, SparseVec, Type};
+use ir::{dim, mem, AccessPattern, Operand, SparseVec, Type};
 use itertools::Itertools;
 use std;
 use utils::*;
@@ -297,7 +297,7 @@ impl<'a, L> Function<'a, L> {
         dims: Vec<ir::DimId>,
     ) -> (Operand<'a, L>, AccessPattern<'a>) {
         let var_type = base_addr.t();
-        let base_size = ir::Size::new(base_incr, vec![], 1);
+        let base_size = ir::PartialSize::new(base_incr, vec![], 1);
         let increments = dims
             .iter()
             .rev()
@@ -343,9 +343,10 @@ impl<'a> Function<'a, ()> {
     }
 
     /// Creates a new dimension.
-    pub fn add_dim(&mut self, size: Size<'a>) -> Result<ir::DimId, ir::Error> {
+    // FIXME: deprecate
+    pub fn add_dim(&mut self, size: ir::Size<'a>) -> Result<ir::DimId, ir::Error> {
         let id = ir::DimId(self.dims.len() as u32);
-        let dim = Dimension::new(size, id)?;
+        let dim = Dimension::new(size.into(), id)?;
         if dim.possible_sizes().is_some() {
             self.static_dims.push(id);
         }
@@ -358,7 +359,8 @@ impl<'a> Function<'a, ()> {
         self.mem_blocks.alloc_block(size, None)
     }
 
-    /// Create a new logical dimension and the dimensions that compose it.
+    /// Create a new logical dimension composed of multiple dimensions to implement
+    /// strip-mining.
     pub fn add_logical_dim(
         &mut self,
         size: ir::Size<'a>,
@@ -374,12 +376,12 @@ impl<'a> Function<'a, ()> {
         // occurs.
         let mut dims = Vec::new();
         let tiling_factor = tiling_factors.iter().product();
-        let logical_dim = if let Some(size) = size.as_int() {
-            let tiled_size = ir::Size::new(size / tiling_factor, vec![], 1);
+        let logical_dim = if let Some(size) = size.as_constant() {
+            let tiled_size = ir::PartialSize::new(size / tiling_factor, vec![], 1);
             dims.push(Dimension::new(tiled_size, dim_ids[0])?);
             ir::LogicalDim::new_static(logical_id, dim_ids.clone(), size)
         } else {
-            let mut tiled_size = size.clone();
+            let mut tiled_size: ir::PartialSize = size.into();
             tiled_size.mul_divisor(tiling_factor);
             dims.push(Dimension::new(tiled_size, dim_ids[0])?);
             let factors = tiling_factors;
@@ -387,7 +389,7 @@ impl<'a> Function<'a, ()> {
             ir::LogicalDim::new_dynamic(logical_id, dim_ids[0], static_dims, factors)
         };
         for (&id, &size) in dim_ids[1..].iter().zip_eq(tile_sizes) {
-            dims.push(Dimension::new(ir::Size::new(size, vec![], 1), id)?);
+            dims.push(Dimension::new(ir::PartialSize::new(size, vec![], 1), id)?);
         }
         // Register the new objects.
         for dim in &dims {

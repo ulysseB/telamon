@@ -1,7 +1,7 @@
 //! Helper struct to build a `Function`.
 use device::Device;
-use helper::{AutoOperand, LogicalDim, MetaDimension, MetaStatement};
-use ir::{self, mem, op, Parameter, Size, Type};
+use helper::{AutoOperand, LogicalDim, MetaStatement, MetaDimension};
+use ir::{self, mem, op, Parameter, Type};
 use ir::{AccessPattern, Function, InstId, Operand, Operator, Signature};
 use itertools::Itertools;
 use search_space::{Action, DimKind, InstFlag, MemSpace, Order, SearchSpace};
@@ -227,7 +227,8 @@ impl<'a> Builder<'a> {
         t: &ir::Type,
         dims: &[&MetaDimension],
     ) -> (ir::IndVarId, ir::AccessPattern<'a>) {
-        let data_size = self.cst_size(unwrap!(t.len_byte()));
+        let data_size: ir::PartialSize =
+            ir::Size::new_const(unwrap!(t.len_byte())).into();
         let induction_dims = dims
             .iter()
             .flat_map(|d| d.ids())
@@ -248,14 +249,14 @@ impl<'a> Builder<'a> {
     }
 
     /// Opens a new dimension.
-    pub fn open_dim(&mut self, size: Size<'a>) -> ir::DimId {
+    pub fn open_dim(&mut self, size: ir::Size<'a>) -> ir::DimId {
         let id = unwrap!(self.function.add_dim(size));
         self.open_dims.insert(id, id);
         id
     }
 
     /// Opens a nest of new dimension with the given kinds and sizes.
-    pub fn open_dim_ex(&mut self, size: Size<'a>, kind: DimKind) -> ir::DimId {
+    pub fn open_dim_ex(&mut self, size: ir::Size<'a>, kind: DimKind) -> ir::DimId {
         let id = self.open_dim(size);
         self.actions.push(Action::DimKind(id, kind));
         id
@@ -264,7 +265,7 @@ impl<'a> Builder<'a> {
     /// Open multiple dimensions to represent a tiled dimension.
     pub fn open_tiled_dim(
         &mut self,
-        size: Size<'a>,
+        size: ir::Size<'a>,
         // This is a reference to avoid breaking the interface. This parameter will be
         // removed when we allow specifying multiple tile sizes for each dimension so it
         // is no worth changing the code everywhere this function is used just yet.
@@ -303,9 +304,9 @@ impl<'a> Builder<'a> {
                     let dim = self.function.dim(*old_id);
                     // FIXME: explain why we do this
                     if let Some(&[size]) = dim.possible_sizes() {
-                        ir::Size::new(size, vec![], 1)
+                        ir::Size::new_const(size)
                     } else {
-                        dim.size().clone()
+                        unimplemented!() // FIXME: dim.size().clone()
                     }
                 };
                 let new_id = unwrap!(self.function.add_dim(size));
@@ -364,24 +365,13 @@ impl<'a> Builder<'a> {
     }
 
     /// Returns a constant size.
-    pub fn cst_size(&self, size: u32) -> Size<'a> {
-        Size::new(size, vec![], 1)
+    pub fn cst_size(&self, size: u32) -> ir::Size<'a> {
+        ir::Size::new_const(size)
     }
 
     /// Returns a parameter size.
-    pub fn param_size(&self, param: &str) -> Size<'a> {
-        Size::new(1, vec![self.find_param(param)], 1)
-    }
-
-    /// Returns a tiled size.
-    pub fn tile_size(&self, param: &str, chunk_size: u32) -> Size<'a> {
-        Size::new(1, vec![self.find_param(param)], chunk_size)
-    }
-
-    /// Returns a size from the given parameters, dividend and divisor.
-    pub fn size(&self, params: &[&str], dividend: u32, divisor: u32) -> Size<'a> {
-        let params = params.iter().map(|&p| self.find_param(p)).collect();
-        Size::new(dividend, params, divisor)
+    pub fn param_size(&self, param: &str) -> ir::Size<'a> {
+        ir::Size::new_param(self.find_param(param))
     }
 
     /// Allocates a memory block in shared memory.
@@ -415,7 +405,8 @@ impl<'a> Builder<'a> {
         t: &Type,
         dims: &[&MetaDimension],
     ) -> AccessPattern<'a> {
-        let data_size = self.cst_size(unwrap!(t.len_byte()));
+        let data_size: ir::PartialSize = self.cst_size(unwrap!(t.len_byte())).into();
+        // FIXME: factor code with induction_var creation
         let dims = dims
             .iter()
             .flat_map(|d| d.ids())
@@ -430,10 +421,11 @@ impl<'a> Builder<'a> {
     }
 
     /// Builds an induction variable.
+    // FIXME: use logical dims instead
     pub fn induction_var(
         &mut self,
         base: &AutoOperand<'a>,
-        dims: Vec<(ir::DimId, ir::Size<'a>)>,
+        dims: Vec<(ir::DimId, ir::PartialSize<'a>)>,
     ) -> ir::IndVarId {
         let base = self.get_op(base);
         self.function

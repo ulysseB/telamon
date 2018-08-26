@@ -87,7 +87,7 @@ fn unknown_info(is_shared_access: Trivalent, gpu: &cuda::Gpu) -> MemInfo {
 fn info(
     space: &SearchSpace,
     inst: &ir::Instruction,
-    dims: &HashMap<ir::DimId, ir::Size>,
+    dims: &HashMap<ir::DimId, ir::PartialSize>,
     is_shared_access: Trivalent,
     gpu: &cuda::Gpu,
     sizes: &HashMap<ir::DimId, u32>,
@@ -145,7 +145,7 @@ struct ThreadDimInfo {
 fn tensor_thread_dims(
     space: &SearchSpace,
     inst: &ir::Instruction,
-    tensor_dims: &HashMap<ir::DimId, ir::Size>,
+    tensor_dims: &HashMap<ir::DimId, ir::PartialSize>,
     sizes: &HashMap<ir::DimId, u32>,
     gpu: &cuda::Gpu,
     ctx: &Context,
@@ -289,7 +289,7 @@ fn wrap_access_offsets(thread_dims: &[ThreadDimInfo], gpu: &cuda::Gpu) -> Vec<u6
 /// Computes the replay factor for a shared memory access.
 fn shared_replay_factor(
     offsets: &[u64],
-    tensor_dims: &HashMap<ir::DimId, ir::Size>,
+    tensor_dims: &HashMap<ir::DimId, ir::PartialSize>,
     dim_sizes: &HashMap<ir::DimId, u32>,
     space: &SearchSpace,
     gpu: &cuda::Gpu,

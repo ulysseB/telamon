@@ -2,22 +2,59 @@ use ir;
 use num;
 use std;
 
-/// The size of an iteration dimension. The size is of the form:
-/// `(factor * dividend_0 * dividend_1 * ...)) / divisor`
-/// where the reminder of the division is null.
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+/// A fully specified size.
+#[derive(Clone, Debug)]
 pub struct Size<'a> {
+    factor: u32,
+    params: Vec<&'a ir::Parameter>,
+}
+
+impl<'a> Size<'a> {
+    /// Create a new fully specified size.
+    pub fn new(factor: u32, params: Vec<&'a ir::Parameter>) -> Self {
+        Size { factor, params }
+    }
+
+    /// Creates a new constant size.
+    pub fn new_const(factor: u32) -> Self {
+        Size {
+            factor,
+            ..Size::default()
+        }
+    }
+
+    /// Creates a new size equal to a parameter.
+    pub fn new_param(param: &'a ir::Parameter) -> Size {
+        Size {
+            params: vec![param],
+            ..Size::default()
+        }
+    }
+
+    /// Returns the size if it is a constant.
+    pub fn as_constant(&self) -> Option<u32> {
+        if self.params.is_empty() {
+            Some(self.factor)
+        } else {
+            None
+        }
+    }
+}
+
+/// A size how exact value is not yet decided.
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub struct PartialSize<'a> {
     factor: u32,
     dividend: Vec<&'a ir::Parameter>,
     divisor: u32,
 }
 
-impl<'a> Size<'a> {
-    /// Creates a new 'Size'.
+impl<'a> PartialSize<'a> {
+    /// Creates a new 'PartialSize'.
     pub fn new(factor: u32, dividend: Vec<&'a ir::Parameter>, divisor: u32) -> Self {
         assert!(factor != 0);
         assert!(divisor != 0);
-        let mut new = Size {
+        let mut new = PartialSize {
             factor,
             dividend,
             divisor,
@@ -78,18 +115,37 @@ impl<'a> Size<'a> {
 
     /// Indicates if two sizes may be equal, meaning they are equal appart from the
     /// decisions they depend on.
-    pub fn is_compatible_with(&self, other: &ir::Size) -> bool {
+    pub fn is_compatible_with(&self, other: &ir::PartialSize) -> bool {
         self.factor == other.factor
             && self.divisor == other.divisor
             && self.dividend == other.dividend
     }
 }
 
-impl<'a, 'b> std::ops::MulAssign<&'b Size<'a>> for Size<'a> {
-    fn mul_assign(&mut self, rhs: &'b Size<'a>) {
+impl<'a, 'b> std::ops::MulAssign<&'b PartialSize<'a>> for PartialSize<'a> {
+    fn mul_assign(&mut self, rhs: &'b PartialSize<'a>) {
         self.factor *= rhs.factor;
         self.dividend.extend(rhs.dividend.iter().cloned());
         self.divisor *= rhs.divisor;
         self.simplify();
+    }
+}
+
+impl<'a> Default for Size<'a> {
+    fn default() -> Self {
+        Size {
+            factor: 1,
+            params: vec![],
+        }
+    }
+}
+
+impl<'a> From<Size<'a>> for PartialSize<'a> {
+    fn from(size: Size<'a>) -> PartialSize<'a> {
+        PartialSize {
+            factor: size.factor,
+            dividend: size.params,
+            divisor: 1,
+        }
     }
 }
