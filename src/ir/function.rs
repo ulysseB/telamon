@@ -67,7 +67,7 @@ pub struct Function<'a, L = ir::LoweringMap> {
     mem_blocks: mem::BlockMap,
     layouts_to_lower: Vec<ir::mem::InternalId>,
     induction_vars: Vec<ir::InductionVar<'a, L>>,
-    logical_dims: Vec<ir::LogicalDim>,
+    logical_dims: Vec<ir::LogicalDim<'a>>,
 }
 
 impl<'a, L> Function<'a, L> {
@@ -381,12 +381,12 @@ impl<'a> Function<'a, ()> {
             dims.push(Dimension::new(tiled_size, dim_ids[0])?);
             ir::LogicalDim::new_static(logical_id, dim_ids.clone(), size)
         } else {
-            let mut tiled_size: ir::PartialSize = size.into();
+            let mut tiled_size: ir::PartialSize = size.clone().into();
             tiled_size.mul_divisor(tiling_factor);
             dims.push(Dimension::new(tiled_size, dim_ids[0])?);
             let factors = tiling_factors;
             let static_dims = dim_ids[1..].iter().cloned().collect();
-            ir::LogicalDim::new_dynamic(logical_id, dim_ids[0], static_dims, factors)
+            ir::LogicalDim::new_dynamic(logical_id, dim_ids[0], static_dims, factors, size)
         };
         for (&id, &size) in dim_ids[1..].iter().zip_eq(tile_sizes) {
             dims.push(Dimension::new(ir::PartialSize::new(size, vec![], 1), id)?);

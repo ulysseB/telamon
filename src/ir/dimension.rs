@@ -127,14 +127,15 @@ pub struct LogicalDimId(pub u32);
 
 /// A logic dimension composed of multiple `Dimension`s.
 #[derive(Clone, Debug)]
-pub struct LogicalDim {
+pub struct LogicalDim<'a> {
     id: LogicalDimId,
     static_dims: Vec<DimId>,
     nonstatic_dim: Option<DimId>,
     possible_tilings: Vec<u32>,
+    total_size: ir::Size<'a>,
 }
 
-impl LogicalDim {
+impl<'a> LogicalDim<'a> {
     /// Creates a new logical dimension, composed only of static dimensions.
     pub fn new_static(
         id: LogicalDimId,
@@ -146,6 +147,7 @@ impl LogicalDim {
             static_dims,
             nonstatic_dim: None,
             possible_tilings: vec![total_size],
+            total_size: ir::Size::new_const(total_size),
         }
     }
 
@@ -156,12 +158,14 @@ impl LogicalDim {
         dynamic_dim: DimId,
         static_dims: Vec<DimId>,
         possible_tilings: Vec<u32>,
+        total_size: ir::Size<'a>,
     ) -> Self {
         LogicalDim {
             id,
             static_dims,
             nonstatic_dim: Some(dynamic_dim),
             possible_tilings,
+            total_size,
         }
     }
 
@@ -184,4 +188,8 @@ impl LogicalDim {
     pub fn possible_tilings(&self) -> &[u32] {
         &self.possible_tilings
     }
+
+    /// Returns the size of the logical dimension, i.e. the product of the sizes of its
+    /// dimensions.
+    pub fn total_size(&self) -> &ir::Size<'a> { &self.total_size }
 }
