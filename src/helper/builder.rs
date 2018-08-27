@@ -1,6 +1,6 @@
 //! Helper struct to build a `Function`.
 use device::Device;
-use helper::{AutoOperand, DimGroup, MetaBasicBlock, MetaDimension};
+use helper::{AutoOperand, LogicalDim, MetaBasicBlock, MetaDimension};
 use ir::{self, mem, op, Parameter, Size, Type};
 use ir::{AccessPattern, Function, InstId, Operand, Operator, Signature};
 use itertools::Itertools;
@@ -262,37 +262,82 @@ impl<'a> Builder<'a> {
     }
 
     /// Open multiple dimensions to represent a tiled dimension.
-    pub fn open_tiled_dim(&mut self, mut size: Size<'a>, tiling: &[u32]) -> DimGroup {
-        let mut tiling_factor = 1;
-        let mut dims = Vec::with_capacity(tiling.len() + 1);
-        for tile_size in tiling.iter().cloned().rev() {
-            assert!(tile_size > 1);
-            tiling_factor *= tile_size;
-            dims.push(self.open_dim(Size::new(tile_size, vec![], 1)));
+    pub fn open_tiled_dim(
+        &mut self,
+        size: Size<'a>,
+        // This is a reference to avoid breaking the interface. This parameter will be
+        // removed when we allow specifying multiple tile sizes for each dimension so it
+        // is no worth changing the code everywhere this function is used just yet.
+        tile_sizes: &[u32],
+    ) -> LogicalDim<'a> {
+        if tile_sizes.len() == 0 {
+            LogicalDim::Simple(self.open_dim(size))
+        } else {
+            // TODO(strip-mining): allow multiple tile size for each level.
+            let tiling_factors = vec![tile_sizes.iter().product()];
+            let (id, dims) = unwrap!(self.function.add_logical_dim(
+                size.clone(),
+                tiling_factors.clone(),
+                tile_sizes,
+            ));
+            self.open_dims.extend(dims.iter().map(|&id| (id, id)));
+            LogicalDim::Composite {
+                id,
+                dims,
+                size,
+                tiling_factors,
+                tile_sizes: tile_sizes.iter().cloned().collect(),
+            }
         }
-        size.mul_divisor(tiling_factor);
-        dims.push(self.open_dim(size));
-        dims.reverse();
-        DimGroup::new(dims)
     }
 
     /// Opens a new dimension mapped to an existing one.
     ///
     /// The size of the new dim is inherited from the mapped dim.
     /// The dimension mapped to is closed if needed.
-    pub fn open_mapped_dim(&mut self, old_dim: &MetaDimension) -> DimGroup {
-        DimGroup::new(
-            old_dim
-                .ids()
-                .map(|old_id| {
-                    self.open_dims.remove(&old_id);
-                    let size = self.function.dim(old_id).size().clone();
-                    let new_id = unwrap!(self.function.add_dim(size));
-                    self.open_dims.insert(new_id, old_id);
-                    new_id
-                })
-                .collect(),
-        )
+    pub fn open_mapped_dim(&mut self, old_dim: &LogicalDim<'a>) -> LogicalDim<'a> {
+        let new_dim = match old_dim {
+            LogicalDim::Simple(old_id) => {
+                self.open_dims.remove(old_id);
+                let size = {
+                    let dim = self.function.dim(*old_id);
+                    // FIXME: explain why we do this
+                    if let Some(&[size]) = dim.possible_sizes() {
+                        ir::Size::new(size, vec![], 1)
+                    } else {
+                        dim.size().clone()
+                    }
+                };
+                let new_id = unwrap!(self.function.add_dim(size));
+                self.open_dims.insert(new_id, *old_id);
+                LogicalDim::Simple(new_id)
+            }
+            LogicalDim::Composite {
+                dims: old_dims,
+                size,
+                tiling_factors,
+                tile_sizes,
+                ..
+            } => {
+                let (new_id, new_dims) = unwrap!(self.function.add_logical_dim(
+                    size.clone(),
+                    tiling_factors.clone(),
+                    tile_sizes,
+                ));
+                for (&old, &new) in old_dims.iter().zip_eq(&new_dims) {
+                    self.open_dims.remove(&old);
+                    self.open_dims.insert(new, old);
+                }
+                LogicalDim::Composite {
+                    id: new_id,
+                    dims: new_dims,
+                    size: size.clone(),
+                    tiling_factors: tiling_factors.clone(),
+                    tile_sizes: tile_sizes.clone(),
+                }
+            }
+        };
+        new_dim
     }
 
     /// Opens an existing dimension.

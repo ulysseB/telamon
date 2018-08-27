@@ -20,6 +20,8 @@ extern crate serde_json;
 #[macro_use]
 extern crate telamon_utils as utils;
 extern crate errno;
+#[macro_use]
+extern crate failure;
 extern crate indexmap;
 extern crate libc;
 
