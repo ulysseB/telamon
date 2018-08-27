@@ -342,18 +342,6 @@ impl<'a> Function<'a, ()> {
         Ok(id)
     }
 
-    /// Creates a new dimension.
-    // FIXME: deprecate
-    pub fn add_dim(&mut self, size: ir::Size<'a>) -> Result<ir::DimId, ir::Error> {
-        let id = ir::DimId(self.dims.len() as u32);
-        let dim = Dimension::new(size.into(), id)?;
-        if dim.possible_sizes().is_some() {
-            self.static_dims.push(id);
-        }
-        self.dims.push(dim);
-        Ok(id)
-    }
-
     /// Allocates a new memory block.
     pub fn add_mem_block(&mut self, size: u32) -> mem::InternalId {
         self.mem_blocks.alloc_block(size, None)

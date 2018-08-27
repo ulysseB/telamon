@@ -224,17 +224,15 @@ impl<'a> Builder<'a> {
     }
 
     /// Opens a new dimension.
-    pub fn open_dim(&mut self, size: ir::Size<'a>) -> ir::DimId {
-        let id = unwrap!(self.function.add_dim(size));
-        self.open_dims.insert(id, id);
-        id
+    pub fn open_dim(&mut self, size: ir::Size<'a>) -> LogicalDim {
+        self.open_tiled_dim(size, &[])
     }
 
     /// Opens a nest of new dimension with the given kinds and sizes.
-    pub fn open_dim_ex(&mut self, size: ir::Size<'a>, kind: DimKind) -> ir::DimId {
-        let id = self.open_dim(size);
-        self.actions.push(Action::DimKind(id, kind));
-        id
+    pub fn open_dim_ex(&mut self, size: ir::Size<'a>, kind: DimKind) -> LogicalDim {
+        let dim = self.open_dim(size);
+        self.actions.push(Action::DimKind(dim[0], kind));
+        dim
     }
 
     /// Open multiple dimensions to represent a tiled dimension.
