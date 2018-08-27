@@ -23,7 +23,7 @@ pub struct LogicalDim {
 
 impl LogicalDim {
     /// Iterates on the reals IDs, from the outermost to the innermost.
-    pub fn iter(&self) -> impl Iterator<Item=ir::DimId> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = ir::DimId> + '_ {
         self.into_iter()
     }
 

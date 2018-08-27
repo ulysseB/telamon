@@ -249,10 +249,10 @@ impl<'a> Builder<'a> {
         // TODO(strip-mining): allow multiple tile size for each level.
         let tiling_factors = vec![tile_sizes.iter().product()];
         let (logical_id, real_ids) = unwrap!(self.function.add_logical_dim(
-                size.clone(),
-                tiling_factors.clone(),
-                tile_sizes,
-                ));
+            size.clone(),
+            tiling_factors.clone(),
+            tile_sizes,
+        ));
         self.open_dims.extend(real_ids.iter().map(|&id| (id, id)));
         LogicalDim {
             logical_id,
@@ -268,13 +268,16 @@ impl<'a> Builder<'a> {
     pub fn open_mapped_dim(&mut self, old_dim: &LogicalDim) -> LogicalDim {
         let (size, tiling_factors) = {
             let old_dim = self.function.logical_dim(old_dim.id());
-            (old_dim.total_size().clone(), old_dim.possible_tilings().to_vec())
+            (
+                old_dim.total_size().clone(),
+                old_dim.possible_tilings().to_vec(),
+            )
         };
         let (new_id, new_dims) = unwrap!(self.function.add_logical_dim(
-                size.clone(),
-                tiling_factors.clone(),
-                &old_dim.tile_sizes,
-                ));
+            size.clone(),
+            tiling_factors.clone(),
+            &old_dim.tile_sizes,
+        ));
         for (old, &new) in old_dim.iter().zip_eq(&new_dims) {
             self.open_dims.remove(&old);
             self.open_dims.insert(new, old);
@@ -394,11 +397,14 @@ impl<'a> Builder<'a> {
             .into_iter()
             .flat_map(|(dim, size)| {
                 let mut size: ir::PartialSize = size.into();
-                self.function.logical_dim(dim.id()).dimensions().map(move |dim| {
-                    let increment = size.clone();
-                    size *= self.function.dim(dim).size();
-                    (dim, increment)
-                })
+                self.function
+                    .logical_dim(dim.id())
+                    .dimensions()
+                    .map(move |dim| {
+                        let increment = size.clone();
+                        size *= self.function.dim(dim).size();
+                        (dim, increment)
+                    })
             })
             .collect()
     }
@@ -407,7 +413,7 @@ impl<'a> Builder<'a> {
     fn tensor_increments<'b>(
         &self,
         t: ir::Type,
-        dims: &[&'b LogicalDim]
+        dims: &[&'b LogicalDim],
     ) -> Vec<(&'b LogicalDim, ir::Size<'a>)> {
         let data_size = ir::Size::new_const(unwrap!(t.len_byte()));
         dims.into_iter()

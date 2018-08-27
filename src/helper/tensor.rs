@@ -178,21 +178,20 @@ where
     }
 
     /// Creates a `VirtualTensor` that contains the values of `self`, loaded in registers.
-    pub fn load(
-        &self,
-        tiling: &[&[u32]],
-        builder: &mut Builder,
-    ) -> VirtualTensor {
-        let dims = self.iter_dims
+    pub fn load(&self, tiling: &[&[u32]], builder: &mut Builder) -> VirtualTensor {
+        let dims = self
+            .iter_dims
             .iter()
             .zip_eq(tiling)
             .map(|((size, _), tiling)| {
                 let size = size.into_ir_size(builder);
                 builder.open_tiled_dim(size, tiling)
-            }).collect_vec();
+            })
+            .collect_vec();
         let (ptr, pattern);
         {
-            let increments = dims.iter()
+            let increments = dims
+                .iter()
                 .zip_eq(&self.iter_dims)
                 .map(|(dim, (_, stride))| (dim, stride.into_ir_size(builder)))
                 .collect_vec();
@@ -251,21 +250,13 @@ impl VirtualTensor {
         scope: ir::DimMapScope<()>,
         builder: &mut Builder<'a>,
     ) -> ir::Operand<'a, ()> {
-        let mapping = self
-            .dims
-            .iter()
-            .zip_eq(dims.iter().cloned())
-            .collect_vec();
+        let mapping = self.dims.iter().zip_eq(dims.iter().cloned()).collect_vec();
         builder.dim_map(self.inst, &mapping, scope)
     }
 
     /// Stores the `VirtualTensor` in memory. Stores contiguously without taking the
     /// layout of the target tensor into account.
-    pub fn store<S>(
-        &self,
-        tensor: &Tensor<S>,
-        builder: &mut Builder,
-    ) -> VirtualTensor
+    pub fn store<S>(&self, tensor: &Tensor<S>, builder: &mut Builder) -> VirtualTensor
     where
         S: ScalarArgument,
     {
