@@ -1,6 +1,6 @@
 //! Helper struct to build a `Function`.
 use device::Device;
-use helper::{AutoOperand, LogicalDim, MetaStatement, MetaDimension};
+use helper::{AutoOperand, LogicalDim, MetaStatement};
 use ir::{self, mem, op, Parameter, Type};
 use ir::{AccessPattern, Function, InstId, Operand, Operator, Signature};
 use itertools::Itertools;
@@ -218,31 +218,6 @@ impl<'a> Builder<'a> {
         unwrap!(self.function.add_inst(op, open_dims))
     }
 
-    /// Builds both an induction variable for a tensor memory access and the corresponding
-    /// access pattern.
-    pub fn tensor_access(
-        &mut self,
-        addr: &AutoOperand<'a>,
-        mem: ir::MemId,
-        t: &ir::Type,
-        dims: &[&MetaDimension],
-    ) -> (ir::IndVarId, ir::AccessPattern<'a>) {
-        let data_size: ir::PartialSize =
-            ir::Size::new_const(unwrap!(t.len_byte())).into();
-        let induction_dims = dims
-            .iter()
-            .flat_map(|d| d.ids())
-            .rev()
-            .scan(data_size, |size, dim| {
-                let increment = size.clone();
-                *size *= self.function.dim(dim).size();
-                Some((dim, increment))
-            })
-            .collect();
-        let index = self.induction_var(addr, induction_dims);
-        (index, self.tensor_access_pattern(mem, t, dims))
-    }
-
     /// Applies an action on the function.
     pub fn action(&mut self, action: Action) {
         self.actions.push(action)
@@ -270,25 +245,19 @@ impl<'a> Builder<'a> {
         // removed when we allow specifying multiple tile sizes for each dimension so it
         // is no worth changing the code everywhere this function is used just yet.
         tile_sizes: &[u32],
-    ) -> LogicalDim<'a> {
-        if tile_sizes.len() == 0 {
-            LogicalDim::Simple(self.open_dim(size))
-        } else {
-            // TODO(strip-mining): allow multiple tile size for each level.
-            let tiling_factors = vec![tile_sizes.iter().product()];
-            let (id, dims) = unwrap!(self.function.add_logical_dim(
+    ) -> LogicalDim {
+        // TODO(strip-mining): allow multiple tile size for each level.
+        let tiling_factors = vec![tile_sizes.iter().product()];
+        let (logical_id, real_ids) = unwrap!(self.function.add_logical_dim(
                 size.clone(),
                 tiling_factors.clone(),
                 tile_sizes,
-            ));
-            self.open_dims.extend(dims.iter().map(|&id| (id, id)));
-            LogicalDim::Composite {
-                id,
-                dims,
-                size,
-                tiling_factors,
-                tile_sizes: tile_sizes.iter().cloned().collect(),
-            }
+                ));
+        self.open_dims.extend(real_ids.iter().map(|&id| (id, id)));
+        LogicalDim {
+            logical_id,
+            real_ids,
+            tile_sizes: tile_sizes.iter().cloned().collect(),
         }
     }
 
@@ -296,70 +265,46 @@ impl<'a> Builder<'a> {
     ///
     /// The size of the new dim is inherited from the mapped dim.
     /// The dimension mapped to is closed if needed.
-    pub fn open_mapped_dim(&mut self, old_dim: &LogicalDim<'a>) -> LogicalDim<'a> {
-        let new_dim = match old_dim {
-            LogicalDim::Simple(old_id) => {
-                self.open_dims.remove(old_id);
-                let size = {
-                    let dim = self.function.dim(*old_id);
-                    // FIXME: explain why we do this
-                    if let Some(&[size]) = dim.possible_sizes() {
-                        ir::Size::new_const(size)
-                    } else {
-                        unimplemented!() // FIXME: dim.size().clone()
-                    }
-                };
-                let new_id = unwrap!(self.function.add_dim(size));
-                self.open_dims.insert(new_id, *old_id);
-                LogicalDim::Simple(new_id)
-            }
-            LogicalDim::Composite {
-                dims: old_dims,
-                size,
-                tiling_factors,
-                tile_sizes,
-                ..
-            } => {
-                let (new_id, new_dims) = unwrap!(self.function.add_logical_dim(
-                    size.clone(),
-                    tiling_factors.clone(),
-                    tile_sizes,
-                ));
-                for (&old, &new) in old_dims.iter().zip_eq(&new_dims) {
-                    self.open_dims.remove(&old);
-                    self.open_dims.insert(new, old);
-                }
-                LogicalDim::Composite {
-                    id: new_id,
-                    dims: new_dims,
-                    size: size.clone(),
-                    tiling_factors: tiling_factors.clone(),
-                    tile_sizes: tile_sizes.clone(),
-                }
-            }
+    pub fn open_mapped_dim(&mut self, old_dim: &LogicalDim) -> LogicalDim {
+        let (size, tiling_factors) = {
+            let old_dim = self.function.logical_dim(old_dim.id());
+            (old_dim.total_size().clone(), old_dim.possible_tilings().to_vec())
         };
-        new_dim
+        let (new_id, new_dims) = unwrap!(self.function.add_logical_dim(
+                size.clone(),
+                tiling_factors.clone(),
+                &old_dim.tile_sizes,
+                ));
+        for (old, &new) in old_dim.iter().zip_eq(&new_dims) {
+            self.open_dims.remove(&old);
+            self.open_dims.insert(new, old);
+        }
+        LogicalDim {
+            logical_id: new_id,
+            real_ids: new_dims,
+            tile_sizes: old_dim.tile_sizes.clone(),
+        }
     }
 
     /// Opens an existing dimension.
-    pub fn reopen_dim(&mut self, dim: &MetaDimension) {
-        for id in dim.ids() {
+    pub fn reopen_dim(&mut self, dim: &LogicalDim) {
+        for id in dim.iter() {
             self.open_dims.insert(id, id);
         }
     }
 
     /// Opens an existing dimension and maps it to another one.
     /// The dimension mapped to is closed if needed.
-    pub fn reopen_mapped_dim(&mut self, dim: &MetaDimension, mapped_to: &MetaDimension) {
-        for (dim, mapped_to) in dim.ids().zip_eq(mapped_to.ids()) {
+    pub fn reopen_mapped_dim(&mut self, dim: &LogicalDim, mapped_to: &LogicalDim) {
+        for (dim, mapped_to) in dim.iter().zip_eq(mapped_to) {
             self.open_dims.remove(&mapped_to);
             self.open_dims.insert(dim, mapped_to);
         }
     }
 
     /// Closes a dimension.
-    pub fn close_dim(&mut self, dims: &MetaDimension) {
-        for dim in dims.ids() {
+    pub fn close_dim(&mut self, dims: &LogicalDim) {
+        for dim in dims {
             assert!(self.open_dims.remove(&dim).is_some());
         }
     }
@@ -396,52 +341,95 @@ impl<'a> Builder<'a> {
         AccessPattern::Unknown { mem_id: mem }
     }
 
+    /// Builds both an induction variable for a tensor memory access and the corresponding
+    /// access pattern.
+    pub fn tensor_access(
+        &mut self,
+        addr: &AutoOperand<'a>,
+        mem_id: ir::MemId,
+        t: ir::Type,
+        dims: &[&LogicalDim],
+    ) -> (ir::IndVarId, ir::AccessPattern<'a>) {
+        let base = self.get_op(addr);
+        let logical_increments = self.tensor_increments(t, dims);
+        let increments = self.logical_to_real_increments(logical_increments);
+        let dims = increments.iter().cloned().collect();
+        let ind_var = unwrap!(ir::InductionVar::new(increments, base));
+        let ind_var_id = self.function.add_ind_var(ind_var);
+        (ind_var_id, AccessPattern::Tensor { mem_id, dims })
+    }
+
     /// Generates the access pattern corresponding to accessing a tensor of the given
-    /// type. The data is assumed to be laid out contiguously in the order given by
-    /// dimensions. The last dimension is the major order.
+    /// type.
     pub fn tensor_access_pattern(
         &self,
         mem: ir::MemId,
-        t: &Type,
-        dims: &[&MetaDimension],
+        increments: Vec<(&LogicalDim, ir::Size<'a>)>,
     ) -> AccessPattern<'a> {
-        let data_size: ir::PartialSize = self.cst_size(unwrap!(t.len_byte())).into();
-        // FIXME: factor code with induction_var creation
-        let dims = dims
-            .iter()
-            .flat_map(|d| d.ids())
-            .rev()
-            .scan(data_size, |size, dim| {
-                let increment = size.clone();
-                *size *= self.function.dim(dim).size();
-                Some((dim, increment))
-            })
-            .collect();
-        AccessPattern::Tensor { mem_id: mem, dims }
+        let dims = self.logical_to_real_increments(increments);
+        AccessPattern::Tensor {
+            mem_id: mem,
+            dims: dims.into_iter().collect(),
+        }
     }
 
     /// Builds an induction variable.
-    // FIXME: use logical dims instead
     pub fn induction_var(
         &mut self,
         base: &AutoOperand<'a>,
-        dims: Vec<(ir::DimId, ir::PartialSize<'a>)>,
+        dims: Vec<(&LogicalDim, ir::Size<'a>)>,
     ) -> ir::IndVarId {
         let base = self.get_op(base);
+        let dims = self.logical_to_real_increments(dims);
         self.function
             .add_ind_var(unwrap!(ir::InductionVar::new(dims, base)))
+    }
+
+    /// Converts increments on logical dimensions to increment on real dimensions.
+    fn logical_to_real_increments(
+        &self,
+        increments: Vec<(&LogicalDim, ir::Size<'a>)>,
+    ) -> Vec<(ir::DimId, ir::PartialSize<'a>)> {
+        increments
+            .into_iter()
+            .flat_map(|(dim, size)| {
+                let mut size: ir::PartialSize = size.into();
+                self.function.logical_dim(dim.id()).dimensions().map(move |dim| {
+                    let increment = size.clone();
+                    size *= self.function.dim(dim).size();
+                    (dim, increment)
+                })
+            })
+            .collect()
+    }
+
+    /// Returns the list of increment to access an n-dimensional tensor.
+    fn tensor_increments<'b>(
+        &self,
+        t: ir::Type,
+        dims: &[&'b LogicalDim]
+    ) -> Vec<(&'b LogicalDim, ir::Size<'a>)> {
+        let data_size = ir::Size::new_const(unwrap!(t.len_byte()));
+        dims.into_iter()
+            .rev()
+            .scan(data_size, |size, &dim| {
+                let increment = size.clone();
+                *size *= self.function.logical_dim(dim.id()).total_size();
+                Some((dim, increment))
+            })
+            .collect()
     }
 
     /// Creates a dim-map operand.
     pub fn dim_map(
         &self,
         base: ir::InstId,
-        dim_map: &[(&MetaDimension, &MetaDimension)],
+        dim_map: &[(&LogicalDim, &LogicalDim)],
         scope: ir::DimMapScope<()>,
     ) -> ir::Operand<'a, ()> {
         let dim_map = dim_map
             .iter()
-            .flat_map(|&(lhs, rhs)| lhs.ids().zip_eq(rhs.ids()));
+            .flat_map(|&(lhs, rhs)| lhs.iter().zip_eq(rhs.iter()));
         let inst = self.function.inst(base);
         ir::Operand::new_inst(inst, ir::DimMap::new(dim_map), scope)
     }

@@ -41,6 +41,17 @@ impl<'a> Size<'a> {
     }
 }
 
+impl<'a, T> std::ops::MulAssign<T> for Size<'a>
+where
+    T: std::borrow::Borrow<Size<'a>>,
+{
+    fn mul_assign(&mut self, rhs: T) {
+        let rhs = rhs.borrow();
+        self.factor *= rhs.factor;
+        self.params.extend(rhs.params.iter().cloned());
+    }
+}
+
 /// A size how exact value is not yet decided.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct PartialSize<'a> {

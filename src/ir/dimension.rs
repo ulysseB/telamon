@@ -189,7 +189,19 @@ impl<'a> LogicalDim<'a> {
         &self.possible_tilings
     }
 
+    /// Returns all the dimensions constituing the logical dimension, from the inner-most
+    /// to the outer-most.
+    pub fn dimensions(&self) -> impl Iterator<Item = DimId> + '_ {
+        self.static_dims
+            .iter()
+            .rev()
+            .cloned()
+            .chain(self.nonstatic_dim)
+    }
+
     /// Returns the size of the logical dimension, i.e. the product of the sizes of its
     /// dimensions.
-    pub fn total_size(&self) -> &ir::Size<'a> { &self.total_size }
+    pub fn total_size(&self) -> &ir::Size<'a> {
+        &self.total_size
+    }
 }

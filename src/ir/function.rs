@@ -140,7 +140,7 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Returns the list of logical dimensions.
-    pub fn logical_dims(&self) -> impl Iterator<Item = &ir::LogicalDim> {
+    pub fn logical_dims(&self) -> impl Iterator<Item = &ir::LogicalDim<'a>> {
         self.logical_dims.iter()
     }
 
@@ -175,7 +175,7 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Retrives a logical dimension given its ID.
-    pub fn logical_dim(&self, id: ir::LogicalDimId) -> &ir::LogicalDim {
+    pub fn logical_dim(&self, id: ir::LogicalDimId) -> &ir::LogicalDim<'a> {
         &self.logical_dims[id.0 as usize]
     }
 
@@ -386,7 +386,13 @@ impl<'a> Function<'a, ()> {
             dims.push(Dimension::new(tiled_size, dim_ids[0])?);
             let factors = tiling_factors;
             let static_dims = dim_ids[1..].iter().cloned().collect();
-            ir::LogicalDim::new_dynamic(logical_id, dim_ids[0], static_dims, factors, size)
+            ir::LogicalDim::new_dynamic(
+                logical_id,
+                dim_ids[0],
+                static_dims,
+                factors,
+                size,
+            )
         };
         for (&id, &size) in dim_ids[1..].iter().zip_eq(tile_sizes) {
             dims.push(Dimension::new(ir::PartialSize::new(size, vec![], 1), id)?);
