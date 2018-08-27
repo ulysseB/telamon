@@ -243,7 +243,7 @@ impl<'a> CfgEvent<'a> {
         }
     }
 
-    /// Returns an id of a `BasicBlock` mentioned by the event.
+    /// Returns an id of a `Statement` mentioned by the event.
     fn bb_id(&self) -> ir::BBId {
         match *self {
             CfgEvent::Exec(ref inst) => inst.id().into(),

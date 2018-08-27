@@ -1,7 +1,7 @@
 //! Provides a representation of functions.
 use device::Device;
 use ir::mem::Block;
-use ir::{self, BBId, BasicBlock, Dimension, InstId, Instruction, Operator};
+use ir::{self, BBId, Statement, Dimension, InstId, Instruction, Operator};
 use ir::{dim, mem, AccessPattern, Operand, Size, SparseVec, Type};
 use itertools::Itertools;
 use std;
@@ -457,16 +457,16 @@ impl<'a> Function<'a, ()> {
 }
 
 impl<'a> Function<'a> {
-    /// Returns a `BasicBlock` given its id.
-    pub fn block(&self, id: BBId) -> &BasicBlock<'a> {
+    /// Returns a `Statement` given its id.
+    pub fn block(&self, id: BBId) -> &Statement<'a> {
         match id {
             BBId::Inst(id) => &self.insts[id],
             BBId::Dim(id) => self.dim(id),
         }
     }
 
-    /// Lists all `BasicBlock`s.
-    pub fn blocks<'b>(&'b self) -> impl Iterator<Item = &'b BasicBlock<'a>> {
+    /// Lists all `Statement`s.
+    pub fn blocks<'b>(&'b self) -> impl Iterator<Item = &'b Statement<'a>> {
         self.insts
             .iter()
             .map(|x| x as _)

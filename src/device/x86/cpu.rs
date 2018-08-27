@@ -90,7 +90,7 @@ impl device::Device for Cpu {
         _space: &SearchSpace,
         _dim_sizes: &HashMap<ir::DimId, u32>,
         _nesting: &HashMap<ir::BBId, model::Nesting>,
-        _bb: &ir::BasicBlock,
+        _bb: &ir::Statement,
         _: &device::Context,
     ) -> model::HwPressure {
         // TODO(model): implement model

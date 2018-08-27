@@ -170,12 +170,12 @@ mod undefined {
         );
     }
 
-    /// Missing the subset BasicBlock from a Set.
+    /// Missing the subset Statement from a Set.
     #[test]
     fn subsetof() {
         assert_eq!(
             parser::parse_ast(Lexer::new(
-                b"set Instruction subsetof BasicBlock:
+                b"set Instruction subsetof Statement:
                 item_type = \"ir::inst::Obj\"
                 id_type = \"ir::inst::Id\"
                 item_getter = \"ir::inst::get($fun, $id)\"
@@ -202,7 +202,7 @@ mod undefined {
                         },
                         ..Default::default()
                     },
-                    data: String::from("BasicBlock"),
+                    data: String::from("Statement"),
                 }
             })
         );
@@ -441,7 +441,7 @@ mod missing_entry {
     fn from_superset() {
         assert_eq!(
             parser::parse_ast(Lexer::new(
-                b"set BasicBlock:
+                b"set Statement:
                 item_type = \"ir::basic_block::Obj\"
                 id_type = \"ir::basic_block::Id\"
                 item_getter = \"ir::basic_block::get($fun, $id)\"
@@ -451,7 +451,7 @@ mod missing_entry {
                 new_objs = \"$objs.basic_block\"
               end
 
-              set Instruction subsetof BasicBlock:
+              set Instruction subsetof Statement:
                 item_type = \"ir::inst::Obj\"
                 id_type = \"ir::inst::Id\"
                 item_getter = \"ir::inst::get($fun, $id)\"

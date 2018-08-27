@@ -1,4 +1,4 @@
-set BasicBlock:
+set Statement:
   item_type = "ir::basic_block::Obj"
   id_type = "ir::basic_block::Id"
   item_getter = "ir::basic_block::get($fun, $id)"
@@ -9,47 +9,47 @@ set BasicBlock:
 end
 
 /// Test IS conditions.
-define enum enum_1($bb in BasicBlock):
+define enum enum_1($bb in Statement):
   value A:
-    requires forall $other in BasicBlock:
+    requires forall $other in Statement:
       enum_1($other) is A | B
   value B:
   value C:
 end
 
 /// Test IS NOT conditions.
-define enum enum_2($bb in BasicBlock):
+define enum enum_2($bb in Statement):
   value A:
-    requires forall $other in BasicBlock:
+    requires forall $other in Statement:
       enum_2($other) is not C
   value B:
   value C:
 end
 
 /// Test EQUAL conditions.
-define enum enum_3($bb in BasicBlock):
+define enum enum_3($bb in Statement):
   value A:
   value B:
   value C:
 end
 
-require forall $lhs in BasicBlock:
-  forall $rhs in BasicBlock:
+require forall $lhs in Statement:
+  forall $rhs in Statement:
     enum_3($lhs) == enum_3($rhs)
 
 /// Test NOT EQUAL conditions.
-define enum enum_4($bb in BasicBlock):
+define enum enum_4($bb in Statement):
   value A:
   value B:
   value C:
 end
 
-require forall $lhs in BasicBlock:
-  forall $rhs in BasicBlock:
+require forall $lhs in Statement:
+  forall $rhs in Statement:
     enum_4($lhs) != enum_4($rhs)
 
 /// Test CODE conditions.
-define enum enum_5($bb in BasicBlock):
+define enum enum_5($bb in Statement):
   value A:
     requires "$bb.condition()"
   value B:

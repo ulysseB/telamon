@@ -14,7 +14,7 @@ mod undefined {
     fn parameter() {
         assert_eq!(
             parser::parse_ast(Lexer::new(
-                b"define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
+                b"define enum foo($lhs in Statement, $rhs in Statement):
                     symmetric
                     value A:
                     value B:
@@ -39,7 +39,7 @@ mod undefined {
                         },
                         ..Default::default()
                     },
-                    data: String::from("BasicBlock"),
+                    data: String::from("Statement"),
                 }
             })
         );
@@ -80,7 +80,7 @@ mod undefined {
         );
         assert_eq!(
             parser::parse_ast(Lexer::new(
-                b"set BasicBlock:
+                b"set Statement:
                 item_type = \"ir::inst::Obj\"
                 id_type = \"ir::inst::Id\"
                 item_getter = \"ir::inst::get($fun, $id)\"
@@ -89,7 +89,7 @@ mod undefined {
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
               end
-              define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
+              define enum foo($lhs in Statement, $rhs in Statement):
                 antisymmetric:
                   A -> B
                 value A:
@@ -119,7 +119,7 @@ mod redefinition {
     fn parameter() {
         assert_eq!(
             parser::parse_ast(Lexer::new(
-                b"set BasicBlock:
+                b"set Statement:
                 item_type = \"ir::inst::Obj\"
                 id_type = \"ir::inst::Id\"
                 item_getter = \"ir::inst::get($fun, $id)\"
@@ -128,7 +128,7 @@ mod redefinition {
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
               end
-              define enum foo($lhs in BasicBlock, $lhs in BasicBlock):
+              define enum foo($lhs in Statement, $lhs in Statement):
                 symmetric
                 value A:
                 value B:
@@ -313,7 +313,7 @@ mod redefinition {
         /// Redefinition of the field Antisymmetric.
         assert_eq!(
             parser::parse_ast(Lexer::new(
-                b"set BasicBlock:
+                b"set Statement:
                 item_type = \"ir::inst::Obj\"
                 id_type = \"ir::inst::Id\"
                 item_getter = \"ir::inst::get($fun, $id)\"
@@ -322,7 +322,7 @@ mod redefinition {
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
               end
-              define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
+              define enum foo($lhs in Statement, $rhs in Statement):
                 antisymmetric:
                   A -> B
                 antisymmetric:
@@ -357,7 +357,7 @@ mod redefinition {
         fn field() {
             assert_eq!(
                 parser::parse_ast(Lexer::new(
-                    b"set BasicBlock:
+                    b"set Statement:
                     item_type = \"ir::inst::Obj\"
                     id_type = \"ir::inst::Id\"
                     item_getter = \"ir::inst::get($fun, $id)\"
@@ -366,7 +366,7 @@ mod redefinition {
                     var_prefix = \"inst\"
                     new_objs = \"$objs.inst\"
                   end
-                  define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
+                  define enum foo($lhs in Statement, $rhs in Statement):
                     symmetric
                     symmetric
                     value A:
@@ -428,7 +428,7 @@ mod parameter {
             );
             assert_eq!(
                 parser::parse_ast(Lexer::new(
-                    b"set BasicBlock:
+                    b"set Statement:
                     item_type = \"ir::basic_block::Obj\"
                     id_type = \"ir::basic_block::Id\"
                     item_getter = \"ir::basic_block::get($fun, $id)\"
@@ -437,7 +437,7 @@ mod parameter {
                     var_prefix = \"bb\"
                     new_objs = \"$objs.basic_block\"
                   end
-                  define enum foo($lhs in BasicBlock):
+                  define enum foo($lhs in Statement):
                     antisymmetric:
                       A -> B
                     value A:
@@ -459,7 +459,7 @@ mod parameter {
                             end: Position::new_optional(LexerPosition::new(9, 38), None),
                             data: String::from("lhs"),
                         },
-                        String::from("BasicBlock"),
+                        String::from("Statement"),
                     )],
                 })
             );
@@ -470,7 +470,7 @@ mod parameter {
         fn same() {
             assert_eq!(
                 parser::parse_ast(Lexer::new(
-                    b"set BasicBlock:
+                    b"set Statement:
                     item_type = \"ir::basic_block::Obj\"
                     id_type = \"ir::basic_block::Id\"
                     item_getter = \"ir::basic_block::get($fun, $id)\"
@@ -479,7 +479,7 @@ mod parameter {
                     var_prefix = \"bb\"
                     new_objs = \"$objs.basic_block\"
                   end
-                  set BasicBlock2:
+                  set Statement2:
                     item_type = \"ir::basic_block::Obj\"
                     id_type = \"ir::basic_block::Id\"
                     item_getter = \"ir::basic_block::get($fun, $id)\"
@@ -488,7 +488,7 @@ mod parameter {
                     var_prefix = \"bb\"
                     new_objs = \"$objs.basic_block\"
                   end
-                  define enum foo($lhs in BasicBlock, $rhs in BasicBlock2):
+                  define enum foo($lhs in Statement, $rhs in Statement2):
                     antisymmetric:
                       A -> B
                     value A:
@@ -517,7 +517,7 @@ mod parameter {
                                 ),
                                 data: String::from("lhs"),
                             },
-                            String::from("BasicBlock"),
+                            String::from("Statement"),
                         ),
                         (
                             Spanned {
@@ -531,7 +531,7 @@ mod parameter {
                                 ),
                                 data: String::from("rhs"),
                             },
-                            String::from("BasicBlock2"),
+                            String::from("Statement2"),
                         ),
                     ],
                 })
@@ -568,7 +568,7 @@ mod parameter {
             );
             assert_eq!(
                 parser::parse_ast(Lexer::new(
-                    b"set BasicBlock:
+                    b"set Statement:
                     item_type = \"ir::basic_block::Obj\"
                     id_type = \"ir::basic_block::Id\"
                     item_getter = \"ir::basic_block::get($fun, $id)\"
@@ -577,7 +577,7 @@ mod parameter {
                     var_prefix = \"bb\"
                     new_objs = \"$objs.basic_block\"
                   end
-                  define enum foo($lhs in BasicBlock):
+                  define enum foo($lhs in Statement):
                     symmetric
                     value A:
                     value B:
@@ -598,13 +598,13 @@ mod parameter {
                             end: Position::new_optional(LexerPosition::new(9, 38), None),
                             data: String::from("lhs"),
                         },
-                        String::from("BasicBlock"),
+                        String::from("Statement"),
                     )],
                 })
             );
             assert_eq!(
                 parser::parse_ast(Lexer::new(
-                    b"set BasicBlock:
+                    b"set Statement:
                     item_type = \"ir::basic_block::Obj\"
                     id_type = \"ir::basic_block::Id\"
                     item_getter = \"ir::basic_block::get($fun, $id)\"
@@ -613,9 +613,9 @@ mod parameter {
                     var_prefix = \"bb\"
                     new_objs = \"$objs.basic_block\"
                   end
-                  define enum foo($lhs in BasicBlock,
-                                  $chs in BasicBlock,
-                                  $rhs in BasicBlock):
+                  define enum foo($lhs in Statement,
+                                  $chs in Statement,
+                                  $rhs in Statement):
                     symmetric
                     value A:
                     value B:
@@ -643,7 +643,7 @@ mod parameter {
                                 ),
                                 data: String::from("lhs"),
                             },
-                            String::from("BasicBlock"),
+                            String::from("Statement"),
                         ),
                         (
                             Spanned {
@@ -657,7 +657,7 @@ mod parameter {
                                 ),
                                 data: String::from("chs"),
                             },
-                            String::from("BasicBlock"),
+                            String::from("Statement"),
                         ),
                         (
                             Spanned {
@@ -671,7 +671,7 @@ mod parameter {
                                 ),
                                 data: String::from("rhs"),
                             },
-                            String::from("BasicBlock"),
+                            String::from("Statement"),
                         ),
                     ],
                 })
@@ -683,7 +683,7 @@ mod parameter {
         fn same() {
             assert_eq!(
                 parser::parse_ast(Lexer::new(
-                    b"set BasicBlock:
+                    b"set Statement:
                     item_type = \"ir::basic_block::Obj\"
                     id_type = \"ir::basic_block::Id\"
                     item_getter = \"ir::basic_block::get($fun, $id)\"
@@ -692,7 +692,7 @@ mod parameter {
                     var_prefix = \"bb\"
                     new_objs = \"$objs.basic_block\"
                   end
-                  set BasicBlock2:
+                  set Statement2:
                     item_type = \"ir::basic_block::Obj\"
                     id_type = \"ir::basic_block::Id\"
                     item_getter = \"ir::basic_block::get($fun, $id)\"
@@ -701,7 +701,7 @@ mod parameter {
                     var_prefix = \"bb\"
                     new_objs = \"$objs.basic_block\"
                   end
-                  define enum foo($lhs in BasicBlock, $rhs in BasicBlock2):
+                  define enum foo($lhs in Statement, $rhs in Statement2):
                     symmetric
                     value A:
                     value B:
@@ -729,7 +729,7 @@ mod parameter {
                                 ),
                                 data: String::from("lhs"),
                             },
-                            String::from("BasicBlock"),
+                            String::from("Statement"),
                         ),
                         (
                             Spanned {
@@ -743,7 +743,7 @@ mod parameter {
                                 ),
                                 data: String::from("rhs"),
                             },
-                            String::from("BasicBlock2"),
+                            String::from("Statement2"),
                         ),
                     ],
                 })
@@ -758,7 +758,7 @@ mod parameter {
 fn conflict() {
     assert_eq!(
         parser::parse_ast(Lexer::new(
-            b"set BasicBlock:
+            b"set Statement:
             item_type = \"ir::basic_block::Obj\"
             id_type = \"ir::basic_block::Id\"
             item_getter = \"ir::basic_block::get($fun, $id)\"
@@ -767,7 +767,7 @@ fn conflict() {
             var_prefix = \"bb\"
             new_objs = \"$objs.basic_block\"
           end
-          define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
+          define enum foo($lhs in Statement, $rhs in Statement):
             symmetric
             antisymmetric:
               A -> B

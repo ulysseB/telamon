@@ -1,5 +1,5 @@
 //! Represents iteration dimensions.
-use ir::{self, BasicBlock};
+use ir::{self, Statement};
 use std::fmt;
 
 /// Provides a unique identifier for iteration dimensions.
@@ -110,7 +110,7 @@ impl<'a> Dimension<'a> {
     }
 }
 
-impl<'a> BasicBlock<'a> for Dimension<'a> {
+impl<'a> Statement<'a> for Dimension<'a> {
     fn bb_id(&self) -> ir::BBId {
         self.id.into()
     }

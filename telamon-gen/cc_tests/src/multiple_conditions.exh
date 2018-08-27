@@ -1,4 +1,4 @@
-set BasicBlock:
+set Statement:
   item_type = "ir::basic_block::Obj"
   id_type = "ir::basic_block::Id"
   item_getter = "ir::basic_block::get($fun, $id)"
@@ -8,7 +8,7 @@ set BasicBlock:
   new_objs = "$objs.basic_block"
 end
 
-set Instruction subsetof BasicBlock:
+set Instruction subsetof Statement:
   item_type = "ir::inst::Obj"
   id_type = "ir::inst::Id"
   item_getter = "ir::inst::get($fun, $id)"
@@ -19,7 +19,7 @@ set Instruction subsetof BasicBlock:
   from_superset = "ir::inst::from_superset($fun, $item)"
 end
 
-set Dimension subsetof BasicBlock:
+set Dimension subsetof Statement:
   disjoint: Instruction
   item_type = "ir::dim::Obj"
   id_type = "ir::dim::Id"
@@ -32,45 +32,45 @@ set Dimension subsetof BasicBlock:
 end
 
 /// Test conditions on mutiple enums.
-define enum enum_1($bb in BasicBlock):
+define enum enum_1($bb in Statement):
   value A:
   value B:
   value C:
 end
 
 /// Test conditions on mutiple enums.
-define enum enum_2($bb in BasicBlock):
+define enum enum_2($bb in Statement):
   value A:
   value B:
   value C:
 end
 
-require forall $lhs in BasicBlock:
-  forall $rhs in BasicBlock:
+require forall $lhs in Statement:
+  forall $rhs in Statement:
     enum_1($lhs) is A || enum_2($lhs) is B || enum_1($rhs) is C
 
 /// Test a rule with multiple conditions on the same input.
-define enum enum_3($bb in BasicBlock):
+define enum enum_3($bb in Statement):
   value A:
   value B:
   value C:
 end
 
-require forall $lhs in BasicBlock:
-  forall $rhs in BasicBlock:
+require forall $lhs in Statement:
+  forall $rhs in Statement:
     enum_3($lhs) is A || enum_3($lhs) != enum_3($rhs)
 
 /// Test the combination of code and enum conditions.
-define enum enum_4($bb in BasicBlock):
+define enum enum_4($bb in Statement):
   value A:
-    requires forall $other in BasicBlock:
+    requires forall $other in Statement:
       enum_4($other) is B || "$other.condition()"
   value B:
   value C:
 end
 
 /// Test subtype conditions at the rule level.
-define enum enum_5($bb in BasicBlock):
+define enum enum_5($bb in Statement):
   value A:
   value B:
   value C:

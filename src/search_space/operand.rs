@@ -1,6 +1,6 @@
 //! Handle operands invariants.
 use ir::Operand::*;
-use ir::{self, BasicBlock, DimMapScope};
+use ir::{self, Statement, DimMapScope};
 use search_space::choices::{Action, DimKind, DimMapping, Order};
 
 /// Generates actions to enforce operands invariants.

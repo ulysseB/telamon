@@ -1,6 +1,6 @@
 //! Helper struct to build a `Function`.
 use device::Device;
-use helper::{AutoOperand, LogicalDim, MetaBasicBlock, MetaDimension};
+use helper::{AutoOperand, LogicalDim, MetaStatement, MetaDimension};
 use ir::{self, mem, op, Parameter, Size, Type};
 use ir::{AccessPattern, Function, InstId, Operand, Operator, Signature};
 use itertools::Itertools;
@@ -204,7 +204,7 @@ impl<'a> Builder<'a> {
 
     /// Restricts the order between two basic blocks. Does not restricts LINK and NPACK
     /// flags.
-    pub fn order(&mut self, lhs: &MetaBasicBlock, rhs: &MetaBasicBlock, order: Order) {
+    pub fn order(&mut self, lhs: &MetaStatement, rhs: &MetaStatement, order: Order) {
         for lhs in lhs.borrow().ids() {
             for rhs in rhs.borrow().ids() {
                 self.action(Action::Order(lhs, rhs, order));

@@ -16,7 +16,7 @@ use std;
 use std::marker::PhantomData;
 
 pub use self::access_pattern::{AccessPattern, Stride};
-pub use self::basic_block::{BBId, BasicBlock};
+pub use self::basic_block::{BBId, Statement};
 pub use self::dim_map::DimMap;
 pub use self::dimension::{DimId, Dimension, LogicalDim, LogicalDimId};
 pub use self::error::{Error, TypeError};
@@ -45,8 +45,8 @@ pub mod op {
 
 /// Defines traits to import in the environment to use the IR.
 pub mod prelude {
-    pub use ir::basic_block::BasicBlock;
-    pub use ir::mem::Block as MemBlock;
+    pub use ir::basic_block::Statement;
+    pub use ir::mem::Block as MemoryRegion;
 }
 
 /// Stores the objects created by a lowering.
@@ -95,7 +95,7 @@ impl NewObjs {
     }
 
     /// Registers a new basic block.
-    pub fn add_bb(&mut self, bb: &BasicBlock) {
+    pub fn add_bb(&mut self, bb: &Statement) {
         self.basic_blocks.push(bb.bb_id());
     }
 
