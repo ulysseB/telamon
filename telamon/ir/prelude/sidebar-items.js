@@ -1,1 +1,1 @@
-initSidebarItems({"trait":[["BasicBlock","Represents a basic block in an Exhaust function."]]});
+initSidebarItems({"trait":[["Statement","Represents a basic block in an Exhaust function."]]});

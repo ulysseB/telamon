@@ -187,7 +187,7 @@
 <span id="187">187</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Represents iteration dimensions.</span>
-<span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">BasicBlock</span>};
+<span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">Statement</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>;
 
 <span class="doccomment">/// Provides a unique identifier for iteration dimensions.</span>
@@ -298,7 +298,7 @@
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">BasicBlock</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Statement</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">bb_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">BBId</span> {
         <span class="self">self</span>.<span class="ident">id</span>.<span class="ident">into</span>()
     }

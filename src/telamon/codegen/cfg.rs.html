@@ -587,7 +587,7 @@
         }
     }
 
-    <span class="doccomment">/// Returns an id of a `BasicBlock` mentioned by the event.</span>
+    <span class="doccomment">/// Returns an id of a `Statement` mentioned by the event.</span>
     <span class="kw">fn</span> <span class="ident">bb_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">BBId</span> {
         <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
             <span class="ident">CfgEvent</span>::<span class="ident">Exec</span>(<span class="kw-2">ref</span> <span class="ident">inst</span>) <span class="op">=&gt;</span> <span class="ident">inst</span>.<span class="ident">id</span>().<span class="ident">into</span>(),

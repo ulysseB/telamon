@@ -326,7 +326,7 @@
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">marker</span>::<span class="ident">PhantomData</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">access_pattern</span>::{<span class="ident">AccessPattern</span>, <span class="ident">Stride</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">basic_block</span>::{<span class="ident">BBId</span>, <span class="ident">BasicBlock</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">basic_block</span>::{<span class="ident">BBId</span>, <span class="ident">Statement</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">dim_map</span>::<span class="ident">DimMap</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">dimension</span>::{<span class="ident">DimId</span>, <span class="ident">Dimension</span>, <span class="ident">LogicalDim</span>, <span class="ident">LogicalDimId</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">error</span>::{<span class="ident">Error</span>, <span class="ident">TypeError</span>};
@@ -355,8 +355,8 @@
 
 <span class="doccomment">/// Defines traits to import in the environment to use the IR.</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">prelude</span> {
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">BasicBlock</span>;
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ir</span>::<span class="ident">mem</span>::<span class="ident">Block</span> <span class="kw">as</span> <span class="ident">MemBlock</span>;
+    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ir</span>::<span class="ident">basic_block</span>::<span class="ident">Statement</span>;
+    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ir</span>::<span class="ident">mem</span>::<span class="ident">Block</span> <span class="kw">as</span> <span class="ident">MemoryRegion</span>;
 }
 
 <span class="doccomment">/// Stores the objects created by a lowering.</span>
@@ -405,7 +405,7 @@
     }
 
     <span class="doccomment">/// Registers a new basic block.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_bb</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">bb</span>: <span class="kw-2">&amp;</span><span class="ident">BasicBlock</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_bb</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">bb</span>: <span class="kw-2">&amp;</span><span class="ident">Statement</span>) {
         <span class="self">self</span>.<span class="ident">basic_blocks</span>.<span class="ident">push</span>(<span class="ident">bb</span>.<span class="ident">bb_id</span>());
     }
 
