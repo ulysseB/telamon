@@ -1,6 +1,6 @@
 //! Helper struct to build a `Function`.
 use device::Device;
-use helper::{AutoOperand, LogicalDim, MetaStatement, MetaDimension};
+use helper::{AutoOperand, LogicalDim, MetaDimension, MetaStatement};
 use ir::{self, mem, op, Parameter, Size, Type};
 use ir::{AccessPattern, Function, InstId, Operand, Operator, Signature};
 use itertools::Itertools;

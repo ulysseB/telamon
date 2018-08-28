@@ -1,7 +1,7 @@
 //! Provides a representation of functions.
 use device::Device;
 use ir::mem::Block;
-use ir::{self, BBId, Statement, Dimension, InstId, Instruction, Operator};
+use ir::{self, BBId, Dimension, InstId, Instruction, Operator, Statement};
 use ir::{dim, mem, AccessPattern, Operand, Size, SparseVec, Type};
 use itertools::Itertools;
 use std;

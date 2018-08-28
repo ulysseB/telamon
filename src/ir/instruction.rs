@@ -1,6 +1,6 @@
 //! Describes the instructions.
 use device::Device;
-use ir::{self, BBId, Statement, DimMapScope, LoweringMap, Operand, Operator, Type};
+use ir::{self, BBId, DimMapScope, LoweringMap, Operand, Operator, Statement, Type};
 use std;
 use utils::*;
 
