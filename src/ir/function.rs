@@ -363,7 +363,7 @@ impl<'a> Function<'a, ()> {
         // Create the objects, but don't add anythin yet so we can rollback if an error
         // occurs.
         let mut dims = Vec::new();
-        let tiling_factor = tiling_factors.iter().product();
+        let tiling_factor = tile_sizes.iter().product();
         let logical_dim = if let Some(size) = size.as_constant() {
             let tiled_size = ir::PartialSize::new(size / tiling_factor, vec![], 1);
             dims.push(Dimension::new(tiled_size, dim_ids[0])?);

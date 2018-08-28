@@ -38,8 +38,8 @@ impl<'a> Builder<'a> {
     }
 
     /// Returns an operand from an `AutoOperand`.
-    fn get_op<'b: 'a>(&self, op: &AutoOperand<'b>) -> Operand<'a, ()> {
-        op.get(&self.function, &self.open_dims)
+    fn get_op<'b: 'a>(&mut self, op: &AutoOperand<'b>) -> Operand<'a, ()> {
+        op.get(self)
     }
 
     /// Creates a binary operator.
@@ -195,11 +195,6 @@ impl<'a> Builder<'a> {
     pub fn cast<'b: 'a>(&mut self, val: &AutoOperand<'b>, t: Type) -> InstId {
         let val_op = self.get_op(val);
         self.inst(op::Cast(val_op, t))
-    }
-
-    /// Returns the type of an operand.
-    pub fn type_of<'b: 'a>(&self, op: &AutoOperand<'b>) -> ir::Type {
-        self.get_op(op).t()
     }
 
     /// Restricts the order between two basic blocks. Does not restricts LINK and NPACK
@@ -447,6 +442,14 @@ impl<'a> Builder<'a> {
                 .iter()
                 .find(|p| p.name == param)
         )
+    }
+
+    /// Returns a reference to the function being built.
+    pub(super) fn function(&self) -> &ir::Function<'a, ()> { &self.function }
+
+    /// Returns the list of open dimensions with the dimensions they are mapped to.
+    pub(super) fn open_dims(&self) -> impl Iterator<Item=(ir::DimId, ir::DimId)> + '_ {
+        self.open_dims.iter().map(|(&new, &old)| (new, old))
     }
 }
 

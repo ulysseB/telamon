@@ -51,29 +51,29 @@ fn inst_dim_order() {
     let context = fake::Context::default();
     let signature = empty_signature(1);
     let mut builder = helper::Builder::new(&signature, context.device());
-    let dim0 = builder.open_dim(Size::new(64, vec![], 1));
+    let dim0 = builder.open_dim(Size::new_const(64));
     let inst0 = builder.mov(&0i32);
     let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
     let addr = builder.cast(&0i64, ir::Type::PtrTo(ir::MemId::External(0)));
     let inst1 = builder.st(&addr, &0i32, pattern);
     builder.close_dim(&dim0);
-    let dim1 = builder.open_dim(Size::new(64, vec![], 1));
+    let dim1 = builder.open_dim(Size::new_const(64));
     let _ = builder.mov(&0i32);
     let space = builder.get();
-    assert_eq!(space.domain().get_dim_kind(dim0), !DimKind::VECTOR);
-    assert_eq!(space.domain().get_dim_kind(dim1), !DimKind::VECTOR);
-    assert_eq!(space.domain().get_is_iteration_dim(inst0, dim0), Bool::TRUE);
-    assert_eq!(space.domain().get_is_iteration_dim(inst0, dim0), Bool::TRUE);
+    assert_eq!(space.domain().get_dim_kind(dim0[0]), !DimKind::VECTOR);
+    assert_eq!(space.domain().get_dim_kind(dim1[0]), !DimKind::VECTOR);
+    assert_eq!(space.domain().get_is_iteration_dim(inst0, dim0[0]), Bool::TRUE);
+    assert_eq!(space.domain().get_is_iteration_dim(inst0, dim0[0]), Bool::TRUE);
     assert_eq!(
-        space.domain().get_order(inst0.into(), dim1.into()),
+        space.domain().get_order(inst0.into(), dim1[0].into()),
         Order::INNER | Order::ORDERED
     );
     assert_eq!(
-        space.domain().get_is_iteration_dim(inst1, dim1),
+        space.domain().get_is_iteration_dim(inst1, dim1[0]),
         Bool::FALSE
     );
     assert_eq!(
-        space.domain().get_order(inst1.into(), dim1.into()),
+        space.domain().get_order(inst1.into(), dim1[0].into()),
         Order::INNER | Order::ORDERED
     );
     gen_best(&context, space);
@@ -95,10 +95,10 @@ fn nested_thread_dims() {
     builder.mov(&0i32);
     builder.order(&d0, &d3, Order::INNER);
     let space = builder.get();
-    assert!(!space.domain().get_dim_kind(d3).intersects(DimKind::THREAD));
-    assert_eq!(space.domain().get_order(d0.into(), d3.into()), Order::INNER);
-    assert_eq!(space.domain().get_order(d1.into(), d3.into()), Order::INNER);
-    assert_eq!(space.domain().get_order(d2.into(), d3.into()), Order::INNER);
+    assert!(!space.domain().get_dim_kind(d3[0]).intersects(DimKind::THREAD));
+    assert_eq!(space.domain().get_order(d0[0].into(), d3[0].into()), Order::INNER);
+    assert_eq!(space.domain().get_order(d1[0].into(), d3[0].into()), Order::INNER);
+    assert_eq!(space.domain().get_order(d2[0].into(), d3[0].into()), Order::INNER);
     gen_best(&context, space);
 }
 
@@ -109,11 +109,11 @@ fn max_thread_on_addinst() {
     let context = fake::Context::default();
     let signature = empty_signature(0);
     let mut builder = helper::Builder::new(&signature, context.device());
-    builder.open_dim_ex(Size::new(1024, vec![], 1), DimKind::THREAD);
-    let d1 = builder.open_dim(Size::new(2, vec![], 1));
+    builder.open_dim_ex(Size::new_const(1024), DimKind::THREAD);
+    let d1 = builder.open_dim(Size::new_const(2));
     builder.mov(&0i32);
     let space = builder.get();
-    assert!(!space.domain().get_dim_kind(d1).intersects(DimKind::THREAD));
+    assert!(!space.domain().get_dim_kind(d1[0]).intersects(DimKind::THREAD));
     gen_best(&context, space);
 }
 
@@ -124,12 +124,12 @@ fn max_thread_on_setkind() {
     let context = fake::Context::default();
     let signature = empty_signature(0);
     let mut builder = helper::Builder::new(&signature, context.device());
-    let d0 = builder.open_dim(Size::new(1024, vec![], 1));
-    let d1 = builder.open_dim(Size::new(2, vec![], 1));
+    let d0 = builder.open_dim(Size::new_const(1024));
+    let d1 = builder.open_dim(Size::new_const(2));
     builder.mov(&0i32);
-    builder.action(Action::DimKind(d0, DimKind::THREAD));
+    builder.action(Action::DimKind(d0[0], DimKind::THREAD));
     let space = builder.get();
-    assert!(!space.domain().get_dim_kind(d1).intersects(DimKind::THREAD));
+    assert!(!space.domain().get_dim_kind(d1[0]).intersects(DimKind::THREAD));
     gen_best(&context, space);
 }
 
@@ -144,43 +144,43 @@ fn block_dims() {
         builder.get()
     };
     let mut builder = helper::Builder::new(&signature, context.device());
-    let d0 = builder.open_dim(Size::new(4, vec![], 1));
+    let d0 = builder.open_dim(Size::new_const(4));
     let inst = builder.mov(&0i32);
     let s1 = builder.param_size("n");
     let d1 = builder.open_dim_ex(s1, DimKind::BLOCK);
-    let d2 = builder.open_dim_ex(Size::new(2, vec![], 1), DimKind::BLOCK);
-    let d3 = builder.open_dim_ex(Size::new(3, vec![], 1), DimKind::BLOCK);
+    let d2 = builder.open_dim_ex(Size::new_const(2), DimKind::BLOCK);
+    let d3 = builder.open_dim_ex(Size::new_const(3), DimKind::BLOCK);
     let space = builder.get();
     assert_eq!(
-        space.domain().get_is_iteration_dim(inst.into(), d0),
+        space.domain().get_is_iteration_dim(inst.into(), d0[0]),
         Bool::TRUE
     );
     assert_eq!(
-        space.domain().get_is_iteration_dim(inst.into(), d1),
+        space.domain().get_is_iteration_dim(inst.into(), d1[0]),
         Bool::TRUE
     );
     assert_eq!(
-        space.domain().get_is_iteration_dim(inst.into(), d2),
+        space.domain().get_is_iteration_dim(inst.into(), d2[0]),
         Bool::TRUE
     );
     assert_eq!(
-        space.domain().get_is_iteration_dim(inst.into(), d3),
+        space.domain().get_is_iteration_dim(inst.into(), d3[0]),
         Bool::TRUE
     );
     assert_eq!(
-        space.domain().get_dim_kind(d0),
+        space.domain().get_dim_kind(d0[0]),
         DimKind::LOOP | DimKind::THREAD | DimKind::UNROLL
     );
     assert_eq!(
-        space.domain().get_order(d1.into(), d2.into()),
+        space.domain().get_order(d1[0].into(), d2[0].into()),
         Order::NESTED
     );
     assert_eq!(
-        space.domain().get_order(d1.into(), d3.into()),
+        space.domain().get_order(d1[0].into(), d3[0].into()),
         Order::NESTED
     );
     assert_eq!(
-        space.domain().get_order(d2.into(), d3.into()),
+        space.domain().get_order(d2[0].into(), d3[0].into()),
         Order::NESTED
     );
     gen_best(&context, space);
@@ -195,27 +195,26 @@ fn vector_dims() {
     let mem_block = ir::MemId::External(0);
     let mut builder = helper::Builder::new(&signature, context.device());
     let base_addr = builder.cast(&0i64, ir::Type::PtrTo(mem_block));
-    let d0 = builder.open_dim(Size::new(4, vec![], 1));
+    let d0 = builder.open_dim(Size::new_const(4));
     // Test with one vectorizable instruction
-    let pattern = builder.tensor_access_pattern(mem_block, &Type::I(8), &[&d0]);
-    let addr = builder.induction_var(&base_addr, vec![(d0, ir::Size::new(1, vec![], 1))]);
+    let (addr, pattern) = builder.tensor_access(&base_addr, mem_block, Type::I(8), &[&d0]);
     builder.ld(Type::I(8), &addr, pattern.clone());
     assert!(
         builder
             .get_clone()
             .domain()
-            .get_dim_kind(d0)
+            .get_dim_kind(d0[0])
             .intersects(DimKind::VECTOR)
     );
     // Test with two insts and a non-vectorizable inst.
     builder.ld(Type::I(8), &addr, pattern);
     builder.close_dim(&d0);
-    let d1 = builder.open_dim(Size::new(4, vec![], 1));
+    let d1 = builder.open_dim(Size::new_const(4));
     builder.mul(&0i32, &0i32);
     builder.close_dim(&d1);
     let space = builder.get();
-    assert!(!space.domain().get_dim_kind(d0).intersects(DimKind::VECTOR));
-    assert!(!space.domain().get_dim_kind(d1).intersects(DimKind::VECTOR));
+    assert!(!space.domain().get_dim_kind(d0[0]).intersects(DimKind::VECTOR));
+    assert!(!space.domain().get_dim_kind(d1[0]).intersects(DimKind::VECTOR));
     gen_best(&context, space);
 }
 
@@ -230,15 +229,15 @@ fn unroll_dims() {
         builder.get()
     };
     let mut builder = helper::Builder::new(&signature, context.device());
-    let d0 = builder.open_dim(Size::new(64, vec![], 1));
-    let d1 = builder.open_dim(Size::new(4096, vec![], 1));
+    let d0 = builder.open_dim(Size::new_const(64));
+    let d1 = builder.open_dim(Size::new_const(4096));
     let s2 = builder.param_size("n");
     let d2 = builder.open_dim(s2);
     builder.mov(&0i32);
     let space = builder.get();
-    assert!(space.domain().get_dim_kind(d0).contains(DimKind::UNROLL));
-    assert!(!space.domain().get_dim_kind(d1).contains(DimKind::UNROLL));
-    assert!(!space.domain().get_dim_kind(d2).contains(DimKind::UNROLL));
+    assert!(space.domain().get_dim_kind(d0[0]).contains(DimKind::UNROLL));
+    assert!(!space.domain().get_dim_kind(d1[0]).contains(DimKind::UNROLL));
+    assert!(!space.domain().get_dim_kind(d2[0]).contains(DimKind::UNROLL));
     gen_best(&context, space);
 }
 
@@ -250,26 +249,26 @@ fn reduce_dim_invariants() {
     let signature = empty_signature(1);
     let mut builder = helper::Builder::new(&signature, context.device());
     let init = builder.cast(&0i64, ir::Type::PtrTo(ir::MemId::External(0)));
-    let d0 = builder.open_dim(Size::new(4, vec![], 1));
+    let d0 = builder.open_dim(Size::new_const(4));
     let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
     let reduce = builder.ld(Type::I(64), &helper::Reduce(init), pattern);
 
-    let d1 = builder.open_dim(Size::new(4, vec![], 1));
-    builder.action(Action::IsIterationDim(reduce.into(), d1, Bool::TRUE));
-    let d2 = builder.open_dim(Size::new(4, vec![], 1));
+    let d1 = builder.open_dim(Size::new_const(4));
+    builder.action(Action::IsIterationDim(reduce.into(), d1[0], Bool::TRUE));
+    let d2 = builder.open_dim(Size::new_const(4));
     builder.order(&d2, &init, !Order::OUTER);
     let space = builder.get();
     assert_eq!(
-        space.domain().get_dim_kind(d0),
+        space.domain().get_dim_kind(d0[0]),
         DimKind::LOOP | DimKind::UNROLL
     );
     assert_eq!(
-        space.domain().get_order(d0.into(), init.into()),
+        space.domain().get_order(d0[0].into(), init.into()),
         Order::AFTER
     );
-    assert!(Order::OUTER.contains(space.domain().get_order(d1.into(), init.into())));
+    assert!(Order::OUTER.contains(space.domain().get_order(d1[0].into(), init.into())));
     assert_eq!(
-        space.domain().get_is_iteration_dim(reduce.into(), d2),
+        space.domain().get_is_iteration_dim(reduce.into(), d2[0]),
         Bool::FALSE
     );
     gen_best(&context, space);
@@ -282,7 +281,7 @@ fn rename_thread() {
     let context = fake::Context::default();
     let signature = empty_signature(0);
     let mut builder = helper::Builder::new(&signature, context.device());
-    let d_n_1 = &builder.open_dim_ex(Size::new(8, vec![], 1), DimKind::THREAD);
+    let d_n_1 = &builder.open_dim_ex(Size::new_const(8), DimKind::THREAD);
     builder.mov(&0i32);
     builder.mov(d_n_1);
     gen_best(&context, builder.get());
@@ -295,9 +294,9 @@ fn dim_merge() {
     let context = fake::Context::default();
     let signature = empty_signature(0);
     let mut builder = helper::Builder::new(&signature, context.device());
-    let d0 = builder.open_dim_ex(Size::new(4, vec![], 1), DimKind::LOOP);
+    let d0 = builder.open_dim_ex(Size::new_const(4), DimKind::LOOP);
     builder.mov(&0i32);
-    let d1 = builder.open_dim_ex(Size::new(4, vec![], 1), DimKind::LOOP);
+    let d1 = builder.open_dim_ex(Size::new_const(4), DimKind::LOOP);
     builder.order(&d0, &d1, Order::MERGED);
     gen_best(&context, builder.get());
 }
@@ -309,9 +308,9 @@ fn loop_fusion() {
     let context = fake::Context::default();
     let signature = empty_signature(0);
     let mut builder = helper::Builder::new(&signature, context.device());
-    let d0 = builder.open_dim_ex(Size::new(4, vec![], 1), DimKind::LOOP);
+    let d0 = builder.open_dim_ex(Size::new_const(4), DimKind::LOOP);
     let inst0 = builder.mov(&0i32);
-    let d1 = builder.open_mapped_dim(&d0.into())[0];
+    let d1 = builder.open_mapped_dim(&d0);
     builder.mov(&inst0);
     builder.order(&d0, &d1, Order::MERGED);
     // Ensure no temporary memory has been generated.
@@ -327,9 +326,9 @@ fn unrolled_loop_unfused_simple() {
     let context = fake::Context::default();
     let signature = empty_signature(0);
     let mut builder = helper::Builder::new(&signature, context.device());
-    let d0 = builder.open_dim_ex(Size::new(4, vec![], 1), DimKind::UNROLL);
+    let d0 = builder.open_dim_ex(Size::new_const(4), DimKind::UNROLL);
     let inst0 = builder.mov(&0i32);
-    let d1 = builder.open_mapped_dim(&d0.into())[0];
+    let d1 = builder.open_mapped_dim(&d0);
     builder.mov(&inst0);
     builder.order(&d0, &d1, !Order::MERGED);
     // Ensure no temporary memory has been generated.
@@ -345,9 +344,9 @@ fn temporary_memory_gen_simple() {
     let context = fake::Context::default();
     let signature = empty_signature(0);
     let mut builder = helper::Builder::new(&signature, context.device());
-    let d0 = builder.open_dim_ex(Size::new(4, vec![], 1), DimKind::LOOP);
+    let d0 = builder.open_dim_ex(Size::new_const(4), DimKind::LOOP);
     let inst0 = builder.mov(&0i32);
-    let d1 = builder.open_mapped_dim(&d0.into())[0];
+    let d1 = builder.open_mapped_dim(&d0);
     builder.mov(&helper::TmpArray(inst0));
     builder.order(&d0, &d1, !Order::MERGED);
     // Ensure load and store instruction have been generated.
@@ -363,10 +362,10 @@ fn unrolled_loop_unfused_reduction() {
     let context = fake::Context::default();
     let signature = empty_signature(0);
     let mut builder = helper::Builder::new(&signature, context.device());
-    let d0 = builder.open_dim_ex(ir::Size::new(4, vec![], 1), DimKind::UNROLL);
+    let d0 = builder.open_dim_ex(ir::Size::new_const(4), DimKind::UNROLL);
     let inst0 = builder.mov(&0i32);
-    builder.open_mapped_dim(&d0.into());
-    let d1 = builder.open_dim_ex(ir::Size::new(1024, vec![], 1), DimKind::LOOP);
+    builder.open_mapped_dim(&d0);
+    let d1 = builder.open_dim_ex(ir::Size::new_const(1024), DimKind::LOOP);
     builder.mov(&helper::Reduce(inst0));
 
     builder.order(&d0, &d1, Order::BEFORE);
@@ -383,12 +382,12 @@ fn two_thread_dim_map() {
     let signature = empty_signature(0);
     let mut builder = helper::Builder::new(&signature, context.device());
     // Generate a variable in each thread.
-    let dim0_0 = builder.open_dim_ex(ir::Size::new(32, vec![], 1), DimKind::THREAD);
-    let dim0_1 = builder.open_dim_ex(ir::Size::new(32, vec![], 1), DimKind::THREAD);
+    let dim0_0 = builder.open_dim_ex(ir::Size::new_const(32), DimKind::THREAD);
+    let dim0_1 = builder.open_dim_ex(ir::Size::new_const(32), DimKind::THREAD);
     let x = builder.mov(&0i32);
     // Transpose twice the variable using temporary memory.
-    let dim1_0 = builder.open_mapped_dim(&dim0_1.into());
-    let dim1_1 = builder.open_mapped_dim(&dim0_0.into());
+    let dim1_0 = builder.open_mapped_dim(&dim0_1);
+    let dim1_1 = builder.open_mapped_dim(&dim0_0);
     builder.mov(&helper::TmpArray(x));
     // Set the nesting order.
     builder.order(&dim0_0, &dim0_1, Order::OUTER);
@@ -405,14 +404,14 @@ fn double_dim_map() {
 
     let mut builder = helper::Builder::new(&signature, context.device());
     // Load from a and b.
-    let dim0_0 = builder.open_dim_ex(ir::Size::new(32, vec![], 1), DimKind::THREAD);
-    let dim0_1 = builder.open_dim_ex(ir::Size::new(32, vec![], 1), DimKind::THREAD);
-    let dim0_2 = builder.open_dim_ex(ir::Size::new(4, vec![], 1), DimKind::UNROLL);
+    let dim0_0 = builder.open_dim_ex(ir::Size::new_const(32), DimKind::THREAD);
+    let dim0_1 = builder.open_dim_ex(ir::Size::new_const(32), DimKind::THREAD);
+    let dim0_2 = builder.open_dim_ex(ir::Size::new_const(4), DimKind::UNROLL);
     let x = builder.mov(&0i32);
     // Transpose and add a and b. Store the result in a.
-    let dim1_0 = builder.open_mapped_dim(&dim0_1.into());
-    let dim1_1 = builder.open_mapped_dim(&dim0_0.into());
-    let dim1_2 = builder.open_mapped_dim(&dim0_2.into());
+    let dim1_0 = builder.open_mapped_dim(&dim0_1);
+    let dim1_1 = builder.open_mapped_dim(&dim0_0);
+    let dim1_2 = builder.open_mapped_dim(&dim0_2);
     builder.mov(&x);
     builder.mov(&x);
     // Fix the nesting order.
