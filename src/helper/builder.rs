@@ -445,10 +445,12 @@ impl<'a> Builder<'a> {
     }
 
     /// Returns a reference to the function being built.
-    pub(super) fn function(&self) -> &ir::Function<'a, ()> { &self.function }
+    pub(super) fn function(&self) -> &ir::Function<'a, ()> {
+        &self.function
+    }
 
     /// Returns the list of open dimensions with the dimensions they are mapped to.
-    pub(super) fn open_dims(&self) -> impl Iterator<Item=(ir::DimId, ir::DimId)> + '_ {
+    pub(super) fn open_dims(&self) -> impl Iterator<Item = (ir::DimId, ir::DimId)> + '_ {
         self.open_dims.iter().map(|(&new, &old)| (new, old))
     }
 }

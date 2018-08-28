@@ -62,8 +62,14 @@ fn inst_dim_order() {
     let space = builder.get();
     assert_eq!(space.domain().get_dim_kind(dim0[0]), !DimKind::VECTOR);
     assert_eq!(space.domain().get_dim_kind(dim1[0]), !DimKind::VECTOR);
-    assert_eq!(space.domain().get_is_iteration_dim(inst0, dim0[0]), Bool::TRUE);
-    assert_eq!(space.domain().get_is_iteration_dim(inst0, dim0[0]), Bool::TRUE);
+    assert_eq!(
+        space.domain().get_is_iteration_dim(inst0, dim0[0]),
+        Bool::TRUE
+    );
+    assert_eq!(
+        space.domain().get_is_iteration_dim(inst0, dim0[0]),
+        Bool::TRUE
+    );
     assert_eq!(
         space.domain().get_order(inst0.into(), dim1[0].into()),
         Order::INNER | Order::ORDERED
@@ -95,10 +101,24 @@ fn nested_thread_dims() {
     builder.mov(&0i32);
     builder.order(&d0, &d3, Order::INNER);
     let space = builder.get();
-    assert!(!space.domain().get_dim_kind(d3[0]).intersects(DimKind::THREAD));
-    assert_eq!(space.domain().get_order(d0[0].into(), d3[0].into()), Order::INNER);
-    assert_eq!(space.domain().get_order(d1[0].into(), d3[0].into()), Order::INNER);
-    assert_eq!(space.domain().get_order(d2[0].into(), d3[0].into()), Order::INNER);
+    assert!(
+        !space
+            .domain()
+            .get_dim_kind(d3[0])
+            .intersects(DimKind::THREAD)
+    );
+    assert_eq!(
+        space.domain().get_order(d0[0].into(), d3[0].into()),
+        Order::INNER
+    );
+    assert_eq!(
+        space.domain().get_order(d1[0].into(), d3[0].into()),
+        Order::INNER
+    );
+    assert_eq!(
+        space.domain().get_order(d2[0].into(), d3[0].into()),
+        Order::INNER
+    );
     gen_best(&context, space);
 }
 
@@ -113,7 +133,12 @@ fn max_thread_on_addinst() {
     let d1 = builder.open_dim(Size::new_const(2));
     builder.mov(&0i32);
     let space = builder.get();
-    assert!(!space.domain().get_dim_kind(d1[0]).intersects(DimKind::THREAD));
+    assert!(
+        !space
+            .domain()
+            .get_dim_kind(d1[0])
+            .intersects(DimKind::THREAD)
+    );
     gen_best(&context, space);
 }
 
@@ -129,7 +154,12 @@ fn max_thread_on_setkind() {
     builder.mov(&0i32);
     builder.action(Action::DimKind(d0[0], DimKind::THREAD));
     let space = builder.get();
-    assert!(!space.domain().get_dim_kind(d1[0]).intersects(DimKind::THREAD));
+    assert!(
+        !space
+            .domain()
+            .get_dim_kind(d1[0])
+            .intersects(DimKind::THREAD)
+    );
     gen_best(&context, space);
 }
 
@@ -197,7 +227,8 @@ fn vector_dims() {
     let base_addr = builder.cast(&0i64, ir::Type::PtrTo(mem_block));
     let d0 = builder.open_dim(Size::new_const(4));
     // Test with one vectorizable instruction
-    let (addr, pattern) = builder.tensor_access(&base_addr, mem_block, Type::I(8), &[&d0]);
+    let (addr, pattern) =
+        builder.tensor_access(&base_addr, mem_block, Type::I(8), &[&d0]);
     builder.ld(Type::I(8), &addr, pattern.clone());
     assert!(
         builder
@@ -213,8 +244,18 @@ fn vector_dims() {
     builder.mul(&0i32, &0i32);
     builder.close_dim(&d1);
     let space = builder.get();
-    assert!(!space.domain().get_dim_kind(d0[0]).intersects(DimKind::VECTOR));
-    assert!(!space.domain().get_dim_kind(d1[0]).intersects(DimKind::VECTOR));
+    assert!(
+        !space
+            .domain()
+            .get_dim_kind(d0[0])
+            .intersects(DimKind::VECTOR)
+    );
+    assert!(
+        !space
+            .domain()
+            .get_dim_kind(d1[0])
+            .intersects(DimKind::VECTOR)
+    );
     gen_best(&context, space);
 }
 

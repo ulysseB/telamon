@@ -66,7 +66,12 @@ impl<'a, 'c> AutoOperand<'a> for &'c str {
         'a: 'b,
     {
         Param(unwrap!(
-            builder.function().signature().params.iter().find(|p| p.name == *self)
+            builder
+                .function()
+                .signature()
+                .params
+                .iter()
+                .find(|p| p.name == *self)
         ))
     }
 }
