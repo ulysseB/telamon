@@ -43,14 +43,14 @@ pub trait Device: Sync {
     /// Returns the name of the device.
     fn name(&self) -> &str;
 
-    /// Returns the pressure cause by a `BasicBlock`. For a dimension, returns the pressure
+    /// Returns the pressure cause by a `Statement`. For a dimension, returns the pressure
     /// for the full loop execution.
     fn hw_pressure(
         &self,
         space: &SearchSpace,
         dim_sizes: &HashMap<ir::DimId, u32>,
         nesting: &HashMap<ir::BBId, Nesting>,
-        bb: &ir::BasicBlock,
+        bb: &ir::Statement,
         ctx: &Context,
     ) -> HwPressure;
     /// Returns the pressure produced by a single iteration of a loop and the latency

@@ -1,6 +1,6 @@
 //! Describes the instructions.
 use device::Device;
-use ir::{self, BBId, BasicBlock, DimMapScope, LoweringMap, Operand, Operator, Type};
+use ir::{self, BBId, DimMapScope, LoweringMap, Operand, Operator, Statement, Type};
 use std;
 use utils::*;
 
@@ -174,7 +174,7 @@ impl<'a> Instruction<'a> {
     }
 }
 
-impl<'a> BasicBlock<'a> for Instruction<'a> {
+impl<'a> Statement<'a> for Instruction<'a> {
     fn bb_id(&self) -> BBId {
         self.id.into()
     }

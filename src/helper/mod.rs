@@ -92,24 +92,24 @@ impl<'a> IntoIterator for &'a LogicalDim<'a> {
 }
 
 /// A logical basic block, that can actually be implemented by multiple ones.
-pub trait MetaBasicBlock {
+pub trait MetaStatement {
     /// Returns the ids on the underlying basic blocks.
     fn ids(&self) -> Box<Iterator<Item = ir::BBId> + '_>;
 }
 
-impl MetaBasicBlock for ir::BBId {
+impl MetaStatement for ir::BBId {
     fn ids(&self) -> Box<Iterator<Item = ir::BBId> + '_> {
         Box::new(std::iter::once(*self))
     }
 }
 
-impl MetaBasicBlock for ir::InstId {
+impl MetaStatement for ir::InstId {
     fn ids(&self) -> Box<Iterator<Item = ir::BBId> + '_> {
         Box::new(std::iter::once((*self).into()))
     }
 }
 
-impl<T> MetaBasicBlock for T
+impl<T> MetaStatement for T
 where
     T: MetaDimension,
 {

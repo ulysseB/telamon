@@ -26,8 +26,8 @@ impl From<ir::DimId> for BBId {
 }
 
 /// Represents a basic block in an Exhaust function.
-pub trait BasicBlock<'a, L = ir::LoweringMap>: std::fmt::Debug {
-    /// Returns the unique identifier of the `BasicBlock`.
+pub trait Statement<'a, L = ir::LoweringMap>: std::fmt::Debug {
+    /// Returns the unique identifier of the `Statement`.
     fn bb_id(&self) -> BBId;
     /// Returns 'self' if it is an instruction.
     fn as_inst(&self) -> Option<&ir::Instruction<'a, L>> {

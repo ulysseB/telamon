@@ -93,7 +93,7 @@ impl CudaPrinter {
     }
 
     /// Declares a shared memory block.
-    fn shared_mem_decl(&mut self, block: &InternalMemBlock, namer: &mut NameMap) {
+    fn shared_mem_decl(&mut self, block: &InternalMemoryRegion, namer: &mut NameMap) {
         let ptr_type_name = Self::get_type(Type::I(32));
         let name = namer.name_addr(block.id());
         unwrap!(writeln!(

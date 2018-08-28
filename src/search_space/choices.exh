@@ -2,8 +2,8 @@
 // FIXME: shared memory is not forbidden when the dimensions of the tmp mem are unsized
 // - solution: a value object, superset of memblock, with a location in REG | SHARED | GLOBAL
 
-set BasicBlocks:
-  item_type = "ir::BasicBlock"
+set Statements:
+  item_type = "ir::Statement"
   id_type = "ir::BBId"
   item_getter = "$fun.block($id)"
   id_getter = "$item.bb_id()"
@@ -12,7 +12,7 @@ set BasicBlocks:
   new_objs = "$objs.basic_blocks"
 end
 
-set Instructions subsetof BasicBlocks:
+set Instructions subsetof Statements:
   item_type = "ir::Instruction"
   id_type = "ir::InstId"
   item_getter = "$fun.inst($id)"
@@ -34,7 +34,7 @@ set MemInsts subsetof Instructions:
   new_objs = "$objs.mem_insts"
 end
 
-set Dimensions subsetof BasicBlocks:
+set Dimensions subsetof Statements:
   disjoint: Instructions
   item_type = "ir::Dimension"
   id_type = "ir::DimId"
@@ -58,7 +58,7 @@ set StaticDims subsetof Dimensions:
   new_objs = "$objs.static_dims"
 end
 
-set MemBlocks:
+set MemoryRegions:
   item_type = "ir::mem::Block"
   id_type = "ir::MemId"
   item_getter = "$fun.mem_block($id)"
@@ -68,7 +68,7 @@ set MemBlocks:
   new_objs = "$objs.mem_blocks"
 end
 
-set InternalMemBlocks subsetof MemBlocks:
+set InternalMemoryRegions subsetof MemoryRegions:
   item_type = "ir::mem::InternalBlock"
   id_type = "ir::mem::InternalId"
   item_getter = "$fun.internal_mem_block($id)"
@@ -128,7 +128,7 @@ define enum dim_kind($dim in Dimensions):
   value BLOCK:
     requires forall $other_dim in Dimensions:
       dim_kind($other_dim) is BLOCK || order($dim, $other_dim) is OUTER
-    requires forall $other in BasicBlocks:
+    requires forall $other in Statements:
       order($dim, $other) is NESTED | MERGED
   /// The dimension is mapped to a thread dimension on the device.
   value THREAD:
@@ -140,7 +140,7 @@ define enum dim_kind($dim in Dimensions):
 end
 
 /// Indicates where a memory block is located.
-define enum mem_space($mem in MemBlocks):
+define enum mem_space($mem in MemoryRegions):
   /// The block is in the device RAM.
   value GLOBAL:
     requires forall $inst in MemInsts:
@@ -180,7 +180,7 @@ define enum inst_flag($inst in MemInsts):
 end
 
 /// Defines how two basic blocks are ordered.
-define enum order($lhs in BasicBlocks, $rhs in BasicBlocks):
+define enum order($lhs in Statements, $rhs in Statements):
   antisymmetric:
     BEFORE -> AFTER
     INNER -> OUTER
@@ -202,9 +202,9 @@ define enum order($lhs in BasicBlocks, $rhs in BasicBlocks):
 end
 
 // Constraint triangles of orders
-require forall $lhs in BasicBlocks:
-  forall $mid in BasicBlocks:
-    forall $rhs in BasicBlocks:
+require forall $lhs in Statements:
+  forall $mid in Statements:
+    forall $rhs in Statements:
       // BEFORE is transitive
       order($lhs, $rhs) is BEFORE || order($lhs, $mid) is not BEFORE
         || order($mid, $rhs) is not BEFORE
@@ -222,7 +222,7 @@ require forall $lhs in BasicBlocks:
 
 // Intruction orders
 require forall $inst in Instructions:
-  forall $bb in BasicBlocks:
+  forall $bb in Statements:
     order($inst, $bb) is INNER | ORDERED
 
 require forall $inst in Instructions:
@@ -311,7 +311,7 @@ require forall $outer in StaticDims:
       || size($outer) <= "64"
 
 // A basic block nested with a thread dimension is nested or merged with the other
-require forall $bb in BasicBlocks:
+require forall $bb in Statements:
   forall $nested_thread in StaticDims:
     forall $other_thread in StaticDims:
       order($bb, $nested_thread) is not NESTED || dim_kind($nested_thread) is not THREAD
@@ -415,7 +415,7 @@ trigger forall $lhs in Dimensions:
 /// Computes the size of each memory block.
 // TODO(cleanup): use dependent sets to only iterate on necessary pairs.
 // FIXME: remove cubic choice choices
-define half counter mem_size($mem in InternalMemBlocks):
+define half counter mem_size($mem in InternalMemoryRegions):
   base "$mem.base_size()"
   forall $lhs in StaticDims:
     forall $rhs in StaticDims:
@@ -426,7 +426,7 @@ end
 
 /// The total amount of shared memory used.
 define half counter shared_mem_used():
-  forall $mem in InternalMemBlocks:
+  forall $mem in InternalMemoryRegions:
     sum mem_size($mem) when: mem_space($mem) is SHARED
 end
 

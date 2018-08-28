@@ -483,7 +483,7 @@ impl device::Device for Gpu {
         space: &SearchSpace,
         dim_sizes: &HashMap<ir::DimId, u32>,
         _nesting: &HashMap<ir::BBId, model::Nesting>,
-        bb: &ir::BasicBlock,
+        bb: &ir::Statement,
         ctx: &device::Context,
     ) -> model::HwPressure {
         if let Some(inst) = bb.as_inst() {

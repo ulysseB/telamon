@@ -14,7 +14,7 @@ pub struct Function<'a> {
     block_dims: Vec<Dimension<'a>>,
     device_code_args: Vec<ParamVal<'a>>,
     induction_vars: Vec<InductionVar<'a>>,
-    mem_blocks: Vec<InternalMemBlock<'a>>,
+    mem_blocks: Vec<InternalMemoryRegion<'a>>,
     init_induction_levels: Vec<InductionLevel<'a>>,
     // TODO(cleanup): remove dependency on the search space
     space: &'a SearchSpace<'a>,
@@ -116,7 +116,7 @@ impl<'a> Function<'a> {
     }
 
     /// Returns the memory blocks allocated by the function.
-    pub fn mem_blocks(&self) -> impl Iterator<Item = &InternalMemBlock> {
+    pub fn mem_blocks(&self) -> impl Iterator<Item = &InternalMemoryRegion> {
         self.mem_blocks.iter()
     }
 
@@ -219,7 +219,7 @@ pub enum ParamValKey<'a> {
 fn register_mem_blocks<'a>(
     space: &'a SearchSpace<'a>,
     block_dims: &[Dimension<'a>],
-) -> Vec<InternalMemBlock<'a>> {
+) -> Vec<InternalMemoryRegion<'a>> {
     let num_thread_blocks = block_dims.iter().fold(None, |pred, block| {
         if let Some(mut pred) = pred {
             pred *= block.size();
@@ -231,12 +231,12 @@ fn register_mem_blocks<'a>(
     space
         .ir_instance()
         .internal_mem_blocks()
-        .map(|b| InternalMemBlock::new(b, &num_thread_blocks, space))
+        .map(|b| InternalMemoryRegion::new(b, &num_thread_blocks, space))
         .collect()
 }
 
 /// A memory block allocated by the kernel.
-pub struct InternalMemBlock<'a> {
+pub struct InternalMemoryRegion<'a> {
     id: ir::mem::InternalId,
     size: codegen::Size<'a>,
     num_private_copies: Option<codegen::Size<'a>>,
@@ -252,8 +252,8 @@ pub enum AllocationScheme {
     Shared,
 }
 
-impl<'a> InternalMemBlock<'a> {
-    /// Creates a new InternalMemBlock from an `ir::mem::Internal`.
+impl<'a> InternalMemoryRegion<'a> {
+    /// Creates a new InternalMemoryRegion from an `ir::mem::Internal`.
     pub fn new(
         block: &'a ir::mem::InternalBlock,
         num_threads_groups: &Option<codegen::Size<'a>>,
@@ -273,7 +273,7 @@ impl<'a> InternalMemBlock<'a> {
         };
         let ptr_type = ir::Type::PtrTo(block.id().into());
         let ptr_type = unwrap!(space.ir_instance().device().lower_type(ptr_type, space));
-        InternalMemBlock {
+        InternalMemoryRegion {
             id: block.id(),
             size,
             mem_space,

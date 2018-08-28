@@ -1,4 +1,4 @@
-set BasicBlock:
+set Statement:
   item_type = "ir::basic_block::Obj"
   id_type = "ir::basic_block::Id"
   item_getter = "ir::basic_block::get($fun, $id)"
@@ -8,7 +8,7 @@ set BasicBlock:
   new_objs = "$objs.basic_block"
 end
 
-set Dimension subsetof BasicBlock:
+set Dimension subsetof Statement:
   item_type = "ir::dim::Obj"
   id_type = "ir::dim::Id"
   item_getter = "ir::dim::get($fun, $id)"
@@ -19,7 +19,7 @@ set Dimension subsetof BasicBlock:
   from_superset = "ir::dim::from_superset($fun, $item)"
 end
 
-define enum foo($lhs in BasicBlock, $rhs in BasicBlock):
+define enum foo($lhs in Statement, $rhs in Statement):
   value A:
   value B:
 end
@@ -30,7 +30,7 @@ define enum bar($bb in Dimension):
 end
 
 trigger forall $dim in Dimension:
-  forall $bb in BasicBlock:
+  forall $bb in Statement:
     "::lowering::test_trigger($fun, $dim, $bb)" when foo($dim, $bb) is A
 
 trigger forall $lhs in Dimension:

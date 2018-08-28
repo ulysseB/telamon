@@ -1,6 +1,6 @@
 //! Choices that can be applied to split the search space.
 use ir::mem::Block;
-use ir::{self, BasicBlock};
+use ir::{self, Statement};
 use itertools::Itertools;
 use search_space::{Action, Domain, NumSet, Order, SearchSpace};
 

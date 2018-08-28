@@ -90,3 +90,23 @@ fn parser_integer_token() {
         )).is_ok()
     );
 }
+
+#[test]
+fn parser_include_set() {
+    // Header include.
+    // ```
+    // include ab
+    //      set a
+    //          include c
+    //               set c
+    //      set b
+    // ```
+    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/extra/set/acb.exh");
+    let include = format!("include \"{}\"", filename);
+
+    // test the parse validity.
+    assert!(
+        parser::parse_ast(Lexer::new(include.as_bytes().to_vec()).collect::<Vec<_>>())
+            .is_ok()
+    );
+}

@@ -1214,30 +1214,136 @@ fn lexer_include() {
     );
 
     // Header include.
-    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/include_foo.exh");
+    let filename: &str =
+        concat!(env!("CARGO_MANIFEST_DIR"), "/tests/extra/include_foo.exh");
     let include = format!("include \"{}\"", filename);
 
     assert_eq!(Lexer::new(include.as_bytes().to_vec()).count(), 9);
 
     // Two same header include.
-    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/enum_foo.exh");
+    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/extra/enum_foo.exh");
     let include = format!("include \"{}\"", filename);
 
     assert_eq!(Lexer::new(include.as_bytes().to_vec()).count(), 7);
     assert_eq!(Lexer::new(include.as_bytes().to_vec()).count(), 7);
 
     // Sub header include.
-    let filename: &str =
-        concat!(env!("CARGO_MANIFEST_DIR"), "/tests/sub/include_foo.exh");
+    let filename: &str = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/extra/sub/include_foo.exh"
+    );
     let include = format!("include \"{}\"", filename);
 
     assert_eq!(Lexer::new(include.as_bytes().to_vec()).count(), 7);
 }
 
 #[test]
-fn lexer_include_extra() {
+fn lexer_include_set() {
     // Header include.
-    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/foo_bar.exh");
+    // ```
+    // include ab
+    //      set a
+    //          include c
+    //               set c
+    //      set b
+    // ```
+    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/extra/set/acb.exh");
+    let include = format!("include \"{}\"", filename);
+
+    assert_eq!(
+        Lexer::new(include.as_bytes().to_vec())
+            .map(|t| t.unwrap())
+            .map(|(_, t, _)| t)
+            .collect::<Vec<_>>(),
+        vec![
+            Token::Set,
+            Token::SetIdent(String::from("Aa")),
+            Token::Colon,
+            Token::SetDefKey(SetDefKey::ItemType),
+            Token::Equal,
+            Token::Code(String::from("ir::inst::Obj")),
+            Token::SetDefKey(SetDefKey::IdType),
+            Token::Equal,
+            Token::Code(String::from("ir::inst::Id")),
+            Token::SetDefKey(SetDefKey::ItemGetter),
+            Token::Equal,
+            Token::Code(String::from("ir::inst::get($fun, $id)")),
+            Token::SetDefKey(SetDefKey::IdGetter),
+            Token::Equal,
+            Token::Code(String::from("ir::inst::Obj::id($item)")),
+            Token::SetDefKey(SetDefKey::Iter),
+            Token::Equal,
+            Token::Code(String::from("ir::inst::iter($fun)")),
+            Token::SetDefKey(SetDefKey::Prefix),
+            Token::Equal,
+            Token::Code(String::from("inst")),
+            Token::SetDefKey(SetDefKey::NewObjs),
+            Token::Equal,
+            Token::Code(String::from("$objs.inst")),
+            Token::End,
+            Token::Set,
+            Token::SetIdent(String::from("Cc")),
+            Token::Colon,
+            Token::SetDefKey(SetDefKey::ItemType),
+            Token::Equal,
+            Token::Code(String::from("ir::inst::Obj")),
+            Token::SetDefKey(SetDefKey::IdType),
+            Token::Equal,
+            Token::Code(String::from("ir::inst::Id")),
+            Token::SetDefKey(SetDefKey::ItemGetter),
+            Token::Equal,
+            Token::Code(String::from("ir::inst::get($fun, $id)")),
+            Token::SetDefKey(SetDefKey::IdGetter),
+            Token::Equal,
+            Token::Code(String::from("ir::inst::Obj::id($item)")),
+            Token::SetDefKey(SetDefKey::Iter),
+            Token::Equal,
+            Token::Code(String::from("ir::inst::iter($fun)")),
+            Token::SetDefKey(SetDefKey::Prefix),
+            Token::Equal,
+            Token::Code(String::from("inst")),
+            Token::SetDefKey(SetDefKey::NewObjs),
+            Token::Equal,
+            Token::Code(String::from("$objs.inst")),
+            Token::End,
+            Token::Set,
+            Token::SetIdent(String::from("Bb")),
+            Token::Colon,
+            Token::SetDefKey(SetDefKey::ItemType),
+            Token::Equal,
+            Token::Code(String::from("ir::inst::Obj")),
+            Token::SetDefKey(SetDefKey::IdType),
+            Token::Equal,
+            Token::Code(String::from("ir::inst::Id")),
+            Token::SetDefKey(SetDefKey::ItemGetter),
+            Token::Equal,
+            Token::Code(String::from("ir::inst::get($fun, $id)")),
+            Token::SetDefKey(SetDefKey::IdGetter),
+            Token::Equal,
+            Token::Code(String::from("ir::inst::Obj::id($item)")),
+            Token::SetDefKey(SetDefKey::Iter),
+            Token::Equal,
+            Token::Code(String::from("ir::inst::iter($fun)")),
+            Token::SetDefKey(SetDefKey::Prefix),
+            Token::Equal,
+            Token::Code(String::from("inst")),
+            Token::SetDefKey(SetDefKey::NewObjs),
+            Token::Equal,
+            Token::Code(String::from("$objs.inst")),
+            Token::End,
+        ]
+    );
+}
+
+#[test]
+fn lexer_include_enum() {
+    // Header include.
+    // ```
+    // include enum_foo
+    //      enum foo
+    // enum Bar
+    // ```
+    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/extra/foo_bar.exh");
     let include = format!("include \"{}\"", filename);
 
     assert_eq!(
@@ -1274,7 +1380,8 @@ fn lexer_include_extra() {
 #[ignore]
 fn lexer_include_guard() {
     // double header include.
-    let filename: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/include_a.exh");
+    let filename: &str =
+        concat!(env!("CARGO_MANIFEST_DIR"), "/tests/extra/include_a.exh");
     let include = format!("include \"{}\"", filename);
 
     let _ = Lexer::new(include.as_bytes().to_vec()).collect::<Vec<_>>();

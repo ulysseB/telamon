@@ -1,4 +1,4 @@
-set BasicBlock:
+set Statement:
   item_type = "ir::basic_block::Obj"
   id_type = "ir::basic_block::Id"
   item_getter = "ir::basic_block::get($fun, $id)"
@@ -8,11 +8,11 @@ set BasicBlock:
   new_objs = "$objs.basic_block"
 end
 
-define enum enum_1($bb in BasicBlock):
+define enum enum_1($bb in Statement):
   value A:
-    requires forall $other in BasicBlock:
+    requires forall $other in Statement:
       enum_1($other) is A | C
-    requires forall $other in BasicBlock:
+    requires forall $other in Statement:
       enum_1($other) is B | C
   value B:
   value C:

@@ -397,7 +397,7 @@ pub trait Printer {
 
     fn privatise_global_block(
         &mut self,
-        block: &InternalMemBlock,
+        block: &InternalMemoryRegion,
         namer: &mut NameMap,
         fun: &Function,
     ) {

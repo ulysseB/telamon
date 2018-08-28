@@ -1,6 +1,6 @@
 //! Compute and represent local information on the different objects representing of the IR.
 use device::{Context, Device};
-use ir::{self, BasicBlock};
+use ir::{self, Statement};
 use itertools::Itertools;
 use model::HwPressure;
 use num::integer::lcm;
@@ -168,7 +168,7 @@ pub struct Nesting {
 }
 
 impl Nesting {
-    /// Computes the nesting of a `BasicBlock`.
+    /// Computes the nesting of a `Statement`.
     fn compute(
         space: &SearchSpace,
         bb: ir::BBId,
@@ -247,7 +247,7 @@ impl Nesting {
         }
     }
 
-    /// Computess the list of iteration dimensions of a `BasicBlock`.
+    /// Computess the list of iteration dimensions of a `Statement`.
     fn get_iteration_dims(space: &SearchSpace, bb: ir::BBId) -> VecSet<ir::DimId> {
         let dims = if let ir::BBId::Inst(inst) = bb {
             space
