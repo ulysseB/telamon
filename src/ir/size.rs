@@ -52,7 +52,7 @@ where
     }
 }
 
-/// A size how exact value is not yet decided.
+/// A size whose exact value is not yet decided.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct PartialSize<'a> {
     factor: u32,
