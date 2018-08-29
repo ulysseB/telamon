@@ -56,15 +56,15 @@ pub trait MetaStatement {
     fn ids(&self) -> Box<Iterator<Item = ir::BBId> + '_>;
 }
 
-impl MetaStatement for ir::BBId {
+impl<T> MetaStatement for T where T: Into<ir::BBId> + Copy {
     fn ids(&self) -> Box<Iterator<Item = ir::BBId> + '_> {
-        Box::new(std::iter::once(*self))
+        Box::new(std::iter::once((*self).into()))
     }
 }
 
-impl MetaStatement for ir::InstId {
+impl MetaStatement for Option<LogicalDim> {
     fn ids(&self) -> Box<Iterator<Item = ir::BBId> + '_> {
-        Box::new(std::iter::once((*self).into()))
+        Box::new(self.iter().flat_map(|dim| dim.ids()))
     }
 }
 
