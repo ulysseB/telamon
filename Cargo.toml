@@ -27,6 +27,13 @@ harness = false
 name = "memory"
 harness = false
 
+[[example]]
+name = "matmul"
+required-features = ["cuda"]
+
+[[example]]
+name = "print_event_log"
+
 [build-dependencies]
 cc = "1.0.12"
 
