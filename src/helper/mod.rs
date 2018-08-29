@@ -12,82 +12,41 @@ pub use self::signature::Builder as SignatureBuilder;
 use ir;
 use std;
 
-/// A logical dimension, possible composed of multiple nested dimensions.
-pub trait MetaDimension {
-    /// Returns the ids of the underlying dimensions.
-    fn ids(&self) -> Box<DoubleEndedIterator<Item = ir::DimId> + '_>;
-}
-
-impl MetaDimension for ir::DimId {
-    fn ids(&self) -> Box<DoubleEndedIterator<Item = ir::DimId> + '_> {
-        Box::new(std::iter::once(*self))
-    }
-}
-
-impl<T> MetaDimension for T
-where
-    T: std::borrow::Borrow<[ir::DimId]>,
-{
-    fn ids(&self) -> Box<DoubleEndedIterator<Item = ir::DimId> + '_> {
-        Box::new(self.borrow().iter().cloned())
-    }
-}
-
 /// A groups of dimensions that act as a single logical dimension.
 #[derive(Clone)]
-pub enum LogicalDim<'a> {
-    /// A single concrete dimension.
-    Simple(ir::DimId),
-    /// Multiple dimensions forming a single logical once.
-    Composite {
-        id: ir::LogicalDimId,
-        dims: Vec<ir::DimId>,
-        size: ir::Size<'a>,
-        tiling_factors: Vec<u32>,
-        // TODO(strip-minig): remove this parameter once we enable unconstrained tile sizes.
-        tile_sizes: Vec<u32>,
-    },
+pub struct LogicalDim {
+    logical_id: ir::LogicalDimId,
+    real_ids: Vec<ir::DimId>,
+    // TODO(strip-minig): remove this parameter once we enable unconstrained tile sizes.
+    tile_sizes: Vec<u32>,
 }
 
-impl<'b> LogicalDim<'b> {
-    pub fn iter(&self) -> Box<DoubleEndedIterator<Item = ir::DimId> + '_> {
+impl LogicalDim {
+    /// Iterates on the reals IDs, from the outermost to the innermost.
+    pub fn iter(&self) -> impl Iterator<Item = ir::DimId> + '_ {
         self.into_iter()
     }
-}
 
-impl From<ir::DimId> for LogicalDim<'static> {
-    fn from(id: ir::DimId) -> Self {
-        LogicalDim::Simple(id)
+    /// Returns the id of the logical dimension.
+    pub fn id(&self) -> ir::LogicalDimId {
+        self.logical_id
     }
 }
 
-impl<'b> MetaDimension for LogicalDim<'b> {
-    fn ids(&self) -> Box<DoubleEndedIterator<Item = ir::DimId> + '_> {
-        self.into_iter()
-    }
-}
-
-impl<'a> std::ops::Index<usize> for LogicalDim<'a> {
+impl std::ops::Index<usize> for LogicalDim {
     type Output = ir::DimId;
 
     fn index(&self, index: usize) -> &ir::DimId {
-        match self {
-            LogicalDim::Simple(id) if index == 0 => id,
-            LogicalDim::Simple(_) => panic!("out of bounds index {}", index),
-            LogicalDim::Composite { dims, .. } => &dims[index],
-        }
+        &self.real_ids[index]
     }
 }
 
-impl<'a> IntoIterator for &'a LogicalDim<'a> {
+impl<'a> IntoIterator for &'a LogicalDim {
     type Item = ir::DimId;
-    type IntoIter = Box<DoubleEndedIterator<Item = ir::DimId> + 'a>;
+    type IntoIter = std::iter::Cloned<std::slice::Iter<'a, ir::DimId>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        match self {
-            LogicalDim::Simple(dim) => Box::new(std::iter::once(*dim)),
-            LogicalDim::Composite { dims, .. } => Box::new(dims.iter().cloned()),
-        }
+        self.real_ids.iter().cloned()
     }
 }
 
@@ -97,23 +56,23 @@ pub trait MetaStatement {
     fn ids(&self) -> Box<Iterator<Item = ir::BBId> + '_>;
 }
 
-impl MetaStatement for ir::BBId {
-    fn ids(&self) -> Box<Iterator<Item = ir::BBId> + '_> {
-        Box::new(std::iter::once(*self))
-    }
-}
-
-impl MetaStatement for ir::InstId {
+impl<T> MetaStatement for T
+where
+    T: Into<ir::BBId> + Copy,
+{
     fn ids(&self) -> Box<Iterator<Item = ir::BBId> + '_> {
         Box::new(std::iter::once((*self).into()))
     }
 }
 
-impl<T> MetaStatement for T
-where
-    T: MetaDimension,
-{
+impl MetaStatement for Option<LogicalDim> {
     fn ids(&self) -> Box<Iterator<Item = ir::BBId> + '_> {
-        Box::new(MetaDimension::ids(self).map(|x| x.into()))
+        Box::new(self.iter().flat_map(|dim| dim.ids()))
+    }
+}
+
+impl MetaStatement for LogicalDim {
+    fn ids(&self) -> Box<Iterator<Item = ir::BBId> + '_> {
+        Box::new(self.iter().map(|id| id.into()))
     }
 }

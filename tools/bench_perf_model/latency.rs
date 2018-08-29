@@ -1,6 +1,6 @@
 //! Tests the latency model.
 use telamon::device::{ArgMap, Context};
-use telamon::helper::{Builder, DimGroup, Reduce, SignatureBuilder};
+use telamon::helper::{Builder, Reduce, SignatureBuilder};
 use telamon::ir;
 use telamon::search_space::{Action, DimKind, InstFlag, Order};
 use PerfModelTest;
@@ -45,7 +45,10 @@ impl PerfModelTest for TwoEmptyLoop {
         let d0 = builder.open_dim_ex(size.clone(), DimKind::LOOP);
         let d1 = builder.open_dim_ex(size, DimKind::LOOP);
         builder.mov(&0i32);
-        TwoEmptyLoop { d0, d1 }
+        TwoEmptyLoop {
+            d0: d0[0],
+            d1: d1[0],
+        }
     }
 
     fn get_actions(&self) -> Vec<Action> {
@@ -138,7 +141,10 @@ impl PerfModelTest for UnrollReduction {
         builder.close_dim(&d1);
         let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
         builder.st_ex(&"out", &inst, true, pattern, InstFlag::MEM_CS);
-        UnrollReduction { d0, d1 }
+        UnrollReduction {
+            d0: d0[0],
+            d1: d1[0],
+        }
     }
 
     fn get_actions(&self) -> Vec<Action> {
@@ -204,7 +210,9 @@ impl PerfModelTest for OrderedThreadDims {
         let d1_1 = builder.open_dim_ex(size_1.clone(), DimKind::LOOP);
         let d1_2 = builder.open_dim_ex(size_2.clone(), DimKind::UNROLL);
         let inst = builder.mul(&"x", &Reduce(init));
-        builder.close_dim(&DimGroup::new(vec![d1, d1_1, d1_2]));
+        builder.close_dim(&d1);
+        builder.close_dim(&d1_1);
+        builder.close_dim(&d1_2);
 
         let d2 = builder.open_dim_ex(size_0.clone(), DimKind::THREAD);
         let d2_1 = builder.open_dim_ex(size_1.clone(), DimKind::LOOP);
@@ -248,7 +256,8 @@ impl PerfModelTest for DimMap {
         let d2 = builder.open_dim_ex(size_1, DimKind::UNROLL);
         let op = builder.dim_map(i1, &[(&d1, &d2)], ir::DimMapScope::Thread);
         let i2 = builder.mad(&op, &op, &Reduce(init2));
-        builder.close_dim(&DimGroup::new(vec![d2, d0]));
+        builder.close_dim(&d2);
+        builder.close_dim(&d0);
         let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
         builder.st_ex(&"out", &i2, true, pattern, InstFlag::MEM_CS);
         builder.order(&d1, &d2, Order::BEFORE);

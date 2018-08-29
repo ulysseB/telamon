@@ -2,7 +2,7 @@
 use device::Device;
 use ir::mem::Block;
 use ir::{self, BBId, Dimension, InstId, Instruction, Operator, Statement};
-use ir::{dim, mem, AccessPattern, Operand, Size, SparseVec, Type};
+use ir::{dim, mem, AccessPattern, Operand, SparseVec, Type};
 use itertools::Itertools;
 use std;
 use utils::*;
@@ -67,7 +67,7 @@ pub struct Function<'a, L = ir::LoweringMap> {
     mem_blocks: mem::BlockMap,
     layouts_to_lower: Vec<ir::mem::InternalId>,
     induction_vars: Vec<ir::InductionVar<'a, L>>,
-    logical_dims: Vec<ir::LogicalDim>,
+    logical_dims: Vec<ir::LogicalDim<'a>>,
 }
 
 impl<'a, L> Function<'a, L> {
@@ -140,7 +140,7 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Returns the list of logical dimensions.
-    pub fn logical_dims(&self) -> impl Iterator<Item = &ir::LogicalDim> {
+    pub fn logical_dims(&self) -> impl Iterator<Item = &ir::LogicalDim<'a>> {
         self.logical_dims.iter()
     }
 
@@ -175,7 +175,7 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Retrives a logical dimension given its ID.
-    pub fn logical_dim(&self, id: ir::LogicalDimId) -> &ir::LogicalDim {
+    pub fn logical_dim(&self, id: ir::LogicalDimId) -> &ir::LogicalDim<'a> {
         &self.logical_dims[id.0 as usize]
     }
 
@@ -297,7 +297,7 @@ impl<'a, L> Function<'a, L> {
         dims: Vec<ir::DimId>,
     ) -> (Operand<'a, L>, AccessPattern<'a>) {
         let var_type = base_addr.t();
-        let base_size = ir::Size::new(base_incr, vec![], 1);
+        let base_size = ir::PartialSize::new(base_incr, vec![], 1);
         let increments = dims
             .iter()
             .rev()
@@ -342,23 +342,13 @@ impl<'a> Function<'a, ()> {
         Ok(id)
     }
 
-    /// Creates a new dimension.
-    pub fn add_dim(&mut self, size: Size<'a>) -> Result<ir::DimId, ir::Error> {
-        let id = ir::DimId(self.dims.len() as u32);
-        let dim = Dimension::new(size, id)?;
-        if dim.possible_sizes().is_some() {
-            self.static_dims.push(id);
-        }
-        self.dims.push(dim);
-        Ok(id)
-    }
-
     /// Allocates a new memory block.
     pub fn add_mem_block(&mut self, size: u32) -> mem::InternalId {
         self.mem_blocks.alloc_block(size, None)
     }
 
-    /// Create a new logical dimension and the dimensions that compose it.
+    /// Create a new logical dimension composed of multiple dimensions to implement
+    /// strip-mining.
     pub fn add_logical_dim(
         &mut self,
         size: ir::Size<'a>,
@@ -373,21 +363,27 @@ impl<'a> Function<'a, ()> {
         // Create the objects, but don't add anythin yet so we can rollback if an error
         // occurs.
         let mut dims = Vec::new();
-        let tiling_factor = tiling_factors.iter().product();
-        let logical_dim = if let Some(size) = size.as_int() {
-            let tiled_size = ir::Size::new(size / tiling_factor, vec![], 1);
+        let tiling_factor = tile_sizes.iter().product();
+        let logical_dim = if let Some(size) = size.as_constant() {
+            let tiled_size = ir::PartialSize::new(size / tiling_factor, vec![], 1);
             dims.push(Dimension::new(tiled_size, dim_ids[0])?);
             ir::LogicalDim::new_static(logical_id, dim_ids.clone(), size)
         } else {
-            let mut tiled_size = size.clone();
+            let mut tiled_size: ir::PartialSize = size.clone().into();
             tiled_size.mul_divisor(tiling_factor);
             dims.push(Dimension::new(tiled_size, dim_ids[0])?);
             let factors = tiling_factors;
             let static_dims = dim_ids[1..].iter().cloned().collect();
-            ir::LogicalDim::new_dynamic(logical_id, dim_ids[0], static_dims, factors)
+            ir::LogicalDim::new_dynamic(
+                logical_id,
+                dim_ids[0],
+                static_dims,
+                factors,
+                size,
+            )
         };
         for (&id, &size) in dim_ids[1..].iter().zip_eq(tile_sizes) {
-            dims.push(Dimension::new(ir::Size::new(size, vec![], 1), id)?);
+            dims.push(Dimension::new(ir::PartialSize::new(size, vec![], 1), id)?);
         }
         // Register the new objects.
         for dim in &dims {

@@ -7,7 +7,7 @@ use rand;
 use rayon::prelude::*;
 use telamon::explorer::Candidate;
 use telamon::helper::tensor::*;
-use telamon::helper::{self, Builder, MetaDimension, SignatureBuilder};
+use telamon::helper::{self, Builder, SignatureBuilder};
 use telamon::ir::DimMapScope::Global as GlobalScope;
 use telamon::search_space::*;
 use telamon::{device, ir};
@@ -706,7 +706,7 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
                     &mut builder,
                 );
                 let b_op = {
-                    let b_dims = [&acc_batch as &MetaDimension, &acc_dim_k, &acc_dim_n];
+                    let b_dims = [&acc_batch, &acc_dim_k, &acc_dim_n];
                     let b_dims = if self.params.batch_b {
                         &b_dims
                     } else {

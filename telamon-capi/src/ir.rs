@@ -122,16 +122,30 @@ pub unsafe extern "C" fn telamon_ir_function_add_instruction(
     TelamonStatus::Ok
 }
 
-/// Adds a dimension of the given size to the function. Takes ownership of `size` and
-/// writes the unique identifier of the dimension in `dim_id`. Returns `Ok`
-/// except if an error occurs.
+/// Adds a logical dimension of the given size to the function. In practice, this creates a
+/// dimension for each tiling level plus one. Takes ownership of `size` and writes the unique
+/// identifier of the logical dimension in `logical_id`. Writes the ids of the dimensions, from the
+/// outermost to the innermost, in `dim_ids`. `dim_ids` must be at least of size `num_tiles + 1`.
+/// Returns `Ok` except if an error occurs.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_ir_function_add_dimension(
+pub unsafe extern "C" fn telamon_ir_function_add_dimensions(
     function: *mut Function,
     size: *mut Size,
-    dim_id: *mut ir::DimId,
+    tile_sizes: *const u32,
+    num_tiles: usize,
+    logical_id: *mut ir::LogicalDimId,
+    dim_ids: *mut ir::DimId,
 ) -> TelamonStatus {
-    *dim_id = unwrap_or_exit!((*function).0.add_dim(Box::from_raw(size).0));
+    let tile_sizes = std::slice::from_raw_parts(tile_sizes, num_tiles);
+    let tiling_factors = vec![tile_sizes.iter().product()];
+    let size = Box::from_raw(size).0;
+    let (ldim, dims) = unwrap_or_exit!((*function).0.add_logical_dim(
+        size,
+        tiling_factors,
+        tile_sizes
+    ));
+    *logical_id = ldim;
+    std::ptr::copy_nonoverlapping(dims.as_ptr(), dim_ids, num_tiles + 1);
     TelamonStatus::Ok
 }
 
@@ -141,14 +155,13 @@ pub struct Size(ir::Size<'static>);
 
 /// Create a size equal to:
 /// ```
-/// const_factor * param_factors[0] * .. * param_factors[num_params-1] / const_divisor
+/// const_factor * param_factors[0] * .. * param_factors[num_params-1]
 /// ```
 /// The size must be freed calling `telamon_ir_size_free` or passed to a function that
 /// takes its ownership.
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_size_new(
     const_factor: u32,
-    const_divisor: u32,
     param_factors: *const *const ir::Parameter,
     num_params: usize,
 ) -> *mut Size {
@@ -156,7 +169,7 @@ pub unsafe extern "C" fn telamon_ir_size_new(
         .iter()
         .map(|&ptr| &*ptr)
         .collect();
-    let size = ir::Size::new(const_factor, parameters, const_divisor);
+    let size = ir::Size::new(const_factor, parameters);
     Box::into_raw(Box::new(Size(size)))
 }
 
@@ -164,6 +177,38 @@ pub unsafe extern "C" fn telamon_ir_size_new(
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_size_free(size: *mut Size) {
     std::mem::drop(Box::from_raw(size));
+}
+
+/// Opaque type that abstracts away the lifetime parameter of `ir::SizeiPartial` so
+/// cbindgen can generate bindings.
+pub struct PartialSize(ir::PartialSize<'static>);
+
+/// Converts an `ir::Size` into an `ir::PartialSize`.
+#[no_mangle]
+pub unsafe extern "C" fn telamon_ir_size_into_partial(
+    size: *mut Size,
+) -> *mut PartialSize {
+    let size = Box::from_raw(size).0.into();
+    Box::into_raw(Box::new(PartialSize(size)))
+}
+
+/// Returns the size of a dimension.
+#[no_mangle]
+pub unsafe extern "C" fn telamon_ir_dimension_size(
+    function: *const Function,
+    dim: ir::DimId,
+) -> *mut PartialSize {
+    let size = (*function).0.dim(dim).size().clone();
+    Box::into_raw(Box::new(PartialSize(size)))
+}
+
+/// Multiplies `lhs` by `rhs`.
+#[no_mangle]
+pub unsafe extern "C" fn telamon_ir_size_mul(
+    lhs: *mut PartialSize,
+    rhs: *const PartialSize,
+) {
+    (*lhs).0 *= &(*rhs).0;
 }
 
 /// Opaque type that abstracts away the lifetime parameter of `ir::Operand` so that
@@ -362,7 +407,7 @@ pub unsafe extern "C" fn telamon_ir_operator_new_tensor_load(
     array_id: ir::mem::MemId,
     base_address: *mut Operand,
     strided_dims: *const ir::DimId,
-    strides: *const Size,
+    strides: *const PartialSize,
     num_strided_dims: usize,
     loaded_type: *const ir::Type,
 ) -> *mut Operator {
@@ -389,7 +434,7 @@ pub unsafe extern "C" fn telamon_ir_operator_new_tensor_store(
     array_id: ir::mem::MemId,
     base_address: *mut Operand,
     strided_dims: *const ir::DimId,
-    strides: *const Size,
+    strides: *const PartialSize,
     num_strided_dims: usize,
     value: *mut Operand,
 ) -> *mut Operator {
@@ -415,7 +460,7 @@ unsafe fn tensor_access(
     array_id: ir::mem::MemId,
     base_address: *mut Operand,
     strided_dims: *const ir::DimId,
-    strides: *const Size,
+    strides: *const PartialSize,
     num_strided_dims: usize,
 ) -> Result<(ir::Operand<'static, ()>, ir::AccessPattern<'static>), ir::Error> {
     let base_address = Box::from_raw(base_address).0;

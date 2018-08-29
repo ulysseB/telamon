@@ -25,7 +25,7 @@ impl fmt::Display for DimId {
 #[derive(Clone, Debug)]
 pub struct Dimension<'a> {
     id: DimId,
-    size: ir::Size<'a>,
+    size: ir::PartialSize<'a>,
     possible_sizes: Vec<u32>,
     iterated: Vec<ir::InstId>,
     is_thread_dim: bool,
@@ -34,7 +34,7 @@ pub struct Dimension<'a> {
 
 impl<'a> Dimension<'a> {
     /// Creates a new dimension.
-    pub fn new(size: ir::Size, id: DimId) -> Result<Dimension, ir::Error> {
+    pub fn new(size: ir::PartialSize, id: DimId) -> Result<Dimension, ir::Error> {
         let possible_sizes = if let Some(size) = size.as_int() {
             if size == 1 {
                 return Err(ir::Error::InvalidDimSize);
@@ -66,7 +66,7 @@ impl<'a> Dimension<'a> {
     }
 
     /// Retruns the size of the dimension.
-    pub fn size(&self) -> &ir::Size<'a> {
+    pub fn size(&self) -> &ir::PartialSize<'a> {
         &self.size
     }
 
@@ -127,14 +127,15 @@ pub struct LogicalDimId(pub u32);
 
 /// A logic dimension composed of multiple `Dimension`s.
 #[derive(Clone, Debug)]
-pub struct LogicalDim {
+pub struct LogicalDim<'a> {
     id: LogicalDimId,
     static_dims: Vec<DimId>,
     nonstatic_dim: Option<DimId>,
     possible_tilings: Vec<u32>,
+    total_size: ir::Size<'a>,
 }
 
-impl LogicalDim {
+impl<'a> LogicalDim<'a> {
     /// Creates a new logical dimension, composed only of static dimensions.
     pub fn new_static(
         id: LogicalDimId,
@@ -146,6 +147,7 @@ impl LogicalDim {
             static_dims,
             nonstatic_dim: None,
             possible_tilings: vec![total_size],
+            total_size: ir::Size::new_const(total_size),
         }
     }
 
@@ -156,12 +158,14 @@ impl LogicalDim {
         dynamic_dim: DimId,
         static_dims: Vec<DimId>,
         possible_tilings: Vec<u32>,
+        total_size: ir::Size<'a>,
     ) -> Self {
         LogicalDim {
             id,
             static_dims,
             nonstatic_dim: Some(dynamic_dim),
             possible_tilings,
+            total_size,
         }
     }
 
@@ -183,5 +187,21 @@ impl LogicalDim {
     /// Returns the possible tiling factors.
     pub fn possible_tilings(&self) -> &[u32] {
         &self.possible_tilings
+    }
+
+    /// Returns all the dimensions constituing the logical dimension, from the inner-most
+    /// to the outer-most.
+    pub fn dimensions(&self) -> impl Iterator<Item = DimId> + '_ {
+        self.static_dims
+            .iter()
+            .rev()
+            .cloned()
+            .chain(self.nonstatic_dim)
+    }
+
+    /// Returns the size of the logical dimension, i.e. the product of the sizes of its
+    /// dimensions.
+    pub fn total_size(&self) -> &ir::Size<'a> {
+        &self.total_size
     }
 }
