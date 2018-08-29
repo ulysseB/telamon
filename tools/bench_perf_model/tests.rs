@@ -1,5 +1,5 @@
 use telamon::device::{ArgMap, Context};
-use telamon::helper::{Builder, MetaDimension, Reduce, SignatureBuilder};
+use telamon::helper::{Builder, Reduce, SignatureBuilder};
 use telamon::ir;
 use telamon::search_space::{Action, DimKind, InstFlag, Order};
 use PerfModelTest;
@@ -15,7 +15,7 @@ impl PerfModelTest for Test0 {
         const M: i32 = 1024;
         const N: i32 = 1024;
         const K: i32 = 1024;
-        builder.scalar("m", M);
+        builder.scalar("m", M / (T1 * T2));
         builder.scalar("n", N);
         builder.scalar("k", K);
         builder.array::<f32>("a", (M * K) as usize);
@@ -49,7 +49,7 @@ impl PerfModelTest for Test0 {
         let (a_addr, a_pattern) = builder.tensor_access(
             &"a",
             a,
-            &ir::Type::F(32),
+            ir::Type::F(32),
             &[&b1, &thread_dim_1, &a_ld_unroll_dim, &k0_dim, &thread_dim_0],
         );
         let a_ld = builder.ld_ex(ir::Type::F(32), &a_addr, a_pattern, InstFlag::MEM_CG);
@@ -59,7 +59,7 @@ impl PerfModelTest for Test0 {
         let (b_addr, b_pattern) = builder.tensor_access(
             &"b",
             b,
-            &ir::Type::F(32),
+            ir::Type::F(32),
             &[&k0_dim, &thread_dim_1, &b0, &thread_dim_0, &b_ld_unroll_dim],
         );
         let b_ld = builder.ld_ex(ir::Type::F(32), &b_addr, b_pattern, InstFlag::MEM_CG);
@@ -69,7 +69,7 @@ impl PerfModelTest for Test0 {
         let (a_tmp_addr, a_tmp_st_pattern) = builder.tensor_access(
             &a_tmp_mem,
             a_tmp_mem.into(),
-            &ir::Type::F(32),
+            ir::Type::F(32),
             &[&thread_dim_1, &thread_dim_0, &a_st_tmp_unroll_dim],
         );
         builder.st(&a_tmp_addr, &a_ld, a_tmp_st_pattern);
@@ -79,7 +79,7 @@ impl PerfModelTest for Test0 {
         let (b_tmp_addr, b_tmp_st_pattern) = builder.tensor_access(
             &b_tmp_mem,
             b_tmp_mem.into(),
-            &ir::Type::F(32),
+            ir::Type::F(32),
             &[&thread_dim_1, &thread_dim_0, &b_st_tmp_unroll_dim],
         );
         builder.st(&b_tmp_addr, &b_ld, b_tmp_st_pattern);
@@ -137,7 +137,7 @@ impl PerfModelTest for Test1 {
         let (addr, pattern) = builder.tensor_access(
             &a_tmp_mem,
             a_tmp_mem.into(),
-            &ir::Type::F(32),
+            ir::Type::F(32),
             &[&thread_dim_1_0, &unroll_dim_a],
         );
         let a_val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_CG);
@@ -146,14 +146,14 @@ impl PerfModelTest for Test1 {
         let unroll_dims_1 = builder.open_mapped_dim(&unroll_dim_0_0);
         let a_op = builder.dim_map(
             a_val,
-            &[(&unroll_dim_a, &unroll_dims_1[0])],
+            &[(&unroll_dim_a, &unroll_dims_1)],
             ir::DimMapScope::Thread,
         );
         let acc = builder.mad(&a_op, &2f32, &Reduce(acc_init));
         builder.close_dim(&k_dim);
 
         let _ = builder.open_mapped_dim(&unroll_dims_1);
-        let (addr, pattern) = builder.tensor_access(&"out", out, &ir::Type::F(32), &[]);
+        let (addr, pattern) = builder.tensor_access(&"out", out, ir::Type::F(32), &[]);
         let _ = builder.st_ex(&addr, &acc, true, pattern, InstFlag::MEM_CS);
 
         builder.order(&k_dim, &thread_dim_1_0, Order::INNER);
@@ -214,7 +214,7 @@ impl PerfModelTest for Test2 {
         let (addr, pattern) = builder.tensor_access(
             &a_tmp_mem,
             a_tmp_mem.into(),
-            &ir::Type::F(32),
+            ir::Type::F(32),
             &[&thread_dims_0_1, &unroll_dim_a],
         );
         let a_val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_CG);
@@ -224,7 +224,7 @@ impl PerfModelTest for Test2 {
         let (addr, pattern) = builder.tensor_access(
             &b_tmp_mem,
             b_tmp_mem.into(),
-            &ir::Type::F(32),
+            ir::Type::F(32),
             &[&thread_dims_1_1, &unroll_dim_b],
         );
         let b_val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_SHARED);
@@ -252,7 +252,7 @@ impl PerfModelTest for Test2 {
         let (addr, pattern) = builder.tensor_access(
             &"out",
             out,
-            &ir::Type::F(32),
+            ir::Type::F(32),
             &[
                 &thread_dims_0_2,
                 &unroll_dims_0_2,
@@ -269,7 +269,7 @@ impl PerfModelTest for Test2 {
         builder.order(&unroll_dim_a, &unroll_dim_b, Order::BEFORE);
         builder.order(&unroll_dim_b, &unroll_dims_0_1, Order::BEFORE);
 
-        for id in unroll_dims_1_2.ids() {
+        for id in &unroll_dims_1_2 {
             builder.action(Action::DimKind(id, DimKind::VECTOR));
         }
 

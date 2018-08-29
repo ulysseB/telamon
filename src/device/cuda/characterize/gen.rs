@@ -265,70 +265,58 @@ pub fn parallel_load<'a>(
     let block_size = builder.param_size(num_blocks);
     let _ = builder.open_dim_ex(block_size, DimKind::BLOCK);
     // Initialize the result
-    let init_size = builder.cst_size(num_wraps * gpu.wrap_size);
-    let thread_tilling = if num_wraps == 1 {
-        vec![]
+    let d1_0_a = if num_wraps > 1 {
+        Some(builder.open_dim_ex(ir::Size::new_const(num_wraps), DimKind::THREAD))
     } else {
-        vec![gpu.wrap_size]
+        None
     };
-    let d1_0 = builder.open_tiled_dim(init_size, &thread_tilling);
-    for d in &d1_0 {
-        builder.action(Action::DimKind(d, DimKind::THREAD));
-    }
-    for (x, y) in d1_0.iter().tuple_windows() {
-        builder.order(&x, &y, Order::OUTER);
-    }
+    let d1_0_b = builder.open_dim_ex(ir::Size::new_const(gpu.wrap_size), DimKind::THREAD);
+    builder.order(&d1_0_a, &d1_0_b, Order::OUTER);
+
     let init = builder.mov(&0f32);
     // Sum in the result.
     let loop_size = builder.param_size(n);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
-    let d1_1 = builder.open_mapped_dim(&d1_0);
-    for (x, y) in d1_1.iter().tuple_windows() {
-        builder.order(&x, &y, Order::OUTER);
-    }
+    let d1_1_a = d1_0_a
+        .as_ref()
+        .map(|d1_0_a| builder.open_mapped_dim(&d1_0_a));
+    let d1_1_b = builder.open_mapped_dim(&d1_0_b);
+    builder.order(&d1_1_a, &d1_1_b, Order::OUTER);
+
     let d3 = builder.open_dim_ex(ir::Size::new_const(n_chained), DimKind::UNROLL);
     let d4_0 = builder.open_dim_ex(ir::Size::new_const(n_unroll), DimKind::UNROLL);
     let pattern = builder.unknown_access_pattern(mem_id);
+    let wrap_stride = gpu.wrap_size * gpu.l1_cache_line;
     let mut strides = vec![
-        (
-            d3,
-            ir::Size::new_const(n_unroll * num_wraps * gpu.wrap_size * gpu.l1_cache_line),
-        ),
-        (
-            d4_0,
-            ir::Size::new_const(num_wraps * gpu.wrap_size * gpu.l1_cache_line),
-        ),
+        (&d3, ir::Size::new_const(n_unroll * num_wraps * wrap_stride)),
+        (&d4_0, ir::Size::new_const(num_wraps * wrap_stride)),
+        (&d1_1_b, ir::Size::new_const(stride * 4)),
     ];
-    if stride != 0 {
-        let i = if num_wraps == 1 {
-            0
-        } else {
-            strides.push((
-                d1_1[0],
-                ir::Size::new_const(gpu.wrap_size * gpu.l1_cache_line),
-            ));
-            1
-        };
-        strides.push((d1_1[i], ir::Size::new_const(stride * 4)));
-    };
+    if let Some(ref d1_1_a) = d1_1_a {
+        strides.push((d1_1_a, ir::Size::new_const(wrap_stride)));
+    }
     let addr = builder.induction_var(&array, strides);
     let val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_CG);
-    let d4_1 = builder.open_mapped_dim(&d4_0)[0];
+    let d4_1 = builder.open_mapped_dim(&d4_0);
     let acc = builder.add(&val, &Reduce(init));
     builder.close_dim(&d0);
     builder.close_dim(&d3);
     builder.close_dim(&d4_1);
     // Write the result
-    let d1_2 = builder.open_mapped_dim(&d1_1);
-    for (x, y) in d1_2.iter().tuple_windows() {
-        builder.order(&x, &y, Order::OUTER);
-    }
+    let d1_2_a = d1_1_a
+        .as_ref()
+        .map(|d1_1_a| builder.open_mapped_dim(&d1_1_a));
+    let d1_2_b = builder.open_mapped_dim(&d1_1_b);
+    builder.order(&d1_2_a, &d1_2_b, Order::OUTER);
     let out_pattern = builder.unknown_access_pattern(out_id);
     builder.st_ex(&out, &acc, true, out_pattern, InstFlag::MEM_CS);
 
-    builder.order(&d1_0, &d0, Order::BEFORE);
-    builder.order(&d0, &d1_1, Order::OUTER);
-    builder.order(&d0, &d1_2, Order::BEFORE);
+    builder.order(&d1_0_a, &d0, Order::BEFORE);
+    builder.order(&d1_0_b, &d0, Order::BEFORE);
+    builder.order(&d0, &d1_1_a, Order::OUTER);
+    builder.order(&d0, &d1_1_b, Order::OUTER);
+    builder.order(&d0, &d1_2_a, Order::BEFORE);
+    builder.order(&d0, &d1_2_b, Order::BEFORE);
     builder.order(&d3, &d4_0, Order::OUTER);
     builder.order(&d3, &d4_1, Order::OUTER);
     builder.order(&d4_0, &d4_1, Order::BEFORE);
