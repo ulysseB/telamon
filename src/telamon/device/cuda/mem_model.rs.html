@@ -538,8 +538,6 @@
 <span id="538">538</span>
 <span id="539">539</span>
 <span id="540">540</span>
-<span id="541">541</span>
-<span id="542">542</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Memory accesses analysis.</span>
 <span class="kw">use</span> <span class="ident">binary_heap_plus</span>::<span class="ident">BinaryHeap</span>;
@@ -630,7 +628,7 @@
 <span class="kw">fn</span> <span class="ident">info</span>(
     <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
     <span class="ident">inst</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Instruction</span>,
-    <span class="ident">dims</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">Size</span><span class="op">&gt;</span>,
+    <span class="ident">dims</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">PartialSize</span><span class="op">&gt;</span>,
     <span class="ident">is_shared_access</span>: <span class="ident">Trivalent</span>,
     <span class="ident">gpu</span>: <span class="kw-2">&amp;</span><span class="ident">cuda</span>::<span class="ident">Gpu</span>,
     <span class="ident">sizes</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
@@ -688,7 +686,7 @@
 <span class="kw">fn</span> <span class="ident">tensor_thread_dims</span>(
     <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
     <span class="ident">inst</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Instruction</span>,
-    <span class="ident">tensor_dims</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">Size</span><span class="op">&gt;</span>,
+    <span class="ident">tensor_dims</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">PartialSize</span><span class="op">&gt;</span>,
     <span class="ident">sizes</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
     <span class="ident">gpu</span>: <span class="kw-2">&amp;</span><span class="ident">cuda</span>::<span class="ident">Gpu</span>,
     <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
@@ -832,7 +830,7 @@
 <span class="doccomment">/// Computes the replay factor for a shared memory access.</span>
 <span class="kw">fn</span> <span class="ident">shared_replay_factor</span>(
     <span class="ident">offsets</span>: <span class="kw-2">&amp;</span>[<span class="ident">u64</span>],
-    <span class="ident">tensor_dims</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">Size</span><span class="op">&gt;</span>,
+    <span class="ident">tensor_dims</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">ir</span>::<span class="ident">PartialSize</span><span class="op">&gt;</span>,
     <span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
     <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
     <span class="ident">gpu</span>: <span class="kw-2">&amp;</span><span class="ident">cuda</span>::<span class="ident">Gpu</span>,
@@ -1028,17 +1026,15 @@ fn dynamic_nesting(lhs: &amp;ir::Dimension, rhs: &amp;ir::Dimension, space: &amp
         <span class="kw">let</span> <span class="ident">d0</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">open_dim_ex</span>(<span class="ident">size</span>.<span class="ident">clone</span>(), <span class="ident">DimKind</span>::<span class="ident">THREAD</span>);
         <span class="kw">let</span> <span class="ident">d1</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">open_dim_ex</span>(<span class="ident">size</span>.<span class="ident">clone</span>(), <span class="ident">DimKind</span>::<span class="ident">THREAD</span>);
         <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">mad</span>(<span class="kw-2">&amp;</span><span class="ident">d0</span>, <span class="kw-2">&amp;</span>(<span class="ident">gpu</span>.<span class="ident">l1_cache_line</span> <span class="kw">as</span> <span class="ident">i32</span>), <span class="kw-2">&amp;</span><span class="ident">addr_base</span>);
-        <span class="kw">let</span> <span class="ident">stride</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">Size</span>::<span class="ident">new</span>(<span class="ident">gpu</span>.<span class="ident">l1_cache_line</span>, <span class="macro">vec</span><span class="macro">!</span>[], <span class="number">1</span>);
-        <span class="kw">let</span> <span class="ident">pattern</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">AccessPattern</span>::<span class="ident">Tensor</span> {
-            <span class="ident">mem_id</span>: <span class="ident">ir</span>::<span class="ident">MemId</span>::<span class="ident">External</span>(<span class="number">0</span>),
-            <span class="ident">dims</span>: <span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">once</span>((<span class="ident">d0</span>, <span class="ident">stride</span>)).<span class="ident">collect</span>(),
-        };
+        <span class="kw">let</span> <span class="ident">stride</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">Size</span>::<span class="ident">new_const</span>(<span class="ident">gpu</span>.<span class="ident">l1_cache_line</span>);
+        <span class="kw">let</span> <span class="ident">mem</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">MemId</span>::<span class="ident">External</span>(<span class="number">0</span>);
+        <span class="kw">let</span> <span class="ident">pattern</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">tensor_access_pattern</span>(<span class="ident">mem</span>, <span class="macro">vec</span><span class="macro">!</span>[(<span class="kw-2">&amp;</span><span class="ident">d0</span>, <span class="ident">stride</span>)]);
         <span class="kw">let</span> <span class="ident">ld</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">ld_ex</span>(<span class="ident">t</span>, <span class="kw-2">&amp;</span><span class="ident">addr</span>, <span class="ident">pattern</span>, <span class="ident">InstFlag</span>::<span class="ident">MEM_CG</span>);
         <span class="ident">builder</span>.<span class="ident">order</span>(<span class="kw-2">&amp;</span><span class="ident">d0</span>, <span class="kw-2">&amp;</span><span class="ident">d1</span>, <span class="ident">d0_d1_order</span>);
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">size_map</span> <span class="op">=</span> <span class="ident">HashMap</span>::<span class="ident">default</span>();
-        <span class="ident">size_map</span>.<span class="ident">insert</span>(<span class="ident">d0</span>, <span class="ident">gpu</span>.<span class="ident">wrap_size</span> <span class="kw">as</span> <span class="ident">u32</span>);
-        <span class="ident">size_map</span>.<span class="ident">insert</span>(<span class="ident">d1</span>, <span class="ident">gpu</span>.<span class="ident">wrap_size</span> <span class="kw">as</span> <span class="ident">u32</span>);
+        <span class="ident">size_map</span>.<span class="ident">insert</span>(<span class="ident">d0</span>[<span class="number">0</span>], <span class="ident">gpu</span>.<span class="ident">wrap_size</span> <span class="kw">as</span> <span class="ident">u32</span>);
+        <span class="ident">size_map</span>.<span class="ident">insert</span>(<span class="ident">d1</span>[<span class="number">0</span>], <span class="ident">gpu</span>.<span class="ident">wrap_size</span> <span class="kw">as</span> <span class="ident">u32</span>);
         (<span class="ident">builder</span>.<span class="ident">get</span>(), <span class="ident">ld</span>, <span class="ident">size_map</span>)
     }
 

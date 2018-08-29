@@ -779,7 +779,7 @@
 <span class="kw">use</span> <span class="ident">rayon</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">explorer</span>::<span class="ident">Candidate</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">helper</span>::<span class="ident">tensor</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">helper</span>::{<span class="self">self</span>, <span class="ident">Builder</span>, <span class="ident">MetaDimension</span>, <span class="ident">SignatureBuilder</span>};
+<span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">helper</span>::{<span class="self">self</span>, <span class="ident">Builder</span>, <span class="ident">SignatureBuilder</span>};
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">ir</span>::<span class="ident">DimMapScope</span>::<span class="ident">Global</span> <span class="kw">as</span> <span class="ident">GlobalScope</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::<span class="ident">search_space</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">telamon</span>::{<span class="ident">device</span>, <span class="ident">ir</span>};
@@ -1478,7 +1478,7 @@
                     <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>,
                 );
                 <span class="kw">let</span> <span class="ident">b_op</span> <span class="op">=</span> {
-                    <span class="kw">let</span> <span class="ident">b_dims</span> <span class="op">=</span> [<span class="kw-2">&amp;</span><span class="ident">acc_batch</span> <span class="kw">as</span> <span class="kw-2">&amp;</span><span class="ident">MetaDimension</span>, <span class="kw-2">&amp;</span><span class="ident">acc_dim_k</span>, <span class="kw-2">&amp;</span><span class="ident">acc_dim_n</span>];
+                    <span class="kw">let</span> <span class="ident">b_dims</span> <span class="op">=</span> [<span class="kw-2">&amp;</span><span class="ident">acc_batch</span>, <span class="kw-2">&amp;</span><span class="ident">acc_dim_k</span>, <span class="kw-2">&amp;</span><span class="ident">acc_dim_n</span>];
                     <span class="kw">let</span> <span class="ident">b_dims</span> <span class="op">=</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">batch_b</span> {
                         <span class="kw-2">&amp;</span><span class="ident">b_dims</span>
                     } <span class="kw">else</span> {
