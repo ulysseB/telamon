@@ -7,7 +7,7 @@
 extern crate env_logger;
 extern crate telamon;
 
-use telamon::device::{Context, cuda};
+use telamon::device::{cuda, Context};
 use telamon::{explorer, helper, ir, search_space};
 
 // Define the problem size.
@@ -93,10 +93,12 @@ fn main() {
 
     // Step 3. Apply manual decisions and retrieve the search space.
     // Don't use caches to load `A`.
-    builder.action(search_space::Action::InstFlag(ld_a.inst(), search_space::InstFlag::MEM_CS));
+    builder.action(search_space::Action::InstFlag(
+        ld_a.inst(),
+        search_space::InstFlag::MEM_CS,
+    ));
     let space = builder.get();
 
     // Step 4. Launch a search.
     explorer::find_best(&Default::default(), &context, vec![space]).unwrap();
-
 }
