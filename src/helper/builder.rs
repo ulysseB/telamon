@@ -242,8 +242,8 @@ impl<'a> Builder<'a> {
         // TODO(strip-mining): allow multiple tile size for each level.
         let tiling_factors = vec![tile_sizes.iter().product()];
         let (logical_id, real_ids) = unwrap!(self.function.add_logical_dim(
-            size.clone(),
-            tiling_factors.clone(),
+            size,
+            tiling_factors,
             tile_sizes,
         ));
         self.open_dims.extend(real_ids.iter().map(|&id| (id, id)));
