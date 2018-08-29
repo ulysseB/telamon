@@ -166,7 +166,8 @@ pub fn init_stride_array<'a>(
 
     let pattern1 = builder.unknown_access_pattern(mem_id);
     builder.st_ex(&last_addr, &array, true, pattern1, InstFlag::MEM_CG);
-    dim.as_ref().map(|dim| builder.order(dim, &last_addr, Order::BEFORE));
+    dim.as_ref()
+        .map(|dim| builder.order(dim, &last_addr, Order::BEFORE));
     builder.get()
 }
 
@@ -291,9 +292,7 @@ pub fn parallel_load<'a>(
     let mut strides = vec![
         (
             d3,
-            ir::Size::new_const(
-                n_unroll * num_wraps * gpu.wrap_size * gpu.l1_cache_line,
-            ),
+            ir::Size::new_const(n_unroll * num_wraps * gpu.wrap_size * gpu.l1_cache_line),
         ),
         (
             d4_0,
@@ -373,7 +372,7 @@ pub fn parallel_store<'a>(
     let mut strides = vec![
         (&d3, ir::Size::new_const(n_unroll * num_wraps * wrap_stride)),
         (&d4, ir::Size::new_const(num_wraps * wrap_stride)),
-        (&d1_1, ir::Size::new_const(stride*4)),
+        (&d1_1, ir::Size::new_const(stride * 4)),
     ];
     if let Some(ref d1_0) = d1_0 {
         strides.push((d1_0, ir::Size::new_const(wrap_stride)));
@@ -502,7 +501,11 @@ pub fn load_in_loop<'a>(
     builder.close_dim(&unroll_dim_a);
     // Mad a and b
     let unroll_dims_1 = builder.open_mapped_dim(&unroll_dim_0_0);
-    let a_op = builder.dim_map(a_val, &[(&unroll_dim_a, &unroll_dims_1)], ir::DimMapScope::Thread);
+    let a_op = builder.dim_map(
+        a_val,
+        &[(&unroll_dim_a, &unroll_dims_1)],
+        ir::DimMapScope::Thread,
+    );
     let acc = builder.mad(&a_op, &2f32, &Reduce(acc_init));
     builder.close_dim(&k_dim);
 

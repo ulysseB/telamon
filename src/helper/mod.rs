@@ -56,7 +56,10 @@ pub trait MetaStatement {
     fn ids(&self) -> Box<Iterator<Item = ir::BBId> + '_>;
 }
 
-impl<T> MetaStatement for T where T: Into<ir::BBId> + Copy {
+impl<T> MetaStatement for T
+where
+    T: Into<ir::BBId> + Copy,
+{
     fn ids(&self) -> Box<Iterator<Item = ir::BBId> + '_> {
         Box::new(std::iter::once((*self).into()))
     }
