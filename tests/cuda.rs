@@ -143,7 +143,7 @@ fn induction_var_nested() {
     let signature = {
         let mut builder = helper::SignatureBuilder::new("ind_var_test", &mut context);
         builder.scalar("k", 12i32);
-        builder.scalar("k4", 12i32/4);
+        builder.scalar("k4", 12i32 / 4);
         out = builder.array::<i32>("out", 1);
         builder.get()
     };
@@ -156,8 +156,10 @@ fn induction_var_nested() {
     let d0 = builder.open_dim_ex(size_k_tile_4.clone(), DimKind::LOOP);
     let d1 = builder.open_dim_ex(size_4, DimKind::LOOP);
     let d2 = builder.open_dim_ex(size_5, DimKind::UNROLL);
-    let ind_var = builder
-        .induction_var(&0i32, vec![(&d0, size_1), (&d1, size_k_tile_4), (&d2, size_k)]);
+    let ind_var = builder.induction_var(
+        &0i32,
+        vec![(&d0, size_1), (&d1, size_k_tile_4), (&d2, size_k)],
+    );
     let pattern = builder.unknown_access_pattern(out.0);
     let _ = builder.st(&"out", &ind_var, pattern);
 
@@ -220,8 +222,8 @@ fn global_vector_load() {
     // Load B from global memory
     let d0_size = builder.cst_size(D0_LEN);
     let d0 = builder.open_dim_ex(d0_size, DimKind::VECTOR);
-    let (addr, input_pattern) = builder.tensor_access(
-        &"input", input.0, DATA_TYPE, &[&d0]);
+    let (addr, input_pattern) =
+        builder.tensor_access(&"input", input.0, DATA_TYPE, &[&d0]);
     let ld = builder.ld_ex(DATA_TYPE, &addr, input_pattern, InstFlag::MEM_CS);
     builder.close_dim(&d0);
     // Store B in shared memory.
