@@ -485,17 +485,15 @@ mod tests {
         let d0 = builder.open_dim_ex(size.clone(), DimKind::THREAD);
         let d1 = builder.open_dim_ex(size.clone(), DimKind::THREAD);
         let addr = builder.mad(&d0, &(gpu.l1_cache_line as i32), &addr_base);
-        let stride = ir::Size::new(gpu.l1_cache_line, vec![], 1);
-        let pattern = ir::AccessPattern::Tensor {
-            mem_id: ir::MemId::External(0),
-            dims: std::iter::once((d0, stride)).collect(),
-        };
+        let stride = ir::Size::new_const(gpu.l1_cache_line);
+        let mem = ir::MemId::External(0);
+        let pattern = builder.tensor_access_pattern(mem, vec![(&d0, stride)]);
         let ld = builder.ld_ex(t, &addr, pattern, InstFlag::MEM_CG);
         builder.order(&d0, &d1, d0_d1_order);
 
         let mut size_map = HashMap::default();
-        size_map.insert(d0, gpu.wrap_size as u32);
-        size_map.insert(d1, gpu.wrap_size as u32);
+        size_map.insert(d0[0], gpu.wrap_size as u32);
+        size_map.insert(d1[0], gpu.wrap_size as u32);
         (builder.get(), ld, size_map)
     }
 

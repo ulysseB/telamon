@@ -29,7 +29,7 @@ fn partial_bound_0() {
     builder.close_dim(&dim_x);
 
     let dim_z = builder.open_dim_ex(size, DimKind::THREAD);
-    let (addr, pattern) = builder.tensor_access(&"z", z, &ir::Type::F(32), &[&dim_z]);
+    let (addr, pattern) = builder.tensor_access(&"z", z, ir::Type::F(32), &[&dim_z]);
     let st_z = builder.st(&addr, &0f32, pattern);
 
     builder.order(&dim_x, &dim_z, Order::BEFORE);
@@ -49,8 +49,8 @@ fn partial_bound_0() {
     }.get_bottleneck(3);
 
     builder.action(Action::ThreadMapping(
-        dim_z,
-        dim_x,
+        dim_z[0],
+        dim_x[0],
         ThreadMapping::MAPPED_OUT,
     ));
     let final_pressure = {
@@ -93,7 +93,7 @@ fn partial_bound_1() {
     builder.close_dim(&dim_x);
 
     let dim_z = builder.open_dim(size);
-    let (addr, pattern) = builder.tensor_access(&"z", z, &ir::Type::F(32), &[&dim_z]);
+    let (addr, pattern) = builder.tensor_access(&"z", z, ir::Type::F(32), &[&dim_z]);
     let st_z = builder.st(&addr, &0f32, pattern);
 
     let partial_pressure = {
@@ -109,7 +109,7 @@ fn partial_bound_1() {
         )
     }.get_bottleneck(5);
 
-    builder.action(Action::DimKind(dim_z, DimKind::THREAD));
+    builder.action(Action::DimKind(dim_z[0], DimKind::THREAD));
     let final_pressure = {
         let space = builder.get();
         let local_info = LocalInfo::compute(&space, &context);
@@ -214,7 +214,7 @@ fn partial_bound_3() {
 
     let size_m = builder.cst_size(256);
     let ld_a_dim = builder.open_tiled_dim(size_m, &[4]);
-    let (addr, patt) = builder.tensor_access(&"a", a, &ir::Type::F(32), &[&ld_a_dim]);
+    let (addr, patt) = builder.tensor_access(&"a", a, ir::Type::F(32), &[&ld_a_dim]);
     builder.ld(ir::Type::F(32), &addr, patt);
     builder.close_dim(&ld_a_dim);
 
@@ -238,7 +238,7 @@ fn partial_bound_3() {
         init_dim_m[1],
         ThreadMapping::MAPPED_IN,
     ));
-    builder.action(Action::DimKind(init_dim_n, DimKind::THREAD));
+    builder.action(Action::DimKind(init_dim_n[0], DimKind::THREAD));
 
     let partial_pressure = {
         let space = builder.get_clone();
@@ -253,7 +253,7 @@ fn partial_bound_3() {
     }.get_bottleneck(4);
 
     builder.action(Action::ThreadMapping(
-        init_dim_n,
+        init_dim_n[0],
         ld_a_dim[0],
         ThreadMapping::MAPPED_IN,
     ));
@@ -355,7 +355,7 @@ fn partial_bound_5() {
     let mut builder = Builder::new(&signature, context.device());
 
     let ld_a = a.load(&[&[]], &mut builder);
-    let dim1 = builder.open_dim_ex(ir::Size::new(26, vec![], 1), DimKind::THREAD);
+    let dim1 = builder.open_dim_ex(ir::Size::new_const(26), DimKind::THREAD);
     let _ = builder.mov(&0f32);
 
     builder.order(&ld_a.inst(), &dim1, Order::AFTER);
