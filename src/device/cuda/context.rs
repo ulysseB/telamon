@@ -99,7 +99,7 @@ impl<'a> Context<'a> {
             return Ok(t0);
         }
         // Avoid spending too much time on very slow candidates.
-        let num_evals = std::cmp::max(1, std::cmp::min(NUM_EVALS, (1.0e9/t0) as usize));
+        let num_evals = std::cmp::max(1, std::cmp::min(NUM_EVALS, (1.0e9 / t0) as usize));
         let num_samples = std::cmp::max(1, num_evals.saturating_sub(NUM_OUTLIERS));
         // TODO(cc_perf): becomes the limiting factor after a few hours. We should stop
         // earlier and make tests to know when (for example, measure the MAX delta between
