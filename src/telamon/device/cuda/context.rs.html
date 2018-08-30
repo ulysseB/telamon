@@ -266,6 +266,8 @@
 <span id="266">266</span>
 <span id="267">267</span>
 <span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
 </pre><pre class="rust ">
 <span class="doccomment">///! Defines the CUDA evaluation context.</span>
 <span class="kw">use</span> <span class="ident">crossbeam</span>;
@@ -367,17 +369,19 @@
             <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;candidate skipped after its first evaluation&quot;</span>);
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">t0</span>);
         }
+        <span class="comment">// Avoid spending too much time on very slow candidates.</span>
+        <span class="kw">let</span> <span class="ident">num_evals</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">max</span>(<span class="number">1</span>, <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">min</span>(<span class="ident">NUM_EVALS</span>, (<span class="number">1.0e9</span> <span class="op">/</span> <span class="ident">t0</span>) <span class="kw">as</span> <span class="ident">usize</span>));
+        <span class="kw">let</span> <span class="ident">num_samples</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">cmp</span>::<span class="ident">max</span>(<span class="number">1</span>, <span class="ident">num_evals</span>.<span class="ident">saturating_sub</span>(<span class="ident">NUM_OUTLIERS</span>));
         <span class="comment">// TODO(cc_perf): becomes the limiting factor after a few hours. We should stop</span>
         <span class="comment">// earlier and make tests to know when (for example, measure the MAX delta between</span>
         <span class="comment">// min and median with N outliers).</span>
-        <span class="kw">let</span> <span class="ident">runtimes</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">NUM_EVALS</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">thunk</span>.<span class="ident">execute</span>());
+        <span class="kw">let</span> <span class="ident">runtimes</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">num_evals</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">thunk</span>.<span class="ident">execute</span>());
         <span class="kw">let</span> <span class="ident">runtimes_by_value</span> <span class="op">=</span> <span class="ident">process_results</span>(<span class="ident">runtimes</span>, <span class="op">|</span><span class="ident">iter</span><span class="op">|</span> <span class="ident">iter</span>.<span class="ident">sorted</span>())<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">median</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ticks_to_ns</span>(<span class="ident">runtimes_by_value</span>[<span class="ident">NUM_EVALS</span> <span class="op">/</span> <span class="number">2</span>]);
+        <span class="kw">let</span> <span class="ident">median</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ticks_to_ns</span>(<span class="ident">runtimes_by_value</span>[<span class="ident">num_evals</span> <span class="op">/</span> <span class="number">2</span>]);
         <span class="kw">let</span> <span class="ident">runtimes_by_delta</span> <span class="op">=</span> <span class="ident">runtimes_by_value</span>
             .<span class="ident">into_iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">t</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">ticks_to_ns</span>(<span class="ident">t</span>))
             .<span class="ident">sorted_by</span>(<span class="op">|</span><span class="ident">lhs</span>, <span class="ident">rhs</span><span class="op">|</span> <span class="ident">cmp_f64</span>((<span class="ident">lhs</span> <span class="op">-</span> <span class="ident">median</span>).<span class="ident">abs</span>(), (<span class="ident">rhs</span> <span class="op">-</span> <span class="ident">median</span>).<span class="ident">abs</span>()));
-        <span class="kw">let</span> <span class="ident">num_samples</span> <span class="op">=</span> <span class="ident">NUM_EVALS</span> <span class="op">-</span> <span class="ident">NUM_OUTLIERS</span>;
         <span class="kw">let</span> <span class="ident">average</span> <span class="op">=</span> <span class="ident">runtimes_by_delta</span>[..<span class="ident">num_samples</span>]
             .<span class="ident">iter</span>()
             .<span class="ident">cloned</span>()

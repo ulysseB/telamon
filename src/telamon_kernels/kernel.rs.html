@@ -312,6 +312,7 @@
 <span id="312">312</span>
 <span id="313">313</span>
 <span id="314">314</span>
+<span id="315">315</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Abstracts kernels so we can build generic methods to test them.</span>
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
@@ -467,6 +468,7 @@
                                     <span class="kw-2">&amp;</span><span class="ident">actions</span>[<span class="ident">idx</span>..]
                                 );
                             }
+                            <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;new evaluation: {:.2e}ns, bound {}&quot;</span>, <span class="ident">runtime</span>, <span class="ident">bound</span>);
                             <span class="ident">leaves</span>.<span class="ident">push</span>(<span class="ident">BoundSample</span> {
                                 <span class="ident">actions</span>,
                                 <span class="ident">bound</span>,
