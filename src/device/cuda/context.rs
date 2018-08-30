@@ -98,17 +98,19 @@ impl<'a> Context<'a> {
             info!("candidate skipped after its first evaluation");
             return Ok(t0);
         }
+        // Avoid spending too much time on very slow candidates.
+        let num_evals = std::cmp::max(1, std::cmp::min(NUM_EVALS, (1.0e9/t0) as usize));
+        let num_samples = std::cmp::max(1, num_evals.saturating_sub(NUM_OUTLIERS));
         // TODO(cc_perf): becomes the limiting factor after a few hours. We should stop
         // earlier and make tests to know when (for example, measure the MAX delta between
         // min and median with N outliers).
-        let runtimes = (0..NUM_EVALS).map(|_| thunk.execute());
+        let runtimes = (0..num_evals).map(|_| thunk.execute());
         let runtimes_by_value = process_results(runtimes, |iter| iter.sorted())?;
-        let median = self.ticks_to_ns(runtimes_by_value[NUM_EVALS / 2]);
+        let median = self.ticks_to_ns(runtimes_by_value[num_evals / 2]);
         let runtimes_by_delta = runtimes_by_value
             .into_iter()
             .map(|t| self.ticks_to_ns(t))
             .sorted_by(|lhs, rhs| cmp_f64((lhs - median).abs(), (rhs - median).abs()));
-        let num_samples = NUM_EVALS - NUM_OUTLIERS;
         let average = runtimes_by_delta[..num_samples]
             .iter()
             .cloned()
