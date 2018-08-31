@@ -424,6 +424,7 @@ impl<'a> Function<'a, ()> {
             layouts_to_lower,
             induction_vars,
             logical_dims,
+            values
         } = self;
 
         let mut insts = SparseVec::from_vec(
@@ -458,6 +459,7 @@ impl<'a> Function<'a, ()> {
             layouts_to_lower,
             induction_vars,
             logical_dims,
+            values,
         }
     }
 }
