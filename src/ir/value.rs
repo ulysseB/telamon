@@ -5,6 +5,12 @@ use ir;
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct ValueId(pub u16);
 
+impl Into<usize> for ValueId {
+    fn into(self) -> usize {
+        self.0 as usize
+    }
+}
+
 /// A value produced by the code.
 #[derive(Clone, Debug)]
 pub struct Value {
