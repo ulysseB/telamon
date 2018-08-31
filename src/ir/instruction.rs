@@ -45,6 +45,7 @@ impl<'a, L> Instruction<'a, L> {
             operator,
             id,
             iter_dims,
+            value: None
         })
     }
 
@@ -160,6 +161,7 @@ impl<'a> Instruction<'a, ()> {
             operator: self.operator.freeze(cnt),
             id: self.id,
             iter_dims: self.iter_dims,
+            value: self.value,
         }
     }
 }
