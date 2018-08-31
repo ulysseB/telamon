@@ -1344,7 +1344,7 @@ mod filter_merge {
         let store = &mut DomainStore::new(&fun);
         store.set_foo(obj1, Foo::C);
         let actions = init_domain(store, &mut fun).unwrap();
-        let mut fun = &mut Arc::new(fun);
+        let fun = &mut Arc::new(fun);
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert_eq!(store.get_foo(obj0), Foo::A);
     }

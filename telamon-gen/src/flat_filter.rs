@@ -110,11 +110,16 @@ impl FlatFilter {
             // Adapt and merge the rules.
             self.rules
                 .extend(other.rules.iter().map(|r| r.adapt(&adaptator)));
-            // Early exit for static filters.
-            if self.inputs.is_empty() {
-                return true;
+            // If the number of variable is different, don't set the merged flag: otherwise, the
+            // filter might not be run if their is not enought to objects to run the filter with
+            // more variables.
+            if self.vars.len() == other.vars.len() {
+                // Early exit for static filters.
+                if self.inputs.is_empty() {
+                    return true;
+                }
+                merged = true;
             }
-            merged = true;
         }
         merged
     }
