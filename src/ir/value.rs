@@ -14,6 +14,10 @@ pub struct Value {
 }
 
 impl Value {
+    pub fn new(id: ValueId, t: ir::Type, def: ValueDef) -> Self {
+        Value { id, t, def }
+    }
+
     /// Return the unique identifiers of the `Value`.
     pub fn id(&self) -> ValueId { self.id }
 

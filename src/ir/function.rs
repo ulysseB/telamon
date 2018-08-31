@@ -127,6 +127,11 @@ impl<'a, L> Function<'a, L> {
         Ok(inst)
     }
 
+    /// Returns a Value without adding it to self.values
+    fn create_value(id: ir::ValueId, t: Type, def: ir::ValueDef) -> Result<ir::Value, ir::Error> {
+        Ok(ir::Value::new(id, t, def))
+    }
+
     /// Adds an induction variable.
     pub fn add_ind_var(&mut self, ind_var: ir::InductionVar<'a, L>) -> ir::IndVarId {
         let id = ir::IndVarId(self.induction_vars.len() as u32);
@@ -400,6 +405,19 @@ impl<'a> Function<'a, ()> {
         self.insts.push(inst);
         Ok(id)
     }
+
+    /// Adds a value to the function.
+    pub fn add_value(
+        &mut self,
+        t: ir::Type,
+        def: ir::ValueDef,
+    ) -> Result<ir::ValueId, ir::Error> {
+        let id = ir::ValueId(self.insts.len() as u16);
+        let val = Self::create_value(id, t, def)?;
+        self.values.push(val);
+        Ok(id)
+    }
+
 
     /// Allocates a new memory block.
     pub fn add_mem_block(&mut self, size: u32) -> mem::InternalId {
