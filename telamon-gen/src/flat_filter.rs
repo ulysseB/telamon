@@ -69,6 +69,7 @@ impl FlatFilter {
 
     /// Try to merge another filter into `Self`.
     fn try_merge(&mut self, other: &FlatFilter, ir_desc: &ir::IrDesc) -> bool {
+        // FIXME: do not set the merged flag if the set of foralls is bigger
         if self.inputs.is_empty() != other.inputs.is_empty() {
             return false;
         }
