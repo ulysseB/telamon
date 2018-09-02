@@ -504,21 +504,8 @@ impl<'a> Function<'a> {
             lowered.dimensions.iter().cloned().unzip();
 
         // Activate the new dimensions
-        for (&src_dim, &st_dim) in src_dims.iter().zip_eq(&st_dims) {
-            let dimension = Dimension::with_same_size(st_dim, &self.dims[src_dim]);
-            if dimension.possible_sizes().is_some() {
-                self.static_dims.push(st_dim);
-            }
-            self.dims.set_lazy(st_dim, dimension);
-        }
-
-        for (&dst_dim, &ld_dim) in dst_dims.iter().zip_eq(&ld_dims) {
-            let dimension = Dimension::with_same_size(ld_dim, &self.dims[dst_dim]);
-            if dimension.possible_sizes().is_some() {
-                self.static_dims.push(ld_dim);
-            }
-            self.dims.set_lazy(ld_dim, dimension);
-        }
+        self.activate_mapped_dims(src_dims.iter().zip_eq(&st_dims).map(clone_pair));
+        self.activate_mapped_dims(dst_dims.iter().zip_eq(&ld_dims).map(clone_pair));
 
         // Activate the temporary memory block
         self.mem_blocks.set_lazy_tmp(
@@ -551,6 +538,20 @@ impl<'a> Function<'a> {
         self.insts[dst_inst].lower_dim_map(dst_operand_pos, lowered.load, ld_dim_map);
 
         Ok(lowered)
+    }
+
+    /// Activate dimensions mapped to old ones. `dims` contains pairs of (old dim, new dim).
+    fn activate_mapped_dims<IT>(&mut self, dims: IT)
+    where
+        IT: IntoIterator<Item = (ir::DimId, ir::DimId)>,
+    {
+        for (old_dim, new_dim) in dims {
+            let dimension = Dimension::with_same_size(new_dim, &self.dims[old_dim]);
+            if dimension.possible_sizes().is_some() {
+                self.static_dims.push(new_dim);
+            }
+            self.dims.set_lazy(new_dim, dimension);
+        }
     }
 }
 
