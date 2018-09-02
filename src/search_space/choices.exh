@@ -493,6 +493,8 @@ require forall $lhs in LogicalDimensions:
         order($lhs_dim, $rhs_dim) is not MERGED
         || tiling_factor($lhs) == tiling_factor($rhs)
 
+/// List pairs of dimensions that must have the same size and can be use for
+/// point-to-point communication.
 set MappedDimsPairs:
   item_type = "ir::MappedDims"
   id_type = "ir::MappedDimsId"
@@ -511,7 +513,7 @@ set MappedDims($pair in MappedDimsPairs) subsetof Dimensions:
   iterator = "$pair.dims().map(|dim| $fun.dim(dim))"
   var_prefix = "mapped_dim"
   from_superset = "a" // FIXME
-  reverse forall $din in StaticDims = "a" // FIXME
+  reverse forall $din in Dimensions = "a" // FIXME
   new_objs = "$objs.mapped_dims"
 end
 

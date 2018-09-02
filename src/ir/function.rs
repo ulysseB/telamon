@@ -111,7 +111,8 @@ impl<'a, L> Function<'a, L> {
         op: Operator<'a, L>,
         iter_dims: HashSet<ir::DimId>,
     ) -> Result<ir::Instruction<'a, L>, ir::Error> {
-        let inst = ir::Instruction::new(op, id, iter_dims, self.device)?;
+        // Create and check the instruction.
+        let inst = ir::Instruction::new(op, id, iter_dims, self)?;
         // Register the instruction in iteration dimensions.
         for &dim in inst.iteration_dims() {
             self.dim_mut(dim).add_iterated(id.into());
@@ -372,6 +373,16 @@ impl<'a> Function<'a, ()> {
         op: Operator<'a, ()>,
         iter_dims: HashSet<ir::DimId>,
     ) -> Result<InstId, ir::Error> {
+        // Create dimension mappings for the operands.
+        // TODO(cleanup): the operands should list `MappedDims` rather that pairs of
+        // dimensions so `MappedDims` should be allocated before.
+        for operand in op.operands() {
+            if let Some(dim_map) = operand.mapped_dims() {
+                for &(lhs, rhs) in dim_map {
+                    self.map_dimensions([lhs, rhs]);
+                }
+            }
+        }
         let id = ir::InstId(self.insts.len() as u32);
         let inst = self.create_inst(id, op, iter_dims)?;
         self.insts.push(inst);

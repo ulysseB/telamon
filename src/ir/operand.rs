@@ -192,9 +192,17 @@ impl<'a, L> Operand<'a, L> {
 
     /// Indicates if the operand stays constant during the execution.
     pub fn is_constant(&self) -> bool {
-        match *self {
+        match self {
             Int(..) | Float(..) | Addr(..) | Param(..) => true,
             Index(..) | Inst(..) | Reduce(..) | InductionVar(..) => false,
+        }
+    }
+
+    /// Returns the list of dimensions mapped together by the operand.
+    pub fn mapped_dims(&self) -> Option<&DimMap> {
+        match self {
+            Inst(_, _, dim_map, _) | Reduce(_, _, dim_map, _) => Some(dim_map),
+            _ => None,
         }
     }
 }
