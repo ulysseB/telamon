@@ -30,6 +30,7 @@ pub struct Dimension<'a> {
     iterated: Vec<ir::InstId>,
     is_thread_dim: bool,
     logical_dim: Option<LogicalDimId>,
+    mapped_dims: Vec<MappedDimsId>,
 }
 
 impl<'a> Dimension<'a> {
@@ -50,6 +51,7 @@ impl<'a> Dimension<'a> {
             iterated: Vec::new(),
             is_thread_dim: false,
             logical_dim: None,
+            mapped_dims: Vec::new(),
         })
     }
 
@@ -62,6 +64,7 @@ impl<'a> Dimension<'a> {
             iterated: Vec::new(),
             is_thread_dim: false,
             logical_dim: None,
+            mapped_dims: Vec::new(),
         }
     }
 
@@ -85,7 +88,7 @@ impl<'a> Dimension<'a> {
     }
 
     /// Returns the constructs iterated along this dimension.
-    pub fn iterated<'b>(&'b self) -> impl Iterator<Item = ir::InstId> + 'b {
+    pub fn iterated(&self) -> impl Iterator<Item = ir::InstId> + '_ {
         self.iterated.iter().cloned()
     }
 
@@ -107,6 +110,17 @@ impl<'a> Dimension<'a> {
     /// Returns the logical dimension this dimension is part of, if any.
     pub fn logical_dim(&self) -> Option<LogicalDimId> {
         self.logical_dim
+    }
+
+    /// Returns the list of dimensions mapping containing this one.
+    pub fn mapped_dims(&self) -> impl Iterator<Item = MappedDimsId> + '_ {
+        self.mapped_dims.iter().cloned()
+    }
+
+    /// Register a dimension mapping.
+    pub fn register_mapped_dims(&mut self, mapping: &MappedDims) {
+        self.mapped_dims.push(mapping.id);
+        assert!(mapping.dims.contains(&self.id()));
     }
 }
 
@@ -204,4 +218,21 @@ impl<'a> LogicalDim<'a> {
     pub fn total_size(&self) -> &ir::Size<'a> {
         &self.total_size
     }
+}
+
+/// Uniquely identifies a pair of mapped dimensions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MappedDimsId(pub u16);
+
+impl From<MappedDimsId> for usize {
+    fn from(id: MappedDimsId) -> usize {
+        id.0 as usize
+    }
+}
+
+/// Specifies that two dimensions should be mapped together.
+#[derive(Clone, Debug)]
+pub struct MappedDims {
+    pub id: MappedDimsId,
+    pub dims: [DimId; 2],
 }

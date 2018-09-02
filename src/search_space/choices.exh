@@ -420,6 +420,7 @@ define half counter mem_size($mem in InternalMemoryRegions):
   forall $lhs in StaticDims:
     forall $rhs in StaticDims:
       mul size($lhs) when:
+        // FIXME: remove maps_dims
         "$mem.maps_dims($lhs.id(), $rhs.id())"
         order($lhs, $rhs) is not MERGED
 end

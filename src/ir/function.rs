@@ -68,6 +68,7 @@ pub struct Function<'a, L = ir::LoweringMap> {
     layouts_to_lower: Vec<ir::mem::InternalId>,
     induction_vars: Vec<ir::InductionVar<'a, L>>,
     logical_dims: Vec<ir::LogicalDim<'a>>,
+    mapped_dims: SparseVec<ir::MappedDimsId, ir::MappedDims>,
 }
 
 impl<'a, L> Function<'a, L> {
@@ -86,6 +87,7 @@ impl<'a, L> Function<'a, L> {
             layouts_to_lower: Vec::new(),
             induction_vars: Vec::new(),
             logical_dims: Vec::new(),
+            mapped_dims: SparseVec::new(),
         }
     }
 
@@ -327,6 +329,16 @@ impl<'a, L> Function<'a, L> {
     pub(crate) fn layouts_to_lower(&self) -> &[ir::mem::InternalId] {
         &self.layouts_to_lower
     }
+
+    /// Returns the list of dimensions mapping.
+    pub fn dim_mappings(&self) -> impl Iterator<Item = &ir::MappedDims> + '_ {
+        self.mapped_dims.iter()
+    }
+
+    /// Retrives a dimension mapping given its ID.
+    pub fn dim_mapping(&self, id: ir::MappedDimsId) -> &ir::MappedDims {
+        &self.mapped_dims[id]
+    }
 }
 
 impl<'a> Function<'a, ()> {
@@ -414,6 +426,7 @@ impl<'a> Function<'a, ()> {
             layouts_to_lower,
             induction_vars,
             logical_dims,
+            mapped_dims,
         } = self;
 
         let mut insts = SparseVec::from_vec(
@@ -448,6 +461,7 @@ impl<'a> Function<'a, ()> {
             layouts_to_lower,
             induction_vars,
             logical_dims,
+            mapped_dims,
         }
     }
 }
