@@ -492,3 +492,30 @@ require forall $lhs in LogicalDimensions:
       forall $rhs_dim in TileDimensions($rhs):
         order($lhs_dim, $rhs_dim) is not MERGED
         || tiling_factor($lhs) == tiling_factor($rhs)
+
+set MappedDimsPairs:
+  item_type = "ir::MappedDims"
+  id_type = "ir::MappedDimsId"
+  item_getter = "$fun.dim_mapping($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.dim_mappings()"
+  var_prefix = "dim_pair"
+  new_objs = "$objs.dim_mappings"
+end
+
+set MappedDims($pair in MappedDimsPairs) subsetof Dimensions:
+  item_type = "ir::Dimension"
+  id_type = "ir::DimId"
+  item_getter = "$fun.dim($id)"
+  id_getter = "$item.id()"
+  iterator = "$pair.dims().map(|dim| $fun.dim(dim))"
+  var_prefix = "mapped_dim"
+  from_superset = "a" // FIXME
+  reverse forall $din in StaticDims = "a" // FIXME
+  new_objs = "$objs.mapped_dims"
+end
+
+// FIXME: dims have the same size
+// FIXME: how to handle static and non-static dims
+// Can expose them in separate sets, but cannot retrieve the logical dim for the tiling
+// factor -> Must name reverse set

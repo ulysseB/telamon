@@ -244,8 +244,12 @@ impl MappedDims {
     }
 
     /// Returns the unique identifier of the `MappedDims`.
-    pub fn id(&self) -> MappedDimsId { self.id }
+    pub fn id(&self) -> MappedDimsId {
+        self.id
+    }
 
     /// Returns the mapped dims.
-    pub fn dims(&self) -> [DimId; 2] { self.dims }
+    pub fn dims(&self) -> [DimId; 2] {
+        self.dims
+    }
 }

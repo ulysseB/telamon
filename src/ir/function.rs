@@ -341,8 +341,27 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Tries to find a mapping between two dimensions.
-    pub fn find_mapping(&self, lhs: ir::DimId, rhs: ir::DimId) -> Option<ir::MappedDimsId> {
-        self.dim(lhs).dim_mappings().find(|&id| self.dim_mapping(id).dims().contains(&rhs))
+    pub fn find_mapping(
+        &self,
+        lhs: ir::DimId,
+        rhs: ir::DimId,
+    ) -> Option<ir::MappedDimsId> {
+        self.dim(lhs)
+            .dim_mappings()
+            .find(|&id| self.dim_mapping(id).dims().contains(&rhs))
+    }
+
+    /// Creates a mapping between two dimensions.
+    fn create_mapping(
+        &mut self,
+        id: ir::MappedDimsId,
+        dims: [ir::DimId; 2],
+    ) -> ir::MappedDims {
+        let mapping = ir::MappedDims::new(id, dims);
+        for &dim in &dims {
+            self.dim_mut(dim).register_dim_mapping(&mapping);
+        }
+        mapping
     }
 }
 
@@ -413,11 +432,13 @@ impl<'a> Function<'a, ()> {
         Ok((logical_id, dim_ids))
     }
 
-    /// Adds a mapping between two dimensions.
-    pub fn map_dimensions(&mut self, dims: [ir::DimId; 2]) -> ir::MappedDimsId {
+    /// Specifies two dimensions must have the same size have can be used for point-to-point
+    /// communication.
+    fn map_dimensions(&mut self, dims: [ir::DimId; 2]) -> ir::MappedDimsId {
         self.find_mapping(dims[0], dims[1]).unwrap_or_else(|| {
             let id = ir::MappedDimsId(self.mapped_dims.len() as u16);
-            self.mapped_dims.push(ir::MappedDims::new(id, dims));
+            let mapping = self.create_mapping(id, dims);
+            self.mapped_dims.push(mapping);
             id
         })
     }
