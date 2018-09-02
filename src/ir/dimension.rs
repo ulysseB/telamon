@@ -113,12 +113,12 @@ impl<'a> Dimension<'a> {
     }
 
     /// Returns the list of dimensions mapping containing this one.
-    pub fn mapped_dims(&self) -> impl Iterator<Item = MappedDimsId> + '_ {
+    pub fn dim_mappings(&self) -> impl Iterator<Item = MappedDimsId> + '_ {
         self.mapped_dims.iter().cloned()
     }
 
     /// Register a dimension mapping.
-    pub fn register_mapped_dims(&mut self, mapping: &MappedDims) {
+    pub fn register_dim_mapping(&mut self, mapping: &MappedDims) {
         self.mapped_dims.push(mapping.id);
         assert!(mapping.dims.contains(&self.id()));
     }
@@ -231,8 +231,21 @@ impl From<MappedDimsId> for usize {
 }
 
 /// Specifies that two dimensions should be mapped together.
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct MappedDims {
-    pub id: MappedDimsId,
-    pub dims: [DimId; 2],
+    id: MappedDimsId,
+    dims: [DimId; 2],
+}
+
+impl MappedDims {
+    /// Creates a `MappedDims`. Panics if the provided dimensions are the same.
+    pub fn new(id: MappedDimsId, dims: [DimId; 2]) -> Self {
+        MappedDims { id, dims }
+    }
+
+    /// Returns the unique identifier of the `MappedDims`.
+    pub fn id(&self) -> MappedDimsId { self.id }
+
+    /// Returns the mapped dims.
+    pub fn dims(&self) -> [DimId; 2] { self.dims }
 }

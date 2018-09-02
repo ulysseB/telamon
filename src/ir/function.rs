@@ -339,6 +339,11 @@ impl<'a, L> Function<'a, L> {
     pub fn dim_mapping(&self, id: ir::MappedDimsId) -> &ir::MappedDims {
         &self.mapped_dims[id]
     }
+
+    /// Tries to find a mapping between two dimensions.
+    pub fn find_mapping(&self, lhs: ir::DimId, rhs: ir::DimId) -> Option<ir::MappedDimsId> {
+        self.dim(lhs).dim_mappings().find(|&id| self.dim_mapping(id).dims().contains(&rhs))
+    }
 }
 
 impl<'a> Function<'a, ()> {
@@ -406,6 +411,15 @@ impl<'a> Function<'a, ()> {
         self.dims.extend(dims);
         self.logical_dims.push(logical_dim);
         Ok((logical_id, dim_ids))
+    }
+
+    /// Adds a mapping between two dimensions.
+    pub fn map_dimensions(&mut self, dims: [ir::DimId; 2]) -> ir::MappedDimsId {
+        self.find_mapping(dims[0], dims[1]).unwrap_or_else(|| {
+            let id = ir::MappedDimsId(self.mapped_dims.len() as u16);
+            self.mapped_dims.push(ir::MappedDims::new(id, dims));
+            id
+        })
     }
 
     pub(crate) fn freeze(self) -> Function<'a> {
