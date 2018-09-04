@@ -122,7 +122,7 @@ typedef struct Operator Operator;
 typedef struct Parameter Parameter;
 
 /*
- * A size how exact value is not yet decided.
+ * A size whose exact value is not yet decided.
  */
 typedef struct PartialSize PartialSize;
 
