@@ -51,8 +51,8 @@ pub trait Device: Sync {
         &self,
         space: &SearchSpace,
         dim_sizes: &HashMap<ir::DimId, u32>,
-        nesting: &HashMap<ir::BBId, Nesting>,
-        bb: &ir::Statement,
+        nesting: &HashMap<ir::StmtId, Nesting>,
+        stmt: &ir::Statement,
         ctx: &Context,
     ) -> HwPressure;
     /// Returns the pressure produced by a single iteration of a loop and the latency

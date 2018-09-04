@@ -354,12 +354,12 @@ fn miss_ratios(inst: &ir::Instruction,
     // (2) Find the MSHR cache hit ratio on each active dimension.
     let mshr_miss = space.ir_instance().dims().filter(|&dim| {
         let kind = space.domain().get_dim_kind(dim.id());
-        space.domain().get_order(dim.bb_id(), inst.bb_id()) == Order::ACTIVE_OUT
+        space.domain().get_order(dim.stmt_id(), inst.stmt_id()) == Order::ACTIVE_OUT
             && !(DimKind::BLOCK | DimKind::VECTOR).contains(kind)
     }).map(|dim| {
         // fixme: use other accesses
         let has_other_access = false; /*other_accesses.iter().any(|other| {
-            fun.order(other.bb_id(), dim.bb_id()).intersects(Order::INNER)
+            fun.order(other.stmt_id(), dim.stmt_id()).intersects(Order::INNER)
         });*/
         if has_other_access {
             // TODO(model): better handle other accesses to the same memory block
@@ -399,7 +399,7 @@ fn reuse_distance(inst: &ir::Instruction,
                   gpu: &cuda::Gpu) -> u32 {
     space.ir_instance().dims().filter(|&other_dim| {
         other_dim.id() != dim.id() &&
-        space.domain().get_order(other_dim.bb_id(), inst.bb_id()) == Order::ACTIVE_OUT &&
+        space.domain().get_order(other_dim.stmt_id(), inst.stmt_id()) == Order::ACTIVE_OUT &&
         dynamic_nesting(dim, other_dim, space) == Some(Ordering::Greater)
     }).map(|other_dim| {
         let stride = eval_stride(pattern, other_dim.id(), sizes).unwrap_or(0) as u32;
@@ -429,7 +429,7 @@ fn eval_stride(pattern: &ir::AccessPattern,
 fn dynamic_nesting(lhs: &ir::Dimension, rhs: &ir::Dimension, space: &SearchSpace)
         -> Option<Ordering> {
     if lhs.id() == rhs.id() { return Some(Ordering::Equal); }
-    let order = space.domain().get_order(lhs.bb_id(), rhs.bb_id());
+    let order = space.domain().get_order(lhs.stmt_id(), rhs.stmt_id());
     let lhs_kind = space.domain().get_dim_kind(lhs.id());
     let rhs_kind = space.domain().get_dim_kind(rhs.id());
     let lhs_is_thread = lhs_kind.is(DimKind::THREAD);

@@ -18,7 +18,7 @@ use std;
 use std::marker::PhantomData;
 
 pub use self::access_pattern::{AccessPattern, Stride};
-pub use self::basic_block::{BBId, Statement};
+pub use self::basic_block::{StmtId, Statement};
 pub use self::dim_map::DimMap;
 pub use self::dimension::{
     DimId, DimMapping, DimMappingId, Dimension, LogicalDim, LogicalDimId,
@@ -60,7 +60,7 @@ pub struct NewObjs {
     pub instructions: Vec<InstId>,
     pub dimensions: Vec<DimId>,
     pub static_dims: Vec<DimId>,
-    pub basic_blocks: Vec<BBId>,
+    pub basic_blocks: Vec<StmtId>,
     pub mem_blocks: Vec<MemId>,
     pub internal_mem_blocks: Vec<mem::InternalId>,
     pub mem_insts: Vec<InstId>,
@@ -77,7 +77,7 @@ pub struct NewObjs {
 impl NewObjs {
     /// Registers a new instruction.
     pub fn add_instruction(&mut self, inst: &Instruction) {
-        self.add_bb(inst);
+        self.add_stmt(inst);
         for &dim in inst.iteration_dims() {
             self.iteration_dims.push((inst.id(), dim));
         }
@@ -89,7 +89,7 @@ impl NewObjs {
 
     /// Registers a new dimension.
     pub fn add_dimension(&mut self, dim: &Dimension) {
-        self.add_bb(dim);
+        self.add_stmt(dim);
         self.dimensions.push(dim.id());
         if dim.possible_sizes().is_some() {
             self.static_dims.push(dim.id());
@@ -100,8 +100,8 @@ impl NewObjs {
     }
 
     /// Registers a new basic block.
-    pub fn add_bb(&mut self, bb: &Statement) {
-        self.basic_blocks.push(bb.bb_id());
+    pub fn add_stmt(&mut self, stmt: &Statement) {
+        self.basic_blocks.push(stmt.stmt_id());
     }
 
     /// Sets a dimension as a new iteration dimension.

@@ -10,10 +10,10 @@ use utils::*;
 /// Local information on the different objects.
 #[derive(Debug)]
 pub struct LocalInfo<'a> {
-    /// The loops inside and outside each BB.
-    pub nesting: HashMap<ir::BBId, Nesting<'a>>,
-    /// The pressure incured by a signle instance of each BB.
-    pub hw_pressure: HashMap<ir::BBId, HwPressure>,
+    /// The loops inside and outside each Stmt.
+    pub nesting: HashMap<ir::StmtId, Nesting<'a>>,
+    /// The pressure incured by a signle instance of each Stmt.
+    pub hw_pressure: HashMap<ir::StmtId, HwPressure>,
     /// The pressure induced by a single iteration of each dimension and the exit latency
     /// of the loop.
     pub dim_overhead: HashMap<ir::DimId, (HwPressure, HwPressure)>,
@@ -34,28 +34,28 @@ impl<'a> LocalInfo<'a> {
         let nesting: HashMap<_, _> = space
             .ir_instance()
             .blocks()
-            .map(|bb| (bb.bb_id(), Nesting::compute(space, bb.bb_id())))
+            .map(|stmt| (stmt.stmt_id(), Nesting::compute(space, stmt.stmt_id())))
             .collect();
         let mut hw_pressure = space
             .ir_instance()
             .blocks()
-            .map(|bb| {
-                let is_thread = if let ir::BBId::Dim(id) = bb.bb_id() {
+            .map(|stmt| {
+                let is_thread = if let ir::StmtId::Dim(id) = stmt.stmt_id() {
                     space.domain().get_dim_kind(id) == DimKind::THREAD
                 } else {
                     false
                 };
                 // Only keep the pressure of innermost thread dimensions. Otherwise it
                 // will be taken multiple times into account.
-                let pressure = if is_thread && nesting[&bb.bb_id()].has_inner_thread_dims
+                let pressure = if is_thread && nesting[&stmt.stmt_id()].has_inner_thread_dims
                 {
                     HwPressure::zero(context.device())
                 } else {
                     context
                         .device()
-                        .hw_pressure(space, &dim_sizes, &nesting, bb, context)
+                        .hw_pressure(space, &dim_sizes, &nesting, stmt, context)
                 };
-                (bb.bb_id(), pressure)
+                (stmt.stmt_id(), pressure)
             })
             .collect();
         let mut dim_overhead = space
@@ -63,7 +63,7 @@ impl<'a> LocalInfo<'a> {
             .dims()
             .map(|d| {
                 let kind = space.domain().get_dim_kind(d.id());
-                if kind == DimKind::THREAD && nesting[&d.bb_id()].has_inner_thread_dims {
+                if kind == DimKind::THREAD && nesting[&d.stmt_id()].has_inner_thread_dims {
                     // Only keep the overhead on innermost thread dimensions. Otherwise it
                     // will be taken multiple times into account.
                     let zero = HwPressure::zero(context.device());
@@ -102,7 +102,7 @@ fn add_indvar_pressure(
     space: &SearchSpace,
     dim_sizes: &HashMap<ir::DimId, u32>,
     indvar: &ir::InductionVar,
-    hw_pressure: &mut HashMap<ir::BBId, HwPressure>,
+    hw_pressure: &mut HashMap<ir::StmtId, HwPressure>,
     dim_overhead: &mut HashMap<ir::DimId, (HwPressure, HwPressure)>,
     thread_overhead: &mut HwPressure,
 ) {
@@ -140,15 +140,15 @@ fn add_indvar_pressure(
 /// Nesting of an object.
 #[derive(Debug)]
 pub struct Nesting<'a> {
-    /// Dimensions nested inside the current BB.
+    /// Dimensions nested inside the current Stmt.
     pub inner_dims: VecSet<ir::DimId>,
-    /// Basic blocks nested inside the current BB.
-    pub inner_bbs: VecSet<ir::BBId>,
-    /// Dimensions nested outsidethe current BB.
+    /// Basic blocks nested inside the current Stmt.
+    pub inner_stmts: VecSet<ir::StmtId>,
+    /// Dimensions nested outsidethe current Stmt.
     pub outer_dims: VecSet<ir::DimId>,
-    /// Dimensions to be processed before the current BB.
+    /// Dimensions to be processed before the current Stmt.
     pub before_self: VecSet<ir::DimId>,
-    /// Dimensions that should not take the current BB into account when processed.
+    /// Dimensions that should not take the current Stmt into account when processed.
     pub after_self: VecSet<ir::DimId>,
     /// The dimensions that can be merged to this one and have a bigger ID.
     pub bigger_merged_dims: VecSet<ir::DimId>,
@@ -164,22 +164,25 @@ pub struct Nesting<'a> {
 
 impl<'a> Nesting<'a> {
     /// Computes the nesting of a `Statement`.
-    fn compute(space: &SearchSpace<'a>, bb: ir::BBId) -> Self {
+    fn compute(
+        space: &SearchSpace<'a>,
+        stmt: ir::StmtId
+    ) -> Self {
         let mut inner_dims = Vec::new();
-        let mut inner_bbs = Vec::new();
+        let mut inner_stmts = Vec::new();
         let mut before_self = Vec::new();
         let mut after_self = Vec::new();
         let mut bigger_merged_dims = Vec::new();
         let mut has_inner_thread_dims = false;
-        for other_bb in space.ir_instance().blocks() {
-            if other_bb.bb_id() == bb {
+        for other_stmt in space.ir_instance().blocks() {
+            if other_stmt.stmt_id() == stmt {
                 continue;
             }
-            let order = space.domain().get_order(other_bb.bb_id(), bb);
+            let order = space.domain().get_order(other_stmt.stmt_id(), stmt);
             if Order::INNER.contains(order) {
-                inner_bbs.push(other_bb.bb_id());
+                inner_stmts.push(other_stmt.stmt_id());
             }
-            if let Some(dim) = other_bb.as_dim() {
+            if let Some(dim) = other_stmt.as_dim() {
                 let other_kind = space.domain().get_dim_kind(dim.id());
                 if Order::INNER.contains(order) {
                     inner_dims.push(dim.id());
@@ -195,12 +198,12 @@ impl<'a> Nesting<'a> {
                 if (Order::OUTER | Order::AFTER).contains(order) {
                     after_self.push(dim.id());
                 }
-                if order.intersects(Order::MERGED) && other_bb.bb_id() > bb {
+                if order.intersects(Order::MERGED) && other_stmt.stmt_id() > stmt {
                     bigger_merged_dims.push(dim.id());
                 }
             }
         }
-        let outer_dims = Self::get_iteration_dims(space, bb);
+        let outer_dims = Self::get_iteration_dims(space, stmt);
         let num_unmapped_threads = space
             .ir_instance()
             .thread_dims()
@@ -226,7 +229,7 @@ impl<'a> Nesting<'a> {
             .product::<ir::PartialSize>();
         Nesting {
             inner_dims: VecSet::new(inner_dims),
-            inner_bbs: VecSet::new(inner_bbs),
+            inner_stmts: VecSet::new(inner_stmts),
             outer_dims,
             before_self: VecSet::new(before_self),
             after_self: VecSet::new(after_self),
@@ -238,8 +241,8 @@ impl<'a> Nesting<'a> {
     }
 
     /// Computess the list of iteration dimensions of a `Statement`.
-    fn get_iteration_dims(space: &SearchSpace, bb: ir::BBId) -> VecSet<ir::DimId> {
-        let dims = if let ir::BBId::Inst(inst) = bb {
+    fn get_iteration_dims(space: &SearchSpace, stmt: ir::StmtId) -> VecSet<ir::DimId> {
+        let dims = if let ir::StmtId::Inst(inst) = stmt {
             space
                 .ir_instance()
                 .inst(inst)
@@ -250,10 +253,10 @@ impl<'a> Nesting<'a> {
         } else {
             let mut outer = Vec::new();
             for dim in space.ir_instance().dims().map(|d| d.id()) {
-                if bb == dim.into() {
+                if stmt == dim.into() {
                     continue;
                 }
-                let order = space.domain().get_order(dim.into(), bb);
+                let order = space.domain().get_order(dim.into(), stmt);
                 if Order::OUTER.contains(order) {
                     if outer.iter().cloned().all(|outer: ir::DimId| {
                         let ord = space.domain().get_order(dim.into(), outer.into());
@@ -311,7 +314,7 @@ impl Default for Parallelism {
 
 /// Computes the minimal and maximal parallelism accross instructions.
 fn parallelism(
-    nesting: &HashMap<ir::BBId, Nesting>,
+    nesting: &HashMap<ir::StmtId, Nesting>,
     space: &SearchSpace,
     ctx: &Context,
 ) -> Parallelism {
@@ -327,7 +330,7 @@ fn parallelism(
         .map(|inst| {
             let mut min_size_blocks = ir::PartialSize::default();
             let mut max_size_blocks = ir::PartialSize::default();
-            for &dim in &nesting[&inst.bb_id()].outer_dims {
+            for &dim in &nesting[&inst.stmt_id()].outer_dims {
                 let kind = space.domain().get_dim_kind(dim);
                 if kind.intersects(DimKind::BLOCK) {
                     let size = space.ir_instance().dim(dim).size();

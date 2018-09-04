@@ -1,5 +1,6 @@
 //! Describes the instructions.
-use ir::{self, BBId, DimMapScope, LoweringMap, Operand, Operator, Statement, Type};
+use device::Device;
+use ir::{self, StmtId, DimMapScope, LoweringMap, Operand, Operator, Statement, Type};
 use std;
 use std::hash::{Hash, Hasher};
 use utils::*;
@@ -189,7 +190,7 @@ impl<'a> Instruction<'a> {
 }
 
 impl<'a> Statement<'a> for Instruction<'a> {
-    fn bb_id(&self) -> BBId {
+    fn stmt_id(&self) -> StmtId {
         self.id.into()
     }
 

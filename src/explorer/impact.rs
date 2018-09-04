@@ -59,7 +59,7 @@ fn has_indivudal_impact(action: &ir::Action, fun: &ir::Function) -> bool {
             kind_individual_impact(fun.dim(dim).kind(), new_kind),
         ir::Action::Order(lhs, rhs, order) =>
             order_individual_impact(lhs, rhs, order, fun),
-        ir::Action::NestBBIn(..) =>
+        ir::Action::NestStmtIn(..) =>
             // The negative impact of inhibiting the vectorization is taken into accout by
             // Kind actions.
             false,
@@ -82,7 +82,7 @@ fn kind_individual_impact(old_kind: ir::dim::Kind, new_kind: ir::dim::Kind) -> b
 
 /// Indicates if an ordering action my have a negative impact on the execution time,
 /// independently of the other actions it may trigger.
-fn order_individual_impact(lhs: ir::BBId, rhs: ir::BBId, new_order: ir::Order,
+fn order_individual_impact(lhs: ir::StmtId, rhs: ir::StmtId, new_order: ir::Order,
                            fun: &ir::Function) -> bool {
     let old_order = fun.order(lhs, rhs);
     let new_order = (old_order & new_order).apply_restrictions();
@@ -193,7 +193,7 @@ fn combine_actions(lhs: &mut ir::Action, rhs: &ir::Action) -> bool {
         (&mut ir::Action::Identity, &ir::Action::Identity) |
         (&mut ir::Action::Merge(..), &ir::Action::Merge(..)) |
         (&mut ir::Action::ActiveInstIn(..), &ir::Action::ActiveInstIn(..)) |
-        (&mut ir::Action::NestBBIn(..), &ir::Action::NestBBIn(..)) |
+        (&mut ir::Action::NestStmtIn(..), &ir::Action::NestStmtIn(..)) |
         (&mut ir::Action::LowerLayout(..), &ir::Action::LowerLayout(..)) |
         (&mut ir::Action::LowerDimMap(..), &ir::Action::LowerDimMap(..)) => false,
         _ => panic!()

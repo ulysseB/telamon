@@ -4,7 +4,7 @@ use ir::{self, DimMapScope, Statement};
 use search_space::choices::{Action, DimKind, DimMapping, Order};
 
 /// Generates actions to enforce operands invariants.
-pub fn invariants(fun: &ir::Function, op: &ir::Operand, user: ir::BBId) -> Vec<Action> {
+pub fn invariants(fun: &ir::Function, op: &ir::Operand, user: ir::StmtId) -> Vec<Action> {
     match *op {
         Int(..) | Float(..) | Param(..) | Addr(..) => vec![],
         Inst(src, _, ref dim_map, ref scope) => {
@@ -60,6 +60,6 @@ pub fn invariants(fun: &ir::Function, op: &ir::Operand, user: ir::BBId) -> Vec<A
 pub fn inst_invariants(fun: &ir::Function, inst: &ir::Instruction) -> Vec<Action> {
     inst.operands()
         .into_iter()
-        .flat_map(move |op| invariants(fun, op, inst.bb_id()))
+        .flat_map(move |op| invariants(fun, op, inst.stmt_id()))
         .collect()
 }

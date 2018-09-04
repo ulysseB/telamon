@@ -4,11 +4,11 @@
 
 set Statements:
   item_type = "ir::Statement"
-  id_type = "ir::BBId"
+  id_type = "ir::StmtId"
   item_getter = "$fun.block($id)"
-  id_getter = "$item.bb_id()"
+  id_getter = "$item.stmt_id()"
   iterator = "$fun.blocks()"
-  var_prefix = "bb"
+  var_prefix = "stmt"
   new_objs = "$objs.basic_blocks"
 end
 
@@ -246,8 +246,8 @@ require forall $lhs in Statements:
 
 // Intruction orders
 require forall $inst in Instructions:
-  forall $bb in Statements:
-    order($inst, $bb) is INNER | ORDERED
+  forall $stmt in Statements:
+    order($inst, $stmt) is INNER | ORDERED
 
 require forall $inst in Instructions:
   forall $dim in Dimensions:
@@ -342,13 +342,13 @@ require forall $outer in StaticDims:
       || size($outer) <= "64"
 
 // A basic block nested with a thread dimension is nested or merged with the other
-require forall $bb in Statements:
+require forall $stmt in Statements:
   forall $nested_thread in StaticDims:
     forall $other_thread in StaticDims:
-      order($bb, $nested_thread) is not NESTED || dim_kind($nested_thread) is not THREAD
+      order($stmt, $nested_thread) is not NESTED || dim_kind($nested_thread) is not THREAD
         || order($other_thread, $nested_thread) is not NESTED
         || dim_kind($other_thread) is not THREAD
-        || order($bb, $other_thread) is not ORDERED
+        || order($stmt, $other_thread) is not ORDERED
 
 /// Limits the number of threads.
 ///
