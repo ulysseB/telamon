@@ -596,12 +596,13 @@ impl<'a> Function<'a> {
         let dims = mappings.iter().map(|&(mapping_id, dims)| {
             let [old_dim, new_dim] = dims;
             let dimension = Dimension::with_same_size(new_dim, &self.dims[old_dim]);
-            let mapping = self.create_mapping(mapping_id, dims);
             if dimension.possible_sizes().is_some() {
                 self.static_dims.push(new_dim);
             }
-            self.dim_mappings.set_lazy(mapping_id, mapping);
             self.dims.set_lazy(new_dim, dimension);
+            // We can only create the mapping after we activate dimensions.
+            let mapping = self.create_mapping(mapping_id, dims);
+            self.dim_mappings.set_lazy(mapping_id, mapping);
             if old_to_new {
                 (old_dim, new_dim)
             } else {

@@ -111,7 +111,7 @@ impl<'a, L> Operator<'a, L> {
             if let Some(dim_map) = operand.mapped_dims() {
                 for &(lhs, rhs) in dim_map {
                     if fun.find_mapping(lhs, rhs).is_none() {
-                        // FIXME: raise an error
+                        Err(ir::Error::MissingDimMapping { lhs, rhs })?;
                     }
                 }
             }

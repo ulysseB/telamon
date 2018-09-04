@@ -102,6 +102,8 @@ pub enum Error {
         dim
     )]
     InvalidDimInPattern { dim: ir::DimId },
+    #[fail(display = "no mapping found between dimensions {} and {}", lhs, rhs)]
+    MissingDimMapping { lhs: ir::DimId, rhs: ir::DimId },
 }
 
 impl From<TypeError> for Error {
