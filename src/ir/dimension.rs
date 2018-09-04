@@ -30,7 +30,7 @@ pub struct Dimension<'a> {
     iterated: Vec<ir::InstId>,
     is_thread_dim: bool,
     logical_dim: Option<LogicalDimId>,
-    mapped_dims: Vec<MappedDimsId>,
+    mapped_dims: Vec<DimMappingId>,
 }
 
 impl<'a> Dimension<'a> {
@@ -113,12 +113,12 @@ impl<'a> Dimension<'a> {
     }
 
     /// Returns the list of dimensions mapping containing this one.
-    pub fn dim_mappings(&self) -> impl Iterator<Item = MappedDimsId> + '_ {
+    pub fn dim_mappings(&self) -> impl Iterator<Item = DimMappingId> + '_ {
         self.mapped_dims.iter().cloned()
     }
 
     /// Register a dimension mapping.
-    pub fn register_dim_mapping(&mut self, mapping: &MappedDims) {
+    pub fn register_dim_mapping(&mut self, mapping: &DimMapping) {
         self.mapped_dims.push(mapping.id);
         assert!(mapping.dims.contains(&self.id()));
     }
@@ -222,29 +222,29 @@ impl<'a> LogicalDim<'a> {
 
 /// Uniquely identifies a pair of mapped dimensions.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MappedDimsId(pub u16);
+pub struct DimMappingId(pub u16);
 
-impl From<MappedDimsId> for usize {
-    fn from(id: MappedDimsId) -> usize {
+impl From<DimMappingId> for usize {
+    fn from(id: DimMappingId) -> usize {
         id.0 as usize
     }
 }
 
 /// Specifies that two dimensions should be mapped together.
 #[derive(Clone, Copy, Debug)]
-pub struct MappedDims {
-    id: MappedDimsId,
+pub struct DimMapping {
+    id: DimMappingId,
     dims: [DimId; 2],
 }
 
-impl MappedDims {
-    /// Creates a `MappedDims`. Panics if the provided dimensions are the same.
-    pub fn new(id: MappedDimsId, dims: [DimId; 2]) -> Self {
-        MappedDims { id, dims }
+impl DimMapping {
+    /// Creates a `DimMapping`. Panics if the provided dimensions are the same.
+    pub fn new(id: DimMappingId, dims: [DimId; 2]) -> Self {
+        DimMapping { id, dims }
     }
 
-    /// Returns the unique identifier of the `MappedDims`.
-    pub fn id(&self) -> MappedDimsId {
+    /// Returns the unique identifier of the `DimMapping`.
+    pub fn id(&self) -> DimMappingId {
         self.id
     }
 

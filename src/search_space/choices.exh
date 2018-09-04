@@ -495,9 +495,9 @@ require forall $lhs in LogicalDimensions:
 
 /// List pairs of dimensions that must have the same size and can be use for
 /// point-to-point communication.
-set MappedDimsPairs:
-  item_type = "ir::MappedDims"
-  id_type = "ir::MappedDimsId"
+set DimMappingPairs:
+  item_type = "ir::DimMapping"
+  id_type = "ir::DimMappingId"
   item_getter = "$fun.dim_mapping($id)"
   id_getter = "$item.id()"
   iterator = "$fun.dim_mappings()"
@@ -505,7 +505,7 @@ set MappedDimsPairs:
   new_objs = "$objs.dim_mappings"
 end
 
-set MappedDims($pair in MappedDimsPairs) subsetof Dimensions:
+set DimMapping($pair in DimMappingPairs) subsetof Dimensions:
   item_type = "ir::Dimension"
   id_type = "ir::DimId"
   item_getter = "$fun.dim($id)"
@@ -521,3 +521,4 @@ end
 // FIXME: how to handle static and non-static dims
 // Can expose them in separate sets, but cannot retrieve the logical dim for the tiling
 // factor -> Must name reverse set
+// FIXME: if we only expose static dims, make sure we only add static dims in new_objs

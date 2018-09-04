@@ -102,7 +102,9 @@ impl<'a, L> Operator<'a, L> {
         iter_dims: &HashSet<ir::DimId>,
         fun: &ir::Function<L>,
     ) -> Result<(), ir::Error> {
-        self.t().map(|t| fun.device().check_type(t)).unwrap_or(Ok(()))?;
+        self.t()
+            .map(|t| fun.device().check_type(t))
+            .unwrap_or(Ok(()))?;
         for operand in self.operands() {
             fun.device().check_type(operand.t())?;
             // Ensure dimension mappings are registered.

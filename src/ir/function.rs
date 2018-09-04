@@ -2,7 +2,7 @@
 use device::Device;
 use ir::mem::Block;
 use ir::{self, BBId, Dimension, InstId, Instruction, Operator, Statement};
-use ir::{dim, mem, AccessPattern, Operand, SparseVec, Type};
+use ir::{mem, AccessPattern, Operand, SparseVec, Type};
 use itertools::Itertools;
 use std;
 use utils::*;
@@ -68,7 +68,7 @@ pub struct Function<'a, L = ir::LoweringMap> {
     layouts_to_lower: Vec<ir::mem::InternalId>,
     induction_vars: Vec<ir::InductionVar<'a, L>>,
     logical_dims: Vec<ir::LogicalDim<'a>>,
-    mapped_dims: SparseVec<ir::MappedDimsId, ir::MappedDims>,
+    dim_mappings: SparseVec<ir::DimMappingId, ir::DimMapping>,
 }
 
 impl<'a, L> Function<'a, L> {
@@ -87,7 +87,7 @@ impl<'a, L> Function<'a, L> {
             layouts_to_lower: Vec::new(),
             induction_vars: Vec::new(),
             logical_dims: Vec::new(),
-            mapped_dims: SparseVec::new(),
+            dim_mappings: SparseVec::new(),
         }
     }
 
@@ -332,13 +332,13 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Returns the list of dimensions mapping.
-    pub fn dim_mappings(&self) -> impl Iterator<Item = &ir::MappedDims> + '_ {
-        self.mapped_dims.iter()
+    pub fn dim_mappings(&self) -> impl Iterator<Item = &ir::DimMapping> + '_ {
+        self.dim_mappings.iter()
     }
 
     /// Retrives a dimension mapping given its ID.
-    pub fn dim_mapping(&self, id: ir::MappedDimsId) -> &ir::MappedDims {
-        &self.mapped_dims[id]
+    pub fn dim_mapping(&self, id: ir::DimMappingId) -> &ir::DimMapping {
+        &self.dim_mappings[id]
     }
 
     /// Tries to find a mapping between two dimensions.
@@ -346,7 +346,7 @@ impl<'a, L> Function<'a, L> {
         &self,
         lhs: ir::DimId,
         rhs: ir::DimId,
-    ) -> Option<ir::MappedDimsId> {
+    ) -> Option<ir::DimMappingId> {
         self.dim(lhs)
             .dim_mappings()
             .find(|&id| self.dim_mapping(id).dims().contains(&rhs))
@@ -355,10 +355,10 @@ impl<'a, L> Function<'a, L> {
     /// Creates a mapping between two dimensions.
     fn create_mapping(
         &mut self,
-        id: ir::MappedDimsId,
+        id: ir::DimMappingId,
         dims: [ir::DimId; 2],
-    ) -> ir::MappedDims {
-        let mapping = ir::MappedDims::new(id, dims);
+    ) -> ir::DimMapping {
+        let mapping = ir::DimMapping::new(id, dims);
         for &dim in &dims {
             self.dim_mut(dim).register_dim_mapping(&mapping);
         }
@@ -374,8 +374,8 @@ impl<'a> Function<'a, ()> {
         iter_dims: HashSet<ir::DimId>,
     ) -> Result<InstId, ir::Error> {
         // Create dimension mappings for the operands.
-        // TODO(cleanup): the operands should list `MappedDims` rather that pairs of
-        // dimensions so `MappedDims` should be allocated before.
+        // TODO(cleanup): the operands should list `DimMapping` rather that pairs of
+        // dimensions so `DimMapping` should be allocated before.
         for operand in op.operands() {
             if let Some(dim_map) = operand.mapped_dims() {
                 for &(lhs, rhs) in dim_map {
@@ -445,11 +445,11 @@ impl<'a> Function<'a, ()> {
 
     /// Specifies two dimensions must have the same size have can be used for point-to-point
     /// communication.
-    fn map_dimensions(&mut self, dims: [ir::DimId; 2]) -> ir::MappedDimsId {
+    fn map_dimensions(&mut self, dims: [ir::DimId; 2]) -> ir::DimMappingId {
         self.find_mapping(dims[0], dims[1]).unwrap_or_else(|| {
-            let id = ir::MappedDimsId(self.mapped_dims.len() as u16);
+            let id = ir::DimMappingId(self.dim_mappings.len() as u16);
             let mapping = self.create_mapping(id, dims);
-            self.mapped_dims.push(mapping);
+            self.dim_mappings.push(mapping);
             id
         })
     }
@@ -459,6 +459,7 @@ impl<'a> Function<'a, ()> {
             next_mem: self.mem_blocks.num_internal_blocks(),
             next_inst: self.insts.len(),
             next_dim: self.dims.len(),
+            next_dim_mapping: self.dim_mappings.len() as u16,
         };
         let Function {
             signature,
@@ -472,7 +473,7 @@ impl<'a> Function<'a, ()> {
             layouts_to_lower,
             induction_vars,
             logical_dims,
-            mapped_dims,
+            mut dim_mappings,
         } = self;
 
         let mut insts = SparseVec::from_vec(
@@ -490,10 +491,12 @@ impl<'a> Function<'a, ()> {
             next_mem,
             next_inst,
             next_dim,
+            next_dim_mapping,
         } = counter;
         insts.expand_to(next_inst);
         dims.expand_to(next_dim);
         mem_blocks.expand_internal_blocks_to(next_mem);
+        dim_mappings.expand_to(next_dim_mapping as usize);
 
         Function {
             signature,
@@ -507,7 +510,7 @@ impl<'a> Function<'a, ()> {
             layouts_to_lower,
             induction_vars,
             logical_dims,
-            mapped_dims,
+            dim_mappings,
         }
     }
 }
@@ -536,16 +539,10 @@ impl<'a> Function<'a> {
         dst_operand_pos: usize,
     ) -> Result<ir::LoweredDimMap, ()> {
         // TODO(search_space): allow temporary memory generation for reduce operators.
-        let (src_inst, data_type, dims, lowered) = {
-            match *self.insts[dst_inst].operands()[dst_operand_pos] {
-                Operand::Inst(
-                    ref src_id,
-                    t,
-                    ref dim_map,
-                    ir::DimMapScope::Global(ref lowering),
-                ) => {
-                    let lowered = lowering.lower(dim_map);
-                    (*src_id, t, dim_map.iter().cloned().unzip(), lowered)
+        let (src_inst, data_type, lowered) = {
+            match self.insts[dst_inst].operands()[dst_operand_pos] {
+                Operand::Inst(src_id, t, dim_map, ir::DimMapScope::Global(lowering)) => {
+                    (*src_id, *t, lowering.lower(dim_map))
                 }
                 Operand::Inst(_, _, _, _) => {
                     debug!(
@@ -558,41 +555,29 @@ impl<'a> Function<'a> {
                 _ => panic!(),
             }
         };
-        // Flattens the dimensions
-        let (src_dims, dst_dims): (Vec<_>, Vec<_>) = dims;
-        let (st_dims, ld_dims): (Vec<_>, Vec<_>) =
-            lowered.dimensions.iter().cloned().unzip();
-
         // Activate the new dimensions
-        self.activate_mapped_dims(src_dims.iter().zip_eq(&st_dims).map(clone_pair));
-        self.activate_mapped_dims(dst_dims.iter().zip_eq(&ld_dims).map(clone_pair));
+        let st_dim_map = self.activate_mapped_dims(&lowered.st_dims_mapping, true);
+        let ld_dim_map = self.activate_mapped_dims(&lowered.ld_dims_mapping, false);
 
         // Activate the temporary memory block
-        self.mem_blocks.set_lazy_tmp(
-            lowered.mem,
-            data_type,
-            lowered.dimensions.iter().cloned(),
-        );
+        self.mem_blocks
+            .set_lazy_tmp(lowered.mem, data_type, lowered.mem_dimensions());
 
         // Build and activate the store instruction
-        let st_dim_map = dim::Map::new(src_dims.iter().zip_eq(&st_dims).map(clone_pair));
         let st_operand =
             Operand::new_inst(self.inst(src_inst), st_dim_map, ir::DimMapScope::Local);
-        let st_dim_set = st_dims.iter().cloned().collect();
         let st = unwrap!(self.create_inst(
             lowered.store,
             Operator::TmpSt(st_operand, lowered.mem.into()),
-            st_dim_set
+            lowered.store_dims().collect(),
         ));
         self.insts.set_lazy(lowered.store, st);
 
         // Build and activate the load instruction
-        let ld_dim_map = dim::Map::new(ld_dims.iter().zip_eq(&dst_dims).map(clone_pair));
-        let ld_dim_set = ld_dims.iter().cloned().collect();
         let ld = unwrap!(self.create_inst(
             lowered.load,
             Operator::TmpLd(data_type, lowered.mem.into()),
-            ld_dim_set
+            lowered.load_dims().collect(),
         ));
         self.insts.set_lazy(lowered.load, ld);
         self.insts[dst_inst].lower_dim_map(dst_operand_pos, lowered.load, ld_dim_map);
@@ -600,18 +585,30 @@ impl<'a> Function<'a> {
         Ok(lowered)
     }
 
-    /// Activate dimensions mapped to old ones. `dims` contains pairs of (old dim, new dim).
-    fn activate_mapped_dims<IT>(&mut self, dims: IT)
-    where
-        IT: IntoIterator<Item = (ir::DimId, ir::DimId)>,
-    {
-        for (old_dim, new_dim) in dims {
+    /// Activate dimensions mapped to existing ones. Takes as input a list of mappings, in the
+    /// format `(mapping id, [old dim, new dim])`. Returns the mapping from old dimensions to new
+    /// ones if `old_to_new` is true. The mapping from new dimensions to old ones otherwise.
+    fn activate_mapped_dims(
+        &mut self,
+        mappings: &[(ir::DimMappingId, [ir::DimId; 2])],
+        old_to_new: bool,
+    ) -> ir::dim::Map {
+        let dims = mappings.iter().map(|&(mapping_id, dims)| {
+            let [old_dim, new_dim] = dims;
             let dimension = Dimension::with_same_size(new_dim, &self.dims[old_dim]);
+            let mapping = self.create_mapping(mapping_id, dims);
             if dimension.possible_sizes().is_some() {
                 self.static_dims.push(new_dim);
             }
+            self.dim_mappings.set_lazy(mapping_id, mapping);
             self.dims.set_lazy(new_dim, dimension);
-        }
+            if old_to_new {
+                (old_dim, new_dim)
+            } else {
+                (new_dim, old_dim)
+            }
+        });
+        ir::dim::Map::new(dims)
     }
 }
 
