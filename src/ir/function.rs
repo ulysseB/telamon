@@ -1,7 +1,7 @@
 //! Provides a representation of functions.
 use device::Device;
 use ir::mem::Block;
-use ir::{self, BBId, Dimension, InstId, Instruction, Operator, Statement};
+use ir::{self, BBId, Dimension, InstId, Instruction, Operator, Statement, Value, ValueId};
 use ir::{dim, mem, AccessPattern, Operand, SparseVec, Type};
 use itertools::Itertools;
 use std;
@@ -156,7 +156,6 @@ impl<'a, L> Function<'a, L> {
         self.static_dims.iter().map(move |&id| self.dim(id))
     }
 
-    /// Returns the list of values.
     pub fn values(&self) -> impl Iterator<Item = &ir::Value> {
         self.values.iter()
     }

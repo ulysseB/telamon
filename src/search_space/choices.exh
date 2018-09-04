@@ -58,6 +58,16 @@ set StaticDims subsetof Dimensions:
   new_objs = "$objs.static_dims"
 end
 
+set Values:
+  item_type = "ir::Value"
+  id_type = "ir::ValueId"
+  item_getter = "$fun.value($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.values()"
+  var_prefix = "value"
+  new_objs = "$objs.values"
+end
+
 set MemoryRegions:
   item_type = "ir::mem::Block"
   id_type = "ir::MemId"
@@ -177,6 +187,16 @@ define enum inst_flag($inst in MemInsts):
   alias MEM_COHERENT = MEM_SHARED | MEM_CG | MEM_CS:
   /// Ensure coherency within a block between memory accesses.
   alias MEM_BLOCK_COHERENT = MEM_COHERENT | MEM_CA:
+end
+
+/// Defines how two basic blocks are ordered.
+define enum value_order($lhs in Values, $rhs in Values):
+  antisymmetric:
+    BEFORE -> AFTER
+  /// $lhs is executed before $rhs.
+  value BEFORE:
+  /// $lhs is executed after $rhs.
+  value AFTER:
 end
 
 /// Defines how two basic blocks are ordered.
