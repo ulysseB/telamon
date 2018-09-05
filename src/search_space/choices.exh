@@ -190,16 +190,6 @@ define enum inst_flag($inst in MemInsts):
 end
 
 /// Defines how two basic blocks are ordered.
-define enum value_order($lhs in Values, $rhs in Values):
-  antisymmetric:
-    BEFORE -> AFTER
-  /// $lhs is executed before $rhs.
-  value BEFORE:
-  /// $lhs is executed after $rhs.
-  value AFTER:
-end
-
-/// Defines how two basic blocks are ordered.
 define enum order($lhs in Statements, $rhs in Statements):
   antisymmetric:
     BEFORE -> AFTER

@@ -46,8 +46,16 @@ pub enum ValueDef {
     // - ExternalMem
 }
 
-// FIXME: value creation
-// - allocate an id
+impl ValueDef {
+    fn register(&self, self_id: ir::ValueId, function: &mut ir::Function) {
+        // TODO change this code when we add new variant for ValueDef
+        let inst_id = match self {
+            ValueDef::Inst(id) => id,
+            _ => panic!(),
+        };
+        function.inst_mut(*inst_id).set_result_value(self_id);
+    }
+}
 // - register in the instruction
 // - retrieve the type
 // FIXME: def point

@@ -1,7 +1,7 @@
 //! Provides a representation of functions.
 use device::Device;
 use ir::mem::Block;
-use ir::{self, BBId, Dimension, InstId, Instruction, Operator, Statement, Value, ValueId};
+use ir::{self, BBId, Dimension, InstId, Instruction, Operator, Statement, Value, ValueId, ValueDef};
 use ir::{dim, mem, AccessPattern, Operand, SparseVec, Type};
 use itertools::Itertools;
 use std;
@@ -68,7 +68,7 @@ pub struct Function<'a, L = ir::LoweringMap> {
     layouts_to_lower: Vec<ir::mem::InternalId>,
     induction_vars: Vec<ir::InductionVar<'a, L>>,
     logical_dims: Vec<ir::LogicalDim<'a>>,
-    values: SparseVec<ir::ValueId, ir::Value>,
+    values: SparseVec<ValueId, Value>,
 }
 
 impl<'a, L> Function<'a, L> {
@@ -125,8 +125,8 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Returns a Value without adding it to self.values
-    fn create_value(id: ir::ValueId, t: Type, def: ir::ValueDef) -> Result<ir::Value, ir::Error> {
-        Ok(ir::Value::new(id, t, def))
+    fn create_value(id: ValueId, t: Type, def: ValueDef) -> Result<Value, ir::Error> {
+        Ok(Value::new(id, t, def))
     }
 
     /// Adds an induction variable.
@@ -171,7 +171,7 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Returns a mutable reference to an instruction given its id.
-    fn inst_mut(&mut self, id: InstId) -> &mut Instruction<'a, L> {
+    pub fn inst_mut(&mut self, id: InstId) -> &mut Instruction<'a, L> {
         &mut self.insts[id]
     }
 
