@@ -46,7 +46,7 @@ impl MMSig {
         let ld_a_m = builder.open_tiled_dim(m_size, &[16, 4]);
         let ld_a_k = builder.open_tiled_dim(k_size.clone(), &[16]);
         let (ptr, pattern) =
-            builder.tensor_access(&"a", self.a, &DATA_TYPE, &[&ld_a_m, &ld_a_k]);
+            builder.tensor_access(&"a", self.a, DATA_TYPE, &[&ld_a_m, &ld_a_k]);
         let ld_a = builder.ld_nc(DATA_TYPE.clone(), &ptr, pattern);
         builder.close_dim(&ld_a_m);
         builder.close_dim(&ld_a_k);
@@ -54,7 +54,7 @@ impl MMSig {
         let ld_b_k = builder.open_tiled_dim(k_size, &[16]);
         let ld_b_n = builder.open_tiled_dim(n_size, &[16, 4]);
         let (ptr, pattern) =
-            builder.tensor_access(&"b", self.b, &DATA_TYPE, &[&ld_b_k, &ld_b_n]);
+            builder.tensor_access(&"b", self.b, DATA_TYPE, &[&ld_b_k, &ld_b_n]);
         let ld_b = builder.ld_nc(DATA_TYPE, &ptr, pattern);
         builder.close_dim(&ld_b_k);
         builder.close_dim(&ld_b_n);
@@ -69,12 +69,12 @@ impl MMSig {
         let a_op = builder.dim_map(
             ld_a,
             &[(&ld_a_m, &acc_m), (&ld_a_k, &acc_k)],
-            ir::DimMapScope::Global,
+            ir::DimMapScope::Global(()),
         );
         let b_op = builder.dim_map(
             ld_b,
             &[(&ld_b_k, &acc_k), (&ld_b_n, &acc_n)],
-            ir::DimMapScope::Global,
+            ir::DimMapScope::Global(()),
         );
         let acc = builder.mad(&a_op, &b_op, &helper::Reduce(init));
 
@@ -82,7 +82,7 @@ impl MMSig {
         let st_m = builder.open_mapped_dim(&acc_m);
         let st_n = builder.open_mapped_dim(&acc_n);
         let (ptr, pattern) =
-            builder.tensor_access(&"c", self.c, &DATA_TYPE, &[&st_m, &st_n]);
+            builder.tensor_access(&"c", self.c, DATA_TYPE, &[&st_m, &st_n]);
         let st = builder.st(&ptr, &acc, pattern);
         // order for correctness.
         builder.order(&st, &acc_k, Order::AFTER);

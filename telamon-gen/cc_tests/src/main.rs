@@ -1327,3 +1327,25 @@ mod integer_set {
         assert_eq!(store.get_int2(obj2), only_3);
     }
 }
+
+mod filter_merge {
+    define_ir! { struct objects; }
+    generated_file!(filter_merge);
+    use self::filter_merge::*;
+    use std::sync::Arc;
+
+    #[test]
+    fn ensure_not_merged() {
+        let _ = ::env_logger::try_init();
+        let mut fun = ir::Function::default();
+        let obj0 = ir::objects::create(&mut fun, false);
+        let obj1 = ir::objects::create(&mut fun, false);
+
+        let store = &mut DomainStore::new(&fun);
+        store.set_foo(obj1, Foo::C);
+        let actions = init_domain(store, &mut fun).unwrap();
+        let fun = &mut Arc::new(fun);
+        assert!(apply_decisions(actions, fun, store).is_ok());
+        assert_eq!(store.get_foo(obj0), Foo::A);
+    }
+}
