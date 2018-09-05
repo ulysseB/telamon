@@ -1,6 +1,6 @@
 //! Representation and manipulation of a set of possible implementation.
 mod access_pattern;
-mod basic_block;
+mod statement;
 mod dim_map;
 mod dimension;
 mod error;
@@ -18,7 +18,7 @@ use std;
 use std::marker::PhantomData;
 
 pub use self::access_pattern::{AccessPattern, Stride};
-pub use self::basic_block::{StmtId, Statement};
+pub use self::statement::{StmtId, Statement};
 pub use self::dim_map::DimMap;
 pub use self::dimension::{
     DimId, DimMapping, DimMappingId, Dimension, LogicalDim, LogicalDimId,
@@ -50,7 +50,7 @@ pub mod op {
 
 /// Defines traits to import in the environment to use the IR.
 pub mod prelude {
-    pub use ir::basic_block::Statement;
+    pub use ir::statement::Statement;
     pub use ir::mem::Block as MemoryRegion;
 }
 
@@ -60,7 +60,7 @@ pub struct NewObjs {
     pub instructions: Vec<InstId>,
     pub dimensions: Vec<DimId>,
     pub static_dims: Vec<DimId>,
-    pub basic_blocks: Vec<StmtId>,
+    pub statements: Vec<StmtId>,
     pub mem_blocks: Vec<MemId>,
     pub internal_mem_blocks: Vec<mem::InternalId>,
     pub mem_insts: Vec<InstId>,
@@ -99,9 +99,9 @@ impl NewObjs {
         }
     }
 
-    /// Registers a new basic block.
+    /// Registers a new statement
     pub fn add_stmt(&mut self, stmt: &Statement) {
-        self.basic_blocks.push(stmt.stmt_id());
+        self.statements.push(stmt.stmt_id());
     }
 
     /// Sets a dimension as a new iteration dimension.
