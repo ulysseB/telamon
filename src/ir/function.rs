@@ -349,6 +349,8 @@ impl<'a, L> Function<'a, L> {
     ) -> Option<ir::DimMappingId> {
         self.dim(lhs)
             .dim_mappings()
+            .iter()
+            .cloned()
             .find(|&id| self.dim_mapping(id).dims().contains(&rhs))
     }
 

@@ -495,7 +495,7 @@ require forall $lhs in LogicalDimensions:
 
 /// List pairs of dimensions that must have the same size and can be use for
 /// point-to-point communication.
-set DimMappingPairs:
+set DimMappings:
   item_type = "ir::DimMapping"
   id_type = "ir::DimMappingId"
   item_getter = "$fun.dim_mapping($id)"
@@ -505,20 +505,26 @@ set DimMappingPairs:
   new_objs = "$objs.dim_mappings"
 end
 
-set DimMapping($pair in DimMappingPairs) subsetof Dimensions:
+/// Lists the static dimensions in a dimension mapping.
+set StaticMappedDims($pair in DimMappings) subsetof StaticDims:
   item_type = "ir::Dimension"
   id_type = "ir::DimId"
   item_getter = "$fun.dim($id)"
   id_getter = "$item.id()"
-  iterator = "$pair.dims().map(|dim| $fun.dim(dim))"
+  iterator = "$pair.dims().iter().map(|&dim| $fun.dim(dim))\
+    .filter(|dim| dim.possible_sizes().is_some())"
   var_prefix = "mapped_dim"
-  from_superset = "a" // FIXME
-  reverse forall $din in Dimensions = "a" // FIXME
+  from_superset = "if $item.dim_mappings().contains(&$pair.id()) { Some($item) } else { None }"
+  reverse forall $dim in StaticDims = "$dim.dim_mappings().iter().map(|&id| $fun.dim_mapping(id))"
   new_objs = "$objs.mapped_dims"
 end
 
-// FIXME: dims have the same size
-// FIXME: how to handle static and non-static dims
-// Can expose them in separate sets, but cannot retrieve the logical dim for the tiling
-// factor -> Must name reverse set
-// FIXME: if we only expose static dims, make sure we only add static dims in new_objs
+// Ensure mapped dimensions have the same size. We currently have no way to constrain the
+// size of dynamic dimensions: it would require to name the reverse set of
+// `TiledDimension($logical_dim)`. However, it is enough to constrain the size of static
+// dimensions as the tiling factor of dynamic dimensions only depend on the size of static
+// dimensions.
+require forall $mapping in DimMappings:
+  forall $lhs in StaticMappedDims($mapping):
+    forall $rhs in StaticMappedDims($mapping):
+      size($lhs) == size($rhs)

@@ -1,6 +1,7 @@
 //! Represents iteration dimensions.
 use ir::{self, Statement};
 use std::fmt;
+use utils::*;
 
 /// Provides a unique identifier for iteration dimensions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize,
@@ -30,7 +31,7 @@ pub struct Dimension<'a> {
     iterated: Vec<ir::InstId>,
     is_thread_dim: bool,
     logical_dim: Option<LogicalDimId>,
-    mapped_dims: Vec<DimMappingId>,
+    mapped_dims: VecSet<DimMappingId>,
 }
 
 impl<'a> Dimension<'a> {
@@ -51,7 +52,7 @@ impl<'a> Dimension<'a> {
             iterated: Vec::new(),
             is_thread_dim: false,
             logical_dim: None,
-            mapped_dims: Vec::new(),
+            mapped_dims: VecSet::default(),
         })
     }
 
@@ -64,7 +65,7 @@ impl<'a> Dimension<'a> {
             iterated: Vec::new(),
             is_thread_dim: false,
             logical_dim: None,
-            mapped_dims: Vec::new(),
+            mapped_dims: VecSet::default(),
         }
     }
 
@@ -113,13 +114,13 @@ impl<'a> Dimension<'a> {
     }
 
     /// Returns the list of dimensions mapping containing this one.
-    pub fn dim_mappings(&self) -> impl Iterator<Item = DimMappingId> + '_ {
-        self.mapped_dims.iter().cloned()
+    pub fn dim_mappings(&self) -> &VecSet<DimMappingId> {
+        &self.mapped_dims
     }
 
     /// Register a dimension mapping.
     pub fn register_dim_mapping(&mut self, mapping: &DimMapping) {
-        self.mapped_dims.push(mapping.id);
+        self.mapped_dims.insert(mapping.id);
         assert!(mapping.dims.contains(&self.id()));
     }
 }
@@ -221,7 +222,7 @@ impl<'a> LogicalDim<'a> {
 }
 
 /// Uniquely identifies a pair of mapped dimensions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct DimMappingId(pub u16);
 
 impl From<DimMappingId> for usize {
