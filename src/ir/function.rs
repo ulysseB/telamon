@@ -125,7 +125,7 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Returns a Value without adding it to self.values
-    fn create_value(id: ValueId, t: Type, def: ValueDef) -> Result<Value, ir::Error> {
+    fn create_value(id: ValueId, t: ir::Type, def: ValueDef) -> Result<Value, ir::Error> {
         Ok(Value::new(id, t, def))
     }
 
@@ -192,6 +192,19 @@ impl<'a, L> Function<'a, L> {
 
     /// Returns a `Value` given its id.
     pub fn value(&self, id: ir::ValueId) -> &ir::Value { &self.values[id] }
+
+    /// Adds a value to the function.
+    pub fn add_value(
+        &mut self,
+        t: ir::Type,
+        def: ir::ValueDef,
+    ) -> Result<ir::ValueId, ir::Error> {
+        let id = ir::ValueId(self.insts.len() as u16);
+        let val = Self::create_value(id, t, def)?;
+        val.def().register(val.id(), self);
+        self.values.push(val);
+        Ok(id)
+    }
 
     /// Returns the list of memory blocks. The block with id `i` is in i-th position.
     pub fn mem_blocks<'b>(&'b self) -> impl Iterator<Item = &'b mem::Block> {
@@ -353,18 +366,6 @@ impl<'a> Function<'a, ()> {
         let id = ir::InstId(self.insts.len() as u32);
         let inst = self.create_inst(id, op, iter_dims)?;
         self.insts.push(inst);
-        Ok(id)
-    }
-
-    /// Adds a value to the function.
-    pub fn add_value(
-        &mut self,
-        t: ir::Type,
-        def: ir::ValueDef,
-    ) -> Result<ir::ValueId, ir::Error> {
-        let id = ir::ValueId(self.insts.len() as u16);
-        let val = Self::create_value(id, t, def)?;
-        self.values.push(val);
         Ok(id)
     }
 
