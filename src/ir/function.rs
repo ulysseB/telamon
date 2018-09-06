@@ -199,6 +199,14 @@ impl<'a, L> Function<'a, L> {
         t: ir::Type,
         def: ir::ValueDef,
     ) -> Result<ir::ValueId, ir::Error> {
+        // Check that type is coherent with definition of the value
+        match def {
+            ValueDef::Inst(id) => {
+                let inst = &self.insts[id];
+                ir::TypeError::check_equals(unwrap!(inst.t()), t)?;
+            }
+            _ => unreachable!(),
+        }
         let id = ir::ValueId(self.insts.len() as u16);
         let val = Self::create_value(id, t, def)?;
         val.def().register(val.id(), self);
