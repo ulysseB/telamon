@@ -123,14 +123,6 @@ impl<'a> PartialSize<'a> {
         self.factor /= gcd;
         self.divisor /= gcd;
     }
-
-    /// Indicates if two sizes may be equal, meaning they are equal appart from the
-    /// decisions they depend on.
-    pub fn is_compatible_with(&self, other: &ir::PartialSize) -> bool {
-        self.factor == other.factor
-            && self.divisor == other.divisor
-            && self.dividend == other.dividend
-    }
 }
 
 impl<'a, 'b> std::ops::MulAssign<&'b PartialSize<'a>> for PartialSize<'a> {

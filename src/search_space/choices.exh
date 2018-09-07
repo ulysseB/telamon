@@ -230,13 +230,18 @@ require forall $inst in Instructions:
     "$inst.iteration_dims().contains(&$dim.id())" || "!$inst.has_side_effects()"
       || is_iteration_dim($inst, $dim) is FALSE
 
+// Merge constraints.
 require forall $lhs in Dimensions:
   forall $rhs in Dimensions:
-    // Merge constraints
-    "$lhs.size().is_compatible_with($rhs.size())" || order($lhs, $rhs) is not MERGED
     dim_kind($lhs) == dim_kind($rhs) || order($lhs, $rhs) is not MERGED
 
-// Merge constraint for static dimensions.
+require forall $lhs in LogicalDimensions:
+  forall $rhs in LogicalDimensions:
+    forall $lhs_dim in TiledDimension($lhs):
+      forall $rhs_dim in TiledDimension($rhs):
+        order($lhs_dim, $rhs_dim) is not MERGED || "$lhs.total_size() == $rhs.total_size()"
+        order($lhs_dim, $rhs_dim) is not MERGED || tiling_factor($lhs) == tiling_factor($rhs)
+
 require forall $lhs in StaticDims:
   forall $rhs in StaticDims:
     size($lhs) == size($rhs) || order($lhs, $rhs) is not MERGED
@@ -483,11 +488,3 @@ end
 
 require forall $logical in LogicalDimensions:
   tiling_factor($logical) == "$logical.possible_tilings()"
-
-// Ensure merged dimensions have the same tiling factor.
-require forall $lhs in LogicalDimensions:
-  forall $rhs in LogicalDimensions:
-    forall $lhs_dim in TiledDimension($lhs):
-      forall $rhs_dim in TileDimensions($rhs):
-        order($lhs_dim, $rhs_dim) is not MERGED
-        || tiling_factor($lhs) == tiling_factor($rhs)
