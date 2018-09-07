@@ -131,7 +131,6 @@ impl<'a, L> Function<'a, L> {
                 let inst = &self.insts[id];
                 unwrap!(inst.t())
             }
-            _ => unreachable!(),
         };
         Ok(Value::new(id, t, def))
     }

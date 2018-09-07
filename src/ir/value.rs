@@ -51,7 +51,6 @@ impl ValueDef {
         // TODO change this code when we add new variant for ValueDef
         let inst_id = match self {
             ValueDef::Inst(id) => id,
-            _ => panic!(),
         };
         function.inst_mut(*inst_id).set_result_value(self_id);
     }
