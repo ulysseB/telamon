@@ -3,7 +3,7 @@ use num;
 use std;
 
 /// A fully specified size.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Size<'a> {
     factor: u32,
     params: Vec<&'a ir::Parameter>,
