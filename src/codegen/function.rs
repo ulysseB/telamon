@@ -53,7 +53,7 @@ impl<'a> Function<'a> {
         );
         let device_code_args = device_code_args.into_iter().collect();
         debug!("compiling cfg {:?}", cfg);
-        let values = space.ir_instance().values().map(|v| v.clone()).collect_vec();
+        let values = space.ir_instance().values().cloned().collect_vec();
         Function {
             cfg,
             thread_dims,
