@@ -1,7 +1,7 @@
 //! Provides a representation of functions.
 use device::Device;
 use ir::mem::Block;
-use ir::{self, BBId, Dimension, InstId, Instruction, Operator, Statement};
+use ir::{self, BBId, Dimension, InstId, Instruction, Operator, Statement, Value, ValueId, ValueDef};
 use ir::{dim, mem, AccessPattern, Operand, SparseVec, Type};
 use itertools::Itertools;
 use std;
@@ -68,6 +68,7 @@ pub struct Function<'a, L = ir::LoweringMap> {
     layouts_to_lower: Vec<ir::mem::InternalId>,
     induction_vars: Vec<ir::InductionVar<'a, L>>,
     logical_dims: Vec<ir::LogicalDim<'a>>,
+    values: SparseVec<ValueId, Value>,
 }
 
 impl<'a, L> Function<'a, L> {
@@ -86,6 +87,7 @@ impl<'a, L> Function<'a, L> {
             layouts_to_lower: Vec::new(),
             induction_vars: Vec::new(),
             logical_dims: Vec::new(),
+            values: SparseVec::new(),
         }
     }
 
@@ -122,6 +124,17 @@ impl<'a, L> Function<'a, L> {
         Ok(inst)
     }
 
+    /// Returns a Value without adding it to self.values
+    fn create_value(&self, id: ValueId, def: ValueDef) -> Result<Value, ir::Error> {
+        let t = match def {
+            ValueDef::Inst(id) => {
+                let inst = &self.insts[id];
+                unwrap!(inst.t())
+            }
+        };
+        Ok(Value::new(id, t, def))
+    }
+
     /// Adds an induction variable.
     pub fn add_ind_var(&mut self, ind_var: ir::InductionVar<'a, L>) -> ir::IndVarId {
         let id = ir::IndVarId(self.induction_vars.len() as u32);
@@ -149,6 +162,10 @@ impl<'a, L> Function<'a, L> {
         self.static_dims.iter().map(move |&id| self.dim(id))
     }
 
+    pub fn values(&self) -> impl Iterator<Item = &ir::Value> {
+        self.values.iter()
+    }
+
     /// Returns the list of thread dimensions.
     pub fn thread_dims(&self) -> impl Iterator<Item = &Dimension<'a>> {
         self.thread_dims.iter().map(move |&d| self.dim(d))
@@ -160,7 +177,7 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Returns a mutable reference to an instruction given its id.
-    fn inst_mut(&mut self, id: InstId) -> &mut Instruction<'a, L> {
+    pub fn inst_mut(&mut self, id: InstId) -> &mut Instruction<'a, L> {
         &mut self.insts[id]
     }
 
@@ -177,6 +194,21 @@ impl<'a, L> Function<'a, L> {
     /// Retrives a logical dimension given its ID.
     pub fn logical_dim(&self, id: ir::LogicalDimId) -> &ir::LogicalDim<'a> {
         &self.logical_dims[id.0 as usize]
+    }
+
+    /// Returns a `Value` given its id.
+    pub fn value(&self, id: ir::ValueId) -> &ir::Value { &self.values[id] }
+
+    /// Adds a value to the function.
+    pub fn add_value(
+        &mut self,
+        def: ir::ValueDef,
+    ) -> Result<ir::ValueId, ir::Error> {
+        let id = ir::ValueId(self.insts.len() as u16);
+        let val = self.create_value(id, def)?;
+        val.def().register(val.id(), self);
+        self.values.push(val);
+        Ok(id)
     }
 
     /// Returns the list of memory blocks. The block with id `i` is in i-th position.
@@ -342,6 +374,7 @@ impl<'a> Function<'a, ()> {
         Ok(id)
     }
 
+
     /// Allocates a new memory block.
     pub fn add_mem_block(&mut self, size: u32) -> mem::InternalId {
         self.mem_blocks.alloc_block(size, None)
@@ -414,6 +447,7 @@ impl<'a> Function<'a, ()> {
             layouts_to_lower,
             induction_vars,
             logical_dims,
+            values
         } = self;
 
         let mut insts = SparseVec::from_vec(
@@ -448,6 +482,7 @@ impl<'a> Function<'a, ()> {
             layouts_to_lower,
             induction_vars,
             logical_dims,
+            values,
         }
     }
 }

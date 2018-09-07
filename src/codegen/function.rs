@@ -16,6 +16,7 @@ pub struct Function<'a> {
     induction_vars: Vec<InductionVar<'a>>,
     mem_blocks: Vec<InternalMemoryRegion<'a>>,
     init_induction_levels: Vec<InductionLevel<'a>>,
+    values: Vec<ir::Value>,
     // TODO(cleanup): remove dependency on the search space
     space: &'a SearchSpace<'a>,
 }
@@ -52,6 +53,7 @@ impl<'a> Function<'a> {
         );
         let device_code_args = device_code_args.into_iter().collect();
         debug!("compiling cfg {:?}", cfg);
+        let values = space.ir_instance().values().cloned().collect_vec();
         Function {
             cfg,
             thread_dims,
@@ -60,6 +62,7 @@ impl<'a> Function<'a> {
             device_code_args,
             space,
             mem_blocks,
+            values,
             init_induction_levels,
         }
     }

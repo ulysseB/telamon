@@ -2,6 +2,7 @@
 use device::Device;
 use ir::{self, BBId, DimMapScope, LoweringMap, Operand, Operator, Statement, Type};
 use std;
+use std::hash::{Hash, Hasher};
 use utils::*;
 
 /// Uniquely identifies an instruction.
@@ -29,6 +30,7 @@ pub struct Instruction<'a, L = LoweringMap> {
     operator: Operator<'a, L>,
     id: InstId,
     iter_dims: HashSet<ir::DimId>,
+    value: Option<ir::ValueId>,
 }
 
 impl<'a, L> Instruction<'a, L> {
@@ -44,6 +46,7 @@ impl<'a, L> Instruction<'a, L> {
             operator,
             id,
             iter_dims,
+            value: None
         })
     }
 
@@ -142,6 +145,15 @@ impl<'a, L> Instruction<'a, L> {
     pub fn add_iteration_dimension(&mut self, dim: ir::DimId) -> bool {
         self.iter_dims.insert(dim)
     }
+
+    /// Returns the `Value` holding the result of this instruction.
+    pub fn result_value(&self) -> Option<ir::ValueId> { self.value }
+
+    /// Sets the `Value` holdings the result of this instruction.
+    pub fn set_result_value(&mut self, value: ir::ValueId) {
+        // An instruction value cannot be set twice.
+        assert_eq!(std::mem::replace(&mut self.value, Some(value)), None);
+    }
 }
 
 impl<'a> Instruction<'a, ()> {
@@ -150,6 +162,7 @@ impl<'a> Instruction<'a, ()> {
             operator: self.operator.freeze(cnt),
             id: self.id,
             iter_dims: self.iter_dims,
+            value: self.value,
         }
     }
 }

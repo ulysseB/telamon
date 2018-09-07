@@ -58,6 +58,16 @@ set StaticDims subsetof Dimensions:
   new_objs = "$objs.static_dims"
 end
 
+set Values:
+  item_type = "ir::Value"
+  id_type = "ir::ValueId"
+  item_getter = "$fun.value($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.values()"
+  var_prefix = "value"
+  new_objs = "$objs.values"
+end
+
 set MemoryRegions:
   item_type = "ir::mem::Block"
   id_type = "ir::MemId"

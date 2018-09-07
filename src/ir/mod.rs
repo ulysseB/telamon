@@ -11,6 +11,7 @@ mod operand;
 mod operator;
 mod size;
 mod types;
+mod value;
 
 use std;
 use std::marker::PhantomData;
@@ -28,6 +29,7 @@ pub use self::operand::{DimMapScope, LoweringMap, Operand};
 pub use self::operator::{BinOp, Operator};
 pub use self::size::{PartialSize, Size};
 pub use self::types::Type;
+pub use self::value::{Value, ValueId, ValueDef};
 
 pub mod mem;
 
@@ -64,6 +66,7 @@ pub struct NewObjs {
     pub logical_dims: Vec<LogicalDimId>,
     pub tile_dimensions: Vec<(LogicalDimId, DimId)>,
     pub tiled_dimensions: Vec<(LogicalDimId, DimId)>,
+    pub values: Vec<ValueId>,
 }
 
 impl NewObjs {
@@ -113,6 +116,10 @@ impl NewObjs {
     pub fn add_mem_block(&mut self, id: mem::InternalId) {
         self.mem_blocks.push(id.into());
         self.internal_mem_blocks.push(id);
+    }
+
+    pub fn add_value(&mut self, val: &Value) {
+        self.values.push(val.id());
     }
 }
 
