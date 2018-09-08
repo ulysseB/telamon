@@ -109,6 +109,8 @@
 <span id="109">109</span>
 <span id="110">110</span>
 <span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Error management for IR creation.</span>
 <span class="kw">use</span> <span class="ident">ir</span>;
@@ -214,6 +216,8 @@
         <span class="ident">dim</span>
     )]</span>
     <span class="ident">InvalidDimInPattern</span> { <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">DimId</span> },
+    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;no mapping found between dimensions {} and {}&quot;</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>)]</span>
+    <span class="ident">MissingDimMapping</span> { <span class="ident">lhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">rhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span> },
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">TypeError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Error</span> {

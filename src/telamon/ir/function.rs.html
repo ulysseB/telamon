@@ -561,12 +561,74 @@
 <span id="561">561</span>
 <span id="562">562</span>
 <span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
+<span id="594">594</span>
+<span id="595">595</span>
+<span id="596">596</span>
+<span id="597">597</span>
+<span id="598">598</span>
+<span id="599">599</span>
+<span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
+<span id="611">611</span>
+<span id="612">612</span>
+<span id="613">613</span>
+<span id="614">614</span>
+<span id="615">615</span>
+<span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
+<span id="620">620</span>
+<span id="621">621</span>
+<span id="622">622</span>
+<span id="623">623</span>
+<span id="624">624</span>
+<span id="625">625</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Provides a representation of functions.</span>
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">Device</span>;
 <span class="kw">use</span> <span class="ident">ir</span>::<span class="ident">mem</span>::<span class="ident">Block</span>;
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">BBId</span>, <span class="ident">Dimension</span>, <span class="ident">InstId</span>, <span class="ident">Instruction</span>, <span class="ident">Operator</span>, <span class="ident">Statement</span>};
-<span class="kw">use</span> <span class="ident">ir</span>::{<span class="ident">dim</span>, <span class="ident">mem</span>, <span class="ident">AccessPattern</span>, <span class="ident">Operand</span>, <span class="ident">SparseVec</span>, <span class="ident">Type</span>};
+<span class="kw">use</span> <span class="ident">ir</span>::{<span class="ident">mem</span>, <span class="ident">AccessPattern</span>, <span class="ident">Operand</span>, <span class="ident">SparseVec</span>, <span class="ident">Type</span>};
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">std</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
@@ -632,6 +694,7 @@
     <span class="ident">layouts_to_lower</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">mem</span>::<span class="ident">InternalId</span><span class="op">&gt;</span>,
     <span class="ident">induction_vars</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">InductionVar</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;&gt;</span>,
     <span class="ident">logical_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">LogicalDim</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
+    <span class="ident">dim_mappings</span>: <span class="ident">SparseVec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimMappingId</span>, <span class="ident">ir</span>::<span class="ident">DimMapping</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> <span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> {
@@ -650,6 +713,7 @@
             <span class="ident">layouts_to_lower</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
             <span class="ident">induction_vars</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
             <span class="ident">logical_dims</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
+            <span class="ident">dim_mappings</span>: <span class="ident">SparseVec</span>::<span class="ident">new</span>(),
         }
     }
 
@@ -673,7 +737,8 @@
         <span class="ident">op</span>: <span class="ident">Operator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>,
         <span class="ident">iter_dims</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Instruction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">ir</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">inst</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">Instruction</span>::<span class="ident">new</span>(<span class="ident">op</span>, <span class="ident">id</span>, <span class="ident">iter_dims</span>, <span class="self">self</span>.<span class="ident">device</span>)<span class="question-mark">?</span>;
+        <span class="comment">// Create and check the instruction.</span>
+        <span class="kw">let</span> <span class="ident">inst</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">Instruction</span>::<span class="ident">new</span>(<span class="ident">op</span>, <span class="ident">id</span>, <span class="ident">iter_dims</span>, <span class="self">self</span>)<span class="question-mark">?</span>;
         <span class="comment">// Register the instruction in iteration dimensions.</span>
         <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">dim</span> <span class="kw">in</span> <span class="ident">inst</span>.<span class="ident">iteration_dims</span>() {
             <span class="self">self</span>.<span class="ident">dim_mut</span>(<span class="ident">dim</span>).<span class="ident">add_iterated</span>(<span class="ident">id</span>.<span class="ident">into</span>());
@@ -891,6 +956,42 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">layouts_to_lower</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">ir</span>::<span class="ident">mem</span>::<span class="ident">InternalId</span>] {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">layouts_to_lower</span>
     }
+
+    <span class="doccomment">/// Returns the list of dimensions mapping.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dim_mappings</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">DimMapping</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span> {
+        <span class="self">self</span>.<span class="ident">dim_mappings</span>.<span class="ident">iter</span>()
+    }
+
+    <span class="doccomment">/// Retrives a dimension mapping given its ID.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dim_mapping</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="ident">ir</span>::<span class="ident">DimMappingId</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">DimMapping</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">dim_mappings</span>[<span class="ident">id</span>]
+    }
+
+    <span class="doccomment">/// Tries to find a mapping between two dimensions.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">find_mapping</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">lhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>,
+        <span class="ident">rhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>,
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimMappingId</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">dim</span>(<span class="ident">lhs</span>)
+            .<span class="ident">dim_mappings</span>()
+            .<span class="ident">iter</span>()
+            .<span class="ident">cloned</span>()
+            .<span class="ident">find</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">id</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">dim_mapping</span>(<span class="ident">id</span>).<span class="ident">dims</span>().<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">rhs</span>))
+    }
+
+    <span class="doccomment">/// Creates a mapping between two dimensions.</span>
+    <span class="kw">fn</span> <span class="ident">create_mapping</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">id</span>: <span class="ident">ir</span>::<span class="ident">DimMappingId</span>,
+        <span class="ident">dims</span>: [<span class="ident">ir</span>::<span class="ident">DimId</span>; <span class="number">2</span>],
+    ) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">DimMapping</span> {
+        <span class="kw">let</span> <span class="ident">mapping</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">DimMapping</span>::<span class="ident">new</span>(<span class="ident">id</span>, <span class="ident">dims</span>);
+        <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">dim</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">dims</span> {
+            <span class="self">self</span>.<span class="ident">dim_mut</span>(<span class="ident">dim</span>).<span class="ident">register_dim_mapping</span>(<span class="kw-2">&amp;</span><span class="ident">mapping</span>);
+        }
+        <span class="ident">mapping</span>
+    }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, ()<span class="op">&gt;</span> {
@@ -900,6 +1001,16 @@
         <span class="ident">op</span>: <span class="ident">Operator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, ()<span class="op">&gt;</span>,
         <span class="ident">iter_dims</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">InstId</span>, <span class="ident">ir</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+        <span class="comment">// Create dimension mappings for the operands.</span>
+        <span class="comment">// TODO(cleanup): the operands should list `DimMapping` rather that pairs of</span>
+        <span class="comment">// dimensions so `DimMapping` should be allocated before.</span>
+        <span class="kw">for</span> <span class="ident">operand</span> <span class="kw">in</span> <span class="ident">op</span>.<span class="ident">operands</span>() {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">dim_map</span>) <span class="op">=</span> <span class="ident">operand</span>.<span class="ident">mapped_dims</span>() {
+                <span class="kw">for</span> <span class="kw-2">&amp;</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>) <span class="kw">in</span> <span class="ident">dim_map</span> {
+                    <span class="self">self</span>.<span class="ident">map_dimensions</span>([<span class="ident">lhs</span>, <span class="ident">rhs</span>]);
+                }
+            }
+        }
         <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">InstId</span>(<span class="self">self</span>.<span class="ident">insts</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span>);
         <span class="kw">let</span> <span class="ident">inst</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">create_inst</span>(<span class="ident">id</span>, <span class="ident">op</span>, <span class="ident">iter_dims</span>)<span class="question-mark">?</span>;
         <span class="self">self</span>.<span class="ident">insts</span>.<span class="ident">push</span>(<span class="ident">inst</span>);
@@ -960,11 +1071,23 @@
         <span class="prelude-val">Ok</span>((<span class="ident">logical_id</span>, <span class="ident">dim_ids</span>))
     }
 
+    <span class="doccomment">/// Specifies two dimensions must have the same size have can be used for point-to-point</span>
+    <span class="doccomment">/// communication.</span>
+    <span class="kw">fn</span> <span class="ident">map_dimensions</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">dims</span>: [<span class="ident">ir</span>::<span class="ident">DimId</span>; <span class="number">2</span>]) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">DimMappingId</span> {
+        <span class="self">self</span>.<span class="ident">find_mapping</span>(<span class="ident">dims</span>[<span class="number">0</span>], <span class="ident">dims</span>[<span class="number">1</span>]).<span class="ident">unwrap_or_else</span>(<span class="op">||</span> {
+            <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">DimMappingId</span>(<span class="self">self</span>.<span class="ident">dim_mappings</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u16</span>);
+            <span class="kw">let</span> <span class="ident">mapping</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">create_mapping</span>(<span class="ident">id</span>, <span class="ident">dims</span>);
+            <span class="self">self</span>.<span class="ident">dim_mappings</span>.<span class="ident">push</span>(<span class="ident">mapping</span>);
+            <span class="ident">id</span>
+        })
+    }
+
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">freeze</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">counter</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">Counter</span> {
             <span class="ident">next_mem</span>: <span class="self">self</span>.<span class="ident">mem_blocks</span>.<span class="ident">num_internal_blocks</span>(),
             <span class="ident">next_inst</span>: <span class="self">self</span>.<span class="ident">insts</span>.<span class="ident">len</span>(),
             <span class="ident">next_dim</span>: <span class="self">self</span>.<span class="ident">dims</span>.<span class="ident">len</span>(),
+            <span class="ident">next_dim_mapping</span>: <span class="self">self</span>.<span class="ident">dim_mappings</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u16</span>,
         };
         <span class="kw">let</span> <span class="ident">Function</span> {
             <span class="ident">signature</span>,
@@ -978,6 +1101,7 @@
             <span class="ident">layouts_to_lower</span>,
             <span class="ident">induction_vars</span>,
             <span class="ident">logical_dims</span>,
+            <span class="kw-2">mut</span> <span class="ident">dim_mappings</span>,
         } <span class="op">=</span> <span class="self">self</span>;
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">insts</span> <span class="op">=</span> <span class="ident">SparseVec</span>::<span class="ident">from_vec</span>(
@@ -995,10 +1119,12 @@
             <span class="ident">next_mem</span>,
             <span class="ident">next_inst</span>,
             <span class="ident">next_dim</span>,
+            <span class="ident">next_dim_mapping</span>,
         } <span class="op">=</span> <span class="ident">counter</span>;
         <span class="ident">insts</span>.<span class="ident">expand_to</span>(<span class="ident">next_inst</span>);
         <span class="ident">dims</span>.<span class="ident">expand_to</span>(<span class="ident">next_dim</span>);
         <span class="ident">mem_blocks</span>.<span class="ident">expand_internal_blocks_to</span>(<span class="ident">next_mem</span>);
+        <span class="ident">dim_mappings</span>.<span class="ident">expand_to</span>(<span class="ident">next_dim_mapping</span> <span class="kw">as</span> <span class="ident">usize</span>);
 
         <span class="ident">Function</span> {
             <span class="ident">signature</span>,
@@ -1012,6 +1138,7 @@
             <span class="ident">layouts_to_lower</span>,
             <span class="ident">induction_vars</span>,
             <span class="ident">logical_dims</span>,
+            <span class="ident">dim_mappings</span>,
         }
     }
 }
@@ -1040,16 +1167,10 @@
         <span class="ident">dst_operand_pos</span>: <span class="ident">usize</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">LoweredDimMap</span>, ()<span class="op">&gt;</span> {
         <span class="comment">// TODO(search_space): allow temporary memory generation for reduce operators.</span>
-        <span class="kw">let</span> (<span class="ident">src_inst</span>, <span class="ident">data_type</span>, <span class="ident">dims</span>, <span class="ident">lowered</span>) <span class="op">=</span> {
-            <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">insts</span>[<span class="ident">dst_inst</span>].<span class="ident">operands</span>()[<span class="ident">dst_operand_pos</span>] {
-                <span class="ident">Operand</span>::<span class="ident">Inst</span>(
-                    <span class="kw-2">ref</span> <span class="ident">src_id</span>,
-                    <span class="ident">t</span>,
-                    <span class="kw-2">ref</span> <span class="ident">dim_map</span>,
-                    <span class="ident">ir</span>::<span class="ident">DimMapScope</span>::<span class="ident">Global</span>(<span class="kw-2">ref</span> <span class="ident">lowering</span>),
-                ) <span class="op">=&gt;</span> {
-                    <span class="kw">let</span> <span class="ident">lowered</span> <span class="op">=</span> <span class="ident">lowering</span>.<span class="ident">lower</span>(<span class="ident">dim_map</span>);
-                    (<span class="kw-2">*</span><span class="ident">src_id</span>, <span class="ident">t</span>, <span class="ident">dim_map</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">unzip</span>(), <span class="ident">lowered</span>)
+        <span class="kw">let</span> (<span class="ident">src_inst</span>, <span class="ident">data_type</span>, <span class="ident">lowered</span>) <span class="op">=</span> {
+            <span class="kw">match</span> <span class="self">self</span>.<span class="ident">insts</span>[<span class="ident">dst_inst</span>].<span class="ident">operands</span>()[<span class="ident">dst_operand_pos</span>] {
+                <span class="ident">Operand</span>::<span class="ident">Inst</span>(<span class="ident">src_id</span>, <span class="ident">t</span>, <span class="ident">dim_map</span>, <span class="ident">ir</span>::<span class="ident">DimMapScope</span>::<span class="ident">Global</span>(<span class="ident">lowering</span>)) <span class="op">=&gt;</span> {
+                    (<span class="kw-2">*</span><span class="ident">src_id</span>, <span class="kw-2">*</span><span class="ident">t</span>, <span class="ident">lowering</span>.<span class="ident">lower</span>(<span class="ident">dim_map</span>))
                 }
                 <span class="ident">Operand</span>::<span class="ident">Inst</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> {
                     <span class="macro">debug</span><span class="macro">!</span>(
@@ -1062,59 +1183,62 @@
                 <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(),
             }
         };
-        <span class="comment">// Flattens the dimensions</span>
-        <span class="kw">let</span> (<span class="ident">src_dims</span>, <span class="ident">dst_dims</span>): (<span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>) <span class="op">=</span> <span class="ident">dims</span>;
-        <span class="kw">let</span> (<span class="ident">st_dims</span>, <span class="ident">ld_dims</span>): (<span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>) <span class="op">=</span>
-            <span class="ident">lowered</span>.<span class="ident">dimensions</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">unzip</span>();
-
         <span class="comment">// Activate the new dimensions</span>
-        <span class="kw">for</span> (<span class="kw-2">&amp;</span><span class="ident">src_dim</span>, <span class="kw-2">&amp;</span><span class="ident">st_dim</span>) <span class="kw">in</span> <span class="ident">src_dims</span>.<span class="ident">iter</span>().<span class="ident">zip_eq</span>(<span class="kw-2">&amp;</span><span class="ident">st_dims</span>) {
-            <span class="kw">let</span> <span class="ident">dimension</span> <span class="op">=</span> <span class="ident">Dimension</span>::<span class="ident">with_same_size</span>(<span class="ident">st_dim</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">dims</span>[<span class="ident">src_dim</span>]);
-            <span class="kw">if</span> <span class="ident">dimension</span>.<span class="ident">possible_sizes</span>().<span class="ident">is_some</span>() {
-                <span class="self">self</span>.<span class="ident">static_dims</span>.<span class="ident">push</span>(<span class="ident">st_dim</span>);
-            }
-            <span class="self">self</span>.<span class="ident">dims</span>.<span class="ident">set_lazy</span>(<span class="ident">st_dim</span>, <span class="ident">dimension</span>);
-        }
-
-        <span class="kw">for</span> (<span class="kw-2">&amp;</span><span class="ident">dst_dim</span>, <span class="kw-2">&amp;</span><span class="ident">ld_dim</span>) <span class="kw">in</span> <span class="ident">dst_dims</span>.<span class="ident">iter</span>().<span class="ident">zip_eq</span>(<span class="kw-2">&amp;</span><span class="ident">ld_dims</span>) {
-            <span class="kw">let</span> <span class="ident">dimension</span> <span class="op">=</span> <span class="ident">Dimension</span>::<span class="ident">with_same_size</span>(<span class="ident">ld_dim</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">dims</span>[<span class="ident">dst_dim</span>]);
-            <span class="kw">if</span> <span class="ident">dimension</span>.<span class="ident">possible_sizes</span>().<span class="ident">is_some</span>() {
-                <span class="self">self</span>.<span class="ident">static_dims</span>.<span class="ident">push</span>(<span class="ident">ld_dim</span>);
-            }
-            <span class="self">self</span>.<span class="ident">dims</span>.<span class="ident">set_lazy</span>(<span class="ident">ld_dim</span>, <span class="ident">dimension</span>);
-        }
+        <span class="kw">let</span> <span class="ident">st_dim_map</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">activate_mapped_dims</span>(<span class="kw-2">&amp;</span><span class="ident">lowered</span>.<span class="ident">st_dims_mapping</span>, <span class="bool-val">true</span>);
+        <span class="kw">let</span> <span class="ident">ld_dim_map</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">activate_mapped_dims</span>(<span class="kw-2">&amp;</span><span class="ident">lowered</span>.<span class="ident">ld_dims_mapping</span>, <span class="bool-val">false</span>);
 
         <span class="comment">// Activate the temporary memory block</span>
-        <span class="self">self</span>.<span class="ident">mem_blocks</span>.<span class="ident">set_lazy_tmp</span>(
-            <span class="ident">lowered</span>.<span class="ident">mem</span>,
-            <span class="ident">data_type</span>,
-            <span class="ident">lowered</span>.<span class="ident">dimensions</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>(),
-        );
+        <span class="self">self</span>.<span class="ident">mem_blocks</span>
+            .<span class="ident">set_lazy_tmp</span>(<span class="ident">lowered</span>.<span class="ident">mem</span>, <span class="ident">data_type</span>, <span class="ident">lowered</span>.<span class="ident">mem_dimensions</span>());
 
         <span class="comment">// Build and activate the store instruction</span>
-        <span class="kw">let</span> <span class="ident">st_dim_map</span> <span class="op">=</span> <span class="ident">dim</span>::<span class="ident">Map</span>::<span class="ident">new</span>(<span class="ident">src_dims</span>.<span class="ident">iter</span>().<span class="ident">zip_eq</span>(<span class="kw-2">&amp;</span><span class="ident">st_dims</span>).<span class="ident">map</span>(<span class="ident">clone_pair</span>));
         <span class="kw">let</span> <span class="ident">st_operand</span> <span class="op">=</span>
             <span class="ident">Operand</span>::<span class="ident">new_inst</span>(<span class="self">self</span>.<span class="ident">inst</span>(<span class="ident">src_inst</span>), <span class="ident">st_dim_map</span>, <span class="ident">ir</span>::<span class="ident">DimMapScope</span>::<span class="ident">Local</span>);
-        <span class="kw">let</span> <span class="ident">st_dim_set</span> <span class="op">=</span> <span class="ident">st_dims</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>();
         <span class="kw">let</span> <span class="ident">st</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">create_inst</span>(
             <span class="ident">lowered</span>.<span class="ident">store</span>,
             <span class="ident">Operator</span>::<span class="ident">TmpSt</span>(<span class="ident">st_operand</span>, <span class="ident">lowered</span>.<span class="ident">mem</span>.<span class="ident">into</span>()),
-            <span class="ident">st_dim_set</span>
+            <span class="ident">lowered</span>.<span class="ident">store_dims</span>().<span class="ident">collect</span>(),
         ));
         <span class="self">self</span>.<span class="ident">insts</span>.<span class="ident">set_lazy</span>(<span class="ident">lowered</span>.<span class="ident">store</span>, <span class="ident">st</span>);
 
         <span class="comment">// Build and activate the load instruction</span>
-        <span class="kw">let</span> <span class="ident">ld_dim_map</span> <span class="op">=</span> <span class="ident">dim</span>::<span class="ident">Map</span>::<span class="ident">new</span>(<span class="ident">ld_dims</span>.<span class="ident">iter</span>().<span class="ident">zip_eq</span>(<span class="kw-2">&amp;</span><span class="ident">dst_dims</span>).<span class="ident">map</span>(<span class="ident">clone_pair</span>));
-        <span class="kw">let</span> <span class="ident">ld_dim_set</span> <span class="op">=</span> <span class="ident">ld_dims</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>();
         <span class="kw">let</span> <span class="ident">ld</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">create_inst</span>(
             <span class="ident">lowered</span>.<span class="ident">load</span>,
             <span class="ident">Operator</span>::<span class="ident">TmpLd</span>(<span class="ident">data_type</span>, <span class="ident">lowered</span>.<span class="ident">mem</span>.<span class="ident">into</span>()),
-            <span class="ident">ld_dim_set</span>
+            <span class="ident">lowered</span>.<span class="ident">load_dims</span>().<span class="ident">collect</span>(),
         ));
         <span class="self">self</span>.<span class="ident">insts</span>.<span class="ident">set_lazy</span>(<span class="ident">lowered</span>.<span class="ident">load</span>, <span class="ident">ld</span>);
         <span class="self">self</span>.<span class="ident">insts</span>[<span class="ident">dst_inst</span>].<span class="ident">lower_dim_map</span>(<span class="ident">dst_operand_pos</span>, <span class="ident">lowered</span>.<span class="ident">load</span>, <span class="ident">ld_dim_map</span>);
 
         <span class="prelude-val">Ok</span>(<span class="ident">lowered</span>)
+    }
+
+    <span class="doccomment">/// Create dimensions with preallocated IDs and maps then to existing dimensions. `mapping`</span>
+    <span class="doccomment">/// provides the pairs of old and new IDs along with the mapping ID. Returns a `DimMap`</span>
+    <span class="doccomment">/// containing the mapped dimensions. The boolean controls in wich order mappings should be</span>
+    <span class="doccomment">/// returned: from the old dimension to the new or the converse.</span>
+    <span class="kw">fn</span> <span class="ident">activate_mapped_dims</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">mappings</span>: <span class="kw-2">&amp;</span>[(<span class="ident">ir</span>::<span class="ident">DimMappingId</span>, [<span class="ident">ir</span>::<span class="ident">DimId</span>; <span class="number">2</span>])],
+        <span class="ident">old_to_new</span>: <span class="ident">bool</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Map</span> {
+        <span class="kw">let</span> <span class="ident">dims</span> <span class="op">=</span> <span class="ident">mappings</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">mapping_id</span>, <span class="ident">dims</span>)<span class="op">|</span> {
+            <span class="kw">let</span> [<span class="ident">old_dim</span>, <span class="ident">new_dim</span>] <span class="op">=</span> <span class="ident">dims</span>;
+            <span class="kw">let</span> <span class="ident">dimension</span> <span class="op">=</span> <span class="ident">Dimension</span>::<span class="ident">with_same_size</span>(<span class="ident">new_dim</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">dims</span>[<span class="ident">old_dim</span>]);
+            <span class="kw">if</span> <span class="ident">dimension</span>.<span class="ident">possible_sizes</span>().<span class="ident">is_some</span>() {
+                <span class="self">self</span>.<span class="ident">static_dims</span>.<span class="ident">push</span>(<span class="ident">new_dim</span>);
+            }
+            <span class="self">self</span>.<span class="ident">dims</span>.<span class="ident">set_lazy</span>(<span class="ident">new_dim</span>, <span class="ident">dimension</span>);
+            <span class="comment">// We can only create the mapping after we activate dimensions.</span>
+            <span class="kw">let</span> <span class="ident">mapping</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">create_mapping</span>(<span class="ident">mapping_id</span>, <span class="ident">dims</span>);
+            <span class="self">self</span>.<span class="ident">dim_mappings</span>.<span class="ident">set_lazy</span>(<span class="ident">mapping_id</span>, <span class="ident">mapping</span>);
+            <span class="kw">if</span> <span class="ident">old_to_new</span> {
+                (<span class="ident">old_dim</span>, <span class="ident">new_dim</span>)
+            } <span class="kw">else</span> {
+                (<span class="ident">new_dim</span>, <span class="ident">old_dim</span>)
+            }
+        });
+        <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Map</span>::<span class="ident">new</span>(<span class="ident">dims</span>)
     }
 }
 

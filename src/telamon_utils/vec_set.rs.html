@@ -414,6 +414,11 @@
 <span id="414">414</span>
 <span id="415">415</span>
 <span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Sets backed by ordered vectors.</span>
 <span class="kw">use</span> <span class="ident">std</span>;
@@ -632,6 +637,11 @@
                 <span class="bool-val">true</span>
             }
         }
+    }
+
+    <span class="doccomment">/// Indicates if the `VecSet` contains the given object.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="ident">T</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">binary_search</span>(<span class="ident">item</span>).<span class="ident">is_ok</span>()
     }
 }
 
