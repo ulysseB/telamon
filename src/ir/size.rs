@@ -48,6 +48,16 @@ impl<'a> Size<'a> {
     }
 }
 
+impl<'a> Default for Size<'a> {
+    fn default() -> Self {
+        Size {
+            factor: 1,
+            params: Vec::new(),
+            max_val: 1,
+        }
+    }
+}
+
 impl<'a, T> std::ops::MulAssign<T> for Size<'a>
 where
     T: std::borrow::Borrow<Size<'a>>,
@@ -147,12 +157,6 @@ impl<'a, 'b> std::ops::MulAssign<&'b PartialSize<'a>> for PartialSize<'a> {
         self.dividend.extend(rhs.dividend.iter().cloned());
         self.divisor *= rhs.divisor;
         self.simplify();
-    }
-}
-
-impl<'a> Default for Size<'a> {
-    fn default() -> Self {
-        Size::new_const(1)
     }
 }
 
