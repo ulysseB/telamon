@@ -641,8 +641,6 @@
 <span id="641">641</span>
 <span id="642">642</span>
 <span id="643">643</span>
-<span id="644">644</span>
-<span id="645">645</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! The constraint description for the ir.</span>
 <span class="kw">use</span> <span class="ident">std</span>;
@@ -906,10 +904,9 @@
         (<span class="ident">arg_foralls</span>, <span class="ident">set_constraints</span>, <span class="ident">adaptator</span>)
     }
 
-    <span class="doccomment">/// Generates the list of sets to iterate and to constraints to iterate on the given</span>
-    <span class="doccomment">/// environement, but from the point of view of the given choice instance. The new</span>
-    <span class="doccomment">/// foralls iterating on current arguments are returned in a separate list than the</span>
-    <span class="doccomment">/// ones issued from foralls.</span>
+    <span class="doccomment">/// Generates the foralls and the set constraints to iterate on the given environment,</span>
+    <span class="doccomment">/// from the point of view of the given choice. Returns the foralls issued from arguments</span>
+    <span class="doccomment">/// in a different list than the foralls issued from foralls in the original environment.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">adapt_env_ext</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="kw-2">mut</span> <span class="ident">vars</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Variable</span>, <span class="ident">Set</span><span class="op">&gt;</span>,
@@ -982,7 +979,6 @@
                 <span class="bool-val">true</span>
             }
         });
-
         (
             <span class="ident">arg_foralls</span>,
             <span class="ident">other_foralls</span>,
