@@ -1,6 +1,5 @@
 //! Defines operators.
 use self::Operator::*;
-use device::Device;
 use ir::{self, AccessPattern, LoweringMap, Operand, Type};
 use itertools::Itertools;
 use std;
@@ -101,11 +100,21 @@ impl<'a, L> Operator<'a, L> {
     pub fn check(
         &self,
         iter_dims: &HashSet<ir::DimId>,
-        device: &Device,
+        fun: &ir::Function<L>,
     ) -> Result<(), ir::Error> {
-        self.t().map(|t| device.check_type(t)).unwrap_or(Ok(()))?;
+        self.t()
+            .map(|t| fun.device().check_type(t))
+            .unwrap_or(Ok(()))?;
         for operand in self.operands() {
-            device.check_type(operand.t())?;
+            fun.device().check_type(operand.t())?;
+            // Ensure dimension mappings are registered.
+            if let Some(dim_map) = operand.mapped_dims() {
+                for &(lhs, rhs) in dim_map {
+                    if fun.find_mapping(lhs, rhs).is_none() {
+                        Err(ir::Error::MissingDimMapping { lhs, rhs })?;
+                    }
+                }
+            }
         }
         match *self {
             BinOp(_, ref lhs, ref rhs, rounding) => {

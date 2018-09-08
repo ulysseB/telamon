@@ -491,3 +491,39 @@ require forall $lhs in LogicalDimensions:
       forall $rhs_dim in TileDimensions($rhs):
         order($lhs_dim, $rhs_dim) is not MERGED
         || tiling_factor($lhs) == tiling_factor($rhs)
+
+/// List pairs of dimensions that must have the same size and can be use for
+/// point-to-point communication.
+set DimMappings:
+  item_type = "ir::DimMapping"
+  id_type = "ir::DimMappingId"
+  item_getter = "$fun.dim_mapping($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.dim_mappings()"
+  var_prefix = "dim_pair"
+  new_objs = "$objs.dim_mappings"
+end
+
+/// Lists the static dimensions in a dimension mapping.
+set StaticMappedDims($pair in DimMappings) subsetof StaticDims:
+  item_type = "ir::Dimension"
+  id_type = "ir::DimId"
+  item_getter = "$fun.dim($id)"
+  id_getter = "$item.id()"
+  iterator = "$pair.dims().iter().map(|&dim| $fun.dim(dim))\
+    .filter(|dim| dim.possible_sizes().is_some())"
+  var_prefix = "mapped_dim"
+  from_superset = "if $item.dim_mappings().contains(&$pair.id()) { Some($item) } else { None }"
+  reverse forall $dim in StaticDims = "$dim.dim_mappings().iter().map(|&id| $fun.dim_mapping(id))"
+  new_objs = "$objs.mapped_dims"
+end
+
+// Ensure mapped dimensions have the same size. We currently have no way to constrain the
+// size of dynamic dimensions: it would require to name the reverse set of
+// `TiledDimension($logical_dim)`. However, it is enough to constrain the size of static
+// dimensions as the tiling factor of dynamic dimensions only depend on the size of static
+// dimensions.
+require forall $mapping in DimMappings:
+  forall $lhs in StaticMappedDims($mapping):
+    forall $rhs in StaticMappedDims($mapping):
+      size($lhs) == size($rhs)

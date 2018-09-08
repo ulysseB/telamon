@@ -12,13 +12,16 @@ mod operator;
 mod size;
 mod types;
 
+use itertools::Itertools;
 use std;
 use std::marker::PhantomData;
 
 pub use self::access_pattern::{AccessPattern, Stride};
 pub use self::basic_block::{BBId, Statement};
 pub use self::dim_map::DimMap;
-pub use self::dimension::{DimId, Dimension, LogicalDim, LogicalDimId};
+pub use self::dimension::{
+    DimId, DimMapping, DimMappingId, Dimension, LogicalDim, LogicalDimId,
+};
 pub use self::error::{Error, TypeError};
 pub use self::function::{Function, Parameter, Signature};
 pub use self::induction_var::{IndVarId, InductionVar};
@@ -64,6 +67,8 @@ pub struct NewObjs {
     pub logical_dims: Vec<LogicalDimId>,
     pub tile_dimensions: Vec<(LogicalDimId, DimId)>,
     pub tiled_dimensions: Vec<(LogicalDimId, DimId)>,
+    pub dim_mappings: Vec<DimMappingId>,
+    pub mapped_dims: Vec<(DimMappingId, DimId)>,
 }
 
 impl NewObjs {
@@ -73,13 +78,10 @@ impl NewObjs {
         for &dim in inst.iteration_dims() {
             self.iteration_dims.push((inst.id(), dim));
         }
+        if inst.as_mem_inst().is_some() {
+            self.mem_insts.push(inst.id());
+        }
         self.instructions.push(inst.id());
-    }
-
-    /// Registers a new memory instruction.
-    pub fn add_mem_instruction(&mut self, inst: &Instruction) {
-        self.add_instruction(inst);
-        self.mem_insts.push(inst.id());
     }
 
     /// Registers a new dimension.
@@ -114,6 +116,14 @@ impl NewObjs {
         self.mem_blocks.push(id.into());
         self.internal_mem_blocks.push(id);
     }
+
+    /// Adds a mapping between dimensions.
+    pub fn add_dim_mapping(&mut self, mapping: &DimMapping) {
+        self.dim_mappings.push(mapping.id());
+        for &dim in mapping.dims().iter() {
+            self.mapped_dims.push((mapping.id(), dim));
+        }
+    }
 }
 
 /// A point-to-point communication lowered into a store and a load.
@@ -121,7 +131,42 @@ pub struct LoweredDimMap {
     pub mem: mem::InternalId,
     pub store: InstId,
     pub load: InstId,
-    pub dimensions: Vec<(DimId, DimId)>,
+    /// Mapping from production dimensions to store dimensions.
+    pub st_dims_mapping: Vec<(DimMappingId, [DimId; 2])>,
+    /// Mapping from consumption dimensions to load dimensions.
+    pub ld_dims_mapping: Vec<(DimMappingId, [DimId; 2])>,
+}
+
+impl LoweredDimMap {
+    /// Adds the objects created by the lowering to the list of new objects.
+    pub fn register_new_objs(&self, fun: &Function, new_objs: &mut NewObjs) {
+        new_objs.add_mem_block(self.mem);
+        new_objs.add_instruction(fun.inst(self.store));
+        new_objs.add_instruction(fun.inst(self.load));
+        let mappings = self.st_dims_mapping.iter().chain(&self.ld_dims_mapping);
+        for &(mapping, [_, new_dim]) in mappings {
+            new_objs.add_dimension(fun.dim(new_dim));
+            new_objs.add_dim_mapping(fun.dim_mapping(mapping));
+        }
+    }
+
+    /// Returns the dimensions of the memory layout to create. For each dimension, gives
+    /// a pair `(store dim, load dim)`.
+    pub fn mem_dimensions(&self) -> impl Iterator<Item = (DimId, DimId)> + '_ {
+        let st_dims = self.st_dims_mapping.iter().map(|&(_, [dim, _])| dim);
+        let ld_dims = self.ld_dims_mapping.iter().map(|&(_, [dim, _])| dim);
+        st_dims.zip_eq(ld_dims)
+    }
+
+    /// Returns the dimensions that store the value.
+    pub fn store_dims(&self) -> impl Iterator<Item = DimId> + '_ {
+        self.st_dims_mapping.iter().map(|&(_, [_, dim])| dim)
+    }
+
+    /// Returns the dimensions that load the value.
+    pub fn load_dims(&self) -> impl Iterator<Item = DimId> + '_ {
+        self.ld_dims_mapping.iter().map(|&(_, [_, dim])| dim)
+    }
 }
 
 /// A vector with holes. This provides a similar interface as a
@@ -284,6 +329,7 @@ pub struct Counter {
     pub next_mem: usize,
     pub next_inst: usize,
     pub next_dim: usize,
+    pub next_dim_mapping: u16,
 }
 
 impl Counter {
@@ -302,6 +348,12 @@ impl Counter {
     pub fn next_dim(&mut self) -> DimId {
         let next = DimId(self.next_dim as u32);
         self.next_dim += 1;
+        next
+    }
+
+    pub fn next_dim_mapping(&mut self) -> DimMappingId {
+        let next = DimMappingId(self.next_dim_mapping as u16);
+        self.next_dim_mapping += 1;
         next
     }
 }

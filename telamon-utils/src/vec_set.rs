@@ -216,6 +216,11 @@ where
             }
         }
     }
+
+    /// Indicates if the `VecSet` contains the given object.
+    pub fn contains(&self, item: &T) -> bool {
+        self.data.binary_search(item).is_ok()
+    }
 }
 
 impl<T> Default for VecSet<T> {
