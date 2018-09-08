@@ -587,9 +587,10 @@ impl<'a> Function<'a> {
         Ok(lowered)
     }
 
-    /// Activate dimensions mapped to existing ones. Takes as input a list of mappings, in the
-    /// format `(mapping id, [old dim, new dim])`. Returns the mapping from old dimensions to new
-    /// ones if `old_to_new` is true. The mapping from new dimensions to old ones otherwise.
+    /// Create dimensions with preallocated IDs and maps then to existing dimensions. `mapping`
+    /// provides the pairs of old and new IDs along with the mapping ID. Returns a `DimMap`
+    /// containing the mapped dimensions. The boolean controls in wich order mappings should be
+    /// returned: from the old dimension to the new or the converse.
     fn activate_mapped_dims(
         &mut self,
         mappings: &[(ir::DimMappingId, [ir::DimId; 2])],
