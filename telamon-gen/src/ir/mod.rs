@@ -260,10 +260,9 @@ impl IrDesc {
         (arg_foralls, set_constraints, adaptator)
     }
 
-    /// Generates the list of sets to iterate and to constraints to iterate on the given
-    /// environement, but from the point of view of the given choice instance. The new
-    /// foralls iterating on current arguments are returned in a separate list than the
-    /// ones issued from foralls.
+    /// Generates the foralls and the set constraints to iterate on the given environment,
+    /// from the point of view of the given choice. Returns the foralls issued from arguments
+    /// in a different list than the foralls issued from foralls in the original environment.
     pub fn adapt_env_ext(
         &self,
         mut vars: HashMap<Variable, Set>,
@@ -336,7 +335,6 @@ impl IrDesc {
                 true
             }
         });
-
         (
             arg_foralls,
             other_foralls,

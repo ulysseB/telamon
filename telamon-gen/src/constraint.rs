@@ -125,6 +125,7 @@ fn gen_flat_filter(
             _ => panic!(),
         };
         for input in &conditions.inputs {
+            // 1. check if it is used as argument to a choice.
             if let Some(pos) = input.vars.iter().position(|&v| v == var) {
                 let choice = ir_desc.get_choice(&input.choice);
                 if !given_set.is_subset_of_def(&choice.arguments().get(pos).1) {
@@ -132,17 +133,18 @@ fn gen_flat_filter(
                     continue 'iter_constraints;
                 }
             }
-            let is_used = input_set_constraints
-                .iter()
-                .map(|x| &x.1)
-                .chain(&foralls)
-                .filter(|s| s.arg().map(|v| v == var).unwrap_or(false))
-                .map(|s| unwrap!(s.def().arg()))
-                .any(|s| !given_set.is_subset_of(s));
-            if is_used {
-                input_set_constraints.push((var, subset));
-                continue 'iter_constraints;
-            }
+        }
+        // 2. Check if it used in another constraint
+        let is_used = input_set_constraints
+            .iter()
+            .map(|x| &x.1)
+            .chain(&foralls)
+            .filter(|s| s.arg().map(|v| v == var).unwrap_or(false))
+            .map(|s| unwrap!(s.def().arg()))
+            .any(|s| !given_set.is_subset_of(s));
+        if is_used {
+            input_set_constraints.push((var, subset));
+            continue 'iter_constraints;
         }
         inner_set_constraints.push((var, subset));
     }
