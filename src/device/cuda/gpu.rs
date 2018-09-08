@@ -421,6 +421,10 @@ impl device::Device for Gpu {
         3
     }
 
+    fn max_inner_block_size(&self) -> u32 {
+        65535
+    }
+
     fn max_threads(&self) -> u32 {
         1024
     }

@@ -139,6 +139,20 @@ define enum dim_kind($dim in Dimensions):
   alias SEQUENTIAL = LOOP | UNROLL:
 end
 
+// Ensure inner block dimensions are not too big.
+require forall $outer_dim in Dimensions:
+  forall $logical in LogicalDimensions:
+  forall $dim in TiledDimension($logical):
+    dim_kind($dim) is not BLOCK
+    || order($outer_dim, $dim) is not OUTER
+    || tiling_factor($logical) >=
+      "$logical.total_size().max()/$fun.device().max_inner_block_size()"
+require forall $outer_dim in Dimensions:
+  forall $dim in StaticDims:
+    dim_kind($dim) is not BLOCK
+    || order($outer_dim, $dim) is not OUTER
+    || size($dim) <= "$fun.device().max_inner_block_size()"
+
 /// Indicates where a memory block is located.
 define enum mem_space($mem in MemoryRegions):
   /// The block is in the device RAM.
