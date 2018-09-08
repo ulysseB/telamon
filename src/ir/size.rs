@@ -13,7 +13,11 @@ pub struct Size<'a> {
 impl<'a> Size<'a> {
     /// Create a new fully specified size.
     pub fn new(factor: u32, params: Vec<&'a ir::Parameter>, max_val: u32) -> Self {
-        Size { factor, params, max_val }
+        Size {
+            factor,
+            params,
+            max_val,
+        }
     }
 
     /// Creates a new constant size.

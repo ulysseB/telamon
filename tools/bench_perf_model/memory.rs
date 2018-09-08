@@ -8,13 +8,17 @@ use PerfModelTest;
 /// Tests the model in presence of global access replay.
 pub struct L1LinesPressure;
 
+impl L1LinesPressure {
+    const N: u32 = 100;
+}
+
 impl PerfModelTest for L1LinesPressure {
     fn name() -> &'static str {
         "l1_lines_pressure"
     }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
-        builder.scalar("n", 100i32);
+        builder.scalar("n", Self::N as i32);
         builder.array::<f32>("array", 128 * 32 * 32 * 32);
         builder.array::<f32>("out", 1);
     }
@@ -26,7 +30,7 @@ impl PerfModelTest for L1LinesPressure {
         const STRIDE: u32 = 32;
 
         let t = ir::Type::F(32);
-        let size_n = builder.param_size("n");
+        let size_n = builder.param_size("n", Self::N);
         let d1_0 = builder.open_dim_ex(ir::Size::new_const(THREAD_Y), DimKind::THREAD);
         let d2_0 = builder.open_dim_ex(ir::Size::new_const(THREAD_X), DimKind::THREAD);
         let init = builder.mov(&0f32);
@@ -66,13 +70,17 @@ impl PerfModelTest for L1LinesPressure {
 /// Tests the model in presence of global access replay.
 pub struct L2LinesPressure;
 
+impl L2LinesPressure {
+    const N: u32 = 100;
+}
+
 impl PerfModelTest for L2LinesPressure {
     fn name() -> &'static str {
         "l2_lines_pressure"
     }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
-        builder.scalar("n", 100i32);
+        builder.scalar("n", Self::N as i32);
         builder.array::<f32>("array", 128 * 32 * 32 * 8);
         builder.array::<f32>("out", 1);
     }
@@ -84,7 +92,7 @@ impl PerfModelTest for L2LinesPressure {
         const STRIDE: u32 = 8;
 
         let t = ir::Type::F(32);
-        let size_n = builder.param_size("n");
+        let size_n = builder.param_size("n", Self::N);
         let d1_0 = builder.open_dim_ex(ir::Size::new_const(THREAD_Y), DimKind::THREAD);
         let d2_0 = builder.open_dim_ex(ir::Size::new_const(THREAD_X), DimKind::THREAD);
         let init = builder.mov(&0f32);
@@ -128,13 +136,17 @@ pub struct SharedLoad {
     d3: ir::DimId,
 }
 
+impl SharedLoad {
+    const N: u32 = 1_000;
+}
+
 impl PerfModelTest for SharedLoad {
     fn name() -> &'static str {
         "shared_load"
     }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
-        builder.scalar("n", 1000i32);
+        builder.scalar("n", Self::N as i32);
         builder.scalar("arg_zero", 0i32);
         builder.array::<f32>("out", 1);
     }
@@ -142,7 +154,7 @@ impl PerfModelTest for SharedLoad {
     fn gen_function(builder: &mut Builder) -> Self {
         let size_0 = builder.cst_size(32);
         let size_1 = builder.cst_size(32);
-        let size_2 = builder.param_size("n");
+        let size_2 = builder.param_size("n", Self::N);
         let mem = builder.allocate_shared(8 * 32 * 32 * 4);
         let d0 = builder.open_dim_ex(size_0, DimKind::THREAD);
         let d1 = builder.open_dim_ex(size_1, DimKind::THREAD);
@@ -186,13 +198,17 @@ pub struct VectorSharedLoad {
     d3: ir::DimId,
 }
 
+impl VectorSharedLoad {
+    const N: u32 = 1_000;
+}
+
 impl PerfModelTest for VectorSharedLoad {
     fn name() -> &'static str {
         "vector_shared_load"
     }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
-        builder.scalar("n", 1000i32);
+        builder.scalar("n", Self::N as i32);
         builder.scalar("arg_zero", 0i32);
         builder.array::<f32>("out", 1);
     }
@@ -200,7 +216,7 @@ impl PerfModelTest for VectorSharedLoad {
     fn gen_function(builder: &mut Builder) -> Self {
         let size_0 = builder.cst_size(32);
         let size_1 = builder.cst_size(32);
-        let size_2 = builder.param_size("n");
+        let size_2 = builder.param_size("n", Self::N);
         let mem = builder.allocate_shared(64 * 4 * 4);
         let d0 = builder.open_dim_ex(size_0, DimKind::THREAD);
         let d1 = builder.open_dim_ex(size_1, DimKind::THREAD);
@@ -238,13 +254,17 @@ impl PerfModelTest for VectorSharedLoad {
 
 pub struct SharedReplay;
 
+impl SharedReplay {
+    const N: u32 = 1_000;
+}
+
 impl PerfModelTest for SharedReplay {
     fn name() -> &'static str {
         "shared_replay"
     }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
-        builder.scalar("n", 1000i32);
+        builder.scalar("n", Self::N as i32);
         builder.scalar("arg_zero", 0i32);
         builder.array::<f32>("out", 1);
     }
@@ -252,7 +272,7 @@ impl PerfModelTest for SharedReplay {
     fn gen_function(builder: &mut Builder) -> Self {
         let size_0 = builder.cst_size(32);
         let size_1 = builder.cst_size(32);
-        let size_2 = builder.param_size("n");
+        let size_2 = builder.param_size("n", Self::N);
         let mem = builder.allocate_shared(8 * 32 * 32 * 4);
         let d0 = builder.open_dim_ex(size_0, DimKind::THREAD);
         let d1 = builder.open_dim_ex(size_1, DimKind::THREAD);
@@ -286,13 +306,17 @@ impl PerfModelTest for SharedReplay {
 
 pub struct VectorSharedReplay;
 
+impl VectorSharedReplay {
+    const N: u32 = 1_000;
+}
+
 impl PerfModelTest for VectorSharedReplay {
     fn name() -> &'static str {
         "vector_shared_replay"
     }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
-        builder.scalar("n", 1000i32);
+        builder.scalar("n", Self::N as i32);
         builder.scalar("arg_zero", 0i32);
         builder.array::<f32>("out", 1);
     }
@@ -300,7 +324,7 @@ impl PerfModelTest for VectorSharedReplay {
     fn gen_function(builder: &mut Builder) -> Self {
         let size_0 = builder.cst_size(32);
         let size_1 = builder.cst_size(32);
-        let size_2 = builder.param_size("n");
+        let size_2 = builder.param_size("n", Self::N);
         let mem_size = 8 * 32 * 32 * 4;
         let mem = builder.allocate_shared(mem_size);
         let d0 = builder.open_dim_ex(size_0, DimKind::THREAD);

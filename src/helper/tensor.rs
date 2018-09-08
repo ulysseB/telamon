@@ -30,6 +30,15 @@ impl<'a> DimSize<'a> {
             .map(|p| unwrap!(context.param_as_size(p)))
             .product::<u32>() * self.factor
     }
+
+    /// Creates a new size equals to the given parameter.
+    pub fn new_param(param: &'a str, max_size: u32) -> Self {
+        DimSize {
+            factor: 1,
+            params: vec![param],
+            max_size,
+        }
+    }
 }
 
 impl<'a> From<u32> for DimSize<'a> {

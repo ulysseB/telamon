@@ -7,6 +7,12 @@ use PerfModelTest;
 pub struct Test0;
 
 impl Test0 {
+    const M: i32 = 1024;
+
+    const N: i32 = 1024;
+
+    const K: i32 = 1024;
+
     const TILE_1: i32 = 32;
 
     const TILE_2: i32 = 4;
@@ -18,14 +24,11 @@ impl PerfModelTest for Test0 {
     }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
-        const M: i32 = 1024;
-        const N: i32 = 1024;
-        const K: i32 = 1024;
-        builder.scalar("m", M / (Self::TILE_1 * Self::TILE_2));
-        builder.scalar("n", N / (Self::TILE_1 * Self::TILE_2));
-        builder.scalar("k", K / Self::TILE_1);
-        builder.array::<f32>("a", (M * K) as usize);
-        builder.array::<f32>("b", (K * N) as usize);
+        builder.scalar("m", Self::M / (Self::TILE_1 * Self::TILE_2));
+        builder.scalar("n", Self::N / (Self::TILE_1 * Self::TILE_2));
+        builder.scalar("k", Self::K / Self::TILE_1);
+        builder.array::<f32>("a", (Self::M * Self::K) as usize);
+        builder.array::<f32>("b", (Self::K * Self::N) as usize);
     }
 
     fn gen_function(builder: &mut Builder) -> Self {
@@ -35,9 +38,9 @@ impl PerfModelTest for Test0 {
         let a_tmp_mem = builder.allocate_shared(tmp_mem_size);
         let b_tmp_mem = builder.allocate_shared(tmp_mem_size);
         // Configure dimension sizes
-        let m_tiled = builder.param_size("m");
-        let n_tiled = builder.param_size("n");
-        let k_tiled = builder.param_size("k");
+        let m_tiled = builder.param_size("m", Self::M as u32);
+        let n_tiled = builder.param_size("n", Self::N as u32);
+        let k_tiled = builder.param_size("k", Self::K as u32);
 
         let a = ir::MemId::External(0);
         let b = ir::MemId::External(1);
@@ -104,14 +107,17 @@ impl PerfModelTest for Test0 {
 
 pub struct Test1;
 
+impl Test1 {
+    const K: i32 = 1024;
+}
+
 impl PerfModelTest for Test1 {
     fn name() -> &'static str {
         "test_1"
     }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
-        const K: i32 = 1024;
-        builder.scalar("k", K);
+        builder.scalar("k", Self::K);
         builder.array::<f32>("out", 4 * 32 * 32 * 4 as usize);
     }
 
@@ -130,7 +136,7 @@ impl PerfModelTest for Test1 {
         let acc_init = builder.mov(&0f32);
         builder.close_dim(&unroll_dim_0_0);
 
-        let k_size = builder.param_size("k");
+        let k_size = builder.param_size("k", Self::K as u32);
         let k_dim = builder.open_dim_ex(k_size, DimKind::LOOP);
         // Load A
         let unroll_dim_a = builder.open_dim_ex(tile_2_size.clone(), DimKind::VECTOR);
@@ -166,6 +172,12 @@ impl PerfModelTest for Test1 {
 pub struct Test2;
 
 impl Test2 {
+    const M: i32 = 1024;
+
+    const N: i32 = 1024;
+
+    const K: i32 = 1024;
+
     const TILE_1: i32 = 32;
 
     const TILE_2: i32 = 4;
@@ -177,12 +189,9 @@ impl PerfModelTest for Test2 {
     }
 
     fn gen_signature<AM: ArgMap + Context>(builder: &mut SignatureBuilder<AM>) {
-        const M: i32 = 1024;
-        const N: i32 = 1024;
-        const K: i32 = 1024;
-        builder.scalar("m", M / (Self::TILE_1 * Self::TILE_2));
-        builder.scalar("n", N / (Self::TILE_1 * Self::TILE_2));
-        builder.scalar("k", K);
+        builder.scalar("m", Self::M / (Self::TILE_1 * Self::TILE_2));
+        builder.scalar("n", Self::N / (Self::TILE_1 * Self::TILE_2));
+        builder.scalar("k", Self::K);
         builder.array::<f32>("out", 4 * 32 * 32 * 4 as usize);
     }
 
@@ -195,8 +204,8 @@ impl PerfModelTest for Test2 {
         let out = ir::MemId::External(0);
 
         // Configure dimension sizes
-        let m_tiled = builder.param_size("m");
-        let n_tiled = builder.param_size("n");
+        let m_tiled = builder.param_size("m", Self::M as u32);
+        let n_tiled = builder.param_size("n", Self::N as u32);
         let b0 = builder.open_dim_ex(n_tiled, DimKind::BLOCK);
         let b1 = builder.open_dim_ex(m_tiled, DimKind::BLOCK);
         builder.order(&b0, &b1, Order::OUTER);
@@ -209,7 +218,7 @@ impl PerfModelTest for Test2 {
         builder.close_dim(&unroll_dim_0_0);
         builder.close_dim(&unroll_dim_1_0);
 
-        let k_size = builder.param_size("k");
+        let k_size = builder.param_size("k", Self::K as u32);
         let k_dim = builder.open_dim_ex(k_size, DimKind::LOOP);
         let thread_dims_0_1 = builder.open_mapped_dim(&thread_dim_0_0);
         let thread_dims_1_1 = builder.open_mapped_dim(&thread_dim_1_0);

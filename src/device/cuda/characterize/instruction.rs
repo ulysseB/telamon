@@ -3,6 +3,7 @@ use codegen;
 use device::cuda::characterize::{create_table, gen, math, Table};
 use device::cuda::{Context, Executor, Gpu, InstDesc, Kernel, PerfCounter};
 use device::{Device, ScalarArgument};
+use helper::tensor::DimSize;
 use ir;
 use itertools::Itertools;
 use num::Zero;
@@ -30,9 +31,10 @@ where
     gen::bind_array::<f32>("out", 1, &mut context);
     gen::bind_scalar("n", n as i32, &mut context);
     let counters = executor.create_perf_counter_set(counters_list);
+    let n_size = DimSize::new_param("n", n as u32);
     for &n_chained in range {
         let fun =
-            gen::inst_chain::<T>(&base, gpu, inst_gen, "n", n_chained, "arg", "out");
+            gen::inst_chain::<T>(&base, gpu, inst_gen, &n_size, n_chained, "arg", "out");
         let entry = [u64::from(n_chained)];
         gen::run(&mut context, &fun, &[], &counters, &entry, &mut table);
     }
@@ -197,9 +199,10 @@ fn load(gpu: &Gpu, executor: &Executor, stride: u32, num_load: u32) -> f64 {
     let (base, mem_ids) = gen::base(&[("n", ir::Type::I(32))], &["array", "out"]);
     gen::bind_scalar("n", n as i32, &mut context);
     gen::bind_array::<i64>("out", 1, &mut context);
+    let n_size = DimSize::new_param("n", n);
     for &n_chained in &n_chained_range {
         let fun = gen::load_chain(
-            &base, gpu, 1, "n", n_chained, mem_ids[0], "array", mem_ids[1], "out",
+            &base, gpu, 1, &n_size, n_chained, mem_ids[0], "array", mem_ids[1], "out",
         );
         let prefix = [u64::from(n_chained)];
         gen::run(&mut context, &fun, &[], &counters, &prefix, &mut table);
@@ -255,10 +258,10 @@ pub fn load_shared(gpu: &Gpu, executor: &Executor) -> f64 {
     let mut context = Context::from_gpu(gpu.clone(), executor);
     gen::bind_scalar("n_iter", n_iter, &mut context);
     gen::bind_array::<i64>("out", 1, &mut context);
+    let n_size = DimSize::new_param("n_iter", n_iter as u32);
     for &n_chained in &n_chained_range {
-        let fun = gen::shared_load_chain(
-            &base, gpu, "n_iter", n_chained, 32, mem_ids[0], "out",
-        );
+        let fun =
+            gen::shared_load_chain(&base, gpu, &n_size, n_chained, 32, mem_ids[0], "out");
         let prefix = [u64::from(n_chained)];
         gen::run(&mut context, &fun, &[], &counters, &prefix, &mut table);
     }
@@ -391,12 +394,24 @@ pub fn smx_bandwidth(
     gen::bind_array::<f32>("array", array_size as usize, &mut context);
     gen::bind_array::<f32>("out", 1, &mut context);
     // Fill the table
+    let block_size = DimSize::new_param("blocks", *unwrap!(blocks.last()) as u32);
+    let n_size = DimSize::new_param("n", *unwrap!(n.last()) as u32);
     for &num_wraps in wraps {
         assert!(num_wraps <= MAX_WRAPS);
         for &stride in strides {
             let fun = gen::parallel_load(
-                &base, gpu, "blocks", "n", chained, unroll, num_wraps, stride,
-                mem_ids[0], "array", mem_ids[1], "out",
+                &base,
+                gpu,
+                &block_size,
+                &n_size,
+                chained,
+                unroll,
+                num_wraps,
+                stride,
+                mem_ids[0],
+                "array",
+                mem_ids[1],
+                "out",
             );
             let params = [u64::from(num_wraps), u64::from(stride)];
             let vars = [("blocks", blocks), ("n", n)];
@@ -434,12 +449,22 @@ pub fn smx_store_bandwidth(
     let mut context = Context::from_gpu(gpu.clone(), executor);
     gen::bind_array::<f32>("array", array_size as usize, &mut context);
     // Fill the table
+    let block_size = DimSize::new_param("blocks", *unwrap!(blocks.last()) as u32);
+    let n_size = DimSize::new_param("n", *unwrap!(n.last()) as u32);
     for &num_wraps in wraps {
         assert!(num_wraps <= MAX_WRAPS);
         for &stride in strides {
             let fun = gen::parallel_store(
-                &base, gpu, "blocks", "n", chained, unroll, num_wraps, stride,
-                mem_ids[0], "array",
+                &base,
+                gpu,
+                &block_size,
+                &n_size,
+                chained,
+                unroll,
+                num_wraps,
+                stride,
+                mem_ids[0],
+                "array",
             );
             let params = [u64::from(num_wraps), u64::from(stride)];
             let vars = [("blocks", blocks), ("n", n)];
@@ -467,8 +492,9 @@ pub fn print_load_in_loop(gpu: &Gpu, executor: &Executor) {
     gen::bind_scalar("k", K, &mut context);
     gen::bind_array::<f32>("out", 32 * 4 * 4, &mut context);
     // Fill the table
+    let k_size = DimSize::new_param("k", K as u32);
     for &num_threads in &[1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024] {
-        let fun = gen::load_in_loop(&base, gpu, num_threads, "out", mem_ids[0]);
+        let fun = gen::load_in_loop(&base, gpu, &k_size, num_threads, "out", mem_ids[0]);
         let num_threads = u64::from(num_threads);
         gen::run(
             &mut context,
@@ -518,8 +544,9 @@ pub fn syncthread(gpu: &Gpu, executor: &Executor) -> InstDesc {
     // Generate and evaluate the kernel for different number of chained syncthreads.
     let mut table = create_table(&["n_chained"], &perf_counters);
     let counters = executor.create_perf_counter_set(&perf_counters);
+    let n_size = DimSize::new_param("n", n as u32);
     for &n_chained in &chained_range {
-        let fun = gen::syncthread(&base, gpu, "n", n_chained, 32);
+        let fun = gen::syncthread(&base, gpu, &n_size, n_chained, 32);
         let entry = [u64::from(n_chained)];
         gen::run(&mut context, &fun, &[], &counters, &entry, &mut table);
     }
@@ -558,7 +585,9 @@ pub fn loop_iter_overhead(gpu: &Gpu, executor: &Executor) -> InstDesc {
     let mut context = Context::from_gpu(gpu.clone(), executor);
     gen::bind_scalar("m", M as i32, &mut context);
     // Fill the table
-    let fun = gen::two_empty_loops(&base, gpu, "m", "n");
+    let n_size = DimSize::new_param("n", *unwrap!(n_range.last()) as u32);
+    let m_size = DimSize::new_param("m", M);
+    let fun = gen::two_empty_loops(&base, gpu, &m_size, &n_size);
     gen::run(
         &mut context,
         &fun,
@@ -603,7 +632,8 @@ pub fn loop_iter_end_latency(gpu: &Gpu, executor: &Executor, add_latency: f64) -
     let mut context = Context::from_gpu(gpu.clone(), executor);
     gen::bind_array::<f32>("out", 1, &mut context);
     // Fill the table.
-    let fun = gen::loop_chained_adds(&base, gpu, "n", 10, "out", mem_ids[0]);
+    let n_size = DimSize::new_param("n", *unwrap!(n_range.last()) as u32);
+    let fun = gen::loop_chained_adds(&base, gpu, &n_size, 10, "out", mem_ids[0]);
     gen::run(
         &mut context,
         &fun,
@@ -641,9 +671,10 @@ pub fn syncthread_end_latency(gpu: &Gpu, executor: &Executor, add_latency: f64) 
     gen::bind_scalar("n", N, &mut context);
     gen::bind_array::<f32>("out", 1, &mut context);
     // Fill the table.
+    let n_size = DimSize::new_param("n", N as u32);
     for &n_chained in &chained_range {
         let fun = gen::chain_in_syncthread(
-            &base, gpu, "n", n_chained, 10, 32, "out", mem_ids[0],
+            &base, gpu, &n_size, n_chained, 10, 32, "out", mem_ids[0],
         );
         let entry = [u64::from(n_chained)];
         gen::run(&mut context, &fun, &[], &counters, &entry, &mut table);

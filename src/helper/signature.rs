@@ -45,6 +45,17 @@ where
         self.signature.params.push(param);
     }
 
+    /// Creates a new `i32` paramter and returns a size equals to this parameter. Sets the
+    /// maximal size to the current size.
+    pub fn max_size<'b>(&mut self, name: &'b str, size: u32) -> DimSize<'b> {
+        self.scalar(name, size as i32);
+        DimSize {
+            factor: 1,
+            params: vec![name],
+            max_size: size,
+        }
+    }
+
     /// Creates a new parameter and binds it to a freshly allocated an array.
     pub fn array<S: ScalarArgument>(
         &mut self,
