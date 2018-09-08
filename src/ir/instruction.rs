@@ -1,5 +1,4 @@
 //! Describes the instructions.
-use device::Device;
 use ir::{self, BBId, DimMapScope, LoweringMap, Operand, Operator, Statement, Type};
 use std;
 use utils::*;
@@ -37,9 +36,9 @@ impl<'a, L> Instruction<'a, L> {
         operator: Operator<'a, L>,
         id: InstId,
         iter_dims: HashSet<ir::DimId>,
-        device: &Device,
+        fun: &ir::Function<L>,
     ) -> Result<Self, ir::Error> {
-        operator.check(&iter_dims, device)?;
+        operator.check(&iter_dims, fun)?;
         Ok(Instruction {
             operator,
             id,

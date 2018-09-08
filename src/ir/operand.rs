@@ -14,12 +14,12 @@ pub struct LoweringMap {
     /// lowering.
     st_inst: ir::InstId,
     /// Maps the lhs dimensions in `map` to their lowered dimension.
-    st_map: HashMap<ir::DimId, ir::DimId>,
+    st_map: HashMap<ir::DimId, (ir::DimId, ir::DimMappingId)>,
     /// Instruction ID to use for the `load` instruction when
     /// lowering.
     ld_inst: ir::InstId,
     /// Maps the rhs dimensions in `map` to their lowered dimension.
-    ld_map: HashMap<ir::DimId, ir::DimId>,
+    ld_map: HashMap<ir::DimId, (ir::DimId, ir::DimMappingId)>,
 }
 
 impl LoweringMap {
@@ -37,7 +37,9 @@ impl LoweringMap {
             .map(|(src, dst)| {
                 let st_dim = cnt.next_dim();
                 let ld_dim = cnt.next_dim();
-                ((src, st_dim), (dst, ld_dim))
+                let st_mapping = cnt.next_dim_mapping();
+                let ld_mapping = cnt.next_dim_mapping();
+                ((src, (st_dim, st_mapping)), (dst, (ld_dim, ld_mapping)))
             })
             .unzip();
 
@@ -56,19 +58,20 @@ impl LoweringMap {
     /// ir::Function. The appropriate instructions need to be built
     /// and stored with the corresponding IDs.
     pub(crate) fn lower(&self, map: &DimMap) -> ir::LoweredDimMap {
+        let (st_dims_mapping, ld_dims_mapping) = map
+            .iter()
+            .map(|&(src, dst)| {
+                let &(st_dim, st_mapping) = unwrap!(self.st_map.get(&src));
+                let &(ld_dim, ld_mapping) = unwrap!(self.ld_map.get(&dst));
+                ((st_mapping, [src, st_dim]), (ld_mapping, [dst, ld_dim]))
+            })
+            .unzip();
         ir::LoweredDimMap {
             mem: self.mem_id,
             store: self.st_inst,
             load: self.ld_inst,
-            dimensions: map
-                .iter()
-                .map(|(src, dst)| {
-                    (
-                        unwrap!(self.st_map.get(src)).clone(),
-                        unwrap!(self.ld_map.get(dst)).clone(),
-                    )
-                })
-                .collect(),
+            st_dims_mapping,
+            ld_dims_mapping,
         }
     }
 }
@@ -192,9 +195,17 @@ impl<'a, L> Operand<'a, L> {
 
     /// Indicates if the operand stays constant during the execution.
     pub fn is_constant(&self) -> bool {
-        match *self {
+        match self {
             Int(..) | Float(..) | Addr(..) | Param(..) => true,
             Index(..) | Inst(..) | Reduce(..) | InductionVar(..) => false,
+        }
+    }
+
+    /// Returns the list of dimensions mapped together by the operand.
+    pub fn mapped_dims(&self) -> Option<&DimMap> {
+        match self {
+            Inst(_, _, dim_map, _) | Reduce(_, _, dim_map, _) => Some(dim_map),
+            _ => None,
         }
     }
 }

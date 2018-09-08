@@ -7,26 +7,33 @@ use std;
 pub struct Size<'a> {
     factor: u32,
     params: Vec<&'a ir::Parameter>,
+    max_val: u32,
 }
 
 impl<'a> Size<'a> {
     /// Create a new fully specified size.
-    pub fn new(factor: u32, params: Vec<&'a ir::Parameter>) -> Self {
-        Size { factor, params }
+    pub fn new(factor: u32, params: Vec<&'a ir::Parameter>, max_val: u32) -> Self {
+        Size {
+            factor,
+            params,
+            max_val,
+        }
     }
 
     /// Creates a new constant size.
     pub fn new_const(factor: u32) -> Self {
         Size {
             factor,
+            max_val: factor,
             ..Size::default()
         }
     }
 
     /// Creates a new size equal to a parameter.
-    pub fn new_param(param: &'a ir::Parameter) -> Size {
+    pub fn new_param(param: &'a ir::Parameter, max_val: u32) -> Size {
         Size {
             params: vec![param],
+            max_val,
             ..Size::default()
         }
     }
@@ -41,6 +48,16 @@ impl<'a> Size<'a> {
     }
 }
 
+impl<'a> Default for Size<'a> {
+    fn default() -> Self {
+        Size {
+            factor: 1,
+            params: Vec::new(),
+            max_val: 1,
+        }
+    }
+}
+
 impl<'a, T> std::ops::MulAssign<T> for Size<'a>
 where
     T: std::borrow::Borrow<Size<'a>>,
@@ -49,6 +66,7 @@ where
         let rhs = rhs.borrow();
         self.factor *= rhs.factor;
         self.params.extend(rhs.params.iter().cloned());
+        self.max_val = self.max_val.saturating_mul(rhs.max_val);
     }
 }
 
@@ -131,15 +149,6 @@ impl<'a, 'b> std::ops::MulAssign<&'b PartialSize<'a>> for PartialSize<'a> {
         self.dividend.extend(rhs.dividend.iter().cloned());
         self.divisor *= rhs.divisor;
         self.simplify();
-    }
-}
-
-impl<'a> Default for Size<'a> {
-    fn default() -> Self {
-        Size {
-            factor: 1,
-            params: vec![],
-        }
     }
 }
 

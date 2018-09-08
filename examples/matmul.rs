@@ -28,18 +28,18 @@ fn main() {
 
     // Step 1. Define the kernel signature and the parameters we optimize for.
     let mut context = cuda::Context::new(&executor);
-    let (a, b, c);
+    let (m, n, k, a, b, c);
     let signature = {
         let mut builder = helper::SignatureBuilder::new("matmul", &mut context);
         // Declare 3 integer parameters `m`, `n` and `k`.
-        builder.scalar("m", M as i32);
-        builder.scalar("n", N as i32);
-        builder.scalar("k", K as i32);
+        m = builder.max_size("m", M);
+        n = builder.max_size("n", N);
+        k = builder.max_size("k", K);
         // Declare 3 matricies of floats of size `m*k`, `k*n` and `m*n`.
         // `a` and `b` are read-only but not `c`.
-        a = builder.tensor::<f32>("a", vec!["m".into(), "k".into()], true);
-        b = builder.tensor::<f32>("b", vec!["k".into(), "n".into()], true);
-        c = builder.tensor::<f32>("c", vec!["m".into(), "n".into()], false);
+        a = builder.tensor::<f32>("a", vec![m.clone(), k.clone()], true);
+        b = builder.tensor::<f32>("b", vec![k, n.clone()], true);
+        c = builder.tensor::<f32>("c", vec![m, n], false);
         // Build the signature.
         builder.get()
     };

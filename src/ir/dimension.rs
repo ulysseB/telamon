@@ -1,6 +1,7 @@
 //! Represents iteration dimensions.
 use ir::{self, Statement};
 use std::fmt;
+use utils::*;
 
 /// Provides a unique identifier for iteration dimensions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize,
@@ -30,6 +31,7 @@ pub struct Dimension<'a> {
     iterated: Vec<ir::InstId>,
     is_thread_dim: bool,
     logical_dim: Option<LogicalDimId>,
+    mapped_dims: VecSet<DimMappingId>,
 }
 
 impl<'a> Dimension<'a> {
@@ -50,6 +52,7 @@ impl<'a> Dimension<'a> {
             iterated: Vec::new(),
             is_thread_dim: false,
             logical_dim: None,
+            mapped_dims: VecSet::default(),
         })
     }
 
@@ -62,6 +65,7 @@ impl<'a> Dimension<'a> {
             iterated: Vec::new(),
             is_thread_dim: false,
             logical_dim: None,
+            mapped_dims: VecSet::default(),
         }
     }
 
@@ -85,7 +89,7 @@ impl<'a> Dimension<'a> {
     }
 
     /// Returns the constructs iterated along this dimension.
-    pub fn iterated<'b>(&'b self) -> impl Iterator<Item = ir::InstId> + 'b {
+    pub fn iterated(&self) -> impl Iterator<Item = ir::InstId> + '_ {
         self.iterated.iter().cloned()
     }
 
@@ -107,6 +111,17 @@ impl<'a> Dimension<'a> {
     /// Returns the logical dimension this dimension is part of, if any.
     pub fn logical_dim(&self) -> Option<LogicalDimId> {
         self.logical_dim
+    }
+
+    /// Returns the list of dimensions mapping containing this one.
+    pub fn dim_mappings(&self) -> &VecSet<DimMappingId> {
+        &self.mapped_dims
+    }
+
+    /// Register a dimension mapping.
+    pub fn register_dim_mapping(&mut self, mapping: &DimMapping) {
+        self.mapped_dims.insert(mapping.id);
+        assert!(mapping.dims.contains(&self.id()));
     }
 }
 
@@ -203,5 +218,39 @@ impl<'a> LogicalDim<'a> {
     /// dimensions.
     pub fn total_size(&self) -> &ir::Size<'a> {
         &self.total_size
+    }
+}
+
+/// Uniquely identifies a pair of mapped dimensions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct DimMappingId(pub u16);
+
+impl From<DimMappingId> for usize {
+    fn from(id: DimMappingId) -> usize {
+        id.0 as usize
+    }
+}
+
+/// Specifies that two dimensions should be mapped together.
+#[derive(Clone, Copy, Debug)]
+pub struct DimMapping {
+    id: DimMappingId,
+    dims: [DimId; 2],
+}
+
+impl DimMapping {
+    /// Creates a `DimMapping`. Panics if the provided dimensions are the same.
+    pub fn new(id: DimMappingId, dims: [DimId; 2]) -> Self {
+        DimMapping { id, dims }
+    }
+
+    /// Returns the unique identifier of the `DimMapping`.
+    pub fn id(&self) -> DimMappingId {
+        self.id
+    }
+
+    /// Returns the mapped dims.
+    pub fn dims(&self) -> [DimId; 2] {
+        self.dims
     }
 }

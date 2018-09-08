@@ -4,6 +4,7 @@ use device::cuda::characterize::Table;
 use device::cuda::{Context, Gpu, Kernel, PerfCounterSet};
 use device::{ArgMap, Device, ScalarArgument};
 use explorer;
+use helper::tensor::DimSize;
 use helper::{AutoOperand, Builder, Reduce};
 use ir::{self, Signature};
 use itertools::Itertools;
@@ -63,12 +64,12 @@ pub fn bind_array<'a, T: 'a>(name: &str, len: usize, context: &mut Context<'a>) 
 pub fn two_empty_loops<'a>(
     base: &'a Signature,
     device: &'a Device,
-    outer: &str,
-    inner: &str,
+    outer: &DimSize,
+    inner: &DimSize,
 ) -> SearchSpace<'a> {
     let mut builder = Builder::new(base, device);
-    let outer_size = builder.param_size(outer);
-    let inner_size = builder.param_size(inner);
+    let outer_size = outer.into_ir_size(&builder);
+    let inner_size = inner.into_ir_size(&builder);
     let d0 = builder.open_dim_ex(outer_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(inner_size, DimKind::LOOP);
     builder.mov(&0i32);
@@ -80,14 +81,14 @@ pub fn two_empty_loops<'a>(
 pub fn loop_chained_adds<'a>(
     base: &'a Signature,
     device: &'a Device,
-    size: &str,
+    loop_size: &DimSize,
     chained: u32,
     out: &str,
     out_id: ir::MemId,
 ) -> SearchSpace<'a> {
     let mut builder = Builder::new(base, device);
     let init = builder.mov(&0f32);
-    let loop_size = builder.param_size(size);
+    let loop_size = loop_size.into_ir_size(&builder);
     let unroll_size = builder.cst_size(chained);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(unroll_size, DimKind::UNROLL);
@@ -115,7 +116,7 @@ pub fn inst_chain<'a, T>(
     signature: &'a Signature,
     device: &'a Device,
     inst_gen: &InstGenerator,
-    n_iter: &str,
+    n_iter: &DimSize,
     n_chained: u32,
     arg: &str,
     out: &str,
@@ -125,7 +126,7 @@ where
 {
     let mut builder = Builder::new(signature, device);
     let init = builder.mov(&T::zero());
-    let loop_size = builder.param_size(n_iter);
+    let loop_size = n_iter.into_ir_size(&builder);
     let unroll_size = builder.cst_size(n_chained);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(unroll_size, DimKind::UNROLL);
@@ -177,7 +178,7 @@ pub fn load_chain<'a>(
     signature: &'a Signature,
     device: &'a Device,
     n_threads: u32,
-    n_iter: &str,
+    n_iter: &DimSize,
     n_chained: u32,
     mem_id: ir::MemId,
     array: &str,
@@ -186,7 +187,7 @@ pub fn load_chain<'a>(
 ) -> SearchSpace<'a> {
     let mut builder = Builder::new(signature, device);
     let init = builder.mov(&array);
-    let loop_size = builder.param_size(n_iter);
+    let loop_size = n_iter.into_ir_size(&builder);
     let unroll_size = builder.cst_size(n_chained);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(unroll_size, DimKind::UNROLL);
@@ -208,7 +209,7 @@ pub fn load_chain<'a>(
 pub fn shared_load_chain<'a>(
     signature: &'a Signature,
     device: &'a Device,
-    n_iter: &str,
+    n_iter: &DimSize,
     n_chained: u32,
     array_size: u32,
     out_id: ir::MemId,
@@ -228,7 +229,7 @@ pub fn shared_load_chain<'a>(
     let last_st = builder.st(&init_addr, &array, pattern1);
 
     let addr_init = builder.mov(&array);
-    let loop_size = builder.param_size(n_iter);
+    let loop_size = n_iter.into_ir_size(&builder);
     let unroll_size = builder.cst_size(n_chained);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(unroll_size, DimKind::UNROLL);
@@ -249,8 +250,8 @@ pub fn shared_load_chain<'a>(
 pub fn parallel_load<'a>(
     signature: &'a Signature,
     gpu: &'a Gpu,
-    num_blocks: &str,
-    n: &str,
+    num_blocks: &DimSize,
+    n: &DimSize,
     n_chained: u32,
     n_unroll: u32,
     num_wraps: u32,
@@ -262,7 +263,7 @@ pub fn parallel_load<'a>(
 ) -> SearchSpace<'a> {
     assert!(stride * 4 <= gpu.l1_cache_line);
     let mut builder = Builder::new(signature, gpu);
-    let block_size = builder.param_size(num_blocks);
+    let block_size = num_blocks.into_ir_size(&builder);
     let _ = builder.open_dim_ex(block_size, DimKind::BLOCK);
     // Initialize the result
     let d1_0_a = if num_wraps > 1 {
@@ -275,7 +276,7 @@ pub fn parallel_load<'a>(
 
     let init = builder.mov(&0f32);
     // Sum in the result.
-    let loop_size = builder.param_size(n);
+    let loop_size = n.into_ir_size(&builder);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1_1_a = d1_0_a
         .as_ref()
@@ -329,8 +330,8 @@ pub fn parallel_load<'a>(
 pub fn parallel_store<'a>(
     signature: &'a Signature,
     gpu: &'a Gpu,
-    num_blocks: &str,
-    n: &str,
+    num_blocks: &DimSize,
+    n: &DimSize,
     n_chained: u32,
     n_unroll: u32,
     num_wraps: u32,
@@ -340,9 +341,9 @@ pub fn parallel_store<'a>(
 ) -> SearchSpace<'a> {
     assert!(stride * 4 <= gpu.l1_cache_line);
     let mut builder = Builder::new(signature, gpu);
-    let block_size = builder.param_size(num_blocks);
+    let block_size = num_blocks.into_ir_size(&builder);
     let _ = builder.open_dim_ex(block_size, DimKind::BLOCK);
-    let loop_size = builder.param_size(n);
+    let loop_size = n.into_ir_size(&builder);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
 
     let d1_0 = if num_wraps > 1 {
@@ -381,12 +382,12 @@ pub fn parallel_store<'a>(
 pub fn syncthread<'a>(
     signature: &'a Signature,
     device: &'a Device,
-    n_iter: &str,
+    n_iter: &DimSize,
     n_chained: u32,
     wrap_size: u32,
 ) -> SearchSpace<'a> {
     let mut builder = Builder::new(signature, device);
-    let loop_size = builder.param_size(n_iter);
+    let loop_size = n_iter.into_ir_size(&builder);
     let unroll_size = builder.cst_size(n_chained);
     let thread_size = builder.cst_size(wrap_size);
 
@@ -410,7 +411,7 @@ pub fn syncthread<'a>(
 pub fn chain_in_syncthread<'a>(
     signature: &'a Signature,
     device: &'a Device,
-    n_iter: &str,
+    n_iter: &DimSize,
     sync_chained: u32,
     add_chained: u32,
     wrap_size: u32,
@@ -418,7 +419,7 @@ pub fn chain_in_syncthread<'a>(
     out_id: ir::MemId,
 ) -> SearchSpace<'a> {
     let mut builder = Builder::new(signature, device);
-    let loop_size = builder.param_size(n_iter);
+    let loop_size = n_iter.into_ir_size(&builder);
     let sync_unroll_size = builder.cst_size(sync_chained);
     let thread_size = builder.cst_size(wrap_size);
     let add_unroll_size = builder.cst_size(add_chained);
@@ -459,6 +460,7 @@ pub fn chain_in_syncthread<'a>(
 pub fn load_in_loop<'a>(
     signature: &'a Signature,
     device: &'a Device,
+    k_size: &DimSize,
     threads: u32,
     out: &str,
     out_id: ir::MemId,
@@ -475,7 +477,7 @@ pub fn load_in_loop<'a>(
     let acc_init = builder.mov(&0f32);
     builder.close_dim(&unroll_dim_0_0);
 
-    let k_size = builder.param_size("k");
+    let k_size = k_size.into_ir_size(&builder);
     let k_dim = builder.open_dim_ex(k_size, DimKind::LOOP);
     // Load A
     let unroll_dim_a = builder.open_dim_ex(size_4.clone(), DimKind::VECTOR);

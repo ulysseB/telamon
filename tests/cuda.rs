@@ -140,10 +140,11 @@ fn induction_var_nested() {
     let executor = cuda::Executor::init();
     let out;
     let mut context = cuda::Context::new(&executor);
+    let (k, k4);
     let signature = {
         let mut builder = helper::SignatureBuilder::new("ind_var_test", &mut context);
-        builder.scalar("k", 12i32);
-        builder.scalar("k4", 12i32 / 4);
+        k = builder.max_size("k", 12);
+        k4 = builder.max_size("k4", 12 / 4);
         out = builder.array::<i32>("out", 1);
         builder.get()
     };
@@ -151,8 +152,8 @@ fn induction_var_nested() {
     let size_1 = builder.cst_size(1);
     let size_4 = builder.cst_size(4);
     let size_5 = builder.cst_size(5);
-    let size_k = builder.param_size("k");
-    let size_k_tile_4 = builder.param_size("k4");
+    let size_k = k.into_ir_size(&builder);
+    let size_k_tile_4 = k4.into_ir_size(&builder);
     let d0 = builder.open_dim_ex(size_k_tile_4.clone(), DimKind::LOOP);
     let d1 = builder.open_dim_ex(size_4, DimKind::LOOP);
     let d2 = builder.open_dim_ex(size_5, DimKind::UNROLL);
@@ -268,16 +269,17 @@ fn perf_model_0() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let mut context = cuda::Context::new(&executor);
+    let n;
     let signature = {
         let mut builder = helper::SignatureBuilder::new("test", &mut context);
-        builder.scalar("n", 16);
+        n = builder.max_size("n", 16);
         builder.array::<i32>("input", 1024 * 1024);
         builder.get()
     };
 
     let mut builder = helper::Builder::new(&signature, context.device());
     let size_16 = builder.cst_size(16);
-    let n_tiled = builder.param_size("n");
+    let n_tiled = n.into_ir_size(&builder);
 
     let _d0 = builder.open_dim_ex(n_tiled.clone(), DimKind::LOOP);
     let d1 = builder.open_dim_ex(size_16.clone(), DimKind::LOOP);

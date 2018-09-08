@@ -140,10 +140,8 @@ fn partial_bound_2() {
     let (x, y, a);
     let signature = {
         let mut builder = SignatureBuilder::new("test", &mut context);
-        builder.scalar("m", 1i32 << 13);
-        builder.scalar("n", 1i32 << 13);
-        let m_size: tensor::DimSize = "m".into();
-        let n_size: tensor::DimSize = "n".into();
+        let m_size = builder.max_size("m", 1 << 13);
+        let n_size = builder.max_size("n", 1 << 13);
         x = builder.tensor::<f32>("x", vec![n_size.clone()], true);
         a = builder.tensor::<f32>("a", vec![m_size.clone(), n_size], true);
         y = builder.tensor::<f32>("y", vec![m_size], false);
@@ -403,8 +401,7 @@ fn final_bound_0() {
     let (x, y, z);
     let signature = {
         let mut builder = SignatureBuilder::new("test", &mut context);
-        builder.scalar("n", 1 << 25);
-        let n_size: tensor::DimSize = "n".into();
+        let n_size = builder.max_size("n", 1 << 25);
         x = builder.tensor::<f32>("x", vec![n_size.clone()], true);
         y = builder.tensor::<f32>("y", vec![n_size.clone()], true);
         z = builder.tensor::<f32>("z", vec![n_size], false);

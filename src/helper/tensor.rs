@@ -11,15 +11,16 @@ use utils::*;
 /// A dimension size, before tiling.
 #[derive(Clone)]
 pub struct DimSize<'a> {
-    factor: u32,
-    params: Vec<&'a str>,
+    pub factor: u32,
+    pub params: Vec<&'a str>,
+    pub max_size: u32,
 }
 
 impl<'a> DimSize<'a> {
     /// Convert the size into the size type used by the IR.
     pub fn into_ir_size<'b>(&self, builder: &Builder<'b>) -> ir::Size<'b> {
         let params = self.params.iter().map(|p| builder.find_param(p)).collect();
-        ir::Size::new(self.factor, params)
+        ir::Size::new(self.factor, params, self.max_size)
     }
 
     /// Converts the size into a numerical value for a given context.
@@ -29,6 +30,15 @@ impl<'a> DimSize<'a> {
             .map(|p| unwrap!(context.param_as_size(p)))
             .product::<u32>() * self.factor
     }
+
+    /// Creates a new size equals to the given parameter.
+    pub fn new_param(param: &'a str, max_size: u32) -> Self {
+        DimSize {
+            factor: 1,
+            params: vec![param],
+            max_size,
+        }
+    }
 }
 
 impl<'a> From<u32> for DimSize<'a> {
@@ -36,15 +46,7 @@ impl<'a> From<u32> for DimSize<'a> {
         DimSize {
             factor: size,
             params: vec![],
-        }
-    }
-}
-
-impl<'a> From<&'a str> for DimSize<'a> {
-    fn from(param: &'a str) -> Self {
-        DimSize {
-            factor: 1,
-            params: vec![param],
+            max_size: size,
         }
     }
 }
