@@ -143,7 +143,6 @@
 <span id="143">143</span>
 <span id="144">144</span>
 <span id="145">145</span>
-<span id="146">146</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Defines common kernels used to test and benchmark Telamon.</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cuda&quot;</span>)]</span>
@@ -203,8 +202,7 @@
     <span class="ident">AM</span>: <span class="ident">ArgMap</span> <span class="op">+</span> <span class="ident">Context</span>,
 {
     <span class="kw">if</span> <span class="ident">is_generic</span> {
-        <span class="ident">builder</span>.<span class="ident">scalar</span>(<span class="ident">name</span>, <span class="ident">value</span>);
-        <span class="ident">name</span>.<span class="ident">into</span>()
+        <span class="ident">builder</span>.<span class="ident">max_size</span>(<span class="ident">name</span>, <span class="ident">value</span> <span class="kw">as</span> <span class="ident">u32</span>)
     } <span class="kw">else</span> {
         (<span class="ident">value</span> <span class="kw">as</span> <span class="ident">u32</span>).<span class="ident">into</span>()
     }

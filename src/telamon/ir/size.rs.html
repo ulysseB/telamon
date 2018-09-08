@@ -160,6 +160,15 @@
 <span id="160">160</span>
 <span id="161">161</span>
 <span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">ir</span>;
 <span class="kw">use</span> <span class="ident">num</span>;
@@ -170,26 +179,33 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="ident">factor</span>: <span class="ident">u32</span>,
     <span class="ident">params</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Parameter</span><span class="op">&gt;</span>,
+    <span class="ident">max_val</span>: <span class="ident">u32</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Create a new fully specified size.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">factor</span>: <span class="ident">u32</span>, <span class="ident">params</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Parameter</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="ident">Size</span> { <span class="ident">factor</span>, <span class="ident">params</span> }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">factor</span>: <span class="ident">u32</span>, <span class="ident">params</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Parameter</span><span class="op">&gt;</span>, <span class="ident">max_val</span>: <span class="ident">u32</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="ident">Size</span> {
+            <span class="ident">factor</span>,
+            <span class="ident">params</span>,
+            <span class="ident">max_val</span>,
+        }
     }
 
     <span class="doccomment">/// Creates a new constant size.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_const</span>(<span class="ident">factor</span>: <span class="ident">u32</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="ident">Size</span> {
             <span class="ident">factor</span>,
+            <span class="ident">max_val</span>: <span class="ident">factor</span>,
             ..<span class="ident">Size</span>::<span class="ident">default</span>()
         }
     }
 
     <span class="doccomment">/// Creates a new size equal to a parameter.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_param</span>(<span class="ident">param</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Parameter</span>) <span class="op">-&gt;</span> <span class="ident">Size</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_param</span>(<span class="ident">param</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Parameter</span>, <span class="ident">max_val</span>: <span class="ident">u32</span>) <span class="op">-&gt;</span> <span class="ident">Size</span> {
         <span class="ident">Size</span> {
             <span class="ident">params</span>: <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">param</span>],
+            <span class="ident">max_val</span>,
             ..<span class="ident">Size</span>::<span class="ident">default</span>()
         }
     }
@@ -204,6 +220,16 @@
     }
 }
 
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="ident">Size</span> {
+            <span class="ident">factor</span>: <span class="number">1</span>,
+            <span class="ident">params</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
+            <span class="ident">max_val</span>: <span class="number">1</span>,
+        }
+    }
+}
+
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;</span> <span class="ident">std</span>::<span class="ident">ops</span>::<span class="ident">MulAssign</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>
 <span class="kw">where</span>
     <span class="ident">T</span>: <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Borrow</span><span class="op">&lt;</span><span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
@@ -212,6 +238,7 @@
         <span class="kw">let</span> <span class="ident">rhs</span> <span class="op">=</span> <span class="ident">rhs</span>.<span class="ident">borrow</span>();
         <span class="self">self</span>.<span class="ident">factor</span> <span class="op">*=</span> <span class="ident">rhs</span>.<span class="ident">factor</span>;
         <span class="self">self</span>.<span class="ident">params</span>.<span class="ident">extend</span>(<span class="ident">rhs</span>.<span class="ident">params</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>());
+        <span class="self">self</span>.<span class="ident">max_val</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">max_val</span>.<span class="ident">saturating_mul</span>(<span class="ident">rhs</span>.<span class="ident">max_val</span>);
     }
 }
 
@@ -302,15 +329,6 @@
         <span class="self">self</span>.<span class="ident">dividend</span>.<span class="ident">extend</span>(<span class="ident">rhs</span>.<span class="ident">dividend</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>());
         <span class="self">self</span>.<span class="ident">divisor</span> <span class="op">*=</span> <span class="ident">rhs</span>.<span class="ident">divisor</span>;
         <span class="self">self</span>.<span class="ident">simplify</span>();
-    }
-}
-
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="ident">Size</span> {
-            <span class="ident">factor</span>: <span class="number">1</span>,
-            <span class="ident">params</span>: <span class="macro">vec</span><span class="macro">!</span>[],
-        }
     }
 }
 

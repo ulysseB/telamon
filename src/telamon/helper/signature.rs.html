@@ -100,6 +100,17 @@
 <span id="100">100</span>
 <span id="101">101</span>
 <span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Helper functions to create a function signature and bind parameters.</span>
 <span class="kw">use</span> <span class="ident">device</span>::{<span class="self">self</span>, <span class="ident">write_array</span>, <span class="ident">ScalarArgument</span>};
@@ -146,6 +157,17 @@
         };
         <span class="self">self</span>.<span class="ident">context</span>.<span class="ident">bind_scalar</span>(<span class="kw-2">&amp;</span><span class="ident">param</span>, <span class="ident">arg</span>);
         <span class="self">self</span>.<span class="ident">signature</span>.<span class="ident">params</span>.<span class="ident">push</span>(<span class="ident">param</span>);
+    }
+
+    <span class="doccomment">/// Creates a new `i32` paramter and returns a size equals to this parameter. Sets the</span>
+    <span class="doccomment">/// maximal size to the current size.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">max_size</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">str</span>, <span class="ident">size</span>: <span class="ident">u32</span>) <span class="op">-&gt;</span> <span class="ident">DimSize</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">scalar</span>(<span class="ident">name</span>, <span class="ident">size</span> <span class="kw">as</span> <span class="ident">i32</span>);
+        <span class="ident">DimSize</span> {
+            <span class="ident">factor</span>: <span class="number">1</span>,
+            <span class="ident">params</span>: <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">name</span>],
+            <span class="ident">max_size</span>: <span class="ident">size</span>,
+        }
     }
 
     <span class="doccomment">/// Creates a new parameter and binds it to a freshly allocated an array.</span>
