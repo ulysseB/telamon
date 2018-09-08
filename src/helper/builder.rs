@@ -311,8 +311,8 @@ impl<'a> Builder<'a> {
     }
 
     /// Returns a parameter size.
-    pub fn param_size(&self, param: &str) -> ir::Size<'a> {
-        ir::Size::new_param(self.find_param(param))
+    pub fn param_size(&self, param: &str, max_size: u32) -> ir::Size<'a> {
+        ir::Size::new_param(self.find_param(param), max_size)
     }
 
     /// Allocates a memory block in shared memory.
