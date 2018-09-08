@@ -56,8 +56,7 @@ where
     AM: ArgMap + Context,
 {
     if is_generic {
-        builder.scalar(name, value);
-        name.into()
+        builder.max_size(name, value as u32)
     } else {
         (value as u32).into()
     }

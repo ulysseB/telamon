@@ -168,15 +168,16 @@ fn max_thread_on_setkind() {
 fn block_dims() {
     let _ = env_logger::try_init();
     let mut context = fake::Context::default();
+    let n;
     let signature = {
         let mut builder = helper::SignatureBuilder::new("block_dims", &mut context);
-        builder.scalar("n", 64);
+        n = builder.max_size("n", 64);
         builder.get()
     };
     let mut builder = helper::Builder::new(&signature, context.device());
     let d0 = builder.open_dim(Size::new_const(4));
     let inst = builder.mov(&0i32);
-    let s1 = builder.param_size("n");
+    let s1 = n.into_ir_size(&builder);
     let d1 = builder.open_dim_ex(s1, DimKind::BLOCK);
     let d2 = builder.open_dim_ex(Size::new_const(2), DimKind::BLOCK);
     let d3 = builder.open_dim_ex(Size::new_const(3), DimKind::BLOCK);
@@ -264,15 +265,16 @@ fn vector_dims() {
 fn unroll_dims() {
     let _ = env_logger::try_init();
     let mut context = fake::Context::default();
+    let n;
     let signature = {
         let mut builder = helper::SignatureBuilder::new("unroll_dims", &mut context);
-        builder.scalar("n", 64);
+        n = builder.max_size("n", 64);
         builder.get()
     };
     let mut builder = helper::Builder::new(&signature, context.device());
     let d0 = builder.open_dim(Size::new_const(64));
     let d1 = builder.open_dim(Size::new_const(4096));
-    let s2 = builder.param_size("n");
+    let s2 = n.into_ir_size(&builder);
     let d2 = builder.open_dim(s2);
     builder.mov(&0i32);
     let space = builder.get();
