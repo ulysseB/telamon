@@ -215,8 +215,7 @@ fn block_bound(
         .iter()
         .map(|&d| space.ir_instance().dim(d).size())
         .product::<ir::PartialSize>();
-    let pressure =
-        sum_pressure(ctx, space, info, BottleneckLevel::Block, dims, &n_iters);
+    let pressure = sum_pressure(ctx, space, info, BottleneckLevel::Block, dims, &n_iters);
     pressure.bound(BottleneckLevel::Block, &ctx.device().block_rates())
 }
 

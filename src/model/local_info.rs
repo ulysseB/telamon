@@ -128,12 +128,11 @@ fn add_indvar_pressure(
         if dim_kind.intersects(DimKind::THREAD | DimKind::BLOCK) {
             thread_overhead.add_parallel(&overhead);
         } else if size > 1 {
-            overhead.repeat_parallel(f64::from(size - 1));
-            unwrap!(hw_pressure.get_mut(&dim.into())).add_parallel(&overhead);
-            overhead.repeat_parallel(1.0 / f64::from(size - 1));
             unwrap!(dim_overhead.get_mut(&dim))
                 .0
                 .add_parallel(&overhead);
+            overhead.repeat_parallel(f64::from(size - 1));
+            unwrap!(hw_pressure.get_mut(&dim.into())).add_parallel(&overhead);
         }
     }
 }
