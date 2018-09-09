@@ -143,6 +143,12 @@ impl<'a> PartialSize<'a> {
     }
 }
 
+impl<'a> Default for PartialSize<'a> {
+    fn default() -> Self {
+        PartialSize { factor: 1, dividend: vec![], divisor: 1 }
+    }
+}
+
 impl<'a, 'b> std::ops::MulAssign<&'b PartialSize<'a>> for PartialSize<'a> {
     fn mul_assign(&mut self, rhs: &'b PartialSize<'a>) {
         self.factor *= rhs.factor;
@@ -151,6 +157,24 @@ impl<'a, 'b> std::ops::MulAssign<&'b PartialSize<'a>> for PartialSize<'a> {
         self.simplify();
     }
 }
+
+
+impl<'a, 'b> std::iter::Product<&'b PartialSize<'a>> for PartialSize<'a>
+where
+    'a: 'b,
+{
+    fn product<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = &'b PartialSize<'a>>,
+    {
+        let mut total = PartialSize::default();
+        for size in iter {
+            total *= size;
+        }
+        total
+    }
+}
+
 
 impl<'a> From<Size<'a>> for PartialSize<'a> {
     fn from(size: Size<'a>) -> PartialSize<'a> {

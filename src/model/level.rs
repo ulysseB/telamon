@@ -7,10 +7,10 @@
 //! times while when considering the intersection of the bodies, we consider it is
 //! repeated N x M times.
 
-use device::Device;
+use device::{Context, Device};
 use ir;
 use itertools::{self, Itertools};
-use model::{BottleneckLevel, DependencyMap, FastBound, HwPressure, LocalInfo};
+use model::{size, BottleneckLevel, DependencyMap, FastBound, HwPressure, LocalInfo};
 use search_space::{DimKind, Domain, SearchSpace};
 use std;
 use std::cmp::Ordering;
@@ -36,15 +36,20 @@ impl Level {
     /// Creates a level iterating on the given dimensions. If no dimension is given,
     /// the level containts the whole program.
     fn new(
-        device: &Device,
+        ctx: &Context,
         space: &SearchSpace,
         local_info: &LocalInfo,
         dims: VecSet<ir::DimId>,
     ) -> Self {
         // Compute the thread-level pressure.
-        let thread_rates = device.thread_rates();
-        let pressure =
-            sum_pressure(device, space, local_info, BottleneckLevel::Thread, &dims);
+        let thread_rates = ctx.device().thread_rates();
+        let pressure = sum_pressure(
+            ctx.device(),
+            space,
+            local_info,
+            BottleneckLevel::Thread,
+            &dims,
+        );
         let end_latency = dims
             .iter()
             .map(|d| {
@@ -60,7 +65,7 @@ impl Level {
             .iter()
             .all(|&d| DimKind::THREAD.contains(space.domain().get_dim_kind(d)));
         let repeated_latency = if only_threads {
-            Some(block_bound(device, space, local_info, &dims))
+            Some(block_bound(ctx.device(), space, local_info, &dims))
         } else {
             None
         };
@@ -218,7 +223,7 @@ pub fn must_consider_dim(space: &SearchSpace, dim: ir::DimId) -> bool {
 /// between the nestings at each end of the edge.
 pub fn generate(
     space: &SearchSpace,
-    device: &Device,
+    ctx: &Context,
     local_info: &LocalInfo,
 ) -> (Vec<Level>, Vec<DimMap>) {
     // Build the list of nestings, exclude block and vector dimensions.
@@ -314,7 +319,7 @@ pub fn generate(
         .chain(dim_levels)
         .unique();
     let levels = levels
-        .map(|dims| Level::new(device, space, local_info, dims))
+        .map(|dims| Level::new(ctx, space, local_info, dims))
         .collect();
     (levels, dim_maps)
 }
@@ -381,25 +386,26 @@ pub struct RepeatLevel {
     /// The ID of the level to repeat.
     pub level_id: usize,
     /// The number of iterations of the level.
-    pub iterations: u32,
+    pub iterations: u64,
 }
 
 impl RepeatLevel {
     pub fn new(
         space: &SearchSpace,
-        local_info: &LocalInfo,
+        ctx: &Context,
         level_id: usize,
         level: &Level,
     ) -> Option<Self> {
-        let iterations: u32 = level
+        let iterations = level
             .dims
             .iter()
             .filter(|&&d| {
                 let kind = space.domain().get_dim_kind(d);
                 (kind & !DimKind::BLOCK).is(DimKind::SEQUENTIAL).is_true()
             })
-            .map(|d| local_info.dim_sizes[d])
-            .product();
+            .map(|&d| space.ir_instance().dim(d).size())
+            .product::<ir::PartialSize>();
+        let iterations = size::bounds(&iterations, space, ctx).min;
         if iterations <= 1 {
             None
         } else {
@@ -446,6 +452,7 @@ impl LevelDag {
         levels: &[Level],
         dim_maps: Vec<DimMap>,
         dep_map_size: usize,
+        ctx: &Context,
     ) -> Self {
         let mut dag = LevelDag::new(space, dep_map_size);
         for (level_id, level) in levels.iter().enumerate() {
@@ -453,7 +460,7 @@ impl LevelDag {
                 continue;
             }
             let node_id = dag.gen_node_id(local_info, &level.dims, dep_map_size);
-            let repeat = RepeatLevel::new(space, local_info, level_id, level);
+            let repeat = RepeatLevel::new(space, ctx, level_id, level);
             dag.nodes[node_id].0.extend(repeat);
         }
         for dim_map in dim_maps {

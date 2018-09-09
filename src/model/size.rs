@@ -17,10 +17,7 @@ impl Range {
 
     /// Creates a `Range` containing a single value.
     pub fn new_fixed(val: u64) -> Self {
-        Range {
-            min: val,
-            max: val,
-        }
+        Range { min: val, max: val }
     }
 }
 
@@ -49,7 +46,11 @@ impl FactorRange {
 }
 
 /// Returns a factor and a multiple of `size`.
-pub fn factors(size: &ir::PartialSize, space: &SearchSpace, ctx: &Context) -> FactorRange {
+pub fn factors(
+    size: &ir::PartialSize,
+    space: &SearchSpace,
+    ctx: &Context,
+) -> FactorRange {
     // FIXME: the size may not have a fixed value.
     let val = ctx.eval_size(&::codegen::Size::from_ir(size, space)) as u64;
     FactorRange::new_fixed(val)
