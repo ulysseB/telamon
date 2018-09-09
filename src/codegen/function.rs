@@ -207,7 +207,7 @@ impl<'a> ParamVal<'a> {
 hash_from_key!(ParamVal<'a>, ParamVal::key, 'a);
 
 /// Uniquely identifies a `ParamVal`.
-#[derive(PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub enum ParamValKey<'a> {
     External(&'a ir::Parameter),
     Size(&'a codegen::Size<'a>),
@@ -299,9 +299,9 @@ impl<'a> InternalMemoryRegion<'a> {
             Some(
                 block_dims[1..]
                     .iter()
-                    .map(|d| d.size().clone())
-                    .chain(std::iter::once(self.size.clone()))
-                    .map(ParamVal::Size),
+                    .map(|d| d.size())
+                    .chain(std::iter::once(&self.size))
+                    .flat_map(ParamVal::from_size),
             )
         } else {
             None
