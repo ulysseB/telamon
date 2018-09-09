@@ -43,8 +43,14 @@ impl Level {
     ) -> Self {
         // Compute the thread-level pressure.
         let thread_rates = ctx.device().thread_rates();
-        let pressure =
-            sum_pressure(ctx, space, local_info, BottleneckLevel::Thread, &dims);
+        let pressure = sum_pressure(
+            ctx,
+            space,
+            local_info,
+            BottleneckLevel::Thread,
+            &dims,
+            &ir::PartialSize::default(),
+        );
         let end_latency = dims
             .iter()
             .map(|d| {
@@ -81,6 +87,7 @@ pub fn sum_pressure(
     local_info: &LocalInfo,
     bound_level: BottleneckLevel,
     nest: &[ir::DimId],
+    repeat: &ir::PartialSize,
 ) -> HwPressure {
     // Compute the pressure induced by the dimensions overhead.
     let mut pressure = HwPressure::min(
@@ -133,7 +140,7 @@ pub fn sum_pressure(
         let mut num_instances = inner_sum_dims
             .intersection(&local_info.nesting[&bb].outer_dims)
             .map(|&d| space.ir_instance().dim(d).size())
-            .product::<ir::PartialSize>();
+            .product::<ir::PartialSize>() * repeat;
         let mut bb_pressure = if let ir::BBId::Dim(dim) = bb {
             let kind = space.domain().get_dim_kind(dim);
             if !bound_level.accounts_for_dim(kind) {
@@ -203,14 +210,13 @@ fn block_bound(
     info: &LocalInfo,
     dims: &[ir::DimId],
 ) -> FastBound {
-    // Compute the pressure on the execution units in a single iteration.
-    let mut pressure = sum_pressure(ctx, space, info, BottleneckLevel::Block, dims);
     // Repeat the pressure by the number of iterations of the level and compute the bound.
     let n_iters = dims
         .iter()
-        .map(|&d| u64::from(info.dim_sizes[&d]))
-        .product::<u64>();
-    pressure.repeat_parallel(n_iters as f64);
+        .map(|&d| space.ir_instance().dim(d).size())
+        .product::<ir::PartialSize>();
+    let pressure =
+        sum_pressure(ctx, space, info, BottleneckLevel::Block, dims, &n_iters);
     pressure.bound(BottleneckLevel::Block, &ctx.device().block_rates())
 }
 

@@ -104,8 +104,14 @@ pub fn bound(space: &SearchSpace, context: &Context) -> Bound {
     let lcm_num_blocks = local_info.parallelism.lcm_num_blocks;
     let latency = block_latency.scale(block_parallelism, min_num_blocks, lcm_num_blocks);
     // Compute the throughput bound at the whole device level.
-    let global_pressure =
-        sum_pressure(context, space, &local_info, BottleneckLevel::Global, &[]);
+    let global_pressure = sum_pressure(
+        context,
+        space,
+        &local_info,
+        BottleneckLevel::Global,
+        &[],
+        &ir::PartialSize::default(),
+    );
     trace!("global pressure {:?}", global_pressure);
     let device_rates = context.device().total_rates();
     let throughput_bound = global_pressure.bound(BottleneckLevel::Global, &device_rates);

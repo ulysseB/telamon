@@ -14,8 +14,6 @@ pub struct LocalInfo<'a> {
     pub nesting: HashMap<ir::BBId, Nesting<'a>>,
     /// The pressure incured by a signle instance of each BB.
     pub hw_pressure: HashMap<ir::BBId, HwPressure>,
-    /// The size of each dimensions.
-    pub dim_sizes: HashMap<ir::DimId, u32>,
     /// The pressure induced by a single iteration of each dimension and the exit latency
     /// of the loop.
     pub dim_overhead: HashMap<ir::DimId, (HwPressure, HwPressure)>,
@@ -90,7 +88,6 @@ impl<'a> LocalInfo<'a> {
             );
         }
         LocalInfo {
-            dim_sizes,
             nesting,
             hw_pressure,
             dim_overhead,
