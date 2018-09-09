@@ -75,9 +75,10 @@ impl device::Device for Cpu {
 
     fn add_block_overhead(
         &self,
-        _predicated_dims_size: u64,
-        _max_threads_per_blocks: u64,
-        _pressure: &mut HwPressure,
+        _: model::size::FactorRange,
+        _: model::size::FactorRange,
+        _: model::size::Range,
+        _: &mut HwPressure,
     ) {
     }
 

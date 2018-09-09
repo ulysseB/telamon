@@ -557,19 +557,19 @@ impl device::Device for Gpu {
 
     fn add_block_overhead(
         &self,
-        predicated_dims_size: u64,
-        max_threads_per_blocks: u64,
+        max_active_threads: model::size::FactorRange,
+        max_threads: model::size::FactorRange,
+        predication_factor: model::size::Range,
         pressure: &mut HwPressure,
     ) {
-        assert!(predicated_dims_size > 0);
-        assert!(max_threads_per_blocks > 0);
-        let active_ratio =
-            self.waste_ratio(max_threads_per_blocks / predicated_dims_size);
+        let active_ratio = self.waste_ratio(max_active_threads.lcm);
         pressure.multiply(&InstDesc::wasted_ratio(active_ratio).into());
-        if predicated_dims_size > 1 {
-            let full_ratio = self.waste_ratio(max_threads_per_blocks);
-            let num_skipped = full_ratio * predicated_dims_size as f64 - active_ratio;
-            assert!(num_skipped >= 0.);
+        // Account for inactive wraps.
+        let total_ratio = self.waste_ratio(max_threads.lcm);
+        // TODO(model): might be able to do better since `predication_factor` value is
+        // linked to `max_threads` value.
+        let num_skipped = total_ratio * predication_factor.min as f64 - active_ratio;
+        if num_skipped > 0. {
             pressure.repeat_and_add_bottlenecks(num_skipped, &self.skipped_pressure());
         }
     }

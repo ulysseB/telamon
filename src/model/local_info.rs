@@ -2,16 +2,16 @@
 use device::{Context, Device};
 use ir::{self, Statement};
 use itertools::Itertools;
-use model::{HwPressure, size};
+use model::{size, HwPressure};
 use num::integer::lcm;
 use search_space::{DimKind, Domain, Order, SearchSpace, ThreadMapping};
 use utils::*;
 
 /// Local information on the different objects.
 #[derive(Debug)]
-pub struct LocalInfo {
+pub struct LocalInfo<'a> {
     /// The loops inside and outside each BB.
-    pub nesting: HashMap<ir::BBId, Nesting>,
+    pub nesting: HashMap<ir::BBId, Nesting<'a>>,
     /// The pressure incured by a signle instance of each BB.
     pub hw_pressure: HashMap<ir::BBId, HwPressure>,
     /// The size of each dimensions.
@@ -25,9 +25,9 @@ pub struct LocalInfo {
     pub parallelism: Parallelism,
 }
 
-impl LocalInfo {
+impl<'a> LocalInfo<'a> {
     /// Compute the local information for the given search space, in the context.
-    pub fn compute(space: &SearchSpace, context: &Context) -> Self {
+    pub fn compute(space: &SearchSpace<'a>, context: &Context) -> Self {
         let dim_sizes = space
             .ir_instance()
             .dims()
@@ -36,7 +36,7 @@ impl LocalInfo {
         let nesting: HashMap<_, _> = space
             .ir_instance()
             .blocks()
-            .map(|bb| (bb.bb_id(), Nesting::compute(space, bb.bb_id(), &dim_sizes)))
+            .map(|bb| (bb.bb_id(), Nesting::compute(space, bb.bb_id())))
             .collect();
         let mut hw_pressure = space
             .ir_instance()
@@ -143,7 +143,7 @@ fn add_indvar_pressure(
 
 /// Nesting of an object.
 #[derive(Debug)]
-pub struct Nesting {
+pub struct Nesting<'a> {
     /// Dimensions nested inside the current BB.
     pub inner_dims: VecSet<ir::DimId>,
     /// Basic blocks nested inside the current BB.
@@ -160,19 +160,15 @@ pub struct Nesting {
     /// Only consider thread dimensions that are sure to be mapped to threads.
     has_inner_thread_dims: bool,
     /// Number of threads that are not represented in the active dimensions of the block.
-    pub num_unmapped_threads: u32,
-    /// Maximal number of threads this block can be in, considering only outer and mapped
-    /// out dimensions.
-    pub max_threads_per_block: u64,
+    pub num_unmapped_threads: ir::PartialSize<'a>,
+    /// Maximal number of threads this block can be in, considering only outer dimensions
+    /// (an not mapped out dimensions).
+    pub max_threads_per_block: ir::PartialSize<'a>,
 }
 
-impl Nesting {
+impl<'a> Nesting<'a> {
     /// Computes the nesting of a `Statement`.
-    fn compute(
-        space: &SearchSpace,
-        bb: ir::BBId,
-        dim_sizes: &HashMap<ir::DimId, u32>,
-    ) -> Self {
+    fn compute(space: &SearchSpace<'a>, bb: ir::BBId) -> Self {
         let mut inner_dims = Vec::new();
         let mut inner_bbs = Vec::new();
         let mut before_self = Vec::new();
@@ -224,15 +220,14 @@ impl Nesting {
                     mapping.intersects(ThreadMapping::MAPPED)
                 })
             })
-            .map(|d| dim_sizes[&d.id()])
-            .product::<u32>();
+            .map(|d| d.size())
+            .product::<ir::PartialSize>();
         let max_threads_per_block = outer_dims
             .iter()
             .cloned()
             .filter(|&d| space.domain().get_dim_kind(d).intersects(DimKind::THREAD))
-            .map(|d| dim_sizes[&d] as u64)
-            .product::<u64>()
-            * num_unmapped_threads as u64;
+            .map(|d| space.ir_instance().dim(d).size())
+            .product::<ir::PartialSize>();
         Nesting {
             inner_dims: VecSet::new(inner_dims),
             inner_bbs: VecSet::new(inner_bbs),
@@ -295,7 +290,8 @@ impl Parallelism {
     /// Combines two `Parallelism` summaries computed on different instructions and computes the
     /// `Parallelism` of the union of the instructions.
     fn combine(self, rhs: Self) -> Self {
-        let min_num_threads_per_blocks = self.min_num_threads_per_blocks
+        let min_num_threads_per_blocks = self
+            .min_num_threads_per_blocks
             .min(rhs.min_num_threads_per_blocks);
         Parallelism {
             min_num_blocks: self.min_num_blocks.min(rhs.min_num_blocks),
@@ -345,7 +341,7 @@ fn parallelism(
                     }
                 }
             }
-            let min_num_blocks =  size::bounds(&min_size_blocks, space, ctx).min;
+            let min_num_blocks = size::bounds(&min_size_blocks, space, ctx).min;
             let lcm_num_blocks = size::factors(&min_size_blocks, space, ctx).lcm;
             let size_threads_and_blocks = min_size_blocks * &size_thread_dims;
             Parallelism {

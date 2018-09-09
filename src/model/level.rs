@@ -94,8 +94,13 @@ pub fn sum_pressure(
         };
         let mut init_pressure = local_info.thread_overhead.clone();
         if bound_level <= BottleneckLevel::Block {
-            ctx.device()
-                .add_block_overhead(1, min_num_threads, &mut init_pressure);
+            let num_threads = size::FactorRange::new_fixed(min_num_threads);
+            ctx.device().add_block_overhead(
+                num_threads,
+                num_threads,
+                size::Range::ONE,
+                &mut init_pressure,
+            );
         }
         pressure.repeat_and_add_bottlenecks(min_num_threads as f64, &init_pressure);
     }
@@ -127,8 +132,8 @@ pub fn sum_pressure(
         // Compute the pressure of a single instance and the number of instances.
         let mut num_instances = inner_sum_dims
             .intersection(&local_info.nesting[&bb].outer_dims)
-            .map(|d| f64::from(local_info.dim_sizes[d]))
-            .product::<f64>();
+            .map(|&d| space.ir_instance().dim(d).size())
+            .product::<ir::PartialSize>();
         let mut bb_pressure = if let ir::BBId::Dim(dim) = bb {
             let kind = space.domain().get_dim_kind(dim);
             if !bound_level.accounts_for_dim(kind) {
@@ -144,26 +149,34 @@ pub fn sum_pressure(
         // special care as they are only active on the dimensions they are nested on. Other
         // threads just skip the instruction.
         if bound_level <= BottleneckLevel::Block {
+            let unmapped_threads = &nesting.num_unmapped_threads;
+            let max_threads = nesting.max_threads_per_block.clone() * unmapped_threads;
+            let max_threads = size::factors(&max_threads, space, ctx);
+            let (max_active_threads, predication_factor);
             let is_predicated = space
                 .ir_instance()
                 .block(bb)
                 .as_inst()
                 .map(|i| i.has_side_effects())
                 .unwrap_or(false);
-            let predicated_size = if is_predicated {
-                nesting.num_unmapped_threads as u64
+            if is_predicated {
+                max_active_threads =
+                    size::factors(&nesting.max_threads_per_block, space, ctx);
+                predication_factor = size::bounds(unmapped_threads, space, ctx);
             } else {
-                num_instances *= nesting.num_unmapped_threads as f64;
-                1
-            };
-            let max_threads = nesting.max_threads_per_block;
+                num_instances *= unmapped_threads;
+                predication_factor = size::Range::ONE;
+                max_active_threads = max_threads;
+            }
             ctx.device().add_block_overhead(
-                predicated_size,
+                max_active_threads,
                 max_threads,
+                predication_factor,
                 &mut bb_pressure,
             );
         }
-        pressure.repeat_and_add_bottlenecks(num_instances, &bb_pressure);
+        let num_instances = size::bounds(&num_instances, space, ctx).min;
+        pressure.repeat_and_add_bottlenecks(num_instances as f64, &bb_pressure);
     }
     pressure
 }
