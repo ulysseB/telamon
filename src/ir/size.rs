@@ -145,7 +145,11 @@ impl<'a> PartialSize<'a> {
 
 impl<'a> Default for PartialSize<'a> {
     fn default() -> Self {
-        PartialSize { factor: 1, dividend: vec![], divisor: 1 }
+        PartialSize {
+            factor: 1,
+            dividend: vec![],
+            divisor: 1,
+        }
     }
 }
 
@@ -157,7 +161,6 @@ impl<'a, 'b> std::ops::MulAssign<&'b PartialSize<'a>> for PartialSize<'a> {
         self.simplify();
     }
 }
-
 
 impl<'a, 'b> std::iter::Product<&'b PartialSize<'a>> for PartialSize<'a>
 where
@@ -174,7 +177,6 @@ where
         total
     }
 }
-
 
 impl<'a> From<Size<'a>> for PartialSize<'a> {
     fn from(size: Size<'a>) -> PartialSize<'a> {

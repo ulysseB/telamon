@@ -7,7 +7,7 @@
 //! times while when considering the intersection of the bodies, we consider it is
 //! repeated N x M times.
 
-use device::{Context, Device};
+use device::Context;
 use ir;
 use itertools::{self, Itertools};
 use model::{size, BottleneckLevel, DependencyMap, FastBound, HwPressure, LocalInfo};
@@ -44,7 +44,7 @@ impl Level {
         // Compute the thread-level pressure.
         let thread_rates = ctx.device().thread_rates();
         let pressure = sum_pressure(
-            ctx.device(),
+            ctx,
             space,
             local_info,
             BottleneckLevel::Thread,
@@ -65,7 +65,7 @@ impl Level {
             .iter()
             .all(|&d| DimKind::THREAD.contains(space.domain().get_dim_kind(d)));
         let repeated_latency = if only_threads {
-            Some(block_bound(ctx.device(), space, local_info, &dims))
+            Some(block_bound(ctx, space, local_info, &dims))
         } else {
             None
         };
@@ -81,7 +81,7 @@ impl Level {
 
 /// Computes the `HwPressure` caused by the intersection of the bodies of the given loops.
 pub fn sum_pressure(
-    device: &Device,
+    ctx: &Context,
     space: &SearchSpace,
     local_info: &LocalInfo,
     bound_level: BottleneckLevel,
@@ -90,7 +90,7 @@ pub fn sum_pressure(
     // Compute the pressure induced by the dimensions overhead.
     let mut pressure = HwPressure::min(
         dims.iter().map(|d| &local_info.dim_overhead[d].0),
-    ).unwrap_or_else(|| HwPressure::zero(device));
+    ).unwrap_or_else(|| HwPressure::zero(ctx.device()));
     if dims.is_empty() {
         let threads_per_block = space.domain().get_num_threads().min as u64;
         let num_threads = match bound_level {
@@ -102,7 +102,7 @@ pub fn sum_pressure(
         };
         let mut init_pressure = local_info.thread_overhead.clone();
         if bound_level <= BottleneckLevel::Block {
-            device.add_block_overhead(1, num_threads, &mut init_pressure);
+            ctx.device().add_block_overhead(1, num_threads, &mut init_pressure);
         }
         pressure.repeat_and_add_bottlenecks(num_threads as f64, &init_pressure);
     }
@@ -164,7 +164,8 @@ pub fn sum_pressure(
                 1
             };
             let max_threads = nesting.max_threads_per_block;
-            device.add_block_overhead(predicated_size, max_threads, &mut bb_pressure);
+            ctx.device()
+                .add_block_overhead(predicated_size, max_threads, &mut bb_pressure);
         }
         pressure.repeat_and_add_bottlenecks(num_instances, &bb_pressure);
     }
@@ -188,20 +189,20 @@ where
 
 /// Generates a bound based on the pressure produced by a block of threads.
 fn block_bound(
-    device: &Device,
+    ctx: &Context,
     space: &SearchSpace,
     info: &LocalInfo,
     dims: &[ir::DimId],
 ) -> FastBound {
     // Compute the pressure on the execution units in a single iteration.
-    let mut pressure = sum_pressure(device, space, info, BottleneckLevel::Block, dims);
+    let mut pressure = sum_pressure(ctx, space, info, BottleneckLevel::Block, dims);
     // Repeat the pressure by the number of iterations of the level and compute the bound.
     let n_iters = dims
         .iter()
         .map(|&d| u64::from(info.dim_sizes[&d]))
         .product::<u64>();
     pressure.repeat_parallel(n_iters as f64);
-    pressure.bound(BottleneckLevel::Block, &device.block_rates())
+    pressure.bound(BottleneckLevel::Block, &ctx.device().block_rates())
 }
 
 /// Indicates if a dimension should be considered for dimension levels.
