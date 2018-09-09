@@ -162,6 +162,15 @@ impl<'a, 'b> std::ops::MulAssign<&'b PartialSize<'a>> for PartialSize<'a> {
     }
 }
 
+impl<'a, 'b> std::ops::Mul<&'b PartialSize<'a>> for PartialSize<'a> {
+    type Output = Self;
+
+    fn mul(mut self, rhs: &PartialSize<'a>) -> Self {
+        self *= rhs;
+        self
+    }
+}
+
 impl<'a, 'b> std::iter::Product<&'b PartialSize<'a>> for PartialSize<'a>
 where
     'a: 'b,

@@ -2,10 +2,9 @@
 use device::{Context, Device};
 use ir::{self, Statement};
 use itertools::Itertools;
-use model::HwPressure;
+use model::{HwPressure, size};
 use num::integer::lcm;
 use search_space::{DimKind, Domain, Order, SearchSpace, ThreadMapping};
-use std;
 use utils::*;
 
 /// Local information on the different objects.
@@ -76,7 +75,7 @@ impl LocalInfo {
                 }
             })
             .collect();
-        let parallelism = parallelism(space, &nesting, &dim_sizes);
+        let parallelism = parallelism(&nesting, space, context);
         // Add the pressure induced by induction variables.
         let mut thread_overhead = HwPressure::zero(context.device());
         for (_, var) in space.ir_instance().induction_vars() {
@@ -282,16 +281,37 @@ impl Nesting {
 /// Minimum and maximum parallelism in the whole GPU.
 #[derive(Debug)]
 pub struct Parallelism {
-    /// Minimal number of block of threads.
+    /// Minimal number of blocks.
     pub min_num_blocks: u64,
-    /// Maximal number of blocks of threads.
+    /// Minimal number of threads per blocks.
+    pub min_num_threads_per_blocks: u64,
+    /// Minimal number of threads.
+    pub min_num_threads: u64,
+    /// A multiple of the number of blocks.
     pub lcm_num_blocks: u64,
+}
+
+impl Parallelism {
+    /// Combines two `Parallelism` summaries computed on different instructions and computes the
+    /// `Parallelism` of the union of the instructions.
+    fn combine(self, rhs: Self) -> Self {
+        let min_num_threads_per_blocks = self.min_num_threads_per_blocks
+            .min(rhs.min_num_threads_per_blocks);
+        Parallelism {
+            min_num_blocks: self.min_num_blocks.min(rhs.min_num_blocks),
+            min_num_threads_per_blocks,
+            min_num_threads: self.min_num_threads.min(rhs.min_num_threads),
+            lcm_num_blocks: lcm(self.lcm_num_blocks, rhs.lcm_num_blocks),
+        }
+    }
 }
 
 impl Default for Parallelism {
     fn default() -> Self {
         Parallelism {
             min_num_blocks: 1,
+            min_num_threads_per_blocks: 1,
+            min_num_threads: 1,
             lcm_num_blocks: 1,
         }
     }
@@ -299,30 +319,42 @@ impl Default for Parallelism {
 
 /// Computes the minimal and maximal parallelism accross instructions.
 fn parallelism(
-    space: &SearchSpace,
     nesting: &HashMap<ir::BBId, Nesting>,
-    dim_sizes: &HashMap<ir::DimId, u32>,
+    space: &SearchSpace,
+    ctx: &Context,
 ) -> Parallelism {
+    let size_thread_dims = space
+        .ir_instance()
+        .thread_dims()
+        .map(|d| d.size())
+        .product::<ir::PartialSize>();
+    let min_threads_per_blocks = size::bounds(&size_thread_dims, space, ctx).min;
     space
         .ir_instance()
         .insts()
         .map(|inst| {
-            let mut par = Parallelism::default();
+            let mut min_size_blocks = ir::PartialSize::default();
+            let mut max_size_blocks = ir::PartialSize::default();
             for &dim in &nesting[&inst.bb_id()].outer_dims {
                 let kind = space.domain().get_dim_kind(dim);
-                let size = u64::from(dim_sizes[&dim]);
-                if kind == DimKind::BLOCK {
-                    par.min_num_blocks *= size;
-                }
                 if kind.intersects(DimKind::BLOCK) {
-                    par.lcm_num_blocks *= size;
+                    let size = space.ir_instance().dim(dim).size();
+                    max_size_blocks *= size;
+                    if kind == DimKind::BLOCK {
+                        min_size_blocks *= size;
+                    }
                 }
             }
-            par
+            let min_num_blocks =  size::bounds(&min_size_blocks, space, ctx).min;
+            let lcm_num_blocks = size::factors(&min_size_blocks, space, ctx).lcm;
+            let size_threads_and_blocks = min_size_blocks * &size_thread_dims;
+            Parallelism {
+                min_num_blocks,
+                min_num_threads_per_blocks: min_threads_per_blocks,
+                min_num_threads: size::bounds(&size_threads_and_blocks, space, ctx).min,
+                lcm_num_blocks,
+            }
         })
-        .fold1(|lhs, rhs| Parallelism {
-            min_num_blocks: std::cmp::min(lhs.min_num_blocks, rhs.min_num_blocks),
-            lcm_num_blocks: lcm(lhs.lcm_num_blocks, rhs.lcm_num_blocks),
-        })
+        .fold1(|lhs, rhs| lhs.combine(rhs))
         .unwrap_or(Parallelism::default())
 }
