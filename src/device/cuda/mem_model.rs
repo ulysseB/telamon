@@ -3,6 +3,7 @@ use binary_heap_plus::BinaryHeap;
 use device::{cuda, Context};
 use ir;
 use itertools::Itertools;
+use model::size;
 use num::Integer;
 use search_space::{DimKind, Domain, InstFlag, SearchSpace, ThreadMapping};
 use std;
@@ -31,7 +32,7 @@ pub fn analyse(
     space: &SearchSpace,
     gpu: &cuda::Gpu,
     inst: &ir::Instruction,
-    sizes: &HashMap<ir::DimId, u32>,
+    sizes: &HashMap<ir::DimId, size::Range>,
     ctx: &Context,
 ) -> MemInfo {
     let flag = space.domain().get_inst_flag(inst.id());
@@ -90,7 +91,7 @@ fn info(
     dims: &HashMap<ir::DimId, ir::PartialSize>,
     is_shared_access: Trivalent,
     gpu: &cuda::Gpu,
-    sizes: &HashMap<ir::DimId, u32>,
+    sizes: &HashMap<ir::DimId, size::Range>,
     ctx: &Context,
 ) -> MemInfo {
     let mut info = NO_ACCESS_INFO;
