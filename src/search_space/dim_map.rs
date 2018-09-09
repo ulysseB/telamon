@@ -66,6 +66,8 @@ fn lower_dim_map(
         Order::BEFORE,
     ));
     let operand = fun.inst(inst).operands()[operand];
+    // The invariants for the load and store instructions, including the ones implied by the
+    // mapping between dimensions, are enforced by `search_space::process_lowering`.
     actions.extend(operand::invariants(fun, operand, inst.into()));
     lowered_dim_map.register_new_objs(fun, new_objs);
     debug!("lower_dim_map actions: {:?}", actions);

@@ -153,8 +153,8 @@ impl LoweredDimMap {
     /// Returns the dimensions of the memory layout to create. For each dimension, gives
     /// a pair `(store dim, load dim)`.
     pub fn mem_dimensions(&self) -> impl Iterator<Item = (DimId, DimId)> + '_ {
-        let st_dims = self.st_dims_mapping.iter().map(|&(_, [dim, _])| dim);
-        let ld_dims = self.ld_dims_mapping.iter().map(|&(_, [dim, _])| dim);
+        let st_dims = self.st_dims_mapping.iter().map(|&(_, [_, dim])| dim);
+        let ld_dims = self.ld_dims_mapping.iter().map(|&(_, [_, dim])| dim);
         st_dims.zip_eq(ld_dims)
     }
 
