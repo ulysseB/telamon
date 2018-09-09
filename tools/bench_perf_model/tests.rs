@@ -34,7 +34,7 @@ impl PerfModelTest for Test0 {
     fn gen_function(builder: &mut Builder) -> Self {
         let tile_1_size = builder.cst_size(Self::TILE_1 as u32);
         let tile_2_size = builder.cst_size(Self::TILE_2 as u32);
-        let tmp_mem_size = 4 * (Self::TILE_1 * Self::TILE_2) as u32;
+        let tmp_mem_size = 4 * (Self::TILE_1 * Self::TILE_1 * Self::TILE_2) as u32;
         let a_tmp_mem = builder.allocate_shared(tmp_mem_size);
         let b_tmp_mem = builder.allocate_shared(tmp_mem_size);
         // Configure dimension sizes
@@ -198,7 +198,7 @@ impl PerfModelTest for Test2 {
     fn gen_function(builder: &mut Builder) -> Self {
         let tile_1_size = builder.cst_size(Self::TILE_1 as u32);
         let tile_2_size = builder.cst_size(Self::TILE_2 as u32);
-        let tmp_mem_size = 4 * (Self::TILE_1 * Self::TILE_2) as u32;
+        let tmp_mem_size = 4 * (Self::TILE_1 * Self::TILE_1 * Self::TILE_2) as u32;
         let a_tmp_mem = builder.allocate(tmp_mem_size, true);
         let b_tmp_mem = builder.allocate(tmp_mem_size, true);
         let out = ir::MemId::External(0);
