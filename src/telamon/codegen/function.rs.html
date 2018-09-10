@@ -647,7 +647,7 @@
 <span class="macro">hash_from_key</span><span class="macro">!</span>(<span class="ident">ParamVal</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>, <span class="ident">ParamVal</span>::<span class="ident">key</span>, <span class="lifetime">&#39;a</span>);
 
 <span class="doccomment">/// Uniquely identifies a `ParamVal`.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Hash</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ParamValKey</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="ident">External</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Parameter</span>),
     <span class="ident">Size</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">codegen</span>::<span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>),
@@ -739,9 +739,9 @@
             <span class="prelude-val">Some</span>(
                 <span class="ident">block_dims</span>[<span class="number">1</span>..]
                     .<span class="ident">iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">d</span><span class="op">|</span> <span class="ident">d</span>.<span class="ident">size</span>().<span class="ident">clone</span>())
-                    .<span class="ident">chain</span>(<span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">once</span>(<span class="self">self</span>.<span class="ident">size</span>.<span class="ident">clone</span>()))
-                    .<span class="ident">map</span>(<span class="ident">ParamVal</span>::<span class="ident">Size</span>),
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">d</span><span class="op">|</span> <span class="ident">d</span>.<span class="ident">size</span>())
+                    .<span class="ident">chain</span>(<span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">once</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">size</span>))
+                    .<span class="ident">flat_map</span>(<span class="ident">ParamVal</span>::<span class="ident">from_size</span>),
             )
         } <span class="kw">else</span> {
             <span class="prelude-val">None</span>

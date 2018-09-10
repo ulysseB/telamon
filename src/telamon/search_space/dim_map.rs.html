@@ -106,6 +106,8 @@
 <span id="106">106</span>
 <span id="107">107</span>
 <span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! `DimMap` and layout lowering.</span>
 <span class="kw">use</span> <span class="ident">ir</span>;
@@ -175,6 +177,8 @@
         <span class="ident">Order</span>::<span class="ident">BEFORE</span>,
     ));
     <span class="kw">let</span> <span class="ident">operand</span> <span class="op">=</span> <span class="ident">fun</span>.<span class="ident">inst</span>(<span class="ident">inst</span>).<span class="ident">operands</span>()[<span class="ident">operand</span>];
+    <span class="comment">// The invariants for the load and store instructions, including the ones implied by the</span>
+    <span class="comment">// mapping between dimensions, are enforced by `search_space::process_lowering`.</span>
     <span class="ident">actions</span>.<span class="ident">extend</span>(<span class="ident">operand</span>::<span class="ident">invariants</span>(<span class="ident">fun</span>, <span class="ident">operand</span>, <span class="ident">inst</span>.<span class="ident">into</span>()));
     <span class="ident">lowered_dim_map</span>.<span class="ident">register_new_objs</span>(<span class="ident">fun</span>, <span class="ident">new_objs</span>);
     <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;lower_dim_map actions: {:?}&quot;</span>, <span class="ident">actions</span>);
