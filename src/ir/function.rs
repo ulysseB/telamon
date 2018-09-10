@@ -340,7 +340,7 @@ impl<'a, L> Function<'a, L> {
         dims: &[ir::DimId],
     ) -> (Operand<'a, L>, AccessPattern<'a>) {
         let var_type = base_addr.t();
-        let base_size = ir::PartialSize::new(base_incr, vec![], 1);
+        let base_size = ir::PartialSize::new(base_incr, vec![]);
         let increments = dims
             .iter()
             .rev()
@@ -458,27 +458,30 @@ impl<'a> Function<'a, ()> {
         // Create the objects, but don't add anythin yet so we can rollback if an error
         // occurs.
         let mut dims = Vec::new();
-        let tiling_factor = tile_sizes.iter().product();
+        let tiling_factor = tile_sizes.iter().product::<u32>();
         let logical_dim = if let Some(size) = size.as_constant() {
-            let tiled_size = ir::PartialSize::new(size / tiling_factor, vec![], 1);
-            dims.push(Dimension::new(tiled_size, dim_ids[0])?);
+            let dim = Dimension::new_static(
+                dim_ids[0],
+                vec![size/tiling_factor],
+                Some(logical_id)
+            )?;
+            dims.push(dim);
             ir::LogicalDim::new_static(logical_id, dim_ids.clone(), size)
         } else {
-            let mut tiled_size: ir::PartialSize = size.clone().into();
-            tiled_size.mul_divisor(tiling_factor);
-            dims.push(Dimension::new(tiled_size, dim_ids[0])?);
-            let factors = tiling_factors;
             let static_dims = dim_ids[1..].to_vec();
+            let mut tiled_size: ir::PartialSize = size.clone().into();
+            tiled_size.add_divisors(&VecSet::new(static_dims.clone()));
+            dims.push(Dimension::new(dim_ids[0], tiled_size, Some(logical_id))?);
             ir::LogicalDim::new_dynamic(
                 logical_id,
                 dim_ids[0],
                 static_dims,
-                factors,
+                tiling_factors,
                 size,
             )
         };
         for (&id, &size) in dim_ids[1..].iter().zip_eq(tile_sizes) {
-            dims.push(Dimension::new(ir::PartialSize::new(size, vec![], 1), id)?);
+            dims.push(Dimension::new_static(id, vec![size], Some(logical_id))?);
         }
         // Register the new objects.
         for dim in &dims {

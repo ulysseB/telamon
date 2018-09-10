@@ -1,6 +1,6 @@
 use ir;
 use num;
-use search_space::SearchSpace;
+use search_space::{NumSet, SearchSpace};
 use std;
 
 /// The size of an iteration dimension. The size is of the form:
@@ -27,8 +27,17 @@ impl<'a> Size<'a> {
     }
 
     /// Converts an `ir::Size` to `Self`.
-    pub fn from_ir(size: &ir::PartialSize<'a>, _: &SearchSpace) -> Self {
-        Size::new(size.factor(), size.dividend().to_vec(), size.divisor())
+    pub fn from_ir(size: &ir::PartialSize<'a>, space: &SearchSpace) -> Self {
+        let (cst_factor, param_factors, dim_size_factors) = size.factors();
+        let dim_size_divisors = size.divisors();
+        let factor = cst_factor * dim_size_factors
+            .iter()
+            .map(|&d| dim_size(d, space))
+            .product::<u32>();
+        let divisor = dim_size_divisors.iter()
+            .map(|&d| dim_size(d, space))
+            .product();
+        Size::new(factor, param_factors.to_vec(), divisor)
     }
 
     /// Returns the size of a dimension if it is staticaly known.
@@ -72,10 +81,18 @@ impl<'a, 'b> std::ops::MulAssign<&'b Size<'a>> for Size<'a> {
     }
 }
 
+<<<<<<< HEAD
 // TODO(cleanup): remove the temporary implementation of From<ir::Size> for codgen::Size.
 // This is only needed until we have mechanism in `model::*` to handle sizes.
 impl<'a> From<ir::PartialSize<'a>> for Size<'a> {
     fn from(s: ir::PartialSize<'a>) -> Size<'a> {
         Size::new(s.factor(), s.dividend().to_vec(), s.divisor())
     }
+=======
+/// Returns the size of a static dimension from the domain.
+fn dim_size(dim: ir::DimId, space: &SearchSpace) -> u32 {
+    let universe = unwrap!(space.ir_instance().dim(dim).possible_sizes());
+    let size = space.domain().get_size(dim).as_constrained(universe);
+    unwrap!(size, "dim {} is not constrained", dim)
+>>>>>>> change size to point to the domain
 }

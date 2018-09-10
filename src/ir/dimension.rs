@@ -37,7 +37,11 @@ pub struct Dimension<'a> {
 
 impl<'a> Dimension<'a> {
     /// Creates a new dimension.
-    pub fn new(size: ir::PartialSize, id: DimId) -> Result<Dimension, ir::Error> {
+    pub fn new(
+        id: DimId,
+        size: ir::PartialSize,
+        logical_dim: Option<LogicalDimId>
+    ) -> Result<Dimension, ir::Error> {
         let possible_sizes = if let Some(size) = size.as_int() {
             if size == 1 {
                 return Err(ir::Error::InvalidDimSize);
@@ -49,25 +53,43 @@ impl<'a> Dimension<'a> {
         Ok(Dimension {
             size,
             id,
+            logical_dim,
             possible_sizes,
             iterated: Vec::new(),
             is_thread_dim: false,
-            logical_dim: None,
+            mapped_dims: VecSet::default(),
+        })
+    }
+
+    /// Creates a dimension with a statically known size, picked in a list of
+    /// possibilities.
+    pub fn new_static(
+        id: DimId,
+        possible_sizes: Vec<u32>,
+        logical_dim: Option<LogicalDimId>
+    ) -> Result<Self, ir::Error> {
+        if possible_sizes.contains(&1) {
+            return Err(ir::Error::InvalidDimSize);
+        }
+        Ok(Dimension {
+            size: ir::PartialSize::new_dim_size(id),
+            id,
+            possible_sizes,
+            logical_dim,
+            iterated: Vec::new(),
+            is_thread_dim: false,
             mapped_dims: VecSet::default(),
         })
     }
 
     /// Creates a new dimension with the same size as an existing one.
     pub fn with_same_size(id: DimId, other: &Self) -> Self {
-        Dimension {
-            size: other.size().clone(),
-            possible_sizes: other.possible_sizes.clone(),
-            id,
-            iterated: Vec::new(),
-            is_thread_dim: false,
-            logical_dim: None,
-            mapped_dims: VecSet::default(),
-        }
+        // Cannot fail because the checks already passed when `other` was created.
+        unwrap!(if other.possible_sizes.is_empty() {
+            Self::new(id, other.size().clone(), None)
+        } else {
+            Self::new_static(id, other.possible_sizes.clone(), None)
+        })
     }
 
     /// Retruns the size of the dimension.
