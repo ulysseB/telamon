@@ -92,13 +92,16 @@ impl<'a> PartialSize<'a> {
         PartialSize {
             static_factor: factor,
             param_factors: params,
-            .. Self::default()
+            ..Self::default()
         }
     }
 
     /// Creates a new `PartialSize` equals to the size of a dimension.
     pub fn new_dim_size(dim: ir::DimId) -> Self {
-        PartialSize { dim_factors: VecSet::new(vec![dim]), .. Self::default() }
+        PartialSize {
+            dim_factors: VecSet::new(vec![dim]),
+            ..Self::default()
+        }
     }
 
     /// Add divisors to the size.

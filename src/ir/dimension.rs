@@ -40,7 +40,7 @@ impl<'a> Dimension<'a> {
     pub fn new(
         id: DimId,
         size: ir::PartialSize,
-        logical_dim: Option<LogicalDimId>
+        logical_dim: Option<LogicalDimId>,
     ) -> Result<Dimension, ir::Error> {
         let possible_sizes = if let Some(size) = size.as_int() {
             if size == 1 {
@@ -66,7 +66,7 @@ impl<'a> Dimension<'a> {
     pub fn new_static(
         id: DimId,
         possible_sizes: Vec<u32>,
-        logical_dim: Option<LogicalDimId>
+        logical_dim: Option<LogicalDimId>,
     ) -> Result<Self, ir::Error> {
         if possible_sizes.contains(&1) {
             return Err(ir::Error::InvalidDimSize);

@@ -462,8 +462,8 @@ impl<'a> Function<'a, ()> {
         let logical_dim = if let Some(size) = size.as_constant() {
             let dim = Dimension::new_static(
                 dim_ids[0],
-                vec![size/tiling_factor],
-                Some(logical_id)
+                vec![size / tiling_factor],
+                Some(logical_id),
             )?;
             dims.push(dim);
             ir::LogicalDim::new_static(logical_id, dim_ids.clone(), size)
