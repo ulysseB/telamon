@@ -521,7 +521,9 @@ pub trait Printer {
                 let dst = namer.name_inst(inst);
                 self.print_cast(from_t, to_t, rounding, &dst, &namer.name_op(op))
             }
-            op @ op::TmpLd(..) | op @ op::TmpSt(..) => panic!("non-printable instruction {:?}", op),
+            op @ op::TmpLd(..) | op @ op::TmpSt(..) => {
+                panic!("non-printable instruction {:?}", op)
+            }
         }
     }
 }
