@@ -32,7 +32,7 @@ pub use self::operand::{DimMapScope, LoweringMap, Operand};
 pub use self::operator::{BinOp, Operator};
 pub use self::size::{PartialSize, Size};
 pub use self::types::Type;
-pub use self::value::{Value, ValueId, ValueDef};
+pub use self::value::{Value, ValueDef, ValueId};
 
 pub mod mem;
 

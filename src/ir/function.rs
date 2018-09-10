@@ -1,7 +1,10 @@
 //! Provides a representation of functions.
 use device::Device;
 use ir::mem::Block;
-use ir::{self, BBId, Dimension, InstId, Instruction, Operator, Statement, Value, ValueId, ValueDef};
+use ir::{
+    self, BBId, Dimension, InstId, Instruction, Operator, Statement, Value, ValueDef,
+    ValueId,
+};
 use ir::{dim, mem, AccessPattern, Operand, SparseVec, Type};
 use itertools::Itertools;
 use std;
@@ -200,13 +203,12 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Returns a `Value` given its id.
-    pub fn value(&self, id: ir::ValueId) -> &ir::Value { &self.values[id] }
+    pub fn value(&self, id: ir::ValueId) -> &ir::Value {
+        &self.values[id]
+    }
 
     /// Adds a value to the function.
-    pub fn add_value(
-        &mut self,
-        def: ir::ValueDef,
-    ) -> Result<ir::ValueId, ir::Error> {
+    pub fn add_value(&mut self, def: ir::ValueDef) -> Result<ir::ValueId, ir::Error> {
         let id = ir::ValueId(self.insts.len() as u16);
         let val = self.create_value(id, def)?;
         val.def().register(val.id(), self);
@@ -423,7 +425,6 @@ impl<'a> Function<'a, ()> {
         Ok(id)
     }
 
-
     /// Allocates a new memory block.
     pub fn add_mem_block(&mut self, size: u32) -> mem::InternalId {
         self.mem_blocks.alloc_block(size, None)
@@ -509,7 +510,7 @@ impl<'a> Function<'a, ()> {
             induction_vars,
             logical_dims,
             mut dim_mappings,
-            values
+            values,
         } = self;
 
         let mut insts = SparseVec::from_vec(

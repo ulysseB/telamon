@@ -2,7 +2,8 @@
 use ir;
 
 /// Uniquely identifies values.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize,
+         Deserialize)]
 pub struct ValueId(pub u16);
 
 impl Into<usize> for ValueId {
@@ -25,13 +26,19 @@ impl Value {
     }
 
     /// Return the unique identifiers of the `Value`.
-    pub fn id(&self) -> ValueId { self.id }
+    pub fn id(&self) -> ValueId {
+        self.id
+    }
 
     /// Specifies how the value is defined.
-    pub fn def(&self) -> &ValueDef { &self.def }
+    pub fn def(&self) -> &ValueDef {
+        &self.def
+    }
 
     /// Indicates the type of the value.
-    pub fn t(&self) -> &ir::Type { &self.t }
+    pub fn t(&self) -> &ir::Type {
+        &self.t
+    }
 }
 
 /// Specifies how is a `Value` defined.
@@ -63,4 +70,3 @@ impl ValueDef {
 //  - use is in def dims ?
 //  - use is before def
 // FIXME: value in operand position
-

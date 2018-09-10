@@ -45,7 +45,7 @@ impl<'a, L> Instruction<'a, L> {
             operator,
             id,
             iter_dims,
-            value: None
+            value: None,
         })
     }
 
@@ -146,7 +146,9 @@ impl<'a, L> Instruction<'a, L> {
     }
 
     /// Returns the `Value` holding the result of this instruction.
-    pub fn result_value(&self) -> Option<ir::ValueId> { self.value }
+    pub fn result_value(&self) -> Option<ir::ValueId> {
+        self.value
+    }
 
     /// Sets the `Value` holdings the result of this instruction.
     pub fn set_result_value(&mut self, value: ir::ValueId) {
