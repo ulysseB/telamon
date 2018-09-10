@@ -490,7 +490,7 @@ end
 
 require forall $logical in LogicalDimensions:
   tiling_factor($logical) == "$logical.possible_tilings()"
-  
+
 /// List pairs of dimensions that must have the same size and can be use for
 /// point-to-point communication.
 set DimMappings:
