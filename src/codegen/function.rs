@@ -77,6 +77,11 @@ impl<'a> Function<'a> {
         &self.block_dims
     }
 
+    /// Iterate on values of the function
+    pub fn values(&self) -> impl Iterator<Item = &ir::Value> {
+        self.values.iter()
+    }
+
     /// Iterates other all `codegen::Dimension`.
     pub fn dimensions(&self) -> impl Iterator<Item = &Dimension> {
         self.cfg

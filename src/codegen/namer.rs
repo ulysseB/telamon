@@ -34,6 +34,8 @@ pub trait Namer {
 pub struct NameMap<'a, 'b> {
     /// Provides fresh names.
     namer: std::cell::RefCell<&'b mut Namer>,
+    /// Keeps track of the names of the values used in the kernel
+    values: HashMap<ir::ValueId, String>,
     /// Keeps track of the name of the values produced by instructions.
     insts: HashMap<InstId, (Vec<ir::DimId>, NDArray<String>)>,
     /// Keeps track of loop index names.
@@ -82,6 +84,12 @@ impl<'a, 'b> NameMap<'a, 'b> {
                 indexes.insert(id, name.clone());
             }
         }
+        // Name Values 
+        let mut values = HashMap::default();
+        for val in function.values() {
+            let name = Self::name_value(val);
+            values.insert(val.id(), name);
+        }
         // Name induction levels.
         let mut induction_levels = HashMap::default();
         let mut induction_vars = HashMap::default();
@@ -104,6 +112,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
         let mut name_map = NameMap {
             namer: std::cell::RefCell::new(namer),
             insts: HashMap::default(),
+            values,
             num_loop: 0,
             current_indexes: HashMap::default(),
             #[cfg(feature = "mppa")]
@@ -140,6 +149,12 @@ impl<'a, 'b> NameMap<'a, 'b> {
             }
         }
         name_map
+    }
+
+    /// Returns a name for a value
+    fn name_value(val: &ir::Value) -> String {
+        let id: usize = val.id().into();
+        format!("val_{}", id)
     }
 
     /// Returns the total number of threads.
