@@ -31,7 +31,8 @@ impl Range {
 pub fn bounds(size: &ir::PartialSize, space: &SearchSpace, ctx: &Context) -> Range {
     let (factor, param_factors, dim_size_factors) = size.factors();
     let divisors = size.divisors();
-    let factor = param_factors.iter()
+    let factor = param_factors
+        .iter()
         .map(|p| unwrap!(ctx.param_as_size(&p.name)) as u64)
         .product::<u64>() * factor as u64;
     let mut total = Range::new_fixed(factor);
@@ -54,7 +55,10 @@ pub fn bounds(size: &ir::PartialSize, space: &SearchSpace, ctx: &Context) -> Ran
 pub fn dim_bounds(dim: ir::DimId, space: &SearchSpace) -> Range {
     let size = space.domain().get_size(dim);
     let universe = unwrap!(space.ir_instance().dim(dim).possible_sizes());
-    Range { min: size.min(universe) as u64, max: size.max(universe) as u64 }
+    Range {
+        min: size.min(universe) as u64,
+        max: size.max(universe) as u64,
+    }
 }
 
 /// A span of values, in term of factors. The actual value is a mulitpe of `gcd` and
@@ -82,7 +86,8 @@ pub fn factors(
 ) -> FactorRange {
     let (factor, param_factors, dim_size_factors) = size.factors();
     let divisors = size.divisors();
-    let factor = param_factors.iter()
+    let factor = param_factors
+        .iter()
         .map(|p| unwrap!(ctx.param_as_size(&p.name)) as u64)
         .product::<u64>() * factor as u64;
     let mut total = FactorRange::new_fixed(factor);
@@ -103,5 +108,8 @@ pub fn factors(
 pub fn dim_factors(dim: ir::DimId, space: &SearchSpace) -> FactorRange {
     let size = space.domain().get_size(dim);
     let universe = unwrap!(space.ir_instance().dim(dim).possible_sizes());
-    FactorRange { gcd: size.gcd(universe) as u64, lcm: size.lcm(universe) as u64 }
+    FactorRange {
+        gcd: size.gcd(universe) as u64,
+        lcm: size.lcm(universe) as u64,
+    }
 }
