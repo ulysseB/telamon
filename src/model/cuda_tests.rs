@@ -40,11 +40,12 @@ fn partial_bound_0() {
         let local_info = LocalInfo::compute(&space, &context);
         trace!("partial nesting: {:?}", local_info.nesting[&st_z.into()]);
         sum_pressure(
-            context.device(),
+            &context,
             &space,
             &local_info,
             BottleneckLevel::Global,
             &[],
+            &ir::PartialSize::default(),
         )
     }.get_bottleneck(3);
 
@@ -58,11 +59,12 @@ fn partial_bound_0() {
         let local_info = LocalInfo::compute(&space, &context);
         trace!("final nesting: {:?}", local_info.nesting[&st_z.into()]);
         sum_pressure(
-            context.device(),
+            &context,
             &space,
             &local_info,
             BottleneckLevel::Global,
             &[],
+            &ir::PartialSize::default(),
         )
     }.get_bottleneck(3);
 
@@ -101,11 +103,12 @@ fn partial_bound_1() {
         let local_info = LocalInfo::compute(&space, &context);
         trace!("partial nesting: {:?}", local_info.nesting[&st_z.into()]);
         sum_pressure(
-            context.device(),
+            &context,
             &space,
             &local_info,
             BottleneckLevel::Global,
             &[],
+            &ir::PartialSize::default(),
         )
     }.get_bottleneck(5);
 
@@ -115,11 +118,12 @@ fn partial_bound_1() {
         let local_info = LocalInfo::compute(&space, &context);
         trace!("final nesting: {:?}", local_info.nesting[&st_z.into()]);
         sum_pressure(
-            context.device(),
+            &context,
             &space,
             &local_info,
             BottleneckLevel::Global,
             &[],
+            &ir::PartialSize::default(),
         )
     }.get_bottleneck(5);
 
@@ -242,11 +246,12 @@ fn partial_bound_3() {
         let space = builder.get_clone();
         let local_info = LocalInfo::compute(&space, &context);
         sum_pressure(
-            context.device(),
+            &context,
             &space,
             &local_info,
             BottleneckLevel::Global,
             &[],
+            &ir::PartialSize::default(),
         )
     }.get_bottleneck(4);
 
@@ -260,11 +265,12 @@ fn partial_bound_3() {
         let space = builder.get();
         let local_info = LocalInfo::compute(&space, &context);
         sum_pressure(
-            context.device(),
+            &context,
             &space,
             &local_info,
             BottleneckLevel::Global,
             &[],
+            &ir::PartialSize::default(),
         )
     }.get_bottleneck(4);
 
@@ -302,11 +308,12 @@ fn partial_bound_4() {
         let space = builder.get_clone();
         let local_info = LocalInfo::compute(&space, &context);
         sum_pressure(
-            context.device(),
+            &context,
             &space,
             &local_info,
             BottleneckLevel::Global,
             &[],
+            &ir::PartialSize::default(),
         )
     }.get_bottleneck(3);
 
@@ -320,11 +327,12 @@ fn partial_bound_4() {
         let space = builder.get();
         let local_info = LocalInfo::compute(&space, &context);
         sum_pressure(
-            context.device(),
+            &context,
             &space,
             &local_info,
             BottleneckLevel::Global,
             &[],
+            &ir::PartialSize::default(),
         )
     }.get_bottleneck(3);
 
@@ -362,11 +370,12 @@ fn partial_bound_5() {
         let space = builder.get_clone();
         let local_info = LocalInfo::compute(&space, &context);
         sum_pressure(
-            context.device(),
+            &context,
             &space,
             &local_info,
             BottleneckLevel::Global,
             &[],
+            &ir::PartialSize::default(),
         )
     }.get_bottleneck(4);
 
@@ -376,11 +385,12 @@ fn partial_bound_5() {
         let space = builder.get();
         let local_info = LocalInfo::compute(&space, &context);
         sum_pressure(
-            context.device(),
+            &context,
             &space,
             &local_info,
             BottleneckLevel::Global,
             &[],
+            &ir::PartialSize::default(),
         )
     }.get_bottleneck(4);
 
