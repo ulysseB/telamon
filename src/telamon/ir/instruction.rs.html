@@ -182,10 +182,26 @@
 <span id="182">182</span>
 <span id="183">183</span>
 <span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Describes the instructions.</span>
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">BBId</span>, <span class="ident">DimMapScope</span>, <span class="ident">LoweringMap</span>, <span class="ident">Operand</span>, <span class="ident">Operator</span>, <span class="ident">Statement</span>, <span class="ident">Type</span>};
 <span class="kw">use</span> <span class="ident">std</span>;
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">hash</span>::{<span class="ident">Hash</span>, <span class="ident">Hasher</span>};
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// Uniquely identifies an instruction.</span>
@@ -213,6 +229,7 @@
     <span class="ident">operator</span>: <span class="ident">Operator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>,
     <span class="ident">id</span>: <span class="ident">InstId</span>,
     <span class="ident">iter_dims</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
+    <span class="ident">value</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">ValueId</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> <span class="ident">Instruction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> {
@@ -228,6 +245,7 @@
             <span class="ident">operator</span>,
             <span class="ident">id</span>,
             <span class="ident">iter_dims</span>,
+            <span class="ident">value</span>: <span class="prelude-val">None</span>,
         })
     }
 
@@ -326,6 +344,17 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_iteration_dimension</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">iter_dims</span>.<span class="ident">insert</span>(<span class="ident">dim</span>)
     }
+
+    <span class="doccomment">/// Returns the `Value` holding the result of this instruction.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">result_value</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">ValueId</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">value</span>
+    }
+
+    <span class="doccomment">/// Sets the `Value` holdings the result of this instruction.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_result_value</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">ir</span>::<span class="ident">ValueId</span>) {
+        <span class="comment">// An instruction value cannot be set twice.</span>
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">replace</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">value</span>, <span class="prelude-val">Some</span>(<span class="ident">value</span>)), <span class="prelude-val">None</span>);
+    }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Instruction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, ()<span class="op">&gt;</span> {
@@ -334,6 +363,7 @@
             <span class="ident">operator</span>: <span class="self">self</span>.<span class="ident">operator</span>.<span class="ident">freeze</span>(<span class="ident">cnt</span>),
             <span class="ident">id</span>: <span class="self">self</span>.<span class="ident">id</span>,
             <span class="ident">iter_dims</span>: <span class="self">self</span>.<span class="ident">iter_dims</span>,
+            <span class="ident">value</span>: <span class="self">self</span>.<span class="ident">value</span>,
         }
     }
 }

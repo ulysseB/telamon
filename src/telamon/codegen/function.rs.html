@@ -437,6 +437,9 @@
 <span id="437">437</span>
 <span id="438">438</span>
 <span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Describes a `Function` that is ready to execute on a device.</span>
 <span class="kw">use</span> <span class="ident">codegen</span>::{<span class="self">self</span>, <span class="ident">cfg</span>, <span class="ident">dimension</span>, <span class="ident">Cfg</span>, <span class="ident">Dimension</span>, <span class="ident">InductionLevel</span>, <span class="ident">InductionVar</span>};
@@ -456,6 +459,7 @@
     <span class="ident">induction_vars</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InductionVar</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
     <span class="ident">mem_blocks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InternalMemoryRegion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
     <span class="ident">init_induction_levels</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InductionLevel</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
+    <span class="ident">values</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Value</span><span class="op">&gt;</span>,
     <span class="comment">// TODO(cleanup): remove dependency on the search space</span>
     <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
 }
@@ -492,6 +496,7 @@
         );
         <span class="kw">let</span> <span class="ident">device_code_args</span> <span class="op">=</span> <span class="ident">device_code_args</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>();
         <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;compiling cfg {:?}&quot;</span>, <span class="ident">cfg</span>);
+        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">values</span>().<span class="ident">cloned</span>().<span class="ident">collect_vec</span>();
         <span class="ident">Function</span> {
             <span class="ident">cfg</span>,
             <span class="ident">thread_dims</span>,
@@ -500,6 +505,7 @@
             <span class="ident">device_code_args</span>,
             <span class="ident">space</span>,
             <span class="ident">mem_blocks</span>,
+            <span class="ident">values</span>,
             <span class="ident">init_induction_levels</span>,
         }
     }
