@@ -46,6 +46,11 @@ impl<'a> Size<'a> {
             None
         }
     }
+
+    /// Returns the maximum value the size can take.
+    pub fn max(&self) -> u32 {
+        self.max_val
+    }
 }
 
 impl<'a> Default for Size<'a> {

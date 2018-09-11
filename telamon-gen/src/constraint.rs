@@ -119,34 +119,35 @@ fn gen_flat_filter(
     // Detect the set constraints that must be applied before fetching the inputs.
     let mut input_set_constraints = Vec::new();
     let mut inner_set_constraints = Vec::new();
-    'iter_constraints: for (var, subset) in all_set_constraints.into_iter().rev() {
+    for (var, subset) in all_set_constraints.into_iter().rev() {
         let given_set = match var {
             ir::Variable::Arg(i) => choice.arguments().get(i).1,
             _ => panic!(),
         };
+        let mut is_used = false;
         for input in &conditions.inputs {
             // 1. check if it is used as argument to a choice.
             if let Some(pos) = input.vars.iter().position(|&v| v == var) {
                 let choice = ir_desc.get_choice(&input.choice);
                 if !given_set.is_subset_of_def(&choice.arguments().get(pos).1) {
-                    input_set_constraints.push((var, subset));
-                    continue 'iter_constraints;
+                    is_used = true;
+                    break;
                 }
             }
         }
         // 2. Check if it used in another constraint
-        let is_used = input_set_constraints
+        is_used |= input_set_constraints
             .iter()
-            .map(|x| &x.1)
+            .map(|x: &(_, _)| &x.1)
             .chain(&foralls)
             .filter(|s| s.arg().map(|v| v == var).unwrap_or(false))
             .map(|s| unwrap!(s.def().arg()))
             .any(|s| !given_set.is_subset_of(s));
         if is_used {
             input_set_constraints.push((var, subset));
-            continue 'iter_constraints;
+        } else {
+            inner_set_constraints.push((var, subset));
         }
-        inner_set_constraints.push((var, subset));
     }
     inner_set_constraints.reverse();
     input_set_constraints.reverse();

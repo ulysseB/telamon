@@ -41,6 +41,10 @@ impl device::Device for Cpu {
         0
     }
 
+    fn max_inner_block_size(&self) -> u32 {
+        0
+    }
+
     fn max_threads(&self) -> u32 {
         (num_cpus::get()) as u32
     }

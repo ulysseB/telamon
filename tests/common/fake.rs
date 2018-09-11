@@ -67,6 +67,10 @@ impl device::Device for Device {
         1024
     }
 
+    fn max_inner_block_size(&self) -> u32 {
+        65535
+    }
+
     fn shared_mem(&self) -> u32 {
         self.shared_mem_size
     }

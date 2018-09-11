@@ -146,6 +146,7 @@ impl FlatFilter {
             .map(|input| input.adapt(&adaptator))
             .collect();
         let constraints = self.set_constraints.adapt(&adaptator);
-        FlatFilter::new(self.vars.clone(), inputs, rules, constraints, ir_desc)
+        let vars = self.vars.iter().map(|set| set.adapt(&adaptator)).collect();
+        FlatFilter::new(vars, inputs, rules, constraints, ir_desc)
     }
 }

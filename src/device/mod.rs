@@ -25,6 +25,8 @@ pub trait Device: Sync {
     fn check_type(&self, t: ir::Type) -> Result<(), ir::TypeError>;
     /// Returns the maximal number of block dimensions.
     fn max_block_dims(&self) -> u32;
+    /// The maximal size inner block dimensions can have.
+    fn max_inner_block_size(&self) -> u32;
     /// Returns the maximal number of threads.
     fn max_threads(&self) -> u32;
     /// Returns the maximal unrolling factor.
