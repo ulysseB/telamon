@@ -585,6 +585,10 @@
 <span id="585">585</span>
 <span id="586">586</span>
 <span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Describes CUDA-enabled GPUs.</span>
 <span class="kw">use</span> <span class="ident">codegen</span>::<span class="ident">Function</span>;
@@ -1007,6 +1011,10 @@
 
     <span class="kw">fn</span> <span class="ident">max_block_dims</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
         <span class="number">3</span>
+    }
+
+    <span class="kw">fn</span> <span class="ident">max_inner_block_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
+        <span class="number">65535</span>
     }
 
     <span class="kw">fn</span> <span class="ident">max_threads</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {

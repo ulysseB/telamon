@@ -135,6 +135,10 @@
 <span id="135">135</span>
 <span id="136">136</span>
 <span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Describes CUDA-enabled GPUs.</span>
 <span class="kw">use</span> <span class="ident">codegen</span>::<span class="ident">Function</span>;
@@ -176,6 +180,10 @@
 
     <span class="comment">// block dimensions do not make sense on cpu</span>
     <span class="kw">fn</span> <span class="ident">max_block_dims</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
+        <span class="number">0</span>
+    }
+
+    <span class="kw">fn</span> <span class="ident">max_inner_block_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {
         <span class="number">0</span>
     }
 

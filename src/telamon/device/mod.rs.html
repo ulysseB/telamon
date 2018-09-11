@@ -90,6 +90,8 @@
 <span id="90">90</span>
 <span id="91">91</span>
 <span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Code generation and candidate evaluation for specific targets.</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">cuda</span>;
@@ -118,6 +120,8 @@
     <span class="kw">fn</span> <span class="ident">check_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ir</span>::<span class="ident">TypeError</span><span class="op">&gt;</span>;
     <span class="doccomment">/// Returns the maximal number of block dimensions.</span>
     <span class="kw">fn</span> <span class="ident">max_block_dims</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span>;
+    <span class="doccomment">/// The maximal size inner block dimensions can have.</span>
+    <span class="kw">fn</span> <span class="ident">max_inner_block_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span>;
     <span class="doccomment">/// Returns the maximal number of threads.</span>
     <span class="kw">fn</span> <span class="ident">max_threads</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span>;
     <span class="doccomment">/// Returns the maximal unrolling factor.</span>
