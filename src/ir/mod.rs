@@ -11,6 +11,7 @@ mod operand;
 mod operator;
 mod size;
 mod types;
+mod value;
 
 use itertools::Itertools;
 use std;
@@ -31,6 +32,7 @@ pub use self::operand::{DimMapScope, LoweringMap, Operand};
 pub use self::operator::{BinOp, Operator};
 pub use self::size::{PartialSize, Size};
 pub use self::types::Type;
+pub use self::value::{Value, ValueDef, ValueId};
 
 pub mod mem;
 
@@ -69,6 +71,7 @@ pub struct NewObjs {
     pub tiled_dimensions: Vec<(LogicalDimId, DimId)>,
     pub dim_mappings: Vec<DimMappingId>,
     pub mapped_dims: Vec<(DimMappingId, DimId)>,
+    pub values: Vec<ValueId>,
 }
 
 impl NewObjs {
@@ -123,6 +126,10 @@ impl NewObjs {
         for &dim in mapping.dims().iter() {
             self.mapped_dims.push((mapping.id(), dim));
         }
+    }
+
+    pub fn add_value(&mut self, val: &Value) {
+        self.values.push(val.id());
     }
 }
 
