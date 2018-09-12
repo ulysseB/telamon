@@ -606,10 +606,10 @@ mod tests {
         let d1 = builder.open_dim_ex(size.clone(), DimKind::THREAD);
         let addr = builder.mad(&d0, &(gpu.l1_cache_line as i32), &addr_base);
         let stride = ir::Size::new_const(gpu.l1_cache_line).into();
-        let pattern = ir::AccessPattern::Tensor {
-            mem_id: ir::MemId::External(0),
-            dims: std::iter::once((d0, stride)).collect(),
-        };
+        let pattern = builder.tensor_access_pattern(
+            ir::MemId::External(0),
+            vec![(&d0, stride)],
+        );
         let ld = builder.ld_ex(t, &addr, pattern, InstFlag::MEM_CG);
         builder.order(&d0, &d1, d0_d1_order);
 
@@ -618,8 +618,8 @@ mod tests {
             min: gpu.wrap_size as u64,
             max: gpu.wrap_size as u64,
         };
-        size_map.insert(d0, wrap_size);
-        size_map.insert(d1, wrap_size);
+        size_map.insert(d0[0], wrap_size);
+        size_map.insert(d1[0], wrap_size);
         (builder.get(), ld, size_map)
     }
 
@@ -672,7 +672,7 @@ mod tests {
         stride: u64,
     ) -> ThreadDimInfo {
         ThreadDimInfo {
-            id: ir::dim::Id(id),
+            id: ir::DimId(id),
             is_active_thread: true,
             is_partial_dim: partial,
             size: size::Range {
