@@ -12,7 +12,7 @@ pub use self::context::{ArgMap, AsyncCallback, AsyncEvaluator, Context, EvalMode
 
 use codegen::Function;
 use ir;
-use model::{HwPressure, Nesting};
+use model::{self, HwPressure, Nesting};
 use search_space::{DimKind, SearchSpace};
 use std::io::Write;
 use utils::*;
@@ -77,8 +77,9 @@ pub trait Device: Sync {
     /// be `1`.
     fn add_block_overhead(
         &self,
-        predicated_dims_size: u64,
-        max_threads_per_blocks: u64,
+        max_active_threads: model::size::FactorRange,
+        max_threads: model::size::FactorRange,
+        predication_factor: model::size::Range,
         pressure: &mut HwPressure,
     );
 

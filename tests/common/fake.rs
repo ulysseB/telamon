@@ -134,7 +134,14 @@ impl device::Device for Device {
         HwPressure::new(1.0, vec![1.0, 1.0, 1.0])
     }
 
-    fn add_block_overhead(&self, _: u64, _: u64, _: &mut HwPressure) {}
+    fn add_block_overhead(
+        &self,
+        _: model::size::FactorRange,
+        _: model::size::FactorRange,
+        _: model::size::Range,
+        _: &mut HwPressure,
+    ) {
+    }
 }
 
 /// A fake context.
