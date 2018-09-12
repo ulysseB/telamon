@@ -139,6 +139,7 @@
 <span id="139">139</span>
 <span id="140">140</span>
 <span id="141">141</span>
+<span id="142">142</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Describes CUDA-enabled GPUs.</span>
 <span class="kw">use</span> <span class="ident">codegen</span>::<span class="ident">Function</span>;
@@ -221,9 +222,10 @@
 
     <span class="kw">fn</span> <span class="ident">add_block_overhead</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">_predicated_dims_size</span>: <span class="ident">u64</span>,
-        <span class="ident">_max_threads_per_blocks</span>: <span class="ident">u64</span>,
-        <span class="ident">_pressure</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">HwPressure</span>,
+        <span class="kw">_</span>: <span class="ident">model</span>::<span class="ident">size</span>::<span class="ident">FactorRange</span>,
+        <span class="kw">_</span>: <span class="ident">model</span>::<span class="ident">size</span>::<span class="ident">FactorRange</span>,
+        <span class="kw">_</span>: <span class="ident">model</span>::<span class="ident">size</span>::<span class="ident">Range</span>,
+        <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">HwPressure</span>,
     ) {
     }
 

@@ -347,6 +347,15 @@
 <span id="347">347</span>
 <span id="348">348</span>
 <span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Building Blocks for lower bound performance models.</span>
 <span class="kw">mod</span> <span class="ident">code_point</span>;
@@ -355,6 +364,8 @@
 <span class="kw">mod</span> <span class="ident">hw_pressure</span>;
 <span class="kw">mod</span> <span class="ident">level</span>;
 <span class="kw">mod</span> <span class="ident">local_info</span>;
+
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">size</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">hw_pressure</span>::{<span class="ident">BottleneckLevel</span>, <span class="ident">Bound</span>, <span class="ident">HwPressure</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">local_info</span>::<span class="ident">Nesting</span>;
@@ -396,10 +407,16 @@
     <span class="comment">// Build the dependency maps dag.</span>
     <span class="kw">let</span> <span class="ident">local_info</span> <span class="op">=</span> <span class="ident">LocalInfo</span>::<span class="ident">compute</span>(<span class="ident">space</span>, <span class="ident">context</span>);
     <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;local_info {:?}&quot;</span>, <span class="ident">local_info</span>);
-    <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">levels</span>, <span class="ident">dim_maps</span>) <span class="op">=</span> <span class="ident">level</span>::<span class="ident">generate</span>(<span class="ident">space</span>, <span class="ident">context</span>.<span class="ident">device</span>(), <span class="kw-2">&amp;</span><span class="ident">local_info</span>);
+    <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">levels</span>, <span class="ident">dim_maps</span>) <span class="op">=</span> <span class="ident">level</span>::<span class="ident">generate</span>(<span class="ident">space</span>, <span class="ident">context</span>, <span class="kw-2">&amp;</span><span class="ident">local_info</span>);
     <span class="kw">let</span> <span class="ident">code_points</span> <span class="op">=</span> <span class="ident">CodePointDag</span>::<span class="ident">build</span>(<span class="ident">space</span>, <span class="kw-2">&amp;</span><span class="ident">levels</span>);
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">levels_dag</span> <span class="op">=</span>
-        <span class="ident">LevelDag</span>::<span class="ident">build</span>(<span class="ident">space</span>, <span class="kw-2">&amp;</span><span class="ident">local_info</span>, <span class="kw-2">&amp;</span><span class="ident">levels</span>, <span class="ident">dim_maps</span>, <span class="ident">code_points</span>.<span class="ident">len</span>());
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">levels_dag</span> <span class="op">=</span> <span class="ident">LevelDag</span>::<span class="ident">build</span>(
+        <span class="ident">space</span>,
+        <span class="kw-2">&amp;</span><span class="ident">local_info</span>,
+        <span class="kw-2">&amp;</span><span class="ident">levels</span>,
+        <span class="ident">dim_maps</span>,
+        <span class="ident">code_points</span>.<span class="ident">len</span>(),
+        <span class="ident">context</span>,
+    );
     <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;levels {:?}&quot;</span>, <span class="ident">levels</span>);
     <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;code_points {:?}&quot;</span>, <span class="ident">code_points</span>);
     <span class="ident">populate</span>(
@@ -447,11 +464,12 @@
     <span class="kw">let</span> <span class="ident">latency</span> <span class="op">=</span> <span class="ident">block_latency</span>.<span class="ident">scale</span>(<span class="ident">block_parallelism</span>, <span class="ident">min_num_blocks</span>, <span class="ident">lcm_num_blocks</span>);
     <span class="comment">// Compute the throughput bound at the whole device level.</span>
     <span class="kw">let</span> <span class="ident">global_pressure</span> <span class="op">=</span> <span class="ident">sum_pressure</span>(
-        <span class="ident">context</span>.<span class="ident">device</span>(),
+        <span class="ident">context</span>,
         <span class="ident">space</span>,
         <span class="kw-2">&amp;</span><span class="ident">local_info</span>,
         <span class="ident">BottleneckLevel</span>::<span class="ident">Global</span>,
         <span class="kw-2">&amp;</span>[],
+        <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">PartialSize</span>::<span class="ident">default</span>(),
     );
     <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;global pressure {:?}&quot;</span>, <span class="ident">global_pressure</span>);
     <span class="kw">let</span> <span class="ident">device_rates</span> <span class="op">=</span> <span class="ident">context</span>.<span class="ident">device</span>().<span class="ident">total_rates</span>();

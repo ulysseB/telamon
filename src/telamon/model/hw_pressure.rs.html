@@ -637,14 +637,14 @@
     }
 
     <span class="doccomment">/// Repeat the bound by iteration on a given loop level.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">iterate</span>(<span class="self">self</span>, <span class="ident">iterations</span>: <span class="ident">u32</span>, <span class="ident">level</span>: <span class="ident">usize</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">iterate</span>(<span class="self">self</span>, <span class="ident">iterations</span>: <span class="ident">u64</span>, <span class="ident">level</span>: <span class="ident">usize</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">origin</span> <span class="op">=</span> <span class="ident">FastOrigin</span>::<span class="ident">Loop</span> {
             <span class="ident">iterations</span>,
             <span class="ident">level</span>,
             <span class="ident">inner</span>: <span class="self">self</span>.<span class="ident">origin</span>,
         };
         <span class="ident">FastBound</span> {
-            <span class="ident">value</span>: <span class="self">self</span>.<span class="ident">value</span> <span class="op">*</span> <span class="ident">f64</span>::<span class="ident">from</span>(<span class="ident">iterations</span>),
+            <span class="ident">value</span>: <span class="self">self</span>.<span class="ident">value</span> <span class="op">*</span> <span class="ident">iterations</span> <span class="kw">as</span> <span class="ident">f64</span>,
             <span class="ident">origin</span>: <span class="ident">Rc</span>::<span class="ident">new</span>(<span class="ident">origin</span>),
             <span class="ident">size</span>: <span class="self">self</span>.<span class="ident">size</span> <span class="op">+</span> <span class="number">1</span>,
         }
@@ -735,7 +735,7 @@
     <span class="doccomment">/// The bound is caused by a loop-carried dependency.</span>
     <span class="ident">Loop</span> {
         <span class="ident">level</span>: <span class="ident">usize</span>,
-        <span class="ident">iterations</span>: <span class="ident">u32</span>,
+        <span class="ident">iterations</span>: <span class="ident">u64</span>,
         <span class="ident">inner</span>: <span class="ident">Rc</span><span class="op">&lt;</span><span class="ident">FastOrigin</span><span class="op">&gt;</span>,
     },
     <span class="doccomment">/// The bound is caused by a dependency chain.</span>
@@ -874,7 +874,7 @@
     <span class="doccomment">/// The bound is repeated in a loop.</span>
     <span class="ident">Loop</span> {
         <span class="ident">dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
-        <span class="ident">iterations</span>: <span class="ident">u32</span>,
+        <span class="ident">iterations</span>: <span class="ident">u64</span>,
         <span class="ident">inner</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">Origin</span><span class="op">&gt;</span>,
     },
     <span class="doccomment">/// The bound is caused by a dependency chain.</span>

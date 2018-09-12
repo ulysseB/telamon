@@ -92,6 +92,7 @@
 <span id="92">92</span>
 <span id="93">93</span>
 <span id="94">94</span>
+<span id="95">95</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Code generation and candidate evaluation for specific targets.</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">cuda</span>;
@@ -107,7 +108,7 @@
 
 <span class="kw">use</span> <span class="ident">codegen</span>::<span class="ident">Function</span>;
 <span class="kw">use</span> <span class="ident">ir</span>;
-<span class="kw">use</span> <span class="ident">model</span>::{<span class="ident">HwPressure</span>, <span class="ident">Nesting</span>};
+<span class="kw">use</span> <span class="ident">model</span>::{<span class="self">self</span>, <span class="ident">HwPressure</span>, <span class="ident">Nesting</span>};
 <span class="kw">use</span> <span class="ident">search_space</span>::{<span class="ident">DimKind</span>, <span class="ident">SearchSpace</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">Write</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
@@ -172,8 +173,9 @@
     <span class="doccomment">/// be `1`.</span>
     <span class="kw">fn</span> <span class="ident">add_block_overhead</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">predicated_dims_size</span>: <span class="ident">u64</span>,
-        <span class="ident">max_threads_per_blocks</span>: <span class="ident">u64</span>,
+        <span class="ident">max_active_threads</span>: <span class="ident">model</span>::<span class="ident">size</span>::<span class="ident">FactorRange</span>,
+        <span class="ident">max_threads</span>: <span class="ident">model</span>::<span class="ident">size</span>::<span class="ident">FactorRange</span>,
+        <span class="ident">predication_factor</span>: <span class="ident">model</span>::<span class="ident">size</span>::<span class="ident">Range</span>,
         <span class="ident">pressure</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">HwPressure</span>,
     );
 

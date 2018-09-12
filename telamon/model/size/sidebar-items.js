@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["bounds","Bounds the values a size can take, in the given context."],["factors","Returns a factor and a multiple of `size`."]],"struct":[["FactorRange","A span of values, in term of factors. The actual value is a mulitpe of `gcd` and a divisor of `lcm`."],["Range","A span of values."]]});
