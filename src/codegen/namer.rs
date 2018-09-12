@@ -1,5 +1,5 @@
-use codegen::{self, AllocationScheme, Dimension, Function, Instruction, ParamValKey};
-use ir::{self, dim, mem, DimMap, InstId, Operand, Type};
+use codegen::{self, AllocationScheme, Dimension, Function, Instruction, ParamValKey, Value};
+use ir::{self, dim, mem, DimMap, InstId, Type, ValueId};
 use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
@@ -12,7 +12,7 @@ use utils::*;
 
 /// A value that can be named.
 #[derive(Copy, Clone)]
-pub enum Value<'a> {
+pub enum Operand<'a> {
     InductionLevel(ir::IndVarId, ir::DimId),
     Operand(&'a ir::Operand<'a>),
 }
@@ -35,7 +35,7 @@ pub struct NameMap<'a, 'b> {
     /// Provides fresh names.
     namer: std::cell::RefCell<&'b mut Namer>,
     /// Keeps track of the names of the values used in the kernel
-    values: HashMap<ir::ValueId, String>,
+    values: HashMap<ValueId, String>,
     /// Keeps track of the name of the values produced by instructions.
     insts: HashMap<InstId, (Vec<ir::DimId>, NDArray<String>)>,
     /// Keeps track of loop index names.
@@ -87,7 +87,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
         // Name Values 
         let mut values = HashMap::default();
         for val in function.values() {
-            let name = Self::name_value(val);
+            let name = Self::name_value(val, namer);
             values.insert(val.id(), name);
         }
         // Name induction levels.
@@ -152,9 +152,9 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     /// Returns a name for a value
-    fn name_value(val: &ir::Value) -> String {
-        let id: usize = val.id().into();
-        format!("val_{}", id)
+    fn name_value(val: &Value, namer:&mut Namer) -> String {
+        let val_name = namer.name(val.t());
+        val_name
     }
 
     /// Returns the total number of threads.
@@ -181,36 +181,36 @@ impl<'a, 'b> NameMap<'a, 'b> {
         self.namer.borrow_mut().name(Type::I(1))
     }
 
-    pub fn name(&self, value: Value) -> Cow<str> {
-        match value {
-            Value::Operand(op) => self.name_op(op),
-            Value::InductionLevel(ind_var, level) => {
+    pub fn name(&self, operand: Operand) -> Cow<str> {
+        match operand {
+            Operand::Operand(op) => self.name_op(op),
+            Operand::InductionLevel(ind_var, level) => {
                 self.name_induction_var(ind_var, Some(level))
             }
         }
     }
 
     /// Asigns a name to an operand.
-    pub fn name_op(&self, operand: &Operand) -> Cow<str> {
+    pub fn name_op(&self, operand: &ir::Operand) -> Cow<str> {
         match *operand {
-            Operand::Int(ref val, len) => {
+            ir::Operand::Int(ref val, len) => {
                 Cow::Owned(self.namer.borrow().name_int(val, len))
             }
-            Operand::Float(ref val, len) => {
+            ir::Operand::Float(ref val, len) => {
                 Cow::Owned(self.namer.borrow().name_float(val, len))
             }
-            Operand::Inst(id, _, ref dim_map, _)
-            | Operand::Reduce(id, _, ref dim_map, _) => {
+            ir::Operand::Inst(id, _, ref dim_map, _)
+            | ir::Operand::Reduce(id, _, ref dim_map, _) => {
                 Cow::Borrowed(self.name_inst_id(id, dim_map))
             }
-            Operand::Index(id) => if let Some(idx) = self.current_indexes.get(&id) {
+            ir::Operand::Index(id) => if let Some(idx) = self.current_indexes.get(&id) {
                 Cow::Owned(format!("{}", idx))
             } else {
                 Cow::Borrowed(&self.indexes[&id])
             },
-            Operand::Param(p) => self.name_param_val(ParamValKey::External(p)),
-            Operand::Addr(id) => self.name_addr(id),
-            Operand::InductionVar(id, _) => self.name_induction_var(id, None),
+            ir::Operand::Param(p) => self.name_param_val(ParamValKey::External(p)),
+            ir::Operand::Addr(id) => self.name_addr(id),
+            ir::Operand::InductionVar(id, _) => self.name_induction_var(id, None),
         }
     }
 
@@ -316,7 +316,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
         name
     }
 
-    pub fn indexed_op_name(&mut self, op: &Operand, dim: ir::DimId, idx: u32) -> String {
+    pub fn indexed_op_name(&mut self, op: &ir::Operand, dim: ir::DimId, idx: u32) -> String {
         self.current_indexes.insert(dim, idx);
         let name = self.name_op(op).to_string();
         self.current_indexes.remove(&dim);

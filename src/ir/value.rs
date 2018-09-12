@@ -36,8 +36,8 @@ impl Value {
     }
 
     /// Indicates the type of the value.
-    pub fn t(&self) -> &ir::Type {
-        &self.t
+    pub fn t(&self) -> ir::Type {
+        self.t
     }
 }
 
