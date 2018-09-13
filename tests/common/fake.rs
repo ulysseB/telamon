@@ -99,7 +99,7 @@ impl device::Device for Device {
         &self,
         _: &SearchSpace,
         _: &HashMap<ir::DimId, u32>,
-        _: &HashMap<ir::BBId, model::Nesting>,
+        _: &HashMap<ir::StmtId, model::Nesting>,
         _: &ir::Statement,
         _: &device::Context,
     ) -> HwPressure {

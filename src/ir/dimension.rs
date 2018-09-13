@@ -93,7 +93,7 @@ impl<'a> Dimension<'a> {
         self.iterated.iter().cloned()
     }
 
-    /// Adds a bb that is iterated along self.
+    /// Adds a stmt that is iterated along self.
     pub fn add_iterated(&mut self, inst: ir::InstId) {
         self.iterated.push(inst);
     }
@@ -126,7 +126,7 @@ impl<'a> Dimension<'a> {
 }
 
 impl<'a> Statement<'a> for Dimension<'a> {
-    fn bb_id(&self) -> ir::BBId {
+    fn stmt_id(&self) -> ir::StmtId {
         self.id.into()
     }
 

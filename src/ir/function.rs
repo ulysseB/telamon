@@ -2,7 +2,7 @@
 use device::Device;
 use ir::mem::Block;
 use ir::{
-    self, BBId, Dimension, InstId, Instruction, Operator, Statement, Value, ValueDef,
+    self, Dimension, InstId, Instruction, Operator, Statement, StmtId, Value, ValueDef,
     ValueId,
 };
 use ir::{dim, mem, AccessPattern, Operand, SparseVec, Type};
@@ -555,10 +555,10 @@ impl<'a> Function<'a, ()> {
 
 impl<'a> Function<'a> {
     /// Returns a `Statement` given its id.
-    pub fn block(&self, id: BBId) -> &Statement<'a> {
+    pub fn block(&self, id: StmtId) -> &Statement<'a> {
         match id {
-            BBId::Inst(id) => &self.insts[id],
-            BBId::Dim(id) => self.dim(id),
+            StmtId::Inst(id) => &self.insts[id],
+            StmtId::Dim(id) => self.dim(id),
         }
     }
 

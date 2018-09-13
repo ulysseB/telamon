@@ -4,12 +4,12 @@
 
 set Statements:
   item_type = "ir::Statement"
-  id_type = "ir::BBId"
+  id_type = "ir::StmtId"
   item_getter = "$fun.block($id)"
-  id_getter = "$item.bb_id()"
+  id_getter = "$item.stmt_id()"
   iterator = "$fun.blocks()"
-  var_prefix = "bb"
-  new_objs = "$objs.basic_blocks"
+  var_prefix = "stmt"
+  new_objs = "$objs.statements"
 end
 
 set Instructions subsetof Statements:
@@ -203,7 +203,7 @@ define enum inst_flag($inst in MemInsts):
   alias MEM_BLOCK_COHERENT = MEM_COHERENT | MEM_CA:
 end
 
-/// Defines how two basic blocks are ordered.
+/// Defines how two statements are ordered.
 define enum order($lhs in Statements, $rhs in Statements):
   antisymmetric:
     BEFORE -> AFTER
@@ -246,8 +246,8 @@ require forall $lhs in Statements:
 
 // Intruction orders
 require forall $inst in Instructions:
-  forall $bb in Statements:
-    order($inst, $bb) is INNER | ORDERED
+  forall $stmt in Statements:
+    order($inst, $stmt) is INNER | ORDERED
 
 require forall $inst in Instructions:
   forall $dim in Dimensions:
@@ -341,14 +341,14 @@ require forall $outer in StaticDims:
     thread_mapping($outer, $inner) is not MAPPED_OUT
       || size($outer) <= "64"
 
-// A basic block nested with a thread dimension is nested or merged with the other
-require forall $bb in Statements:
+// A statement nested with a thread dimension is nested or merged with the other
+require forall $stmt in Statements:
   forall $nested_thread in StaticDims:
     forall $other_thread in StaticDims:
-      order($bb, $nested_thread) is not NESTED || dim_kind($nested_thread) is not THREAD
+      order($stmt, $nested_thread) is not NESTED || dim_kind($nested_thread) is not THREAD
         || order($other_thread, $nested_thread) is not NESTED
         || dim_kind($other_thread) is not THREAD
-        || order($bb, $other_thread) is not ORDERED
+        || order($stmt, $other_thread) is not ORDERED
 
 /// Limits the number of threads.
 ///

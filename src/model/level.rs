@@ -120,36 +120,38 @@ pub fn sum_pressure(
     let inner_sum_dims = inner_dims
         .filter(|&d| bound_level.accounts_for_dim(space.domain().get_dim_kind(d)));
     // Get the list of inner basic blocks.
-    let inner_bbs_sets = nest
+    let inner_stmts_sets = nest
         .iter()
-        .map(|&d| &local_info.nesting[&d.into()].inner_bbs);
-    let inner_bbs = intersect_sets(inner_bbs_sets)
+        .map(|&d| &local_info.nesting[&d.into()].inner_stmts);
+    let inner_stmts = intersect_sets(inner_stmts_sets)
         .map(|x| itertools::Either::Left(x.into_iter()))
         .unwrap_or_else(|| {
-            itertools::Either::Right(space.ir_instance().blocks().map(|bb| bb.bb_id()))
+            itertools::Either::Right(
+                space.ir_instance().blocks().map(|stmt| stmt.stmt_id()),
+            )
         });
-    // Sum the pressure on all bbs.
-    for bb in inner_bbs {
-        let nesting = &local_info.nesting[&bb];
+    // Sum the pressure on all stmts.
+    for stmt in inner_stmts {
+        let nesting = &local_info.nesting[&stmt];
         // Skip dimensions that can be merged into another one.
-        let merge_dims = &local_info.nesting[&bb].bigger_merged_dims;
+        let merge_dims = &local_info.nesting[&stmt].bigger_merged_dims;
         if inner_dims.intersection(merge_dims).next().is_some() {
             continue;
         }
         // Compute the pressure of a single instance and the number of instances.
         let mut num_instances = inner_sum_dims
-            .intersection(&local_info.nesting[&bb].outer_dims)
+            .intersection(&local_info.nesting[&stmt].outer_dims)
             .map(|&d| space.ir_instance().dim(d).size())
             .product::<ir::PartialSize>() * repeat;
-        let mut bb_pressure = if let ir::BBId::Dim(dim) = bb {
+        let mut stmt_pressure = if let ir::StmtId::Dim(dim) = stmt {
             let kind = space.domain().get_dim_kind(dim);
             if !bound_level.accounts_for_dim(kind) {
                 local_info.dim_overhead[&dim].0.clone()
             } else {
-                local_info.hw_pressure[&bb].clone()
+                local_info.hw_pressure[&stmt].clone()
             }
         } else {
-            local_info.hw_pressure[&bb].clone()
+            local_info.hw_pressure[&stmt].clone()
         };
         // From parallel levels, we must take into account the thread dimensions that re
         // not mapped to a dimension outside of the block. Predicated instructions require
@@ -162,7 +164,7 @@ pub fn sum_pressure(
             let (max_active_threads, predication_factor);
             let is_predicated = space
                 .ir_instance()
-                .block(bb)
+                .block(stmt)
                 .as_inst()
                 .map(|i| i.has_side_effects())
                 .unwrap_or(false);
@@ -179,11 +181,11 @@ pub fn sum_pressure(
                 max_active_threads,
                 max_threads,
                 predication_factor,
-                &mut bb_pressure,
+                &mut stmt_pressure,
             );
         }
         let num_instances = size::bounds(&num_instances, space, ctx).min;
-        pressure.repeat_and_add_bottlenecks(num_instances as f64, &bb_pressure);
+        pressure.repeat_and_add_bottlenecks(num_instances as f64, &stmt_pressure);
     }
     pressure
 }
@@ -245,9 +247,9 @@ pub fn generate(
     let mut nestings = local_info
         .nesting
         .iter()
-        .flat_map(|(&bb, nesting)| {
+        .flat_map(|(&stmt, nesting)| {
             let outer_dims = nesting.outer_dims.filter(|&d| must_consider_dim(space, d));
-            if let ir::BBId::Dim(dim) = bb {
+            if let ir::StmtId::Dim(dim) = stmt {
                 if must_consider_dim(space, dim) {
                     let mut outer_with_self = outer_dims.clone();
                     outer_with_self.insert(dim);

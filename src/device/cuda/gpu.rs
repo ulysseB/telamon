@@ -486,13 +486,13 @@ impl device::Device for Gpu {
         &self,
         space: &SearchSpace,
         dim_sizes: &HashMap<ir::DimId, u32>,
-        _nesting: &HashMap<ir::BBId, model::Nesting>,
-        bb: &ir::Statement,
+        _nesting: &HashMap<ir::StmtId, model::Nesting>,
+        stmt: &ir::Statement,
         ctx: &device::Context,
     ) -> model::HwPressure {
-        if let Some(inst) = bb.as_inst() {
+        if let Some(inst) = stmt.as_inst() {
             self.inst_pressure(space, dim_sizes, inst, ctx)
-        } else if let Some(dim) = bb.as_dim() {
+        } else if let Some(dim) = stmt.as_dim() {
             let kind = space.domain().get_dim_kind(dim.id());
             self.dim_pressure(kind, dim_sizes[&dim.id()])
         } else {

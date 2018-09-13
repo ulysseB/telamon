@@ -1,6 +1,5 @@
 //! Representation and manipulation of a set of possible implementation.
 mod access_pattern;
-mod basic_block;
 mod dim_map;
 mod dimension;
 mod error;
@@ -10,6 +9,7 @@ mod instruction;
 mod operand;
 mod operator;
 mod size;
+mod statement;
 mod types;
 mod value;
 
@@ -18,7 +18,6 @@ use std;
 use std::marker::PhantomData;
 
 pub use self::access_pattern::{AccessPattern, Stride};
-pub use self::basic_block::{BBId, Statement};
 pub use self::dim_map::DimMap;
 pub use self::dimension::{
     DimId, DimMapping, DimMappingId, Dimension, LogicalDim, LogicalDimId,
@@ -31,6 +30,7 @@ pub use self::mem::MemId;
 pub use self::operand::{DimMapScope, LoweringMap, Operand};
 pub use self::operator::{BinOp, Operator};
 pub use self::size::{PartialSize, Size};
+pub use self::statement::{Statement, StmtId};
 pub use self::types::Type;
 pub use self::value::{Value, ValueDef, ValueId};
 
@@ -50,8 +50,8 @@ pub mod op {
 
 /// Defines traits to import in the environment to use the IR.
 pub mod prelude {
-    pub use ir::basic_block::Statement;
     pub use ir::mem::Block as MemoryRegion;
+    pub use ir::statement::Statement;
 }
 
 /// Stores the objects created by a lowering.
@@ -60,7 +60,7 @@ pub struct NewObjs {
     pub instructions: Vec<InstId>,
     pub dimensions: Vec<DimId>,
     pub static_dims: Vec<DimId>,
-    pub basic_blocks: Vec<BBId>,
+    pub statements: Vec<StmtId>,
     pub mem_blocks: Vec<MemId>,
     pub internal_mem_blocks: Vec<mem::InternalId>,
     pub mem_insts: Vec<InstId>,
@@ -77,7 +77,7 @@ pub struct NewObjs {
 impl NewObjs {
     /// Registers a new instruction.
     pub fn add_instruction(&mut self, inst: &Instruction) {
-        self.add_bb(inst);
+        self.add_stmt(inst);
         for &dim in inst.iteration_dims() {
             self.iteration_dims.push((inst.id(), dim));
         }
@@ -89,7 +89,7 @@ impl NewObjs {
 
     /// Registers a new dimension.
     pub fn add_dimension(&mut self, dim: &Dimension) {
-        self.add_bb(dim);
+        self.add_stmt(dim);
         self.dimensions.push(dim.id());
         if dim.possible_sizes().is_some() {
             self.static_dims.push(dim.id());
@@ -99,9 +99,9 @@ impl NewObjs {
         }
     }
 
-    /// Registers a new basic block.
-    pub fn add_bb(&mut self, bb: &Statement) {
-        self.basic_blocks.push(bb.bb_id());
+    /// Registers a new statement
+    pub fn add_stmt(&mut self, stmt: &Statement) {
+        self.statements.push(stmt.stmt_id());
     }
 
     /// Sets a dimension as a new iteration dimension.

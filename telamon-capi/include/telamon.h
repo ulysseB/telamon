@@ -122,7 +122,7 @@ typedef struct Operator Operator;
 typedef struct Parameter Parameter;
 
 /*
- * A size how exact value is not yet decided.
+ * A size whose exact value is not yet decided.
  */
 typedef struct PartialSize PartialSize;
 
@@ -228,25 +228,25 @@ typedef struct {
  * Provides a unique identifer for a basic block.
  */
 typedef enum {
-    BBId_Inst,
-    BBId_Dim,
-} BBId_Tag;
+    StmtId_Inst,
+    StmtId_Dim,
+} StmtId_Tag;
 
 typedef struct {
     InstId id;
-} BBId_Inst_Body;
+} StmtId_Inst_Body;
 
 typedef struct {
     DimId id;
-} BBId_Dim_Body;
+} StmtId_Dim_Body;
 
 typedef struct {
-    BBId_Tag tag;
+    StmtId_Tag tag;
     union {
-        BBId_Inst_Body inst;
-        BBId_Dim_Body dim;
+        StmtId_Inst_Body inst;
+        StmtId_Dim_Body dim;
     };
-} BBId;
+} StmtId;
 
 /*
  * Defines how two basic blocks are ordered.
@@ -349,8 +349,8 @@ typedef struct {
 } Action_InstFlag_Body;
 
 typedef struct {
-    BBId lhs;
-    BBId rhs;
+    StmtId lhs;
+    StmtId rhs;
     Order domain;
 } Action_Order_Body;
 

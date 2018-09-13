@@ -207,16 +207,16 @@ enum ExitEvent {
 impl<'a> CfgEvent<'a> {
     /// Indiciates the order of `self` with regards to `other`.
     fn cmp(&self, other: &CfgEvent, space: &SearchSpace) -> std::cmp::Ordering {
-        let (lhs_bb, rhs_bb) = (self.bb_id(), other.bb_id());
-        if lhs_bb == rhs_bb {
-            self.cmp_within_bb(other)
+        let (lhs_stmt, rhs_stmt) = (self.stmt_id(), other.stmt_id());
+        if lhs_stmt == rhs_stmt {
+            self.cmp_within_stmt(other)
         } else {
             use self::CfgEvent::*;
             use std::cmp::Ordering::*;
-            let order = space.domain().get_order(lhs_bb, rhs_bb);
+            let order = space.domain().get_order(lhs_stmt, rhs_stmt);
             match (self, other, order) {
-                (_, _, Order::MERGED) => self.cmp_within_bb(other),
-                (&Exec(_), &Exec(_), Order::ORDERED) => lhs_bb.cmp(&rhs_bb),
+                (_, _, Order::MERGED) => self.cmp_within_stmt(other),
+                (&Exec(_), &Exec(_), Order::ORDERED) => lhs_stmt.cmp(&rhs_stmt),
                 (_, _, Order::BEFORE)
                 | (&Enter(..), _, Order::OUTER)
                 | (_, &Exit(..), Order::INNER) => Less,
@@ -232,7 +232,7 @@ impl<'a> CfgEvent<'a> {
 
     /// Indicates the order of `self with `other`, assuming they are events on the same
     /// basic block.
-    fn cmp_within_bb(&self, other: &CfgEvent) -> std::cmp::Ordering {
+    fn cmp_within_stmt(&self, other: &CfgEvent) -> std::cmp::Ordering {
         use self::CfgEvent::*;
         match (self, other) {
             (&Enter(..), &Enter(..))
@@ -244,7 +244,7 @@ impl<'a> CfgEvent<'a> {
     }
 
     /// Returns an id of a `Statement` mentioned by the event.
-    fn bb_id(&self) -> ir::BBId {
+    fn stmt_id(&self) -> ir::StmtId {
         match *self {
             CfgEvent::Exec(ref inst) => inst.id().into(),
             CfgEvent::Enter(dim, _) | CfgEvent::Exit(dim, _) => dim.into(),

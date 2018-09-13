@@ -28,7 +28,7 @@ impl CodePoint {
     }
 
     /// Returns the basic blocks associated with the code point.
-    fn blocks(&self, levels: &[Level]) -> Vec<ir::BBId> {
+    fn blocks(&self, levels: &[Level]) -> Vec<ir::StmtId> {
         match *self {
             CodePoint::Inst(id) => vec![id.into()],
             CodePoint::LevelEntry(id) | CodePoint::LevelExit(id) => {
@@ -138,8 +138,8 @@ fn code_point_dag(space: &SearchSpace, levels: &[Level]) -> Dag<CodePoint> {
 /// and `rhs` are equals.
 fn convert_order(
     space: &SearchSpace,
-    lhs: ir::BBId,
-    rhs: ir::BBId,
+    lhs: ir::StmtId,
+    rhs: ir::StmtId,
     lesser_cond: Order,
     greater_cond: Order,
     if_equals: Ordering,
