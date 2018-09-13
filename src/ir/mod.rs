@@ -1,6 +1,5 @@
 //! Representation and manipulation of a set of possible implementation.
 mod access_pattern;
-mod statement;
 mod dim_map;
 mod dimension;
 mod error;
@@ -10,6 +9,7 @@ mod instruction;
 mod operand;
 mod operator;
 mod size;
+mod statement;
 mod types;
 mod value;
 
@@ -18,7 +18,6 @@ use std;
 use std::marker::PhantomData;
 
 pub use self::access_pattern::{AccessPattern, Stride};
-pub use self::statement::{StmtId, Statement};
 pub use self::dim_map::DimMap;
 pub use self::dimension::{
     DimId, DimMapping, DimMappingId, Dimension, LogicalDim, LogicalDimId,
@@ -31,6 +30,7 @@ pub use self::mem::MemId;
 pub use self::operand::{DimMapScope, LoweringMap, Operand};
 pub use self::operator::{BinOp, Operator};
 pub use self::size::{PartialSize, Size};
+pub use self::statement::{Statement, StmtId};
 pub use self::types::Type;
 pub use self::value::{Value, ValueDef, ValueId};
 
@@ -50,8 +50,8 @@ pub mod op {
 
 /// Defines traits to import in the environment to use the IR.
 pub mod prelude {
-    pub use ir::statement::Statement;
     pub use ir::mem::Block as MemoryRegion;
+    pub use ir::statement::Statement;
 }
 
 /// Stores the objects created by a lowering.

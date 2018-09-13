@@ -2,8 +2,8 @@
 use device::Device;
 use ir::mem::Block;
 use ir::{
-    self, Dimension, InstId, Instruction, Operator, Statement, Value, ValueDef,
-    ValueId, StmtId
+    self, Dimension, InstId, Instruction, Operator, Statement, StmtId, Value, ValueDef,
+    ValueId
 };
 use ir::{dim, mem, AccessPattern, Operand, SparseVec, Type};
 use itertools::Itertools;

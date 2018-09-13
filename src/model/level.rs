@@ -126,7 +126,9 @@ pub fn sum_pressure(
     let inner_stmts = intersect_sets(inner_stmts_sets)
         .map(|x| itertools::Either::Left(x.into_iter()))
         .unwrap_or_else(|| {
-            itertools::Either::Right(space.ir_instance().blocks().map(|stmt| stmt.stmt_id()))
+            itertools::Either::Right(
+                space.ir_instance().blocks().map(|stmt| stmt.stmt_id()),
+            )
         });
     // Sum the pressure on all stmts.
     for stmt in inner_stmts {

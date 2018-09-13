@@ -34,7 +34,12 @@ impl<'a> LocalInfo<'a> {
         let nesting: HashMap<_, _> = space
             .ir_instance()
             .blocks()
-            .map(|stmt| (stmt.stmt_id(), Nesting::compute(space, stmt.stmt_id())))
+            .map(|stmt| {
+                (
+                    stmt.stmt_id(),
+                    Nesting::compute(space, stmt.stmt_id()),
+                )
+            })
             .collect();
         let mut hw_pressure = space
             .ir_instance()
@@ -47,14 +52,14 @@ impl<'a> LocalInfo<'a> {
                 };
                 // Only keep the pressure of innermost thread dimensions. Otherwise it
                 // will be taken multiple times into account.
-                let pressure = if is_thread && nesting[&stmt.stmt_id()].has_inner_thread_dims
-                {
-                    HwPressure::zero(context.device())
-                } else {
-                    context
-                        .device()
-                        .hw_pressure(space, &dim_sizes, &nesting, stmt, context)
-                };
+                let pressure =
+                    if is_thread && nesting[&stmt.stmt_id()].has_inner_thread_dims {
+                        HwPressure::zero(context.device())
+                    } else {
+                        context
+                            .device()
+                            .hw_pressure(space, &dim_sizes, &nesting, stmt, context)
+                    };
                 (stmt.stmt_id(), pressure)
             })
             .collect();
@@ -63,7 +68,8 @@ impl<'a> LocalInfo<'a> {
             .dims()
             .map(|d| {
                 let kind = space.domain().get_dim_kind(d.id());
-                if kind == DimKind::THREAD && nesting[&d.stmt_id()].has_inner_thread_dims {
+                if kind == DimKind::THREAD && nesting[&d.stmt_id()].has_inner_thread_dims
+                {
                     // Only keep the overhead on innermost thread dimensions. Otherwise it
                     // will be taken multiple times into account.
                     let zero = HwPressure::zero(context.device());
