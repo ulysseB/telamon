@@ -207,6 +207,107 @@ mod undefined {
             })
         );
     }
+
+    #[test]
+    fn reverse() {
+        assert_eq!(
+            parser::parse_ast(Lexer::new(
+                b"set Params:
+                    item_type = \"ir::param::Obj\"
+                    id_type = \"ir::param::Id\"
+                    item_getter = \"ir::param::get($fun, $id)\"
+                    id_getter = \"ir::param::Obj::id($item)\"
+                    iterator = \"ir::param::iter($fun)\"
+                    var_prefix = \"param\"
+                    new_objs = \"$objs.param\"
+                  end
+
+                  set Values:
+                    item_type = \"ir::value::Obj\"
+                    id_type = \"ir::value::Id\"
+                    item_getter = \"ir::value::get($fun, $id)\"
+                    id_getter = \"ir::value::Obj::id($item)\"
+                    iterator = \"ir::value::iter($fun)\"
+                    var_prefix = \"val\"
+                    new_objs = \"$objs.value\"
+                  end
+
+                  set ValuesAB($param in Params) subsetof Values:
+                    item_type = \"ir::value::Obj\"
+                    id_type = \"ir::value::Id\"
+                    item_getter = \"ir::value::get($fun, $id)\"
+                    id_getter = \"ir::value::Obj::id($item)\"
+                    iterator = \"ir::value_ab::iter($fun, ir::param::Obj::id($param))\"
+                    var_prefix = \"value_ab\"
+                    new_objs = \"$objs.value_ab\"
+                    from_superset = \"ir::value_ab::from_superset($fun, $param, $item)\"
+                    reverse forall $val in Unvalues =
+                        \"ir::value_ab::reverse($fun, $val.id())\"
+                  end"
+                    .to_vec()
+            )).unwrap()
+                .type_check()
+                .err(),
+            Some(TypeError::Undefined {
+                object_name: Spanned {
+                    beg: Position {
+                        position: LexerPosition {
+                            line: 20,
+                            column: 22
+                        },
+                        ..Default::default()
+                    },
+                    end: Position {
+                        position: LexerPosition {
+                            line: 20,
+                            column: 30
+                        },
+                        ..Default::default()
+                    },
+                    data: String::from("Unvalues"),
+                }
+            })
+        );
+    }
+
+    /// Missing the Instruction Disjoint from a Set.
+    #[test]
+    fn disjoint() {
+        assert_eq!(
+            parser::parse_ast(Lexer::new(
+                b"set Dimensions:
+                    disjoint: Instructions
+                    item_type = \"ir::Dimension\"
+                    id_type = \"ir::DimId\"
+                    item_getter = \"$fun.dim($id)\"
+                    id_getter = \"$item.id()\"
+                    iterator = \"$fun.dims()\"
+                    var_prefix = \"dim\"
+                    from_superset = \"$item.as_dim()\"
+                    new_objs = \"$objs.dimensions\"
+                  end"
+                    .to_vec()
+            )).unwrap()
+                .type_check()
+                .err(),
+            Some(TypeError::Undefined {
+                object_name: Spanned {
+                    beg: Position {
+                        position: LexerPosition { line: 0, column: 4 },
+                        ..Default::default()
+                    },
+                    end: Position {
+                        position: LexerPosition {
+                            line: 0,
+                            column: 14
+                        },
+                        ..Default::default()
+                    },
+                    data: String::from("Instructions"),
+                }
+            })
+        );
+    }
 }
 
 /// Missing Entry

@@ -28,11 +28,15 @@ impl ChoiceDef {
         }
     }
 
-    pub fn define(&self, context: &CheckerContext) -> Result<(), TypeError> {
+    pub fn define(
+        self,
+        context: &mut CheckerContext,
+        tc: &mut TypingContext,
+    ) -> Result<(), TypeError> {
         match self {
             ChoiceDef::CounterDef(_) => Ok(()),
-            ChoiceDef::IntegerDef(integer_def) => integer_def.define(context),
-            ChoiceDef::EnumDef(enum_def) => enum_def.define(context),
+            ChoiceDef::IntegerDef(integer_def) => integer_def.define(context, tc),
+            ChoiceDef::EnumDef(enum_def) => enum_def.define(context, tc),
         }
     }
 }
