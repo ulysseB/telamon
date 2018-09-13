@@ -34,12 +34,7 @@ impl<'a> LocalInfo<'a> {
         let nesting: HashMap<_, _> = space
             .ir_instance()
             .blocks()
-            .map(|stmt| {
-                (
-                    stmt.stmt_id(),
-                    Nesting::compute(space, stmt.stmt_id()),
-                )
-            })
+            .map(|stmt| (stmt.stmt_id(), Nesting::compute(space, stmt.stmt_id())))
             .collect();
         let mut hw_pressure = space
             .ir_instance()
@@ -170,10 +165,7 @@ pub struct Nesting<'a> {
 
 impl<'a> Nesting<'a> {
     /// Computes the nesting of a `Statement`.
-    fn compute(
-        space: &SearchSpace<'a>,
-        stmt: ir::StmtId
-    ) -> Self {
+    fn compute(space: &SearchSpace<'a>, stmt: ir::StmtId) -> Self {
         let mut inner_dims = Vec::new();
         let mut inner_stmts = Vec::new();
         let mut before_self = Vec::new();

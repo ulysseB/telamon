@@ -1,6 +1,6 @@
 //! Describes the instructions.
 use device::Device;
-use ir::{self, StmtId, DimMapScope, LoweringMap, Operand, Operator, Statement, Type};
+use ir::{self, DimMapScope, LoweringMap, Operand, Operator, Statement, StmtId, Type};
 use std;
 use std::hash::{Hash, Hasher};
 use utils::*;
