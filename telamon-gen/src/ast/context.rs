@@ -103,8 +103,7 @@ impl TypingContext {
             .map(|v| {
                 let name = v.name.clone();
                 (name, var_map.decl_argument(&self.ir_desc, v))
-            })
-            .collect::<Vec<_>>();
+            }).collect::<Vec<_>>();
         let arguments = ir::ChoiceArguments::new(
             vars.into_iter()
                 .map(|(n, s)| (n.data, s))
@@ -176,8 +175,7 @@ impl TypingContext {
             .map(|v| {
                 let name = v.name.clone();
                 (name, var_map.decl_argument(&self.ir_desc, v))
-            })
-            .collect::<Vec<_>>();
+            }).collect::<Vec<_>>();
         let arguments = ir::ChoiceArguments::new(
             vars.into_iter()
                 .map(|(n, s)| (n.data, s))
@@ -404,8 +402,7 @@ impl TypingContext {
                 .map(|mut cond| {
                     cond.negate();
                     cond
-                })
-                .collect(),
+                }).collect(),
         );
         self.constraints
             .push(Constraint::new(all_vars_defs, disjunctions));
@@ -524,8 +521,7 @@ impl TypingContext {
                     condition,
                     code,
                 )
-            })
-            .collect_vec();
+            }).collect_vec();
         // Add the trigger to the IR.
         let trigger = ir::Trigger {
             foralls,

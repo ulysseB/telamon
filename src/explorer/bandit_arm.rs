@@ -483,8 +483,7 @@ impl<'a> Children<'a> {
                     .enumerate()
                     .max_by(|lhs, rhs| cmp_f64(lhs.1, rhs.1));
                 max.map(|(idx, value)| (child_idx, idx, value))
-            })
-            .max_by(|x1, x2| cmp_f64(x1.2, x2.2))
+            }).max_by(|x1, x2| cmp_f64(x1.2, x2.2))
     }
 }
 

@@ -143,8 +143,7 @@ impl BlockMap {
             .map(|id| ExternalBlock {
                 id: MemId::External(id),
                 uses: vec![],
-            })
-            .collect();
+            }).collect();
         BlockMap {
             internal_blocks: ir::SparseVec::new(),
             external_blocks,
