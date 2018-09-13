@@ -19,7 +19,7 @@ pub enum AccessPattern<'a> {
     /// dimensions should not overlap.
     Tensor {
         mem_id: ir::MemId,
-        dims: HashMap<ir::DimId, ir::Size<'a>>,
+        dims: HashMap<ir::DimId, ir::PartialSize<'a>>,
     },
 }
 

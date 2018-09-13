@@ -29,7 +29,7 @@ fn partial_bound_0() {
     builder.close_dim(&dim_x);
 
     let dim_z = builder.open_dim_ex(size, DimKind::THREAD);
-    let (addr, pattern) = builder.tensor_access(&"z", z, &ir::Type::F(32), &[&dim_z]);
+    let (addr, pattern) = builder.tensor_access(&"z", z, ir::Type::F(32), &[&dim_z]);
     let st_z = builder.st(&addr, &0f32, pattern);
 
     builder.order(&dim_x, &dim_z, Order::BEFORE);
@@ -40,17 +40,18 @@ fn partial_bound_0() {
         let local_info = LocalInfo::compute(&space, &context);
         trace!("partial nesting: {:?}", local_info.nesting[&st_z.into()]);
         sum_pressure(
-            context.device(),
+            &context,
             &space,
             &local_info,
             BottleneckLevel::Global,
             &[],
+            &ir::PartialSize::default(),
         )
     }.get_bottleneck(3);
 
     builder.action(Action::ThreadMapping(
-        dim_z,
-        dim_x,
+        dim_z[0],
+        dim_x[0],
         ThreadMapping::MAPPED_OUT,
     ));
     let final_pressure = {
@@ -58,11 +59,12 @@ fn partial_bound_0() {
         let local_info = LocalInfo::compute(&space, &context);
         trace!("final nesting: {:?}", local_info.nesting[&st_z.into()]);
         sum_pressure(
-            context.device(),
+            &context,
             &space,
             &local_info,
             BottleneckLevel::Global,
             &[],
+            &ir::PartialSize::default(),
         )
     }.get_bottleneck(3);
 
@@ -93,7 +95,7 @@ fn partial_bound_1() {
     builder.close_dim(&dim_x);
 
     let dim_z = builder.open_dim(size);
-    let (addr, pattern) = builder.tensor_access(&"z", z, &ir::Type::F(32), &[&dim_z]);
+    let (addr, pattern) = builder.tensor_access(&"z", z, ir::Type::F(32), &[&dim_z]);
     let st_z = builder.st(&addr, &0f32, pattern);
 
     let partial_pressure = {
@@ -101,25 +103,27 @@ fn partial_bound_1() {
         let local_info = LocalInfo::compute(&space, &context);
         trace!("partial nesting: {:?}", local_info.nesting[&st_z.into()]);
         sum_pressure(
-            context.device(),
+            &context,
             &space,
             &local_info,
             BottleneckLevel::Global,
             &[],
+            &ir::PartialSize::default(),
         )
     }.get_bottleneck(5);
 
-    builder.action(Action::DimKind(dim_z, DimKind::THREAD));
+    builder.action(Action::DimKind(dim_z[0], DimKind::THREAD));
     let final_pressure = {
         let space = builder.get();
         let local_info = LocalInfo::compute(&space, &context);
         trace!("final nesting: {:?}", local_info.nesting[&st_z.into()]);
         sum_pressure(
-            context.device(),
+            &context,
             &space,
             &local_info,
             BottleneckLevel::Global,
             &[],
+            &ir::PartialSize::default(),
         )
     }.get_bottleneck(5);
 
@@ -140,10 +144,8 @@ fn partial_bound_2() {
     let (x, y, a);
     let signature = {
         let mut builder = SignatureBuilder::new("test", &mut context);
-        builder.scalar("m", 1i32 << 13);
-        builder.scalar("n", 1i32 << 13);
-        let m_size: tensor::DimSize = "m".into();
-        let n_size: tensor::DimSize = "n".into();
+        let m_size = builder.max_size("m", 1 << 13);
+        let n_size = builder.max_size("n", 1 << 13);
         x = builder.tensor::<f32>("x", vec![n_size.clone()], true);
         a = builder.tensor::<f32>("a", vec![m_size.clone(), n_size], true);
         y = builder.tensor::<f32>("y", vec![m_size], false);
@@ -214,7 +216,7 @@ fn partial_bound_3() {
 
     let size_m = builder.cst_size(256);
     let ld_a_dim = builder.open_tiled_dim(size_m, &[4]);
-    let (addr, patt) = builder.tensor_access(&"a", a, &ir::Type::F(32), &[&ld_a_dim]);
+    let (addr, patt) = builder.tensor_access(&"a", a, ir::Type::F(32), &[&ld_a_dim]);
     builder.ld(ir::Type::F(32), &addr, patt);
     builder.close_dim(&ld_a_dim);
 
@@ -238,22 +240,23 @@ fn partial_bound_3() {
         init_dim_m[1],
         ThreadMapping::MAPPED_IN,
     ));
-    builder.action(Action::DimKind(init_dim_n, DimKind::THREAD));
+    builder.action(Action::DimKind(init_dim_n[0], DimKind::THREAD));
 
     let partial_pressure = {
         let space = builder.get_clone();
         let local_info = LocalInfo::compute(&space, &context);
         sum_pressure(
-            context.device(),
+            &context,
             &space,
             &local_info,
             BottleneckLevel::Global,
             &[],
+            &ir::PartialSize::default(),
         )
     }.get_bottleneck(4);
 
     builder.action(Action::ThreadMapping(
-        init_dim_n,
+        init_dim_n[0],
         ld_a_dim[0],
         ThreadMapping::MAPPED_IN,
     ));
@@ -262,11 +265,12 @@ fn partial_bound_3() {
         let space = builder.get();
         let local_info = LocalInfo::compute(&space, &context);
         sum_pressure(
-            context.device(),
+            &context,
             &space,
             &local_info,
             BottleneckLevel::Global,
             &[],
+            &ir::PartialSize::default(),
         )
     }.get_bottleneck(4);
 
@@ -304,11 +308,12 @@ fn partial_bound_4() {
         let space = builder.get_clone();
         let local_info = LocalInfo::compute(&space, &context);
         sum_pressure(
-            context.device(),
+            &context,
             &space,
             &local_info,
             BottleneckLevel::Global,
             &[],
+            &ir::PartialSize::default(),
         )
     }.get_bottleneck(3);
 
@@ -322,11 +327,12 @@ fn partial_bound_4() {
         let space = builder.get();
         let local_info = LocalInfo::compute(&space, &context);
         sum_pressure(
-            context.device(),
+            &context,
             &space,
             &local_info,
             BottleneckLevel::Global,
             &[],
+            &ir::PartialSize::default(),
         )
     }.get_bottleneck(3);
 
@@ -355,7 +361,7 @@ fn partial_bound_5() {
     let mut builder = Builder::new(&signature, context.device());
 
     let ld_a = a.load(&[&[]], &mut builder);
-    let dim1 = builder.open_dim_ex(ir::Size::new(26, vec![], 1), DimKind::THREAD);
+    let dim1 = builder.open_dim_ex(ir::Size::new_const(26), DimKind::THREAD);
     let _ = builder.mov(&0f32);
 
     builder.order(&ld_a.inst(), &dim1, Order::AFTER);
@@ -364,11 +370,12 @@ fn partial_bound_5() {
         let space = builder.get_clone();
         let local_info = LocalInfo::compute(&space, &context);
         sum_pressure(
-            context.device(),
+            &context,
             &space,
             &local_info,
             BottleneckLevel::Global,
             &[],
+            &ir::PartialSize::default(),
         )
     }.get_bottleneck(4);
 
@@ -378,11 +385,12 @@ fn partial_bound_5() {
         let space = builder.get();
         let local_info = LocalInfo::compute(&space, &context);
         sum_pressure(
-            context.device(),
+            &context,
             &space,
             &local_info,
             BottleneckLevel::Global,
             &[],
+            &ir::PartialSize::default(),
         )
     }.get_bottleneck(4);
 
@@ -403,8 +411,7 @@ fn final_bound_0() {
     let (x, y, z);
     let signature = {
         let mut builder = SignatureBuilder::new("test", &mut context);
-        builder.scalar("n", 1 << 25);
-        let n_size: tensor::DimSize = "n".into();
+        let n_size = builder.max_size("n", 1 << 25);
         x = builder.tensor::<f32>("x", vec![n_size.clone()], true);
         y = builder.tensor::<f32>("y", vec![n_size.clone()], true);
         z = builder.tensor::<f32>("z", vec![n_size], false);

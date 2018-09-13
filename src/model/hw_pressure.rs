@@ -80,14 +80,14 @@ impl FastBound {
     }
 
     /// Repeat the bound by iteration on a given loop level.
-    pub fn iterate(self, iterations: u32, level: usize) -> Self {
+    pub fn iterate(self, iterations: u64, level: usize) -> Self {
         let origin = FastOrigin::Loop {
             iterations,
             level,
             inner: self.origin,
         };
         FastBound {
-            value: self.value * f64::from(iterations),
+            value: self.value * iterations as f64,
             origin: Rc::new(origin),
             size: self.size + 1,
         }
@@ -178,7 +178,7 @@ pub enum FastOrigin {
     /// The bound is caused by a loop-carried dependency.
     Loop {
         level: usize,
-        iterations: u32,
+        iterations: u64,
         inner: Rc<FastOrigin>,
     },
     /// The bound is caused by a dependency chain.
@@ -317,7 +317,7 @@ pub enum Origin {
     /// The bound is repeated in a loop.
     Loop {
         dims: Vec<ir::DimId>,
-        iterations: u32,
+        iterations: u64,
         inner: Box<Origin>,
     },
     /// The bound is caused by a dependency chain.

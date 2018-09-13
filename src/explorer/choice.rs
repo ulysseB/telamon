@@ -1,6 +1,6 @@
 //! Choices that can be applied to split the search space.
 use ir::mem::Block;
-use ir::{self, BasicBlock};
+use ir::{self, Statement};
 use itertools::Itertools;
 use search_space::{Action, Domain, NumSet, Order, SearchSpace};
 
@@ -46,9 +46,9 @@ pub fn list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item = Choice> + 'a
             // TODO(search_space): avoid picking ordering decisions that have little impact.
             // For this, we should avoid dimension-instruction and dimension-vector dim
             // orderings. The problem is that we do not know wich choice to pick in the end.
-            let lhs = lhs.bb_id();
-            let dims = fun.dims().take(i).map(|x| x.bb_id());
-            dims.chain(fun.insts().map(|x| x.bb_id()))
+            let lhs = lhs.stmt_id();
+            let dims = fun.dims().take(i).map(|x| x.stmt_id());
+            dims.chain(fun.insts().map(|x| x.stmt_id()))
                 .flat_map(move |rhs| {
                     let orders = space.domain().get_order(lhs.into(), rhs);
                     gen_choice(orders.list(), &|o| Action::Order(lhs, rhs, o))
@@ -90,7 +90,7 @@ pub fn fix_order(mut space: SearchSpace) -> SearchSpace {
         .ir_instance()
         .blocks()
         .cartesian_product(space.ir_instance().dims())
-        .map(|(lhs, rhs)| (lhs.bb_id(), rhs.bb_id()))
+        .map(|(lhs, rhs)| (lhs.stmt_id(), rhs.stmt_id()))
         .filter(|&(lhs, rhs)| lhs != rhs)
         .filter(|&(lhs, rhs)| !space.domain().get_order(lhs, rhs).is_constrained())
         .collect_vec();

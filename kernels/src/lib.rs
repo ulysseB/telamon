@@ -4,6 +4,8 @@ extern crate cuda_sys;
 extern crate itertools;
 extern crate libc;
 #[macro_use]
+extern crate log;
+#[macro_use]
 extern crate ndarray;
 extern crate num;
 extern crate num_cpus;
@@ -54,8 +56,7 @@ where
     AM: ArgMap + Context,
 {
     if is_generic {
-        builder.scalar(name, value);
-        name.into()
+        builder.max_size(name, value as u32)
     } else {
         (value as u32).into()
     }

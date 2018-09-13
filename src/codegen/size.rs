@@ -28,7 +28,7 @@ impl<'a> Size<'a> {
     }
 
     /// Converts an `ir::Size` to `Self`.
-    pub fn from_ir(size: &ir::Size<'a>, _: &SearchSpace) -> Self {
+    pub fn from_ir(size: &ir::PartialSize<'a>, _: &SearchSpace) -> Self {
         Size::new(
             size.factor(),
             size.dividend().iter().cloned().collect(),
@@ -79,8 +79,8 @@ impl<'a, 'b> std::ops::MulAssign<&'b Size<'a>> for Size<'a> {
 
 // TODO(cleanup): remove the temporary implementation of From<ir::Size> for codgen::Size.
 // This is only needed until we have mechanism in `model::*` to handle sizes.
-impl<'a> From<ir::Size<'a>> for Size<'a> {
-    fn from(s: ir::Size<'a>) -> Size<'a> {
+impl<'a> From<ir::PartialSize<'a>> for Size<'a> {
+    fn from(s: ir::PartialSize<'a>) -> Size<'a> {
         Size::new(
             s.factor(),
             s.dividend().iter().cloned().collect(),

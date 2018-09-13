@@ -1,6 +1,6 @@
 //! Utilities to allocate and operate on tensors.
 use device::{read_array, ArgMap, ArrayArgument, Context, ScalarArgument};
-use helper::{Builder, LogicalDim, MetaDimension, SignatureBuilder};
+use helper::{Builder, LogicalDim, SignatureBuilder};
 use ir;
 use itertools::Itertools;
 use ndarray::{self, ArrayD};
@@ -11,15 +11,16 @@ use utils::*;
 /// A dimension size, before tiling.
 #[derive(Clone)]
 pub struct DimSize<'a> {
-    factor: u32,
-    params: Vec<&'a str>,
+    pub factor: u32,
+    pub params: Vec<&'a str>,
+    pub max_size: u32,
 }
 
 impl<'a> DimSize<'a> {
     /// Convert the size into the size type used by the IR.
     pub fn into_ir_size<'b>(&self, builder: &Builder<'b>) -> ir::Size<'b> {
         let params = self.params.iter().map(|p| builder.find_param(p)).collect();
-        ir::Size::new(self.factor, params, 1)
+        ir::Size::new(self.factor, params, self.max_size)
     }
 
     /// Converts the size into a numerical value for a given context.
@@ -29,6 +30,15 @@ impl<'a> DimSize<'a> {
             .map(|p| unwrap!(context.param_as_size(p)))
             .product::<u32>() * self.factor
     }
+
+    /// Creates a new size equals to the given parameter.
+    pub fn new_param(param: &'a str, max_size: u32) -> Self {
+        DimSize {
+            factor: 1,
+            params: vec![param],
+            max_size,
+        }
+    }
 }
 
 impl<'a> From<u32> for DimSize<'a> {
@@ -36,15 +46,7 @@ impl<'a> From<u32> for DimSize<'a> {
         DimSize {
             factor: size,
             params: vec![],
-        }
-    }
-}
-
-impl<'a> From<&'a str> for DimSize<'a> {
-    fn from(param: &'a str) -> Self {
-        DimSize {
-            factor: 1,
-            params: vec![param],
+            max_size: size,
         }
     }
 }
@@ -178,35 +180,32 @@ where
     }
 
     /// Creates a `VirtualTensor` that contains the values of `self`, loaded in registers.
-    pub fn load<'b>(
-        &self,
-        tiling: &[&[u32]],
-        builder: &mut Builder<'b>,
-    ) -> VirtualTensor<'b> {
-        let mut dims = Vec::new();
-        let mut induction_levels = Vec::new();
-        for (&(ref size, ref stride), tiling) in self.iter_dims.iter().zip_eq(tiling) {
-            let size = size.into_ir_size(builder);
-            let dim = builder.open_tiled_dim(size, tiling);
-            let mut stride = stride.into_ir_size(builder);
-            for (d, &t) in dim.ids().rev().zip(tiling.iter().rev()) {
-                induction_levels.push((d, stride.clone()));
-                stride.mul_factor(t);
-            }
-            induction_levels.push((dim[0], stride));
-            dims.push(dim);
-        }
-        let pat = ir::AccessPattern::Tensor {
-            mem_id: self.mem_id,
-            dims: induction_levels.iter().cloned().collect(),
+    pub fn load(&self, tiling: &[&[u32]], builder: &mut Builder) -> VirtualTensor {
+        let dims = self
+            .iter_dims
+            .iter()
+            .zip_eq(tiling)
+            .map(|((size, _), tiling)| {
+                let size = size.into_ir_size(builder);
+                builder.open_tiled_dim(size, tiling)
+            })
+            .collect_vec();
+        let (ptr, pattern);
+        {
+            let increments = dims
+                .iter()
+                .zip_eq(&self.iter_dims)
+                .map(|(dim, (_, stride))| (dim, stride.into_ir_size(builder)))
+                .collect_vec();
+            ptr = builder.induction_var(&self.name, increments.clone());
+            pattern = builder.tensor_access_pattern(self.mem_id, increments);
         };
-        let ptr = builder.induction_var(&self.name, induction_levels);
         let flag = if self.read_only {
             InstFlag::ALL
         } else {
             InstFlag::MEM_COHERENT
         };
-        let inst = builder.ld_ex(S::t(), &ptr, pat, flag);
+        let inst = builder.ld_ex(S::t(), &ptr, pattern, flag);
         for dim in &dims {
             builder.close_dim(dim);
         }
@@ -235,39 +234,31 @@ where
 }
 
 /// A tensor loaded in registers.
-pub struct VirtualTensor<'a> {
+pub struct VirtualTensor {
     inst: ir::InstId,
-    dims: Vec<LogicalDim<'a>>,
+    dims: Vec<LogicalDim>,
 }
 
-impl<'a> VirtualTensor<'a> {
+impl VirtualTensor {
     /// Creates a new `VirtualTensor`.
-    pub fn new(inst: ir::InstId, dims: Vec<LogicalDim<'a>>) -> Self {
+    pub fn new(inst: ir::InstId, dims: Vec<LogicalDim>) -> Self {
         VirtualTensor { inst, dims }
     }
 
     /// Creates an operand that yeilds the values of the tensor in the given loop nest.
-    pub fn dim_map(
+    pub fn dim_map<'a>(
         &self,
-        dims: &[&MetaDimension],
+        dims: &[&LogicalDim],
         scope: ir::DimMapScope<()>,
         builder: &mut Builder<'a>,
     ) -> ir::Operand<'a, ()> {
-        let mapping = self
-            .dims
-            .iter()
-            .map(|x| x as &MetaDimension)
-            .zip_eq(dims.iter().cloned())
-            .collect_vec();
+        let mapping = self.dims.iter().zip_eq(dims.iter().cloned()).collect_vec();
         builder.dim_map(self.inst, &mapping, scope)
     }
 
-    /// Stores the `VirtualTensor` in memory.
-    pub fn store<S>(
-        &self,
-        tensor: &Tensor<S>,
-        builder: &mut Builder<'a>,
-    ) -> VirtualTensor<'a>
+    /// Stores the `VirtualTensor` in memory. Stores contiguously without taking the
+    /// layout of the target tensor into account.
+    pub fn store<S>(&self, tensor: &Tensor<S>, builder: &mut Builder) -> VirtualTensor
     where
         S: ScalarArgument,
     {
@@ -278,8 +269,8 @@ impl<'a> VirtualTensor<'a> {
             .map(|dim| builder.open_mapped_dim(dim))
             .collect_vec();
         let (ptr, pat) = {
-            let dims = new_dims.iter().map(|d| d as &MetaDimension).collect_vec();
-            builder.tensor_access(&tensor.name, tensor.mem_id, &S::t(), &dims)
+            let new_dims = new_dims.iter().collect_vec();
+            builder.tensor_access(&tensor.name, tensor.mem_id, S::t(), &new_dims)
         };
         let inst = builder.st(&ptr, &self.inst, pat);
         for dim in &new_dims {
@@ -297,17 +288,17 @@ impl<'a> VirtualTensor<'a> {
     }
 }
 
-impl<'a> std::ops::Index<usize> for VirtualTensor<'a> {
-    type Output = LogicalDim<'a>;
+impl std::ops::Index<usize> for VirtualTensor {
+    type Output = LogicalDim;
 
     fn index(&self, idx: usize) -> &Self::Output {
         &self.dims[idx]
     }
 }
 
-impl<'a, 'b> IntoIterator for &'a VirtualTensor<'b> {
-    type Item = &'a LogicalDim<'b>;
-    type IntoIter = std::slice::Iter<'a, LogicalDim<'b>>;
+impl<'a> IntoIterator for &'a VirtualTensor {
+    type Item = &'a LogicalDim;
+    type IntoIter = std::slice::Iter<'a, LogicalDim>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.dims.iter()

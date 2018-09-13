@@ -67,6 +67,10 @@ impl device::Device for Device {
         1024
     }
 
+    fn max_inner_block_size(&self) -> u32 {
+        65535
+    }
+
     fn shared_mem(&self) -> u32 {
         self.shared_mem_size
     }
@@ -95,8 +99,8 @@ impl device::Device for Device {
         &self,
         _: &SearchSpace,
         _: &HashMap<ir::DimId, u32>,
-        _: &HashMap<ir::BBId, model::Nesting>,
-        _: &ir::BasicBlock,
+        _: &HashMap<ir::StmtId, model::Nesting>,
+        _: &ir::Statement,
         _: &device::Context,
     ) -> HwPressure {
         HwPressure::zero(self)
@@ -130,7 +134,14 @@ impl device::Device for Device {
         HwPressure::new(1.0, vec![1.0, 1.0, 1.0])
     }
 
-    fn add_block_overhead(&self, _: u64, _: u64, _: &mut HwPressure) {}
+    fn add_block_overhead(
+        &self,
+        _: model::size::FactorRange,
+        _: model::size::FactorRange,
+        _: model::size::Range,
+        _: &mut HwPressure,
+    ) {
+    }
 }
 
 /// A fake context.

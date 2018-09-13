@@ -1,4 +1,4 @@
-set BasicBlock:
+set Statement:
   item_type = "ir::basic_block::Obj"
   id_type = "ir::basic_block::Id"
   item_getter = "ir::basic_block::get($fun, $id)"
@@ -9,14 +9,14 @@ set BasicBlock:
 end
 
 /// Test symmetric enums.
-define enum enum_1($lhs in BasicBlock, $rhs in BasicBlock):
+define enum enum_1($lhs in Statement, $rhs in Statement):
   symmetric
   value A:
   value B:
 end
 
 /// Test anti-symmetric enums.
-define enum enum_2($lhs in BasicBlock, $rhs in BasicBlock):
+define enum enum_2($lhs in Statement, $rhs in Statement):
   value BEFORE:
   value AFTER:
   value MERGED:
@@ -28,35 +28,35 @@ define enum enum_2($lhs in BasicBlock, $rhs in BasicBlock):
 end
 
 /// Test symmetric normalization within a constraint.
-define enum enum_3($lhs in BasicBlock, $rhs in BasicBlock):
+define enum enum_3($lhs in Statement, $rhs in Statement):
   symmetric
   value A:
   value B:
   value C:
 end
 
-require forall $lhs in BasicBlock:
-  forall $rhs in BasicBlock:
+require forall $lhs in Statement:
+  forall $rhs in Statement:
     enum_3($lhs, $rhs) is A || enum_3($rhs, $lhs) is B
 
 /// Test symmetric normalization accross constraints.
-define enum enum_4($lhs in BasicBlock, $rhs in BasicBlock):
+define enum enum_4($lhs in Statement, $rhs in Statement):
   symmetric
   value A:
   value B:
   value C:
 end
 
-require forall $lhs in BasicBlock:
-  forall $rhs in BasicBlock:
+require forall $lhs in Statement:
+  forall $rhs in Statement:
     enum_4($lhs, $rhs) is A | B
 
-require forall $lhs in BasicBlock:
-  forall $rhs in BasicBlock:
+require forall $lhs in Statement:
+  forall $rhs in Statement:
     enum_4($rhs, $lhs) is B | C
 
 /// Test anti-symmetric normaliztion within a constraint.
-define enum enum_5($lhs in BasicBlock, $rhs in BasicBlock):
+define enum enum_5($lhs in Statement, $rhs in Statement):
   value BEFORE:
   value AFTER:
   value MERGED:
@@ -67,12 +67,12 @@ define enum enum_5($lhs in BasicBlock, $rhs in BasicBlock):
     INNER -> OUTER
 end
 
-require forall $lhs in BasicBlock:
-  forall $rhs in BasicBlock:
+require forall $lhs in Statement:
+  forall $rhs in Statement:
     enum_5($lhs, $rhs) == enum_5($rhs, $lhs)
 
 /// Test anti-symmetric normalization accross constraints.
-define enum enum_6($lhs in BasicBlock, $rhs in BasicBlock):
+define enum enum_6($lhs in Statement, $rhs in Statement):
   value BEFORE:
   value AFTER:
   value MERGED:
@@ -83,10 +83,10 @@ define enum enum_6($lhs in BasicBlock, $rhs in BasicBlock):
     INNER -> OUTER
 end
 
-require forall $lhs in BasicBlock:
-  forall $rhs in BasicBlock:
+require forall $lhs in Statement:
+  forall $rhs in Statement:
     enum_6($lhs, $rhs) is BEFORE | MERGED | INNER
 
-require forall $lhs in BasicBlock:
-  forall $rhs in BasicBlock:
+require forall $lhs in Statement:
+  forall $rhs in Statement:
     enum_6($rhs, $lhs) is BEFORE | MERGED | OUTER

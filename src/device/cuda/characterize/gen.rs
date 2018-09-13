@@ -4,7 +4,8 @@ use device::cuda::characterize::Table;
 use device::cuda::{Context, Gpu, Kernel, PerfCounterSet};
 use device::{ArgMap, Device, ScalarArgument};
 use explorer;
-use helper::{AutoOperand, Builder, DimGroup, Reduce};
+use helper::tensor::DimSize;
+use helper::{AutoOperand, Builder, Reduce};
 use ir::{self, Signature};
 use itertools::Itertools;
 use num::Zero;
@@ -63,12 +64,12 @@ pub fn bind_array<'a, T: 'a>(name: &str, len: usize, context: &mut Context<'a>) 
 pub fn two_empty_loops<'a>(
     base: &'a Signature,
     device: &'a Device,
-    outer: &str,
-    inner: &str,
+    outer: &DimSize,
+    inner: &DimSize,
 ) -> SearchSpace<'a> {
     let mut builder = Builder::new(base, device);
-    let outer_size = builder.param_size(outer);
-    let inner_size = builder.param_size(inner);
+    let outer_size = outer.into_ir_size(&builder);
+    let inner_size = inner.into_ir_size(&builder);
     let d0 = builder.open_dim_ex(outer_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(inner_size, DimKind::LOOP);
     builder.mov(&0i32);
@@ -80,14 +81,14 @@ pub fn two_empty_loops<'a>(
 pub fn loop_chained_adds<'a>(
     base: &'a Signature,
     device: &'a Device,
-    size: &str,
+    loop_size: &DimSize,
     chained: u32,
     out: &str,
     out_id: ir::MemId,
 ) -> SearchSpace<'a> {
     let mut builder = Builder::new(base, device);
     let init = builder.mov(&0f32);
-    let loop_size = builder.param_size(size);
+    let loop_size = loop_size.into_ir_size(&builder);
     let unroll_size = builder.cst_size(chained);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(unroll_size, DimKind::UNROLL);
@@ -115,7 +116,7 @@ pub fn inst_chain<'a, T>(
     signature: &'a Signature,
     device: &'a Device,
     inst_gen: &InstGenerator,
-    n_iter: &str,
+    n_iter: &DimSize,
     n_chained: u32,
     arg: &str,
     out: &str,
@@ -125,7 +126,7 @@ where
 {
     let mut builder = Builder::new(signature, device);
     let init = builder.mov(&T::zero());
-    let loop_size = builder.param_size(n_iter);
+    let loop_size = n_iter.into_ir_size(&builder);
     let unroll_size = builder.cst_size(n_chained);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(unroll_size, DimKind::UNROLL);
@@ -154,19 +155,20 @@ pub fn init_stride_array<'a>(
     let (dim, addr) = if n > 1 {
         let dim = builder.open_dim_ex(size, DimKind::LOOP);
         let addr = builder.mad(&dim, &byte_stride, &array);
-        (DimGroup::new(vec![dim]), addr)
+        (Some(dim), addr)
     } else {
-        (DimGroup::default(), builder.mov(&array))
+        (None, builder.mov(&array))
     };
     let next_addr = builder.mad(&byte_stride, &1i32, &addr);
     let pattern0 = builder.unknown_access_pattern(mem_id);
     builder.st_ex(&addr, &next_addr, true, pattern0, InstFlag::MEM_CG);
-    builder.close_dim(&dim);
+    dim.as_ref().map(|dim| builder.close_dim(dim));
     let last_addr = builder.mad(&byte_stride, &(n as i32 - 1), &array);
 
     let pattern1 = builder.unknown_access_pattern(mem_id);
     builder.st_ex(&last_addr, &array, true, pattern1, InstFlag::MEM_CG);
-    builder.order(&dim, &last_addr, Order::BEFORE);
+    dim.as_ref()
+        .map(|dim| builder.order(dim, &last_addr, Order::BEFORE));
     builder.get()
 }
 
@@ -176,7 +178,7 @@ pub fn load_chain<'a>(
     signature: &'a Signature,
     device: &'a Device,
     n_threads: u32,
-    n_iter: &str,
+    n_iter: &DimSize,
     n_chained: u32,
     mem_id: ir::MemId,
     array: &str,
@@ -185,12 +187,12 @@ pub fn load_chain<'a>(
 ) -> SearchSpace<'a> {
     let mut builder = Builder::new(signature, device);
     let init = builder.mov(&array);
-    let loop_size = builder.param_size(n_iter);
+    let loop_size = n_iter.into_ir_size(&builder);
     let unroll_size = builder.cst_size(n_chained);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(unroll_size, DimKind::UNROLL);
     if n_threads != 1 {
-        let d = builder.open_dim_ex(ir::Size::new(n_threads, vec![], 1), DimKind::THREAD);
+        let d = builder.open_dim_ex(ir::Size::new_const(n_threads), DimKind::THREAD);
         builder.order(&d, &d0, Order::OUTER);
     }
     let pattern0 = builder.unknown_access_pattern(mem_id);
@@ -207,7 +209,7 @@ pub fn load_chain<'a>(
 pub fn shared_load_chain<'a>(
     signature: &'a Signature,
     device: &'a Device,
-    n_iter: &str,
+    n_iter: &DimSize,
     n_chained: u32,
     array_size: u32,
     out_id: ir::MemId,
@@ -227,7 +229,7 @@ pub fn shared_load_chain<'a>(
     let last_st = builder.st(&init_addr, &array, pattern1);
 
     let addr_init = builder.mov(&array);
-    let loop_size = builder.param_size(n_iter);
+    let loop_size = n_iter.into_ir_size(&builder);
     let unroll_size = builder.cst_size(n_chained);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(unroll_size, DimKind::UNROLL);
@@ -248,8 +250,8 @@ pub fn shared_load_chain<'a>(
 pub fn parallel_load<'a>(
     signature: &'a Signature,
     gpu: &'a Gpu,
-    num_blocks: &str,
-    n: &str,
+    num_blocks: &DimSize,
+    n: &DimSize,
     n_chained: u32,
     n_unroll: u32,
     num_wraps: u32,
@@ -261,75 +263,61 @@ pub fn parallel_load<'a>(
 ) -> SearchSpace<'a> {
     assert!(stride * 4 <= gpu.l1_cache_line);
     let mut builder = Builder::new(signature, gpu);
-    let block_size = builder.param_size(num_blocks);
+    let block_size = num_blocks.into_ir_size(&builder);
     let _ = builder.open_dim_ex(block_size, DimKind::BLOCK);
     // Initialize the result
-    let init_size = builder.cst_size(num_wraps * gpu.wrap_size);
-    let thread_tilling = if num_wraps == 1 {
-        vec![]
+    let d1_0_a = if num_wraps > 1 {
+        Some(builder.open_dim_ex(ir::Size::new_const(num_wraps), DimKind::THREAD))
     } else {
-        vec![gpu.wrap_size]
+        None
     };
-    let d1_0 = builder.open_tiled_dim(init_size, &thread_tilling);
-    for d in &d1_0 {
-        builder.action(Action::DimKind(d, DimKind::THREAD));
-    }
-    for (x, y) in d1_0.iter().tuple_windows() {
-        builder.order(&x, &y, Order::OUTER);
-    }
+    let d1_0_b = builder.open_dim_ex(ir::Size::new_const(gpu.wrap_size), DimKind::THREAD);
+    builder.order(&d1_0_a, &d1_0_b, Order::OUTER);
+
     let init = builder.mov(&0f32);
     // Sum in the result.
-    let loop_size = builder.param_size(n);
+    let loop_size = n.into_ir_size(&builder);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
-    let d1_1 = builder.open_mapped_dim(&d1_0);
-    for (x, y) in d1_1.iter().tuple_windows() {
-        builder.order(&x, &y, Order::OUTER);
-    }
-    let d3 = builder.open_dim_ex(ir::Size::new(n_chained, vec![], 1), DimKind::UNROLL);
-    let d4_0 = builder.open_dim_ex(ir::Size::new(n_unroll, vec![], 1), DimKind::UNROLL);
+    let d1_1_a = d1_0_a
+        .as_ref()
+        .map(|d1_0_a| builder.open_mapped_dim(&d1_0_a));
+    let d1_1_b = builder.open_mapped_dim(&d1_0_b);
+    builder.order(&d1_1_a, &d1_1_b, Order::OUTER);
+
+    let d3 = builder.open_dim_ex(ir::Size::new_const(n_chained), DimKind::UNROLL);
+    let d4_0 = builder.open_dim_ex(ir::Size::new_const(n_unroll), DimKind::UNROLL);
     let pattern = builder.unknown_access_pattern(mem_id);
+    let wrap_stride = gpu.wrap_size * gpu.l1_cache_line;
     let mut strides = vec![
-        (
-            d3,
-            ir::Size::new(
-                n_unroll * num_wraps * gpu.wrap_size * gpu.l1_cache_line,
-                vec![],
-                1,
-            ),
-        ),
-        (
-            d4_0,
-            ir::Size::new(num_wraps * gpu.wrap_size * gpu.l1_cache_line, vec![], 1),
-        ),
+        (&d3, ir::Size::new_const(n_unroll * num_wraps * wrap_stride)),
+        (&d4_0, ir::Size::new_const(num_wraps * wrap_stride)),
+        (&d1_1_b, ir::Size::new_const(stride * 4)),
     ];
-    if stride != 0 {
-        let i = if num_wraps == 1 {
-            0
-        } else {
-            strides.push((
-                d1_1[0],
-                ir::Size::new(gpu.wrap_size * gpu.l1_cache_line, vec![], 1),
-            ));
-            1
-        };
-        strides.push((d1_1[i], ir::Size::new(stride * 4, vec![], 1)));
-    };
+    if let Some(ref d1_1_a) = d1_1_a {
+        strides.push((d1_1_a, ir::Size::new_const(wrap_stride)));
+    }
     let addr = builder.induction_var(&array, strides);
     let val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_CG);
-    let d4_1 = builder.open_mapped_dim(&d4_0)[0];
+    let d4_1 = builder.open_mapped_dim(&d4_0);
     let acc = builder.add(&val, &Reduce(init));
-    builder.close_dim(&DimGroup::new(vec![d0, d3, d4_1]));
+    builder.close_dim(&d0);
+    builder.close_dim(&d3);
+    builder.close_dim(&d4_1);
     // Write the result
-    let d1_2 = builder.open_mapped_dim(&d1_1);
-    for (x, y) in d1_2.iter().tuple_windows() {
-        builder.order(&x, &y, Order::OUTER);
-    }
+    let d1_2_a = d1_1_a
+        .as_ref()
+        .map(|d1_1_a| builder.open_mapped_dim(&d1_1_a));
+    let d1_2_b = builder.open_mapped_dim(&d1_1_b);
+    builder.order(&d1_2_a, &d1_2_b, Order::OUTER);
     let out_pattern = builder.unknown_access_pattern(out_id);
     builder.st_ex(&out, &acc, true, out_pattern, InstFlag::MEM_CS);
 
-    builder.order(&d1_0, &d0, Order::BEFORE);
-    builder.order(&d0, &d1_1, Order::OUTER);
-    builder.order(&d0, &d1_2, Order::BEFORE);
+    builder.order(&d1_0_a, &d0, Order::BEFORE);
+    builder.order(&d1_0_b, &d0, Order::BEFORE);
+    builder.order(&d0, &d1_1_a, Order::OUTER);
+    builder.order(&d0, &d1_1_b, Order::OUTER);
+    builder.order(&d0, &d1_2_a, Order::BEFORE);
+    builder.order(&d0, &d1_2_b, Order::BEFORE);
     builder.order(&d3, &d4_0, Order::OUTER);
     builder.order(&d3, &d4_1, Order::OUTER);
     builder.order(&d4_0, &d4_1, Order::BEFORE);
@@ -342,8 +330,8 @@ pub fn parallel_load<'a>(
 pub fn parallel_store<'a>(
     signature: &'a Signature,
     gpu: &'a Gpu,
-    num_blocks: &str,
-    n: &str,
+    num_blocks: &DimSize,
+    n: &DimSize,
     n_chained: u32,
     n_unroll: u32,
     num_wraps: u32,
@@ -353,60 +341,38 @@ pub fn parallel_store<'a>(
 ) -> SearchSpace<'a> {
     assert!(stride * 4 <= gpu.l1_cache_line);
     let mut builder = Builder::new(signature, gpu);
-    let block_size = builder.param_size(num_blocks);
+    let block_size = num_blocks.into_ir_size(&builder);
     let _ = builder.open_dim_ex(block_size, DimKind::BLOCK);
-    let loop_size = builder.param_size(n);
+    let loop_size = n.into_ir_size(&builder);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
 
-    let thread_tilling = if num_wraps == 1 {
-        vec![]
+    let d1_0 = if num_wraps > 1 {
+        Some(builder.open_dim_ex(ir::Size::new_const(num_wraps), DimKind::THREAD))
     } else {
-        vec![gpu.wrap_size]
+        None
     };
-    let thread_size = builder.cst_size(num_wraps * gpu.wrap_size);
-    let d1 = builder.open_tiled_dim(thread_size, &thread_tilling);
-    for d in &d1 {
-        builder.action(Action::DimKind(d, DimKind::THREAD));
-    }
-    for (x, y) in d1.iter().tuple_windows() {
-        builder.order(&x, &y, Order::OUTER);
-    }
+    let d1_1 = builder.open_dim_ex(ir::Size::new_const(gpu.wrap_size), DimKind::THREAD);
+    builder.order(&d1_0, &d1_1, Order::OUTER);
 
-    let d3 = builder.open_dim_ex(ir::Size::new(n_chained, vec![], 1), DimKind::UNROLL);
-    let d4 = builder.open_dim_ex(ir::Size::new(n_unroll, vec![], 1), DimKind::UNROLL);
+    let d3 = builder.open_dim_ex(ir::Size::new_const(n_chained), DimKind::UNROLL);
+    let d4 = builder.open_dim_ex(ir::Size::new_const(n_unroll), DimKind::UNROLL);
     let pattern = builder.unknown_access_pattern(mem_id);
+    let wrap_stride = gpu.wrap_size * gpu.l1_cache_line;
     let mut strides = vec![
-        (
-            d3,
-            ir::Size::new(
-                n_unroll * num_wraps * gpu.wrap_size * gpu.l1_cache_line,
-                vec![],
-                1,
-            ),
-        ),
-        (
-            d4,
-            ir::Size::new(num_wraps * gpu.wrap_size * gpu.l1_cache_line, vec![], 1),
-        ),
+        (&d3, ir::Size::new_const(n_unroll * num_wraps * wrap_stride)),
+        (&d4, ir::Size::new_const(num_wraps * wrap_stride)),
+        (&d1_1, ir::Size::new_const(stride * 4)),
     ];
-    if stride != 0 {
-        let i = if num_wraps == 1 {
-            0
-        } else {
-            strides.push((
-                d1[0],
-                ir::Size::new(gpu.wrap_size * gpu.l1_cache_line, vec![], 1),
-            ));
-            1
-        };
-        strides.push((d1[i], ir::Size::new(stride * 4, vec![], 1)));
-    };
+    if let Some(ref d1_0) = d1_0 {
+        strides.push((d1_0, ir::Size::new_const(wrap_stride)));
+    }
     let addr = builder.induction_var(&array, strides);
     builder.st_ex(&addr, &42f32, true, pattern, InstFlag::MEM_CG);
-    builder.close_dim(&DimGroup::new(vec![d0, d3, d4]));
 
-    builder.order(&d0, &d1, Order::OUTER);
-    builder.order(&d1, &d3, Order::OUTER);
+    builder.order(&d0, &d1_0, Order::OUTER);
+    builder.order(&d0, &d1_1, Order::OUTER);
+    builder.order(&d1_0, &d3, Order::OUTER);
+    builder.order(&d1_1, &d3, Order::OUTER);
     builder.order(&d3, &d4, Order::OUTER);
 
     builder.get()
@@ -416,12 +382,12 @@ pub fn parallel_store<'a>(
 pub fn syncthread<'a>(
     signature: &'a Signature,
     device: &'a Device,
-    n_iter: &str,
+    n_iter: &DimSize,
     n_chained: u32,
     wrap_size: u32,
 ) -> SearchSpace<'a> {
     let mut builder = Builder::new(signature, device);
-    let loop_size = builder.param_size(n_iter);
+    let loop_size = n_iter.into_ir_size(&builder);
     let unroll_size = builder.cst_size(n_chained);
     let thread_size = builder.cst_size(wrap_size);
 
@@ -436,7 +402,7 @@ pub fn syncthread<'a>(
     let mut kernel = builder.get();
     kernel
         .domain_mut()
-        .set_order(d1.into(), d2.into(), Order::OUTER);
+        .set_order(d1[0].into(), d2[0].into(), Order::OUTER);
     kernel
 }
 
@@ -445,7 +411,7 @@ pub fn syncthread<'a>(
 pub fn chain_in_syncthread<'a>(
     signature: &'a Signature,
     device: &'a Device,
-    n_iter: &str,
+    n_iter: &DimSize,
     sync_chained: u32,
     add_chained: u32,
     wrap_size: u32,
@@ -453,7 +419,7 @@ pub fn chain_in_syncthread<'a>(
     out_id: ir::MemId,
 ) -> SearchSpace<'a> {
     let mut builder = Builder::new(signature, device);
-    let loop_size = builder.param_size(n_iter);
+    let loop_size = n_iter.into_ir_size(&builder);
     let sync_unroll_size = builder.cst_size(sync_chained);
     let thread_size = builder.cst_size(wrap_size);
     let add_unroll_size = builder.cst_size(add_chained);
@@ -463,12 +429,15 @@ pub fn chain_in_syncthread<'a>(
 
     let d1 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d2 = builder.open_dim_ex(sync_unroll_size, DimKind::UNROLL);
-    let d3 = builder.open_mapped_dim(&d0)[0];
+    let d3 = builder.open_mapped_dim(&d0);
     let d4 = builder.open_dim_ex(add_unroll_size, DimKind::UNROLL);
     let acc = builder.add(&Reduce(init), &2f32);
-    builder.close_dim(&DimGroup::new(vec![d1, d2, d3, d4]));
+    builder.close_dim(&d1);
+    builder.close_dim(&d2);
+    builder.close_dim(&d3);
+    builder.close_dim(&d4);
 
-    let d5 = builder.open_mapped_dim(&d0)[0];
+    let d5 = builder.open_mapped_dim(&d0);
     let pattern = builder.unknown_access_pattern(out_id);
     builder.st_ex(&out, &acc, true, pattern, InstFlag::MEM_CG);
 
@@ -477,13 +446,13 @@ pub fn chain_in_syncthread<'a>(
     builder.order(&d2, &d4, Order::OUTER);
     builder.order(&d0, &d1, Order::BEFORE);
     builder.order(&d1, &d5, Order::BEFORE);
-    builder.action(Action::ThreadMapping(d0, d3, ThreadMapping::MAPPED));
-    builder.action(Action::ThreadMapping(d0, d5, ThreadMapping::MAPPED));
+    builder.action(Action::ThreadMapping(d0[0], d3[0], ThreadMapping::MAPPED));
+    builder.action(Action::ThreadMapping(d0[0], d5[0], ThreadMapping::MAPPED));
 
     let mut kernel = builder.get();
     kernel
         .domain_mut()
-        .set_order(d1.into(), d2.into(), Order::OUTER);
+        .set_order(d1[0].into(), d2[0].into(), Order::OUTER);
     kernel
 }
 
@@ -491,6 +460,7 @@ pub fn chain_in_syncthread<'a>(
 pub fn load_in_loop<'a>(
     signature: &'a Signature,
     device: &'a Device,
+    k_size: &DimSize,
     threads: u32,
     out: &str,
     out_id: ir::MemId,
@@ -507,28 +477,30 @@ pub fn load_in_loop<'a>(
     let acc_init = builder.mov(&0f32);
     builder.close_dim(&unroll_dim_0_0);
 
-    let k_size = builder.param_size("k");
+    let k_size = k_size.into_ir_size(&builder);
     let k_dim = builder.open_dim_ex(k_size, DimKind::LOOP);
     // Load A
     let unroll_dim_a = builder.open_dim_ex(size_4.clone(), DimKind::VECTOR);
     let (addr, pattern) = builder.tensor_access(
         &tmp_mem,
         tmp_mem.into(),
-        &ir::Type::F(32),
+        ir::Type::F(32),
         &[&thread_dim_1_0, &unroll_dim_a],
     );
     let a_val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_CG);
     builder.close_dim(&unroll_dim_a);
     // Mad a and b
     let unroll_dims_1 = builder.open_mapped_dim(&unroll_dim_0_0);
-    let a_dim_map = ir::dim::Map::new(vec![(unroll_dim_a, unroll_dims_1[0])]);
-    let a_op =
-        ir::Operand::Inst(a_val, ir::Type::F(32), a_dim_map, ir::DimMapScope::Thread);
+    let a_op = builder.dim_map(
+        a_val,
+        &[(&unroll_dim_a, &unroll_dims_1)],
+        ir::DimMapScope::Thread,
+    );
     let acc = builder.mad(&a_op, &2f32, &Reduce(acc_init));
     builder.close_dim(&k_dim);
 
     let _ = builder.open_mapped_dim(&unroll_dims_1);
-    let (addr, pattern) = builder.tensor_access(&out, out_id, &ir::Type::F(32), &[]);
+    let (addr, pattern) = builder.tensor_access(&out, out_id, ir::Type::F(32), &[]);
     let _ = builder.st_ex(&addr, &acc, true, pattern, InstFlag::MEM_CS);
 
     builder.order(&k_dim, &thread_dim_1_0, Order::INNER);

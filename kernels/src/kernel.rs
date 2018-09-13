@@ -152,6 +152,7 @@ pub trait Kernel<'a>: Sized {
                                     &actions[idx..]
                                 );
                             }
+                            info!("new evaluation: {:.2e}ns, bound {}", runtime, bound);
                             leaves.push(BoundSample {
                                 actions,
                                 bound,
