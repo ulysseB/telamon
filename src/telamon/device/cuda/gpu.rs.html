@@ -1078,13 +1078,13 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
         <span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">u32</span><span class="op">&gt;</span>,
-        <span class="ident">_nesting</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">BBId</span>, <span class="ident">model</span>::<span class="ident">Nesting</span><span class="op">&gt;</span>,
-        <span class="ident">bb</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Statement</span>,
+        <span class="ident">_nesting</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">StmtId</span>, <span class="ident">model</span>::<span class="ident">Nesting</span><span class="op">&gt;</span>,
+        <span class="ident">stmt</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Statement</span>,
         <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">device</span>::<span class="ident">Context</span>,
     ) <span class="op">-&gt;</span> <span class="ident">model</span>::<span class="ident">HwPressure</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">inst</span>) <span class="op">=</span> <span class="ident">bb</span>.<span class="ident">as_inst</span>() {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">inst</span>) <span class="op">=</span> <span class="ident">stmt</span>.<span class="ident">as_inst</span>() {
             <span class="self">self</span>.<span class="ident">inst_pressure</span>(<span class="ident">space</span>, <span class="ident">dim_sizes</span>, <span class="ident">inst</span>, <span class="ident">ctx</span>)
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">dim</span>) <span class="op">=</span> <span class="ident">bb</span>.<span class="ident">as_dim</span>() {
+        } <span class="kw">else</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">dim</span>) <span class="op">=</span> <span class="ident">stmt</span>.<span class="ident">as_dim</span>() {
             <span class="kw">let</span> <span class="ident">kind</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_dim_kind</span>(<span class="ident">dim</span>.<span class="ident">id</span>());
             <span class="self">self</span>.<span class="ident">dim_pressure</span>(<span class="ident">kind</span>, <span class="ident">dim_sizes</span>[<span class="kw-2">&amp;</span><span class="ident">dim</span>.<span class="ident">id</span>()])
         } <span class="kw">else</span> {
