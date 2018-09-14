@@ -391,8 +391,7 @@ where
                     .unwrap()
                     .successors
                     .push(index)
-            })
-            .count();
+            }).count();
 
         node_data[index].as_mut().unwrap().num_predecessors = num_predecessors
     }
@@ -587,8 +586,7 @@ impl<'a> Trigger<'a> {
             .enumerate()
             .map(|(pos, input)| {
                 (ctx.input_name(pos), ast::ChoiceInstance::new(input, ctx))
-            })
-            .collect();
+            }).collect();
         let foralls = (0..trigger.foralls.len()).map(ir::Variable::Forall);
         let loop_nest = ast::LoopNest::new(foralls.clone(), ctx, &mut vec![], false);
         let arguments = foralls
@@ -608,8 +606,7 @@ impl<'a> Trigger<'a> {
             .into_iter()
             .map(|(iter, ctx)| {
                 (iter, vars.iter().map(|&(v, _)| ctx.var_name(v)).collect())
-            })
-            .collect();
+            }).collect();
         Trigger {
             id,
             loop_nest,
@@ -642,9 +639,11 @@ impl Display for ir::Enum {
                 .format_with("", |doc, f| f(&format_args!("///{}\n", doc))),
             name = name,
             t_name = self.name(),
-            values = values.iter().format_with(" | ", |v, f| {
-                f(&format_args!("{}::{}.bits", self.name(), v))
-            })
+            values = values.iter().format_with(" | ", |v, f| f(&format_args!(
+                "{}::{}.bits",
+                self.name(),
+                v
+            )))
         );
         let printers = iter_printer!(
             self.values(),

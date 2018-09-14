@@ -44,7 +44,7 @@ fn lower_dim_map(
     let lowered_dim_map = fun.lower_dim_map(inst, operand)?;
     let mut actions = Vec::new();
     // Order the store and load loop nests.
-    for &(src, dst) in &lowered_dim_map.dimensions {
+    for (src, dst) in lowered_dim_map.mem_dimensions() {
         actions.push(Action::Order(
             src.into(),
             dst.into(),
@@ -66,18 +66,10 @@ fn lower_dim_map(
         Order::BEFORE,
     ));
     let operand = fun.inst(inst).operands()[operand];
+    // The invariants for the load and store instructions, including the ones implied by the
+    // mapping between dimensions, are enforced by `search_space::process_lowering`.
     actions.extend(operand::invariants(fun, operand, inst.into()));
-    // Update the list of new objets
-    for dim in lowered_dim_map
-        .dimensions
-        .iter()
-        .flat_map(|&(x, y)| vec![x, y])
-    {
-        new_objs.add_dimension(fun.dim(dim));
-    }
-    new_objs.add_mem_instruction(fun.inst(lowered_dim_map.store));
-    new_objs.add_mem_instruction(fun.inst(lowered_dim_map.load));
-    new_objs.add_mem_block(lowered_dim_map.mem);
+    lowered_dim_map.register_new_objs(fun, new_objs);
     debug!("lower_dim_map actions: {:?}", actions);
     Ok(actions)
 }
@@ -95,8 +87,7 @@ pub fn dim_not_mapped(
             inst.dim_maps_to_lower(lhs, rhs)
                 .into_iter()
                 .map(move |op_id| (inst.id(), op_id))
-        })
-        .collect_vec();
+        }).collect_vec();
     let mut new_objs = ir::NewObjs::default();
     let mut actions = Vec::new();
     for (inst, operand) in to_lower {

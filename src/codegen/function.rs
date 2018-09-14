@@ -16,6 +16,7 @@ pub struct Function<'a> {
     induction_vars: Vec<InductionVar<'a>>,
     mem_blocks: Vec<InternalMemoryRegion<'a>>,
     init_induction_levels: Vec<InductionLevel<'a>>,
+    values: Vec<ir::Value>,
     // TODO(cleanup): remove dependency on the search space
     space: &'a SearchSpace<'a>,
 }
@@ -41,8 +42,7 @@ impl<'a> Function<'a> {
                 init_induction_levels
                     .iter()
                     .flat_map(|l| l.host_values(space)),
-            )
-            .collect::<HashSet<_>>();
+            ).collect::<HashSet<_>>();
         let (block_dims, thread_dims, cfg) = cfg::build(space, insts, dims);
         let mem_blocks = register_mem_blocks(space, &block_dims);
         device_code_args.extend(
@@ -52,6 +52,7 @@ impl<'a> Function<'a> {
         );
         let device_code_args = device_code_args.into_iter().collect();
         debug!("compiling cfg {:?}", cfg);
+        let values = space.ir_instance().values().cloned().collect_vec();
         Function {
             cfg,
             thread_dims,
@@ -60,6 +61,7 @@ impl<'a> Function<'a> {
             device_code_args,
             space,
             mem_blocks,
+            values,
             init_induction_levels,
         }
     }
@@ -207,7 +209,7 @@ impl<'a> ParamVal<'a> {
 hash_from_key!(ParamVal<'a>, ParamVal::key, 'a);
 
 /// Uniquely identifies a `ParamVal`.
-#[derive(PartialEq, Eq, Hash, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 pub enum ParamValKey<'a> {
     External(&'a ir::Parameter),
     Size(&'a codegen::Size<'a>),
@@ -299,9 +301,9 @@ impl<'a> InternalMemoryRegion<'a> {
             Some(
                 block_dims[1..]
                     .iter()
-                    .map(|d| d.size().clone())
-                    .chain(std::iter::once(self.size.clone()))
-                    .map(ParamVal::Size),
+                    .map(|d| d.size())
+                    .chain(std::iter::once(&self.size))
+                    .flat_map(ParamVal::from_size),
             )
         } else {
             None
@@ -369,12 +371,10 @@ impl<'a> Instruction<'a> {
             .filter(|&&dim| {
                 let kind = space.domain().get_dim_kind(dim);
                 unwrap!(kind.is(DimKind::VECTOR | DimKind::UNROLL).as_bool())
-            })
-            .map(|&dim| {
+            }).map(|&dim| {
                 let size = space.ir_instance().dim(dim).size();
                 (dim, unwrap!(codegen::Size::from_ir(size, space).as_int()))
-            })
-            .collect();
+            }).collect();
         let mem_flag = instruction
             .as_mem_inst()
             .map(|inst| space.domain().get_inst_flag(inst.id()));

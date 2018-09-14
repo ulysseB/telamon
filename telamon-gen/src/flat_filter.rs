@@ -109,11 +109,17 @@ impl FlatFilter {
             // Adapt and merge the rules.
             self.rules
                 .extend(other.rules.iter().map(|r| r.adapt(&adaptator)));
-            // Early exit for static filters.
-            if self.inputs.is_empty() {
-                return true;
+            // Don't set the merged flag if the variables sets are different. Otherwise, the filter
+            // will not be run when one of the different set is empty. The inclusion between the
+            // lists of sets is already tested so we only need to make sure they have the same
+            // size.
+            if self.vars.len() == other.vars.len() {
+                // Early exit for static filters.
+                if self.inputs.is_empty() {
+                    return true;
+                }
+                merged = true;
             }
-            merged = true;
         }
         merged
     }
@@ -132,14 +138,14 @@ impl FlatFilter {
                     rule.alternatives.inverse(ir_desc);
                 }
                 rule
-            })
-            .collect();
+            }).collect();
         let inputs = self
             .inputs
             .iter()
             .map(|input| input.adapt(&adaptator))
             .collect();
         let constraints = self.set_constraints.adapt(&adaptator);
-        FlatFilter::new(self.vars.clone(), inputs, rules, constraints, ir_desc)
+        let vars = self.vars.iter().map(|set| set.adapt(&adaptator)).collect();
+        FlatFilter::new(vars, inputs, rules, constraints, ir_desc)
     }
 }

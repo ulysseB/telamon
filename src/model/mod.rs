@@ -6,6 +6,8 @@ mod hw_pressure;
 mod level;
 mod local_info;
 
+pub mod size;
+
 pub use self::hw_pressure::{BottleneckLevel, Bound, HwPressure};
 pub use self::local_info::Nesting;
 
@@ -46,10 +48,16 @@ pub fn bound(space: &SearchSpace, context: &Context) -> Bound {
     // Build the dependency maps dag.
     let local_info = LocalInfo::compute(space, context);
     trace!("local_info {:?}", local_info);
-    let (mut levels, dim_maps) = level::generate(space, context.device(), &local_info);
+    let (mut levels, dim_maps) = level::generate(space, context, &local_info);
     let code_points = CodePointDag::build(space, &levels);
-    let mut levels_dag =
-        LevelDag::build(space, &local_info, &levels, dim_maps, code_points.len());
+    let mut levels_dag = LevelDag::build(
+        space,
+        &local_info,
+        &levels,
+        dim_maps,
+        code_points.len(),
+        context,
+    );
     trace!("levels {:?}", levels);
     trace!("code_points {:?}", code_points);
     populate(
@@ -97,11 +105,12 @@ pub fn bound(space: &SearchSpace, context: &Context) -> Bound {
     let latency = block_latency.scale(block_parallelism, min_num_blocks, lcm_num_blocks);
     // Compute the throughput bound at the whole device level.
     let global_pressure = sum_pressure(
-        context.device(),
+        context,
         space,
         &local_info,
         BottleneckLevel::Global,
         &[],
+        &ir::PartialSize::default(),
     );
     trace!("global pressure {:?}", global_pressure);
     let device_rates = context.device().total_rates();

@@ -4,12 +4,12 @@
 
 set Statements:
   item_type = "ir::Statement"
-  id_type = "ir::BBId"
+  id_type = "ir::StmtId"
   item_getter = "$fun.block($id)"
-  id_getter = "$item.bb_id()"
+  id_getter = "$item.stmt_id()"
   iterator = "$fun.blocks()"
-  var_prefix = "bb"
-  new_objs = "$objs.basic_blocks"
+  var_prefix = "stmt"
+  new_objs = "$objs.statements"
 end
 
 set Instructions subsetof Statements:
@@ -56,6 +56,16 @@ set StaticDims subsetof Dimensions:
   var_prefix = "dim"
   from_superset = "$item.possible_sizes().map(|_| $item)"
   new_objs = "$objs.static_dims"
+end
+
+set Values:
+  item_type = "ir::Value"
+  id_type = "ir::ValueId"
+  item_getter = "$fun.value($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.values()"
+  var_prefix = "value"
+  new_objs = "$objs.values"
 end
 
 set MemoryRegions:
@@ -139,6 +149,20 @@ define enum dim_kind($dim in Dimensions):
   alias SEQUENTIAL = LOOP | UNROLL:
 end
 
+// Ensure inner block dimensions are not too big.
+require forall $outer_dim in Dimensions:
+  forall $logical in LogicalDimensions:
+  forall $dim in TiledDimension($logical):
+    dim_kind($dim) is not BLOCK
+    || order($outer_dim, $dim) is not OUTER
+    || tiling_factor($logical) >=
+      "$logical.total_size().max()/$fun.device().max_inner_block_size()"
+require forall $outer_dim in Dimensions:
+  forall $dim in StaticDims:
+    dim_kind($dim) is not BLOCK
+    || order($outer_dim, $dim) is not OUTER
+    || size($dim) <= "$fun.device().max_inner_block_size()"
+
 /// Indicates where a memory block is located.
 define enum mem_space($mem in MemoryRegions):
   /// The block is in the device RAM.
@@ -179,7 +203,7 @@ define enum inst_flag($inst in MemInsts):
   alias MEM_BLOCK_COHERENT = MEM_COHERENT | MEM_CA:
 end
 
-/// Defines how two basic blocks are ordered.
+/// Defines how two statements are ordered.
 define enum order($lhs in Statements, $rhs in Statements):
   antisymmetric:
     BEFORE -> AFTER
@@ -222,21 +246,28 @@ require forall $lhs in Statements:
 
 // Intruction orders
 require forall $inst in Instructions:
-  forall $bb in Statements:
-    order($inst, $bb) is INNER | ORDERED
+  forall $stmt in Statements:
+    order($inst, $stmt) is INNER | ORDERED
 
 require forall $inst in Instructions:
   forall $dim in Dimensions:
     "$inst.iteration_dims().contains(&$dim.id())" || "!$inst.has_side_effects()"
       || is_iteration_dim($inst, $dim) is FALSE
 
+// Merge constraints.
 require forall $lhs in Dimensions:
   forall $rhs in Dimensions:
-    // Merge constraints
-    "$lhs.size().is_compatible_with($rhs.size())" || order($lhs, $rhs) is not MERGED
-    dim_kind($lhs) == dim_kind($rhs) || order($lhs, $rhs) is not MERGED
+    order($lhs, $rhs) is not MERGED || dim_kind($lhs) == dim_kind($rhs)
+    order($lhs, $rhs) is not MERGED
+    || "$lhs.possible_sizes().is_some() == $rhs.possible_sizes().is_some()"
 
-// Merge constraint for static dimensions.
+require forall $lhs in LogicalDimensions:
+  forall $rhs in LogicalDimensions:
+    forall $lhs_dim in TiledDimension($lhs):
+      forall $rhs_dim in TiledDimension($rhs):
+        order($lhs_dim, $rhs_dim) is not MERGED || "$lhs.total_size() == $rhs.total_size()"
+        order($lhs_dim, $rhs_dim) is not MERGED || tiling_factor($lhs) == tiling_factor($rhs)
+
 require forall $lhs in StaticDims:
   forall $rhs in StaticDims:
     size($lhs) == size($rhs) || order($lhs, $rhs) is not MERGED
@@ -310,14 +341,14 @@ require forall $outer in StaticDims:
     thread_mapping($outer, $inner) is not MAPPED_OUT
       || size($outer) <= "64"
 
-// A basic block nested with a thread dimension is nested or merged with the other
-require forall $bb in Statements:
+// A statement nested with a thread dimension is nested or merged with the other
+require forall $stmt in Statements:
   forall $nested_thread in StaticDims:
     forall $other_thread in StaticDims:
-      order($bb, $nested_thread) is not NESTED || dim_kind($nested_thread) is not THREAD
+      order($stmt, $nested_thread) is not NESTED || dim_kind($nested_thread) is not THREAD
         || order($other_thread, $nested_thread) is not NESTED
         || dim_kind($other_thread) is not THREAD
-        || order($bb, $other_thread) is not ORDERED
+        || order($stmt, $other_thread) is not ORDERED
 
 /// Limits the number of threads.
 ///
@@ -484,10 +515,38 @@ end
 require forall $logical in LogicalDimensions:
   tiling_factor($logical) == "$logical.possible_tilings()"
 
-// Ensure merged dimensions have the same tiling factor.
-require forall $lhs in LogicalDimensions:
-  forall $rhs in LogicalDimensions:
-    forall $lhs_dim in TiledDimension($lhs):
-      forall $rhs_dim in TileDimensions($rhs):
-        order($lhs_dim, $rhs_dim) is not MERGED
-        || tiling_factor($lhs) == tiling_factor($rhs)
+/// List pairs of dimensions that must have the same size and can be use for
+/// point-to-point communication.
+set DimMappings:
+  item_type = "ir::DimMapping"
+  id_type = "ir::DimMappingId"
+  item_getter = "$fun.dim_mapping($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.dim_mappings()"
+  var_prefix = "dim_pair"
+  new_objs = "$objs.dim_mappings"
+end
+
+/// Lists the static dimensions in a dimension mapping.
+set StaticMappedDims($pair in DimMappings) subsetof StaticDims:
+  item_type = "ir::Dimension"
+  id_type = "ir::DimId"
+  item_getter = "$fun.dim($id)"
+  id_getter = "$item.id()"
+  iterator = "$pair.dims().iter().map(|&dim| $fun.dim(dim))\
+    .filter(|dim| dim.possible_sizes().is_some())"
+  var_prefix = "mapped_dim"
+  from_superset = "if $item.dim_mappings().contains(&$pair.id()) { Some($item) } else { None }"
+  reverse forall $dim in StaticDims = "$dim.dim_mappings().iter().map(|&id| $fun.dim_mapping(id))"
+  new_objs = "$objs.mapped_dims"
+end
+
+// Ensure mapped dimensions have the same size. We currently have no way to constrain the
+// size of dynamic dimensions: it would require to name the reverse set of
+// `TiledDimension($logical_dim)`. However, it is enough to constrain the size of static
+// dimensions as the tiling factor of dynamic dimensions only depend on the size of static
+// dimensions.
+require forall $mapping in DimMappings:
+  forall $lhs in StaticMappedDims($mapping):
+    forall $rhs in StaticMappedDims($mapping):
+      size($lhs) == size($rhs)

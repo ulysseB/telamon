@@ -41,6 +41,10 @@ impl device::Device for Cpu {
         0
     }
 
+    fn max_inner_block_size(&self) -> u32 {
+        0
+    }
+
     fn max_threads(&self) -> u32 {
         (num_cpus::get()) as u32
     }
@@ -75,9 +79,10 @@ impl device::Device for Cpu {
 
     fn add_block_overhead(
         &self,
-        _predicated_dims_size: u64,
-        _max_threads_per_blocks: u64,
-        _pressure: &mut HwPressure,
+        _: model::size::FactorRange,
+        _: model::size::FactorRange,
+        _: model::size::Range,
+        _: &mut HwPressure,
     ) {
     }
 
@@ -89,8 +94,8 @@ impl device::Device for Cpu {
         &self,
         _space: &SearchSpace,
         _dim_sizes: &HashMap<ir::DimId, u32>,
-        _nesting: &HashMap<ir::BBId, model::Nesting>,
-        _bb: &ir::Statement,
+        _nesting: &HashMap<ir::StmtId, model::Nesting>,
+        _stmt: &ir::Statement,
         _: &device::Context,
     ) -> model::HwPressure {
         // TODO(model): implement model

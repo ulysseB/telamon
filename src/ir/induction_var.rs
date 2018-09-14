@@ -8,7 +8,7 @@ pub struct IndVarId(pub u32);
 /// A multidimentional induction variable. No dimension should appear twice in dims.
 #[derive(Clone, Debug)]
 pub struct InductionVar<'a, L = ir::LoweringMap> {
-    dims: Vec<(ir::DimId, ir::Size<'a>)>,
+    dims: Vec<(ir::DimId, ir::PartialSize<'a>)>,
     base: ir::Operand<'a, L>,
 }
 
@@ -16,7 +16,7 @@ impl<'a, L> InductionVar<'a, L> {
     /// Creates a new induction var. Size represents the increment over each diemnsion
     /// taken independenly.
     pub fn new(
-        dims: Vec<(ir::DimId, ir::Size<'a>)>,
+        dims: Vec<(ir::DimId, ir::PartialSize<'a>)>,
         base: ir::Operand<'a, L>,
     ) -> Result<Self, ir::Error> {
         ir::TypeError::check_integer(base.t())?;
@@ -29,11 +29,16 @@ impl<'a, L> InductionVar<'a, L> {
         }
         // TODO(cleanup): return errors instead of panicing
         match base {
-            ir::Operand::Reduce(..) =>
-                panic!("induction variables cannot perform reductions"),
+            ir::Operand::Reduce(..) => {
+                panic!("induction variables cannot perform reductions")
+            }
             ir::Operand::Inst(.., ir::DimMapScope::Global(..)) =>
-                // TODO(search_space): allow dim map lowering for induction variables
-                unimplemented!("dim map lowering for induction vars is not implemented yet"),
+            // TODO(search_space): allow dim map lowering for induction variables
+            {
+                unimplemented!(
+                    "dim map lowering for induction vars is not implemented yet"
+                )
+            }
             _ => (),
         }
         Ok(InductionVar { dims, base })
@@ -50,7 +55,7 @@ impl<'a, L> InductionVar<'a, L> {
     }
 
     /// Returns the list of induction dimensions along with the corresponding increments.
-    pub fn dims(&self) -> &[(ir::DimId, ir::Size<'a>)] {
+    pub fn dims(&self) -> &[(ir::DimId, ir::PartialSize<'a>)] {
         &self.dims
     }
 }

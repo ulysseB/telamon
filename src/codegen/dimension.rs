@@ -260,8 +260,7 @@ pub fn register_induction_vars<'a>(
                     increment: Some((dim, increment)),
                     base,
                 }
-            })
-            .collect_vec();
+            }).collect_vec();
         for (dim, increment) in mut_levels {
             let level = InductionLevel {
                 ind_var: id,

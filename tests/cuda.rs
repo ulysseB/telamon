@@ -127,8 +127,8 @@ fn inst_order() {
     let d1 = builder.open_dim(size_32);
     builder.mov(&0i32);
 
-    builder.action(Action::DimKind(d0, DimKind::LOOP));
-    builder.action(Action::DimKind(d1, DimKind::THREAD));
+    builder.action(Action::DimKind(d0[0], DimKind::LOOP));
+    builder.action(Action::DimKind(d1[0], DimKind::THREAD));
 
     gen_best(&context, builder.get());
 }
@@ -140,9 +140,11 @@ fn induction_var_nested() {
     let executor = cuda::Executor::init();
     let out;
     let mut context = cuda::Context::new(&executor);
+    let (k, k4);
     let signature = {
         let mut builder = helper::SignatureBuilder::new("ind_var_test", &mut context);
-        builder.scalar("k", 12i32);
+        k = builder.max_size("k", 12);
+        k4 = builder.max_size("k4", 12 / 4);
         out = builder.array::<i32>("out", 1);
         builder.get()
     };
@@ -150,13 +152,15 @@ fn induction_var_nested() {
     let size_1 = builder.cst_size(1);
     let size_4 = builder.cst_size(4);
     let size_5 = builder.cst_size(5);
-    let size_k = builder.param_size("k");
-    let size_k_tile_4 = builder.tile_size("k", 4);
+    let size_k = k.into_ir_size(&builder);
+    let size_k_tile_4 = k4.into_ir_size(&builder);
     let d0 = builder.open_dim_ex(size_k_tile_4.clone(), DimKind::LOOP);
     let d1 = builder.open_dim_ex(size_4, DimKind::LOOP);
     let d2 = builder.open_dim_ex(size_5, DimKind::UNROLL);
-    let ind_var = builder
-        .induction_var(&0i32, vec![(d0, size_1), (d1, size_k_tile_4), (d2, size_k)]);
+    let ind_var = builder.induction_var(
+        &0i32,
+        vec![(&d0, size_1), (&d1, size_k_tile_4), (&d2, size_k)],
+    );
     let pattern = builder.unknown_access_pattern(out.0);
     let _ = builder.st(&"out", &ind_var, pattern);
 
@@ -183,7 +187,7 @@ fn induction_var_simple() {
     let size_3 = builder.cst_size(3);
     let size_4 = builder.cst_size(4);
     let d0 = builder.open_dim_ex(size_3, DimKind::LOOP);
-    let ind_var = builder.induction_var(&0i32, vec![(d0, size_4)]);
+    let ind_var = builder.induction_var(&0i32, vec![(&d0, size_4)]);
     let pattern = builder.unknown_access_pattern(out.0);
     let _ = builder.st(&"out", &ind_var, pattern);
 
@@ -219,9 +223,8 @@ fn global_vector_load() {
     // Load B from global memory
     let d0_size = builder.cst_size(D0_LEN);
     let d0 = builder.open_dim_ex(d0_size, DimKind::VECTOR);
-    let input_pattern = builder.tensor_access_pattern(input.0, &DATA_TYPE, &[&d0]);
-    let data_size = builder.cst_size(DATA_TYPE.len_byte().unwrap());
-    let addr = builder.induction_var(&"input", vec![(d0, data_size.clone())]);
+    let (addr, input_pattern) =
+        builder.tensor_access(&"input", input.0, DATA_TYPE, &[&d0]);
     let ld = builder.ld_ex(DATA_TYPE, &addr, input_pattern, InstFlag::MEM_CS);
     builder.close_dim(&d0);
     // Store B in shared memory.
@@ -250,7 +253,7 @@ fn size_cast() {
     let size_3 = builder.cst_size(3);
     let size_4 = builder.cst_size(4);
     let d0 = builder.open_dim_ex(size_3, DimKind::LOOP);
-    let ind_var = builder.induction_var(&0i64, vec![(d0, size_4)]);
+    let ind_var = builder.induction_var(&0i64, vec![(&d0, size_4)]);
     let pattern = builder.unknown_access_pattern(out.0);
     let _ = builder.st(&"out", &ind_var, pattern);
 
@@ -266,16 +269,17 @@ fn perf_model_0() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let mut context = cuda::Context::new(&executor);
+    let n;
     let signature = {
         let mut builder = helper::SignatureBuilder::new("test", &mut context);
-        builder.scalar("n", 16);
+        n = builder.max_size("n", 16);
         builder.array::<i32>("input", 1024 * 1024);
         builder.get()
     };
 
     let mut builder = helper::Builder::new(&signature, context.device());
     let size_16 = builder.cst_size(16);
-    let n_tiled = builder.param_size("n");
+    let n_tiled = n.into_ir_size(&builder);
 
     let _d0 = builder.open_dim_ex(n_tiled.clone(), DimKind::LOOP);
     let d1 = builder.open_dim_ex(size_16.clone(), DimKind::LOOP);
@@ -424,6 +428,6 @@ fn test0() {
 
     let mut space = builder.get();
     space
-        .apply_decisions(vec![Action::DimKind(d4, DimKind::UNROLL)])
+        .apply_decisions(vec![Action::DimKind(d4[0], DimKind::UNROLL)])
         .unwrap();
 }

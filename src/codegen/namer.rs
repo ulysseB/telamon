@@ -72,8 +72,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
                     mem_blocks.insert(id, var_name.clone());
                 }
                 (val.key(), (var_name, param_name))
-            })
-            .collect();
+            }).collect();
         // Name dimensions indexes.
         let mut indexes = HashMap::default();
         for dim in function.dimensions() {
@@ -317,7 +316,8 @@ impl<'a, 'b> NameMap<'a, 'b> {
     /// Returns the name of a variable representing a parameter value.
     pub fn name_param_val(&self, param: ParamValKey) -> Cow<str> {
         let param = unsafe { std::mem::transmute(param) };
-        Cow::Borrowed(&self.params[&param].0)
+        let name = &unwrap!(self.params.get(&param), "cannot find {:?} entry", param).0;
+        Cow::Borrowed(name)
     }
 
     /// Returns the name of the address of a memory block.

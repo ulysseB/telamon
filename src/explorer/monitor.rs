@@ -171,8 +171,7 @@ where
                         log_sender,
                         status,
                     )
-                })
-                .map(|_| ()),
+                }).map(|_| ()),
             time,
         ),
     )

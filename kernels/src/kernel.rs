@@ -152,6 +152,7 @@ pub trait Kernel<'a>: Sized {
                                     &actions[idx..]
                                 );
                             }
+                            info!("new evaluation: {:.2e}ns, bound {}", runtime, bound);
                             leaves.push(BoundSample {
                                 actions,
                                 bound,
@@ -219,8 +220,7 @@ pub trait Kernel<'a>: Sized {
                 let candidate_idx = local_selection::pick_index(order, bounds, inf);
                 let candidate = candidates[unwrap!(candidate_idx)].clone();
                 local_selection::descend(order, context, candidate, inf).is_none()
-            })
-            .count();
+            }).count();
         num_deadends as f64 / num_samples as f64
     }
 }

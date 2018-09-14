@@ -12,7 +12,7 @@ pub use self::context::{ArgMap, AsyncCallback, AsyncEvaluator, Context, EvalMode
 
 use codegen::Function;
 use ir;
-use model::{HwPressure, Nesting};
+use model::{self, HwPressure, Nesting};
 use search_space::{DimKind, SearchSpace};
 use std::io::Write;
 use utils::*;
@@ -25,6 +25,8 @@ pub trait Device: Sync {
     fn check_type(&self, t: ir::Type) -> Result<(), ir::TypeError>;
     /// Returns the maximal number of block dimensions.
     fn max_block_dims(&self) -> u32;
+    /// The maximal size inner block dimensions can have.
+    fn max_inner_block_size(&self) -> u32;
     /// Returns the maximal number of threads.
     fn max_threads(&self) -> u32;
     /// Returns the maximal unrolling factor.
@@ -49,8 +51,8 @@ pub trait Device: Sync {
         &self,
         space: &SearchSpace,
         dim_sizes: &HashMap<ir::DimId, u32>,
-        nesting: &HashMap<ir::BBId, Nesting>,
-        bb: &ir::Statement,
+        nesting: &HashMap<ir::StmtId, Nesting>,
+        stmt: &ir::Statement,
         ctx: &Context,
     ) -> HwPressure;
     /// Returns the pressure produced by a single iteration of a loop and the latency
@@ -75,8 +77,9 @@ pub trait Device: Sync {
     /// be `1`.
     fn add_block_overhead(
         &self,
-        predicated_dims_size: u64,
-        max_threads_per_blocks: u64,
+        max_active_threads: model::size::FactorRange,
+        max_threads: model::size::FactorRange,
+        predication_factor: model::size::Range,
         pressure: &mut HwPressure,
     );
 

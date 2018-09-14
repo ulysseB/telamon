@@ -122,6 +122,11 @@ typedef struct Operator Operator;
 typedef struct Parameter Parameter;
 
 /*
+ * A size whose exact value is not yet decided.
+ */
+typedef struct PartialSize PartialSize;
+
+/*
  * A partially specified implementation.
  */
 typedef struct SearchSpace SearchSpace;
@@ -151,6 +156,13 @@ typedef struct Type Type;
 typedef struct {
     uint32_t id;
 } DimId;
+
+/*
+ * Provides a unique identifier for logic dimensions.
+ */
+typedef struct {
+    uint32_t _0;
+} LogicalDimId;
 
 /*
  * Uniquely identifies an instruction.
@@ -187,6 +199,10 @@ typedef struct {
     uint8_t bits;
 } Bool;
 
+typedef struct {
+    uint16_t enabled_values;
+} NumericSet;
+
 /*
  * Specifies how iteration dimensions are implemented.
  */
@@ -212,25 +228,25 @@ typedef struct {
  * Provides a unique identifer for a basic block.
  */
 typedef enum {
-    BBId_Inst,
-    BBId_Dim,
-} BBId_Tag;
+    StmtId_Inst,
+    StmtId_Dim,
+} StmtId_Tag;
 
 typedef struct {
     InstId id;
-} BBId_Inst_Body;
+} StmtId_Inst_Body;
 
 typedef struct {
     DimId id;
-} BBId_Dim_Body;
+} StmtId_Dim_Body;
 
 typedef struct {
-    BBId_Tag tag;
+    StmtId_Tag tag;
     union {
-        BBId_Inst_Body inst;
-        BBId_Dim_Body dim;
+        StmtId_Inst_Body inst;
+        StmtId_Dim_Body dim;
     };
-} BBId;
+} StmtId;
 
 /*
  * Defines how two basic blocks are ordered.
@@ -278,6 +294,7 @@ typedef struct {
 typedef enum {
     Action_IsIterationDim,
     Action_IsThreadDim,
+    Action_Size,
     Action_DimKind,
     Action_MemSpace,
     Action_InstFlag,
@@ -294,6 +311,8 @@ typedef enum {
     Action_IncrementMemSize,
     Action_MemSize,
     Action_SharedMemUsed,
+    Action_IncrementTilingFactor,
+    Action_TilingFactor,
     Action_IsIterationDimClassCounter,
     Action_IsThreadDimClassCounter,
 } Action_Tag;
@@ -311,6 +330,11 @@ typedef struct {
 
 typedef struct {
     DimId dim;
+    NumericSet domain;
+} Action_Size_Body;
+
+typedef struct {
+    DimId dim;
     DimKind domain;
 } Action_DimKind_Body;
 
@@ -325,8 +349,8 @@ typedef struct {
 } Action_InstFlag_Body;
 
 typedef struct {
-    BBId lhs;
-    BBId rhs;
+    StmtId lhs;
+    StmtId rhs;
     Order domain;
 } Action_Order_Body;
 
@@ -394,6 +418,17 @@ typedef struct {
 } Action_SharedMemUsed_Body;
 
 typedef struct {
+    LogicalDimId logical;
+    DimId dim;
+    Bool domain;
+} Action_IncrementTilingFactor_Body;
+
+typedef struct {
+    LogicalDimId logical;
+    Range domain;
+} Action_TilingFactor_Body;
+
+typedef struct {
     InstId inst;
     DimId dim;
     Range domain;
@@ -409,6 +444,7 @@ typedef struct {
     union {
         Action_IsIterationDim_Body is_iteration_dim;
         Action_IsThreadDim_Body is_thread_dim;
+        Action_Size_Body size;
         Action_DimKind_Body dim_kind;
         Action_MemSpace_Body mem_space;
         Action_InstFlag_Body inst_flag;
@@ -425,6 +461,8 @@ typedef struct {
         Action_IncrementMemSize_Body increment_mem_size;
         Action_MemSize_Body mem_size;
         Action_SharedMemUsed_Body shared_mem_used;
+        Action_IncrementTilingFactor_Body increment_tiling_factor;
+        Action_TilingFactor_Body tiling_factor;
         Action_IsIterationDimClassCounter_Body is_iteration_dim_class_counter;
         Action_IsThreadDimClassCounter_Body is_thread_dim_class_counter;
     };
@@ -566,11 +604,23 @@ SearchSpace *telamon_explore(const Config *config,
                              const SearchSpace *search_space);
 
 /*
- * Adds a dimension of the given size to the function. Takes ownership of `size` and
- * writes the unique identifier of the dimension in `dim_id`. Returns `Ok`
- * except if an error occurs.
+ * Returns the size of a dimension.
  */
-TelamonStatus telamon_ir_function_add_dimension(Function *function, Size *size, DimId *dim_id);
+PartialSize *telamon_ir_dimension_size(const Function *function, DimId dim);
+
+/*
+ * Adds a logical dimension of the given size to the function. In practice, this creates a
+ * dimension for each tiling level plus one. Takes ownership of `size` and writes the unique
+ * identifier of the logical dimension in `logical_id`. Writes the ids of the dimensions, from the
+ * outermost to the innermost, in `dim_ids`. `dim_ids` must be at least of size `num_tiles + 1`.
+ * Returns `Ok` except if an error occurs.
+ */
+TelamonStatus telamon_ir_function_add_dimensions(Function *function,
+                                                 Size *size,
+                                                 const uint32_t *tile_sizes,
+                                                 uintptr_t num_tiles,
+                                                 LogicalDimId *logical_id,
+                                                 DimId *dim_ids);
 
 /*
  * Adds an instruction performing the given operator in the given dimensions to the
@@ -698,7 +748,7 @@ Operator *telamon_ir_operator_new_tensor_load(Function *function,
                                               MemId array_id,
                                               Operand *base_address,
                                               const DimId *strided_dims,
-                                              const Size *strides,
+                                              const PartialSize *strides,
                                               uintptr_t num_strided_dims,
                                               const Type *loaded_type);
 
@@ -712,7 +762,7 @@ Operator *telamon_ir_operator_new_tensor_store(Function *function,
                                                MemId array_id,
                                                Operand *base_address,
                                                const DimId *strided_dims,
-                                               const Size *strides,
+                                               const PartialSize *strides,
                                                uintptr_t num_strided_dims,
                                                Operand *value);
 
@@ -748,15 +798,24 @@ const Parameter *telamon_ir_signature_param(const Signature *signature, uintptr_
 void telamon_ir_size_free(Size *size);
 
 /*
+ * Converts an `ir::Size` into an `ir::PartialSize`.
+ */
+PartialSize *telamon_ir_size_into_partial(Size *size);
+
+/*
+ * Multiplies `lhs` by `rhs`.
+ */
+void telamon_ir_size_mul(PartialSize *lhs, const PartialSize *rhs);
+
+/*
  * Create a size equal to:
  * ```
- * const_factor * param_factors[0] * .. * param_factors[num_params-1] / const_divisor
+ * const_factor * param_factors[0] * .. * param_factors[num_params-1]
  * ```
  * The size must be freed calling `telamon_ir_size_free` or passed to a function that
  * takes its ownership.
  */
 Size *telamon_ir_size_new(uint32_t const_factor,
-                          uint32_t const_divisor,
                           const Parameter *const *param_factors,
                           uintptr_t num_params);
 

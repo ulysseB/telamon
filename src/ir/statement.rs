@@ -3,32 +3,33 @@ use ir;
 use std;
 
 /// Provides a unique identifer for a basic block.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize,
-         Deserialize)]
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 #[repr(C)]
-pub enum BBId {
+pub enum StmtId {
     /// cbindgen:field-names=[id]
     Inst(ir::InstId),
     /// cbindgen:field-names=[id]
     Dim(ir::DimId),
 }
 
-impl From<ir::InstId> for BBId {
+impl From<ir::InstId> for StmtId {
     fn from(id: ir::InstId) -> Self {
-        BBId::Inst(id)
+        StmtId::Inst(id)
     }
 }
 
-impl From<ir::DimId> for BBId {
+impl From<ir::DimId> for StmtId {
     fn from(id: ir::DimId) -> Self {
-        BBId::Dim(id)
+        StmtId::Dim(id)
     }
 }
 
 /// Represents a basic block in an Exhaust function.
 pub trait Statement<'a, L = ir::LoweringMap>: std::fmt::Debug {
     /// Returns the unique identifier of the `Statement`.
-    fn bb_id(&self) -> BBId;
+    fn stmt_id(&self) -> StmtId;
     /// Returns 'self' if it is an instruction.
     fn as_inst(&self) -> Option<&ir::Instruction<'a, L>> {
         None

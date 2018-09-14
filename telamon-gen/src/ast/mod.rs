@@ -43,27 +43,27 @@ impl Ast {
     /// Generate the defintion of choices and the list of constraints.
     /// TODO: remove typing context
     pub fn type_check(self) -> Result<(ir::IrDesc, Vec<TypedConstraint>), TypeError> {
-        let mut checker = CheckerContext::default();
-        let mut context = TypingContext::default();
+        let mut context = CheckerContext::default();
+        let mut tc = TypingContext::default();
 
         // declare
         for statement in self.statements.iter() {
-            statement.declare(&mut checker)?;
-        }
-        // define
-        for statement in self.statements.iter() {
-            statement.define(&mut checker)?;
+            statement.declare(&mut context)?;
         }
         // typing context
-        for statement in self.statements {
-            context.add_statement(statement);
+        for statement in self.statements.iter() {
+            tc.add_statement(statement.to_owned());
         }
-        Ok(context.finalize())
+        // define
+        for statement in self.statements.into_iter() {
+            statement.define(&mut context, &mut tc)?;
+        }
+        Ok(tc.finalize())
     }
 }
 
 /// A toplevel definition or constraint.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Statement {
     ChoiceDef(ChoiceDef),
     TriggerDef {
@@ -76,18 +76,22 @@ pub enum Statement {
 }
 
 impl Statement {
-    pub fn declare(&self, context: &mut CheckerContext) -> Result<(), TypeError> {
+    pub fn declare(&self, checker: &mut CheckerContext) -> Result<(), TypeError> {
         match self {
-            Statement::SetDef(def) => def.declare(context),
-            Statement::ChoiceDef(def) => def.declare(context),
+            Statement::SetDef(def) => def.declare(checker),
+            Statement::ChoiceDef(def) => def.declare(checker),
             _ => Ok(()),
         }
     }
 
-    pub fn define(&self, context: &mut CheckerContext) -> Result<(), TypeError> {
+    pub fn define(
+        self,
+        context: &mut CheckerContext,
+        tc: &mut TypingContext,
+    ) -> Result<(), TypeError> {
         match self {
-            Statement::SetDef(def) => def.define(context),
-            Statement::ChoiceDef(def) => def.define(context),
+            Statement::SetDef(def) => def.define(context, tc),
+            Statement::ChoiceDef(def) => def.define(context, tc),
             _ => Ok(()),
         }
     }
@@ -102,7 +106,7 @@ pub struct Quotient {
 }
 
 /// Checks to perform once the statements have been declared.
-enum Check {
+pub enum Check {
     /// Ensures the inverse of the value set is itself.
     IsSymmetric { choice: RcStr, values: Vec<RcStr> },
 }
@@ -419,8 +423,7 @@ fn type_check_code(code: RcStr, var_map: &VarMap) -> ir::Code {
             } else {
                 Some((var_map.get_var(&var), RcStr::new(var)))
             }
-        })
-        .collect();
+        }).collect();
     ir::Code { code, vars }
 }
 

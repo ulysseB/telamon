@@ -7,7 +7,7 @@ use rand;
 use rayon::prelude::*;
 use telamon::explorer::Candidate;
 use telamon::helper::tensor::*;
-use telamon::helper::{self, Builder, MetaDimension, SignatureBuilder};
+use telamon::helper::{self, Builder, SignatureBuilder};
 use telamon::ir::DimMapScope::Global as GlobalScope;
 use telamon::search_space::*;
 use telamon::{device, ir};
@@ -73,8 +73,7 @@ where
                 );
                 mad.store(&self.z, &mut builder);
                 build_candidate(builder.get(), ctx, vec![tiling])
-            })
-            .collect()
+            }).collect()
     }
 
     fn get_expected_output(&self, context: &device::Context) -> ArrayD<S> {
@@ -183,8 +182,7 @@ where
                 builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CG));
                 builder.action(Action::InstFlag(st_y.inst(), InstFlag::MEM_CS));
                 build_candidate(builder.get(), ctx, vec![m_tiling])
-            })
-            .collect()
+            }).collect()
     }
 
     fn get_expected_output(&self, context: &device::Context) -> Array1<S> {
@@ -319,8 +317,7 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
                 builder.action(Action::InstFlag(ld_b.inst(), InstFlag::MEM_CG));
                 builder.action(Action::InstFlag(st_y.inst(), InstFlag::MEM_CS));
                 build_candidate(builder.get(), ctx, vec![m_tiling])
-            })
-            .collect()
+            }).collect()
     }
 
     fn get_expected_output(&self, context: &device::Context) -> Array1<S> {
@@ -706,7 +703,7 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
                     &mut builder,
                 );
                 let b_op = {
-                    let b_dims = [&acc_batch as &MetaDimension, &acc_dim_k, &acc_dim_n];
+                    let b_dims = [&acc_batch, &acc_dim_k, &acc_dim_n];
                     let b_dims = if self.params.batch_b {
                         &b_dims
                     } else {
@@ -727,8 +724,7 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
                     ctx,
                     vec![m_tile, n_tile, k_tile, batch_tile],
                 )
-            })
-            .collect()
+            }).collect()
     }
 
     fn get_expected_output(&self, context: &device::Context) -> Array3<S> {

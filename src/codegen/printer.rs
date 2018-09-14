@@ -437,38 +437,38 @@ pub trait Printer {
 
     /// Prints an instruction.
     fn inst(&mut self, inst: &Instruction, namer: &mut NameMap, fun: &Function) {
-        match *inst.operator() {
-            op::BinOp(op, ref lhs, ref rhs, round) => {
+        match inst.operator() {
+            op::BinOp(op, lhs, rhs, round) => {
                 let t = unwrap!(inst.t());
                 self.print_binop(
-                    op,
+                    *op,
                     t,
-                    round,
+                    *round,
                     &namer.name_inst(inst),
                     &namer.name_op(lhs),
                     &namer.name_op(rhs),
                 )
             }
-            op::Mul(ref lhs, ref rhs, round, return_type) => {
+            op::Mul(lhs, rhs, round, return_type) => {
                 let low_lhs_type = Self::lower_type(lhs.t(), fun);
-                let low_ret_type = Self::lower_type(return_type, fun);
+                let low_ret_type = Self::lower_type(*return_type, fun);
                 let mode = MulMode::from_type(low_lhs_type, low_ret_type);
                 self.print_mul(
                     low_ret_type,
-                    round,
+                    *round,
                     mode,
                     &namer.name_inst(inst),
                     &namer.name_op(lhs),
                     &namer.name_op(rhs),
                 )
             }
-            op::Mad(ref mul_lhs, ref mul_rhs, ref add_rhs, round) => {
+            op::Mad(mul_lhs, mul_rhs, add_rhs, round) => {
                 let low_mlhs_type = Self::lower_type(mul_lhs.t(), fun);
                 let low_arhs_type = Self::lower_type(add_rhs.t(), fun);
                 let mode = MulMode::from_type(low_mlhs_type, low_arhs_type);
                 self.print_mad(
                     unwrap!(inst.t()),
-                    round,
+                    *round,
                     mode,
                     &namer.name_inst(inst),
                     &namer.name_op(mul_lhs),
@@ -476,17 +476,17 @@ pub trait Printer {
                     &namer.name_op(add_rhs),
                 )
             }
-            op::Mov(ref op) => {
+            op::Mov(op) => {
                 let t = unwrap!(inst.t());
                 self.print_mov(t, &namer.name_inst(inst), &namer.name_op(op))
             }
-            op::Ld(ld_type, ref addr, _) => self.print_ld(
-                Self::lower_type(ld_type, fun),
+            op::Ld(ld_type, addr, _) => self.print_ld(
+                Self::lower_type(*ld_type, fun),
                 unwrap!(inst.mem_flag()),
                 &namer.name_inst(inst),
                 &namer.name_op(addr),
             ),
-            op::St(ref addr, ref val, _, _) => {
+            op::St(addr, val, _, _) => {
                 let guard = if inst.has_side_effects() {
                     namer.side_effect_guard()
                 } else {
@@ -509,9 +509,9 @@ pub trait Printer {
                     );
                 };
             }
-            op::Cast(ref op, t) => {
+            op::Cast(op, t) => {
                 let from_t = Self::lower_type(op.t(), fun);
-                let to_t = Self::lower_type(t, fun);
+                let to_t = Self::lower_type(*t, fun);
                 let rounding = match (from_t, to_t) {
                     (Type::F(_), Type::I(_)) => op::Rounding::Nearest,
                     (Type::I(_), Type::F(_)) => op::Rounding::Nearest,
@@ -521,7 +521,9 @@ pub trait Printer {
                 let dst = namer.name_inst(inst);
                 self.print_cast(from_t, to_t, rounding, &dst, &namer.name_op(op))
             }
-            op::TmpLd(..) | op::TmpSt(..) => panic!("non-printable instruction"),
+            op @ op::TmpLd(..) | op @ op::TmpSt(..) => {
+                panic!("non-printable instruction {:?}", op)
+            }
         }
     }
 }

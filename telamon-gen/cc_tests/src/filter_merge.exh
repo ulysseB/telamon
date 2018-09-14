@@ -1,0 +1,24 @@
+set Objects:
+  item_type = "ir::objects::Obj"
+  id_type = "ir::objects::Id"
+  item_getter = "ir::objects::get($fun, $id)"
+  id_getter = "ir::objects::Obj::id($item)"
+  iterator = "ir::objects::iter($fun)"
+  new_objs = "$objs.objects"
+end
+
+define enum foo($obj in Objects):
+  value A:
+  value B:
+  value C:
+end
+
+// Create a constraints with 2 objects and a constraint with 3 objects. Ensure the first
+// apply even if their is less than 3 objects.
+require forall $obj0 in Objects:
+  forall $obj1 in Objects:
+    foo($obj0) is A || foo($obj1) is A
+require forall $obj0 in Objects:
+  forall $obj1 in Objects:
+    forall $obj2 in Objects:
+      foo($obj0) is B || foo($obj1) is B || foo($obj2) is B
