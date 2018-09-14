@@ -15,13 +15,15 @@ impl TypingContext {
     /// Adds a statement to the typing context.
     pub fn add_statement(&mut self, statement: Statement) {
         match statement {
-            Statement::TriggerDef { foralls, conditions, code } => self.triggers.push(
-                TriggerDef {
-                    foralls: foralls,
-                    conditions: conditions,
-                    code: code,
-                }
-            ),
+            Statement::TriggerDef {
+                foralls,
+                conditions,
+                code,
+            } => self.triggers.push(TriggerDef {
+                foralls: foralls,
+                conditions: conditions,
+                code: code,
+            }),
             Statement::Require(constraint) => self.constraints.push(constraint),
             _ => {}
         }
@@ -38,7 +40,7 @@ impl TypingContext {
                     vars,
                     body,
                 }) => self.register_counter(name.data, doc, visibility, vars, body),
-                _ => {},
+                _ => {}
             }
         }
         for trigger in std::mem::replace(&mut self.triggers, vec![]) {
@@ -104,7 +106,8 @@ impl TypingContext {
                     condition,
                     code,
                 )
-            }).collect_vec();
+            })
+            .collect_vec();
         // Add the trigger to the IR.
         let trigger = ir::Trigger {
             foralls,
@@ -318,7 +321,8 @@ impl TypingContext {
                 .map(|mut cond| {
                     cond.negate();
                     cond
-                }).collect(),
+                })
+                .collect(),
         );
         self.constraints
             .push(Constraint::new(all_vars_defs, disjunctions));

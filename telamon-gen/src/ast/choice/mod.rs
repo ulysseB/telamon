@@ -1,10 +1,10 @@
+pub mod counter;
 pub mod enumeration;
 pub mod integer;
-pub mod counter;
 
+pub use self::counter::CounterDef;
 pub use self::enumeration::EnumDef;
 pub use self::integer::IntegerDef;
-pub use self::counter::CounterDef;
 pub use super::*;
 
 #[derive(Debug, PartialEq, Clone)]

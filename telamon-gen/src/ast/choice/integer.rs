@@ -34,18 +34,18 @@ impl IntegerDef {
     }
 
     /// Defines an integer choice.
-    fn define_integer(&self,
-        tc: &mut TypingContext,
-    ) {
+    fn define_integer(&self, tc: &mut TypingContext) {
         let choice_name = RcStr::new(self.name.data.to_owned());
         let doc = self.doc.to_owned().map(RcStr::new);
         let mut var_map = VarMap::default();
-        let vars = self.variables
+        let vars = self
+            .variables
             .iter()
             .map(|v| {
                 let name = v.name.clone();
                 (name, var_map.decl_argument(&tc.ir_desc, v.to_owned()))
-            }).collect::<Vec<_>>();
+            })
+            .collect::<Vec<_>>();
         let arguments = ir::ChoiceArguments::new(
             vars.into_iter()
                 .map(|(n, s)| (n.data, s))

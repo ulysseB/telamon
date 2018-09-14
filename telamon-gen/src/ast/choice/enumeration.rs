@@ -167,7 +167,8 @@ impl EnumDef {
                             let set_name: &String = variable.set.name.deref();
 
                             (variable.name.to_owned().into(), set_name.to_owned())
-                        }).collect::<Vec<(Spanned<String>, String)>>(),
+                        })
+                        .collect::<Vec<(Spanned<String>, String)>>(),
                 })?;
             }
         }
@@ -200,7 +201,8 @@ impl EnumDef {
                                     let set_name: &String = variable.set.name.deref();
 
                                     (variable.name.to_owned().into(), set_name.to_owned())
-                                }).collect::<Vec<(Spanned<String>, String)>>(),
+                                })
+                                .collect::<Vec<(Spanned<String>, String)>>(),
                         })?;
                     }
                 }
@@ -259,10 +261,7 @@ impl EnumDef {
     }
 
     /// Registers an enum definition.
-    fn register_enum(
-        &self,
-        tc: &mut TypingContext,
-    ) {
+    fn register_enum(&self, tc: &mut TypingContext) {
         trace!("defining enum {}", self.name.data);
         let doc = self.doc.clone().map(RcStr::new);
         let enum_name = RcStr::new(::to_type_name(&self.name.data));
@@ -275,7 +274,12 @@ impl EnumDef {
         for (value, constraint) in stmts.constraints {
             let choice = choice_name.clone();
             self.register_value_constraint(
-                choice, self.variables.clone(), value, constraint, tc);
+                choice,
+                self.variables.clone(),
+                value,
+                constraint,
+                tc,
+            );
         }
         // Typechek the anti-symmetry mapping.
         let (symmetric, inverse) = match stmts.symmetry {
@@ -284,12 +288,15 @@ impl EnumDef {
             Some(Symmetry::AntiSymmetric(..)) => (true, true),
         };
         let mut var_map = VarMap::default();
-        let vars = self.variables.to_owned()
+        let vars = self
+            .variables
+            .to_owned()
             .into_iter()
             .map(|v| {
                 let name = v.name.clone();
                 (name, var_map.decl_argument(&tc.ir_desc, v))
-            }).collect::<Vec<_>>();
+            })
+            .collect::<Vec<_>>();
         let arguments = ir::ChoiceArguments::new(
             vars.into_iter()
                 .map(|(n, s)| (n.data, s))
