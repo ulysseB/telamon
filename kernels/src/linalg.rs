@@ -73,8 +73,7 @@ where
                 );
                 mad.store(&self.z, &mut builder);
                 build_candidate(builder.get(), ctx, vec![tiling])
-            })
-            .collect()
+            }).collect()
     }
 
     fn get_expected_output(&self, context: &device::Context) -> ArrayD<S> {
@@ -183,8 +182,7 @@ where
                 builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CG));
                 builder.action(Action::InstFlag(st_y.inst(), InstFlag::MEM_CS));
                 build_candidate(builder.get(), ctx, vec![m_tiling])
-            })
-            .collect()
+            }).collect()
     }
 
     fn get_expected_output(&self, context: &device::Context) -> Array1<S> {
@@ -319,8 +317,7 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
                 builder.action(Action::InstFlag(ld_b.inst(), InstFlag::MEM_CG));
                 builder.action(Action::InstFlag(st_y.inst(), InstFlag::MEM_CS));
                 build_candidate(builder.get(), ctx, vec![m_tiling])
-            })
-            .collect()
+            }).collect()
     }
 
     fn get_expected_output(&self, context: &device::Context) -> Array1<S> {
@@ -727,8 +724,7 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
                     ctx,
                     vec![m_tile, n_tile, k_tile, batch_tile],
                 )
-            })
-            .collect()
+            }).collect()
     }
 
     fn get_expected_output(&self, context: &device::Context) -> Array3<S> {

@@ -118,8 +118,7 @@ pub fn print(fun: &Function, time: bool, out: &mut io::Write) -> io::Result<()> 
                 let size = dims[0].size().as_int().unwrap();
                 inner_size *= size;
                 f(&format_args!("{} = (core_id/{}) % {};", idx, stride, size))
-            })
-            .to_string();
+            }).to_string();
     }
     let kernel_args = fun
         .params
@@ -131,8 +130,7 @@ pub fn print(fun: &Function, time: bool, out: &mut io::Write) -> io::Result<()> 
             } else {
                 None
             }
-        })
-        .format(", ");
+        }).format(", ");
     let arg_struct_fields = fun.params().iter().format_with("\n", |(_, p), f| {
         f(&format_args!("{} {};", type_name(&p.t), p.name))
     });
@@ -209,8 +207,7 @@ pub fn print_ocl_wrapper(
         .iter()
         .format_with("", |p, f| {
             f(&format_args!("{} {},", cl_type_name(&p.t), p.name))
-        })
-        .to_string();
+        }).to_string();
     write!(
         out,
         include_str!("ocl_wrapper_template.cl"),

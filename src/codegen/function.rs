@@ -42,8 +42,7 @@ impl<'a> Function<'a> {
                 init_induction_levels
                     .iter()
                     .flat_map(|l| l.host_values(space)),
-            )
-            .collect::<HashSet<_>>();
+            ).collect::<HashSet<_>>();
         let (block_dims, thread_dims, cfg) = cfg::build(space, insts, dims);
         let mem_blocks = register_mem_blocks(space, &block_dims);
         device_code_args.extend(
@@ -403,12 +402,10 @@ impl<'a> Instruction<'a> {
             .filter(|&&dim| {
                 let kind = space.domain().get_dim_kind(dim);
                 unwrap!(kind.is(DimKind::VECTOR | DimKind::UNROLL).as_bool())
-            })
-            .map(|&dim| {
+            }).map(|&dim| {
                 let size = space.ir_instance().dim(dim).size();
                 (dim, unwrap!(codegen::Size::from_ir(size, space).as_int()))
-            })
-            .collect();
+            }).collect();
         let mem_flag = instruction
             .as_mem_inst()
             .map(|inst| space.domain().get_inst_flag(inst.id()));

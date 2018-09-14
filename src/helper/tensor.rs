@@ -28,7 +28,8 @@ impl<'a> DimSize<'a> {
         self.params
             .iter()
             .map(|p| unwrap!(context.param_as_size(p)))
-            .product::<u32>() * self.factor
+            .product::<u32>()
+            * self.factor
     }
 
     /// Creates a new size equals to the given parameter.
@@ -116,8 +117,7 @@ impl<'a> TensorBuilder<'a> {
                 stride.factor *= s.factor;
                 stride.params.extend(s.params.iter().cloned());
                 cur_stride
-            })
-            .collect_vec();
+            }).collect_vec();
         strides.reverse();
         let iter_dims = self
             .exposed_dims
@@ -166,8 +166,7 @@ where
                 incr.factor *= s.factor;
                 incr.params.extend(s.params.iter().cloned());
                 (s, cur_incr)
-            })
-            .collect_vec();
+            }).collect_vec();
         iter_dims.reverse();
         Tensor {
             name,
@@ -188,8 +187,7 @@ where
             .map(|((size, _), tiling)| {
                 let size = size.into_ir_size(builder);
                 builder.open_tiled_dim(size, tiling)
-            })
-            .collect_vec();
+            }).collect_vec();
         let (ptr, pattern);
         {
             let increments = dims
@@ -222,8 +220,7 @@ where
             .map(|(l, s)| {
                 let s_len = unwrap!(S::t().len_byte());
                 (l.eval(context) as usize, (s.eval(context) / s_len) as usize)
-            })
-            .unzip();
+            }).unzip();
         let len = unwrap!(sizes.iter().zip_eq(&strides).map(|(&l, &s)| l * s).max());
         raw.split_off(len);
         unwrap!(ndarray::ArrayBase::from_shape_vec(

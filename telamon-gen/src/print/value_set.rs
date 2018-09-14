@@ -41,8 +41,7 @@ pub fn print(set: &ir::ValueSet, ctx: &Context) -> TokenStream {
                         cmp_code.iter().map(|&(op, ref code)| {
                             (op, print::Value::new_const(code, ctx))
                         }),
-                    )
-                    .map(|(op, from)| {
+                    ).map(|(op, from)| {
                         print::value::integer_domain_constructor(op, &from, set.t(), ctx)
                     });
                 quote!(#(#parts)|*)
@@ -69,7 +68,6 @@ fn enum_set(
             let inv_str = if inverse { ".inverse()" } else { "" };
             let var = ctx.input_name(input);
             format!("{}{}{}", neg_str, var, inv_str)
-        })
-        .collect_vec();
+        }).collect_vec();
     values.into_iter().chain(inputs).format("|").to_string()
 }

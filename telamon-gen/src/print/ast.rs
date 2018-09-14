@@ -97,8 +97,7 @@ impl<'a> Context<'a> {
             .iter()
             .map(|input| {
                 print::ValueIdent::new_ident(&input.choice, input.value_type(ir_desc))
-            })
-            .collect();
+            }).collect();
         Context {
             ir_desc,
             choice,
@@ -188,8 +187,7 @@ impl<'a> SetConstraint<'a> {
                         sets,
                     })
                 }
-            })
-            .collect()
+            }).collect()
     }
 }
 
@@ -253,7 +251,8 @@ impl<'a> Conflict<'a> {
             Conflict::NewObjs {
                 ref list,
                 set: conflict_set,
-            } if conflict_set.name() == set.def().name() =>
+            }
+                if conflict_set.name() == set.def().name() =>
             {
                 Some(ConflictAst::NewObjs {
                     list: list.clone(),

@@ -2,8 +2,9 @@
 use ir;
 
 /// Uniquely identifies values.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize,
-         Deserialize)]
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize,
+)]
 pub struct ValueId(pub u16);
 
 impl Into<usize> for ValueId {

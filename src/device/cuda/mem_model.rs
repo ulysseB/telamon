@@ -160,8 +160,7 @@ fn tensor_thread_dims(
                 Trivalent::Maybe => Some((dim, false)),
                 Trivalent::True => Some((dim, true)),
             },
-        )
-        .chain(external_dims)
+        ).chain(external_dims)
         .map(|(id, is_active_thread)| {
             let size = sizes[&id];
             let stride = tensor_dims
@@ -174,8 +173,7 @@ fn tensor_thread_dims(
                 id,
                 is_active_thread,
             }
-        })
-        .collect_vec();
+        }).collect_vec();
     sort_thread_dims(dims, space, gpu)
 }
 
@@ -199,8 +197,7 @@ fn external_thread_dims<'a>(
                 }
                 let mapping = space.domain().get_thread_mapping(dim.id(), other);
                 mapping.is(ThreadMapping::MAPPED)
-            })
-            .fold(Trivalent::False, |l, r| l | r);
+            }).fold(Trivalent::False, |l, r| l | r);
         match is_mapped {
             Trivalent::True => None,
             Trivalent::Maybe => Some((dim.id(), false)),
@@ -239,11 +236,9 @@ fn sort_thread_dims(
                     }
                     let mapping = space.domain().get_thread_mapping(d.id, other);
                     mapping.is(ThreadMapping::MAPPED_OUT).is_true()
-                })
-                .count();
+                }).count();
             (num_inner, d)
-        })
-        .collect();
+        }).collect();
     heap.extend(dim_groups.remove(&0));
     let mut out = Vec::new();
     let mut total_size = 1;
@@ -311,8 +306,7 @@ fn shared_replay_factor(
         .filter(|&(d, _)| space.domain().get_dim_kind(d).intersects(DimKind::VECTOR))
         .map(|(d, stride)| {
             div_ceil(dim_sizes[&d] * stride as u32, gpu.shared_bank_stride)
-        })
-        .min()
+        }).min()
         .unwrap_or(1);
     let replay_factor = std::cmp::max(hits.len() as u32, vector_replay);
     trace!("shared_replay: {}", replay_factor);

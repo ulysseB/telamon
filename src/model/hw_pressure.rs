@@ -475,8 +475,7 @@ impl HwPressure {
             .enumerate()
             .map(|(id, (&value, &rate))| {
                 FastBound::new(value / rate, FastOrigin::Bottleneck(id, level))
-            })
-            .chain(iter::once(latency))
+            }).chain(iter::once(latency))
             .max();
         unwrap!(bound)
     }

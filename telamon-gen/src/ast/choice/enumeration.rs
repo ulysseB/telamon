@@ -167,8 +167,7 @@ impl EnumDef {
                             let set_name: &String = variable.set.name.deref();
 
                             (variable.name.to_owned().into(), set_name.to_owned())
-                        })
-                        .collect::<Vec<(Spanned<String>, String)>>(),
+                        }).collect::<Vec<(Spanned<String>, String)>>(),
                 })?;
             }
         }
@@ -201,8 +200,7 @@ impl EnumDef {
                                     let set_name: &String = variable.set.name.deref();
 
                                     (variable.name.to_owned().into(), set_name.to_owned())
-                                })
-                                .collect::<Vec<(Spanned<String>, String)>>(),
+                                }).collect::<Vec<(Spanned<String>, String)>>(),
                         })?;
                     }
                 }
@@ -235,7 +233,11 @@ impl EnumDef {
     }
 
     /// Type checks the define's condition.
-    pub fn define(&self, context: &CheckerContext) -> Result<(), TypeError> {
+    pub fn define(
+        self,
+        context: &mut CheckerContext,
+        tc: &mut TypingContext,
+    ) -> Result<(), TypeError> {
         self.check_undefined_variables(context)?;
         self.check_redefinition_parameter()?;
         self.check_redefinition_field()?;

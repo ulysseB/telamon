@@ -102,8 +102,7 @@ impl<'a, 'b> Kernel<'a, 'b> {
                     tmp_arrays.push(args.eval_size(size) as usize);
                     ThunkArg::TmpArray(tmp_arrays.len() - 1)
                 }
-            })
-            .collect_vec();
+            }).collect_vec();
         ThunkArgs {
             blocks: block_sizes,
             threads: thread_sizes,
@@ -185,8 +184,7 @@ impl<'a> ThunkArgs<'a> {
                 ThunkArg::ArgRef(arg) => arg,
                 ThunkArg::Size(ref arg) => arg,
                 ThunkArg::TmpArray(id) => &tmp_arrays[id],
-            })
-            .collect_vec();
+            }).collect_vec();
         cuda_kernel.execute(&self.blocks, &self.threads, &params)
     }
 
@@ -211,8 +209,7 @@ impl<'a> ThunkArgs<'a> {
                 ThunkArg::ArgRef(arg) => arg,
                 ThunkArg::Size(ref arg) => arg,
                 ThunkArg::TmpArray(id) => &tmp_arrays[id],
-            })
-            .collect_vec();
+            }).collect_vec();
         cuda_kernel.instrument(&self.blocks, &self.threads, &params, counters)
     }
 
@@ -236,8 +233,7 @@ impl<'a> ThunkArgs<'a> {
                 ThunkArg::ArgRef(arg) => arg,
                 ThunkArg::Size(ref arg) => arg,
                 ThunkArg::TmpArray(id) => &tmp_arrays[id],
-            })
-            .collect_vec();
+            }).collect_vec();
         // Heat-up caches.
         for _ in 0..100 {
             cuda_kernel.time_real_conds(&self.blocks, &self.threads, &params);
