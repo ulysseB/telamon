@@ -15,18 +15,13 @@ impl TypingContext {
     /// Adds a statement to the typing context.
     pub fn add_statement(&mut self, statement: Statement) {
         match statement {
-            stmt @ Statement::ChoiceDef(ChoiceDef::CounterDef(..)) => {
-                self.choice_defs.push(ChoiceDef::from(stmt))
-            }
-            Statement::TriggerDef {
-                foralls,
-                conditions,
-                code,
-            } => self.triggers.push(TriggerDef {
-                foralls: foralls,
-                conditions: conditions,
-                code: code,
-            }),
+            Statement::TriggerDef { foralls, conditions, code } => self.triggers.push(
+                TriggerDef {
+                    foralls: foralls,
+                    conditions: conditions,
+                    code: code,
+                }
+            ),
             Statement::Require(constraint) => self.constraints.push(constraint),
             _ => {}
         }
@@ -43,7 +38,7 @@ impl TypingContext {
                     vars,
                     body,
                 }) => self.register_counter(name.data, doc, visibility, vars, body),
-                _ => {}
+                _ => {},
             }
         }
         for trigger in std::mem::replace(&mut self.triggers, vec![]) {
@@ -60,6 +55,79 @@ impl TypingContext {
             check.check(&self.ir_desc);
         }
         (self.ir_desc, constraints)
+    }
+
+    /// Typecheck and registers a trigger.
+    fn register_trigger(
+        &mut self,
+        foralls: Vec<VarDef>,
+        conditions: Vec<Condition>,
+        code: String,
+    ) {
+        trace!("defining trigger '{}'", code);
+        // Type check the code and the conditions.
+        let ref mut var_map = VarMap::default();
+        let foralls = foralls
+            .into_iter()
+            .map(|def| var_map.decl_forall(&self.ir_desc, def))
+            .collect();
+        let mut inputs = Vec::new();
+        let conditions = conditions
+            .into_iter()
+            .map(|c| c.type_check(&self.ir_desc, var_map, &mut inputs))
+            .collect_vec();
+        let code = type_check_code(RcStr::new(code), var_map);
+        // Groups similiar inputs.
+        let (inputs, input_adaptator) = dedup_inputs(inputs, &self.ir_desc);
+        let conditions = conditions
+            .into_iter()
+            .map(|c| c.adapt(&input_adaptator))
+            .collect_vec();
+        // Adapt the trigger to the point of view of each inputs.
+        let onchange_actions = inputs
+            .iter()
+            .enumerate()
+            .map(|(pos, input)| {
+                let (foralls, set_constraints, condition, adaptator) =
+                    ir::ChoiceCondition::new(
+                        &self.ir_desc,
+                        inputs.clone(),
+                        pos,
+                        &conditions,
+                        var_map.env(),
+                    );
+                let code = code.adapt(&adaptator);
+                (
+                    input.choice.clone(),
+                    foralls,
+                    set_constraints,
+                    condition,
+                    code,
+                )
+            }).collect_vec();
+        // Add the trigger to the IR.
+        let trigger = ir::Trigger {
+            foralls,
+            inputs,
+            conditions,
+            code,
+        };
+        let id = self.ir_desc.add_trigger(trigger);
+        // Register the triggers to to be called when each input is modified.
+        for (choice, forall_vars, set_constraints, condition, code) in onchange_actions {
+            let action = ir::ChoiceAction::Trigger {
+                id,
+                condition,
+                code,
+                inverse_self_cond: false,
+            };
+            let on_change = ir::OnChangeAction {
+                forall_vars,
+                set_constraints,
+                action,
+            };
+            self.ir_desc.add_onchange(&choice, on_change);
+        }
     }
 
     /// Registers a counter in the ir description.
@@ -171,7 +239,7 @@ impl TypingContext {
     /// Creates a choice to store the increment condition of a counter. Returns the
     /// corresponding choice instance from the point of view of the counter and the
     /// condition on wich the counter must be incremented.
-    fn gen_increment(
+    pub fn gen_increment(
         &mut self,
         counter: &str,
         counter_vars: &[(RcStr, ir::Set)],
@@ -266,7 +334,7 @@ impl TypingContext {
 
     /// Returns the `CounterVal` referencing a choice. Registers the UpdateCounter action
     /// so that the referencing counter is updated when the referenced counter is changed.
-    fn counter_val_choice(
+    pub fn counter_val_choice(
         &mut self,
         counter: &ChoiceInstance,
         caller_visibility: ir::CounterVisibility,
@@ -322,81 +390,8 @@ impl TypingContext {
         (ir::CounterVal::Choice(instance), update_action)
     }
 
-    /// Typecheck and registers a trigger.
-    fn register_trigger(
-        &mut self,
-        foralls: Vec<VarDef>,
-        conditions: Vec<Condition>,
-        code: String,
-    ) {
-        trace!("defining trigger '{}'", code);
-        // Type check the code and the conditions.
-        let ref mut var_map = VarMap::default();
-        let foralls = foralls
-            .into_iter()
-            .map(|def| var_map.decl_forall(&self.ir_desc, def))
-            .collect();
-        let mut inputs = Vec::new();
-        let conditions = conditions
-            .into_iter()
-            .map(|c| c.type_check(&self.ir_desc, var_map, &mut inputs))
-            .collect_vec();
-        let code = type_check_code(RcStr::new(code), var_map);
-        // Groups similiar inputs.
-        let (inputs, input_adaptator) = dedup_inputs(inputs, &self.ir_desc);
-        let conditions = conditions
-            .into_iter()
-            .map(|c| c.adapt(&input_adaptator))
-            .collect_vec();
-        // Adapt the trigger to the point of view of each inputs.
-        let onchange_actions = inputs
-            .iter()
-            .enumerate()
-            .map(|(pos, input)| {
-                let (foralls, set_constraints, condition, adaptator) =
-                    ir::ChoiceCondition::new(
-                        &self.ir_desc,
-                        inputs.clone(),
-                        pos,
-                        &conditions,
-                        var_map.env(),
-                    );
-                let code = code.adapt(&adaptator);
-                (
-                    input.choice.clone(),
-                    foralls,
-                    set_constraints,
-                    condition,
-                    code,
-                )
-            }).collect_vec();
-        // Add the trigger to the IR.
-        let trigger = ir::Trigger {
-            foralls,
-            inputs,
-            conditions,
-            code,
-        };
-        let id = self.ir_desc.add_trigger(trigger);
-        // Register the triggers to to be called when each input is modified.
-        for (choice, forall_vars, set_constraints, condition, code) in onchange_actions {
-            let action = ir::ChoiceAction::Trigger {
-                id,
-                condition,
-                code,
-                inverse_self_cond: false,
-            };
-            let on_change = ir::OnChangeAction {
-                forall_vars,
-                set_constraints,
-                action,
-            };
-            self.ir_desc.add_onchange(&choice, on_change);
-        }
-    }
-
     /// Creates an action to update the a counter when incr is modified.
-    fn gen_incr_counter(
+    pub fn gen_incr_counter(
         &self,
         counter: &RcStr,
         num_counter_args: usize,
