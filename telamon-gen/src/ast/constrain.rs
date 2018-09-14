@@ -44,7 +44,6 @@ impl Constraint {
                     inputs,
                     conditions,
                 }
-            })
-            .collect_vec()
+            }).collect_vec()
     }
 }

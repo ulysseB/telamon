@@ -29,11 +29,16 @@ impl<'a, L> InductionVar<'a, L> {
         }
         // TODO(cleanup): return errors instead of panicing
         match base {
-            ir::Operand::Reduce(..) =>
-                panic!("induction variables cannot perform reductions"),
+            ir::Operand::Reduce(..) => {
+                panic!("induction variables cannot perform reductions")
+            }
             ir::Operand::Inst(.., ir::DimMapScope::Global(..)) =>
-                // TODO(search_space): allow dim map lowering for induction variables
-                unimplemented!("dim map lowering for induction vars is not implemented yet"),
+            // TODO(search_space): allow dim map lowering for induction variables
+            {
+                unimplemented!(
+                    "dim map lowering for induction vars is not implemented yet"
+                )
+            }
             _ => (),
         }
         Ok(InductionVar { dims, base })

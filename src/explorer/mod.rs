@@ -50,8 +50,7 @@ pub fn find_best<'a>(
         .map(|space| {
             let bound = bound(&space, context);
             Candidate::new(space, bound)
-        })
-        .collect();
+        }).collect();
     find_best_ex(config, context, candidates).map(|c| c.space)
 }
 

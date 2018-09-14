@@ -87,8 +87,7 @@ pub fn dim_not_mapped(
             inst.dim_maps_to_lower(lhs, rhs)
                 .into_iter()
                 .map(move |op_id| (inst.id(), op_id))
-        })
-        .collect_vec();
+        }).collect_vec();
     let mut new_objs = ir::NewObjs::default();
     let mut actions = Vec::new();
     for (inst, operand) in to_lower {

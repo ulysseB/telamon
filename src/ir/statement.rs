@@ -3,8 +3,9 @@ use ir;
 use std;
 
 /// Provides a unique identifer for a basic block.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize,
-         Deserialize)]
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 #[repr(C)]
 pub enum StmtId {
     /// cbindgen:field-names=[id]

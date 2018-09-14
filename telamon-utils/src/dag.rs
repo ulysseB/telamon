@@ -71,12 +71,10 @@ impl<T> Dag<T> {
                         !lesser_than[old_pos].iter().any(|&other_lesser| {
                             lesser_than[other_lesser].contains(lesser)
                         })
-                    })
-                    .map(|old_lesser| inv_permutation[old_lesser])
+                    }).map(|old_lesser| inv_permutation[old_lesser])
                     .filter(|&lesser| lesser != inv_permutation.len())
                     .collect_vec()
-            })
-            .collect_vec();
+            }).collect_vec();
         // Inverse before to compute after.
         let mut after = new_nodes.iter().map(|_| Vec::new()).collect_vec();
         for (after_id, before_ids) in before[0..new_nodes.len()].iter().enumerate() {

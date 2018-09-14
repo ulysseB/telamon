@@ -34,7 +34,11 @@ impl IntegerDef {
     }
 
     /// Type checks the define's condition.
-    pub fn define(&self, context: &CheckerContext) -> Result<(), TypeError> {
+    pub fn define(
+        self,
+        context: &mut CheckerContext,
+        tc: &mut TypingContext,
+    ) -> Result<(), TypeError> {
         self.check_undefined_variables(context)?;
         Ok(())
     }
