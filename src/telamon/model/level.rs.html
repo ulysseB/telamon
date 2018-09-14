@@ -605,9 +605,6 @@
 <span id="605">605</span>
 <span id="606">606</span>
 <span id="607">607</span>
-<span id="608">608</span>
-<span id="609">609</span>
-<span id="610">610</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Levels of the latency graph.</span>
 <span class="doccomment">//!</span>
@@ -668,8 +665,7 @@
                 <span class="ident">local_info</span>.<span class="ident">dim_overhead</span>[<span class="ident">d</span>]
                     .<span class="number">1</span>
                     .<span class="ident">bound</span>(<span class="ident">BottleneckLevel</span>::<span class="ident">Thread</span>, <span class="kw-2">&amp;</span><span class="ident">thread_rates</span>)
-            })
-            .<span class="ident">min</span>()
+            }).<span class="ident">min</span>()
             .<span class="ident">unwrap_or_else</span>(<span class="ident">FastBound</span>::<span class="ident">zero</span>);
         <span class="kw">let</span> <span class="ident">latency</span> <span class="op">=</span> <span class="ident">pressure</span>.<span class="ident">bound</span>(<span class="ident">BottleneckLevel</span>::<span class="ident">Thread</span>, <span class="kw-2">&amp;</span><span class="ident">thread_rates</span>);
         <span class="comment">// Compute the block-level pressure.</span>
@@ -701,9 +697,9 @@
     <span class="ident">repeat</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">PartialSize</span>,
 ) <span class="op">-&gt;</span> <span class="ident">HwPressure</span> {
     <span class="comment">// Compute the pressure induced by the dimensions overhead.</span>
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pressure</span> <span class="op">=</span> <span class="ident">HwPressure</span>::<span class="ident">min</span>(
-        <span class="ident">nest</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">d</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">local_info</span>.<span class="ident">dim_overhead</span>[<span class="ident">d</span>].<span class="number">0</span>),
-    ).<span class="ident">unwrap_or_else</span>(<span class="op">||</span> <span class="ident">HwPressure</span>::<span class="ident">zero</span>(<span class="ident">ctx</span>.<span class="ident">device</span>()));
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pressure</span> <span class="op">=</span>
+        <span class="ident">HwPressure</span>::<span class="ident">min</span>(<span class="ident">nest</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">d</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">local_info</span>.<span class="ident">dim_overhead</span>[<span class="ident">d</span>].<span class="number">0</span>))
+            .<span class="ident">unwrap_or_else</span>(<span class="op">||</span> <span class="ident">HwPressure</span>::<span class="ident">zero</span>(<span class="ident">ctx</span>.<span class="ident">device</span>()));
     <span class="kw">if</span> <span class="ident">nest</span>.<span class="ident">is_empty</span>() {
         <span class="kw">let</span> <span class="ident">min_num_threads</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">bound_level</span> {
             <span class="ident">BottleneckLevel</span>::<span class="ident">Global</span> <span class="op">=&gt;</span> <span class="ident">local_info</span>.<span class="ident">parallelism</span>.<span class="ident">min_num_threads</span>,
@@ -753,7 +749,8 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">num_instances</span> <span class="op">=</span> <span class="ident">inner_sum_dims</span>
             .<span class="ident">intersection</span>(<span class="kw-2">&amp;</span><span class="ident">local_info</span>.<span class="ident">nesting</span>[<span class="kw-2">&amp;</span><span class="ident">stmt</span>].<span class="ident">outer_dims</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">d</span><span class="op">|</span> <span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">dim</span>(<span class="ident">d</span>).<span class="ident">size</span>())
-            .<span class="ident">product</span>::<span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">PartialSize</span><span class="op">&gt;</span>() <span class="op">*</span> <span class="ident">repeat</span>;
+            .<span class="ident">product</span>::<span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">PartialSize</span><span class="op">&gt;</span>()
+            <span class="op">*</span> <span class="ident">repeat</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt_pressure</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="ident">ir</span>::<span class="ident">StmtId</span>::<span class="ident">Dim</span>(<span class="ident">dim</span>) <span class="op">=</span> <span class="ident">stmt</span> {
             <span class="kw">let</span> <span class="ident">kind</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_dim_kind</span>(<span class="ident">dim</span>);
             <span class="kw">if</span> <span class="op">!</span><span class="ident">bound_level</span>.<span class="ident">accounts_for_dim</span>(<span class="ident">kind</span>) {
@@ -871,8 +868,7 @@
             } <span class="kw">else</span> {
                 <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">outer_dims</span>]
             }
-        })
-        .<span class="ident">collect_vec</span>();
+        }).<span class="ident">collect_vec</span>();
     <span class="kw">let</span> <span class="ident">dim_maps</span> <span class="op">=</span> <span class="ident">list_dim_maps</span>(<span class="ident">space</span>);
     <span class="comment">// Add the nesting of dim maps</span>
     <span class="kw">for</span> <span class="ident">dim_map</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">dim_maps</span> {
@@ -1003,8 +999,7 @@
                 }
                 <span class="kw">_</span> <span class="op">=&gt;</span> <span class="prelude-val">None</span>,
             })
-        })
-        .<span class="ident">collect</span>()
+        }).<span class="ident">collect</span>()
 }
 
 <span class="doccomment">/// Indicates how a the sequential dimensions of a level should be repeated in the latency</span>
@@ -1030,8 +1025,7 @@
             .<span class="ident">filter</span>(<span class="op">|</span><span class="op">&amp;&amp;</span><span class="ident">d</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="ident">kind</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_dim_kind</span>(<span class="ident">d</span>);
                 (<span class="ident">kind</span> <span class="op">&amp;</span> <span class="op">!</span><span class="ident">DimKind</span>::<span class="ident">BLOCK</span>).<span class="ident">is</span>(<span class="ident">DimKind</span>::<span class="ident">SEQUENTIAL</span>).<span class="ident">is_true</span>()
-            })
-            .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">d</span><span class="op">|</span> <span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">dim</span>(<span class="ident">d</span>).<span class="ident">size</span>())
+            }).<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">d</span><span class="op">|</span> <span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">dim</span>(<span class="ident">d</span>).<span class="ident">size</span>())
             .<span class="ident">product</span>::<span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">PartialSize</span><span class="op">&gt;</span>();
         <span class="kw">let</span> <span class="ident">iterations</span> <span class="op">=</span> <span class="ident">size</span>::<span class="ident">bounds</span>(<span class="kw-2">&amp;</span><span class="ident">iterations</span>, <span class="ident">space</span>, <span class="ident">ctx</span>).<span class="ident">min</span>;
         <span class="kw">if</span> <span class="ident">iterations</span> <span class="op">&lt;=</span> <span class="number">1</span> {

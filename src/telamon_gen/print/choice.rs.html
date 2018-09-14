@@ -647,9 +647,6 @@
 <span id="647">647</span>
 <span id="648">648</span>
 <span id="649">649</span>
-<span id="650">650</span>
-<span id="651">651</span>
-<span id="652">652</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Prints the definition and manipulation of choices.</span>
 <span class="kw">use</span> <span class="ident">ir</span>;
@@ -749,8 +746,7 @@
             .<span class="ident">on_change</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">action</span><span class="op">|</span> {
                 <span class="ident">OnChangeAction</span>::<span class="ident">new</span>(<span class="ident">action</span>, <span class="ident">choice</span>, <span class="ident">ir_desc</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">trigger_calls</span>)
-            })
-            .<span class="ident">collect</span>();
+            }).<span class="ident">collect</span>();
         <span class="kw">let</span> <span class="ident">filters</span> <span class="op">=</span> <span class="ident">choice</span>
             .<span class="ident">filters</span>()
             .<span class="ident">enumerate</span>()
@@ -1097,8 +1093,7 @@
                     .<span class="ident">enumerate</span>()
                     .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">pos</span>, <span class="ident">input</span>)<span class="op">|</span> {
                         (<span class="ident">ctx</span>.<span class="ident">input_name</span>(<span class="ident">pos</span>), <span class="ident">ast</span>::<span class="ident">ChoiceInstance</span>::<span class="ident">new</span>(<span class="ident">input</span>, <span class="ident">ctx</span>))
-                    })
-                    .<span class="ident">collect</span>();
+                    }).<span class="ident">collect</span>();
                 <span class="kw">let</span> <span class="ident">arguments</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">ctx</span>.<span class="ident">choice</span>.<span class="ident">arguments</span>().<span class="ident">len</span>())
                     .<span class="ident">map</span>(<span class="ident">ir</span>::<span class="ident">Variable</span>::<span class="ident">Arg</span>)
                     .<span class="ident">chain</span>((<span class="number">0</span>..<span class="ident">forall_offset</span>).<span class="ident">map</span>(<span class="ident">ir</span>::<span class="ident">Variable</span>::<span class="ident">Forall</span>))
@@ -1111,8 +1106,7 @@
                                 <span class="ident">ctx</span>,
                             ),
                         )
-                    })
-                    .<span class="ident">collect_vec</span>();
+                    }).<span class="ident">collect_vec</span>();
                 <span class="kw">let</span> <span class="ident">code</span> <span class="op">=</span> <span class="ident">ast</span>::<span class="ident">code</span>(<span class="ident">code</span>, <span class="ident">ctx</span>);
                 <span class="kw">let</span> <span class="ident">call_id</span> <span class="op">=</span> <span class="ident">trigger_calls</span>.<span class="ident">len</span>();
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">self_condition</span> <span class="op">=</span> <span class="ident">condition</span>.<span class="ident">self_condition</span>.<span class="ident">clone</span>();

@@ -611,7 +611,6 @@
 <span id="611">611</span>
 <span id="612">612</span>
 <span id="613">613</span>
-<span id="614">614</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Describe decisions that must be specified.</span>
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">Adaptable</span>};
@@ -1200,8 +1199,7 @@
                 } <span class="kw">else</span> {
                     <span class="prelude-val">Some</span>(<span class="ident">condition</span>.<span class="ident">adapt</span>(<span class="kw-2">&amp;</span><span class="ident">adaptator</span>))
                 }
-            })
-            .<span class="ident">collect</span>();
+            }).<span class="ident">collect</span>();
         <span class="kw">let</span> <span class="ident">condition</span> <span class="op">=</span> <span class="ident">ChoiceCondition</span> {
             <span class="ident">inputs</span>,
             <span class="ident">self_condition</span>,

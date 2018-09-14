@@ -181,7 +181,6 @@
 <span id="181">181</span>
 <span id="182">182</span>
 <span id="183">183</span>
-<span id="184">184</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! exploration of the search space.</span>
 <span class="kw">mod</span> <span class="ident">bandit_arm</span>;
@@ -235,8 +234,7 @@
         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">space</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">bound</span> <span class="op">=</span> <span class="ident">bound</span>(<span class="kw-2">&amp;</span><span class="ident">space</span>, <span class="ident">context</span>);
             <span class="ident">Candidate</span>::<span class="ident">new</span>(<span class="ident">space</span>, <span class="ident">bound</span>)
-        })
-        .<span class="ident">collect</span>();
+        }).<span class="ident">collect</span>();
     <span class="ident">find_best_ex</span>(<span class="ident">config</span>, <span class="ident">context</span>, <span class="ident">candidates</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">space</span>)
 }
 

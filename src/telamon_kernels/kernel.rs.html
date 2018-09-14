@@ -312,7 +312,6 @@
 <span id="312">312</span>
 <span id="313">313</span>
 <span id="314">314</span>
-<span id="315">315</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Abstracts kernels so we can build generic methods to test them.</span>
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
@@ -536,8 +535,7 @@
                 <span class="kw">let</span> <span class="ident">candidate_idx</span> <span class="op">=</span> <span class="ident">local_selection</span>::<span class="ident">pick_index</span>(<span class="ident">order</span>, <span class="ident">bounds</span>, <span class="ident">inf</span>);
                 <span class="kw">let</span> <span class="ident">candidate</span> <span class="op">=</span> <span class="ident">candidates</span>[<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">candidate_idx</span>)].<span class="ident">clone</span>();
                 <span class="ident">local_selection</span>::<span class="ident">descend</span>(<span class="ident">order</span>, <span class="ident">context</span>, <span class="ident">candidate</span>, <span class="ident">inf</span>).<span class="ident">is_none</span>()
-            })
-            .<span class="ident">count</span>();
+            }).<span class="ident">count</span>();
         <span class="ident">num_deadends</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">/</span> <span class="ident">num_samples</span> <span class="kw">as</span> <span class="ident">f64</span>
     }
 }

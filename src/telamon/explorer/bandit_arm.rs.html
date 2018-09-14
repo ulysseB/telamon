@@ -529,7 +529,6 @@
 <span id="529">529</span>
 <span id="530">530</span>
 <span id="531">531</span>
-<span id="532">532</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Exploration of the search space.</span>
 
@@ -1016,8 +1015,7 @@
                     .<span class="ident">enumerate</span>()
                     .<span class="ident">max_by</span>(<span class="op">|</span><span class="ident">lhs</span>, <span class="ident">rhs</span><span class="op">|</span> <span class="ident">cmp_f64</span>(<span class="ident">lhs</span>.<span class="number">1</span>, <span class="ident">rhs</span>.<span class="number">1</span>));
                 <span class="ident">max</span>.<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">idx</span>, <span class="ident">value</span>)<span class="op">|</span> (<span class="ident">child_idx</span>, <span class="ident">idx</span>, <span class="ident">value</span>))
-            })
-            .<span class="ident">max_by</span>(<span class="op">|</span><span class="ident">x1</span>, <span class="ident">x2</span><span class="op">|</span> <span class="ident">cmp_f64</span>(<span class="ident">x1</span>.<span class="number">2</span>, <span class="ident">x2</span>.<span class="number">2</span>))
+            }).<span class="ident">max_by</span>(<span class="op">|</span><span class="ident">x1</span>, <span class="ident">x2</span><span class="op">|</span> <span class="ident">cmp_f64</span>(<span class="ident">x1</span>.<span class="number">2</span>, <span class="ident">x2</span>.<span class="number">2</span>))
     }
 }
 

@@ -785,7 +785,6 @@
 <span id="785">785</span>
 <span id="786">786</span>
 <span id="787">787</span>
-<span id="788">788</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Print the IR description in rust.</span>
 <span class="kw">mod</span> <span class="ident">counter</span>;
@@ -1180,8 +1179,7 @@
                     .<span class="ident">unwrap</span>()
                     .<span class="ident">successors</span>
                     .<span class="ident">push</span>(<span class="ident">index</span>)
-            })
-            .<span class="ident">count</span>();
+            }).<span class="ident">count</span>();
 
         <span class="ident">node_data</span>[<span class="ident">index</span>].<span class="ident">as_mut</span>().<span class="ident">unwrap</span>().<span class="ident">num_predecessors</span> <span class="op">=</span> <span class="ident">num_predecessors</span>
     }
@@ -1376,8 +1374,7 @@
             .<span class="ident">enumerate</span>()
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">pos</span>, <span class="ident">input</span>)<span class="op">|</span> {
                 (<span class="ident">ctx</span>.<span class="ident">input_name</span>(<span class="ident">pos</span>), <span class="ident">ast</span>::<span class="ident">ChoiceInstance</span>::<span class="ident">new</span>(<span class="ident">input</span>, <span class="ident">ctx</span>))
-            })
-            .<span class="ident">collect</span>();
+            }).<span class="ident">collect</span>();
         <span class="kw">let</span> <span class="ident">foralls</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">trigger</span>.<span class="ident">foralls</span>.<span class="ident">len</span>()).<span class="ident">map</span>(<span class="ident">ir</span>::<span class="ident">Variable</span>::<span class="ident">Forall</span>);
         <span class="kw">let</span> <span class="ident">loop_nest</span> <span class="op">=</span> <span class="ident">ast</span>::<span class="ident">LoopNest</span>::<span class="ident">new</span>(<span class="ident">foralls</span>.<span class="ident">clone</span>(), <span class="ident">ctx</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="macro">vec</span><span class="macro">!</span>[], <span class="bool-val">false</span>);
         <span class="kw">let</span> <span class="ident">arguments</span> <span class="op">=</span> <span class="ident">foralls</span>
@@ -1397,8 +1394,7 @@
             .<span class="ident">into_iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">iter</span>, <span class="ident">ctx</span>)<span class="op">|</span> {
                 (<span class="ident">iter</span>, <span class="ident">vars</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">v</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">ctx</span>.<span class="ident">var_name</span>(<span class="ident">v</span>)).<span class="ident">collect</span>())
-            })
-            .<span class="ident">collect</span>();
+            }).<span class="ident">collect</span>();
         <span class="ident">Trigger</span> {
             <span class="ident">id</span>,
             <span class="ident">loop_nest</span>,
@@ -1431,9 +1427,11 @@
                 .<span class="ident">format_with</span>(<span class="string">&quot;&quot;</span>, <span class="op">|</span><span class="ident">doc</span>, <span class="ident">f</span><span class="op">|</span> <span class="ident">f</span>(<span class="kw-2">&amp;</span><span class="macro">format_args</span><span class="macro">!</span>(<span class="string">&quot;///{}\n&quot;</span>, <span class="ident">doc</span>))),
             <span class="ident">name</span> <span class="op">=</span> <span class="ident">name</span>,
             <span class="ident">t_name</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">name</span>(),
-            <span class="ident">values</span> <span class="op">=</span> <span class="ident">values</span>.<span class="ident">iter</span>().<span class="ident">format_with</span>(<span class="string">&quot; | &quot;</span>, <span class="op">|</span><span class="ident">v</span>, <span class="ident">f</span><span class="op">|</span> {
-                <span class="ident">f</span>(<span class="kw-2">&amp;</span><span class="macro">format_args</span><span class="macro">!</span>(<span class="string">&quot;{}::{}.bits&quot;</span>, <span class="self">self</span>.<span class="ident">name</span>(), <span class="ident">v</span>))
-            })
+            <span class="ident">values</span> <span class="op">=</span> <span class="ident">values</span>.<span class="ident">iter</span>().<span class="ident">format_with</span>(<span class="string">&quot; | &quot;</span>, <span class="op">|</span><span class="ident">v</span>, <span class="ident">f</span><span class="op">|</span> <span class="ident">f</span>(<span class="kw-2">&amp;</span><span class="macro">format_args</span><span class="macro">!</span>(
+                <span class="string">&quot;{}::{}.bits&quot;</span>,
+                <span class="self">self</span>.<span class="ident">name</span>(),
+                <span class="ident">v</span>
+            )))
         );
         <span class="kw">let</span> <span class="ident">printers</span> <span class="op">=</span> <span class="macro">iter_printer</span><span class="macro">!</span>(
             <span class="self">self</span>.<span class="ident">values</span>(),

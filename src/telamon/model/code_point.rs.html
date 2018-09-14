@@ -165,7 +165,6 @@
 <span id="165">165</span>
 <span id="166">166</span>
 <span id="167">167</span>
-<span id="168">168</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Locations of the code relevant to compute latency.</span>
 <span class="kw">use</span> <span class="ident">ir</span>;
@@ -294,8 +293,7 @@
             .<span class="ident">cartesian_product</span>(<span class="ident">rhs</span>.<span class="ident">blocks</span>(<span class="ident">levels</span>))
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>)<span class="op">|</span> {
                 <span class="ident">convert_order</span>(<span class="ident">space</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>, <span class="ident">lesser_cond</span>, <span class="ident">greater_cond</span>, <span class="ident">if_equals</span>)
-            })
-            .<span class="ident">fold1</span>(<span class="op">|</span><span class="ident">x</span>, <span class="ident">y</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">y</span> { <span class="ident">x</span> } <span class="kw">else</span> { <span class="prelude-val">None</span> });
+            }).<span class="ident">fold1</span>(<span class="op">|</span><span class="ident">x</span>, <span class="ident">y</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="ident">y</span> { <span class="ident">x</span> } <span class="kw">else</span> { <span class="prelude-val">None</span> });
         <span class="comment">//trace!(&quot;ord {:?} {:?} {:?}&quot;, lhs, out, rhs);</span>
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">out</span>)
     })

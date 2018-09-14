@@ -285,7 +285,6 @@
 <span id="285">285</span>
 <span id="286">286</span>
 <span id="287">287</span>
-<span id="288">288</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! A module for handling accesses to the device memory.</span>
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">dim</span>, <span class="ident">InstId</span>, <span class="ident">Type</span>};
@@ -432,8 +431,7 @@
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> <span class="ident">ExternalBlock</span> {
                 <span class="ident">id</span>: <span class="ident">MemId</span>::<span class="ident">External</span>(<span class="ident">id</span>),
                 <span class="ident">uses</span>: <span class="macro">vec</span><span class="macro">!</span>[],
-            })
-            .<span class="ident">collect</span>();
+            }).<span class="ident">collect</span>();
         <span class="ident">BlockMap</span> {
             <span class="ident">internal_blocks</span>: <span class="ident">ir</span>::<span class="ident">SparseVec</span>::<span class="ident">new</span>(),
             <span class="ident">external_blocks</span>,

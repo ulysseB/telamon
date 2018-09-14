@@ -533,7 +533,6 @@
 <span id="533">533</span>
 <span id="534">534</span>
 <span id="535">535</span>
-<span id="536">536</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">codegen</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">x86</span>::<span class="ident">Namer</span>;
@@ -712,8 +711,7 @@
                     <span class="ident">t</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="kw-2">*</span><span class="ident">par_type</span>),
                     <span class="ident">i</span> <span class="op">=</span> <span class="ident">i</span>
                 ),
-            })
-            .<span class="ident">collect_vec</span>()
+            }).<span class="ident">collect_vec</span>()
             .<span class="ident">join</span>(<span class="string">&quot;;\n  &quot;</span>)
     }
 

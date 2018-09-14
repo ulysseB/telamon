@@ -142,7 +142,6 @@
 <span id="142">142</span>
 <span id="143">143</span>
 <span id="144">144</span>
-<span id="145">145</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Defines common kernels used to test and benchmark Telamon.</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cuda&quot;</span>)]</span>
@@ -227,8 +226,7 @@
         .<span class="ident">map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="kw-2">mut</span> <span class="ident">tiling</span>)<span class="op">|</span> {
             <span class="ident">tiling</span>.<span class="ident">reverse</span>();
             <span class="ident">tiling</span>
-        })
-        .<span class="ident">collect</span>()
+        }).<span class="ident">collect</span>()
 }
 
 <span class="kw">fn</span> <span class="ident">par_iter_product</span><span class="op">&lt;</span><span class="ident">I1</span>, <span class="ident">I2</span><span class="op">&gt;</span>(

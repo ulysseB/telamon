@@ -340,7 +340,6 @@
 <span id="340">340</span>
 <span id="341">341</span>
 <span id="342">342</span>
-<span id="343">343</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">codegen</span>::{<span class="ident">Dimension</span>, <span class="ident">InductionLevel</span>, <span class="ident">Instruction</span>};
 <span class="kw">use</span> <span class="ident">ir</span>;
@@ -681,8 +680,7 @@
                 <span class="ident">x</span>.<span class="ident">merge_from</span>(<span class="ident">y</span>);
                 <span class="ident">x</span>
             }))
-        })
-        .<span class="ident">collect</span>();
+        }).<span class="ident">collect</span>();
     (<span class="ident">block_dims</span>, <span class="ident">thread_dims</span>, <span class="ident">events</span>)
 }
 </pre>

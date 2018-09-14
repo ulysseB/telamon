@@ -539,14 +539,6 @@
 <span id="539">539</span>
 <span id="540">540</span>
 <span id="541">541</span>
-<span id="542">542</span>
-<span id="543">543</span>
-<span id="544">544</span>
-<span id="545">545</span>
-<span id="546">546</span>
-<span id="547">547</span>
-<span id="548">548</span>
-<span id="549">549</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Truth tables.</span>
 <span class="kw">use</span> <span class="ident">ir</span>;
@@ -586,14 +578,12 @@
                             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
                                 <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">once</span>(<span class="ident">v</span>.<span class="ident">clone</span>()).<span class="ident">collect</span>();
                                 <span class="ident">ir</span>::<span class="ident">ValueSet</span>::<span class="ident">enum_values</span>(<span class="ident">name</span>.<span class="ident">clone</span>(), <span class="ident">values</span>)
-                            })
-                            .<span class="ident">collect_vec</span>();
+                            }).<span class="ident">collect_vec</span>();
                         <span class="prelude-val">Some</span>((<span class="ident">id</span>, <span class="ident">sets</span>))
                     }
                     <span class="ident">ir</span>::<span class="ident">ChoiceDef</span>::<span class="ident">Counter</span> { .. } <span class="op">|</span> <span class="ident">ir</span>::<span class="ident">ChoiceDef</span>::<span class="ident">Number</span> { .. } <span class="op">=&gt;</span> <span class="prelude-val">None</span>,
                 }
-            })
-            .<span class="ident">collect_vec</span>();
+            }).<span class="ident">collect_vec</span>();
         <span class="kw">let</span> <span class="ident">sizes</span> <span class="op">=</span> <span class="ident">values</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">v</span>)<span class="op">|</span> <span class="ident">v</span>.<span class="ident">len</span>()).<span class="ident">collect_vec</span>();
         <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">NDRange</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">sizes</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">index</span><span class="op">|</span> {
@@ -607,8 +597,7 @@
                     .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">instantiate</span>(<span class="ident">inputs</span>, <span class="kw-2">&amp;</span><span class="ident">input_mapping</span>, <span class="ident">ir_desc</span>))
                     .<span class="ident">collect_vec</span>();
                 <span class="ident">Cell</span>::<span class="ident">build</span>(<span class="ident">rules</span>, <span class="ident">inputs</span>, <span class="ident">ir_desc</span>)
-            })
-            .<span class="ident">collect_vec</span>();
+            }).<span class="ident">collect_vec</span>();
         <span class="ident">TruthTable</span> {
             <span class="ident">values</span>,
             <span class="ident">rules</span>: <span class="ident">NDArray</span>::<span class="ident">new</span>(<span class="ident">sizes</span>, <span class="ident">data</span>),
@@ -675,8 +664,7 @@
                     <span class="ident">alternatives</span>: <span class="ident">alts</span>,
                     <span class="ident">set_constraints</span>: <span class="ident">set_conds</span>.<span class="ident">clone</span>(),
                 })
-            })
-            .<span class="ident">collect_vec</span>()
+            }).<span class="ident">collect_vec</span>()
     }
 
     <span class="doccomment">/// Indicates if the cell allows any alternative,</span>
@@ -726,8 +714,7 @@
                         <span class="ident">view</span>,
                     },
                 )
-            })
-            .<span class="ident">collect</span>()
+            }).<span class="ident">collect</span>()
     }
 
     <span class="doccomment">/// Indicates if the two view have the same cells.</span>
@@ -864,8 +851,7 @@
                 <span class="kw">let</span> <span class="ident">view</span> <span class="op">=</span> <span class="ident">views</span>.<span class="ident">find</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">other_pos</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">pos</span> <span class="op">==</span> <span class="ident">other_pos</span>).<span class="ident">unwrap</span>().<span class="number">1</span>;
                 <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">view</span>.<span class="number">1</span>.<span class="ident">is_empty</span>());
                 (<span class="ident">values</span>, <span class="ident">view</span>.<span class="number">1</span>)
-            })
-            .<span class="ident">collect</span>();
+            }).<span class="ident">collect</span>();
         <span class="ident">TableSplit</span>::<span class="ident">Switch</span> { <span class="ident">input</span>, <span class="ident">cases</span> }
     })
 }
@@ -904,8 +890,7 @@
                     .<span class="ident">filter</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="kw">_</span>, <span class="ident">value</span>)<span class="op">|</span> <span class="ident">ctx_values</span>.<span class="ident">is</span>(<span class="ident">value</span>).<span class="ident">maybe_true</span>())
                     .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">pos</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">pos</span>)
                     .<span class="ident">collect_vec</span>()
-            })
-            .<span class="ident">collect_vec</span>();
+            }).<span class="ident">collect_vec</span>();
         <span class="kw">let</span> <span class="ident">num_indexes</span> <span class="op">=</span> <span class="ident">valid_indexes</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">len</span>()).<span class="ident">collect_vec</span>();
         <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">ValueType</span>::<span class="ident">Enum</span>(<span class="ident">context</span>.<span class="ident">enum_</span>.<span class="ident">name</span>().<span class="ident">clone</span>());
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">value_set</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">ValueSet</span>::<span class="ident">empty</span>(<span class="kw-2">&amp;</span><span class="ident">t</span>);
@@ -1014,8 +999,7 @@
                     .<span class="ident">iter</span>()
                     .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">as_static_cond</span>())
                     .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="number">0</span>)
-            })
-            .<span class="ident">unique</span>()
+            }).<span class="ident">unique</span>()
             .<span class="ident">collect_vec</span>();
         <span class="comment">// Test the table correctness.</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">table</span> <span class="op">=</span> <span class="ident">TruthTable</span>::<span class="ident">build</span>(<span class="ident">inputs</span>, <span class="kw-2">&amp;</span><span class="ident">rules</span>, <span class="ident">ir_desc</span>);

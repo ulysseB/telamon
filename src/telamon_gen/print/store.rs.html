@@ -287,10 +287,6 @@
 <span id="287">287</span>
 <span id="288">288</span>
 <span id="289">289</span>
-<span id="290">290</span>
-<span id="291">291</span>
-<span id="292">292</span>
-<span id="293">293</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Prints the domain store definition.</span>
 <span class="kw">use</span> <span class="ident">print</span>;
@@ -350,8 +346,7 @@
                     },
                 )
             })
-        })
-        .<span class="ident">collect</span>()
+        }).<span class="ident">collect</span>()
 }
 
 <span class="doccomment">/// A newly allocated decision.</span>
@@ -433,10 +428,9 @@
                                     .<span class="ident">collect</span>()
                             }
                         }.<span class="ident">into_iter</span>()
-                            .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">conflict</span><span class="op">|</span> <span class="ident">conflict</span>.<span class="ident">generate_ast</span>(<span class="ident">arg_set</span>, <span class="ident">ctx</span>))
-                            .<span class="ident">collect</span>()
-                    })
-                    .<span class="ident">unwrap_or</span>(<span class="macro">vec</span><span class="macro">!</span>[]);
+                        .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">conflict</span><span class="op">|</span> <span class="ident">conflict</span>.<span class="ident">generate_ast</span>(<span class="ident">arg_set</span>, <span class="ident">ctx</span>))
+                        .<span class="ident">collect</span>()
+                    }).<span class="ident">unwrap_or</span>(<span class="macro">vec</span><span class="macro">!</span>[]);
                 <span class="comment">// Create the loop nest.</span>
                 <span class="kw">let</span> <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">conflicts</span> <span class="op">=</span>
                     <span class="ident">PartialIterator</span>::<span class="ident">current_new_obj_conflicts</span>(<span class="ident">set</span>).<span class="ident">collect</span>();
@@ -530,8 +524,7 @@
                     .<span class="ident">flat_map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">arg</span><span class="op">|</span> {
                         <span class="ident">PartialIterator</span>::<span class="ident">new_objs_conflicts</span>(<span class="ident">ir_desc</span>, <span class="ident">set</span>)
                             .<span class="ident">flat_map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">generate_ast</span>(<span class="ident">arg</span>, <span class="ident">ctx</span>))
-                    })
-                    .<span class="ident">collect</span>()
+                    }).<span class="ident">collect</span>()
             };
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">conflicts</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">new_objs_conflicts</span>(<span class="ident">ir_desc</span>, <span class="ident">set</span>)
                 .<span class="ident">chain</span>(<span class="self">Self</span>::<span class="ident">current_new_obj_conflicts</span>(<span class="ident">set</span>))
@@ -569,8 +562,7 @@
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">set</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="ident">list</span> <span class="op">=</span> <span class="ident">ast</span>::<span class="ident">new_objs_list</span>(<span class="ident">set</span>, <span class="string">&quot;new_objs&quot;</span>);
                 <span class="ident">ast</span>::<span class="ident">Conflict</span>::<span class="ident">NewObjs</span> { <span class="ident">list</span>, <span class="ident">set</span> }
-            })
-            .<span class="ident">chain</span>(<span class="ident">iter</span>::<span class="ident">once</span>(<span class="ident">self_conflict</span>))
+            }).<span class="ident">chain</span>(<span class="ident">iter</span>::<span class="ident">once</span>(<span class="ident">self_conflict</span>))
     }
 
     <span class="doccomment">/// Returns the conflicts with the new object and its argument.</span>

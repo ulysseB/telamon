@@ -383,7 +383,6 @@
 <span id="383">383</span>
 <span id="384">384</span>
 <span id="385">385</span>
-<span id="386">386</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! An array with a variable number of dimensions.</span>
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
@@ -563,8 +562,7 @@
                     <span class="ident">bounds</span>: <span class="ident">bounds</span>.<span class="ident">clone</span>(),
                     ..<span class="kw-2">*</span><span class="self">self</span>
                 }
-            })
-            .<span class="ident">collect</span>()
+            }).<span class="ident">collect</span>()
     }
 
     <span class="doccomment">/// Computes the index of an element in the underlying vector.</span>

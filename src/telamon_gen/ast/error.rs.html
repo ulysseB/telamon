@@ -74,6 +74,14 @@
 <span id="74">74</span>
 <span id="75">75</span>
 <span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
 </pre><pre class="rust ">
 <span class="doccomment">/// TypeError describes the Ast error top level.</span>
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">ChoiceDef</span>, <span class="ident">Spanned</span>, <span class="ident">Statement</span>};
@@ -119,7 +127,11 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Fail</span>, <span class="ident">PartialEq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TypeError</span> {
     <span class="doccomment">/// Redefinition of a name and hint.</span>
-    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;redefinition {:?} and {:?}&quot;</span>, <span class="ident">object_kind</span>, <span class="ident">object_name</span>)]</span>
+    <span class="attribute">#[<span class="ident">fail</span>(
+        <span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;redefinition {:?} and {:?}&quot;</span>,
+        <span class="ident">object_kind</span>,
+        <span class="ident">object_name</span>
+    )]</span>
     <span class="ident">Redefinition</span> {
         <span class="ident">object_kind</span>: <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">Hint</span><span class="op">&gt;</span>,
         <span class="ident">object_name</span>: <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -139,7 +151,11 @@
     },
     <span class="doccomment">/// Missing</span>
     <span class="doccomment">/// Happens when the Set&#39;s object has a missing field.</span>
-    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;missing entry {:?} of set {:?}&quot;</span>, <span class="ident">object_name</span>, <span class="ident">object_field</span>)]</span>
+    <span class="attribute">#[<span class="ident">fail</span>(
+        <span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;missing entry {:?} of set {:?}&quot;</span>,
+        <span class="ident">object_name</span>,
+        <span class="ident">object_field</span>
+    )]</span>
     <span class="ident">MissingEntry</span> {
         <span class="ident">object_name</span>: <span class="ident">String</span>,
         <span class="ident">object_field</span>: <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,

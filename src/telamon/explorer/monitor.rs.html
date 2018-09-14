@@ -246,7 +246,6 @@
 <span id="246">246</span>
 <span id="247">247</span>
 <span id="248">248</span>
-<span id="249">249</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! This file exposes a single function, monitor, that is launched in a special</span>
 <span class="doccomment">//! thread and pulls the evaluations results, store them and then updates the</span>
@@ -421,8 +420,7 @@
                         <span class="ident">log_sender</span>,
                         <span class="ident">status</span>,
                     )
-                })
-                .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ()),
+                }).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ()),
             <span class="ident">time</span>,
         ),
     )

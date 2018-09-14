@@ -111,6 +111,17 @@
 <span id="111">111</span>
 <span id="112">112</span>
 <span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Error management for IR creation.</span>
 <span class="kw">use</span> <span class="ident">ir</span>;
@@ -123,7 +134,11 @@
     <span class="ident">InvalidType</span> { <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span> },
     <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;{} must have a return type&quot;</span>, <span class="ident">inst</span>)]</span>
     <span class="ident">ExpectedReturnType</span> { <span class="ident">inst</span>: <span class="ident">ir</span>::<span class="ident">InstId</span> },
-    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;{} rounding is incompatible with type `{}`&quot;</span>, <span class="ident">rounding</span>, <span class="ident">t</span>)]</span>
+    <span class="attribute">#[<span class="ident">fail</span>(
+        <span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;{} rounding is incompatible with type `{}`&quot;</span>,
+        <span class="ident">rounding</span>,
+        <span class="ident">t</span>
+    )]</span>
     <span class="ident">InvalidRounding</span> {
         <span class="ident">rounding</span>: <span class="ident">ir</span>::<span class="ident">op</span>::<span class="ident">Rounding</span>,
         <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>,
@@ -209,14 +224,21 @@
     <span class="ident">Type</span>(<span class="attribute">#[<span class="ident">cause</span>]</span> <span class="ident">TypeError</span>),
     <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;dimensions must have a size of at least 2&quot;</span>)]</span>
     <span class="ident">InvalidDimSize</span>,
-    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;dimension {} appears twice in the increment list&quot;</span>, <span class="ident">dim</span>)]</span>
+    <span class="attribute">#[<span class="ident">fail</span>(
+        <span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;dimension {} appears twice in the increment list&quot;</span>,
+        <span class="ident">dim</span>
+    )]</span>
     <span class="ident">DuplicateIncrement</span> { <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">DimId</span> },
     <span class="attribute">#[<span class="ident">fail</span>(
         <span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;the access pattern references dimension {}, but is not nested inside&quot;</span>,
         <span class="ident">dim</span>
     )]</span>
     <span class="ident">InvalidDimInPattern</span> { <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">DimId</span> },
-    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;no mapping found between dimensions {} and {}&quot;</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>)]</span>
+    <span class="attribute">#[<span class="ident">fail</span>(
+        <span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;no mapping found between dimensions {} and {}&quot;</span>,
+        <span class="ident">lhs</span>,
+        <span class="ident">rhs</span>
+    )]</span>
     <span class="ident">MissingDimMapping</span> { <span class="ident">lhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">rhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span> },
 }
 

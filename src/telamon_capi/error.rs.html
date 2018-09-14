@@ -123,7 +123,6 @@
 <span id="123">123</span>
 <span id="124">124</span>
 <span id="125">125</span>
-<span id="126">126</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">cell</span>::<span class="ident">RefCell</span>;
@@ -189,8 +188,7 @@
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">error</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="ident">string</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">std</span>::<span class="ident">ffi</span>::<span class="ident">CString</span>::<span class="ident">new</span>(<span class="ident">error</span>.<span class="ident">to_string</span>()));
                 <span class="ident">libc</span>::<span class="ident">strdup</span>(<span class="ident">string</span>.<span class="ident">as_ptr</span>())
-            })
-            .<span class="ident">unwrap_or</span>(<span class="ident">std</span>::<span class="ident">ptr</span>::<span class="ident">null_mut</span>())
+            }).<span class="ident">unwrap_or</span>(<span class="ident">std</span>::<span class="ident">ptr</span>::<span class="ident">null_mut</span>())
     })
 }
 

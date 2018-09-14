@@ -562,6 +562,9 @@
 <span id="562">562</span>
 <span id="563">563</span>
 <span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
 </pre><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">unused_variables</span>)]</span>
 
@@ -608,27 +611,27 @@
     <span class="doccomment">/// Generate the defintion of choices and the list of constraints.</span>
     <span class="doccomment">/// TODO: remove typing context</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">type_check</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">ir</span>::<span class="ident">IrDesc</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">TypedConstraint</span><span class="op">&gt;</span>), <span class="ident">TypeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">checker</span> <span class="op">=</span> <span class="ident">CheckerContext</span>::<span class="ident">default</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="ident">TypingContext</span>::<span class="ident">default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">context</span> <span class="op">=</span> <span class="ident">CheckerContext</span>::<span class="ident">default</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tc</span> <span class="op">=</span> <span class="ident">TypingContext</span>::<span class="ident">default</span>();
 
         <span class="comment">// declare</span>
         <span class="kw">for</span> <span class="ident">statement</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">statements</span>.<span class="ident">iter</span>() {
-            <span class="ident">statement</span>.<span class="ident">declare</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">checker</span>)<span class="question-mark">?</span>;
-        }
-        <span class="comment">// define</span>
-        <span class="kw">for</span> <span class="ident">statement</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">statements</span>.<span class="ident">iter</span>() {
-            <span class="ident">statement</span>.<span class="ident">define</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">checker</span>)<span class="question-mark">?</span>;
+            <span class="ident">statement</span>.<span class="ident">declare</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">context</span>)<span class="question-mark">?</span>;
         }
         <span class="comment">// typing context</span>
-        <span class="kw">for</span> <span class="ident">statement</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">statements</span> {
-            <span class="ident">context</span>.<span class="ident">add_statement</span>(<span class="ident">statement</span>);
+        <span class="kw">for</span> <span class="ident">statement</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">statements</span>.<span class="ident">iter</span>() {
+            <span class="ident">tc</span>.<span class="ident">add_statement</span>(<span class="ident">statement</span>.<span class="ident">to_owned</span>());
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">context</span>.<span class="ident">finalize</span>())
+        <span class="comment">// define</span>
+        <span class="kw">for</span> <span class="ident">statement</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">statements</span>.<span class="ident">into_iter</span>() {
+            <span class="ident">statement</span>.<span class="ident">define</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">context</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tc</span>)<span class="question-mark">?</span>;
+        }
+        <span class="prelude-val">Ok</span>(<span class="ident">tc</span>.<span class="ident">finalize</span>())
     }
 }
 
 <span class="doccomment">/// A toplevel definition or constraint.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Statement</span> {
     <span class="ident">ChoiceDef</span>(<span class="ident">ChoiceDef</span>),
     <span class="ident">TriggerDef</span> {
@@ -641,18 +644,22 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Statement</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">declare</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">CheckerContext</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">declare</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">checker</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">CheckerContext</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Statement</span>::<span class="ident">SetDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">declare</span>(<span class="ident">context</span>),
-            <span class="ident">Statement</span>::<span class="ident">ChoiceDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">declare</span>(<span class="ident">context</span>),
+            <span class="ident">Statement</span>::<span class="ident">SetDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">declare</span>(<span class="ident">checker</span>),
+            <span class="ident">Statement</span>::<span class="ident">ChoiceDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">declare</span>(<span class="ident">checker</span>),
             <span class="kw">_</span> <span class="op">=&gt;</span> <span class="prelude-val">Ok</span>(()),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">define</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">CheckerContext</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">define</span>(
+        <span class="self">self</span>,
+        <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">CheckerContext</span>,
+        <span class="ident">tc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">TypingContext</span>,
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Statement</span>::<span class="ident">SetDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">define</span>(<span class="ident">context</span>),
-            <span class="ident">Statement</span>::<span class="ident">ChoiceDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">define</span>(<span class="ident">context</span>),
+            <span class="ident">Statement</span>::<span class="ident">SetDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">define</span>(<span class="ident">context</span>, <span class="ident">tc</span>),
+            <span class="ident">Statement</span>::<span class="ident">ChoiceDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">define</span>(<span class="ident">context</span>, <span class="ident">tc</span>),
             <span class="kw">_</span> <span class="op">=&gt;</span> <span class="prelude-val">Ok</span>(()),
         }
     }
@@ -667,7 +674,7 @@
 }
 
 <span class="doccomment">/// Checks to perform once the statements have been declared.</span>
-<span class="kw">enum</span> <span class="ident">Check</span> {
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Check</span> {
     <span class="doccomment">/// Ensures the inverse of the value set is itself.</span>
     <span class="ident">IsSymmetric</span> { <span class="ident">choice</span>: <span class="ident">RcStr</span>, <span class="ident">values</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RcStr</span><span class="op">&gt;</span> },
 }
@@ -984,8 +991,7 @@
             } <span class="kw">else</span> {
                 <span class="prelude-val">Some</span>((<span class="ident">var_map</span>.<span class="ident">get_var</span>(<span class="kw-2">&amp;</span><span class="ident">var</span>), <span class="ident">RcStr</span>::<span class="ident">new</span>(<span class="ident">var</span>)))
             }
-        })
-        .<span class="ident">collect</span>();
+        }).<span class="ident">collect</span>();
     <span class="ident">ir</span>::<span class="ident">Code</span> { <span class="ident">code</span>, <span class="ident">vars</span> }
 }
 

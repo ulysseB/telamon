@@ -107,7 +107,6 @@
 <span id="107">107</span>
 <span id="108">108</span>
 <span id="109">109</span>
-<span id="110">110</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! `DimMap` and layout lowering.</span>
 <span class="kw">use</span> <span class="ident">ir</span>;
@@ -198,8 +197,7 @@
             <span class="ident">inst</span>.<span class="ident">dim_maps_to_lower</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>)
                 .<span class="ident">into_iter</span>()
                 .<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">op_id</span><span class="op">|</span> (<span class="ident">inst</span>.<span class="ident">id</span>(), <span class="ident">op_id</span>))
-        })
-        .<span class="ident">collect_vec</span>();
+        }).<span class="ident">collect_vec</span>();
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_objs</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">NewObjs</span>::<span class="ident">default</span>();
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">actions</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
     <span class="kw">for</span> (<span class="ident">inst</span>, <span class="ident">operand</span>) <span class="kw">in</span> <span class="ident">to_lower</span> {

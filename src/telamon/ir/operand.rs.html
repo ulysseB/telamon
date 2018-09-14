@@ -242,8 +242,6 @@
 <span id="242">242</span>
 <span id="243">243</span>
 <span id="244">244</span>
-<span id="245">245</span>
-<span id="246">246</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Describes the different kinds of operands an instruction can have.</span>
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">Operand</span>::<span class="kw-2">*</span>;
@@ -287,8 +285,7 @@
                 <span class="kw">let</span> <span class="ident">st_mapping</span> <span class="op">=</span> <span class="ident">cnt</span>.<span class="ident">next_dim_mapping</span>();
                 <span class="kw">let</span> <span class="ident">ld_mapping</span> <span class="op">=</span> <span class="ident">cnt</span>.<span class="ident">next_dim_mapping</span>();
                 ((<span class="ident">src</span>, (<span class="ident">st_dim</span>, <span class="ident">st_mapping</span>)), (<span class="ident">dst</span>, (<span class="ident">ld_dim</span>, <span class="ident">ld_mapping</span>)))
-            })
-            .<span class="ident">unzip</span>();
+            }).<span class="ident">unzip</span>();
 
         <span class="ident">LoweringMap</span> {
             <span class="ident">mem_id</span>,
@@ -311,8 +308,7 @@
                 <span class="kw">let</span> <span class="kw-2">&amp;</span>(<span class="ident">st_dim</span>, <span class="ident">st_mapping</span>) <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">st_map</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">src</span>));
                 <span class="kw">let</span> <span class="kw-2">&amp;</span>(<span class="ident">ld_dim</span>, <span class="ident">ld_mapping</span>) <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">ld_map</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">dst</span>));
                 ((<span class="ident">st_mapping</span>, [<span class="ident">src</span>, <span class="ident">st_dim</span>]), (<span class="ident">ld_mapping</span>, [<span class="ident">dst</span>, <span class="ident">ld_dim</span>]))
-            })
-            .<span class="ident">unzip</span>();
+            }).<span class="ident">unzip</span>();
         <span class="ident">ir</span>::<span class="ident">LoweredDimMap</span> {
             <span class="ident">mem</span>: <span class="self">self</span>.<span class="ident">mem_id</span>,
             <span class="ident">store</span>: <span class="self">self</span>.<span class="ident">st_inst</span>,
