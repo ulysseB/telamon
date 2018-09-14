@@ -606,10 +606,8 @@ mod tests {
         let d1 = builder.open_dim_ex(size.clone(), DimKind::THREAD);
         let addr = builder.mad(&d0, &(gpu.l1_cache_line as i32), &addr_base);
         let stride = ir::Size::new_const(gpu.l1_cache_line).into();
-        let pattern = builder.tensor_access_pattern(
-            ir::MemId::External(0),
-            vec![(&d0, stride)],
-        );
+        let pattern =
+            builder.tensor_access_pattern(ir::MemId::External(0), vec![(&d0, stride)]);
         let ld = builder.ld_ex(t, &addr, pattern, InstFlag::MEM_CG);
         builder.order(&d0, &d1, d0_d1_order);
 

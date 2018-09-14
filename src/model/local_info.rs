@@ -336,7 +336,7 @@ fn parallelism(
                 }
             }
             let min_num_blocks = size::bounds(&min_size_blocks, space, ctx).min;
-            let lcm_num_blocks = size::factors(&max_size_blocks, space, ctx).lcm;
+            let lcm_num_blocks = size::factors(&min_size_blocks, space, ctx).lcm;
             let size_threads_and_blocks = min_size_blocks * &size_thread_dims;
             Parallelism {
                 min_num_blocks,
