@@ -1,4 +1,6 @@
-use codegen::{self, AllocationScheme, Dimension, Function, Instruction, ParamValKey, Value};
+use codegen::{
+    self, AllocationScheme, Dimension, Function, Instruction, ParamValKey, Value,
+};
 use ir::{self, dim, mem, DimMap, InstId, Type, ValueId};
 use itertools::Itertools;
 use num::bigint::BigInt;
@@ -84,7 +86,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
                 indexes.insert(id, name.clone());
             }
         }
-        // Name Values 
+        // Name Values
         let mut values = HashMap::default();
         for val in function.values() {
             let name = Self::name_value(val, namer);
@@ -152,7 +154,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     /// Returns a name for a value
-    fn name_value(val: &Value, namer:&mut Namer) -> String {
+    fn name_value(val: &Value, namer: &mut Namer) -> String {
         let val_name = namer.name(val.t());
         val_name
     }
@@ -316,7 +318,12 @@ impl<'a, 'b> NameMap<'a, 'b> {
         name
     }
 
-    pub fn indexed_op_name(&mut self, op: &ir::Operand, dim: ir::DimId, idx: u32) -> String {
+    pub fn indexed_op_name(
+        &mut self,
+        op: &ir::Operand,
+        dim: ir::DimId,
+        idx: u32,
+    ) -> String {
         self.current_indexes.insert(dim, idx);
         let name = self.name_op(op).to_string();
         self.current_indexes.remove(&dim);

@@ -53,7 +53,11 @@ impl<'a> Function<'a> {
         );
         let device_code_args = device_code_args.into_iter().collect();
         debug!("compiling cfg {:?}", cfg);
-        let values = space.ir_instance().values().map(|v| Value::new(v, space)).collect_vec();
+        let values = space
+            .ir_instance()
+            .values()
+            .map(|v| Value::new(v, space))
+            .collect_vec();
         Function {
             cfg,
             thread_dims,
@@ -368,7 +372,7 @@ pub struct Value<'a> {
 impl<'a> Value<'a> {
     pub fn new(value: &'a ir::Value, space: &SearchSpace) -> Self {
         let t = unwrap!(space.ir_instance().device().lower_type(value.t(), space));
-        Value{ value, t}
+        Value { value, t }
     }
 
     /// Returns the ID of the value.
@@ -380,7 +384,6 @@ impl<'a> Value<'a> {
     pub fn t(&self) -> ir::Type {
         self.t
     }
-
 }
 
 /// An instruction to execute.
