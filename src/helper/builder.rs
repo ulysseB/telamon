@@ -253,16 +253,20 @@ impl<'a> Builder<'a> {
     ) -> LogicalDim {
         // TODO(strip-mining): allow multiple tile size for each level.
         let tiling_factors = vec![tile_sizes.iter().product()];
+        let tile_sizes: Vec<_> = tile_sizes.iter()
+            .cloned()
+            .map(|s| VecSet::new(vec![s]))
+            .collect();
         let (logical_id, real_ids) = unwrap!(self.function.add_logical_dim(
             size,
             tiling_factors,
-            tile_sizes,
+            tile_sizes.clone(),
         ));
         self.open_dims.extend(real_ids.iter().map(|&id| (id, id)));
         LogicalDim {
             logical_id,
             real_ids,
-            tile_sizes: tile_sizes.to_vec(),
+            tile_sizes,
         }
     }
 
@@ -281,7 +285,7 @@ impl<'a> Builder<'a> {
         let (new_id, new_dims) = unwrap!(self.function.add_logical_dim(
             size.clone(),
             tiling_factors.clone(),
-            &old_dim.tile_sizes,
+            old_dim.tile_sizes.clone(),
         ));
         for (old, &new) in old_dim.iter().zip_eq(&new_dims) {
             self.open_dims.remove(&old);

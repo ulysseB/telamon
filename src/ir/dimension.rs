@@ -28,7 +28,7 @@ impl fmt::Display for DimId {
 pub struct Dimension<'a> {
     id: DimId,
     size: ir::PartialSize<'a>,
-    possible_sizes: Vec<u32>,
+    possible_sizes: VecSet<u32>,
     iterated: Vec<ir::InstId>,
     is_thread_dim: bool,
     logical_dim: Option<LogicalDimId>,
@@ -46,9 +46,9 @@ impl<'a> Dimension<'a> {
             if size == 1 {
                 return Err(ir::Error::InvalidDimSize);
             }
-            vec![size]
+            VecSet::new(vec![size])
         } else {
-            vec![]
+            VecSet::default()
         };
         Ok(Dimension {
             size,
@@ -65,7 +65,7 @@ impl<'a> Dimension<'a> {
     /// possibilities.
     pub fn new_static(
         id: DimId,
-        possible_sizes: Vec<u32>,
+        possible_sizes: VecSet<u32>,
         logical_dim: Option<LogicalDimId>,
     ) -> Result<Self, ir::Error> {
         if possible_sizes.contains(&1) {

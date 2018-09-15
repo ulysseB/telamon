@@ -11,14 +11,14 @@ pub use self::signature::Builder as SignatureBuilder;
 
 use ir;
 use std;
+use utils::*;
 
 /// A groups of dimensions that act as a single logical dimension.
 #[derive(Clone)]
 pub struct LogicalDim {
     logical_id: ir::LogicalDimId,
     real_ids: Vec<ir::DimId>,
-    // TODO(strip-minig): remove this parameter once we enable unconstrained tile sizes.
-    tile_sizes: Vec<u32>,
+    tile_sizes: Vec<VecSet<u32>>,
 }
 
 impl LogicalDim {
