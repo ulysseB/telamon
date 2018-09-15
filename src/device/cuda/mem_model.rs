@@ -363,15 +363,6 @@ fn shared_replay_factor(
     gpu: &cuda::Gpu,
 ) -> f64 {
     let thread_dims = sort_thread_dims(thread_dims, true, space, gpu);
-    // Handle the case where a single thread must access two banks.
-    let mut replay = tensor_dims
-        .iter()
-        .flat_map(|(&d, stride)| stride.as_int().map(|s| (d, s)))
-        .filter(|&(d, _)| space.domain().get_dim_kind(d).intersects(DimKind::VECTOR))
-        .map(|(d, stride)| dim_sizes[&d].min as u32 * stride)
-        .map(|size| div_ceil(size, gpu.shared_bank_stride))
-        .min()
-        .unwrap_or(1);
     // Handle replays caused by offsets.
     let mut offsets = vec![wrap_access_offsets(&thread_dims, true, gpu)];
     // Handle the case where the last dimension may not be active. In that case we also
@@ -389,9 +380,20 @@ fn shared_replay_factor(
             gpu,
         ));
     }
-    for offsets in &offsets {
-        replay = std::cmp::min(replay, offsets_shared_replay_factor(offsets, gpu));
-    }
+    let replay = offsets.iter()
+        .map(|offsets| offsets_shared_replay_factor(offsets, gpu))
+        .min()
+        .unwrap();
+    // Handle the case where a single thread must access two banks.
+    let vector_replay = tensor_dims
+        .iter()
+        .flat_map(|(&d, stride)| stride.as_int().map(|s| (d, s)))
+        .filter(|&(d, _)| space.domain().get_dim_kind(d).intersects(DimKind::VECTOR))
+        .map(|(d, stride)| dim_sizes[&d].min as u32 * stride)
+        .map(|size| div_ceil(size, gpu.shared_bank_stride))
+        .min()
+        .unwrap_or(1);
+    let replay = std::cmp::max(replay, vector_replay);
     trace!("shared_replay: {}", replay);
     replay as f64
 }
