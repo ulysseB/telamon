@@ -164,8 +164,7 @@ fn tensor_thread_dims(
                 Trivalent::Maybe => Some((dim, false)),
                 Trivalent::True => Some((dim, true)),
             },
-        )
-        .chain(external_dims);
+        ).chain(external_dims);
     let mut out = Vec::new();
     for (id, is_active_thread) in dims {
         let size = sizes[&id];
@@ -332,8 +331,7 @@ fn wrap_access_offsets(
                     dim.stride.min
                 };
                 indexes[i] * stride
-            })
-            .sum();
+            }).sum();
         if incr {
             break;
         } // We reached the end of all loops.
@@ -380,7 +378,8 @@ fn shared_replay_factor(
             gpu,
         ));
     }
-    let replay = offsets.iter()
+    let replay = offsets
+        .iter()
         .map(|offsets| offsets_shared_replay_factor(offsets, gpu))
         .min()
         .unwrap();
