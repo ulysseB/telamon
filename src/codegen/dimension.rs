@@ -176,12 +176,12 @@ pub struct InductionVarValue<'a> {
 
 impl<'a> InductionVarValue<'a> {
     /// Returns the additive components of the induction variable value.
-    pub fn components(&self) -> impl Iterator<Item = codegen::Value<'a>> {
+    pub fn components(&self) -> impl Iterator<Item = codegen::Operand<'a>> {
         let ind_var = self.ind_var;
         self.outer_level
             .into_iter()
-            .map(move |dim| codegen::Value::InductionLevel(ind_var, dim))
-            .chain(self.operand.into_iter().map(codegen::Value::Operand))
+            .map(move |dim| codegen::Operand::InductionLevel(ind_var, dim))
+            .chain(self.operand.into_iter().map(codegen::Operand::Operand))
     }
 
     /// Returns the type of the value.

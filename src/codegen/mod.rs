@@ -9,7 +9,7 @@ mod size;
 pub use self::cfg::Cfg;
 pub use self::dimension::{Dimension, InductionLevel, InductionVar};
 pub use self::function::*;
-pub use self::namer::{NameMap, Namer, Value};
+pub use self::namer::{NameMap, Namer, Operand};
 pub use self::printer::{MulMode, Printer};
 pub use self::size::Size;
 
