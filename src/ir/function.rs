@@ -459,14 +459,10 @@ impl<'a> Function<'a, ()> {
         // occurs.
         let mut dims = Vec::new();
         let logical_dim = if let Some(size) = size.as_constant() {
-            let possible_sizes = tiling_factors.iter()
-                .map(|factor| size/factor)
-                .collect();
-            let dim = Dimension::new_static(
-                dim_ids[0],
-                possible_sizes,
-                Some(logical_id),
-            )?;
+            let possible_sizes =
+                tiling_factors.iter().map(|factor| size / factor).collect();
+            let dim =
+                Dimension::new_static(dim_ids[0], possible_sizes, Some(logical_id))?;
             dims.push(dim);
             ir::LogicalDim::new_static(logical_id, dim_ids.clone(), size)
         } else {

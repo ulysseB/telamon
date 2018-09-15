@@ -253,7 +253,8 @@ impl<'a> Builder<'a> {
     ) -> LogicalDim {
         // TODO(strip-mining): allow multiple tile size for each level.
         let tiling_factors = vec![tile_sizes.iter().product()];
-        let tile_sizes: Vec<_> = tile_sizes.iter()
+        let tile_sizes: Vec<_> = tile_sizes
+            .iter()
             .cloned()
             .map(|s| VecSet::new(vec![s]))
             .collect();

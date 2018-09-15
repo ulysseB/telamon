@@ -122,7 +122,8 @@ typedef struct Operator Operator;
 typedef struct Parameter Parameter;
 
 /*
- * A size whose exact value is not yet decided.
+ * A size whose exact value is not yet decided. The value of `size` is
+ * `product(size.factors())/product(size.divisors())`.
  */
 typedef struct PartialSize PartialSize;
 
@@ -249,7 +250,7 @@ typedef struct {
 } StmtId;
 
 /*
- * Defines how two basic blocks are ordered.
+ * Defines how two statements are ordered.
  */
 typedef struct {
     uint8_t bits;
@@ -817,7 +818,8 @@ void telamon_ir_size_mul(PartialSize *lhs, const PartialSize *rhs);
  */
 Size *telamon_ir_size_new(uint32_t const_factor,
                           const Parameter *const *param_factors,
-                          uintptr_t num_params);
+                          uintptr_t num_params,
+                          uint32_t max_val);
 
 /*
  * Frees a type allocated with `telamon_ir_type_new_int` or `telamon_ir_type_new_float`.
