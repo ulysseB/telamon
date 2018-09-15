@@ -34,7 +34,8 @@ pub fn bounds(size: &ir::PartialSize, space: &SearchSpace, ctx: &Context) -> Ran
     let factor = param_factors
         .iter()
         .map(|p| unwrap!(ctx.param_as_size(&p.name)) as u64)
-        .product::<u64>() * factor as u64;
+        .product::<u64>()
+        * factor as u64;
     let mut total = Range::new_fixed(factor);
     for &dim in dim_size_factors {
         let size = dim_bounds(dim, space);
@@ -89,7 +90,8 @@ pub fn factors(
     let factor = param_factors
         .iter()
         .map(|p| unwrap!(ctx.param_as_size(&p.name)) as u64)
-        .product::<u64>() * factor as u64;
+        .product::<u64>()
+        * factor as u64;
     let mut total = FactorRange::new_fixed(factor);
     for &dim in dim_size_factors {
         let size = dim_factors(dim, space);
