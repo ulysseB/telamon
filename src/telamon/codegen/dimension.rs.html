@@ -511,12 +511,12 @@
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">InductionVarValue</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Returns the additive components of the induction variable value.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">components</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">codegen</span>::<span class="ident">Value</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">components</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">codegen</span>::<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
         <span class="kw">let</span> <span class="ident">ind_var</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ind_var</span>;
         <span class="self">self</span>.<span class="ident">outer_level</span>
             .<span class="ident">into_iter</span>()
-            .<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">dim</span><span class="op">|</span> <span class="ident">codegen</span>::<span class="ident">Value</span>::<span class="ident">InductionLevel</span>(<span class="ident">ind_var</span>, <span class="ident">dim</span>))
-            .<span class="ident">chain</span>(<span class="self">self</span>.<span class="ident">operand</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">codegen</span>::<span class="ident">Value</span>::<span class="ident">Operand</span>))
+            .<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">dim</span><span class="op">|</span> <span class="ident">codegen</span>::<span class="ident">Operand</span>::<span class="ident">InductionLevel</span>(<span class="ident">ind_var</span>, <span class="ident">dim</span>))
+            .<span class="ident">chain</span>(<span class="self">self</span>.<span class="ident">operand</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">codegen</span>::<span class="ident">Operand</span>::<span class="ident">Operand</span>))
     }
 
     <span class="doccomment">/// Returns the type of the value.</span>

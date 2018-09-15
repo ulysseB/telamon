@@ -437,6 +437,37 @@
 <span id="437">437</span>
 <span id="438">438</span>
 <span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Describes a `Function` that is ready to execute on a device.</span>
 <span class="kw">use</span> <span class="ident">codegen</span>::{<span class="self">self</span>, <span class="ident">cfg</span>, <span class="ident">dimension</span>, <span class="ident">Cfg</span>, <span class="ident">Dimension</span>, <span class="ident">InductionLevel</span>, <span class="ident">InductionVar</span>};
@@ -456,7 +487,7 @@
     <span class="ident">induction_vars</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InductionVar</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
     <span class="ident">mem_blocks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InternalMemoryRegion</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
     <span class="ident">init_induction_levels</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">InductionLevel</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
-    <span class="ident">values</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">Value</span><span class="op">&gt;</span>,
+    <span class="ident">values</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
     <span class="comment">// TODO(cleanup): remove dependency on the search space</span>
     <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">SearchSpace</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
 }
@@ -492,7 +523,11 @@
         );
         <span class="kw">let</span> <span class="ident">device_code_args</span> <span class="op">=</span> <span class="ident">device_code_args</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>();
         <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;compiling cfg {:?}&quot;</span>, <span class="ident">cfg</span>);
-        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">values</span>().<span class="ident">cloned</span>().<span class="ident">collect_vec</span>();
+        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">space</span>
+            .<span class="ident">ir_instance</span>()
+            .<span class="ident">values</span>()
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value</span>::<span class="ident">new</span>(<span class="ident">v</span>, <span class="ident">space</span>))
+            .<span class="ident">collect_vec</span>();
         <span class="ident">Function</span> {
             <span class="ident">cfg</span>,
             <span class="ident">thread_dims</span>,
@@ -514,6 +549,11 @@
     <span class="doccomment">/// Returns the ordered list of block dimensions.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">block_dims</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>] {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">block_dims</span>
+    }
+
+    <span class="doccomment">/// Iterate on values of the function</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">values</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">Value</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">values</span>.<span class="ident">iter</span>()
     }
 
     <span class="doccomment">/// Iterates other all `codegen::Dimension`.</span>
@@ -791,6 +831,28 @@
     <span class="doccomment">/// Returns the type of the pointer to the memory block.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ptr_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span> {
         <span class="self">self</span>.<span class="ident">ptr_type</span>
+    }
+}
+
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Value</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Value</span>,
+    <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>,
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Value</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ir</span>::<span class="ident">Value</span>, <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">device</span>().<span class="ident">lower_type</span>(<span class="ident">value</span>.<span class="ident">t</span>(), <span class="ident">space</span>));
+        <span class="ident">Value</span> { <span class="ident">value</span>, <span class="ident">t</span> }
+    }
+
+    <span class="doccomment">/// Returns the ID of the value.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">ValueId</span> {
+        <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">id</span>()
+    }
+
+    <span class="doccomment">/// Returns the type of the value.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">t</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span> {
+        <span class="self">self</span>.<span class="ident">t</span>
     }
 }
 
