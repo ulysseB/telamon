@@ -1,6 +1,6 @@
 //! Helper struct to build a `Function`.
 use device::Device;
-use helper::{AutoOperand, LogicalDim, MetaStatement};
+use helper::{AutoOperand, LogicalDim, MetaStatement, TilingPattern};
 use ir::{self, mem, op, Parameter, Type};
 use ir::{
     AccessPattern, Function, InstId, Operand, Operator, Signature, ValueDef, ValueId,
@@ -232,7 +232,7 @@ impl<'a> Builder<'a> {
 
     /// Opens a new dimension.
     pub fn open_dim(&mut self, size: ir::Size<'a>) -> LogicalDim {
-        self.open_tiled_dim(size, &[])
+        self.open_tiled_dim(size, TilingPattern::default())
     }
 
     /// Opens a nest of new dimension with the given kinds and sizes.
@@ -246,28 +246,18 @@ impl<'a> Builder<'a> {
     pub fn open_tiled_dim(
         &mut self,
         size: ir::Size<'a>,
-        // This is a reference to avoid breaking the interface. This parameter will be
-        // removed when we allow specifying multiple tile sizes for each dimension so it
-        // is no worth changing the code everywhere this function is used just yet.
-        tile_sizes: &[u32],
+        tiling_pattern: TilingPattern,
     ) -> LogicalDim {
-        // TODO(strip-mining): allow multiple tile size for each level.
-        let tiling_factors = vec![tile_sizes.iter().product()];
-        let tile_sizes: Vec<_> = tile_sizes
-            .iter()
-            .cloned()
-            .map(|s| VecSet::new(vec![s]))
-            .collect();
         let (logical_id, real_ids) = unwrap!(self.function.add_logical_dim(
             size,
-            tiling_factors,
-            tile_sizes.clone(),
+            tiling_pattern.tiling_factors,
+            tiling_pattern.tile_sizes.clone(),
         ));
         self.open_dims.extend(real_ids.iter().map(|&id| (id, id)));
         LogicalDim {
             logical_id,
             real_ids,
-            tile_sizes,
+            tile_sizes: tiling_pattern.tile_sizes,
         }
     }
 

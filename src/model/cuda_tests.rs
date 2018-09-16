@@ -152,11 +152,11 @@ fn partial_bound_2() {
         builder.get()
     };
 
-    let m_tiling = &[2];
+    let m_tiling = TilingPattern::new_fixed(&[2]);
 
     let mut builder = Builder::new(&signature, context.device());
-    let ld_x = x.load(&[&[]], &mut builder);
-    let ld_a = a.load(&[m_tiling, &[]], &mut builder);
+    let ld_x = x.load(vec![TilingPattern::default()], &mut builder);
+    let ld_a = a.load(vec![m_tiling, TilingPattern::default()], &mut builder);
 
     let init_dim_m = builder.open_mapped_dim(&ld_a[0]);
     let init = builder.mov(&0f32);
@@ -215,7 +215,7 @@ fn partial_bound_3() {
     let mut builder = Builder::new(&signature, context.device());
 
     let size_m = builder.cst_size(256);
-    let ld_a_dim = builder.open_tiled_dim(size_m, &[4]);
+    let ld_a_dim = builder.open_tiled_dim(size_m, TilingPattern::new_fixed(&[4]));
     let (addr, patt) = builder.tensor_access(&"a", a, ir::Type::F(32), &[&ld_a_dim]);
     builder.ld(ir::Type::F(32), &addr, patt);
     builder.close_dim(&ld_a_dim);
@@ -296,7 +296,7 @@ fn partial_bound_4() {
     };
 
     let mut builder = Builder::new(&signature, context.device());
-    let ld_a = a.load(&[&[], &[], &[]], &mut builder);
+    let ld_a = a.load(vec![TilingPattern::default(); 3], &mut builder);
 
     builder.action(Action::DimKind(ld_a[0][0], DimKind::THREAD));
     builder.action(Action::DimKind(ld_a[1][0], DimKind::THREAD));
@@ -360,7 +360,7 @@ fn partial_bound_5() {
 
     let mut builder = Builder::new(&signature, context.device());
 
-    let ld_a = a.load(&[&[]], &mut builder);
+    let ld_a = a.load(vec![TilingPattern::default()], &mut builder);
     let dim1 = builder.open_dim_ex(ir::Size::new_const(26), DimKind::THREAD);
     let _ = builder.mov(&0f32);
 
@@ -418,11 +418,11 @@ fn final_bound_0() {
         builder.get()
     };
 
-    let tiling = &[1024, 4];
+    let tiling = TilingPattern::new_fixed(&[1024, 4]);
     let mut builder = Builder::new(&signature, context.device());
 
-    let ld_x = x.load(&[tiling], &mut builder);
-    let ld_y = y.load(&[tiling], &mut builder);
+    let ld_x = x.load(vec![tiling.clone()], &mut builder);
+    let ld_y = y.load(vec![tiling], &mut builder);
     let mad_dim = builder.open_mapped_dim(&ld_x[0]);
     let x_op = ld_x.dim_map(&[&mad_dim], ir::DimMapScope::Global(()), &mut builder);
     let y_op = ld_y.dim_map(&[&mad_dim], ir::DimMapScope::Global(()), &mut builder);

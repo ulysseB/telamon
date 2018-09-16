@@ -76,3 +76,30 @@ impl MetaStatement for LogicalDim {
         Box::new(self.iter().map(|id| id.into()))
     }
 }
+
+/// Indicates how a dimension should be tiled.
+#[derive(Clone, Debug)]
+pub struct TilingPattern {
+    tiling_factors: Vec<u32>,
+    tile_sizes: Vec<VecSet<u32>>,
+}
+
+impl TilingPattern {
+    /// Creates a new fixed tiling pattern, with dimensions of the given sizes.
+    pub fn new_fixed(dim_sizes: &[u32]) -> Self {
+        let tiling_factor = dim_sizes.iter().product::<u32>();
+        TilingPattern {
+            tiling_factors: vec![tiling_factor],
+            tile_sizes: dim_sizes.iter().map(|&s| VecSet::new(vec![s])).collect(),
+        }
+    }
+}
+
+impl Default for TilingPattern {
+    fn default() -> Self {
+        TilingPattern {
+            tiling_factors: vec![1],
+            tile_sizes: vec![],
+        }
+    }
+}

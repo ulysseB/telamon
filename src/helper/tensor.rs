@@ -1,6 +1,6 @@
 //! Utilities to allocate and operate on tensors.
 use device::{read_array, ArgMap, ArrayArgument, Context, ScalarArgument};
-use helper::{Builder, LogicalDim, SignatureBuilder};
+use helper::{Builder, LogicalDim, SignatureBuilder, TilingPattern};
 use ir;
 use itertools::Itertools;
 use ndarray::{self, ArrayD};
@@ -179,13 +179,17 @@ where
     }
 
     /// Creates a `VirtualTensor` that contains the values of `self`, loaded in registers.
-    pub fn load(&self, tiling: &[&[u32]], builder: &mut Builder) -> VirtualTensor {
+    pub fn load(
+        &self,
+        tiling: Vec<TilingPattern>,
+        builder: &mut Builder,
+    ) -> VirtualTensor {
         let dims = self
             .iter_dims
             .iter()
             .zip_eq(tiling)
-            .map(|((size, _), tiling)| {
-                let size = size.into_ir_size(builder);
+            .map(|(dim, tiling)| {
+                let size = dim.0.into_ir_size(builder);
                 builder.open_tiled_dim(size, tiling)
             }).collect_vec();
         let (ptr, pattern);
