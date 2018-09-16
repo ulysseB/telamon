@@ -447,7 +447,7 @@ impl<'a> Function<'a, ()> {
     pub fn add_logical_dim(
         &mut self,
         size: ir::Size<'a>,
-        tiling_factors: Vec<u32>,
+        tiling_factors: VecSet<u32>,
         possible_tile_sizes: Vec<VecSet<u32>>,
     ) -> Result<(ir::LogicalDimId, Vec<ir::DimId>), ir::Error> {
         // TODO(strip-mining): allow all tiling factors at all levels

@@ -153,11 +153,7 @@ where
         let init = builder.mov(&0f32);
         let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
         let acc_dim_n = builder.open_mapped_dim(&ld_x[0]);
-        let a_op = ld_a.dim_map(
-            &[&acc_dim_m, &acc_dim_n],
-            GlobalScope(()),
-            &mut builder,
-        );
+        let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_n], GlobalScope(()), &mut builder);
         let x_op = ld_x.dim_map(&[&acc_dim_n], GlobalScope(()), &mut builder);
         let acc = builder.mad(&a_op, &x_op, &helper::Reduce(init));
         builder.close_dim(&acc_dim_n);
@@ -264,16 +260,8 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
         let init_b = builder.mov(&0f32);
         let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
         let acc_dim_n = builder.open_mapped_dim(&ld_x[0]);
-        let a_op = ld_a.dim_map(
-            &[&acc_dim_m, &acc_dim_n],
-            GlobalScope(()),
-            &mut builder,
-        );
-        let b_op = ld_b.dim_map(
-            &[&acc_dim_m, &acc_dim_n],
-            GlobalScope(()),
-            &mut builder,
-        );
+        let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_n], GlobalScope(()), &mut builder);
+        let b_op = ld_b.dim_map(&[&acc_dim_m, &acc_dim_n], GlobalScope(()), &mut builder);
         let x_op = ld_x.dim_map(&[&acc_dim_n], GlobalScope(()), &mut builder);
         let acc_a = builder.mad(&a_op, &x_op, &helper::Reduce(init_a));
         let acc_b = builder.mad(&b_op, &x_op, &helper::Reduce(init_b));

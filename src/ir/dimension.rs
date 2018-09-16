@@ -169,7 +169,7 @@ pub struct LogicalDim<'a> {
     id: LogicalDimId,
     static_dims: Vec<DimId>,
     nonstatic_dim: Option<DimId>,
-    possible_tilings: Vec<u32>,
+    possible_tilings: VecSet<u32>,
     total_size: ir::Size<'a>,
 }
 
@@ -184,7 +184,7 @@ impl<'a> LogicalDim<'a> {
             id,
             static_dims,
             nonstatic_dim: None,
-            possible_tilings: vec![total_size],
+            possible_tilings: VecSet::new(vec![total_size]),
             total_size: ir::Size::new_const(total_size),
         }
     }
@@ -195,7 +195,7 @@ impl<'a> LogicalDim<'a> {
         id: LogicalDimId,
         dynamic_dim: DimId,
         static_dims: Vec<DimId>,
-        possible_tilings: Vec<u32>,
+        possible_tilings: VecSet<u32>,
         total_size: ir::Size<'a>,
     ) -> Self {
         LogicalDim {

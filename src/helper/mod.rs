@@ -18,7 +18,7 @@ use utils::*;
 pub struct LogicalDim {
     logical_id: ir::LogicalDimId,
     real_ids: Vec<ir::DimId>,
-    tile_sizes: Vec<VecSet<u32>>,
+    tiling_pattern: TilingPattern,
 }
 
 impl LogicalDim {
@@ -80,7 +80,7 @@ impl MetaStatement for LogicalDim {
 /// Indicates how a dimension should be tiled.
 #[derive(Clone, Debug)]
 pub struct TilingPattern {
-    tiling_factors: Vec<u32>,
+    tiling_factors: VecSet<u32>,
     tile_sizes: Vec<VecSet<u32>>,
 }
 
@@ -89,7 +89,7 @@ impl TilingPattern {
     pub fn new_fixed(dim_sizes: &[u32]) -> Self {
         let tiling_factor = dim_sizes.iter().product::<u32>();
         TilingPattern {
-            tiling_factors: vec![tiling_factor],
+            tiling_factors: VecSet::new(vec![tiling_factor]),
             tile_sizes: dim_sizes.iter().map(|&s| VecSet::new(vec![s])).collect(),
         }
     }
@@ -97,7 +97,7 @@ impl TilingPattern {
     /// Infer a tiling pattern for a dimension whose size is a multiple of `gcd_size`.
     /// `max_tile_sizes` limits the maximal tile sizes for each tiling dimension.
     pub fn infer_pattern(gcd_size: u32, max_tile_sizes: &[u32]) -> Self {
-        let multiples: Vec<_> = (2..gcd_size)
+        let multiples: VecSet<_> = (2..gcd_size)
             .filter(|x| (gcd_size % x) == 0)
             .take(16)
             .collect();
@@ -116,7 +116,7 @@ impl TilingPattern {
 impl Default for TilingPattern {
     fn default() -> Self {
         TilingPattern {
-            tiling_factors: vec![1],
+            tiling_factors: VecSet::new(vec![1]),
             tile_sizes: vec![],
         }
     }

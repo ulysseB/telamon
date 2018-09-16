@@ -250,14 +250,14 @@ impl<'a> Builder<'a> {
     ) -> LogicalDim {
         let (logical_id, real_ids) = unwrap!(self.function.add_logical_dim(
             size,
-            tiling_pattern.tiling_factors,
+            tiling_pattern.tiling_factors.clone(),
             tiling_pattern.tile_sizes.clone(),
         ));
         self.open_dims.extend(real_ids.iter().map(|&id| (id, id)));
         LogicalDim {
             logical_id,
             real_ids,
-            tile_sizes: tiling_pattern.tile_sizes,
+            tiling_pattern,
         }
     }
 
@@ -266,17 +266,11 @@ impl<'a> Builder<'a> {
     /// The size of the new dim is inherited from the mapped dim.
     /// The dimension mapped to is closed if needed.
     pub fn open_mapped_dim(&mut self, old_dim: &LogicalDim) -> LogicalDim {
-        let (size, tiling_factors) = {
-            let old_dim = self.function.logical_dim(old_dim.id());
-            (
-                old_dim.total_size().clone(),
-                old_dim.possible_tilings().to_vec(),
-            )
-        };
+        let size = self.function.logical_dim(old_dim.id()).total_size().clone();
         let (new_id, new_dims) = unwrap!(self.function.add_logical_dim(
             size.clone(),
-            tiling_factors.clone(),
-            old_dim.tile_sizes.clone(),
+            old_dim.tiling_pattern.tiling_factors.clone(),
+            old_dim.tiling_pattern.tile_sizes.clone(),
         ));
         for (old, &new) in old_dim.iter().zip_eq(&new_dims) {
             self.open_dims.remove(&old);
@@ -285,7 +279,7 @@ impl<'a> Builder<'a> {
         LogicalDim {
             logical_id: new_id,
             real_ids: new_dims,
-            tile_sizes: old_dim.tile_sizes.clone(),
+            tiling_pattern: old_dim.tiling_pattern.clone(),
         }
     }
 
