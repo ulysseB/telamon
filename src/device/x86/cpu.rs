@@ -42,7 +42,7 @@ impl device::Device for Cpu {
     }
 
     fn max_inner_block_size(&self) -> u32 {
-        0
+        1
     }
 
     fn max_threads(&self) -> u32 {
