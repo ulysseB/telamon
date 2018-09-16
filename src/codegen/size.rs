@@ -16,7 +16,6 @@ pub struct Size<'a> {
 impl<'a> Size<'a> {
     /// Creates a new 'Size'.
     pub fn new(factor: u32, dividend: Vec<&'a ir::Parameter>, divisor: u32) -> Self {
-        assert!(factor != 0);
         assert!(divisor != 0);
         let mut new = Size {
             factor,

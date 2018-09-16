@@ -487,7 +487,7 @@ impl device::Device for Gpu {
         space: &SearchSpace,
         dim_sizes: &HashMap<ir::DimId, model::size::Range>,
         _nesting: &HashMap<ir::StmtId, model::Nesting>,
-        bb: &ir::Statement,
+        stmt: &ir::Statement,
         ctx: &device::Context,
     ) -> model::HwPressure {
         if let Some(inst) = stmt.as_inst() {
