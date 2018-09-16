@@ -26,22 +26,16 @@ use num::Integer;
 use rayon::prelude::*;
 use telamon::device::{self, ArgMap, Context};
 use telamon::helper::tensor::DimSize;
-use telamon::helper::SignatureBuilder;
+use telamon::helper::{SignatureBuilder, TilingPattern};
 use telamon::{explorer, model, search_space};
 
 /// Creates a candidate from the search space and registers the tile sizes in it.
 fn build_candidate<'a>(
     space: search_space::SearchSpace<'a>,
     ctx: &device::Context,
-    tile_sizes: Vec<Vec<u32>>,
 ) -> explorer::Candidate<'a> {
     let bound = model::bound(&space, ctx);
-    let mut cand = explorer::Candidate::new(space, bound);
-    let acts = cand
-        .actions
-        .push_front(explorer::choice::ActionEx::TileSizes(tile_sizes));
-    cand.actions = acts;
-    cand
+    explorer::Candidate::new(space, bound)
 }
 
 /// Creates a `DimSize`. If the instantiate flag is true, it uses a constant size,
@@ -62,7 +56,7 @@ where
     }
 }
 
-fn generate_tile_sizes(size: u32, max_tiles: &[u32]) -> Vec<Vec<u32>> {
+fn generate_tile_sizes(size: u32, max_tiles: &[u32]) -> Vec<TilingPattern> {
     let mut tiles = vec![(size, vec![])];
     for &max_tile in max_tiles.into_iter().rev() {
         let old_tiles = std::mem::replace(&mut tiles, vec![(size, vec![])]);
@@ -80,7 +74,7 @@ fn generate_tile_sizes(size: u32, max_tiles: &[u32]) -> Vec<Vec<u32>> {
         .into_par_iter()
         .map(|(_, mut tiling)| {
             tiling.reverse();
-            tiling
+            TilingPattern::new_fixed(&tiling)
         }).collect()
 }
 
