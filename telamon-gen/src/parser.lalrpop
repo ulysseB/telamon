@@ -28,7 +28,11 @@ statement: ast::Statement = {
     },
     spanned<trigger> <foralls: (forall <var_def> ":")*> <code: code> when
         <conditions: non_empty_list<condition, and>> => {
-            ast::Statement::TriggerDef { foralls, conditions, code }
+            ast::Statement::TriggerDef(
+                ast::TriggerDef {
+                    foralls, conditions, code
+                }
+            )
     },
     <doc: doc?> spanned<define> <visibility: counter_visibility?> counter
                 <name: spanned<rc_choice_ident>>

@@ -1,6 +1,6 @@
-pub mod counter;
-pub mod enumeration;
-pub mod integer;
+mod counter;
+mod enumeration;
+mod integer;
 
 pub use self::counter::CounterDef;
 pub use self::enumeration::EnumDef;

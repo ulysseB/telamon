@@ -15,11 +15,11 @@ impl TypingContext {
     /// Adds a statement to the typing context.
     pub fn add_statement(&mut self, statement: Statement) {
         match statement {
-            Statement::TriggerDef {
+            Statement::TriggerDef(TriggerDef {
                 foralls,
                 conditions,
                 code,
-            } => self.triggers.push(TriggerDef {
+            }) => self.triggers.push(TriggerDef {
                 foralls: foralls,
                 conditions: conditions,
                 code: code,

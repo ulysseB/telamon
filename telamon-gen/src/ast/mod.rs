@@ -24,11 +24,11 @@ use utils::*;
 
 pub use self::choice::{ChoiceDef, CounterDef, EnumDef, IntegerDef};
 pub use self::constrain::Constraint;
-use self::context::TypingContext;
 pub use self::error::{Hint, TypeError};
 pub use self::set::SetDef;
-use self::trigger::TriggerDef;
-use self::typing_context::CheckerContext;
+pub use self::trigger::TriggerDef;
+pub use self::typing_context::CheckerContext;
+pub use self::context::TypingContext;
 
 pub use super::lexer::{Position, Spanned};
 
@@ -64,11 +64,7 @@ impl Ast {
 #[derive(Debug, Clone)]
 pub enum Statement {
     ChoiceDef(ChoiceDef),
-    TriggerDef {
-        foralls: Vec<VarDef>,
-        conditions: Vec<Condition>,
-        code: String,
-    },
+    TriggerDef(TriggerDef),
     SetDef(SetDef),
     Require(Constraint),
 }
@@ -90,6 +86,7 @@ impl Statement {
         match self {
             Statement::SetDef(def) => def.define(context, tc),
             Statement::ChoiceDef(def) => def.define(context, tc),
+            Statement::TriggerDef(def) => def.define(context, tc),
             _ => Ok(()),
         }
     }
