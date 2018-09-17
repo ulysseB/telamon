@@ -12,14 +12,6 @@ pub struct TypingContext {
 }
 
 impl TypingContext {
-    /// Adds a statement to the typing context.
-    pub fn add_statement(&mut self, statement: Statement) {
-        match statement {
-            Statement::Require(constraint) => self.constraints.push(constraint),
-            _ => {}
-        }
-    }
-
     /// Type-checks the statements in the correct order.
     pub fn finalize(mut self) -> (ir::IrDesc, Vec<TypedConstraint>) {
         for choice_def in std::mem::replace(&mut self.choice_defs, vec![]) {

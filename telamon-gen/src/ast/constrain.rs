@@ -53,6 +53,7 @@ impl Constraint {
         context: &CheckerContext,
         tc: &mut TypingContext,
     ) -> Result<(), TypeError> {
+        tc.constraints.push(self);
         Ok(())
     }
 }

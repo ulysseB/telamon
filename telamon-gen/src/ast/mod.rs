@@ -48,11 +48,6 @@ impl Ast {
         for statement in self.statements.iter() {
             statement.declare(&mut context)?;
         }
-        // typing context
-        for statement in self.statements.iter() {
-            tc.add_statement(statement.to_owned());
-        }
-        // define
         for statement in self.statements.into_iter() {
             statement.define(&mut context, &mut tc)?;
         }
