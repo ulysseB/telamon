@@ -1,5 +1,6 @@
 //! Encodes the data-flow information.
 use ir;
+use utils::*;
 
 /// Uniquely identifies values.
 #[derive(
@@ -19,11 +20,12 @@ pub struct Value {
     id: ValueId,
     t: ir::Type,
     def: ValueDef,
+    usepoints: HashSet<ValueUse>,
 }
 
 impl Value {
     pub fn new(id: ValueId, t: ir::Type, def: ValueDef) -> Self {
-        Value { id, t, def }
+        Value { id, t, def , usepoints: HashSet::default() }
     }
 
     /// Return the unique identifiers of the `Value`.
@@ -39,6 +41,14 @@ impl Value {
     /// Indicates the type of the value.
     pub fn t(&self) -> ir::Type {
         self.t
+    }
+
+    pub fn use_points(&self) -> impl Iterator<Item = &ValueUse> {
+        self.usepoints.iter()
+    }
+
+    pub fn add_usepoint(&mut self, use_point: ValueUse) {
+        self.usepoints.insert(use_point);
     }
 }
 
@@ -61,6 +71,17 @@ impl ValueDef {
             ValueDef::Inst(id) => id,
         };
         function.inst_mut(*inst_id).set_result_value(self_id);
+    }
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub enum ValueUse {
+    Inst(ir::InstId),
+}
+
+impl ValueUse {
+    pub fn from_inst<L>(inst: &ir::Instruction<L>) -> Self {
+        ValueUse::Inst(inst.id())
     }
 }
 // - register in the instruction

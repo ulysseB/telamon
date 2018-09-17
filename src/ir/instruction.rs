@@ -56,6 +56,15 @@ impl<'a, L> Instruction<'a, L> {
         self.operator.operands()
     }
 
+    pub fn update_value_usepoints(&mut self) {
+        let value_use = ir::value::ValueUse::from_inst(self as &Instruction<'a, L>);
+        for ref mut op in self.operator.operands_mut() {
+            if let  Operand::Value(val) = op {
+                val.add_usepoint(value_use.clone());
+            }
+        }
+    }
+
     /// Returns the type of the value produced by an instruction.
     pub fn t(&self) -> Option<Type> {
         self.operator.t()
