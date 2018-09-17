@@ -18,6 +18,7 @@ impl TriggerDef {
         context: &CheckerContext,
         tc: &mut TypingContext,
     ) -> Result<(), TypeError> {
+        tc.triggers.push(self);
         Ok(())
     }
 }
