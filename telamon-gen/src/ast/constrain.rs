@@ -46,4 +46,13 @@ impl Constraint {
                 }
             }).collect_vec()
     }
+
+    /// Type checks the define's condition.
+    pub fn define(
+        self,
+        context: &CheckerContext,
+        tc: &mut TypingContext,
+    ) -> Result<(), TypeError> {
+        Ok(())
+    }
 }

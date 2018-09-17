@@ -87,7 +87,7 @@ impl Statement {
             Statement::SetDef(def) => def.define(context, tc),
             Statement::ChoiceDef(def) => def.define(context, tc),
             Statement::TriggerDef(def) => def.define(context, tc),
-            _ => Ok(()),
+            Statement::Require(def) => def.define(context, tc),
         }
     }
 }
