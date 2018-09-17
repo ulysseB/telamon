@@ -154,8 +154,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
 
     /// Returns a name for a value
     fn name_value(val: &Value, namer: &mut Namer) -> String {
-        let val_name = namer.name(val.t());
-        val_name
+        namer.name(val.t())
     }
 
     /// Returns the total number of threads.
@@ -212,6 +211,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
             ir::Operand::Param(p) => self.name_param_val(ParamValKey::External(p)),
             ir::Operand::Addr(id) => self.name_addr(id),
             ir::Operand::InductionVar(id, _) => self.name_induction_var(id, None),
+            ir::Operand::Value(ref val) => Cow::Borrowed(&self.values[&val.id()]),
         }
     }
 
