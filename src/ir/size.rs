@@ -106,7 +106,7 @@ impl<'a> PartialSize<'a> {
 
     /// Add divisors to the size.
     pub fn add_divisors(&mut self, divisors: &VecSet<ir::DimId>) {
-        self.divisors.union(divisors);
+        self.divisors = self.divisors.union(divisors);
         self.simplify();
     }
 

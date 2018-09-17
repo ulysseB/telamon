@@ -50,6 +50,7 @@ impl<'a> Dimension<'a> {
         } else {
             VecSet::default()
         };
+        trace!("new dim {:?}, size = {:?}", id, size);
         Ok(Dimension {
             size,
             id,
@@ -71,6 +72,7 @@ impl<'a> Dimension<'a> {
         if possible_sizes.contains(&1) {
             return Err(ir::Error::InvalidDimSize);
         }
+        trace!("new static {:?}, size = {:?}", id, possible_sizes);
         Ok(Dimension {
             size: ir::PartialSize::new_dim_size(id),
             id,
