@@ -26,6 +26,7 @@ unsafe impl Send for Device {}
 /// Buffer in MPPA RAM.
 pub struct Buffer {
     pub mem: RwLock<Mem>,
+    pub size: usize,
     pub executor: &'static Device,
 }
 
@@ -35,6 +36,7 @@ impl Buffer {
         let mem_block = executor.alloc(len);
         Buffer{
             mem: RwLock::new(mem_block),
+            size: len,
             executor : executor,
         }
     }
@@ -126,7 +128,6 @@ impl Device {
             if err != 0 {
                 std::mem::drop(_lock);
                 assert_eq!(err, 0);
-                //panic!("Error in kernel enqueue");
             }
             Event(event_ptr)
         }

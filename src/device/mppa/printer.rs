@@ -52,20 +52,6 @@ impl MppaPrinter {
     }
 
 
-    pub fn foo_function<'a, 'b>(&mut self, function: &'a Function<'a>) -> String {
-        let mut namer = Namer::default();
-        let mut name_map = NameMap::new(function, &mut namer);
-        let param_decls = function.device_code_args()
-            .map(|v| self.param_decl(v, &mut name_map))
-            .collect_vec().join(",\n  ");
-        // SIGNATURE AND OPEN BRACKET
-        let function_sign = format!(include_str!("template/signature_foo.c.template"),
-        name = function.name,
-        params = param_decls
-        );
-        format!(include_str!("template/foo.c"), fun_sign = function_sign)
-    }
-
     /// Prints a `Function`.
     pub fn function<'a, 'b>(&mut self, function: &'a Function<'a>) -> String {
         let mut namer = Namer::default();

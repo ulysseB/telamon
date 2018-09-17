@@ -112,13 +112,13 @@ impl<'a> Context<'a> {
                     (get_type_size(p.t()), KernelArg::External(arg.raw_ptr()))
                 },
                 ParamVal::GlobalMem(_, size, _) => {
-                    panic!();
                     let size = self.eval_size(size);
                     let mem = self.executor.allocate_array(size as usize);
                     (self::telajax::Mem::get_mem_size(), KernelArg::GlobalMem(mem))
                 },
                 ParamVal::Size(size) => {
                     let size = self.eval_size(size);
+                    println!("param size {} : {}", name, size);
                     (get_type_size(p.t()), KernelArg::Size(size))
                 } 
             }
@@ -222,6 +222,7 @@ impl< 'a> device::ArgMap for Context<'a> {
         -> Arc<Self::Array>
     {
         let size = len * std::mem::size_of::<S>();
+        println!("Allocated {} bytes for param {}", size, param.name);
         let buffer_arc = Arc::new(Buffer::new(self.executor, size));
         self.bind_param(param.name.clone(), buffer_arc.clone());
         buffer_arc

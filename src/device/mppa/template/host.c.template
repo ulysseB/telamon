@@ -3,6 +3,9 @@
 #include <stdint.h>
 #include <pthread.h>
 #include <utask.h>
+#include <mppa_async.h>
+#include <mppa_power.h>
+#include <mppa_remote.h>
 
 typedef struct thread_dim_id {{
 pthread_barrier_t * barrier;
