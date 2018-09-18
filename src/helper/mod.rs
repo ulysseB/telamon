@@ -104,7 +104,7 @@ impl TilingPattern {
         let tile_sizes = max_tile_sizes
             .iter()
             .map(|max| {
-                VecSet::new(multiples.iter().cloned().take_while(|x| x < max).collect())
+                VecSet::new(multiples.iter().cloned().take_while(|x| x <= max).collect())
             }).collect();
         TilingPattern {
             tiling_factors: multiples,
