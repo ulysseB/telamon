@@ -10,8 +10,8 @@ mod set;
 mod trigger;
 mod typing_context;
 
-use constraint::dedup_inputs;
-use constraint::Constraint as TypedConstraint;
+pub use constraint::dedup_inputs;
+pub use constraint::Constraint as TypedConstraint;
 use indexmap::IndexMap;
 use ir;
 use itertools::Itertools;
