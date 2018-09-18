@@ -95,10 +95,12 @@ impl<'a> AutoOperand<'a> for InstId {
 
 impl<'a> AutoOperand<'a> for ValueId {
     fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b, ()>
-        where 'a: 'b {
-            let val = builder.function().value(*self);
-            Operand::Value(*self, val.t())
-        }
+    where
+        'a: 'b,
+    {
+        let val = builder.function().value(*self);
+        Operand::Value(*self, val.t())
+    }
 }
 
 impl<'a> AutoOperand<'a> for TmpArray {

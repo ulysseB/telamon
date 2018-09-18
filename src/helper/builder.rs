@@ -2,7 +2,9 @@
 use device::Device;
 use helper::{AutoOperand, LogicalDim, MetaStatement};
 use ir::{self, mem, op, Parameter, Type};
-use ir::{AccessPattern, Function, InstId, Operand, Operator, Signature, ValueDef, ValueId};
+use ir::{
+    AccessPattern, Function, InstId, Operand, Operator, Signature, ValueDef, ValueId,
+};
 use itertools::Itertools;
 use search_space::{Action, DimKind, InstFlag, MemSpace, Order, SearchSpace};
 use std::borrow::Borrow;
@@ -214,11 +216,15 @@ impl<'a> Builder<'a> {
     }
 
     fn create_inst_value(&mut self, inst_id: InstId) -> ValueId {
-        let value_def = ValueDef::Inst(inst_id);
-        let value_id = unwrap!(self.function.add_value(value_def));
-        value_def.register(value_id, &mut self.function);
-        // This should not fail after registration of the value
-        unwrap!(self.function.inst(inst_id).result_value())
+        if let Some(val_id) = self.function.inst(inst_id).result_value() {
+            val_id
+        } else {
+            let value_def = ValueDef::Inst(inst_id);
+            let value_id = unwrap!(self.function.add_value(value_def));
+            value_def.register(value_id, &mut self.function);
+            // This should not fail after registration of the value
+            unwrap!(self.function.inst(inst_id).result_value())
+        }
     }
 
     /// Applies an action on the function.
@@ -406,7 +412,8 @@ impl<'a> Builder<'a> {
                         size *= self.function.dim(dim).size();
                         (dim, increment)
                     })
-            }).collect()
+            })
+            .collect()
     }
 
     /// Returns the list of increment to access an n-dimensional tensor.
@@ -422,7 +429,8 @@ impl<'a> Builder<'a> {
                 let increment = size.clone();
                 *size *= self.function.logical_dim(dim.id()).total_size();
                 Some((dim, increment))
-            }).collect()
+            })
+            .collect()
     }
 
     /// Creates a dim-map operand.
