@@ -348,7 +348,8 @@ impl<'a, L> Function<'a, L> {
                 let old_size = size.clone();
                 *size *= self.dim(dim).size();
                 Some((dim, old_size))
-            }).collect_vec();
+            })
+            .collect_vec();
         let pattern = ir::AccessPattern::Tensor {
             mem_id: mem,
             dims: increments.iter().cloned().collect(),
@@ -404,6 +405,13 @@ impl<'a, L> Function<'a, L> {
             self.dim_mut(dim).register_dim_mapping(&mapping);
         }
         mapping
+    }
+    /// Returns true if inst2 depends on inst1 (check based on value)
+    pub fn is_dependency_of(&self, inst1_id: InstId, inst2_id: InstId) ->  bool {
+        match self.insts[inst1_id].result_value() {
+            None => true,
+            Some(val_id) => self.values[val_id].is_dependency_of(inst2_id),
+        }
     }
 }
 

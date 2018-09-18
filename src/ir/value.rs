@@ -47,12 +47,16 @@ impl Value {
         self.t
     }
 
-    pub fn use_points(&self) -> impl Iterator<Item = &InstId> {
+    pub fn usepoints(&self) -> impl Iterator<Item = &InstId> {
         self.usepoints.iter()
     }
 
-    pub fn add_usepoint(&mut self, use_point: InstId) {
-        self.usepoints.insert(use_point);
+    pub fn add_usepoint(&mut self, usepoint: InstId) {
+        self.usepoints.insert(usepoint);
+    }
+
+    pub fn is_dependency_of(&self, usepoint: InstId) -> bool {
+        self.usepoints.contains(&usepoint)
     }
 }
 
