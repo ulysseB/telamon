@@ -6,9 +6,8 @@ use std::hash::{Hash, Hasher};
 use utils::*;
 
 /// Uniquely identifies an instruction.
-#[derive(
-    Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
-)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize,
+         Deserialize)]
 #[repr(C)]
 /// cbindgen:field-names=[id]
 pub struct InstId(pub u32);
@@ -54,15 +53,6 @@ impl<'a, L> Instruction<'a, L> {
     /// Returns an iterator over the operands of this instruction.
     pub fn operands(&self) -> Vec<&Operand<'a, L>> {
         self.operator.operands()
-    }
-
-    pub fn update_value_usepoints(&mut self) {
-        let value_use = ir::value::ValueUse::from_inst(self as &Instruction<'a, L>);
-        for ref mut op in self.operator.operands_mut() {
-            if let  Operand::Value(val) = op {
-                val.add_usepoint(value_use.clone());
-            }
-        }
     }
 
     /// Returns the type of the value produced by an instruction.
@@ -136,7 +126,8 @@ impl<'a, L> Instruction<'a, L> {
         self.as_reduction()
             .map(|(i, map, rd)| {
                 i == init && !rd.contains(&dim) && map.iter().all(|&(_, rhs)| dim != rhs)
-            }).unwrap_or(false)
+            })
+            .unwrap_or(false)
     }
 
     /// Rename a dimension to another ID.

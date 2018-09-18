@@ -1,11 +1,10 @@
 //! Encodes the data-flow information.
-use ir;
+use ir::{self, InstId};
 use utils::*;
 
 /// Uniquely identifies values.
-#[derive(
-    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize,
-)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize,
+         Deserialize)]
 pub struct ValueId(pub u16);
 
 impl Into<usize> for ValueId {
@@ -20,12 +19,17 @@ pub struct Value {
     id: ValueId,
     t: ir::Type,
     def: ValueDef,
-    usepoints: HashSet<ValueUse>,
+    usepoints: HashSet<InstId>,
 }
 
 impl Value {
     pub fn new(id: ValueId, t: ir::Type, def: ValueDef) -> Self {
-        Value { id, t, def , usepoints: HashSet::default() }
+        Value {
+            id,
+            t,
+            def,
+            usepoints: HashSet::default(),
+        }
     }
 
     /// Return the unique identifiers of the `Value`.
@@ -43,11 +47,11 @@ impl Value {
         self.t
     }
 
-    pub fn use_points(&self) -> impl Iterator<Item = &ValueUse> {
+    pub fn use_points(&self) -> impl Iterator<Item = &InstId> {
         self.usepoints.iter()
     }
 
-    pub fn add_usepoint(&mut self, use_point: ValueUse) {
+    pub fn add_usepoint(&mut self, use_point: InstId) {
         self.usepoints.insert(use_point);
     }
 }
@@ -74,16 +78,6 @@ impl ValueDef {
     }
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub enum ValueUse {
-    Inst(ir::InstId),
-}
-
-impl ValueUse {
-    pub fn from_inst<L>(inst: &ir::Instruction<L>) -> Self {
-        ValueUse::Inst(inst.id())
-    }
-}
 // - register in the instruction
 // - retrieve the type
 // FIXME: def point

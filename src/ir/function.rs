@@ -127,6 +127,12 @@ impl<'a, L> Function<'a, L> {
             self.mem_insts.push(id);
             self.mem_blocks.register_use(mem_id, id);
         }
+        // Update the usepoint of all values
+        for ref op in inst.operator().operands() {
+            if let Operand::Value(val_id, _) = op {
+                self.values[*val_id].add_usepoint(id);
+            }
+        }
         Ok(inst)
     }
 
