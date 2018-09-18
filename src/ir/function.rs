@@ -409,7 +409,7 @@ impl<'a, L> Function<'a, L> {
     /// Returns true if inst2 depends on inst1 (check based on value)
     pub fn is_dependency_of(&self, inst1_id: InstId, inst2_id: InstId) -> bool {
         match self.insts[inst1_id].result_value() {
-            None => true,
+            None => false,
             Some(val_id) => self.values[val_id].is_dependency_of(inst2_id),
         }
     }

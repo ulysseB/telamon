@@ -61,7 +61,7 @@ impl Value {
 }
 
 /// Specifies how is a `Value` defined.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 pub enum ValueDef {
     /// Takes the value produced by an instruction.
     Inst(ir::InstId),

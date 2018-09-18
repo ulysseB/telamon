@@ -2,7 +2,7 @@
 use device::Device;
 use helper::{AutoOperand, LogicalDim, MetaStatement};
 use ir::{self, mem, op, Parameter, Type};
-use ir::{AccessPattern, Function, InstId, Operand, Operator, Signature};
+use ir::{AccessPattern, Function, InstId, Operand, Operator, Signature, ValueDef, ValueId};
 use itertools::Itertools;
 use search_space::{Action, DimKind, InstFlag, MemSpace, Order, SearchSpace};
 use std::borrow::Borrow;
@@ -211,6 +211,14 @@ impl<'a> Builder<'a> {
     fn inst(&mut self, op: Operator<'a, ()>) -> InstId {
         let open_dims = self.open_dims.iter().map(|(&x, _)| x).collect();
         unwrap!(self.function.add_inst(op, open_dims))
+    }
+
+    fn create_inst_value(&mut self, inst_id: InstId) -> ValueId {
+        let value_def = ValueDef::Inst(inst_id);
+        let value_id = unwrap!(self.function.add_value(value_def));
+        value_def.register(value_id, &mut self.function);
+        // This should not fail after registration of the value
+        unwrap!(self.function.inst(inst_id).result_value())
     }
 
     /// Applies an action on the function.
