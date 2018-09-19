@@ -55,24 +55,20 @@ where
         signature: &'b ir::Signature,
         ctx: &'b device::Context,
     ) -> Vec<Candidate<'b>> {
-        let tilings = ::generate_tile_sizes(self.n as u32, &[1024, 4]);
-        tilings
-            .into_iter()
-            .map(|tiling| {
-                let mut builder = Builder::new(signature, ctx.device());
+        let tiling = helper::TilingPattern::infer_pattern(self.n as u32, &[1024, 4]);
+        let mut builder = Builder::new(signature, ctx.device());
 
-                let ld_x = self.x.load(vec![tiling.clone()], &mut builder);
-                let ld_y = self.y.load(vec![tiling], &mut builder);
-                let mad_dim = builder.open_mapped_dim(&ld_x[0]);
-                let x_op = ld_x.dim_map(&[&mad_dim], GlobalScope(()), &mut builder);
-                let y_op = ld_y.dim_map(&[&mad_dim], GlobalScope(()), &mut builder);
-                let mad = VirtualTensor::new(
-                    builder.mad(&x_op, &"alpha", &y_op),
-                    vec![mad_dim],
-                );
-                mad.store(&self.z, &mut builder);
-                build_candidate(builder.get(), ctx)
-            }).collect()
+        let ld_x = self.x.load(vec![tiling.clone()], &mut builder);
+        let ld_y = self.y.load(vec![tiling], &mut builder);
+        let mad_dim = builder.open_mapped_dim(&ld_x[0]);
+        let x_op = ld_x.dim_map(&[&mad_dim], GlobalScope(()), &mut builder);
+        let y_op = ld_y.dim_map(&[&mad_dim], GlobalScope(()), &mut builder);
+        let mad = VirtualTensor::new(
+            builder.mad(&x_op, &"alpha", &y_op),
+            vec![mad_dim],
+            );
+        mad.store(&self.z, &mut builder);
+        vec![build_candidate(builder.get(), ctx)]
     }
 
     fn get_expected_output(&self, context: &device::Context) -> ArrayD<S> {
