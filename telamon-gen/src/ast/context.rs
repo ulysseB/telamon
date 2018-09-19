@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Default)]
+#[derive(Default, Clone, Debug)]
 pub struct TypingContext {
     pub ir_desc: ir::IrDesc,
     pub set_defs: Vec<SetDef>,

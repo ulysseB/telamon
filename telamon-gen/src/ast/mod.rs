@@ -32,26 +32,28 @@ pub use self::context::TypingContext;
 
 pub use super::lexer::{Position, Spanned};
 
-#[derive(Debug)]
+#[derive(Default, Clone, Debug)]
 pub struct Ast {
     pub statements: Vec<Statement>,
+    /// TODO: remove typing context
+    pub tc: TypingContext,
 }
 
 impl Ast {
     /// Generate the defintion of choices and the list of constraints.
-    /// TODO: remove typing context
-    pub fn type_check(self) -> Result<(ir::IrDesc, Vec<TypedConstraint>), TypeError> {
+    pub fn type_check(
+        mut self
+    ) -> Result<(ir::IrDesc, Vec<TypedConstraint>), TypeError> {
         let mut context = CheckerContext::default();
-        let mut tc = TypingContext::default();
 
         // declare
         for statement in self.statements.iter() {
             statement.declare(&mut context)?;
         }
         for statement in self.statements.into_iter() {
-            statement.define(&mut context, &mut tc)?;
+            statement.define(&mut context, &mut self.tc)?;
         }
-        Ok(tc.finalize())
+        Ok(self.tc.finalize())
     }
 }
 
@@ -96,6 +98,7 @@ pub struct Quotient {
 }
 
 /// Checks to perform once the statements have been declared.
+#[derive(Clone, Debug)]
 pub enum Check {
     /// Ensures the inverse of the value set is itself.
     IsSymmetric { choice: RcStr, values: Vec<RcStr> },

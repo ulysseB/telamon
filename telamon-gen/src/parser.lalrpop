@@ -7,7 +7,7 @@ use utils::*;
 
 grammar;
 
-pub ast: ast::Ast = { statement* => ast::Ast { statements: <> } };
+pub ast: ast::Ast = { statement* => ast::Ast { statements: <>, ..Default::default() } };
 
 rc_choice_ident: RcStr = {
     <name: choice_ident> => RcStr::new(name),
