@@ -1,5 +1,23 @@
-use super::*;
 use std::ops::Deref;
+use std::iter::once;
+use std::mem;
+
+use super::{
+    ir,
+    Quotient, SetRef, VarDef, VarMap, Check, Condition, CounterVal,
+    print, ChoiceInstance, CounterBody
+};
+use super::constrain::Constraint;
+use super::context::CheckerContext;
+use super::choice::{CounterDef, ChoiceDef};
+use super::typing_context::TypingContext;
+use super::trigger::TriggerDef;
+use super::error::{TypeError, Hint};
+
+use utils::{RcStr, HashMap};
+use lexer::Spanned;
+use indexmap::IndexMap;
+use itertools::Itertools;
 
 #[derive(Debug, Clone)]
 pub struct SetDef {
@@ -162,7 +180,7 @@ impl SetDef {
             false,
         );
         let mut repr = ir::Choice::new(name, None, args, def);
-        let false_value_set = std::iter::once("FALSE".into()).collect();
+        let false_value_set = once("FALSE".into()).collect();
         repr.add_fragile_values(ir::ValueSet::enum_values(bool_str, false_value_set));
         tc.ir_desc.add_choice(repr);
     }
@@ -243,7 +261,7 @@ impl SetDef {
             .arg
             .clone()
             .into_iter()
-            .chain(std::iter::once(quotient.item))
+            .chain(once(quotient.item))
             .collect_vec();
         let counter_name = self.create_repr_counter(
             set.name().clone(),
@@ -320,7 +338,7 @@ impl SetDef {
             .arg
             .clone()
             .into_iter()
-            .chain(std::iter::once(quotient_item_def))
+            .chain(once(quotient_item_def))
             .collect();
         tc.constraints
             .push(Constraint::new(item_in_set_foralls, vec![vec![repr_true]]));
@@ -401,7 +419,7 @@ impl SetDef {
                     .type_check(&tc.ir_desc, &VarMap::default());
                 assert!(superset.as_ref().unwrap().is_subset_of_def(&set));
                 assert!(
-                    std::mem::replace(&mut reverse, Some((set, v.to_owned()))).is_none()
+                    mem::replace(&mut reverse, Some((set, v.to_owned()))).is_none()
                 );
             } else {
                 assert!(keymap.insert(key, v).is_none());

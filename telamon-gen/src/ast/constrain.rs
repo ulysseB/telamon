@@ -1,4 +1,11 @@
-use super::*;
+use super::{
+    ir, VarDef, VarMap, Condition, TypedConstraint
+};
+use super::context::CheckerContext;
+use super::typing_context::TypingContext;
+use super::error::TypeError;
+
+use itertools::Itertools;
 
 /// A constraint that must be enforced by the IR.
 #[derive(Debug, Clone)]

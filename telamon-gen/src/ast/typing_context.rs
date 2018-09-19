@@ -1,4 +1,14 @@
-use super::*;
+use ir;
+use super::{
+    SetDef,
+    ChoiceDef,
+    TriggerDef,
+    Constraint,
+    Check,
+    TypedConstraint,
+};
+
+use itertools::Itertools;
 
 #[derive(Default, Clone, Debug)]
 pub struct TypingContext {

@@ -1,5 +1,10 @@
-use super::*;
 use std::ops::Deref;
+
+use super::SetRef;
+use super::error::{TypeError, Hint};
+
+use lexer::Spanned;
+use utils::HashMap;
 
 /// CheckContext is a type system.
 #[derive(Debug, Default)]

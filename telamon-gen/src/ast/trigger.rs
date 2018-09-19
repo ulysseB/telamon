@@ -1,6 +1,16 @@
-use super::*;
+use super::{
+    type_check_code,
+    VarDef, VarMap, Condition,
+};
+use super::context::CheckerContext;
+use super::typing_context::TypingContext;
+use super::error::TypeError;
+use constraint::dedup_inputs;
 
+use utils::RcStr;
 use ir::{self, Adaptable};
+
+use itertools::Itertools;
 
 #[derive(Clone, Debug)]
 pub struct TriggerDef {
