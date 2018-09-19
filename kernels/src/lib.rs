@@ -5,7 +5,6 @@ extern crate itertools;
 extern crate libc;
 #[macro_use]
 extern crate log;
-#[macro_use]
 extern crate ndarray;
 extern crate num;
 extern crate num_cpus;
@@ -22,11 +21,9 @@ pub mod statistics;
 
 pub use kernel::{analyze_bounds, Kernel};
 
-use num::Integer;
-use rayon::prelude::*;
 use telamon::device::{self, ArgMap, Context};
 use telamon::helper::tensor::DimSize;
-use telamon::helper::{SignatureBuilder, TilingPattern};
+use telamon::helper::{self, SignatureBuilder};
 use telamon::{explorer, model, search_space};
 
 /// Creates a candidate from the search space and registers the tile sizes in it.
@@ -56,39 +53,15 @@ where
     }
 }
 
-fn generate_tile_sizes(size: u32, max_tiles: &[u32]) -> Vec<TilingPattern> {
-    let mut tiles = vec![(size, vec![])];
-    for &max_tile in max_tiles.into_iter().rev() {
-        let old_tiles = std::mem::replace(&mut tiles, vec![(size, vec![])]);
-        for (len, old_tile) in old_tiles {
-            for i in 2..std::cmp::min(max_tile, len / 2) {
-                if let (new_len, 0) = len.div_rem(&i) {
-                    let mut tile = old_tile.clone();
-                    tile.push(i);
-                    tiles.push((new_len, tile));
-                }
-            }
-        }
-    }
-    tiles
-        .into_par_iter()
-        .map(|(_, mut tiling)| {
-            tiling.reverse();
-            TilingPattern::new_fixed(&tiling)
-        }).collect()
-}
-
-fn par_iter_product<I1, I2>(
-    i1: I1,
-    i2: I2,
-) -> impl ParallelIterator<Item = (I1::Item, I2::Item)>
-where
-    I1: IntoParallelIterator,
-    I1::Item: Clone + Sync,
-    I2: IntoParallelIterator + Clone + Send + Sync,
-{
-    i1.into_par_iter()
-        .flat_map(move |x| i2.clone().into_par_iter().map(move |y| (x.clone(), y)))
+/// Returns the given tiling pattern or infer one.
+fn infer_tiling(
+    size: i32, 
+    given_pattern: &Option<helper::TilingPattern>,
+    max_sizes: &[u32]
+) -> helper::TilingPattern {
+    given_pattern.clone().unwrap_or_else(|| {
+        helper::TilingPattern::infer_pattern(size as u32, max_sizes)
+    })
 }
 
 /// A scalar that can be used as the data type for tests.
