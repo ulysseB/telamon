@@ -410,8 +410,7 @@ impl<'a> Builder<'a> {
                         size *= self.function.dim(dim).size();
                         (dim, increment)
                     })
-            })
-            .collect()
+            }).collect()
     }
 
     /// Returns the list of increment to access an n-dimensional tensor.
@@ -427,8 +426,7 @@ impl<'a> Builder<'a> {
                 let increment = size.clone();
                 *size *= self.function.logical_dim(dim.id()).total_size();
                 Some((dim, increment))
-            })
-            .collect()
+            }).collect()
     }
 
     /// Creates a dim-map operand.

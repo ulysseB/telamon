@@ -76,8 +76,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
                     mem_blocks.insert(id, var_name.clone());
                 }
                 (val.key(), (var_name, param_name))
-            })
-            .collect();
+            }).collect();
         // Name dimensions indexes.
         let mut indexes = HashMap::default();
         for dim in function.dimensions() {

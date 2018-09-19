@@ -3,8 +3,9 @@ use ir::{self, InstId};
 use utils::*;
 
 /// Uniquely identifies values.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize,
-         Deserialize)]
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize,
+)]
 pub struct ValueId(pub u16);
 
 impl From<ValueId> for usize {

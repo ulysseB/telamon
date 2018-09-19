@@ -213,7 +213,7 @@ impl<'a, L> Function<'a, L> {
         &self.values[id]
     }
 
-    /// Adds a value to the function.
+    /// Adds a value to the function. Also register its definition into the relevant instruction
     pub fn add_value(&mut self, def: ir::ValueDef) -> Result<ir::ValueId, ir::Error> {
         let id = ir::ValueId(self.values.len() as u16);
         let val = self.create_value(id, def)?;
@@ -348,8 +348,7 @@ impl<'a, L> Function<'a, L> {
                 let old_size = size.clone();
                 *size *= self.dim(dim).size();
                 Some((dim, old_size))
-            })
-            .collect_vec();
+            }).collect_vec();
         let pattern = ir::AccessPattern::Tensor {
             mem_id: mem,
             dims: increments.iter().cloned().collect(),

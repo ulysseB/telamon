@@ -40,8 +40,7 @@ impl LoweringMap {
                 let st_mapping = cnt.next_dim_mapping();
                 let ld_mapping = cnt.next_dim_mapping();
                 ((src, (st_dim, st_mapping)), (dst, (ld_dim, ld_mapping)))
-            })
-            .unzip();
+            }).unzip();
 
         LoweringMap {
             mem_id,
@@ -64,8 +63,7 @@ impl LoweringMap {
                 let &(st_dim, st_mapping) = unwrap!(self.st_map.get(&src));
                 let &(ld_dim, ld_mapping) = unwrap!(self.ld_map.get(&dst));
                 ((st_mapping, [src, st_dim]), (ld_mapping, [dst, ld_dim]))
-            })
-            .unzip();
+            }).unzip();
         ir::LoweredDimMap {
             mem: self.mem_id,
             store: self.st_inst,
