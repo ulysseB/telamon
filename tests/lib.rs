@@ -44,7 +44,6 @@ fn two_add() {
     });
 }
 
-
 /// Ensures the default order between instructions and dimensions is good.
 #[test]
 fn inst_dim_order() {
@@ -100,7 +99,10 @@ fn inst_value_order() {
     let v0 = builder.create_inst_value(inst0);
     let inst1 = builder.mov(&v0);
     let space = builder.get();
-    assert_eq!(space.domain().get_order(inst0.into(), inst1.into()), Order::BEFORE);
+    assert_eq!(
+        space.domain().get_order(inst0.into(), inst1.into()),
+        Order::BEFORE
+    );
 }
 
 /// Ensures nested thread dimensions are packed and that their number is limited.
