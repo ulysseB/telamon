@@ -44,6 +44,7 @@ fn two_add() {
     });
 }
 
+
 /// Ensures the default order between instructions and dimensions is good.
 #[test]
 fn inst_dim_order() {
@@ -85,6 +86,21 @@ fn inst_dim_order() {
         Order::INNER | Order::ORDERED
     );
     gen_best(&context, space);
+}
+
+#[test]
+/// Test that ordering is correctly enforced when an instruction takes as operand a value produced
+/// by another instruction
+fn inst_value_order() {
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature(1);
+    let mut builder = helper::Builder::new(&signature, context.device());
+    let inst0 = builder.mov(&1f32);
+    let v0 = builder.create_inst_value(inst0);
+    let inst1 = builder.mov(&v0);
+    let space = builder.get();
+    assert_eq!(space.domain().get_order(inst0.into(), inst1.into()), Order::BEFORE);
 }
 
 /// Ensures nested thread dimensions are packed and that their number is limited.
