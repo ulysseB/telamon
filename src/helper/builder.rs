@@ -215,15 +215,13 @@ impl<'a> Builder<'a> {
         unwrap!(self.function.add_inst(op, open_dims))
     }
 
-    fn create_inst_value(&mut self, inst_id: InstId) -> ValueId {
+    pub fn create_inst_value(&mut self, inst_id: InstId) -> ValueId {
         if let Some(val_id) = self.function.inst(inst_id).result_value() {
             val_id
         } else {
             let value_def = ValueDef::Inst(inst_id);
             let value_id = unwrap!(self.function.add_value(value_def));
-            value_def.register(value_id, &mut self.function);
-            // This should not fail after registration of the value
-            unwrap!(self.function.inst(inst_id).result_value())
+            value_id
         }
     }
 

@@ -7,9 +7,9 @@ use utils::*;
          Deserialize)]
 pub struct ValueId(pub u16);
 
-impl Into<usize> for ValueId {
-    fn into(self) -> usize {
-        self.0 as usize
+impl From<ValueId> for usize {
+    fn from(val_id: ValueId) -> Self {
+        val_id.0 as usize
     }
 }
 

@@ -215,7 +215,7 @@ impl<'a, L> Function<'a, L> {
 
     /// Adds a value to the function.
     pub fn add_value(&mut self, def: ir::ValueDef) -> Result<ir::ValueId, ir::Error> {
-        let id = ir::ValueId(self.insts.len() as u16);
+        let id = ir::ValueId(self.values.len() as u16);
         let val = self.create_value(id, def)?;
         val.def().register(val.id(), self);
         self.values.push(val);
