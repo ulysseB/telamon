@@ -16,7 +16,7 @@ pub struct Function<'a> {
     induction_vars: Vec<InductionVar<'a>>,
     mem_blocks: Vec<InternalMemoryRegion<'a>>,
     init_induction_levels: Vec<InductionLevel<'a>>,
-    values: Vec<ir::Value>,
+    values: Vec<Value<'a>>,
     // TODO(cleanup): remove dependency on the search space
     space: &'a SearchSpace<'a>,
 }
@@ -52,7 +52,11 @@ impl<'a> Function<'a> {
         );
         let device_code_args = device_code_args.into_iter().collect();
         debug!("compiling cfg {:?}", cfg);
-        let values = space.ir_instance().values().cloned().collect_vec();
+        let values = space
+            .ir_instance()
+            .values()
+            .map(|v| Value::new(v, space))
+            .collect_vec();
         Function {
             cfg,
             thread_dims,
@@ -74,6 +78,11 @@ impl<'a> Function<'a> {
     /// Returns the ordered list of block dimensions.
     pub fn block_dims(&self) -> &[Dimension<'a>] {
         &self.block_dims
+    }
+
+    /// Iterate on values of the function
+    pub fn values(&self) -> impl Iterator<Item = &Value> {
+        self.values.iter()
     }
 
     /// Iterates other all `codegen::Dimension`.
@@ -351,6 +360,28 @@ impl<'a> InternalMemoryRegion<'a> {
     /// Returns the type of the pointer to the memory block.
     pub fn ptr_type(&self) -> ir::Type {
         self.ptr_type
+    }
+}
+
+pub struct Value<'a> {
+    value: &'a ir::Value,
+    t: ir::Type,
+}
+
+impl<'a> Value<'a> {
+    pub fn new(value: &'a ir::Value, space: &SearchSpace) -> Self {
+        let t = unwrap!(space.ir_instance().device().lower_type(value.t(), space));
+        Value { value, t }
+    }
+
+    /// Returns the ID of the value.
+    pub fn id(&self) -> ir::ValueId {
+        self.value.id()
+    }
+
+    /// Returns the type of the value.
+    pub fn t(&self) -> ir::Type {
+        self.t
     }
 }
 

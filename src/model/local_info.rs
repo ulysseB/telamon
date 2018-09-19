@@ -29,7 +29,7 @@ impl<'a> LocalInfo<'a> {
         let dim_sizes = space
             .ir_instance()
             .dims()
-            .map(|d| (d.id(), context.eval_size(&d.size().clone().into())))
+            .map(|d| (d.id(), size::bounds(d.size(), space, context)))
             .collect();
         let nesting: HashMap<_, _> = space
             .ir_instance()
@@ -99,7 +99,7 @@ impl<'a> LocalInfo<'a> {
 fn add_indvar_pressure(
     device: &Device,
     space: &SearchSpace,
-    dim_sizes: &HashMap<ir::DimId, u32>,
+    dim_sizes: &HashMap<ir::DimId, size::Range>,
     indvar: &ir::InductionVar,
     hw_pressure: &mut HashMap<ir::StmtId, HwPressure>,
     dim_overhead: &mut HashMap<ir::DimId, (HwPressure, HwPressure)>,
@@ -123,14 +123,14 @@ fn add_indvar_pressure(
         } else {
             device.multiplicative_indvar_pressure(&t)
         };
-        let size = dim_sizes[&dim];
+        let size = dim_sizes[&dim].min;
         if dim_kind.intersects(DimKind::THREAD | DimKind::BLOCK) {
             thread_overhead.add_parallel(&overhead);
         } else if size > 1 {
             unwrap!(dim_overhead.get_mut(&dim))
                 .0
                 .add_parallel(&overhead);
-            overhead.repeat_parallel(f64::from(size - 1));
+            overhead.repeat_parallel((size - 1) as f64);
             unwrap!(hw_pressure.get_mut(&dim.into())).add_parallel(&overhead);
         }
     }
