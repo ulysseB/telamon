@@ -291,9 +291,8 @@ fn cmp_thread_dims(
     } else {
         (lhs.stride.min, rhs.stride.min)
     };
-    lhs_val
-        .cmp(&rhs_val)
-        .reverse()
+    rhs_val
+        .cmp(&lhs_val)
         .then(lhs.is_partial_dim.cmp(&rhs.is_partial_dim))
 }
 
@@ -352,7 +351,7 @@ fn increment_index(pos: usize, dims: &[ThreadDimInfo], indexes: &mut [u64]) -> b
     }
 }
 
-/// Compute the replay foactor caused by shared memory accesses.
+/// Compute the replay factor caused by shared memory accesses.
 fn shared_replay_factor(
     thread_dims: Vec<ThreadDimInfo>,
     tensor_dims: &HashMap<ir::DimId, ir::PartialSize>,
