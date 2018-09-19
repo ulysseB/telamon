@@ -27,8 +27,8 @@ pub use self::constrain::Constraint;
 pub use self::error::{Hint, TypeError};
 pub use self::set::SetDef;
 pub use self::trigger::TriggerDef;
-pub use self::typing_context::CheckerContext;
-pub use self::context::TypingContext;
+pub use self::context::CheckerContext;
+pub use self::typing_context::TypingContext;
 
 pub use super::lexer::{Position, Spanned};
 

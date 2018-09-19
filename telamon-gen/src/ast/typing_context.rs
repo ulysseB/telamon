@@ -1,51 +1,51 @@
 use super::*;
-use std::ops::Deref;
 
-/// CheckContext is a type system.
-#[derive(Debug, Default)]
-pub struct CheckerContext {
-    /// Map Name of unique identifiant.
-    hash_set: HashMap<String, Spanned<Hint>>,
-    hash_choice: HashMap<String, Spanned<Hint>>,
+#[derive(Default, Clone, Debug)]
+pub struct TypingContext {
+    pub ir_desc: ir::IrDesc,
+    pub set_defs: Vec<SetDef>,
+    pub choice_defs: Vec<ChoiceDef>,
+    pub triggers: Vec<TriggerDef>,
+    pub constraints: Vec<Constraint>,
+    pub checks: Vec<Check>,
 }
 
-impl CheckerContext {
-    /// Declares a set and ensures it is not defined twice.
-    pub fn declare_set(&mut self, object_name: Spanned<String>) -> Result<(), TypeError> {
-        if let Some(pre) = self.hash_set.insert(
-            object_name.data.to_owned(),
-            object_name.with_data(Hint::Set),
-        ) {
-            Err(TypeError::Redefinition {
-                object_kind: pre,
-                object_name,
-            })
-        } else {
-            Ok(())
+impl TypingContext {
+    /// Type-checks the statements in the correct order.
+    pub fn finalize(mut self) -> (ir::IrDesc, Vec<TypedConstraint>) {
+        for choice_def in self.choice_defs.clone().iter_mut() {
+            match choice_def {
+                ChoiceDef::CounterDef(counter_def) => {
+                    counter_def.register_counter(
+                        counter_def.name.data.clone(),
+                        counter_def.doc.clone(),
+                        counter_def.visibility.clone(),
+                        counter_def.vars.clone(),
+                        counter_def.body.clone(),
+                        &mut self
+                    );
+                },
+                _ => {}
+            }
         }
-    }
-
-    /// Declares a choice and ensures it is not defined twice.
-    pub fn declare_choice(
-        &mut self,
-        object_name: Spanned<String>,
-        object_type: Hint,
-    ) -> Result<(), TypeError> {
-        if let Some(pre) = self.hash_choice.insert(
-            object_name.data.to_owned(),
-            object_name.with_data(object_type),
-        ) {
-            Err(TypeError::Redefinition {
-                object_kind: pre,
-                object_name,
-            })
-        } else {
-            Ok(())
+        for trigger in self.triggers.clone().iter() {
+            trigger.register_trigger(
+                trigger.foralls.clone(),
+                trigger.conditions.clone(),
+                trigger.code.clone(),
+                &mut self
+            );
         }
-    }
-
-    /// Check if the referenced set is defined.
-    pub fn check_set_define(&self, subset: &SetRef) -> bool {
-        self.hash_set.contains_key(subset.name.deref())
+        let constraints = {
+            let ir_desc = &self.ir_desc;
+            self.constraints
+                .into_iter()
+                .flat_map(move |constraint| constraint.type_check(ir_desc))
+                .collect_vec()
+        };
+        for check in self.checks {
+            check.check(&self.ir_desc);
+        }
+        (self.ir_desc, constraints)
     }
 }
