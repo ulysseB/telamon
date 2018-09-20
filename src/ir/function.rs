@@ -127,6 +127,12 @@ impl<'a, L> Function<'a, L> {
             self.mem_insts.push(id);
             self.mem_blocks.register_use(mem_id, id);
         }
+        // Update the usepoint of all values
+        for ref op in inst.operator().operands() {
+            if let Operand::Value(val_id, _) = op {
+                self.values[*val_id].add_usepoint(id);
+            }
+        }
         Ok(inst)
     }
 
@@ -207,9 +213,9 @@ impl<'a, L> Function<'a, L> {
         &self.values[id]
     }
 
-    /// Adds a value to the function.
+    /// Adds a value to the function. Also register its definition into the relevant instruction
     pub fn add_value(&mut self, def: ir::ValueDef) -> Result<ir::ValueId, ir::Error> {
-        let id = ir::ValueId(self.insts.len() as u16);
+        let id = ir::ValueId(self.values.len() as u16);
         let val = self.create_value(id, def)?;
         val.def().register(val.id(), self);
         self.values.push(val);
@@ -398,6 +404,13 @@ impl<'a, L> Function<'a, L> {
             self.dim_mut(dim).register_dim_mapping(&mapping);
         }
         mapping
+    }
+    /// Returns true if inst2 depends on inst1 (check based on value)
+    pub fn is_dependency_of(&self, inst1_id: InstId, inst2_id: InstId) -> bool {
+        match self.insts[inst1_id].result_value() {
+            None => false,
+            Some(val_id) => self.values[val_id].is_dependency_of(inst2_id),
+        }
     }
 }
 

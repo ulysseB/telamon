@@ -149,6 +149,12 @@ define enum dim_kind($dim in Dimensions):
   alias SEQUENTIAL = LOOP | UNROLL:
 end
 
+// Ensure instructions do not violate dependency constraint
+require forall $inst1 in Instructions:
+  forall $inst2 in Instructions:
+    order($inst1, $inst2) is BEFORE
+    || "!$fun.is_dependency_of($inst1.id(), $inst2.id())"
+
 // Ensure inner block dimensions are not too big.
 require forall $outer_dim in Dimensions:
   forall $logical in LogicalDimensions:
