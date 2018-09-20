@@ -92,10 +92,10 @@ impl device::Device for Cpu {
 
     fn hw_pressure(
         &self,
-        _space: &SearchSpace,
-        _dim_sizes: &HashMap<ir::DimId, u32>,
-        _nesting: &HashMap<ir::StmtId, model::Nesting>,
-        _stmt: &ir::Statement,
+        _: &SearchSpace,
+        _: &HashMap<ir::DimId, model::size::Range>,
+        _: &HashMap<ir::StmtId, model::Nesting>,
+        _: &ir::Statement,
         _: &device::Context,
     ) -> model::HwPressure {
         // TODO(model): implement model
