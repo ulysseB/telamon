@@ -5,7 +5,11 @@ mod integer;
 pub use self::counter::CounterDef;
 pub use self::enumeration::EnumDef;
 pub use self::integer::IntegerDef;
-pub use super::*;
+
+use ast::error::{Hint, TypeError};
+use ast::context::CheckerContext;
+use ast::typing_context::TypingContext;
+use ast::Statement;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum ChoiceDef {

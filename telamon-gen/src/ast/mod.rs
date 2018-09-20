@@ -10,27 +10,27 @@ mod set;
 mod trigger;
 mod typing_context;
 
-pub use constraint::dedup_inputs;
-pub use constraint::Constraint as TypedConstraint;
-use indexmap::IndexMap;
-use ir;
-use itertools::Itertools;
-use print;
-use regex::Regex;
-use std;
 use std::collections::{hash_map, BTreeSet};
 use std::fmt;
-use utils::*;
+use itertools::Itertools;
+use indexmap::IndexMap;
+use print;
+use regex::Regex;
+use utils::{RcStr, HashMap, HashSet};
+use ir;
 
-pub use self::choice::{ChoiceDef, CounterDef, EnumDef, IntegerDef};
-pub use self::constrain::Constraint;
-pub use self::error::{Hint, TypeError};
-pub use self::set::SetDef;
-pub use self::trigger::TriggerDef;
-pub use self::context::CheckerContext;
-pub use self::typing_context::TypingContext;
+pub use constraint::dedup_inputs;
+pub use constraint::Constraint as TypedConstraint;
 
 pub use super::lexer::{Position, Spanned};
+
+pub use self::error::{Hint, TypeError};
+pub use self::context::CheckerContext;
+pub use self::typing_context::TypingContext;
+pub use self::set::SetDef;
+pub use self::trigger::TriggerDef;
+pub use self::constrain::Constraint;
+pub use self::choice::{ChoiceDef, CounterDef, EnumDef, IntegerDef};
 
 #[derive(Default, Clone, Debug)]
 pub struct Ast {

@@ -1,5 +1,15 @@
-use super::*;
 use std::ops::Deref;
+
+use super::ChoiceDef;
+
+use ast::error::TypeError;
+use ast::context::CheckerContext;
+use ast::typing_context::TypingContext;
+use ast::{VarDef, VarMap, type_check_code};
+use lexer::Spanned;
+use ir;
+
+use utils::RcStr;
 
 /// A toplevel integer
 #[derive(Clone, Debug)]

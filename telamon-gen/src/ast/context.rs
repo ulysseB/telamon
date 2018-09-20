@@ -16,7 +16,10 @@ pub struct CheckerContext {
 
 impl CheckerContext {
     /// Declares a set and ensures it is not defined twice.
-    pub fn declare_set(&mut self, object_name: Spanned<String>) -> Result<(), TypeError> {
+    pub fn declare_set(
+        &mut self,
+        object_name: Spanned<String>
+    ) -> Result<(), TypeError> {
         if let Some(pre) = self.hash_set.insert(
             object_name.data.to_owned(),
             object_name.with_data(Hint::Set),

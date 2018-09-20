@@ -1,5 +1,25 @@
-use super::*;
-use ir::Adaptable;
+use std::iter;
+
+use ir::{self, Adaptable};
+use lexer::Spanned;
+use utils::RcStr;
+use itertools::Itertools;
+use ast::error::TypeError;
+use ast::context::CheckerContext;
+use ast::constrain::Constraint;
+use ast::typing_context::TypingContext;
+use ast::{
+    VarDef,
+    VarMap,
+    Condition,
+    ChoiceInstance,
+    HashSet,
+    CounterVal,
+    CounterBody,
+    ChoiceDef,
+    type_check_enum_values,
+    type_check_code
+};
 
 #[derive(Clone, Debug)]
 pub struct CounterDef {
@@ -183,7 +203,7 @@ impl CounterDef {
             .map(|cond| vec![cond.clone(), is_false.clone()])
             .collect_vec();
         disjunctions.push(
-            std::iter::once(is_false)
+            iter::once(is_false)
                 .chain(conditions)
                 .map(|mut cond| {
                     cond.negate();
@@ -198,7 +218,7 @@ impl CounterDef {
             .map(ir::Variable::Arg)
             .chain((0..iter_vars.len()).map(ir::Variable::Forall))
             .collect();
-        let true_value = std::iter::once("TRUE".into()).collect();
+        let true_value = iter::once("TRUE".into()).collect();
         let condition = ir::ValueSet::enum_values(bool_choice, true_value);
         (ir::ChoiceInstance { choice: name, vars }, condition)
     }
