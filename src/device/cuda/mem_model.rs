@@ -164,7 +164,8 @@ fn tensor_thread_dims(
                 Trivalent::Maybe => Some((dim, false)),
                 Trivalent::True => Some((dim, true)),
             },
-        ).chain(external_dims);
+        )
+        .chain(external_dims);
     let mut out = Vec::new();
     for (id, is_active_thread) in dims {
         let size = sizes[&id];
@@ -214,7 +215,8 @@ fn external_thread_dims<'a>(
                 }
                 let mapping = space.domain().get_thread_mapping(dim.id(), other);
                 mapping.is(ThreadMapping::MAPPED)
-            }).fold(Trivalent::False, |l, r| l | r);
+            })
+            .fold(Trivalent::False, |l, r| l | r);
         match is_mapped {
             Trivalent::True => None,
             Trivalent::Maybe => Some((dim.id(), false)),
@@ -254,9 +256,11 @@ fn sort_thread_dims(
                     }
                     let mapping = space.domain().get_thread_mapping(d.id, other);
                     mapping.is(ThreadMapping::MAPPED_OUT).is_true()
-                }).count();
+                })
+                .count();
             (num_inner, d)
-        }).collect();
+        })
+        .collect();
     heap.extend(dim_groups.remove(&0));
     let mut out = Vec::new();
     let mut total_size = 1;
@@ -330,7 +334,8 @@ fn wrap_access_offsets(
                     dim.stride.min
                 };
                 indexes[i] * stride
-            }).sum();
+            })
+            .sum();
         if incr {
             break;
         } // We reached the end of all loops.

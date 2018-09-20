@@ -305,7 +305,8 @@ impl CudaPrinter {
                     extra_cleanup.push(format!("CHECK_CUDA(cuMemFree({}));", extra_var));
                     format!("&{}", extra_var)
                 }
-            }).collect_vec()
+            })
+            .collect_vec()
             .join(", ");
         let extern_params = fun
             .params

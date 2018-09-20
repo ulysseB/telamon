@@ -37,8 +37,7 @@ impl DimMap {
     /// removed.
     pub fn merge_dims(&mut self, lhs: ir::DimId, rhs: ir::DimId) -> bool {
         self.filter(|&mut pair| pair == (lhs, rhs) || pair == (rhs, lhs))
-            .count()
-            > 0
+            .count() > 0
     }
 
     /// Iterates over the DimMap.

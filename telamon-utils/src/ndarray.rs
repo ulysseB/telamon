@@ -176,7 +176,8 @@ impl<'a, T> ViewMut<'a, T> {
                     bounds: bounds.clone(),
                     ..*self
                 }
-            }).collect()
+            })
+            .collect()
     }
 
     /// Computes the index of an element in the underlying vector.

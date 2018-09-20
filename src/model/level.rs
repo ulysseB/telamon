@@ -57,7 +57,8 @@ impl Level {
                 local_info.dim_overhead[d]
                     .1
                     .bound(BottleneckLevel::Thread, &thread_rates)
-            }).min()
+            })
+            .min()
             .unwrap_or_else(FastBound::zero);
         let latency = pressure.bound(BottleneckLevel::Thread, &thread_rates);
         // Compute the block-level pressure.
@@ -89,9 +90,9 @@ pub fn sum_pressure(
     repeat: &ir::PartialSize,
 ) -> HwPressure {
     // Compute the pressure induced by the dimensions overhead.
-    let mut pressure =
-        HwPressure::min(nest.iter().map(|d| &local_info.dim_overhead[d].0))
-            .unwrap_or_else(|| HwPressure::zero(ctx.device()));
+    let mut pressure = HwPressure::min(
+        nest.iter().map(|d| &local_info.dim_overhead[d].0),
+    ).unwrap_or_else(|| HwPressure::zero(ctx.device()));
     if nest.is_empty() {
         let min_num_threads = match bound_level {
             BottleneckLevel::Global => local_info.parallelism.min_num_threads,
@@ -141,8 +142,7 @@ pub fn sum_pressure(
         let mut num_instances = inner_sum_dims
             .intersection(&local_info.nesting[&stmt].outer_dims)
             .map(|&d| space.ir_instance().dim(d).size())
-            .product::<ir::PartialSize>()
-            * repeat;
+            .product::<ir::PartialSize>() * repeat;
         let mut stmt_pressure = if let ir::StmtId::Dim(dim) = stmt {
             let kind = space.domain().get_dim_kind(dim);
             if !bound_level.accounts_for_dim(kind) {
@@ -260,7 +260,8 @@ pub fn generate(
             } else {
                 vec![outer_dims]
             }
-        }).collect_vec();
+        })
+        .collect_vec();
     let dim_maps = list_dim_maps(space);
     // Add the nesting of dim maps
     for dim_map in &dim_maps {
@@ -391,7 +392,8 @@ fn list_dim_maps(space: &SearchSpace) -> Vec<DimMap> {
                 }
                 _ => None,
             })
-        }).collect()
+        })
+        .collect()
 }
 
 /// Indicates how a the sequential dimensions of a level should be repeated in the latency
@@ -417,7 +419,8 @@ impl RepeatLevel {
             .filter(|&&d| {
                 let kind = space.domain().get_dim_kind(d);
                 (kind & !DimKind::BLOCK).is(DimKind::SEQUENTIAL).is_true()
-            }).map(|&d| space.ir_instance().dim(d).size())
+            })
+            .map(|&d| space.ir_instance().dim(d).size())
             .product::<ir::PartialSize>();
         let iterations = size::bounds(&iterations, space, ctx).min;
         if iterations <= 1 {

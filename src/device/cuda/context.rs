@@ -114,8 +114,7 @@ impl<'a> Context<'a> {
         let average = runtimes_by_delta[..num_samples]
             .iter()
             .cloned()
-            .sum::<f64>()
-            / num_samples as f64;
+            .sum::<f64>() / num_samples as f64;
         Ok(average)
     }
 

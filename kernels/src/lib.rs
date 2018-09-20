@@ -81,7 +81,8 @@ fn generate_tile_sizes(size: u32, max_tiles: &[u32]) -> Vec<Vec<u32>> {
         .map(|(_, mut tiling)| {
             tiling.reverse();
             tiling
-        }).collect()
+        })
+        .collect()
 }
 
 fn par_iter_product<I1, I2>(

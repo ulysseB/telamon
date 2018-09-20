@@ -64,7 +64,8 @@ impl Context {
                 ParamVal::Size(size) => {
                     ThunkArg::Size((self as &device::Context).eval_size(size) as i32)
                 }
-            }).collect_vec()
+            })
+            .collect_vec()
     }
 }
 
@@ -193,7 +194,8 @@ fn function_evaluate(fun_str: &String, args: &Vec<ThunkArg>) -> Result<f64, ()> 
                 let arr = vec![0; *size as usize];
                 HoldThunk::Arr(arr)
             }
-        }).collect_vec();
+        })
+        .collect_vec();
     let ptrs = thunks
         .iter_mut()
         .map(|arg| match arg {
@@ -201,7 +203,8 @@ fn function_evaluate(fun_str: &String, args: &Vec<ThunkArg>) -> Result<f64, ()> 
             HoldThunk::Scalar(ptr) => *ptr,
             HoldThunk::Size(size) => size as *mut _ as *mut libc::c_void,
             HoldThunk::Arr(array) => array.as_mut_ptr() as *mut libc::c_void,
-        }).collect_vec();
+        })
+        .collect_vec();
     let time = compile::link_and_exec(&templib_name, &String::from("entry_point"), ptrs);
     Ok(time)
 }

@@ -44,7 +44,8 @@ impl<'a> Candidate<'a> {
                 self.apply_decision(context, action)
                     .map_err(|_| trace!("invalid action encountered"))
                     .ok()
-            }).collect_vec();
+            })
+            .collect_vec();
         if res.is_empty() {
             info!("deadend encountered in the search space");
         }

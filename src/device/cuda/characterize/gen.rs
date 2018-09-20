@@ -20,7 +20,8 @@ pub fn base(params: &[(&str, ir::Type)], arrays: &[&str]) -> (Signature, Vec<ir:
         .map(|&(name, t)| ir::Parameter {
             name: name.to_string(),
             t,
-        }).collect_vec();
+        })
+        .collect_vec();
     let mut mem_blocks = 0;
     let mem_ids = arrays
         .iter()
@@ -32,7 +33,8 @@ pub fn base(params: &[(&str, ir::Type)], arrays: &[&str]) -> (Signature, Vec<ir:
                 t: ir::Type::PtrTo(id),
             });
             id
-        }).collect();
+        })
+        .collect();
     (
         Signature {
             name: "bench".to_string(),

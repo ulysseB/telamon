@@ -337,6 +337,7 @@ fn gen_events<'a>(
                 x.merge_from(y);
                 x
             }))
-        }).collect();
+        })
+        .collect();
     (block_dims, thread_dims, events)
 }
