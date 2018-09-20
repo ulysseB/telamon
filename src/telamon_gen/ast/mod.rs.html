@@ -548,23 +548,6 @@
 <span id="548">548</span>
 <span id="549">549</span>
 <span id="550">550</span>
-<span id="551">551</span>
-<span id="552">552</span>
-<span id="553">553</span>
-<span id="554">554</span>
-<span id="555">555</span>
-<span id="556">556</span>
-<span id="557">557</span>
-<span id="558">558</span>
-<span id="559">559</span>
-<span id="560">560</span>
-<span id="561">561</span>
-<span id="562">562</span>
-<span id="563">563</span>
-<span id="564">564</span>
-<span id="565">565</span>
-<span id="566">566</span>
-<span id="567">567</span>
 </pre><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">unused_variables</span>)]</span>
 
@@ -590,9 +573,7 @@
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">choice</span>::<span class="ident">enumeration</span>::<span class="ident">EnumDef</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">choice</span>::<span class="ident">integer</span>::<span class="ident">IntegerDef</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">choice</span>::<span class="ident">ChoiceDef</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">choice</span>::{<span class="ident">ChoiceDef</span>, <span class="ident">CounterDef</span>, <span class="ident">EnumDef</span>, <span class="ident">IntegerDef</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">constrain</span>::<span class="ident">Constraint</span>;
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">context</span>::<span class="ident">TypingContext</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">error</span>::{<span class="ident">Hint</span>, <span class="ident">TypeError</span>};
@@ -759,7 +740,7 @@
 
 <span class="doccomment">/// Maps variables to their set and position.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
-<span class="kw">struct</span> <span class="ident">VarMap</span> {
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">VarMap</span> {
     <span class="ident">map</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">RcStr</span>, (<span class="ident">ir</span>::<span class="ident">Variable</span>, <span class="ident">ir</span>::<span class="ident">Set</span>)<span class="op">&gt;</span>,
     <span class="ident">next_arg_id</span>: <span class="ident">usize</span>,
     <span class="ident">next_forall_id</span>: <span class="ident">usize</span>,
@@ -1116,21 +1097,6 @@
                 <span class="self">self</span>.<span class="ident">symmetry</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">Symmetry</span>::<span class="ident">AntiSymmetric</span>(<span class="ident">mapping</span>));
             }
         }
-    }
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CounterDef</span> {
-    <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">RcStr</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">doc</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">visibility</span>: <span class="ident">ir</span>::<span class="ident">CounterVisibility</span>,
-    <span class="kw">pub</span> <span class="ident">vars</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">VarDef</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">body</span>: <span class="ident">CounterBody</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">CounterDef</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">name</span> <span class="op">==</span> <span class="ident">rhs</span>.<span class="ident">name</span>
     }
 }
 </pre>

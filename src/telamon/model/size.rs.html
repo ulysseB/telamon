@@ -55,6 +55,11 @@
 <span id="55">55</span>
 <span id="56">56</span>
 <span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Size evaluation and manipulation primitives.</span>
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">Context</span>;
@@ -76,6 +81,11 @@
     <span class="doccomment">/// Creates a `Range` containing a single value.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_fixed</span>(<span class="ident">val</span>: <span class="ident">u64</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="ident">Range</span> { <span class="ident">min</span>: <span class="ident">val</span>, <span class="ident">max</span>: <span class="ident">val</span> }
+    }
+
+    <span class="doccomment">/// Indicates if the `Range` contains a single value.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_constrained</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">min</span> <span class="op">==</span> <span class="self">self</span>.<span class="ident">max</span>
     }
 }
 

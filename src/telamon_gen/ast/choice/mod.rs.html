@@ -49,10 +49,14 @@
 <span id="49">49</span>
 <span id="50">50</span>
 <span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
 </pre><pre class="rust ">
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">counter</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">enumeration</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">integer</span>;
 
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">counter</span>::<span class="ident">CounterDef</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">enumeration</span>::<span class="ident">EnumDef</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">integer</span>::<span class="ident">IntegerDef</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
@@ -86,9 +90,9 @@
         <span class="ident">tc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">TypingContext</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">ChoiceDef</span>::<span class="ident">CounterDef</span>(<span class="kw">_</span>) <span class="op">=&gt;</span> <span class="prelude-val">Ok</span>(()),
-            <span class="ident">ChoiceDef</span>::<span class="ident">IntegerDef</span>(<span class="ident">integer_def</span>) <span class="op">=&gt;</span> <span class="ident">integer_def</span>.<span class="ident">define</span>(<span class="ident">context</span>, <span class="ident">tc</span>),
-            <span class="ident">ChoiceDef</span>::<span class="ident">EnumDef</span>(<span class="ident">enum_def</span>) <span class="op">=&gt;</span> <span class="ident">enum_def</span>.<span class="ident">define</span>(<span class="ident">context</span>, <span class="ident">tc</span>),
+            <span class="ident">ChoiceDef</span>::<span class="ident">CounterDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">define</span>(<span class="ident">context</span>, <span class="ident">tc</span>),
+            <span class="ident">ChoiceDef</span>::<span class="ident">IntegerDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">define</span>(<span class="ident">context</span>, <span class="ident">tc</span>),
+            <span class="ident">ChoiceDef</span>::<span class="ident">EnumDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">define</span>(<span class="ident">context</span>, <span class="ident">tc</span>),
         }
     }
 }
