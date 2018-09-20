@@ -30,7 +30,7 @@ impl<'a> Size<'a> {
     pub fn from_ir(size: &ir::PartialSize<'a>, _: &SearchSpace) -> Self {
         Size::new(
             size.factor(),
-            size.dividend().iter().cloned().collect(),
+            size.dividend().to_vec(),
             size.divisor(),
         )
     }
@@ -82,7 +82,7 @@ impl<'a> From<ir::PartialSize<'a>> for Size<'a> {
     fn from(s: ir::PartialSize<'a>) -> Size<'a> {
         Size::new(
             s.factor(),
-            s.dividend().iter().cloned().collect(),
+            s.dividend().to_vec(),
             s.divisor(),
         )
     }

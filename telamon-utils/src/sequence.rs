@@ -50,7 +50,7 @@ impl<T: Serialize + Clone> Serialize for Sequence<T> {
             Sequence::List(list) => {
                 let mut seq = serializer.serialize_seq(Some(list.len()))?;
                 for arc in list {
-                    seq.serialize_element((&arc).clone())?;
+                    seq.serialize_element((&arc.clone()))?;
                 }
                 seq.end()
             }

@@ -342,7 +342,7 @@ impl<'a> Children<'a> {
             .collect_vec();
         let rewards = children.iter().map(|_| (vec![], 0)).collect();
         Children {
-            children: children,
+            children,
             rewards,
         }
     }

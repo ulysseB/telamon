@@ -72,13 +72,13 @@ where
     warn!("Monitor waiting for evaluation results");
     let t0 = Instant::now();
     let mut status = Status::default();
-    let res = if let Some(_) = config.timeout {
+    let res = if config.timeout.is_some() {
         block_until_timeout(config, recv, t0, candidate_store, &log_sender, &mut status)
     } else {
         block_unbounded(config, recv, t0, candidate_store, &log_sender, &mut status)
     };
     let duration = t0.elapsed();
-    let duration_secs = duration.as_secs() as f64 + duration.subsec_nanos() as f64 * 1e-9;
+    let duration_secs = duration.as_secs() as f64 + f64::from(duration.subsec_nanos()) * 1e-9;
     warn!(
         "Exploration finished in {}s with {} candidates evaluated (avg {} candidate/s).",
         duration_secs,

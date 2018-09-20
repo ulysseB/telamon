@@ -5,6 +5,8 @@ use std;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 
+use ndarray;
+
 /// An array with a variable number of dimensions.
 #[derive(Debug)]
 pub struct NDArray<T> {
@@ -212,7 +214,7 @@ impl<'a, T> ViewMut<'a, T> {
         &'b mut self,
     ) -> impl Iterator<Item = (Vec<usize>, &'b mut T)> + 'b {
         let self_ptr: *mut ViewMut<'b, _> =
-            unsafe { std::mem::transmute(self as *mut _) };
+            unsafe { std::mem::transmute(self as *mut _ as *mut ndarray::ViewMut<'a, T>) };
         NDRange::new(&self.bounds).map(move |idx| {
             let item = unsafe { (*self_ptr).index_mut(&idx[..]) };
             (idx, item)

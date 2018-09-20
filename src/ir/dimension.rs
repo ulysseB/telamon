@@ -62,7 +62,7 @@ impl<'a> Dimension<'a> {
         Dimension {
             size: other.size().clone(),
             possible_sizes: other.possible_sizes.clone(),
-            id: id,
+            id,
             iterated: Vec::new(),
             is_thread_dim: false,
             logical_dim: None,

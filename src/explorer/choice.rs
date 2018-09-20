@@ -50,7 +50,7 @@ pub fn list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item = Choice> + 'a
             let dims = fun.dims().take(i).map(|x| x.stmt_id());
             dims.chain(fun.insts().map(|x| x.stmt_id()))
                 .flat_map(move |rhs| {
-                    let orders = space.domain().get_order(lhs.into(), rhs);
+                    let orders = space.domain().get_order(lhs, rhs);
                     gen_choice(orders.list(), &|o| Action::Order(lhs, rhs, o))
                 })
         }))

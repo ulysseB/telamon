@@ -250,7 +250,7 @@ impl<'a> Builder<'a> {
         LogicalDim {
             logical_id,
             real_ids,
-            tile_sizes: tile_sizes.iter().cloned().collect(),
+            tile_sizes: tile_sizes.to_vec(),
         }
     }
 

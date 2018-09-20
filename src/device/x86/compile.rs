@@ -5,7 +5,7 @@ use std::io::{Seek, SeekFrom};
 use std::process::{Command, ExitStatus};
 use std::time::Instant;
 
-pub fn compile(mut source_file: File, lib_path: &String) -> ExitStatus {
+pub fn compile(mut source_file: File, lib_path: &str) -> ExitStatus {
     unwrap!(source_file.seek(SeekFrom::Start(0)));
     Command::new("gcc")
         .stdin(source_file)
@@ -21,8 +21,8 @@ pub fn compile(mut source_file: File, lib_path: &String) -> ExitStatus {
 }
 
 pub fn link_and_exec(
-    lib_path: &String,
-    fun_name: &String,
+    lib_path: &str,
+    fun_name: &str,
     mut args: Vec<*mut libc::c_void>,
 ) -> f64 {
     let lib = libloading::Library::new(lib_path).expect("Library not found");
@@ -35,6 +35,6 @@ pub fn link_and_exec(
         let t0 = Instant::now();
         func(args.as_mut_ptr());
         let t = Instant::now() - t0;
-        t.subsec_nanos() as f64
+        f64::from(t.subsec_nanos())
     }
 }
