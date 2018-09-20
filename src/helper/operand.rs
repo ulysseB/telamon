@@ -2,7 +2,7 @@
 use device::ScalarArgument;
 use helper::{Builder, LogicalDim};
 use ir::Operand::*;
-use ir::{self, dim, mem, InstId, Operand};
+use ir::{self, dim, mem, InstId, Operand, ValueId};
 
 /// Represents values that can be turned into an `Operand`.
 pub trait AutoOperand<'a> {
@@ -90,6 +90,16 @@ impl<'a> AutoOperand<'a> for InstId {
             }
         });
         Operand::new_inst(inst, dim::Map::new(mapped_dims), ir::DimMapScope::Thread)
+    }
+}
+
+impl<'a> AutoOperand<'a> for ValueId {
+    fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b, ()>
+    where
+        'a: 'b,
+    {
+        let val = builder.function().value(*self);
+        Operand::Value(*self, val.t())
     }
 }
 
