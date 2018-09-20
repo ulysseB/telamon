@@ -10681,6 +10681,18 @@
 <span id="10681">10681</span>
 <span id="10682">10682</span>
 <span id="10683">10683</span>
+<span id="10684">10684</span>
+<span id="10685">10685</span>
+<span id="10686">10686</span>
+<span id="10687">10687</span>
+<span id="10688">10688</span>
+<span id="10689">10689</span>
+<span id="10690">10690</span>
+<span id="10691">10691</span>
+<span id="10692">10692</span>
+<span id="10693">10693</span>
+<span id="10694">10694</span>
+<span id="10695">10695</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="kw">super</span>::<span class="ident">ir</span>;
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
@@ -14710,6 +14722,12 @@
      } 
             <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;inline filter restricts to {:?}&quot;</span>, <span class="ident">values</span>);
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lhs</span>) <span class="op">=</span><span class="ident">lhs</span>.<span class="ident">as_inst</span>(){
+<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">rhs</span>) <span class="op">=</span><span class="ident">rhs</span>.<span class="ident">as_inst</span>(){
+<span class="kw">if</span> { <span class="op">!</span> ( { <span class="op">!</span> <span class="ident">ir_instance</span> . <span class="ident">is_dependency_of</span> ( <span class="ident">lhs</span> . <span class="ident">id</span> ( ) , <span class="ident">rhs</span> . <span class="ident">id</span> ( ) ) } ) }
+        { <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">Order</span> :: <span class="ident">BEFORE</span>); }
+     }  } 
+            <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;inline filter restricts to {:?}&quot;</span>, <span class="ident">values</span>);
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lhs</span>) <span class="op">=</span><span class="ident">lhs</span>.<span class="ident">as_inst</span>(){
 <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">Order</span> :: <span class="ident">AFTER</span> <span class="op">|</span> <span class="ident">Order</span> :: <span class="ident">BEFORE</span> <span class="op">|</span> <span class="ident">Order</span> :: <span class="ident">INNER</span>);
      } 
             <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;inline filter restricts to {:?}&quot;</span>, <span class="ident">values</span>);
@@ -14723,6 +14741,12 @@
 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">rhs</span>) <span class="op">=</span><span class="ident">rhs</span>.<span class="ident">as_dim</span>(){
 <span class="kw">if</span> { <span class="op">!</span> ( { <span class="ident">lhs</span> . <span class="ident">possible_sizes</span> ( ) . <span class="ident">is_some</span> ( ) <span class="op">==</span> <span class="ident">rhs</span> . <span class="ident">possible_sizes</span> ( ) . <span class="ident">is_some</span> ( ) } ) }
         { <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">Order</span> :: <span class="ident">AFTER</span> <span class="op">|</span> <span class="ident">Order</span> :: <span class="ident">BEFORE</span> <span class="op">|</span> <span class="ident">Order</span> :: <span class="ident">INNER</span> <span class="op">|</span> <span class="ident">Order</span> :: <span class="ident">OUTER</span>); }
+     }  } 
+            <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;inline filter restricts to {:?}&quot;</span>, <span class="ident">values</span>);
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lhs</span>) <span class="op">=</span><span class="ident">lhs</span>.<span class="ident">as_inst</span>(){
+<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">rhs</span>) <span class="op">=</span><span class="ident">rhs</span>.<span class="ident">as_inst</span>(){
+<span class="kw">if</span> { <span class="op">!</span> ( { <span class="op">!</span> <span class="ident">ir_instance</span> . <span class="ident">is_dependency_of</span> ( <span class="ident">rhs</span> . <span class="ident">id</span> ( ) , <span class="ident">lhs</span> . <span class="ident">id</span> ( ) ) } ) }
+        { <span class="ident">values</span>.<span class="ident">restrict</span>(<span class="ident">Order</span> :: <span class="ident">AFTER</span>); }
      }  } 
             <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;inline filter restricts to {:?}&quot;</span>, <span class="ident">values</span>);
         

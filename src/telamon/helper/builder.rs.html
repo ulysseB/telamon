@@ -461,12 +461,26 @@
 <span id="461">461</span>
 <span id="462">462</span>
 <span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Helper struct to build a `Function`.</span>
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">Device</span>;
 <span class="kw">use</span> <span class="ident">helper</span>::{<span class="ident">AutoOperand</span>, <span class="ident">LogicalDim</span>, <span class="ident">MetaStatement</span>};
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">mem</span>, <span class="ident">op</span>, <span class="ident">Parameter</span>, <span class="ident">Type</span>};
-<span class="kw">use</span> <span class="ident">ir</span>::{<span class="ident">AccessPattern</span>, <span class="ident">Function</span>, <span class="ident">InstId</span>, <span class="ident">Operand</span>, <span class="ident">Operator</span>, <span class="ident">Signature</span>};
+<span class="kw">use</span> <span class="ident">ir</span>::{
+    <span class="ident">AccessPattern</span>, <span class="ident">Function</span>, <span class="ident">InstId</span>, <span class="ident">Operand</span>, <span class="ident">Operator</span>, <span class="ident">Signature</span>, <span class="ident">ValueDef</span>, <span class="ident">ValueId</span>,
+};
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">search_space</span>::{<span class="ident">Action</span>, <span class="ident">DimKind</span>, <span class="ident">InstFlag</span>, <span class="ident">MemSpace</span>, <span class="ident">Order</span>, <span class="ident">SearchSpace</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Borrow</span>;
@@ -675,6 +689,16 @@
     <span class="kw">fn</span> <span class="ident">inst</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">op</span>: <span class="ident">Operator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, ()<span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">InstId</span> {
         <span class="kw">let</span> <span class="ident">open_dims</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">open_dims</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="kw-2">&amp;</span><span class="ident">x</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">x</span>).<span class="ident">collect</span>();
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">function</span>.<span class="ident">add_inst</span>(<span class="ident">op</span>, <span class="ident">open_dims</span>))
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_inst_value</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">inst_id</span>: <span class="ident">InstId</span>) <span class="op">-&gt;</span> <span class="ident">ValueId</span> {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">val_id</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">function</span>.<span class="ident">inst</span>(<span class="ident">inst_id</span>).<span class="ident">result_value</span>() {
+            <span class="ident">val_id</span>
+        } <span class="kw">else</span> {
+            <span class="kw">let</span> <span class="ident">value_def</span> <span class="op">=</span> <span class="ident">ValueDef</span>::<span class="ident">Inst</span>(<span class="ident">inst_id</span>);
+            <span class="kw">let</span> <span class="ident">value_id</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">function</span>.<span class="ident">add_value</span>(<span class="ident">value_def</span>));
+            <span class="ident">value_id</span>
+        }
     }
 
     <span class="doccomment">/// Applies an action on the function.</span>

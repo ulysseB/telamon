@@ -242,6 +242,10 @@
 <span id="242">242</span>
 <span id="243">243</span>
 <span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Describes the different kinds of operands an instruction can have.</span>
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">Operand</span>::<span class="kw-2">*</span>;
@@ -356,6 +360,8 @@
     <span class="ident">Reduce</span>(<span class="ident">InstId</span>, <span class="ident">Type</span>, <span class="ident">DimMap</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>),
     <span class="doccomment">/// A variable increased by a fixed amount at every step of some loops.</span>
     <span class="ident">InductionVar</span>(<span class="ident">ir</span>::<span class="ident">IndVarId</span>, <span class="ident">Type</span>),
+    <span class="doccomment">/// A value that can be read from by an instruction</span>
+    <span class="ident">Value</span>(<span class="ident">ir</span>::<span class="ident">ValueId</span>, <span class="ident">Type</span>),
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> {
@@ -367,6 +373,7 @@
             <span class="ident">Addr</span>(<span class="ident">mem</span>) <span class="op">=&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">PtrTo</span>(<span class="ident">mem</span>.<span class="ident">into</span>()),
             <span class="ident">Index</span>(..) <span class="op">=&gt;</span> <span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>),
             <span class="ident">Param</span>(<span class="ident">p</span>) <span class="op">=&gt;</span> <span class="ident">p</span>.<span class="ident">t</span>,
+            <span class="ident">Value</span>(<span class="kw">_</span>, <span class="ident">t</span>) <span class="op">=&gt;</span> <span class="ident">t</span>,
             <span class="ident">Inst</span>(<span class="kw">_</span>, <span class="ident">t</span>, ..) <span class="op">|</span> <span class="ident">Reduce</span>(<span class="kw">_</span>, <span class="ident">t</span>, ..) <span class="op">|</span> <span class="ident">InductionVar</span>(<span class="kw">_</span>, <span class="ident">t</span>) <span class="op">=&gt;</span> <span class="ident">t</span>,
         }
     }
@@ -440,7 +447,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_constant</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">Int</span>(..) <span class="op">|</span> <span class="ident">Float</span>(..) <span class="op">|</span> <span class="ident">Addr</span>(..) <span class="op">|</span> <span class="ident">Param</span>(..) <span class="op">=&gt;</span> <span class="bool-val">true</span>,
-            <span class="ident">Index</span>(..) <span class="op">|</span> <span class="ident">Inst</span>(..) <span class="op">|</span> <span class="ident">Reduce</span>(..) <span class="op">|</span> <span class="ident">InductionVar</span>(..) <span class="op">=&gt;</span> <span class="bool-val">false</span>,
+            <span class="ident">Index</span>(..) <span class="op">|</span> <span class="ident">Inst</span>(..) <span class="op">|</span> <span class="ident">Reduce</span>(..) <span class="op">|</span> <span class="ident">InductionVar</span>(..) <span class="op">|</span> <span class="ident">Value</span>(..) <span class="op">=&gt;</span> <span class="bool-val">false</span>,
         }
     }
 
@@ -468,6 +475,7 @@
             <span class="ident">Inst</span>(<span class="ident">id</span>, <span class="ident">t</span>, <span class="ident">dim_map</span>, <span class="ident">DimMapScope</span>::<span class="ident">Thread</span>) <span class="op">=&gt;</span> {
                 <span class="ident">Inst</span>(<span class="ident">id</span>, <span class="ident">t</span>, <span class="ident">dim_map</span>, <span class="ident">DimMapScope</span>::<span class="ident">Thread</span>)
             }
+            <span class="ident">Value</span>(<span class="ident">val</span>, <span class="ident">t</span>) <span class="op">=&gt;</span> <span class="ident">Value</span>(<span class="ident">val</span>, <span class="ident">t</span>),
             <span class="ident">Index</span>(<span class="ident">id</span>) <span class="op">=&gt;</span> <span class="ident">Index</span>(<span class="ident">id</span>),
             <span class="ident">Param</span>(<span class="ident">param</span>) <span class="op">=&gt;</span> <span class="ident">Param</span>(<span class="ident">param</span>),
             <span class="ident">Addr</span>(<span class="ident">id</span>) <span class="op">=&gt;</span> <span class="ident">Addr</span>(<span class="ident">id</span>),

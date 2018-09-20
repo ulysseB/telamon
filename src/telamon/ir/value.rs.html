@@ -71,9 +71,30 @@
 <span id="71">71</span>
 <span id="72">72</span>
 <span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
+<span id="91">91</span>
+<span id="92">92</span>
+<span id="93">93</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Encodes the data-flow information.</span>
-<span class="kw">use</span> <span class="ident">ir</span>;
+<span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">InstId</span>};
+<span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// Uniquely identifies values.</span>
 <span class="attribute">#[<span class="ident">derive</span>(
@@ -81,9 +102,9 @@
 )]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ValueId</span>(<span class="kw">pub</span> <span class="ident">u16</span>);
 
-<span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ValueId</span> {
-    <span class="kw">fn</span> <span class="ident">into</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="number">0</span> <span class="kw">as</span> <span class="ident">usize</span>
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ValueId</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">usize</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">val_id</span>: <span class="ident">ValueId</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="ident">val_id</span>.<span class="number">0</span> <span class="kw">as</span> <span class="ident">usize</span>
     }
 }
 
@@ -93,11 +114,17 @@
     <span class="ident">id</span>: <span class="ident">ValueId</span>,
     <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>,
     <span class="ident">def</span>: <span class="ident">ValueDef</span>,
+    <span class="ident">usepoints</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">InstId</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Value</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">id</span>: <span class="ident">ValueId</span>, <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>, <span class="ident">def</span>: <span class="ident">ValueDef</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="ident">Value</span> { <span class="ident">id</span>, <span class="ident">t</span>, <span class="ident">def</span> }
+        <span class="ident">Value</span> {
+            <span class="ident">id</span>,
+            <span class="ident">t</span>,
+            <span class="ident">def</span>,
+            <span class="ident">usepoints</span>: <span class="ident">HashSet</span>::<span class="ident">default</span>(),
+        }
     }
 
     <span class="doccomment">/// Return the unique identifiers of the `Value`.</span>
@@ -114,10 +141,22 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">t</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span> {
         <span class="self">self</span>.<span class="ident">t</span>
     }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">usepoints</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">InstId</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">usepoints</span>.<span class="ident">iter</span>()
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_usepoint</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">usepoint</span>: <span class="ident">InstId</span>) {
+        <span class="self">self</span>.<span class="ident">usepoints</span>.<span class="ident">insert</span>(<span class="ident">usepoint</span>);
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_dependency_of</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">usepoint</span>: <span class="ident">InstId</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">usepoints</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">usepoint</span>)
+    }
 }
 
 <span class="doccomment">/// Specifies how is a `Value` defined.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Copy</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ValueDef</span> {
     <span class="doccomment">/// Takes the value produced by an instruction.</span>
     <span class="ident">Inst</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>),
@@ -137,6 +176,7 @@
         <span class="ident">function</span>.<span class="ident">inst_mut</span>(<span class="kw-2">*</span><span class="ident">inst_id</span>).<span class="ident">set_result_value</span>(<span class="ident">self_id</span>);
     }
 }
+
 <span class="comment">// - register in the instruction</span>
 <span class="comment">// - retrieve the type</span>
 <span class="comment">// FIXME: def point</span>
