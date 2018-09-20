@@ -36,14 +36,12 @@ impl TruthTable {
                             .map(|v| {
                                 let values = std::iter::once(v.clone()).collect();
                                 ir::ValueSet::enum_values(name.clone(), values)
-                            })
-                            .collect_vec();
+                            }).collect_vec();
                         Some((id, sets))
                     }
                     ir::ChoiceDef::Counter { .. } | ir::ChoiceDef::Number { .. } => None,
                 }
-            })
-            .collect_vec();
+            }).collect_vec();
         let sizes = values.iter().map(|&(_, ref v)| v.len()).collect_vec();
         let data = NDRange::new(&sizes)
             .map(|index| {
@@ -57,8 +55,7 @@ impl TruthTable {
                     .flat_map(|x| x.instantiate(inputs, &input_mapping, ir_desc))
                     .collect_vec();
                 Cell::build(rules, inputs, ir_desc)
-            })
-            .collect_vec();
+            }).collect_vec();
         TruthTable {
             values,
             rules: NDArray::new(sizes, data),
@@ -125,8 +122,7 @@ impl Cell {
                     alternatives: alts,
                     set_constraints: set_conds.clone(),
                 })
-            })
-            .collect_vec()
+            }).collect_vec()
     }
 
     /// Indicates if the cell allows any alternative,
@@ -176,8 +172,7 @@ impl<'a> TableView<'a> {
                         view,
                     },
                 )
-            })
-            .collect()
+            }).collect()
     }
 
     /// Indicates if the two view have the same cells.
@@ -314,8 +309,7 @@ fn table_min_split<'a, 'b>(table: &'a mut TableView<'b>) -> Option<TableSplit<'a
                 let view = views.find(|&(other_pos, _)| pos == other_pos).unwrap().1;
                 assert!(!view.1.is_empty());
                 (values, view.1)
-            })
-            .collect();
+            }).collect();
         TableSplit::Switch { input, cases }
     })
 }
@@ -354,8 +348,7 @@ pub mod test {
                     .filter(|&(_, value)| ctx_values.is(value).maybe_true())
                     .map(|(pos, _)| pos)
                     .collect_vec()
-            })
-            .collect_vec();
+            }).collect_vec();
         let num_indexes = valid_indexes.iter().map(|x| x.len()).collect_vec();
         let t = ir::ValueType::Enum(context.enum_.name().clone());
         let mut value_set = ir::ValueSet::empty(&t);
@@ -464,8 +457,7 @@ pub mod test {
                     .iter()
                     .flat_map(|x| x.as_static_cond())
                     .map(|x| x.0)
-            })
-            .unique()
+            }).unique()
             .collect_vec();
         // Test the table correctness.
         let mut table = TruthTable::build(inputs, &rules, ir_desc);

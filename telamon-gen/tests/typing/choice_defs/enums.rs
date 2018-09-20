@@ -18,11 +18,10 @@ mod undefined {
                     symmetric
                     value A:
                     value B:
-              end"
-                    .to_vec()
+              end".to_vec()
             )).unwrap()
-                .type_check()
-                .err(),
+            .type_check()
+            .err(),
             Some(TypeError::Undefined {
                 object_name: Spanned {
                     beg: Position {
@@ -53,11 +52,10 @@ mod undefined {
                 b"define enum foo():
                 value A:
                 alias AB = A | B:
-              end"
-                    .to_vec()
+              end".to_vec()
             )).unwrap()
-                .type_check()
-                .err(),
+            .type_check()
+            .err(),
             Some(TypeError::Undefined {
                 object_name: Spanned {
                     beg: Position {
@@ -93,11 +91,10 @@ mod undefined {
                 antisymmetric:
                   A -> B
                 value A:
-              end"
-                    .to_vec()
+              end".to_vec()
             )).unwrap()
-                .type_check()
-                .err(),
+            .type_check()
+            .err(),
             Some(TypeError::Undefined {
                 object_name: Spanned {
                     beg: Position::new_optional(LexerPosition::new(10, 16), None),
@@ -132,11 +129,10 @@ mod redefinition {
                 symmetric
                 value A:
                 value B:
-              end"
-                    .to_vec()
+              end".to_vec()
             )).unwrap()
-                .type_check()
-                .err(),
+            .type_check()
+            .err(),
             Some(TypeError::Redefinition {
                 object_kind: Spanned {
                     beg: Position::new_optional(LexerPosition::new(9, 30), None),
@@ -161,11 +157,10 @@ mod redefinition {
               end
 
 		      define enum foo():
-              end"
-                    .to_vec()
+              end".to_vec()
             )).unwrap()
-                .type_check()
-                .err(),
+            .type_check()
+            .err(),
             Some(TypeError::Redefinition {
                 object_kind: Spanned {
                     beg: Position {
@@ -217,11 +212,10 @@ mod redefinition {
                 value C:
                 alias AB = A | B:
                 alias AB = A | B:
-              end"
-                    .to_vec()
+              end".to_vec()
             )).unwrap()
-                .type_check()
-                .err(),
+            .type_check()
+            .err(),
             Some(TypeError::Redefinition {
                 object_kind: Spanned {
                     beg: Position {
@@ -267,11 +261,10 @@ mod redefinition {
                 value A:
                 value B:
                 value A:
-              end"
-                    .to_vec()
+              end".to_vec()
             )).unwrap()
-                .type_check()
-                .err(),
+            .type_check()
+            .err(),
             Some(TypeError::Redefinition {
                 object_kind: Spanned {
                     beg: Position {
@@ -329,11 +322,10 @@ mod redefinition {
                   A -> B
                 value A:
                 value B:
-              end"
-                    .to_vec()
+              end".to_vec()
             )).unwrap()
-                .type_check()
-                .err(),
+            .type_check()
+            .err(),
             Some(TypeError::Redefinition {
                 object_kind: Spanned {
                     beg: Position::new_optional(LexerPosition::new(10, 16), None),
@@ -371,11 +363,10 @@ mod redefinition {
                     symmetric
                     value A:
                     value B:
-                  end"
-                        .to_vec()
+                  end".to_vec()
                 )).unwrap()
-                    .type_check()
-                    .err(),
+                .type_check()
+                .err(),
                 Some(TypeError::Redefinition {
                     object_kind: Spanned {
                         beg: Position::new_optional(LexerPosition::new(10, 20), None),
@@ -412,11 +403,10 @@ mod parameter {
                       A -> B
                     value A:
                     value B:
-                  end"
-                        .to_vec()
+                  end".to_vec()
                 )).unwrap()
-                    .type_check()
-                    .err(),
+                .type_check()
+                .err(),
                 Some(TypeError::BadSymmetricArg {
                     object_name: Spanned {
                         beg: Position::new_optional(LexerPosition::new(0, 12), None),
@@ -442,11 +432,10 @@ mod parameter {
                       A -> B
                     value A:
                     value B:
-                  end"
-                        .to_vec()
+                  end".to_vec()
                 )).unwrap()
-                    .type_check()
-                    .err(),
+                .type_check()
+                .err(),
                 Some(TypeError::BadSymmetricArg {
                     object_name: Spanned {
                         beg: Position::new_optional(LexerPosition::new(9, 30), None),
@@ -493,11 +482,10 @@ mod parameter {
                       A -> B
                     value A:
                     value B:
-                  end"
-                        .to_vec()
+                  end".to_vec()
                 )).unwrap()
-                    .type_check()
-                    .err(),
+                .type_check()
+                .err(),
                 Some(TypeError::BadSymmetricArg {
                     object_name: Spanned {
                         beg: Position::new_optional(LexerPosition::new(18, 30), None),
@@ -552,11 +540,10 @@ mod parameter {
                     symmetric
                     value A:
                     value B:
-                  end"
-                        .to_vec()
+                  end".to_vec()
                 )).unwrap()
-                    .type_check()
-                    .err(),
+                .type_check()
+                .err(),
                 Some(TypeError::BadSymmetricArg {
                     object_name: Spanned {
                         beg: Position::new_optional(LexerPosition::new(0, 12), None),
@@ -581,11 +568,10 @@ mod parameter {
                     symmetric
                     value A:
                     value B:
-                  end"
-                        .to_vec()
+                  end".to_vec()
                 )).unwrap()
-                    .type_check()
-                    .err(),
+                .type_check()
+                .err(),
                 Some(TypeError::BadSymmetricArg {
                     object_name: Spanned {
                         beg: Position::new_optional(LexerPosition::new(9, 30), None),
@@ -619,11 +605,10 @@ mod parameter {
                     symmetric
                     value A:
                     value B:
-                  end"
-                        .to_vec()
+                  end".to_vec()
                 )).unwrap()
-                    .type_check()
-                    .err(),
+                .type_check()
+                .err(),
                 Some(TypeError::BadSymmetricArg {
                     object_name: Spanned {
                         beg: Position::new_optional(LexerPosition::new(9, 30), None),
@@ -705,11 +690,10 @@ mod parameter {
                     symmetric
                     value A:
                     value B:
-                  end"
-                        .to_vec()
+                  end".to_vec()
                 )).unwrap()
-                    .type_check()
-                    .err(),
+                .type_check()
+                .err(),
                 Some(TypeError::BadSymmetricArg {
                     object_name: Spanned {
                         beg: Position::new_optional(LexerPosition::new(18, 30), None),
@@ -773,11 +757,10 @@ fn conflict() {
               A -> B
             value A:
             value B:
-          end"
-                .to_vec()
+          end".to_vec()
         )).unwrap()
-            .type_check()
-            .err(),
+        .type_check()
+        .err(),
         Some(TypeError::Conflict {
             object_fields: (
                 Spanned {

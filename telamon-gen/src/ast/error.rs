@@ -43,7 +43,11 @@ impl Hint {
 #[derive(Debug, Fail, PartialEq)]
 pub enum TypeError {
     /// Redefinition of a name and hint.
-    #[fail(display = "redefinition {:?} and {:?}", object_kind, object_name)]
+    #[fail(
+        display = "redefinition {:?} and {:?}",
+        object_kind,
+        object_name
+    )]
     Redefinition {
         object_kind: Spanned<Hint>,
         object_name: Spanned<String>,
@@ -63,7 +67,11 @@ pub enum TypeError {
     },
     /// Missing
     /// Happens when the Set's object has a missing field.
-    #[fail(display = "missing entry {:?} of set {:?}", object_name, object_field)]
+    #[fail(
+        display = "missing entry {:?} of set {:?}",
+        object_name,
+        object_field
+    )]
     MissingEntry {
         object_name: String,
         object_field: Spanned<String>,

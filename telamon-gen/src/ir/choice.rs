@@ -585,8 +585,7 @@ impl ChoiceCondition {
                 } else {
                     Some(condition.adapt(&adaptator))
                 }
-            })
-            .collect();
+            }).collect();
         let condition = ChoiceCondition {
             inputs,
             self_condition,

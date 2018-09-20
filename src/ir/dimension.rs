@@ -4,8 +4,9 @@ use std::fmt;
 use utils::*;
 
 /// Provides a unique identifier for iteration dimensions.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize,
-         Deserialize)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
+)]
 #[repr(C)]
 /// cbindgen:field-names=[id]
 pub struct DimId(pub u32);

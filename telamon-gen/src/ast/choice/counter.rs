@@ -197,8 +197,7 @@ impl CounterDef {
                 .map(|mut cond| {
                     cond.negate();
                     cond
-                })
-                .collect(),
+                }).collect(),
         );
         tc.constraints
             .push(Constraint::new(all_vars_defs, disjunctions));

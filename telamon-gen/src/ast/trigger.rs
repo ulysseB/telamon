@@ -65,8 +65,7 @@ impl TriggerDef {
                     condition,
                     code,
                 )
-            })
-            .collect_vec();
+            }).collect_vec();
         // Add the trigger to the IR.
         let trigger = ir::Trigger {
             foralls,

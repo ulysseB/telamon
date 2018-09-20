@@ -6,8 +6,9 @@ use std::hash::{Hash, Hasher};
 use utils::*;
 
 /// Uniquely identifies an instruction.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize,
-         Deserialize)]
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+)]
 #[repr(C)]
 /// cbindgen:field-names=[id]
 pub struct InstId(pub u32);
@@ -126,8 +127,7 @@ impl<'a, L> Instruction<'a, L> {
         self.as_reduction()
             .map(|(i, map, rd)| {
                 i == init && !rd.contains(&dim) && map.iter().all(|&(_, rhs)| dim != rhs)
-            })
-            .unwrap_or(false)
+            }).unwrap_or(false)
     }
 
     /// Rename a dimension to another ID.

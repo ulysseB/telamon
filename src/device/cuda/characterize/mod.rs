@@ -39,8 +39,7 @@ pub fn get_gpu_desc(executor: &cuda::Executor) -> cuda::Gpu {
             } else {
                 Err(Error::WrongGpu(name))
             }
-        })
-        .unwrap_or_else(|err| {
+        }).unwrap_or_else(|err| {
             println!("Could not read the GPU characterization file.");
             println!("Running GPU characterization, this can take several minutes.");
             warn!("{}. Running characterization.", err);

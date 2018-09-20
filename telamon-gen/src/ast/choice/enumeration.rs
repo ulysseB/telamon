@@ -182,8 +182,7 @@ impl EnumDef {
                             let set_name: &String = variable.set.name.deref();
 
                             (variable.name.to_owned().into(), set_name.to_owned())
-                        })
-                        .collect::<Vec<(Spanned<String>, String)>>(),
+                        }).collect::<Vec<(Spanned<String>, String)>>(),
                 })?;
             }
         }
@@ -216,8 +215,7 @@ impl EnumDef {
                                     let set_name: &String = variable.set.name.deref();
 
                                     (variable.name.to_owned().into(), set_name.to_owned())
-                                })
-                                .collect::<Vec<(Spanned<String>, String)>>(),
+                                }).collect::<Vec<(Spanned<String>, String)>>(),
                         })?;
                     }
                 }
@@ -310,8 +308,7 @@ impl EnumDef {
             .map(|v| {
                 let name = v.name.clone();
                 (name, var_map.decl_argument(&tc.ir_desc, v))
-            })
-            .collect::<Vec<_>>();
+            }).collect::<Vec<_>>();
         let arguments = ir::ChoiceArguments::new(
             vars.into_iter()
                 .map(|(n, s)| (n.data, s))
