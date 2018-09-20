@@ -329,10 +329,6 @@ impl CounterDef {
         context: &mut CheckerContext,
         tc: &mut TypingContext,
     ) -> Result<(), TypeError> {
-        //       panic!("ss {:?}", self.name.data);
-        //        tc.register_counter(self.name.data.to_owned(),
-        //            self.doc.to_owned(), self.visibility.to_owned(),
-        //            self.vars.to_owned(), self.body.to_owned());
         tc.choice_defs.push(ChoiceDef::CounterDef(self));
         Ok(())
     }

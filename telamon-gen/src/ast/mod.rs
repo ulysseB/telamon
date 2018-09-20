@@ -19,11 +19,6 @@ use std::collections::{hash_map, BTreeSet};
 use std::fmt;
 use utils::{HashMap, HashSet, RcStr};
 
-pub use constraint::dedup_inputs;
-pub use constraint::Constraint as TypedConstraint;
-
-pub use super::lexer::{Position, Spanned};
-
 pub use self::choice::{ChoiceDef, CounterDef, EnumDef, IntegerDef};
 pub use self::constrain::Constraint;
 pub use self::context::CheckerContext;
