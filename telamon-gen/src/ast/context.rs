@@ -15,11 +15,6 @@ impl TypingContext {
     /// Adds a statement to the typing context.
     pub fn add_statement(&mut self, statement: Statement) {
         match statement {
-            stmt @ Statement::ChoiceDef(ChoiceDef::EnumDef(..))
-            | stmt @ Statement::ChoiceDef(ChoiceDef::IntegerDef(..))
-            | stmt @ Statement::ChoiceDef(ChoiceDef::CounterDef(..)) => {
-                self.choice_defs.push(ChoiceDef::from(stmt))
-            }
             Statement::TriggerDef {
                 foralls,
                 conditions,
@@ -38,12 +33,6 @@ impl TypingContext {
     pub fn finalize(mut self) -> (ir::IrDesc, Vec<TypedConstraint>) {
         for choice_def in std::mem::replace(&mut self.choice_defs, vec![]) {
             match choice_def {
-                ChoiceDef::EnumDef(EnumDef {
-                    name,
-                    doc,
-                    variables,
-                    statements,
-                }) => self.register_enum(name.data, doc, variables, statements),
                 ChoiceDef::CounterDef(CounterDef {
                     name,
                     doc,
@@ -51,7 +40,7 @@ impl TypingContext {
                     vars,
                     body,
                 }) => self.register_counter(name.data, doc, visibility, vars, body),
-                ChoiceDef::IntegerDef(def) => self.define_integer(def),
+                _ => {}
             }
         }
         for trigger in std::mem::replace(&mut self.triggers, vec![]) {
@@ -70,148 +59,77 @@ impl TypingContext {
         (self.ir_desc, constraints)
     }
 
-    /// Registers an enum definition.
-    fn register_enum(
+    /// Typecheck and registers a trigger.
+    fn register_trigger(
         &mut self,
-        name: String,
-        doc: Option<String>,
-        vars: Vec<VarDef>,
-        statements: Vec<EnumStatement>,
+        foralls: Vec<VarDef>,
+        conditions: Vec<Condition>,
+        code: String,
     ) {
-        trace!("defining enum {}", name);
-        let doc = doc.map(RcStr::new);
-        let enum_name = RcStr::new(::to_type_name(&name));
-        let choice_name = RcStr::new(name);
-        let mut stmts = EnumStatements::default();
-        for s in statements {
-            stmts.add_statement(s);
-        }
-        // Register constraints
-        for (value, constraint) in stmts.constraints {
-            let choice = choice_name.clone();
-            self.register_value_constraint(choice, vars.clone(), value, constraint);
-        }
-        // Typechek the anti-symmetry mapping.
-        let (symmetric, inverse) = match stmts.symmetry {
-            None => (false, false),
-            Some(Symmetry::Symmetric) => (true, false),
-            Some(Symmetry::AntiSymmetric(..)) => (true, true),
-        };
-        let mut var_map = VarMap::default();
-        let vars = vars
+        trace!("defining trigger '{}'", code);
+        // Type check the code and the conditions.
+        let ref mut var_map = VarMap::default();
+        let foralls = foralls
             .into_iter()
-            .map(|v| {
-                let name = v.name.clone();
-                (name, var_map.decl_argument(&self.ir_desc, v))
-            }).collect::<Vec<_>>();
-        let arguments = ir::ChoiceArguments::new(
-            vars.into_iter()
-                .map(|(n, s)| (n.data, s))
-                .collect::<Vec<_>>(),
-            symmetric,
-            inverse,
-        );
-        let inverse = if let Some(Symmetry::AntiSymmetric(mapping)) = stmts.symmetry {
-            {
-                let mut mapped = HashSet::default();
-                for &(ref lhs, ref rhs) in &mapping {
-                    assert!(stmts.values.contains_key(lhs), "unknown value {}", lhs);
-                    assert!(stmts.values.contains_key(rhs), "unknown value {}", rhs);
-                    assert!(mapped.insert(lhs), "{} is mapped twice", lhs);
-                    assert!(mapped.insert(rhs), "{} is mapped twice", rhs);
-                }
-            }
-            Some(mapping)
-        } else {
-            None
-        };
-        let mut enum_ = ir::Enum::new(enum_name.clone(), doc.clone(), inverse);
-        // Register values and aliases
-        for (name, doc) in stmts.values {
-            enum_.add_value(name, doc);
-        }
-        for name in stmts.aliases.keys().cloned().collect_vec() {
-            assert!(!enum_.values().contains_key(&name));
-            let mut expanded_values = HashSet::default();
-            let mut values = stmts
-                .aliases
-                .get_mut(&name)
-                .unwrap()
-                .1
-                .drain()
-                .collect_vec();
-            while let Some(val) = values.pop() {
-                if enum_.values().contains_key(&val) {
-                    expanded_values.insert(val);
-                } else if name == val {
-                    panic!("loop in alias definition");
-                } else if let Some(&(_, ref sub_vals)) = stmts.aliases.get(&val) {
-                    values.extend(sub_vals.iter().cloned());
-                } else {
-                    panic!("undefined value in alias definition");
-                }
-            }
-            stmts.aliases.get_mut(&name).unwrap().1 = expanded_values;
-        }
-        // Register aliases
-        for (name, (doc, values)) in stmts.aliases {
-            enum_.add_alias(name, values, doc);
-        }
-        // Register the enum and the choice.
-        self.ir_desc.add_enum(enum_);
-        let choice_def = ir::ChoiceDef::Enum(enum_name);
-        self.ir_desc
-            .add_choice(ir::Choice::new(choice_name, doc, arguments, choice_def));
-    }
-
-    /// Defines an integer choice.
-    fn define_integer(&mut self, def: IntegerDef) {
-        let choice_name = RcStr::new(def.name.data);
-        let doc = def.doc.map(RcStr::new);
-        let mut var_map = VarMap::default();
-        let vars = def
-            .variables
+            .map(|def| var_map.decl_forall(&self.ir_desc, def))
+            .collect();
+        let mut inputs = Vec::new();
+        let conditions = conditions
             .into_iter()
-            .map(|v| {
-                let name = v.name.clone();
-                (name, var_map.decl_argument(&self.ir_desc, v))
-            }).collect::<Vec<_>>();
-        let arguments = ir::ChoiceArguments::new(
-            vars.into_iter()
-                .map(|(n, s)| (n.data, s))
-                .collect::<Vec<_>>(),
-            false,
-            false,
-        );
-        let universe = type_check_code(def.code.into(), &var_map);
-        let choice_def = ir::ChoiceDef::Number { universe };
-        self.ir_desc
-            .add_choice(ir::Choice::new(choice_name, doc, arguments, choice_def));
-    }
-
-    /// Register a constraint on an enum value.
-    fn register_value_constraint(
-        &mut self,
-        choice: RcStr,
-        args: Vec<VarDef>,
-        value: RcStr,
-        mut constraint: Constraint,
-    ) {
-        let choice_args = args.iter().map(|def| def.name.clone()).collect::<Vec<_>>();
-        let self_instance = ChoiceInstance {
-            name: choice,
-            vars: choice_args.into_iter().map(|n| n.data).collect::<Vec<_>>(),
+            .map(|c| c.type_check(&self.ir_desc, var_map, &mut inputs))
+            .collect_vec();
+        let code = type_check_code(RcStr::new(code), var_map);
+        // Groups similiar inputs.
+        let (inputs, input_adaptator) = dedup_inputs(inputs, &self.ir_desc);
+        let conditions = conditions
+            .into_iter()
+            .map(|c| c.adapt(&input_adaptator))
+            .collect_vec();
+        // Adapt the trigger to the point of view of each inputs.
+        let onchange_actions = inputs
+            .iter()
+            .enumerate()
+            .map(|(pos, input)| {
+                let (foralls, set_constraints, condition, adaptator) =
+                    ir::ChoiceCondition::new(
+                        &self.ir_desc,
+                        inputs.clone(),
+                        pos,
+                        &conditions,
+                        var_map.env(),
+                    );
+                let code = code.adapt(&adaptator);
+                (
+                    input.choice.clone(),
+                    foralls,
+                    set_constraints,
+                    condition,
+                    code,
+                )
+            }).collect_vec();
+        // Add the trigger to the IR.
+        let trigger = ir::Trigger {
+            foralls,
+            inputs,
+            conditions,
+            code,
         };
-        let condition = Condition::Is {
-            lhs: self_instance,
-            rhs: vec![value],
-            is: false,
-        };
-        constraint.forall_vars.extend(args);
-        for disjunction in &mut constraint.disjunctions {
-            disjunction.push(condition.clone());
+        let id = self.ir_desc.add_trigger(trigger);
+        // Register the triggers to to be called when each input is modified.
+        for (choice, forall_vars, set_constraints, condition, code) in onchange_actions {
+            let action = ir::ChoiceAction::Trigger {
+                id,
+                condition,
+                code,
+                inverse_self_cond: false,
+            };
+            let on_change = ir::OnChangeAction {
+                forall_vars,
+                set_constraints,
+                action,
+            };
+            self.ir_desc.add_onchange(&choice, on_change);
         }
-        self.constraints.push(constraint);
     }
 
     /// Registers a counter in the ir description.
@@ -323,7 +241,7 @@ impl TypingContext {
     /// Creates a choice to store the increment condition of a counter. Returns the
     /// corresponding choice instance from the point of view of the counter and the
     /// condition on wich the counter must be incremented.
-    fn gen_increment(
+    pub fn gen_increment(
         &mut self,
         counter: &str,
         counter_vars: &[(RcStr, ir::Set)],
@@ -418,7 +336,7 @@ impl TypingContext {
 
     /// Returns the `CounterVal` referencing a choice. Registers the UpdateCounter action
     /// so that the referencing counter is updated when the referenced counter is changed.
-    fn counter_val_choice(
+    pub fn counter_val_choice(
         &mut self,
         counter: &ChoiceInstance,
         caller_visibility: ir::CounterVisibility,
@@ -474,81 +392,8 @@ impl TypingContext {
         (ir::CounterVal::Choice(instance), update_action)
     }
 
-    /// Typecheck and registers a trigger.
-    fn register_trigger(
-        &mut self,
-        foralls: Vec<VarDef>,
-        conditions: Vec<Condition>,
-        code: String,
-    ) {
-        trace!("defining trigger '{}'", code);
-        // Type check the code and the conditions.
-        let ref mut var_map = VarMap::default();
-        let foralls = foralls
-            .into_iter()
-            .map(|def| var_map.decl_forall(&self.ir_desc, def))
-            .collect();
-        let mut inputs = Vec::new();
-        let conditions = conditions
-            .into_iter()
-            .map(|c| c.type_check(&self.ir_desc, var_map, &mut inputs))
-            .collect_vec();
-        let code = type_check_code(RcStr::new(code), var_map);
-        // Groups similiar inputs.
-        let (inputs, input_adaptator) = dedup_inputs(inputs, &self.ir_desc);
-        let conditions = conditions
-            .into_iter()
-            .map(|c| c.adapt(&input_adaptator))
-            .collect_vec();
-        // Adapt the trigger to the point of view of each inputs.
-        let onchange_actions = inputs
-            .iter()
-            .enumerate()
-            .map(|(pos, input)| {
-                let (foralls, set_constraints, condition, adaptator) =
-                    ir::ChoiceCondition::new(
-                        &self.ir_desc,
-                        inputs.clone(),
-                        pos,
-                        &conditions,
-                        var_map.env(),
-                    );
-                let code = code.adapt(&adaptator);
-                (
-                    input.choice.clone(),
-                    foralls,
-                    set_constraints,
-                    condition,
-                    code,
-                )
-            }).collect_vec();
-        // Add the trigger to the IR.
-        let trigger = ir::Trigger {
-            foralls,
-            inputs,
-            conditions,
-            code,
-        };
-        let id = self.ir_desc.add_trigger(trigger);
-        // Register the triggers to to be called when each input is modified.
-        for (choice, forall_vars, set_constraints, condition, code) in onchange_actions {
-            let action = ir::ChoiceAction::Trigger {
-                id,
-                condition,
-                code,
-                inverse_self_cond: false,
-            };
-            let on_change = ir::OnChangeAction {
-                forall_vars,
-                set_constraints,
-                action,
-            };
-            self.ir_desc.add_onchange(&choice, on_change);
-        }
-    }
-
     /// Creates an action to update the a counter when incr is modified.
-    fn gen_incr_counter(
+    pub fn gen_incr_counter(
         &self,
         counter: &RcStr,
         num_counter_args: usize,

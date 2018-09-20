@@ -1,6 +1,8 @@
+pub mod counter;
 pub mod enumeration;
 pub mod integer;
 
+pub use self::counter::CounterDef;
 pub use self::enumeration::EnumDef;
 pub use self::integer::IntegerDef;
 pub use super::*;
@@ -34,9 +36,9 @@ impl ChoiceDef {
         tc: &mut TypingContext,
     ) -> Result<(), TypeError> {
         match self {
-            ChoiceDef::CounterDef(_) => Ok(()),
-            ChoiceDef::IntegerDef(integer_def) => integer_def.define(context, tc),
-            ChoiceDef::EnumDef(enum_def) => enum_def.define(context, tc),
+            ChoiceDef::CounterDef(def) => def.define(context, tc),
+            ChoiceDef::IntegerDef(def) => def.define(context, tc),
+            ChoiceDef::EnumDef(def) => def.define(context, tc),
         }
     }
 }

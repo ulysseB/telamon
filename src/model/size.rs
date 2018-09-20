@@ -19,6 +19,11 @@ impl Range {
     pub fn new_fixed(val: u64) -> Self {
         Range { min: val, max: val }
     }
+
+    /// Indicates if the `Range` contains a single value.
+    pub fn is_constrained(&self) -> bool {
+        self.min == self.max
+    }
 }
 
 /// Bounds the values a size can take, in the given context.
