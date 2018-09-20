@@ -1,7 +1,7 @@
-use super::context::CheckerContext;
-use super::error::TypeError;
-use super::typing_context::TypingContext;
-use super::{ir, Condition, TypedConstraint, VarDef, VarMap};
+use ast::context::CheckerContext;
+use ast::error::TypeError;
+use ast::typing_context::TypingContext;
+use ast::{ir, Condition, TypedConstraint, VarDef, VarMap};
 
 use itertools::Itertools;
 

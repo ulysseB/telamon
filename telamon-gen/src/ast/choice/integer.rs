@@ -54,7 +54,8 @@ impl IntegerDef {
             .map(|v| {
                 let name = v.name.clone();
                 (name, var_map.decl_argument(&tc.ir_desc, v.to_owned()))
-            }).collect::<Vec<_>>();
+            })
+            .collect::<Vec<_>>();
         let arguments = ir::ChoiceArguments::new(
             vars.into_iter()
                 .map(|(n, s)| (n.data, s))
