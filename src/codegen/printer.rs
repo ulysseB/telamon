@@ -480,13 +480,13 @@ pub trait Printer {
                 let t = unwrap!(inst.t());
                 self.print_mov(t, &namer.name_inst(inst), &namer.name_op(op))
             }
-            op::Ld(ld_type, addr, _) => self.print_ld(
+            op::Ld(ld_type, addr, _) | op::LdDMA(ld_type, addr, _)=> self.print_ld(
                 Self::lower_type(*ld_type, fun),
                 unwrap!(inst.mem_flag()),
                 &namer.name_inst(inst),
                 &namer.name_op(addr),
             ),
-            op::St(addr, val, _, _) => {
+            op::St(addr, val, _, _) | op::StDMA(addr, val, _, _) => {
                 let guard = if inst.has_side_effects() {
                     namer.side_effect_guard()
                 } else {

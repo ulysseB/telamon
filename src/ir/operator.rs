@@ -87,6 +87,11 @@ pub enum Operator<'a, L = LoweringMap> {
     /// The boolean specifies if the instruction has side effects. A store has no side
     /// effects when it writes into a cell that previously had an undefined value.
     St(Operand<'a, L>, Operand<'a, L>, bool, AccessPattern<'a>),
+    /// Equivalent of the previous Load instruction for Direct Memory Access. We need a special
+    /// instruction as it is translated in a special syntax at least in MPPA 
+    LdDMA(Type, Operand<'a, L>, AccessPattern<'a>),
+    /// Store for DMA access
+    StDMA(Operand<'a, L>, Operand<'a, L>, bool, AccessPattern<'a>),
     /// Represents a load from a temporary memory that is not fully defined yet.
     TmpLd(Type, ir::MemId),
     /// Represents a store to a temporary memory that is not fully defined yet.
@@ -139,11 +144,11 @@ impl<'a, L> Operator<'a, L> {
                     (_, t) => Err(ir::TypeError::UnexpectedType { t })?,
                 }
             }
-            Ld(_, ref addr, ref pattern) => {
+            Ld(_, ref addr, ref pattern) | LdDMA(_, ref addr, ref pattern) => {
                 pattern.check(iter_dims)?;
                 ir::TypeError::check_equals(addr.t(), Type::PtrTo(pattern.mem_block()))?;
             }
-            St(ref addr, _, _, ref pattern) => {
+            St(ref addr, _, _, ref pattern) | StDMA(ref addr, _, _, ref pattern) => {
                 pattern.check(iter_dims)?;
                 ir::TypeError::check_equals(addr.t(), Type::PtrTo(pattern.mem_block()))?;
             }
@@ -156,8 +161,8 @@ impl<'a, L> Operator<'a, L> {
     pub fn t(&self) -> Option<Type> {
         match *self {
             BinOp(_, ref op, ..) | Mov(ref op) | Mad(_, _, ref op, _) => Some(op.t()),
-            Ld(t, ..) | TmpLd(t, _) | Cast(_, t) | Mul(.., t) => Some(t),
-            St(..) | TmpSt(..) => None,
+            Ld(t, ..) | LdDMA(t, ..) | TmpLd(t, _) | Cast(_, t) | Mul(.., t) => Some(t),
+            St(..) | StDMA(..) | TmpSt(..) => None,
         }
     }
 
@@ -166,11 +171,11 @@ impl<'a, L> Operator<'a, L> {
         match *self {
             BinOp(_, ref lhs, ref rhs, _)
             | Mul(ref lhs, ref rhs, _, _)
-            | St(ref lhs, ref rhs, _, _) => vec![lhs, rhs],
+            | St(ref lhs, ref rhs, _, _) | StDMA(ref lhs, ref rhs, _, _) => vec![lhs, rhs],
             Mad(ref mul_lhs, ref mul_rhs, ref add_rhs, _) => {
                 vec![mul_lhs, mul_rhs, add_rhs]
             }
-            Mov(ref op) | Ld(_, ref op, _) | TmpSt(ref op, _) | Cast(ref op, _) => {
+            Mov(ref op) | Ld(_, ref op, _) | LdDMA(_, ref op, _) | TmpSt(ref op, _) | Cast(ref op, _) => {
                 vec![op]
             }
             TmpLd(..) => vec![],
@@ -182,12 +187,14 @@ impl<'a, L> Operator<'a, L> {
         match *self {
             BinOp(_, ref mut lhs, ref mut rhs, _)
             | Mul(ref mut lhs, ref mut rhs, _, _)
-            | St(ref mut lhs, ref mut rhs, _, _) => vec![lhs, rhs],
+            | St(ref mut lhs, ref mut rhs, _, _)
+            | StDMA(ref mut lhs, ref mut rhs, _, _) => vec![lhs, rhs],
             Mad(ref mut mul_lhs, ref mut mul_rhs, ref mut add_rhs, _) => {
                 vec![mul_lhs, mul_rhs, add_rhs]
             }
             Mov(ref mut op)
             | Ld(_, ref mut op, _)
+            | LdDMA(_, ref mut op, _)
             | TmpSt(ref mut op, _)
             | Cast(ref mut op, _) => vec![op],
             TmpLd(..) => vec![],
@@ -197,8 +204,8 @@ impl<'a, L> Operator<'a, L> {
     /// Returns true if the operator has side effects.
     pub fn has_side_effects(&self) -> bool {
         match *self {
-            St(_, _, b, _) => b,
-            BinOp(..) | Mul(..) | Mad(..) | Mov(..) | Ld(..) | TmpLd(..) | TmpSt(..)
+            St(_, _, b, _) | StDMA(_, _, b, _) => b,
+            BinOp(..) | Mul(..) | Mad(..) | Mov(..) | Ld(..) | LdDMA(..) | TmpLd(..) | TmpSt(..)
             | Cast(..) => false,
         }
     }
@@ -213,8 +220,9 @@ impl<'a, L> Operator<'a, L> {
     /// Returns the pattern of access to the memory by the instruction, if any.
     pub fn mem_access_pattern(&self) -> Option<Cow<AccessPattern>> {
         match *self {
-            Ld(_, _, ref pattern) | St(_, _, _, ref pattern) => {
-                Some(Cow::Borrowed(pattern))
+            Ld(_, _, ref pattern) | St(_, _, _, ref pattern) 
+                | LdDMA(_, _, ref pattern) | StDMA(_, _, _, ref pattern) => {
+                    Some(Cow::Borrowed(pattern))
             }
             TmpLd(_, mem_id) | TmpSt(_, mem_id) => {
                 Some(Cow::Owned(AccessPattern::Unknown { mem_id }))
@@ -271,6 +279,15 @@ impl<'a, L> Operator<'a, L> {
                 let oper2 = f(oper2);
                 St(oper1, oper2, side_effects, ap)
             }
+            LdDMA(t, oper1, ap) => {
+                let oper1 = f(oper1);
+                LdDMA(t, oper1, ap)
+            }
+            StDMA(oper1, oper2, side_effects, ap) => {
+                let oper1 = f(oper1);
+                let oper2 = f(oper2);
+                StDMA(oper1, oper2, side_effects, ap)
+            }
             TmpLd(t, id) => TmpLd(t, id),
             TmpSt(oper1, id) => {
                 let oper1 = f(oper1);
@@ -299,6 +316,8 @@ impl<'a> std::fmt::Display for Operator<'a> {
             Mov(..) => "mov",
             Ld(..) => "ld",
             St(..) => "st",
+            LdDMA(..) => "ld_dma",
+            StDMA(..) => "st_dma",
             TmpLd(..) => "tmp_ld",
             TmpSt(..) => "tmp_st",
             Cast(..) => "cast",
