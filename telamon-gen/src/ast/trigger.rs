@@ -1,7 +1,7 @@
-use super::context::CheckerContext;
-use super::error::TypeError;
-use super::typing_context::TypingContext;
-use super::{type_check_code, Condition, VarDef, VarMap};
+use ast::context::CheckerContext;
+use ast::error::TypeError;
+use ast::typing_context::TypingContext;
+use ast::{type_check_code, Condition, VarDef, VarMap};
 use constraint::dedup_inputs;
 
 use ir::{self, Adaptable};

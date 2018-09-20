@@ -1,4 +1,4 @@
-use super::{Check, ChoiceDef, Constraint, SetDef, TriggerDef, TypedConstraint};
+use ast::{Check, ChoiceDef, Constraint, SetDef, TriggerDef, TypedConstraint};
 use ir;
 
 use itertools::Itertools;

@@ -2,13 +2,13 @@ use std::iter::once;
 use std::mem;
 use std::ops::Deref;
 
-use super::choice::{ChoiceDef, CounterDef};
-use super::constrain::Constraint;
-use super::context::CheckerContext;
-use super::error::{Hint, TypeError};
-use super::trigger::TriggerDef;
-use super::typing_context::TypingContext;
-use super::{
+use ast::choice::{ChoiceDef, CounterDef};
+use ast::constrain::Constraint;
+use ast::context::CheckerContext;
+use ast::error::{Hint, TypeError};
+use ast::trigger::TriggerDef;
+use ast::typing_context::TypingContext;
+use ast::{
     ir, print, Check, ChoiceInstance, Condition, CounterBody, CounterVal, Quotient,
     SetRef, VarDef, VarMap,
 };

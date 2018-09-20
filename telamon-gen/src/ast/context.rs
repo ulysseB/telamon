@@ -1,7 +1,7 @@
 use std::ops::Deref;
 
-use super::error::{Hint, TypeError};
-use super::SetRef;
+use ast::error::{Hint, TypeError};
+use ast::SetRef;
 
 use lexer::Spanned;
 use utils::HashMap;
