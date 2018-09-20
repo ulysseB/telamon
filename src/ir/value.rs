@@ -1,14 +1,15 @@
 //! Encodes the data-flow information.
-use ir;
+use ir::{self, InstId};
+use utils::*;
 
 /// Uniquely identifies values.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize,
          Deserialize)]
 pub struct ValueId(pub u16);
 
-impl Into<usize> for ValueId {
-    fn into(self) -> usize {
-        self.0 as usize
+impl From<ValueId> for usize {
+    fn from(val_id: ValueId) -> Self {
+        val_id.0 as usize
     }
 }
 
@@ -18,11 +19,17 @@ pub struct Value {
     id: ValueId,
     t: ir::Type,
     def: ValueDef,
+    usepoints: HashSet<InstId>,
 }
 
 impl Value {
     pub fn new(id: ValueId, t: ir::Type, def: ValueDef) -> Self {
-        Value { id, t, def }
+        Value {
+            id,
+            t,
+            def,
+            usepoints: HashSet::default(),
+        }
     }
 
     /// Return the unique identifiers of the `Value`.
@@ -39,10 +46,22 @@ impl Value {
     pub fn t(&self) -> ir::Type {
         self.t
     }
+
+    pub fn usepoints(&self) -> impl Iterator<Item = &InstId> {
+        self.usepoints.iter()
+    }
+
+    pub fn add_usepoint(&mut self, usepoint: InstId) {
+        self.usepoints.insert(usepoint);
+    }
+
+    pub fn is_dependency_of(&self, usepoint: InstId) -> bool {
+        self.usepoints.contains(&usepoint)
+    }
 }
 
 /// Specifies how is a `Value` defined.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 pub enum ValueDef {
     /// Takes the value produced by an instruction.
     Inst(ir::InstId),
@@ -62,6 +81,7 @@ impl ValueDef {
         function.inst_mut(*inst_id).set_result_value(self_id);
     }
 }
+
 // - register in the instruction
 // - retrieve the type
 // FIXME: def point
