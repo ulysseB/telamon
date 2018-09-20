@@ -22,9 +22,7 @@ use std::collections::{hash_map, BTreeSet};
 use std::fmt;
 use utils::*;
 
-pub use self::choice::enumeration::EnumDef;
-pub use self::choice::integer::IntegerDef;
-pub use self::choice::ChoiceDef;
+pub use self::choice::{ChoiceDef, CounterDef, EnumDef, IntegerDef};
 pub use self::constrain::Constraint;
 use self::context::TypingContext;
 pub use self::error::{Hint, TypeError};
@@ -191,7 +189,7 @@ impl PartialEq for VarDef {
 
 /// Maps variables to their set and position.
 #[derive(Default)]
-struct VarMap {
+pub struct VarMap {
     map: HashMap<RcStr, (ir::Variable, ir::Set)>,
     next_arg_id: usize,
     next_forall_id: usize,
@@ -548,20 +546,5 @@ impl EnumStatements {
                 self.symmetry = Some(Symmetry::AntiSymmetric(mapping));
             }
         }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct CounterDef {
-    pub name: Spanned<RcStr>,
-    pub doc: Option<String>,
-    pub visibility: ir::CounterVisibility,
-    pub vars: Vec<VarDef>,
-    pub body: CounterBody,
-}
-
-impl PartialEq for CounterDef {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.name == rhs.name
     }
 }
