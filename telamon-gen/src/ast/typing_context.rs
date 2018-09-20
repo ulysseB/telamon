@@ -1,12 +1,5 @@
+use super::{Check, ChoiceDef, Constraint, SetDef, TriggerDef, TypedConstraint};
 use ir;
-use super::{
-    SetDef,
-    ChoiceDef,
-    TriggerDef,
-    Constraint,
-    Check,
-    TypedConstraint,
-};
 
 use itertools::Itertools;
 
@@ -32,9 +25,9 @@ impl TypingContext {
                         counter_def.visibility.clone(),
                         counter_def.vars.clone(),
                         counter_def.body.clone(),
-                        &mut self
+                        &mut self,
                     );
-                },
+                }
                 _ => {}
             }
         }
@@ -43,7 +36,7 @@ impl TypingContext {
                 trigger.foralls.clone(),
                 trigger.conditions.clone(),
                 trigger.code.clone(),
-                &mut self
+                &mut self,
             );
         }
         let constraints = {

@@ -2,26 +2,19 @@ use std::ops::Deref;
 
 use super::ChoiceDef;
 
-use ast::error::{Hint, TypeError};
+use ast::constrain::Constraint;
 use ast::context::CheckerContext;
+use ast::error::{Hint, TypeError};
 use ast::typing_context::TypingContext;
 use ast::{
-    SetRef,
-    VarDef,
-    VarMap,
-    Condition,
-    EnumStatements,
-    EnumStatement,
-    ChoiceInstance,
-    Symmetry,
-    HashSet
+    ChoiceInstance, Condition, EnumStatement, EnumStatements, HashSet, SetRef, Symmetry,
+    VarDef, VarMap,
 };
-use ast::constrain::Constraint;
-use lexer::Spanned;
 use ir;
+use lexer::Spanned;
 
-use utils::{RcStr, HashMap};
 use itertools::Itertools;
+use utils::{HashMap, RcStr};
 
 /// A toplevel definition or constraint.
 #[derive(Clone, Debug)]

@@ -1,9 +1,7 @@
-use super::{
-    ir, VarDef, VarMap, Condition, TypedConstraint
-};
 use super::context::CheckerContext;
-use super::typing_context::TypingContext;
 use super::error::TypeError;
+use super::typing_context::TypingContext;
+use super::{ir, Condition, TypedConstraint, VarDef, VarMap};
 
 use itertools::Itertools;
 
@@ -51,7 +49,8 @@ impl Constraint {
                     inputs,
                     conditions,
                 }
-            }).collect_vec()
+            })
+            .collect_vec()
     }
 
     /// Type checks the define's condition.

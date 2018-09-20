@@ -56,7 +56,8 @@ pub fn partial_iterators<'a>(
                     },
                 )
             })
-        }).collect()
+        })
+        .collect()
 }
 
 /// A newly allocated decision.
@@ -138,9 +139,10 @@ pub fn incr_iterators<'a>(ir_desc: &'a ir::IrDesc) -> Vec<IncrIterator<'a>> {
                                     .collect()
                             }
                         }.into_iter()
-                        .flat_map(|conflict| conflict.generate_ast(arg_set, ctx))
-                        .collect()
-                    }).unwrap_or(vec![]);
+                            .flat_map(|conflict| conflict.generate_ast(arg_set, ctx))
+                            .collect()
+                    })
+                    .unwrap_or(vec![]);
                 // Create the loop nest.
                 let ref mut conflicts =
                     PartialIterator::current_new_obj_conflicts(set).collect();
@@ -234,7 +236,8 @@ impl<'a> PartialIterator<'a> {
                     .flat_map(move |arg| {
                         PartialIterator::new_objs_conflicts(ir_desc, set)
                             .flat_map(move |c| c.generate_ast(arg, ctx))
-                    }).collect()
+                    })
+                    .collect()
             };
             let mut conflicts = Self::new_objs_conflicts(ir_desc, set)
                 .chain(Self::current_new_obj_conflicts(set))
@@ -272,7 +275,8 @@ impl<'a> PartialIterator<'a> {
             .map(|set| {
                 let list = ast::new_objs_list(set, "new_objs");
                 ast::Conflict::NewObjs { list, set }
-            }).chain(iter::once(self_conflict))
+            })
+            .chain(iter::once(self_conflict))
     }
 
     /// Returns the conflicts with the new object and its argument.

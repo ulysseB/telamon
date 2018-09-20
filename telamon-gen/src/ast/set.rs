@@ -1,23 +1,22 @@
-use std::ops::Deref;
 use std::iter::once;
 use std::mem;
+use std::ops::Deref;
 
-use super::{
-    ir,
-    Quotient, SetRef, VarDef, VarMap, Check, Condition, CounterVal,
-    print, ChoiceInstance, CounterBody
-};
+use super::choice::{ChoiceDef, CounterDef};
 use super::constrain::Constraint;
 use super::context::CheckerContext;
-use super::choice::{CounterDef, ChoiceDef};
-use super::typing_context::TypingContext;
+use super::error::{Hint, TypeError};
 use super::trigger::TriggerDef;
-use super::error::{TypeError, Hint};
+use super::typing_context::TypingContext;
+use super::{
+    ir, print, Check, ChoiceInstance, Condition, CounterBody, CounterVal, Quotient,
+    SetRef, VarDef, VarMap,
+};
 
-use utils::{RcStr, HashMap};
-use lexer::Spanned;
 use indexmap::IndexMap;
 use itertools::Itertools;
+use lexer::Spanned;
+use utils::{HashMap, RcStr};
 
 #[derive(Debug, Clone)]
 pub struct SetDef {
@@ -418,9 +417,7 @@ impl SetDef {
                     .set
                     .type_check(&tc.ir_desc, &VarMap::default());
                 assert!(superset.as_ref().unwrap().is_subset_of_def(&set));
-                assert!(
-                    mem::replace(&mut reverse, Some((set, v.to_owned()))).is_none()
-                );
+                assert!(mem::replace(&mut reverse, Some((set, v.to_owned()))).is_none());
             } else {
                 assert!(keymap.insert(key, v).is_none());
             }

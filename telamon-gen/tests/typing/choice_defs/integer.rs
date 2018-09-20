@@ -14,10 +14,11 @@ mod undefined {
         assert_eq!(
             parser::parse_ast(Lexer::new(
                 b"define integer foo($arg in MySet): \"mycode\"
-              end".to_vec()
+              end"
+                    .to_vec()
             )).unwrap()
-            .type_check()
-            .err(),
+                .type_check()
+                .err(),
             Some(TypeError::Undefined {
                 object_name: Spanned {
                     beg: Position {
@@ -53,10 +54,11 @@ mod redefinition {
                 b"define integer foo(): \"mycode\"
               end
               define integer foo(): \"mycode\"
-              end".to_vec()
+              end"
+                    .to_vec()
             )).unwrap()
-            .type_check()
-            .err(),
+                .type_check()
+                .err(),
             Some(TypeError::Redefinition {
                 object_kind: Spanned {
                     beg: Position {

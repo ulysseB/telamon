@@ -229,7 +229,8 @@ impl Code {
                 let new_pattern = "$".to_string() + &new_name;
                 *code = RcStr::new(code.replace(&old_pattern, &new_pattern));
                 (var, new_name)
-            }).sorted_by(|x, y| std::cmp::Ord::cmp(&x.0, &y.0));
+            })
+            .sorted_by(|x, y| std::cmp::Ord::cmp(&x.0, &y.0));
         self.vars.dedup();
     }
 }
@@ -299,8 +300,7 @@ impl Condition {
                 ref values,
                 negate,
                 inverse,
-            }
-                if input_id == input =>
+            } if input_id == input =>
             {
                 let enum_ = ir_desc.get_enum(unwrap!(t.as_enum()));
                 Some(normalized_enum_set(values, negate, inverse, enum_))
@@ -743,8 +743,7 @@ impl ValueSet {
                 ref values,
                 ref inputs,
                 ..
-            }
-                if inputs.is_empty() =>
+            } if inputs.is_empty() =>
             {
                 if values.len() == 1 {
                     Trivalent::True
@@ -756,8 +755,7 @@ impl ValueSet {
                 ref values,
                 ref inputs,
                 ..
-            }
-                if values.is_empty() =>
+            } if values.is_empty() =>
             {
                 if inputs.len() == 1 {
                     Trivalent::True
@@ -1000,7 +998,8 @@ impl Adaptable for ValueSet {
                     .map(|(input, negate, inverse)| {
                         let (new_input, inversed) = adaptator.input(input);
                         (new_input, negate, inverse ^ inversed)
-                    }).collect();
+                    })
+                    .collect();
                 ValueSet::Enum {
                     inputs,
                     enum_name: enum_name.clone(),
@@ -1020,7 +1019,8 @@ impl Adaptable for ValueSet {
                         let (new_input, inversed) = adaptator.input(input);
                         assert!(!inversed);
                         (op, new_input)
-                    }).collect();
+                    })
+                    .collect();
                 let cmp_code = cmp_code
                     .iter()
                     .map(|(op, code)| (*op, code.adapt(adaptator)))

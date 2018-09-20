@@ -1,14 +1,11 @@
-use super::{
-    type_check_code,
-    VarDef, VarMap, Condition,
-};
 use super::context::CheckerContext;
-use super::typing_context::TypingContext;
 use super::error::TypeError;
+use super::typing_context::TypingContext;
+use super::{type_check_code, Condition, VarDef, VarMap};
 use constraint::dedup_inputs;
 
-use utils::RcStr;
 use ir::{self, Adaptable};
+use utils::RcStr;
 
 use itertools::Itertools;
 
@@ -79,10 +76,7 @@ impl TriggerDef {
         };
         let id = tc.ir_desc.add_trigger(trigger);
         // Register the triggers to to be called when each input is modified.
-        for (choice,
-             forall_vars,
-             set_constraints,
-             condition, code) in onchange_actions {
+        for (choice, forall_vars, set_constraints, condition, code) in onchange_actions {
             let action = ir::ChoiceAction::Trigger {
                 id,
                 condition,

@@ -96,7 +96,8 @@ impl<'a> Ast<'a> {
             .on_change()
             .map(|action| {
                 OnChangeAction::new(action, choice, ir_desc, &mut trigger_calls)
-            }).collect();
+            })
+            .collect();
         let filters = choice
             .filters()
             .enumerate()
@@ -443,7 +444,8 @@ impl<'a> ChoiceAction<'a> {
                     .enumerate()
                     .map(|(pos, input)| {
                         (ctx.input_name(pos), ast::ChoiceInstance::new(input, ctx))
-                    }).collect();
+                    })
+                    .collect();
                 let arguments = (0..ctx.choice.arguments().len())
                     .map(ir::Variable::Arg)
                     .chain((0..forall_offset).map(ir::Variable::Forall))
@@ -456,7 +458,8 @@ impl<'a> ChoiceAction<'a> {
                                 ctx,
                             ),
                         )
-                    }).collect_vec();
+                    })
+                    .collect_vec();
                 let code = ast::code(code, ctx);
                 let call_id = trigger_calls.len();
                 let mut self_condition = condition.self_condition.clone();

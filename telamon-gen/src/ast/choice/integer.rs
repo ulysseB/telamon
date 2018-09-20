@@ -2,12 +2,12 @@ use std::ops::Deref;
 
 use super::ChoiceDef;
 
-use ast::error::TypeError;
 use ast::context::CheckerContext;
+use ast::error::TypeError;
 use ast::typing_context::TypingContext;
-use ast::{VarDef, VarMap, type_check_code};
-use lexer::Spanned;
+use ast::{type_check_code, VarDef, VarMap};
 use ir;
+use lexer::Spanned;
 
 use utils::RcStr;
 

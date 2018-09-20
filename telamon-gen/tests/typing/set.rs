@@ -31,10 +31,11 @@ mod redefinition {
                 iterator = \"ir::inst::iter($fun)\"
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
-            end".to_vec()
+            end"
+                    .to_vec()
             )).unwrap()
-            .type_check()
-            .err(),
+                .type_check()
+                .err(),
             Some(TypeError::Redefinition {
                 object_kind: Spanned {
                     beg: Position {
@@ -82,10 +83,11 @@ mod redefinition {
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
                 new_objs = \"$objs.inst\"
-            end".to_vec()
+            end"
+                    .to_vec()
             )).unwrap()
-            .type_check()
-            .err(),
+                .type_check()
+                .err(),
             Some(TypeError::Redefinition {
                 object_kind: Spanned {
                     beg: Position {
@@ -144,10 +146,11 @@ mod undefined {
                 iterator = \"ir::operand::iter($fun, ir::inst::Obj::id($inst))\"
                 var_prefix = \"op\"
                 new_objs = \"$objs.operand\"
-              end".to_vec()
+              end"
+                    .to_vec()
             )).unwrap()
-            .type_check()
-            .err(),
+                .type_check()
+                .err(),
             Some(TypeError::Undefined {
                 object_name: Spanned {
                     beg: Position {
@@ -181,10 +184,11 @@ mod undefined {
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
                 from_superset = \"ir::inst::from_superset($fun, $item)\"
-             end".to_vec()
+             end"
+                    .to_vec()
             )).unwrap()
-            .type_check()
-            .err(),
+                .type_check()
+                .err(),
             Some(TypeError::Undefined {
                 object_name: Spanned {
                     beg: Position {
@@ -239,10 +243,11 @@ mod undefined {
                     from_superset = \"ir::value_ab::from_superset($fun, $param, $item)\"
                     reverse forall $val in Unvalues =
                         \"ir::value_ab::reverse($fun, $val.id())\"
-                  end".to_vec()
+                  end"
+                    .to_vec()
             )).unwrap()
-            .type_check()
-            .err(),
+                .type_check()
+                .err(),
             Some(TypeError::Undefined {
                 object_name: Spanned {
                     beg: Position {
@@ -280,10 +285,11 @@ mod undefined {
                     var_prefix = \"dim\"
                     from_superset = \"$item.as_dim()\"
                     new_objs = \"$objs.dimensions\"
-                  end".to_vec()
+                  end"
+                    .to_vec()
             )).unwrap()
-            .type_check()
-            .err(),
+                .type_check()
+                .err(),
             Some(TypeError::Undefined {
                 object_name: Spanned {
                     beg: Position {
@@ -321,10 +327,11 @@ mod missing_entry {
                 iterator = \"ir::inst::iter($fun)\"
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
-              end".to_vec()
+              end"
+                    .to_vec()
             )).unwrap()
-            .type_check()
-            .err(),
+                .type_check()
+                .err(),
             Some(TypeError::MissingEntry {
                 object_name: String::from("Instruction"),
                 object_field: Spanned {
@@ -357,10 +364,11 @@ mod missing_entry {
                 iterator = \"ir::inst::iter($fun)\"
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
-              end".to_vec()
+              end"
+                    .to_vec()
             )).unwrap()
-            .type_check()
-            .err(),
+                .type_check()
+                .err(),
             Some(TypeError::MissingEntry {
                 object_name: String::from("Instruction"),
                 object_field: Spanned {
@@ -393,10 +401,11 @@ mod missing_entry {
                 iterator = \"ir::inst::iter($fun)\"
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
-              end".to_vec()
+              end"
+                    .to_vec()
             )).unwrap()
-            .type_check()
-            .err(),
+                .type_check()
+                .err(),
             Some(TypeError::MissingEntry {
                 object_name: String::from("Instruction"),
                 object_field: Spanned {
@@ -429,10 +438,11 @@ mod missing_entry {
                 iterator = \"ir::inst::iter($fun)\"
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
-              end".to_vec()
+              end"
+                    .to_vec()
             )).unwrap()
-            .type_check()
-            .err(),
+                .type_check()
+                .err(),
             Some(TypeError::MissingEntry {
                 object_name: String::from("Instruction"),
                 object_field: Spanned {
@@ -465,10 +475,11 @@ mod missing_entry {
                 id_getter = \"ir::inst::Obj::id($item)\"
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
-              end".to_vec()
+              end"
+                    .to_vec()
             )).unwrap()
-            .type_check()
-            .err(),
+                .type_check()
+                .err(),
             Some(TypeError::MissingEntry {
                 object_name: String::from("Instruction"),
                 object_field: Spanned {
@@ -501,10 +512,11 @@ mod missing_entry {
                 id_getter = \"ir::inst::Obj::id($item)\"
                 iterator = \"ir::inst::iter($fun)\"
                 var_prefix = \"inst\"
-              end".to_vec()
+              end"
+                    .to_vec()
             )).unwrap()
-            .type_check()
-            .err(),
+                .type_check()
+                .err(),
             Some(TypeError::MissingEntry {
                 object_name: String::from("Instruction"),
                 object_field: Spanned {
@@ -548,10 +560,11 @@ mod missing_entry {
                 iterator = \"ir::inst::iter($fun)\"
                 var_prefix = \"inst\"
                 new_objs = \"$objs.inst\"
-             end".to_vec()
+             end"
+                    .to_vec()
             )).unwrap()
-            .type_check()
-            .err(),
+                .type_check()
+                .err(),
             Some(TypeError::MissingEntry {
                 object_name: String::from("Instruction"),
                 object_field: Spanned {

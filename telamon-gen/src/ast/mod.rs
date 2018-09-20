@@ -10,27 +10,27 @@ mod set;
 mod trigger;
 mod typing_context;
 
-use std::collections::{hash_map, BTreeSet};
-use std::fmt;
-use itertools::Itertools;
 use indexmap::IndexMap;
+use ir;
+use itertools::Itertools;
 use print;
 use regex::Regex;
-use utils::{RcStr, HashMap, HashSet};
-use ir;
+use std::collections::{hash_map, BTreeSet};
+use std::fmt;
+use utils::{HashMap, HashSet, RcStr};
 
 pub use constraint::dedup_inputs;
 pub use constraint::Constraint as TypedConstraint;
 
 pub use super::lexer::{Position, Spanned};
 
-pub use self::error::{Hint, TypeError};
+pub use self::choice::{ChoiceDef, CounterDef, EnumDef, IntegerDef};
+pub use self::constrain::Constraint;
 pub use self::context::CheckerContext;
-pub use self::typing_context::TypingContext;
+pub use self::error::{Hint, TypeError};
 pub use self::set::SetDef;
 pub use self::trigger::TriggerDef;
-pub use self::constrain::Constraint;
-pub use self::choice::{ChoiceDef, CounterDef, EnumDef, IntegerDef};
+pub use self::typing_context::TypingContext;
 
 #[derive(Default, Clone, Debug)]
 pub struct Ast {
@@ -41,9 +41,7 @@ pub struct Ast {
 
 impl Ast {
     /// Generate the defintion of choices and the list of constraints.
-    pub fn type_check(
-        mut self
-    ) -> Result<(ir::IrDesc, Vec<TypedConstraint>), TypeError> {
+    pub fn type_check(mut self) -> Result<(ir::IrDesc, Vec<TypedConstraint>), TypeError> {
         let mut context = CheckerContext::default();
 
         // declare
@@ -416,7 +414,8 @@ fn type_check_code(code: RcStr, var_map: &VarMap) -> ir::Code {
             } else {
                 Some((var_map.get_var(&var), RcStr::new(var)))
             }
-        }).collect();
+        })
+        .collect();
     ir::Code { code, vars }
 }
 

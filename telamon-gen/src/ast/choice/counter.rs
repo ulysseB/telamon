@@ -1,25 +1,17 @@
 use std::iter;
 
-use ir::{self, Adaptable};
-use lexer::Spanned;
-use utils::RcStr;
-use itertools::Itertools;
-use ast::error::TypeError;
-use ast::context::CheckerContext;
 use ast::constrain::Constraint;
+use ast::context::CheckerContext;
+use ast::error::TypeError;
 use ast::typing_context::TypingContext;
 use ast::{
-    VarDef,
-    VarMap,
-    Condition,
-    ChoiceInstance,
-    HashSet,
-    CounterVal,
-    CounterBody,
-    ChoiceDef,
-    type_check_enum_values,
-    type_check_code
+    type_check_code, type_check_enum_values, ChoiceDef, ChoiceInstance, Condition,
+    CounterBody, CounterVal, HashSet, VarDef, VarMap,
 };
+use ir::{self, Adaptable};
+use itertools::Itertools;
+use lexer::Spanned;
+use utils::RcStr;
 
 #[derive(Clone, Debug)]
 pub struct CounterDef {
@@ -31,7 +23,6 @@ pub struct CounterDef {
 }
 
 impl CounterDef {
-
     /// Creates an action to update the a counter when incr is modified.
     fn gen_incr_counter(
         &self,
@@ -124,7 +115,6 @@ impl CounterDef {
         (ir::CounterVal::Choice(instance), update_action)
     }
 
-
     /// Creates a choice to store the increment condition of a counter. Returns the
     /// corresponding choice instance from the point of view of the counter and the
     /// condition on wich the counter must be incremented.
@@ -157,9 +147,8 @@ impl CounterDef {
                 if foralls.len() == iter_vars.len() {
                     // Generate the increment condition.
                     let choice = tc.ir_desc.get_choice(&incr.choice);
-                    let enum_ = tc
-                        .ir_desc
-                        .get_enum(choice.choice_def().as_enum().unwrap());
+                    let enum_ =
+                        tc.ir_desc.get_enum(choice.choice_def().as_enum().unwrap());
                     let values = type_check_enum_values(enum_, rhs.clone());
                     let values = if is {
                         values
@@ -223,7 +212,6 @@ impl CounterDef {
         (ir::ChoiceInstance { choice: name, vars }, condition)
     }
 
-
     /// Registers a counter in the ir description.
     pub fn register_counter(
         &self,
@@ -273,7 +261,7 @@ impl CounterDef {
             all_var_defs,
             body.conditions,
             &var_map,
-            tc
+            tc,
         );
         // Type check the value.
         let value = match body.value {
@@ -291,7 +279,7 @@ impl CounterDef {
                     kind,
                     vars.len(),
                     &var_map,
-                    tc
+                    tc,
                 );
                 tc.ir_desc.add_onchange(&counter.name, action);
                 value
@@ -304,7 +292,7 @@ impl CounterDef {
             &incr,
             &incr_condition,
             value.clone(),
-            tc
+            tc,
         );
         tc.ir_desc.add_onchange(&incr.choice, incr_counter);
         // Register the counter choices.
@@ -341,11 +329,10 @@ impl CounterDef {
         context: &mut CheckerContext,
         tc: &mut TypingContext,
     ) -> Result<(), TypeError> {
-
- //       panic!("ss {:?}", self.name.data);
-//        tc.register_counter(self.name.data.to_owned(),
-//            self.doc.to_owned(), self.visibility.to_owned(),
-//            self.vars.to_owned(), self.body.to_owned());
+        //       panic!("ss {:?}", self.name.data);
+        //        tc.register_counter(self.name.data.to_owned(),
+        //            self.doc.to_owned(), self.visibility.to_owned(),
+        //            self.vars.to_owned(), self.body.to_owned());
         tc.choice_defs.push(ChoiceDef::CounterDef(self));
         Ok(())
     }

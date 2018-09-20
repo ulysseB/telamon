@@ -6,8 +6,8 @@ pub use self::counter::CounterDef;
 pub use self::enumeration::EnumDef;
 pub use self::integer::IntegerDef;
 
-use ast::error::{Hint, TypeError};
 use ast::context::CheckerContext;
+use ast::error::{Hint, TypeError};
 use ast::typing_context::TypingContext;
 use ast::Statement;
 
