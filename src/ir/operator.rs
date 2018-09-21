@@ -56,15 +56,74 @@ pub enum BinOp {
     Sub,
     /// Divides two operands,
     Div,
+    /// Computes the bitwise AND operation.
+    And,
+    /// Computes the bitwise OR operation.
+    Or,
+    /// Computes `lhs < rhs`.
+    Lt,
+    /// Computes `lhs <= rhs`.
+    Leq,
+    /// Computes `lhs == rhs`.
+    Equals,
 }
 
 impl BinOp {
     /// Returns a string representing the operator.
-    fn as_str(self) -> &'static str {
+    fn name(&self) -> &'static str {
         match self {
             BinOp::Add => "add",
             BinOp::Sub => "sub",
             BinOp::Div => "div",
+            BinOp::And => "and",
+            BinOp::Or => "or",
+            BinOp::Lt => "lt",
+            BinOp::Leq => "leq",
+            BinOp::Equals => "equals",
+        }
+    }
+
+    /// Returns the type of the binay operator given the type of its operands.
+    fn t(&self, operand_type: ir::Type) -> ir::Type {
+        match self {
+            BinOp::Lt | BinOp::Leq | BinOp::Equals => ir::Type::I(1),
+            _ => operand_type,
+        }
+    }
+
+    /// Indicates if the result must be rounded when operating on floats.
+    fn requires_rounding(&self) -> bool {
+        match self {
+            BinOp::Lt | BinOp::Leq | BinOp::Equals => false,
+            _ => true,
+        }
+    }
+}
+
+/// Arithmetic operators with a single operand.
+#[derive(Clone, Copy, Debug)]
+#[repr(C)]
+pub enum UnaryOp {
+    /// Simply copy the input.
+    Mov,
+    /// Casts the input to another type.
+    Cast(ir::Type),
+}
+
+impl UnaryOp {
+    /// Gives the return type of the operand given its input type.
+    fn t(&self, op_type: ir::Type) -> ir::Type {
+        match self {
+            UnaryOp::Mov => op_type,
+            UnaryOp::Cast(t) => *t,
+        }
+    }
+
+    /// Returns the name of the operand.
+    fn name(&self) -> &'static str {
+        match self {
+            UnaryOp::Mov => "mov",
+            UnaryOp::Cast(..) => "cast",
         }
     }
 }
@@ -74,13 +133,13 @@ impl BinOp {
 pub enum Operator<'a, L = LoweringMap> {
     /// A binary arithmetic operator.
     BinOp(BinOp, Operand<'a, L>, Operand<'a, L>, Rounding),
+    /// Unary arithmetic operator.
+    UnaryOp(UnaryOp, Operand<'a, L>),
     /// Performs a multiplication with the given return type.
     Mul(Operand<'a, L>, Operand<'a, L>, Rounding, Type),
     /// Performs s multiplication between the first two operands and adds the
     /// result to the third.
     Mad(Operand<'a, L>, Operand<'a, L>, Operand<'a, L>, Rounding),
-    /// Moves a value into a register.
-    Mov(Operand<'a, L>),
     /// Loads a value of the given type from the given address.
     Ld(Type, Operand<'a, L>, AccessPattern<'a>),
     /// Stores the second operand at the address given by the first.
@@ -91,8 +150,6 @@ pub enum Operator<'a, L = LoweringMap> {
     TmpLd(Type, ir::MemId),
     /// Represents a store to a temporary memory that is not fully defined yet.
     TmpSt(Operand<'a, L>, ir::MemId),
-    /// Casts a value into another type.
-    Cast(Operand<'a, L>, Type),
 }
 
 impl<'a, L> Operator<'a, L> {
@@ -117,8 +174,15 @@ impl<'a, L> Operator<'a, L> {
             }
         }
         match *self {
-            BinOp(_, ref lhs, ref rhs, rounding) => {
-                rounding.check(lhs.t())?;
+            BinOp(operator, ref lhs, ref rhs, rounding) => {
+                if operator.requires_rounding() {
+                    rounding.check(lhs.t())?;
+                } else if rounding != Rounding::Exact {
+                    Err(ir::TypeError::InvalidRounding {
+                        rounding,
+                        t: lhs.t(),
+                    })?;
+                }
                 ir::TypeError::check_equals(lhs.t(), rhs.t())?;
             }
             Mul(ref lhs, ref rhs, rounding, res_type) => {
@@ -147,59 +211,52 @@ impl<'a, L> Operator<'a, L> {
                 pattern.check(iter_dims)?;
                 ir::TypeError::check_equals(addr.t(), Type::PtrTo(pattern.mem_block()))?;
             }
-            TmpLd(..) | Cast(..) | Mov(..) | TmpSt(..) => (),
+            TmpLd(..) | UnaryOp(..) | TmpSt(..) => (),
         }
         Ok(())
     }
 
     /// Returns the type of the value produced.
     pub fn t(&self) -> Option<Type> {
-        match *self {
-            BinOp(_, ref op, ..) | Mov(ref op) | Mad(_, _, ref op, _) => Some(op.t()),
-            Ld(t, ..) | TmpLd(t, _) | Cast(_, t) | Mul(.., t) => Some(t),
+        match self {
+            Mad(_, _, op, _) => Some(op.t()),
+            Ld(t, ..) | TmpLd(t, _) | Mul(.., t) => Some(*t),
+            BinOp(operator, lhs, ..) => Some(operator.t(lhs.t())),
+            UnaryOp(operator, operand) => Some(operator.t(operand.t())),
             St(..) | TmpSt(..) => None,
         }
     }
 
     /// Retruns the list of operands.
     pub fn operands(&self) -> Vec<&Operand<'a, L>> {
-        match *self {
-            BinOp(_, ref lhs, ref rhs, _)
-            | Mul(ref lhs, ref rhs, _, _)
-            | St(ref lhs, ref rhs, _, _) => vec![lhs, rhs],
-            Mad(ref mul_lhs, ref mul_rhs, ref add_rhs, _) => {
-                vec![mul_lhs, mul_rhs, add_rhs]
+        match self {
+            BinOp(_, lhs, rhs, _) | Mul(lhs, rhs, _, _) | St(lhs, rhs, _, _) => {
+                vec![lhs, rhs]
             }
-            Mov(ref op) | Ld(_, ref op, _) | TmpSt(ref op, _) | Cast(ref op, _) => {
-                vec![op]
-            }
+            Mad(mul_lhs, mul_rhs, add_rhs, _) => vec![mul_lhs, mul_rhs, add_rhs],
+            UnaryOp(_, op) | Ld(_, op, _) | TmpSt(op, _) => vec![op],
             TmpLd(..) => vec![],
         }
     }
 
     /// Retruns the list of mutable references to operands.
     pub fn operands_mut<'b>(&'b mut self) -> Vec<&'b mut Operand<'a, L>> {
-        match *self {
-            BinOp(_, ref mut lhs, ref mut rhs, _)
-            | Mul(ref mut lhs, ref mut rhs, _, _)
-            | St(ref mut lhs, ref mut rhs, _, _) => vec![lhs, rhs],
-            Mad(ref mut mul_lhs, ref mut mul_rhs, ref mut add_rhs, _) => {
-                vec![mul_lhs, mul_rhs, add_rhs]
+        match self {
+            BinOp(_, lhs, rhs, _) | Mul(lhs, rhs, _, _) | St(lhs, rhs, _, _) => {
+                vec![lhs, rhs]
             }
-            Mov(ref mut op)
-            | Ld(_, ref mut op, _)
-            | TmpSt(ref mut op, _)
-            | Cast(ref mut op, _) => vec![op],
+            Mad(mul_lhs, mul_rhs, add_rhs, _) => vec![mul_lhs, mul_rhs, add_rhs],
+            UnaryOp(_, op, ..) | Ld(_, op, ..) | TmpSt(op, _) => vec![op],
             TmpLd(..) => vec![],
         }
     }
 
     /// Returns true if the operator has side effects.
     pub fn has_side_effects(&self) -> bool {
-        match *self {
-            St(_, _, b, _) => b,
-            BinOp(..) | Mul(..) | Mad(..) | Mov(..) | Ld(..) | TmpLd(..) | TmpSt(..)
-            | Cast(..) => false,
+        match self {
+            St(_, _, b, _) => *b,
+            BinOp(..) | UnaryOp(..) | Mul(..) | Mad(..) | Ld(..) | TmpLd(..)
+            | TmpSt(..) => false,
         }
     }
 
@@ -247,6 +304,7 @@ impl<'a, L> Operator<'a, L> {
                 let oper2 = f(oper2);
                 BinOp(op, oper1, oper2, rounding)
             }
+            UnaryOp(operator, operand) => UnaryOp(operator, f(operand)),
             Mul(oper1, oper2, rounding, t) => {
                 let oper1 = f(oper1);
                 let oper2 = f(oper2);
@@ -257,10 +315,6 @@ impl<'a, L> Operator<'a, L> {
                 let oper2 = f(oper2);
                 let oper3 = f(oper3);
                 Mad(oper1, oper2, oper3, rounding)
-            }
-            Mov(oper1) => {
-                let oper1 = f(oper1);
-                Mov(oper1)
             }
             Ld(t, oper1, ap) => {
                 let oper1 = f(oper1);
@@ -276,10 +330,6 @@ impl<'a, L> Operator<'a, L> {
                 let oper1 = f(oper1);
                 TmpSt(oper1, id)
             }
-            Cast(oper1, t) => {
-                let oper1 = f(oper1);
-                Cast(oper1, t)
-            }
         }
     }
 }
@@ -293,15 +343,14 @@ impl<'a> Operator<'a, ()> {
 impl<'a> std::fmt::Display for Operator<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         let name = match *self {
-            BinOp(op, ..) => op.as_str(),
+            BinOp(op, ..) => op.name(),
+            UnaryOp(op, ..) => op.name(),
             Mul(..) => "mul",
             Mad(..) => "mad",
-            Mov(..) => "mov",
             Ld(..) => "ld",
             St(..) => "st",
             TmpLd(..) => "tmp_ld",
             TmpSt(..) => "tmp_st",
-            Cast(..) => "cast",
         };
         write!(f, "{}", name)
     }

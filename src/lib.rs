@@ -13,6 +13,7 @@
 // limitations under the License.
 
 extern crate binary_heap_plus;
+extern crate boow;
 extern crate boxfnonce;
 extern crate config;
 extern crate crossbeam;

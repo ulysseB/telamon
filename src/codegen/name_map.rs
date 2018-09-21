@@ -191,7 +191,8 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     /// Asigns a name to an operand.
-    pub fn name_op(&self, operand: &ir::Operand) -> Cow<str> {
+    pub fn name_op(&self, vector_dims: &[Dimension], operand: &ir::Operand) -> Cow<str> {
+        // FIXME: handle vector dims
         match *operand {
             ir::Operand::Int(ref val, len) => {
                 Cow::Owned(self.namer.borrow().name_int(val, len))
@@ -216,7 +217,8 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     /// Returns the name of the instruction.
-    pub fn name_inst(&self, inst: &Instruction) -> &str {
+    pub fn name_inst(&self, vector_dims: &[Dimension], inst: &Instruction) -> &str {
+        // FIXME: handle vector dims
         self.name_inst_id(inst.id(), &dim::Map::empty())
     }
 

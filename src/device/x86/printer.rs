@@ -8,7 +8,7 @@ use std::fmt::Write as WriteFmt;
 
 #[derive(Default)]
 pub struct X86printer {
-    out_function: String,
+    buffer: String,
 }
 
 impl X86printer {
@@ -89,11 +89,11 @@ impl X86printer {
             );
             // INDEX LOADS
             let idx_loads = self.decl_par_indexes(function, name_map);
-            unwrap!(writeln!(self.out_function, "{}", idx_loads));
+            unwrap!(writeln!(self.buffer, "{}", idx_loads));
             // LOAD PARAM
             for val in function.device_code_args() {
                 unwrap!(writeln!(
-                    self.out_function,
+                    self.buffer,
                     "{var_name} = {name};// LD_PARAM",
                     var_name = name_map.name_param_val(val.key()),
                     name = name_map.name_param(val.key())
@@ -119,10 +119,10 @@ impl X86printer {
                         let name = name_map.declare_size_cast(incr, level.t());
                         if let Some(name) = name {
                             let old_name = name_map.name_size(incr, Type::I(32));
-                            self.print_cast(
+                            self.print_unary_op(
+                                &[],
+                                ir::UnaryOp::Cast(level.t()),
                                 Type::I(32),
-                                level.t(),
-                                op::Rounding::Exact,
                                 &name,
                                 &old_name,
                             );
@@ -145,7 +145,7 @@ impl X86printer {
         }
         let var_decls = self.var_decls(&namer);
         return_string.push_str(&var_decls);
-        return_string.push_str(&self.out_function);
+        return_string.push_str(&self.buffer);
         // Close function bracket
         return_string.push('}');
         return_string
@@ -318,16 +318,6 @@ impl X86printer {
             thread_join = self.thread_join(func),
         )
     }
-}
-
-impl Printer for X86printer {
-    fn get_int(n: u32) -> String {
-        format!("{}", n)
-    }
-
-    fn get_float(f: f64) -> String {
-        format!("{:.4e}", f)
-    }
 
     fn get_type(t: Type) -> String {
         match t {
@@ -343,95 +333,126 @@ impl Printer for X86printer {
             ref t => panic!("invalid type for the host: {}", t),
         }
     }
+}
 
-    fn print_vector_inst(
-        &mut self,
-        _: &Instruction,
-        _: &Dimension,
-        _: &mut NameMap,
-        _: &Function,
-    ) {
-        panic!("Vectorization not implemented for x86")
+impl Printer for X86printer {
+    fn get_int(n: u32) -> String {
+        format!("{}", n)
     }
 
     fn print_binop(
         &mut self,
+        vector_factors: &[u32],
         op: ir::BinOp,
         _: Type,
         _: op::Rounding,
-        return_id: &str,
+        result: &str,
         lhs: &str,
         rhs: &str,
     ) {
-        match op {
-            ir::BinOp::Add => unwrap!(writeln!(
-                self.out_function,
-                "{} = {} + {};",
-                return_id, lhs, rhs
-            )),
-            ir::BinOp::Sub => unwrap!(writeln!(
-                self.out_function,
-                "{} = {} - {};",
-                return_id, lhs, rhs
-            )),
-            ir::BinOp::Div => unwrap!(writeln!(
-                self.out_function,
-                "{} = {} / {};",
-                return_id, lhs, rhs
-            )),
+        assert!(vector_factors.is_empty());
+        let op = match op {
+            ir::BinOp::Add => "+",
+            ir::BinOp::Sub => "-",
+            ir::BinOp::Div => "/",
+            ir::BinOp::And => "&",
+            ir::BinOp::Or => "|",
+            ir::BinOp::Lt => "<",
+            ir::BinOp::Leq => "<=",
+            ir::BinOp::Equals => "==",
         };
+        unwrap!(writeln!(
+            self.buffer,
+            "{} = {} {} {};",
+            result, lhs, op, rhs
+        ));
+    }
+
+    fn print_unary_op(
+        &mut self,
+        vector_factors: &[u32],
+        operator: ir::UnaryOp,
+        _: Type,
+        result: &str,
+        operand: &str,
+    ) {
+        assert!(vector_factors.is_empty());
+        unwrap!(write!(self.buffer, "{} = ", result));
+        match operator {
+            ir::UnaryOp::Mov => (),
+            ir::UnaryOp::Cast(t) => {
+                unwrap!(write!(self.buffer, "({})", Self::get_type(t)))
+            }
+        };
+        unwrap!(writeln!(self.buffer, "{};", operand));
     }
 
     fn print_mul(
         &mut self,
+        vector_factors: &[u32],
         _: Type,
         _: op::Rounding,
-        _: MulMode,
-        return_id: &str,
+        mode: MulMode,
+        result: &str,
         op1: &str,
         op2: &str,
     ) {
-        unwrap!(writeln!(
-            self.out_function,
-            "{} = {} * {};",
-            return_id, op1, op2
-        ));
+        assert_ne!(mode, MulMode::High);
+        unwrap!(writeln!(self.buffer, "{} = {} * {};", result, op1, op2));
     }
 
     fn print_mad(
         &mut self,
+        vector_factors: &[u32],
         _: Type,
         _: op::Rounding,
-        _: MulMode,
-        return_id: &str,
+        mode: MulMode,
+        result: &str,
         mlhs: &str,
         mrhs: &str,
         arhs: &str,
     ) {
+        assert!(vector_factors.is_empty());
+        assert_ne!(mode, MulMode::High);
         unwrap!(writeln!(
-            self.out_function,
+            self.buffer,
             "{} = {} * {} + {};",
-            return_id, mlhs, mrhs, arhs
+            result, mlhs, mrhs, arhs
         ));
     }
 
-    fn print_mov(&mut self, _: Type, return_id: &str, op: &str) {
-        unwrap!(writeln!(self.out_function, "{} = {} ;", return_id, op));
-    }
-
-    fn print_ld(&mut self, return_type: Type, _: InstFlag, return_id: &str, addr: &str) {
+    fn print_ld(
+        &mut self,
+        vector_factors: &[u32],
+        return_type: Type,
+        _: InstFlag,
+        result: &str,
+        addr: &str,
+    ) {
+        assert!(vector_factors.is_empty());
         unwrap!(writeln!(
-            self.out_function,
+            self.buffer,
             "{} = *({}*){} ;",
-            return_id,
+            result,
             Self::get_type(return_type),
             addr
         ));
     }
 
-    fn print_st(&mut self, val_type: Type, _: InstFlag, addr: &str, val: &str) {
+    fn print_st(
+        &mut self,
+        vector_factors: &[u32],
+        val_type: Type,
+        _: InstFlag,
+        predicate: Option<&str>,
+        addr: &str,
+        val: &str,
+    ) {
+        if let Some(predicate) = predicate {
+            unwrap!(write!(self.buffer, "if ({})", predicate));
+        }
         unwrap!(writeln!(
-            self.out_function,
+            self.buffer,
             "*({}*){} = {} ;",
             Self::get_type(val_type),
             addr,
@@ -439,97 +460,19 @@ impl Printer for X86printer {
         ));
     }
 
-    fn print_cond_st(
-        &mut self,
-        val_type: Type,
-        _: InstFlag,
-        cond: &str,
-        addr: &str,
-        val: &str,
-    ) {
-        unwrap!(writeln!(
-            self.out_function,
-            "if ({}) *({} *){} = {} ;",
-            cond,
-            Self::get_type(val_type),
-            addr,
-            val
-        ));
-    }
-
-    fn print_cast(
-        &mut self,
-        t: Type,
-        _: Type,
-        _: op::Rounding,
-        return_id: &str,
-        op1: &str,
-    ) {
-        unwrap!(writeln!(
-            self.out_function,
-            "{} = ({}) {};",
-            return_id,
-            Self::get_type(t),
-            op1
-        ));
-    }
-
     fn print_label(&mut self, label_id: &str) {
-        unwrap!(writeln!(self.out_function, "LABEL_{}:", label_id));
-    }
-
-    fn print_and(&mut self, return_id: &str, op1: &str, op2: &str) {
-        unwrap!(writeln!(
-            self.out_function,
-            "{} = {} && {};",
-            return_id, op1, op2
-        ));
-    }
-
-    fn print_or(&mut self, return_id: &str, op1: &str, op2: &str) {
-        unwrap!(writeln!(
-            self.out_function,
-            "{} = {} || {};",
-            return_id, op1, op2
-        ));
-    }
-
-    fn print_equal(&mut self, return_id: &str, op1: &str, op2: &str) {
-        unwrap!(writeln!(
-            self.out_function,
-            "{} = {} == {};",
-            return_id, op1, op2
-        ));
-    }
-
-    fn print_lt(&mut self, return_id: &str, op1: &str, op2: &str) {
-        unwrap!(writeln!(
-            self.out_function,
-            "{} = {} < {};",
-            return_id, op1, op2
-        ));
-    }
-
-    fn print_gt(&mut self, return_id: &str, op1: &str, op2: &str) {
-        unwrap!(writeln!(
-            self.out_function,
-            "{} = {} > {};",
-            return_id, op1, op2
-        ));
+        unwrap!(writeln!(self.buffer, "LABEL_{}:", label_id));
     }
 
     fn print_cond_jump(&mut self, label_id: &str, cond: &str) {
         unwrap!(writeln!(
-            self.out_function,
+            self.buffer,
             "if({}) goto LABEL_{};",
             cond, label_id
         ));
     }
 
     fn print_sync(&mut self) {
-        unwrap!(writeln!(
-            self.out_function,
-            "pthread_barrier_wait(tid.barrier);"
-        ));
+        unwrap!(writeln!(self.buffer, "pthread_barrier_wait(tid.barrier);"));
     }
 }
