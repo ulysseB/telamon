@@ -28,11 +28,7 @@ impl<'a> Size<'a> {
 
     /// Converts an `ir::Size` to `Self`.
     pub fn from_ir(size: &ir::PartialSize<'a>, _: &SearchSpace) -> Self {
-        Size::new(
-            size.factor(),
-            size.dividend().to_vec(),
-            size.divisor(),
-        )
+        Size::new(size.factor(), size.dividend().to_vec(), size.divisor())
     }
 
     /// Returns the size of a dimension if it is staticaly known.
@@ -80,10 +76,6 @@ impl<'a, 'b> std::ops::MulAssign<&'b Size<'a>> for Size<'a> {
 // This is only needed until we have mechanism in `model::*` to handle sizes.
 impl<'a> From<ir::PartialSize<'a>> for Size<'a> {
     fn from(s: ir::PartialSize<'a>) -> Size<'a> {
-        Size::new(
-            s.factor(),
-            s.dividend().to_vec(),
-            s.divisor(),
-        )
+        Size::new(s.factor(), s.dividend().to_vec(), s.divisor())
     }
 }

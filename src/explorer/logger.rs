@@ -62,6 +62,7 @@ impl From<mpsc::RecvError> for LogError {
     }
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 pub fn log<E: Send + Serialize>(
     config: &Config,
     recv: mpsc::Receiver<LogMessage<E>>,

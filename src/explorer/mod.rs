@@ -101,6 +101,7 @@ pub fn find_best_ex<'a>(
 
 /// Launch all threads needed for the search. wait for each one of them to finish. Monitor is
 /// supposed to return the best candidate found
+#[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 fn launch_search<'a, T: Store<'a>>(
     config: &Config,
     candidate_store: T,
@@ -113,7 +114,7 @@ fn launch_search<'a, T: Store<'a>>(
             .builder()
             .name("Telamon - Monitor".to_string())
             .spawn(|| monitor(config, &candidate_store, monitor_receiver, log_sender));
-        explore_space(config, &candidate_store, &monitor_sender, context);
+        explore_space(config, &candidate_store, monitor_sender, context);
         unwrap!(best_cand_opt)
     }).join();
     // At this point all threads have ended and nobody is going to be
@@ -128,7 +129,7 @@ fn launch_search<'a, T: Store<'a>>(
 fn explore_space<'a, T>(
     config: &Config,
     candidate_store: &T,
-    eval_sender: &channel::mpsc::Sender<MonitorMessage<'a, T>>,
+    eval_sender: channel::mpsc::Sender<MonitorMessage<'a, T>>,
     context: &Context,
 ) where
     T: Store<'a>,

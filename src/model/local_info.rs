@@ -183,8 +183,7 @@ impl<'a> Nesting<'a> {
                 if Order::INNER.contains(order) {
                     inner_dims.push(dim.id());
                 }
-                if order.intersects(Order::INNER)
-                && other_kind == DimKind::THREAD {
+                if order.intersects(Order::INNER) && other_kind == DimKind::THREAD {
                     has_inner_thread_dims = true;
                 }
                 if (Order::INNER | Order::BEFORE).contains(order) {
@@ -251,11 +250,12 @@ impl<'a> Nesting<'a> {
                     continue;
                 }
                 let order = space.domain().get_order(dim.into(), stmt);
-                if Order::OUTER.contains(order)
-                && outer.iter().cloned().all(|outer: ir::DimId| {
-                    let ord = space.domain().get_order(dim.into(), outer.into());
-                    !ord.contains(Order::MERGED)
-                }) {
+                if Order::OUTER.contains(order) && outer.iter().cloned().all(
+                    |outer: ir::DimId| {
+                        let ord = space.domain().get_order(dim.into(), outer.into());
+                        !ord.contains(Order::MERGED)
+                    },
+                ) {
                     outer.push(dim);
                 }
             }

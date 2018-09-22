@@ -28,15 +28,6 @@ pub struct Context {
 }
 
 impl Context {
-    /// Create a new evaluation context.
-    pub fn new() -> Context {
-        let default_cpu = Cpu::dummy_cpu();
-        Context {
-            cpu_model: default_cpu,
-            parameters: HashMap::default(),
-        }
-    }
-
     /// Returns a parameter given its name.
     pub fn get_param(&self, name: &str) -> &Argument {
         self.parameters[name].as_ref()
@@ -65,6 +56,17 @@ impl Context {
                     ThunkArg::Size((self as &device::Context).eval_size(size) as i32)
                 }
             }).collect_vec()
+    }
+}
+
+impl Default for Context {
+    /// Create a new evaluation context.
+    fn default() -> Context {
+        let default_cpu = Cpu::dummy_cpu();
+        Context {
+            cpu_model: default_cpu,
+            parameters: HashMap::default(),
+        }
     }
 }
 

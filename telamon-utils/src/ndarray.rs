@@ -1,11 +1,8 @@
 //! An array with a variable number of dimensions.
 use itertools::Itertools;
 use num::Integer;
-use std;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
-
-use ndarray;
 
 /// An array with a variable number of dimensions.
 #[derive(Debug)]
@@ -210,11 +207,10 @@ impl<'a, T> ViewMut<'a, T> {
     }
 
     /// Produces mutable references to the elements, with their indexes.
-    pub fn enumerate_mut<'b>(
-        &'b mut self,
-    ) -> impl Iterator<Item = (Vec<usize>, &'b mut T)> + 'b {
-        let self_ptr: *mut ViewMut<'b, _> =
-            unsafe { std::mem::transmute(self as *mut _ as *mut ndarray::ViewMut<'a, T>) };
+    pub fn enumerate_mut(
+        &'a mut self,
+    ) -> impl Iterator<Item = (Vec<usize>, &'a mut T)> + 'a {
+        let self_ptr: *mut ViewMut<'a, _> = self;
         NDRange::new(&self.bounds).map(move |idx| {
             let item = unsafe { (*self_ptr).index_mut(&idx[..]) };
             (idx, item)

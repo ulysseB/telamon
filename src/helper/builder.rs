@@ -2,7 +2,9 @@
 use device::Device;
 use helper::{AutoOperand, LogicalDim, MetaStatement};
 use ir::{self, mem, op, Parameter, Type};
-use ir::{AccessPattern, Function, InstId, Operand, Operator, Signature};
+use ir::{
+    AccessPattern, Function, InstId, Operand, Operator, Signature, ValueDef, ValueId,
+};
 use itertools::Itertools;
 use search_space::{Action, DimKind, InstFlag, MemSpace, Order, SearchSpace};
 use std::borrow::Borrow;
@@ -211,6 +213,16 @@ impl<'a> Builder<'a> {
     fn inst(&mut self, op: Operator<'a, ()>) -> InstId {
         let open_dims = self.open_dims.iter().map(|(&x, _)| x).collect();
         unwrap!(self.function.add_inst(op, open_dims))
+    }
+
+    pub fn create_inst_value(&mut self, inst_id: InstId) -> ValueId {
+        if let Some(val_id) = self.function.inst(inst_id).result_value() {
+            val_id
+        } else {
+            let value_def = ValueDef::Inst(inst_id);
+            let value_id = unwrap!(self.function.add_value(value_def));
+            value_id
+        }
     }
 
     /// Applies an action on the function.
