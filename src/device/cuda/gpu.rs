@@ -181,7 +181,7 @@ impl Gpu {
             thread_per_smx: 2048,
             l1_cache_size: 16348,
             l1_cache_line: 128,
-            l2_cache_size: 393216,
+            l2_cache_size: 393_216,
             l2_cache_line: 32,
             shared_bank_stride: 8,
             num_smx: 4,
@@ -222,7 +222,7 @@ impl Gpu {
 
     /// Returns the PTX code for a Function.
     pub fn print_ptx(&self, fun: &Function) -> String {
-        let mut printer = CudaPrinter::new();
+        let mut printer = CudaPrinter::default();
         printer.function(fun, self)
     }
 
@@ -405,7 +405,7 @@ impl Gpu {
 
 impl device::Device for Gpu {
     fn print(&self, fun: &Function, out: &mut Write) {
-        let mut printer = CudaPrinter::new();
+        let mut printer = CudaPrinter::default();
         printer.host_function(fun, self, out)
     }
 

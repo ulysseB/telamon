@@ -74,12 +74,10 @@ pub enum ValueDef {
 }
 
 impl ValueDef {
-    pub fn register<L>(&self, self_id: ir::ValueId, function: &mut ir::Function<'_, L>) {
+    pub fn register<L>(self, self_id: ir::ValueId, function: &mut ir::Function<'_, L>) {
         // TODO change this code when we add new variant for ValueDef
-        let inst_id = match self {
-            ValueDef::Inst(id) => id,
-        };
-        function.inst_mut(*inst_id).set_result_value(self_id);
+        let ValueDef::Inst(inst_id) = self;
+        function.inst_mut(inst_id).set_result_value(self_id);
     }
 }
 

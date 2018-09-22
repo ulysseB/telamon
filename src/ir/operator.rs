@@ -37,11 +37,11 @@ impl std::fmt::Display for Rounding {
 
 impl Rounding {
     /// Ensures the rounding policy applies to the given type.
-    fn check(&self, t: ir::Type) -> Result<(), ir::TypeError> {
-        if t.is_float() ^ (*self == Rounding::Exact) {
+    fn check(self, t: ir::Type) -> Result<(), ir::TypeError> {
+        if t.is_float() ^ (self == Rounding::Exact) {
             Ok(())
         } else {
-            Err(ir::TypeError::InvalidRounding { rounding: *self, t })
+            Err(ir::TypeError::InvalidRounding { rounding: self, t })
         }
     }
 }
@@ -60,8 +60,8 @@ pub enum BinOp {
 
 impl BinOp {
     /// Returns a string representing the operator.
-    fn as_str(&self) -> &'static str {
-        match *self {
+    fn as_str(self) -> &'static str {
+        match self {
             BinOp::Add => "add",
             BinOp::Sub => "sub",
             BinOp::Div => "div",

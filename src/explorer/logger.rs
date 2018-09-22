@@ -62,6 +62,7 @@ impl From<mpsc::RecvError> for LogError {
     }
 }
 
+#[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 pub fn log<E: Send + Serialize>(
     config: &Config,
     recv: mpsc::Receiver<LogMessage<E>>,
@@ -87,7 +88,7 @@ pub fn log<E: Send + Serialize>(
     }
     record_writer.finish_box()?.flush()?;
     write_buffer.flush()?;
-    return Ok(());
+    Ok(())
 }
 
 fn init_eventlog(config: &Config) -> io::Result<Box<dyn RecordWriter<Writer = File>>> {
@@ -102,7 +103,7 @@ fn init_eventlog(config: &Config) -> io::Result<Box<dyn RecordWriter<Writer = Fi
 
 fn init_log(config: &Config) -> io::Result<BufWriter<File>> {
     let mut output_file = File::create(&config.log_file)?;
-    write!(output_file, "LOGGER\n{}\n", config)?;
+    writeln!(output_file, "LOGGER\n{}", config)?;
     Ok(BufWriter::new(output_file))
 }
 

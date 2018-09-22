@@ -84,7 +84,7 @@ pub enum EvalMode {
 
 impl EvalMode {
     /// Indicates if candidates with a bound above the cut can be skipped.
-    pub fn skip_bad_candidates(&self) -> bool {
+    pub fn skip_bad_candidates(self) -> bool {
         match self {
             EvalMode::FindBest => true,
             EvalMode::TestBound | EvalMode::TestEval => false,

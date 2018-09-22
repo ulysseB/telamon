@@ -81,7 +81,7 @@ impl<W> From<io::IntoInnerError<W>> for WriteError {
 fn masked_crc32(bytes: &[u8]) -> u32 {
     // https://www.tensorflow.org/api_guides/python/python_io
     let crc = checksum_castagnoli(bytes);
-    ((crc >> 15) | (crc << 17)).wrapping_add(0xa282ead8u32)
+    ((crc >> 15) | (crc << 17)).wrapping_add(0xa282_ead8u32)
 }
 
 /// A trait extension for reading records.

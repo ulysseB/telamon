@@ -101,6 +101,7 @@ pub fn find_best_ex<'a>(
 
 /// Launch all threads needed for the search. wait for each one of them to finish. Monitor is
 /// supposed to return the best candidate found
+#[cfg_attr(feature = "cargo-clippy", allow(needless_pass_by_value))]
 fn launch_search<'a, T: Store<'a>>(
     config: &Config,
     candidate_store: T,

@@ -341,10 +341,7 @@ impl<'a> Children<'a> {
             .map(SubTree::UnexpandedNode)
             .collect_vec();
         let rewards = children.iter().map(|_| (vec![], 0)).collect();
-        Children {
-            children: children,
-            rewards,
-        }
+        Children { children, rewards }
     }
 
     /// Returns the lowest bound of the children, if any.

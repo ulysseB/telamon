@@ -53,7 +53,7 @@ impl<'a> AccessPattern<'a> {
             AccessPattern::Tensor { dims, .. } => {
                 // Ensures all dimensions referenced in the pattern are nested outside
                 // the access pattern.
-                for (&dim, _) in dims {
+                for (&dim, _) in dims.iter() {
                     if !iter_dims.contains(&dim) {
                         return Err(ir::Error::InvalidDimInPattern { dim });
                     }

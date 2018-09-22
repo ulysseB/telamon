@@ -112,8 +112,8 @@ pub enum Trivalent {
 
 impl Trivalent {
     /// Returns the boolean represented.
-    pub fn as_bool(&self) -> Option<bool> {
-        match *self {
+    pub fn as_bool(self) -> Option<bool> {
+        match self {
             Trivalent::False => Some(false),
             Trivalent::Maybe => None,
             Trivalent::True => Some(true),
@@ -121,28 +121,28 @@ impl Trivalent {
     }
 
     /// Returns `true` if the underlying boolean might be `true`.
-    pub fn maybe_true(&self) -> bool {
-        *self != Trivalent::False
+    pub fn maybe_true(self) -> bool {
+        self != Trivalent::False
     }
 
     /// Returns `true` if the underlying boolean might be `false`.
-    pub fn maybe_false(&self) -> bool {
-        *self != Trivalent::True
+    pub fn maybe_false(self) -> bool {
+        self != Trivalent::True
     }
 
     /// Returns `true` if the underlying boolean is `true`.
-    pub fn is_true(&self) -> bool {
-        *self == Trivalent::True
+    pub fn is_true(self) -> bool {
+        self == Trivalent::True
     }
 
     /// Returns `true` if the underlying boolean is `false`.
-    pub fn is_false(&self) -> bool {
-        *self == Trivalent::False
+    pub fn is_false(self) -> bool {
+        self == Trivalent::False
     }
 
     /// Returns `true` if the underlying boolean might be `true` and `false`.
-    pub fn is_maybe(&self) -> bool {
-        *self == Trivalent::Maybe
+    pub fn is_maybe(self) -> bool {
+        self == Trivalent::Maybe
     }
 }
 

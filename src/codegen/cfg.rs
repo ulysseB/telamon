@@ -108,7 +108,7 @@ impl<'a> Cfg<'a> {
                 }
             }
         }
-        return body;
+        body
     }
 
     /// Builds a CFG from a list of `CfgEvent`.
