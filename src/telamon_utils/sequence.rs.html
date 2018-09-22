@@ -157,7 +157,7 @@
             <span class="ident">Sequence</span>::<span class="ident">List</span>(<span class="ident">list</span>) <span class="op">=&gt;</span> {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">seq</span> <span class="op">=</span> <span class="ident">serializer</span>.<span class="ident">serialize_seq</span>(<span class="prelude-val">Some</span>(<span class="ident">list</span>.<span class="ident">len</span>()))<span class="question-mark">?</span>;
                 <span class="kw">for</span> <span class="ident">arc</span> <span class="kw">in</span> <span class="ident">list</span> {
-                    <span class="ident">seq</span>.<span class="ident">serialize_element</span>((<span class="kw-2">&amp;</span><span class="ident">arc</span>).<span class="ident">clone</span>())<span class="question-mark">?</span>;
+                    <span class="ident">seq</span>.<span class="ident">serialize_element</span>(<span class="kw-2">&amp;</span><span class="ident">arc</span>)<span class="question-mark">?</span>;
                 }
                 <span class="ident">seq</span>.<span class="ident">end</span>()
             }

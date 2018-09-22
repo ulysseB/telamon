@@ -287,7 +287,7 @@
 <span class="kw">fn</span> <span class="ident">masked_crc32</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-&gt;</span> <span class="ident">u32</span> {
     <span class="comment">// https://www.tensorflow.org/api_guides/python/python_io</span>
     <span class="kw">let</span> <span class="ident">crc</span> <span class="op">=</span> <span class="ident">checksum_castagnoli</span>(<span class="ident">bytes</span>);
-    ((<span class="ident">crc</span> <span class="op">&gt;&gt;</span> <span class="number">15</span>) <span class="op">|</span> (<span class="ident">crc</span> <span class="op">&lt;&lt;</span> <span class="number">17</span>)).<span class="ident">wrapping_add</span>(<span class="number">0xa282ead8u32</span>)
+    ((<span class="ident">crc</span> <span class="op">&gt;&gt;</span> <span class="number">15</span>) <span class="op">|</span> (<span class="ident">crc</span> <span class="op">&lt;&lt;</span> <span class="number">17</span>)).<span class="ident">wrapping_add</span>(<span class="number">0xa282_ead8u32</span>)
 }
 
 <span class="doccomment">/// A trait extension for reading records.</span>

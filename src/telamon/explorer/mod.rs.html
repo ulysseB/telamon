@@ -181,6 +181,7 @@
 <span id="181">181</span>
 <span id="182">182</span>
 <span id="183">183</span>
+<span id="184">184</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! exploration of the search space.</span>
 <span class="kw">mod</span> <span class="ident">bandit_arm</span>;
@@ -285,6 +286,7 @@
 
 <span class="doccomment">/// Launch all threads needed for the search. wait for each one of them to finish. Monitor is</span>
 <span class="doccomment">/// supposed to return the best candidate found</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;cargo-clippy&quot;</span>, <span class="ident">allow</span>(<span class="ident">needless_pass_by_value</span>))]</span>
 <span class="kw">fn</span> <span class="ident">launch_search</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span>: <span class="ident">Store</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>(
     <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>,
     <span class="ident">candidate_store</span>: <span class="ident">T</span>,

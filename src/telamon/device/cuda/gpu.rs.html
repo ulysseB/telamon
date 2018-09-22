@@ -773,7 +773,7 @@
             <span class="ident">thread_per_smx</span>: <span class="number">2048</span>,
             <span class="ident">l1_cache_size</span>: <span class="number">16348</span>,
             <span class="ident">l1_cache_line</span>: <span class="number">128</span>,
-            <span class="ident">l2_cache_size</span>: <span class="number">393216</span>,
+            <span class="ident">l2_cache_size</span>: <span class="number">393_216</span>,
             <span class="ident">l2_cache_line</span>: <span class="number">32</span>,
             <span class="ident">shared_bank_stride</span>: <span class="number">8</span>,
             <span class="ident">num_smx</span>: <span class="number">4</span>,
@@ -814,7 +814,7 @@
 
     <span class="doccomment">/// Returns the PTX code for a Function.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">print_ptx</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">fun</span>: <span class="kw-2">&amp;</span><span class="ident">Function</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">printer</span> <span class="op">=</span> <span class="ident">CudaPrinter</span>::<span class="ident">new</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">printer</span> <span class="op">=</span> <span class="ident">CudaPrinter</span>::<span class="ident">default</span>();
         <span class="ident">printer</span>.<span class="ident">function</span>(<span class="ident">fun</span>, <span class="self">self</span>)
     }
 
@@ -997,7 +997,7 @@
 
 <span class="kw">impl</span> <span class="ident">device</span>::<span class="ident">Device</span> <span class="kw">for</span> <span class="ident">Gpu</span> {
     <span class="kw">fn</span> <span class="ident">print</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">fun</span>: <span class="kw-2">&amp;</span><span class="ident">Function</span>, <span class="ident">out</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Write</span>) {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">printer</span> <span class="op">=</span> <span class="ident">CudaPrinter</span>::<span class="ident">new</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">printer</span> <span class="op">=</span> <span class="ident">CudaPrinter</span>::<span class="ident">default</span>();
         <span class="ident">printer</span>.<span class="ident">host_function</span>(<span class="ident">fun</span>, <span class="self">self</span>, <span class="ident">out</span>)
     }
 

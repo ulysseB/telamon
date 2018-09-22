@@ -346,11 +346,11 @@
 
 <span class="kw">impl</span> <span class="ident">Rounding</span> {
     <span class="doccomment">/// Ensures the rounding policy applies to the given type.</span>
-    <span class="kw">fn</span> <span class="ident">check</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ir</span>::<span class="ident">TypeError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="ident">t</span>.<span class="ident">is_float</span>() <span class="op">^</span> (<span class="kw-2">*</span><span class="self">self</span> <span class="op">==</span> <span class="ident">Rounding</span>::<span class="ident">Exact</span>) {
+    <span class="kw">fn</span> <span class="ident">check</span>(<span class="self">self</span>, <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ir</span>::<span class="ident">TypeError</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="ident">t</span>.<span class="ident">is_float</span>() <span class="op">^</span> (<span class="self">self</span> <span class="op">==</span> <span class="ident">Rounding</span>::<span class="ident">Exact</span>) {
             <span class="prelude-val">Ok</span>(())
         } <span class="kw">else</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">ir</span>::<span class="ident">TypeError</span>::<span class="ident">InvalidRounding</span> { <span class="ident">rounding</span>: <span class="kw-2">*</span><span class="self">self</span>, <span class="ident">t</span> })
+            <span class="prelude-val">Err</span>(<span class="ident">ir</span>::<span class="ident">TypeError</span>::<span class="ident">InvalidRounding</span> { <span class="ident">rounding</span>: <span class="self">self</span>, <span class="ident">t</span> })
         }
     }
 }
@@ -369,8 +369,8 @@
 
 <span class="kw">impl</span> <span class="ident">BinOp</span> {
     <span class="doccomment">/// Returns a string representing the operator.</span>
-    <span class="kw">fn</span> <span class="ident">as_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
-        <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
+    <span class="kw">fn</span> <span class="ident">as_str</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">BinOp</span>::<span class="ident">Add</span> <span class="op">=&gt;</span> <span class="string">&quot;add&quot;</span>,
             <span class="ident">BinOp</span>::<span class="ident">Sub</span> <span class="op">=&gt;</span> <span class="string">&quot;sub&quot;</span>,
             <span class="ident">BinOp</span>::<span class="ident">Div</span> <span class="op">=&gt;</span> <span class="string">&quot;div&quot;</span>,

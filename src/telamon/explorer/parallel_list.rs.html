@@ -310,7 +310,7 @@
             );
             <span class="self">self</span>.<span class="ident">queue</span>.<span class="ident">push</span>(<span class="ident">candidate</span>);
         } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">drop_candidate</span>(<span class="ident">candidate</span>);
+            <span class="self">self</span>.<span class="ident">drop_candidate</span>(<span class="kw-2">&amp;</span><span class="ident">candidate</span>);
         }
     }
 
@@ -322,7 +322,7 @@
             .<span class="ident">map_or</span>(<span class="bool-val">false</span>, <span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">bound</span>.<span class="ident">value</span>() <span class="op">&gt;=</span> <span class="ident">new_cut</span>)
         {
             <span class="kw">let</span> <span class="ident">candidate</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">queue</span>.<span class="ident">pop_max</span>());
-            <span class="self">self</span>.<span class="ident">drop_candidate</span>(<span class="ident">candidate</span>);
+            <span class="self">self</span>.<span class="ident">drop_candidate</span>(<span class="kw-2">&amp;</span><span class="ident">candidate</span>);
         }
     }
 
@@ -338,7 +338,7 @@
     }
 
     <span class="doccomment">/// Drops a candiate.</span>
-    <span class="kw">fn</span> <span class="ident">drop_candidate</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">candidate</span>: <span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) {
+    <span class="kw">fn</span> <span class="ident">drop_candidate</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">candidate</span>: <span class="kw-2">&amp;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) {
         <span class="macro">info</span><span class="macro">!</span>(
             <span class="string">&quot;dropping candidate: {:.4e}ns &gt;= {:.4e}ns.&quot;</span>,
             <span class="ident">candidate</span>.<span class="ident">bound</span>.<span class="ident">value</span>(),

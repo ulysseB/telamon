@@ -178,7 +178,7 @@
 
 <span class="kw">impl</span> <span class="ident">EvalMode</span> {
     <span class="doccomment">/// Indicates if candidates with a bound above the cut can be skipped.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">skip_bad_candidates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">skip_bad_candidates</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">EvalMode</span>::<span class="ident">FindBest</span> <span class="op">=&gt;</span> <span class="bool-val">true</span>,
             <span class="ident">EvalMode</span>::<span class="ident">TestBound</span> <span class="op">|</span> <span class="ident">EvalMode</span>::<span class="ident">TestEval</span> <span class="op">=&gt;</span> <span class="bool-val">false</span>,

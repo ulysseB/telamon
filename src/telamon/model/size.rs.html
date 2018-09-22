@@ -92,7 +92,7 @@
 <span class="doccomment">/// Bounds the values a size can take, in the given context.</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">bounds</span>(<span class="ident">size</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">PartialSize</span>, <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>) <span class="op">-&gt;</span> <span class="ident">Range</span> {
     <span class="comment">// FIXME: the size may not have a fixed value.</span>
-    <span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">eval_size</span>(<span class="kw-2">&amp;</span>::<span class="ident">codegen</span>::<span class="ident">Size</span>::<span class="ident">from_ir</span>(<span class="ident">size</span>, <span class="ident">space</span>)) <span class="kw">as</span> <span class="ident">u64</span>;
+    <span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> <span class="ident">u64</span>::<span class="ident">from</span>(<span class="ident">ctx</span>.<span class="ident">eval_size</span>(<span class="kw-2">&amp;</span>::<span class="ident">codegen</span>::<span class="ident">Size</span>::<span class="ident">from_ir</span>(<span class="ident">size</span>, <span class="ident">space</span>)));
     <span class="ident">Range</span>::<span class="ident">new_fixed</span>(<span class="ident">val</span>)
 }
 
@@ -120,7 +120,7 @@
     <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
 ) <span class="op">-&gt;</span> <span class="ident">FactorRange</span> {
     <span class="comment">// FIXME: the size may not have a fixed value.</span>
-    <span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">eval_size</span>(<span class="kw-2">&amp;</span>::<span class="ident">codegen</span>::<span class="ident">Size</span>::<span class="ident">from_ir</span>(<span class="ident">size</span>, <span class="ident">space</span>)) <span class="kw">as</span> <span class="ident">u64</span>;
+    <span class="kw">let</span> <span class="ident">val</span> <span class="op">=</span> <span class="ident">u64</span>::<span class="ident">from</span>(<span class="ident">ctx</span>.<span class="ident">eval_size</span>(<span class="kw-2">&amp;</span>::<span class="ident">codegen</span>::<span class="ident">Size</span>::<span class="ident">from_ir</span>(<span class="ident">size</span>, <span class="ident">space</span>)));
     <span class="ident">FactorRange</span>::<span class="ident">new_fixed</span>(<span class="ident">val</span>)
 }
 </pre>
