@@ -5,8 +5,10 @@ use ir::{self, op, Type};
 use itertools::Itertools;
 use search_space::{DimKind, Domain, InstFlag};
 use std;
+use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;
 use std::io::Write;
+use utils::*;
 
 #[derive(Default)]
 pub struct CudaPrinter {
@@ -387,7 +389,7 @@ impl Printer for CudaPrinter {
                 let rounding = match (cast_type, operand_type) {
                     (ir::Type::F(_), ir::Type::I(_))
                     | (ir::Type::I(_), ir::Type::F(_)) => ir::op::Rounding::Nearest,
-                    (ir::Type::F(x), ir::Type::F(y)) => ir::op::Rounding::Nearest,
+                    (ir::Type::F(x), ir::Type::F(y)) if x < y => ir::op::Rounding::Nearest,
                     _ => ir::op::Rounding::Exact,
                 };
                 let rounding = Self::rounding(rounding);
@@ -468,6 +470,7 @@ impl Printer for CudaPrinter {
             [] => "",
             [2] => ".v2",
             [4] => ".v4",
+            p => panic!("invalid vector pattern: {:?}", p),
         };
         unwrap!(writeln!(
             self.buffer,
@@ -494,6 +497,7 @@ impl Printer for CudaPrinter {
             [] => "",
             [2] => ".v2",
             [4] => ".v4",
+            p => panic!("invalid vector pattern: {:?}", p),
         };
         if let Some(predicate) = predicate {
             unwrap!(write!(self.buffer, "@{} ", predicate));
@@ -528,3 +532,44 @@ impl Printer for CudaPrinter {
     fn print_sync(&mut self) {
         unwrap!(writeln!(self.buffer, "bar.sync 0;"));
     }
+
+    fn name_operand<'a>(
+        vector_dims: &[&Dimension],
+        op: &ir::Operand,
+        namer: &'a NameMap,
+    ) -> Cow<'a, str> {
+        if vector_dims.is_empty() {
+            namer.name_op(op)
+        } else {
+            let sizes = vector_dims
+                .iter()
+                .map(|d| unwrap!(d.size().as_int()))
+                .collect_vec();
+            let names = NDRange::new(&sizes).map(|indexes| {
+                let indexes_map = vector_dims.iter().zip_eq(indexes).map(|(d, idx)| (d.id(), idx)).collect_vec();
+                namer.indexed_op_name(op, &indexes_map)
+            }).format(", ");
+            Cow::Owned(format!("{{{}}}", names))
+        }
+    }
+
+    fn name_inst<'a>(
+        vector_dims: &[&Dimension],
+        inst: ir::InstId,
+        namer: &'a NameMap,
+    ) -> Cow<'a, str> {
+        if vector_dims.is_empty() {
+            Cow::Borrowed(namer.name_inst(inst))
+        } else {
+            let sizes = vector_dims
+                .iter()
+                .map(|d| unwrap!(d.size().as_int()))
+                .collect_vec();
+            let names = NDRange::new(&sizes).map(|indexes| {
+                let indexes_map = vector_dims.iter().zip_eq(indexes).map(|(d, idx)| (d.id(), idx)).collect_vec();
+                namer.indexed_inst_name(inst, &indexes_map)
+            }).format(", ");
+            Cow::Owned(format!("{{{}}}", names))
+        }
+    }
+}

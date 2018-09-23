@@ -3,6 +3,7 @@ use device::x86::Namer;
 use ir::{self, op, Type};
 use itertools::Itertools;
 use search_space::{DimKind, Domain, InstFlag};
+use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;
 // TODO(cc_perf): avoid concatenating strings.
 
@@ -398,6 +399,7 @@ impl Printer for X86printer {
         op2: &str,
     ) {
         assert_ne!(mode, MulMode::High);
+        assert!(vector_factors.is_empty());
         unwrap!(writeln!(self.buffer, "{} = {} * {};", result, op1, op2));
     }
 
@@ -448,6 +450,7 @@ impl Printer for X86printer {
         addr: &str,
         val: &str,
     ) {
+        assert!(vector_factors.is_empty());
         if let Some(predicate) = predicate {
             unwrap!(write!(self.buffer, "if ({})", predicate));
         }
@@ -474,5 +477,23 @@ impl Printer for X86printer {
 
     fn print_sync(&mut self) {
         unwrap!(writeln!(self.buffer, "pthread_barrier_wait(tid.barrier);"));
+    }
+
+    fn name_operand<'a>(
+        vector_dims: &[&Dimension],
+        op: &ir::Operand,
+        namer: &'a NameMap,
+    ) -> Cow<'a, str> {
+        assert!(vector_dims.is_empty());
+        namer.name_op(op)
+    }
+
+    fn name_inst<'a>(
+        vector_dims: &[&Dimension],
+        inst: ir::InstId,
+        namer: &'a NameMap,
+    ) -> Cow<'a, str> {
+        assert!(vector_dims.is_empty());
+        namer.name_inst(inst).into()
     }
 }

@@ -1,6 +1,7 @@
 use codegen::*;
 use itertools::Itertools;
 use search_space::InstFlag;
+use std::borrow::Cow;
 use utils::*;
 
 use ir::{self, op, Type};
@@ -107,6 +108,20 @@ pub trait Printer {
 
     /// Print wait on all threads
     fn print_sync(&mut self);
+
+    /// Name an operand, vectorized on the given dimensions.
+    fn name_operand<'a>(
+        vector_dims: &[&Dimension],
+        op: &ir::Operand,
+        namer: &'a NameMap,
+    ) -> Cow<'a, str>;
+
+    /// Names an instruction, vectorized on the given dimensions.
+    fn name_inst<'a>(
+        vector_dims: &[&Dimension],
+        inst: ir::InstId,
+        namer: &'a NameMap,
+    ) -> Cow<'a, str>;
 
     /// Prints a scalar less-than on integers.
     fn print_lt_int(&mut self, t: ir::Type, result: &str, lhs: &str, rhs: &str) {
@@ -236,9 +251,7 @@ pub trait Printer {
             DimKind::LOOP => self.standard_loop(fun, dim, cfgs, namer),
             DimKind::UNROLL => self.unroll_loop(fun, dim, cfgs, namer),
             DimKind::VECTOR => match *cfgs {
-                [Cfg::Instruction(ref inst)] => {
-                    self.inst(&[dim], inst, dim, namer, fun)
-                }
+                [Cfg::Instruction(ref inst)] => self.inst(&[dim], inst, namer, fun),
                 ref body => panic!("invalid vector dimension body: {:?}", body),
             },
             _ => panic!("{:?} loop should not be printed here !", dim.kind()),
@@ -319,7 +332,7 @@ pub trait Printer {
             if i > 0 {
                 for &(level, ref ind_var, ref incr, ref base) in &incr_levels {
                     if let Some(step) = incr.as_int() {
-                        let stepxi = Self::get_int(step* i);
+                        let stepxi = Self::get_int(step * i);
                         self.print_add_int(level.t(), ind_var, &stepxi, base);
                     } else {
                         let step = namer.name_size(incr, level.t());
@@ -375,13 +388,15 @@ pub trait Printer {
     }
 
     /// Prints an instruction.
-    fn inst(&mut self,
-            vector_dims: &[&Dimension],
-            inst: &Instruction,
-            namer: &mut NameMap,
-            fun: &Function
+    fn inst(
+        &mut self,
+        vector_dims: &[&Dimension],
+        inst: &Instruction,
+        namer: &mut NameMap,
+        fun: &Function,
     ) {
-        let vector_factors = vector_dims.iter()
+        let vector_factors = vector_dims
+            .iter()
             .map(|d| unwrap!(d.size().as_int()))
             .collect_vec();
         match inst.operator() {
@@ -392,9 +407,9 @@ pub trait Printer {
                     *op,
                     t,
                     *round,
-                    &namer.name_inst(vector_dims, inst),
-                    &namer.name_op(vector_dims, lhs),
-                    &namer.name_op(vector_dims, rhs),
+                    &Self::name_inst(vector_dims, inst.id(), namer),
+                    &Self::name_operand(vector_dims, lhs, namer),
+                    &Self::name_operand(vector_dims, rhs, namer),
                 )
             }
             op::Mul(lhs, rhs, round, return_type) => {
@@ -406,9 +421,9 @@ pub trait Printer {
                     low_ret_type,
                     *round,
                     mode,
-                    &namer.name_inst(vector_dims, inst),
-                    &namer.name_op(vector_dims, lhs),
-                    &namer.name_op(vector_dims, rhs),
+                    &Self::name_inst(vector_dims, inst.id(), namer),
+                    &Self::name_operand(vector_dims, lhs, namer),
+                    &Self::name_operand(vector_dims, rhs, namer),
                 )
             }
             op::Mad(mul_lhs, mul_rhs, add_rhs, round) => {
@@ -420,10 +435,10 @@ pub trait Printer {
                     unwrap!(inst.t()),
                     *round,
                     mode,
-                    &namer.name_inst(vector_dims, inst),
-                    &namer.name_op(vector_dims, mul_lhs),
-                    &namer.name_op(vector_dims, mul_rhs),
-                    &namer.name_op(vector_dims, add_rhs),
+                    &Self::name_inst(vector_dims, inst.id(), namer),
+                    &Self::name_operand(vector_dims, mul_lhs, namer),
+                    &Self::name_operand(vector_dims, mul_rhs, namer),
+                    &Self::name_operand(vector_dims, add_rhs, namer),
                 )
             }
             op::UnaryOp(operator, operand) => {
@@ -432,16 +447,16 @@ pub trait Printer {
                     op => op,
                 };
                 let t = Self::lower_type(operand.t(), fun);
-                let name = namer.name_inst(vector_dims, inst);
-                let operand = namer.name_op(vector_dims, operand);
+                let name = Self::name_inst(vector_dims, inst.id(), namer);
+                let operand = Self::name_operand(vector_dims, operand, namer);
                 self.print_unary_op(&vector_factors, operator, t, &name, &operand)
             }
             op::Ld(ld_type, addr, _) => self.print_ld(
                 &vector_factors,
                 Self::lower_type(*ld_type, fun),
                 unwrap!(inst.mem_flag()),
-                &namer.name_inst(vector_dims, inst),
-                &namer.name_op(&[], addr),
+                &Self::name_inst(vector_dims, inst.id(), namer),
+                &Self::name_operand(&[], addr, namer),
             ),
             op::St(addr, val, _, _) => {
                 let guard = if inst.has_side_effects() {
@@ -454,8 +469,8 @@ pub trait Printer {
                     Self::lower_type(val.t(), fun),
                     unwrap!(inst.mem_flag()),
                     guard.as_ref().map(|x| x as _),
-                    &namer.name_op(&[], addr),
-                    &namer.name_op(vector_dims, val),
+                    &Self::name_operand(&[], addr, namer),
+                    &Self::name_operand(vector_dims, val, namer),
                 );
             }
             op @ op::TmpLd(..) | op @ op::TmpSt(..) => {
