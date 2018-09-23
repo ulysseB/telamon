@@ -389,7 +389,9 @@ impl Printer for CudaPrinter {
                 let rounding = match (cast_type, operand_type) {
                     (ir::Type::F(_), ir::Type::I(_))
                     | (ir::Type::I(_), ir::Type::F(_)) => ir::op::Rounding::Nearest,
-                    (ir::Type::F(x), ir::Type::F(y)) if x < y => ir::op::Rounding::Nearest,
+                    (ir::Type::F(x), ir::Type::F(y)) if x < y => {
+                        ir::op::Rounding::Nearest
+                    }
                     _ => ir::op::Rounding::Exact,
                 };
                 let rounding = Self::rounding(rounding);
@@ -545,10 +547,15 @@ impl Printer for CudaPrinter {
                 .iter()
                 .map(|d| unwrap!(d.size().as_int()))
                 .collect_vec();
-            let names = NDRange::new(&sizes).map(|indexes| {
-                let indexes_map = vector_dims.iter().zip_eq(indexes).map(|(d, idx)| (d.id(), idx)).collect_vec();
-                namer.indexed_op_name(op, &indexes_map)
-            }).format(", ");
+            let names = NDRange::new(&sizes)
+                .map(|indexes| {
+                    let indexes_map = vector_dims
+                        .iter()
+                        .zip_eq(indexes)
+                        .map(|(d, idx)| (d.id(), idx))
+                        .collect_vec();
+                    namer.indexed_op_name(op, &indexes_map)
+                }).format(", ");
             Cow::Owned(format!("{{{}}}", names))
         }
     }
@@ -565,10 +572,15 @@ impl Printer for CudaPrinter {
                 .iter()
                 .map(|d| unwrap!(d.size().as_int()))
                 .collect_vec();
-            let names = NDRange::new(&sizes).map(|indexes| {
-                let indexes_map = vector_dims.iter().zip_eq(indexes).map(|(d, idx)| (d.id(), idx)).collect_vec();
-                namer.indexed_inst_name(inst, &indexes_map)
-            }).format(", ");
+            let names = NDRange::new(&sizes)
+                .map(|indexes| {
+                    let indexes_map = vector_dims
+                        .iter()
+                        .zip_eq(indexes)
+                        .map(|(d, idx)| (d.id(), idx))
+                        .collect_vec();
+                    namer.indexed_inst_name(inst, &indexes_map)
+                }).format(", ");
             Cow::Owned(format!("{{{}}}", names))
         }
     }
