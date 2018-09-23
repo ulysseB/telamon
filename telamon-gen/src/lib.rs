@@ -61,11 +61,11 @@ fn to_type_name(name: &str) -> String {
 }
 
 /// Process a file and stores the result in an other file.
-pub fn process_file<'a>(
-    input_path: &'a path::Path,
+pub fn process_file(
+    input_path: &path::Path,
     output_path: &path::Path,
     format: bool,
-) -> Result<(), error::ProcessError<'a>> {
+) -> Result<(), error::Error> {
     let mut output = fs::File::create(path::Path::new(output_path)).unwrap();
     let input_path_str = input_path.to_string_lossy();
     info!(
@@ -77,12 +77,12 @@ pub fn process_file<'a>(
 }
 
 /// Parses a constraint description file.
-pub fn process<'a, T: io::Write>(
+pub fn process<T: io::Write>(
     input: Option<&mut io::Read>,
     output: &mut T,
     format: bool,
-    input_path: &'a path::Path,
-) -> Result<(), error::ProcessError<'a>> {
+    input_path: &path::Path,
+) -> Result<(), error::Error> {
     // Parse and check the input.
     let tokens = if let Some(stream) = input {
         lexer::Lexer::from_input(stream)
@@ -90,7 +90,7 @@ pub fn process<'a, T: io::Write>(
         lexer::Lexer::from_file(input_path)
     };
     let ast: ast::Ast = parser::parse_ast(tokens)
-        .map_err(|c| error::ProcessError::from((input_path.display(), c)))?;
+        .map_err(|c| error::Error::from((input_path.to_path_buf(), c)))?;
 
     let (mut ir_desc, constraints) = ast.type_check().unwrap();
     debug!("constraints: {:?}", constraints);

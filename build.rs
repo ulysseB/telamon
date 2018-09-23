@@ -1,6 +1,7 @@
 //! Rust script to compile non-rust files.
 extern crate cc;
 extern crate telamon_gen;
+extern crate failure;
 
 use std::path::Path;
 
@@ -35,7 +36,10 @@ fn main() {
         &Path::new(exh_file),
         &exh_out,
         cfg!(feature = "format_exh"),
-    ).unwrap();
+    ).unwrap_or_else(|err| {
+        eprintln!("could not compile EXH file: {}", err);
+        std::process::exit(-1);
+    });
     if cfg!(feature = "cuda") {
         compile_link_cuda();
     }
