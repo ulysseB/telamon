@@ -82,18 +82,9 @@ impl<'a, 'b> std::ops::MulAssign<&'b Size<'a>> for Size<'a> {
     }
 }
 
-<<<<<<< HEAD
-// TODO(cleanup): remove the temporary implementation of From<ir::Size> for codgen::Size.
-// This is only needed until we have mechanism in `model::*` to handle sizes.
-impl<'a> From<ir::PartialSize<'a>> for Size<'a> {
-    fn from(s: ir::PartialSize<'a>) -> Size<'a> {
-        Size::new(s.factor(), s.dividend().to_vec(), s.divisor())
-    }
-=======
 /// Returns the size of a static dimension from the domain.
 fn dim_size(dim: ir::DimId, space: &SearchSpace) -> u32 {
     let universe = unwrap!(space.ir_instance().dim(dim).possible_sizes());
     let size = space.domain().get_size(dim).as_constrained(universe);
     unwrap!(size, "dim {} is not constrained", dim)
->>>>>>> change size to point to the domain
 }
