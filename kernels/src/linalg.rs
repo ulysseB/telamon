@@ -62,10 +62,7 @@ where
         let mad_dim = builder.open_mapped_dim(&ld_x[0]);
         let x_op = ld_x.dim_map(&[&mad_dim], GlobalScope(()), &mut builder);
         let y_op = ld_y.dim_map(&[&mad_dim], GlobalScope(()), &mut builder);
-        let mad = VirtualTensor::new(
-            builder.mad(&x_op, &"alpha", &y_op),
-            vec![mad_dim],
-            );
+        let mad = VirtualTensor::new(builder.mad(&x_op, &"alpha", &y_op), vec![mad_dim]);
         mad.store(&self.z, &mut builder);
         vec![build_candidate(builder.get(), ctx)]
     }
@@ -410,16 +407,8 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
         let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
         let acc_dim_n = builder.open_mapped_dim(&init_dim_n);
         let acc_dim_k = builder.open_mapped_dim(&ld_a[1]);
-        let a_op = ld_a.dim_map(
-            &[&acc_dim_m, &acc_dim_k],
-            GlobalScope(()),
-            &mut builder,
-            );
-        let b_op = ld_b.dim_map(
-            &[&acc_dim_k, &acc_dim_n],
-            GlobalScope(()),
-            &mut builder,
-            );
+        let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_k], GlobalScope(()), &mut builder);
+        let b_op = ld_b.dim_map(&[&acc_dim_k, &acc_dim_n], GlobalScope(()), &mut builder);
         let acc = builder.mad(&a_op, &b_op, &helper::Reduce(acc_init));
         builder.close_dim(&acc_dim_k);
 
@@ -471,7 +460,6 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
           ];
         assert!(space.apply_decisions(actions).is_ok());*/
         vec![build_candidate(builder.get(), ctx)]
-
     }
 
     fn get_expected_output(&self, context: &device::Context) -> Array2<S> {
@@ -602,7 +590,8 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
         let m_tiling = helper::TilingPattern::infer_pattern(self.params.m as u32, &[64]);
         let n_tiling = helper::TilingPattern::infer_pattern(self.params.n as u32, &[64]);
         let k_tiling = helper::TilingPattern::infer_pattern(self.params.k as u32, &[64]);
-        let batch_tiling = helper::TilingPattern::infer_pattern(self.params.batch as u32, &[128]);
+        let batch_tiling =
+            helper::TilingPattern::infer_pattern(self.params.batch as u32, &[128]);
         let mut builder = helper::Builder::new(signature, ctx.device());
         let a_tiling = vec![batch_tiling.clone(), m_tiling, k_tiling.clone()];
         let ld_a = self.a.load(a_tiling, &mut builder);
@@ -626,7 +615,7 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
             &[&acc_batch, &acc_dim_m, &acc_dim_k],
             GlobalScope(()),
             &mut builder,
-            );
+        );
         let b_op = {
             let b_dims = [&acc_batch, &acc_dim_k, &acc_dim_n];
             let b_dims = if self.params.batch_b {

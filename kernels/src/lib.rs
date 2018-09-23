@@ -55,13 +55,13 @@ where
 
 /// Returns the given tiling pattern or infer one.
 fn infer_tiling(
-    size: i32, 
+    size: i32,
     given_pattern: &Option<helper::TilingPattern>,
-    max_sizes: &[u32]
+    max_sizes: &[u32],
 ) -> helper::TilingPattern {
-    given_pattern.clone().unwrap_or_else(|| {
-        helper::TilingPattern::infer_pattern(size as u32, max_sizes)
-    })
+    given_pattern
+        .clone()
+        .unwrap_or_else(|| helper::TilingPattern::infer_pattern(size as u32, max_sizes))
 }
 
 /// A scalar that can be used as the data type for tests.
