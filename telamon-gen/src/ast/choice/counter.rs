@@ -3,8 +3,8 @@ use std::iter;
 use ast::constrain::Constraint;
 use ast::context::CheckerContext;
 use ast::error::TypeError;
-use ast::typing_context::TypingContext;
 use ast::{
+    TypingContext,
     type_check_code, type_check_enum_values, ChoiceDef, ChoiceInstance, Condition,
     CounterBody, CounterVal, HashSet, VarDef, VarMap,
 };

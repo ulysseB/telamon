@@ -7,8 +7,8 @@ use ast::constrain::Constraint;
 use ast::context::CheckerContext;
 use ast::error::{Hint, TypeError};
 use ast::trigger::TriggerDef;
-use ast::typing_context::TypingContext;
 use ast::{
+    TypingContext,
     ir, print, Check, ChoiceInstance, Condition, CounterBody, CounterVal, Quotient,
     SetRef, VarDef, VarMap,
 };

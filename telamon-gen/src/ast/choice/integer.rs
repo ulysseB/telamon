@@ -4,8 +4,10 @@ use super::ChoiceDef;
 
 use ast::context::CheckerContext;
 use ast::error::TypeError;
-use ast::typing_context::TypingContext;
-use ast::{type_check_code, VarDef, VarMap};
+use ast::{
+    TypingContext,
+    type_check_code, VarDef, VarMap
+};
 use ir;
 use lexer::Spanned;
 

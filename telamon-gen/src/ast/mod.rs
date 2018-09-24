@@ -81,7 +81,7 @@ impl Statement {
         match self {
             Statement::SetDef(def) => def.define(context, tc),
             Statement::ChoiceDef(def) => def.define(context, tc),
-            Statement::TriggerDef(def) => def.define(context, tc),
+            Statement::TriggerDef(def) => def.define(context, &mut tc.triggers),
             Statement::Require(def) => def.define(context, tc),
         }
     }

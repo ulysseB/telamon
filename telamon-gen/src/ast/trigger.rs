@@ -1,6 +1,5 @@
 use ast::context::CheckerContext;
 use ast::error::TypeError;
-use ast::typing_context::TypingContext;
 use ast::{type_check_code, Condition, VarDef, VarMap};
 use constraint::dedup_inputs;
 
@@ -90,9 +89,9 @@ impl TriggerDef {
     pub fn define(
         self,
         context: &CheckerContext,
-        tc: &mut TypingContext,
+        triggers: &mut Vec<TriggerDef>,
     ) -> Result<(), TypeError> {
-        tc.triggers.push(self);
+        triggers.push(self);
         Ok(())
     }
 }

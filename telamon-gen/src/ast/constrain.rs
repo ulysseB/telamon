@@ -1,7 +1,8 @@
 use ast::context::CheckerContext;
 use ast::error::TypeError;
-use ast::typing_context::TypingContext;
-use ast::{ir, Condition, TypedConstraint, VarDef, VarMap};
+use ast::{
+    TypingContext, ir, Condition, TypedConstraint, VarDef, VarMap
+};
 
 use itertools::Itertools;
 
