@@ -373,9 +373,13 @@ impl Printer for MppaPrinter {
                          return_id, op));
     }
 
-    fn print_ld(&mut self, return_type: Type, _: InstFlag, return_id: &str,  addr: &str) {
-        unwrap!(writeln!(self.out_function, "{} = *({}*){} ;",
-            return_id, Self::get_type(return_type), addr));
+    fn print_ld(&mut self, return_type: Type, flag: InstFlag, return_id: &str,  addr: &str) {
+        match flag {
+            MEM_GLOBAL => unwrap!(writeln!(self.out_function, "{} = *({}*){} ;",
+            return_id, Self::get_type(return_type), addr)),
+            _ => unwrap!(writeln!(self.out_function, "{} = *({}*){} ;",
+            return_id, Self::get_type(return_type), addr))
+        }
     }
 
     fn print_st(&mut self, val_type: Type, _: InstFlag, addr: &str, val: &str) {
