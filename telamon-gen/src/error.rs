@@ -95,7 +95,13 @@ impl fmt::Display for Error {
                 ..
             } => {
                 if let Some(span) = span {
-                    write!(f, "Unexpected token '{:?}', {} -> {}", token, span, path.display())
+                    write!(
+                        f,
+                        "Unexpected token '{:?}', {} -> {}",
+                        token,
+                        span,
+                        path.display()
+                    )
                 } else {
                     write!(f, "Unexpected token '{:?}' -> {}", token, path.display())
                 }

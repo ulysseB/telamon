@@ -1,7 +1,7 @@
 //! Rust script to compile non-rust files.
 extern crate cc;
-extern crate telamon_gen;
 extern crate failure;
+extern crate telamon_gen;
 
 use std::path::Path;
 
