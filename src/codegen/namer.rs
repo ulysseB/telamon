@@ -211,7 +211,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
             ir::Operand::Param(p) => self.name_param_val(ParamValKey::External(p)),
             ir::Operand::Addr(id) => self.name_addr(id),
             ir::Operand::InductionVar(id, _) => self.name_induction_var(id, None),
-            ir::Operand::Value(val_id, t) => Cow::Borrowed(&self.values[&val_id]),
+            ir::Operand::Value(val_id, _t) => Cow::Borrowed(&self.values[&val_id]),
         }
     }
 

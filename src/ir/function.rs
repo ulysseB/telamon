@@ -5,7 +5,7 @@ use ir::{
     self, Dimension, InstId, Instruction, Operator, Statement, StmtId, Value, ValueDef,
     ValueId,
 };
-use ir::{dim, mem, AccessPattern, Operand, SparseVec, Type};
+use ir::{mem, AccessPattern, Operand, SparseVec, Type};
 use itertools::Itertools;
 use std;
 use utils::*;
@@ -120,7 +120,7 @@ impl<'a, L> Function<'a, L> {
         let inst = ir::Instruction::new(op, id, iter_dims, self)?;
         // Register the instruction in iteration dimensions.
         for &dim in inst.iteration_dims() {
-            self.dim_mut(dim).add_iterated(id.into());
+            self.dim_mut(dim).add_iterated(id);
         }
         // Register the memory blocks used.
         if let Some(mem_id) = inst.operator().mem_used() {
@@ -308,8 +308,8 @@ impl<'a, L> Function<'a, L> {
         let pos = unwrap!(self.layouts_to_lower.iter().position(|&x| x == id));
         self.layouts_to_lower.swap_remove(pos);
         self.mem_blocks.lower_layout(id);
-        let (st_index, st_pattern) = self.gen_internal_index(id, st_dims);
-        let (ld_index, ld_pattern) = self.gen_internal_index(id, ld_dims);
+        let (st_index, st_pattern) = self.gen_internal_index(id, &st_dims);
+        let (ld_index, ld_pattern) = self.gen_internal_index(id, &ld_dims);
         for &mem_use in self.mem_blocks.internal_block(id).uses() {
             self.insts[mem_use].lower_layout(
                 ld_index.clone(),
@@ -324,10 +324,10 @@ impl<'a, L> Function<'a, L> {
     fn gen_internal_index(
         &mut self,
         id: mem::InternalId,
-        dims: Vec<ir::DimId>,
+        dims: &[ir::DimId],
     ) -> (Operand<'a, L>, AccessPattern<'a>) {
         let ty_len = self.mem_blocks.internal_block(id).base_size();
-        self.gen_index(id.into(), ty_len, Operand::Addr(id), dims)
+        self.gen_index(id.into(), ty_len, Operand::Addr(id), &dims)
     }
 
     /// Generates an access pattern and the corresponding induction variable to access a
@@ -337,7 +337,7 @@ impl<'a, L> Function<'a, L> {
         mem: ir::MemId,
         base_incr: u32,
         base_addr: Operand<'a, L>,
-        dims: Vec<ir::DimId>,
+        dims: &[ir::DimId],
     ) -> (Operand<'a, L>, AccessPattern<'a>) {
         let var_type = base_addr.t();
         let base_size = ir::PartialSize::new(base_incr, vec![], 1);
@@ -468,7 +468,7 @@ impl<'a> Function<'a, ()> {
             tiled_size.mul_divisor(tiling_factor);
             dims.push(Dimension::new(tiled_size, dim_ids[0])?);
             let factors = tiling_factors;
-            let static_dims = dim_ids[1..].iter().cloned().collect();
+            let static_dims = dim_ids[1..].to_vec();
             ir::LogicalDim::new_dynamic(
                 logical_id,
                 dim_ids[0],

@@ -180,7 +180,7 @@ impl BlockMap {
         }
         InternalBlock {
             id,
-            base_size: base_size,
+            base_size,
             uses: vec![],
             mapped_dims: vec![],
             maybe_mapped: maybe_mapped.unwrap_or_else(ir::DimMap::empty),

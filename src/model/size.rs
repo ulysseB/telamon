@@ -29,7 +29,7 @@ impl Range {
 /// Bounds the values a size can take, in the given context.
 pub fn bounds(size: &ir::PartialSize, space: &SearchSpace, ctx: &Context) -> Range {
     // FIXME: the size may not have a fixed value.
-    let val = ctx.eval_size(&::codegen::Size::from_ir(size, space)) as u64;
+    let val = u64::from(ctx.eval_size(&::codegen::Size::from_ir(size, space)));
     Range::new_fixed(val)
 }
 
@@ -57,6 +57,6 @@ pub fn factors(
     ctx: &Context,
 ) -> FactorRange {
     // FIXME: the size may not have a fixed value.
-    let val = ctx.eval_size(&::codegen::Size::from_ir(size, space)) as u64;
+    let val = u64::from(ctx.eval_size(&::codegen::Size::from_ir(size, space)));
     FactorRange::new_fixed(val)
 }

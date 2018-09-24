@@ -10,7 +10,7 @@ macro_rules! test_output {
         #[test]
         fn $name() {
             let _ = env_logger::try_init();
-            let mut context = x86::Context::new();
+            let mut context = x86::Context::default();
             <$kernel>::test_correctness($params, $num_tests, &mut context);
         }
     };

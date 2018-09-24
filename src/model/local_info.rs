@@ -183,10 +183,8 @@ impl<'a> Nesting<'a> {
                 if Order::INNER.contains(order) {
                     inner_dims.push(dim.id());
                 }
-                if order.intersects(Order::INNER) {
-                    if other_kind == DimKind::THREAD {
-                        has_inner_thread_dims = true;
-                    }
+                if order.intersects(Order::INNER) && other_kind == DimKind::THREAD {
+                    has_inner_thread_dims = true;
                 }
                 if (Order::INNER | Order::BEFORE).contains(order) {
                     before_self.push(dim.id());
@@ -252,13 +250,13 @@ impl<'a> Nesting<'a> {
                     continue;
                 }
                 let order = space.domain().get_order(dim.into(), stmt);
-                if Order::OUTER.contains(order) {
-                    if outer.iter().cloned().all(|outer: ir::DimId| {
+                if Order::OUTER.contains(order) && outer.iter().cloned().all(
+                    |outer: ir::DimId| {
                         let ord = space.domain().get_order(dim.into(), outer.into());
                         !ord.contains(Order::MERGED)
-                    }) {
-                        outer.push(dim);
-                    }
+                    },
+                ) {
+                    outer.push(dim);
                 }
             }
             outer
@@ -283,7 +281,7 @@ pub struct Parallelism {
 impl Parallelism {
     /// Combines two `Parallelism` summaries computed on different instructions and computes the
     /// `Parallelism` of the union of the instructions.
-    fn combine(self, rhs: Self) -> Self {
+    fn combine(self, rhs: &Self) -> Self {
         let min_num_threads_per_blocks = self
             .min_num_threads_per_blocks
             .min(rhs.min_num_threads_per_blocks);
@@ -344,6 +342,6 @@ fn parallelism(
                 min_num_threads: size::bounds(&size_threads_and_blocks, space, ctx).min,
                 lcm_num_blocks,
             }
-        }).fold1(|lhs, rhs| lhs.combine(rhs))
-        .unwrap_or(Parallelism::default())
+        }).fold1(|lhs, rhs| lhs.combine(&rhs))
+        .unwrap_or_default()
 }

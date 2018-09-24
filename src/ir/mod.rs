@@ -123,7 +123,7 @@ impl NewObjs {
     /// Adds a mapping between dimensions.
     pub fn add_dim_mapping(&mut self, mapping: &DimMapping) {
         self.dim_mappings.push(mapping.id());
-        for &dim in mapping.dims().iter() {
+        for &dim in &mapping.dims() {
             self.mapped_dims.push((mapping.id(), dim));
         }
     }

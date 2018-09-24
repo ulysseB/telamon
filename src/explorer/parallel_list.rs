@@ -135,7 +135,7 @@ impl<'a> CandidateList<'a> {
             );
             self.queue.push(candidate);
         } else {
-            self.drop_candidate(candidate);
+            self.drop_candidate(&candidate);
         }
     }
 
@@ -147,7 +147,7 @@ impl<'a> CandidateList<'a> {
             .map_or(false, |x| x.bound.value() >= new_cut)
         {
             let candidate = unwrap!(self.queue.pop_max());
-            self.drop_candidate(candidate);
+            self.drop_candidate(&candidate);
         }
     }
 
@@ -163,7 +163,7 @@ impl<'a> CandidateList<'a> {
     }
 
     /// Drops a candiate.
-    fn drop_candidate(&mut self, candidate: Candidate<'a>) {
+    fn drop_candidate(&mut self, candidate: &Candidate<'a>) {
         info!(
             "dropping candidate: {:.4e}ns >= {:.4e}ns.",
             candidate.bound.value(),

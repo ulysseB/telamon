@@ -268,7 +268,7 @@ fn sort_thread_dims(
         }
         out.push(d);
         heap.extend(dim_groups.remove(&out.len()));
-        if total_size >= gpu.wrap_size as u64 {
+        if total_size >= u64::from(gpu.wrap_size) {
             break;
         }
     }
@@ -284,7 +284,7 @@ fn cmp_thread_dims(
     gpu: &cuda::Gpu,
 ) -> std::cmp::Ordering {
     let (lhs_val, rhs_val) = if use_gcd {
-        let replay_distance = (gpu.wrap_size * gpu.shared_bank_stride) as u64;
+        let replay_distance = u64::from(gpu.wrap_size * gpu.shared_bank_stride);
         let lhs_val = lhs.stride_factors.gcd.gcd(&replay_distance);
         let rhs_val = rhs.stride_factors.gcd.gcd(&replay_distance);
         (lhs_val, rhs_val)
@@ -393,7 +393,7 @@ fn shared_replay_factor(
         .unwrap_or(1);
     let replay = std::cmp::max(replay, vector_replay);
     trace!("shared_replay: {}", replay);
-    replay as f64
+    f64::from(replay)
 }
 
 /// Computes the replay factor for a list of shared memory access.
@@ -402,8 +402,8 @@ fn offsets_shared_replay_factor(offsets: &[u64], gpu: &cuda::Gpu) -> u32 {
     // replay factor.
     let mut hits: HashSet<_> = std::iter::once(0).collect();
     for &offset in offsets {
-        let num_bank_stride = offset / gpu.shared_bank_stride as u64;
-        let (hit_id, rem) = num_bank_stride.div_rem(&(gpu.wrap_size as u64));
+        let num_bank_stride = offset / u64::from(gpu.shared_bank_stride);
+        let (hit_id, rem) = num_bank_stride.div_rem(&(u64::from(gpu.wrap_size)));
         if rem == 0 {
             hits.insert(hit_id);
         }
@@ -444,8 +444,8 @@ fn offsets_global_coalescing(offsets: &[u64], gpu: &cuda::Gpu) -> (f64, f64, f64
     let mut l2_lines: HashSet<_> = std::iter::once(0).collect();
     // Compute the lines accessed by each tread in a wrap.
     for &offset in offsets {
-        l1_lines.insert(offset / gpu.l1_cache_line as u64);
-        l2_lines.insert(offset / gpu.l2_cache_line as u64);
+        l1_lines.insert(offset / u64::from(gpu.l1_cache_line));
+        l2_lines.insert(offset / u64::from(gpu.l2_cache_line));
     }
     trace!(
         "global_replay: {} (size: {})",

@@ -241,7 +241,7 @@ fn num_bits(val: &BigInt) -> u16 {
     let mut num_bits = if val.is_negative() { 1 } else { 0 };
     let mut rem = val.abs();
     while !rem.is_zero() {
-        rem = rem >> 1;
+        rem >>= 1;
         num_bits += 1;
     }
     num_bits

@@ -201,8 +201,8 @@ pub enum BottleneckLevel {
 
 impl BottleneckLevel {
     /// Indicates if a dimension should be taken into account for the bottleneck level.
-    pub fn accounts_for_dim(&self, kind: DimKind) -> bool {
-        match *self {
+    pub fn accounts_for_dim(self, kind: DimKind) -> bool {
+        match self {
             _ if kind.intersects(DimKind::VECTOR) => false,
             BottleneckLevel::Global => true,
             _ if kind == DimKind::BLOCK => false,

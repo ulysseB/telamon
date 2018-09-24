@@ -28,15 +28,6 @@ pub struct Context {
 }
 
 impl Context {
-    /// Create a new evaluation context.
-    pub fn new() -> Context {
-        let default_cpu = Cpu::dummy_cpu();
-        Context {
-            cpu_model: default_cpu,
-            parameters: HashMap::default(),
-        }
-    }
-
     /// Returns a parameter given its name.
     pub fn get_param(&self, name: &str) -> &Argument {
         self.parameters[name].as_ref()
@@ -65,6 +56,17 @@ impl Context {
                     ThunkArg::Size((self as &device::Context).eval_size(size) as i32)
                 }
             }).collect_vec()
+    }
+}
+
+impl Default for Context {
+    /// Create a new evaluation context.
+    fn default() -> Context {
+        let default_cpu = Cpu::dummy_cpu();
+        Context {
+            cpu_model: default_cpu,
+            parameters: HashMap::default(),
+        }
     }
 }
 
@@ -168,7 +170,7 @@ enum ThunkArg {
 /// Given a function string and its arguments as ThunkArg, compile to a binary, executes it and
 /// returns the time elapsed. Converts ThunkArgs to HoldTHunk as we want to allocate memory for
 /// temporary arrays at the last possible moment
-fn function_evaluate(fun_str: &String, args: &Vec<ThunkArg>) -> Result<f64, ()> {
+fn function_evaluate(fun_str: &str, args: &[ThunkArg]) -> Result<f64, ()> {
     let temp_dir = unwrap!(tempfile::tempdir());
     let templib_name = temp_dir
         .path()

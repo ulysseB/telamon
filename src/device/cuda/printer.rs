@@ -9,6 +9,7 @@ use std;
 use std::fmt::Write as WriteFmt;
 use std::io::Write;
 
+#[derive(Default)]
 pub struct CudaPrinter {
     out_function: String,
 }
@@ -105,12 +106,6 @@ impl CudaPrinter {
             t = ptr_type_name,
             size = unwrap!(block.alloc_size().as_int())
         ));
-    }
-
-    pub fn new() -> Self {
-        CudaPrinter {
-            out_function: String::new(),
-        }
     }
 
     /// Prints a `Type` for the host.
