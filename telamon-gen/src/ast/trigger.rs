@@ -21,12 +21,14 @@ impl TriggerDef {
         trace!("defining trigger '{}'", self.code);
         // Type check the code and the conditions.
         let ref mut var_map = VarMap::default();
-        let foralls = self.foralls
+        let foralls = self
+            .foralls
             .iter()
             .map(|def| var_map.decl_forall(&ir_desc, def.to_owned()))
             .collect();
         let mut inputs = Vec::new();
-        let conditions = self.conditions
+        let conditions = self
+            .conditions
             .iter()
             .map(|c| c.to_owned().type_check(&ir_desc, var_map, &mut inputs))
             .collect_vec();
@@ -68,8 +70,7 @@ impl TriggerDef {
         };
         let id = ir_desc.add_trigger(trigger);
         // Register the triggers to to be called when each input is modified.
-        for (choice,
-             forall_vars, set_constraints, condition, code) in onchange_actions {
+        for (choice, forall_vars, set_constraints, condition, code) in onchange_actions {
             let action = ir::ChoiceAction::Trigger {
                 id,
                 condition,

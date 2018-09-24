@@ -4,9 +4,8 @@ use ast::constrain::Constraint;
 use ast::context::CheckerContext;
 use ast::error::TypeError;
 use ast::{
-    TypingContext,
     type_check_code, type_check_enum_values, ChoiceDef, ChoiceInstance, Condition,
-    CounterBody, CounterVal, HashSet, VarDef, VarMap,
+    CounterBody, CounterVal, HashSet, TypingContext, VarDef, VarMap,
 };
 use ir::{self, Adaptable};
 use itertools::Itertools;
@@ -148,8 +147,7 @@ impl CounterDef {
                 if foralls.len() == iter_vars.len() {
                     // Generate the increment condition.
                     let choice = ir_desc.get_choice(&incr.choice);
-                    let enum_ =
-                        ir_desc.get_enum(choice.choice_def().as_enum().unwrap());
+                    let enum_ = ir_desc.get_enum(choice.choice_def().as_enum().unwrap());
                     let values = type_check_enum_values(enum_, rhs.clone());
                     let values = if is {
                         values
@@ -200,8 +198,7 @@ impl CounterDef {
                     cond
                 }).collect(),
         );
-        constraints
-            .push(Constraint::new(all_vars_defs, disjunctions));
+        constraints.push(Constraint::new(all_vars_defs, disjunctions));
         // Generate the choice instance.
         let vars = (0..counter_vars.len())
             .map(ir::Variable::Arg)
@@ -224,18 +221,27 @@ impl CounterDef {
         let mut var_map = VarMap::default();
         // Type-check the base.
         let kind = self.body.kind;
-        let all_var_defs = self.vars.to_owned()
+        let all_var_defs = self
+            .vars
+            .to_owned()
             .iter()
             .chain(&self.body.iter_vars)
             .cloned()
             .collect();
-        let vars = self.vars
+        let vars = self
+            .vars
             .iter()
-            .map(|def| (def.name.clone(), var_map.decl_argument(&ir_desc, def.to_owned())))
-            .collect_vec();
+            .map(|def| {
+                (
+                    def.name.clone(),
+                    var_map.decl_argument(&ir_desc, def.to_owned()),
+                )
+            }).collect_vec();
         let base = type_check_code(RcStr::new(self.body.to_owned().base), &var_map);
         // Generate the increment
-        let iter_vars = self.body.to_owned()
+        let iter_vars = self
+            .body
+            .to_owned()
             .iter_vars
             .into_iter()
             .map(|def| (def.name.clone(), var_map.decl_forall(&ir_desc, def)))
@@ -258,13 +264,14 @@ impl CounterDef {
             self.body.to_owned().conditions,
             &var_map,
             ir_desc,
-            constraints
+            constraints,
         );
         // Type check the value.
         let value = match self.body.value {
-            CounterVal::Code(ref code) => {
-                ir::CounterVal::Code(type_check_code(RcStr::new(code.to_owned()), &var_map))
-            }
+            CounterVal::Code(ref code) => ir::CounterVal::Code(type_check_code(
+                RcStr::new(code.to_owned()),
+                &var_map,
+            )),
             CounterVal::Choice(ref counter) => {
                 let counter_name = self.name.data.to_owned();
                 let (value, action) = self.counter_val_choice(

@@ -19,10 +19,8 @@ impl TypingContext {
         for choice_def in self.choice_defs.iter() {
             match choice_def {
                 ChoiceDef::CounterDef(counter_def) => {
-                    counter_def.register_counter(
-                        &mut self.ir_desc,
-                        &mut self.constraints
-                    );
+                    counter_def
+                        .register_counter(&mut self.ir_desc, &mut self.constraints);
                 }
                 _ => {}
             }

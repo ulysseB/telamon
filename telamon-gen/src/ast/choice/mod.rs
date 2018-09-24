@@ -8,7 +8,7 @@ pub use self::integer::IntegerDef;
 
 use ast::context::CheckerContext;
 use ast::error::{Hint, TypeError};
-use ast::{TypingContext, Statement};
+use ast::{Statement, TypingContext};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum ChoiceDef {
@@ -40,10 +40,11 @@ impl ChoiceDef {
     ) -> Result<(), TypeError> {
         match self {
             ChoiceDef::CounterDef(def) => def.define(context, tc),
-            ChoiceDef::IntegerDef(def) => def.define(context, tc),
+            ChoiceDef::IntegerDef(def) => def.define(
+                context, &mut tc.ir_desc, &mut tc.choice_defs,
+            ),
             ChoiceDef::EnumDef(def) => def.define(
-                context, &mut tc.ir_desc, &mut tc.constraints,
-                &mut tc.choice_defs
+                context, &mut tc.ir_desc, &mut tc.constraints, &mut tc.choice_defs,
             ),
         }
     }

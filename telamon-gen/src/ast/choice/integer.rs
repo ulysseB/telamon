@@ -4,10 +4,7 @@ use super::ChoiceDef;
 
 use ast::context::CheckerContext;
 use ast::error::TypeError;
-use ast::{
-    TypingContext,
-    type_check_code, VarDef, VarMap
-};
+use ast::{type_check_code, VarDef, VarMap};
 use ir;
 use lexer::Spanned;
 
@@ -46,7 +43,10 @@ impl IntegerDef {
     }
 
     /// Defines an integer choice.
-    fn define_integer(&self, tc: &mut TypingContext) {
+    fn define_integer(
+        &self,
+        ir_desc: &mut ir::IrDesc,
+    ) {
         let choice_name = RcStr::new(self.name.data.to_owned());
         let doc = self.doc.to_owned().map(RcStr::new);
         let mut var_map = VarMap::default();
@@ -55,7 +55,7 @@ impl IntegerDef {
             .iter()
             .map(|v| {
                 let name = v.name.clone();
-                (name, var_map.decl_argument(&tc.ir_desc, v.to_owned()))
+                (name, var_map.decl_argument(&ir_desc, v.to_owned()))
             }).collect::<Vec<_>>();
         let arguments = ir::ChoiceArguments::new(
             vars.into_iter()
@@ -66,7 +66,7 @@ impl IntegerDef {
         );
         let universe = type_check_code(RcStr::new(self.code.to_owned()), &var_map);
         let choice_def = ir::ChoiceDef::Number { universe };
-        tc.ir_desc
+        ir_desc
             .add_choice(ir::Choice::new(choice_name, doc, arguments, choice_def));
     }
 
@@ -74,13 +74,14 @@ impl IntegerDef {
     pub fn define(
         self,
         context: &mut CheckerContext,
-        tc: &mut TypingContext,
+        ir_desc: &mut ir::IrDesc,
+        choice_defs: &mut Vec<ChoiceDef>,
     ) -> Result<(), TypeError> {
         self.check_undefined_variables(context)?;
 
-        self.define_integer(tc);
+        self.define_integer(ir_desc);
 
-        tc.choice_defs.push(ChoiceDef::IntegerDef(self));
+        choice_defs.push(ChoiceDef::IntegerDef(self));
         Ok(())
     }
 }

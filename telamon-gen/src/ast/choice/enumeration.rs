@@ -273,11 +273,7 @@ impl EnumDef {
     }
 
     /// Registers an enum definition.
-    fn register_enum(
-        &self,
-        ir_desc: &mut ir::IrDesc,
-        constraints: &mut Vec<Constraint>
-    ) {
+    fn register_enum(&self, ir_desc: &mut ir::IrDesc, constraints: &mut Vec<Constraint>) {
         trace!("defining enum {}", self.name.data);
         let doc = self.doc.clone().map(RcStr::new);
         let enum_name = RcStr::new(::to_type_name(&self.name.data));
@@ -294,7 +290,7 @@ impl EnumDef {
                 self.variables.clone(),
                 value,
                 constraint,
-                constraints
+                constraints,
             );
         }
         // Typechek the anti-symmetry mapping.
@@ -368,8 +364,7 @@ impl EnumDef {
         // Register the enum and the choice.
         ir_desc.add_enum(enum_);
         let choice_def = ir::ChoiceDef::Enum(enum_name);
-        ir_desc
-            .add_choice(ir::Choice::new(choice_name, doc, arguments, choice_def));
+        ir_desc.add_choice(ir::Choice::new(choice_name, doc, arguments, choice_def));
     }
 
     /// Type checks the define's condition.

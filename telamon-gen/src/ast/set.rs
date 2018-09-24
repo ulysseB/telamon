@@ -8,9 +8,8 @@ use ast::context::CheckerContext;
 use ast::error::{Hint, TypeError};
 use ast::trigger::TriggerDef;
 use ast::{
-    TypingContext,
     ir, print, Check, ChoiceInstance, Condition, CounterBody, CounterVal, Quotient,
-    SetRef, VarDef, VarMap,
+    SetRef, TypingContext, VarDef, VarMap,
 };
 
 use indexmap::IndexMap;
