@@ -36,7 +36,7 @@ impl TypingContext {
                 trigger.foralls.clone(),
                 trigger.conditions.clone(),
                 trigger.code.clone(),
-                &mut self,
+                &mut self.ir_desc,
             );
         }
         let constraints = {
