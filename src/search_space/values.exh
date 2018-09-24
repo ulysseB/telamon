@@ -8,6 +8,23 @@ set Values:
   new_objs = "$objs.values"
 end
 
+/* FIXME: enable the sets
+set DefStatements($value in Values) subsetof Statements:
+  item_type = "ir::Statement"
+  id_type = "ir::StmtId"
+  item_getter = 
+end
+
+set UseStatements($value in Values) subsetof Statements:
+end
+
+// Enforce data dependencies.
+require forall $value in Values:
+  forall $def in DefStatements($value):
+    forall $use in UseStatements($value):
+      order($def, $use) is BEFORE
+*/
+
 set MemoryRegions:
   item_type = "ir::mem::Block"
   id_type = "ir::MemId"
