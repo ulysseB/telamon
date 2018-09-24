@@ -59,6 +59,12 @@ impl Value {
     pub fn is_dependency_of(&self, usepoint: InstId) -> bool {
         self.usepoints.contains(&usepoint)
     }
+
+    /// Returns the id of the instruction that produced the value if it was indeed produced by an
+    /// instruction
+    pub fn prod_inst_id(&self) -> Option<ir::InstId> {
+        self.def().prod_inst_id()
+    }
 }
 
 /// Specifies how is a `Value` defined.
@@ -78,6 +84,13 @@ impl ValueDef {
         // TODO change this code when we add new variant for ValueDef
         let ValueDef::Inst(inst_id) = self;
         function.inst_mut(inst_id).set_result_value(self_id);
+    }
+
+    /// Returns the id of the instruction that produced the value if it was indeed produced by an
+    /// instruction
+    pub fn prod_inst_id(&self) -> Option<ir::InstId> {
+        let ValueDef::Inst(id) = self;
+        Some(*id)
     }
 }
 

@@ -129,7 +129,7 @@ impl<'a, L> Function<'a, L> {
         }
         // Update the usepoint of all values
         for ref op in inst.operator().operands() {
-            if let Operand::Value(val_id, _) = op {
+            if let Operand::Value(val_id, ..) = op {
                 self.values[*val_id].add_usepoint(id);
             }
         }

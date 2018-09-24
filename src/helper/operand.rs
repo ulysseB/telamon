@@ -99,7 +99,18 @@ impl<'a> AutoOperand<'a> for ValueId {
         'a: 'b,
     {
         let val = builder.function().value(*self);
-        Operand::Value(*self, val.t())
+        let inst_id = if let Some(id) = val.prod_inst_id() {
+            id
+        } else {unimplemented!()};
+        let inst = builder.function().inst(inst_id);
+        let mapped_dims = builder.open_dims().flat_map(|(new_dim, old_dim)| {
+            if new_dim != old_dim && inst.iteration_dims().contains(&old_dim) {
+                Some((old_dim, new_dim))
+            } else {
+                None
+            }
+        });
+        Operand::Value(*self, val.t(), dim::Map::new(mapped_dims))
     }
 }
 
