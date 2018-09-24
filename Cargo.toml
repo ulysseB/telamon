@@ -37,6 +37,7 @@ name = "print_event_log"
 [build-dependencies]
 cc = "1.0.12"
 failure = "0.1.1"
+glob = "0.2"
 
 [build-dependencies.telamon-gen]
 path = "telamon-gen"

@@ -1,6 +1,7 @@
 //! Rust script to compile non-rust files.
 extern crate cc;
 extern crate failure;
+extern crate glob;
 extern crate telamon_gen;
 
 use std::path::Path;
@@ -10,8 +11,8 @@ fn add_lib(lib: &str) {
     println!("cargo:rustc-link-lib={}", lib);
 }
 
-fn add_dependency(dep: &str) {
-    println!("cargo:rerun-if-changed={}", dep);
+fn add_dependency(dep: &Path) {
+    println!("cargo:rerun-if-changed={}", dep.display());
 }
 
 /// Compiles and links the cuda wrapper and libraries.
@@ -20,7 +21,7 @@ fn compile_link_cuda() {
         .flag("-Werror")
         .file("src/device/cuda/api/wrapper.c")
         .compile("libdevice_cuda_wrapper.a");
-    add_dependency("src/device/cuda/api/wrapper.c");
+    add_dependency(Path::new("src/device/cuda/api/wrapper.c"));
     add_lib("cuda");
     add_lib("curand");
     add_lib("cupti");
@@ -29,8 +30,10 @@ fn compile_link_cuda() {
 fn main() {
     let exh_file = "src/search_space/choices.exh";
     let out_dir = std::env::var_os("OUT_DIR").unwrap();
+    for file in glob::glob("src/search_space/*.exh").unwrap() {
+        add_dependency(&file.unwrap());
+    }
 
-    add_dependency(exh_file);
     let exh_out = Path::new(&out_dir).join("choices.rs");
     telamon_gen::process_file(
         &Path::new(exh_file),
