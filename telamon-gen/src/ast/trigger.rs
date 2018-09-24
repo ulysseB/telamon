@@ -18,26 +18,20 @@ pub struct TriggerDef {
 
 impl TriggerDef {
     /// Typecheck and registers a trigger.
-    pub fn register_trigger(
-        &self,
-        foralls: Vec<VarDef>,
-        conditions: Vec<Condition>,
-        code: String,
-        ir_desc: &mut ir::IrDesc,
-    ) {
-        trace!("defining trigger '{}'", code);
+    pub fn register_trigger(&self, ir_desc: &mut ir::IrDesc) {
+        trace!("defining trigger '{}'", self.code);
         // Type check the code and the conditions.
         let ref mut var_map = VarMap::default();
-        let foralls = foralls
-            .into_iter()
-            .map(|def| var_map.decl_forall(&ir_desc, def))
+        let foralls = self.foralls
+            .iter()
+            .map(|def| var_map.decl_forall(&ir_desc, def.to_owned()))
             .collect();
         let mut inputs = Vec::new();
-        let conditions = conditions
-            .into_iter()
-            .map(|c| c.type_check(&ir_desc, var_map, &mut inputs))
+        let conditions = self.conditions
+            .iter()
+            .map(|c| c.to_owned().type_check(&ir_desc, var_map, &mut inputs))
             .collect_vec();
-        let code = type_check_code(RcStr::new(code), var_map);
+        let code = type_check_code(RcStr::new(self.code.to_owned()), var_map);
         // Groups similiar inputs.
         let (inputs, input_adaptator) = dedup_inputs(inputs, &ir_desc);
         let conditions = conditions

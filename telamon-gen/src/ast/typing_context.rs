@@ -16,28 +16,19 @@ pub struct TypingContext {
 impl TypingContext {
     /// Type-checks the statements in the correct order.
     pub fn finalize(mut self) -> (ir::IrDesc, Vec<TypedConstraint>) {
-        for choice_def in self.choice_defs.clone().iter_mut() {
+        for choice_def in self.choice_defs.iter() {
             match choice_def {
                 ChoiceDef::CounterDef(counter_def) => {
                     counter_def.register_counter(
-                        counter_def.name.data.clone(),
-                        counter_def.doc.clone(),
-                        counter_def.visibility.clone(),
-                        counter_def.vars.clone(),
-                        counter_def.body.clone(),
-                        &mut self,
+                        &mut self.ir_desc,
+                        &mut self.constraints
                     );
                 }
                 _ => {}
             }
         }
-        for trigger in self.triggers.clone().iter() {
-            trigger.register_trigger(
-                trigger.foralls.clone(),
-                trigger.conditions.clone(),
-                trigger.code.clone(),
-                &mut self.ir_desc,
-            );
+        for trigger in self.triggers.iter() {
+            trigger.register_trigger(&mut self.ir_desc);
         }
         let constraints = {
             let ir_desc = &self.ir_desc;
