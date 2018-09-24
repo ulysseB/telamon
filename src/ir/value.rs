@@ -51,7 +51,7 @@ impl Value {
     }
 
     /// Indicates the statements that define the value.
-    pub fn def_points(&self) -> impl Iterator<Item=ir::StmtId> + '_ {
+    pub fn def_points(&self) -> impl Iterator<Item = ir::StmtId> + '_ {
         self.def.def_statements()
     }
 
