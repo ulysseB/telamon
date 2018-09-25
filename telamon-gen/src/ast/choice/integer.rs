@@ -43,10 +43,7 @@ impl IntegerDef {
     }
 
     /// Defines an integer choice.
-    fn define_integer(
-        &self,
-        ir_desc: &mut ir::IrDesc,
-    ) {
+    fn define_integer(&self, ir_desc: &mut ir::IrDesc) {
         let choice_name = RcStr::new(self.name.data.to_owned());
         let doc = self.doc.to_owned().map(RcStr::new);
         let mut var_map = VarMap::default();
@@ -66,8 +63,7 @@ impl IntegerDef {
         );
         let universe = type_check_code(RcStr::new(self.code.to_owned()), &var_map);
         let choice_def = ir::ChoiceDef::Number { universe };
-        ir_desc
-            .add_choice(ir::Choice::new(choice_name, doc, arguments, choice_def));
+        ir_desc.add_choice(ir::Choice::new(choice_name, doc, arguments, choice_def));
     }
 
     /// Type checks the define's condition.

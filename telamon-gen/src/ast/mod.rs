@@ -52,11 +52,15 @@ impl Ast {
         }
         let statements: Vec<Statement> = self.statements.clone();
         for statement in statements {
-            statement.define(&mut context,
+            statement.define(
+                &mut context,
                 &mut self.set_defs,
-                &mut self.ir_desc, &mut self.checks,
-                &mut self.choice_defs, &mut self.constraints,
-                &mut self.triggers)?;
+                &mut self.ir_desc,
+                &mut self.checks,
+                &mut self.choice_defs,
+                &mut self.constraints,
+                &mut self.triggers,
+            )?;
         }
         Ok(self.finalize())
     }
@@ -119,8 +123,17 @@ impl Statement {
     ) -> Result<(), TypeError> {
         match self {
             Statement::SetDef(def) => def.define(
-                context, set_defs, ir_desc, checks, choice_defs, constraints, triggers),
-            Statement::ChoiceDef(def) => def.define(context, ir_desc, constraints, choice_defs),
+                context,
+                set_defs,
+                ir_desc,
+                checks,
+                choice_defs,
+                constraints,
+                triggers,
+            ),
+            Statement::ChoiceDef(def) => {
+                def.define(context, ir_desc, constraints, choice_defs)
+            }
             Statement::TriggerDef(def) => def.define(context, triggers),
             Statement::Require(def) => def.define(context, constraints),
         }

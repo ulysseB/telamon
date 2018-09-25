@@ -8,8 +8,8 @@ use ast::context::CheckerContext;
 use ast::error::{Hint, TypeError};
 use ast::trigger::TriggerDef;
 use ast::{
-    ir, print, Check, ChoiceInstance, Condition, CounterBody, CounterVal,
-    Quotient, SetRef, VarDef, VarMap,
+    ir, print, Check, ChoiceInstance, Condition, CounterBody, CounterVal, Quotient,
+    SetRef, VarDef, VarMap,
 };
 
 use indexmap::IndexMap;
@@ -162,7 +162,7 @@ impl SetDef {
         name: RcStr,
         set: &ir::SetDef,
         item_name: Spanned<RcStr>,
-        ir_desc: &mut ir::IrDesc
+        ir_desc: &mut ir::IrDesc,
     ) {
         let arg = self.arg.clone();
         let bool_str: RcStr = "Bool".into();
@@ -261,7 +261,12 @@ impl SetDef {
         // assert!(set.attributes().contains_key(&ir::SetDefKey::AddToSet));
         let repr_name = quotient.representant;
         // Create decisions to back the quotient set
-        self.create_repr_choice(repr_name.clone(), set, quotient.item.name.clone(), ir_desc);
+        self.create_repr_choice(
+            repr_name.clone(),
+            set,
+            quotient.item.name.clone(),
+            ir_desc,
+        );
         let item_name = quotient.item.name.clone();
         let arg_name = self.arg.as_ref().map(|x| x.name.clone());
         let forall_vars = self
@@ -348,8 +353,7 @@ impl SetDef {
             .into_iter()
             .chain(once(quotient_item_def))
             .collect();
-        constraints
-            .push(Constraint::new(item_in_set_foralls, vec![vec![repr_true]]));
+        constraints.push(Constraint::new(item_in_set_foralls, vec![vec![repr_true]]));
         // Generate the trigger that sets the repr to TRUE and add the item to the set.
         let mut trigger_conds = quotient.conditions;
         trigger_conds.push(counter_leq_zero);
@@ -445,7 +449,14 @@ impl SetDef {
             self.disjoint.to_owned(),
         );
         if let Some(ref quotient) = self.quotient {
-            self.create_quotient(&def, ir_desc, checks, choice_defs, constraints, triggers);
+            self.create_quotient(
+                &def,
+                ir_desc,
+                checks,
+                choice_defs,
+                constraints,
+                triggers,
+            );
         }
         ir_desc.add_set_def(def);
 

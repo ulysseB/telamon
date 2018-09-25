@@ -8,7 +8,7 @@ pub use self::integer::IntegerDef;
 
 use ast::context::CheckerContext;
 use ast::error::{Hint, TypeError};
-use ast::{Statement, Constraint};
+use ast::{Constraint, Statement};
 
 use ir;
 
@@ -45,7 +45,9 @@ impl ChoiceDef {
         match self {
             ChoiceDef::CounterDef(def) => def.define(context, choice_defs),
             ChoiceDef::IntegerDef(def) => def.define(context, ir_desc, choice_defs),
-            ChoiceDef::EnumDef(def) => def.define(context, ir_desc, constraints, choice_defs),
+            ChoiceDef::EnumDef(def) => {
+                def.define(context, ir_desc, constraints, choice_defs)
+            }
         }
     }
 }
