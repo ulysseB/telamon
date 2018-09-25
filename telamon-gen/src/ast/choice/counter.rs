@@ -5,7 +5,7 @@ use ast::context::CheckerContext;
 use ast::error::TypeError;
 use ast::{
     type_check_code, type_check_enum_values, ChoiceDef, ChoiceInstance, Condition,
-    CounterBody, CounterVal, HashSet, TypingContext, VarDef, VarMap,
+    CounterBody, CounterVal, HashSet, VarDef, VarMap,
 };
 use ir::{self, Adaptable};
 use itertools::Itertools;
@@ -331,9 +331,9 @@ impl CounterDef {
     pub fn define(
         self,
         context: &mut CheckerContext,
-        tc: &mut TypingContext,
+        choice_defs: &mut Vec<ChoiceDef>,
     ) -> Result<(), TypeError> {
-        tc.choice_defs.push(ChoiceDef::CounterDef(self));
+        choice_defs.push(ChoiceDef::CounterDef(self));
         Ok(())
     }
 }

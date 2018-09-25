@@ -1,6 +1,6 @@
 use ast::context::CheckerContext;
 use ast::error::TypeError;
-use ast::{ir, Condition, TypedConstraint, TypingContext, VarDef, VarMap};
+use ast::{ir, Condition, TypedConstraint, VarDef, VarMap};
 
 use itertools::Itertools;
 
@@ -55,9 +55,9 @@ impl Constraint {
     pub fn define(
         self,
         context: &CheckerContext,
-        tc: &mut TypingContext,
+        constraints: &mut Vec<Constraint>,
     ) -> Result<(), TypeError> {
-        tc.constraints.push(self);
+        constraints.push(self);
         Ok(())
     }
 }

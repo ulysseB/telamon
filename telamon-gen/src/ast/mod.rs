@@ -8,7 +8,6 @@ mod context;
 mod error;
 mod set;
 mod trigger;
-mod typing_context;
 
 use indexmap::IndexMap;
 use ir;
@@ -30,13 +29,16 @@ pub use self::context::CheckerContext;
 pub use self::error::{Hint, TypeError};
 pub use self::set::SetDef;
 pub use self::trigger::TriggerDef;
-pub use self::typing_context::TypingContext;
 
 #[derive(Default, Clone, Debug)]
 pub struct Ast {
     pub statements: Vec<Statement>,
-    /// TODO: remove typing context
-    pub tc: TypingContext,
+    pub ir_desc: ir::IrDesc,
+    pub set_defs: Vec<SetDef>,
+    pub choice_defs: Vec<ChoiceDef>,
+    pub triggers: Vec<TriggerDef>,
+    pub constraints: Vec<Constraint>,
+    pub checks: Vec<Check>,
 }
 
 impl Ast {
@@ -48,10 +50,42 @@ impl Ast {
         for statement in self.statements.iter() {
             statement.declare(&mut context)?;
         }
-        for statement in self.statements.into_iter() {
-            statement.define(&mut context, &mut self.tc)?;
+        let statements: Vec<Statement> = self.statements.clone();
+        for statement in statements {
+            statement.define(&mut context,
+                &mut self.set_defs,
+                &mut self.ir_desc, &mut self.checks,
+                &mut self.choice_defs, &mut self.constraints,
+                &mut self.triggers)?;
         }
-        Ok(self.tc.finalize())
+        Ok(self.finalize())
+    }
+
+    /// Type-checks the statements in the correct order.
+    pub fn finalize(mut self) -> (ir::IrDesc, Vec<TypedConstraint>) {
+        for choice_def in self.choice_defs.iter() {
+            match choice_def {
+                ChoiceDef::CounterDef(counter_def) => {
+                    counter_def
+                        .register_counter(&mut self.ir_desc, &mut self.constraints);
+                }
+                _ => {}
+            }
+        }
+        for trigger in self.triggers.iter() {
+            trigger.register_trigger(&mut self.ir_desc);
+        }
+        let constraints = {
+            let ir_desc = &self.ir_desc;
+            self.constraints
+                .into_iter()
+                .flat_map(move |constraint| constraint.type_check(ir_desc))
+                .collect_vec()
+        };
+        for check in self.checks {
+            check.check(&self.ir_desc);
+        }
+        (self.ir_desc, constraints)
     }
 }
 
@@ -76,13 +110,19 @@ impl Statement {
     pub fn define(
         self,
         context: &mut CheckerContext,
-        tc: &mut TypingContext,
+        set_defs: &mut Vec<SetDef>,
+        ir_desc: &mut ir::IrDesc,
+        checks: &mut Vec<Check>,
+        choice_defs: &mut Vec<ChoiceDef>,
+        constraints: &mut Vec<Constraint>,
+        triggers: &mut Vec<TriggerDef>,
     ) -> Result<(), TypeError> {
         match self {
-            Statement::SetDef(def) => def.define(context, tc),
-            Statement::ChoiceDef(def) => def.define(context, tc),
-            Statement::TriggerDef(def) => def.define(context, &mut tc.triggers),
-            Statement::Require(def) => def.define(context, tc),
+            Statement::SetDef(def) => def.define(
+                context, set_defs, ir_desc, checks, choice_defs, constraints, triggers),
+            Statement::ChoiceDef(def) => def.define(context, ir_desc, constraints, choice_defs),
+            Statement::TriggerDef(def) => def.define(context, triggers),
+            Statement::Require(def) => def.define(context, constraints),
         }
     }
 }

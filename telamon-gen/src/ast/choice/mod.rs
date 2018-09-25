@@ -8,7 +8,9 @@ pub use self::integer::IntegerDef;
 
 use ast::context::CheckerContext;
 use ast::error::{Hint, TypeError};
-use ast::{Statement, TypingContext};
+use ast::{Statement, Constraint};
+
+use ir;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum ChoiceDef {
@@ -36,16 +38,14 @@ impl ChoiceDef {
     pub fn define(
         self,
         context: &mut CheckerContext,
-        tc: &mut TypingContext,
+        ir_desc: &mut ir::IrDesc,
+        constraints: &mut Vec<Constraint>,
+        choice_defs: &mut Vec<ChoiceDef>,
     ) -> Result<(), TypeError> {
         match self {
-            ChoiceDef::CounterDef(def) => def.define(context, tc),
-            ChoiceDef::IntegerDef(def) => def.define(
-                context, &mut tc.ir_desc, &mut tc.choice_defs,
-            ),
-            ChoiceDef::EnumDef(def) => def.define(
-                context, &mut tc.ir_desc, &mut tc.constraints, &mut tc.choice_defs,
-            ),
+            ChoiceDef::CounterDef(def) => def.define(context, choice_defs),
+            ChoiceDef::IntegerDef(def) => def.define(context, ir_desc, choice_defs),
+            ChoiceDef::EnumDef(def) => def.define(context, ir_desc, constraints, choice_defs),
         }
     }
 }
