@@ -67,8 +67,6 @@ impl IntegerDef {
         self.check_undefined_variables(context)?;
 
         self.define_integer(tc);
-
-        tc.choice_defs.push(ChoiceDef::IntegerDef(self));
         Ok(())
     }
 }

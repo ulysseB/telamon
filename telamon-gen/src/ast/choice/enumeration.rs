@@ -369,8 +369,6 @@ impl EnumDef {
         self.check_conflict()?;
 
         self.register_enum(tc);
-
-        tc.choice_defs.push(ChoiceDef::EnumDef(self));
         Ok(())
     }
 }
