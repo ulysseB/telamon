@@ -1,7 +1,5 @@
 use std::ops::Deref;
 
-use super::ChoiceDef;
-
 use ast::context::CheckerContext;
 use ast::error::TypeError;
 use ast::{type_check_code, VarDef, VarMap};
@@ -71,13 +69,10 @@ impl IntegerDef {
         self,
         context: &mut CheckerContext,
         ir_desc: &mut ir::IrDesc,
-        choice_defs: &mut Vec<ChoiceDef>,
     ) -> Result<(), TypeError> {
         self.check_undefined_variables(context)?;
 
         self.define_integer(ir_desc);
-
-        choice_defs.push(ChoiceDef::IntegerDef(self));
         Ok(())
     }
 }

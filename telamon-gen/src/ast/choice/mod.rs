@@ -44,10 +44,8 @@ impl ChoiceDef {
     ) -> Result<(), TypeError> {
         match self {
             ChoiceDef::CounterDef(def) => def.define(context, choice_defs),
-            ChoiceDef::IntegerDef(def) => def.define(context, ir_desc, choice_defs),
-            ChoiceDef::EnumDef(def) => {
-                def.define(context, ir_desc, constraints, choice_defs)
-            }
+            ChoiceDef::IntegerDef(def) => def.define(context, ir_desc),
+            ChoiceDef::EnumDef(def) => def.define(context, ir_desc, constraints),
         }
     }
 }

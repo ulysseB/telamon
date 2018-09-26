@@ -1,7 +1,5 @@
 use std::ops::Deref;
 
-use super::ChoiceDef;
-
 use ast::constrain::Constraint;
 use ast::context::CheckerContext;
 use ast::error::{Hint, TypeError};
@@ -373,7 +371,6 @@ impl EnumDef {
         context: &mut CheckerContext,
         ir_desc: &mut ir::IrDesc,
         constraints: &mut Vec<Constraint>,
-        choice_defs: &mut Vec<ChoiceDef>,
     ) -> Result<(), TypeError> {
         self.check_undefined_variables(context)?;
         self.check_redefinition_parameter()?;
@@ -384,8 +381,6 @@ impl EnumDef {
         self.check_conflict()?;
 
         self.register_enum(ir_desc, constraints);
-
-        choice_defs.push(ChoiceDef::EnumDef(self));
         Ok(())
     }
 }
