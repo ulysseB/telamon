@@ -192,6 +192,15 @@ impl<'a, 'b> NameMap<'a, 'b> {
 
     /// Asigns a name to an operand.
     pub fn name_op(&self, operand: &ir::Operand) -> Cow<str> {
+        self.name_op_with_indexes(operand, Cow::Borrowed(&self.current_indexes))
+    }
+
+    /// Returns the name of the operand, for the given indexes on the given dimensions.
+    fn name_op_with_indexes(
+        &self,
+        operand: &ir::Operand,
+        indexes: Cow<HashMap<ir::DimId, u32>>,
+    ) -> Cow<str> {
         match *operand {
             ir::Operand::Int(ref val, len) => {
                 Cow::Owned(self.namer.borrow().name_int(val, len))
@@ -201,7 +210,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
             }
             ir::Operand::Inst(id, _, ref dim_map, _)
             | ir::Operand::Reduce(id, _, ref dim_map, _) => {
-                Cow::Borrowed(self.name_inst_id(id, dim_map))
+                Cow::Borrowed(self.name_mapped_inst(id, indexes.into_owned(), dim_map))
             }
             ir::Operand::Index(id) => if let Some(idx) = self.current_indexes.get(&id) {
                 Cow::Owned(format!("{}", idx))
@@ -216,13 +225,37 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     /// Returns the name of the instruction.
-    pub fn name_inst(&self, inst: &Instruction) -> &str {
-        self.name_inst_id(inst.id(), &dim::Map::empty())
+    pub fn name_inst(&self, inst: ir::InstId) -> &str {
+        self.name_mapped_inst(inst, self.current_indexes.clone(), &dim::Map::empty())
+    }
+
+    pub fn indexed_inst_name(
+        &self,
+        inst: ir::InstId,
+        indexes: &[(ir::DimId, u32)],
+    ) -> &str {
+        let mut indexes_map = self.current_indexes.clone();
+        indexes_map.extend(indexes.iter().cloned());
+        self.name_mapped_inst(inst, indexes_map, &DimMap::empty())
+    }
+
+    pub fn indexed_op_name(
+        &self,
+        op: &ir::Operand,
+        indexes: &[(ir::DimId, u32)],
+    ) -> Cow<str> {
+        let mut indexes_map = self.current_indexes.clone();
+        indexes_map.extend(indexes.iter().cloned());
+        self.name_op_with_indexes(op, Cow::Owned(indexes_map))
     }
 
     /// Returns the name of the instruction.
-    pub fn name_inst_id(&self, id: InstId, dim_map: &DimMap) -> &str {
-        let mut indexes = self.current_indexes.clone();
+    fn name_mapped_inst(
+        &self,
+        id: InstId,
+        mut indexes: HashMap<ir::DimId, u32>,
+        dim_map: &DimMap,
+    ) -> &str {
         for &(lhs, rhs) in dim_map.iter() {
             indexes.remove(&rhs).map(|idx| indexes.insert(lhs, idx));
         }
@@ -303,30 +336,6 @@ impl<'a, 'b> NameMap<'a, 'b> {
         for id in dim.dim_ids() {
             assert!(self.current_indexes.remove(&id).is_some());
         }
-    }
-
-    pub fn indexed_inst_name(
-        &mut self,
-        inst: &Instruction,
-        dim: ir::DimId,
-        idx: u32,
-    ) -> String {
-        self.current_indexes.insert(dim, idx);
-        let name = self.name_inst(inst).to_string();
-        self.current_indexes.remove(&dim);
-        name
-    }
-
-    pub fn indexed_op_name(
-        &mut self,
-        op: &ir::Operand,
-        dim: ir::DimId,
-        idx: u32,
-    ) -> String {
-        self.current_indexes.insert(dim, idx);
-        let name = self.name_op(op).to_string();
-        self.current_indexes.remove(&dim);
-        name
     }
 
     /// Returns the name of a variable representing a parameter.
