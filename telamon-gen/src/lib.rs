@@ -168,7 +168,7 @@ mod tests {
         let path = Path::new("../src/search_space/choices.exh");
         let ref_out = {
             let mut ref_out = Vec::new();
-            super::process( None, &mut ref_out, false, &path).unwrap();
+            super::process(None, &mut ref_out, false, &path).unwrap();
             ref_out
         };
         // Ideally we would want to run this loop more than once, but
@@ -176,7 +176,7 @@ mod tests {
         for _ in 0..1 {
             print::reset();
             let mut out_buf = Vec::new();
-            super::process( None, &mut out_buf, false, &path).unwrap();
+            super::process(None, &mut out_buf, false, &path).unwrap();
             assert_eq!(
                 ::std::str::from_utf8(&out_buf),
                 ::std::str::from_utf8(&ref_out)
