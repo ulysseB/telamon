@@ -39,9 +39,9 @@ impl MMSig {
     fn build_body(&self) -> SearchSpace {
         const DATA_TYPE: ir::Type = ir::Type::F(32);
         let mut builder = helper::Builder::new(&self.signature, &*DEVICE);
-        let m_size = builder.param_size("m");
-        let n_size = builder.param_size("n");
-        let k_size = builder.param_size("k");
+        let m_size = builder.param_size("m", 32);
+        let n_size = builder.param_size("n", 32);
+        let k_size = builder.param_size("k", 32);
 
         let ld_a_m = builder.open_tiled_dim(m_size, &[16, 4]);
         let ld_a_k = builder.open_tiled_dim(k_size.clone(), &[16]);
