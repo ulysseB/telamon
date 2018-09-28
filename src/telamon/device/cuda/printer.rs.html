@@ -585,58 +585,22 @@
 <span id="585">585</span>
 <span id="586">586</span>
 <span id="587">587</span>
-<span id="588">588</span>
-<span id="589">589</span>
-<span id="590">590</span>
-<span id="591">591</span>
-<span id="592">592</span>
-<span id="593">593</span>
-<span id="594">594</span>
-<span id="595">595</span>
-<span id="596">596</span>
-<span id="597">597</span>
-<span id="598">598</span>
-<span id="599">599</span>
-<span id="600">600</span>
-<span id="601">601</span>
-<span id="602">602</span>
-<span id="603">603</span>
-<span id="604">604</span>
-<span id="605">605</span>
-<span id="606">606</span>
-<span id="607">607</span>
-<span id="608">608</span>
-<span id="609">609</span>
-<span id="610">610</span>
-<span id="611">611</span>
-<span id="612">612</span>
-<span id="613">613</span>
-<span id="614">614</span>
-<span id="615">615</span>
-<span id="616">616</span>
-<span id="617">617</span>
-<span id="618">618</span>
-<span id="619">619</span>
-<span id="620">620</span>
-<span id="621">621</span>
-<span id="622">622</span>
-<span id="623">623</span>
-<span id="624">624</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Provides functions to print PTX code.</span>
-<span class="kw">use</span> <span class="ident">codegen</span>::<span class="ident">Printer</span>;
 <span class="kw">use</span> <span class="ident">codegen</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">cuda</span>::{<span class="ident">Gpu</span>, <span class="ident">Namer</span>};
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">op</span>, <span class="ident">Type</span>};
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">search_space</span>::{<span class="ident">DimKind</span>, <span class="ident">Domain</span>, <span class="ident">InstFlag</span>};
 <span class="kw">use</span> <span class="ident">std</span>;
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Cow</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Write</span> <span class="kw">as</span> <span class="ident">WriteFmt</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">Write</span>;
+<span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CudaPrinter</span> {
-    <span class="ident">out_function</span>: <span class="ident">String</span>,
+    <span class="ident">buffer</span>: <span class="ident">String</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">CudaPrinter</span> {
@@ -723,7 +687,7 @@
         <span class="kw">let</span> <span class="ident">ptr_type_name</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>));
         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">namer</span>.<span class="ident">name_addr</span>(<span class="ident">block</span>.<span class="ident">id</span>());
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
-            <span class="self">self</span>.<span class="ident">out_function</span>,
+            <span class="self">self</span>.<span class="ident">buffer</span>,
             <span class="string">&quot;.shared.align 16 .u8 {vec_name}[{size}];\
              \n  mov.{t} {name}, {vec_name};\n&quot;</span>,
             <span class="ident">vec_name</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">name</span>[<span class="number">1</span>..],
@@ -776,6 +740,11 @@
             <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Add</span> <span class="op">=&gt;</span> <span class="string">&quot;add&quot;</span>,
             <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Sub</span> <span class="op">=&gt;</span> <span class="string">&quot;sub&quot;</span>,
             <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Div</span> <span class="op">=&gt;</span> <span class="string">&quot;div&quot;</span>,
+            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">And</span> <span class="op">=&gt;</span> <span class="string">&quot;and&quot;</span>,
+            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Or</span> <span class="op">=&gt;</span> <span class="string">&quot;or&quot;</span>,
+            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Lt</span> <span class="op">=&gt;</span> <span class="string">&quot;setp.lt&quot;</span>,
+            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Leq</span> <span class="op">=&gt;</span> <span class="string">&quot;setp.le&quot;</span>,
+            <span class="ident">ir</span>::<span class="ident">BinOp</span>::<span class="ident">Equals</span> <span class="op">=&gt;</span> <span class="string">&quot;setp.eq&quot;</span>,
         }
     }
 
@@ -817,7 +786,7 @@
             <span class="comment">// LOAD PARAMETERS</span>
             <span class="kw">for</span> <span class="ident">val</span> <span class="kw">in</span> <span class="ident">function</span>.<span class="ident">device_code_args</span>() {
                 <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
-                    <span class="self">self</span>.<span class="ident">out_function</span>,
+                    <span class="self">self</span>.<span class="ident">buffer</span>,
                     <span class="string">&quot;ld.param.{t} {var_name}, [{name}];&quot;</span>,
                     <span class="ident">t</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="ident">val</span>.<span class="ident">t</span>()),
                     <span class="ident">var_name</span> <span class="op">=</span> <span class="ident">name_map</span>.<span class="ident">name_param_val</span>(<span class="ident">val</span>.<span class="ident">key</span>()),
@@ -826,8 +795,8 @@
             }
             <span class="comment">// INDEX LOAD</span>
             <span class="kw">let</span> <span class="ident">idx_loads</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">decl_par_indexes</span>(<span class="ident">function</span>, <span class="ident">name_map</span>);
-            <span class="self">self</span>.<span class="ident">out_function</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="ident">idx_loads</span>);
-            <span class="self">self</span>.<span class="ident">out_function</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="string">&quot;\n&quot;</span>);
+            <span class="self">self</span>.<span class="ident">buffer</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="ident">idx_loads</span>);
+            <span class="self">self</span>.<span class="ident">buffer</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="string">&quot;\n&quot;</span>);
             <span class="comment">//MEM DECL</span>
             <span class="kw">for</span> <span class="ident">block</span> <span class="kw">in</span> <span class="ident">function</span>.<span class="ident">mem_blocks</span>() {
                 <span class="kw">match</span> <span class="ident">block</span>.<span class="ident">alloc_scheme</span>() {
@@ -848,10 +817,10 @@
                         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">name_map</span>.<span class="ident">declare_size_cast</span>(<span class="ident">incr</span>, <span class="ident">level</span>.<span class="ident">t</span>());
                         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">name</span>) <span class="op">=</span> <span class="ident">name</span> {
                             <span class="kw">let</span> <span class="ident">old_name</span> <span class="op">=</span> <span class="ident">name_map</span>.<span class="ident">name_size</span>(<span class="ident">incr</span>, <span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>));
-                            <span class="self">self</span>.<span class="ident">print_cast</span>(
+                            <span class="self">self</span>.<span class="ident">print_unary_op</span>(
+                                <span class="kw-2">&amp;</span>[],
+                                <span class="ident">ir</span>::<span class="ident">UnaryOp</span>::<span class="ident">Cast</span>(<span class="ident">level</span>.<span class="ident">t</span>()),
                                 <span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">32</span>),
-                                <span class="ident">level</span>.<span class="ident">t</span>(),
-                                <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span>,
                                 <span class="kw-2">&amp;</span><span class="ident">name</span>,
                                 <span class="kw-2">&amp;</span><span class="ident">old_name</span>,
                             );
@@ -873,8 +842,8 @@
         <span class="kw">let</span> <span class="ident">var_decls</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">var_decls</span>(<span class="kw-2">&amp;</span><span class="ident">namer</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">body</span> <span class="op">=</span> <span class="ident">String</span>::<span class="ident">new</span>();
         <span class="ident">body</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="ident">var_decls</span>);
-        <span class="self">self</span>.<span class="ident">out_function</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="string">&quot;\n&quot;</span>);
-        <span class="ident">body</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">out_function</span>);
+        <span class="self">self</span>.<span class="ident">buffer</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="string">&quot;\n&quot;</span>);
+        <span class="ident">body</span>.<span class="ident">push_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">buffer</span>);
         <span class="macro">format</span><span class="macro">!</span>(
             <span class="macro">include_str</span><span class="macro">!</span>(<span class="string">&quot;template/device.ptx&quot;</span>),
             <span class="ident">sm_major</span> <span class="op">=</span> <span class="ident">gpu</span>.<span class="ident">sm_major</span>,
@@ -952,19 +921,6 @@
         );
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">res</span>);
     }
-}
-
-<span class="kw">impl</span> <span class="ident">Printer</span> <span class="kw">for</span> <span class="ident">CudaPrinter</span> {
-    <span class="doccomment">/// Get a proper string representation of an integer in target language</span>
-    <span class="kw">fn</span> <span class="ident">get_int</span>(<span class="ident">n</span>: <span class="ident">u32</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
-        <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">n</span>)
-    }
-
-    <span class="doccomment">/// Get a proper string representation of an integer in target language</span>
-    <span class="kw">fn</span> <span class="ident">get_float</span>(<span class="ident">f</span>: <span class="ident">f64</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
-        <span class="kw">let</span> <span class="ident">binary</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">transmute</span>::<span class="op">&lt;</span><span class="ident">f64</span>, <span class="ident">u64</span><span class="op">&gt;</span>(<span class="ident">f</span>) };
-        <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;0D{:016X}&quot;</span>, <span class="ident">binary</span>)
-    }
 
     <span class="doccomment">/// Print a type in the backend</span>
     <span class="kw">fn</span> <span class="ident">get_type</span>(<span class="ident">t</span>: <span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
@@ -975,37 +931,82 @@
             <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(),
         }
     }
+}
 
-    <span class="doccomment">/// Print return_id = op1 op op2</span>
+<span class="kw">impl</span> <span class="ident">Printer</span> <span class="kw">for</span> <span class="ident">CudaPrinter</span> {
+    <span class="doccomment">/// Get a proper string representation of an integer in target language</span>
+    <span class="kw">fn</span> <span class="ident">get_int</span>(<span class="ident">n</span>: <span class="ident">u32</span>) <span class="op">-&gt;</span> <span class="ident">String</span> {
+        <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">n</span>)
+    }
+
+    <span class="doccomment">/// Print result = op1 op op2</span>
     <span class="kw">fn</span> <span class="ident">print_binop</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">vector_factors</span>: <span class="kw-2">&amp;</span>[<span class="ident">u32</span>],
         <span class="ident">op</span>: <span class="ident">ir</span>::<span class="ident">BinOp</span>,
-        <span class="ident">return_type</span>: <span class="ident">Type</span>,
+        <span class="ident">operands_type</span>: <span class="ident">Type</span>,
         <span class="ident">rounding</span>: <span class="ident">op</span>::<span class="ident">Rounding</span>,
-        <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+        <span class="ident">result</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     ) {
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">vector_factors</span>.<span class="ident">is_empty</span>());
         <span class="kw">let</span> <span class="ident">op</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">binary_op</span>(<span class="ident">op</span>);
         <span class="kw">let</span> <span class="ident">rounding</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">rounding</span>(<span class="ident">rounding</span>);
-        <span class="kw">let</span> <span class="ident">ret_type</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="ident">return_type</span>);
+        <span class="kw">let</span> <span class="ident">operands_type</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="ident">operands_type</span>);
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
-            <span class="self">self</span>.<span class="ident">out_function</span>,
+            <span class="self">self</span>.<span class="ident">buffer</span>,
             <span class="string">&quot;{}{}.{} {}, {}, {};&quot;</span>,
-            <span class="ident">op</span>, <span class="ident">rounding</span>, <span class="ident">ret_type</span>, <span class="ident">return_id</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>
+            <span class="ident">op</span>, <span class="ident">rounding</span>, <span class="ident">operands_type</span>, <span class="ident">result</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>
         ));
     }
 
-    <span class="doccomment">/// Print return_id = op1 * op2</span>
+    <span class="doccomment">/// Prints result = operator operand.</span>
+    <span class="kw">fn</span> <span class="ident">print_unary_op</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">vector_factors</span>: <span class="kw-2">&amp;</span>[<span class="ident">u32</span>],
+        <span class="ident">operator</span>: <span class="ident">ir</span>::<span class="ident">UnaryOp</span>,
+        <span class="ident">operand_type</span>: <span class="ident">ir</span>::<span class="ident">Type</span>,
+        <span class="ident">result</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+        <span class="ident">operand</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+    ) {
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">vector_factors</span>.<span class="ident">is_empty</span>());
+        <span class="kw">let</span> <span class="ident">operator</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">operator</span> {
+            <span class="ident">ir</span>::<span class="ident">UnaryOp</span>::<span class="ident">Mov</span> <span class="op">=&gt;</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Cow</span>::<span class="ident">from</span>(<span class="string">&quot;mov&quot;</span>),
+            <span class="ident">ir</span>::<span class="ident">UnaryOp</span>::<span class="ident">Cast</span>(<span class="ident">cast_type</span>) <span class="op">=&gt;</span> {
+                <span class="kw">let</span> <span class="ident">rounding</span> <span class="op">=</span> <span class="kw">match</span> (<span class="ident">cast_type</span>, <span class="ident">operand_type</span>) {
+                    (<span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">F</span>(<span class="kw">_</span>), <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">I</span>(<span class="kw">_</span>))
+                    <span class="op">|</span> (<span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">I</span>(<span class="kw">_</span>), <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">F</span>(<span class="kw">_</span>)) <span class="op">=&gt;</span> <span class="ident">ir</span>::<span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Nearest</span>,
+                    (<span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">F</span>(<span class="ident">x</span>), <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">F</span>(<span class="ident">y</span>)) <span class="kw">if</span> <span class="ident">x</span> <span class="op">&lt;</span> <span class="ident">y</span> <span class="op">=&gt;</span> {
+                        <span class="ident">ir</span>::<span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Nearest</span>
+                    }
+                    <span class="kw">_</span> <span class="op">=&gt;</span> <span class="ident">ir</span>::<span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span>,
+                };
+                <span class="kw">let</span> <span class="ident">rounding</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">rounding</span>(<span class="ident">rounding</span>);
+                <span class="kw">let</span> <span class="ident">op</span> <span class="op">=</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;cvt.{}.{}&quot;</span>, <span class="ident">rounding</span>, <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="ident">cast_type</span>));
+                <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Cow</span>::<span class="ident">from</span>(<span class="ident">op</span>)
+            }
+        };
+        <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="ident">operand_type</span>);
+        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
+            <span class="self">self</span>.<span class="ident">buffer</span>,
+            <span class="string">&quot;{}.{} {}, {};&quot;</span>,
+            <span class="ident">operator</span>, <span class="ident">t</span>, <span class="ident">result</span>, <span class="ident">operand</span>
+        ));
+    }
+
+    <span class="doccomment">/// Print result = op1 * op2</span>
     <span class="kw">fn</span> <span class="ident">print_mul</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">vector_factors</span>: <span class="kw-2">&amp;</span>[<span class="ident">u32</span>],
         <span class="ident">return_type</span>: <span class="ident">Type</span>,
         <span class="ident">round</span>: <span class="ident">op</span>::<span class="ident">Rounding</span>,
         <span class="ident">mul_mode</span>: <span class="ident">MulMode</span>,
-        <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+        <span class="ident">result</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">lhs</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">rhs</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     ) {
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">vector_factors</span>.<span class="ident">is_empty</span>());
         <span class="kw">let</span> <span class="ident">operator</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">round</span> <span class="op">==</span> <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span> {
             <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;mul{}&quot;</span>, <span class="self">Self</span>::<span class="ident">mul_mode</span>(<span class="ident">mul_mode</span>))
         } <span class="kw">else</span> {
@@ -1013,23 +1014,25 @@
         };
         <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="self">Self</span>::<span class="ident">get_inst_type</span>(<span class="ident">mul_mode</span>, <span class="ident">return_type</span>));
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
-            <span class="self">self</span>.<span class="ident">out_function</span>,
+            <span class="self">self</span>.<span class="ident">buffer</span>,
             <span class="string">&quot;{}.{} {}, {}, {};&quot;</span>,
-            <span class="ident">operator</span>, <span class="ident">t</span>, <span class="ident">return_id</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>
+            <span class="ident">operator</span>, <span class="ident">t</span>, <span class="ident">result</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>
         ));
     }
 
-    <span class="doccomment">/// Print return_id = mlhs * mrhs + arhs</span>
+    <span class="doccomment">/// Print result = mlhs * mrhs + arhs</span>
     <span class="kw">fn</span> <span class="ident">print_mad</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">vector_factors</span>: <span class="kw-2">&amp;</span>[<span class="ident">u32</span>],
         <span class="ident">return_type</span>: <span class="ident">Type</span>,
         <span class="ident">round</span>: <span class="ident">op</span>::<span class="ident">Rounding</span>,
         <span class="ident">mul_mode</span>: <span class="ident">MulMode</span>,
-        <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+        <span class="ident">result</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">mlhs</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">mrhs</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">arhs</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     ) {
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">vector_factors</span>.<span class="ident">is_empty</span>());
         <span class="kw">let</span> <span class="ident">operator</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">round</span> <span class="op">==</span> <span class="ident">op</span>::<span class="ident">Rounding</span>::<span class="ident">Exact</span> {
             <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;mad{}&quot;</span>, <span class="self">Self</span>::<span class="ident">mul_mode</span>(<span class="ident">mul_mode</span>))
         } <span class="kw">else</span> {
@@ -1037,150 +1040,79 @@
         };
         <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="self">Self</span>::<span class="ident">get_inst_type</span>(<span class="ident">mul_mode</span>, <span class="ident">return_type</span>));
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
-            <span class="self">self</span>.<span class="ident">out_function</span>,
+            <span class="self">self</span>.<span class="ident">buffer</span>,
             <span class="string">&quot;{}.{} {}, {}, {}, {};&quot;</span>,
-            <span class="ident">operator</span>, <span class="ident">t</span>, <span class="ident">return_id</span>, <span class="ident">mlhs</span>, <span class="ident">mrhs</span>, <span class="ident">arhs</span>
+            <span class="ident">operator</span>, <span class="ident">t</span>, <span class="ident">result</span>, <span class="ident">mlhs</span>, <span class="ident">mrhs</span>, <span class="ident">arhs</span>
         ));
     }
 
-    <span class="doccomment">/// Print return_id = op</span>
-    <span class="kw">fn</span> <span class="ident">print_mov</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">return_type</span>: <span class="ident">Type</span>, <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">op</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
-        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
-            <span class="self">self</span>.<span class="ident">out_function</span>,
-            <span class="string">&quot;mov.{} {}, {};&quot;</span>,
-            <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="ident">return_type</span>),
-            <span class="ident">return_id</span>,
-            <span class="ident">op</span>
-        ));
-    }
-
-    <span class="doccomment">/// Print return_id = load [addr]</span>
+    <span class="doccomment">/// Print result = load [addr]</span>
     <span class="kw">fn</span> <span class="ident">print_ld</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">vector_factors</span>: <span class="kw-2">&amp;</span>[<span class="ident">u32</span>],
         <span class="ident">return_type</span>: <span class="ident">Type</span>,
         <span class="ident">flag</span>: <span class="ident">InstFlag</span>,
-        <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+        <span class="ident">result</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     ) {
         <span class="kw">let</span> <span class="ident">operator</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">ld_operator</span>(<span class="ident">flag</span>);
+        <span class="kw">let</span> <span class="ident">vector</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">vector_factors</span> {
+            [] <span class="op">=&gt;</span> <span class="string">&quot;&quot;</span>,
+            [<span class="number">2</span>] <span class="op">=&gt;</span> <span class="string">&quot;.v2&quot;</span>,
+            [<span class="number">4</span>] <span class="op">=&gt;</span> <span class="string">&quot;.v4&quot;</span>,
+            <span class="ident">p</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;invalid vector pattern: {:?}&quot;</span>, <span class="ident">p</span>),
+        };
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
-            <span class="self">self</span>.<span class="ident">out_function</span>,
-            <span class="string">&quot;{}.{} {}, [{}];&quot;</span>,
+            <span class="self">self</span>.<span class="ident">buffer</span>,
+            <span class="string">&quot;{}{}.{} {}, [{}];&quot;</span>,
+            <span class="ident">vector</span>,
             <span class="ident">operator</span>,
             <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="ident">return_type</span>),
-            <span class="ident">return_id</span>,
+            <span class="ident">result</span>,
             <span class="ident">addr</span>
         ));
     }
 
     <span class="doccomment">/// Print store val [addr]</span>
-    <span class="kw">fn</span> <span class="ident">print_st</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">val_type</span>: <span class="ident">Type</span>, <span class="ident">mem_flag</span>: <span class="ident">InstFlag</span>, <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">val</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
-        <span class="kw">let</span> <span class="ident">operator</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">st_operator</span>(<span class="ident">mem_flag</span>);
-        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
-            <span class="self">self</span>.<span class="ident">out_function</span>,
-            <span class="string">&quot;{}.{} [{}], {};&quot;</span>,
-            <span class="ident">operator</span>,
-            <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="ident">val_type</span>),
-            <span class="ident">addr</span>,
-            <span class="ident">val</span>
-        ));
-    }
-
-    <span class="doccomment">/// Print if (cond) store val [addr]</span>
-    <span class="kw">fn</span> <span class="ident">print_cond_st</span>(
+    <span class="kw">fn</span> <span class="ident">print_st</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">vector_factors</span>: <span class="kw-2">&amp;</span>[<span class="ident">u32</span>],
         <span class="ident">val_type</span>: <span class="ident">Type</span>,
         <span class="ident">mem_flag</span>: <span class="ident">InstFlag</span>,
-        <span class="ident">cond</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+        <span class="ident">predicate</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>,
         <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">val</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     ) {
+        <span class="kw">let</span> <span class="ident">vector</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">vector_factors</span> {
+            [] <span class="op">=&gt;</span> <span class="string">&quot;&quot;</span>,
+            [<span class="number">2</span>] <span class="op">=&gt;</span> <span class="string">&quot;.v2&quot;</span>,
+            [<span class="number">4</span>] <span class="op">=&gt;</span> <span class="string">&quot;.v4&quot;</span>,
+            <span class="ident">p</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;invalid vector pattern: {:?}&quot;</span>, <span class="ident">p</span>),
+        };
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">predicate</span>) <span class="op">=</span> <span class="ident">predicate</span> {
+            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">write</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">buffer</span>, <span class="string">&quot;@{} &quot;</span>, <span class="ident">predicate</span>));
+        }
         <span class="kw">let</span> <span class="ident">operator</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">st_operator</span>(<span class="ident">mem_flag</span>);
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
-            <span class="self">self</span>.<span class="ident">out_function</span>,
-            <span class="string">&quot;@{} {}.{} [{}], {};&quot;</span>,
-            <span class="ident">cond</span>,
+            <span class="self">self</span>.<span class="ident">buffer</span>,
+            <span class="string">&quot;{}{}.{} [{}], {};&quot;</span>,
+            <span class="ident">vector</span>,
             <span class="ident">operator</span>,
             <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="ident">val_type</span>),
             <span class="ident">addr</span>,
             <span class="ident">val</span>
-        ));
-    }
-
-    <span class="doccomment">/// Print return_id = (val_type) val</span>
-    <span class="kw">fn</span> <span class="ident">print_cast</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="ident">from_t</span>: <span class="ident">Type</span>,
-        <span class="ident">to_t</span>: <span class="ident">Type</span>,
-        <span class="ident">round</span>: <span class="ident">op</span>::<span class="ident">Rounding</span>,
-        <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">op1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) {
-        <span class="kw">let</span> <span class="ident">rounding</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">rounding</span>(<span class="ident">round</span>);
-        <span class="kw">let</span> <span class="ident">to_t</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="ident">to_t</span>);
-        <span class="kw">let</span> <span class="ident">from_t</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="ident">from_t</span>);
-        <span class="kw">let</span> <span class="ident">operator</span> <span class="op">=</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;cvt{}.{}.{}&quot;</span>, <span class="ident">rounding</span>, <span class="ident">to_t</span>, <span class="ident">from_t</span>);
-        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
-            <span class="self">self</span>.<span class="ident">out_function</span>,
-            <span class="string">&quot;{} {}, {};&quot;</span>,
-            <span class="ident">operator</span>, <span class="ident">return_id</span>, <span class="ident">op1</span>
         ));
     }
 
     <span class="doccomment">/// print a label where to jump</span>
     <span class="kw">fn</span> <span class="ident">print_label</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">label_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
-        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">out_function</span>, <span class="string">&quot;LOOP_{}:&quot;</span>, <span class="ident">label_id</span>));
-    }
-
-    <span class="doccomment">/// Print return_id = op1 &amp;&amp; op2</span>
-    <span class="kw">fn</span> <span class="ident">print_and</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">op1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">op2</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
-        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
-            <span class="self">self</span>.<span class="ident">out_function</span>,
-            <span class="string">&quot;and.pred {}, {}, {};&quot;</span>,
-            <span class="ident">return_id</span>, <span class="ident">op1</span>, <span class="ident">op2</span>
-        ));
-    }
-
-    <span class="doccomment">/// Print return_id = op1 || op2</span>
-    <span class="kw">fn</span> <span class="ident">print_or</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">op1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">op2</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
-        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
-            <span class="self">self</span>.<span class="ident">out_function</span>,
-            <span class="string">&quot;or.pred {}, {}, {};&quot;</span>,
-            <span class="ident">return_id</span>, <span class="ident">op1</span>, <span class="ident">op2</span>
-        ));
-    }
-
-    <span class="doccomment">/// Print return_id = op1 == op2</span>
-    <span class="kw">fn</span> <span class="ident">print_equal</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">op1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">op2</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
-        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
-            <span class="self">self</span>.<span class="ident">out_function</span>,
-            <span class="string">&quot;setp.eq.u32 {}, {}, {};&quot;</span>,
-            <span class="ident">return_id</span>, <span class="ident">op1</span>, <span class="ident">op2</span>
-        ));
-    }
-
-    <span class="doccomment">/// Print return_id = op1 &lt; op2</span>
-    <span class="kw">fn</span> <span class="ident">print_lt</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">op1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">op2</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
-        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
-            <span class="self">self</span>.<span class="ident">out_function</span>,
-            <span class="string">&quot;setp.lt.u32 {}, {}, {};&quot;</span>,
-            <span class="ident">return_id</span>, <span class="ident">op1</span>, <span class="ident">op2</span>
-        ));
-    }
-
-    <span class="doccomment">/// Print return_id = op1 &gt; op2</span>
-    <span class="kw">fn</span> <span class="ident">print_gt</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">op1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">op2</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
-        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
-            <span class="self">self</span>.<span class="ident">out_function</span>,
-            <span class="string">&quot;setp.gt.u32 {}, {}, {};&quot;</span>,
-            <span class="ident">return_id</span>, <span class="ident">op1</span>, <span class="ident">op2</span>
-        ));
+        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">buffer</span>, <span class="string">&quot;LOOP_{}:&quot;</span>, <span class="ident">label_id</span>));
     }
 
     <span class="doccomment">/// Print if (cond) jump label(label_id)</span>
     <span class="kw">fn</span> <span class="ident">print_cond_jump</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">label_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">cond</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
-            <span class="self">self</span>.<span class="ident">out_function</span>,
+            <span class="self">self</span>.<span class="ident">buffer</span>,
             <span class="string">&quot;@{} bra.uni LOOP_{};&quot;</span>,
             <span class="ident">cond</span>, <span class="ident">label_id</span>
         ));
@@ -1188,62 +1120,56 @@
 
     <span class="doccomment">/// Print wait on all threads</span>
     <span class="kw">fn</span> <span class="ident">print_sync</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
-        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">out_function</span>, <span class="string">&quot;bar.sync 0;&quot;</span>));
+        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">buffer</span>, <span class="string">&quot;bar.sync 0;&quot;</span>));
     }
 
-    <span class="kw">fn</span> <span class="ident">print_vector_inst</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="ident">inst</span>: <span class="kw-2">&amp;</span><span class="ident">Instruction</span>,
-        <span class="ident">dim</span>: <span class="kw-2">&amp;</span><span class="ident">Dimension</span>,
-        <span class="ident">namer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">NameMap</span>,
-        <span class="ident">fun</span>: <span class="kw-2">&amp;</span><span class="ident">Function</span>,
-    ) {
-        <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">dim</span>.<span class="ident">size</span>().<span class="ident">as_int</span>());
-        <span class="kw">let</span> <span class="ident">flag</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">inst</span>.<span class="ident">mem_flag</span>());
-        <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">inst</span>.<span class="ident">operator</span>() {
-            <span class="ident">op</span>::<span class="ident">Ld</span>(<span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">addr</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> {
-                <span class="kw">let</span> <span class="ident">operator</span> <span class="op">=</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}.v{}&quot;</span>, <span class="self">Self</span>::<span class="ident">ld_operator</span>(<span class="ident">flag</span>), <span class="ident">size</span>);
-                <span class="kw">let</span> <span class="ident">dst</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">size</span>)
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">namer</span>.<span class="ident">indexed_inst_name</span>(<span class="ident">inst</span>, <span class="ident">dim</span>.<span class="ident">id</span>(), <span class="ident">i</span>).<span class="ident">to_string</span>())
-                    .<span class="ident">collect_vec</span>()
-                    .<span class="ident">join</span>(<span class="string">&quot;, &quot;</span>);
-                <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">inst</span>.<span class="ident">t</span>()));
-                <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
-                    <span class="self">self</span>.<span class="ident">out_function</span>,
-                    <span class="string">&quot;{}.{} {{{}}}, [{}];&quot;</span>,
-                    <span class="ident">operator</span>,
-                    <span class="ident">t</span>,
-                    <span class="ident">dst</span>,
-                    <span class="ident">namer</span>.<span class="ident">name_op</span>(<span class="ident">addr</span>)
-                ))
-            }
-            <span class="ident">op</span>::<span class="ident">St</span>(<span class="kw-2">ref</span> <span class="ident">addr</span>, <span class="kw-2">ref</span> <span class="ident">val</span>, <span class="kw">_</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> {
-                <span class="kw">let</span> <span class="ident">operator</span> <span class="op">=</span> <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{}.v{}&quot;</span>, <span class="self">Self</span>::<span class="ident">st_operator</span>(<span class="ident">flag</span>), <span class="ident">size</span>);
-                <span class="kw">let</span> <span class="ident">guard</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">inst</span>.<span class="ident">has_side_effects</span>() {
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">pred</span>) <span class="op">=</span> <span class="ident">namer</span>.<span class="ident">side_effect_guard</span>() {
-                        <span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;@{} &quot;</span>, <span class="ident">pred</span>)
-                    } <span class="kw">else</span> {
-                        <span class="ident">String</span>::<span class="ident">new</span>()
-                    }
-                } <span class="kw">else</span> {
-                    <span class="ident">String</span>::<span class="ident">new</span>()
-                };
-                <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">get_type</span>(<span class="self">Self</span>::<span class="ident">lower_type</span>(<span class="ident">val</span>.<span class="ident">t</span>(), <span class="ident">fun</span>));
-                <span class="kw">let</span> <span class="ident">src</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">size</span>)
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">namer</span>.<span class="ident">indexed_op_name</span>(<span class="ident">val</span>, <span class="ident">dim</span>.<span class="ident">id</span>(), <span class="ident">i</span>).<span class="ident">to_string</span>())
-                    .<span class="ident">collect_vec</span>()
-                    .<span class="ident">join</span>(<span class="string">&quot;, &quot;</span>);
-                <span class="macro">unwrap</span><span class="macro">!</span>(<span class="macro">writeln</span><span class="macro">!</span>(
-                    <span class="self">self</span>.<span class="ident">out_function</span>,
-                    <span class="string">&quot;{}{}.{} [{}], {{{}}};&quot;</span>,
-                    <span class="ident">guard</span>,
-                    <span class="ident">operator</span>,
-                    <span class="ident">t</span>,
-                    <span class="ident">namer</span>.<span class="ident">name_op</span>(<span class="ident">addr</span>),
-                    <span class="ident">src</span>
-                ));
-            }
-            <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;non-vectorizable instruction&quot;</span>),
+    <span class="kw">fn</span> <span class="ident">name_operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+        <span class="ident">vector_dims</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">Dimension</span>],
+        <span class="ident">op</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Operand</span>,
+        <span class="ident">namer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">NameMap</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">str</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="ident">vector_dims</span>.<span class="ident">is_empty</span>() {
+            <span class="ident">namer</span>.<span class="ident">name_op</span>(<span class="ident">op</span>)
+        } <span class="kw">else</span> {
+            <span class="kw">let</span> <span class="ident">sizes</span> <span class="op">=</span> <span class="ident">vector_dims</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">d</span><span class="op">|</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">d</span>.<span class="ident">size</span>().<span class="ident">as_int</span>()))
+                .<span class="ident">collect_vec</span>();
+            <span class="kw">let</span> <span class="ident">names</span> <span class="op">=</span> <span class="ident">NDRange</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">sizes</span>)
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">indexes</span><span class="op">|</span> {
+                    <span class="kw">let</span> <span class="ident">indexes_map</span> <span class="op">=</span> <span class="ident">vector_dims</span>
+                        .<span class="ident">iter</span>()
+                        .<span class="ident">zip_eq</span>(<span class="ident">indexes</span>)
+                        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">d</span>, <span class="ident">idx</span>)<span class="op">|</span> (<span class="ident">d</span>.<span class="ident">id</span>(), <span class="ident">idx</span>))
+                        .<span class="ident">collect_vec</span>();
+                    <span class="ident">namer</span>.<span class="ident">indexed_op_name</span>(<span class="ident">op</span>, <span class="kw-2">&amp;</span><span class="ident">indexes_map</span>)
+                }).<span class="ident">format</span>(<span class="string">&quot;, &quot;</span>);
+            <span class="ident">Cow</span>::<span class="ident">Owned</span>(<span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{{{}}}&quot;</span>, <span class="ident">names</span>))
+        }
+    }
+
+    <span class="kw">fn</span> <span class="ident">name_inst</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+        <span class="ident">vector_dims</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">Dimension</span>],
+        <span class="ident">inst</span>: <span class="ident">ir</span>::<span class="ident">InstId</span>,
+        <span class="ident">namer</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">NameMap</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">Cow</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">str</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="ident">vector_dims</span>.<span class="ident">is_empty</span>() {
+            <span class="ident">Cow</span>::<span class="ident">Borrowed</span>(<span class="ident">namer</span>.<span class="ident">name_inst</span>(<span class="ident">inst</span>))
+        } <span class="kw">else</span> {
+            <span class="kw">let</span> <span class="ident">sizes</span> <span class="op">=</span> <span class="ident">vector_dims</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">d</span><span class="op">|</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">d</span>.<span class="ident">size</span>().<span class="ident">as_int</span>()))
+                .<span class="ident">collect_vec</span>();
+            <span class="kw">let</span> <span class="ident">names</span> <span class="op">=</span> <span class="ident">NDRange</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">sizes</span>)
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">indexes</span><span class="op">|</span> {
+                    <span class="kw">let</span> <span class="ident">indexes_map</span> <span class="op">=</span> <span class="ident">vector_dims</span>
+                        .<span class="ident">iter</span>()
+                        .<span class="ident">zip_eq</span>(<span class="ident">indexes</span>)
+                        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">d</span>, <span class="ident">idx</span>)<span class="op">|</span> (<span class="ident">d</span>.<span class="ident">id</span>(), <span class="ident">idx</span>))
+                        .<span class="ident">collect_vec</span>();
+                    <span class="ident">namer</span>.<span class="ident">indexed_inst_name</span>(<span class="ident">inst</span>, <span class="kw-2">&amp;</span><span class="ident">indexes_map</span>)
+                }).<span class="ident">format</span>(<span class="string">&quot;, &quot;</span>);
+            <span class="ident">Cow</span>::<span class="ident">Owned</span>(<span class="macro">format</span><span class="macro">!</span>(<span class="string">&quot;{{{}}}&quot;</span>, <span class="ident">names</span>))
         }
     }
 }

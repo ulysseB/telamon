@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["ProcessError",""]]});
+initSidebarItems({"struct":[["Error",""]]});

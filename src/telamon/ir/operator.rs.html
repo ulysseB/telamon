@@ -306,6 +306,55 @@
 <span id="306">306</span>
 <span id="307">307</span>
 <span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Defines operators.</span>
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">Operator</span>::<span class="kw-2">*</span>;
@@ -365,15 +414,74 @@
     <span class="ident">Sub</span>,
     <span class="doccomment">/// Divides two operands,</span>
     <span class="ident">Div</span>,
+    <span class="doccomment">/// Computes the bitwise AND operation.</span>
+    <span class="ident">And</span>,
+    <span class="doccomment">/// Computes the bitwise OR operation.</span>
+    <span class="ident">Or</span>,
+    <span class="doccomment">/// Computes `lhs &lt; rhs`.</span>
+    <span class="ident">Lt</span>,
+    <span class="doccomment">/// Computes `lhs &lt;= rhs`.</span>
+    <span class="ident">Leq</span>,
+    <span class="doccomment">/// Computes `lhs == rhs`.</span>
+    <span class="ident">Equals</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">BinOp</span> {
     <span class="doccomment">/// Returns a string representing the operator.</span>
-    <span class="kw">fn</span> <span class="ident">as_str</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
+    <span class="kw">fn</span> <span class="ident">name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">BinOp</span>::<span class="ident">Add</span> <span class="op">=&gt;</span> <span class="string">&quot;add&quot;</span>,
             <span class="ident">BinOp</span>::<span class="ident">Sub</span> <span class="op">=&gt;</span> <span class="string">&quot;sub&quot;</span>,
             <span class="ident">BinOp</span>::<span class="ident">Div</span> <span class="op">=&gt;</span> <span class="string">&quot;div&quot;</span>,
+            <span class="ident">BinOp</span>::<span class="ident">And</span> <span class="op">=&gt;</span> <span class="string">&quot;and&quot;</span>,
+            <span class="ident">BinOp</span>::<span class="ident">Or</span> <span class="op">=&gt;</span> <span class="string">&quot;or&quot;</span>,
+            <span class="ident">BinOp</span>::<span class="ident">Lt</span> <span class="op">=&gt;</span> <span class="string">&quot;lt&quot;</span>,
+            <span class="ident">BinOp</span>::<span class="ident">Leq</span> <span class="op">=&gt;</span> <span class="string">&quot;leq&quot;</span>,
+            <span class="ident">BinOp</span>::<span class="ident">Equals</span> <span class="op">=&gt;</span> <span class="string">&quot;equals&quot;</span>,
+        }
+    }
+
+    <span class="doccomment">/// Returns the type of the binay operator given the type of its operands.</span>
+    <span class="kw">fn</span> <span class="ident">t</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">operand_type</span>: <span class="ident">ir</span>::<span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">BinOp</span>::<span class="ident">Lt</span> <span class="op">|</span> <span class="ident">BinOp</span>::<span class="ident">Leq</span> <span class="op">|</span> <span class="ident">BinOp</span>::<span class="ident">Equals</span> <span class="op">=&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">I</span>(<span class="number">1</span>),
+            <span class="kw">_</span> <span class="op">=&gt;</span> <span class="ident">operand_type</span>,
+        }
+    }
+
+    <span class="doccomment">/// Indicates if the result must be rounded when operating on floats.</span>
+    <span class="kw">fn</span> <span class="ident">requires_rounding</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">BinOp</span>::<span class="ident">Lt</span> <span class="op">|</span> <span class="ident">BinOp</span>::<span class="ident">Leq</span> <span class="op">|</span> <span class="ident">BinOp</span>::<span class="ident">Equals</span> <span class="op">=&gt;</span> <span class="bool-val">false</span>,
+            <span class="kw">_</span> <span class="op">=&gt;</span> <span class="bool-val">true</span>,
+        }
+    }
+}
+
+<span class="doccomment">/// Arithmetic operators with a single operand.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">C</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">UnaryOp</span> {
+    <span class="doccomment">/// Simply copy the input.</span>
+    <span class="ident">Mov</span>,
+    <span class="doccomment">/// Casts the input to another type.</span>
+    <span class="ident">Cast</span>(<span class="ident">ir</span>::<span class="ident">Type</span>),
+}
+
+<span class="kw">impl</span> <span class="ident">UnaryOp</span> {
+    <span class="doccomment">/// Gives the return type of the operand given its input type.</span>
+    <span class="kw">fn</span> <span class="ident">t</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">op_type</span>: <span class="ident">ir</span>::<span class="ident">Type</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">UnaryOp</span>::<span class="ident">Mov</span> <span class="op">=&gt;</span> <span class="ident">op_type</span>,
+            <span class="ident">UnaryOp</span>::<span class="ident">Cast</span>(<span class="ident">t</span>) <span class="op">=&gt;</span> <span class="kw-2">*</span><span class="ident">t</span>,
+        }
+    }
+
+    <span class="doccomment">/// Returns the name of the operand.</span>
+    <span class="kw">fn</span> <span class="ident">name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">UnaryOp</span>::<span class="ident">Mov</span> <span class="op">=&gt;</span> <span class="string">&quot;mov&quot;</span>,
+            <span class="ident">UnaryOp</span>::<span class="ident">Cast</span>(..) <span class="op">=&gt;</span> <span class="string">&quot;cast&quot;</span>,
         }
     }
 }
@@ -383,13 +491,13 @@
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Operator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span> <span class="op">=</span> <span class="ident">LoweringMap</span><span class="op">&gt;</span> {
     <span class="doccomment">/// A binary arithmetic operator.</span>
     <span class="ident">BinOp</span>(<span class="ident">BinOp</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Rounding</span>),
+    <span class="doccomment">/// Unary arithmetic operator.</span>
+    <span class="ident">UnaryOp</span>(<span class="ident">UnaryOp</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Performs a multiplication with the given return type.</span>
     <span class="ident">Mul</span>(<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Rounding</span>, <span class="ident">Type</span>),
     <span class="doccomment">/// Performs s multiplication between the first two operands and adds the</span>
     <span class="doccomment">/// result to the third.</span>
     <span class="ident">Mad</span>(<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Rounding</span>),
-    <span class="doccomment">/// Moves a value into a register.</span>
-    <span class="ident">Mov</span>(<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Loads a value of the given type from the given address.</span>
     <span class="ident">Ld</span>(<span class="ident">Type</span>, <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">AccessPattern</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>),
     <span class="doccomment">/// Stores the second operand at the address given by the first.</span>
@@ -400,8 +508,6 @@
     <span class="ident">TmpLd</span>(<span class="ident">Type</span>, <span class="ident">ir</span>::<span class="ident">MemId</span>),
     <span class="doccomment">/// Represents a store to a temporary memory that is not fully defined yet.</span>
     <span class="ident">TmpSt</span>(<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">ir</span>::<span class="ident">MemId</span>),
-    <span class="doccomment">/// Casts a value into another type.</span>
-    <span class="ident">Cast</span>(<span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span>, <span class="ident">Type</span>),
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> <span class="ident">Operator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> {
@@ -426,8 +532,15 @@
             }
         }
         <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
-            <span class="ident">BinOp</span>(<span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">lhs</span>, <span class="kw-2">ref</span> <span class="ident">rhs</span>, <span class="ident">rounding</span>) <span class="op">=&gt;</span> {
-                <span class="ident">rounding</span>.<span class="ident">check</span>(<span class="ident">lhs</span>.<span class="ident">t</span>())<span class="question-mark">?</span>;
+            <span class="ident">BinOp</span>(<span class="ident">operator</span>, <span class="kw-2">ref</span> <span class="ident">lhs</span>, <span class="kw-2">ref</span> <span class="ident">rhs</span>, <span class="ident">rounding</span>) <span class="op">=&gt;</span> {
+                <span class="kw">if</span> <span class="ident">operator</span>.<span class="ident">requires_rounding</span>() {
+                    <span class="ident">rounding</span>.<span class="ident">check</span>(<span class="ident">lhs</span>.<span class="ident">t</span>())<span class="question-mark">?</span>;
+                } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">rounding</span> <span class="op">!=</span> <span class="ident">Rounding</span>::<span class="ident">Exact</span> {
+                    <span class="prelude-val">Err</span>(<span class="ident">ir</span>::<span class="ident">TypeError</span>::<span class="ident">InvalidRounding</span> {
+                        <span class="ident">rounding</span>,
+                        <span class="ident">t</span>: <span class="ident">lhs</span>.<span class="ident">t</span>(),
+                    })<span class="question-mark">?</span>;
+                }
                 <span class="ident">ir</span>::<span class="ident">TypeError</span>::<span class="ident">check_equals</span>(<span class="ident">lhs</span>.<span class="ident">t</span>(), <span class="ident">rhs</span>.<span class="ident">t</span>())<span class="question-mark">?</span>;
             }
             <span class="ident">Mul</span>(<span class="kw-2">ref</span> <span class="ident">lhs</span>, <span class="kw-2">ref</span> <span class="ident">rhs</span>, <span class="ident">rounding</span>, <span class="ident">res_type</span>) <span class="op">=&gt;</span> {
@@ -456,59 +569,52 @@
                 <span class="ident">pattern</span>.<span class="ident">check</span>(<span class="ident">iter_dims</span>)<span class="question-mark">?</span>;
                 <span class="ident">ir</span>::<span class="ident">TypeError</span>::<span class="ident">check_equals</span>(<span class="ident">addr</span>.<span class="ident">t</span>(), <span class="ident">Type</span>::<span class="ident">PtrTo</span>(<span class="ident">pattern</span>.<span class="ident">mem_block</span>()))<span class="question-mark">?</span>;
             }
-            <span class="ident">TmpLd</span>(..) <span class="op">|</span> <span class="ident">Cast</span>(..) <span class="op">|</span> <span class="ident">Mov</span>(..) <span class="op">|</span> <span class="ident">TmpSt</span>(..) <span class="op">=&gt;</span> (),
+            <span class="ident">TmpLd</span>(..) <span class="op">|</span> <span class="ident">UnaryOp</span>(..) <span class="op">|</span> <span class="ident">TmpSt</span>(..) <span class="op">=&gt;</span> (),
         }
         <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Returns the type of the value produced.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">t</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Type</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
-            <span class="ident">BinOp</span>(<span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">op</span>, ..) <span class="op">|</span> <span class="ident">Mov</span>(<span class="kw-2">ref</span> <span class="ident">op</span>) <span class="op">|</span> <span class="ident">Mad</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">op</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">op</span>.<span class="ident">t</span>()),
-            <span class="ident">Ld</span>(<span class="ident">t</span>, ..) <span class="op">|</span> <span class="ident">TmpLd</span>(<span class="ident">t</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">Cast</span>(<span class="kw">_</span>, <span class="ident">t</span>) <span class="op">|</span> <span class="ident">Mul</span>(.., <span class="ident">t</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">t</span>),
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">Mad</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="ident">op</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">op</span>.<span class="ident">t</span>()),
+            <span class="ident">Ld</span>(<span class="ident">t</span>, ..) <span class="op">|</span> <span class="ident">TmpLd</span>(<span class="ident">t</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">Mul</span>(.., <span class="ident">t</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="kw-2">*</span><span class="ident">t</span>),
+            <span class="ident">BinOp</span>(<span class="ident">operator</span>, <span class="ident">lhs</span>, ..) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">operator</span>.<span class="ident">t</span>(<span class="ident">lhs</span>.<span class="ident">t</span>())),
+            <span class="ident">UnaryOp</span>(<span class="ident">operator</span>, <span class="ident">operand</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">operator</span>.<span class="ident">t</span>(<span class="ident">operand</span>.<span class="ident">t</span>())),
             <span class="ident">St</span>(..) <span class="op">|</span> <span class="ident">TmpSt</span>(..) <span class="op">=&gt;</span> <span class="prelude-val">None</span>,
         }
     }
 
     <span class="doccomment">/// Retruns the list of operands.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">operands</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;&gt;</span> {
-        <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
-            <span class="ident">BinOp</span>(<span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">lhs</span>, <span class="kw-2">ref</span> <span class="ident">rhs</span>, <span class="kw">_</span>)
-            <span class="op">|</span> <span class="ident">Mul</span>(<span class="kw-2">ref</span> <span class="ident">lhs</span>, <span class="kw-2">ref</span> <span class="ident">rhs</span>, <span class="kw">_</span>, <span class="kw">_</span>)
-            <span class="op">|</span> <span class="ident">St</span>(<span class="kw-2">ref</span> <span class="ident">lhs</span>, <span class="kw-2">ref</span> <span class="ident">rhs</span>, <span class="kw">_</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">lhs</span>, <span class="ident">rhs</span>],
-            <span class="ident">Mad</span>(<span class="kw-2">ref</span> <span class="ident">mul_lhs</span>, <span class="kw-2">ref</span> <span class="ident">mul_rhs</span>, <span class="kw-2">ref</span> <span class="ident">add_rhs</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> {
-                <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">mul_lhs</span>, <span class="ident">mul_rhs</span>, <span class="ident">add_rhs</span>]
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">BinOp</span>(<span class="kw">_</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">Mul</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>, <span class="kw">_</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">St</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>, <span class="kw">_</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> {
+                <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">lhs</span>, <span class="ident">rhs</span>]
             }
-            <span class="ident">Mov</span>(<span class="kw-2">ref</span> <span class="ident">op</span>) <span class="op">|</span> <span class="ident">Ld</span>(<span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">op</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">TmpSt</span>(<span class="kw-2">ref</span> <span class="ident">op</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">Cast</span>(<span class="kw-2">ref</span> <span class="ident">op</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> {
-                <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">op</span>]
-            }
+            <span class="ident">Mad</span>(<span class="ident">mul_lhs</span>, <span class="ident">mul_rhs</span>, <span class="ident">add_rhs</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">mul_lhs</span>, <span class="ident">mul_rhs</span>, <span class="ident">add_rhs</span>],
+            <span class="ident">UnaryOp</span>(<span class="kw">_</span>, <span class="ident">op</span>) <span class="op">|</span> <span class="ident">Ld</span>(<span class="kw">_</span>, <span class="ident">op</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">TmpSt</span>(<span class="ident">op</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">op</span>],
             <span class="ident">TmpLd</span>(..) <span class="op">=&gt;</span> <span class="macro">vec</span><span class="macro">!</span>[],
         }
     }
 
     <span class="doccomment">/// Retruns the list of mutable references to operands.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">operands_mut</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw-2">mut</span> <span class="ident">Operand</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;&gt;</span> {
-        <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
-            <span class="ident">BinOp</span>(<span class="kw">_</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">lhs</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">rhs</span>, <span class="kw">_</span>)
-            <span class="op">|</span> <span class="ident">Mul</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">lhs</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">rhs</span>, <span class="kw">_</span>, <span class="kw">_</span>)
-            <span class="op">|</span> <span class="ident">St</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">lhs</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">rhs</span>, <span class="kw">_</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">lhs</span>, <span class="ident">rhs</span>],
-            <span class="ident">Mad</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">mul_lhs</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">mul_rhs</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">add_rhs</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> {
-                <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">mul_lhs</span>, <span class="ident">mul_rhs</span>, <span class="ident">add_rhs</span>]
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">BinOp</span>(<span class="kw">_</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">Mul</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>, <span class="kw">_</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">St</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>, <span class="kw">_</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> {
+                <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">lhs</span>, <span class="ident">rhs</span>]
             }
-            <span class="ident">Mov</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">op</span>)
-            <span class="op">|</span> <span class="ident">Ld</span>(<span class="kw">_</span>, <span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">op</span>, <span class="kw">_</span>)
-            <span class="op">|</span> <span class="ident">TmpSt</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">op</span>, <span class="kw">_</span>)
-            <span class="op">|</span> <span class="ident">Cast</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">op</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">op</span>],
+            <span class="ident">Mad</span>(<span class="ident">mul_lhs</span>, <span class="ident">mul_rhs</span>, <span class="ident">add_rhs</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">mul_lhs</span>, <span class="ident">mul_rhs</span>, <span class="ident">add_rhs</span>],
+            <span class="ident">UnaryOp</span>(<span class="kw">_</span>, <span class="ident">op</span>, ..) <span class="op">|</span> <span class="ident">Ld</span>(<span class="kw">_</span>, <span class="ident">op</span>, ..) <span class="op">|</span> <span class="ident">TmpSt</span>(<span class="ident">op</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">op</span>],
             <span class="ident">TmpLd</span>(..) <span class="op">=&gt;</span> <span class="macro">vec</span><span class="macro">!</span>[],
         }
     }
 
     <span class="doccomment">/// Returns true if the operator has side effects.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">has_side_effects</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
-            <span class="ident">St</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="ident">b</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="ident">b</span>,
-            <span class="ident">BinOp</span>(..) <span class="op">|</span> <span class="ident">Mul</span>(..) <span class="op">|</span> <span class="ident">Mad</span>(..) <span class="op">|</span> <span class="ident">Mov</span>(..) <span class="op">|</span> <span class="ident">Ld</span>(..) <span class="op">|</span> <span class="ident">TmpLd</span>(..) <span class="op">|</span> <span class="ident">TmpSt</span>(..)
-            <span class="op">|</span> <span class="ident">Cast</span>(..) <span class="op">=&gt;</span> <span class="bool-val">false</span>,
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">St</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="ident">b</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="kw-2">*</span><span class="ident">b</span>,
+            <span class="ident">BinOp</span>(..) <span class="op">|</span> <span class="ident">UnaryOp</span>(..) <span class="op">|</span> <span class="ident">Mul</span>(..) <span class="op">|</span> <span class="ident">Mad</span>(..) <span class="op">|</span> <span class="ident">Ld</span>(..) <span class="op">|</span> <span class="ident">TmpLd</span>(..)
+            <span class="op">|</span> <span class="ident">TmpSt</span>(..) <span class="op">=&gt;</span> <span class="bool-val">false</span>,
         }
     }
 
@@ -556,6 +662,7 @@
                 <span class="kw">let</span> <span class="ident">oper2</span> <span class="op">=</span> <span class="ident">f</span>(<span class="ident">oper2</span>);
                 <span class="ident">BinOp</span>(<span class="ident">op</span>, <span class="ident">oper1</span>, <span class="ident">oper2</span>, <span class="ident">rounding</span>)
             }
+            <span class="ident">UnaryOp</span>(<span class="ident">operator</span>, <span class="ident">operand</span>) <span class="op">=&gt;</span> <span class="ident">UnaryOp</span>(<span class="ident">operator</span>, <span class="ident">f</span>(<span class="ident">operand</span>)),
             <span class="ident">Mul</span>(<span class="ident">oper1</span>, <span class="ident">oper2</span>, <span class="ident">rounding</span>, <span class="ident">t</span>) <span class="op">=&gt;</span> {
                 <span class="kw">let</span> <span class="ident">oper1</span> <span class="op">=</span> <span class="ident">f</span>(<span class="ident">oper1</span>);
                 <span class="kw">let</span> <span class="ident">oper2</span> <span class="op">=</span> <span class="ident">f</span>(<span class="ident">oper2</span>);
@@ -566,10 +673,6 @@
                 <span class="kw">let</span> <span class="ident">oper2</span> <span class="op">=</span> <span class="ident">f</span>(<span class="ident">oper2</span>);
                 <span class="kw">let</span> <span class="ident">oper3</span> <span class="op">=</span> <span class="ident">f</span>(<span class="ident">oper3</span>);
                 <span class="ident">Mad</span>(<span class="ident">oper1</span>, <span class="ident">oper2</span>, <span class="ident">oper3</span>, <span class="ident">rounding</span>)
-            }
-            <span class="ident">Mov</span>(<span class="ident">oper1</span>) <span class="op">=&gt;</span> {
-                <span class="kw">let</span> <span class="ident">oper1</span> <span class="op">=</span> <span class="ident">f</span>(<span class="ident">oper1</span>);
-                <span class="ident">Mov</span>(<span class="ident">oper1</span>)
             }
             <span class="ident">Ld</span>(<span class="ident">t</span>, <span class="ident">oper1</span>, <span class="ident">ap</span>) <span class="op">=&gt;</span> {
                 <span class="kw">let</span> <span class="ident">oper1</span> <span class="op">=</span> <span class="ident">f</span>(<span class="ident">oper1</span>);
@@ -585,10 +688,6 @@
                 <span class="kw">let</span> <span class="ident">oper1</span> <span class="op">=</span> <span class="ident">f</span>(<span class="ident">oper1</span>);
                 <span class="ident">TmpSt</span>(<span class="ident">oper1</span>, <span class="ident">id</span>)
             }
-            <span class="ident">Cast</span>(<span class="ident">oper1</span>, <span class="ident">t</span>) <span class="op">=&gt;</span> {
-                <span class="kw">let</span> <span class="ident">oper1</span> <span class="op">=</span> <span class="ident">f</span>(<span class="ident">oper1</span>);
-                <span class="ident">Cast</span>(<span class="ident">oper1</span>, <span class="ident">t</span>)
-            }
         }
     }
 }
@@ -602,15 +701,14 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Display</span> <span class="kw">for</span> <span class="ident">Operator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="ident">Formatter</span>) <span class="op">-&gt;</span> <span class="ident">std</span>::<span class="ident">fmt</span>::<span class="prelude-ty">Result</span> {
         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span> {
-            <span class="ident">BinOp</span>(<span class="ident">op</span>, ..) <span class="op">=&gt;</span> <span class="ident">op</span>.<span class="ident">as_str</span>(),
+            <span class="ident">BinOp</span>(<span class="ident">op</span>, ..) <span class="op">=&gt;</span> <span class="ident">op</span>.<span class="ident">name</span>(),
+            <span class="ident">UnaryOp</span>(<span class="ident">op</span>, ..) <span class="op">=&gt;</span> <span class="ident">op</span>.<span class="ident">name</span>(),
             <span class="ident">Mul</span>(..) <span class="op">=&gt;</span> <span class="string">&quot;mul&quot;</span>,
             <span class="ident">Mad</span>(..) <span class="op">=&gt;</span> <span class="string">&quot;mad&quot;</span>,
-            <span class="ident">Mov</span>(..) <span class="op">=&gt;</span> <span class="string">&quot;mov&quot;</span>,
             <span class="ident">Ld</span>(..) <span class="op">=&gt;</span> <span class="string">&quot;ld&quot;</span>,
             <span class="ident">St</span>(..) <span class="op">=&gt;</span> <span class="string">&quot;st&quot;</span>,
             <span class="ident">TmpLd</span>(..) <span class="op">=&gt;</span> <span class="string">&quot;tmp_ld&quot;</span>,
             <span class="ident">TmpSt</span>(..) <span class="op">=&gt;</span> <span class="string">&quot;tmp_st&quot;</span>,
-            <span class="ident">Cast</span>(..) <span class="op">=&gt;</span> <span class="string">&quot;cast&quot;</span>,
         };
         <span class="macro">write</span><span class="macro">!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="ident">name</span>)
     }
