@@ -9,8 +9,6 @@ extern crate telamon_utils;
 
 mod common;
 
-use itertools::Itertools;
-
 /// Reads the amount of resident memory.
 fn resident_memory() -> usize {
     // many statistics are cached and only updated when the epoch is advanced.
@@ -18,11 +16,9 @@ fn resident_memory() -> usize {
     unwrap!(jemalloc_ctl::stats::resident())
 }
 
-const NUM_DESCENTS: usize = 1000;
-
 fn main() {
     let mem_beg = resident_memory();
-    let space = common::MM.clone();
+    let _space = common::MM.clone();
     let mem_one = resident_memory();
     println!("candidate size: {} bytes", mem_one - mem_beg);
 }
