@@ -77,7 +77,20 @@ impl MetaStatement for LogicalDim {
     }
 }
 
-/// Indicates how a dimension should be tiled.
+/// Indicates how a logical dimension should be tiled.
+///
+/// In details, if we have dimension `d0` of size `size(d0)`, we create `tile_sizes.len()`
+/// additional tiling dimensions. `tile_sizes` corresponds to the sizes each tiling dimension can
+/// have. `tiling_factors` contrain the total tiling factors of `d0`: the product of the sizes of
+/// the tiling dimensions must be in `tiling_factors`.
+///
+/// For example, we want to tile 2 times a dimension of size 128, we could have:
+/// ```
+/// tiling_factors = [4, 8, 16, 32, 64]
+/// tile_sizes = [[2, 4, 8, 16, 32], [2, 4, 8, 16, 32]]
+/// ```
+/// Each tiling dimension can have size 32, but not both simultaneously because 1024 = 32x32 is not
+/// in the tiling factors.
 #[derive(Clone, Debug)]
 pub struct TilingPattern {
     tiling_factors: VecSet<u32>,
