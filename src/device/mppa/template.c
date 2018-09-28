@@ -23,7 +23,7 @@ static struct {{
 
 static void* {name}_thread(void *arg) {{
   {var_decls}
-  int32_t code_id = (int32_t) arg; // FIXME: Use mppa API instead ?
+  uint32_t code_id = (uint32_t) arg; // FIXME: Use mppa API instead ?
   {thread_idxs}
   // FIXME: memory privatisation
 #ifdef TIMING

@@ -119,10 +119,10 @@ impl MppaPrinter {
         function.device_code_args()
             .enumerate()
             .map(|(i, v)| match v {
-                ParamVal::External(..) if v.is_pointer() => format!("intptr_t p{i} = (intptr_t)*(args + {i})", i = i),
+                ParamVal::External(..) if v.is_pointer() => format!("uintptr_t p{i} = (uintptr_t)*(args + {i});\n//printf(\"p{i} = %p\\n\", (void *)p{i});\n", i = i),
                 ParamVal::External(_, par_type) => format!("{t} p{i} = *({t}*)*(args + {i})",
                                                            t = Self::get_type(*par_type), i = i),
-                ParamVal::Size(_) => format!("uint32_t p{i} = *(uint32_t*)*(args + {i})", i = i),
+                ParamVal::Size(_) => format!("uint32_t p{i} = *(uint32_t*)(void *)*(args + {i}); //printf(\"p{i} = %d\\n\")", i = i),
                 // Are we sure we know the size at compile time ? I think we do
                 ParamVal::GlobalMem(_, _, par_type) => format!("{t} p{i} = ({t})*(args + {i})",
                                                                t = Self::get_type(*par_type), i = i)
@@ -197,7 +197,7 @@ impl MppaPrinter {
         }
         let mut tid_struct = String::new();
         for (ind, _) in func.thread_dims().iter().enumerate() {
-            tid_struct.push_str(&format!("thread_args[{index}].tid.t{dim_id} = d{dim_id};\n",
+            tid_struct.push_str(&format!("tids[{index}.t{dim_id} = d{dim_id};\n",
                                          index = self.build_index_call(func), dim_id = ind));
         }
         format!(include_str!("template/multithread_init.c.template"),
@@ -244,7 +244,8 @@ impl MppaPrinter {
         let name_map = NameMap::new(func, &mut namer);
         func.device_code_args().enumerate().map( |(i, arg)| {
             let name = name_map.name_param(arg.key()); 
-            format!("args[{}] = (void *)&{}", i, name)
+            if arg.is_pointer() {format!("args[{}] = (void *){}", i, name)
+            } else { format!("args[{}] = (void *)&{}", i, name)}
         }).join(";\n")
     }
 
@@ -264,7 +265,6 @@ impl MppaPrinter {
             .map(|v| self.param_decl(v, &name_map))
             .collect_vec().join(",  ");
         format!(include_str!("template/host.c.template"),
-        //format!(include_str!("template/foo_host.c.template"),
             cl_arg_def = cl_arg_def,
             n_arg = n_args,
             build_ptr_struct = self.build_ptr_struct(func),
@@ -286,10 +286,10 @@ impl MppaPrinter {
             ir::Type::F(32) => "float",
             ir::Type::F(64) => "double",
             ir::Type::I(1) => "bool",
-            ir::Type::I(8) => "int8_t",
-            ir::Type::I(16) => "int16_t",
-            ir::Type::I(32) => "int32_t",
-            ir::Type::I(64) => "int64_t",
+            ir::Type::I(8) => "uint8_t",
+            ir::Type::I(16) => "uint16_t",
+            ir::Type::I(32) => "uint32_t",
+            ir::Type::I(64) => "uint64_t",
             _ => panic!("non-printable type"),
         }
     }
@@ -318,6 +318,18 @@ impl MppaPrinter {
         cl_arg_defs = cl_arg_defs,
         )
     }
+
+    fn get_printf_val_in_code(val_id: &str, t: VarType) -> String {
+        match t {
+            VarType::F(_) => format!("printf(\"float {val} = %f\\n\", {val});", val = val_id),
+            VarType::I(_) => format!("printf(\"int {val} = %u\\n\", {val});", val = val_id),
+            VarType::Ptr => format!("printf(\"ptr {val} = %p\\n\", (void *){val});", val = val_id),
+        }
+    }
+
+    fn print_val_in_code(&mut self, val_id: &str, t: VarType) {
+        unwrap!(writeln!(self.out_function, "{}", Self::get_printf_val_in_code(val_id, t)));
+    }
 }
 
 impl Printer for MppaPrinter {
@@ -333,14 +345,14 @@ impl Printer for MppaPrinter {
         match t {
             Type::Void => String::from("void"),
             //Type::PtrTo(..) => " uint8_t *",
-            Type::PtrTo(..) => String::from("intptr_t"),
+            Type::PtrTo(..) => String::from("uintptr_t"),
             Type::F(32) => String::from("float"),
             Type::F(64) => String::from("double"),
-            Type::I(1) => String::from("int8_t"),
-            Type::I(8) => String::from("int8_t"),
-            Type::I(16) => String::from("int16_t"),
-            Type::I(32) => String::from("int32_t"),
-            Type::I(64) => String::from("int64_t"),
+            Type::I(1) => String::from("uint8_t"),
+            Type::I(8) => String::from("uint8_t"),
+            Type::I(16) => String::from("uint16_t"),
+            Type::I(32) => String::from("uint32_t"),
+            Type::I(64) => String::from("uint64_t"),
             ref t => panic!("invalid type for the host: {}", t)
         }
 }
@@ -374,12 +386,8 @@ impl Printer for MppaPrinter {
     }
 
     fn print_ld(&mut self, return_type: Type, flag: InstFlag, return_id: &str,  addr: &str) {
-        match flag {
-            MEM_GLOBAL => unwrap!(writeln!(self.out_function, "{} = *({}*){} ;",
-            return_id, Self::get_type(return_type), addr)),
-            _ => unwrap!(writeln!(self.out_function, "{} = *({}*){} ;",
-            return_id, Self::get_type(return_type), addr))
-        }
+        unwrap!(writeln!(self.out_function, "{} = *({}*){} ;",
+        return_id, Self::get_type(return_type), addr));
     }
 
     fn print_st(&mut self, val_type: Type, _: InstFlag, addr: &str, val: &str) {
@@ -392,7 +400,7 @@ impl Printer for MppaPrinter {
             cond, Self::get_type(val_type), addr, val));
     }
 
-    fn print_cast(&mut self, t: Type, _: Type, _: op::Rounding, return_id: &str, op1: &str) {
+    fn print_cast(&mut self, _: Type, t: Type, _: op::Rounding, return_id: &str, op1: &str) {
         unwrap!(writeln!(self.out_function, "{} = ({}) {};", return_id, Self::get_type(t), op1));
     }
 
@@ -421,10 +429,10 @@ impl Printer for MppaPrinter {
     }
 
     fn print_cond_jump(&mut self, label_id: &str, cond: &str) {
-        unwrap!(writeln!(self.out_function, "if({}) goto LABEL_{};", cond, label_id));
+        unwrap!(writeln!(self.out_function, "if({}) {{goto LABEL_{};}} else {{printf(\"PASSED LOOP {} \\n\");}}", cond, label_id, label_id));
     }
 
     fn print_sync(&mut self) {
-        unwrap!(writeln!(self.out_function, "pthread_barrier_wait(tid.barrier);"));
+        unwrap!(writeln!(self.out_function, "printf(\"NOW WAITING BARRIER\\n\");//pthread_barrier_wait(tid->barrier);"));
     }
 }

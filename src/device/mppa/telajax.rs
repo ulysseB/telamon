@@ -9,6 +9,7 @@ use std::ffi::CStr;
 use std::sync::{RwLock, Arc};
 use std;
 use device::{self, ArrayArgument};
+use itertools::{zip_eq, Itertools};
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
@@ -352,7 +353,7 @@ impl Mem {
     }
 
     pub fn raw_ptr(&self) -> *const libc::c_void {
-        self.ptr as *const _ as *const libc::c_void
+        &self.ptr as *const _ as *const libc::c_void
     }
     
     pub fn len(&self) -> usize {

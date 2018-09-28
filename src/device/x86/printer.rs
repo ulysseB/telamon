@@ -322,7 +322,7 @@ impl Printer for X86printer {
             cond, Self::get_type(val_type), addr, val));
     }
 
-    fn print_cast(&mut self, t: Type, _: Type, _: op::Rounding, return_id: &str, op1: &str) {
+    fn print_cast(&mut self, _: Type, t: Type, _: op::Rounding, return_id: &str, op1: &str) {
         unwrap!(writeln!(self.out_function, "{} = ({}) {};", return_id, Self::get_type(t), op1));
     }
 

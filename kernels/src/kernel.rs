@@ -72,6 +72,7 @@ pub trait Kernel<'a>: Sized {
                     "evaluation failed for kernel {}, with actions {:?}",
                     Self::name(), leaf.actions);
                 if let Err(err) = kernel.check_result(&expected_output, context) {
+                    std::fs::write("actions_dump.txt", format!("{:?}", leaf.actions)).expect("Could not write actions dump");
                     panic!("incorrect output for kernel {}, with actions {:?}: {}",
                            Self::name(), leaf.actions, err)
                 }

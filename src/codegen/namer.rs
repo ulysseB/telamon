@@ -27,6 +27,17 @@ pub enum VarType {
     Ptr,
 }
 
+impl From<Type> for VarType {
+    fn from(t: Type) -> Self {
+        match t {
+            Type::I(u) => VarType::I(u),
+            Type::F(u) => VarType::F(u),
+            Type::PtrTo(..) => VarType::Ptr,
+            _ => panic!("Not a variable type"),
+        }
+    }
+}
+
 /// Assign names to variables.
 pub trait Namer  {
     /// Provides a name for a variable of the given type.

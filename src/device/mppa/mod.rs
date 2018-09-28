@@ -45,14 +45,14 @@ impl Namer {
 
     pub fn get_string(t: VarType) -> &'static str {
         match t {
-            VarType::Ptr => "intptr_t",
+            VarType::Ptr => "uintptr_t",
             VarType::F(32) => "float",
             VarType::F(64) => "double",
-            VarType::I(1) => "int8_t",
-            VarType::I(8) => "int8_t",
-            VarType::I(16) => "int16_t",
-            VarType::I(32) => "int32_t",
-            VarType::I(64) => "int64_t",
+            VarType::I(1) => "uint8_t",
+            VarType::I(8) => "uint8_t",
+            VarType::I(16) => "uint16_t",
+            VarType::I(32) => "uint32_t",
+            VarType::I(64) => "uint64_t",
             _ => panic!("invalid CPU type"),
         }
     }

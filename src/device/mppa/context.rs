@@ -57,10 +57,11 @@ enum KernelArg {
 }
 
 impl KernelArg {
+
     fn raw_ptr(&self) -> *const libc::c_void {
         match self {
             KernelArg::GlobalMem(mem) => mem.raw_ptr(),
-            KernelArg::Size(size) => &size as *const _ as *const libc::c_void,
+            KernelArg::Size(size) => size as *const _ as *const libc::c_void,
             KernelArg::External(ptr) =>  *ptr,
         }
     }
@@ -92,8 +93,7 @@ impl<'a> Context<'a> {
     fn setup_kernel(&self, fun: &codegen::Function<'a>) -> (telajax::Kernel, Vec<KernelArg>) {
         let mut printer = MppaPrinter::default();
         let kernel_code = printer.wrapper_function(fun);
-        //let kernel_code = printer.function(fun);
-        //let kernel_code = printer.foo_function(fun);
+        std::fs::write("dump_kernel.c", &kernel_code).expect("Could not read file");
         println!("KERNEL CODE\n{}", kernel_code);
         let wrapper = self.get_wrapper(fun);
         let cflags = std::ffi::CString::new("-mhypervisor").unwrap();
@@ -126,7 +126,8 @@ impl<'a> Context<'a> {
         let out_mem = self.writeback_slots.pop();
         kernel_args.push(KernelArg::GlobalMem(out_mem));
         arg_sizes.push(self::telajax::Mem::get_mem_size());
-        let args_ptr = kernel_args.iter().map(|k_arg| k_arg.raw_ptr()).collect_vec();
+        //let args_ptr = kernel_args.iter().map(|k_arg| {k_arg.print_size(); k_arg.raw_ptr()}).collect_vec();
+        let args_ptr = kernel_args.iter().map(|k_arg| { k_arg.raw_ptr()}).collect_vec();
         kernel.set_args(&arg_sizes[..], &args_ptr[..]);
         (kernel, kernel_args)
     }
@@ -169,8 +170,8 @@ impl<'a> device::Context for Context<'a> {
 
     fn evaluate(&self, fun: &device::Function, _mode: EvalMode) -> Result<f64, ()> {
         let (mut kernel, mut kernel_args) = self.setup_kernel(fun);
-        let out_mem = if let KernelArg::GlobalMem(mem) = kernel_args.pop().unwrap() {mem} else {panic!()};
         self.executor.execute_kernel(&mut kernel);
+        let out_mem = if let KernelArg::GlobalMem(mem) = kernel_args.pop().unwrap() {mem} else {panic!()};
         let ptr_i8 = out_mem.read_i8().as_ptr();
         let res : f64 = unsafe{ *std::mem::transmute::<*const i8, *const f64>(ptr_i8)};
         self.writeback_slots.push(out_mem);
