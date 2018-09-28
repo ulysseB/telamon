@@ -1,27 +1,23 @@
 use super::lalrpop_util::*;
 use super::lexer::{ErrorKind, LexicalError, Position, Span, Spanned, Token};
+use std::fmt;
+use std::path::PathBuf;
 
-use std::{fmt, path};
-
-#[derive(Debug)]
-pub struct ProcessError<'a> {
+#[derive(Debug, Fail)]
+pub struct Error {
     /// Display of filename.
-    pub path: path::Display<'a>,
+    pub path: PathBuf,
     /// Position of lexeme.
     pub span: Option<Span>,
     cause: ParseError<Position, Token, LexicalError>,
 }
 
-impl<'a> From<(path::Display<'a>, ParseError<Position, Token, LexicalError>)>
-    for ProcessError<'a>
-{
-    fn from(
-        (path, parse): (path::Display<'a>, ParseError<Position, Token, LexicalError>),
-    ) -> Self {
+impl From<(PathBuf, ParseError<Position, Token, LexicalError>)> for Error {
+    fn from((path, parse): (PathBuf, ParseError<Position, Token, LexicalError>)) -> Self {
         match parse {
             ParseError::InvalidToken {
                 location: Position { position: beg, .. },
-            } => ProcessError {
+            } => Error {
                 path,
                 span: Some(Span {
                     beg,
@@ -29,7 +25,7 @@ impl<'a> From<(path::Display<'a>, ParseError<Position, Token, LexicalError>)>
                 }),
                 cause: parse,
             },
-            ParseError::UnrecognizedToken { token: None, .. } => ProcessError {
+            ParseError::UnrecognizedToken { token: None, .. } => Error {
                 path,
                 span: None,
                 cause: parse,
@@ -64,7 +60,7 @@ impl<'a> From<(path::Display<'a>, ParseError<Position, Token, LexicalError>)>
                                 data: ErrorKind::InvalidInclude { .. },
                             },
                     },
-            } => ProcessError {
+            } => Error {
                 path,
                 span: Some(Span {
                     beg,
@@ -76,10 +72,10 @@ impl<'a> From<(path::Display<'a>, ParseError<Position, Token, LexicalError>)>
     }
 }
 
-impl<'a> fmt::Display for ProcessError<'a> {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ProcessError {
+            Error {
                 path,
                 span,
                 cause:
@@ -89,7 +85,7 @@ impl<'a> fmt::Display for ProcessError<'a> {
                     },
                 ..
             }
-            | ProcessError {
+            | Error {
                 path,
                 span,
                 cause:
@@ -99,21 +95,27 @@ impl<'a> fmt::Display for ProcessError<'a> {
                 ..
             } => {
                 if let Some(span) = span {
-                    write!(f, "Unexpected token '{:?}', {} -> {}", token, span, path)
+                    write!(
+                        f,
+                        "Unexpected token '{:?}', {} -> {}",
+                        token,
+                        span,
+                        path.display()
+                    )
                 } else {
-                    write!(f, "Unexpected token '{:?}' -> {}", token, path)
+                    write!(f, "Unexpected token '{:?}' -> {}", token, path.display())
                 }
             }
-            ProcessError {
+            Error {
                 path,
                 span,
                 cause: ParseError::User { error },
                 ..
             } => {
                 if let Some(span) = span {
-                    write!(f, "{}, {} -> {}", error, span, path)
+                    write!(f, "{}, {} -> {}", error, span, path.display())
                 } else {
-                    write!(f, "{} -> {}", error, path)
+                    write!(f, "{} -> {}", error, path.display())
                 }
             }
             _ => Ok(()),

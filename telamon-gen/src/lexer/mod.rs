@@ -73,25 +73,14 @@ impl Lexer {
     pub fn new(buffer: Vec<u8>) -> Self {
         unsafe {
             let scanner: YyScan = ptr::null();
-
-            // The function [yylex_init](https://westes.github.io/flex/manual/Init-and-Destroy-Functions.html#index-yylex_005finit)
-            // innitializes the scanner.
             yylex_init(&scanner);
-
             // scans len bytes starting at location bytes.
             let buffer: YyBufferState =
                 yy_scan_bytes(buffer.as_ptr() as *const _, buffer.len() as _, scanner);
-
-            // Issue [flex/60](https://github.com/westes/flex/issues/60)
-            // yylineno should be set.
-            // The function [yyset_lineno](https://westes.github.io/flex/manual/Reentrant-Functions.html#index-yyset_005flineno)
-            // sets the current line number.
             yyset_lineno(0, scanner);
             Lexer {
                 filename: None,
                 scanner: scanner,
-                // The function  [yy_scan_bytes](https://westes.github.io/flex/manual/Multiple-Input-Buffers.html)
-                // scans len bytes starting at location bytes.
                 buffer: buffer,
                 lookahead_token: None,
                 include: None,
@@ -146,12 +135,7 @@ impl Lexer {
         filename: CString,
     ) -> Option<LexerItem> {
         unsafe {
-            // [Multiple Input Buffers](http://westes.github.io/flex/manual/Multiple-Input-Buffers.html#Multiple-Input-Buffers)
-            // include file scanner.
-            match libc::fopen(
-                filename.to_bytes_with_nul().as_ptr() as *const _,
-                "r".as_ptr() as *const _,
-            ) {
+            match libc::fopen(filename.as_ptr(), "r".as_ptr() as _) {
                 yyin if yyin.is_null() => {
                     let why = errno();
 
@@ -181,8 +165,6 @@ impl Lexer {
                     self.include = Some(Box::new(Lexer {
                         filename: Some(PathBuf::from(filename.to_str().unwrap())),
                         scanner: self.scanner,
-                        // The function  [yy_scan_bytes](https://westes.github.io/flex/manual/Multiple-Input-Buffers.html)
-                        // scans len bytes starting at location bytes.
                         buffer: self.buffer,
                         lookahead_token: None,
                         include: None,
