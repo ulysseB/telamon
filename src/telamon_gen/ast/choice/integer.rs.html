@@ -78,9 +78,20 @@
 <span id="78">78</span>
 <span id="79">79</span>
 <span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
 </pre><pre class="rust ">
-<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">ops</span>::<span class="ident">Deref</span>;
+
+<span class="kw">use</span> <span class="ident">ast</span>::<span class="ident">context</span>::<span class="ident">CheckerContext</span>;
+<span class="kw">use</span> <span class="ident">ast</span>::<span class="ident">error</span>::<span class="ident">TypeError</span>;
+<span class="kw">use</span> <span class="ident">ast</span>::{<span class="ident">type_check_code</span>, <span class="ident">VarDef</span>, <span class="ident">VarMap</span>};
+<span class="kw">use</span> <span class="ident">ir</span>;
+<span class="kw">use</span> <span class="ident">lexer</span>::<span class="ident">Spanned</span>;
+
+<span class="kw">use</span> <span class="ident">utils</span>::<span class="ident">RcStr</span>;
 
 <span class="doccomment">/// A toplevel integer</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
@@ -115,7 +126,7 @@
     }
 
     <span class="doccomment">/// Defines an integer choice.</span>
-    <span class="kw">fn</span> <span class="ident">define_integer</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">tc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">TypingContext</span>) {
+    <span class="kw">fn</span> <span class="ident">define_integer</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ir_desc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">IrDesc</span>) {
         <span class="kw">let</span> <span class="ident">choice_name</span> <span class="op">=</span> <span class="ident">RcStr</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">name</span>.<span class="ident">data</span>.<span class="ident">to_owned</span>());
         <span class="kw">let</span> <span class="ident">doc</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">doc</span>.<span class="ident">to_owned</span>().<span class="ident">map</span>(<span class="ident">RcStr</span>::<span class="ident">new</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">var_map</span> <span class="op">=</span> <span class="ident">VarMap</span>::<span class="ident">default</span>();
@@ -124,7 +135,7 @@
             .<span class="ident">iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">v</span>.<span class="ident">name</span>.<span class="ident">clone</span>();
-                (<span class="ident">name</span>, <span class="ident">var_map</span>.<span class="ident">decl_argument</span>(<span class="kw-2">&amp;</span><span class="ident">tc</span>.<span class="ident">ir_desc</span>, <span class="ident">v</span>.<span class="ident">to_owned</span>()))
+                (<span class="ident">name</span>, <span class="ident">var_map</span>.<span class="ident">decl_argument</span>(<span class="kw-2">&amp;</span><span class="ident">ir_desc</span>, <span class="ident">v</span>.<span class="ident">to_owned</span>()))
             }).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;&gt;</span>();
         <span class="kw">let</span> <span class="ident">arguments</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">ChoiceArguments</span>::<span class="ident">new</span>(
             <span class="ident">vars</span>.<span class="ident">into_iter</span>()
@@ -135,21 +146,18 @@
         );
         <span class="kw">let</span> <span class="ident">universe</span> <span class="op">=</span> <span class="ident">type_check_code</span>(<span class="ident">RcStr</span>::<span class="ident">new</span>(<span class="self">self</span>.<span class="ident">code</span>.<span class="ident">to_owned</span>()), <span class="kw-2">&amp;</span><span class="ident">var_map</span>);
         <span class="kw">let</span> <span class="ident">choice_def</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">ChoiceDef</span>::<span class="ident">Number</span> { <span class="ident">universe</span> };
-        <span class="ident">tc</span>.<span class="ident">ir_desc</span>
-            .<span class="ident">add_choice</span>(<span class="ident">ir</span>::<span class="ident">Choice</span>::<span class="ident">new</span>(<span class="ident">choice_name</span>, <span class="ident">doc</span>, <span class="ident">arguments</span>, <span class="ident">choice_def</span>));
+        <span class="ident">ir_desc</span>.<span class="ident">add_choice</span>(<span class="ident">ir</span>::<span class="ident">Choice</span>::<span class="ident">new</span>(<span class="ident">choice_name</span>, <span class="ident">doc</span>, <span class="ident">arguments</span>, <span class="ident">choice_def</span>));
     }
 
     <span class="doccomment">/// Type checks the define&#39;s condition.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">define</span>(
         <span class="self">self</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">CheckerContext</span>,
-        <span class="ident">tc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">TypingContext</span>,
+        <span class="ident">ir_desc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">IrDesc</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">check_undefined_variables</span>(<span class="ident">context</span>)<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.<span class="ident">define_integer</span>(<span class="ident">tc</span>);
-
-        <span class="ident">tc</span>.<span class="ident">choice_defs</span>.<span class="ident">push</span>(<span class="ident">ChoiceDef</span>::<span class="ident">IntegerDef</span>(<span class="self">self</span>));
+        <span class="self">self</span>.<span class="ident">define_integer</span>(<span class="ident">ir_desc</span>);
         <span class="prelude-val">Ok</span>(())
     }
 }

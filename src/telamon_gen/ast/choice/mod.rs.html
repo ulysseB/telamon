@@ -51,15 +51,27 @@
 <span id="51">51</span>
 <span id="52">52</span>
 <span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
 </pre><pre class="rust ">
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">counter</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">enumeration</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">integer</span>;
+<span class="kw">mod</span> <span class="ident">counter</span>;
+<span class="kw">mod</span> <span class="ident">enumeration</span>;
+<span class="kw">mod</span> <span class="ident">integer</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">counter</span>::<span class="ident">CounterDef</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">enumeration</span>::<span class="ident">EnumDef</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">integer</span>::<span class="ident">IntegerDef</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+
+<span class="kw">use</span> <span class="ident">ast</span>::<span class="ident">context</span>::<span class="ident">CheckerContext</span>;
+<span class="kw">use</span> <span class="ident">ast</span>::<span class="ident">error</span>::{<span class="ident">Hint</span>, <span class="ident">TypeError</span>};
+<span class="kw">use</span> <span class="ident">ast</span>::{<span class="ident">Constraint</span>, <span class="ident">Statement</span>};
+
+<span class="kw">use</span> <span class="ident">ir</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ChoiceDef</span> {
@@ -87,12 +99,14 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">define</span>(
         <span class="self">self</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">CheckerContext</span>,
-        <span class="ident">tc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">TypingContext</span>,
+        <span class="ident">ir_desc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">IrDesc</span>,
+        <span class="ident">constraints</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Constraint</span><span class="op">&gt;</span>,
+        <span class="ident">choice_defs</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ChoiceDef</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">ChoiceDef</span>::<span class="ident">CounterDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">define</span>(<span class="ident">context</span>, <span class="ident">tc</span>),
-            <span class="ident">ChoiceDef</span>::<span class="ident">IntegerDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">define</span>(<span class="ident">context</span>, <span class="ident">tc</span>),
-            <span class="ident">ChoiceDef</span>::<span class="ident">EnumDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">define</span>(<span class="ident">context</span>, <span class="ident">tc</span>),
+            <span class="ident">ChoiceDef</span>::<span class="ident">CounterDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">define</span>(<span class="ident">context</span>, <span class="ident">choice_defs</span>),
+            <span class="ident">ChoiceDef</span>::<span class="ident">IntegerDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">define</span>(<span class="ident">context</span>, <span class="ident">ir_desc</span>),
+            <span class="ident">ChoiceDef</span>::<span class="ident">EnumDef</span>(<span class="ident">def</span>) <span class="op">=&gt;</span> <span class="ident">def</span>.<span class="ident">define</span>(<span class="ident">context</span>, <span class="ident">ir_desc</span>, <span class="ident">constraints</span>),
         }
     }
 }

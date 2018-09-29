@@ -625,7 +625,7 @@
 }
 
 <span class="doccomment">/// A decision to specify.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Choice</span> {
     <span class="ident">name</span>: <span class="ident">RcStr</span>,
     <span class="ident">doc</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RcStr</span><span class="op">&gt;</span>,
@@ -727,7 +727,7 @@
 }
 
 <span class="doccomment">/// Defines the parameters for which the `Choice` is defined.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ChoiceArguments</span> {
     <span class="doccomment">/// The `Choice` is defined for all comibnation of variables of the given sets</span>
     <span class="doccomment">/// Each variable can only appear once.</span>

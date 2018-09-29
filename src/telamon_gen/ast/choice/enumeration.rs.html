@@ -380,9 +380,31 @@
 <span id="380">380</span>
 <span id="381">381</span>
 <span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
 </pre><pre class="rust ">
-<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">ops</span>::<span class="ident">Deref</span>;
+
+<span class="kw">use</span> <span class="ident">ast</span>::<span class="ident">constrain</span>::<span class="ident">Constraint</span>;
+<span class="kw">use</span> <span class="ident">ast</span>::<span class="ident">context</span>::<span class="ident">CheckerContext</span>;
+<span class="kw">use</span> <span class="ident">ast</span>::<span class="ident">error</span>::{<span class="ident">Hint</span>, <span class="ident">TypeError</span>};
+<span class="kw">use</span> <span class="ident">ast</span>::{
+    <span class="ident">ChoiceInstance</span>, <span class="ident">Condition</span>, <span class="ident">EnumStatement</span>, <span class="ident">EnumStatements</span>, <span class="ident">HashSet</span>, <span class="ident">SetRef</span>, <span class="ident">Symmetry</span>,
+    <span class="ident">VarDef</span>, <span class="ident">VarMap</span>,
+};
+<span class="kw">use</span> <span class="ident">ir</span>;
+<span class="kw">use</span> <span class="ident">lexer</span>::<span class="ident">Spanned</span>;
+
+<span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
+<span class="kw">use</span> <span class="ident">utils</span>::{<span class="ident">HashMap</span>, <span class="ident">RcStr</span>};
 
 <span class="doccomment">/// A toplevel definition or constraint.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
@@ -622,7 +644,7 @@
         <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">VarDef</span><span class="op">&gt;</span>,
         <span class="ident">value</span>: <span class="ident">RcStr</span>,
         <span class="kw-2">mut</span> <span class="ident">constraint</span>: <span class="ident">Constraint</span>,
-        <span class="ident">tc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">TypingContext</span>,
+        <span class="ident">constraints</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Constraint</span><span class="op">&gt;</span>,
     ) {
         <span class="kw">let</span> <span class="ident">choice_args</span> <span class="op">=</span> <span class="ident">args</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">def</span><span class="op">|</span> <span class="ident">def</span>.<span class="ident">name</span>.<span class="ident">clone</span>()).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;&gt;</span>();
         <span class="kw">let</span> <span class="ident">self_instance</span> <span class="op">=</span> <span class="ident">ChoiceInstance</span> {
@@ -638,11 +660,11 @@
         <span class="kw">for</span> <span class="ident">disjunction</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">constraint</span>.<span class="ident">disjunctions</span> {
             <span class="ident">disjunction</span>.<span class="ident">push</span>(<span class="ident">condition</span>.<span class="ident">clone</span>());
         }
-        <span class="ident">tc</span>.<span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">constraint</span>);
+        <span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">constraint</span>);
     }
 
     <span class="doccomment">/// Registers an enum definition.</span>
-    <span class="kw">fn</span> <span class="ident">register_enum</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">tc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">TypingContext</span>) {
+    <span class="kw">fn</span> <span class="ident">register_enum</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ir_desc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">IrDesc</span>, <span class="ident">constraints</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Constraint</span><span class="op">&gt;</span>) {
         <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;defining enum {}&quot;</span>, <span class="self">self</span>.<span class="ident">name</span>.<span class="ident">data</span>);
         <span class="kw">let</span> <span class="ident">doc</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">doc</span>.<span class="ident">clone</span>().<span class="ident">map</span>(<span class="ident">RcStr</span>::<span class="ident">new</span>);
         <span class="kw">let</span> <span class="ident">enum_name</span> <span class="op">=</span> <span class="ident">RcStr</span>::<span class="ident">new</span>(::<span class="ident">to_type_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">name</span>.<span class="ident">data</span>));
@@ -659,7 +681,7 @@
                 <span class="self">self</span>.<span class="ident">variables</span>.<span class="ident">clone</span>(),
                 <span class="ident">value</span>,
                 <span class="ident">constraint</span>,
-                <span class="ident">tc</span>,
+                <span class="ident">constraints</span>,
             );
         }
         <span class="comment">// Typechek the anti-symmetry mapping.</span>
@@ -675,7 +697,7 @@
             .<span class="ident">into_iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">v</span>.<span class="ident">name</span>.<span class="ident">clone</span>();
-                (<span class="ident">name</span>, <span class="ident">var_map</span>.<span class="ident">decl_argument</span>(<span class="kw-2">&amp;</span><span class="ident">tc</span>.<span class="ident">ir_desc</span>, <span class="ident">v</span>))
+                (<span class="ident">name</span>, <span class="ident">var_map</span>.<span class="ident">decl_argument</span>(<span class="kw-2">&amp;</span><span class="ident">ir_desc</span>, <span class="ident">v</span>))
             }).<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;&gt;</span>();
         <span class="kw">let</span> <span class="ident">arguments</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">ChoiceArguments</span>::<span class="ident">new</span>(
             <span class="ident">vars</span>.<span class="ident">into_iter</span>()
@@ -731,17 +753,17 @@
             <span class="ident">enum_</span>.<span class="ident">add_alias</span>(<span class="ident">name</span>, <span class="ident">values</span>, <span class="ident">doc</span>);
         }
         <span class="comment">// Register the enum and the choice.</span>
-        <span class="ident">tc</span>.<span class="ident">ir_desc</span>.<span class="ident">add_enum</span>(<span class="ident">enum_</span>);
+        <span class="ident">ir_desc</span>.<span class="ident">add_enum</span>(<span class="ident">enum_</span>);
         <span class="kw">let</span> <span class="ident">choice_def</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">ChoiceDef</span>::<span class="ident">Enum</span>(<span class="ident">enum_name</span>);
-        <span class="ident">tc</span>.<span class="ident">ir_desc</span>
-            .<span class="ident">add_choice</span>(<span class="ident">ir</span>::<span class="ident">Choice</span>::<span class="ident">new</span>(<span class="ident">choice_name</span>, <span class="ident">doc</span>, <span class="ident">arguments</span>, <span class="ident">choice_def</span>));
+        <span class="ident">ir_desc</span>.<span class="ident">add_choice</span>(<span class="ident">ir</span>::<span class="ident">Choice</span>::<span class="ident">new</span>(<span class="ident">choice_name</span>, <span class="ident">doc</span>, <span class="ident">arguments</span>, <span class="ident">choice_def</span>));
     }
 
     <span class="doccomment">/// Type checks the define&#39;s condition.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">define</span>(
         <span class="self">self</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">CheckerContext</span>,
-        <span class="ident">tc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">TypingContext</span>,
+        <span class="ident">ir_desc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">IrDesc</span>,
+        <span class="ident">constraints</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Constraint</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">check_undefined_variables</span>(<span class="ident">context</span>)<span class="question-mark">?</span>;
         <span class="self">self</span>.<span class="ident">check_redefinition_parameter</span>()<span class="question-mark">?</span>;
@@ -751,9 +773,7 @@
         <span class="self">self</span>.<span class="ident">check_same_parameter</span>()<span class="question-mark">?</span>;
         <span class="self">self</span>.<span class="ident">check_conflict</span>()<span class="question-mark">?</span>;
 
-        <span class="self">self</span>.<span class="ident">register_enum</span>(<span class="ident">tc</span>);
-
-        <span class="ident">tc</span>.<span class="ident">choice_defs</span>.<span class="ident">push</span>(<span class="ident">ChoiceDef</span>::<span class="ident">EnumDef</span>(<span class="self">self</span>));
+        <span class="self">self</span>.<span class="ident">register_enum</span>(<span class="ident">ir_desc</span>, <span class="ident">constraints</span>);
         <span class="prelude-val">Ok</span>(())
     }
 }

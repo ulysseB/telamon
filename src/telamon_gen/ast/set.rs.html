@@ -430,9 +430,65 @@
 <span id="430">430</span>
 <span id="431">431</span>
 <span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
 </pre><pre class="rust ">
-<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">once</span>;
+<span class="kw">use</span> <span class="ident">std</span>::<span class="ident">mem</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">ops</span>::<span class="ident">Deref</span>;
+
+<span class="kw">use</span> <span class="ident">ast</span>::<span class="ident">choice</span>::{<span class="ident">ChoiceDef</span>, <span class="ident">CounterDef</span>};
+<span class="kw">use</span> <span class="ident">ast</span>::<span class="ident">constrain</span>::<span class="ident">Constraint</span>;
+<span class="kw">use</span> <span class="ident">ast</span>::<span class="ident">context</span>::<span class="ident">CheckerContext</span>;
+<span class="kw">use</span> <span class="ident">ast</span>::<span class="ident">error</span>::{<span class="ident">Hint</span>, <span class="ident">TypeError</span>};
+<span class="kw">use</span> <span class="ident">ast</span>::<span class="ident">trigger</span>::<span class="ident">TriggerDef</span>;
+<span class="kw">use</span> <span class="ident">ast</span>::{
+    <span class="ident">ir</span>, <span class="ident">print</span>, <span class="ident">Check</span>, <span class="ident">ChoiceInstance</span>, <span class="ident">Condition</span>, <span class="ident">CounterBody</span>, <span class="ident">CounterVal</span>, <span class="ident">Quotient</span>,
+    <span class="ident">SetRef</span>, <span class="ident">VarDef</span>, <span class="ident">VarMap</span>,
+};
+
+<span class="kw">use</span> <span class="ident">indexmap</span>::<span class="ident">IndexMap</span>;
+<span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
+<span class="kw">use</span> <span class="ident">lexer</span>::<span class="ident">Spanned</span>;
+<span class="kw">use</span> <span class="ident">utils</span>::{<span class="ident">HashMap</span>, <span class="ident">RcStr</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SetDef</span> {
@@ -579,7 +635,7 @@
         <span class="ident">name</span>: <span class="ident">RcStr</span>,
         <span class="ident">set</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">SetDef</span>,
         <span class="ident">item_name</span>: <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">RcStr</span><span class="op">&gt;</span>,
-        <span class="ident">tc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">TypingContext</span>,
+        <span class="ident">ir_desc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">IrDesc</span>,
     ) {
         <span class="kw">let</span> <span class="ident">arg</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">arg</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">bool_str</span>: <span class="ident">RcStr</span> <span class="op">=</span> <span class="string">&quot;Bool&quot;</span>.<span class="ident">into</span>();
@@ -595,9 +651,9 @@
             <span class="bool-val">false</span>,
         );
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">repr</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">Choice</span>::<span class="ident">new</span>(<span class="ident">name</span>, <span class="prelude-val">None</span>, <span class="ident">args</span>, <span class="ident">def</span>);
-        <span class="kw">let</span> <span class="ident">false_value_set</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">once</span>(<span class="string">&quot;FALSE&quot;</span>.<span class="ident">into</span>()).<span class="ident">collect</span>();
+        <span class="kw">let</span> <span class="ident">false_value_set</span> <span class="op">=</span> <span class="ident">once</span>(<span class="string">&quot;FALSE&quot;</span>.<span class="ident">into</span>()).<span class="ident">collect</span>();
         <span class="ident">repr</span>.<span class="ident">add_fragile_values</span>(<span class="ident">ir</span>::<span class="ident">ValueSet</span>::<span class="ident">enum_values</span>(<span class="ident">bool_str</span>, <span class="ident">false_value_set</span>));
-        <span class="ident">tc</span>.<span class="ident">ir_desc</span>.<span class="ident">add_choice</span>(<span class="ident">repr</span>);
+        <span class="ident">ir_desc</span>.<span class="ident">add_choice</span>(<span class="ident">repr</span>);
     }
 
     <span class="doccomment">/// Creates a counter for the number of objects that can represent another object in</span>
@@ -610,10 +666,11 @@
         <span class="ident">vars</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">VarDef</span><span class="op">&gt;</span>,
         <span class="ident">equiv_choice_name</span>: <span class="ident">RcStr</span>,
         <span class="ident">equiv_values</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RcStr</span><span class="op">&gt;</span>,
-        <span class="ident">tc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">TypingContext</span>,
+        <span class="ident">checks</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Check</span><span class="op">&gt;</span>,
+        <span class="ident">choice_defs</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ChoiceDef</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="ident">RcStr</span> {
         <span class="comment">// Create the increment condition</span>
-        <span class="ident">tc</span>.<span class="ident">checks</span>.<span class="ident">push</span>(<span class="ident">Check</span>::<span class="ident">IsSymmetric</span> {
+        <span class="ident">checks</span>.<span class="ident">push</span>(<span class="ident">Check</span>::<span class="ident">IsSymmetric</span> {
             <span class="ident">choice</span>: <span class="ident">equiv_choice_name</span>.<span class="ident">clone</span>(),
             <span class="ident">values</span>: <span class="ident">equiv_values</span>.<span class="ident">clone</span>(),
         });
@@ -649,7 +706,7 @@
             <span class="ident">kind</span>: <span class="ident">ir</span>::<span class="ident">CounterKind</span>::<span class="ident">Add</span>,
             <span class="ident">value</span>: <span class="ident">CounterVal</span>::<span class="ident">Code</span>(<span class="string">&quot;1&quot;</span>.<span class="ident">to_string</span>()),
         };
-        <span class="ident">tc</span>.<span class="ident">choice_defs</span>.<span class="ident">push</span>(<span class="ident">ChoiceDef</span>::<span class="ident">CounterDef</span>(<span class="ident">CounterDef</span> {
+        <span class="ident">choice_defs</span>.<span class="ident">push</span>(<span class="ident">ChoiceDef</span>::<span class="ident">CounterDef</span>(<span class="ident">CounterDef</span> {
             <span class="ident">name</span>: <span class="ident">Spanned</span> {
                 <span class="ident">data</span>: <span class="ident">name</span>.<span class="ident">clone</span>(),
                 ..<span class="ident">Default</span>::<span class="ident">default</span>()
@@ -663,20 +720,33 @@
     }
 
     <span class="doccomment">/// Creates the choices that implement the quotient set.</span>
-    <span class="kw">fn</span> <span class="ident">create_quotient</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">set</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">SetDef</span>, <span class="ident">tc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">TypingContext</span>) {
+    <span class="kw">fn</span> <span class="ident">create_quotient</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">set</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">SetDef</span>,
+        <span class="ident">ir_desc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">IrDesc</span>,
+        <span class="ident">checks</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Check</span><span class="op">&gt;</span>,
+        <span class="ident">choice_defs</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ChoiceDef</span><span class="op">&gt;</span>,
+        <span class="ident">constraints</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Constraint</span><span class="op">&gt;</span>,
+        <span class="ident">triggers</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">TriggerDef</span><span class="op">&gt;</span>,
+    ) {
         <span class="kw">let</span> <span class="ident">quotient</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">quotient</span>.<span class="ident">clone</span>().<span class="ident">unwrap</span>();
 
         <span class="comment">// assert!(set.attributes().contains_key(&amp;ir::SetDefKey::AddToSet));</span>
         <span class="kw">let</span> <span class="ident">repr_name</span> <span class="op">=</span> <span class="ident">quotient</span>.<span class="ident">representant</span>;
         <span class="comment">// Create decisions to back the quotient set</span>
-        <span class="self">self</span>.<span class="ident">create_repr_choice</span>(<span class="ident">repr_name</span>.<span class="ident">clone</span>(), <span class="ident">set</span>, <span class="ident">quotient</span>.<span class="ident">item</span>.<span class="ident">name</span>.<span class="ident">clone</span>(), <span class="ident">tc</span>);
+        <span class="self">self</span>.<span class="ident">create_repr_choice</span>(
+            <span class="ident">repr_name</span>.<span class="ident">clone</span>(),
+            <span class="ident">set</span>,
+            <span class="ident">quotient</span>.<span class="ident">item</span>.<span class="ident">name</span>.<span class="ident">clone</span>(),
+            <span class="ident">ir_desc</span>,
+        );
         <span class="kw">let</span> <span class="ident">item_name</span> <span class="op">=</span> <span class="ident">quotient</span>.<span class="ident">item</span>.<span class="ident">name</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">arg_name</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">arg</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span>.<span class="ident">name</span>.<span class="ident">clone</span>());
         <span class="kw">let</span> <span class="ident">forall_vars</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">arg</span>
             .<span class="ident">clone</span>()
             .<span class="ident">into_iter</span>()
-            .<span class="ident">chain</span>(<span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">once</span>(<span class="ident">quotient</span>.<span class="ident">item</span>))
+            .<span class="ident">chain</span>(<span class="ident">once</span>(<span class="ident">quotient</span>.<span class="ident">item</span>))
             .<span class="ident">collect_vec</span>();
         <span class="kw">let</span> <span class="ident">counter_name</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">create_repr_counter</span>(
             <span class="ident">set</span>.<span class="ident">name</span>().<span class="ident">clone</span>(),
@@ -685,7 +755,8 @@
             <span class="ident">forall_vars</span>.<span class="ident">clone</span>(),
             <span class="ident">RcStr</span>::<span class="ident">new</span>(<span class="ident">quotient</span>.<span class="ident">equiv_relation</span>.<span class="number">0</span>),
             <span class="ident">quotient</span>.<span class="ident">equiv_relation</span>.<span class="number">1</span>,
-            <span class="ident">tc</span>,
+            <span class="ident">checks</span>,
+            <span class="ident">choice_defs</span>,
         );
         <span class="comment">// Generate the code that set an item as representant.</span>
         <span class="kw">let</span> <span class="ident">trigger_code</span> <span class="op">=</span> <span class="ident">print</span>::<span class="ident">add_to_quotient</span>(
@@ -726,7 +797,7 @@
             .<span class="ident">collect_vec</span>();
         <span class="ident">disjunctions</span>.<span class="ident">push</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">not_repr</span>, <span class="ident">counter_leq_zero</span>.<span class="ident">clone</span>()]);
         <span class="kw">let</span> <span class="ident">repr_constraints</span> <span class="op">=</span> <span class="ident">Constraint</span>::<span class="ident">new</span>(<span class="ident">forall_vars</span>.<span class="ident">clone</span>(), <span class="ident">disjunctions</span>);
-        <span class="ident">tc</span>.<span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">repr_constraints</span>);
+        <span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">repr_constraints</span>);
         <span class="comment">// Add the constraint `repr is TRUE || counter &gt; 0 || dividend is false`.</span>
         <span class="kw">let</span> <span class="ident">repr_true</span> <span class="op">=</span> <span class="ident">Condition</span>::<span class="ident">new_is_bool</span>(<span class="ident">repr_instance</span>, <span class="bool-val">true</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">counter_gt_zero</span> <span class="op">=</span> <span class="ident">counter_leq_zero</span>.<span class="ident">clone</span>();
@@ -736,7 +807,7 @@
             <span class="ident">cond</span>.<span class="ident">negate</span>();
             <span class="ident">repr_true_conditions</span>.<span class="ident">push</span>(<span class="ident">cond</span>);
         }
-        <span class="ident">tc</span>.<span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">Constraint</span> {
+        <span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">Constraint</span> {
             <span class="ident">forall_vars</span>: <span class="ident">forall_vars</span>.<span class="ident">clone</span>(),
             <span class="ident">disjunctions</span>: <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">repr_true_conditions</span>],
             <span class="ident">restrict_fragile</span>: <span class="bool-val">false</span>,
@@ -753,14 +824,13 @@
             .<span class="ident">arg</span>
             .<span class="ident">clone</span>()
             .<span class="ident">into_iter</span>()
-            .<span class="ident">chain</span>(<span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">once</span>(<span class="ident">quotient_item_def</span>))
+            .<span class="ident">chain</span>(<span class="ident">once</span>(<span class="ident">quotient_item_def</span>))
             .<span class="ident">collect</span>();
-        <span class="ident">tc</span>.<span class="ident">constraints</span>
-            .<span class="ident">push</span>(<span class="ident">Constraint</span>::<span class="ident">new</span>(<span class="ident">item_in_set_foralls</span>, <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">repr_true</span>]]));
+        <span class="ident">constraints</span>.<span class="ident">push</span>(<span class="ident">Constraint</span>::<span class="ident">new</span>(<span class="ident">item_in_set_foralls</span>, <span class="macro">vec</span><span class="macro">!</span>[<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">repr_true</span>]]));
         <span class="comment">// Generate the trigger that sets the repr to TRUE and add the item to the set.</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">trigger_conds</span> <span class="op">=</span> <span class="ident">quotient</span>.<span class="ident">conditions</span>;
         <span class="ident">trigger_conds</span>.<span class="ident">push</span>(<span class="ident">counter_leq_zero</span>);
-        <span class="ident">tc</span>.<span class="ident">triggers</span>.<span class="ident">push</span>(<span class="ident">TriggerDef</span> {
+        <span class="ident">triggers</span>.<span class="ident">push</span>(<span class="ident">TriggerDef</span> {
             <span class="ident">foralls</span>: <span class="ident">forall_vars</span>,
             <span class="ident">conditions</span>: <span class="ident">trigger_conds</span>,
             <span class="ident">code</span>: <span class="ident">trigger_code</span>,
@@ -771,7 +841,12 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">define</span>(
         <span class="self">self</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">CheckerContext</span>,
-        <span class="ident">tc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">TypingContext</span>,
+        <span class="ident">set_defs</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SetDef</span><span class="op">&gt;</span>,
+        <span class="ident">ir_desc</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">IrDesc</span>,
+        <span class="ident">checks</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Check</span><span class="op">&gt;</span>,
+        <span class="ident">choice_defs</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ChoiceDef</span><span class="op">&gt;</span>,
+        <span class="ident">constraints</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Constraint</span><span class="op">&gt;</span>,
+        <span class="ident">triggers</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">TriggerDef</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TypeError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">check_undefined_argument</span>(<span class="ident">context</span>)<span class="question-mark">?</span>;
         <span class="self">self</span>.<span class="ident">check_undefined_superset</span>(<span class="ident">context</span>)<span class="question-mark">?</span>;
@@ -789,13 +864,13 @@
         <span class="kw">let</span> <span class="ident">arg</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">arg</span>
             .<span class="ident">clone</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">arg</span><span class="op">|</span> <span class="ident">var_map</span>.<span class="ident">decl_argument</span>(<span class="kw-2">&amp;</span><span class="ident">tc</span>.<span class="ident">ir_desc</span>, <span class="ident">arg</span>));
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">arg</span><span class="op">|</span> <span class="ident">var_map</span>.<span class="ident">decl_argument</span>(<span class="kw-2">&amp;</span><span class="ident">ir_desc</span>, <span class="ident">arg</span>));
         <span class="kw">let</span> <span class="ident">superset</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">superset</span>
             .<span class="ident">as_ref</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">set</span><span class="op">|</span> <span class="ident">set</span>.<span class="ident">type_check</span>(<span class="kw-2">&amp;</span><span class="ident">tc</span>.<span class="ident">ir_desc</span>, <span class="kw-2">&amp;</span><span class="ident">var_map</span>));
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">set</span><span class="op">|</span> <span class="ident">set</span>.<span class="ident">type_check</span>(<span class="kw-2">&amp;</span><span class="ident">ir_desc</span>, <span class="kw-2">&amp;</span><span class="ident">var_map</span>));
         <span class="kw">for</span> <span class="ident">disjoint</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">disjoint</span> {
-            <span class="ident">tc</span>.<span class="ident">ir_desc</span>.<span class="ident">get_set_def</span>(<span class="ident">disjoint</span>);
+            <span class="ident">ir_desc</span>.<span class="ident">get_set_def</span>(<span class="ident">disjoint</span>);
         }
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">keymap</span>: <span class="ident">IndexMap</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">SetDefKey</span>, <span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">IndexMap</span>::<span class="ident">default</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">reverse</span> <span class="op">=</span> <span class="prelude-val">None</span>;
@@ -831,11 +906,9 @@
                     .<span class="ident">clone</span>()
                     .<span class="ident">unwrap</span>()
                     .<span class="ident">set</span>
-                    .<span class="ident">type_check</span>(<span class="kw-2">&amp;</span><span class="ident">tc</span>.<span class="ident">ir_desc</span>, <span class="kw-2">&amp;</span><span class="ident">VarMap</span>::<span class="ident">default</span>());
+                    .<span class="ident">type_check</span>(<span class="kw-2">&amp;</span><span class="ident">ir_desc</span>, <span class="kw-2">&amp;</span><span class="ident">VarMap</span>::<span class="ident">default</span>());
                 <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">superset</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>().<span class="ident">is_subset_of_def</span>(<span class="kw-2">&amp;</span><span class="ident">set</span>));
-                <span class="macro">assert</span><span class="macro">!</span>(
-                    <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">replace</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">reverse</span>, <span class="prelude-val">Some</span>((<span class="ident">set</span>, <span class="ident">v</span>.<span class="ident">to_owned</span>()))).<span class="ident">is_none</span>()
-                );
+                <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">mem</span>::<span class="ident">replace</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">reverse</span>, <span class="prelude-val">Some</span>((<span class="ident">set</span>, <span class="ident">v</span>.<span class="ident">to_owned</span>()))).<span class="ident">is_none</span>());
             } <span class="kw">else</span> {
                 <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">keymap</span>.<span class="ident">insert</span>(<span class="ident">key</span>, <span class="ident">v</span>).<span class="ident">is_none</span>());
             }
@@ -849,11 +922,18 @@
             <span class="self">self</span>.<span class="ident">disjoint</span>.<span class="ident">to_owned</span>(),
         );
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">quotient</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">quotient</span> {
-            <span class="self">self</span>.<span class="ident">create_quotient</span>(<span class="kw-2">&amp;</span><span class="ident">def</span>, <span class="ident">tc</span>);
+            <span class="self">self</span>.<span class="ident">create_quotient</span>(
+                <span class="kw-2">&amp;</span><span class="ident">def</span>,
+                <span class="ident">ir_desc</span>,
+                <span class="ident">checks</span>,
+                <span class="ident">choice_defs</span>,
+                <span class="ident">constraints</span>,
+                <span class="ident">triggers</span>,
+            );
         }
-        <span class="ident">tc</span>.<span class="ident">ir_desc</span>.<span class="ident">add_set_def</span>(<span class="ident">def</span>);
+        <span class="ident">ir_desc</span>.<span class="ident">add_set_def</span>(<span class="ident">def</span>);
 
-        <span class="ident">tc</span>.<span class="ident">set_defs</span>.<span class="ident">push</span>(<span class="self">self</span>);
+        <span class="ident">set_defs</span>.<span class="ident">push</span>(<span class="self">self</span>);
         <span class="prelude-val">Ok</span>(())
     }
 }

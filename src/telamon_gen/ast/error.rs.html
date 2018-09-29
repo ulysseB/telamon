@@ -82,9 +82,11 @@
 <span id="82">82</span>
 <span id="83">83</span>
 <span id="84">84</span>
+<span id="85">85</span>
 </pre><pre class="rust ">
 <span class="doccomment">/// TypeError describes the Ast error top level.</span>
-<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">ChoiceDef</span>, <span class="ident">Spanned</span>, <span class="ident">Statement</span>};
+<span class="kw">use</span> <span class="ident">ast</span>::{<span class="ident">ChoiceDef</span>, <span class="ident">Statement</span>};
+<span class="kw">use</span> <span class="ident">lexer</span>::<span class="ident">Spanned</span>;
 
 <span class="doccomment">/// Hint is a token representation.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>)]</span>
