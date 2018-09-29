@@ -16,6 +16,7 @@ pub use self::filter::*;
 pub use self::set::*;
 
 /// Describes the choices that constitute the IR.
+#[derive(Clone, Debug)]
 pub struct IrDesc {
     choices: IndexMap<RcStr, Choice>,
     enums: IndexMap<RcStr, Enum>,
@@ -378,7 +379,7 @@ impl CounterKind {
 }
 
 /// A choice that can take a few predefined values.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Enum {
     name: RcStr,
     doc: Option<RcStr>,
@@ -470,6 +471,7 @@ impl Enum {
 }
 
 /// A piece of host code called when a list of conditions are met.
+#[derive(Clone, Debug)]
 pub struct Trigger {
     pub foralls: Vec<Set>,
     pub inputs: Vec<ChoiceInstance>,

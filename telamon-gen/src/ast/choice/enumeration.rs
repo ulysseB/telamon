@@ -1,5 +1,17 @@
-use super::*;
 use std::ops::Deref;
+
+use ast::constrain::Constraint;
+use ast::context::CheckerContext;
+use ast::error::{Hint, TypeError};
+use ast::{
+    ChoiceInstance, Condition, EnumStatement, EnumStatements, HashSet, SetRef, Symmetry,
+    VarDef, VarMap,
+};
+use ir;
+use lexer::Spanned;
+
+use itertools::Itertools;
+use utils::{HashMap, RcStr};
 
 /// A toplevel definition or constraint.
 #[derive(Clone, Debug)]
@@ -239,7 +251,7 @@ impl EnumDef {
         args: Vec<VarDef>,
         value: RcStr,
         mut constraint: Constraint,
-        tc: &mut TypingContext,
+        constraints: &mut Vec<Constraint>,
     ) {
         let choice_args = args.iter().map(|def| def.name.clone()).collect::<Vec<_>>();
         let self_instance = ChoiceInstance {
@@ -255,11 +267,11 @@ impl EnumDef {
         for disjunction in &mut constraint.disjunctions {
             disjunction.push(condition.clone());
         }
-        tc.constraints.push(constraint);
+        constraints.push(constraint);
     }
 
     /// Registers an enum definition.
-    fn register_enum(&self, tc: &mut TypingContext) {
+    fn register_enum(&self, ir_desc: &mut ir::IrDesc, constraints: &mut Vec<Constraint>) {
         trace!("defining enum {}", self.name.data);
         let doc = self.doc.clone().map(RcStr::new);
         let enum_name = RcStr::new(::to_type_name(&self.name.data));
@@ -276,7 +288,7 @@ impl EnumDef {
                 self.variables.clone(),
                 value,
                 constraint,
-                tc,
+                constraints,
             );
         }
         // Typechek the anti-symmetry mapping.
@@ -292,7 +304,7 @@ impl EnumDef {
             .into_iter()
             .map(|v| {
                 let name = v.name.clone();
-                (name, var_map.decl_argument(&tc.ir_desc, v))
+                (name, var_map.decl_argument(&ir_desc, v))
             }).collect::<Vec<_>>();
         let arguments = ir::ChoiceArguments::new(
             vars.into_iter()
@@ -348,17 +360,17 @@ impl EnumDef {
             enum_.add_alias(name, values, doc);
         }
         // Register the enum and the choice.
-        tc.ir_desc.add_enum(enum_);
+        ir_desc.add_enum(enum_);
         let choice_def = ir::ChoiceDef::Enum(enum_name);
-        tc.ir_desc
-            .add_choice(ir::Choice::new(choice_name, doc, arguments, choice_def));
+        ir_desc.add_choice(ir::Choice::new(choice_name, doc, arguments, choice_def));
     }
 
     /// Type checks the define's condition.
     pub fn define(
         self,
         context: &mut CheckerContext,
-        tc: &mut TypingContext,
+        ir_desc: &mut ir::IrDesc,
+        constraints: &mut Vec<Constraint>,
     ) -> Result<(), TypeError> {
         self.check_undefined_variables(context)?;
         self.check_redefinition_parameter()?;
@@ -368,9 +380,7 @@ impl EnumDef {
         self.check_same_parameter()?;
         self.check_conflict()?;
 
-        self.register_enum(tc);
-
-        tc.choice_defs.push(ChoiceDef::EnumDef(self));
+        self.register_enum(ir_desc, constraints);
         Ok(())
     }
 }

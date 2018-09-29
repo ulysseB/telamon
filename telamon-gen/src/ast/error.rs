@@ -1,5 +1,6 @@
 /// TypeError describes the Ast error top level.
-use super::{ChoiceDef, Spanned, Statement};
+use ast::{ChoiceDef, Statement};
+use lexer::Spanned;
 
 /// Hint is a token representation.
 #[derive(Debug, Copy, Clone, PartialEq)]
