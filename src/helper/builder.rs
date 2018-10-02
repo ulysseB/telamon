@@ -1,6 +1,6 @@
 //! Helper struct to build a `Function`.
 use device::Device;
-use helper::{AutoOperand, LogicalDim, MetaStatement};
+use helper::{AutoOperand, LogicalDim, MetaStatement, TilingPattern};
 use ir::{self, mem, op, Parameter, Type};
 use ir::{
     AccessPattern, Function, InstId, Operand, Operator, Signature, ValueDef, ValueId,
@@ -232,7 +232,7 @@ impl<'a> Builder<'a> {
 
     /// Opens a new dimension.
     pub fn open_dim(&mut self, size: ir::Size<'a>) -> LogicalDim {
-        self.open_tiled_dim(size, &[])
+        self.open_tiled_dim(size, TilingPattern::default())
     }
 
     /// Opens a nest of new dimension with the given kinds and sizes.
@@ -246,23 +246,18 @@ impl<'a> Builder<'a> {
     pub fn open_tiled_dim(
         &mut self,
         size: ir::Size<'a>,
-        // This is a reference to avoid breaking the interface. This parameter will be
-        // removed when we allow specifying multiple tile sizes for each dimension so it
-        // is no worth changing the code everywhere this function is used just yet.
-        tile_sizes: &[u32],
+        tiling_pattern: TilingPattern,
     ) -> LogicalDim {
-        // TODO(strip-mining): allow multiple tile size for each level.
-        let tiling_factors = vec![tile_sizes.iter().product()];
         let (logical_id, real_ids) = unwrap!(self.function.add_logical_dim(
             size,
-            tiling_factors,
-            tile_sizes,
+            tiling_pattern.tiling_factors.clone(),
+            tiling_pattern.tile_sizes.clone(),
         ));
         self.open_dims.extend(real_ids.iter().map(|&id| (id, id)));
         LogicalDim {
             logical_id,
             real_ids,
-            tile_sizes: tile_sizes.to_vec(),
+            tiling_pattern,
         }
     }
 
@@ -271,17 +266,11 @@ impl<'a> Builder<'a> {
     /// The size of the new dim is inherited from the mapped dim.
     /// The dimension mapped to is closed if needed.
     pub fn open_mapped_dim(&mut self, old_dim: &LogicalDim) -> LogicalDim {
-        let (size, tiling_factors) = {
-            let old_dim = self.function.logical_dim(old_dim.id());
-            (
-                old_dim.total_size().clone(),
-                old_dim.possible_tilings().to_vec(),
-            )
-        };
+        let size = self.function.logical_dim(old_dim.id()).total_size().clone();
         let (new_id, new_dims) = unwrap!(self.function.add_logical_dim(
             size.clone(),
-            tiling_factors.clone(),
-            &old_dim.tile_sizes,
+            old_dim.tiling_pattern.tiling_factors.clone(),
+            old_dim.tiling_pattern.tile_sizes.clone(),
         ));
         for (old, &new) in old_dim.iter().zip_eq(&new_dims) {
             self.open_dims.remove(&old);
@@ -290,7 +279,7 @@ impl<'a> Builder<'a> {
         LogicalDim {
             logical_id: new_id,
             real_ids: new_dims,
-            tile_sizes: old_dim.tile_sizes.clone(),
+            tiling_pattern: old_dim.tiling_pattern.clone(),
         }
     }
 

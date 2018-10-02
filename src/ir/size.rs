@@ -1,6 +1,6 @@
 use ir;
-use num;
 use std;
+use utils::*;
 
 /// A fully specified size.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -75,94 +75,88 @@ where
     }
 }
 
-/// A size whose exact value is not yet decided.
+/// A size whose exact value is not yet decided. The value of `size` is
+/// `product(size.factors())/product(size.divisors())`.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct PartialSize<'a> {
-    factor: u32,
-    dividend: Vec<&'a ir::Parameter>,
-    divisor: u32,
+    static_factor: u32,
+    param_factors: Vec<&'a ir::Parameter>,
+    dim_factors: VecSet<ir::DimId>,
+    divisors: VecSet<ir::DimId>,
 }
 
 impl<'a> PartialSize<'a> {
     /// Creates a new 'PartialSize'.
-    pub fn new(factor: u32, dividend: Vec<&'a ir::Parameter>, divisor: u32) -> Self {
+    pub fn new(factor: u32, params: Vec<&'a ir::Parameter>) -> Self {
         assert!(factor != 0);
-        assert!(divisor != 0);
-        let mut new = PartialSize {
-            factor,
-            dividend,
-            divisor,
-        };
-        new.simplify();
-        new
+        PartialSize {
+            static_factor: factor,
+            param_factors: params,
+            ..Self::default()
+        }
+    }
+
+    /// Creates a new `PartialSize` equals to the size of a dimension.
+    pub fn new_dim_size(dim: ir::DimId) -> Self {
+        PartialSize {
+            dim_factors: VecSet::new(vec![dim]),
+            ..Self::default()
+        }
+    }
+
+    /// Add divisors to the size.
+    pub fn add_divisors(&mut self, divisors: &VecSet<ir::DimId>) {
+        self.divisors = self.divisors.union(divisors);
+        self.simplify();
     }
 
     /// Returns the size of a dimension if it is staticaly known.
     pub fn as_int(&self) -> Option<u32> {
-        if self.dividend.is_empty() {
-            Some(self.factor)
+        let no_params = self.param_factors.is_empty();
+        if no_params && self.dim_factors.is_empty() && self.divisors.is_empty() {
+            Some(self.static_factor)
         } else {
             None
         }
     }
 
-    /// Indicates if the size is constant.
-    pub fn is_constant(&self) -> bool {
-        self.dividend.is_empty()
-    }
-
-    /// Returns the dividends.
-    pub fn dividend(&self) -> &[&'a ir::Parameter] {
-        &self.dividend
-    }
-
-    /// Returns the divisor.
-    pub fn divisor(&self) -> u32 {
-        self.divisor
-    }
-
-    /// Returns the factor.
-    pub fn factor(&self) -> u32 {
-        self.factor
-    }
-
-    /// Multiplies the divisor by the given factor.
-    pub fn mul_divisor(&mut self, d: u32) {
-        assert_ne!(d, 0);
-        self.divisor *= d;
-        self.simplify();
-    }
-
-    /// Multiplies the factor by the given factor.
-    pub fn mul_factor(&mut self, d: u32) {
-        assert_ne!(d, 0);
-        self.factor *= d;
-        self.simplify();
-    }
-
     /// Simplifies the fraction factor/divisor.
     fn simplify(&mut self) {
-        let gcd = num::integer::gcd(self.factor, self.divisor);
-        self.factor /= gcd;
-        self.divisor /= gcd;
+        let dim_factors = std::mem::replace(&mut self.dim_factors, VecSet::default());
+        let divisors = std::mem::replace(&mut self.divisors, VecSet::default());
+        let (new_dim_factors, new_divisors) = dim_factors.relative_difference(divisors);
+        self.dim_factors = new_dim_factors;
+        self.divisors = new_divisors;
+    }
+
+    /// Returns the factors composing the size.
+    pub fn factors(&self) -> (u32, &[&'a ir::Parameter], &[ir::DimId]) {
+        (self.static_factor, &self.param_factors, &self.dim_factors)
+    }
+
+    /// Returns the divisors composing the size.
+    pub fn divisors(&self) -> &[ir::DimId] {
+        &self.divisors
     }
 }
 
 impl<'a> Default for PartialSize<'a> {
     fn default() -> Self {
         PartialSize {
-            factor: 1,
-            dividend: vec![],
-            divisor: 1,
+            static_factor: 1,
+            param_factors: Vec::new(),
+            dim_factors: VecSet::default(),
+            divisors: VecSet::default(),
         }
     }
 }
 
 impl<'a, 'b> std::ops::MulAssign<&'b PartialSize<'a>> for PartialSize<'a> {
     fn mul_assign(&mut self, rhs: &'b PartialSize<'a>) {
-        self.factor *= rhs.factor;
-        self.dividend.extend(rhs.dividend.iter().cloned());
-        self.divisor *= rhs.divisor;
+        self.static_factor *= rhs.static_factor;
+        self.param_factors.extend(rhs.param_factors.iter().cloned());
+        self.dim_factors = self.dim_factors.union(&rhs.dim_factors);
+        self.divisors = self.divisors.union(&rhs.divisors);
         self.simplify();
     }
 }
@@ -184,20 +178,31 @@ where
     where
         I: Iterator<Item = &'b PartialSize<'a>>,
     {
-        let mut total = PartialSize::default();
-        for size in iter {
-            total *= size;
+        let mut static_factor = 1;
+        let mut param_factors = vec![];
+        let mut dim_factors = vec![];
+        let mut divisors = vec![];
+        for s in iter {
+            static_factor *= s.static_factor;
+            param_factors.extend(s.param_factors.iter().cloned());
+            dim_factors.extend(s.dim_factors.iter().cloned());
+            divisors.extend(s.divisors.iter().cloned());
         }
+        let dim_factors = VecSet::new(dim_factors);
+        let divisors = VecSet::new(divisors);
+        let mut total = PartialSize {
+            static_factor,
+            param_factors,
+            dim_factors,
+            divisors,
+        };
+        total.simplify();
         total
     }
 }
 
 impl<'a> From<Size<'a>> for PartialSize<'a> {
     fn from(size: Size<'a>) -> PartialSize<'a> {
-        PartialSize {
-            factor: size.factor,
-            dividend: size.params,
-            divisor: 1,
-        }
+        PartialSize::new(size.factor, size.params)
     }
 }

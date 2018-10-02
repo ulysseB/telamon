@@ -16,11 +16,6 @@ const M: u32 = 1024;
 const N: u32 = 1024;
 const K: u32 = 1024;
 
-// Specifies how M, N and K dimensions should be tiled.
-const M_TILING: &[u32] = &[32, 4];
-const N_TILING: &[u32] = &[32, 4];
-const K_TILING: &[u32] = &[32];
-
 fn main() {
     // Step 0. Setup logging and the CUDA interface.
     env_logger::init();
@@ -46,6 +41,10 @@ fn main() {
 
     // Step 2. Define the kernel body
     let mut builder = helper::Builder::new(&signature, context.device());
+    // Define te tiling factors for dimensions `m`, `n` and `k`.
+    let m_tiling = helper::TilingPattern::new_fixed(&[32, 4]);
+    let n_tiling = helper::TilingPattern::new_fixed(&[32, 4]);
+    let k_tiling = helper::TilingPattern::new_fixed(&[32]);
     // Create two loop nests to load A and B
     // for i in 0..M:
     //   for k in 0..K:
@@ -56,8 +55,8 @@ fn main() {
     // Creates a load instruction in a loop nest of the dimensionality of the tensor. Each
     // dimension is tilied with the given tiling pattern. Thus `M_TILING.len() + K_TILING.len() +
     // 2` iteration dimensions are actually created here.
-    let ld_a = a.load(&[M_TILING, K_TILING], &mut builder);
-    let ld_b = b.load(&[K_TILING, N_TILING], &mut builder);
+    let ld_a = a.load(vec![m_tiling, k_tiling.clone()], &mut builder);
+    let ld_b = b.load(vec![k_tiling, n_tiling], &mut builder);
     // Create a loop nest n*m to intialize c.
     // for i in 0..M:
     //   for j in 0..N:

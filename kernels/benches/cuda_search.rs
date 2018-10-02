@@ -23,7 +23,7 @@ fn main() {
     benchmark::<linalg::Axpy<f32>, _>((1 << 25, true), &executor, |params, ctx| {
         saxpy_reference(&cublas_handle, params, ctx)
     });
-    // 2.82 without tb*/
+    // 2.82 without tb
     let params = linalg::MatMulP::new(128, 256, 32).static_sizes(); //.transpose_b();
     benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
         matmul_reference(&cublas_handle, params, ctx)
@@ -48,7 +48,10 @@ fn main() {
         matmul_reference(&cublas_handle, params, ctx)
     });
     // 0.87 in 2.38 hours/4H
-    let params = linalg::MatMulP::new(1024, 1024, 1024).static_sizes();
+    let mut params = linalg::MatMulP::new(1024, 1024, 1024);
+    params.m_tiling = Some(telamon::helper::TilingPattern::new_fixed(&[32, 4]));
+    params.n_tiling = Some(telamon::helper::TilingPattern::new_fixed(&[32, 4]));
+    params.k_tiling = Some(telamon::helper::TilingPattern::new_fixed(&[32]));
     benchmark::<linalg::MatMul<f32>, _>(params, &executor, |params, ctx| {
         matmul_reference(&cublas_handle, params, ctx)
     });
