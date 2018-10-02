@@ -1,7 +1,7 @@
 use codegen::{Dimension, InductionLevel, Instruction};
 use ir;
-use search_space::{DimKind, Order, SearchSpace, ThreadMapping};
 use itertools::Itertools;
+use search_space::{DimKind, Order, SearchSpace, ThreadMapping};
 use std::{self, fmt};
 
 /// Represents a CFG of the targeted device.
@@ -18,53 +18,62 @@ pub enum Cfg<'a> {
 
 impl<'a> Cfg<'a> {
     /// Iterates over the dimensions of the `Cfg`.
-    pub fn dimensions(&self) -> impl Iterator<Item=&Dimension<'a>> {
+    pub fn dimensions(&self) -> impl Iterator<Item = &Dimension<'a>> {
         match *self {
-            Cfg::Root(ref body) | Cfg::Threads(_, _, ref body) =>
+            Cfg::Root(ref body) | Cfg::Threads(_, _, ref body) => {
                 Box::new(body.iter().flat_map(|cfg| cfg.dimensions()))
-                    as Box<Iterator<Item=_>>,
+                    as Box<Iterator<Item = _>>
+            }
             Cfg::Loop(ref dim, ref body) => {
                 let body_dims = body.iter().flat_map(|cfg| cfg.dimensions());
                 Box::new(std::iter::once(dim).chain(body_dims)) as _
-            },
+            }
             Cfg::Instruction(..) => Box::new(std::iter::empty()) as _,
         }
     }
 
     /// Iterates over the instructions of the `Cfg`.
-    pub fn instructions(&self) -> impl Iterator<Item=&Instruction<'a>> {
+    pub fn instructions(&self) -> impl Iterator<Item = &Instruction<'a>> {
         match *self {
-            Cfg::Root(ref body) |
-            Cfg::Loop(_, ref body) |
-            Cfg::Threads(_, _, ref body) => {
+            Cfg::Root(ref body)
+            | Cfg::Loop(_, ref body)
+            | Cfg::Threads(_, _, ref body) => {
                 let iter = body.iter().flat_map(|cfg| cfg.instructions());
-                Box::new(iter) as Box<Iterator<Item=_>>
+                Box::new(iter) as Box<Iterator<Item = _>>
             }
             Cfg::Instruction(ref inst) => Box::new(std::iter::once(inst)) as _,
         }
     }
 
     /// Iterates over the induction levels in the `Cfg`.
-    pub fn induction_levels(&self) -> impl Iterator<Item=&InductionLevel<'a>> {
+    pub fn induction_levels(&self) -> impl Iterator<Item = &InductionLevel<'a>> {
         match *self {
             Cfg::Threads(_, ref ind_levels, ref body) => {
-                let levels = body.iter().flat_map(|c| c.induction_levels())
+                let levels = body
+                    .iter()
+                    .flat_map(|c| c.induction_levels())
                     .chain(ind_levels);
-                Box::new(levels) as Box<Iterator<Item=_>>
+                Box::new(levels) as Box<Iterator<Item = _>>
             }
-            Cfg::Root(ref body) =>
-                Box::new(body.iter().flat_map(|c| c.induction_levels())), 
-            Cfg::Loop(ref dim, ref body) =>
-                Box::new(body.iter().flat_map(|c| c.induction_levels())
-                         .chain(dim.induction_levels())), 
-            Cfg::Instruction(..) => Box::new(std::iter::empty())
+            Cfg::Root(ref body) => {
+                Box::new(body.iter().flat_map(|c| c.induction_levels()))
+            }
+            Cfg::Loop(ref dim, ref body) => Box::new(
+                body.iter()
+                    .flat_map(|c| c.induction_levels())
+                    .chain(dim.induction_levels()),
+            ),
+            Cfg::Instruction(..) => Box::new(std::iter::empty()),
         }
     }
 
     /// Builds a CFG from a list of `CfgEvent`.
-    fn body_from_events<IT>(events: &mut std::iter::Peekable<IT>,
-                            num_thread_dims: usize) -> Vec<Cfg<'a>>
-        where IT: Iterator<Item=CfgEvent<'a>>
+    fn body_from_events<IT>(
+        events: &mut std::iter::Peekable<IT>,
+        num_thread_dims: usize,
+    ) -> Vec<Cfg<'a>>
+    where
+        IT: Iterator<Item = CfgEvent<'a>>,
     {
         use self::CfgEvent::*;
         let mut body = vec![];
@@ -84,7 +93,9 @@ impl<'a> Cfg<'a> {
                         if let Enter(_, EntryEvent::ThreadDim(pos, levels)) = next {
                             dim_poses[pos] = true;
                             ind_levels.extend(levels);
-                        } else { unreachable!() };
+                        } else {
+                            unreachable!()
+                        };
                     }
                     let inner = Cfg::body_from_events(events, 0);
                     body.push(Cfg::Threads(dim_poses, ind_levels, inner));
@@ -116,10 +127,12 @@ impl<'a> Cfg<'a> {
         for (handle_threads, cfgs) in &groups {
             if handle_threads {
                 new_body.extend(cfgs.map(|cfg| match cfg {
-                    Cfg::Root(inner) =>
-                        Cfg::Root(Self::add_empty_threads(inner, num_thread_dims)),
-                    Cfg::Loop(dim, inner) =>
-                        Cfg::Loop(dim, Self::add_empty_threads(inner, num_thread_dims)),
+                    Cfg::Root(inner) => {
+                        Cfg::Root(Self::add_empty_threads(inner, num_thread_dims))
+                    }
+                    Cfg::Loop(dim, inner) => {
+                        Cfg::Loop(dim, Self::add_empty_threads(inner, num_thread_dims))
+                    }
                     cfg => cfg,
                 }))
             } else {
@@ -133,34 +146,37 @@ impl<'a> Cfg<'a> {
     /// Indicates if the `Cfg` handles thread parallelism.
     fn handle_threads(&self) -> bool {
         match *self {
-            Cfg::Root(ref inners) |
-            Cfg::Loop(_, ref inners) => inners.iter().any(|c| c.handle_threads()),
+            Cfg::Root(ref inners) | Cfg::Loop(_, ref inners) => {
+                inners.iter().any(|c| c.handle_threads())
+            }
             Cfg::Threads(..) => true,
             Cfg::Instruction(..) => false,
         }
     }
 }
 
-
 impl<'a> fmt::Debug for Cfg<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Cfg::Root(ref inners) => write!(f, "{:?}", inners),
-            Cfg::Loop(ref dim, ref inners) =>
-                write!(f, "Loop([{:?}], {:?})", dim.dim_ids().format(","), inners),
+            Cfg::Loop(ref dim, ref inners) => {
+                write!(f, "Loop([{:?}], {:?})", dim.dim_ids().format(","), inners)
+            }
             Cfg::Instruction(ref inst) => write!(f, "inst {:?}", inst.id()),
-            Cfg::Threads(ref dims, _, ref inners) =>
-                write!(f, "threads({:?}, {:?})", dims, inners),
+            Cfg::Threads(ref dims, _, ref inners) => {
+                write!(f, "threads({:?}, {:?})", dims, inners)
+            }
         }
     }
 }
 
-/// Builds the CFG from the list of dimensions and instructions. Also returns the list of
-/// thread and block dimensions.
-pub fn build<'a>(space: &'a SearchSpace<'a>,
-                 insts: Vec<Instruction<'a>>,
-                 dims: Vec<Dimension<'a>>)
-    -> (Vec<Dimension<'a>>, Vec<Dimension<'a>>, Cfg<'a>)
+/// Builds the CFG from the list of dimensions and instructions. Also returns
+/// the list of thread and block dimensions.
+pub fn build<'a>(
+    space: &'a SearchSpace<'a>,
+    insts: Vec<Instruction<'a>>,
+    dims: Vec<Dimension<'a>>,
+) -> (Vec<Dimension<'a>>, Vec<Dimension<'a>>, Cfg<'a>)
 {
     let (block_dims, thread_dims, mut events) = gen_events(space, insts, dims);
     events.sort_by(|lhs, rhs| lhs.cmp(rhs, space));
@@ -184,38 +200,45 @@ enum EntryEvent<'a> {
 }
 
 /// An event to process when exiting a dimension.
-enum ExitEvent { SeqDim, ThreadDim }
+enum ExitEvent {
+    SeqDim,
+    ThreadDim,
+}
 
 impl<'a> CfgEvent<'a> {
     /// Indiciates the order of `self` with regards to `other`.
     fn cmp(&self, other: &CfgEvent, space: &SearchSpace) -> std::cmp::Ordering {
         let (lhs_bb, rhs_bb) = (self.bb_id(), other.bb_id());
-        if lhs_bb == rhs_bb { self.cmp_within_bb(other) } else {
+        if lhs_bb == rhs_bb {
+            self.cmp_within_bb(other)
+        } else {
             use self::CfgEvent::*;
             use std::cmp::Ordering::*;
             let order = space.domain().get_order(lhs_bb, rhs_bb);
             match (self, other, order) {
                 (_, _, Order::MERGED) => self.cmp_within_bb(other),
                 (&Exec(_), &Exec(_), Order::ORDERED) => lhs_bb.cmp(&rhs_bb),
-                (_, _, Order::BEFORE) |
-                (&Enter(..), _, Order::OUTER) |
-                (_, &Exit(..), Order::INNER) => Less,
-                (_, _, Order::AFTER) |
-                (_, &Enter(..), Order::INNER) |
-                (&Exit(..), _, Order::OUTER) => Greater,
-                (lhs, rhs, ord) =>
-                    panic!("Invalid order between {:?} and {:?}: {:?}.", lhs, rhs, ord),
+                (_, _, Order::BEFORE)
+                | (&Enter(..), _, Order::OUTER)
+                | (_, &Exit(..), Order::INNER) => Less,
+                (_, _, Order::AFTER)
+                | (_, &Enter(..), Order::INNER)
+                | (&Exit(..), _, Order::OUTER) => Greater,
+                (lhs, rhs, ord) => {
+                    panic!("Invalid order between {:?} and {:?}: {:?}.", lhs, rhs, ord)
+                }
             }
         }
     }
 
-    /// Indicates the order of `self with `other`, assuming they are events on the same
-    /// basic block.
+    /// Indicates the order of `self with `other`, assuming they are events on
+    /// the same basic block.
     fn cmp_within_bb(&self, other: &CfgEvent) -> std::cmp::Ordering {
         use self::CfgEvent::*;
         match (self, other) {
-            (&Enter(..), &Enter(..)) | (&Exec(..), &Exec(..)) | (&Exit(..), &Exit(..))
-                => std::cmp::Ordering::Equal,
+            (&Enter(..), &Enter(..))
+            | (&Exec(..), &Exec(..))
+            | (&Exit(..), &Exit(..)) => std::cmp::Ordering::Equal,
             (&Enter(..), _) | (_, &Exit(..)) => std::cmp::Ordering::Less,
             (&Exit(..), _) | (_, &Enter(..)) => std::cmp::Ordering::Greater,
         }
@@ -240,11 +263,13 @@ impl<'a> fmt::Debug for CfgEvent<'a> {
     }
 }
 
-/// Generates the list of `CfgEvent`s and the list of block and thread dimensions.
-fn gen_events<'a>(space: &'a SearchSpace<'a>,
-                  insts: Vec<Instruction<'a>>,
-                  dims: Vec<Dimension<'a>>)
-    -> (Vec<Dimension<'a>>, Vec<Dimension<'a>>, Vec<CfgEvent<'a>>)
+/// Generates the list of `CfgEvent`s and the list of block and thread
+/// dimensions.
+fn gen_events<'a>(
+    space: &'a SearchSpace<'a>,
+    insts: Vec<Instruction<'a>>,
+    dims: Vec<Dimension<'a>>,
+) -> (Vec<Dimension<'a>>, Vec<Dimension<'a>>, Vec<CfgEvent<'a>>)
 {
     let mut block_dims = Vec::new();
     let mut thread_dims = Vec::new();
@@ -256,36 +281,45 @@ fn gen_events<'a>(space: &'a SearchSpace<'a>,
             DimKind::THREAD => {
                 events.push(CfgEvent::Exit(dim.id(), ExitEvent::ThreadDim));
                 thread_dims.push(dim);
-            },
+            }
             _ => {
                 events.push(CfgEvent::Exit(dim.id(), ExitEvent::SeqDim));
                 events.push(CfgEvent::Enter(dim.id(), EntryEvent::SeqDim(dim)));
-            },
+            }
         }
     }
     // Sort block dims.
     block_dims.sort_unstable_by(|lhs, rhs| {
-        if lhs.id() == rhs.id() { return std::cmp::Ordering::Equal; }
+        if lhs.id() == rhs.id() {
+            return std::cmp::Ordering::Equal;
+        }
         match space.domain().get_order(lhs.id().into(), rhs.id().into()) {
             Order::OUTER => std::cmp::Ordering::Less,
             Order::INNER => std::cmp::Ordering::Greater,
-            _ => panic!("invalid order between block dim {:?} and {:?}",
-                        lhs.id(), rhs.id()),
+            _ => panic!(
+                "invalid order between block dim {:?} and {:?}",
+                lhs.id(),
+                rhs.id()
+            ),
         }
     });
     // Sort and group thread dims.
     let mut sorted_thread_dims = Vec::with_capacity(3);
     for dim in thread_dims {
         let pos = sorted_thread_dims.binary_search_by(|probe: &Vec<Dimension>| {
-            if probe[0].id() == dim.id() { return std::cmp::Ordering::Equal; }
+            if probe[0].id() == dim.id() {
+                return std::cmp::Ordering::Equal;
+            }
             match space.domain().get_thread_mapping(probe[0].id(), dim.id()) {
                 ThreadMapping::MAPPED_OUT => std::cmp::Ordering::Less,
                 ThreadMapping::MAPPED_IN => std::cmp::Ordering::Greater,
                 ThreadMapping::MAPPED => std::cmp::Ordering::Equal,
-                mapping => {
-                    panic!("invalid mapping between thread dims {:?} and {:?}: {:?}",
-                           probe[0].id(), dim.id(), mapping)
-                }
+                mapping => panic!(
+                    "invalid mapping between thread dims {:?} and {:?}: {:?}",
+                    probe[0].id(),
+                    dim.id(),
+                    mapping
+                ),
             }
         });
         match pos {
@@ -294,12 +328,19 @@ fn gen_events<'a>(space: &'a SearchSpace<'a>,
         }
     }
     // Register thread entering events.
-    let thread_dims = sorted_thread_dims.into_iter().enumerate().map(|(pos, mut dims)| {
-        for dim in &mut dims {
-            let event = EntryEvent::ThreadDim(pos, dim.drain_induction_levels());
-            events.push(CfgEvent::Enter(dim.id(), event));
-        }
-        unwrap!(dims.into_iter().fold1(|mut x, y| { x.merge_from(y); x }))
-    }).collect();
+    let thread_dims = sorted_thread_dims
+        .into_iter()
+        .enumerate()
+        .map(|(pos, mut dims)| {
+            for dim in &mut dims {
+                let event = EntryEvent::ThreadDim(pos, dim.drain_induction_levels());
+                events.push(CfgEvent::Enter(dim.id(), event));
+            }
+            unwrap!(dims.into_iter().fold1(|mut x, y| {
+                x.merge_from(y);
+                x
+            }))
+        })
+        .collect();
     (block_dims, thread_dims, events)
 }

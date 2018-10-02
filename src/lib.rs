@@ -4,14 +4,14 @@ extern crate config;
 extern crate crossbeam;
 #[cfg(test)]
 extern crate env_logger;
-extern crate getopts;
 extern crate errno;
+extern crate getopts;
 extern crate interval_heap;
+#[cfg(feature = "cuda")]
+extern crate ipc_channel;
 extern crate itertools;
 extern crate libloading;
 extern crate tempfile;
-#[cfg(feature="cuda")]
-extern crate ipc_channel;
 #[macro_use]
 extern crate lazy_static;
 extern crate libc;
@@ -20,19 +20,19 @@ extern crate linked_list;
 extern crate log;
 #[macro_use]
 extern crate matches;
+extern crate futures;
 extern crate ndarray;
 extern crate num;
 extern crate num_cpus;
-#[cfg(feature="mppa")]
+#[cfg(feature = "mppa")]
 extern crate parking_lot;
-#[cfg(feature="cuda")]
+#[cfg(feature = "cuda")]
 extern crate prctl;
 extern crate rand;
 extern crate rpds;
-extern crate futures;
-extern crate tokio_timer;
-#[cfg(feature="cuda")]
+#[cfg(feature = "cuda")]
 extern crate rustc_serialize;
+extern crate tokio_timer;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;

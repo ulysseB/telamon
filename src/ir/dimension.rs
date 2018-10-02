@@ -7,7 +7,7 @@ use std::hash::{Hash, Hasher};
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Id(pub u32);
 
-impl fmt::Debug  for Id {
+impl fmt::Debug for Id {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "dim::Id({})", self.0)
     }
@@ -31,7 +31,8 @@ impl<'a> Dimension<'a> {
     pub fn new(size: ir::Size, id: Id) -> Dimension {
         assert_ne!(size.as_int(), Some(1));
         Dimension {
-            size, id,
+            size,
+            id,
             iterated: Vec::new(),
             is_thread_dim: false,
         }
@@ -44,7 +45,7 @@ impl<'a> Dimension<'a> {
     pub fn id(&self) -> Id { self.id }
 
     /// Returns the constructs iterated along this dimension.
-    pub fn iterated<'b>(&'b self) -> impl Iterator<Item=ir::InstId> + 'b {
+    pub fn iterated<'b>(&'b self) -> impl Iterator<Item = ir::InstId> + 'b {
         self.iterated.iter().cloned()
     }
 

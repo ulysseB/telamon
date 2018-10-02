@@ -23,8 +23,9 @@ where K: Hash + Eq + Clone
         Cache { map, capacity }
     }
 
-    /// Returns the element associated to `key` in the cache. Generates the element with
-    /// `gen` and store it in the cache if it is not already present.
+    /// Returns the element associated to `key` in the cache. Generates the
+    /// element with `gen` and store it in the cache if it is not already
+    /// present.
     pub fn get<F>(&self, key: &K, gen: F) -> Arc<V>
     where F: FnOnce() -> V {
         // Check if the entry alread exists.
@@ -37,7 +38,8 @@ where K: Hash + Eq + Clone
         }
         // Otherwise tack an exclusive lock
         let mut map = self.map.write().unwrap();
-        let v = map.entry(key.clone())
+        let v = map
+            .entry(key.clone())
             .or_insert_with(move || Arc::new(gen()))
             .clone();
         if map.len() > self.capacity {

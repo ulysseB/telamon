@@ -1,14 +1,14 @@
 #![allow(dead_code)]
 //! Provides a fake implementations of device traits for testing.
-use telamon::codegen;
-use telamon::device::{self, ScalarArgument, ArrayArgument};
-use telamon::ir::{self, Operator};
-use telamon::explorer::Candidate;
-use telamon::search_space::{SearchSpace, DimKind};
-use telamon::model::{self, HwPressure};
-use std::sync::Arc;
 use std::f64;
 use std::io::Write;
+use std::sync::Arc;
+use telamon::codegen;
+use telamon::device::{self, ArrayArgument, ScalarArgument};
+use telamon::explorer::Candidate;
+use telamon::ir::{self, Operator};
+use telamon::model::{self, HwPressure};
+use telamon::search_space::{DimKind, SearchSpace};
 use utils::*;
 
 use std::marker::PhantomData;
@@ -18,44 +18,52 @@ pub struct Device {
 }
 
 impl Default for Device {
-    fn default() -> Device { Device { shared_mem_size: 1 << 17 } }
+    fn default() -> Device {
+        Device {
+            shared_mem_size: 1 << 17,
+        }
+    }
 }
 
 impl device::Device for Device {
     fn name(&self) -> &str { "fake_device" }
 
-    fn print(&self, _: &codegen::Function, _: &mut Write) { }
+    fn print(&self, _: &codegen::Function, _: &mut Write) {}
 
     fn is_valid_type(&self, _: &ir::Type) -> bool { true }
 
     fn max_unrolling(&self) -> u32 { 256 }
 
     fn can_vectorize(&self, dim: &ir::Dimension, op: &ir::Operator) -> bool {
-        // TODO(search_space): compute vectorizable info for tmp Ld/St. On vectorization,
-        // the layout must be constrained.
+        // TODO(search_space): compute vectorizable info for tmp Ld/St. On
+        // vectorization, the layout must be constrained.
         match *op {
             Operator::St(_, ref operand, _, ref pattern) => {
                 if let Some(type_len) = operand.t().len_byte() {
-                    dim.size().as_int().into_iter().any(|x| x == 2 || x == 4) &&
-                        pattern.stride(dim.id()) == ir::Stride::Int(type_len as i32)
-                } else { false }
-            },
+                    dim.size().as_int().into_iter().any(|x| x == 2 || x == 4)
+                        && pattern.stride(dim.id()) == ir::Stride::Int(type_len as i32)
+                } else {
+                    false
+                }
+            }
             Operator::Ld(ref t, _, ref pattern) => {
                 if let Some(type_len) = t.len_byte() {
-                    dim.size().as_int().into_iter().any(|x| x == 2 || x == 4) &&
-                        pattern.stride(dim.id()) == ir::Stride::Int(type_len as i32)
-                } else { false }
-            },
-            Operator::BinOp(..) |
-                Operator::Mul(..) |
-                Operator::Mad(..) |
-                Operator::Mov(..) |
-                Operator::Cast(..) => false,
-                Operator::TmpLd(..) |
-                    Operator::TmpSt(..) => dim.size().as_int().into_iter().any(|x| x == 2 || x == 4),
+                    dim.size().as_int().into_iter().any(|x| x == 2 || x == 4)
+                        && pattern.stride(dim.id()) == ir::Stride::Int(type_len as i32)
+                } else {
+                    false
+                }
+            }
+            Operator::BinOp(..)
+            | Operator::Mul(..)
+            | Operator::Mad(..)
+            | Operator::Mov(..)
+            | Operator::Cast(..) => false,
+            Operator::TmpLd(..) | Operator::TmpSt(..) => {
+                dim.size().as_int().into_iter().any(|x| x == 2 || x == 4)
+            }
         }
     }
-
 
     fn max_block_dims(&self) -> u32 { 3 }
 
@@ -75,11 +83,15 @@ impl device::Device for Device {
         (HwPressure::zero(self), HwPressure::zero(self))
     }
 
-    fn hw_pressure(&self, _: &SearchSpace,
-                   _: &HashMap<ir::dim::Id, u32>,
-                   _: &HashMap<ir::BBId, model::Nesting>,
-                   _: &ir::BasicBlock,
-                   _: &device::Context) -> HwPressure {
+    fn hw_pressure(
+        &self,
+        _: &SearchSpace,
+        _: &HashMap<ir::dim::Id, u32>,
+        _: &HashMap<ir::BBId, model::Nesting>,
+        _: &ir::BasicBlock,
+        _: &device::Context,
+    ) -> HwPressure
+    {
         HwPressure::zero(self)
     }
 
@@ -101,7 +113,7 @@ impl device::Device for Device {
 
     fn total_rates(&self) -> HwPressure { HwPressure::new(1.0, vec![1.0, 1.0, 1.0]) }
 
-    fn add_block_overhead(&self, _: u64, _: u64, _: &mut HwPressure) { }
+    fn add_block_overhead(&self, _: u64, _: u64, _: &mut HwPressure) {}
 }
 
 /// A fake context.
@@ -123,9 +135,16 @@ impl device::Context for Context {
 
     fn param_as_size(&self, _: &str) -> Option<u32> { Some(1) }
 
-    fn async_eval<'b, 'c>(&self, _: usize, _: device::EvalMode,
-                          inner: &(Fn(&mut device::AsyncEvaluator<'b, 'c>) + Sync)) {
-        inner(&mut Evaluator { phantom: PhantomData });
+    fn async_eval<'b, 'c>(
+        &self,
+        _: usize,
+        _: device::EvalMode,
+        inner: &(Fn(&mut device::AsyncEvaluator<'b, 'c>) + Sync),
+    )
+    {
+        inner(&mut Evaluator {
+            phantom: PhantomData,
+        });
     }
 }
 
@@ -136,8 +155,11 @@ impl device::ArgMap for Context {
         assert_eq!(param.t, S::t());
     }
 
-    fn bind_array<S: ScalarArgument>(&mut self, _: &ir::Parameter, _: usize)
-        -> Arc<Self::Array>
+    fn bind_array<S: ScalarArgument>(
+        &mut self,
+        _: &ir::Parameter,
+        _: usize,
+    ) -> Arc<Self::Array>
     {
         Arc::new(Array)
     }
@@ -148,7 +170,7 @@ pub struct Array;
 impl ArrayArgument for Array {
     fn read_i8(&self) -> Vec<i8> { vec![] }
 
-    fn write_i8(&self, _: &[i8]) { }
+    fn write_i8(&self, _: &[i8]) {}
 }
 
 /// A fake asynchronous evaluator.
@@ -156,10 +178,17 @@ struct Evaluator<'a, 'b> {
     phantom: PhantomData<(&'a (), &'b ())>,
 }
 
-impl<'a, 'b, 'c > device::AsyncEvaluator<'a, 'c> for Evaluator<'a, 'b>
-where 'a: 'b, 'c: 'b {
-    fn add_kernel(&mut self, candidate: Candidate<'a>,
-                  callback: device::AsyncCallback<'a, 'c>) {
+impl<'a, 'b, 'c> device::AsyncEvaluator<'a, 'c> for Evaluator<'a, 'b>
+where
+    'a: 'b,
+    'c: 'b,
+{
+    fn add_kernel(
+        &mut self,
+        candidate: Candidate<'a>,
+        callback: device::AsyncCallback<'a, 'c>,
+    )
+    {
         // Try to compile the function to check it works.
         codegen::Function::build(&candidate.space);
         callback.call(candidate, 1.0);

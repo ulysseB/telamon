@@ -11,9 +11,15 @@ pub struct Adaptator {
 impl Adaptator {
     /// Creates an adaptator that maps the arguments to the given names.
     pub fn from_arguments(args: &[ir::Variable]) -> Self {
-        let variables = args.iter().enumerate()
-            .map(|(id, &v)| (ir::Variable::Arg(id), v)).collect();
-        Adaptator { variables, .. Default::default() }
+        let variables = args
+            .iter()
+            .enumerate()
+            .map(|(id, &v)| (ir::Variable::Arg(id), v))
+            .collect();
+        Adaptator {
+            variables,
+            ..Default::default()
+        }
     }
 
     /// Adapts a variable.
@@ -27,8 +33,11 @@ impl Adaptator {
     }
 
     /// Sets the mapping of a variable. Returns the previous mapping.
-    pub fn set_variable(&mut self, old: ir::Variable, new: ir::Variable)
-        -> Option<ir::Variable>
+    pub fn set_variable(
+        &mut self,
+        old: ir::Variable,
+        new: ir::Variable,
+    ) -> Option<ir::Variable>
     {
         self.variables.insert(old, new)
     }
@@ -49,7 +58,9 @@ pub trait Adaptable {
     fn adapt(&self, adaptator: &Adaptator) -> Self;
 }
 
-impl<T> Adaptable for Vec<T> where T: Adaptable {
+impl<T> Adaptable for Vec<T>
+where T: Adaptable
+{
     fn adapt(&self, adaptator: &Adaptator) -> Self {
         self.iter().map(|x| x.adapt(adaptator)).collect()
     }

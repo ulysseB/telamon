@@ -1,6 +1,6 @@
 #![allow(dead_code)]
-use ::libc;
-use ::ir;
+use ir;
+use libc;
 
 use std::fmt;
 
@@ -121,11 +121,22 @@ pub enum YyToken {
     EOF = libc::EOF as _,
 }
 
-extern {
+extern "C" {
     pub fn yylex_init(scanner: *const YyScan) -> libc::c_int;
-    pub fn yy_scan_string(yy_str: *const libc::c_char, yyscanner: YyScan) -> YyBufferState;
-    pub fn yy_scan_buffer(base: *const libc::c_char, size: YySize, yyscanner: YyScan) -> YyBufferState;
-    pub fn yy_scan_bytes(base: *const libc::c_char, len: libc::c_int, yyscanner: YyScan) -> YyBufferState;
+    pub fn yy_scan_string(
+        yy_str: *const libc::c_char,
+        yyscanner: YyScan,
+    ) -> YyBufferState;
+    pub fn yy_scan_buffer(
+        base: *const libc::c_char,
+        size: YySize,
+        yyscanner: YyScan,
+    ) -> YyBufferState;
+    pub fn yy_scan_bytes(
+        base: *const libc::c_char,
+        len: libc::c_int,
+        yyscanner: YyScan,
+    ) -> YyBufferState;
     pub fn yyget_extra(yyscanner: YyScan) -> YyExtraType;
     pub fn yylex(yyscanner: YyScan) -> YyToken;
     pub fn yyget_text(yyscanner: YyScan) -> *mut libc::c_char;

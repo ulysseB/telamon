@@ -1,20 +1,23 @@
 //! Exhaust IR generators.
-use telamon::ir;
 use telamon::device::Device;
 use telamon::helper::{Builder, Reduce};
+use telamon::ir;
 use telamon::search_space::{DimKind, InstFlag, Order, SearchSpace};
 
 /// Increment the values stored in an array.
 #[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
-pub fn incr_array<'a>(signature: &'a ir::Signature,
-                      device: &'a Device,
-                      ld_flag: InstFlag,
-                      st_flag: InstFlag,
-                      n_outer: &str,
-                      n_inner: &str,
-                      stride: &str,
-                      tab_id: ir::mem::Id,
-                      tab: &str) -> SearchSpace<'a> {
+pub fn incr_array<'a>(
+    signature: &'a ir::Signature,
+    device: &'a Device,
+    ld_flag: InstFlag,
+    st_flag: InstFlag,
+    n_outer: &str,
+    n_inner: &str,
+    stride: &str,
+    tab_id: ir::mem::Id,
+    tab: &str,
+) -> SearchSpace<'a>
+{
     let mut builder = Builder::new(signature, device);
     let (_, inner_dim) = two_nested_loop(n_outer, n_inner, &mut builder);
     let ptr = builder.mad(&inner_dim, &stride, &tab);
@@ -25,18 +28,21 @@ pub fn incr_array<'a>(signature: &'a ir::Signature,
     builder.get()
 }
 
-/// Load two successive values, add them and store the results at the two locations. Every
-/// location is used in two consecutive iterations of the loop.
+/// Load two successive values, add them and store the results at the two
+/// locations. Every location is used in two consecutive iterations of the loop.
 #[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
-pub fn add_successive<'a>(signature: &'a ir::Signature,
-                          device: &'a Device,
-                          ld_flag: InstFlag,
-                          st_flag: InstFlag,
-                          n_outer: &str,
-                          n_inner: &str,
-                          stride: &str,
-                          tab_id: ir::mem::Id,
-                          tab: &str) -> SearchSpace<'a> {
+pub fn add_successive<'a>(
+    signature: &'a ir::Signature,
+    device: &'a Device,
+    ld_flag: InstFlag,
+    st_flag: InstFlag,
+    n_outer: &str,
+    n_inner: &str,
+    stride: &str,
+    tab_id: ir::mem::Id,
+    tab: &str,
+) -> SearchSpace<'a>
+{
     let mut builder = Builder::new(signature, device);
     let (_, inner_dim) = two_nested_loop(n_outer, n_inner, &mut builder);
     let ptr = builder.mad(&inner_dim, &stride, &tab);
@@ -52,14 +58,17 @@ pub fn add_successive<'a>(signature: &'a ir::Signature,
 
 /// Accumulate the values stored in an array.
 #[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
-pub fn acc_array<'a>(signature: &'a ir::Signature,
-                     device: &'a Device,
-                     ld_flag: InstFlag,
-                     n_outer: &str,
-                     n_inner: &str,
-                     stride: &str,
-                     tab_id: ir::mem::Id,
-                     tab: &str) -> SearchSpace<'a> {
+pub fn acc_array<'a>(
+    signature: &'a ir::Signature,
+    device: &'a Device,
+    ld_flag: InstFlag,
+    n_outer: &str,
+    n_inner: &str,
+    stride: &str,
+    tab_id: ir::mem::Id,
+    tab: &str,
+) -> SearchSpace<'a>
+{
     let mut builder = Builder::new(signature, device);
     let acc_init = builder.mov(&0f32);
     let (_, inner_dim) = two_nested_loop(n_outer, n_inner, &mut builder);
@@ -79,14 +88,17 @@ pub fn acc_array<'a>(signature: &'a ir::Signature,
 
 /// Stores a value every `stride` in `tab`.
 #[cfg_attr(feature = "cargo-clippy", allow(too_many_arguments))]
-pub fn write_array<'a>(signature: &'a ir::Signature,
-                       device: &'a Device,
-                       st_flag: InstFlag,
-                       n_outer: &str,
-                       n_inner: &str,
-                       stride: &str,
-                       tab_id: ir::mem::Id,
-                       tab: &str) -> SearchSpace<'a> {
+pub fn write_array<'a>(
+    signature: &'a ir::Signature,
+    device: &'a Device,
+    st_flag: InstFlag,
+    n_outer: &str,
+    n_inner: &str,
+    stride: &str,
+    tab_id: ir::mem::Id,
+    tab: &str,
+) -> SearchSpace<'a>
+{
     let mut builder = Builder::new(signature, device);
     let (_, inner_dim) = two_nested_loop(n_outer, n_inner, &mut builder);
     let ptr = builder.mad(&inner_dim, &stride, &tab);
@@ -96,8 +108,12 @@ pub fn write_array<'a>(signature: &'a ir::Signature,
 }
 
 /// Adds to nested loops to the builder. Returns ths IDs of the loops.
-fn two_nested_loop(n_outer: &str, n_inner: &str, builder: &mut Builder
-                   ) -> (ir::dim::Id, ir::dim::Id) {
+fn two_nested_loop(
+    n_outer: &str,
+    n_inner: &str,
+    builder: &mut Builder,
+) -> (ir::dim::Id, ir::dim::Id)
+{
     let outer_size = builder.param_size(n_outer);
     let inner_size = builder.param_size(n_inner);
     let outer_dim = builder.open_dim_ex(outer_size, DimKind::LOOP);

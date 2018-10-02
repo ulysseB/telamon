@@ -17,14 +17,22 @@ impl<'a> Size<'a> {
     pub fn new(factor: u32, dividend: Vec<&'a ir::Parameter>, divisor: u32) -> Self {
         assert!(factor != 0);
         assert!(divisor != 0);
-        let mut new = Size { factor, dividend, divisor };
+        let mut new = Size {
+            factor,
+            dividend,
+            divisor,
+        };
         new.simplify();
         new
     }
 
     /// Returns the size of a dimension if it is staticaly known.
     pub fn as_int(&self) -> Option<u32> {
-        if self.dividend.is_empty() { Some(self.factor) } else { None }
+        if self.dividend.is_empty() {
+            Some(self.factor)
+        } else {
+            None
+        }
     }
 
     /// Indicates if the size is constant.

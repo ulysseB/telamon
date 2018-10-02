@@ -102,13 +102,16 @@ where T: 'a + Integer + Clone
                 let mut i = current.len() - 1;
                 loop {
                     current[i] = current[i].clone() + T::one();
-                    if current[i] != self.max[i] || i == 0 { break; }
+                    if current[i] != self.max[i] || i == 0 {
+                        break;
+                    }
                     current[i] = T::zero();
                     i -= 1;
                 }
             }
         }
-        if self.current
+        if self
+            .current
             .as_ref()
             .map(|x| x.is_empty() || x[0] == self.max[0])
             .unwrap_or(false)
@@ -125,8 +128,9 @@ pub struct ViewMut<'a, T> {
     array: *mut NDArray<T>,
     /// The size of each dimension.
     bounds: Vec<usize>,
-    /// Lists the dimensions that have a fixed value, in increasing order. The second
-    /// element of the tuple is the value of the fixed index on this dimension.
+    /// Lists the dimensions that have a fixed value, in increasing order. The
+    /// second element of the tuple is the value of the fixed index on this
+    /// dimension.
     fixed_indexes: Vec<(usize, usize)>,
     /// Ensures the pointer is valid.
     marker: PhantomData<&'a ()>,
@@ -144,7 +148,8 @@ impl<'a, T> ViewMut<'a, T> {
         // The fixed dimensions `j` at `fixed_indexes[i]` has `j-i` free dimensions
         // with a lower id. The new fixed dimension must thus be placed at the
         // first place where `logical_dim < j-i`.
-        let pos_in_fixed_indexes = self.fixed_indexes
+        let pos_in_fixed_indexes = self
+            .fixed_indexes
             .iter()
             .enumerate()
             .position(|(fixed_pos, &(raw_pos, _))| fixed_pos + logical_dim < raw_pos)
@@ -194,10 +199,11 @@ impl<'a, T> ViewMut<'a, T> {
     }
 
     /// Produces mutable references to the elements, with their indexes.
-    pub fn enumerate_mut<'b>(&'b mut self)
-        -> impl Iterator<Item = (Vec<usize>, &'b mut T)> + 'b
-    {
-        let self_ptr: *mut ViewMut<'b, _> = unsafe { std::mem::transmute(self as *mut _) };
+    pub fn enumerate_mut<'b>(
+        &'b mut self,
+    ) -> impl Iterator<Item = (Vec<usize>, &'b mut T)> + 'b {
+        let self_ptr: *mut ViewMut<'b, _> =
+            unsafe { std::mem::transmute(self as *mut _) };
         NDRange::new(&self.bounds).map(move |idx| {
             let item = unsafe { (*self_ptr).index_mut(&idx[..]) };
             (idx, item)

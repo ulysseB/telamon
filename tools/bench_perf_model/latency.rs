@@ -1,6 +1,6 @@
 //! Tests the latency model.
 use telamon::device::{ArgMap, Context};
-use telamon::helper::{SignatureBuilder, Builder, DimGroup, Reduce};
+use telamon::helper::{Builder, DimGroup, Reduce, SignatureBuilder};
 use telamon::ir;
 use telamon::search_space::{Action, DimKind, InstFlag, Order};
 use PerfModelTest;
@@ -24,7 +24,10 @@ impl PerfModelTest for EmptyLoop {
 }
 
 /// Tests the latency of two nested empty loops.
-pub struct TwoEmptyLoop { d0: ir::dim::Id,  d1: ir::dim::Id }
+pub struct TwoEmptyLoop {
+    d0: ir::dim::Id,
+    d1: ir::dim::Id,
+}
 
 impl PerfModelTest for TwoEmptyLoop {
     fn name() -> &'static str { "latency_two_empty_loop" }
@@ -100,7 +103,10 @@ impl PerfModelTest for LongInstChain {
 }
 
 /// Tests the latency on an unrolled reduction loop.
-pub struct UnrollReduction { d0: ir::dim::Id, d1: ir::dim::Id }
+pub struct UnrollReduction {
+    d0: ir::dim::Id,
+    d1: ir::dim::Id,
+}
 
 impl PerfModelTest for UnrollReduction {
     fn name() -> &'static str { "unroll_reduction" }

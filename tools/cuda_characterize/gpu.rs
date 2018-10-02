@@ -1,8 +1,8 @@
 //! Builds the description of a GPU.
-use telamon::device::cuda::{self, Executor, InstDesc};
-use telamon::device::cuda::DeviceAttribute::*;
 use instruction;
 use std;
+use telamon::device::cuda::DeviceAttribute::*;
+use telamon::device::cuda::{self, Executor, InstDesc};
 
 const EMPTY_INST_DESC: InstDesc = InstDesc {
     latency: 0.0,
@@ -16,7 +16,8 @@ const EMPTY_INST_DESC: InstDesc = InstDesc {
     ram_bw: 0.0,
 };
 
-/// Returns the description of the GPU. Performance-related fields are not filled.
+/// Returns the description of the GPU. Performance-related fields are not
+/// filled.
 pub fn functional_desc(executor: &cuda::Executor) -> cuda::Gpu {
     let sm_major = executor.device_attribute(ComputeCapabilityMajor);
     let sm_minor = executor.device_attribute(ComputeCapabilityMinor);
@@ -38,7 +39,7 @@ pub fn functional_desc(executor: &cuda::Executor) -> cuda::Gpu {
         shared_bank_stride: shared_bank_stride(sm_major, sm_minor),
         num_smx: executor.device_attribute(SmxCount) as u32,
         max_block_per_smx: block_per_smx(sm_major, sm_minor),
-        smx_clock: f64::from(executor.device_attribute(ClockRate)) /1.0E+6,
+        smx_clock: f64::from(executor.device_attribute(ClockRate)) / 1.0E+6,
 
         thread_rates: EMPTY_INST_DESC,
         smx_rates: EMPTY_INST_DESC,
@@ -77,16 +78,16 @@ fn allow_nc_load(sm_major: i32, sm_minor: i32) -> bool {
     match (sm_major, sm_minor) {
         (2, _) | (3, 0) | (3, 2) => false,
         (3, 5) | (3, 7) | (5, _) => true,
-        _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor)
+        _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor),
     }
 }
 
 /// Returns true if the GPU allows L1 caching of global memory accesses.
-fn  allow_l1_for_global_mem(sm_major: i32, sm_minor: i32) -> bool {
+fn allow_l1_for_global_mem(sm_major: i32, sm_minor: i32) -> bool {
     match (sm_major, sm_minor) {
         (2, _) | (3, 7) | (5, 2) => true,
         (3, 0) | (3, 2) | (3, 5) | (5, 0) => false,
-        _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor)
+        _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor),
     }
 }
 
@@ -96,7 +97,7 @@ fn block_per_smx(sm_major: i32, sm_minor: i32) -> u32 {
         2 => 8,
         3 => 16,
         5 => 32,
-        _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor)
+        _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor),
     }
 }
 
@@ -105,7 +106,7 @@ fn l1_cache_size(sm_major: i32, sm_minor: i32) -> u32 {
     match sm_major {
         2 | 3 => 16 * 1024,
         5 => 24 * 1024,
-        _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor)
+        _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor),
     }
 }
 
@@ -114,7 +115,7 @@ fn shared_bank_stride(sm_major: i32, sm_minor: i32) -> u32 {
     match sm_major {
         2 => 4,
         3 | 5 => 8,
-        _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor)
+        _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor),
     }
 }
 
@@ -123,11 +124,12 @@ fn thread_per_smx(sm_major: i32, sm_minor: i32) -> u32 {
     match sm_major {
         2 => 1536,
         3 | 5 => 2048,
-        _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor)
+        _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor),
     }
 }
 
-/// Returns the amount of processing power available in a single SMX, in unit per cycle.
+/// Returns the amount of processing power available in a single SMX, in unit
+/// per cycle.
 fn smx_rates(gpu: &cuda::Gpu, executor: &Executor) -> InstDesc {
     let (wrap_scheds, issues_per_wrap) = wrap_scheds_per_smx(gpu.sm_major, gpu.sm_minor);
     let issue = wrap_scheds * issues_per_wrap * gpu.wrap_size;
@@ -136,7 +138,7 @@ fn smx_rates(gpu: &cuda::Gpu, executor: &Executor) -> InstDesc {
         (2, 1) => (48, 32, 32), // Sync unknown for 2.0
         (3, _) => (192, 32, 128),
         (5, _) => (128, 32, 64),
-        (major, minor) => panic!("Unkown compute capability: {}.{}", major, minor)
+        (major, minor) => panic!("Unkown compute capability: {}.{}", major, minor),
     };
     let l1_lines_bw = instruction::smx_bandwidth_l1_lines(gpu, executor);
     let l2_lines_read_bw = instruction::smx_read_bandwidth_l2_lines(gpu, executor);
@@ -171,7 +173,8 @@ fn thread_rates(gpu: &cuda::Gpu, smx_rates: &InstDesc) -> InstDesc {
     }
 }
 
-/// Computes the total processing power from the processing power of a single SMX.
+/// Computes the total processing power from the processing power of a single
+/// SMX.
 fn gpu_rates(gpu: &cuda::Gpu, smx_rates: &InstDesc) -> InstDesc {
     let num_smx = f64::from(gpu.num_smx);
     InstDesc {
@@ -187,15 +190,15 @@ fn gpu_rates(gpu: &cuda::Gpu, smx_rates: &InstDesc) -> InstDesc {
     }
 }
 
-/// Returns the number of wrap scheduler in a single SMX and the number of independent
-/// instruction issued per wrap scheduler.
+/// Returns the number of wrap scheduler in a single SMX and the number of
+/// independent instruction issued per wrap scheduler.
 fn wrap_scheds_per_smx(sm_major: u8, sm_minor: u8) -> (u32, u32) {
     match (sm_major, sm_minor) {
         (2, 0) => (2, 1),
         (2, 1) => (2, 2),
         (3, _) => (4, 2),
         (5, _) => (4, 1),
-        _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor)
+        _ => panic!("Unkown compute capability: {}.{}", sm_major, sm_minor),
     }
 }
 
@@ -204,15 +207,15 @@ fn ram_bandwidth(executor: &Executor) -> f64 {
     // TODO(model): take ECC into account.
     let mem_clock = f64::from(executor.device_attribute(MemoryClockRate)) / 1.0E+6;
     let mem_bus_width = executor.device_attribute(GlobalMemoryBusWidth) / 8;
-    // Multiply by 2 because is a DDR, so it uses bith the up and down signals of the
-    // clock.
+    // Multiply by 2 because is a DDR, so it uses bith the up and down signals of
+    // the clock.
     2.0 * mem_clock * f64::from(mem_bus_width)
 }
 
 /// Updates the gpu description with performance numbers.
 pub fn performance_desc(executor: &Executor, gpu: &mut cuda::Gpu) {
-    // TODO(model): l1 and l2 lines rates may not be correct on non-kepler architectures
-    // Compute the processing.
+    // TODO(model): l1 and l2 lines rates may not be correct on non-kepler
+    // architectures Compute the processing.
     gpu.smx_rates = smx_rates(gpu, executor);
     gpu.thread_rates = thread_rates(gpu, &gpu.smx_rates);
     gpu.gpu_rates = gpu_rates(gpu, &gpu.smx_rates);
@@ -235,17 +238,21 @@ pub fn performance_desc(executor: &Executor, gpu: &mut cuda::Gpu) {
     gpu.div_i32_inst = instruction::div_i32(gpu, executor);
     gpu.div_i64_inst = instruction::div_i64(gpu, executor);
     gpu.mul_wide_inst = gpu.mul_i32_inst; // TODO(model): benchmark mul wide.
-    // Compute memory accesses overhead.
+                                          // Compute memory accesses overhead.
     gpu.load_l2_latency = instruction::load_l2(gpu, executor);
     gpu.load_ram_latency = instruction::load_ram(gpu, executor);
     gpu.load_shared_latency = instruction::load_shared(gpu, executor);
     // Compute loops overhead.
     gpu.syncthread_inst = instruction::syncthread(gpu, executor);
     let addf32_lat = gpu.add_f32_inst.latency;
-    let syncthread_end_latency = instruction::syncthread_end_latency(
-        gpu, executor, addf32_lat);
+    let syncthread_end_latency =
+        instruction::syncthread_end_latency(gpu, executor, addf32_lat);
     assert!(syncthread_end_latency < std::f64::EPSILON);
     gpu.loop_end_latency = instruction::loop_iter_end_latency(gpu, executor, addf32_lat);
     gpu.loop_iter_overhead = instruction::loop_iter_overhead(gpu, executor);
-    gpu.loop_init_overhead = cuda::InstDesc { issue: 1f64, alu: 1f64, .. EMPTY_INST_DESC };
+    gpu.loop_init_overhead = cuda::InstDesc {
+        issue: 1f64,
+        alu: 1f64,
+        ..EMPTY_INST_DESC
+    };
 }

@@ -10,9 +10,9 @@ extern crate serde_derive;
 
 mod cache;
 mod dag;
-pub mod ndarray;
 mod iterator;
 pub mod multimap;
+pub mod ndarray;
 mod vec_set;
 #[macro_use]
 pub mod unwrap;
@@ -183,7 +183,7 @@ macro_rules! generated_file {
         pub mod $name {
             include!(concat!(env!("OUT_DIR"), "/", stringify!($name), ".rs"));
         }
-    }
+    };
 }
 
 /// Clones a pair of reference.
@@ -236,8 +236,11 @@ pub fn cmp_f64(a: f64, b: f64) -> std::cmp::Ordering {
 pub trait BuilderTrait: Sized {
     /// Runs the closure if the bool is true.
     fn doif<F>(&mut self, flag: bool, f: F) -> &mut Self
-        where F: FnOnce(&mut Self) -> &mut Self
-    {
-        if flag { f(self) } else { self }
+    where F: FnOnce(&mut Self) -> &mut Self {
+        if flag {
+            f(self)
+        } else {
+            self
+        }
     }
 }

@@ -1,33 +1,23 @@
-/// This lexer is a application of 
+/// This lexer is a application of
 /// [Writing a custom lexer](https://github.com/lalrpop/lalrpop/blob/master/doc/src/lexer_tutorial/index.md)'s
 /// documentation. This includes a Spanned definition and a Iterator.
 mod ffi;
 mod token;
 
-use std::{io,ptr};
 use std::error::Error;
 use std::fmt;
+use std::{io, ptr};
 
-pub use self::token::Token;    
+pub use self::token::Token;
 
 use std::ffi::CStr;
 
 use self::ffi::{
-    YyScan,
-    YyBufferState,
-    YyExtraType,
-    yylex_init,
-    yy_scan_bytes,
-    yyset_lineno,
-    yy_delete_buffer,
-    yylex_destroy,
-    yylex,
-    YyToken,
-    yyget_text,
-    yyget_extra,
+    yy_delete_buffer, yy_scan_bytes, yyget_extra, yyget_text, yylex, yylex_destroy,
+    yylex_init, yyset_lineno, YyBufferState, YyExtraType, YyScan, YyToken,
 };
 
-pub use self::ffi::{Position, Spanned, Span};
+pub use self::ffi::{Position, Span, Spanned};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum LexicalError {
@@ -47,15 +37,15 @@ impl Error for LexicalError {
 impl fmt::Display for LexicalError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            LexicalError::UnexpectedToken(beg, tok, end) |
-            LexicalError::InvalidToken(beg, tok, end) => {
-                write!(f, "{}, found '{:?}' between {}:{}",
-                          self.description(),
-                          tok,
-                          beg,
-                          end
-                )
-            },
+            LexicalError::UnexpectedToken(beg, tok, end)
+            | LexicalError::InvalidToken(beg, tok, end) => write!(
+                f,
+                "{}, found '{:?}' between {}:{}",
+                self.description(),
+                tok,
+                beg,
+                end
+            ),
         }
     }
 }
@@ -90,8 +80,9 @@ impl From<Vec<u8>> for Lexer {
             // innitializes the scanner.
             yylex_init(&scanner);
 
-            // scans len bytes starting at location bytes. 
-            let buffer: YyBufferState = yy_scan_bytes(buffer.as_ptr() as *const _, buffer.len() as _, scanner);
+            // scans len bytes starting at location bytes.
+            let buffer: YyBufferState =
+                yy_scan_bytes(buffer.as_ptr() as *const _, buffer.len() as _, scanner);
 
             // Issue [flex/60](https://github.com/westes/flex/issues/60)
             // yylineno should be set.
@@ -99,10 +90,10 @@ impl From<Vec<u8>> for Lexer {
             // sets the current line number.
             yyset_lineno(0, scanner);
             Lexer {
-                scanner: scanner,
+                scanner,
                 // The function  [yy_scan_bytes](https://westes.github.io/flex/manual/Multiple-Input-Buffers.html)
-                // scans len bytes starting at location bytes. 
-                buffer: buffer,
+                // scans len bytes starting at location bytes.
+                buffer,
                 lookahead_token: None,
             }
         }
@@ -120,7 +111,7 @@ impl Drop for Lexer {
             yylex_destroy(self.scanner);
         }
     }
-}   
+}
 
 /// the Lalrpop Iterator is a exh implementation:for lexer.
 impl Iterator for Lexer {
@@ -133,76 +124,90 @@ impl Iterator for Lexer {
             unsafe {
                 // The function [yylex](https://westes.github.io/flex/manual/Generated-Scanner.html)
                 // returns statement in one of the actions, the scanner may then
-                // be called again and it will resume scanning where it left off. 
+                // be called again and it will resume scanning where it left off.
                 let code: YyToken = yylex(self.scanner);
                 // The accessor function [yyget_extra](https://westes.github.io/flex/manual/Extra-Data.html)
                 // returns a extra copy.
                 let extra: YyExtraType = yyget_extra(self.scanner);
-    
+
                 match code {
                     YyToken::InvalidToken => {
                         let out = yyget_text(self.scanner);
-    
-                        CStr::from_ptr(out)
-                             .to_str().ok()
-                             .and_then(|s: &str| Some(Err(LexicalError::InvalidToken(extra.beg, Token::InvalidToken(s.to_owned()), extra.end))))
-                    },
+
+                        CStr::from_ptr(out).to_str().ok().and_then(|s: &str| {
+                            Some(Err(LexicalError::InvalidToken(
+                                extra.beg,
+                                Token::InvalidToken(s.to_owned()),
+                                extra.end,
+                            )))
+                        })
+                    }
                     YyToken::ChoiceIdent => {
                         let out = yyget_text(self.scanner);
-    
-                        CStr::from_ptr(out)
-                             .to_str().ok()
-                             .and_then(|s: &str| Some(Ok((extra.beg, Token::ChoiceIdent(s.to_owned()), extra.end))))
-                    },
+
+                        CStr::from_ptr(out).to_str().ok().and_then(|s: &str| {
+                            Some(Ok((
+                                extra.beg,
+                                Token::ChoiceIdent(s.to_owned()),
+                                extra.end,
+                            )))
+                        })
+                    }
                     YyToken::SetIdent => {
                         let out = yyget_text(self.scanner);
-    
-                        CStr::from_ptr(out)
-                             .to_str().ok()
-                             .and_then(|s: &str| Some(Ok((extra.beg, Token::SetIdent(s.to_owned()), extra.end))))
-                    },
+
+                        CStr::from_ptr(out).to_str().ok().and_then(|s: &str| {
+                            Some(Ok((
+                                extra.beg,
+                                Token::SetIdent(s.to_owned()),
+                                extra.end,
+                            )))
+                        })
+                    }
                     YyToken::ValueIdent => {
                         let out = yyget_text(self.scanner);
-    
-                        CStr::from_ptr(out)
-                             .to_str().ok()
-                             .and_then(|s: &str| Some(Ok((extra.beg, Token::ValueIdent(s.to_owned()), extra.end))))
-                    },
+
+                        CStr::from_ptr(out).to_str().ok().and_then(|s: &str| {
+                            Some(Ok((
+                                extra.beg,
+                                Token::ValueIdent(s.to_owned()),
+                                extra.end,
+                            )))
+                        })
+                    }
                     YyToken::Var => {
                         let out = yyget_text(self.scanner);
-    
-                        CStr::from_ptr(out)
-                             .to_str().ok()
-                             .and_then(|s: &str| Some(Ok((extra.beg, Token::Var(s.to_owned()), extra.end))))
-                    },
+
+                        CStr::from_ptr(out).to_str().ok().and_then(|s: &str| {
+                            Some(Ok((extra.beg, Token::Var(s.to_owned()), extra.end)))
+                        })
+                    }
                     YyToken::Code => {
                         let out = yyget_text(self.scanner);
-                        CStr::from_ptr(out)
-                             .to_str().ok()
-                             .and_then(|s: &str| {
-                                  let mut s: String = s.to_owned();
-                                  let mut e = extra.end;
-                                  loop {
-                                      match self.next() {
-                                          Some(Ok((_, Token::Code(ref code), end))) => {
-                                              e = end;
-                                              s.push_str(code);
-                                          },
-                                          next => {
-                                              self.lookahead_token = next;
-                                              return Some(Ok((extra.beg, Token::Code(s), e)))
-                                          },
-                                      }
-                                  }
-                             })
-                    },
+                        CStr::from_ptr(out).to_str().ok().and_then(|s: &str| {
+                            let mut s: String = s.to_owned();
+                            let mut e = extra.end;
+                            loop {
+                                match self.next() {
+                                    Some(Ok((_, Token::Code(ref code), end))) => {
+                                        e = end;
+                                        s.push_str(code);
+                                    }
+                                    next => {
+                                        self.lookahead_token = next;
+                                        return Some(Ok((extra.beg, Token::Code(s), e)));
+                                    }
+                                }
+                            }
+                        })
+                    }
                     YyToken::Doc => {
                         let out = yyget_text(self.scanner);
-    
-                        CStr::from_ptr(out)
-                             .to_str().ok()
-                             .and_then(|s: &str| Some(Ok((extra.beg, Token::Doc(s.to_owned()), extra.end))))
-                    },
+
+                        CStr::from_ptr(out).to_str().ok().and_then(|s: &str| {
+                            Some(Ok((extra.beg, Token::Doc(s.to_owned()), extra.end)))
+                        })
+                    }
                     YyToken::Alias => Some(Ok((extra.beg, Token::Alias, extra.end))),
                     YyToken::Counter => Some(Ok((extra.beg, Token::Counter, extra.end))),
                     YyToken::Define => Some(Ok((extra.beg, Token::Define, extra.end))),
@@ -212,20 +217,42 @@ impl Iterator for Lexer {
                     YyToken::Is => Some(Ok((extra.beg, Token::Is, extra.end))),
                     YyToken::Not => Some(Ok((extra.beg, Token::Not, extra.end))),
                     YyToken::Require => Some(Ok((extra.beg, Token::Require, extra.end))),
-                    YyToken::Requires => Some(Ok((extra.beg, Token::Requires, extra.end))),
-                    YyToken::CounterKind => Some(Ok((extra.beg, Token::CounterKind(extra.data.counter_kind), extra.end))),
+                    YyToken::Requires => {
+                        Some(Ok((extra.beg, Token::Requires, extra.end)))
+                    }
+                    YyToken::CounterKind => Some(Ok((
+                        extra.beg,
+                        Token::CounterKind(extra.data.counter_kind),
+                        extra.end,
+                    ))),
                     YyToken::Value => Some(Ok((extra.beg, Token::Value, extra.end))),
                     YyToken::When => Some(Ok((extra.beg, Token::When, extra.end))),
                     YyToken::Trigger => Some(Ok((extra.beg, Token::Trigger, extra.end))),
-                    YyToken::CounterVisibility => Some(Ok((extra.beg, Token::CounterVisibility(extra.data.counter_visibility), extra.end))),
+                    YyToken::CounterVisibility => Some(Ok((
+                        extra.beg,
+                        Token::CounterVisibility(extra.data.counter_visibility),
+                        extra.end,
+                    ))),
                     YyToken::Base => Some(Ok((extra.beg, Token::Base, extra.end))),
-                    YyToken::SetDefkey => Some(Ok((extra.beg, Token::SetDefKey(extra.data.set_def_key), extra.end))),
+                    YyToken::SetDefkey => Some(Ok((
+                        extra.beg,
+                        Token::SetDefKey(extra.data.set_def_key),
+                        extra.end,
+                    ))),
                     YyToken::Set => Some(Ok((extra.beg, Token::Set, extra.end))),
-                    YyToken::SubsetOf => Some(Ok((extra.beg, Token::SubsetOf, extra.end))),
-                    YyToken::Disjoint => Some(Ok((extra.beg, Token::Disjoint, extra.end))),
-                    YyToken::Quotient => Some(Ok((extra.beg, Token::Quotient, extra.end))),
+                    YyToken::SubsetOf => {
+                        Some(Ok((extra.beg, Token::SubsetOf, extra.end)))
+                    }
+                    YyToken::Disjoint => {
+                        Some(Ok((extra.beg, Token::Disjoint, extra.end)))
+                    }
+                    YyToken::Quotient => {
+                        Some(Ok((extra.beg, Token::Quotient, extra.end)))
+                    }
                     YyToken::Of => Some(Ok((extra.beg, Token::Of, extra.end))),
-                    YyToken::Bool => Some(Ok((extra.beg, Token::Bool(extra.data.boolean), extra.end))),
+                    YyToken::Bool => {
+                        Some(Ok((extra.beg, Token::Bool(extra.data.boolean), extra.end)))
+                    }
                     YyToken::Colon => Some(Ok((extra.beg, Token::Colon, extra.end))),
                     YyToken::Comma => Some(Ok((extra.beg, Token::Comma, extra.end))),
                     YyToken::LParen => Some(Ok((extra.beg, Token::LParen, extra.end))),
@@ -233,11 +260,17 @@ impl Iterator for Lexer {
                     YyToken::BitOr => Some(Ok((extra.beg, Token::BitOr, extra.end))),
                     YyToken::Or => Some(Ok((extra.beg, Token::Or, extra.end))),
                     YyToken::And => Some(Ok((extra.beg, Token::And, extra.end))),
-                    YyToken::CmpOp => Some(Ok((extra.beg, Token::CmpOp(extra.data.cmp_op), extra.end))),
+                    YyToken::CmpOp => {
+                        Some(Ok((extra.beg, Token::CmpOp(extra.data.cmp_op), extra.end)))
+                    }
                     YyToken::Equal => Some(Ok((extra.beg, Token::Equal, extra.end))),
                     YyToken::End => Some(Ok((extra.beg, Token::End, extra.end))),
-                    YyToken::Symmetric => Some(Ok((extra.beg, Token::Symmetric, extra.end))),
-                    YyToken::AntiSymmetric => Some(Ok((extra.beg, Token::AntiSymmetric, extra.end))),
+                    YyToken::Symmetric => {
+                        Some(Ok((extra.beg, Token::Symmetric, extra.end)))
+                    }
+                    YyToken::AntiSymmetric => {
+                        Some(Ok((extra.beg, Token::AntiSymmetric, extra.end)))
+                    }
                     YyToken::Arrow => Some(Ok((extra.beg, Token::Arrow, extra.end))),
                     YyToken::Divide => Some(Ok((extra.beg, Token::Divide, extra.end))),
                     YyToken::Integer => Some(Ok((extra.beg, Token::Integer, extra.end))),

@@ -4,7 +4,10 @@ use std;
 
 /// Provides a unique identifer for a basic block.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum BBId { Inst(ir::InstId), Dim(ir::dim::Id) }
+pub enum BBId {
+    Inst(ir::InstId),
+    Dim(ir::dim::Id),
+}
 
 impl From<ir::InstId> for BBId {
     fn from(id: ir::InstId) -> Self { BBId::Inst(id) }

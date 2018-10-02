@@ -11,7 +11,10 @@ pub struct Table<T: std::fmt::Display> {
 impl<T: std::fmt::Display> Table<T> {
     /// Creates an empty table with the given headers.
     pub fn new(header: Vec<String>) -> Self {
-        Table { header, data: vec![] }
+        Table {
+            header,
+            data: vec![],
+        }
     }
 
     /// Inserts an entry into the table.
@@ -31,14 +34,12 @@ impl<T: std::fmt::Display> Table<T> {
     }
 
     /// Returns a column of the table.
-    pub fn column(&self, id: usize) -> impl Iterator<Item=&T> {
+    pub fn column(&self, id: usize) -> impl Iterator<Item = &T> {
         self.data.iter().map(move |x| &x[id])
     }
 
     /// Returns the rows of the table.
-    pub fn rows(&self) -> std::slice::Iter<Vec<T>> {
-        self.data.iter()
-    }
+    pub fn rows(&self) -> std::slice::Iter<Vec<T>> { self.data.iter() }
 }
 
 impl<T: std::fmt::Display> IntoIterator for Table<T> {

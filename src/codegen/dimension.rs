@@ -1,7 +1,7 @@
 use codegen;
 use ir;
 use itertools::Itertools;
-use search_space::{Domain, SearchSpace, DimKind, Order};
+use search_space::{DimKind, Domain, Order, SearchSpace};
 use std;
 use utils::*;
 
@@ -26,7 +26,7 @@ impl<'a> Dimension<'a> {
     pub fn size(&self) -> &'a ir::Size<'a> { self.size }
 
     /// Returns the ids of the `ir::Dimensions` represented by this dimension.
-    pub fn dim_ids(&self) -> impl Iterator<Item=ir::dim::Id> {
+    pub fn dim_ids(&self) -> impl Iterator<Item = ir::dim::Id> {
         std::iter::once(self.representant).chain(self.other_dims.clone())
     }
 
@@ -47,14 +47,21 @@ impl<'a> Dimension<'a> {
         self.induction_levels.extend(other.induction_levels);
     }
 
-    /// Returns the values to pass from the host to the device to implement `self`.
-    pub fn host_values<'b>(&'b self, space: &'b SearchSpace)
-        -> impl Iterator<Item=codegen::ParamVal<'a>> + 'b
+    /// Returns the values to pass from the host to the device to implement
+    /// `self`.
+    pub fn host_values<'b>(
+        &'b self,
+        space: &'b SearchSpace,
+    ) -> impl Iterator<Item = codegen::ParamVal<'a>> + 'b
     {
         let size_param = if self.kind == DimKind::LOOP {
             codegen::ParamVal::from_size(self.size)
-        } else { None };
-        self.induction_levels.iter().flat_map(move |l| l.host_values(space))
+        } else {
+            None
+        };
+        self.induction_levels
+            .iter()
+            .flat_map(move |l| l.host_values(space))
             .chain(size_param)
     }
 
@@ -67,13 +74,15 @@ impl<'a> Dimension<'a> {
             representant: dim.id(),
             size: dim.size(),
             other_dims: vec![],
-            induction_levels: vec![]
+            induction_levels: vec![],
         }
     }
 
     /// Adds `dim` to the list of fused dimensions if it is indeed the case.
     fn try_add_fused_dim(&mut self, dim: &ir::Dimension, space: &SearchSpace) -> bool {
-        let order = space.domain().get_order(self.representant.into(), dim.id().into());
+        let order = space
+            .domain()
+            .get_order(self.representant.into(), dim.id().into());
         assert!(order.is_constrained());
         if order == Order::MERGED {
             self.other_dims.push(dim.id());
@@ -86,7 +95,9 @@ impl<'a> Dimension<'a> {
                 }
             }
             true
-        } else { false }
+        } else {
+            false
+        }
     }
 }
 
@@ -95,7 +106,9 @@ pub fn group_merged_dimensions<'a>(space: &'a SearchSpace<'a>) -> Vec<Dimension<
     let mut groups: Vec<Dimension> = Vec::new();
     'dim: for dim in space.ir_instance().dims() {
         for group in &mut groups {
-            if group.try_add_fused_dim(dim, space) { continue 'dim; }
+            if group.try_add_fused_dim(dim, space) {
+                continue 'dim;
+            }
         }
         groups.push(Dimension::new(dim, space));
     }
@@ -114,11 +127,16 @@ impl<'a> InductionLevel<'a> {
     /// Returns the type of the value created by the induction level.
     pub fn t(&self) -> ir::Type { self.base.t() }
 
-    /// Returns the values to pass from the host to the device to implement `self`.
-    pub fn host_values(&self, space: &SearchSpace)
-        -> impl Iterator<Item=codegen::ParamVal<'a>>
+    /// Returns the values to pass from the host to the device to implement
+    /// `self`.
+    pub fn host_values(
+        &self,
+        space: &SearchSpace,
+    ) -> impl Iterator<Item = codegen::ParamVal<'a>>
     {
-        self.increment.and_then(|(_, s)| codegen::ParamVal::from_size(s)).into_iter()
+        self.increment
+            .and_then(|(_, s)| codegen::ParamVal::from_size(s))
+            .into_iter()
             .chain(self.base.host_values(space))
     }
 }
@@ -130,16 +148,20 @@ pub struct InductionVar<'a> {
 }
 
 impl<'a> InductionVar<'a> {
-    /// Returns the values to pass from the host to the device to implement `self`.
-    pub fn host_values<'b>(&'b self, space: &SearchSpace)
-        -> impl Iterator<Item=codegen::ParamVal<'a>>
+    /// Returns the values to pass from the host to the device to implement
+    /// `self`.
+    pub fn host_values<'b>(
+        &'b self,
+        space: &SearchSpace,
+    ) -> impl Iterator<Item = codegen::ParamVal<'a>>
     {
         self.value.host_values(space).into_iter()
     }
 }
 
-/// The value taken by an induction variable. The actual value is the sum of the component
-/// present. If no components is present, the value must be computed elsewhere.
+/// The value taken by an induction variable. The actual value is the sum of
+/// the component present. If no components is present, the value must be
+/// computed elsewhere.
 #[derive(Debug)]
 pub struct InductionVarValue<'a> {
     ind_var: ir::IndVarId,
@@ -150,9 +172,10 @@ pub struct InductionVarValue<'a> {
 
 impl<'a> InductionVarValue<'a> {
     /// Returns the additive components of the induction variable value.
-    pub fn components(&self) -> impl Iterator<Item=codegen::Value<'a>> {
+    pub fn components(&self) -> impl Iterator<Item = codegen::Value<'a>> {
         let ind_var = self.ind_var;
-        self.outer_level.into_iter()
+        self.outer_level
+            .into_iter()
             .map(move |dim| codegen::Value::InductionLevel(ind_var, dim))
             .chain(self.operand.into_iter().map(codegen::Value::Operand))
     }
@@ -161,42 +184,63 @@ impl<'a> InductionVarValue<'a> {
     pub fn t(&self) -> ir::Type { self.t }
 
     /// Returns and induction var value that just contains an operand.
-    fn new(ind_var: ir::IndVarId,
-           operand: &'a ir::Operand<'a>,
-           space: &SearchSpace) -> Self {
+    fn new(
+        ind_var: ir::IndVarId,
+        operand: &'a ir::Operand<'a>,
+        space: &SearchSpace,
+    ) -> Self
+    {
         let t = unwrap!(space.ir_instance().device().lower_type(operand.t(), space));
-        InductionVarValue { ind_var, outer_level: None, operand: Some(operand), t }
+        InductionVarValue {
+            ind_var,
+            outer_level: None,
+            operand: Some(operand),
+            t,
+        }
     }
 
     /// The value is assigned elsewhere.
     fn computed_elsewhere(other: &Self) -> Self {
         let ind_var = other.ind_var;
-        InductionVarValue { ind_var, outer_level: None, operand: None, t: other.t() }
+        InductionVarValue {
+            ind_var,
+            outer_level: None,
+            operand: None,
+            t: other.t(),
+        }
     }
 
-    /// Return the current value so it can be used by a level and point the new level
-    /// instead. Keep the operand if the level doesn't uses it.
+    /// Return the current value so it can be used by a level and point the new
+    /// level instead. Keep the operand if the level doesn't uses it.
     fn apply_level(&mut self, level: ir::dim::Id, use_operand: bool) -> Self {
         use std::mem::replace;
         InductionVarValue {
             outer_level: replace(&mut self.outer_level, Some(level)),
-            operand: if use_operand { replace(&mut self.operand, None) } else { None },
-            t: self.t, ind_var: self.ind_var,
+            operand: if use_operand {
+                replace(&mut self.operand, None)
+            } else {
+                None
+            },
+            t: self.t,
+            ind_var: self.ind_var,
         }
     }
 
-    /// Returns the values to pass from the host to the device to implement `self`.
+    /// Returns the values to pass from the host to the device to implement
+    /// `self`.
     fn host_values(&self, space: &SearchSpace) -> Option<codegen::ParamVal<'a>> {
-        self.operand.and_then(|x| codegen::ParamVal::from_operand(x, space))
+        self.operand
+            .and_then(|x| codegen::ParamVal::from_operand(x, space))
     }
 }
 
-/// Register the induction variables in the dimensions where they must be incremented.
-/// Returns the induction variables and the levels to compute at the begining of the
-/// kernel.
-pub fn register_induction_vars<'a>(dims: &mut Vec<Dimension<'a>>,
-                                   space: &'a SearchSpace<'a>)
-    -> (Vec<InductionVar<'a>>, Vec<InductionLevel<'a>>)
+/// Register the induction variables in the dimensions where they must be
+/// incremented. Returns the induction variables and the levels to compute at
+/// the begining of the kernel.
+pub fn register_induction_vars<'a>(
+    dims: &mut Vec<Dimension<'a>>,
+    space: &'a SearchSpace<'a>,
+) -> (Vec<InductionVar<'a>>, Vec<InductionLevel<'a>>)
 {
     let mut ind_levels_map = MultiHashMap::default();
     let mut ind_vars = Vec::new();
@@ -204,10 +248,17 @@ pub fn register_induction_vars<'a>(dims: &mut Vec<Dimension<'a>>,
     for (id, ind_var) in space.ir_instance().induction_vars() {
         let (const_levels, mut_levels) = get_ind_var_levels(ind_var, space);
         let mut outer_value = InductionVarValue::new(id, ind_var.base(), space);
-        let precomputed = const_levels.into_iter().map(|(dim, increment)| {
-            let base = outer_value.apply_level(dim, false);
-            InductionLevel { ind_var: id, increment: Some((dim, increment)), base }
-        }).collect_vec();
+        let precomputed = const_levels
+            .into_iter()
+            .map(|(dim, increment)| {
+                let base = outer_value.apply_level(dim, false);
+                InductionLevel {
+                    ind_var: id,
+                    increment: Some((dim, increment)),
+                    base,
+                }
+            })
+            .collect_vec();
         for (dim, increment) in mut_levels {
             let level = InductionLevel {
                 ind_var: id,
@@ -221,17 +272,25 @@ pub fn register_induction_vars<'a>(dims: &mut Vec<Dimension<'a>>,
         let value = if outer_value.components().count() > 1 {
             let value = InductionVarValue::computed_elsewhere(&outer_value);
             let base = outer_value;
-            let level = InductionLevel { ind_var: id, increment: None, base };
+            let level = InductionLevel {
+                ind_var: id,
+                increment: None,
+                base,
+            };
             let dim = unwrap!(precomputed.last().and_then(|p| p.increment)).0;
             ind_levels_map.insert(dim, level);
             value
-        } else { outer_value };
+        } else {
+            outer_value
+        };
         precomputed_levels.extend(precomputed);
         ind_vars.push(InductionVar { id, value });
     }
     for dim_group in dims {
         for dim_id in dim_group.dim_ids() {
-            dim_group.induction_levels.extend(ind_levels_map.remove(&dim_id));
+            dim_group
+                .induction_levels
+                .extend(ind_levels_map.remove(&dim_id));
         }
     }
     (ind_vars, precomputed_levels)
@@ -239,11 +298,14 @@ pub fn register_induction_vars<'a>(dims: &mut Vec<Dimension<'a>>,
 
 type IndVarIncrement<'a> = (ir::dim::Id, &'a ir::Size<'a>);
 
-/// Retrieves the list of induction levels that can be computed at the beginning of the
-/// thread and the induction levels that are updated during loops. Both lists are sorted
-/// in the order in which levels should be computed.
-fn get_ind_var_levels<'a>(ind_var: &'a ir::InductionVar<'a>, space: &SearchSpace)
-    -> (Vec<IndVarIncrement<'a>>, Vec<IndVarIncrement<'a>>)
+/// Retrieves the list of induction levels that can be computed at the
+/// beginning of the thread and the induction levels that are updated during
+/// loops. Both lists are sorted in the order in which levels should be
+/// computed.
+fn get_ind_var_levels<'a>(
+    ind_var: &'a ir::InductionVar<'a>,
+    space: &SearchSpace,
+) -> (Vec<IndVarIncrement<'a>>, Vec<IndVarIncrement<'a>>)
 {
     let (mut const_levels, mut mut_levels) = (Vec::new(), Vec::new());
     for &(dim, ref size) in ind_var.dims() {
@@ -254,8 +316,10 @@ fn get_ind_var_levels<'a>(ind_var: &'a ir::InductionVar<'a>, space: &SearchSpace
             x => panic!("unspecified dim kind {:?}", x),
         }
     }
-    let cmp =  |lhs: ir::dim::Id, rhs: ir::dim::Id| {
-        if lhs == rhs { return std::cmp::Ordering::Equal; }
+    let cmp = |lhs: ir::dim::Id, rhs: ir::dim::Id| {
+        if lhs == rhs {
+            return std::cmp::Ordering::Equal;
+        }
         match space.domain().get_order(lhs.into(), rhs.into()) {
             Order::INNER => std::cmp::Ordering::Greater,
             Order::OUTER => std::cmp::Ordering::Less,

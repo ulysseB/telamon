@@ -27,7 +27,10 @@ pub enum AccessPattern<'a> {
     Unknown { mem_id: ir::mem::Id },
     /// Access with a fixed stride on each dimensions. Accesses on two different
     /// dimensions should not overlap.
-    Tensor { mem_id: ir::mem::Id, dims: HashMap<ir::dim::Id, ir::Size<'a>> },
+    Tensor {
+        mem_id: ir::mem::Id,
+        dims: HashMap<ir::dim::Id, ir::Size<'a>>,
+    },
 }
 
 impl<'a> AccessPattern<'a> {
@@ -35,19 +38,23 @@ impl<'a> AccessPattern<'a> {
     pub fn stride(&self, dim: ir::dim::Id) -> Stride {
         match *self {
             AccessPattern::Unknown { .. } => Stride::Unknown,
-            AccessPattern::Tensor { ref dims, .. } => {
-                dims.get(&dim).map(|s| {
-                    s.as_int().map(|x| Stride::Int(x as i32)).unwrap_or(Stride::Unknown)
-                }).unwrap_or(Stride::Int(0))
-            },
+            AccessPattern::Tensor { ref dims, .. } => dims
+                .get(&dim)
+                .map(|s| {
+                    s.as_int()
+                        .map(|x| Stride::Int(x as i32))
+                        .unwrap_or(Stride::Unknown)
+                })
+                .unwrap_or(Stride::Int(0)),
         }
     }
 
     /// Returns the id of the memory block accessed.
     pub fn mem_block(&self) -> ir::mem::Id {
         match *self {
-            AccessPattern::Unknown { mem_id } |
-            AccessPattern::Tensor { mem_id, .. } => mem_id,
+            AccessPattern::Unknown { mem_id } | AccessPattern::Tensor { mem_id, .. } => {
+                mem_id
+            }
         }
     }
 }

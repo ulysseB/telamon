@@ -1,6 +1,6 @@
 //! Allows the execution of kernels on the GPU.
-use device::cuda::api::Argument;
 use device::cuda::api::wrapper::*;
+use device::cuda::api::Argument;
 use itertools::Itertools;
 use std::ffi::CString;
 use std::fmt;
@@ -18,9 +18,10 @@ impl<'a> PerfCounterSet<'a> {
     /// Creates a new set of performance counters.
     pub fn new(context: &'a CudaContext, counters: &[PerfCounter]) -> Self {
         let mut event_ids: Vec<u32> = Vec::with_capacity(counters.len());
-        let event_names = counters.iter().map(|x| {
-            unwrap!(CString::new(x.to_string()))
-        }).collect_vec();
+        let event_names = counters
+            .iter()
+            .map(|x| unwrap!(CString::new(x.to_string())))
+            .collect_vec();
         let event_name_ptrs = event_names.iter().map(|x| x.as_ptr()).collect_vec();
         let event_sets = unsafe {
             event_ids.set_len(counters.len());
@@ -28,16 +29,28 @@ impl<'a> PerfCounterSet<'a> {
             let len = counters.len() as u32;
             create_cuptiEventGroupSets(context, len, names_ptr, event_ids.as_mut_ptr())
         };
-        let event_pos = event_ids.into_iter().enumerate().map(|(x, y)| (y, x)).collect();
+        let event_pos = event_ids
+            .into_iter()
+            .enumerate()
+            .map(|(x, y)| (y, x))
+            .collect();
         PerfCounterSet {
             num_event: counters.len(),
-            event_sets, event_pos, context,
+            event_sets,
+            event_pos,
+            context,
         }
     }
 
     /// Instrument a `CudaFunction`.
-    pub fn instrument(&self, fun: &CudaFunction, blocks: &[u32], threads: &[u32],
-                      args: &[&Argument]) -> Vec<u64> {
+    pub fn instrument(
+        &self,
+        fun: &CudaFunction,
+        blocks: &[u32],
+        threads: &[u32],
+        args: &[&Argument],
+    ) -> Vec<u64>
+    {
         let mut event_ids: Vec<u32> = Vec::with_capacity(self.num_event);
         let mut event_values: Vec<u64> = Vec::with_capacity(self.num_event);
         let mut ordered_values: Vec<u64> = Vec::with_capacity(self.num_event);
@@ -46,17 +59,21 @@ impl<'a> PerfCounterSet<'a> {
             event_ids.set_len(self.num_event);
             event_values.set_len(self.num_event);
             ordered_values.set_len(self.num_event);
-            instrument_kernel(self.context,
-                              fun,
-                              blocks.as_ptr(),
-                              threads.as_ptr(),
-                              arg_raw_ptrs.as_ptr(),
-                              self.event_sets,
-                              event_ids.as_mut_ptr(),
-                              event_values.as_mut_ptr());
+            instrument_kernel(
+                self.context,
+                fun,
+                blocks.as_ptr(),
+                threads.as_ptr(),
+                arg_raw_ptrs.as_ptr(),
+                self.event_sets,
+                event_ids.as_mut_ptr(),
+                event_values.as_mut_ptr(),
+            );
         }
         let event_pos = event_ids.iter().map(|x| self.event_pos[x]);
-        for (pos, value) in event_pos.zip(event_values) { ordered_values[pos] = value; }
+        for (pos, value) in event_pos.zip(event_values) {
+            ordered_values[pos] = value;
+        }
         ordered_values
     }
 }
@@ -66,7 +83,9 @@ unsafe impl<'a> Send for PerfCounterSet<'a> {}
 
 impl<'a> Drop for PerfCounterSet<'a> {
     fn drop(&mut self) {
-        unsafe { free_cuptiEventGroupSets(self.context, self.event_sets); }
+        unsafe {
+            free_cuptiEventGroupSets(self.context, self.event_sets);
+        }
     }
 }
 
@@ -172,7 +191,7 @@ pub enum PerfCounter {
 }
 
 impl fmt::Display for PerfCounter {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result  {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match *self {
             // Common counters (Probable errors, unchecked)
             PerfCounter::InstExecuted => "inst_executed",
@@ -181,8 +200,9 @@ impl fmt::Display for PerfCounter {
             PerfCounter::LocalStore => "local_store",
             PerfCounter::SharedLoad => "shared_load",
             PerfCounter::SharedStore => "shared_store",
-            PerfCounter::UncachedGlobalLoadTransaction =>
-                "uncached_global_load_transaction",
+            PerfCounter::UncachedGlobalLoadTransaction => {
+                "uncached_global_load_transaction"
+            }
             PerfCounter::GlobalLoadReplay => "global_ld_mem_divergence_replays",
             PerfCounter::GlobalStoreReplay => "global_st_mem_divergence_replays",
             PerfCounter::SharedLoadReplay => "shared_load_replay",
@@ -204,30 +224,40 @@ impl fmt::Display for PerfCounter {
             PerfCounter::L2Subp1WriteSectorQueries => "l2_subp1_write_sector_queries",
             PerfCounter::L2Subp0ReadSectorQueries => "l2_subp0_read_sector_queries",
             PerfCounter::L2Subp1ReadSectorQueries => "l2_subp1_read_sector_queries",
-            PerfCounter::L2Subp0ReadTexSectorQueries =>
-                "l2_subp0_read_tex_sector_queries",
-            PerfCounter::L2Subp1ReadTexSectorQueries =>
-                "l2_subp1_read_tex_sector_queries",
+            PerfCounter::L2Subp0ReadTexSectorQueries => {
+                "l2_subp0_read_tex_sector_queries"
+            }
+            PerfCounter::L2Subp1ReadTexSectorQueries => {
+                "l2_subp1_read_tex_sector_queries"
+            }
             PerfCounter::L2Subp0ReadHitSectors => "l2_subp0_read_hit_sectors",
             PerfCounter::L2Subp1ReadHitSectors => "l2_subp1_read_hit_sectors",
             PerfCounter::L2Subp0ReadTexHitSectors => "l2_subp0_read_tex_hit_sectors",
             PerfCounter::L2Subp1ReadTexHitSectors => "l2_subp1_read_tex_hit_sectors",
-            PerfCounter::L2Subp0ReadSysmemSectorQueries =>
-                "l2_subp0_read_sysmem_sector_queries",
-            PerfCounter::L2Subp1ReadSysmemSectorQueries =>
-                "l2_subp1_read_sysmem_sector_queries",
-            PerfCounter::L2Subp0WriteSysmemSectorQueries =>
-                "l2_subp0_write_sysmem_sector_queries",
-            PerfCounter::L2Subp1WriteSysmemSectorQueries =>
-                "l2_subp1_write_sysmem_sector_queries",
-            PerfCounter::L2Subp0TotalReadSectorQueries =>
-                "l2_subp0_total_read_sector_queries",
-            PerfCounter::L2Subp1TotalReadSectorQueries =>
-                "l2_subp1_total_read_sector_queries",
-            PerfCounter::L2Subp0TotalWriteSectorQueries =>
-                "l2_subp0_total_write_sector_queries",
-            PerfCounter::L2Subp1TotalWriteSectorQueries =>
-                "l2_subp1_total_write_sector_queries",
+            PerfCounter::L2Subp0ReadSysmemSectorQueries => {
+                "l2_subp0_read_sysmem_sector_queries"
+            }
+            PerfCounter::L2Subp1ReadSysmemSectorQueries => {
+                "l2_subp1_read_sysmem_sector_queries"
+            }
+            PerfCounter::L2Subp0WriteSysmemSectorQueries => {
+                "l2_subp0_write_sysmem_sector_queries"
+            }
+            PerfCounter::L2Subp1WriteSysmemSectorQueries => {
+                "l2_subp1_write_sysmem_sector_queries"
+            }
+            PerfCounter::L2Subp0TotalReadSectorQueries => {
+                "l2_subp0_total_read_sector_queries"
+            }
+            PerfCounter::L2Subp1TotalReadSectorQueries => {
+                "l2_subp1_total_read_sector_queries"
+            }
+            PerfCounter::L2Subp0TotalWriteSectorQueries => {
+                "l2_subp0_total_write_sector_queries"
+            }
+            PerfCounter::L2Subp1TotalWriteSectorQueries => {
+                "l2_subp1_total_write_sector_queries"
+            }
             PerfCounter::Fb0Subp0ReadSectors => "fb0_subp0_read_sectors",
             PerfCounter::Fb0Subp0WriteSectors => "fb0_subp0_write_sectors",
             PerfCounter::Fb1Subp0ReadSectors => "fb1_subp0_read_sectors",
@@ -237,14 +267,18 @@ impl fmt::Display for PerfCounter {
             PerfCounter::Fb1Subp1ReadSectors => "fb1_subp1_read_sectors",
             PerfCounter::Fb1Subp1WriteSectors => "fb1_subp1_write_sectors",
             // Kepler counters
-            PerfCounter::L2Subp2TotalReadSectorQueries =>
-                "l2_subp2_total_read_sector_queries",
-            PerfCounter::L2Subp2TotalWriteSectorQueries =>
-                "l2_subp2_total_write_sector_queries",
-            PerfCounter::L2Subp3TotalReadSectorQueries =>
-                "l2_subp3_total_read_sector_queries",
-            PerfCounter::L2Subp3TotalWriteSectorQueries =>
-                "l2_subp3_total_write_sector_queries",
+            PerfCounter::L2Subp2TotalReadSectorQueries => {
+                "l2_subp2_total_read_sector_queries"
+            }
+            PerfCounter::L2Subp2TotalWriteSectorQueries => {
+                "l2_subp2_total_write_sector_queries"
+            }
+            PerfCounter::L2Subp3TotalReadSectorQueries => {
+                "l2_subp3_total_read_sector_queries"
+            }
+            PerfCounter::L2Subp3TotalWriteSectorQueries => {
+                "l2_subp3_total_write_sector_queries"
+            }
             PerfCounter::FbSubp0ReadSectors => "fb_subp0_read_sectors",
             PerfCounter::FbSubp0WriteSectors => "fb_subp0_write_sectors",
             PerfCounter::FbSubp1ReadSectors => "fb_subp1_read_sectors",
@@ -263,14 +297,18 @@ impl fmt::Display for PerfCounter {
             PerfCounter::L2Subp3ReadSectorMisses => "l2_subp3_read_sector_misses",
             PerfCounter::L2Subp2WriteSectorMisses => "l2_subp2_write_sector_misses",
             PerfCounter::L2Subp3WriteSectorMisses => "l2_subp3_write_sector_misses",
-            PerfCounter::L2Subp0WriteL1SectorQueries =>
-                "l2_subp0_write_l1_sector_queries",
-            PerfCounter::L2Subp1WriteL1SectorQueries =>
-                "l2_subp1_write_l1_sector_queries",
-            PerfCounter::L2Subp2WriteL1SectorQueries =>
-                "l2_subp2_write_l1_sector_queries",
-            PerfCounter::L2Subp3WriteL1SectorQueries =>
-                "l2_subp3_write_l1_sector_queries",
+            PerfCounter::L2Subp0WriteL1SectorQueries => {
+                "l2_subp0_write_l1_sector_queries"
+            }
+            PerfCounter::L2Subp1WriteL1SectorQueries => {
+                "l2_subp1_write_l1_sector_queries"
+            }
+            PerfCounter::L2Subp2WriteL1SectorQueries => {
+                "l2_subp2_write_l1_sector_queries"
+            }
+            PerfCounter::L2Subp3WriteL1SectorQueries => {
+                "l2_subp3_write_l1_sector_queries"
+            }
             PerfCounter::L2Subp0ReadL1SectorQueries => "l2_subp0_read_l1_sector_queries",
             PerfCounter::L2Subp1ReadL1SectorQueries => "l2_subp1_read_l1_sector_queries",
             PerfCounter::L2Subp2ReadL1SectorQueries => "l2_subp2_read_l1_sector_queries",

@@ -9,12 +9,17 @@ use utils::*;
 
 /// A named variable.
 #[derive(Clone, Debug)]
-pub enum Variable<'a> { Ref(&'a str), Rc(RcStr) }
+pub enum Variable<'a> {
+    Ref(&'a str),
+    Rc(RcStr),
+}
 
 impl<'a> Variable<'a> {
     /// Creates a new variable with the given prefix.
     pub fn with_prefix(prefix: &str) -> Self {
-        lazy_static! { static ref NEXT_VAR_ID: AtomicUsize = AtomicUsize::new(0); }
+        lazy_static! {
+            static ref NEXT_VAR_ID: AtomicUsize = AtomicUsize::new(0);
+        }
         let id = NEXT_VAR_ID.fetch_add(1, Ordering::SeqCst);
         Variable::Rc(RcStr::new(format!("{}_{}", prefix, id)))
     }
@@ -56,9 +61,14 @@ pub struct Context<'a> {
 
 impl<'a> Context<'a> {
     /// Creates a new context.
-    pub fn new<IT>(ir_desc: &'a ir::IrDesc, choice: &'a ir::Choice, foralls: IT,
-                   input_defs: &'a [ir::ChoiceInstance]) -> Self
-        where IT: IntoIterator<Item=&'a ir::Set>
+    pub fn new<IT>(
+        ir_desc: &'a ir::IrDesc,
+        choice: &'a ir::Choice,
+        foralls: IT,
+        input_defs: &'a [ir::ChoiceInstance],
+    ) -> Self
+    where
+        IT: IntoIterator<Item = &'a ir::Set>,
     {
         let mut vars = HashMap::default();
         for (id, (name, set)) in choice.arguments().iter().enumerate() {
@@ -67,9 +77,17 @@ impl<'a> Context<'a> {
         for (id, set) in foralls.into_iter().enumerate() {
             vars.insert(ir::Variable::Forall(id), (Variable::with_set(set), set));
         }
-        let input_names = input_defs.iter()
-            .map(|i| Variable::with_prefix(&i.choice)).collect();
-        Context { ir_desc, choice, vars, input_names, input_defs }
+        let input_names = input_defs
+            .iter()
+            .map(|i| Variable::with_prefix(&i.choice))
+            .collect();
+        Context {
+            ir_desc,
+            choice,
+            vars,
+            input_names,
+            input_defs,
+        }
     }
 
     /// Sets the name of a variable.
@@ -95,13 +113,13 @@ impl<'a> Context<'a> {
     }
 
     /// Returns the name of an input.
-    pub fn input_name(&self, id: usize) -> Variable<'a> {
-        self.input_names[id].clone()
-    }
+    pub fn input_name(&self, id: usize) -> Variable<'a> { self.input_names[id].clone() }
 
     /// Returns the choice definition of an input.
     pub fn input_choice_def(&self, id: usize) -> &'a ir::ChoiceDef {
-        self.ir_desc.get_choice(&self.input_defs[id].choice).choice_def()
+        self.ir_desc
+            .get_choice(&self.input_defs[id].choice)
+            .choice_def()
     }
 }
 
@@ -121,7 +139,10 @@ impl<'a> ChoiceInstance<'a> {
         let choice = ctx.ir_desc.get_choice(&instance.choice);
         let vars = instance.vars.iter().map(|&v| ctx.var_name(v));
         let sets = choice.arguments().sets().map(|s| Set::new(s, ctx));
-        ChoiceInstance { name: choice.name(), arguments: vars.zip_eq(sets).collect() }
+        ChoiceInstance {
+            name: choice.name(),
+            arguments: vars.zip_eq(sets).collect(),
+        }
     }
 }
 
@@ -133,14 +154,23 @@ pub struct SetConstraint<'a> {
 
 impl<'a> SetConstraint<'a> {
     pub fn new(constraints: &'a ir::SetConstraints, ctx: &Context<'a>) -> Vec<Self> {
-        constraints.constraints().iter().flat_map(|&(var, ref expected)| {
-            let (ref var, ref current) = ctx.vars[&var];
-            let sets = expected.path_to_superset(current);
-            if sets.is_empty() { None } else {
-                let sets = sets.into_iter().rev().map(|s| Set::new(s, ctx)).collect();
-                Some(SetConstraint { var: var.clone(), sets })
-            }
-        }).collect()
+        constraints
+            .constraints()
+            .iter()
+            .flat_map(|&(var, ref expected)| {
+                let (ref var, ref current) = ctx.vars[&var];
+                let sets = expected.path_to_superset(current);
+                if sets.is_empty() {
+                    None
+                } else {
+                    let sets = sets.into_iter().rev().map(|s| Set::new(s, ctx)).collect();
+                    Some(SetConstraint {
+                        var: var.clone(),
+                        sets,
+                    })
+                }
+            })
+            .collect()
     }
 }
 
@@ -150,13 +180,22 @@ pub enum Conflict<'a> {
     /// Ensure the loop does not iterates on a previously declared variable.
     Variable { var: Variable<'a>, set: &'a ir::Set },
     /// Ensures the loop does not iterates on an object newly added to the set.
-    NewObjs { list: Variable<'a>, set: &'a ir::SetDef },
+    NewObjs {
+        list: Variable<'a>,
+        set: &'a ir::SetDef,
+    },
 }
 
 #[derive(Clone, Debug, Serialize)]
 pub enum ConflictAst<'a> {
-    Variable { conflict_var: Variable<'a>, set: SetDef<'a> },
-    NewObjs { list: Variable<'a>, set: Set<'a> },
+    Variable {
+        conflict_var: Variable<'a>,
+        set: SetDef<'a>,
+    },
+    NewObjs {
+        list: Variable<'a>,
+        set: Set<'a>,
+    },
 }
 
 impl<'a> Conflict<'a> {
@@ -167,27 +206,43 @@ impl<'a> Conflict<'a> {
 
     /// Generates the list of conflicts with all the aruments of a choice.
     pub fn choice_args(choice: &'a ir::Choice, ctx: &Context<'a>) -> Vec<Self> {
-        choice.arguments().sets().enumerate().map(|(pos, t)| {
-            Conflict::new(ctx.var_name(ir::Variable::Arg(pos)), t)
-        }).collect()
+        choice
+            .arguments()
+            .sets()
+            .enumerate()
+            .map(|(pos, t)| Conflict::new(ctx.var_name(ir::Variable::Arg(pos)), t))
+            .collect()
     }
 
     /// Generates the an AST if `self` conflicts with `set`..
-    pub fn generate_ast(&self, set: &'a ir::Set, ctx: &Context<'a>)
-        -> Option<ConflictAst<'a>>
+    pub fn generate_ast(
+        &self,
+        set: &'a ir::Set,
+        ctx: &Context<'a>,
+    ) -> Option<ConflictAst<'a>>
     {
         match *self {
-            Conflict::Variable { ref var, set: conflict_set } => {
-                conflict_set.get_collision_level(set).map(|set| {
-                    let set = SetDef::new(set);
-                    ConflictAst::Variable { conflict_var: var.clone(), set }
-                })
-            },
-            Conflict::NewObjs { ref list, set: conflict_set }
+            Conflict::Variable {
+                ref var,
+                set: conflict_set,
+            } => conflict_set.get_collision_level(set).map(|set| {
+                let set = SetDef::new(set);
+                ConflictAst::Variable {
+                    conflict_var: var.clone(),
+                    set,
+                }
+            }),
+            Conflict::NewObjs {
+                ref list,
+                set: conflict_set,
+            }
                 if conflict_set.name() == set.def().name() =>
             {
-                Some(ConflictAst::NewObjs { list: list.clone(), set: Set::new(set, ctx) })
-            },
+                Some(ConflictAst::NewObjs {
+                    list: list.clone(),
+                    set: Set::new(set, ctx),
+                })
+            }
             Conflict::NewObjs { .. } => None,
         }
     }
@@ -202,24 +257,39 @@ pub struct LoopNest<'a> {
 
 impl<'a> LoopNest<'a> {
     /// Creates a new loop nest build.
-    pub fn new<IT>(it: IT, ctx: &Context<'a>,
-                   outer_vars: &mut Vec<Conflict<'a>>,
-                   skip_new_objs: bool) -> Self
-            where IT: IntoIterator<Item=ir::Variable> {
-        let levels = it.into_iter().map(|var| {
-            Self::build_level(var, ctx, outer_vars, skip_new_objs)
-        }).collect();
-        LoopNest { levels: levels, triangular: false }
+    pub fn new<IT>(
+        it: IT,
+        ctx: &Context<'a>,
+        outer_vars: &mut Vec<Conflict<'a>>,
+        skip_new_objs: bool,
+    ) -> Self
+    where
+        IT: IntoIterator<Item = ir::Variable>,
+    {
+        let levels = it
+            .into_iter()
+            .map(|var| Self::build_level(var, ctx, outer_vars, skip_new_objs))
+            .collect();
+        LoopNest {
+            levels,
+            triangular: false,
+        }
     }
 
     /// Extends the loop with new levels.
-    pub fn extend<IT>(&mut self, it: IT,
-                      ctx: &Context<'a>,
-                      outer_vars: &mut Vec<Conflict<'a>>,
-                      skip_new_objs: bool) where IT: IntoIterator<Item=ir::Variable> {
-        self.levels.extend(it.into_iter().map(|v| {
-            Self::build_level(v, ctx, outer_vars, skip_new_objs)
-        }));
+    pub fn extend<IT>(
+        &mut self,
+        it: IT,
+        ctx: &Context<'a>,
+        outer_vars: &mut Vec<Conflict<'a>>,
+        skip_new_objs: bool,
+    ) where
+        IT: IntoIterator<Item = ir::Variable>,
+    {
+        self.levels.extend(
+            it.into_iter()
+                .map(|v| Self::build_level(v, ctx, outer_vars, skip_new_objs)),
+        );
     }
 
     /// Creates a triangular loop nesti build.
@@ -229,29 +299,40 @@ impl<'a> LoopNest<'a> {
         assert_eq!(lhs_set, rhs_set);
         let set = Set::new(lhs_set, ctx);
         let conflict_var = lhs.clone();
-        let conflict = ConflictAst::Variable { conflict_var, set: set.def.clone() };
-        let levels = vec![(lhs, set.clone(), vec![]),(rhs, set, vec![conflict])];
-        LoopNest { levels: levels, triangular: true }
+        let conflict = ConflictAst::Variable {
+            conflict_var,
+            set: set.def.clone(),
+        };
+        let levels = vec![(lhs, set.clone(), vec![]), (rhs, set, vec![conflict])];
+        LoopNest {
+            levels,
+            triangular: true,
+        }
     }
 
     /// Builds a level of the loop nest.
-    fn build_level(var: ir::Variable, ctx: &Context<'a>,
-                       outer_vars: &mut Vec<Conflict<'a>>,
-                       skip_new_objs: bool)
-        -> (Variable<'a>, Set<'a>, Vec<ConflictAst<'a>>)
+    fn build_level(
+        var: ir::Variable,
+        ctx: &Context<'a>,
+        outer_vars: &mut Vec<Conflict<'a>>,
+        skip_new_objs: bool,
+    ) -> (Variable<'a>, Set<'a>, Vec<ConflictAst<'a>>)
     {
         let (name, set) = ctx.var_def(var);
-        let mut conflicts = outer_vars.iter().flat_map(|conflict| {
-            conflict.generate_ast(set, ctx)
-        }).collect_vec();
+        let mut conflicts = outer_vars
+            .iter()
+            .flat_map(|conflict| conflict.generate_ast(set, ctx))
+            .collect_vec();
         if skip_new_objs {
             let list = new_objs_list(set.def(), "new_objs");
-            conflicts.push(ConflictAst::NewObjs { list, set: Set::new(set, ctx) });
+            conflicts.push(ConflictAst::NewObjs {
+                list,
+                set: Set::new(set, ctx),
+            });
         }
         outer_vars.push(Conflict::new(name.clone(), set));
         (name, Set::new(set, ctx), conflicts)
     }
-
 }
 
 /// Performs variable substitution in a piece of rust code.
@@ -271,7 +352,12 @@ impl<'a> Display for Variable<'a> {
 
 /// The type of a value.
 #[derive(Serialize)]
-pub enum ValueType { Enum(RcStr), Range, HalfRange, NumericSet(String) }
+pub enum ValueType {
+    Enum(RcStr),
+    Range,
+    HalfRange,
+    NumericSet(String),
+}
 
 impl ValueType {
     pub fn new(t: ir::ValueType, ctx: &Context) -> Self {
@@ -279,8 +365,9 @@ impl ValueType {
             ir::ValueType::Enum(name) => ValueType::Enum(name.clone()),
             ir::ValueType::Range => ValueType::Range,
             ir::ValueType::HalfRange => ValueType::HalfRange,
-            ir::ValueType::NumericSet(univers) =>
-                ValueType::NumericSet(code(&univers, ctx)),
+            ir::ValueType::NumericSet(univers) => {
+                ValueType::NumericSet(code(&univers, ctx))
+            }
         }
     }
 }
@@ -292,7 +379,8 @@ impl Display for ValueType {
             ValueType::Range => "Range",
             ValueType::HalfRange => "HalfRange",
             ValueType::NumericSet(..) => "NumericSet",
-        }.fmt(f)
+        }
+        .fmt(f)
     }
 }
 
@@ -301,11 +389,13 @@ impl Display for ir::CounterKind {
         match *self {
             ir::CounterKind::Add => "+",
             ir::CounterKind::Mul => "*",
-        }.fmt(f)
+        }
+        .fmt(f)
     }
 }
 
-/// Creates a variable containing the list of newly created objects of the given set.
+/// Creates a variable containing the list of newly created objects of the
+/// given set.
 pub fn new_objs_list(set: &ir::SetDef, new_objs: &str) -> Variable<'static> {
     let name = render!(set/new_objs, <'a>,
                        def: SetDef<'a> = SetDef::new(set),
@@ -325,13 +415,21 @@ impl<'a> Set<'a> {
     pub fn new<S: ir::SetRef<'a>>(set: S, ctx: &Context<'a>) -> Self {
         if let Some(rev_set) = set.reverse_constraint() {
             let mut rev_set_ast = Set::new(rev_set.clone(), ctx);
-            rev_set_ast.constraints = set.without_reverse_constraints()
+            rev_set_ast.constraints = set
+                .without_reverse_constraints()
                 .path_to_superset(&rev_set.superset().unwrap())
-                .into_iter().rev().map(|s| Set::new(s, ctx)).collect();
+                .into_iter()
+                .rev()
+                .map(|s| Set::new(s, ctx))
+                .collect();
             rev_set_ast
         } else {
             let var = set.arg().map(|v| ctx.var_name(v));
-            Set { def: SetDef::new(set.def()), var, constraints: vec![] }
+            Set {
+                def: SetDef::new(set.def()),
+                var,
+                constraints: vec![],
+            }
         }
     }
 }
@@ -358,10 +456,16 @@ impl<'a> SetDef<'a> {
 
 hash_from_key!(SetDef<'a>, SetDef::name, 'a);
 
-/// Fetches the variables names and zips them with the set they must be on to be passed
-/// as argument to the given choice.
-pub fn vars_with_sets<'a>(choice: &'a ir::Choice, vars: &[ir::Variable],
-                          ctx: &Context<'a>) -> Vec<(Variable<'a>, Set<'a>)> {
-    vars.iter().map(|&v| ctx.var_name(v))
-        .zip_eq(choice.arguments().sets().map(|s| Set::new(s, ctx))).collect()
+/// Fetches the variables names and zips them with the set they must be on to
+/// be passed as argument to the given choice.
+pub fn vars_with_sets<'a>(
+    choice: &'a ir::Choice,
+    vars: &[ir::Variable],
+    ctx: &Context<'a>,
+) -> Vec<(Variable<'a>, Set<'a>)>
+{
+    vars.iter()
+        .map(|&v| ctx.var_name(v))
+        .zip_eq(choice.arguments().sets().map(|s| Set::new(s, ctx)))
+        .collect()
 }

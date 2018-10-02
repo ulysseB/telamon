@@ -41,7 +41,10 @@ mod single_enum {
         assert_eq!(x, Foo::B);
         // Test complement.
         let fun = ir::Function::default();
-        assert_eq!(Action::Foo(Foo::A).complement(&fun), Some(Action::Foo(Foo::BC)));
+        assert_eq!(
+            Action::Foo(Foo::A).complement(&fun),
+            Some(Action::Foo(Foo::BC))
+        );
 
         // Ensure `failed`, `all` and `is_failed` are working.
         assert!(Foo::FAILED.is_failed());
@@ -90,8 +93,10 @@ mod single_enum {
 
         // Test action complement.
         let fun = ir::Function::default();
-        assert_eq!(Action::Bar(NumericSet::all(&[1, 4])).complement(&fun),
-                   Some(Action::Bar(NumericSet::all(&[2, 8]))));
+        assert_eq!(
+            Action::Bar(NumericSet::all(&[1, 4])).complement(&fun),
+            Some(Action::Bar(NumericSet::all(&[2, 8])))
+        );
 
         // Test comparison operators.
         assert!(all0.lt(Range::new_eq(&Range::ALL, 9)));
@@ -252,7 +257,8 @@ mod multiple_conditions {
         assert_eq!(enum_3::filter(bb0, &fun, &store), Enum3::A | Enum3::B);
     }
 
-    /// Ensures static rules are correctly generated when mixed with conditions on enums.
+    /// Ensures static rules are correctly generated when mixed with conditions
+    /// on enums.
     #[test]
     fn mixed_code_conditions() {
         let _ = ::env_logger::try_init();
@@ -309,7 +315,8 @@ mod filter_strength {
     generated_file!(filter_strength);
     use self::filter_strength::*;
 
-    /// Ensures a merge filter can be strictly more powerful than two separate filters.
+    /// Ensures a merge filter can be strictly more powerful than two separate
+    /// filters.
     #[test]
     fn merged_filter_strength() {
         let _ = ::env_logger::try_init();
@@ -437,7 +444,8 @@ mod on_change {
         assert!(simple_1::on_change(all1, Simple1::A, b1, fun, store, diff).is_err());
     }
 
-    /// Ensures `on_change` works correctly when a forall variable is mapped to an argument.
+    /// Ensures `on_change` works correctly when a forall variable is mapped to
+    /// an argument.
     #[test]
     fn on_change_forall() {
         let _ = ::env_logger::try_init();
@@ -473,29 +481,43 @@ mod on_change {
         let diff = &mut DomainDiff::default();
         let store0 = &mut DomainStore::new(&fun);
         store0.set_type_0(dim0.into(), Type0::B);
-        assert!(type_0::on_change(
-                Type0::ALL, Type0::B, dim0.into(), fun, store0, diff).is_ok());
-        assert_eq!(diff.pop_type_1_diff(), Some(((dim0,), Type1::ALL, Type1::B)));
+        assert!(
+            type_0::on_change(Type0::ALL, Type0::B, dim0.into(), fun, store0, diff)
+                .is_ok()
+        );
+        assert_eq!(
+            diff.pop_type_1_diff(),
+            Some(((dim0,), Type1::ALL, Type1::B))
+        );
         assert!(diff.is_empty());
 
-
         store0.set_type_0(inst0, Type0::B);
-        assert!(type_0::on_change(Type0::ALL, Type0::B, inst0, fun, store0, diff).is_ok());
+        assert!(
+            type_0::on_change(Type0::ALL, Type0::B, inst0, fun, store0, diff).is_ok()
+        );
         assert!(diff.is_empty());
 
         // Check with explicit type constraints.
         let store1 = &mut DomainStore::new(&fun);
         store1.set_type_1(dim0, Type1::A);
         assert!(type_1::on_change(Type1::ALL, Type1::A, dim0, fun, store1, diff).is_ok());
-        assert_eq!(diff.pop_type_0_diff(), Some(((dim0.into(),), Type0::ALL, Type0::A)));
+        assert_eq!(
+            diff.pop_type_0_diff(),
+            Some(((dim0.into(),), Type0::ALL, Type0::A))
+        );
         assert!(diff.is_empty());
 
         // Check with implicit type constraints on foralls.
         let store2 = &mut DomainStore::new(&fun);
         store2.set_type_2(dim0.into(), Type2::B);
-        assert!(type_2::on_change(
-                Type2::ALL, Type2::A, dim0.into(), fun, store2, diff).is_ok());
-        assert_eq!(diff.pop_type_2_diff(), Some(((inst0,), Type2::ALL, Type2::B)));
+        assert!(
+            type_2::on_change(Type2::ALL, Type2::A, dim0.into(), fun, store2, diff)
+                .is_ok()
+        );
+        assert_eq!(
+            diff.pop_type_2_diff(),
+            Some(((inst0,), Type2::ALL, Type2::B))
+        );
         assert!(diff.is_empty());
     }
 }
@@ -518,7 +540,7 @@ mod counter_def {
         let inst0 = ir::inst::create(&mut fun, false);
         let inst1 = ir::inst::create(&mut fun, false);
         let store = &mut DomainStore::new(&fun);
-        let actions = init_domain(store,&mut  fun).unwrap();
+        let actions = init_domain(store, &mut fun).unwrap();
         let fun = &mut Arc::new(fun);
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert_eq!(store.get_simple_counter(inst0), Range { min: 5, max: 5 });
@@ -547,11 +569,17 @@ mod counter_def {
         let actions = init_domain(store, &mut fun).unwrap();
         let fun = &mut Arc::new(fun);
         assert!(apply_decisions(actions, fun, store).is_ok());
-        assert_eq!(store.get_counter_single_cond(inst0), Range { min: 1, max: 5 });
+        assert_eq!(
+            store.get_counter_single_cond(inst0),
+            Range { min: 1, max: 5 }
+        );
         // Check if the counter is updated when the conditions are updated
         let actions = vec![Action::Foo(dim2, Foo::A), Action::Foo(dim3, Foo::B)];
         assert!(apply_decisions(actions, fun, store).is_ok());
-        assert_eq!(store.get_counter_single_cond(inst0), Range { min: 2, max: 4 });
+        assert_eq!(
+            store.get_counter_single_cond(inst0),
+            Range { min: 2, max: 4 }
+        );
     }
 
     /// Test a counter of counter.
@@ -572,14 +600,28 @@ mod counter_def {
         let actions = init_domain(store, &mut fun).unwrap();
         let fun = &mut Arc::new(fun);
         assert!(apply_decisions(actions, fun, store).is_ok());
-        assert_eq!(store.get_counter_of_counter(dim2.into()), Range { min: 2, max: 8 });
+        assert_eq!(
+            store.get_counter_of_counter(dim2.into()),
+            Range { min: 2, max: 8 }
+        );
         // Test the counter is correctly computed after the value is updated.
         assert!(apply_decisions(vec![Action::Foo(dim1, Foo::B)], fun, store).is_ok());
-        assert_eq!(store.get_counter_of_counter(dim2.into()), Range {min: 2, max: 4 });
+        assert_eq!(
+            store.get_counter_of_counter(dim2.into()),
+            Range { min: 2, max: 4 }
+        );
         // Test the counter value is correctly restricted.
         let diff = &mut DomainDiff::default();
-        assert!(counter_of_counter::restrict(
-                dim1.into(), fun, store, Range { min: 2, max: 2 }, diff).is_ok());
+        assert!(
+            counter_of_counter::restrict(
+                dim1.into(),
+                fun,
+                store,
+                Range { min: 2, max: 2 },
+                diff
+            )
+            .is_ok()
+        );
         assert_eq!(store.get_foo(dim1.into()), Foo::B);
     }
 
@@ -612,7 +654,8 @@ mod counter_alloc {
     use self::counter_alloc::*;
     use std::sync::Arc;
 
-    /// Ensures counters and increments are correctly handled when a new object is allocated.
+    /// Ensures counters and increments are correctly handled when a new object
+    /// is allocated.
     #[test]
     fn counter_allocation() {
         let _ = ::env_logger::try_init();
@@ -629,10 +672,18 @@ mod counter_alloc {
 
         // Allocate a dimension.
         let dim1 = ir::dim::create(Arc::make_mut(fun), false);
-        let new_objs = ir::NewObjs { dim: vec![dim1], .. Default::default() };
+        let new_objs = ir::NewObjs {
+            dim: vec![dim1],
+            ..Default::default()
+        };
         store.alloc(fun, &new_objs);
         let actions = init_domain_partial(
-            store, Arc::make_mut(fun), &new_objs, &mut DomainDiff::default()).unwrap();
+            store,
+            Arc::make_mut(fun),
+            &new_objs,
+            &mut DomainDiff::default(),
+        )
+        .unwrap();
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert_eq!(store.get_num_foo_a(inst0), Range { min: 0, max: 1 });
         assert_eq!(store.get_foo(inst0, dim0), Foo::ALL);
@@ -640,10 +691,18 @@ mod counter_alloc {
 
         // Allocate an instruction
         let inst1 = ir::inst::create(Arc::make_mut(fun), false);
-        let new_objs = ir::NewObjs { inst: vec![inst1], .. Default::default() };
+        let new_objs = ir::NewObjs {
+            inst: vec![inst1],
+            ..Default::default()
+        };
         store.alloc(fun, &new_objs);
         let actions = init_domain_partial(
-            store, Arc::make_mut(fun), &new_objs, &mut DomainDiff::default()).unwrap();
+            store,
+            Arc::make_mut(fun),
+            &new_objs,
+            &mut DomainDiff::default(),
+        )
+        .unwrap();
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert_eq!(store.get_num_foo_a(inst1), Range { min: 0, max: 2 });
         assert_eq!(store.get_foo(inst1, dim0), Foo::ALL);
@@ -666,27 +725,36 @@ mod counter_alloc {
         // counter modification itself.
         let diff = &mut DomainDiff::default();
         store.set_bar(inst0, dim0, Bar::B);
-        assert!(store.restrict_num_bar(inst0, Range { min: 0, max: 1}, diff).is_ok());
-        let expected_diff = (Range { min: 0, max: 1 }, Range { min: 0, max: 0});
+        assert!(
+            store
+                .restrict_num_bar(inst0, Range { min: 0, max: 1 }, diff)
+                .is_ok()
+        );
+        let expected_diff = (Range { min: 0, max: 1 }, Range { min: 0, max: 0 });
         assert_eq!(diff.num_bar.get(&(inst0,)), Some(&expected_diff));
         // Allocate three dimensions.
         let dim1 = ir::dim::create(Arc::make_mut(fun), false);
         let dim2 = ir::dim::create(Arc::make_mut(fun), false);
         let dim3 = ir::dim::create(Arc::make_mut(fun), false);
-        let ref new_objs = ir::NewObjs { dim: vec![dim1, dim2, dim3], inst: vec![] };
+        let ref new_objs = ir::NewObjs {
+            dim: vec![dim1, dim2, dim3],
+            inst: vec![],
+        };
         store.alloc(fun, new_objs);
         // Set the (inst0, dim1) increment to false and (inst0, dim2) increment to true.
         store.set_bar(inst0, dim1, Bar::B);
         store.set_bar(inst0, dim2, Bar::A);
         // Re-init the domain and check the diff has been updated.
         let actions = init_domain_partial(store, Arc::make_mut(fun), new_objs, diff);
-        assert_eq!(store.get_num_bar(inst0), Range { min: 0, max: 3});
+        assert_eq!(store.get_num_bar(inst0), Range { min: 0, max: 3 });
         assert_eq!(diff.num_bar.get(&(inst0,)), None);
         // Propagate all changes and check the final counter value
         for action in actions.unwrap() {
             assert!(apply_action(action, store, diff).is_ok());
         }
-        while !diff.is_empty() { assert!(propagate_changes(diff, fun, store).is_ok()); }
+        while !diff.is_empty() {
+            assert!(propagate_changes(diff, fun, store).is_ok());
+        }
         assert_eq!(store.get_num_bar(inst0), Range { min: 1, max: 2 });
     }
 }
@@ -739,14 +807,21 @@ mod lowering {
     use self::lowering::*;
     use std::sync::Arc;
 
-    fn test_trigger(fun: &mut ir::Function, _: ir::dim::Id, bb: ir::basic_block::Id)
-            -> Result<(ir::NewObjs, Vec<Action>), ()> {
+    fn test_trigger(
+        fun: &mut ir::Function,
+        _: ir::dim::Id,
+        bb: ir::basic_block::Id,
+    ) -> Result<(ir::NewObjs, Vec<Action>), ()>
+    {
         ir::basic_block::get(fun, bb).set_condition();
         Ok(Default::default())
     }
 
-    fn test_complex_trigger(fun: &mut ir::Function, _: ir::dim::Id, dim: ir::dim::Id)
-        -> Result<(ir::NewObjs, Vec<Action>), ()>
+    fn test_complex_trigger(
+        fun: &mut ir::Function,
+        _: ir::dim::Id,
+        dim: ir::dim::Id,
+    ) -> Result<(ir::NewObjs, Vec<Action>), ()>
     {
         ir::dim::get(fun, dim).set_condition();
         Ok(Default::default())
@@ -781,12 +856,17 @@ mod lowering {
         let new_objs = ir::NewObjs {
             inst: vec![inst4],
             basic_block: vec![inst4.into()],
-            .. Default::default()
+            ..Default::default()
         };
         store.alloc(fun, &new_objs);
         store.set_foo(dim0.into(), inst4.into(), Foo::A);
         let actions = init_domain_partial(
-            store, Arc::make_mut(fun), &new_objs, &mut DomainDiff::default()).unwrap();
+            store,
+            Arc::make_mut(fun),
+            &new_objs,
+            &mut DomainDiff::default(),
+        )
+        .unwrap();
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert!(ir::inst::get(fun, inst4).condition());
         assert!(!ir::inst::get(fun, inst3).condition());
@@ -818,7 +898,9 @@ mod lowering {
         assert!(store.restrict_bar(dim2, Bar::A, diff).is_ok());
         let dim3 = ir::dim::create(Arc::make_mut(fun), false);
         let new_objs = ir::NewObjs {
-            dim: vec![dim3], basic_block: vec![dim3.into()], .. ir::NewObjs::default()
+            dim: vec![dim3],
+            basic_block: vec![dim3.into()],
+            ..ir::NewObjs::default()
         };
         store.alloc(fun, &new_objs);
         store.set_bar(dim3, Bar::A);
@@ -853,17 +935,27 @@ mod parametric_set {
         assert!(apply_decisions(vec![Action::Bar(inst0, Bar::D)], fun, store).is_ok());
         assert_eq!(store.get_foo(inst0, op0), Foo::A);
         // Constrain the instruction choice by setting the operand choice.
-        assert!(apply_decisions(vec![Action::Foo(inst1, op1, Foo::B)], fun, store).is_ok());
+        assert!(
+            apply_decisions(vec![Action::Foo(inst1, op1, Foo::B)], fun, store).is_ok()
+        );
         assert_eq!(store.get_bar(inst1), Bar::C);
         // Test post-lowering allocation and filtering.
         let op2 = ir::operand::create(Arc::make_mut(fun), inst0, false);
         let inst2 = ir::inst::create(Arc::make_mut(fun), false);
         let op3 = ir::operand::create(Arc::make_mut(fun), inst2, false);
         let new_ops = vec![(inst0, op2), (inst2, op3)];
-        let new_objs = ir::NewObjs { inst: vec![inst2], operand: new_ops };
+        let new_objs = ir::NewObjs {
+            inst: vec![inst2],
+            operand: new_ops,
+        };
         store.alloc(fun, &new_objs);
         let actions = init_domain_partial(
-            store, Arc::make_mut(fun), &new_objs, &mut DomainDiff::default()).unwrap();
+            store,
+            Arc::make_mut(fun),
+            &new_objs,
+            &mut DomainDiff::default(),
+        )
+        .unwrap();
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert_eq!(store.get_foo(inst0, op2), Foo::A);
         assert_eq!(store.get_foo(inst2, op3), Foo::ALL);
@@ -915,13 +1007,20 @@ mod parametric_subset {
         // Test a constraint on a parametric set, with no reversal.
         let (param_a_1, param_b_1) = (param_a_1.into(), param_b_1.into());
         let value_a_1: ir::value_ab::Id = value_a_1.into();
-        let actions = vec![
-            Action::ParamValueChoice(param_a_1, value_a_1.into(), ParamValueChoice::B),
-        ];
+        let actions = vec![Action::ParamValueChoice(
+            param_a_1,
+            value_a_1.into(),
+            ParamValueChoice::B,
+        )];
         assert!(apply_decisions(actions, fun, store).is_ok());
-        assert_eq!(store.get_value_ab_choice(param_a_1, value_a_1), ValueAbChoice::A);
-        assert_eq!(store.get_value_ab_choice(param_b_1, value_b_1.into()),
-                   ValueAbChoice::ALL);
+        assert_eq!(
+            store.get_value_ab_choice(param_a_1, value_a_1),
+            ValueAbChoice::A
+        );
+        assert_eq!(
+            store.get_value_ab_choice(param_b_1, value_b_1.into()),
+            ValueAbChoice::ALL
+        );
     }
 
     /// Test set constraints, where the set parameter is not yet defined.
@@ -941,17 +1040,25 @@ mod parametric_subset {
         // Test a reverse set constraint, with no additional constraint.
         let actions = vec![Action::ValueChoice(value_a.into(), ValueChoice::B)];
         assert!(apply_decisions(actions, fun, store).is_ok());
-        assert_eq!(store.get_param_value_choice(param_a.into(), value_a.into()),
-                   ParamValueChoice::A);
-        assert_eq!(store.get_param_value_choice(param_b.into(), value_b.into()),
-                   ParamValueChoice::ALL);
+        assert_eq!(
+            store.get_param_value_choice(param_a.into(), value_a.into()),
+            ParamValueChoice::A
+        );
+        assert_eq!(
+            store.get_param_value_choice(param_b.into(), value_b.into()),
+            ParamValueChoice::ALL
+        );
         // Test a reverse set constraint on an already constrained set.
         let actions = vec![Action::ValueChoice(value_b.into(), ValueChoice::B)];
         assert!(apply_decisions(actions, fun, store).is_ok());
-        assert_eq!(store.get_param_value_choice_2(param_a.into(), value_a.into()),
-                   ParamValueChoice2::A);
-        assert_eq!(store.get_param_value_choice_2(param_b.into(), value_b.into()),
-                   ParamValueChoice2::ALL);
+        assert_eq!(
+            store.get_param_value_choice_2(param_a.into(), value_a.into()),
+            ParamValueChoice2::A
+        );
+        assert_eq!(
+            store.get_param_value_choice_2(param_b.into(), value_b.into()),
+            ParamValueChoice2::ALL
+        );
     }
 }
 
@@ -968,20 +1075,32 @@ mod quotient_set {
     use std::sync::Arc;
 
     /// Callback that adds an instruction to the `InstQuotient` set.
-    fn add_inst_to_quotient(fun: &mut ir::Function,
-                            inst: ir::inst::Id) -> ir::NewObjs {
+    fn add_inst_to_quotient(fun: &mut ir::Function, inst: ir::inst::Id) -> ir::NewObjs {
         if ir::inst_quotient::add_to_subset(fun, inst) {
-            ir::NewObjs { inst_quotient: vec![inst], .. ir::NewObjs::default() }
-        } else { ir::NewObjs::default() }
+            ir::NewObjs {
+                inst_quotient: vec![inst],
+                ..ir::NewObjs::default()
+            }
+        } else {
+            ir::NewObjs::default()
+        }
     }
 
     /// Callback that adds a dimension to the `DimQuotient(inst)` set.
-    fn add_dim_to_quotient(fun: &mut ir::Function,
-                           inst: ir::inst::Id,
-                           dim: ir::dim::Id) -> ir::NewObjs {
+    fn add_dim_to_quotient(
+        fun: &mut ir::Function,
+        inst: ir::inst::Id,
+        dim: ir::dim::Id,
+    ) -> ir::NewObjs
+    {
         if ir::dim_quotient::add_to_subset(fun, inst, dim) {
-            ir::NewObjs { dim_quotient: vec![(inst, dim)], .. ir::NewObjs::default() }
-        } else { ir::NewObjs::default() }
+            ir::NewObjs {
+                dim_quotient: vec![(inst, dim)],
+                ..ir::NewObjs::default()
+            }
+        } else {
+            ir::NewObjs::default()
+        }
     }
 
     /// Test quotient sets without arguments
@@ -989,8 +1108,8 @@ mod quotient_set {
     fn simple_set() {
         let _ = ::env_logger::try_init();
         let mut fun = ir::Function::default();
-        let mut maybe_repr: Vec<_> = (0..4)
-            .map(|_| ir::inst::create(&mut fun, false)).collect();
+        let mut maybe_repr: Vec<_> =
+            (0..4).map(|_| ir::inst::create(&mut fun, false)).collect();
         let store = &mut DomainStore::new(&fun);
         let actions = init_domain(store, &mut fun).unwrap();
         let fun = &mut Arc::new(fun);
@@ -1032,10 +1151,13 @@ mod quotient_set {
         let actions = vec![
             Action::Order(not_repr.into(), repr1.into(), !Order::MERGED),
             Action::Order(not_repr.into(), repr2.into(), !Order::MERGED),
-            Action::ReprInst(not_repr, Bool::FALSE)
+            Action::ReprInst(not_repr, Bool::FALSE),
         ];
         assert!(apply_decisions(actions, fun, store).is_ok());
-        assert_eq!(store.get_order(not_repr.into(), repr0.into()), Order::MERGED);
+        assert_eq!(
+            store.get_order(not_repr.into(), repr0.into()),
+            Order::MERGED
+        );
     }
 
     /// Test quotient sets with an argument.
@@ -1060,7 +1182,10 @@ mod quotient_set {
         let actions = vec![Action::Order(dim0.into(), inst0.into(), Order::OUTER)];
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert_eq!(store.get_active_dim(inst0, dim0), Bool::TRUE);
-        assert_eq!(ir::dim_quotient::iter(fun, inst0).next().map(|x| x.id()), Some(dim0));
+        assert_eq!(
+            ir::dim_quotient::iter(fun, inst0).next().map(|x| x.id()),
+            Some(dim0)
+        );
         // Ensure the dividend is set to true if a representative is selected
         let actions = vec![Action::ActiveDim(inst0, dim1, Bool::TRUE)];
         assert!(apply_decisions(actions, fun, store).is_ok());
@@ -1157,6 +1282,5 @@ mod integer_set {
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert_eq!(store.get_sum_int2(), Range { min: 12, max: 12 });
         assert_eq!(store.get_int2(obj2), NumericSet::all(&[3]));
-
     }
 }

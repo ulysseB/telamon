@@ -9,10 +9,10 @@ mod choice;
 mod filter;
 mod set;
 
+pub use self::adaptator::*;
 pub use self::choice::*;
 pub use self::filter::*;
 pub use self::set::*;
-pub use self::adaptator::*;
 
 /// Describes the choices that constitute the IR.
 pub struct IrDesc {
@@ -34,12 +34,12 @@ impl IrDesc {
     }
 
     /// List the choice definitions.
-    pub fn choices<'a>(&'a self) -> impl Iterator<Item=&'a Choice> {
+    pub fn choices<'a>(&'a self) -> impl Iterator<Item = &'a Choice> {
         self.choices.values()
     }
 
     /// List the enum definitions.
-    pub fn enums<'a>(&'a self) -> impl Iterator<Item=&'a Enum> { self.enums.values() }
+    pub fn enums<'a>(&'a self) -> impl Iterator<Item = &'a Enum> { self.enums.values() }
 
     /// Returns the enum with the given name.
     pub fn get_enum<'a>(&'a self, name: &str) -> &'a Enum { &self.enums[name] }
@@ -50,7 +50,7 @@ impl IrDesc {
     }
 
     /// Iterates over all the sets.
-    pub fn set_defs<'a>(&'a self) -> impl Iterator<Item=&'a std::rc::Rc<SetDef>> + 'a {
+    pub fn set_defs<'a>(&'a self) -> impl Iterator<Item = &'a std::rc::Rc<SetDef>> + 'a {
         self.set_defs.values()
     }
 
@@ -62,38 +62,67 @@ impl IrDesc {
 
     /// Returns the set definition associated with a name.
     pub fn get_set_def<'a>(&'a self, name: &str) -> &'a std::rc::Rc<SetDef> {
-        self.set_defs.get(name).unwrap_or_else(|| panic!("Undefined set {}", name))
+        self.set_defs
+            .get(name)
+            .unwrap_or_else(|| panic!("Undefined set {}", name))
     }
 
     /// Adds a filter to a choice.
-    pub fn add_filter(&mut self,
-                      choice: RcStr,
-                      filter: Filter,
-                      forall_vars: Vec<Set>,
-                      set_constraints: SetConstraints) {
+    pub fn add_filter(
+        &mut self,
+        choice: RcStr,
+        filter: Filter,
+        forall_vars: Vec<Set>,
+        set_constraints: SetConstraints,
+    )
+    {
         // Register the filter and add the `OnChangeAction`s.
         let filter_ref = if filter.inputs.is_empty() {
-            if let SubFilter::Rules(rules) = filter.rules { FilterRef::Inline(rules) }
-            else { panic!() }
+            if let SubFilter::Rules(rules) = filter.rules {
+                FilterRef::Inline(rules)
+            } else {
+                panic!()
+            }
         } else {
             let inputs = filter.inputs.clone();
             let filter_id = self.choices.get_mut(&choice).unwrap().add_filter(filter);
             // Ensure the filter is called when other choices are restricted.
             for input in &inputs {
                 self.register_filter_call(
-                    &choice, filter_id, input, &forall_vars, &set_constraints);
+                    &choice,
+                    filter_id,
+                    input,
+                    &forall_vars,
+                    &set_constraints,
+                );
             }
             // Call the filter on initialization.
-            let arguments = self.get_choice(&choice).arguments().iter().enumerate()
+            let arguments = self
+                .get_choice(&choice)
+                .arguments()
+                .iter()
+                .enumerate()
                 .map(|(i, _)| Variable::Arg(i))
                 .chain((0..forall_vars.len()).map(|i| Variable::Forall(i)))
                 .collect();
-            FilterRef::Local { id: filter_id, args: arguments }
+            FilterRef::Local {
+                id: filter_id,
+                args: arguments,
+            }
         };
         // Add the init call.
-        let filter = FilterCall { forall_vars, filter_ref };
-        let filter_action = FilterAction { filter, set_constraints };
-        self.choices.get_mut(&choice).unwrap().add_filter_action(filter_action);
+        let filter = FilterCall {
+            forall_vars,
+            filter_ref,
+        };
+        let filter_action = FilterAction {
+            filter,
+            set_constraints,
+        };
+        self.choices
+            .get_mut(&choice)
+            .unwrap()
+            .add_filter_action(filter_action);
     }
 
     pub fn add_onchange(&mut self, choice: &str, action: OnChangeAction) {
@@ -101,49 +130,96 @@ impl IrDesc {
     }
 
     /// Registers an filter call action for a filter on a choice.
-    fn register_filter_call(&mut self, filtered: &RcStr, filter_id: usize,
-                            changed: &ChoiceInstance,
-                            foralls: &[Set],
-                            set_constraints: &SetConstraints) {
-        let env = self.get_choice(&filtered).arguments().sets().enumerate()
+    fn register_filter_call(
+        &mut self,
+        filtered: &RcStr,
+        filter_id: usize,
+        changed: &ChoiceInstance,
+        foralls: &[Set],
+        set_constraints: &SetConstraints,
+    )
+    {
+        let env = self
+            .get_choice(&filtered)
+            .arguments()
+            .sets()
+            .enumerate()
             .map(|(i, set)| (Variable::Arg(i), set))
-            .chain(foralls.iter().enumerate().map(|(i, set)| (Variable::Forall(i), set)))
+            .chain(
+                foralls
+                    .iter()
+                    .enumerate()
+                    .map(|(i, set)| (Variable::Forall(i), set)),
+            )
             .map(|(v, set)| (v, set_constraints.find_set(v).unwrap_or(set).clone()))
             .collect::<HashMap<_, _>>();
         // If the changed choice is symmetric, the inverse filter should also be called.
         if self.get_choice(&changed.choice).arguments().is_symmetric() {
             let vars = vec![changed.vars[1], changed.vars[0]];
-            let ref changed = ChoiceInstance { choice: changed.choice.clone(), vars };
+            let ref changed = ChoiceInstance {
+                choice: changed.choice.clone(),
+                vars,
+            };
             let action = self.gen_filter_call_action(
-                filtered.clone(), filter_id, changed, env.clone(), foralls.len());
+                filtered.clone(),
+                filter_id,
+                changed,
+                env.clone(),
+                foralls.len(),
+            );
             self.add_onchange(&changed.choice, action);
         }
         let action = self.gen_filter_call_action(
-            filtered.clone(), filter_id, &changed, env, foralls.len());
+            filtered.clone(),
+            filter_id,
+            &changed,
+            env,
+            foralls.len(),
+        );
         self.add_onchange(&changed.choice, action);
-
     }
 
     /// Generates an `OnChangeAction`.
-    fn gen_filter_call_action(&self, filtered: RcStr, id: usize,
-                              changed: &ChoiceInstance,
-                              env: HashMap<Variable, Set>,
-                              num_foralls: usize) -> OnChangeAction {
+    fn gen_filter_call_action(
+        &self,
+        filtered: RcStr,
+        id: usize,
+        changed: &ChoiceInstance,
+        env: HashMap<Variable, Set>,
+        num_foralls: usize,
+    ) -> OnChangeAction
+    {
         // TODO(cc_perf): no need to iterate on the full domain for symmetric choices.
         let (choice_foralls, filter_foralls, set_constraints, adaptator) =
             self.adapt_env_ext(env, changed);
         // Generate the action.
         let num_args = self.get_choice(&filtered).arguments().len();
-        let args = (0..num_args).map(Variable::Arg)
+        let args = (0..num_args)
+            .map(Variable::Arg)
             .chain((0..num_foralls).map(Variable::Forall))
-            .map(|v| adaptator.variable(v)).collect();
-        let filter_ref = FilterRef::Remote { choice: filtered.clone(), id, args };
+            .map(|v| adaptator.variable(v))
+            .collect();
+        let filter_ref = FilterRef::Remote {
+            choice: filtered.clone(),
+            id,
+            args,
+        };
         let filtered_args = (0..num_args).map(|i| adaptator.variable(Variable::Arg(i)));
         let action = ChoiceAction::Filter {
-            choice: ChoiceInstance { choice: filtered, vars: filtered_args.collect() },
-            filter: FilterCall { forall_vars: filter_foralls, filter_ref },
+            choice: ChoiceInstance {
+                choice: filtered,
+                vars: filtered_args.collect(),
+            },
+            filter: FilterCall {
+                forall_vars: filter_foralls,
+                filter_ref,
+            },
         };
-        OnChangeAction { forall_vars: choice_foralls, set_constraints, action }
+        OnChangeAction {
+            forall_vars: choice_foralls,
+            set_constraints,
+            action,
+        }
     }
 
     /// Adds a trigger to a choice.
@@ -154,13 +230,16 @@ impl IrDesc {
     }
 
     /// Iterates on the triggers.
-    pub fn triggers(&self) -> impl Iterator<Item=&Trigger> { self.triggers.iter() }
+    pub fn triggers(&self) -> impl Iterator<Item = &Trigger> { self.triggers.iter() }
 
-    /// Generates the list of sets to iterate and to constraints to iterate on the given
-    /// context, but from the point of view of the given choice instance.
-    pub fn adapt_env(&self, vars: HashMap<Variable, Set>,
-                     choice_instance: &ChoiceInstance)
-        -> (Vec<Set>, SetConstraints, Adaptator)
+    /// Generates the list of sets to iterate and to constraints to iterate on
+    /// the given context, but from the point of view of the given choice
+    /// instance.
+    pub fn adapt_env(
+        &self,
+        vars: HashMap<Variable, Set>,
+        choice_instance: &ChoiceInstance,
+    ) -> (Vec<Set>, SetConstraints, Adaptator)
     {
         let (mut arg_foralls, other_foralls, set_constraints, adaptator) =
             self.adapt_env_ext(vars, choice_instance);
@@ -168,13 +247,15 @@ impl IrDesc {
         (arg_foralls, set_constraints, adaptator)
     }
 
-    /// Generates the list of sets to iterate and to constraints to iterate on the given
-    /// environement, but from the point of view of the given choice instance. The new
-    /// foralls iterating on current arguments are returned in a separate list than the
-    /// ones issued from foralls.
-    pub fn adapt_env_ext(&self, mut vars: HashMap<Variable, Set>,
-                         choice_instance: &ChoiceInstance)
-        -> (Vec<Set>, Vec<Set>, SetConstraints, Adaptator)
+    /// Generates the list of sets to iterate and to constraints to iterate on
+    /// the given environement, but from the point of view of the given
+    /// choice instance. The new foralls iterating on current arguments are
+    /// returned in a separate list than the ones issued from foralls.
+    pub fn adapt_env_ext(
+        &self,
+        mut vars: HashMap<Variable, Set>,
+        choice_instance: &ChoiceInstance,
+    ) -> (Vec<Set>, Vec<Set>, SetConstraints, Adaptator)
     {
         let mut arg_foralls = Vec::new();
         let mut other_foralls = Vec::new();
@@ -182,7 +263,10 @@ impl IrDesc {
         let mut adaptator = Adaptator::default();
         // Set the mapping of the target choice arguments.
         let target = self.get_choice(&choice_instance.choice);
-        let src_vars = choice_instance.vars.iter().zip_eq(target.arguments().sets());
+        let src_vars = choice_instance
+            .vars
+            .iter()
+            .zip_eq(target.arguments().sets());
         for (arg_id, (&mapped_var, given_set)) in src_vars.enumerate() {
             let expected_set = vars.remove(&mapped_var).unwrap();
             adaptator.set_variable(mapped_var, Variable::Arg(arg_id));
@@ -190,8 +274,9 @@ impl IrDesc {
                 set_constraints.push((Variable::Arg(arg_id), expected_set.clone()));
             }
         }
-        // Add the remaining variables as foralls. We keep the foralls in the order thwy were
-        // given, so the sets are still defined after their parameters.
+        // Add the remaining variables as foralls. We keep the foralls in the order
+        // thwy were given, so the sets are still defined after their
+        // parameters.
         let vars = vars.into_iter().sorted_by_key(|x| x.0);
         for (forall_id, (mapped_var, set)) in vars.into_iter().enumerate() {
             adaptator.set_variable(mapped_var, Variable::Forall(forall_id));
@@ -201,10 +286,13 @@ impl IrDesc {
             }
         }
         // Adapt the set constraints to the new environement.
-        for set in set_constraints.iter_mut().map(|x| &mut x.1)
-            .chain(&mut arg_foralls).chain(&mut other_foralls)
+        for set in set_constraints
+            .iter_mut()
+            .map(|x| &mut x.1)
+            .chain(&mut arg_foralls)
+            .chain(&mut other_foralls)
         {
-                *set = set.adapt(&adaptator);
+            *set = set.adapt(&adaptator);
         }
         // Reverse the set constraints when the set parameter is defined in the foralls.
         // TODO(cleanup): make the reversing code readable
@@ -215,7 +303,9 @@ impl IrDesc {
                 // Assign the reverse set to foralls.
                 let forall = if forall_id < arg_foralls.len() {
                     &mut arg_foralls[forall_id]
-                } else { &mut other_foralls[forall_id-arg_foralls.len()] };
+                } else {
+                    &mut other_foralls[forall_id - arg_foralls.len()]
+                };
                 let (superset, reverse_set) = set.reverse(*var, &forall).unwrap();
                 *forall = reverse_set;
                 // Use the superset as the constraint is enforced by the forall.
@@ -228,36 +318,46 @@ impl IrDesc {
                 if let Variable::Arg(arg_id) = var {
                     let given_set = target.arguments().get(arg_id).1;
                     !given_set.is_subset_of_def(set)
-                } else { panic!() }
+                } else {
+                    panic!()
+                }
             } else {
                 true
             }
         });
 
-        (arg_foralls, other_foralls, SetConstraints::new(set_constraints), adaptator)
+        (
+            arg_foralls,
+            other_foralls,
+            SetConstraints::new(set_constraints),
+            adaptator,
+        )
     }
 }
 
 impl Default for IrDesc {
     fn default() -> Self {
-       let mut ir_desc =  IrDesc {
-           choices: HashMap::default(),
-           enums: HashMap::default(),
-           set_defs: HashMap::default(),
-           triggers: Vec::new(),
-       };
-       let mut bool_enum = Enum::new("Bool".into(), None, None);
-       bool_enum.add_value("TRUE".into(), None);
-       bool_enum.add_value("FALSE".into(), None);
-       ir_desc.add_enum(bool_enum);
-       ir_desc
+        let mut ir_desc = IrDesc {
+            choices: HashMap::default(),
+            enums: HashMap::default(),
+            set_defs: HashMap::default(),
+            triggers: Vec::new(),
+        };
+        let mut bool_enum = Enum::new("Bool".into(), None, None);
+        bool_enum.add_value("TRUE".into(), None);
+        bool_enum.add_value("FALSE".into(), None);
+        ir_desc.add_enum(bool_enum);
+        ir_desc
     }
 }
 
 /// Indicates whether a counter sums or adds.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[repr(C)]
-pub enum CounterKind { Add, Mul }
+pub enum CounterKind {
+    Add,
+    Mul,
+}
 
 impl CounterKind {
     /// Returns the neutral element of the operand.
@@ -281,12 +381,16 @@ pub struct Enum {
 
 impl Enum {
     /// Creates a new enum definition.
-    pub fn new(name: RcStr, doc: Option<RcStr>,
-               inverse: Option<Vec<(RcStr, RcStr)>>) -> Self {
+    pub fn new(
+        name: RcStr,
+        doc: Option<RcStr>,
+        inverse: Option<Vec<(RcStr, RcStr)>>,
+    ) -> Self
+    {
         Enum {
-            name: name,
-            doc: doc,
-            inverse: inverse,
+            name,
+            doc,
+            inverse,
             values: HashMap::default(),
             aliases: HashMap::default(),
         }
@@ -319,7 +423,7 @@ impl Enum {
     pub fn values(&self) -> &HashMap<RcStr, Option<String>> { &self.values }
 
     /// Replaces aliases by the corresponding values.
-    pub fn expand<IT: IntoIterator<Item=RcStr>>(&self, set: IT) -> HashSet<RcStr> {
+    pub fn expand<IT: IntoIterator<Item = RcStr>>(&self, set: IT) -> HashSet<RcStr> {
         let mut new_set = HashSet::default();
         for alias in set {
             if let Some(&(ref alias_set, _)) = self.aliases.get(&alias) {
@@ -335,8 +439,12 @@ impl Enum {
     pub fn inverse<'a>(&'a self, value: &'a RcStr) -> &'a RcStr {
         if let Some(ref mapping) = self.inverse {
             for &(ref lhs, ref rhs) in mapping {
-                if lhs == value { return rhs; }
-                if rhs == value { return lhs; }
+                if lhs == value {
+                    return rhs;
+                }
+                if rhs == value {
+                    return lhs;
+                }
             }
         }
         value
@@ -347,7 +455,6 @@ impl Enum {
         self.inverse.as_ref().map(|x| &x[..])
     }
 }
-
 
 /// A piece of host code called when a list of conditions are met.
 pub struct Trigger {
@@ -361,8 +468,8 @@ pub struct Trigger {
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use std;
     use itertools::Itertools;
+    use std;
 
     pub use super::filter::test::*;
 
@@ -380,7 +487,8 @@ pub mod test {
         /// Evaluate a condition.
         pub fn eval_cond(&self, cond: &Condition) -> bool {
             let mapping = self.input_values.iter().enumerate().collect();
-            cond.evaluate(&self.inputs_def, &mapping, self.ir_desc).is_true()
+            cond.evaluate(&self.inputs_def, &mapping, self.ir_desc)
+                .is_true()
         }
 
         /// Filters the list of valid values according to the given rule.
@@ -390,12 +498,18 @@ pub mod test {
             self.eval_rule_aux(&rule.conditions, &rule.set_constraints, set, out);
         }
 
-        pub fn eval_rule_aux(&self, conditions: &'a [Condition],
-                             set_constraints: &'a SetConstraints,
-                             alternatives: ValueSet,
-                             valid_values: &mut ValueSet) {
+        pub fn eval_rule_aux(
+            &self,
+            conditions: &'a [Condition],
+            set_constraints: &'a SetConstraints,
+            alternatives: ValueSet,
+            valid_values: &mut ValueSet,
+        )
+        {
             for &(var, ref t) in set_constraints.constraints() {
-                if !(&self.var_sets[&var]).is_subset_of(t) { return; }
+                if !(&self.var_sets[&var]).is_subset_of(t) {
+                    return;
+                }
             }
             if conditions.iter().all(|c| self.eval_cond(c)) {
                 valid_values.intersect(alternatives);
@@ -404,11 +518,13 @@ pub mod test {
 
         /// Returns the list of valid values according the given rules.
         pub fn eval_rules<IT>(&self, rules: IT) -> ValueSet
-                where IT: IntoIterator<Item=&'a Rule> {
+        where IT: IntoIterator<Item = &'a Rule> {
             let enum_values = self.enum_.values().keys().cloned().collect();
             let enum_name = self.enum_.name().clone();
             let mut value_set = ValueSet::enum_values(enum_name, enum_values);
-            for rule in rules { self.eval_rule(rule, &mut value_set); }
+            for rule in rules {
+                self.eval_rule(rule, &mut value_set);
+            }
             value_set
         }
 
@@ -425,53 +541,78 @@ pub mod test {
                         }
                     }
                     value_set
-                },
+                }
             }
         }
 
         /// Returns an iterator over all possible totaly specified contexts.
-        pub fn iter_contexts(ir_desc: &'a IrDesc, enum_: &'a Enum,
-                             inputs_def: &'a [ChoiceInstance],
-                             static_conds: &'a [StaticCond])
-                -> impl Iterator<Item=EvalContext<'a>> + 'a {
-            let values = inputs_def.iter().map(|input| {
-                match ir_desc.get_choice(&input.choice).value_type() {
-                    ValueType::Enum(ref name) =>
-                        ir_desc.get_enum(name).values().keys().collect_vec(),
-                    _ => panic!(),
-                }
-            }).collect_vec();
-            let num_values = values.iter().map(|x| x.len()).collect_vec();
-            NDRange::new(&num_values).map(|indexes| {
-                values.iter().zip_eq(indexes).map(|(x, y)| x[y]).collect_vec()
-            }).flat_map(|values| {
-                let cond_vec = static_conds.iter().map(|_| 2).collect_vec();
-                NDRange::new(&cond_vec).map(|cond_values| {
-                    let cond_values = cond_values.into_iter().map(|x| match x {
-                        0 => false,
-                        1 => true,
+        pub fn iter_contexts(
+            ir_desc: &'a IrDesc,
+            enum_: &'a Enum,
+            inputs_def: &'a [ChoiceInstance],
+            static_conds: &'a [StaticCond],
+        ) -> impl Iterator<Item = EvalContext<'a>> + 'a
+        {
+            let values = inputs_def
+                .iter()
+                .map(
+                    |input| match ir_desc.get_choice(&input.choice).value_type() {
+                        ValueType::Enum(ref name) => {
+                            ir_desc.get_enum(name).values().keys().collect_vec()
+                        }
                         _ => panic!(),
-                    });
-                    let input_values = values.iter().map(|&v| {
-                        let v = std::iter::once(v.clone()).collect();
-                        ValueSet::enum_values(enum_.name().clone(), v)
-                    }).collect();
-                    EvalContext {
-                        ir_desc: ir_desc,
-                        enum_: enum_,
-                        var_sets: HashMap::default(),
-                        inputs_def: inputs_def,
-                        input_values: input_values,
-                        static_conds: static_conds.iter().zip_eq(cond_values).collect(),
-                    }
-                }).collect_vec()
-            }).collect_vec().into_iter()
+                    },
+                )
+                .collect_vec();
+            let num_values = values.iter().map(|x| x.len()).collect_vec();
+            NDRange::new(&num_values)
+                .map(|indexes| {
+                    values
+                        .iter()
+                        .zip_eq(indexes)
+                        .map(|(x, y)| x[y])
+                        .collect_vec()
+                })
+                .flat_map(|values| {
+                    let cond_vec = static_conds.iter().map(|_| 2).collect_vec();
+                    NDRange::new(&cond_vec)
+                        .map(|cond_values| {
+                            let cond_values = cond_values.into_iter().map(|x| match x {
+                                0 => false,
+                                1 => true,
+                                _ => panic!(),
+                            });
+                            let input_values = values
+                                .iter()
+                                .map(|&v| {
+                                    let v = std::iter::once(v.clone()).collect();
+                                    ValueSet::enum_values(enum_.name().clone(), v)
+                                })
+                                .collect();
+                            EvalContext {
+                                ir_desc,
+                                enum_,
+                                var_sets: HashMap::default(),
+                                inputs_def,
+                                input_values,
+                                static_conds: static_conds
+                                    .iter()
+                                    .zip_eq(cond_values)
+                                    .collect(),
+                            }
+                        })
+                        .collect_vec()
+                })
+                .collect_vec()
+                .into_iter()
         }
     }
 
     /// A condition with a value fixed before exploration.
     #[derive(Clone, PartialEq, Eq, Hash, Debug)]
-    pub enum StaticCond { Code(Code) }
+    pub enum StaticCond {
+        Code(Code),
+    }
 
     /// Generates an enum.
     pub fn gen_enum(name: &str, num_values: usize, ir_desc: &mut IrDesc) {

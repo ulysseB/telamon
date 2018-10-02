@@ -1,29 +1,35 @@
-use std::sync::mpsc;
-use std::fs::File;
-use std::io::{Write, BufWriter};
 use explorer::config::Config;
 use explorer::monitor;
+use std::fs::File;
+use std::io::{BufWriter, Write};
+use std::sync::mpsc;
 use std::time::Duration;
 
 pub enum LogMessage {
-    NewBest { score: f64, cpt: usize, timestamp: Duration },
+    NewBest {
+        score: f64,
+        cpt: usize,
+        timestamp: Duration,
+    },
     Finished(monitor::TerminationReason),
 }
-
 
 pub fn log(config: &Config, recv: mpsc::Receiver<LogMessage>) {
     let mut write_buffer = init_log(config);
     while let Ok(message) = recv.recv() {
         match message {
-            LogMessage::NewBest{score, cpt, timestamp} =>{
+            LogMessage::NewBest {
+                score,
+                cpt,
+                timestamp,
+            } => {
                 log_monitor(score, cpt, timestamp, &mut write_buffer);
             }
-            LogMessage::Finished(reason) =>{
+            LogMessage::Finished(reason) => {
                 unwrap!(writeln!(write_buffer, "search stopped because {}", reason));
-            }
-            // For now the evaluator is the only one to send logs, so we just ignore any other
-            // types of message
-            //_ => { }
+            } /* For now the evaluator is the only one to send logs, so we just ignore
+               * any other types of message
+               *_ => { } */
         }
         write_buffer.flush().unwrap();
     }
@@ -35,13 +41,21 @@ fn init_log(config: &Config) -> BufWriter<File> {
     BufWriter::new(output_file)
 }
 
-fn log_monitor(score: f64, cpt: usize, timestamp: Duration, write_buffer: &mut BufWriter<File>) {
+fn log_monitor(
+    score: f64,
+    cpt: usize,
+    timestamp: Duration,
+    write_buffer: &mut BufWriter<File>,
+)
+{
     let t_s = timestamp.as_secs();
     let n_seconds = t_s % 60;
     let n_minutes = (t_s / 60) % 60;
     let n_hours = t_s / 3600;
-    let message = format!("New best candidate, score: {:.4e}ns, timestamp: {}h {}m {}s, \
-                         {} candidates evaluated\n",
-                         score, n_hours, n_minutes, n_seconds, cpt);
+    let message = format!(
+        "New best candidate, score: {:.4e}ns, timestamp: {}h {}m {}s, {} candidates \
+         evaluated\n",
+        score, n_hours, n_minutes, n_seconds, cpt
+    );
     unwrap!(write_buffer.write_all(message.as_bytes()));
 }

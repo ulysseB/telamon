@@ -41,16 +41,16 @@ impl<K: Hash + Eq, V, S: BuildHasher> MultiHashMap<K, V, S> {
         }
     }
 
-    /// Creates an empty `MultiHashMap` which will use the given hash builder to hash
-    /// keys.
+    /// Creates an empty `MultiHashMap` which will use the given hash builder
+    /// to hash keys.
     pub fn with_hasher(hash_builder: S) -> Self {
         MultiHashMap {
             map: hash_map::HashMap::with_hasher(hash_builder),
         }
     }
 
-    /// Creates an empty `MultiHashMap` with space for at least `capacity`  elements,
-    /// using `hasher` to hash the keys.
+    /// Creates an empty `MultiHashMap` with space for at least `capacity`
+    /// elements, using `hasher` to hash the keys.
     pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> Self {
         MultiHashMap {
             map: hash_map::HashMap::with_capacity_and_hasher(capacity, hasher),
@@ -60,14 +60,14 @@ impl<K: Hash + Eq, V, S: BuildHasher> MultiHashMap<K, V, S> {
     /// Returns the number of elements the map can hold without reallocating.
     pub fn capacity(&self) -> usize { self.map.capacity() }
 
-    /// Reserves capacity for at least `additional` more elements to be inserted in the
-    /// `MultiHashMap`. The collection may reserve more space to avoid frequent
-    /// reallocations.
+    /// Reserves capacity for at least `additional` more elements to be
+    /// inserted in the `MultiHashMap`. The collection may reserve more
+    /// space to avoid frequent reallocations.
     pub fn reserve(&mut self, additional: usize) { self.map.reserve(additional); }
 
-    /// Shrinks the capacity of the map as much as possible. It will drop down as much as
-    /// possible while maintaining the internal rules and possibly leaving some space in
-    /// accordance with the resize policy.
+    /// Shrinks the capacity of the map as much as possible. It will drop down
+    /// as much as possible while maintaining the internal rules and
+    /// possibly leaving some space in accordance with the resize policy.
     pub fn shrink_to_fit(&mut self) { self.map.shrink_to_fit(); }
 
     /// An iterator visiting all keys in arbitrary order.
@@ -92,8 +92,8 @@ impl<K: Hash + Eq, V, S: BuildHasher> MultiHashMap<K, V, S> {
     /// Indicates if the map contains no elements.
     pub fn is_empty(&self) -> bool { self.map.is_empty() }
 
-    /// Clears the map, returning all key-value pairs as an iterator. Keeps the allocated
-    /// memory for reuse.
+    /// Clears the map, returning all key-value pairs as an iterator. Keeps the
+    /// allocated memory for reuse.
     pub fn drain(&mut self) -> hash_map::Drain<K, Vec<V>> { self.map.drain() }
 
     /// Clears the map, removing all keys and values.
@@ -178,8 +178,7 @@ where
     K: Eq + Hash,
     V: Eq,
     S: BuildHasher,
-{
-}
+{}
 
 impl<K, V, S> std::fmt::Debug for MultiHashMap<K, V, S>
 where
@@ -238,7 +237,9 @@ where
 {
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
         let mut map = MultiHashMap::default();
-        for (k, v) in iter { map.insert(k, v); }
+        for (k, v) in iter {
+            map.insert(k, v);
+        }
         map
     }
 }
@@ -250,7 +251,8 @@ where
 {
     fn from_iter<T: IntoIterator<Item = (K, Vec<V>)>>(iter: T) -> Self {
         MultiHashMap {
-            map: iter.into_iter()
+            map: iter
+                .into_iter()
                 .filter(|&(_, ref vec)| !vec.is_empty())
                 .collect(),
         }

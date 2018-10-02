@@ -15,11 +15,11 @@ pub use self::printer::MppaPrinter;
 
 use codegen::{self, VarType};
 use ir;
+use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::ToPrimitive;
 use utils::*;
-use itertools::Itertools;
 
 #[derive(Default)]
 pub struct Namer {
@@ -38,7 +38,7 @@ impl Namer {
             VarType::F(16) => "h",
             VarType::F(32) => "f",
             VarType::F(64) => "d",
-            VarType::Ptr =>  "ptr",
+            VarType::Ptr => "ptr",
             _ => panic!("invalid CPU type"),
         }
     }
@@ -76,7 +76,7 @@ impl codegen::Namer for Namer {
     fn name_float(&self, val: &Ratio<BigInt>, len: u16) -> String {
         assert!(len <= 64);
         let f = unwrap!(val.numer().to_f64()) / unwrap!(val.denom().to_f64());
-        format!("{:.5e}", f )
+        format!("{:.5e}", f)
     }
 
     fn name_int(&self, val: &BigInt, len: u16) -> String {
@@ -90,8 +90,8 @@ impl codegen::Namer for Namer {
             codegen::ParamValKey::GlobalMem(mem) => format!("_gbl_mem_{}", mem.0),
             codegen::ParamValKey::Size(_) => {
                 self.num_sizes += 1;
-                format!("_size_{}", self.num_sizes-1)
-            },
+                format!("_size_{}", self.num_sizes - 1)
+            }
         }
     }
     fn get_declared_variables(&self) -> Vec<(VarType, usize)> {

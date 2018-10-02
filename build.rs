@@ -6,21 +6,24 @@ extern crate cmake;
 //#[cfg(feature="mppa")]
 extern crate bindgen;
 
-use std::path::{PathBuf, Path};
 use std::fs;
-
+use std::path::{Path, PathBuf};
 
 /// Orders to Cargo to link a library.
-fn add_lib(lib: &str) { println!("cargo:rustc-link-lib={}", lib); }
+fn add_lib(lib: &str) {
+    println!("cargo:rustc-link-lib={}", lib);
+}
 
-fn add_dependency(dep: &str) { println!("cargo:rerun-if-changed={}", dep); }
+fn add_dependency(dep: &str) {
+    println!("cargo:rerun-if-changed={}", dep);
+}
 
 /// Compiles and links the cuda wrapper and libraries.
 fn compile_link_cuda() {
     cc::Build::new()
-       .flag("-Werror")
-       .file("src/device/cuda/api/wrapper.c")
-       .compile("libdevice_cuda_wrapper.a");
+        .flag("-Werror")
+        .file("src/device/cuda/api/wrapper.c")
+        .compile("libdevice_cuda_wrapper.a");
     add_dependency("src/device/cuda/api/wrapper.c");
     add_lib("cuda");
     add_lib("curand");
@@ -35,7 +38,7 @@ fn compile_and_link_telajax() {
     println!("cargo:rustc-link-search=/usr/local/k1tools/lib64/");
 }
 
-fn add_telajax_dependencies()  {
+fn add_telajax_dependencies() {
     for f in fs::read_dir("telajax/src").unwrap() {
         let filepath = format!("{}", f.unwrap().path().display());
         add_dependency(&filepath);
@@ -67,9 +70,10 @@ fn bind_telajax() {
         .whitelist_function("telajax_event_release")
         .generate()
         .expect("unable to generate bindings");
-    let out_path = PathBuf::from( std::env::var("OUT_DIR").unwrap());
+    let out_path = PathBuf::from(std::env::var("OUT_DIR").unwrap());
     binding
-        .write_to_file(out_path.join("bindings.rs")).expect("Could not write to file");
+        .write_to_file(out_path.join("bindings.rs"))
+        .expect("Could not write to file");
 }
 
 fn main() {
@@ -78,8 +82,15 @@ fn main() {
 
     add_dependency(exh_file);
     let exh_out = Path::new(&out_dir).join("choices.rs");
-    telamon_gen::process_file(&Path::new(exh_file), &exh_out, cfg!(feature="format_exh")).unwrap();
-    if cfg!(feature="cuda") { compile_link_cuda(); }
+    telamon_gen::process_file(
+        &Path::new(exh_file),
+        &exh_out,
+        cfg!(feature = "format_exh"),
+    )
+    .unwrap();
+    if cfg!(feature = "cuda") {
+        compile_link_cuda();
+    }
 
     if cfg!(feature = "mppa") {
         compile_and_link_telajax();

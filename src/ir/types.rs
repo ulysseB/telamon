@@ -38,7 +38,7 @@ impl Type {
         match *self {
             Type::I(i) | Type::F(i) => Some(u32::from(div_ceil(i, 8))),
             Type::Void => Some(0),
-            Type::PtrTo(_) => None
+            Type::PtrTo(_) => None,
         }
     }
 }
@@ -53,4 +53,3 @@ impl fmt::Display for Type {
         }
     }
 }
-

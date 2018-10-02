@@ -1,17 +1,17 @@
-#![cfg(feature="cuda")]
+#![cfg(feature = "cuda")]
 extern crate env_logger;
+extern crate itertools;
 extern crate libc;
 extern crate telamon;
-extern crate itertools;
 extern crate telamon_utils as utils;
 
 mod common;
 
 use common::*;
-use telamon::device::{read_array, write_array, Context, cuda};
-use telamon::{ir, helper};
-use telamon::search_space::{Action, DimKind, InstFlag, Order};
 use itertools::Itertools;
+use telamon::device::{cuda, read_array, write_array, Context};
+use telamon::search_space::{Action, DimKind, InstFlag, Order};
+use telamon::{helper, ir};
 
 /// Tests the printing of unrolled dimensions.
 #[test]
@@ -90,7 +90,8 @@ fn cache_directive() {
     gen_best(&context, builder.get());
 }
 
-/// Tests code generation when a syncthread is insterted just after a reduction init.
+/// Tests code generation when a syncthread is insterted just after a reduction
+/// init.
 #[test]
 fn thread_reduction_map() {
     let _ = env_logger::try_init();
@@ -153,15 +154,15 @@ fn induction_var_nested() {
     let d0 = builder.open_dim_ex(size_k_tile_4.clone(), DimKind::LOOP);
     let d1 = builder.open_dim_ex(size_4, DimKind::LOOP);
     let d2 = builder.open_dim_ex(size_5, DimKind::UNROLL);
-    let ind_var = builder.induction_var(&0i32,
-        vec![(d0, size_1), (d1, size_k_tile_4), (d2, size_k)]);
+    let ind_var = builder
+        .induction_var(&0i32, vec![(d0, size_1), (d1, size_k_tile_4), (d2, size_k)]);
     let pattern = builder.unknown_access_pattern(out.0);
     let _ = builder.st(&"out", &ind_var, pattern);
 
     check_candidates(builder.get(), &context, || {
-       let res = read_array::<i32>(out.1.as_ref());
-       // 1*(k/4 - 1) + (k/4)*(4 - 1) + k*(5 - 1) = 5*k - 1 = 59
-       assert_eq!(res[0], 59);
+        let res = read_array::<i32>(out.1.as_ref());
+        // 1*(k/4 - 1) + (k/4)*(4 - 1) + k*(5 - 1) = 5*k - 1 = 59
+        assert_eq!(res[0], 59);
     });
 }
 
@@ -186,8 +187,8 @@ fn induction_var_simple() {
     let _ = builder.st(&"out", &ind_var, pattern);
 
     check_candidates(builder.get(), &context, || {
-       let res = read_array::<i32>(out.1.as_ref());
-       assert_eq!(res[0], 8);
+        let res = read_array::<i32>(out.1.as_ref());
+        assert_eq!(res[0], 8);
     });
 }
 
@@ -208,16 +209,19 @@ fn global_vector_load() {
         output = builder.array::<i32>("output", 1);
         builder.get()
     };
-    write_array(input.1.as_ref(), &(0..D0_LEN).map(|i| i as i32+10).collect_vec()[..]);
+    write_array(
+        input.1.as_ref(),
+        &(0..D0_LEN).map(|i| i as i32 + 10).collect_vec()[..],
+    );
 
     let mut builder = helper::Builder::new(&signature, context.device());
     // Load B from global memory
     let d0_size = builder.cst_size(D0_LEN);
     let d0 = builder.open_dim_ex(d0_size, DimKind::VECTOR);
-        let input_pattern = builder.tensor_access_pattern(input.0, &DATA_TYPE, &[&d0]);
-        let data_size = builder.cst_size(DATA_TYPE.len_byte().unwrap());
-        let addr = builder.induction_var(&"input", vec![(d0, data_size.clone())]);
-        let ld = builder.ld_ex(DATA_TYPE, &addr, input_pattern, InstFlag::MEM_CS);
+    let input_pattern = builder.tensor_access_pattern(input.0, &DATA_TYPE, &[&d0]);
+    let data_size = builder.cst_size(DATA_TYPE.len_byte().unwrap());
+    let addr = builder.induction_var(&"input", vec![(d0, data_size.clone())]);
+    let ld = builder.ld_ex(DATA_TYPE, &addr, input_pattern, InstFlag::MEM_CS);
     builder.close_dim(&d0);
     // Store B in shared memory.
     let output_pattern = builder.unknown_access_pattern(output.0);
@@ -250,8 +254,8 @@ fn size_cast() {
     let _ = builder.st(&"out", &ind_var, pattern);
 
     check_candidates(builder.get(), &context, || {
-       let res = read_array::<i64>(out.1.as_ref());
-       assert_eq!(res[0], 8);
+        let res = read_array::<i64>(out.1.as_ref());
+        assert_eq!(res[0], 8);
     });
 }
 
@@ -264,7 +268,7 @@ fn perf_model_0() {
     let signature = {
         let mut builder = helper::SignatureBuilder::new("test", &mut context);
         builder.scalar("n", 16);
-        builder.array::<i32>("input", 1024*1024);
+        builder.array::<i32>("input", 1024 * 1024);
         builder.get()
     };
 
@@ -275,12 +279,12 @@ fn perf_model_0() {
     let _d0 = builder.open_dim_ex(n_tiled.clone(), DimKind::LOOP);
     let d1 = builder.open_dim_ex(size_16.clone(), DimKind::LOOP);
     let d2 = builder.open_dim_ex(size_16.clone(), DimKind::UNROLL);
-        let _ = builder.mov(&0f32);
+    let _ = builder.mov(&0f32);
     builder.close_dim(&d1);
     builder.close_dim(&d2);
     let _d3 = builder.open_dim_ex(n_tiled, DimKind::LOOP);
     let _d4 = builder.open_dim_ex(size_16, DimKind::UNROLL);
-        let _ = builder.mov(&0f32);
+    let _ = builder.mov(&0f32);
 
     check_candidates(builder.get(), &context, || ());
 }
@@ -297,15 +301,15 @@ fn merge_0() {
     let size_16 = builder.cst_size(16);
 
     let d0 = builder.open_dim_ex(size_16.clone(), DimKind::LOOP);
-        builder.mov(&0f32);
+    builder.mov(&0f32);
     builder.close_dim(&d0);
 
     let d1 = builder.open_dim_ex(size_16.clone(), DimKind::LOOP);
-        builder.mov(&0f32);
+    builder.mov(&0f32);
     builder.close_dim(&d1);
 
     let d2 = builder.open_dim_ex(size_16.clone(), DimKind::LOOP);
-        builder.mov(&0f32);
+    builder.mov(&0f32);
     builder.close_dim(&d2);
 
     builder.order(&d0, &d1, Order::MERGED);
@@ -326,11 +330,11 @@ fn merge_1() {
     let size_16 = builder.cst_size(16);
 
     let d0 = builder.open_dim_ex(size_16.clone(), DimKind::LOOP);
-        builder.mov(&0f32);
+    builder.mov(&0f32);
     builder.close_dim(&d0);
 
     let d1 = builder.open_dim_ex(size_16.clone(), DimKind::LOOP);
-        builder.mov(&0f32);
+    builder.mov(&0f32);
     builder.close_dim(&d1);
 
     let d2 = builder.open_dim_ex(size_16.clone(), DimKind::LOOP);
@@ -340,7 +344,6 @@ fn merge_1() {
 
     check_candidates(builder.get(), &context, || ());
 }
-
 
 #[test]
 fn dim_map_reduce_0() {
@@ -356,12 +359,12 @@ fn dim_map_reduce_0() {
 
     let _d0 = builder.open_dim_ex(size_16.clone(), DimKind::LOOP);
     let d1 = builder.open_dim_ex(size_16.clone(), DimKind::LOOP);
-        let inst1 = builder.mov(&0f32);
+    let inst1 = builder.mov(&0f32);
     builder.close_dim(&d1);
 
     let d2 = builder.open_dim_ex(size_16.clone(), DimKind::LOOP);
-        let op = builder.dim_map(inst1, &[(&d1, &d2)], ir::DimMapScope::Global);
-        let inst2 = builder.add(&op, &helper::Reduce(inst0));
+    let op = builder.dim_map(inst1, &[(&d1, &d2)], ir::DimMapScope::Global);
+    let inst2 = builder.add(&op, &helper::Reduce(inst0));
 
     builder.order(&inst2, &d1, Order::AFTER);
 
@@ -457,15 +460,15 @@ fn dim_map_active() {
 
     let d0 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
     let d1 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
-        let a = builder.mov(&0f32);
+    let a = builder.mov(&0f32);
     builder.close_dim(&d0);
     builder.close_dim(&d1);
 
     let d2 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
     let _d3 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
     let d4 = builder.open_dim_ex(size_32.clone(), DimKind::UNROLL);
-        let op = builder.dim_map(a, &[(&d0, &d2), (&d1, &d4)], ir::DimMapScope::Global);
-        builder.mov(&op);
+    let op = builder.dim_map(a, &[(&d0, &d2), (&d1, &d4)], ir::DimMapScope::Global);
+    builder.mov(&op);
 
     gen_best(&context, builder.get());
 }
@@ -482,7 +485,7 @@ fn test0() {
 
     let d0 = builder.open_dim_ex(size_32.clone(), DimKind::THREAD);
     let d1 = builder.open_dim(size_32.clone());
-        let i0 = builder.mov(&0f32);
+    let i0 = builder.mov(&0f32);
     builder.close_dim(&d0);
     builder.close_dim(&d1);
 
@@ -496,5 +499,7 @@ fn test0() {
     builder.order(&i1, &d1, Order::AFTER);
 
     let mut space = builder.get();
-    space.apply_decisions(vec![Action::DimKind(d4, DimKind::UNROLL)]).unwrap();
+    space
+        .apply_decisions(vec![Action::DimKind(d4, DimKind::UNROLL)])
+        .unwrap();
 }

@@ -1,7 +1,7 @@
 //! Allows the execution of kernels on the GPU.
 use device;
-use device::cuda::api::Argument;
 use device::cuda::api::wrapper::*;
+use device::cuda::api::Argument;
 use libc;
 use num::integer::div_rem;
 use std;
@@ -19,9 +19,10 @@ impl<'a, T> Array<'a, T> {
     pub fn new(context: &'a CudaContext, len: usize) -> Self {
         let n_bytes = (len * std::mem::size_of::<T>()) as u64;
         Array {
-            len, context,
-            array:  unsafe { allocate_array(context, n_bytes) },
-            t: std::marker::PhantomData
+            len,
+            context,
+            array: unsafe { allocate_array(context, n_bytes) },
+            t: std::marker::PhantomData,
         }
     }
 
@@ -50,7 +51,9 @@ impl<'a, T> Array<'a, T> {
 
     fn clone_from(&mut self, src: &Self) {
         assert_eq!(self.len, src.len);
-        unsafe { copy_DtoD(self.context, src.array, self.array, self.byte_len() as u64); }
+        unsafe {
+            copy_DtoD(self.context, src.array, self.array, self.byte_len() as u64);
+        }
     }
 }
 
@@ -63,13 +66,17 @@ impl<'a, T> Clone for Array<'a, T> {
 
     fn clone_from(&mut self, src: &Self) {
         assert_eq!(self.len, src.len);
-        unsafe { copy_DtoD(self.context, src.array, self.array, self.byte_len() as u64); }
+        unsafe {
+            copy_DtoD(self.context, src.array, self.array, self.byte_len() as u64);
+        }
     }
 }
 
 impl<'a, T> Drop for Array<'a, T> {
     fn drop(&mut self) {
-        unsafe { free_array(self.context, self.array); }
+        unsafe {
+            free_array(self.context, self.array);
+        }
     }
 }
 
@@ -83,21 +90,26 @@ pub fn randomize_f32(array: &Array<f32>) {
     }
 }
 
-/// Compares two arrays and returns maximum relative distance between two elements.
+/// Compares two arrays and returns maximum relative distance between two
+/// elements.
 pub fn compare_f32(lhs: &Array<f32>, rhs: &Array<f32>) -> f32 {
     assert_eq!(lhs.len, rhs.len);
     let lhs_vec = lhs.copy_to_host();
     let rhs_vec = rhs.copy_to_host();
-    lhs_vec.iter().zip(&rhs_vec).map(|(x, y)| {
-        2.0*(x - y)/(x.abs() + y.abs())
-    }).fold(0.0, f32::max)
+    lhs_vec
+        .iter()
+        .zip(&rhs_vec)
+        .map(|(x, y)| 2.0 * (x - y) / (x.abs() + y.abs()))
+        .fold(0.0, f32::max)
 }
 
 impl<'a, T> Argument for Array<'a, T> {
     fn raw_ptr(&self) -> *const libc::c_void { self.array as *const libc::c_void }
 }
 
-impl<'a, T> device::ArrayArgument for Array<'a, T> where T: device::ScalarArgument {
+impl<'a, T> device::ArrayArgument for Array<'a, T>
+where T: device::ScalarArgument
+{
     fn read_i8(&self) -> Vec<i8> {
         let mut array = Array::copy_to_host(self);
         let len = array.len() * std::mem::size_of::<T>();

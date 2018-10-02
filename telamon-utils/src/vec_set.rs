@@ -94,15 +94,16 @@ where T: Ord
         VecSet { data }
     }
 
-    /// Returns a new `VecSet` with only the elements for which the predicate returned
-    /// `true`.
+    /// Returns a new `VecSet` with only the elements for which the predicate
+    /// returned `true`.
     pub fn filter<P>(&self, mut predicate: P) -> Self
     where
         T: Clone,
         P: FnMut(&T) -> bool,
     {
         VecSet {
-            data: self.data
+            data: self
+                .data
                 .iter()
                 .filter(|&x| predicate(x))
                 .cloned()
@@ -124,7 +125,7 @@ where T: Ord
             Err(pos) => {
                 self.data.insert(pos, item);
                 true
-            },
+            }
         }
     }
 }
