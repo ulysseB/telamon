@@ -130,7 +130,7 @@ impl<'a> Builder<'a> {
     /// Adds a `Mov` instruction to the function.
     pub fn mov<'b: 'a>(&mut self, arg: &AutoOperand<'b>) -> InstId {
         let arg_op = self.get_op(arg);
-        self.inst(op::Mov(arg_op))
+        self.inst(op::UnaryOp(ir::UnaryOp::Mov, arg_op))
     }
 
     /// Adds a coherent load from global memory instruction to the function.
@@ -196,7 +196,7 @@ impl<'a> Builder<'a> {
     /// Adds a cast instruction to the given type.
     pub fn cast<'b: 'a>(&mut self, val: &AutoOperand<'b>, t: Type) -> InstId {
         let val_op = self.get_op(val);
-        self.inst(op::Cast(val_op, t))
+        self.inst(op::UnaryOp(ir::UnaryOp::Cast(t), val_op))
     }
 
     /// Restricts the order between two basic blocks. Does not restricts LINK and NPACK

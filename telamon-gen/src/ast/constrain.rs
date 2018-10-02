@@ -1,4 +1,8 @@
-use super::*;
+use ast::context::CheckerContext;
+use ast::error::TypeError;
+use ast::{ir, Condition, TypedConstraint, VarDef, VarMap};
+
+use itertools::Itertools;
 
 /// A constraint that must be enforced by the IR.
 #[derive(Debug, Clone)]
@@ -45,5 +49,15 @@ impl Constraint {
                     conditions,
                 }
             }).collect_vec()
+    }
+
+    /// Type checks the define's condition.
+    pub fn define(
+        self,
+        context: &CheckerContext,
+        constraints: &mut Vec<Constraint>,
+    ) -> Result<(), TypeError> {
+        constraints.push(self);
+        Ok(())
     }
 }

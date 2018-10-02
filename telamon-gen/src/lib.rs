@@ -61,11 +61,11 @@ fn to_type_name(name: &str) -> String {
 }
 
 /// Process a file and stores the result in an other file.
-pub fn process_file<'a>(
-    input_path: &'a path::Path,
+pub fn process_file(
+    input_path: &path::Path,
     output_path: &path::Path,
     format: bool,
-) -> Result<(), error::ProcessError<'a>> {
+) -> Result<(), error::Error> {
     let mut output = fs::File::create(path::Path::new(output_path)).unwrap();
     let input_path_str = input_path.to_string_lossy();
     info!(
@@ -77,12 +77,12 @@ pub fn process_file<'a>(
 }
 
 /// Parses a constraint description file.
-pub fn process<'a, T: io::Write>(
+pub fn process<T: io::Write>(
     input: Option<&mut io::Read>,
     output: &mut T,
     format: bool,
-    input_path: &'a path::Path,
-) -> Result<(), error::ProcessError<'a>> {
+    input_path: &path::Path,
+) -> Result<(), error::Error> {
     // Parse and check the input.
     let tokens = if let Some(stream) = input {
         lexer::Lexer::from_input(stream)
@@ -90,7 +90,7 @@ pub fn process<'a, T: io::Write>(
         lexer::Lexer::from_file(input_path)
     };
     let ast: ast::Ast = parser::parse_ast(tokens)
-        .map_err(|c| error::ProcessError::from((input_path.display(), c)))?;
+        .map_err(|c| error::Error::from((input_path.to_path_buf(), c)))?;
 
     let (mut ir_desc, constraints) = ast.type_check().unwrap();
     debug!("constraints: {:?}", constraints);
@@ -160,37 +160,23 @@ pub fn process<'a, T: io::Write>(
 #[cfg(test)]
 mod tests {
     use super::print;
-    use std::io::Cursor;
     use std::path::Path;
 
     /// Ensure that the output of telamon-gen is stable across calls.
     #[test]
     fn stable_output() {
-        let mut in_buf =
-            Cursor::new(include_str!("../../src/search_space/choices.exh").as_bytes());
+        let path = Path::new("../src/search_space/choices.exh");
         let ref_out = {
             let mut ref_out = Vec::new();
-            super::process(
-                Some(&mut in_buf),
-                &mut ref_out,
-                false,
-                &Path::new("choices.exh"),
-            ).unwrap();
+            super::process(None, &mut ref_out, false, &path).unwrap();
             ref_out
         };
         // Ideally we would want to run this loop more than once, but
         // generation is currently too slow to be worth it.
         for _ in 0..1 {
             print::reset();
-            in_buf.set_position(0);
-
             let mut out_buf = Vec::new();
-            super::process(
-                Some(&mut in_buf),
-                &mut out_buf,
-                false,
-                &Path::new("choices.exh"),
-            ).unwrap();
+            super::process(None, &mut out_buf, false, &path).unwrap();
             assert_eq!(
                 ::std::str::from_utf8(&out_buf),
                 ::std::str::from_utf8(&ref_out)

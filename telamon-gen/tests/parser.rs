@@ -40,7 +40,7 @@ fn parser_unexpected_token() {
         format!(
             "{}",
             parser::parse_ast(Lexer::new(b"define enum Uper".to_vec()))
-                .map_err(|c| error::ProcessError::from((Path::new("exh").display(), c)))
+                .map_err(|c| error::Error::from((Path::new("exh").to_path_buf(), c)))
                 .err()
                 .unwrap()
         ),
@@ -73,7 +73,7 @@ fn parser_invalid_token() {
         format!(
             "{}",
             parser::parse_ast(Lexer::new(b"!".to_vec()))
-                .map_err(|c| error::ProcessError::from((Path::new("exh").display(), c)))
+                .map_err(|c| error::Error::from((Path::new("exh").to_path_buf(), c)))
                 .err()
                 .unwrap()
         ),

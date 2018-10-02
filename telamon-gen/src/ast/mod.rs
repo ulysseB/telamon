@@ -8,55 +8,88 @@ mod context;
 mod error;
 mod set;
 mod trigger;
-mod typing_context;
 
-use constraint::dedup_inputs;
-use constraint::Constraint as TypedConstraint;
 use indexmap::IndexMap;
 use ir;
 use itertools::Itertools;
 use print;
 use regex::Regex;
-use std;
 use std::collections::{hash_map, BTreeSet};
 use std::fmt;
-use utils::*;
+use utils::{HashMap, HashSet, RcStr};
 
-pub use self::choice::{ChoiceDef, CounterDef, EnumDef, IntegerDef};
-pub use self::constrain::Constraint;
-use self::context::TypingContext;
-pub use self::error::{Hint, TypeError};
-pub use self::set::SetDef;
-use self::trigger::TriggerDef;
-use self::typing_context::CheckerContext;
+pub use constraint::dedup_inputs;
+pub use constraint::Constraint as TypedConstraint;
 
 pub use super::lexer::{Position, Spanned};
 
-#[derive(Debug)]
+pub use self::choice::{ChoiceDef, CounterDef, EnumDef, IntegerDef};
+pub use self::constrain::Constraint;
+pub use self::context::CheckerContext;
+pub use self::error::{Hint, TypeError};
+pub use self::set::SetDef;
+pub use self::trigger::TriggerDef;
+
+#[derive(Default, Clone, Debug)]
 pub struct Ast {
     pub statements: Vec<Statement>,
+    pub ir_desc: ir::IrDesc,
+    pub set_defs: Vec<SetDef>,
+    pub choice_defs: Vec<ChoiceDef>,
+    pub triggers: Vec<TriggerDef>,
+    pub constraints: Vec<Constraint>,
+    pub checks: Vec<Check>,
 }
 
 impl Ast {
     /// Generate the defintion of choices and the list of constraints.
-    /// TODO: remove typing context
-    pub fn type_check(self) -> Result<(ir::IrDesc, Vec<TypedConstraint>), TypeError> {
+    pub fn type_check(mut self) -> Result<(ir::IrDesc, Vec<TypedConstraint>), TypeError> {
         let mut context = CheckerContext::default();
-        let mut tc = TypingContext::default();
 
         // declare
         for statement in self.statements.iter() {
             statement.declare(&mut context)?;
         }
-        // typing context
-        for statement in self.statements.iter() {
-            tc.add_statement(statement.to_owned());
+        let statements: Vec<Statement> = self.statements.clone();
+        for statement in statements {
+            statement.define(
+                &mut context,
+                &mut self.set_defs,
+                &mut self.ir_desc,
+                &mut self.checks,
+                &mut self.choice_defs,
+                &mut self.constraints,
+                &mut self.triggers,
+            )?;
         }
-        // define
-        for statement in self.statements.into_iter() {
-            statement.define(&mut context, &mut tc)?;
+        Ok(self.finalize())
+    }
+
+    /// Type-checks the statements in the correct order.
+    pub fn finalize(mut self) -> (ir::IrDesc, Vec<TypedConstraint>) {
+        for choice_def in self.choice_defs.iter() {
+            match choice_def {
+                ChoiceDef::CounterDef(counter_def) => {
+                    counter_def
+                        .register_counter(&mut self.ir_desc, &mut self.constraints);
+                }
+                _ => {}
+            }
         }
-        Ok(tc.finalize())
+        for trigger in self.triggers.iter() {
+            trigger.register_trigger(&mut self.ir_desc);
+        }
+        let constraints = {
+            let ir_desc = &self.ir_desc;
+            self.constraints
+                .into_iter()
+                .flat_map(move |constraint| constraint.type_check(ir_desc))
+                .collect_vec()
+        };
+        for check in self.checks {
+            check.check(&self.ir_desc);
+        }
+        (self.ir_desc, constraints)
     }
 }
 
@@ -64,11 +97,7 @@ impl Ast {
 #[derive(Debug, Clone)]
 pub enum Statement {
     ChoiceDef(ChoiceDef),
-    TriggerDef {
-        foralls: Vec<VarDef>,
-        conditions: Vec<Condition>,
-        code: String,
-    },
+    TriggerDef(TriggerDef),
     SetDef(SetDef),
     Require(Constraint),
 }
@@ -85,12 +114,28 @@ impl Statement {
     pub fn define(
         self,
         context: &mut CheckerContext,
-        tc: &mut TypingContext,
+        set_defs: &mut Vec<SetDef>,
+        ir_desc: &mut ir::IrDesc,
+        checks: &mut Vec<Check>,
+        choice_defs: &mut Vec<ChoiceDef>,
+        constraints: &mut Vec<Constraint>,
+        triggers: &mut Vec<TriggerDef>,
     ) -> Result<(), TypeError> {
         match self {
-            Statement::SetDef(def) => def.define(context, tc),
-            Statement::ChoiceDef(def) => def.define(context, tc),
-            _ => Ok(()),
+            Statement::SetDef(def) => def.define(
+                context,
+                set_defs,
+                ir_desc,
+                checks,
+                choice_defs,
+                constraints,
+                triggers,
+            ),
+            Statement::ChoiceDef(def) => {
+                def.define(context, ir_desc, constraints, choice_defs)
+            }
+            Statement::TriggerDef(def) => def.define(context, triggers),
+            Statement::Require(def) => def.define(context, constraints),
         }
     }
 }
@@ -104,6 +149,7 @@ pub struct Quotient {
 }
 
 /// Checks to perform once the statements have been declared.
+#[derive(Clone, Debug)]
 pub enum Check {
     /// Ensures the inverse of the value set is itself.
     IsSymmetric { choice: RcStr, values: Vec<RcStr> },

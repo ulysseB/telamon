@@ -1,0 +1,56 @@
+set Instructions subsetof Statements:
+  item_type = "ir::Instruction"
+  id_type = "ir::InstId"
+  item_getter = "$fun.inst($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.insts()"
+  var_prefix = "inst"
+  from_superset = "$item.as_inst()"
+  new_objs = "$objs.instructions"
+end
+
+set MemInsts subsetof Instructions:
+  item_type = "ir::Instruction"
+  id_type = "ir::InstId"
+  item_getter = "$fun.inst($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.mem_insts()"
+  var_prefix = "inst"
+  from_superset = "$item.as_mem_inst()"
+  new_objs = "$objs.mem_insts"
+end
+
+/// Specifies the version of an instruction to use.
+define enum inst_flag($inst in MemInsts):
+  /// Access the global memory using both L1 and L2 cache. Coherence is not guaranteed
+  /// between blocks.
+  value MEM_CA:
+    requires "$fun.device().supports_l1_access()"
+  /// Access the global memory using the L2 cache.
+  value MEM_CG:
+    requires "$fun.device().supports_l2_access()"
+  /// Access the global memory without using caches.
+  value MEM_CS:
+  /// Access the global memory using the read-only cache. Coherence is not guaranteed.
+  value MEM_NC:
+    requires "$inst.operator().supports_nc_access()"
+    requires "$fun.device().supports_nc_access()"
+  /// Access the shared memory.
+  value MEM_SHARED:
+  /// Access the global memory.
+  alias MEM_GLOBAL = MEM_CA | MEM_CG | MEM_CS | MEM_NC:
+  /// Ensure coherency between memory accesses.
+  alias MEM_COHERENT = MEM_SHARED | MEM_CG | MEM_CS:
+  /// Ensure coherency within a block between memory accesses.
+  alias MEM_BLOCK_COHERENT = MEM_COHERENT | MEM_CA:
+end
+
+// Intruction orders
+require forall $inst in Instructions:
+  forall $stmt in Statements:
+    order($inst, $stmt) is INNER | ORDERED
+
+require forall $inst in Instructions:
+  forall $dim in Dimensions:
+    "$inst.iteration_dims().contains(&$dim.id())" || "!$inst.has_side_effects()"
+      || is_iteration_dim($inst, $dim) is FALSE

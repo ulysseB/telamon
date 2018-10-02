@@ -1,17 +1,18 @@
 //! Provides functions to print PTX code.
-use codegen::Printer;
 use codegen::*;
 use device::cuda::{Gpu, Namer};
 use ir::{self, op, Type};
 use itertools::Itertools;
 use search_space::{DimKind, Domain, InstFlag};
 use std;
+use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;
 use std::io::Write;
+use utils::*;
 
 #[derive(Default)]
 pub struct CudaPrinter {
-    out_function: String,
+    buffer: String,
 }
 
 impl CudaPrinter {
@@ -98,7 +99,7 @@ impl CudaPrinter {
         let ptr_type_name = Self::get_type(Type::I(32));
         let name = namer.name_addr(block.id());
         unwrap!(writeln!(
-            self.out_function,
+            self.buffer,
             ".shared.align 16 .u8 {vec_name}[{size}];\
              \n  mov.{t} {name}, {vec_name};\n",
             vec_name = &name[1..],
@@ -151,6 +152,11 @@ impl CudaPrinter {
             ir::BinOp::Add => "add",
             ir::BinOp::Sub => "sub",
             ir::BinOp::Div => "div",
+            ir::BinOp::And => "and",
+            ir::BinOp::Or => "or",
+            ir::BinOp::Lt => "setp.lt",
+            ir::BinOp::Leq => "setp.le",
+            ir::BinOp::Equals => "setp.eq",
         }
     }
 
@@ -192,7 +198,7 @@ impl CudaPrinter {
             // LOAD PARAMETERS
             for val in function.device_code_args() {
                 unwrap!(writeln!(
-                    self.out_function,
+                    self.buffer,
                     "ld.param.{t} {var_name}, [{name}];",
                     t = Self::get_type(val.t()),
                     var_name = name_map.name_param_val(val.key()),
@@ -201,8 +207,8 @@ impl CudaPrinter {
             }
             // INDEX LOAD
             let idx_loads = Self::decl_par_indexes(function, name_map);
-            self.out_function.push_str(&idx_loads);
-            self.out_function.push_str(&"\n");
+            self.buffer.push_str(&idx_loads);
+            self.buffer.push_str(&"\n");
             //MEM DECL
             for block in function.mem_blocks() {
                 match block.alloc_scheme() {
@@ -223,10 +229,10 @@ impl CudaPrinter {
                         let name = name_map.declare_size_cast(incr, level.t());
                         if let Some(name) = name {
                             let old_name = name_map.name_size(incr, Type::I(32));
-                            self.print_cast(
+                            self.print_unary_op(
+                                &[],
+                                ir::UnaryOp::Cast(level.t()),
                                 Type::I(32),
-                                level.t(),
-                                op::Rounding::Exact,
                                 &name,
                                 &old_name,
                             );
@@ -248,8 +254,8 @@ impl CudaPrinter {
         let var_decls = self.var_decls(&namer);
         let mut body = String::new();
         body.push_str(&var_decls);
-        self.out_function.push_str(&"\n");
-        body.push_str(&self.out_function);
+        self.buffer.push_str(&"\n");
+        body.push_str(&self.buffer);
         format!(
             include_str!("template/device.ptx"),
             sm_major = gpu.sm_major,
@@ -327,19 +333,6 @@ impl CudaPrinter {
         );
         unwrap!(res);
     }
-}
-
-impl Printer for CudaPrinter {
-    /// Get a proper string representation of an integer in target language
-    fn get_int(n: u32) -> String {
-        format!("{}", n)
-    }
-
-    /// Get a proper string representation of an integer in target language
-    fn get_float(f: f64) -> String {
-        let binary = unsafe { std::mem::transmute::<f64, u64>(f) };
-        format!("0D{:016X}", binary)
-    }
 
     /// Print a type in the backend
     fn get_type(t: Type) -> String {
@@ -350,37 +343,82 @@ impl Printer for CudaPrinter {
             _ => panic!(),
         }
     }
+}
 
-    /// Print return_id = op1 op op2
+impl Printer for CudaPrinter {
+    /// Get a proper string representation of an integer in target language
+    fn get_int(n: u32) -> String {
+        format!("{}", n)
+    }
+
+    /// Print result = op1 op op2
     fn print_binop(
         &mut self,
+        vector_factors: &[u32],
         op: ir::BinOp,
-        return_type: Type,
+        operands_type: Type,
         rounding: op::Rounding,
-        return_id: &str,
+        result: &str,
         lhs: &str,
         rhs: &str,
     ) {
+        assert!(vector_factors.is_empty());
         let op = Self::binary_op(op);
         let rounding = Self::rounding(rounding);
-        let ret_type = Self::get_type(return_type);
+        let operands_type = Self::get_type(operands_type);
         unwrap!(writeln!(
-            self.out_function,
+            self.buffer,
             "{}{}.{} {}, {}, {};",
-            op, rounding, ret_type, return_id, lhs, rhs
+            op, rounding, operands_type, result, lhs, rhs
         ));
     }
 
-    /// Print return_id = op1 * op2
+    /// Prints result = operator operand.
+    fn print_unary_op(
+        &mut self,
+        vector_factors: &[u32],
+        operator: ir::UnaryOp,
+        operand_type: ir::Type,
+        result: &str,
+        operand: &str,
+    ) {
+        assert!(vector_factors.is_empty());
+        let operator = match operator {
+            ir::UnaryOp::Mov => std::borrow::Cow::from("mov"),
+            ir::UnaryOp::Cast(cast_type) => {
+                let rounding = match (cast_type, operand_type) {
+                    (ir::Type::F(_), ir::Type::I(_))
+                    | (ir::Type::I(_), ir::Type::F(_)) => ir::op::Rounding::Nearest,
+                    (ir::Type::F(x), ir::Type::F(y)) if x < y => {
+                        ir::op::Rounding::Nearest
+                    }
+                    _ => ir::op::Rounding::Exact,
+                };
+                let rounding = Self::rounding(rounding);
+                let op = format!("cvt.{}.{}", rounding, Self::get_type(cast_type));
+                std::borrow::Cow::from(op)
+            }
+        };
+        let t = Self::get_type(operand_type);
+        unwrap!(writeln!(
+            self.buffer,
+            "{}.{} {}, {};",
+            operator, t, result, operand
+        ));
+    }
+
+    /// Print result = op1 * op2
     fn print_mul(
         &mut self,
+        vector_factors: &[u32],
         return_type: Type,
         round: op::Rounding,
         mul_mode: MulMode,
-        return_id: &str,
+        result: &str,
         lhs: &str,
         rhs: &str,
     ) {
+        assert!(vector_factors.is_empty());
         let operator = if round == op::Rounding::Exact {
             format!("mul{}", Self::mul_mode(mul_mode))
         } else {
@@ -388,23 +426,25 @@ impl Printer for CudaPrinter {
         };
         let t = Self::get_type(Self::get_inst_type(mul_mode, return_type));
         unwrap!(writeln!(
-            self.out_function,
+            self.buffer,
             "{}.{} {}, {}, {};",
-            operator, t, return_id, lhs, rhs
+            operator, t, result, lhs, rhs
         ));
     }
 
-    /// Print return_id = mlhs * mrhs + arhs
+    /// Print result = mlhs * mrhs + arhs
     fn print_mad(
         &mut self,
+        vector_factors: &[u32],
         return_type: Type,
         round: op::Rounding,
         mul_mode: MulMode,
-        return_id: &str,
+        result: &str,
         mlhs: &str,
         mrhs: &str,
         arhs: &str,
     ) {
+        assert!(vector_factors.is_empty());
         let operator = if round == op::Rounding::Exact {
             format!("mad{}", Self::mul_mode(mul_mode))
         } else {
@@ -412,150 +452,79 @@ impl Printer for CudaPrinter {
         };
         let t = Self::get_type(Self::get_inst_type(mul_mode, return_type));
         unwrap!(writeln!(
-            self.out_function,
+            self.buffer,
             "{}.{} {}, {}, {}, {};",
-            operator, t, return_id, mlhs, mrhs, arhs
+            operator, t, result, mlhs, mrhs, arhs
         ));
     }
 
-    /// Print return_id = op
-    fn print_mov(&mut self, return_type: Type, return_id: &str, op: &str) {
-        unwrap!(writeln!(
-            self.out_function,
-            "mov.{} {}, {};",
-            Self::get_type(return_type),
-            return_id,
-            op
-        ));
-    }
-
-    /// Print return_id = load [addr]
+    /// Print result = load [addr]
     fn print_ld(
         &mut self,
+        vector_factors: &[u32],
         return_type: Type,
         flag: InstFlag,
-        return_id: &str,
+        result: &str,
         addr: &str,
     ) {
         let operator = Self::ld_operator(flag);
+        let vector = match vector_factors {
+            [] => "",
+            [2] => ".v2",
+            [4] => ".v4",
+            p => panic!("invalid vector pattern: {:?}", p),
+        };
         unwrap!(writeln!(
-            self.out_function,
-            "{}.{} {}, [{}];",
+            self.buffer,
+            "{}{}.{} {}, [{}];",
+            vector,
             operator,
             Self::get_type(return_type),
-            return_id,
+            result,
             addr
         ));
     }
 
     /// Print store val [addr]
-    fn print_st(&mut self, val_type: Type, mem_flag: InstFlag, addr: &str, val: &str) {
-        let operator = Self::st_operator(mem_flag);
-        unwrap!(writeln!(
-            self.out_function,
-            "{}.{} [{}], {};",
-            operator,
-            Self::get_type(val_type),
-            addr,
-            val
-        ));
-    }
-
-    /// Print if (cond) store val [addr]
-    fn print_cond_st(
+    fn print_st(
         &mut self,
+        vector_factors: &[u32],
         val_type: Type,
         mem_flag: InstFlag,
-        cond: &str,
+        predicate: Option<&str>,
         addr: &str,
         val: &str,
     ) {
+        let vector = match vector_factors {
+            [] => "",
+            [2] => ".v2",
+            [4] => ".v4",
+            p => panic!("invalid vector pattern: {:?}", p),
+        };
+        if let Some(predicate) = predicate {
+            unwrap!(write!(self.buffer, "@{} ", predicate));
+        }
         let operator = Self::st_operator(mem_flag);
         unwrap!(writeln!(
-            self.out_function,
-            "@{} {}.{} [{}], {};",
-            cond,
+            self.buffer,
+            "{}{}.{} [{}], {};",
+            vector,
             operator,
             Self::get_type(val_type),
             addr,
             val
-        ));
-    }
-
-    /// Print return_id = (val_type) val
-    fn print_cast(
-        &mut self,
-        from_t: Type,
-        to_t: Type,
-        round: op::Rounding,
-        return_id: &str,
-        op1: &str,
-    ) {
-        let rounding = Self::rounding(round);
-        let to_t = Self::get_type(to_t);
-        let from_t = Self::get_type(from_t);
-        let operator = format!("cvt{}.{}.{}", rounding, to_t, from_t);
-        unwrap!(writeln!(
-            self.out_function,
-            "{} {}, {};",
-            operator, return_id, op1
         ));
     }
 
     /// print a label where to jump
     fn print_label(&mut self, label_id: &str) {
-        unwrap!(writeln!(self.out_function, "LOOP_{}:", label_id));
-    }
-
-    /// Print return_id = op1 && op2
-    fn print_and(&mut self, return_id: &str, op1: &str, op2: &str) {
-        unwrap!(writeln!(
-            self.out_function,
-            "and.pred {}, {}, {};",
-            return_id, op1, op2
-        ));
-    }
-
-    /// Print return_id = op1 || op2
-    fn print_or(&mut self, return_id: &str, op1: &str, op2: &str) {
-        unwrap!(writeln!(
-            self.out_function,
-            "or.pred {}, {}, {};",
-            return_id, op1, op2
-        ));
-    }
-
-    /// Print return_id = op1 == op2
-    fn print_equal(&mut self, return_id: &str, op1: &str, op2: &str) {
-        unwrap!(writeln!(
-            self.out_function,
-            "setp.eq.u32 {}, {}, {};",
-            return_id, op1, op2
-        ));
-    }
-
-    /// Print return_id = op1 < op2
-    fn print_lt(&mut self, return_id: &str, op1: &str, op2: &str) {
-        unwrap!(writeln!(
-            self.out_function,
-            "setp.lt.u32 {}, {}, {};",
-            return_id, op1, op2
-        ));
-    }
-
-    /// Print return_id = op1 > op2
-    fn print_gt(&mut self, return_id: &str, op1: &str, op2: &str) {
-        unwrap!(writeln!(
-            self.out_function,
-            "setp.gt.u32 {}, {}, {};",
-            return_id, op1, op2
-        ));
+        unwrap!(writeln!(self.buffer, "LOOP_{}:", label_id));
     }
 
     /// Print if (cond) jump label(label_id)
     fn print_cond_jump(&mut self, label_id: &str, cond: &str) {
         unwrap!(writeln!(
-            self.out_function,
+            self.buffer,
             "@{} bra.uni LOOP_{};",
             cond, label_id
         ));
@@ -563,62 +532,56 @@ impl Printer for CudaPrinter {
 
     /// Print wait on all threads
     fn print_sync(&mut self) {
-        unwrap!(writeln!(self.out_function, "bar.sync 0;"));
+        unwrap!(writeln!(self.buffer, "bar.sync 0;"));
     }
 
-    fn print_vector_inst(
-        &mut self,
-        inst: &Instruction,
-        dim: &Dimension,
-        namer: &mut NameMap,
-        fun: &Function,
-    ) {
-        let size = unwrap!(dim.size().as_int());
-        let flag = unwrap!(inst.mem_flag());
-        match *inst.operator() {
-            op::Ld(_, ref addr, _) => {
-                let operator = format!("{}.v{}", Self::ld_operator(flag), size);
-                let dst = (0..size)
-                    .map(|i| namer.indexed_inst_name(inst, dim.id(), i).to_string())
-                    .collect_vec()
-                    .join(", ");
-                let t = Self::get_type(unwrap!(inst.t()));
-                unwrap!(writeln!(
-                    self.out_function,
-                    "{}.{} {{{}}}, [{}];",
-                    operator,
-                    t,
-                    dst,
-                    namer.name_op(addr)
-                ))
-            }
-            op::St(ref addr, ref val, _, _) => {
-                let operator = format!("{}.v{}", Self::st_operator(flag), size);
-                let guard = if inst.has_side_effects() {
-                    if let Some(pred) = namer.side_effect_guard() {
-                        format!("@{} ", pred)
-                    } else {
-                        String::new()
-                    }
-                } else {
-                    String::new()
-                };
-                let t = Self::get_type(Self::lower_type(val.t(), fun));
-                let src = (0..size)
-                    .map(|i| namer.indexed_op_name(val, dim.id(), i).to_string())
-                    .collect_vec()
-                    .join(", ");
-                unwrap!(writeln!(
-                    self.out_function,
-                    "{}{}.{} [{}], {{{}}};",
-                    guard,
-                    operator,
-                    t,
-                    namer.name_op(addr),
-                    src
-                ));
-            }
-            _ => panic!("non-vectorizable instruction"),
+    fn name_operand<'a>(
+        vector_dims: &[&Dimension],
+        op: &ir::Operand,
+        namer: &'a NameMap,
+    ) -> Cow<'a, str> {
+        if vector_dims.is_empty() {
+            namer.name_op(op)
+        } else {
+            let sizes = vector_dims
+                .iter()
+                .map(|d| unwrap!(d.size().as_int()))
+                .collect_vec();
+            let names = NDRange::new(&sizes)
+                .map(|indexes| {
+                    let indexes_map = vector_dims
+                        .iter()
+                        .zip_eq(indexes)
+                        .map(|(d, idx)| (d.id(), idx))
+                        .collect_vec();
+                    namer.indexed_op_name(op, &indexes_map)
+                }).format(", ");
+            Cow::Owned(format!("{{{}}}", names))
+        }
+    }
+
+    fn name_inst<'a>(
+        vector_dims: &[&Dimension],
+        inst: ir::InstId,
+        namer: &'a NameMap,
+    ) -> Cow<'a, str> {
+        if vector_dims.is_empty() {
+            Cow::Borrowed(namer.name_inst(inst))
+        } else {
+            let sizes = vector_dims
+                .iter()
+                .map(|d| unwrap!(d.size().as_int()))
+                .collect_vec();
+            let names = NDRange::new(&sizes)
+                .map(|indexes| {
+                    let indexes_map = vector_dims
+                        .iter()
+                        .zip_eq(indexes)
+                        .map(|(d, idx)| (d.id(), idx))
+                        .collect_vec();
+                    namer.indexed_inst_name(inst, &indexes_map)
+                }).format(", ");
+            Cow::Owned(format!("{{{}}}", names))
         }
     }
 }
