@@ -255,6 +255,30 @@
 <span id="255">255</span>
 <span id="256">256</span>
 <span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Represents iteration dimensions.</span>
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">Statement</span>};
@@ -286,7 +310,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="ident">id</span>: <span class="ident">DimId</span>,
     <span class="ident">size</span>: <span class="ident">ir</span>::<span class="ident">PartialSize</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
-    <span class="ident">possible_sizes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
+    <span class="ident">possible_sizes</span>: <span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
     <span class="ident">iterated</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">InstId</span><span class="op">&gt;</span>,
     <span class="ident">is_thread_dim</span>: <span class="ident">bool</span>,
     <span class="ident">logical_dim</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LogicalDimId</span><span class="op">&gt;</span>,
@@ -295,37 +319,61 @@
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Creates a new dimension.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">size</span>: <span class="ident">ir</span>::<span class="ident">PartialSize</span>, <span class="ident">id</span>: <span class="ident">DimId</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Dimension</span>, <span class="ident">ir</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">id</span>: <span class="ident">DimId</span>,
+        <span class="ident">size</span>: <span class="ident">ir</span>::<span class="ident">PartialSize</span>,
+        <span class="ident">logical_dim</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LogicalDimId</span><span class="op">&gt;</span>,
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Dimension</span>, <span class="ident">ir</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">possible_sizes</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">size</span>) <span class="op">=</span> <span class="ident">size</span>.<span class="ident">as_int</span>() {
             <span class="kw">if</span> <span class="ident">size</span> <span class="op">==</span> <span class="number">1</span> {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ir</span>::<span class="ident">Error</span>::<span class="ident">InvalidDimSize</span>);
             }
-            <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">size</span>]
+            <span class="ident">VecSet</span>::<span class="ident">new</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">size</span>])
         } <span class="kw">else</span> {
-            <span class="macro">vec</span><span class="macro">!</span>[]
+            <span class="ident">VecSet</span>::<span class="ident">default</span>()
         };
+        <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;new dim {:?}, size = {:?}&quot;</span>, <span class="ident">id</span>, <span class="ident">size</span>);
         <span class="prelude-val">Ok</span>(<span class="ident">Dimension</span> {
             <span class="ident">size</span>,
             <span class="ident">id</span>,
+            <span class="ident">logical_dim</span>,
             <span class="ident">possible_sizes</span>,
             <span class="ident">iterated</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
             <span class="ident">is_thread_dim</span>: <span class="bool-val">false</span>,
-            <span class="ident">logical_dim</span>: <span class="prelude-val">None</span>,
+            <span class="ident">mapped_dims</span>: <span class="ident">VecSet</span>::<span class="ident">default</span>(),
+        })
+    }
+
+    <span class="doccomment">/// Creates a dimension with a statically known size, picked in a list of</span>
+    <span class="doccomment">/// possibilities.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_static</span>(
+        <span class="ident">id</span>: <span class="ident">DimId</span>,
+        <span class="ident">possible_sizes</span>: <span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
+        <span class="ident">logical_dim</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LogicalDimId</span><span class="op">&gt;</span>,
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ir</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="ident">possible_sizes</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="number">1</span>) {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ir</span>::<span class="ident">Error</span>::<span class="ident">InvalidDimSize</span>);
+        }
+        <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;new static {:?}, size = {:?}&quot;</span>, <span class="ident">id</span>, <span class="ident">possible_sizes</span>);
+        <span class="prelude-val">Ok</span>(<span class="ident">Dimension</span> {
+            <span class="ident">size</span>: <span class="ident">ir</span>::<span class="ident">PartialSize</span>::<span class="ident">new_dim_size</span>(<span class="ident">id</span>),
+            <span class="ident">id</span>,
+            <span class="ident">possible_sizes</span>,
+            <span class="ident">logical_dim</span>,
+            <span class="ident">iterated</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
+            <span class="ident">is_thread_dim</span>: <span class="bool-val">false</span>,
             <span class="ident">mapped_dims</span>: <span class="ident">VecSet</span>::<span class="ident">default</span>(),
         })
     }
 
     <span class="doccomment">/// Creates a new dimension with the same size as an existing one.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_same_size</span>(<span class="ident">id</span>: <span class="ident">DimId</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="ident">Dimension</span> {
-            <span class="ident">size</span>: <span class="ident">other</span>.<span class="ident">size</span>().<span class="ident">clone</span>(),
-            <span class="ident">possible_sizes</span>: <span class="ident">other</span>.<span class="ident">possible_sizes</span>.<span class="ident">clone</span>(),
-            <span class="ident">id</span>,
-            <span class="ident">iterated</span>: <span class="ident">Vec</span>::<span class="ident">new</span>(),
-            <span class="ident">is_thread_dim</span>: <span class="bool-val">false</span>,
-            <span class="ident">logical_dim</span>: <span class="prelude-val">None</span>,
-            <span class="ident">mapped_dims</span>: <span class="ident">VecSet</span>::<span class="ident">default</span>(),
-        }
+        <span class="comment">// Cannot fail because the checks already passed when `other` was created.</span>
+        <span class="macro">unwrap</span><span class="macro">!</span>(<span class="kw">if</span> <span class="ident">other</span>.<span class="ident">possible_sizes</span>.<span class="ident">is_empty</span>() {
+            <span class="self">Self</span>::<span class="ident">new</span>(<span class="ident">id</span>, <span class="ident">other</span>.<span class="ident">size</span>().<span class="ident">clone</span>(), <span class="prelude-val">None</span>)
+        } <span class="kw">else</span> {
+            <span class="self">Self</span>::<span class="ident">new_static</span>(<span class="ident">id</span>, <span class="ident">other</span>.<span class="ident">possible_sizes</span>.<span class="ident">clone</span>(), <span class="prelude-val">None</span>)
+        })
     }
 
     <span class="doccomment">/// Retruns the size of the dimension.</span>
@@ -405,7 +453,7 @@
     <span class="ident">id</span>: <span class="ident">LogicalDimId</span>,
     <span class="ident">static_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DimId</span><span class="op">&gt;</span>,
     <span class="ident">nonstatic_dim</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">DimId</span><span class="op">&gt;</span>,
-    <span class="ident">possible_tilings</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
+    <span class="ident">possible_tilings</span>: <span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
     <span class="ident">total_size</span>: <span class="ident">ir</span>::<span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
 }
 
@@ -420,7 +468,7 @@
             <span class="ident">id</span>,
             <span class="ident">static_dims</span>,
             <span class="ident">nonstatic_dim</span>: <span class="prelude-val">None</span>,
-            <span class="ident">possible_tilings</span>: <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">total_size</span>],
+            <span class="ident">possible_tilings</span>: <span class="ident">VecSet</span>::<span class="ident">new</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">total_size</span>]),
             <span class="ident">total_size</span>: <span class="ident">ir</span>::<span class="ident">Size</span>::<span class="ident">new_const</span>(<span class="ident">total_size</span>),
         }
     }
@@ -431,7 +479,7 @@
         <span class="ident">id</span>: <span class="ident">LogicalDimId</span>,
         <span class="ident">dynamic_dim</span>: <span class="ident">DimId</span>,
         <span class="ident">static_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DimId</span><span class="op">&gt;</span>,
-        <span class="ident">possible_tilings</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
+        <span class="ident">possible_tilings</span>: <span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
         <span class="ident">total_size</span>: <span class="ident">ir</span>::<span class="ident">Size</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="ident">LogicalDim</span> {

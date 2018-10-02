@@ -727,6 +727,7 @@
 <span id="727">727</span>
 <span id="728">728</span>
 <span id="729">729</span>
+<span id="730">730</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Memory accesses analysis.</span>
 <span class="kw">use</span> <span class="ident">binary_heap_plus</span>::<span class="ident">BinaryHeap</span>;
@@ -974,6 +975,7 @@
     <span class="kw">let</span> <span class="ident">cmp</span> <span class="op">=</span> <span class="op">|</span><span class="ident">x</span>: <span class="kw-2">&amp;</span><span class="ident">ThreadDimInfo</span>, <span class="ident">y</span>: <span class="kw-2">&amp;</span><span class="ident">ThreadDimInfo</span><span class="op">|</span> <span class="ident">cmp_thread_dims</span>(<span class="ident">x</span>, <span class="ident">y</span>, <span class="ident">use_gcd</span>, <span class="ident">gpu</span>);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">heap</span> <span class="op">=</span> <span class="ident">BinaryHeap</span>::<span class="ident">with_capacity_by</span>(<span class="ident">dims</span>.<span class="ident">len</span>(), <span class="ident">cmp</span>);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dim_groups</span>: <span class="ident">MultiHashMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">dims</span>
+        <span class="comment">// Do not account for partial dims</span>
         .<span class="ident">into_iter</span>()
         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">d</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">num_inner</span> <span class="op">=</span> <span class="ident">sure_thread_dims</span>
@@ -1023,7 +1025,7 @@
     };
     <span class="ident">rhs_val</span>
         .<span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="ident">lhs_val</span>)
-        .<span class="ident">then</span>(<span class="ident">lhs</span>.<span class="ident">is_partial_dim</span>.<span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="ident">rhs</span>.<span class="ident">is_partial_dim</span>))
+        .<span class="ident">then</span>(<span class="ident">rhs</span>.<span class="ident">is_partial_dim</span>.<span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="ident">lhs</span>.<span class="ident">is_partial_dim</span>))
 }
 
 <span class="doccomment">/// Returns the offset of memory accesses for each thread in a wrap. The offset is</span>
