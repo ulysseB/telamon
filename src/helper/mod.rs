@@ -86,8 +86,8 @@ impl MetaStatement for LogicalDim {
 ///
 /// For example, we want to tile 2 times a dimension of size 128, we could have:
 /// ```
-/// tiling_factors = [4, 8, 16, 32, 64]
-/// tile_sizes = [[2, 4, 8, 16, 32], [2, 4, 8, 16, 32]]
+/// let tiling_factors = [4, 8, 16, 32, 64];
+/// let tile_sizes = [[2, 4, 8, 16, 32], [2, 4, 8, 16, 32]];
 /// ```
 /// Each tiling dimension can have size 32, but not both simultaneously because 1024 = 32x32 is not
 /// in the tiling factors.
