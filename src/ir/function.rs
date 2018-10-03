@@ -1,10 +1,7 @@
 //! Provides a representation of functions.
 use device::Device;
 use ir::mem::Block;
-use ir::{
-    self, Dimension, InstId, Instruction, Operator, Statement, StmtId, Value, ValueDef,
-    ValueId,
-};
+use ir::{self, Dimension, InstId, Instruction, Operator, Statement, StmtId};
 use ir::{mem, AccessPattern, Operand, SparseVec, Type};
 use itertools::Itertools;
 use std;
@@ -72,7 +69,7 @@ pub struct Function<'a, L = ir::LoweringMap> {
     induction_vars: Vec<ir::InductionVar<'a, L>>,
     logical_dims: Vec<ir::LogicalDim<'a>>,
     dim_mappings: SparseVec<ir::DimMappingId, ir::DimMapping>,
-    values: SparseVec<ValueId, Value>,
+    variables: SparseVec<ir::VarId, ir::Variable>,
 }
 
 impl<'a, L> Function<'a, L> {
@@ -92,7 +89,7 @@ impl<'a, L> Function<'a, L> {
             induction_vars: Vec::new(),
             logical_dims: Vec::new(),
             dim_mappings: SparseVec::new(),
-            values: SparseVec::new(),
+            variables: SparseVec::new(),
         }
     }
 
@@ -127,19 +124,23 @@ impl<'a, L> Function<'a, L> {
             self.mem_insts.push(id);
             self.mem_blocks.register_use(mem_id, id);
         }
-        // Update the usepoint of all values
+        // Update the usepoint of all variables
         for ref op in inst.operator().operands() {
-            if let Operand::Value(val_id, _) = op {
-                self.values[*val_id].add_use(id.into());
+            if let Operand::Variable(val_id, _) = op {
+                self.variables[*val_id].add_use(id.into());
             }
         }
         Ok(inst)
     }
 
-    /// Returns a Value without adding it to self.values
-    fn create_value(&self, id: ValueId, def: ValueDef) -> Result<Value, ir::Error> {
+    /// Returns a variable without adding it to self.variables.
+    fn create_variable(
+        &self,
+        id: ir::VarId,
+        def: ir::VarDef,
+    ) -> Result<ir::Variable, ir::Error> {
         def.check(self)?;
-        Ok(Value::new(id, def.t(self), def))
+        Ok(ir::Variable::new(id, def.t(self), def))
     }
 
     /// Adds an induction variable.
@@ -169,8 +170,8 @@ impl<'a, L> Function<'a, L> {
         self.static_dims.iter().map(move |&id| self.dim(id))
     }
 
-    pub fn values(&self) -> impl Iterator<Item = &ir::Value> {
-        self.values.iter()
+    pub fn variables(&self) -> impl Iterator<Item = &ir::Variable> {
+        self.variables.iter()
     }
 
     /// Returns the list of thread dimensions.
@@ -203,17 +204,17 @@ impl<'a, L> Function<'a, L> {
         &self.logical_dims[id.0 as usize]
     }
 
-    /// Returns a `Value` given its id.
-    pub fn value(&self, id: ir::ValueId) -> &ir::Value {
-        &self.values[id]
+    /// Returns a `Variable` given its id.
+    pub fn variable(&self, id: ir::VarId) -> &ir::Variable {
+        &self.variables[id]
     }
 
-    /// Adds a value to the function. Also register its definition into the relevant instruction
-    pub fn add_value(&mut self, def: ir::ValueDef) -> Result<ir::ValueId, ir::Error> {
-        let id = ir::ValueId(self.values.len() as u16);
-        let val = self.create_value(id, def)?;
-        val.def().register(val.id(), self);
-        self.values.push(val);
+    /// Adds a variable to the function. Also register its definition into the relevant instruction
+    pub fn add_variable(&mut self, def: ir::VarDef) -> Result<ir::VarId, ir::Error> {
+        let id = ir::VarId(self.variables.len() as u16);
+        let var = self.create_variable(id, def)?;
+        var.def().register(var.id(), self);
+        self.variables.push(var);
         Ok(id)
     }
 
@@ -511,7 +512,7 @@ impl<'a> Function<'a, ()> {
             induction_vars,
             logical_dims,
             mut dim_mappings,
-            values,
+            variables,
         } = self;
 
         let mut insts = SparseVec::from_vec(
@@ -549,7 +550,7 @@ impl<'a> Function<'a, ()> {
             induction_vars,
             logical_dims,
             dim_mappings,
-            values,
+            variables,
         }
     }
 }

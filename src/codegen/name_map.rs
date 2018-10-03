@@ -1,7 +1,5 @@
-use codegen::{
-    self, AllocationScheme, Dimension, Function, Instruction, ParamValKey, Value,
-};
-use ir::{self, dim, mem, DimMap, InstId, Type, ValueId};
+use codegen::{self, AllocationScheme, Dimension, Function, Instruction, ParamValKey};
+use ir::{self, dim, mem, DimMap, InstId, Type};
 use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
@@ -36,8 +34,8 @@ pub trait Namer {
 pub struct NameMap<'a, 'b> {
     /// Provides fresh names.
     namer: std::cell::RefCell<&'b mut Namer>,
-    /// Keeps track of the names of the values used in the kernel
-    values: HashMap<ValueId, String>,
+    /// Keeps track of the names of the variables used in the kernel
+    variables: HashMap<ir::VarId, String>,
     /// Keeps track of the name of the values produced by instructions.
     insts: HashMap<InstId, (Vec<ir::DimId>, NDArray<String>)>,
     /// Keeps track of loop index names.
@@ -85,11 +83,10 @@ impl<'a, 'b> NameMap<'a, 'b> {
                 indexes.insert(id, name.clone());
             }
         }
-        // Name Values
-        let mut values = HashMap::default();
-        for val in function.values() {
-            let name = Self::name_value(val, namer);
-            values.insert(val.id(), name);
+        // Name variables
+        let mut variables = HashMap::default();
+        for var in function.variables() {
+            variables.insert(var.id(), namer.name(var.t()));
         }
         // Name induction levels.
         let mut induction_levels = HashMap::default();
@@ -113,7 +110,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
         let mut name_map = NameMap {
             namer: std::cell::RefCell::new(namer),
             insts: HashMap::default(),
-            values,
+            variables,
             num_loop: 0,
             current_indexes: HashMap::default(),
             #[cfg(feature = "mppa")]
@@ -150,11 +147,6 @@ impl<'a, 'b> NameMap<'a, 'b> {
             }
         }
         name_map
-    }
-
-    /// Returns a name for a value
-    fn name_value(val: &Value, namer: &mut Namer) -> String {
-        namer.name(val.t())
     }
 
     /// Returns the total number of threads.
@@ -220,7 +212,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
             ir::Operand::Param(p) => self.name_param_val(ParamValKey::External(p)),
             ir::Operand::Addr(id) => self.name_addr(id),
             ir::Operand::InductionVar(id, _) => self.name_induction_var(id, None),
-            ir::Operand::Value(val_id, _t) => Cow::Borrowed(&self.values[&val_id]),
+            ir::Operand::Variable(val_id, _t) => Cow::Borrowed(&self.variables[&val_id]),
         }
     }
 
@@ -388,7 +380,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
         }
     }
 
-    /// Assigns a name of a value to a size.
+    /// Assigns a name to a size.
     pub fn name_size(&self, size: &codegen::Size, expected_t: ir::Type) -> Cow<str> {
         let size: &'a codegen::Size<'a> = unsafe { std::mem::transmute(size) };
         match (size.dividend(), expected_t) {
