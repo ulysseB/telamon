@@ -63,6 +63,7 @@ pub trait Kernel<'a>: Sized {
         let kernel;
         let signature = {
             let mut builder = SignatureBuilder::new(Self::name(), context);
+            builder.set_random_fill(true);
             kernel = Self::build_signature(params, &mut builder);
             builder.get()
         };
@@ -108,6 +109,7 @@ pub trait Kernel<'a>: Sized {
     fn test_bound<AM>(
         params: Self::Parameters,
         num_tests: usize,
+        random_fill: bool,
         context: &mut AM,
     ) -> Vec<BoundSample>
     where
@@ -116,6 +118,7 @@ pub trait Kernel<'a>: Sized {
         let kernel;
         let signature = {
             let mut builder = SignatureBuilder::new(Self::name(), context);
+            builder.set_random_fill(random_fill);
             kernel = Self::build_signature(params, &mut builder);
             builder.get()
         };
@@ -173,6 +176,7 @@ pub trait Kernel<'a>: Sized {
         config: &explorer::Config,
         params: Self::Parameters,
         num_samples: usize,
+        random_fill: bool,
         context: &mut AM,
     ) -> Vec<f64>
     where
@@ -181,6 +185,7 @@ pub trait Kernel<'a>: Sized {
         let kernel;
         let signature = {
             let mut builder = SignatureBuilder::new(Self::name(), context);
+            builder.set_random_fill(random_fill);
             kernel = Self::build_signature(params, &mut builder);
             builder.get()
         };

@@ -50,6 +50,7 @@ where
     info!("Generating {} candidates", NUM_TESTS);
     let (kernel, signature) = {
         let mut builder = helper::SignatureBuilder::new(name, &mut context);
+        builder.set_random_fill(true);
         let kernel = K::build_signature(params.clone(), &mut builder);
         (kernel, builder.get())
     };

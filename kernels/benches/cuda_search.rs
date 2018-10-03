@@ -101,7 +101,7 @@ fn benchmark<'a, K, REF>(
     //config.distance_to_best.get_or_insert(20.);
 
     let mut context = cuda::Context::new(executor);
-    let runtime = K::benchmark(&config, params.clone(), NUM_CODE_RUNS, &mut context);
+    let runtime = K::benchmark(&config, params.clone(), NUM_CODE_RUNS, true, &mut context);
     for _ in 0..4 {
         reference(&params, &context);
     }
