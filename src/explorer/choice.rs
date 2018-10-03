@@ -8,6 +8,18 @@ use search_space::{Action, Domain, NumSet, Order, SearchSpace};
 // TODO(search_space): explore and lower loayouts directly from the regular actions.
 pub type Choice = Vec<ActionEx>;
 
+/// A list of ChoiceGroup representing the order in which we want to determine choices
+pub struct ChoiceOrdering(Vec<ChoiceGroup>);
+
+/// An enum listing the Group of choices we can make
+/// For example, we can make first all DimKind decisions, then all Order decisions, etc.
+pub enum ChoiceGroup {
+    DimKind,
+    DimMap,
+    Order,
+    MemSpace,
+    InstFlag
+}
 /// Either a regular action or a manually applied action.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ActionEx {
@@ -17,6 +29,63 @@ pub enum ActionEx {
         st_dims: Vec<ir::DimId>,
         ld_dims: Vec<ir::DimId>,
     },
+}
+
+/// Given the order in which we want to explore the space, gives the list of choices still to be
+/// considered 
+/// TODO: make this lazy
+pub fn list_with_ordering<'a>(space: &'a SearchSpace, choice_order: &ChoiceOrdering) -> impl Iterator<Item = Choice> {
+    let fun = space.ir_instance();
+    let mut choices_vec = Vec::new();
+    for choice_grp in choice_order.0.iter() {
+        match choice_grp {
+            ChoiceGroup::DimKind => choices_vec.extend(fun.dims().flat_map(move |dim| {
+                let kinds = space.domain().get_dim_kind(dim.id());
+                gen_choice(kinds.list(), &|k| Action::DimKind(dim.id(), k))
+            })),
+            ChoiceGroup::DimMap => choices_vec.extend(
+                fun.static_dims().enumerate()
+                .flat_map(move |(i, lhs)| {
+                    fun.static_dims().take(i).flat_map(move |rhs| {
+                        let mappings = space.domain().get_thread_mapping(lhs.id(), rhs.id());
+                        gen_choice(mappings.list(), &|m| {
+                            Action::ThreadMapping(lhs.id(), rhs.id(), m)
+                        })
+                    })
+                })),
+            ChoiceGroup::Order => choices_vec.extend(fun.dims().enumerate().flat_map(move |(i, lhs)| {
+            // TODO(search_space): avoid picking ordering decisions that have little impact.
+            // For this, we should avoid dimension-instruction and dimension-vector dim
+            // orderings. The problem is that we do not know wich choice to pick in the end.
+            let lhs = lhs.bb_id();
+            let dims = fun.dims().take(i).map(|x| x.bb_id());
+            dims.chain(fun.insts().map(|x| x.bb_id()))
+                .flat_map(move |rhs| {
+                    let orders = space.domain().get_order(lhs.into(), rhs);
+                    gen_choice(orders.list(), &|o| Action::Order(lhs, rhs, o))
+                })
+        })),
+            ChoiceGroup::MemSpace => choices_vec.extend(fun.internal_mem_blocks().flat_map(move |block| {
+                let mem_spaces = space.domain().get_mem_space(block.mem_id());
+                gen_choice(mem_spaces.list(), &|s| Action::MemSpace(block.mem_id(), s))
+            })),
+            ChoiceGroup::InstFlag => choices_vec.extend(fun.mem_insts().flat_map(move |inst| {
+                let flags = space.domain().get_inst_flag(inst.id()).list();
+                gen_choice(flags, &|f| Action::InstFlag(inst.id(), f))
+            })),
+        }
+    }
+    choices_vec.into_iter()
+}
+
+/// This function is to be either removed or reimplemented eventually. It is just a replacement for
+/// the previous list implementation (exposes the choices in the same order). Default should
+/// preferably be handled in config file 
+pub fn default_list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item = Choice> + 'a {
+    let default_ordering = ChoiceOrdering(vec![ChoiceGroup::DimKind, ChoiceGroup::DimMap, 
+                                          ChoiceGroup::MemSpace, ChoiceGroup::Order, 
+                                          ChoiceGroup::InstFlag]);
+    list_with_ordering(space, &default_ordering)
 }
 
 /// Lists the choices that can be applied to a function.
@@ -62,6 +131,7 @@ pub fn list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item = Choice> + 'a
             gen_choice(flags, &|f| Action::InstFlag(inst.id(), f))
         }))
 }
+
 
 /// Generates a choice from a list of possible values.
 fn gen_choice<T, IT>(values: IT, action_gen: &Fn(T) -> Action) -> Option<Choice>
