@@ -18,7 +18,7 @@ pub enum ChoiceGroup {
     DimMap,
     Order,
     MemSpace,
-    InstFlag
+    InstFlag,
 }
 /// Either a regular action or a manually applied action.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -32,9 +32,12 @@ pub enum ActionEx {
 }
 
 /// Given the order in which we want to explore the space, gives the list of choices still to be
-/// considered 
+/// considered
 /// TODO: make this lazy
-pub fn list_with_ordering<'a>(space: &'a SearchSpace, choice_order: &ChoiceOrdering) -> impl Iterator<Item = Choice> {
+pub fn list_with_ordering<'a>(
+    space: &'a SearchSpace,
+    choice_order: &ChoiceOrdering,
+) -> impl Iterator<Item = Choice> {
     let fun = space.ir_instance();
     let mut choices_vec = Vec::new();
     for choice_grp in choice_order.0.iter() {
@@ -80,11 +83,15 @@ pub fn list_with_ordering<'a>(space: &'a SearchSpace, choice_order: &ChoiceOrder
 
 /// This function is to be either removed or reimplemented eventually. It is just a replacement for
 /// the previous list implementation (exposes the choices in the same order). Default should
-/// preferably be handled in config file 
+/// preferably be handled in config file
 pub fn default_list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item = Choice> + 'a {
-    let default_ordering = ChoiceOrdering(vec![ChoiceGroup::DimKind, ChoiceGroup::DimMap, 
-                                          ChoiceGroup::MemSpace, ChoiceGroup::Order, 
-                                          ChoiceGroup::InstFlag]);
+    let default_ordering = ChoiceOrdering(vec![
+        ChoiceGroup::DimKind,
+        ChoiceGroup::DimMap,
+        ChoiceGroup::MemSpace,
+        ChoiceGroup::Order,
+        ChoiceGroup::InstFlag,
+    ]);
     list_with_ordering(space, &default_ordering)
 }
 
@@ -131,7 +138,6 @@ pub fn list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item = Choice> + 'a
             gen_choice(flags, &|f| Action::InstFlag(inst.id(), f))
         }))
 }
-
 
 /// Generates a choice from a list of possible values.
 fn gen_choice<T, IT>(values: IT, action_gen: &Fn(T) -> Action) -> Option<Choice>
