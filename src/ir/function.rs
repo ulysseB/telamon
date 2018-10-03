@@ -130,7 +130,7 @@ impl<'a, L> Function<'a, L> {
         // Update the usepoint of all values
         for ref op in inst.operator().operands() {
             if let Operand::Value(val_id, _) = op {
-                self.values[*val_id].add_usepoint(id);
+                self.values[*val_id].add_use(id.into());
             }
         }
         Ok(inst)
@@ -138,13 +138,8 @@ impl<'a, L> Function<'a, L> {
 
     /// Returns a Value without adding it to self.values
     fn create_value(&self, id: ValueId, def: ValueDef) -> Result<Value, ir::Error> {
-        let t = match def {
-            ValueDef::Inst(id) => {
-                let inst = &self.insts[id];
-                unwrap!(inst.t())
-            }
-        };
-        Ok(Value::new(id, t, def))
+        def.check(self)?;
+        Ok(Value::new(id, def.t(self), def))
     }
 
     /// Adds an induction variable.
@@ -404,13 +399,6 @@ impl<'a, L> Function<'a, L> {
             self.dim_mut(dim).register_dim_mapping(&mapping);
         }
         mapping
-    }
-    /// Returns true if inst2 depends on inst1 (check based on value)
-    pub fn is_dependency_of(&self, inst1_id: InstId, inst2_id: InstId) -> bool {
-        match self.insts[inst1_id].result_value() {
-            None => false,
-            Some(val_id) => self.values[val_id].is_dependency_of(inst2_id),
-        }
     }
 }
 

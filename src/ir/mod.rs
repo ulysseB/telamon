@@ -72,6 +72,8 @@ pub struct NewObjs {
     pub dim_mappings: Vec<DimMappingId>,
     pub mapped_dims: Vec<(DimMappingId, DimId)>,
     pub values: Vec<ValueId>,
+    pub use_statements: Vec<(ValueId, StmtId)>,
+    pub def_statements: Vec<(ValueId, StmtId)>,
 }
 
 impl NewObjs {
@@ -130,6 +132,10 @@ impl NewObjs {
 
     pub fn add_value(&mut self, val: &Value) {
         self.values.push(val.id());
+        self.def_statements
+            .extend(val.def_points().map(|stmt| (val.id(), stmt)));
+        self.use_statements
+            .extend(val.use_points().map(|stmt| (val.id(), stmt)));
     }
 }
 

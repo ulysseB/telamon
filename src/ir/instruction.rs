@@ -30,6 +30,10 @@ pub struct Instruction<'a, L = LoweringMap> {
     id: InstId,
     iter_dims: HashSet<ir::DimId>,
     value: Option<ir::ValueId>,
+    // We need a `VecSet` so that we can return a reference to it when implementing the `Statement`
+    // trait. In practice, it just contains `value`.
+    def_values: VecSet<ir::ValueId>,
+    used_values: VecSet<ir::ValueId>,
 }
 
 impl<'a, L> Instruction<'a, L> {
@@ -41,11 +45,23 @@ impl<'a, L> Instruction<'a, L> {
         fun: &ir::Function<L>,
     ) -> Result<Self, ir::Error> {
         operator.check(&iter_dims, fun)?;
+        let used_values = operator
+            .operands()
+            .iter()
+            .flat_map(|op| {
+                if let ir::Operand::Value(v, ..) = op {
+                    Some(*v)
+                } else {
+                    None
+                }
+            }).collect();
         Ok(Instruction {
             operator,
             id,
             iter_dims,
             value: None,
+            def_values: VecSet::default(),
+            used_values,
         })
     }
 
@@ -153,6 +169,7 @@ impl<'a, L> Instruction<'a, L> {
     pub fn set_result_value(&mut self, value: ir::ValueId) {
         // An instruction value cannot be set twice.
         assert_eq!(std::mem::replace(&mut self.value, Some(value)), None);
+        self.def_values = VecSet::new(vec![value]);
     }
 }
 
@@ -163,6 +180,8 @@ impl<'a> Instruction<'a, ()> {
             id: self.id,
             iter_dims: self.iter_dims,
             value: self.value,
+            used_values: self.used_values,
+            def_values: self.def_values,
         }
     }
 }
@@ -194,5 +213,13 @@ impl<'a> Statement<'a> for Instruction<'a> {
 
     fn as_inst(&self) -> Option<&Instruction<'a>> {
         Some(self)
+    }
+
+    fn def_values(&self) -> &VecSet<ir::ValueId> {
+        &self.def_values
+    }
+
+    fn used_values(&self) -> &VecSet<ir::ValueId> {
+        &self.used_values
     }
 }
