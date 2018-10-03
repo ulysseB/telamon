@@ -196,6 +196,33 @@
 <span id="196">196</span>
 <span id="197">197</span>
 <span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Describes the instructions.</span>
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">DimMapScope</span>, <span class="ident">LoweringMap</span>, <span class="ident">Operand</span>, <span class="ident">Operator</span>, <span class="ident">Statement</span>, <span class="ident">StmtId</span>, <span class="ident">Type</span>};
@@ -229,6 +256,10 @@
     <span class="ident">id</span>: <span class="ident">InstId</span>,
     <span class="ident">iter_dims</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
     <span class="ident">value</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">ValueId</span><span class="op">&gt;</span>,
+    <span class="comment">// We need a `VecSet` so that we can return a reference to it when implementing the `Statement`</span>
+    <span class="comment">// trait. In practice, it just contains `value`.</span>
+    <span class="ident">def_values</span>: <span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">ValueId</span><span class="op">&gt;</span>,
+    <span class="ident">used_values</span>: <span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">ValueId</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> <span class="ident">Instruction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> {
@@ -240,11 +271,23 @@
         <span class="ident">fun</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ir</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">operator</span>.<span class="ident">check</span>(<span class="kw-2">&amp;</span><span class="ident">iter_dims</span>, <span class="ident">fun</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">used_values</span> <span class="op">=</span> <span class="ident">operator</span>
+            .<span class="ident">operands</span>()
+            .<span class="ident">iter</span>()
+            .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">op</span><span class="op">|</span> {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">Value</span>(<span class="ident">v</span>, ..) <span class="op">=</span> <span class="ident">op</span> {
+                    <span class="prelude-val">Some</span>(<span class="kw-2">*</span><span class="ident">v</span>)
+                } <span class="kw">else</span> {
+                    <span class="prelude-val">None</span>
+                }
+            }).<span class="ident">collect</span>();
         <span class="prelude-val">Ok</span>(<span class="ident">Instruction</span> {
             <span class="ident">operator</span>,
             <span class="ident">id</span>,
             <span class="ident">iter_dims</span>,
             <span class="ident">value</span>: <span class="prelude-val">None</span>,
+            <span class="ident">def_values</span>: <span class="ident">VecSet</span>::<span class="ident">default</span>(),
+            <span class="ident">used_values</span>,
         })
     }
 
@@ -352,6 +395,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_result_value</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">ir</span>::<span class="ident">ValueId</span>) {
         <span class="comment">// An instruction value cannot be set twice.</span>
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">replace</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">value</span>, <span class="prelude-val">Some</span>(<span class="ident">value</span>)), <span class="prelude-val">None</span>);
+        <span class="self">self</span>.<span class="ident">def_values</span> <span class="op">=</span> <span class="ident">VecSet</span>::<span class="ident">new</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">value</span>]);
     }
 }
 
@@ -362,6 +406,8 @@
             <span class="ident">id</span>: <span class="self">self</span>.<span class="ident">id</span>,
             <span class="ident">iter_dims</span>: <span class="self">self</span>.<span class="ident">iter_dims</span>,
             <span class="ident">value</span>: <span class="self">self</span>.<span class="ident">value</span>,
+            <span class="ident">used_values</span>: <span class="self">self</span>.<span class="ident">used_values</span>,
+            <span class="ident">def_values</span>: <span class="self">self</span>.<span class="ident">def_values</span>,
         }
     }
 }
@@ -393,6 +439,14 @@
 
     <span class="kw">fn</span> <span class="ident">as_inst</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Instruction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
         <span class="prelude-val">Some</span>(<span class="self">self</span>)
+    }
+
+    <span class="kw">fn</span> <span class="ident">def_values</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">ValueId</span><span class="op">&gt;</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">def_values</span>
+    }
+
+    <span class="kw">fn</span> <span class="ident">used_values</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">ValueId</span><span class="op">&gt;</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">used_values</span>
     }
 }
 </pre>
