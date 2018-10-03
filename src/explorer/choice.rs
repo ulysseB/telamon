@@ -60,9 +60,9 @@ pub fn list_with_ordering<'a>(
             // TODO(search_space): avoid picking ordering decisions that have little impact.
             // For this, we should avoid dimension-instruction and dimension-vector dim
             // orderings. The problem is that we do not know wich choice to pick in the end.
-            let lhs = lhs.bb_id();
-            let dims = fun.dims().take(i).map(|x| x.bb_id());
-            dims.chain(fun.insts().map(|x| x.bb_id()))
+            let lhs = lhs.stmt_id();
+            let dims = fun.dims().take(i).map(|x| x.stmt_id());
+            dims.chain(fun.insts().map(|x| x.stmt_id()))
                 .flat_map(move |rhs| {
                     let orders = space.domain().get_order(lhs.into(), rhs);
                     gen_choice(orders.list(), &|o| Action::Order(lhs, rhs, o))
