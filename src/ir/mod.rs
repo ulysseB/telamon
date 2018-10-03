@@ -132,8 +132,10 @@ impl NewObjs {
 
     pub fn add_value(&mut self, val: &Value) {
         self.values.push(val.id());
-        self.def_statements.extend(val.def_points().map(|stmt| (val.id(), stmt)));
-        self.use_statements.extend(val.use_points().map(|stmt| (val.id(), stmt)));
+        self.def_statements
+            .extend(val.def_points().map(|stmt| (val.id(), stmt)));
+        self.use_statements
+            .extend(val.use_points().map(|stmt| (val.id(), stmt)));
     }
 }
 
