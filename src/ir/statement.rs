@@ -42,9 +42,9 @@ pub trait Statement<'a, L = ir::LoweringMap>: std::fmt::Debug {
         None
     }
 
-    /// Lists the values defined at this statement.
-    fn def_values(&self) -> &VecSet<ir::ValueId>;
+    /// Lists the variables defined at this statement.
+    fn def_variables(&self) -> &VecSet<ir::VarId>;
 
-    /// Lists the values defined used at this statement.
-    fn used_values(&self) -> &VecSet<ir::ValueId>;
+    /// Lists the variables defined used at this statement.
+    fn used_variables(&self) -> &VecSet<ir::VarId>;
 }

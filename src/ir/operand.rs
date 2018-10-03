@@ -111,8 +111,8 @@ pub enum Operand<'a, L = LoweringMap> {
     Reduce(InstId, Type, DimMap, Vec<ir::DimId>),
     /// A variable increased by a fixed amount at every step of some loops.
     InductionVar(ir::IndVarId, Type),
-    /// A value that can be read from by an instruction
-    Value(ir::ValueId, Type),
+    /// A variable, stored in register.
+    Variable(ir::VarId, Type),
 }
 
 impl<'a, L> Operand<'a, L> {
@@ -124,7 +124,7 @@ impl<'a, L> Operand<'a, L> {
             Addr(mem) => ir::Type::PtrTo(mem.into()),
             Index(..) => Type::I(32),
             Param(p) => p.t,
-            Value(_, t) => t,
+            Variable(_, t) => t,
             Inst(_, t, ..) | Reduce(_, t, ..) | InductionVar(_, t) => t,
         }
     }
@@ -198,7 +198,7 @@ impl<'a, L> Operand<'a, L> {
     pub fn is_constant(&self) -> bool {
         match self {
             Int(..) | Float(..) | Addr(..) | Param(..) => true,
-            Index(..) | Inst(..) | Reduce(..) | InductionVar(..) | Value(..) => false,
+            Index(..) | Inst(..) | Reduce(..) | InductionVar(..) | Variable(..) => false,
         }
     }
 
@@ -226,7 +226,7 @@ impl<'a> Operand<'a, ()> {
             Inst(id, t, dim_map, DimMapScope::Thread) => {
                 Inst(id, t, dim_map, DimMapScope::Thread)
             }
-            Value(val, t) => Value(val, t),
+            Variable(val, t) => Variable(val, t),
             Index(id) => Index(id),
             Param(param) => Param(param),
             Addr(id) => Addr(id),

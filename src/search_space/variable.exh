@@ -1,41 +1,41 @@
-set Values:
-  item_type = "ir::Value"
-  id_type = "ir::ValueId"
-  item_getter = "$fun.value($id)"
+set Variables:
+  item_type = "ir::Variable"
+  id_type = "ir::VariableId"
+  item_getter = "$fun.variable($id)"
   id_getter = "$item.id()"
-  iterator = "$fun.values()"
-  var_prefix = "value"
-  new_objs = "$objs.values"
+  iterator = "$fun.variables()"
+  var_prefix = "variable"
+  new_objs = "$objs.variables"
 end
 
-set DefStatements($value in Values) subsetof Statements:
+set DefStatements($var in Variables) subsetof Statements:
   item_type = "ir::Statement"
   id_type = "ir::StmtId"
   item_getter = "$fun.statement($id)"
   id_getter = "$item.id()"
-  iterator = "$value.def_points().map(|id| $fun.statement(id))"
-  from_superset = "if $item.def_values().contains(&$value.id()) { Some($item) } else { None }"
-  reverse forall $stmt in Statements = "$stmt.def_values().iter().map(|&id| $fun.value(id))"
+  iterator = "$var.def_points().map(|id| $fun.statement(id))"
+  from_superset = "if $item.def_variables().contains(&$var.id()) { Some($item) } else { None }"
+  reverse forall $stmt in Statements = "$stmt.def_variables().iter().map(|&id| $fun.variable(id))"
   var_prefix = "def"
   new_objs = "$objs.def_statements"
 end
 
-set UseStatements($value in Values) subsetof Statements:
+set UseStatements($var in Variables) subsetof Statements:
   item_type = "ir::Statement"
   id_type = "ir::StmtId"
   item_getter = "$fun.statement($id)"
   id_getter = "$item.id()"
-  iterator = "$value.use_points().map(|id| $fun.statement(id))"
-  from_superset = "if $item.used_values().contains(&$value.id()) { Some($item) } else { None }"
-  reverse forall $stmt in Statements = "$stmt.used_values().iter().map(|&id| $fun.value(id))"
+  iterator = "$var.use_points().map(|id| $fun.statement(id))"
+  from_superset = "if $item.used_variables().contains(&$var.id()) { Some($item) } else { None }"
+  reverse forall $stmt in Statements = "$stmt.used_variables().iter().map(|&id| $fun.variable(id))"
   var_prefix = "use"
   new_objs = "$objs.use_statements"
 end
 
 // Enforce data dependencies.
-require forall $value in Values:
-  forall $def in DefStatements($value):
-    forall $use in UseStatements($value):
+require forall $var in Variables:
+  forall $def in DefStatements($var):
+    forall $use in UseStatements($var):
       order($def, $use) is BEFORE
 
 set MemoryRegions:

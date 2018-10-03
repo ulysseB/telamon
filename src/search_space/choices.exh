@@ -58,7 +58,7 @@ quotient IterationDims($inst in Instructions) of $dim in Dimensions:
   add_to_set = "::search_space::add_iteration_dim($fun, $inst, $item)"
 end
 
-include "values.exh"
+include "variable.exh"
 
 /// Specifies how iteration dimensions are implemented.
 define enum dim_kind($dim in Dimensions):

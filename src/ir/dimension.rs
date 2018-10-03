@@ -152,9 +152,9 @@ impl<'a> Dimension<'a> {
 
 lazy_static! {
     // This empty set is necessary because `Statement` must return references the the sets of
-    // values it uses and defines but does not contains any. Thus, instead of creating fields with
+    // variables it uses and defines but does not contains any. Thus, instead of creating fields with
     // empty set we return a reference to this global variable.
-    static ref NO_VALUES: VecSet<ir::ValueId> = VecSet::default();
+    static ref NO_VALUES: VecSet<ir::VarId> = VecSet::default();
 }
 
 impl<'a> Statement<'a> for Dimension<'a> {
@@ -166,11 +166,11 @@ impl<'a> Statement<'a> for Dimension<'a> {
         Some(self)
     }
 
-    fn def_values(&self) -> &VecSet<ir::ValueId> {
+    fn def_variables(&self) -> &VecSet<ir::VarId> {
         &NO_VALUES
     }
 
-    fn used_values(&self) -> &VecSet<ir::ValueId> {
+    fn used_variables(&self) -> &VecSet<ir::VarId> {
         &NO_VALUES
     }
 }
