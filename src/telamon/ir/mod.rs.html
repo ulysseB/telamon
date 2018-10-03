@@ -386,7 +386,7 @@
 <span class="kw">mod</span> <span class="ident">size</span>;
 <span class="kw">mod</span> <span class="ident">statement</span>;
 <span class="kw">mod</span> <span class="ident">types</span>;
-<span class="kw">mod</span> <span class="ident">value</span>;
+<span class="kw">mod</span> <span class="ident">variable</span>;
 
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">std</span>;
@@ -407,7 +407,7 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">size</span>::{<span class="ident">PartialSize</span>, <span class="ident">Size</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">statement</span>::{<span class="ident">Statement</span>, <span class="ident">StmtId</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">types</span>::<span class="ident">Type</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">value</span>::{<span class="ident">Value</span>, <span class="ident">ValueDef</span>, <span class="ident">ValueId</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="self">self</span>::<span class="ident">variable</span>::{<span class="ident">VarDef</span>, <span class="ident">VarId</span>, <span class="ident">Variable</span>};
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">mem</span>;
 
@@ -446,9 +446,9 @@
     <span class="kw">pub</span> <span class="ident">tiled_dimensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">LogicalDimId</span>, <span class="ident">DimId</span>)<span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">dim_mappings</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DimMappingId</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">mapped_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">DimMappingId</span>, <span class="ident">DimId</span>)<span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">values</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ValueId</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">use_statements</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">ValueId</span>, <span class="ident">StmtId</span>)<span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">def_statements</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">ValueId</span>, <span class="ident">StmtId</span>)<span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">variables</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">VarId</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">use_statements</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">VarId</span>, <span class="ident">StmtId</span>)<span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">def_statements</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">VarId</span>, <span class="ident">StmtId</span>)<span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">NewObjs</span> {
@@ -505,12 +505,12 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_value</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">val</span>: <span class="kw-2">&amp;</span><span class="ident">Value</span>) {
-        <span class="self">self</span>.<span class="ident">values</span>.<span class="ident">push</span>(<span class="ident">val</span>.<span class="ident">id</span>());
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_variable</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">var</span>: <span class="kw-2">&amp;</span><span class="ident">Variable</span>) {
+        <span class="self">self</span>.<span class="ident">variables</span>.<span class="ident">push</span>(<span class="ident">var</span>.<span class="ident">id</span>());
         <span class="self">self</span>.<span class="ident">def_statements</span>
-            .<span class="ident">extend</span>(<span class="ident">val</span>.<span class="ident">def_points</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">stmt</span><span class="op">|</span> (<span class="ident">val</span>.<span class="ident">id</span>(), <span class="ident">stmt</span>)));
+            .<span class="ident">extend</span>(<span class="ident">var</span>.<span class="ident">def_points</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">stmt</span><span class="op">|</span> (<span class="ident">var</span>.<span class="ident">id</span>(), <span class="ident">stmt</span>)));
         <span class="self">self</span>.<span class="ident">use_statements</span>
-            .<span class="ident">extend</span>(<span class="ident">val</span>.<span class="ident">use_points</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">stmt</span><span class="op">|</span> (<span class="ident">val</span>.<span class="ident">id</span>(), <span class="ident">stmt</span>)));
+            .<span class="ident">extend</span>(<span class="ident">var</span>.<span class="ident">use_points</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">stmt</span><span class="op">|</span> (<span class="ident">var</span>.<span class="ident">id</span>(), <span class="ident">stmt</span>)));
     }
 }
 
@@ -546,12 +546,12 @@
         <span class="ident">st_dims</span>.<span class="ident">zip_eq</span>(<span class="ident">ld_dims</span>)
     }
 
-    <span class="doccomment">/// Returns the dimensions that store the value.</span>
+    <span class="doccomment">/// Returns the dimensions that store the variable.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">store_dims</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">DimId</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span> {
         <span class="self">self</span>.<span class="ident">st_dims_mapping</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="kw">_</span>, [<span class="kw">_</span>, <span class="ident">dim</span>])<span class="op">|</span> <span class="ident">dim</span>)
     }
 
-    <span class="doccomment">/// Returns the dimensions that load the value.</span>
+    <span class="doccomment">/// Returns the dimensions that load the variable.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">load_dims</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">DimId</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span> {
         <span class="self">self</span>.<span class="ident">ld_dims_mapping</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="kw">_</span>, [<span class="kw">_</span>, <span class="ident">dim</span>])<span class="op">|</span> <span class="ident">dim</span>)
     }

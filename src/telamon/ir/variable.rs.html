@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/ir/value.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>value.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css"><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script src="../../../storage.js"></script></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/ir/variable.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>variable.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css"><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script src="../../../storage.js"></script></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
 <span id="4">  4</span>
@@ -112,31 +112,31 @@
 <span class="kw">use</span> <span class="ident">std</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
-<span class="doccomment">/// Uniquely identifies values.</span>
+<span class="doccomment">/// Uniquely identifies variables.</span>
 <span class="attribute">#[<span class="ident">derive</span>(
     <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>,
 )]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ValueId</span>(<span class="kw">pub</span> <span class="ident">u16</span>);
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">VarId</span>(<span class="kw">pub</span> <span class="ident">u16</span>);
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ValueId</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">usize</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">val_id</span>: <span class="ident">ValueId</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">VarId</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">usize</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">val_id</span>: <span class="ident">VarId</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="ident">val_id</span>.<span class="number">0</span> <span class="kw">as</span> <span class="ident">usize</span>
     }
 }
 
-<span class="doccomment">/// A value produced by the code.</span>
+<span class="doccomment">/// A variable produced by the code.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Value</span> {
-    <span class="ident">id</span>: <span class="ident">ValueId</span>,
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Variable</span> {
+    <span class="ident">id</span>: <span class="ident">VarId</span>,
     <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>,
-    <span class="ident">def</span>: <span class="ident">ValueDef</span>,
+    <span class="ident">def</span>: <span class="ident">VarDef</span>,
     <span class="ident">use_points</span>: <span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">StmtId</span><span class="op">&gt;</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">Value</span> {
-    <span class="doccomment">/// Creates a new value with the given Id.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">id</span>: <span class="ident">ValueId</span>, <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>, <span class="ident">def</span>: <span class="ident">ValueDef</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="ident">Value</span> {
+<span class="kw">impl</span> <span class="ident">Variable</span> {
+    <span class="doccomment">/// Creates a new variable with the given Id.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">id</span>: <span class="ident">VarId</span>, <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>, <span class="ident">def</span>: <span class="ident">VarDef</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="ident">Variable</span> {
             <span class="ident">id</span>,
             <span class="ident">t</span>,
             <span class="ident">def</span>,
@@ -144,41 +144,41 @@
         }
     }
 
-    <span class="doccomment">/// Return the unique identifiers of the `Value`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ValueId</span> {
+    <span class="doccomment">/// Return the unique identifiers of the `Variable`.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">VarId</span> {
         <span class="self">self</span>.<span class="ident">id</span>
     }
 
-    <span class="doccomment">/// Specifies how the value is defined.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">def</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">ValueDef</span> {
+    <span class="doccomment">/// Specifies how the variable is defined.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">def</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">VarDef</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">def</span>
     }
 
-    <span class="doccomment">/// Indicates the type of the value.</span>
+    <span class="doccomment">/// Indicates the type of the variable.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">t</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span> {
         <span class="self">self</span>.<span class="ident">t</span>
     }
 
-    <span class="doccomment">/// Indicates the statements that define the value.</span>
+    <span class="doccomment">/// Indicates the statements that define the variable.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">def_points</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">StmtId</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span> {
         <span class="self">self</span>.<span class="ident">def</span>.<span class="ident">def_statements</span>()
     }
 
-    <span class="doccomment">/// Indicates the statements that uses the value.</span>
+    <span class="doccomment">/// Indicates the statements that uses the variable.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">use_points</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">StmtId</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;_</span> {
         <span class="self">self</span>.<span class="ident">use_points</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>()
     }
 
-    <span class="doccomment">/// Registers that the value is used by a statement.</span>
+    <span class="doccomment">/// Registers that the variable is used by a statement.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_use</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">stmt</span>: <span class="ident">ir</span>::<span class="ident">StmtId</span>) {
         <span class="self">self</span>.<span class="ident">use_points</span>.<span class="ident">insert</span>(<span class="ident">stmt</span>);
     }
 }
 
-<span class="doccomment">/// Specifies how is a `Value` defined.</span>
+<span class="doccomment">/// Specifies how is a `Variable` defined.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Copy</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ValueDef</span> {
-    <span class="doccomment">/// Takes the value produced by an instruction.</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">VarDef</span> {
+    <span class="doccomment">/// Takes the variable produced by an instruction.</span>
     <span class="ident">Inst</span>(<span class="ident">ir</span>::<span class="ident">InstId</span>),
     <span class="comment">// TODO(value):</span>
     <span class="comment">// - Last</span>
@@ -187,31 +187,31 @@
     <span class="comment">// - ExternalMem</span>
 }
 
-<span class="kw">impl</span> <span class="ident">ValueDef</span> {
-    <span class="doccomment">/// Registers the value in the structures it references in the function.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">register</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">self_id</span>: <span class="ident">ir</span>::<span class="ident">ValueId</span>, <span class="ident">function</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="ident">ValueDef</span>::<span class="ident">Inst</span>(<span class="ident">inst_id</span>) <span class="op">=</span> <span class="self">self</span>;
-        <span class="ident">function</span>.<span class="ident">inst_mut</span>(<span class="ident">inst_id</span>).<span class="ident">set_result_value</span>(<span class="ident">self_id</span>);
+<span class="kw">impl</span> <span class="ident">VarDef</span> {
+    <span class="doccomment">/// Registers the variable in the structures it references in the function.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">register</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">self_id</span>: <span class="ident">VarId</span>, <span class="ident">function</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>) {
+        <span class="kw">let</span> <span class="ident">VarDef</span>::<span class="ident">Inst</span>(<span class="ident">inst_id</span>) <span class="op">=</span> <span class="self">self</span>;
+        <span class="ident">function</span>.<span class="ident">inst_mut</span>(<span class="ident">inst_id</span>).<span class="ident">set_result_variable</span>(<span class="ident">self_id</span>);
     }
 
-    <span class="doccomment">/// Returns the type of the value if used on the context of `function`.</span>
+    <span class="doccomment">/// Returns the type of the variable if used on the context of `function`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">t</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">fun</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span> {
-        <span class="kw">let</span> <span class="ident">ValueDef</span>::<span class="ident">Inst</span>(<span class="ident">inst_id</span>) <span class="op">=</span> <span class="self">self</span>;
+        <span class="kw">let</span> <span class="ident">VarDef</span>::<span class="ident">Inst</span>(<span class="ident">inst_id</span>) <span class="op">=</span> <span class="self">self</span>;
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">fun</span>.<span class="ident">inst</span>(<span class="ident">inst_id</span>).<span class="ident">t</span>())
     }
 
     <span class="doccomment">/// Ensures the definition is valid.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">check</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="ident">fun</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ir</span>::<span class="ident">TypeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">ValueDef</span>::<span class="ident">Inst</span>(<span class="ident">inst</span>) <span class="op">=</span> <span class="self">self</span>;
+        <span class="kw">let</span> <span class="ident">VarDef</span>::<span class="ident">Inst</span>(<span class="ident">inst</span>) <span class="op">=</span> <span class="self">self</span>;
         <span class="kw">if</span> <span class="ident">fun</span>.<span class="ident">inst</span>(<span class="ident">inst</span>).<span class="ident">t</span>().<span class="ident">is_none</span>() {
             <span class="prelude-val">Err</span>(<span class="ident">ir</span>::<span class="ident">TypeError</span>::<span class="ident">ExpectedReturnType</span> { <span class="ident">inst</span> })<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Indicates in which statment the value is defined.</span>
+    <span class="doccomment">/// Indicates in which statment the variable is defined.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">def_statements</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">StmtId</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">ValueDef</span>::<span class="ident">Inst</span>(<span class="ident">inst_id</span>) <span class="op">=</span> <span class="self">self</span>;
+        <span class="kw">let</span> <span class="ident">VarDef</span>::<span class="ident">Inst</span>(<span class="ident">inst_id</span>) <span class="op">=</span> <span class="self">self</span>;
         <span class="ident">std</span>::<span class="ident">iter</span>::<span class="ident">once</span>(<span class="ident">inst_id</span>.<span class="ident">into</span>())
     }
 }

@@ -449,9 +449,9 @@
 
 <span class="macro">lazy_static</span><span class="macro">!</span> {
     <span class="comment">// This empty set is necessary because `Statement` must return references the the sets of</span>
-    <span class="comment">// values it uses and defines but does not contains any. Thus, instead of creating fields with</span>
+    <span class="comment">// variables it uses and defines but does not contains any. Thus, instead of creating fields with</span>
     <span class="comment">// empty set we return a reference to this global variable.</span>
-    <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">NO_VALUES</span>: <span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">ValueId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">VecSet</span>::<span class="ident">default</span>();
+    <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">NO_VALUES</span>: <span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">VecSet</span>::<span class="ident">default</span>();
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Statement</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
@@ -463,11 +463,11 @@
         <span class="prelude-val">Some</span>(<span class="self">self</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">def_values</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">ValueId</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">def_variables</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span><span class="op">&gt;</span> {
         <span class="kw-2">&amp;</span><span class="ident">NO_VALUES</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">used_values</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">ValueId</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">used_variables</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span><span class="op">&gt;</span> {
         <span class="kw-2">&amp;</span><span class="ident">NO_VALUES</span>
     }
 }
