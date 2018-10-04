@@ -4,18 +4,88 @@ use ir::{self, Statement};
 use itertools::Itertools;
 use search_space::{Action, Domain, NumSet, Order, SearchSpace};
 
+/// Either a regular action or a manually applied action.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ActionEx {
+    Action(Action),
+    LowerLayout {
+        mem: ir::mem::InternalId,
+        st_dims: Vec<ir::DimId>,
+        ld_dims: Vec<ir::DimId>,
+    },
+}
+
 /// Represents a choice that splits a search space in multiple ones.
 // TODO(search_space): explore and lower loayouts directly from the regular actions.
 pub type Choice = Vec<ActionEx>;
 
+/// An enum listing the Group of choices we can make
+/// For example, we can make first all DimKind decisions, then all Order decisions, etc.
+pub enum ChoiceGroup {
+    LowerLayout,
+    Size,
+    DimKind,
+    DimMap,
+    Order,
+    MemSpace,
+    InstFlag,
+}
+
+/// This struct nests two iterators inside each other and then implements Iterator with the Item of
+/// the internal Iterator
+/// We need that because the choices are generated in different fashion for the different cases
+/// (DimMap, Order...) so we have to iterate on several kinds of iterators (Map, FlatMap...) in a
+/// statically unknown order.
+struct NestedIterator<I: Iterator> where I::Item: Iterator
+{
+    /// The high level Iterator
+    glob_iterator: I,
+    /// The internal iterator we are currently iterating on
+    current_local_iterator: Option<I::Item>,
+}
+
+impl<I: Iterator> NestedIterator<I> where I::Item: Iterator
+{
+    fn new(iterator: I) -> Self {
+        NestedIterator {
+            glob_iterator: iterator,
+            current_local_iterator: None,
+        }
+    }
+}
+
+impl<I: Iterator> Iterator for NestedIterator<I> where I::Item: Iterator
+{
+    type Item = <I::Item as Iterator>::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop{
+            if let Some(ref mut current_it) = self.current_local_iterator {
+                if let Some(choice) = current_it.next() {
+                    break Some(choice);
+                }
+            }
+            // If we are here, either there is no current_local_iterator or the current_local_iterator
+            // is exhausted, we should update it. If glob_iterator itself is exhausted, we return None
+            if let Some(local_it) = self.glob_iterator.next() {
+                self.current_local_iterator = Some(local_it);
+            } else {
+                break None;
+            }
+        }
+    }
+}
 /// A list of ChoiceGroup representing the order in which we want to determine choices
 pub struct ChoiceOrdering(Vec<ChoiceGroup>);
 
 impl ChoiceOrdering {
+    /// list the choices that are still to be made on the search space.
+    /// Do it in a lazy fashion - that is, a call to next() on the list returned by this function
+    /// does not do the whole iteration
     pub fn list<'a>(
         &'a self,
         space: &'a SearchSpace<'a>,
-    ) -> impl Iterator<Item = Choice> + 'a {
+        ) -> impl Iterator<Item = Choice> + 'a {
         NestedIterator::new( self.0.iter().map( move |choice_grp| -> Box<dyn Iterator<Item = Choice> + 'a>  {
             let fun = space.ir_instance();
             match choice_grp {
@@ -23,9 +93,9 @@ impl ChoiceOrdering {
                                                      .iter()
                                                      .map(move |&layout| lower_layout_choice(space, layout))),
                 ChoiceGroup::Size => Box::new(fun.static_dims().flat_map(move |dim| {
-            let sizes = space.domain().get_size(dim.id());
-            gen_choice(sizes.list(), &|s| Action::Size(dim.id(), s))
-        })),
+                    let sizes = space.domain().get_size(dim.id());
+                    gen_choice(sizes.list(), &|s| Action::Size(dim.id(), s))
+                })),
                 ChoiceGroup::DimKind => Box::new(fun.dims().flat_map(move |dim| {
                     let kinds = space.domain().get_dim_kind(dim.id());
                     gen_choice(kinds.list(), &|k| Action::DimKind(dim.id(), k))
@@ -65,37 +135,16 @@ impl ChoiceOrdering {
     }
 }
 
-/// An enum listing the Group of choices we can make
-/// For example, we can make first all DimKind decisions, then all Order decisions, etc.
-pub enum ChoiceGroup {
-    LowerLayout,
-    Size,
-    DimKind,
-    DimMap,
-    Order,
-    MemSpace,
-    InstFlag,
-}
-/// Either a regular action or a manually applied action.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ActionEx {
-    Action(Action),
-    LowerLayout {
-        mem: ir::mem::InternalId,
-        st_dims: Vec<ir::DimId>,
-        ld_dims: Vec<ir::DimId>,
-    },
-}
 
 lazy_static! {
     static ref DEFAULT_ORDERING: ChoiceOrdering = ChoiceOrdering(vec![
-        ChoiceGroup::LowerLayout,
-        ChoiceGroup::Size,
-        ChoiceGroup::DimKind,
-        ChoiceGroup::DimMap,
-        ChoiceGroup::MemSpace,
-        ChoiceGroup::Order,
-        ChoiceGroup::InstFlag,
+                                                                 ChoiceGroup::LowerLayout,
+                                                                 ChoiceGroup::Size,
+                                                                 ChoiceGroup::DimKind,
+                                                                 ChoiceGroup::DimMap,
+                                                                 ChoiceGroup::MemSpace,
+                                                                 ChoiceGroup::Order,
+                                                                 ChoiceGroup::InstFlag,
     ]);
 }
 
@@ -106,53 +155,11 @@ pub fn list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item = Choice> + 'a
     DEFAULT_ORDERING.list(space)
 }
 
-struct NestedIterator<I: Iterator>
-where
-    I::Item: Iterator,
-{
-    glob_iterator: I,
-    current_local_iterator: Option<I::Item>,
-}
-
-impl<I: Iterator> NestedIterator<I>
-where
-    I::Item: Iterator,
-{
-    fn new(iterator: I) -> Self {
-        NestedIterator {
-            glob_iterator: iterator,
-            current_local_iterator: None,
-        }
-    }
-}
-
-impl<I: Iterator> Iterator for NestedIterator<I>
-where
-    I::Item: Iterator,
-{
-    type Item = <I::Item as Iterator>::Item;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(ref mut current_it) = self.current_local_iterator {
-            if let Some(choice) = current_it.next() {
-                return Some(choice);
-            }
-        }
-        // If we are here, either there is no current_local_iterator or the current_local_iterator
-        // is exhausted, we should update it. If glob_iterator itself is exhausted, we return None
-        if let Some(local_it) = self.glob_iterator.next() {
-            self.current_local_iterator = Some(local_it);
-            self.next()
-        } else {
-            None
-        }
-    }
-}
 
 /// Generates a choice from a list of possible values.
 fn gen_choice<T, IT>(values: IT, action_gen: &Fn(T) -> Action) -> Option<Choice>
 where
-    IT: IntoIterator<Item = T>,
+IT: IntoIterator<Item = T>,
 {
     let choice = values
         .into_iter()
@@ -196,7 +203,7 @@ pub fn fix_order(mut space: SearchSpace) -> SearchSpace {
             panic!(
                 "unconstrained order between {:?} and {:?}: {:?}",
                 lhs, rhs, order
-            )
+                )
         };
         let action = Action::Order(lhs, rhs, new_order);
         unwrap!(space.apply_decisions(vec![action]), "{:?}", action);
