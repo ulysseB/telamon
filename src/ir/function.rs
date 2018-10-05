@@ -55,6 +55,10 @@ impl Signature {
 }
 
 /// Describes a function and the set of its possible implementation.
+///
+/// The type parameter `L` indicates if the function is fozen (`L = ir::LoweringMap`) or
+/// not (`L = ())`. A frozen function cannot have any more IDs allocated. We use this to
+/// know the exact list of potential decisions before we run the exploration.
 #[derive(Clone)]
 pub struct Function<'a, L = ir::LoweringMap> {
     signature: &'a Signature,
