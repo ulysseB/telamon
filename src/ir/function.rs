@@ -209,7 +209,9 @@ impl<'a, L> Function<'a, L> {
 
     /// Lists all `Statement`s.
     pub fn statements<'b>(&'b self) -> impl Iterator<Item = &'b Statement<'a, L>> {
-        self.insts().map(|x| x as _).chain(self.dims().map(|x| x as _))
+        self.insts()
+            .map(|x| x as _)
+            .chain(self.dims().map(|x| x as _))
     }
 
     /// Retrives a logical dimension given its ID.
@@ -499,7 +501,6 @@ impl<'a> Function<'a, ()> {
         })
     }
 
-
     pub(crate) fn freeze(self) -> Function<'a> {
         let mut counter = ir::Counter {
             next_mem: self.mem_blocks.num_internal_blocks(),
@@ -534,7 +535,9 @@ impl<'a> Function<'a, ()> {
             .map(|induction_var| induction_var.freeze(&mut counter))
             .collect();
         let mut dims = SparseVec::from_vec(
-            dims.into_iter().map(|dim| dim.map(|dim| dim.freeze())).collect()
+            dims.into_iter()
+                .map(|dim| dim.map(|dim| dim.freeze()))
+                .collect(),
         );
 
         let ir::Counter {
