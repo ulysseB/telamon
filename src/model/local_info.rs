@@ -33,12 +33,12 @@ impl<'a> LocalInfo<'a> {
             .collect();
         let nesting: HashMap<_, _> = space
             .ir_instance()
-            .blocks()
+            .statements()
             .map(|stmt| (stmt.stmt_id(), Nesting::compute(space, stmt.stmt_id())))
             .collect();
         let mut hw_pressure = space
             .ir_instance()
-            .blocks()
+            .statements()
             .map(|stmt| {
                 let is_thread = if let ir::StmtId::Dim(id) = stmt.stmt_id() {
                     space.domain().get_dim_kind(id) == DimKind::THREAD
@@ -170,7 +170,7 @@ impl<'a> Nesting<'a> {
         let mut after_self = Vec::new();
         let mut bigger_merged_dims = Vec::new();
         let mut has_inner_thread_dims = false;
-        for other_stmt in space.ir_instance().blocks() {
+        for other_stmt in space.ir_instance().statements() {
             if other_stmt.stmt_id() == stmt {
                 continue;
             }

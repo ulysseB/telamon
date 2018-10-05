@@ -1,6 +1,6 @@
 //! Represents iteration dimensions.
 use ir::{self, Statement};
-use std::fmt;
+use std;
 use utils::*;
 
 /// Provides a unique identifier for iteration dimensions.
@@ -17,15 +17,15 @@ impl Into<usize> for DimId {
     }
 }
 
-impl fmt::Display for DimId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl std::fmt::Display for DimId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         self.0.fmt(f)
     }
 }
 
 /// Represents an iteration dimension.
 #[derive(Clone, Debug)]
-pub struct Dimension<'a> {
+pub struct Dimension<'a, L = ir::LoweringMap> {
     id: DimId,
     size: ir::PartialSize<'a>,
     possible_sizes: VecSet<u32>,
@@ -33,15 +33,32 @@ pub struct Dimension<'a> {
     is_thread_dim: bool,
     logical_dim: Option<LogicalDimId>,
     mapped_dims: VecSet<DimMappingId>,
+    freeze_marker: std::marker::PhantomData<L>,
 }
 
-impl<'a> Dimension<'a> {
+impl<'a> Dimension<'a, ()> {
+    /// Sets the dimension as frozen.
+    pub fn freeze(self) -> Dimension<'a> {
+        Dimension {
+            id: self.id,
+            is_thread_dim: self.is_thread_dim,
+            size: self.size,
+            possible_sizes: self.possible_sizes,
+            iterated: self.iterated,
+            logical_dim: self.logical_dim,
+            mapped_dims: self.mapped_dims,
+            freeze_marker: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<'a, L> Dimension<'a, L> {
     /// Creates a new dimension.
     pub fn new(
         id: DimId,
-        size: ir::PartialSize,
+        size: ir::PartialSize<'a>,
         logical_dim: Option<LogicalDimId>,
-    ) -> Result<Dimension, ir::Error> {
+    ) -> Result<Self, ir::Error> {
         let possible_sizes = if let Some(size) = size.as_int() {
             if size == 1 {
                 return Err(ir::Error::InvalidDimSize);
@@ -59,6 +76,7 @@ impl<'a> Dimension<'a> {
             iterated: Vec::new(),
             is_thread_dim: false,
             mapped_dims: VecSet::default(),
+            freeze_marker: std::marker::PhantomData,
         })
     }
 
@@ -81,6 +99,7 @@ impl<'a> Dimension<'a> {
             iterated: Vec::new(),
             is_thread_dim: false,
             mapped_dims: VecSet::default(),
+            freeze_marker: std::marker::PhantomData,
         })
     }
 
@@ -157,12 +176,12 @@ lazy_static! {
     static ref NO_VALUES: VecSet<ir::VarId> = VecSet::default();
 }
 
-impl<'a> Statement<'a> for Dimension<'a> {
+impl<'a, L> Statement<'a, L> for Dimension<'a, L> {
     fn stmt_id(&self) -> ir::StmtId {
         self.id.into()
     }
 
-    fn as_dim(&self) -> Option<&Dimension<'a>> {
+    fn as_dim(&self) -> Option<&Dimension<'a, L>> {
         Some(self)
     }
 
