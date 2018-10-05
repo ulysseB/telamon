@@ -1,5 +1,21 @@
-use super::*;
+use std::iter::once;
+use std::mem;
 use std::ops::Deref;
+
+use ast::choice::{ChoiceDef, CounterDef};
+use ast::constrain::Constraint;
+use ast::context::CheckerContext;
+use ast::error::{Hint, TypeError};
+use ast::trigger::TriggerDef;
+use ast::{
+    ir, print, Check, ChoiceInstance, Condition, CounterBody, CounterVal, Quotient,
+    SetRef, VarDef, VarMap,
+};
+
+use indexmap::IndexMap;
+use itertools::Itertools;
+use lexer::Spanned;
+use utils::{HashMap, RcStr};
 
 #[derive(Debug, Clone)]
 pub struct SetDef {
@@ -146,7 +162,7 @@ impl SetDef {
         name: RcStr,
         set: &ir::SetDef,
         item_name: Spanned<RcStr>,
-        tc: &mut TypingContext,
+        ir_desc: &mut ir::IrDesc,
     ) {
         let arg = self.arg.clone();
         let bool_str: RcStr = "Bool".into();
@@ -162,9 +178,9 @@ impl SetDef {
             false,
         );
         let mut repr = ir::Choice::new(name, None, args, def);
-        let false_value_set = std::iter::once("FALSE".into()).collect();
+        let false_value_set = once("FALSE".into()).collect();
         repr.add_fragile_values(ir::ValueSet::enum_values(bool_str, false_value_set));
-        tc.ir_desc.add_choice(repr);
+        ir_desc.add_choice(repr);
     }
 
     /// Creates a counter for the number of objects that can represent another object in
@@ -177,10 +193,11 @@ impl SetDef {
         vars: Vec<VarDef>,
         equiv_choice_name: RcStr,
         equiv_values: Vec<RcStr>,
-        tc: &mut TypingContext,
+        checks: &mut Vec<Check>,
+        choice_defs: &mut Vec<ChoiceDef>,
     ) -> RcStr {
         // Create the increment condition
-        tc.checks.push(Check::IsSymmetric {
+        checks.push(Check::IsSymmetric {
             choice: equiv_choice_name.clone(),
             values: equiv_values.clone(),
         });
@@ -216,7 +233,7 @@ impl SetDef {
             kind: ir::CounterKind::Add,
             value: CounterVal::Code("1".to_string()),
         };
-        tc.choice_defs.push(ChoiceDef::CounterDef(CounterDef {
+        choice_defs.push(ChoiceDef::CounterDef(CounterDef {
             name: Spanned {
                 data: name.clone(),
                 ..Default::default()
@@ -230,20 +247,33 @@ impl SetDef {
     }
 
     /// Creates the choices that implement the quotient set.
-    fn create_quotient(&self, set: &ir::SetDef, tc: &mut TypingContext) {
+    fn create_quotient(
+        &self,
+        set: &ir::SetDef,
+        ir_desc: &mut ir::IrDesc,
+        checks: &mut Vec<Check>,
+        choice_defs: &mut Vec<ChoiceDef>,
+        constraints: &mut Vec<Constraint>,
+        triggers: &mut Vec<TriggerDef>,
+    ) {
         let quotient = self.quotient.clone().unwrap();
 
         // assert!(set.attributes().contains_key(&ir::SetDefKey::AddToSet));
         let repr_name = quotient.representant;
         // Create decisions to back the quotient set
-        self.create_repr_choice(repr_name.clone(), set, quotient.item.name.clone(), tc);
+        self.create_repr_choice(
+            repr_name.clone(),
+            set,
+            quotient.item.name.clone(),
+            ir_desc,
+        );
         let item_name = quotient.item.name.clone();
         let arg_name = self.arg.as_ref().map(|x| x.name.clone());
         let forall_vars = self
             .arg
             .clone()
             .into_iter()
-            .chain(std::iter::once(quotient.item))
+            .chain(once(quotient.item))
             .collect_vec();
         let counter_name = self.create_repr_counter(
             set.name().clone(),
@@ -252,7 +282,8 @@ impl SetDef {
             forall_vars.clone(),
             RcStr::new(quotient.equiv_relation.0),
             quotient.equiv_relation.1,
-            tc,
+            checks,
+            choice_defs,
         );
         // Generate the code that set an item as representant.
         let trigger_code = print::add_to_quotient(
@@ -293,7 +324,7 @@ impl SetDef {
             .collect_vec();
         disjunctions.push(vec![not_repr, counter_leq_zero.clone()]);
         let repr_constraints = Constraint::new(forall_vars.clone(), disjunctions);
-        tc.constraints.push(repr_constraints);
+        constraints.push(repr_constraints);
         // Add the constraint `repr is TRUE || counter > 0 || dividend is false`.
         let repr_true = Condition::new_is_bool(repr_instance, true);
         let mut counter_gt_zero = counter_leq_zero.clone();
@@ -303,7 +334,7 @@ impl SetDef {
             cond.negate();
             repr_true_conditions.push(cond);
         }
-        tc.constraints.push(Constraint {
+        constraints.push(Constraint {
             forall_vars: forall_vars.clone(),
             disjunctions: vec![repr_true_conditions],
             restrict_fragile: false,
@@ -320,14 +351,13 @@ impl SetDef {
             .arg
             .clone()
             .into_iter()
-            .chain(std::iter::once(quotient_item_def))
+            .chain(once(quotient_item_def))
             .collect();
-        tc.constraints
-            .push(Constraint::new(item_in_set_foralls, vec![vec![repr_true]]));
+        constraints.push(Constraint::new(item_in_set_foralls, vec![vec![repr_true]]));
         // Generate the trigger that sets the repr to TRUE and add the item to the set.
         let mut trigger_conds = quotient.conditions;
         trigger_conds.push(counter_leq_zero);
-        tc.triggers.push(TriggerDef {
+        triggers.push(TriggerDef {
             foralls: forall_vars,
             conditions: trigger_conds,
             code: trigger_code,
@@ -338,7 +368,12 @@ impl SetDef {
     pub fn define(
         self,
         context: &CheckerContext,
-        tc: &mut TypingContext,
+        set_defs: &mut Vec<SetDef>,
+        ir_desc: &mut ir::IrDesc,
+        checks: &mut Vec<Check>,
+        choice_defs: &mut Vec<ChoiceDef>,
+        constraints: &mut Vec<Constraint>,
+        triggers: &mut Vec<TriggerDef>,
     ) -> Result<(), TypeError> {
         self.check_undefined_argument(context)?;
         self.check_undefined_superset(context)?;
@@ -356,13 +391,13 @@ impl SetDef {
         let arg = self
             .arg
             .clone()
-            .map(|arg| var_map.decl_argument(&tc.ir_desc, arg));
+            .map(|arg| var_map.decl_argument(&ir_desc, arg));
         let superset = self
             .superset
             .as_ref()
-            .map(|set| set.type_check(&tc.ir_desc, &var_map));
+            .map(|set| set.type_check(&ir_desc, &var_map));
         for disjoint in &self.disjoint {
-            tc.ir_desc.get_set_def(disjoint);
+            ir_desc.get_set_def(disjoint);
         }
         let mut keymap: IndexMap<ir::SetDefKey, String> = IndexMap::default();
         let mut reverse = None;
@@ -398,11 +433,9 @@ impl SetDef {
                     .clone()
                     .unwrap()
                     .set
-                    .type_check(&tc.ir_desc, &VarMap::default());
+                    .type_check(&ir_desc, &VarMap::default());
                 assert!(superset.as_ref().unwrap().is_subset_of_def(&set));
-                assert!(
-                    std::mem::replace(&mut reverse, Some((set, v.to_owned()))).is_none()
-                );
+                assert!(mem::replace(&mut reverse, Some((set, v.to_owned()))).is_none());
             } else {
                 assert!(keymap.insert(key, v).is_none());
             }
@@ -416,11 +449,18 @@ impl SetDef {
             self.disjoint.to_owned(),
         );
         if let Some(ref quotient) = self.quotient {
-            self.create_quotient(&def, tc);
+            self.create_quotient(
+                &def,
+                ir_desc,
+                checks,
+                choice_defs,
+                constraints,
+                triggers,
+            );
         }
-        tc.ir_desc.add_set_def(def);
+        ir_desc.add_set_def(def);
 
-        tc.set_defs.push(self);
+        set_defs.push(self);
         Ok(())
     }
 }

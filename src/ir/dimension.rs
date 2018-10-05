@@ -28,7 +28,7 @@ impl fmt::Display for DimId {
 pub struct Dimension<'a> {
     id: DimId,
     size: ir::PartialSize<'a>,
-    possible_sizes: Vec<u32>,
+    possible_sizes: VecSet<u32>,
     iterated: Vec<ir::InstId>,
     is_thread_dim: bool,
     logical_dim: Option<LogicalDimId>,
@@ -37,37 +37,61 @@ pub struct Dimension<'a> {
 
 impl<'a> Dimension<'a> {
     /// Creates a new dimension.
-    pub fn new(size: ir::PartialSize, id: DimId) -> Result<Dimension, ir::Error> {
+    pub fn new(
+        id: DimId,
+        size: ir::PartialSize,
+        logical_dim: Option<LogicalDimId>,
+    ) -> Result<Dimension, ir::Error> {
         let possible_sizes = if let Some(size) = size.as_int() {
             if size == 1 {
                 return Err(ir::Error::InvalidDimSize);
             }
-            vec![size]
+            VecSet::new(vec![size])
         } else {
-            vec![]
+            VecSet::default()
         };
+        trace!("new dim {:?}, size = {:?}", id, size);
         Ok(Dimension {
             size,
             id,
+            logical_dim,
             possible_sizes,
             iterated: Vec::new(),
             is_thread_dim: false,
-            logical_dim: None,
+            mapped_dims: VecSet::default(),
+        })
+    }
+
+    /// Creates a dimension with a statically known size, picked in a list of
+    /// possibilities.
+    pub fn new_static(
+        id: DimId,
+        possible_sizes: VecSet<u32>,
+        logical_dim: Option<LogicalDimId>,
+    ) -> Result<Self, ir::Error> {
+        if possible_sizes.contains(&1) {
+            return Err(ir::Error::InvalidDimSize);
+        }
+        trace!("new static {:?}, size = {:?}", id, possible_sizes);
+        Ok(Dimension {
+            size: ir::PartialSize::new_dim_size(id),
+            id,
+            possible_sizes,
+            logical_dim,
+            iterated: Vec::new(),
+            is_thread_dim: false,
             mapped_dims: VecSet::default(),
         })
     }
 
     /// Creates a new dimension with the same size as an existing one.
     pub fn with_same_size(id: DimId, other: &Self) -> Self {
-        Dimension {
-            size: other.size().clone(),
-            possible_sizes: other.possible_sizes.clone(),
-            id,
-            iterated: Vec::new(),
-            is_thread_dim: false,
-            logical_dim: None,
-            mapped_dims: VecSet::default(),
-        }
+        // Cannot fail because the checks already passed when `other` was created.
+        unwrap!(if other.possible_sizes.is_empty() {
+            Self::new(id, other.size().clone(), None)
+        } else {
+            Self::new_static(id, other.possible_sizes.clone(), None)
+        })
     }
 
     /// Retruns the size of the dimension.
@@ -126,6 +150,13 @@ impl<'a> Dimension<'a> {
     }
 }
 
+lazy_static! {
+    // This empty set is necessary because `Statement` must return references the the sets of
+    // variables it uses and defines but does not contains any. Thus, instead of creating fields with
+    // empty set we return a reference to this global variable.
+    static ref NO_VALUES: VecSet<ir::VarId> = VecSet::default();
+}
+
 impl<'a> Statement<'a> for Dimension<'a> {
     fn stmt_id(&self) -> ir::StmtId {
         self.id.into()
@@ -133,6 +164,14 @@ impl<'a> Statement<'a> for Dimension<'a> {
 
     fn as_dim(&self) -> Option<&Dimension<'a>> {
         Some(self)
+    }
+
+    fn def_variables(&self) -> &VecSet<ir::VarId> {
+        &NO_VALUES
+    }
+
+    fn used_variables(&self) -> &VecSet<ir::VarId> {
+        &NO_VALUES
     }
 }
 
@@ -147,7 +186,7 @@ pub struct LogicalDim<'a> {
     id: LogicalDimId,
     static_dims: Vec<DimId>,
     nonstatic_dim: Option<DimId>,
-    possible_tilings: Vec<u32>,
+    possible_tilings: VecSet<u32>,
     total_size: ir::Size<'a>,
 }
 
@@ -162,7 +201,7 @@ impl<'a> LogicalDim<'a> {
             id,
             static_dims,
             nonstatic_dim: None,
-            possible_tilings: vec![total_size],
+            possible_tilings: VecSet::new(vec![total_size]),
             total_size: ir::Size::new_const(total_size),
         }
     }
@@ -173,7 +212,7 @@ impl<'a> LogicalDim<'a> {
         id: LogicalDimId,
         dynamic_dim: DimId,
         static_dims: Vec<DimId>,
-        possible_tilings: Vec<u32>,
+        possible_tilings: VecSet<u32>,
         total_size: ir::Size<'a>,
     ) -> Self {
         LogicalDim {

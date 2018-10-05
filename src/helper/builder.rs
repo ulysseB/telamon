@@ -1,10 +1,8 @@
 //! Helper struct to build a `Function`.
 use device::Device;
-use helper::{AutoOperand, LogicalDim, MetaStatement};
+use helper::{AutoOperand, LogicalDim, MetaStatement, TilingPattern};
 use ir::{self, mem, op, Parameter, Type};
-use ir::{
-    AccessPattern, Function, InstId, Operand, Operator, Signature, ValueDef, ValueId,
-};
+use ir::{AccessPattern, Function, InstId, Operand, Operator, Signature};
 use itertools::Itertools;
 use search_space::{Action, DimKind, InstFlag, MemSpace, Order, SearchSpace};
 use std::borrow::Borrow;
@@ -130,7 +128,7 @@ impl<'a> Builder<'a> {
     /// Adds a `Mov` instruction to the function.
     pub fn mov<'b: 'a>(&mut self, arg: &AutoOperand<'b>) -> InstId {
         let arg_op = self.get_op(arg);
-        self.inst(op::Mov(arg_op))
+        self.inst(op::UnaryOp(ir::UnaryOp::Mov, arg_op))
     }
 
     /// Adds a coherent load from global memory instruction to the function.
@@ -196,7 +194,7 @@ impl<'a> Builder<'a> {
     /// Adds a cast instruction to the given type.
     pub fn cast<'b: 'a>(&mut self, val: &AutoOperand<'b>, t: Type) -> InstId {
         let val_op = self.get_op(val);
-        self.inst(op::Cast(val_op, t))
+        self.inst(op::UnaryOp(ir::UnaryOp::Cast(t), val_op))
     }
 
     /// Restricts the order between two basic blocks. Does not restricts LINK and NPACK
@@ -215,14 +213,13 @@ impl<'a> Builder<'a> {
         unwrap!(self.function.add_inst(op, open_dims))
     }
 
-    pub fn create_inst_value(&mut self, inst_id: InstId) -> ValueId {
-        if let Some(val_id) = self.function.inst(inst_id).result_value() {
-            val_id
-        } else {
-            let value_def = ValueDef::Inst(inst_id);
-            let value_id = unwrap!(self.function.add_value(value_def));
-            value_id
-        }
+    pub fn create_inst_variable(&mut self, inst_id: InstId) -> ir::VarId {
+        self.function
+            .inst(inst_id)
+            .result_variable()
+            .unwrap_or_else(|| {
+                unwrap!(self.function.add_variable(ir::VarDef::Inst(inst_id)))
+            })
     }
 
     /// Applies an action on the function.
@@ -232,7 +229,7 @@ impl<'a> Builder<'a> {
 
     /// Opens a new dimension.
     pub fn open_dim(&mut self, size: ir::Size<'a>) -> LogicalDim {
-        self.open_tiled_dim(size, &[])
+        self.open_tiled_dim(size, TilingPattern::default())
     }
 
     /// Opens a nest of new dimension with the given kinds and sizes.
@@ -246,23 +243,18 @@ impl<'a> Builder<'a> {
     pub fn open_tiled_dim(
         &mut self,
         size: ir::Size<'a>,
-        // This is a reference to avoid breaking the interface. This parameter will be
-        // removed when we allow specifying multiple tile sizes for each dimension so it
-        // is no worth changing the code everywhere this function is used just yet.
-        tile_sizes: &[u32],
+        tiling_pattern: TilingPattern,
     ) -> LogicalDim {
-        // TODO(strip-mining): allow multiple tile size for each level.
-        let tiling_factors = vec![tile_sizes.iter().product()];
         let (logical_id, real_ids) = unwrap!(self.function.add_logical_dim(
             size,
-            tiling_factors,
-            tile_sizes,
+            tiling_pattern.tiling_factors.clone(),
+            tiling_pattern.tile_sizes.clone(),
         ));
         self.open_dims.extend(real_ids.iter().map(|&id| (id, id)));
         LogicalDim {
             logical_id,
             real_ids,
-            tile_sizes: tile_sizes.to_vec(),
+            tiling_pattern,
         }
     }
 
@@ -271,17 +263,11 @@ impl<'a> Builder<'a> {
     /// The size of the new dim is inherited from the mapped dim.
     /// The dimension mapped to is closed if needed.
     pub fn open_mapped_dim(&mut self, old_dim: &LogicalDim) -> LogicalDim {
-        let (size, tiling_factors) = {
-            let old_dim = self.function.logical_dim(old_dim.id());
-            (
-                old_dim.total_size().clone(),
-                old_dim.possible_tilings().to_vec(),
-            )
-        };
+        let size = self.function.logical_dim(old_dim.id()).total_size().clone();
         let (new_id, new_dims) = unwrap!(self.function.add_logical_dim(
             size.clone(),
-            tiling_factors.clone(),
-            &old_dim.tile_sizes,
+            old_dim.tiling_pattern.tiling_factors.clone(),
+            old_dim.tiling_pattern.tile_sizes.clone(),
         ));
         for (old, &new) in old_dim.iter().zip_eq(&new_dims) {
             self.open_dims.remove(&old);
@@ -290,7 +276,7 @@ impl<'a> Builder<'a> {
         LogicalDim {
             logical_id: new_id,
             real_ids: new_dims,
-            tile_sizes: old_dim.tile_sizes.clone(),
+            tiling_pattern: old_dim.tiling_pattern.clone(),
         }
     }
 

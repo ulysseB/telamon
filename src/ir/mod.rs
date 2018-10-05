@@ -11,7 +11,7 @@ mod operator;
 mod size;
 mod statement;
 mod types;
-mod value;
+mod variable;
 
 use itertools::Itertools;
 use std;
@@ -28,11 +28,11 @@ pub use self::induction_var::{IndVarId, InductionVar};
 pub use self::instruction::{InstId, Instruction};
 pub use self::mem::MemId;
 pub use self::operand::{DimMapScope, LoweringMap, Operand};
-pub use self::operator::{BinOp, Operator};
+pub use self::operator::{BinOp, Operator, UnaryOp};
 pub use self::size::{PartialSize, Size};
 pub use self::statement::{Statement, StmtId};
 pub use self::types::Type;
-pub use self::value::{Value, ValueDef, ValueId};
+pub use self::variable::{VarDef, VarId, Variable};
 
 pub mod mem;
 
@@ -71,7 +71,9 @@ pub struct NewObjs {
     pub tiled_dimensions: Vec<(LogicalDimId, DimId)>,
     pub dim_mappings: Vec<DimMappingId>,
     pub mapped_dims: Vec<(DimMappingId, DimId)>,
-    pub values: Vec<ValueId>,
+    pub variables: Vec<VarId>,
+    pub use_statements: Vec<(VarId, StmtId)>,
+    pub def_statements: Vec<(VarId, StmtId)>,
 }
 
 impl NewObjs {
@@ -128,8 +130,12 @@ impl NewObjs {
         }
     }
 
-    pub fn add_value(&mut self, val: &Value) {
-        self.values.push(val.id());
+    pub fn add_variable(&mut self, var: &Variable) {
+        self.variables.push(var.id());
+        self.def_statements
+            .extend(var.def_points().map(|stmt| (var.id(), stmt)));
+        self.use_statements
+            .extend(var.use_points().map(|stmt| (var.id(), stmt)));
     }
 }
 
@@ -165,12 +171,12 @@ impl LoweredDimMap {
         st_dims.zip_eq(ld_dims)
     }
 
-    /// Returns the dimensions that store the value.
+    /// Returns the dimensions that store the variable.
     pub fn store_dims(&self) -> impl Iterator<Item = DimId> + '_ {
         self.st_dims_mapping.iter().map(|&(_, [_, dim])| dim)
     }
 
-    /// Returns the dimensions that load the value.
+    /// Returns the dimensions that load the variable.
     pub fn load_dims(&self) -> impl Iterator<Item = DimId> + '_ {
         self.ld_dims_mapping.iter().map(|&(_, [_, dim])| dim)
     }

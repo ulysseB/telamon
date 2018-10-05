@@ -1,11 +1,16 @@
-pub mod counter;
-pub mod enumeration;
-pub mod integer;
+mod counter;
+mod enumeration;
+mod integer;
 
 pub use self::counter::CounterDef;
 pub use self::enumeration::EnumDef;
 pub use self::integer::IntegerDef;
-pub use super::*;
+
+use ast::context::CheckerContext;
+use ast::error::{Hint, TypeError};
+use ast::{Constraint, Statement};
+
+use ir;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum ChoiceDef {
@@ -33,12 +38,14 @@ impl ChoiceDef {
     pub fn define(
         self,
         context: &mut CheckerContext,
-        tc: &mut TypingContext,
+        ir_desc: &mut ir::IrDesc,
+        constraints: &mut Vec<Constraint>,
+        choice_defs: &mut Vec<ChoiceDef>,
     ) -> Result<(), TypeError> {
         match self {
-            ChoiceDef::CounterDef(def) => def.define(context, tc),
-            ChoiceDef::IntegerDef(def) => def.define(context, tc),
-            ChoiceDef::EnumDef(def) => def.define(context, tc),
+            ChoiceDef::CounterDef(def) => def.define(context, choice_defs),
+            ChoiceDef::IntegerDef(def) => def.define(context, ir_desc),
+            ChoiceDef::EnumDef(def) => def.define(context, ir_desc, constraints),
         }
     }
 }

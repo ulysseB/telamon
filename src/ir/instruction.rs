@@ -29,7 +29,11 @@ pub struct Instruction<'a, L = LoweringMap> {
     operator: Operator<'a, L>,
     id: InstId,
     iter_dims: HashSet<ir::DimId>,
-    value: Option<ir::ValueId>,
+    variable: Option<ir::VarId>,
+    // We need a `VecSet` so that we can return a reference to it when implementing the `Statement`
+    // trait. In practice, it just contains `variable`.
+    def_variables: VecSet<ir::VarId>,
+    used_variables: VecSet<ir::VarId>,
 }
 
 impl<'a, L> Instruction<'a, L> {
@@ -41,11 +45,23 @@ impl<'a, L> Instruction<'a, L> {
         fun: &ir::Function<L>,
     ) -> Result<Self, ir::Error> {
         operator.check(&iter_dims, fun)?;
+        let used_variables = operator
+            .operands()
+            .iter()
+            .flat_map(|op| {
+                if let ir::Operand::Variable(v, ..) = op {
+                    Some(*v)
+                } else {
+                    None
+                }
+            }).collect();
         Ok(Instruction {
             operator,
             id,
             iter_dims,
-            value: None,
+            variable: None,
+            def_variables: VecSet::default(),
+            used_variables,
         })
     }
 
@@ -54,7 +70,7 @@ impl<'a, L> Instruction<'a, L> {
         self.operator.operands()
     }
 
-    /// Returns the type of the value produced by an instruction.
+    /// Returns the type of the variable produced by an instruction.
     pub fn t(&self) -> Option<Type> {
         self.operator.t()
     }
@@ -144,15 +160,16 @@ impl<'a, L> Instruction<'a, L> {
         self.iter_dims.insert(dim)
     }
 
-    /// Returns the `Value` holding the result of this instruction.
-    pub fn result_value(&self) -> Option<ir::ValueId> {
-        self.value
+    /// Returns the `Variable` holding the result of this instruction.
+    pub fn result_variable(&self) -> Option<ir::VarId> {
+        self.variable
     }
 
-    /// Sets the `Value` holdings the result of this instruction.
-    pub fn set_result_value(&mut self, value: ir::ValueId) {
-        // An instruction value cannot be set twice.
-        assert_eq!(std::mem::replace(&mut self.value, Some(value)), None);
+    /// Sets the `Variable` holdings the result of this instruction.
+    pub fn set_result_variable(&mut self, variable: ir::VarId) {
+        // An instruction variable cannot be set twice.
+        assert_eq!(std::mem::replace(&mut self.variable, Some(variable)), None);
+        self.def_variables = VecSet::new(vec![variable]);
     }
 }
 
@@ -162,7 +179,9 @@ impl<'a> Instruction<'a, ()> {
             operator: self.operator.freeze(cnt),
             id: self.id,
             iter_dims: self.iter_dims,
-            value: self.value,
+            variable: self.variable,
+            used_variables: self.used_variables,
+            def_variables: self.def_variables,
         }
     }
 }
@@ -194,5 +213,13 @@ impl<'a> Statement<'a> for Instruction<'a> {
 
     fn as_inst(&self) -> Option<&Instruction<'a>> {
         Some(self)
+    }
+
+    fn def_variables(&self) -> &VecSet<ir::VarId> {
+        &self.def_variables
+    }
+
+    fn used_variables(&self) -> &VecSet<ir::VarId> {
+        &self.used_variables
     }
 }

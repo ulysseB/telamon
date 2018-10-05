@@ -11,7 +11,6 @@ pub type Choice = Vec<ActionEx>;
 /// Either a regular action or a manually applied action.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ActionEx {
-    TileSizes(Vec<Vec<u32>>),
     Action(Action),
     LowerLayout {
         mem: ir::mem::InternalId,
@@ -26,6 +25,10 @@ pub fn list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item = Choice> + 'a
     fun.layouts_to_lower()
         .iter()
         .map(move |&layout| lower_layout_choice(space, layout))
+        .chain(fun.static_dims().flat_map(move |dim| {
+            let sizes = space.domain().get_size(dim.id());
+            gen_choice(sizes.list(), &|s| Action::Size(dim.id(), s))
+        }))
         .chain(fun.dims().flat_map(move |dim| {
             let kinds = space.domain().get_dim_kind(dim.id());
             gen_choice(kinds.list(), &|k| Action::DimKind(dim.id(), k))

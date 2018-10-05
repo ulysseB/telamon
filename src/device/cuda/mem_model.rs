@@ -244,6 +244,7 @@ fn sort_thread_dims(
     let cmp = |x: &ThreadDimInfo, y: &ThreadDimInfo| cmp_thread_dims(x, y, use_gcd, gpu);
     let mut heap = BinaryHeap::with_capacity_by(dims.len(), cmp);
     let mut dim_groups: MultiHashMap<_, _> = dims
+        // Do not account for partial dims
         .into_iter()
         .map(|d| {
             let num_inner = sure_thread_dims
@@ -293,7 +294,7 @@ fn cmp_thread_dims(
     };
     rhs_val
         .cmp(&lhs_val)
-        .then(lhs.is_partial_dim.cmp(&rhs.is_partial_dim))
+        .then(rhs.is_partial_dim.cmp(&lhs.is_partial_dim))
 }
 
 /// Returns the offset of memory accesses for each thread in a wrap. The offset is

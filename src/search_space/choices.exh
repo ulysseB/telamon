@@ -12,27 +12,7 @@ set Statements:
   new_objs = "$objs.statements"
 end
 
-set Instructions subsetof Statements:
-  item_type = "ir::Instruction"
-  id_type = "ir::InstId"
-  item_getter = "$fun.inst($id)"
-  id_getter = "$item.id()"
-  iterator = "$fun.insts()"
-  var_prefix = "inst"
-  from_superset = "$item.as_inst()"
-  new_objs = "$objs.instructions"
-end
-
-set MemInsts subsetof Instructions:
-  item_type = "ir::Instruction"
-  id_type = "ir::InstId"
-  item_getter = "$fun.inst($id)"
-  id_getter = "$item.id()"
-  iterator = "$fun.mem_insts()"
-  var_prefix = "inst"
-  from_superset = "$item.as_mem_inst()"
-  new_objs = "$objs.mem_insts"
-end
+include "instructions.exh"
 
 set Dimensions subsetof Statements:
   disjoint: Instructions
@@ -58,36 +38,11 @@ set StaticDims subsetof Dimensions:
   new_objs = "$objs.static_dims"
 end
 
-set Values:
-  item_type = "ir::Value"
-  id_type = "ir::ValueId"
-  item_getter = "$fun.value($id)"
-  id_getter = "$item.id()"
-  iterator = "$fun.values()"
-  var_prefix = "value"
-  new_objs = "$objs.values"
-end
+/// The size of a dimension with a constant size.
+define integer size($dim in StaticDims): "unwrap!($dim.possible_sizes())" end
 
-set MemoryRegions:
-  item_type = "ir::mem::Block"
-  id_type = "ir::MemId"
-  item_getter = "$fun.mem_block($id)"
-  id_getter = "$item.mem_id()"
-  iterator = "$fun.mem_blocks()"
-  var_prefix = "mem"
-  new_objs = "$objs.mem_blocks"
-end
-
-set InternalMemoryRegions subsetof MemoryRegions:
-  item_type = "ir::mem::InternalBlock"
-  id_type = "ir::mem::InternalId"
-  item_getter = "$fun.internal_mem_block($id)"
-  id_getter = "$item.id()"
-  iterator = "$fun.internal_mem_blocks()"
-  var_prefix = "mem"
-  from_superset = "$item.as_internal()"
-  new_objs = "$objs.internal_mem_blocks"
-end
+include "logical_dimensions.exh"
+include "thread_dimensions.exh"
 
 quotient IterationDims($inst in Instructions) of $dim in Dimensions:
   is_iteration_dim = order($dim, $inst) is OUTER / order is MERGED
@@ -103,21 +58,7 @@ quotient IterationDims($inst in Instructions) of $dim in Dimensions:
   add_to_set = "::search_space::add_iteration_dim($fun, $inst, $item)"
 end
 
-quotient ThreadDims of $dim in StaticDims:
-  is_thread_dim = dim_kind($dim) is THREAD / thread_mapping is MAPPED
-  item_type = "ir::Dimension"
-  id_type = "ir::DimId"
-  item_getter = "$fun.dim($id)"
-  id_getter = "$item.id()"
-  iterator = "$fun.thread_dims()"
-  var_prefix = "thread_dim"
-  new_objs = "$objs.thread_dims"
-  from_superset = "(if $item.is_thread_dim() { Some($item) } else { None })"
-  add_to_set = "::search_space::add_thread_dim($fun, $item)"
-end
-
-/// The size of a dimension with a constant size.
-define integer size($dim in StaticDims): "unwrap!($dim.possible_sizes())" end
+include "variable.exh"
 
 /// Specifies how iteration dimensions are implemented.
 define enum dim_kind($dim in Dimensions):
@@ -149,12 +90,6 @@ define enum dim_kind($dim in Dimensions):
   alias SEQUENTIAL = LOOP | UNROLL:
 end
 
-// Ensure instructions do not violate dependency constraint
-require forall $inst1 in Instructions:
-  forall $inst2 in Instructions:
-    order($inst1, $inst2) is BEFORE
-    || "!$fun.is_dependency_of($inst1.id(), $inst2.id())"
-
 // Ensure inner block dimensions are not too big.
 require forall $outer_dim in Dimensions:
   forall $logical in LogicalDimensions:
@@ -168,46 +103,6 @@ require forall $outer_dim in Dimensions:
     dim_kind($dim) is not BLOCK
     || order($outer_dim, $dim) is not OUTER
     || size($dim) <= "$fun.device().max_inner_block_size()"
-
-/// Indicates where a memory block is located.
-define enum mem_space($mem in MemoryRegions):
-  /// The block is in the device RAM.
-  value GLOBAL:
-    requires forall $inst in MemInsts:
-      "unwrap!($inst.operator().mem_used()) != $mem.mem_id()"
-        || inst_flag($inst) is MEM_GLOBAL
-  /// The block is in the memory shared between the threads of a block.
-  value SHARED:
-    requires "$mem.as_internal().is_some()"
-    requires forall $inst in MemInsts:
-      "unwrap!($inst.operator().mem_used()) != $mem.mem_id()"
-        || inst_flag($inst) is MEM_SHARED
-end
-
-/// Specifies the version of an instruction to use.
-define enum inst_flag($inst in MemInsts):
-  /// Access the global memory using both L1 and L2 cache. Coherence is not guaranteed
-  /// between blocks.
-  value MEM_CA:
-    requires "$fun.device().supports_l1_access()"
-  /// Access the global memory using the L2 cache.
-  value MEM_CG:
-    requires "$fun.device().supports_l2_access()"
-  /// Access the global memory without using caches.
-  value MEM_CS:
-  /// Access the global memory using the read-only cache. Coherence is not guaranteed.
-  value MEM_NC:
-    requires "$inst.operator().supports_nc_access()"
-    requires "$fun.device().supports_nc_access()"
-  /// Access the shared memory.
-  value MEM_SHARED:
-  /// Access the global memory.
-  alias MEM_GLOBAL = MEM_CA | MEM_CG | MEM_CS | MEM_NC:
-  /// Ensure coherency between memory accesses.
-  alias MEM_COHERENT = MEM_SHARED | MEM_CG | MEM_CS:
-  /// Ensure coherency within a block between memory accesses.
-  alias MEM_BLOCK_COHERENT = MEM_COHERENT | MEM_CA:
-end
 
 /// Defines how two statements are ordered.
 define enum order($lhs in Statements, $rhs in Statements):
@@ -250,16 +145,6 @@ require forall $lhs in Statements:
       // MERGED requires similar orderings on both sides
       order($lhs, $rhs) is not MERGED || order($rhs, $mid) == order($lhs, $mid)
 
-// Intruction orders
-require forall $inst in Instructions:
-  forall $stmt in Statements:
-    order($inst, $stmt) is INNER | ORDERED
-
-require forall $inst in Instructions:
-  forall $dim in Dimensions:
-    "$inst.iteration_dims().contains(&$dim.id())" || "!$inst.has_side_effects()"
-      || is_iteration_dim($inst, $dim) is FALSE
-
 // Merge constraints.
 require forall $lhs in Dimensions:
   forall $rhs in Dimensions:
@@ -297,92 +182,6 @@ require forall $lhs in StaticDims:
   forall $rhs in StaticDims:
     dim_mapping($lhs, $rhs) is not THREAD_MAP || thread_mapping($lhs, $rhs) is MAPPED
     thread_mapping($lhs, $rhs) is not MAPPED || size($lhs) == size($rhs)
-
-/// Indicates how are thread dimensions mapped on the GPU.
-define enum thread_mapping($lhs in StaticDims, $rhs in StaticDims):
-  antisymmetric:
-    MAPPED_OUT -> MAPPED_IN
-  /// One of the dimensions is a not thread.
-  value NOT_THREADS:
-    requires dim_kind($lhs) is not THREAD || dim_kind($rhs) is not THREAD
-  /// The two dimensions are threads mapped to the same dimension on the GPU.
-  value MAPPED:
-    requires dim_kind($lhs) is THREAD
-    requires dim_kind($rhs) is THREAD
-    requires order($lhs, $rhs) is MERGED | ORDERED
-    requires size($lhs) == size($rhs)
-  /// The two dimensions are threads, but `lhs` is mapped to a dimension outside of `rhs`.
-  value MAPPED_OUT:
-    requires dim_kind($lhs) is THREAD
-    requires dim_kind($rhs) is THREAD
-    requires order($lhs, $rhs) is OUTER | ORDERED
-  /// The two dimensions are threads, but `lhs` is mapped to a dimension inside of `rhs`.
-  value MAPPED_IN:
-    requires dim_kind($lhs) is THREAD
-    requires dim_kind($rhs) is THREAD
-    requires order($lhs, $rhs) is INNER | ORDERED
-end
-
-// Enforce coherence between threads activations.
-require forall $lhs in StaticDims:
-  forall $rhs in StaticDims:
-    forall $other in StaticDims:
-      thread_mapping($lhs, $rhs) is not MAPPED ||
-        thread_mapping($lhs, $other) == thread_mapping($rhs, $other)
-      thread_mapping($lhs, $other) is not MAPPED_OUT ||
-        thread_mapping($other, $rhs) is not MAPPED_OUT ||
-        thread_mapping($lhs, $rhs) is MAPPED_OUT
-
-// Thread dimensions are grouped together
-require forall $outer in StaticDims:
-  forall $inner in StaticDims:
-    forall $mid in Dimensions:
-      order($outer, $mid) is not OUTER || order($mid, $inner) is not OUTER
-        || dim_kind($outer) is not THREAD || dim_kind($inner) is not THREAD
-        || dim_kind($mid) is THREAD
-
-// outer thread dimensions are limited to a size of 64.
-require forall $outer in StaticDims:
-  forall $inner in StaticDims:
-    thread_mapping($outer, $inner) is not MAPPED_OUT
-      || size($outer) <= "64"
-
-// A statement nested with a thread dimension is nested or merged with the other
-require forall $stmt in Statements:
-  forall $nested_thread in StaticDims:
-    forall $other_thread in StaticDims:
-      order($stmt, $nested_thread) is not NESTED || dim_kind($nested_thread) is not THREAD
-        || order($other_thread, $nested_thread) is not NESTED
-        || dim_kind($other_thread) is not THREAD
-        || order($stmt, $other_thread) is not ORDERED
-
-/// Limits the number of threads.
-///
-/// The counter iterates on `StaticDims` instead of just `ThreadDims` because we want the
-/// constraint `num_threads() <= "$fun.device().max_threads()"` to propagate to dimensions
-/// that still have the possibility of not being thread dimensions. Otherwise the
-/// constraint would only apply to dimensions for wich we already took the decision they
-/// were threads.
-define half counter num_threads():
-  forall $dim in StaticDims:
-    mul size($dim) when:
-      is_thread_dim($dim) is TRUE
-end
-
-require num_threads() <= "$fun.device().max_threads()"
-
-/// Limits the number of thread dimensions.
-///
-/// The counter iterates on `StaticDims` instead of just `ThreadDims` because we want the
-/// constraint `num_thread_dims() <= 3` to propagate to dimensions that still have the
-/// possibility of not being thread dimensions. Otherwise the constraint would only apply
-/// to dimensions for wich we already took the decision they were threads.
-define half counter num_thread_dims():
-  forall $dim in StaticDims:
-    sum "1" when: is_thread_dim($dim) is TRUE
-end
-
-require num_thread_dims() <= "3"
 
 /// Limits the number of nested unrolled loop.
 define half counter unroll_factor($inst in Instructions):
@@ -448,78 +247,6 @@ trigger forall $lhs in Dimensions:
   forall $rhs in Dimensions:
     "::search_space::merge_dims($lhs, $rhs, ir_instance)"
       when order($lhs, $rhs) is MERGED && "$lhs.id() > $rhs.id()"
-
-/// Computes the size of each memory block.
-// TODO(cleanup): use dependent sets to only iterate on necessary pairs.
-// FIXME: remove cubic choice choices
-define half counter mem_size($mem in InternalMemoryRegions):
-  base "$mem.base_size()"
-  forall $lhs in StaticDims:
-    forall $rhs in StaticDims:
-      mul size($lhs) when:
-        "$mem.maps_dims($lhs.id(), $rhs.id())"
-        order($lhs, $rhs) is not MERGED
-end
-
-/// The total amount of shared memory used.
-define half counter shared_mem_used():
-  forall $mem in InternalMemoryRegions:
-    sum mem_size($mem) when: mem_space($mem) is SHARED
-end
-
-// Cannot use more shared memory that what is available.
-require shared_mem_used() <= "$fun.device().shared_mem()"
-
-/// Groups of dimension constituing single tiled dimension.
-set LogicalDimensions:
-  item_type = "ir::LogicalDim"
-  id_type = "ir::LogicalDimId"
-  item_getter = "$fun.logical_dim($id)"
-  id_getter = "$item.id()"
-  iterator = "$fun.logical_dims()"
-  var_prefix = "ldim"
-  new_objs = "$objs.logical_dims"
-end
-
-/// Contains the dimensions composing a logical dimension that have a staticaly known
-/// size. This corresponds to tiles of a logical dimension.
-set TileDimensions($logical in LogicalDimensions) subsetof StaticDims:
-  item_type = "ir::Dimension"
-  id_type = "ir::DimId"
-  item_getter = "$fun.dim($id)"
-  id_getter = "$item.id()"
-  iterator = "$logical.tile_dimensions().map(|d| $fun.dim(d))"
-  var_prefix = "dim"
-  from_superset = "$logical.tiled_dimension().filter(|&id| id == $item.id()).map(|_| $item)"
-  reverse forall $dim in StaticDims =
-    "$dim.logical_dim().into_iter().map(|d| $fun.logical_dim(d))"
-  new_objs = "$objs.tile_dimensions"
-end
-
-/// Contains the tiled dimension of a logical dimension. Is empty if the logical dimension
-/// has a fixed size, in which case all the dimensions that compose it are considered as
-/// tile dimensions.
-set TiledDimension($logical in LogicalDimensions) subsetof Dimensions:
-  item_type = "ir::Dimension"
-  id_type = "ir::DimId"
-  item_getter = "$fun.dim($id)"
-  id_getter = "$item.id()"
-  iterator = "$logical.tiled_dimension().map(|dim| $fun.dim(dim))"
-  var_prefix = "dim"
-  from_superset = "$logical.tiled_dimension().filter(|&id| id == $item.id()).map(|_| $item)"
-  reverse forall $dim in Dimensions =
-    "$dim.logical_dim().filter(|_| $dim.possible_sizes().is_none())\
-     .map(|d| $fun.logical_dim(d))"
-  new_objs = "$objs.tiled_dimensions"
-end
-
-/// Number of iterations in the tiling dimensions of a logical dimension.
-define counter tiling_factor($logical in LogicalDimensions):
-  forall $dim in TileDimensions($logical): mul size($dim) when:
-end
-
-require forall $logical in LogicalDimensions:
-  tiling_factor($logical) == "$logical.possible_tilings()"
 
 /// List pairs of dimensions that must have the same size and can be use for
 /// point-to-point communication.

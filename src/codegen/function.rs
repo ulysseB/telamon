@@ -16,7 +16,7 @@ pub struct Function<'a> {
     induction_vars: Vec<InductionVar<'a>>,
     mem_blocks: Vec<InternalMemoryRegion<'a>>,
     init_induction_levels: Vec<InductionLevel<'a>>,
-    values: Vec<Value<'a>>,
+    variables: Vec<Variable<'a>>,
     // TODO(cleanup): remove dependency on the search space
     space: &'a SearchSpace<'a>,
 }
@@ -52,10 +52,10 @@ impl<'a> Function<'a> {
         );
         let device_code_args = device_code_args.into_iter().collect();
         debug!("compiling cfg {:?}", cfg);
-        let values = space
+        let variables = space
             .ir_instance()
-            .values()
-            .map(|v| Value::new(v, space))
+            .variables()
+            .map(|v| Variable::new(v, space))
             .collect_vec();
         Function {
             cfg,
@@ -65,7 +65,7 @@ impl<'a> Function<'a> {
             device_code_args,
             space,
             mem_blocks,
-            values,
+            variables,
             init_induction_levels,
         }
     }
@@ -80,9 +80,9 @@ impl<'a> Function<'a> {
         &self.block_dims
     }
 
-    /// Iterate on values of the function
-    pub fn values(&self) -> impl Iterator<Item = &Value> {
-        self.values.iter()
+    /// Iterate on the function variables.
+    pub fn variables(&self) -> impl Iterator<Item = &Variable> {
+        self.variables.iter()
     }
 
     /// Iterates other all `codegen::Dimension`.
@@ -363,23 +363,23 @@ impl<'a> InternalMemoryRegion<'a> {
     }
 }
 
-pub struct Value<'a> {
-    value: &'a ir::Value,
+pub struct Variable<'a> {
+    variable: &'a ir::Variable,
     t: ir::Type,
 }
 
-impl<'a> Value<'a> {
-    pub fn new(value: &'a ir::Value, space: &SearchSpace) -> Self {
-        let t = unwrap!(space.ir_instance().device().lower_type(value.t(), space));
-        Value { value, t }
+impl<'a> Variable<'a> {
+    pub fn new(variable: &'a ir::Variable, space: &SearchSpace) -> Self {
+        let t = unwrap!(space.ir_instance().device().lower_type(variable.t(), space));
+        Variable { variable, t }
     }
 
-    /// Returns the ID of the value.
-    pub fn id(&self) -> ir::ValueId {
-        self.value.id()
+    /// Returns the ID of the variable.
+    pub fn id(&self) -> ir::VarId {
+        self.variable.id()
     }
 
-    /// Returns the type of the value.
+    /// Returns the type of the variable.
     pub fn t(&self) -> ir::Type {
         self.t
     }

@@ -1,0 +1,96 @@
+set Variables:
+  item_type = "ir::Variable"
+  id_type = "ir::VariableId"
+  item_getter = "$fun.variable($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.variables()"
+  var_prefix = "variable"
+  new_objs = "$objs.variables"
+end
+
+set DefStatements($var in Variables) subsetof Statements:
+  item_type = "ir::Statement"
+  id_type = "ir::StmtId"
+  item_getter = "$fun.statement($id)"
+  id_getter = "$item.id()"
+  iterator = "$var.def_points().map(|id| $fun.statement(id))"
+  from_superset = "if $item.def_variables().contains(&$var.id()) { Some($item) } else { None }"
+  reverse forall $stmt in Statements = "$stmt.def_variables().iter().map(|&id| $fun.variable(id))"
+  var_prefix = "def"
+  new_objs = "$objs.def_statements"
+end
+
+set UseStatements($var in Variables) subsetof Statements:
+  item_type = "ir::Statement"
+  id_type = "ir::StmtId"
+  item_getter = "$fun.statement($id)"
+  id_getter = "$item.id()"
+  iterator = "$var.use_points().map(|id| $fun.statement(id))"
+  from_superset = "if $item.used_variables().contains(&$var.id()) { Some($item) } else { None }"
+  reverse forall $stmt in Statements = "$stmt.used_variables().iter().map(|&id| $fun.variable(id))"
+  var_prefix = "use"
+  new_objs = "$objs.use_statements"
+end
+
+// Enforce data dependencies.
+require forall $var in Variables:
+  forall $def in DefStatements($var):
+    forall $use in UseStatements($var):
+      order($def, $use) is BEFORE
+
+set MemoryRegions:
+  item_type = "ir::mem::Block"
+  id_type = "ir::MemId"
+  item_getter = "$fun.mem_block($id)"
+  id_getter = "$item.mem_id()"
+  iterator = "$fun.mem_blocks()"
+  var_prefix = "mem"
+  new_objs = "$objs.mem_blocks"
+end
+
+set InternalMemoryRegions subsetof MemoryRegions:
+  item_type = "ir::mem::InternalBlock"
+  id_type = "ir::mem::InternalId"
+  item_getter = "$fun.internal_mem_block($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.internal_mem_blocks()"
+  var_prefix = "mem"
+  from_superset = "$item.as_internal()"
+  new_objs = "$objs.internal_mem_blocks"
+end
+
+/// Indicates where a memory block is located.
+define enum mem_space($mem in MemoryRegions):
+  /// The block is in the device RAM.
+  value GLOBAL:
+    requires forall $inst in MemInsts:
+      "unwrap!($inst.operator().mem_used()) != $mem.mem_id()"
+        || inst_flag($inst) is MEM_GLOBAL
+  /// The block is in the memory shared between the threads of a block.
+  value SHARED:
+    requires "$mem.as_internal().is_some()"
+    requires forall $inst in MemInsts:
+      "unwrap!($inst.operator().mem_used()) != $mem.mem_id()"
+        || inst_flag($inst) is MEM_SHARED
+end
+
+/// Computes the size of each memory block.
+// TODO(cleanup): use dependent sets to only iterate on necessary pairs.
+// FIXME: remove cubic choice choices
+define half counter mem_size($mem in InternalMemoryRegions):
+  base "$mem.base_size()"
+  forall $lhs in StaticDims:
+    forall $rhs in StaticDims:
+      mul size($lhs) when:
+        "$mem.maps_dims($lhs.id(), $rhs.id())"
+        order($lhs, $rhs) is not MERGED
+end
+
+/// The total amount of shared memory used.
+define half counter shared_mem_used():
+  forall $mem in InternalMemoryRegions:
+    sum mem_size($mem) when: mem_space($mem) is SHARED
+end
+
+// Cannot use more shared memory that what is available.
+require shared_mem_used() <= "$fun.device().shared_mem()"

@@ -360,7 +360,7 @@ impl Gpu {
                 self.store_desc(&mem_info, flag).into()
             }
             // TODO(model): Instruction description for mov and cast.
-            (&Mov(..), _) | (&Cast(..), _) => HwPressure::zero(self),
+            (&UnaryOp(..), _) => HwPressure::zero(self),
             _ => panic!(),
         }
     }

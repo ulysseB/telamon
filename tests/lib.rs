@@ -53,10 +53,10 @@ fn inst_dim_order() {
     let mut builder = helper::Builder::new(&signature, context.device());
     let dim0 = builder.open_dim(Size::new_const(64));
     let inst0 = builder.mov(&0i32);
-    let _ = builder.create_inst_value(inst0);
+    let _ = builder.create_inst_variable(inst0);
     let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
     let addr = builder.cast(&0i64, ir::Type::PtrTo(ir::MemId::External(0)));
-    let _ = builder.create_inst_value(addr);
+    let _ = builder.create_inst_variable(addr);
     let inst1 = builder.st(&addr, &0i32, pattern);
     builder.close_dim(&dim0);
     let dim1 = builder.open_dim(Size::new_const(64));
@@ -96,7 +96,7 @@ fn inst_value_order() {
     let signature = empty_signature(1);
     let mut builder = helper::Builder::new(&signature, context.device());
     let inst0 = builder.mov(&1f32);
-    let v0 = builder.create_inst_value(inst0);
+    let v0 = builder.create_inst_variable(inst0);
     let inst1 = builder.mov(&v0);
     let space = builder.get();
     assert_eq!(

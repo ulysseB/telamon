@@ -3,6 +3,7 @@ use libc;
 use num::rational::Ratio;
 use std;
 use telamon::ir;
+use telamon_utils::*;
 use Device;
 
 pub use telamon::ir::op::Rounding;
@@ -138,6 +139,7 @@ pub unsafe extern "C" fn telamon_ir_function_add_dimensions(
 ) -> TelamonStatus {
     let tile_sizes = std::slice::from_raw_parts(tile_sizes, num_tiles);
     let tiling_factors = vec![tile_sizes.iter().product()];
+    let tile_sizes = tile_sizes.iter().map(|&s| VecSet::new(vec![s])).collect();
     let size = Box::from_raw(size).0;
     let (ldim, dims) = unwrap_or_exit!((*function).0.add_logical_dim(
         size,
@@ -164,12 +166,13 @@ pub unsafe extern "C" fn telamon_ir_size_new(
     const_factor: u32,
     param_factors: *const *const ir::Parameter,
     num_params: usize,
+    max_val: u32,
 ) -> *mut Size {
     let parameters = std::slice::from_raw_parts(param_factors, num_params)
         .iter()
         .map(|&ptr| &*ptr)
         .collect();
-    let size = ir::Size::new(const_factor, parameters);
+    let size = ir::Size::new(const_factor, parameters, max_val);
     Box::into_raw(Box::new(Size(size)))
 }
 

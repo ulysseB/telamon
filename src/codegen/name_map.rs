@@ -1,7 +1,5 @@
-use codegen::{
-    self, AllocationScheme, Dimension, Function, Instruction, ParamValKey, Value,
-};
-use ir::{self, dim, mem, DimMap, InstId, Type, ValueId};
+use codegen::{self, AllocationScheme, Dimension, Function, Instruction, ParamValKey};
+use ir::{self, dim, mem, DimMap, InstId, Type};
 use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
@@ -36,8 +34,8 @@ pub trait Namer {
 pub struct NameMap<'a, 'b> {
     /// Provides fresh names.
     namer: std::cell::RefCell<&'b mut Namer>,
-    /// Keeps track of the names of the values used in the kernel
-    values: HashMap<ValueId, String>,
+    /// Keeps track of the names of the variables used in the kernel
+    variables: HashMap<ir::VarId, String>,
     /// Keeps track of the name of the values produced by instructions.
     insts: HashMap<InstId, (Vec<ir::DimId>, NDArray<String>)>,
     /// Keeps track of loop index names.
@@ -85,11 +83,10 @@ impl<'a, 'b> NameMap<'a, 'b> {
                 indexes.insert(id, name.clone());
             }
         }
-        // Name Values
-        let mut values = HashMap::default();
-        for val in function.values() {
-            let name = Self::name_value(val, namer);
-            values.insert(val.id(), name);
+        // Name variables
+        let mut variables = HashMap::default();
+        for var in function.variables() {
+            variables.insert(var.id(), namer.name(var.t()));
         }
         // Name induction levels.
         let mut induction_levels = HashMap::default();
@@ -113,7 +110,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
         let mut name_map = NameMap {
             namer: std::cell::RefCell::new(namer),
             insts: HashMap::default(),
-            values,
+            variables,
             num_loop: 0,
             current_indexes: HashMap::default(),
             #[cfg(feature = "mppa")]
@@ -152,11 +149,6 @@ impl<'a, 'b> NameMap<'a, 'b> {
         name_map
     }
 
-    /// Returns a name for a value
-    fn name_value(val: &Value, namer: &mut Namer) -> String {
-        namer.name(val.t())
-    }
-
     /// Returns the total number of threads.
     #[cfg(feature = "mppa")]
     pub fn total_num_threads(&self) -> u32 {
@@ -192,6 +184,15 @@ impl<'a, 'b> NameMap<'a, 'b> {
 
     /// Asigns a name to an operand.
     pub fn name_op(&self, operand: &ir::Operand) -> Cow<str> {
+        self.name_op_with_indexes(operand, Cow::Borrowed(&self.current_indexes))
+    }
+
+    /// Returns the name of the operand, for the given indexes on the given dimensions.
+    fn name_op_with_indexes(
+        &self,
+        operand: &ir::Operand,
+        indexes: Cow<HashMap<ir::DimId, u32>>,
+    ) -> Cow<str> {
         match *operand {
             ir::Operand::Int(ref val, len) => {
                 Cow::Owned(self.namer.borrow().name_int(val, len))
@@ -201,7 +202,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
             }
             ir::Operand::Inst(id, _, ref dim_map, _)
             | ir::Operand::Reduce(id, _, ref dim_map, _) => {
-                Cow::Borrowed(self.name_inst_id(id, dim_map))
+                Cow::Borrowed(self.name_mapped_inst(id, indexes.into_owned(), dim_map))
             }
             ir::Operand::Index(id) => if let Some(idx) = self.current_indexes.get(&id) {
                 Cow::Owned(format!("{}", idx))
@@ -211,18 +212,42 @@ impl<'a, 'b> NameMap<'a, 'b> {
             ir::Operand::Param(p) => self.name_param_val(ParamValKey::External(p)),
             ir::Operand::Addr(id) => self.name_addr(id),
             ir::Operand::InductionVar(id, _) => self.name_induction_var(id, None),
-            ir::Operand::Value(val_id, ..) => Cow::Borrowed(&self.values[&val_id]),
+            ir::Operand::Variable(val_id, _t) => Cow::Borrowed(&self.variables[&val_id]),
         }
     }
 
     /// Returns the name of the instruction.
-    pub fn name_inst(&self, inst: &Instruction) -> &str {
-        self.name_inst_id(inst.id(), &dim::Map::empty())
+    pub fn name_inst(&self, inst: ir::InstId) -> &str {
+        self.name_mapped_inst(inst, self.current_indexes.clone(), &dim::Map::empty())
+    }
+
+    pub fn indexed_inst_name(
+        &self,
+        inst: ir::InstId,
+        indexes: &[(ir::DimId, u32)],
+    ) -> &str {
+        let mut indexes_map = self.current_indexes.clone();
+        indexes_map.extend(indexes.iter().cloned());
+        self.name_mapped_inst(inst, indexes_map, &DimMap::empty())
+    }
+
+    pub fn indexed_op_name(
+        &self,
+        op: &ir::Operand,
+        indexes: &[(ir::DimId, u32)],
+    ) -> Cow<str> {
+        let mut indexes_map = self.current_indexes.clone();
+        indexes_map.extend(indexes.iter().cloned());
+        self.name_op_with_indexes(op, Cow::Owned(indexes_map))
     }
 
     /// Returns the name of the instruction.
-    pub fn name_inst_id(&self, id: InstId, dim_map: &DimMap) -> &str {
-        let mut indexes = self.current_indexes.clone();
+    fn name_mapped_inst(
+        &self,
+        id: InstId,
+        mut indexes: HashMap<ir::DimId, u32>,
+        dim_map: &DimMap,
+    ) -> &str {
         for &(lhs, rhs) in dim_map.iter() {
             indexes.remove(&rhs).map(|idx| indexes.insert(lhs, idx));
         }
@@ -305,30 +330,6 @@ impl<'a, 'b> NameMap<'a, 'b> {
         }
     }
 
-    pub fn indexed_inst_name(
-        &mut self,
-        inst: &Instruction,
-        dim: ir::DimId,
-        idx: u32,
-    ) -> String {
-        self.current_indexes.insert(dim, idx);
-        let name = self.name_inst(inst).to_string();
-        self.current_indexes.remove(&dim);
-        name
-    }
-
-    pub fn indexed_op_name(
-        &mut self,
-        op: &ir::Operand,
-        dim: ir::DimId,
-        idx: u32,
-    ) -> String {
-        self.current_indexes.insert(dim, idx);
-        let name = self.name_op(op).to_string();
-        self.current_indexes.remove(&dim);
-        name
-    }
-
     /// Returns the name of a variable representing a parameter.
     pub fn name_param(&self, param: ParamValKey) -> Cow<str> {
         let param = unsafe { std::mem::transmute(param) };
@@ -379,7 +380,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
         }
     }
 
-    /// Assigns a name of a value to a size.
+    /// Assigns a name to a size.
     pub fn name_size(&self, size: &codegen::Size, expected_t: ir::Type) -> Cow<str> {
         let size: &'a codegen::Size<'a> = unsafe { std::mem::transmute(size) };
         match (size.dividend(), expected_t) {

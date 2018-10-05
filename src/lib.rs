@@ -28,7 +28,6 @@ extern crate ipc_channel;
 extern crate itertools;
 extern crate libloading;
 extern crate tempfile;
-#[cfg(feature = "cuda")]
 #[macro_use]
 extern crate lazy_static;
 extern crate libc;

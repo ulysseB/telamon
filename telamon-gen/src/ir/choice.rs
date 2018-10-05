@@ -11,7 +11,7 @@ pub fn dummy_choice() -> Choice {
 }
 
 /// A decision to specify.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Choice {
     name: RcStr,
     doc: Option<RcStr>,
@@ -113,7 +113,7 @@ impl Choice {
 }
 
 /// Defines the parameters for which the `Choice` is defined.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ChoiceArguments {
     /// The `Choice` is defined for all comibnation of variables of the given sets
     /// Each variable can only appear once.

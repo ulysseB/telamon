@@ -6,7 +6,7 @@ use std::collections::BTreeSet;
 use utils::*;
 
 /// Filters the set valid values.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Filter {
     /// The variables on which the filter depends.
     pub arguments: Vec<ir::Set>,

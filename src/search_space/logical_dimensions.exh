@@ -1,0 +1,52 @@
+// Defines how Telamon's dimensions map to the dimensions in the original code.
+
+/// Groups of dimension constituing single tiled dimension.
+set LogicalDimensions:
+  item_type = "ir::LogicalDim"
+  id_type = "ir::LogicalDimId"
+  item_getter = "$fun.logical_dim($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.logical_dims()"
+  var_prefix = "ldim"
+  new_objs = "$objs.logical_dims"
+end
+
+/// Contains the dimensions composing a logical dimension that have a staticaly known
+/// size. This corresponds to tiles of a logical dimension.
+set TileDimensions($logical in LogicalDimensions) subsetof StaticDims:
+  item_type = "ir::Dimension"
+  id_type = "ir::DimId"
+  item_getter = "$fun.dim($id)"
+  id_getter = "$item.id()"
+  iterator = "$logical.tile_dimensions().map(|d| $fun.dim(d))"
+  var_prefix = "dim"
+  from_superset = "$logical.tiled_dimension().filter(|&id| id == $item.id()).map(|_| $item)"
+  reverse forall $dim in StaticDims =
+    "$dim.logical_dim().into_iter().map(|d| $fun.logical_dim(d))"
+  new_objs = "$objs.tile_dimensions"
+end
+
+/// Contains the tiled dimension of a logical dimension. Is empty if the logical dimension
+/// has a fixed size, in which case all the dimensions that compose it are considered as
+/// tile dimensions.
+set TiledDimension($logical in LogicalDimensions) subsetof Dimensions:
+  item_type = "ir::Dimension"
+  id_type = "ir::DimId"
+  item_getter = "$fun.dim($id)"
+  id_getter = "$item.id()"
+  iterator = "$logical.tiled_dimension().map(|dim| $fun.dim(dim))"
+  var_prefix = "dim"
+  from_superset = "$logical.tiled_dimension().filter(|&id| id == $item.id()).map(|_| $item)"
+  reverse forall $dim in Dimensions =
+    "$dim.logical_dim().filter(|_| $dim.possible_sizes().is_none())\
+     .map(|d| $fun.logical_dim(d))"
+  new_objs = "$objs.tiled_dimensions"
+end
+
+/// Number of iterations in the tiling dimensions of a logical dimension.
+define counter tiling_factor($logical in LogicalDimensions):
+  forall $dim in TileDimensions($logical): mul size($dim) when:
+end
+
+require forall $logical in LogicalDimensions:
+  tiling_factor($logical) == "$logical.possible_tilings()"
