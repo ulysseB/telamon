@@ -60,7 +60,7 @@ pub struct Function<'a, L = ir::LoweringMap> {
     signature: &'a Signature,
     device: &'a Device,
     insts: SparseVec<ir::InstId, Instruction<'a, L>>,
-    dims: SparseVec<ir::DimId, Dimension<'a>>,
+    dims: SparseVec<ir::DimId, Dimension<'a, L>>,
     static_dims: Vec<ir::DimId>,
     thread_dims: VecSet<ir::DimId>,
     mem_insts: Vec<ir::InstId>,
@@ -156,7 +156,7 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Returns the list of dimensions of the function.
-    pub fn dims<'b>(&'b self) -> impl Iterator<Item = &'b Dimension<'a>> + Clone {
+    pub fn dims<'b>(&'b self) -> impl Iterator<Item = &'b Dimension<'a, L>> + Clone {
         self.dims.iter()
     }
 
@@ -166,7 +166,7 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Returns the list of stastic dimensions in the function.
-    pub fn static_dims<'b>(&'b self) -> impl Iterator<Item = &'b Dimension<'a>> {
+    pub fn static_dims<'b>(&'b self) -> impl Iterator<Item = &'b Dimension<'a, L>> {
         self.static_dims.iter().map(move |&id| self.dim(id))
     }
 
@@ -175,7 +175,7 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Returns the list of thread dimensions.
-    pub fn thread_dims(&self) -> impl Iterator<Item = &Dimension<'a>> {
+    pub fn thread_dims(&self) -> impl Iterator<Item = &Dimension<'a, L>> {
         self.thread_dims.iter().map(move |&d| self.dim(d))
     }
 
@@ -190,13 +190,26 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Retuns a dimension given its id.
-    pub fn dim(&self, id: ir::DimId) -> &Dimension<'a> {
+    pub fn dim(&self, id: ir::DimId) -> &Dimension<'a, L> {
         &self.dims[id]
     }
 
     /// Returns a mutable reference to a dimension given its ID.
-    fn dim_mut(&mut self, id: ir::DimId) -> &mut Dimension<'a> {
+    fn dim_mut(&mut self, id: ir::DimId) -> &mut Dimension<'a, L> {
         &mut self.dims[id]
+    }
+
+    /// Returns a `Statement` given its id.
+    pub fn statement(&self, id: StmtId) -> &Statement<'a, L> {
+        match id {
+            StmtId::Inst(id) => &self.insts[id],
+            StmtId::Dim(id) => self.dim(id),
+        }
+    }
+
+    /// Lists all `Statement`s.
+    pub fn statements<'b>(&'b self) -> impl Iterator<Item = &'b Statement<'a, L>> {
+        self.insts().map(|x| x as _).chain(self.dims().map(|x| x as _))
     }
 
     /// Retrives a logical dimension given its ID.
@@ -355,12 +368,6 @@ impl<'a, L> Function<'a, L> {
         (addr, pattern)
     }
 
-    /// Trigger to call when two dimensions are not merged.
-    pub(crate) fn dim_not_merged(&mut self, lhs: ir::DimId, rhs: ir::DimId) {
-        let to_lower = self.mem_blocks.not_merged(&self.dims[lhs], rhs);
-        self.layouts_to_lower.extend(to_lower);
-    }
-
     /// Returns the list of layouts to lower.
     pub(crate) fn layouts_to_lower(&self) -> &[ir::mem::InternalId] {
         &self.layouts_to_lower
@@ -492,6 +499,7 @@ impl<'a> Function<'a, ()> {
         })
     }
 
+
     pub(crate) fn freeze(self) -> Function<'a> {
         let mut counter = ir::Counter {
             next_mem: self.mem_blocks.num_internal_blocks(),
@@ -503,7 +511,7 @@ impl<'a> Function<'a, ()> {
             signature,
             device,
             insts,
-            mut dims,
+            dims,
             static_dims,
             thread_dims,
             mem_insts,
@@ -525,6 +533,9 @@ impl<'a> Function<'a, ()> {
             .into_iter()
             .map(|induction_var| induction_var.freeze(&mut counter))
             .collect();
+        let mut dims = SparseVec::from_vec(
+            dims.into_iter().map(|dim| dim.map(|dim| dim.freeze())).collect()
+        );
 
         let ir::Counter {
             next_mem,
@@ -556,22 +567,6 @@ impl<'a> Function<'a, ()> {
 }
 
 impl<'a> Function<'a> {
-    /// Returns a `Statement` given its id.
-    pub fn block(&self, id: StmtId) -> &Statement<'a> {
-        match id {
-            StmtId::Inst(id) => &self.insts[id],
-            StmtId::Dim(id) => self.dim(id),
-        }
-    }
-
-    /// Lists all `Statement`s.
-    pub fn blocks<'b>(&'b self) -> impl Iterator<Item = &'b Statement<'a>> {
-        self.insts
-            .iter()
-            .map(|x| x as _)
-            .chain(self.dims().map(|x| x as _))
-    }
-
     /// Lowers a dim map into a partially defined layout.
     pub(crate) fn lower_dim_map(
         &mut self,
@@ -651,6 +646,12 @@ impl<'a> Function<'a> {
             }
         });
         ir::dim::Map::new(dims)
+    }
+
+    /// Trigger to call when two dimensions are not merged.
+    pub(crate) fn dim_not_merged(&mut self, lhs: ir::DimId, rhs: ir::DimId) {
+        let to_lower = self.mem_blocks.not_merged(&self.dims[lhs], rhs);
+        self.layouts_to_lower.extend(to_lower);
     }
 }
 

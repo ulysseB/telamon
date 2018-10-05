@@ -1,6 +1,5 @@
 //! Provides a generic decription of basic blocks.
 use ir;
-use std;
 use utils::*;
 
 /// Provides a unique identifer for a basic block.
@@ -28,7 +27,7 @@ impl From<ir::DimId> for StmtId {
 }
 
 /// Represents a basic block in an Exhaust function.
-pub trait Statement<'a, L = ir::LoweringMap>: std::fmt::Debug {
+pub trait Statement<'a, L = ir::LoweringMap> {
     /// Returns the unique identifier of the `Statement`.
     fn stmt_id(&self) -> StmtId;
 
@@ -38,7 +37,7 @@ pub trait Statement<'a, L = ir::LoweringMap>: std::fmt::Debug {
     }
 
     /// Returns 'self' if it is a dimension
-    fn as_dim(&self) -> Option<&ir::Dimension<'a>> {
+    fn as_dim(&self) -> Option<&ir::Dimension<'a, L>> {
         None
     }
 

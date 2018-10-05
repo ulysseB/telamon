@@ -206,12 +206,12 @@ impl<'a> Instruction<'a> {
     }
 }
 
-impl<'a> Statement<'a> for Instruction<'a> {
+impl<'a, L> Statement<'a, L> for Instruction<'a, L> {
     fn stmt_id(&self) -> StmtId {
         self.id.into()
     }
 
-    fn as_inst(&self) -> Option<&Instruction<'a>> {
+    fn as_inst(&self) -> Option<&Instruction<'a, L>> {
         Some(self)
     }
 

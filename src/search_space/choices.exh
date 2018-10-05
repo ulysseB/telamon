@@ -5,9 +5,9 @@
 set Statements:
   item_type = "ir::Statement"
   id_type = "ir::StmtId"
-  item_getter = "$fun.block($id)"
+  item_getter = "$fun.statement($id)"
   id_getter = "$item.stmt_id()"
-  iterator = "$fun.blocks()"
+  iterator = "$fun.statements()"
   var_prefix = "stmt"
   new_objs = "$objs.statements"
 end

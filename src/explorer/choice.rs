@@ -91,7 +91,7 @@ pub fn fix_order(mut space: SearchSpace) -> SearchSpace {
     // Fix the order between instructions and dimensions.
     let pairs = space
         .ir_instance()
-        .blocks()
+        .statements()
         .cartesian_product(space.ir_instance().dims())
         .map(|(lhs, rhs)| (lhs.stmt_id(), rhs.stmt_id()))
         .filter(|&(lhs, rhs)| lhs != rhs)

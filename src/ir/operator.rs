@@ -84,7 +84,7 @@ impl BinOp {
     }
 
     /// Returns the type of the binay operator given the type of its operands.
-    fn t(&self, operand_type: ir::Type) -> ir::Type {
+    pub fn t(&self, operand_type: ir::Type) -> ir::Type {
         match self {
             BinOp::Lt | BinOp::Leq | BinOp::Equals => ir::Type::I(1),
             _ => operand_type,
