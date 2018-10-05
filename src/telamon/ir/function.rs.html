@@ -661,6 +661,14 @@
 <span id="661">661</span>
 <span id="662">662</span>
 <span id="663">663</span>
+<span id="664">664</span>
+<span id="665">665</span>
+<span id="666">666</span>
+<span id="667">667</span>
+<span id="668">668</span>
+<span id="669">669</span>
+<span id="670">670</span>
+<span id="671">671</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Provides a representation of functions.</span>
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">Device</span>;
@@ -719,12 +727,16 @@
 }
 
 <span class="doccomment">/// Describes a function and the set of its possible implementation.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// The type parameter `L` indicates if the function is fozen (`L = ir::LoweringMap`) or</span>
+<span class="doccomment">/// not (`L = ())`. A frozen function cannot have any more IDs allocated. We use this to</span>
+<span class="doccomment">/// know the exact list of potential decisions before we run the exploration.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">LoweringMap</span><span class="op">&gt;</span> {
     <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Signature</span>,
     <span class="ident">device</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Device</span>,
     <span class="ident">insts</span>: <span class="ident">SparseVec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">InstId</span>, <span class="ident">Instruction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;&gt;</span>,
-    <span class="ident">dims</span>: <span class="ident">SparseVec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
+    <span class="ident">dims</span>: <span class="ident">SparseVec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;&gt;</span>,
     <span class="ident">static_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
     <span class="ident">thread_dims</span>: <span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
     <span class="ident">mem_insts</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">InstId</span><span class="op">&gt;</span>,
@@ -820,7 +832,7 @@
     }
 
     <span class="doccomment">/// Returns the list of dimensions of the function.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dims</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> <span class="op">+</span> <span class="ident">Clone</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dims</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;&gt;</span> <span class="op">+</span> <span class="ident">Clone</span> {
         <span class="self">self</span>.<span class="ident">dims</span>.<span class="ident">iter</span>()
     }
 
@@ -830,7 +842,7 @@
     }
 
     <span class="doccomment">/// Returns the list of stastic dimensions in the function.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">static_dims</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">static_dims</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;&gt;</span> {
         <span class="self">self</span>.<span class="ident">static_dims</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">id</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">dim</span>(<span class="ident">id</span>))
     }
 
@@ -839,7 +851,7 @@
     }
 
     <span class="doccomment">/// Returns the list of thread dimensions.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">thread_dims</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">thread_dims</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;&gt;</span> {
         <span class="self">self</span>.<span class="ident">thread_dims</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">d</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">dim</span>(<span class="ident">d</span>))
     }
 
@@ -854,13 +866,28 @@
     }
 
     <span class="doccomment">/// Retuns a dimension given its id.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dim</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">dim</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">dims</span>[<span class="ident">id</span>]
     }
 
     <span class="doccomment">/// Returns a mutable reference to a dimension given its ID.</span>
-    <span class="kw">fn</span> <span class="ident">dim_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">id</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">dim_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">id</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Dimension</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> {
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">dims</span>[<span class="ident">id</span>]
+    }
+
+    <span class="doccomment">/// Returns a `Statement` given its id.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">statement</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="ident">StmtId</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Statement</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="ident">id</span> {
+            <span class="ident">StmtId</span>::<span class="ident">Inst</span>(<span class="ident">id</span>) <span class="op">=&gt;</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">insts</span>[<span class="ident">id</span>],
+            <span class="ident">StmtId</span>::<span class="ident">Dim</span>(<span class="ident">id</span>) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">dim</span>(<span class="ident">id</span>),
+        }
+    }
+
+    <span class="doccomment">/// Lists all `Statement`s.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">statements</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">Statement</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;&gt;</span> {
+        <span class="self">self</span>.<span class="ident">insts</span>()
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span> <span class="kw">as</span> <span class="kw">_</span>)
+            .<span class="ident">chain</span>(<span class="self">self</span>.<span class="ident">dims</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span> <span class="kw">as</span> <span class="kw">_</span>))
     }
 
     <span class="doccomment">/// Retrives a logical dimension given its ID.</span>
@@ -1019,12 +1046,6 @@
         (<span class="ident">addr</span>, <span class="ident">pattern</span>)
     }
 
-    <span class="doccomment">/// Trigger to call when two dimensions are not merged.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">dim_not_merged</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">lhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">rhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>) {
-        <span class="kw">let</span> <span class="ident">to_lower</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">mem_blocks</span>.<span class="ident">not_merged</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">dims</span>[<span class="ident">lhs</span>], <span class="ident">rhs</span>);
-        <span class="self">self</span>.<span class="ident">layouts_to_lower</span>.<span class="ident">extend</span>(<span class="ident">to_lower</span>);
-    }
-
     <span class="doccomment">/// Returns the list of layouts to lower.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">layouts_to_lower</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">ir</span>::<span class="ident">mem</span>::<span class="ident">InternalId</span>] {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">layouts_to_lower</span>
@@ -1167,7 +1188,7 @@
             <span class="ident">signature</span>,
             <span class="ident">device</span>,
             <span class="ident">insts</span>,
-            <span class="kw-2">mut</span> <span class="ident">dims</span>,
+            <span class="ident">dims</span>,
             <span class="ident">static_dims</span>,
             <span class="ident">thread_dims</span>,
             <span class="ident">mem_insts</span>,
@@ -1189,6 +1210,11 @@
             .<span class="ident">into_iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">induction_var</span><span class="op">|</span> <span class="ident">induction_var</span>.<span class="ident">freeze</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">counter</span>))
             .<span class="ident">collect</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dims</span> <span class="op">=</span> <span class="ident">SparseVec</span>::<span class="ident">from_vec</span>(
+            <span class="ident">dims</span>.<span class="ident">into_iter</span>()
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dim</span><span class="op">|</span> <span class="ident">dim</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">dim</span><span class="op">|</span> <span class="ident">dim</span>.<span class="ident">freeze</span>()))
+                .<span class="ident">collect</span>(),
+        );
 
         <span class="kw">let</span> <span class="ident">ir</span>::<span class="ident">Counter</span> {
             <span class="ident">next_mem</span>,
@@ -1220,22 +1246,6 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Function</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="doccomment">/// Returns a `Statement` given its id.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">block</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="ident">StmtId</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Statement</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">id</span> {
-            <span class="ident">StmtId</span>::<span class="ident">Inst</span>(<span class="ident">id</span>) <span class="op">=&gt;</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">insts</span>[<span class="ident">id</span>],
-            <span class="ident">StmtId</span>::<span class="ident">Dim</span>(<span class="ident">id</span>) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">dim</span>(<span class="ident">id</span>),
-        }
-    }
-
-    <span class="doccomment">/// Lists all `Statement`s.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">blocks</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">Statement</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
-        <span class="self">self</span>.<span class="ident">insts</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span> <span class="kw">as</span> <span class="kw">_</span>)
-            .<span class="ident">chain</span>(<span class="self">self</span>.<span class="ident">dims</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span> <span class="kw">as</span> <span class="kw">_</span>))
-    }
-
     <span class="doccomment">/// Lowers a dim map into a partially defined layout.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">lower_dim_map</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
@@ -1315,6 +1325,12 @@
             }
         });
         <span class="ident">ir</span>::<span class="ident">dim</span>::<span class="ident">Map</span>::<span class="ident">new</span>(<span class="ident">dims</span>)
+    }
+
+    <span class="doccomment">/// Trigger to call when two dimensions are not merged.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">dim_not_merged</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">lhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">rhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>) {
+        <span class="kw">let</span> <span class="ident">to_lower</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">mem_blocks</span>.<span class="ident">not_merged</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">dims</span>[<span class="ident">lhs</span>], <span class="ident">rhs</span>);
+        <span class="self">self</span>.<span class="ident">layouts_to_lower</span>.<span class="ident">extend</span>(<span class="ident">to_lower</span>);
     }
 }
 

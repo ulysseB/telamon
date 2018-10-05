@@ -381,12 +381,12 @@
             .<span class="ident">collect</span>();
         <span class="kw">let</span> <span class="ident">nesting</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">space</span>
             .<span class="ident">ir_instance</span>()
-            .<span class="ident">blocks</span>()
+            .<span class="ident">statements</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">stmt</span><span class="op">|</span> (<span class="ident">stmt</span>.<span class="ident">stmt_id</span>(), <span class="ident">Nesting</span>::<span class="ident">compute</span>(<span class="ident">space</span>, <span class="ident">stmt</span>.<span class="ident">stmt_id</span>())))
             .<span class="ident">collect</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hw_pressure</span> <span class="op">=</span> <span class="ident">space</span>
             .<span class="ident">ir_instance</span>()
-            .<span class="ident">blocks</span>()
+            .<span class="ident">statements</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">stmt</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="ident">is_thread</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="ident">ir</span>::<span class="ident">StmtId</span>::<span class="ident">Dim</span>(<span class="ident">id</span>) <span class="op">=</span> <span class="ident">stmt</span>.<span class="ident">stmt_id</span>() {
                     <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_dim_kind</span>(<span class="ident">id</span>) <span class="op">==</span> <span class="ident">DimKind</span>::<span class="ident">THREAD</span>
@@ -518,7 +518,7 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">after_self</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bigger_merged_dims</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">has_inner_thread_dims</span> <span class="op">=</span> <span class="bool-val">false</span>;
-        <span class="kw">for</span> <span class="ident">other_stmt</span> <span class="kw">in</span> <span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">blocks</span>() {
+        <span class="kw">for</span> <span class="ident">other_stmt</span> <span class="kw">in</span> <span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">statements</span>() {
             <span class="kw">if</span> <span class="ident">other_stmt</span>.<span class="ident">stmt_id</span>() <span class="op">==</span> <span class="ident">stmt</span> {
                 <span class="kw">continue</span>;
             }
