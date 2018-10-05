@@ -202,8 +202,8 @@ fn set_data_deps(
 ) {
     for operand in space.ir_instance().inst(inst_id).operands() {
         match *operand {
-            ir::Operand::Value(pred_id, _) => {
-                let prod_inst_id = unwrap!(space.ir_instance().value(pred_id).prod_inst_id());
+            ir::Operand::Variable(pred_id, _) => {
+                let prod_inst_id = unwrap!(space.ir_instance().variable(pred_id).prod_inst_id());
                 let pred = code_points.ids[&CodePoint::Inst(prod_inst_id)];
                 let latency = local_info.hw_pressure[&prod_inst_id.into()]
                     .bound(BottleneckLevel::Thread, thread_rates);

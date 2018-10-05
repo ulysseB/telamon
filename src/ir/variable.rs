@@ -64,6 +64,12 @@ impl Variable {
     pub fn add_use(&mut self, stmt: ir::StmtId) {
         self.use_points.insert(stmt);
     }
+
+    /// Returns the id of the instruction that produced the value if it was indeed produced by an
+    /// instruction
+    pub fn prod_inst_id(&self) -> Option<ir::InstId> {
+        self.def().prod_inst_id()
+    }
 }
 
 /// Specifies how is a `Variable` defined.
@@ -104,5 +110,12 @@ impl VarDef {
     pub fn def_statements(self) -> impl Iterator<Item = ir::StmtId> {
         let VarDef::Inst(inst_id) = self;
         std::iter::once(inst_id.into())
+    }
+
+    /// Returns the id of the instruction that produced the value if it was indeed produced by an
+    /// instruction
+    pub fn prod_inst_id(&self) -> Option<ir::InstId> {
+        let VarDef::Inst(id) = self;
+        Some(*id)
     }
 }
