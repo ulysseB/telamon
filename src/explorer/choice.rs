@@ -36,7 +36,9 @@ pub enum ChoiceGroup {
 /// We need that because the choices are generated in different fashion for the different cases
 /// (DimMap, Order...) so we have to iterate on several kinds of iterators (Map, FlatMap...) in a
 /// statically unknown order.
-struct NestedIterator<I: Iterator> where I::Item: Iterator
+struct NestedIterator<I: Iterator>
+where
+    I::Item: Iterator,
 {
     /// The high level Iterator
     glob_iterator: I,
@@ -44,7 +46,9 @@ struct NestedIterator<I: Iterator> where I::Item: Iterator
     current_local_iterator: Option<I::Item>,
 }
 
-impl<I: Iterator> NestedIterator<I> where I::Item: Iterator
+impl<I: Iterator> NestedIterator<I>
+where
+    I::Item: Iterator,
 {
     fn new(iterator: I) -> Self {
         NestedIterator {
@@ -54,12 +58,14 @@ impl<I: Iterator> NestedIterator<I> where I::Item: Iterator
     }
 }
 
-impl<I: Iterator> Iterator for NestedIterator<I> where I::Item: Iterator
+impl<I: Iterator> Iterator for NestedIterator<I>
+where
+    I::Item: Iterator,
 {
     type Item = <I::Item as Iterator>::Item;
 
     fn next(&mut self) -> Option<Self::Item> {
-        loop{
+        loop {
             if let Some(ref mut current_it) = self.current_local_iterator {
                 if let Some(choice) = current_it.next() {
                     break Some(choice);
@@ -85,7 +91,7 @@ impl ChoiceOrdering {
     pub fn list<'a>(
         &'a self,
         space: &'a SearchSpace<'a>,
-        ) -> impl Iterator<Item = Choice> + 'a {
+    ) -> impl Iterator<Item = Choice> + 'a {
         NestedIterator::new( self.0.iter().map( move |choice_grp| -> Box<dyn Iterator<Item = Choice> + 'a>  {
             let fun = space.ir_instance();
             match choice_grp {
@@ -135,16 +141,15 @@ impl ChoiceOrdering {
     }
 }
 
-
 lazy_static! {
     static ref DEFAULT_ORDERING: ChoiceOrdering = ChoiceOrdering(vec![
-                                                                 ChoiceGroup::LowerLayout,
-                                                                 ChoiceGroup::Size,
-                                                                 ChoiceGroup::DimKind,
-                                                                 ChoiceGroup::DimMap,
-                                                                 ChoiceGroup::MemSpace,
-                                                                 ChoiceGroup::Order,
-                                                                 ChoiceGroup::InstFlag,
+        ChoiceGroup::LowerLayout,
+        ChoiceGroup::Size,
+        ChoiceGroup::DimKind,
+        ChoiceGroup::DimMap,
+        ChoiceGroup::MemSpace,
+        ChoiceGroup::Order,
+        ChoiceGroup::InstFlag,
     ]);
 }
 
@@ -155,11 +160,10 @@ pub fn list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item = Choice> + 'a
     DEFAULT_ORDERING.list(space)
 }
 
-
 /// Generates a choice from a list of possible values.
 fn gen_choice<T, IT>(values: IT, action_gen: &Fn(T) -> Action) -> Option<Choice>
 where
-IT: IntoIterator<Item = T>,
+    IT: IntoIterator<Item = T>,
 {
     let choice = values
         .into_iter()
@@ -203,7 +207,7 @@ pub fn fix_order(mut space: SearchSpace) -> SearchSpace {
             panic!(
                 "unconstrained order between {:?} and {:?}: {:?}",
                 lhs, rhs, order
-                )
+            )
         };
         let action = Action::Order(lhs, rhs, new_order);
         unwrap!(space.apply_decisions(vec![action]), "{:?}", action);
