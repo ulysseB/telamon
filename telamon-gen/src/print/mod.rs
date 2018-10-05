@@ -87,6 +87,7 @@ lazy_static! {
         register_template!(engine, alloc);
         register_template!(engine, account_new_incrs);
         register_template!(engine, actions);
+        register_template!(engine, choices);
         register_template!(engine, choice_def);
         register_template!(engine, choice_filter);
         register_template!(engine, choice / arg_names);
