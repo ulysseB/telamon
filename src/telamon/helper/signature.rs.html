@@ -111,6 +111,15 @@
 <span id="111">111</span>
 <span id="112">112</span>
 <span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Helper functions to create a function signature and bind parameters.</span>
 <span class="kw">use</span> <span class="ident">device</span>::{<span class="self">self</span>, <span class="ident">write_array</span>, <span class="ident">ScalarArgument</span>};
@@ -125,6 +134,7 @@
 <span class="kw">where</span>
     <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span> <span class="op">+</span> <span class="lifetime">&#39;a</span>,
 {
+    <span class="ident">random_fill</span>: <span class="ident">bool</span>,
     <span class="ident">rng</span>: <span class="ident">rand</span>::<span class="ident">XorShiftRng</span>,
     <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw-2">mut</span> <span class="ident">AM</span>,
     <span class="ident">signature</span>: <span class="ident">Signature</span>,
@@ -143,10 +153,16 @@
         };
         <span class="kw">let</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">rand</span>::<span class="ident">XorShiftRng</span>::<span class="ident">new_unseeded</span>();
         <span class="ident">Builder</span> {
+            <span class="ident">random_fill</span>: <span class="bool-val">false</span>,
             <span class="ident">context</span>,
             <span class="ident">signature</span>,
             <span class="ident">rng</span>,
         }
+    }
+
+    <span class="doccomment">/// Arrays are filled with random data if set to true.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_random_fill</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">enable</span>: <span class="ident">bool</span>) {
+        <span class="self">self</span>.<span class="ident">random_fill</span> <span class="op">=</span> <span class="ident">enable</span>;
     }
 
     <span class="doccomment">/// Creates a new parameter and binds it to the given value.</span>
@@ -182,10 +198,12 @@
             <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">PtrTo</span>(<span class="ident">id</span>),
         };
         <span class="kw">let</span> <span class="ident">array</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">context</span>.<span class="ident">bind_array</span>::<span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="ident">param</span>, <span class="ident">size</span>);
-        <span class="kw">let</span> <span class="ident">random</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">size</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">S</span>::<span class="ident">gen_random</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">rng</span>))
-            .<span class="ident">collect_vec</span>();
-        <span class="ident">write_array</span>(<span class="ident">array</span>.<span class="ident">as_ref</span>(), <span class="kw-2">&amp;</span><span class="ident">random</span>);
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">random_fill</span> {
+            <span class="kw">let</span> <span class="ident">random</span> <span class="op">=</span> (<span class="number">0</span>..<span class="ident">size</span>)
+                .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">S</span>::<span class="ident">gen_random</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">rng</span>))
+                .<span class="ident">collect_vec</span>();
+            <span class="ident">write_array</span>(<span class="ident">array</span>.<span class="ident">as_ref</span>(), <span class="kw-2">&amp;</span><span class="ident">random</span>);
+        }
         <span class="self">self</span>.<span class="ident">signature</span>.<span class="ident">params</span>.<span class="ident">push</span>(<span class="ident">param</span>);
         (<span class="ident">id</span>, <span class="ident">array</span>)
     }

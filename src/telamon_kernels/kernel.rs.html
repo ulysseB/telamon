@@ -312,6 +312,11 @@
 <span id="312">312</span>
 <span id="313">313</span>
 <span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Abstracts kernels so we can build generic methods to test them.</span>
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
@@ -378,6 +383,7 @@
         <span class="kw">let</span> <span class="ident">kernel</span>;
         <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">SignatureBuilder</span>::<span class="ident">new</span>(<span class="self">Self</span>::<span class="ident">name</span>(), <span class="ident">context</span>);
+            <span class="ident">builder</span>.<span class="ident">set_random_fill</span>(<span class="bool-val">true</span>);
             <span class="ident">kernel</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">build_signature</span>(<span class="ident">params</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
             <span class="ident">builder</span>.<span class="ident">get</span>()
         };
@@ -423,6 +429,7 @@
     <span class="kw">fn</span> <span class="ident">test_bound</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>(
         <span class="ident">params</span>: <span class="self">Self</span>::<span class="ident">Parameters</span>,
         <span class="ident">num_tests</span>: <span class="ident">usize</span>,
+        <span class="ident">random_fill</span>: <span class="ident">bool</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AM</span>,
     ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BoundSample</span><span class="op">&gt;</span>
     <span class="kw">where</span>
@@ -431,6 +438,7 @@
         <span class="kw">let</span> <span class="ident">kernel</span>;
         <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">SignatureBuilder</span>::<span class="ident">new</span>(<span class="self">Self</span>::<span class="ident">name</span>(), <span class="ident">context</span>);
+            <span class="ident">builder</span>.<span class="ident">set_random_fill</span>(<span class="ident">random_fill</span>);
             <span class="ident">kernel</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">build_signature</span>(<span class="ident">params</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
             <span class="ident">builder</span>.<span class="ident">get</span>()
         };
@@ -488,6 +496,7 @@
         <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">explorer</span>::<span class="ident">Config</span>,
         <span class="ident">params</span>: <span class="self">Self</span>::<span class="ident">Parameters</span>,
         <span class="ident">num_samples</span>: <span class="ident">usize</span>,
+        <span class="ident">random_fill</span>: <span class="ident">bool</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AM</span>,
     ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>
     <span class="kw">where</span>
@@ -496,6 +505,7 @@
         <span class="kw">let</span> <span class="ident">kernel</span>;
         <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">SignatureBuilder</span>::<span class="ident">new</span>(<span class="self">Self</span>::<span class="ident">name</span>(), <span class="ident">context</span>);
+            <span class="ident">builder</span>.<span class="ident">set_random_fill</span>(<span class="ident">random_fill</span>);
             <span class="ident">kernel</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">build_signature</span>(<span class="ident">params</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">builder</span>);
             <span class="ident">builder</span>.<span class="ident">get</span>()
         };
