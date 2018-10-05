@@ -11,6 +11,7 @@ pub struct Builder<'a, AM>
 where
     AM: device::ArgMap + device::Context + 'a,
 {
+    random_fill: bool,
     rng: rand::XorShiftRng,
     context: &'a mut AM,
     signature: Signature,
@@ -29,10 +30,16 @@ where
         };
         let rng = rand::XorShiftRng::new_unseeded();
         Builder {
+            random_fill: false,
             context,
             signature,
             rng,
         }
+    }
+
+    /// Arrays are filled with random data if set to true.
+    pub fn set_random_fill(&mut self, enable: bool) {
+        self.random_fill = enable;
     }
 
     /// Creates a new parameter and binds it to the given value.
@@ -68,10 +75,12 @@ where
             t: ir::Type::PtrTo(id),
         };
         let array = self.context.bind_array::<S>(&param, size);
-        let random = (0..size)
-            .map(|_| S::gen_random(&mut self.rng))
-            .collect_vec();
-        write_array(array.as_ref(), &random);
+        if self.random_fill {
+            let random = (0..size)
+                .map(|_| S::gen_random(&mut self.rng))
+                .collect_vec();
+            write_array(array.as_ref(), &random);
+        }
         self.signature.params.push(param);
         (id, array)
     }
