@@ -2,7 +2,7 @@
 use device::Context;
 use explorer::candidate::Candidate;
 use explorer::choice;
-use explorer::config::NewNodeOrder;
+use explorer::config::{self, NewNodeOrder};
 use rand::distributions::{IndependentSample, Weighted, WeightedChoice};
 use rand::{thread_rng, Rng};
 use std;

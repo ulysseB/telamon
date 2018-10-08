@@ -34,6 +34,8 @@ pub struct Config {
     /// certain range above the best Therefore, if cut_under is 20%, we can discard any
     /// candidate whose bound is above 80% of the current best.
     pub distance_to_best: Option<f64>,
+    /// Order in which the different choices are going to be determined
+    pub choice_ordering: ChoiceOrdering,
     /// Exploration algorithm to use. Needs to be last for TOML serialization, because it is a table.
     pub algorithm: SearchAlgorithm,
 }
@@ -134,6 +136,7 @@ impl Default for Config {
             stop_bound: None,
             timeout: None,
             max_evaluations: None,
+            choice_ordering: ChoiceOrdering::default(),
             distance_to_best: None,
         }
     }
@@ -269,5 +272,44 @@ pub enum OldNodeOrder {
 impl Default for OldNodeOrder {
     fn default() -> Self {
         OldNodeOrder::Bandit
+    }
+}
+
+/// An enum listing the Group of choices we can make
+/// For example, we can make first all DimKind decisions, then all Order decisions, etc.
+#[derive(Clone, Serialize, Deserialize)]
+pub enum ChoiceGroup {
+    LowerLayout,
+    Size,
+    DimKind,
+    DimMap,
+    Order,
+    MemSpace,
+    InstFlag,
+}
+
+/// A list of ChoiceGroup representing the order in which we want to determine choices
+#[derive(Clone, Serialize, Deserialize)]
+pub struct ChoiceOrdering(Vec<ChoiceGroup>);
+
+impl Default for ChoiceOrdering {
+    fn default() -> Self {
+        ChoiceOrdering(vec![
+                       ChoiceGroup::LowerLayout,
+                       ChoiceGroup::Size,
+                       ChoiceGroup::DimKind,
+                       ChoiceGroup::DimMap,
+                       ChoiceGroup::MemSpace,
+                       ChoiceGroup::Order,
+                       ChoiceGroup::InstFlag,
+        ])
+    }
+}
+
+impl Iterator for ChoiceOrdering {
+    type Item = ChoiceGroup;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.iter().cloned().next()
     }
 }
