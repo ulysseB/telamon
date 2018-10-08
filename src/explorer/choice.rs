@@ -1,4 +1,5 @@
 //! Choices that can be applied to split the search space.
+use explorer::config;
 use ir::mem::Block;
 use ir::{self, Statement};
 use itertools::Itertools;
@@ -29,6 +30,20 @@ pub enum ChoiceGroup {
     Order,
     MemSpace,
     InstFlag,
+}
+
+impl From<config::ChoiceGroup> for ChoiceGroup {
+    fn from(conf_ch_grp: config::ChoiceGroup) -> Self {
+        match conf_ch_grp {
+            config::ChoiceGroup::LowerLayout => ChoiceGroup::LowerLayout,
+            config::ChoiceGroup::Size => ChoiceGroup::Size,
+            config::ChoiceGroup::DimKind => ChoiceGroup::DimKind,
+            config::ChoiceGroup::DimMap => ChoiceGroup::DimMap,
+            config::ChoiceGroup::Order => ChoiceGroup::Order,
+            config::ChoiceGroup::MemSpace => ChoiceGroup::MemSpace,
+            config::ChoiceGroup::InstFlag => ChoiceGroup::InstFlag,
+        }
+    }
 }
 
 /// This struct nests two iterators inside each other and then implements Iterator with the Item of
@@ -83,6 +98,12 @@ where
 }
 /// A list of ChoiceGroup representing the order in which we want to determine choices
 pub struct ChoiceOrdering(Vec<ChoiceGroup>);
+
+impl From<config::ChoiceOrdering> for ChoiceOrdering {
+    fn from(choice_ord: config::ChoiceOrdering) -> Self {
+        ChoiceOrdering(choice_ord.into_iter().map(|grp| grp.into()).collect())
+    }
+}
 
 impl ChoiceOrdering {
     /// list the choices that are still to be made on the search space.
