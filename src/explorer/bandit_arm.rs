@@ -2,7 +2,7 @@
 
 use device::Context;
 use explorer::candidate::Candidate;
-use explorer::config::{BanditConfig, NewNodeOrder, OldNodeOrder};
+use explorer::config::{self, BanditConfig, NewNodeOrder, OldNodeOrder};
 use explorer::logger::LogMessage;
 use explorer::store::Store;
 use explorer::{choice, local_selection};
@@ -127,6 +127,7 @@ impl<'a, 'b> Tree<'a, 'b> {
                             match maybe_candidate {
                                 Ok(candidate) => {
                                     let res = local_selection::descend(
+                                        &self.config.choice_ordering,
                                         self.config.new_nodes_order,
                                         context,
                                         candidate,
@@ -197,7 +198,11 @@ impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
                 return None;
             }
             let cut: f64 = { *unwrap!(self.cut.read()) };
-            let state = unwrap!(self.shared_tree.write()).descend(context, cut);
+            let state = unwrap!(self.shared_tree.write()).descend(
+                &self.config.choice_ordering,
+                context,
+                cut,
+            );
             if let DescendState::DeadEnd = state {
                 return None;
             }
@@ -280,14 +285,20 @@ impl<'a> SubTree<'a> {
     }
 
     /// Descend one level in the tree, expanding it if necessary.
-    fn descend(&mut self, context: &Context, cut: f64) -> DescendState<'a> {
+    fn descend(
+        &mut self,
+        choice_ordering: &config::ChoiceOrdering,
+        context: &Context,
+        cut: f64,
+    ) -> DescendState<'a> {
         match std::mem::replace(self, SubTree::Empty) {
             SubTree::InternalNode(node, bound) => {
                 *self = SubTree::InternalNode(node.clone(), bound);
                 DescendState::InternalNode(node, false)
             }
             SubTree::UnexpandedNode(candidate) => {
-                let choice = choice::list(&candidate.space).next();
+                let choice =
+                    choice::list_from_conf(&candidate.space, choice_ordering).next();
                 if let Some(choice) = choice {
                     let candidates = candidate.apply_choice(context, choice);
                     let children = Children::from_candidates(candidates, cut);
@@ -373,7 +384,10 @@ impl<'a> Children<'a> {
         self.trim(cut);
         self.pick_child(config, cut).map(|idx| {
             self.rewards[idx].1 += 1;
-            (idx, self.children[idx].descend(context, cut))
+            (
+                idx,
+                self.children[idx].descend(&config.choice_ordering, context, cut),
+            )
         })
     }
 
@@ -400,7 +414,8 @@ impl<'a> Children<'a> {
                     return (idx, Err(DescendState::InternalNode(node.clone(), true)))
                 }
             };
-            let choice = choice::list(&cand.space).next();
+            let choice =
+                choice::list_from_conf(&cand.space, &config.choice_ordering).next();
             let out = if let Some(choice) = choice {
                 let cands = cand.apply_choice(context, choice);
                 self.children[idx] = SubTree::UnexpandedNode(cand);
