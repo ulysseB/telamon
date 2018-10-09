@@ -29,7 +29,7 @@ impl<'a> Store<'a> for ParallelCandidateList<'a> {
     fn explore(&self, context: &Context) -> Option<(Candidate<'a>, Self::PayLoad)> {
         loop {
             if let Some(candidate) = self.pop() {
-                let choice_opt = choice::list(&candidate.space).next();
+                let choice_opt = choice::default_list(&candidate.space).next();
                 if let Some(choice) = choice_opt {
                     self.insert_many(candidate.apply_choice(context, choice));
                 } else {

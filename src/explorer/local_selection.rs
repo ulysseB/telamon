@@ -2,7 +2,7 @@
 use device::Context;
 use explorer::candidate::Candidate;
 use explorer::choice;
-use explorer::config::{self, NewNodeOrder};
+use explorer::config::{ChoiceOrdering, NewNodeOrder};
 use rand::distributions::{IndependentSample, Weighted, WeightedChoice};
 use rand::{thread_rng, Rng};
 use std;
@@ -11,16 +11,18 @@ use utils::*;
 /// A recursive function that takes a candidate and expands it until we have a completely specified
 /// candidate that we can pass to the evaluator, or we find a dead-end
 pub fn descend<'a>(
-    order: NewNodeOrder,
+    choice_order: &ChoiceOrdering,
+    node_order: NewNodeOrder,
     context: &Context,
     candidate: Candidate<'a>,
     cut: f64,
 ) -> Option<Candidate<'a>> {
-    let choice_opt = choice::list(&candidate.space).next();
+    //let choice_opt = choice::list(&candidate.space).next();
+    let choice_opt = choice::list_from_conf(&candidate.space, choice_order).next();
     if let Some(choice) = choice_opt {
         let new_nodes = candidate.apply_choice(context, choice);
-        pick_candidate(order, new_nodes, cut)
-            .and_then(|node| descend(order, context, node, cut))
+        pick_candidate(node_order, new_nodes, cut)
+            .and_then(|node| descend(choice_order, node_order, context, node, cut))
     } else {
         Some(candidate)
     }
