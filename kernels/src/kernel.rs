@@ -15,7 +15,8 @@ use utils::*;
 const CUT: f64 = 2e8f64;
 /// Maximal number of deadends to accept before failing.
 // TODO(cleanup): tune MAX_DEADEND_RATIO
-const MAX_DEADEND_RATIO: usize = 20;
+//const MAX_DEADEND_RATIO: usize = 20;
+const MAX_DEADEND_RATIO: f32 = 0.95;
 
 /// A kernel that can be compiled, benchmarked and used for correctness tests.
 pub trait Kernel<'a>: Sized {
@@ -98,12 +99,13 @@ pub trait Kernel<'a>: Sized {
                 num_runs += 1;
             } else {
                 num_deadends += 1;
-                if num_deadends >= MAX_DEADEND_RATIO * (1 + num_runs) {
-                    panic!("too many dead-ends for kernel {}", Self::name())
+                if num_deadends as f32 / ((1 + num_deadends + num_runs) as f32)
+                    >= MAX_DEADEND_RATIO
+                {
+                    panic!("too many dead-ends for kernel {}, {} deadends for {} successful runs", Self::name(), num_deadends, num_runs)
                 }
             }
         }
-        println!("num_deadends: {}", num_deadends);
     }
 
     /// Tests the correctness of the bound of kernels and returns the list of tested leafs
