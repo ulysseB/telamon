@@ -171,7 +171,7 @@ pub fn gen_space<F, G>(
         if total % 10 == 0 {
             warn!("{} candidates", total);
         }
-        let choice_opt = choice::list(&candidate.space).next();
+        let choice_opt = choice::default_list(&candidate.space).next();
         if let Some(choice) = choice_opt {
             on_node(&candidate);
             stack.extend(candidate.apply_choice(context, choice));

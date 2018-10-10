@@ -196,6 +196,8 @@ pub struct BanditConfig {
     /// If true, does not expand tree until end - instead, starts a montecarlo descend after each
     /// expansion of a node
     pub monte_carlo: bool,
+    /// Order in which the different choices are going to be determined
+    pub choice_ordering: ChoiceOrdering,
 }
 
 impl BanditConfig {
@@ -225,6 +227,7 @@ impl Default for BanditConfig {
             old_nodes_order: OldNodeOrder::default(),
             threshold: 10,
             delta: 1.,
+            choice_ordering: ChoiceOrdering::default(),
             monte_carlo: true,
         }
     }
@@ -269,5 +272,48 @@ pub enum OldNodeOrder {
 impl Default for OldNodeOrder {
     fn default() -> Self {
         OldNodeOrder::Bandit
+    }
+}
+
+/// An enum listing the Group of choices we can make
+/// For example, we can make first all DimKind decisions, then all Order decisions, etc.
+#[derive(Clone, Serialize, Deserialize, Debug)]
+//#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
+pub enum ChoiceGroup {
+    LowerLayout,
+    Size,
+    DimKind,
+    DimMap,
+    Order,
+    MemSpace,
+    InstFlag,
+}
+
+/// A list of ChoiceGroup representing the order in which we want to determine choices
+#[derive(Clone, Serialize, Deserialize)]
+pub struct ChoiceOrdering(Vec<ChoiceGroup>);
+
+impl Default for ChoiceOrdering {
+    fn default() -> Self {
+        ChoiceOrdering(vec![
+            ChoiceGroup::LowerLayout,
+            ChoiceGroup::Size,
+            ChoiceGroup::DimKind,
+            ChoiceGroup::DimMap,
+            ChoiceGroup::MemSpace,
+            ChoiceGroup::Order,
+            ChoiceGroup::InstFlag,
+        ])
+    }
+}
+
+impl ChoiceOrdering {
+    pub fn print_serialize(&self) {
+        println!("{}", unwrap!(toml::to_string(self)));
+    }
+
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a ChoiceGroup> + Clone {
+        self.0.iter()
     }
 }

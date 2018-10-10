@@ -1,4 +1,5 @@
 //! Choices that can be applied to split the search space.
+use explorer::config;
 use ir::mem::Block;
 use ir::{self, Statement};
 use itertools::Itertools;
@@ -21,6 +22,7 @@ pub type Choice = Vec<ActionEx>;
 
 /// An enum listing the Group of choices we can make
 /// For example, we can make first all DimKind decisions, then all Order decisions, etc.
+#[derive(Debug, Clone)]
 pub enum ChoiceGroup {
     LowerLayout,
     Size,
@@ -29,6 +31,34 @@ pub enum ChoiceGroup {
     Order,
     MemSpace,
     InstFlag,
+}
+
+impl<'a> From<&'a config::ChoiceGroup> for ChoiceGroup {
+    fn from(conf_ch_grp: &'a config::ChoiceGroup) -> Self {
+        match conf_ch_grp {
+            config::ChoiceGroup::LowerLayout => ChoiceGroup::LowerLayout,
+            config::ChoiceGroup::Size => ChoiceGroup::Size,
+            config::ChoiceGroup::DimKind => ChoiceGroup::DimKind,
+            config::ChoiceGroup::DimMap => ChoiceGroup::DimMap,
+            config::ChoiceGroup::Order => ChoiceGroup::Order,
+            config::ChoiceGroup::MemSpace => ChoiceGroup::MemSpace,
+            config::ChoiceGroup::InstFlag => ChoiceGroup::InstFlag,
+        }
+    }
+}
+
+impl From<config::ChoiceGroup> for ChoiceGroup {
+    fn from(conf_ch_grp: config::ChoiceGroup) -> Self {
+        match conf_ch_grp {
+            config::ChoiceGroup::LowerLayout => ChoiceGroup::LowerLayout,
+            config::ChoiceGroup::Size => ChoiceGroup::Size,
+            config::ChoiceGroup::DimKind => ChoiceGroup::DimKind,
+            config::ChoiceGroup::DimMap => ChoiceGroup::DimMap,
+            config::ChoiceGroup::Order => ChoiceGroup::Order,
+            config::ChoiceGroup::MemSpace => ChoiceGroup::MemSpace,
+            config::ChoiceGroup::InstFlag => ChoiceGroup::InstFlag,
+        }
+    }
 }
 
 /// This struct nests two iterators inside each other and then implements Iterator with the Item of
@@ -81,68 +111,61 @@ where
         }
     }
 }
-/// A list of ChoiceGroup representing the order in which we want to determine choices
-pub struct ChoiceOrdering(Vec<ChoiceGroup>);
 
-impl ChoiceOrdering {
-    /// list the choices that are still to be made on the search space.
-    /// Do it in a lazy fashion - that is, a call to next() on the list returned by this function
-    /// does not do the whole iteration
-    pub fn list<'a>(
-        &'a self,
-        space: &'a SearchSpace<'a>,
-    ) -> impl Iterator<Item = Choice> + 'a {
-        NestedIterator::new( self.0.iter().map( move |choice_grp| -> Box<dyn Iterator<Item = Choice> + 'a>  {
-            let fun = space.ir_instance();
-            match choice_grp {
-                ChoiceGroup::LowerLayout => Box::new(fun.layouts_to_lower()
-                                                     .iter()
-                                                     .map(move |&layout| lower_layout_choice(space, layout))),
-                ChoiceGroup::Size => Box::new(fun.static_dims().flat_map(move |dim| {
-                    let sizes = space.domain().get_size(dim.id());
-                    gen_choice(sizes.list(), &|s| Action::Size(dim.id(), s))
-                })),
-                ChoiceGroup::DimKind => Box::new(fun.dims().flat_map(move |dim| {
-                    let kinds = space.domain().get_dim_kind(dim.id());
-                    gen_choice(kinds.list(), &|k| Action::DimKind(dim.id(), k))
-                })),
-                ChoiceGroup::DimMap =>
-                    Box::new(fun.static_dims().enumerate()
-                             .flat_map(move |(i, lhs)| {
-                                 fun.static_dims().take(i).flat_map(move |rhs| {
-                                     let mappings = space.domain().get_thread_mapping(lhs.id(), rhs.id());
-                                     gen_choice(mappings.list(), &|m| {
-                                         Action::ThreadMapping(lhs.id(), rhs.id(), m)
-                                     })
+pub fn list<'a>(
+    iter_choice: impl Iterator<Item = ChoiceGroup> + 'a,
+    space: &'a SearchSpace<'a>,
+) -> impl Iterator<Item = Choice> + 'a {
+    NestedIterator::new(iter_choice.map( move |choice_grp| -> Box<dyn Iterator<Item = Choice> + 'a>  {
+        let fun = space.ir_instance();
+        match choice_grp {
+            ChoiceGroup::LowerLayout =>  Box::new(fun.layouts_to_lower()
+                                                 .iter()
+                                                 .map(move |&layout| lower_layout_choice(space, layout))),
+            ChoiceGroup::Size =>  Box::new(fun.static_dims().flat_map(move |dim| {
+                let sizes = space.domain().get_size(dim.id());
+                gen_choice(sizes.list(), &|s| Action::Size(dim.id(), s))
+            })),
+            ChoiceGroup::DimKind => Box::new(fun.dims().flat_map(move |dim| {
+                let kinds = space.domain().get_dim_kind(dim.id());
+                gen_choice(kinds.list(), &|k| Action::DimKind(dim.id(), k))
+            })),
+            ChoiceGroup::DimMap =>
+            Box::new(fun.static_dims().enumerate()
+                         .flat_map(move |(i, lhs)| {
+                             fun.static_dims().take(i).flat_map(move |rhs| {
+                                 let mappings = space.domain().get_thread_mapping(lhs.id(), rhs.id());
+                                 gen_choice(mappings.list(), &|m| {
+                                     Action::ThreadMapping(lhs.id(), rhs.id(), m)
                                  })
-                             })),
-                ChoiceGroup::Order => Box::new(fun.dims().enumerate().flat_map(move |(i, lhs)| {
-                    // TODO(search_space): avoid picking ordering decisions that have little impact.
-                    // For this, we should avoid dimension-instruction and dimension-vector dim
-                    // orderings. The problem is that we do not know wich choice to pick in the end.
-                    let lhs = lhs.stmt_id();
-                    let dims = fun.dims().take(i).map(|x| x.stmt_id());
-                    dims.chain(fun.insts().map(|x| x.stmt_id()))
-                        .flat_map(move |rhs| {
-                            let orders = space.domain().get_order(lhs.into(), rhs);
-                            gen_choice(orders.list(), &|o| Action::Order(lhs, rhs, o))
-                        })
-                })),
-                ChoiceGroup::MemSpace => Box::new(fun.internal_mem_blocks().flat_map(move |block| {
-                    let mem_spaces = space.domain().get_mem_space(block.mem_id());
-                    gen_choice(mem_spaces.list(), &|s| Action::MemSpace(block.mem_id(), s))
-                })),
-                ChoiceGroup::InstFlag => Box::new(fun.mem_insts().flat_map(move |inst| {
-                    let flags = space.domain().get_inst_flag(inst.id()).list();
-                    gen_choice(flags, &|f| Action::InstFlag(inst.id(), f))
-                })),
-            }
-        }))
-    }
+                             })
+                         })),
+            ChoiceGroup::Order => Box::new(fun.dims().enumerate().flat_map(move |(i, lhs)| {
+                // TODO(search_space): avoid picking ordering decisions that have little impact.
+                // For this, we should avoid dimension-instruction and dimension-vector dim
+                // orderings. The problem is that we do not know wich choice to pick in the end.
+                let lhs = lhs.stmt_id();
+                let dims = fun.dims().take(i).map(|x| x.stmt_id());
+                dims.chain(fun.insts().map(|x| x.stmt_id()))
+                    .flat_map(move |rhs| {
+                        let orders = space.domain().get_order(lhs.into(), rhs);
+                        gen_choice(orders.list(), &|o| Action::Order(lhs, rhs, o))
+                    })
+            })),
+            ChoiceGroup::MemSpace => Box::new(fun.internal_mem_blocks().flat_map(move |block| {
+                let mem_spaces = space.domain().get_mem_space(block.mem_id());
+                gen_choice(mem_spaces.list(), &|s| Action::MemSpace(block.mem_id(), s))
+            })),
+            ChoiceGroup::InstFlag => Box::new(fun.mem_insts().flat_map(move |inst| {
+                let flags = space.domain().get_inst_flag(inst.id()).list();
+                gen_choice(flags, &|f| Action::InstFlag(inst.id(), f))
+            })),
+        }
+    }))
 }
 
 lazy_static! {
-    static ref DEFAULT_ORDERING: ChoiceOrdering = ChoiceOrdering(vec![
+    static ref DEFAULT_ORDERING: Vec<ChoiceGroup> = vec![
         ChoiceGroup::LowerLayout,
         ChoiceGroup::Size,
         ChoiceGroup::DimKind,
@@ -150,14 +173,27 @@ lazy_static! {
         ChoiceGroup::MemSpace,
         ChoiceGroup::Order,
         ChoiceGroup::InstFlag,
-    ]);
+    ];
 }
 
 /// This function is to be either removed or reimplemented eventually. It is just a replacement for
 /// the previous list implementation (exposes the choices in the same order). Default should
 /// preferably be handled in config file
-pub fn list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item = Choice> + 'a {
-    DEFAULT_ORDERING.list(space)
+pub fn default_list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item = Choice> + 'a {
+    list(DEFAULT_ORDERING.iter().cloned(), space)
+}
+
+pub fn list_with_conf<'a, 'b: 'a>(
+    choice_ordering: &'b config::ChoiceOrdering,
+    space: &'a SearchSpace<'a>,
+) -> impl Iterator<Item = Choice> + 'a {
+    list(
+        choice_ordering
+            .iter()
+            .cloned()
+            .map(|choice_grp| ChoiceGroup::from(choice_grp)),
+        space,
+    )
 }
 
 /// Generates a choice from a list of possible values.
