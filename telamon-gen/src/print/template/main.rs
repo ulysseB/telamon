@@ -17,6 +17,8 @@ use utils::*;
 
 {{enums}}
 
+{{>choices this}}
+
 {{>actions this}}
 
 /// Propagate the changes stored in `diff`.

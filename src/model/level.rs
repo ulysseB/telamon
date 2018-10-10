@@ -118,7 +118,7 @@ pub fn sum_pressure(
         .unwrap_or_else(|| space.ir_instance().dims().map(|d| d.id()).collect());
     let inner_sum_dims = inner_dims
         .filter(|&d| bound_level.accounts_for_dim(space.domain().get_dim_kind(d)));
-    // Get the list of inner basic blocks.
+    // Get the list of inner statements.
     let inner_stmts_sets = nest
         .iter()
         .map(|&d| &local_info.nesting[&d.into()].inner_stmts);
@@ -126,7 +126,7 @@ pub fn sum_pressure(
         .map(|x| itertools::Either::Left(x.into_iter()))
         .unwrap_or_else(|| {
             itertools::Either::Right(
-                space.ir_instance().blocks().map(|stmt| stmt.stmt_id()),
+                space.ir_instance().statements().map(|stmt| stmt.stmt_id()),
             )
         });
     // Sum the pressure on all stmts.
@@ -164,7 +164,7 @@ pub fn sum_pressure(
             let (max_active_threads, predication_factor);
             let is_predicated = space
                 .ir_instance()
-                .block(stmt)
+                .statement(stmt)
                 .as_inst()
                 .map(|i| i.has_side_effects())
                 .unwrap_or(false);

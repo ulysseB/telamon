@@ -29,7 +29,7 @@ where
     K: Kernel<'a>,
 {
     let mut context = cuda::Context::new(executor);
-    let bounds = K::test_bound(params, num_runs, &mut context);
+    let bounds = K::test_bound(params, num_runs, true, &mut context);
     println!("bounds for kernel {}", K::name());
     analyze_bounds(bounds);
 }
