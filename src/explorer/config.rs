@@ -193,11 +193,11 @@ pub struct BanditConfig {
     /// The biggest delta is, the more focused on the previous best candidates the
     /// exploration is.
     pub delta: f64,
-    /// Order in which the different choices are going to be determined
-    pub choice_ordering: ChoiceOrdering,
     /// If true, does not expand tree until end - instead, starts a montecarlo descend after each
     /// expansion of a node
     pub monte_carlo: bool,
+    /// Order in which the different choices are going to be determined
+    pub choice_ordering: ChoiceOrdering,
 }
 
 impl BanditConfig {
@@ -278,6 +278,8 @@ impl Default for OldNodeOrder {
 /// An enum listing the Group of choices we can make
 /// For example, we can make first all DimKind decisions, then all Order decisions, etc.
 #[derive(Clone, Serialize, Deserialize, Debug)]
+//#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
 pub enum ChoiceGroup {
     LowerLayout,
     Size,
@@ -290,46 +292,30 @@ pub enum ChoiceGroup {
 
 /// A list of ChoiceGroup representing the order in which we want to determine choices
 #[derive(Clone, Serialize, Deserialize)]
-pub struct ChoiceOrdering {
-    choices: Vec<ChoiceGroup>,
-    current_pos: usize,
-}
+pub struct ChoiceOrdering( Vec<ChoiceGroup>);
+
 
 impl Default for ChoiceOrdering {
     fn default() -> Self {
-        ChoiceOrdering {
-            choices: vec![
-                ChoiceGroup::LowerLayout,
-                ChoiceGroup::Size,
-                ChoiceGroup::DimKind,
-                ChoiceGroup::DimMap,
-                ChoiceGroup::MemSpace,
-                ChoiceGroup::Order,
-                ChoiceGroup::InstFlag,
-            ],
-            current_pos: 0,
-        }
+        ChoiceOrdering( vec![
+                       ChoiceGroup::LowerLayout,
+                       ChoiceGroup::Size,
+                       ChoiceGroup::DimKind,
+                       ChoiceGroup::DimMap,
+                       ChoiceGroup::MemSpace,
+                       ChoiceGroup::Order,
+                       ChoiceGroup::InstFlag,
+        ]
+        )
     }
 }
 
-impl Iterator for ChoiceOrdering {
-    type Item = ChoiceGroup;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.current_pos += 1;
-        if self.current_pos == self.choices.len() {
-            None
-        } else {
-            Some(self.choices[self.current_pos].clone())
-        }
+impl ChoiceOrdering {
+    pub fn print_serialize(&self) {
+        println!("{}", unwrap!(toml::to_string(self)));
     }
-}
 
-impl<'a> IntoIterator for &'a ChoiceOrdering {
-    type Item = ChoiceGroup;
-    type IntoIter = ChoiceOrdering;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.clone()
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a ChoiceGroup> + Clone {
+        self.0.iter()
     }
 }
