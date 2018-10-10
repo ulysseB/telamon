@@ -183,9 +183,9 @@ pub fn default_list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item = Choi
     list(DEFAULT_ORDERING.iter().cloned(), space)
 }
 
-pub fn list_from_conf<'a, 'b: 'a>(
-    space: &'a SearchSpace<'a>,
+pub fn list_with_conf<'a, 'b: 'a>(
     choice_ordering: &'b config::ChoiceOrdering,
+    space: &'a SearchSpace<'a>,
 ) -> impl Iterator<Item = Choice> + 'a {
     list(
         choice_ordering
