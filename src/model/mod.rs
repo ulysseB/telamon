@@ -203,11 +203,19 @@ fn set_data_deps(
     for operand in space.ir_instance().inst(inst_id).operands() {
         match *operand {
             ir::Operand::Variable(pred_id, _) => {
-                let prod_inst_id = unwrap!(space.ir_instance().variable(pred_id).prod_inst_id());
+                let prod_inst_id =
+                    unwrap!(space.ir_instance().variable(pred_id).prod_inst_id());
                 let pred = code_points.ids[&CodePoint::Inst(prod_inst_id)];
                 let latency = local_info.hw_pressure[&prod_inst_id.into()]
                     .bound(BottleneckLevel::Thread, thread_rates);
-                set_data_dep(space, pred, code_point, &ir::DimMap::empty(), &latency, level_dag);
+                set_data_dep(
+                    space,
+                    pred,
+                    code_point,
+                    &ir::DimMap::empty(),
+                    &latency,
+                    level_dag,
+                );
             }
             ir::Operand::Inst(pred_id, _, ref dim_map, _) => {
                 let pred = code_points.ids[&CodePoint::Inst(pred_id)];
