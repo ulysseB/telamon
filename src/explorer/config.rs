@@ -292,21 +292,19 @@ pub enum ChoiceGroup {
 
 /// A list of ChoiceGroup representing the order in which we want to determine choices
 #[derive(Clone, Serialize, Deserialize)]
-pub struct ChoiceOrdering( Vec<ChoiceGroup>);
-
+pub struct ChoiceOrdering(Vec<ChoiceGroup>);
 
 impl Default for ChoiceOrdering {
     fn default() -> Self {
-        ChoiceOrdering( vec![
-                       ChoiceGroup::LowerLayout,
-                       ChoiceGroup::Size,
-                       ChoiceGroup::DimKind,
-                       ChoiceGroup::DimMap,
-                       ChoiceGroup::MemSpace,
-                       ChoiceGroup::Order,
-                       ChoiceGroup::InstFlag,
-        ]
-        )
+        ChoiceOrdering(vec![
+            ChoiceGroup::LowerLayout,
+            ChoiceGroup::Size,
+            ChoiceGroup::DimKind,
+            ChoiceGroup::DimMap,
+            ChoiceGroup::MemSpace,
+            ChoiceGroup::Order,
+            ChoiceGroup::InstFlag,
+        ])
     }
 }
 

@@ -113,9 +113,9 @@ where
 }
 
 pub fn list<'a>(
-    iter_choice: impl Iterator<Item = ChoiceGroup> + 'a,  
+    iter_choice: impl Iterator<Item = ChoiceGroup> + 'a,
     space: &'a SearchSpace<'a>,
-    ) -> impl Iterator<Item = Choice> + 'a {
+) -> impl Iterator<Item = Choice> + 'a {
     NestedIterator::new(iter_choice.map( move |choice_grp| -> Box<dyn Iterator<Item = Choice> + 'a>  {
         let fun = space.ir_instance();
         match choice_grp {
@@ -164,7 +164,6 @@ pub fn list<'a>(
     }))
 }
 
-
 lazy_static! {
     static ref DEFAULT_ORDERING: Vec<ChoiceGroup> = vec![
         ChoiceGroup::LowerLayout,
@@ -184,9 +183,17 @@ pub fn default_list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item = Choi
     list(DEFAULT_ORDERING.iter().cloned(), space)
 }
 
-pub fn list_from_conf<'a, 'b : 'a>(space: &'a SearchSpace<'a>, 
-                          choice_ordering: &'b config::ChoiceOrdering) -> impl Iterator<Item = Choice> + 'a {
-    list(choice_ordering.iter().cloned().map(|choice_grp| ChoiceGroup::from(choice_grp)), space)
+pub fn list_from_conf<'a, 'b: 'a>(
+    space: &'a SearchSpace<'a>,
+    choice_ordering: &'b config::ChoiceOrdering,
+) -> impl Iterator<Item = Choice> + 'a {
+    list(
+        choice_ordering
+            .iter()
+            .cloned()
+            .map(|choice_grp| ChoiceGroup::from(choice_grp)),
+        space,
+    )
 }
 
 /// Generates a choice from a list of possible values.
