@@ -526,12 +526,27 @@
 <span id="526">526</span>
 <span id="527">527</span>
 <span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Exploration of the search space.</span>
 
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">Context</span>;
 <span class="kw">use</span> <span class="ident">explorer</span>::<span class="ident">candidate</span>::<span class="ident">Candidate</span>;
-<span class="kw">use</span> <span class="ident">explorer</span>::<span class="ident">config</span>::{<span class="ident">BanditConfig</span>, <span class="ident">NewNodeOrder</span>, <span class="ident">OldNodeOrder</span>};
+<span class="kw">use</span> <span class="ident">explorer</span>::<span class="ident">config</span>::{<span class="self">self</span>, <span class="ident">BanditConfig</span>, <span class="ident">NewNodeOrder</span>, <span class="ident">OldNodeOrder</span>};
 <span class="kw">use</span> <span class="ident">explorer</span>::<span class="ident">logger</span>::<span class="ident">LogMessage</span>;
 <span class="kw">use</span> <span class="ident">explorer</span>::<span class="ident">store</span>::<span class="ident">Store</span>;
 <span class="kw">use</span> <span class="ident">explorer</span>::{<span class="ident">choice</span>, <span class="ident">local_selection</span>};
@@ -656,6 +671,7 @@
                             <span class="kw">match</span> <span class="ident">maybe_candidate</span> {
                                 <span class="prelude-val">Ok</span>(<span class="ident">candidate</span>) <span class="op">=&gt;</span> {
                                     <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">local_selection</span>::<span class="ident">descend</span>(
+                                        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">config</span>.<span class="ident">choice_ordering</span>,
                                         <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">new_nodes_order</span>,
                                         <span class="ident">context</span>,
                                         <span class="ident">candidate</span>,
@@ -726,7 +742,11 @@
                 <span class="kw">return</span> <span class="prelude-val">None</span>;
             }
             <span class="kw">let</span> <span class="ident">cut</span>: <span class="ident">f64</span> <span class="op">=</span> { <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">cut</span>.<span class="ident">read</span>()) };
-            <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">shared_tree</span>.<span class="ident">write</span>()).<span class="ident">descend</span>(<span class="ident">context</span>, <span class="ident">cut</span>);
+            <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">shared_tree</span>.<span class="ident">write</span>()).<span class="ident">descend</span>(
+                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">config</span>.<span class="ident">choice_ordering</span>,
+                <span class="ident">context</span>,
+                <span class="ident">cut</span>,
+            );
             <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DescendState</span>::<span class="ident">DeadEnd</span> <span class="op">=</span> <span class="ident">state</span> {
                 <span class="kw">return</span> <span class="prelude-val">None</span>;
             }
@@ -809,14 +829,20 @@
     }
 
     <span class="doccomment">/// Descend one level in the tree, expanding it if necessary.</span>
-    <span class="kw">fn</span> <span class="ident">descend</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>, <span class="ident">cut</span>: <span class="ident">f64</span>) <span class="op">-&gt;</span> <span class="ident">DescendState</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">descend</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">choice_ordering</span>: <span class="kw-2">&amp;</span><span class="ident">config</span>::<span class="ident">ChoiceOrdering</span>,
+        <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
+        <span class="ident">cut</span>: <span class="ident">f64</span>,
+    ) <span class="op">-&gt;</span> <span class="ident">DescendState</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">replace</span>(<span class="self">self</span>, <span class="ident">SubTree</span>::<span class="ident">Empty</span>) {
             <span class="ident">SubTree</span>::<span class="ident">InternalNode</span>(<span class="ident">node</span>, <span class="ident">bound</span>) <span class="op">=&gt;</span> {
                 <span class="kw-2">*</span><span class="self">self</span> <span class="op">=</span> <span class="ident">SubTree</span>::<span class="ident">InternalNode</span>(<span class="ident">node</span>.<span class="ident">clone</span>(), <span class="ident">bound</span>);
                 <span class="ident">DescendState</span>::<span class="ident">InternalNode</span>(<span class="ident">node</span>, <span class="bool-val">false</span>)
             }
             <span class="ident">SubTree</span>::<span class="ident">UnexpandedNode</span>(<span class="ident">candidate</span>) <span class="op">=&gt;</span> {
-                <span class="kw">let</span> <span class="ident">choice</span> <span class="op">=</span> <span class="ident">choice</span>::<span class="ident">list</span>(<span class="kw-2">&amp;</span><span class="ident">candidate</span>.<span class="ident">space</span>).<span class="ident">next</span>();
+                <span class="kw">let</span> <span class="ident">choice</span> <span class="op">=</span>
+                    <span class="ident">choice</span>::<span class="ident">list_with_conf</span>(<span class="ident">choice_ordering</span>, <span class="kw-2">&amp;</span><span class="ident">candidate</span>.<span class="ident">space</span>).<span class="ident">next</span>();
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">choice</span>) <span class="op">=</span> <span class="ident">choice</span> {
                     <span class="kw">let</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">candidate</span>.<span class="ident">apply_choice</span>(<span class="ident">context</span>, <span class="ident">choice</span>);
                     <span class="kw">let</span> <span class="ident">children</span> <span class="op">=</span> <span class="ident">Children</span>::<span class="ident">from_candidates</span>(<span class="ident">candidates</span>, <span class="ident">cut</span>);
@@ -902,7 +928,10 @@
         <span class="self">self</span>.<span class="ident">trim</span>(<span class="ident">cut</span>);
         <span class="self">self</span>.<span class="ident">pick_child</span>(<span class="ident">config</span>, <span class="ident">cut</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">idx</span><span class="op">|</span> {
             <span class="self">self</span>.<span class="ident">rewards</span>[<span class="ident">idx</span>].<span class="number">1</span> <span class="op">+=</span> <span class="number">1</span>;
-            (<span class="ident">idx</span>, <span class="self">self</span>.<span class="ident">children</span>[<span class="ident">idx</span>].<span class="ident">descend</span>(<span class="ident">context</span>, <span class="ident">cut</span>))
+            (
+                <span class="ident">idx</span>,
+                <span class="self">self</span>.<span class="ident">children</span>[<span class="ident">idx</span>].<span class="ident">descend</span>(<span class="kw-2">&amp;</span><span class="ident">config</span>.<span class="ident">choice_ordering</span>, <span class="ident">context</span>, <span class="ident">cut</span>),
+            )
         })
     }
 
@@ -929,7 +958,8 @@
                     <span class="kw">return</span> (<span class="ident">idx</span>, <span class="prelude-val">Err</span>(<span class="ident">DescendState</span>::<span class="ident">InternalNode</span>(<span class="ident">node</span>.<span class="ident">clone</span>(), <span class="bool-val">true</span>)))
                 }
             };
-            <span class="kw">let</span> <span class="ident">choice</span> <span class="op">=</span> <span class="ident">choice</span>::<span class="ident">list</span>(<span class="kw-2">&amp;</span><span class="ident">cand</span>.<span class="ident">space</span>).<span class="ident">next</span>();
+            <span class="kw">let</span> <span class="ident">choice</span> <span class="op">=</span>
+                <span class="ident">choice</span>::<span class="ident">list_with_conf</span>(<span class="kw-2">&amp;</span><span class="ident">config</span>.<span class="ident">choice_ordering</span>, <span class="kw-2">&amp;</span><span class="ident">cand</span>.<span class="ident">space</span>).<span class="ident">next</span>();
             <span class="kw">let</span> <span class="ident">out</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">choice</span>) <span class="op">=</span> <span class="ident">choice</span> {
                 <span class="kw">let</span> <span class="ident">cands</span> <span class="op">=</span> <span class="ident">cand</span>.<span class="ident">apply_choice</span>(<span class="ident">context</span>, <span class="ident">choice</span>);
                 <span class="self">self</span>.<span class="ident">children</span>[<span class="ident">idx</span>] <span class="op">=</span> <span class="ident">SubTree</span>::<span class="ident">UnexpandedNode</span>(<span class="ident">cand</span>);

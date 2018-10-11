@@ -271,6 +271,52 @@
 <span id="271">271</span>
 <span id="272">272</span>
 <span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Defines a structure to store the configuration of the exploration. The configuration</span>
 <span class="doccomment">//! is read from the `Setting.toml` file if it exists. Some parameters can be overridden</span>
@@ -470,6 +516,8 @@
     <span class="doccomment">/// If true, does not expand tree until end - instead, starts a montecarlo descend after each</span>
     <span class="doccomment">/// expansion of a node</span>
     <span class="kw">pub</span> <span class="ident">monte_carlo</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// Order in which the different choices are going to be determined</span>
+    <span class="kw">pub</span> <span class="ident">choice_ordering</span>: <span class="ident">ChoiceOrdering</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">BanditConfig</span> {
@@ -499,6 +547,7 @@
             <span class="ident">old_nodes_order</span>: <span class="ident">OldNodeOrder</span>::<span class="ident">default</span>(),
             <span class="ident">threshold</span>: <span class="number">10</span>,
             <span class="ident">delta</span>: <span class="number">1.</span>,
+            <span class="ident">choice_ordering</span>: <span class="ident">ChoiceOrdering</span>::<span class="ident">default</span>(),
             <span class="ident">monte_carlo</span>: <span class="bool-val">true</span>,
         }
     }
@@ -543,6 +592,49 @@
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">OldNodeOrder</span> {
     <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="ident">OldNodeOrder</span>::<span class="ident">Bandit</span>
+    }
+}
+
+<span class="doccomment">/// An enum listing the Group of choices we can make</span>
+<span class="doccomment">/// For example, we can make first all DimKind decisions, then all Order decisions, etc.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
+<span class="comment">//#[serde(tag = &quot;type&quot;)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;snake_case&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ChoiceGroup</span> {
+    <span class="ident">LowerLayout</span>,
+    <span class="ident">Size</span>,
+    <span class="ident">DimKind</span>,
+    <span class="ident">DimMap</span>,
+    <span class="ident">Order</span>,
+    <span class="ident">MemSpace</span>,
+    <span class="ident">InstFlag</span>,
+}
+
+<span class="doccomment">/// A list of ChoiceGroup representing the order in which we want to determine choices</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ChoiceOrdering</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ChoiceGroup</span><span class="op">&gt;</span>);
+
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">ChoiceOrdering</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="ident">ChoiceOrdering</span>(<span class="macro">vec</span><span class="macro">!</span>[
+            <span class="ident">ChoiceGroup</span>::<span class="ident">LowerLayout</span>,
+            <span class="ident">ChoiceGroup</span>::<span class="ident">Size</span>,
+            <span class="ident">ChoiceGroup</span>::<span class="ident">DimKind</span>,
+            <span class="ident">ChoiceGroup</span>::<span class="ident">DimMap</span>,
+            <span class="ident">ChoiceGroup</span>::<span class="ident">MemSpace</span>,
+            <span class="ident">ChoiceGroup</span>::<span class="ident">Order</span>,
+            <span class="ident">ChoiceGroup</span>::<span class="ident">InstFlag</span>,
+        ])
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">ChoiceOrdering</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">print_serialize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="macro">println</span><span class="macro">!</span>(<span class="string">&quot;{}&quot;</span>, <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">toml</span>::<span class="ident">to_string</span>(<span class="self">self</span>)));
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">iter</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ChoiceGroup</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Clone</span> {
+        <span class="self">self</span>.<span class="number">0</span>.<span class="ident">iter</span>()
     }
 }
 </pre>

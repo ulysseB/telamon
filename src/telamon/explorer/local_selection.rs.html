@@ -116,12 +116,14 @@
 <span id="116">116</span>
 <span id="117">117</span>
 <span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Provides different methods to select a candidate in a list.</span>
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">Context</span>;
 <span class="kw">use</span> <span class="ident">explorer</span>::<span class="ident">candidate</span>::<span class="ident">Candidate</span>;
 <span class="kw">use</span> <span class="ident">explorer</span>::<span class="ident">choice</span>;
-<span class="kw">use</span> <span class="ident">explorer</span>::<span class="ident">config</span>::<span class="ident">NewNodeOrder</span>;
+<span class="kw">use</span> <span class="ident">explorer</span>::<span class="ident">config</span>::{<span class="ident">ChoiceOrdering</span>, <span class="ident">NewNodeOrder</span>};
 <span class="kw">use</span> <span class="ident">rand</span>::<span class="ident">distributions</span>::{<span class="ident">IndependentSample</span>, <span class="ident">Weighted</span>, <span class="ident">WeightedChoice</span>};
 <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">thread_rng</span>, <span class="ident">Rng</span>};
 <span class="kw">use</span> <span class="ident">std</span>;
@@ -130,16 +132,18 @@
 <span class="doccomment">/// A recursive function that takes a candidate and expands it until we have a completely specified</span>
 <span class="doccomment">/// candidate that we can pass to the evaluator, or we find a dead-end</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">descend</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-    <span class="ident">order</span>: <span class="ident">NewNodeOrder</span>,
+    <span class="ident">choice_order</span>: <span class="kw-2">&amp;</span><span class="ident">ChoiceOrdering</span>,
+    <span class="ident">node_order</span>: <span class="ident">NewNodeOrder</span>,
     <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span>,
     <span class="ident">candidate</span>: <span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
     <span class="ident">cut</span>: <span class="ident">f64</span>,
 ) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
-    <span class="kw">let</span> <span class="ident">choice_opt</span> <span class="op">=</span> <span class="ident">choice</span>::<span class="ident">list</span>(<span class="kw-2">&amp;</span><span class="ident">candidate</span>.<span class="ident">space</span>).<span class="ident">next</span>();
+    <span class="comment">//let choice_opt = choice::list(&amp;candidate.space).next();</span>
+    <span class="kw">let</span> <span class="ident">choice_opt</span> <span class="op">=</span> <span class="ident">choice</span>::<span class="ident">list_with_conf</span>(<span class="ident">choice_order</span>, <span class="kw-2">&amp;</span><span class="ident">candidate</span>.<span class="ident">space</span>).<span class="ident">next</span>();
     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">choice</span>) <span class="op">=</span> <span class="ident">choice_opt</span> {
         <span class="kw">let</span> <span class="ident">new_nodes</span> <span class="op">=</span> <span class="ident">candidate</span>.<span class="ident">apply_choice</span>(<span class="ident">context</span>, <span class="ident">choice</span>);
-        <span class="ident">pick_candidate</span>(<span class="ident">order</span>, <span class="ident">new_nodes</span>, <span class="ident">cut</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">node</span><span class="op">|</span> <span class="ident">descend</span>(<span class="ident">order</span>, <span class="ident">context</span>, <span class="ident">node</span>, <span class="ident">cut</span>))
+        <span class="ident">pick_candidate</span>(<span class="ident">node_order</span>, <span class="ident">new_nodes</span>, <span class="ident">cut</span>)
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">node</span><span class="op">|</span> <span class="ident">descend</span>(<span class="ident">choice_order</span>, <span class="ident">node_order</span>, <span class="ident">context</span>, <span class="ident">node</span>, <span class="ident">cut</span>))
     } <span class="kw">else</span> {
         <span class="prelude-val">Some</span>(<span class="ident">candidate</span>)
     }
