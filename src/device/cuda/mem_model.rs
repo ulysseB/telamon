@@ -5,7 +5,7 @@ use ir;
 use itertools::Itertools;
 use model::size;
 use num::Integer;
-use search_space::{DimKind, Domain, InstFlag, SearchSpace, ThreadMapping};
+use search_space::*;
 use std;
 use utils::*;
 
@@ -15,7 +15,7 @@ use utils::*;
 /// Result of the memory analysis for one instruction. Vector instructions are considered
 /// as a single instance and predicated dimensions are not considered to compute the
 /// average pressure.
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub struct MemInfo {
     /// The proportion of instruction that produce a L2 miss.
     pub l2_miss_ratio: f64,
@@ -25,6 +25,10 @@ pub struct MemInfo {
     pub l2_coalescing: f64,
     /// The number of times the instruction must be issued to be completed.
     pub replay_factor: f64,
+    /// Indicates if the instruction accesses shared memory.
+    pub access_shared: bool,
+    /// Indicates if the instruction accesses global memory.
+    pub access_global: bool,
 }
 
 /// Runs the memory analysis.
@@ -38,17 +42,21 @@ pub fn analyse(
     let flag = space.domain().get_inst_flag(inst.id());
     let info = match *inst.operator() {
         ir::Operator::Ld(_, _, ref pattern) | ir::Operator::St(_, _, _, ref pattern) => {
-            let is_shared = flag.is(InstFlag::MEM_SHARED);
+            let mem_space = space.domain().get_mem_space(pattern.mem_block());
+            let is_shared = mem_space.is(MemSpace::SHARED);
             match pattern {
-                _ if flag.intersects(InstFlag::MEM_NC) => unknown_info(is_shared, gpu),
+                _ if flag.intersects(InstFlag::CACHE_READ_ONLY) => {
+                    unknown_info(is_shared, gpu)
+                }
                 ir::AccessPattern::Unknown { .. } => unknown_info(is_shared, gpu),
                 ir::AccessPattern::Tensor { ref dims, .. } => {
                     info(space, inst, dims, is_shared, gpu, sizes, ctx)
                 }
             }
         }
-        ir::Operator::TmpLd(..) | ir::Operator::TmpSt(..) => {
-            let is_shared = flag.is(InstFlag::MEM_SHARED);
+        ir::Operator::TmpLd(.., mem) | ir::Operator::TmpSt(.., mem) => {
+            let mem_space = space.domain().get_mem_space(mem);
+            let is_shared = mem_space.is(MemSpace::SHARED);
             unknown_info(is_shared, gpu)
         }
         _ => panic!(),
@@ -57,25 +65,18 @@ pub fn analyse(
     info
 }
 
-const NO_ACCESS_INFO: MemInfo = MemInfo {
-    l2_miss_ratio: std::f64::INFINITY,
-    l1_coalescing: std::f64::INFINITY,
-    l2_coalescing: std::f64::INFINITY,
-    replay_factor: std::f64::INFINITY,
-};
-
 /// Computes the `MemInfo` when the access pattern is unknown.
 fn unknown_info(is_shared_access: Trivalent, gpu: &cuda::Gpu) -> MemInfo {
-    let mut info = NO_ACCESS_INFO;
+    let mut info = MemInfo::default();
     if is_shared_access.maybe_true() {
-        info.l2_miss_ratio = 0.0;
         info.replay_factor = 1.0;
+        info.access_shared = true;
     }
     if is_shared_access.maybe_false() {
-        info.l2_miss_ratio = 0.0;
         info.l1_coalescing = 1.0 / f64::from(gpu.wrap_size);
         info.l2_coalescing = 1.0 / f64::from(gpu.wrap_size);
         info.replay_factor = 1.0;
+        info.access_global = true;
     }
     info
 }
@@ -94,22 +95,23 @@ fn info(
     sizes: &HashMap<ir::DimId, size::Range>,
     ctx: &Context,
 ) -> MemInfo {
-    let mut info = NO_ACCESS_INFO;
+    let mut info = MemInfo::default();
     let thread_dims = tensor_thread_dims(space, inst, dims, sizes, ctx);
     trace!("thread dims: {:?}", thread_dims);
+    info.replay_factor = std::f64::INFINITY;
     if is_shared_access.maybe_true() {
         let replay = shared_replay_factor(thread_dims.clone(), dims, sizes, space, gpu);
         info.replay_factor = f64::min(replay, info.replay_factor);
-        info.l2_miss_ratio = 0.0;
+        info.access_shared = true;
     }
     if is_shared_access.maybe_false() {
         let (l1_coalescing, l2_coalescing, replay) =
             global_coalescing(thread_dims, space, gpu);
-        info.l1_coalescing = f64::min(l1_coalescing, info.l1_coalescing);
-        info.l2_coalescing = f64::min(l2_coalescing, info.l2_coalescing);
+        info.l1_coalescing = l1_coalescing;
+        info.l2_coalescing = l2_coalescing;
         info.replay_factor = f64::min(replay, info.replay_factor);
+        info.access_global = true;
         // TODO(model): compute the miss ratio
-        info.l2_miss_ratio = 0.0;
     }
     info
 }
@@ -609,7 +611,7 @@ mod tests {
         let stride = ir::Size::new_const(gpu.l1_cache_line).into();
         let pattern =
             builder.tensor_access_pattern(ir::MemId::External(0), vec![(&d0, stride)]);
-        let ld = builder.ld_ex(t, &addr, pattern, InstFlag::MEM_CG);
+        let ld = builder.ld_ex(t, &addr, pattern, InstFlag::CACHE_GLOBAL);
         builder.order(&d0, &d1, d0_d1_order);
 
         let mut size_map = HashMap::default();

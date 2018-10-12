@@ -182,9 +182,9 @@ fn partial_bound_2() {
     builder.order(&ld_a[0][1], &ld_x.inst(), Order::BEFORE);
     builder.order(&acc_dim_m[1], &ld_x.inst(), Order::AFTER);
 
-    builder.action(Action::InstFlag(ld_x.inst(), InstFlag::MEM_CG));
-    builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CG));
-    builder.action(Action::InstFlag(st_y.inst(), InstFlag::MEM_CS));
+    builder.action(Action::InstFlag(ld_x.inst(), InstFlag::CACHE_GLOBAL));
+    builder.action(Action::InstFlag(ld_a.inst(), InstFlag::CACHE_GLOBAL));
+    builder.action(Action::InstFlag(st_y.inst(), InstFlag::NO_CACHE));
 
     let partial_bound = model::bound(&builder.get_clone(), &context);
     builder.action(Action::DimKind(ld_a[0][0], DimKind::BLOCK));
@@ -302,7 +302,7 @@ fn partial_bound_4() {
     builder.action(Action::DimKind(ld_a[1][0], DimKind::THREAD));
     builder.action(Action::DimKind(ld_a[2][0], DimKind::LOOP));
 
-    builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CS));
+    builder.action(Action::InstFlag(ld_a.inst(), InstFlag::NO_CACHE));
 
     let partial_pressure = {
         let space = builder.get_clone();
@@ -445,9 +445,9 @@ fn final_bound_0() {
     builder.order(&ld_x[0][1], &ld_y.inst(), Order::BEFORE);
     builder.order(&ld_y[0][1], &mad.inst(), Order::BEFORE);
     builder.order(&mad_dim[1], &st_z.inst(), Order::OUTER);
-    builder.action(Action::InstFlag(ld_x.inst(), InstFlag::MEM_CS));
-    builder.action(Action::InstFlag(ld_y.inst(), InstFlag::MEM_CG));
-    builder.action(Action::InstFlag(st_z.inst(), InstFlag::MEM_CG));
+    builder.action(Action::InstFlag(ld_x.inst(), InstFlag::NO_CACHE));
+    builder.action(Action::InstFlag(ld_y.inst(), InstFlag::CACHE_GLOBAL));
+    builder.action(Action::InstFlag(st_z.inst(), InstFlag::CACHE_GLOBAL));
     let space = builder.get();
     let bound = model::bound(&space, &context);
     let kernel = codegen::Function::build(&space);

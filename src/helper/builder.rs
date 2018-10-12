@@ -138,7 +138,7 @@ impl<'a> Builder<'a> {
         addr: &AutoOperand<'b>,
         pattern: AccessPattern<'a>,
     ) -> InstId {
-        self.ld_ex(ret_type, addr, pattern, InstFlag::MEM_COHERENT)
+        self.ld_ex(ret_type, addr, pattern, InstFlag::COHERENT)
     }
 
     /// Adds a non-coherent load from global memory instruction to the function.

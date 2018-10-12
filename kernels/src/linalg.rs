@@ -154,9 +154,9 @@ where
 
         builder.order(&acc_dim_n, &st_y.inst(), Order::BEFORE);
         // TODO(search_space): explore inst flags
-        builder.action(Action::InstFlag(ld_x.inst(), InstFlag::MEM_CG));
-        builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CG));
-        builder.action(Action::InstFlag(st_y.inst(), InstFlag::MEM_CS));
+        builder.action(Action::InstFlag(ld_x.inst(), InstFlag::CACHE_GLOBAL));
+        builder.action(Action::InstFlag(ld_a.inst(), InstFlag::CACHE_GLOBAL));
+        builder.action(Action::InstFlag(st_y.inst(), InstFlag::NO_CACHE));
         vec![build_candidate(builder.get(), ctx)]
     }
 
@@ -265,10 +265,10 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
 
         builder.order(&acc_dim_n, &y_a, Order::BEFORE);
         // TODO(search_space): explore inst flags
-        builder.action(Action::InstFlag(ld_x.inst(), InstFlag::MEM_CG));
-        builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CG));
-        builder.action(Action::InstFlag(ld_b.inst(), InstFlag::MEM_CG));
-        builder.action(Action::InstFlag(st_y.inst(), InstFlag::MEM_CS));
+        builder.action(Action::InstFlag(ld_x.inst(), InstFlag::CACHE_GLOBAL));
+        builder.action(Action::InstFlag(ld_a.inst(), InstFlag::CACHE_GLOBAL));
+        builder.action(Action::InstFlag(ld_b.inst(), InstFlag::CACHE_GLOBAL));
+        builder.action(Action::InstFlag(st_y.inst(), InstFlag::NO_CACHE));
         vec![build_candidate(builder.get(), ctx)]
     }
 
@@ -418,9 +418,9 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
         // Order for correctness.
         builder.order(&st_c.inst(), &acc_dim_k, Order::AFTER);
         // Arbitrary constrains to reduce the search space
-        //builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CG | InstFlag::MEM_NC));
-        //builder.action(Action::InstFlag(ld_b.inst(), InstFlag::MEM_CG | InstFlag::MEM_NC));
-        //builder.action(Action::InstFlag(st_c.inst(), InstFlag::MEM_CS));
+        //builder.action(Action::InstFlag(ld_a.inst(), InstFlag::CACHE_GLOBAL));
+        //builder.action(Action::InstFlag(ld_b.inst(), InstFlag::CACHE_GLOBAL));
+        //builder.action(Action::InstFlag(st_c.inst(), InstFlag::NO_CACHE));
 
         //builder.action(Action::DimKind(init_dim_n[0], DimKind::BLOCK));
         //builder.action(Action::DimKind(init_dim_m[0], DimKind::BLOCK));

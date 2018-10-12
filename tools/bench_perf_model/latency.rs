@@ -92,7 +92,7 @@ impl PerfModelTest for InstChain {
         let i2 = builder.mul(&"x", &i1);
         builder.close_dim(&d0);
         let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
-        builder.st_ex(&"out", &i2, true, pattern, InstFlag::MEM_CS);
+        builder.st_ex(&"out", &i2, true, pattern, InstFlag::NO_CACHE);
         InstChain
     }
 }
@@ -124,7 +124,7 @@ impl PerfModelTest for LongInstChain {
         }
         builder.close_dim(&d0);
         let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
-        builder.st_ex(&"out", &inst, true, pattern, InstFlag::MEM_CS);
+        builder.st_ex(&"out", &inst, true, pattern, InstFlag::NO_CACHE);
         LongInstChain
     }
 }
@@ -160,7 +160,7 @@ impl PerfModelTest for UnrollReduction {
         builder.close_dim(&d0);
         builder.close_dim(&d1);
         let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
-        builder.st_ex(&"out", &inst, true, pattern, InstFlag::MEM_CS);
+        builder.st_ex(&"out", &inst, true, pattern, InstFlag::NO_CACHE);
         UnrollReduction {
             d0: d0[0],
             d1: d1[0],
@@ -236,7 +236,8 @@ impl PerfModelTest for OrderedThreadDims {
         builder.open_dim_ex(size_n, DimKind::LOOP);
         let d1 = builder.open_dim_ex(size_0.clone(), DimKind::THREAD);
         let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
-        let init = builder.ld_ex(ir::Type::I(32), &"out", pattern, InstFlag::MEM_CG);
+        let init =
+            builder.ld_ex(ir::Type::I(32), &"out", pattern, InstFlag::CACHE_GLOBAL);
         let d1_1 = builder.open_dim_ex(size_1.clone(), DimKind::LOOP);
         let d1_2 = builder.open_dim_ex(size_2.clone(), DimKind::UNROLL);
         let inst = builder.mul(&"x", &Reduce(init));
@@ -248,7 +249,7 @@ impl PerfModelTest for OrderedThreadDims {
         let d2_1 = builder.open_dim_ex(size_1.clone(), DimKind::LOOP);
         let d2_2 = builder.open_dim_ex(size_2.clone(), DimKind::UNROLL);
         let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
-        builder.st_ex(&"out", &inst, true, pattern, InstFlag::MEM_CG);
+        builder.st_ex(&"out", &inst, true, pattern, InstFlag::CACHE_GLOBAL);
 
         builder.order(&d1, &d1_1, Order::OUTER);
         builder.order(&d1_1, &d1_2, Order::OUTER);
@@ -293,7 +294,7 @@ impl PerfModelTest for DimMap {
         builder.close_dim(&d2);
         builder.close_dim(&d0);
         let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
-        builder.st_ex(&"out", &i2, true, pattern, InstFlag::MEM_CS);
+        builder.st_ex(&"out", &i2, true, pattern, InstFlag::NO_CACHE);
         builder.order(&d1, &d2, Order::BEFORE);
         DimMap
     }
@@ -327,7 +328,7 @@ impl PerfModelTest for OperandPositionSlow {
         builder.close_dim(&d0);
         builder.close_dim(&d1);
         let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
-        builder.st_ex(&"out", &inst, true, pattern, InstFlag::MEM_CS);
+        builder.st_ex(&"out", &inst, true, pattern, InstFlag::NO_CACHE);
         builder.order(&d0, &d1, Order::OUTER);
         OperandPositionSlow
     }
@@ -361,7 +362,7 @@ impl PerfModelTest for OperandPositionFast {
         builder.close_dim(&d0);
         builder.close_dim(&d1);
         let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
-        builder.st_ex(&"out", &inst, true, pattern, InstFlag::MEM_CS);
+        builder.st_ex(&"out", &inst, true, pattern, InstFlag::NO_CACHE);
         builder.order(&d0, &d1, Order::OUTER);
         OperandPositionFast
     }
