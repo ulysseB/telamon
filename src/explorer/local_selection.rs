@@ -50,13 +50,7 @@ where
 {
     let nodes = nodes.into_iter().filter(|&(_, b)| b < cut);
     match order {
-        NewNodeOrder::Api => {
-            if nodes.into_iter().next().is_some() {
-                Some(0)
-            } else {
-                None
-            }
-        }
+        NewNodeOrder::Api => nodes.into_iter().next().map(|(idx, _)| idx),
         NewNodeOrder::WeightedRandom => choose_cand_weighted(nodes, cut),
         NewNodeOrder::Bound => choose_cand_best(nodes),
         NewNodeOrder::Random => choose_cand_rand(nodes),
