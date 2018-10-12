@@ -438,7 +438,7 @@ pub enum ChoiceAction {
     /// The choice runs all its filters on itself.
     FilterSelf,
     /// The choice runs a filter on another choice.
-    Filter(RemoteFilterCall),
+    RemoteFilter(RemoteFilterCall),
     /// Increments a counter if the increment condition is statisfied.
     IncrCounter {
         counter: ir::ChoiceInstance,
@@ -466,7 +466,7 @@ impl ChoiceAction {
     fn applies_to_symmetric(&self) -> bool {
         match *self {
             // Filters for the symmetric are already produced by constraint translation.
-            ChoiceAction::FilterSelf | ChoiceAction::Filter { .. } => false,
+            ChoiceAction::FilterSelf | ChoiceAction::RemoteFilter { .. } => false,
             _ => true,
         }
     }
@@ -474,7 +474,7 @@ impl ChoiceAction {
     /// Returns the list of variables to allocate.
     pub fn variables<'a>(&'a self) -> Box<Iterator<Item = &'a ir::Set> + 'a> {
         match self {
-            ChoiceAction::Filter(remote_call) => {
+            ChoiceAction::RemoteFilter(remote_call) => {
                 Box::new(remote_call.filter.forall_vars.iter()) as Box<_>
             }
             ChoiceAction::Trigger { .. }
@@ -512,7 +512,7 @@ impl Adaptable for ChoiceAction {
         use self::ChoiceAction::*;
         match self {
             FilterSelf => FilterSelf,
-            Filter(remote_call) => Filter(remote_call.adapt(adaptator)),
+            RemoteFilter(remote_call) => RemoteFilter(remote_call.adapt(adaptator)),
             IncrCounter {
                 counter,
                 value,
@@ -538,7 +538,6 @@ impl Adaptable for ChoiceAction {
                 inverse_self_cond,
             } => Trigger {
                 condition: condition.adapt(adaptator),
-                // FIXME: obj + arg conflicts
                 code: code.adapt(adaptator),
                 id: *id,
                 inverse_self_cond: *inverse_self_cond,

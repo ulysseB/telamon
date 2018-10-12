@@ -166,11 +166,10 @@ impl IrDesc {
                 panic!("expected an argument variable");
             }
         }
-        for i in 0..foralls.len() {
+        for (i, mut set) in foralls.iter().cloned().enumerate() {
             let var = Variable::Forall(i);
             // If the set if a reverse set, it has no proper definition so we cannot
-            // register it. Instead we re-reverse it to obtain the intial set.
-            let mut set = foralls[i].clone();
+            // register it. Instead we re-reverse it to obtain the initial set.
             let arg_set;
             let reverse = if (&set).def().name().is_empty() {
                 let (rev_arg_set, rev_set) = set
@@ -311,7 +310,7 @@ impl IrDesc {
         OnChangeAction {
             forall_vars: choice_foralls,
             set_constraints,
-            action: ChoiceAction::Filter(remote_filter),
+            action: ChoiceAction::RemoteFilter(remote_filter),
         }
     }
 

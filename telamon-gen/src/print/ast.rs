@@ -104,7 +104,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    /// Create a new context, without beiing liked to a particular choice or filter.
+    /// Create a new context, without beiing linked to a particular choice or filter.
     pub fn new_outer(
         ir_desc: &'a ir::IrDesc,
         args: &[(Variable<'a>, &'a ir::Set)],

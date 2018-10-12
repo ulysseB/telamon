@@ -294,7 +294,7 @@ impl<'a> OnChangeAction<'a> {
 #[derive(Serialize)]
 enum ChoiceAction<'a> {
     FilterSelf,
-    Filter(RemoteFilterCall<'a>),
+    FilterRemote(RemoteFilterCall<'a>),
     IncrCounter {
         counter_name: &'a str,
         arguments: Vec<(ast::Variable<'a>, ast::Set<'a>)>,
@@ -339,10 +339,10 @@ impl<'a> ChoiceAction<'a> {
     ) -> Self {
         match action {
             ir::ChoiceAction::FilterSelf => ChoiceAction::FilterSelf,
-            ir::ChoiceAction::Filter(remote_call) => {
+            ir::ChoiceAction::RemoteFilter(remote_call) => {
                 let call =
                     RemoteFilterCall::new(remote_call, conflicts, forall_offset, ctx);
-                ChoiceAction::Filter(call)
+                ChoiceAction::FilterRemote(call)
             }
             ir::ChoiceAction::IncrCounter {
                 counter,

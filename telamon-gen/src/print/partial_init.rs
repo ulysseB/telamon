@@ -85,7 +85,6 @@ fn iter_new_objects(
         for &#obj_arg_pattern in #new_objs_iter.iter() {
             #arg_def
             let #obj = #obj_getter;
-            trace!("bloup");
             #body
         }
     }
