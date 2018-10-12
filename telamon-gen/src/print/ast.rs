@@ -70,7 +70,6 @@ impl<'a> Serialize for Variable<'a> {
 #[derive(Clone)]
 pub struct Context<'a> {
     pub ir_desc: &'a ir::IrDesc,
-    pub choice: &'a ir::Choice,
     vars: HashMap<ir::Variable, (Variable<'a>, &'a ir::Set)>,
     inputs: Vec<print::ValueIdent>,
 }
@@ -100,9 +99,28 @@ impl<'a> Context<'a> {
             }).collect();
         Context {
             ir_desc,
-            choice,
             vars,
             inputs,
+        }
+    }
+
+    /// Create a new context, without beiing liked to a particular choice or filter.
+    pub fn new_outer(
+        ir_desc: &'a ir::IrDesc,
+        args: &[(Variable<'a>, &'a ir::Set)],
+        foralls: &'a [ir::Set],
+    ) -> Self {
+        let mut vars = HashMap::default();
+        for (id, var_def) in args.iter().enumerate() {
+            vars.insert(ir::Variable::Arg(id), var_def.clone());
+        }
+        for (id, set) in foralls.iter().enumerate() {
+            vars.insert(ir::Variable::Forall(id), (Variable::with_set(set), set));
+        }
+        Context {
+            ir_desc,
+            vars,
+            inputs: vec![],
         }
     }
 

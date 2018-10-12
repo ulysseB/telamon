@@ -121,7 +121,7 @@ macro_rules! define_ir {
         define_ir!(@from_super_id $super);
     };
     (@impl_super trait $super:ident) => {
-        impl<T: Obj + ?Sized> super::$superset::Obj for T {
+        impl<T: Obj + ?Sized> super::$super::Obj for T {
             define_ir!(@impl_super_methods $super);
         }
         define_ir!(@from_super_id $super);

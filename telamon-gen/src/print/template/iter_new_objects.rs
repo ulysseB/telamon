@@ -1,11 +1,11 @@
-for (pos, &{{#if set.arg~}}(obj_var, obj){{else}}obj{{/if~}})
+for (pos, &{{#if set.arg~}}(arg, obj){{else}}obj{{/if~}})
     in {{>set.new_objs def=set objs="new_objs"}}.iter().enumerate() {
     {{#if set.arg~}}
-        let obj_var = {{>set.item_getter def=set.arg id="obj_var"}};
+        let arg = {{>set.item_getter def=set.arg id="arg"}};
     {{/if~}}
-    let obj = {{>set.item_getter def=set id="obj" var="obj_var"}};
+    let obj = {{>set.item_getter def=set id="obj" var="arg"}};
     {{#each arg_conflicts~}}
-        {{>conflict var="obj_var" is_triangular=false}}
+        {{>conflict var="arg" is_triangular=false}}
     {{/each~}}
     {{#each loop_nest.levels~}}
         for {{this.[0]}} in {{>set.iterator this.[1]}} {

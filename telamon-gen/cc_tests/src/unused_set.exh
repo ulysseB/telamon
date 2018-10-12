@@ -1,0 +1,49 @@
+set SetA:
+  item_type = "ir::set_a::Obj"
+  id_type = "ir::set_a::Id"
+  item_getter = "ir::set_a::get($fun, $id)"
+  id_getter = "ir::set_a::Obj::id($item)"
+  iterator = "ir::set_a::iter($fun)"
+  new_objs = "$objs.set_a"
+end
+
+set SetB:
+  item_type = "ir::set_b::Obj"
+  id_type = "ir::set_b::Id"
+  item_getter = "ir::set_b::get($fun, $id)"
+  id_getter = "ir::set_b::Obj::id($item)"
+  iterator = "ir::set_b::iter($fun)"
+  new_objs = "$objs.set_b"
+end
+
+set SubsetB subsetof SetB:
+  item_type = "ir::subset_b::Obj"
+  id_type = "ir::subset_b::Id"
+  item_getter = "ir::subset_b::get($fun, $id)"
+  id_getter = "ir::subset_b::Obj::id($item)"
+  iterator = "ir::subset_b::iter($fun)"
+  from_superset = "ir::subset_b::from_superset($fun, $item)"
+  new_objs = "$objs.subset_b"
+end
+
+set SubsubsetB($a in SetA) subsetof SubsetB:
+  item_type = "ir::subset_b::Obj"
+  id_type = "ir::subset_b::Id"
+  item_getter = "ir::subset_b::get($fun, $id)"
+  id_getter = "ir::subset_b::Obj::id($item)"
+  iterator = "ir::subsubset_b::iter($fun, ir::subset_a::Obj::id($a))"
+  from_superset = "ir::subsubset_b::from_superset($fun, $a, $item)"
+  reverse forall $b in SubsetB = "ir::subsubset_b::reverse($fun, $b.id())"
+  new_objs = "$objs.subsubset_b"
+end
+
+define enum foo($lhs in SetB, $rhs in SetB):
+  symmetric
+  value A:
+  value B:
+end
+
+require forall $a in SetA:
+  forall $lhs in SubsubsetB($a):
+    forall $rhs in SubsubsetB($a):
+      foo($rhs, $lhs) is A

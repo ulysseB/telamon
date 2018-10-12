@@ -173,6 +173,14 @@ pub struct ChoiceInstance {
 }
 
 impl ChoiceInstance {
+    /// Creates a `ChoiceInstance` that point to a choice in its own context.
+    pub fn self_choice(choice: &ir::Choice) -> Self {
+        ChoiceInstance {
+            choice: choice.name().clone(),
+            vars: (0..choice.arguments().len()).map(ir::Variable::Arg).collect(),
+        }
+    }
+
     /// Normalizes the `ChoiceInstance` and indicates if the corresponding input should be
     /// inversed.
     pub fn normalize(&mut self, ir_desc: &ir::IrDesc) -> bool {
