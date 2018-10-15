@@ -177,7 +177,9 @@ impl ChoiceInstance {
     pub fn self_choice(choice: &ir::Choice) -> Self {
         ChoiceInstance {
             choice: choice.name().clone(),
-            vars: (0..choice.arguments().len()).map(ir::Variable::Arg).collect(),
+            vars: (0..choice.arguments().len())
+                .map(ir::Variable::Arg)
+                .collect(),
         }
     }
 

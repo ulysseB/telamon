@@ -379,7 +379,6 @@ pub enum FilterRef {
         id: usize,
         args: Vec<ir::Variable>,
     },
-
 }
 
 impl Adaptable for FilterRef {

@@ -154,10 +154,7 @@ impl IrDesc {
         set_constraints: &SetConstraints,
     ) {
         let choice = &self.choices[choice];
-        let mut choice_args = choice.arguments()
-            .sets()
-            .cloned()
-            .collect_vec();
+        let mut choice_args = choice.arguments().sets().cloned().collect_vec();
         // Apply the set constraints the the choice arguments.
         for (var, set_constraint) in set_constraints.constraints() {
             if let Variable::Arg(i) = *var {
@@ -205,7 +202,10 @@ impl IrDesc {
                 },
             };
             let set_def = self.set_defs.get_mut((&set).def().name()).unwrap();
-            set_def.1.filter.push((new_foralls, set_constraints, remote_call));
+            set_def
+                .1
+                .filter
+                .push((new_foralls, set_constraints, remote_call));
         }
     }
 

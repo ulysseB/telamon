@@ -551,7 +551,7 @@ impl<'a> FilterRef<'a> {
                     .collect();
                 FilterRef::Inline { rules }
             }
-            ir::FilterRef::Function { choice, id, args, } => {
+            ir::FilterRef::Function { choice, id, args } => {
                 let arguments = args.iter().map(|&v| (ctx.var_name(v),)).collect();
                 FilterRef::Call {
                     choice,
