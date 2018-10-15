@@ -311,7 +311,7 @@ fn get_ind_var_levels<'a>(
     for &(dim, ref size) in ind_var.dims() {
         let size = codegen::Size::from_ir(size, space);
         match space.domain().get_dim_kind(dim) {
-            DimKind::VECTOR => (),
+            DimKind::INNER_VECTOR | DimKind::OUTER_VECTOR => (),
             DimKind::LOOP | DimKind::UNROLL => mut_levels.push((dim, size)),
             DimKind::BLOCK | DimKind::THREAD => const_levels.push((dim, size)),
             x => panic!("unspecified dim kind {:?}", x),

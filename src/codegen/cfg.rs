@@ -1,7 +1,7 @@
 use codegen::{Dimension, InductionLevel, Instruction};
 use ir;
-use itertools::Itertools;
-use search_space::{DimKind, Order, SearchSpace, ThreadMapping};
+use itertools::{self, Itertools};
+use search_space::*;
 use std::{self, fmt};
 
 /// Represents a CFG of the targeted device.
@@ -10,8 +10,8 @@ pub enum Cfg<'a> {
     Root(Vec<Cfg<'a>>),
     /// Represents a loop in the CFG.
     Loop(Dimension<'a>, Vec<Cfg<'a>>),
-    /// Represents an instruction in the CFG.
-    Instruction(Instruction<'a>),
+    /// An instruction in the CFG, potentially vectorized on 2 levels.
+    Instruction([Vec<Dimension<'a>>; 2], Instruction<'a>),
     /// Defines the set of active thread dimensions.
     Threads(Vec<bool>, Vec<InductionLevel<'a>>, Vec<Cfg<'a>>),
 }
@@ -19,29 +19,27 @@ pub enum Cfg<'a> {
 impl<'a> Cfg<'a> {
     /// Iterates over the dimensions of the `Cfg`.
     pub fn dimensions(&self) -> impl Iterator<Item = &Dimension<'a>> {
-        match *self {
-            Cfg::Root(ref body) | Cfg::Threads(_, _, ref body) => {
+        match self {
+            Cfg::Root(body) | Cfg::Threads(_, _, body) => {
                 Box::new(body.iter().flat_map(|cfg| cfg.dimensions()))
                     as Box<Iterator<Item = _>>
             }
-            Cfg::Loop(ref dim, ref body) => {
+            Cfg::Loop(dim, body) => {
                 let body_dims = body.iter().flat_map(|cfg| cfg.dimensions());
                 Box::new(std::iter::once(dim).chain(body_dims)) as _
             }
-            Cfg::Instruction(..) => Box::new(std::iter::empty()) as _,
+            Cfg::Instruction(dims, _) => Box::new(itertools::flatten(dims)),
         }
     }
 
     /// Iterates over the instructions of the `Cfg`.
     pub fn instructions(&self) -> impl Iterator<Item = &Instruction<'a>> {
-        match *self {
-            Cfg::Root(ref body)
-            | Cfg::Loop(_, ref body)
-            | Cfg::Threads(_, _, ref body) => {
+        match self {
+            Cfg::Root(body) | Cfg::Loop(_, body) | Cfg::Threads(_, _, body) => {
                 let iter = body.iter().flat_map(|cfg| cfg.instructions());
                 Box::new(iter) as Box<Iterator<Item = _>>
             }
-            Cfg::Instruction(ref inst) => Box::new(std::iter::once(inst)) as _,
+            Cfg::Instruction(_, inst) => Box::new(std::iter::once(inst)) as _,
         }
     }
 
@@ -67,6 +65,43 @@ impl<'a> Cfg<'a> {
         }
     }
 
+    /// Creates a vector instruction from a list of events.
+    fn vector_inst_from_events<IT>(
+        dim: Dimension<'a>,
+        events: &mut std::iter::Peekable<IT>,
+    ) -> Self
+    where
+        IT: Iterator<Item = CfgEvent<'a>>,
+    {
+        fn get_level(kind: DimKind) -> usize {
+            match kind {
+                DimKind::OUTER_VECTOR => 0,
+                DimKind::INNER_VECTOR => 1,
+                kind => panic!("expected a VECTOR mapping decision, got {:?}", kind),
+            }
+        }
+        let mut dims = [vec![], vec![]];
+        dims[get_level(dim.kind())].push(dim);
+        // Pop dimensions entry points until we reach the instruction.
+        let inst = loop {
+            match events.next().unwrap() {
+                CfgEvent::Exec(inst) => break inst,
+                CfgEvent::Enter(_, EntryEvent::SeqDim(dim)) => {
+                    dims[get_level(dim.kind())].push(dim);
+                }
+                event => panic!("unexpected event {:?}", event),
+            }
+        };
+        // Pop dimensions exit points.
+        for _ in itertools::flatten(&dims) {
+            match events.next().unwrap() {
+                CfgEvent::Exit(_, ExitEvent::SeqDim) => (),
+                event => panic!("unexpected event {:?}", event),
+            }
+        }
+        Cfg::Instruction(dims, inst)
+    }
+
     /// Builds a CFG from a list of `CfgEvent`.
     fn body_from_events<IT>(
         events: &mut std::iter::Peekable<IT>,
@@ -79,10 +114,14 @@ impl<'a> Cfg<'a> {
         let mut body = vec![];
         while let Some(event) = events.next() {
             match event {
-                Exec(inst) => body.push(Cfg::Instruction(inst)),
+                Exec(inst) => body.push(Cfg::Instruction(Default::default(), inst)),
                 Enter(_, EntryEvent::SeqDim(dim)) => {
-                    let cfg = Cfg::body_from_events(events, num_thread_dims);
-                    body.push(Cfg::Loop(dim, cfg))
+                    if dim.kind().is(DimKind::VECTOR).as_bool().unwrap() {
+                        body.push(Cfg::vector_inst_from_events(dim, events));
+                    } else {
+                        let cfg = Cfg::body_from_events(events, num_thread_dims);
+                        body.push(Cfg::Loop(dim, cfg))
+                    }
                 }
                 Exit(_, ExitEvent::SeqDim) => break,
                 Enter(_, EntryEvent::ThreadDim(pos, mut ind_levels)) => {
@@ -157,13 +196,13 @@ impl<'a> Cfg<'a> {
 
 impl<'a> fmt::Debug for Cfg<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Cfg::Root(ref inners) => write!(f, "{:?}", inners),
-            Cfg::Loop(ref dim, ref inners) => {
+        match self {
+            Cfg::Root(inners) => write!(f, "{:?}", inners),
+            Cfg::Loop(dim, inners) => {
                 write!(f, "Loop([{:?}], {:?})", dim.dim_ids().format(","), inners)
             }
-            Cfg::Instruction(ref inst) => write!(f, "inst {:?}", inst.id()),
-            Cfg::Threads(ref dims, _, ref inners) => {
+            Cfg::Instruction(dims, inst) => write!(f, "inst{:?} {:?}", dims, inst.id()),
+            Cfg::Threads(dims, _, inners) => {
                 write!(f, "threads({:?}, {:?})", dims, inners)
             }
         }
@@ -179,6 +218,7 @@ pub fn build<'a>(
 ) -> (Vec<Dimension<'a>>, Vec<Dimension<'a>>, Cfg<'a>) {
     let (block_dims, thread_dims, mut events) = gen_events(space, insts, dims);
     events.sort_by(|lhs, rhs| lhs.cmp(rhs, space));
+    debug!("events: {:?}", events);
     let cfg = Cfg::from_events(events, thread_dims.len());
     (block_dims, thread_dims, cfg)
 }
