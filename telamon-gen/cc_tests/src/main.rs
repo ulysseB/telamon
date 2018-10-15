@@ -1349,3 +1349,50 @@ mod filter_merge {
         assert_eq!(store.get_foo(obj0), Foo::A);
     }
 }
+
+mod unused_set {
+    define_ir! {
+        struct set_a;
+        trait set_b;
+        struct subset_b: set_b;
+        type subsubset_b[set_a reverse subset_b]: subset_b;
+    }
+    generated_file!(unused_set);
+    use self::unused_set::*;
+    use std::sync::Arc;
+
+    /// Ensure constraints quantified by objects that do not appear in the choices are
+    /// correctly enforced when a such object is added.
+    #[test]
+    fn on_new() {
+        let _ = ::env_logger::try_init();
+        let mut fun = ir::Function::default();
+        let b0 = ir::subset_b::create(&mut fun, false);
+        let b1 = ir::subset_b::create(&mut fun, false);
+
+        let store = &mut DomainStore::new(&fun);
+        let actions = init_domain(store, &mut fun).unwrap();
+        let fun = &mut Arc::new(fun);
+        assert!(apply_decisions(actions, fun, store).is_ok());
+        assert_eq!(store.get_foo(b0.into(), b1.into()), Foo::ALL);
+
+        // Allocate a `a` and place `b0` and `b1` in `subsubset_b(a)`.
+        let a = ir::set_a::create(Arc::make_mut(fun), false);
+        ir::subsubset_b::add_to_subset(Arc::make_mut(fun), a, b0);
+        ir::subsubset_b::add_to_subset(Arc::make_mut(fun), a, b1);
+        let new_objs = ir::NewObjs {
+            set_a: vec![a],
+            subsubset_b: vec![(a, b0), (a, b1)],
+            ..Default::default()
+        };
+        store.alloc(fun, &new_objs);
+        let actions = init_domain_partial(
+            store,
+            Arc::make_mut(fun),
+            &new_objs,
+            &mut DomainDiff::default(),
+        ).unwrap();
+        assert!(apply_decisions(actions, fun, store).is_ok());
+        assert_eq!(store.get_foo(b0.into(), b1.into()), Foo::A);
+    }
+}

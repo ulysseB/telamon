@@ -45,7 +45,7 @@ pub fn partial_iterators<'a>(
             let iters = PartialIterator::generate(&args, is_symmetric, ir_desc, ctx);
             iters.into_iter().map(move |(iter, ctx)| {
                 let arg_names = args.iter().map(|&(v, _)| ctx.var_name(v)).collect();
-                let value_type = ctx.choice.choice_def().value_type();
+                let value_type = choice.choice_def().value_type();
                 let value_type = ast::ValueType::new(value_type, &ctx);
                 (
                     iter,
@@ -94,7 +94,7 @@ pub fn incr_iterators<'a>(ir_desc: &'a ir::IrDesc) -> Vec<IncrIterator<'a>> {
                 let obj = ast::Variable::with_name("obj");
                 let ref mut ctx = ctx.set_var_name(ir::Variable::Forall(pos), obj);
                 if let Some(arg) = set.arg() {
-                    ctx.mut_var_name(arg, Variable::with_name("obj_var"));
+                    ctx.mut_var_name(arg, Variable::with_name("arg"));
                 }
                 // Setup the variables to loop on.
                 let num_args = choice.arguments().len();
@@ -224,7 +224,7 @@ impl<'a> PartialIterator<'a> {
                 .collect_vec();
             if let Some(set_arg) = set.arg() {
                 loop_args.retain(|&v| v != set_arg);
-                ctx.mut_var_name(set_arg, Variable::with_name("obj_var"));
+                ctx.mut_var_name(set_arg, Variable::with_name("arg"));
             }
             let arg_conflicts = {
                 let ctx = &ctx;
@@ -268,8 +268,8 @@ impl<'a> PartialIterator<'a> {
         };
         ir_desc
             .set_defs()
-            .take_while(move |s| s.name() != set.def().name())
-            .map(|set| {
+            .take_while(move |(s, _)| s.name() != set.def().name())
+            .map(|(set, _)| {
                 let list = ast::new_objs_list(set, "new_objs");
                 ast::Conflict::NewObjs { list, set }
             }).chain(iter::once(self_conflict))
@@ -283,7 +283,7 @@ impl<'a> PartialIterator<'a> {
         let arg_conflict = set
             .def()
             .arg()
-            .map(|arg| ast::Conflict::new(ast::Variable::with_name("obj_var"), arg));
+            .map(|arg| ast::Conflict::new(ast::Variable::with_name("arg"), arg));
         iter::once(obj_conflict).chain(arg_conflict)
     }
 }
