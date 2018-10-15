@@ -30,10 +30,8 @@ pub struct Instruction<'a, L = LoweringMap> {
     id: InstId,
     iter_dims: HashSet<ir::DimId>,
     variable: Option<ir::VarId>,
-    // We need a `VecSet` so that we can return a reference to it when implementing the `Statement`
-    // trait. In practice, it just contains `variable`.
-    def_variables: VecSet<ir::VarId>,
-    used_variables: VecSet<ir::VarId>,
+    defined_vars: VecSet<ir::VarId>,
+    used_vars: VecSet<ir::VarId>,
 }
 
 impl<'a, L> Instruction<'a, L> {
@@ -45,7 +43,16 @@ impl<'a, L> Instruction<'a, L> {
         fun: &ir::Function<L>,
     ) -> Result<Self, ir::Error> {
         operator.check(&iter_dims, fun)?;
-        let used_variables = operator
+        for operand in operator.operands() {
+            if let ir::Operand::Variable(var_id, ..) = *operand {
+                for &dim in fun.variable(var_id).dimensions() {
+                    if !iter_dims.contains(&dim) {
+                        Err(ir::Error::MissingIterationDim { dim })?;
+                    }
+                }
+            }
+        }
+        let used_vars = operator
             .operands()
             .iter()
             .flat_map(|op| {
@@ -60,8 +67,8 @@ impl<'a, L> Instruction<'a, L> {
             id,
             iter_dims,
             variable: None,
-            def_variables: VecSet::default(),
-            used_variables,
+            defined_vars: VecSet::default(),
+            used_vars,
         })
     }
 
@@ -169,7 +176,6 @@ impl<'a, L> Instruction<'a, L> {
     pub fn set_result_variable(&mut self, variable: ir::VarId) {
         // An instruction variable cannot be set twice.
         assert_eq!(std::mem::replace(&mut self.variable, Some(variable)), None);
-        self.def_variables = VecSet::new(vec![variable]);
     }
 }
 
@@ -180,8 +186,8 @@ impl<'a> Instruction<'a, ()> {
             id: self.id,
             iter_dims: self.iter_dims,
             variable: self.variable,
-            used_variables: self.used_variables,
-            def_variables: self.def_variables,
+            used_vars: self.used_vars,
+            defined_vars: self.defined_vars,
         }
     }
 }
@@ -211,15 +217,19 @@ impl<'a, L> Statement<'a, L> for Instruction<'a, L> {
         self.id.into()
     }
 
+    fn defined_vars(&self) -> &VecSet<ir::VarId> {
+        &self.defined_vars
+    }
+
     fn as_inst(&self) -> Option<&Instruction<'a, L>> {
         Some(self)
     }
 
-    fn def_variables(&self) -> &VecSet<ir::VarId> {
-        &self.def_variables
+    fn used_vars(&self) -> &VecSet<ir::VarId> {
+        &self.used_vars
     }
 
-    fn used_variables(&self) -> &VecSet<ir::VarId> {
-        &self.used_variables
+    fn register_defined_var(&mut self, var: ir::VarId) {
+        self.defined_vars.insert(var);
     }
 }

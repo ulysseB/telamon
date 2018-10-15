@@ -16,7 +16,7 @@ pub struct Function<'a> {
     induction_vars: Vec<InductionVar<'a>>,
     mem_blocks: Vec<InternalMemoryRegion<'a>>,
     init_induction_levels: Vec<InductionLevel<'a>>,
-    variables: Vec<Variable<'a>>,
+    variables: Vec<codegen::Variable<'a>>,
     // TODO(cleanup): remove dependency on the search space
     space: &'a SearchSpace<'a>,
 }
@@ -50,22 +50,16 @@ impl<'a> Function<'a> {
                 .iter()
                 .flat_map(|x| x.host_values(space, &block_dims)),
         );
-        let device_code_args = device_code_args.into_iter().collect();
         debug!("compiling cfg {:?}", cfg);
-        let variables = space
-            .ir_instance()
-            .variables()
-            .map(|v| Variable::new(v, space))
-            .collect_vec();
         Function {
             cfg,
             thread_dims,
             block_dims,
             induction_vars,
-            device_code_args,
+            device_code_args: device_code_args.into_iter().collect(),
             space,
             mem_blocks,
-            variables,
+            variables: codegen::variable::wrap_variables(space),
             init_induction_levels,
         }
     }
@@ -81,7 +75,7 @@ impl<'a> Function<'a> {
     }
 
     /// Iterate on the function variables.
-    pub fn variables(&self) -> impl Iterator<Item = &Variable> {
+    pub fn variables(&self) -> impl Iterator<Item = &codegen::Variable> {
         self.variables.iter()
     }
 
@@ -363,28 +357,6 @@ impl<'a> InternalMemoryRegion<'a> {
     }
 }
 
-pub struct Variable<'a> {
-    variable: &'a ir::Variable,
-    t: ir::Type,
-}
-
-impl<'a> Variable<'a> {
-    pub fn new(variable: &'a ir::Variable, space: &SearchSpace) -> Self {
-        let t = unwrap!(space.ir_instance().device().lower_type(variable.t(), space));
-        Variable { variable, t }
-    }
-
-    /// Returns the ID of the variable.
-    pub fn id(&self) -> ir::VarId {
-        self.variable.id()
-    }
-
-    /// Returns the type of the variable.
-    pub fn t(&self) -> ir::Type {
-        self.t
-    }
-}
-
 /// An instruction to execute.
 pub struct Instruction<'a> {
     instruction: &'a ir::Instruction<'a>,
@@ -466,5 +438,10 @@ impl<'a> Instruction<'a> {
     /// Indicates if the instruction has observable side effects.
     pub fn has_side_effects(&self) -> bool {
         self.instruction.has_side_effects()
+    }
+
+    /// Indicates where to store the result of the instruction.
+    pub fn result_variable(&self) -> Option<ir::VarId> {
+        self.instruction.result_variable()
     }
 }
