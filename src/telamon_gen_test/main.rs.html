@@ -1349,6 +1349,53 @@
 <span id="1349">1349</span>
 <span id="1350">1350</span>
 <span id="1351">1351</span>
+<span id="1352">1352</span>
+<span id="1353">1353</span>
+<span id="1354">1354</span>
+<span id="1355">1355</span>
+<span id="1356">1356</span>
+<span id="1357">1357</span>
+<span id="1358">1358</span>
+<span id="1359">1359</span>
+<span id="1360">1360</span>
+<span id="1361">1361</span>
+<span id="1362">1362</span>
+<span id="1363">1363</span>
+<span id="1364">1364</span>
+<span id="1365">1365</span>
+<span id="1366">1366</span>
+<span id="1367">1367</span>
+<span id="1368">1368</span>
+<span id="1369">1369</span>
+<span id="1370">1370</span>
+<span id="1371">1371</span>
+<span id="1372">1372</span>
+<span id="1373">1373</span>
+<span id="1374">1374</span>
+<span id="1375">1375</span>
+<span id="1376">1376</span>
+<span id="1377">1377</span>
+<span id="1378">1378</span>
+<span id="1379">1379</span>
+<span id="1380">1380</span>
+<span id="1381">1381</span>
+<span id="1382">1382</span>
+<span id="1383">1383</span>
+<span id="1384">1384</span>
+<span id="1385">1385</span>
+<span id="1386">1386</span>
+<span id="1387">1387</span>
+<span id="1388">1388</span>
+<span id="1389">1389</span>
+<span id="1390">1390</span>
+<span id="1391">1391</span>
+<span id="1392">1392</span>
+<span id="1393">1393</span>
+<span id="1394">1394</span>
+<span id="1395">1395</span>
+<span id="1396">1396</span>
+<span id="1397">1397</span>
+<span id="1398">1398</span>
 </pre><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">dead_code</span>, <span class="ident">unused_imports</span>)]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">itertools</span>;
@@ -2699,6 +2746,53 @@
         <span class="kw">let</span> <span class="ident">fun</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">fun</span>);
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">apply_decisions</span>(<span class="ident">actions</span>, <span class="ident">fun</span>, <span class="ident">store</span>).<span class="ident">is_ok</span>());
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">obj0</span>), <span class="ident">Foo</span>::<span class="ident">A</span>);
+    }
+}
+
+<span class="kw">mod</span> <span class="ident">unused_set</span> {
+    <span class="macro">define_ir</span><span class="macro">!</span> {
+        <span class="kw">struct</span> <span class="ident">set_a</span>;
+        <span class="kw">trait</span> <span class="ident">set_b</span>;
+        <span class="kw">struct</span> <span class="ident">subset_b</span>: <span class="ident">set_b</span>;
+        <span class="kw">type</span> <span class="ident">subsubset_b</span>[<span class="ident">set_a</span> <span class="ident">reverse</span> <span class="ident">subset_b</span>]: <span class="ident">subset_b</span>;
+    }
+    <span class="macro">generated_file</span><span class="macro">!</span>(<span class="ident">unused_set</span>);
+    <span class="kw">use</span> <span class="self">self</span>::<span class="ident">unused_set</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
+
+    <span class="doccomment">/// Ensure constraints quantified by objects that do not appear in the choices are</span>
+    <span class="doccomment">/// correctly enforced when a such object is added.</span>
+    <span class="attribute">#[<span class="ident">test</span>]</span>
+    <span class="kw">fn</span> <span class="ident">on_new</span>() {
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> ::<span class="ident">env_logger</span>::<span class="ident">try_init</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">fun</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">Function</span>::<span class="ident">default</span>();
+        <span class="kw">let</span> <span class="ident">b0</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">subset_b</span>::<span class="ident">create</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fun</span>, <span class="bool-val">false</span>);
+        <span class="kw">let</span> <span class="ident">b1</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">subset_b</span>::<span class="ident">create</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fun</span>, <span class="bool-val">false</span>);
+
+        <span class="kw">let</span> <span class="ident">store</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainStore</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">fun</span>);
+        <span class="kw">let</span> <span class="ident">actions</span> <span class="op">=</span> <span class="ident">init_domain</span>(<span class="ident">store</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fun</span>).<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">fun</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">fun</span>);
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">apply_decisions</span>(<span class="ident">actions</span>, <span class="ident">fun</span>, <span class="ident">store</span>).<span class="ident">is_ok</span>());
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">b0</span>.<span class="ident">into</span>(), <span class="ident">b1</span>.<span class="ident">into</span>()), <span class="ident">Foo</span>::<span class="ident">ALL</span>);
+
+        <span class="comment">// Allocate a `a` and place `b0` and `b1` in `subsubset_b(a)`.</span>
+        <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">set_a</span>::<span class="ident">create</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="ident">fun</span>), <span class="bool-val">false</span>);
+        <span class="ident">ir</span>::<span class="ident">subsubset_b</span>::<span class="ident">add_to_subset</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="ident">fun</span>), <span class="ident">a</span>, <span class="ident">b0</span>);
+        <span class="ident">ir</span>::<span class="ident">subsubset_b</span>::<span class="ident">add_to_subset</span>(<span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="ident">fun</span>), <span class="ident">a</span>, <span class="ident">b1</span>);
+        <span class="kw">let</span> <span class="ident">new_objs</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">NewObjs</span> {
+            <span class="ident">set_a</span>: <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">a</span>],
+            <span class="ident">subsubset_b</span>: <span class="macro">vec</span><span class="macro">!</span>[(<span class="ident">a</span>, <span class="ident">b0</span>), (<span class="ident">a</span>, <span class="ident">b1</span>)],
+            ..<span class="ident">Default</span>::<span class="ident">default</span>()
+        };
+        <span class="ident">store</span>.<span class="ident">alloc</span>(<span class="ident">fun</span>, <span class="kw-2">&amp;</span><span class="ident">new_objs</span>);
+        <span class="kw">let</span> <span class="ident">actions</span> <span class="op">=</span> <span class="ident">init_domain_partial</span>(
+            <span class="ident">store</span>,
+            <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="ident">fun</span>),
+            <span class="kw-2">&amp;</span><span class="ident">new_objs</span>,
+            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>::<span class="ident">default</span>(),
+        ).<span class="ident">unwrap</span>();
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">apply_decisions</span>(<span class="ident">actions</span>, <span class="ident">fun</span>, <span class="ident">store</span>).<span class="ident">is_ok</span>());
+        <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">b0</span>.<span class="ident">into</span>(), <span class="ident">b1</span>.<span class="ident">into</span>()), <span class="ident">Foo</span>::<span class="ident">A</span>);
     }
 }
 </pre>

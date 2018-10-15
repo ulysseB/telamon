@@ -372,7 +372,7 @@
         <span class="macro-nonterminal">define_ir</span><span class="op">!</span>(@<span class="ident">from_super_id</span> <span class="macro-nonterminal">$</span><span class="kw">super</span>);
     };
     (@<span class="macro-nonterminal">impl_super</span> <span class="kw">trait</span> <span class="macro-nonterminal">$</span><span class="kw">super</span>:<span class="macro-nonterminal">ident</span>) <span class="op">=&gt;</span> {
-        <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Obj</span> <span class="op">+</span> <span class="question-mark">?</span><span class="ident">Sized</span><span class="op">&gt;</span> <span class="kw">super</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">superset</span>::<span class="ident">Obj</span> <span class="kw">for</span> <span class="ident">T</span> {
+        <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Obj</span> <span class="op">+</span> <span class="question-mark">?</span><span class="ident">Sized</span><span class="op">&gt;</span> <span class="kw">super</span>::<span class="macro-nonterminal">$</span><span class="kw">super</span>::<span class="macro-nonterminal">Obj</span> <span class="kw">for</span> <span class="ident">T</span> {
             <span class="macro">define_ir</span><span class="macro">!</span>(@<span class="ident">impl_super_methods</span> <span class="macro-nonterminal">$</span><span class="kw">super</span>);
         }
         <span class="macro-nonterminal">define_ir</span><span class="op">!</span>(@<span class="ident">from_super_id</span> <span class="macro-nonterminal">$</span><span class="kw">super</span>);

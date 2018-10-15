@@ -167,6 +167,8 @@
 <span id="167">167</span>
 <span id="168">168</span>
 <span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Constraint representation and manipulation.</span>
 <span class="kw">use</span> <span class="ident">flat_filter</span>::<span class="ident">FlatFilter</span>;
@@ -310,6 +312,8 @@
             .<span class="ident">iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span>: <span class="kw-2">&amp;</span>(<span class="kw">_</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">x</span>.<span class="number">1</span>)
             .<span class="ident">chain</span>(<span class="kw-2">&amp;</span><span class="ident">foralls</span>)
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">set</span><span class="op">|</span> <span class="ident">set</span>.<span class="ident">as_ref</span>())
+            .<span class="ident">chain</span>(<span class="ident">foralls</span>.<span class="ident">iter</span>().<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">set</span><span class="op">|</span> <span class="ident">set</span>.<span class="ident">reverse_constraint</span>()))
             .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">arg</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span> <span class="op">==</span> <span class="ident">var</span>).<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>))
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">s</span>.<span class="ident">def</span>().<span class="ident">arg</span>()))
             .<span class="ident">any</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="op">!</span><span class="ident">given_set</span>.<span class="ident">is_subset_of</span>(<span class="ident">s</span>));
