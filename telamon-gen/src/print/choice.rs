@@ -1,5 +1,5 @@
 //! Prints the definition and manipulation of choices.
-use ir;
+use ir::{self, SetRef};
 use print;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::ToTokens;
@@ -13,9 +13,9 @@ pub fn ids(choice_instance: &ir::ChoiceInstance, ctx: &print::Context) -> TokenS
         .iter()
         .zip_eq(arg_sets)
         .map(|(&var, set)| {
-            // TODO(cleanup): parse beforehand
-            let var = unwrap!(ctx.var_name(var).to_string().parse());
-            print::set::id(var, set)
+            // TODO(cleanup): use idents instead of variables in the context.
+            let var = Ident::new(&ctx.var_name(var).to_string(), Span::call_site());
+            print::set::ObjectId::from_object(&var.into(), set.def())
         });
     quote!(#(#ids,)*)
 }
@@ -115,7 +115,7 @@ impl<'a> Ast<'a> {
             full_value_type: ast::ValueType::new(choice.value_type().full_type(), ctx),
             choice_def: ChoiceDef::new(choice.choice_def()),
             restrict_counter: RestrictCounter::new(choice, ir_desc),
-            iteration_space: self::iteration_space(ctx),
+            iteration_space: self::iteration_space(choice, ctx),
             compute_counter: ComputeCounter::new(choice, ir_desc),
             arguments,
             trigger_calls,
@@ -132,9 +132,9 @@ impl<'a> Ast<'a> {
     }
 }
 
-/// Returns the iteration space associated to a choice.
-fn iteration_space<'a>(ctx: &ast::Context<'a>) -> ast::LoopNest<'a> {
-    match *ctx.choice.arguments() {
+/// Returns the iteration space associated to `choice`.
+fn iteration_space<'a>(choice: &ir::Choice, ctx: &ast::Context<'a>) -> ast::LoopNest<'a> {
+    match *choice.arguments() {
         ref args @ ir::ChoiceArguments::Plain { .. } => {
             let args = (0..args.len()).map(ir::Variable::Arg);
             ast::LoopNest::new(args, ctx, &mut vec![], false)
@@ -279,6 +279,7 @@ impl<'a> OnChangeAction<'a> {
             &action.set_constraints,
             conflicts,
             ctx,
+            choice,
             trigger_calls,
         );
         OnChangeAction {
@@ -293,13 +294,7 @@ impl<'a> OnChangeAction<'a> {
 #[derive(Serialize)]
 enum ChoiceAction<'a> {
     FilterSelf,
-    Filter {
-        choice: &'a str,
-        is_symmetric: bool,
-        filter_call: FilterCall<'a>,
-        choice_full_type: ast::ValueType,
-        arguments: Vec<(ast::Variable<'a>, ast::Set<'a>)>,
-    },
+    FilterRemote(RemoteFilterCall<'a>),
     IncrCounter {
         counter_name: &'a str,
         arguments: Vec<(ast::Variable<'a>, ast::Set<'a>)>,
@@ -339,28 +334,15 @@ impl<'a> ChoiceAction<'a> {
         set_constraints: &'a ir::SetConstraints,
         conflicts: Vec<ast::Conflict<'a>>,
         ctx: &ast::Context<'a>,
+        current_choice: &ir::Choice,
         trigger_calls: &mut Vec<TriggerCall<'a>>,
     ) -> Self {
         match action {
             ir::ChoiceAction::FilterSelf => ChoiceAction::FilterSelf,
-            ir::ChoiceAction::Filter {
-                choice: choice_instance,
-                filter,
-            } => {
-                let set = ast::Variable::with_name("values");
-                let choice = ctx.ir_desc.get_choice(&choice_instance.choice);
-                let filter_call =
-                    FilterCall::new(filter, set, conflicts, forall_offset, ctx);
-                let arguments = ast::vars_with_sets(choice, &choice_instance.vars, ctx);
-                let adaptator = ir::Adaptator::from_arguments(&choice_instance.vars);
-                let full_type = choice.value_type().full_type().adapt(&adaptator);
-                ChoiceAction::Filter {
-                    is_symmetric: choice.arguments().is_symmetric(),
-                    choice: choice.name(),
-                    choice_full_type: ast::ValueType::new(full_type, ctx),
-                    filter_call,
-                    arguments,
-                }
+            ir::ChoiceAction::RemoteFilter(remote_call) => {
+                let call =
+                    RemoteFilterCall::new(remote_call, conflicts, forall_offset, ctx);
+                ChoiceAction::FilterRemote(call)
             }
             ir::ChoiceAction::IncrCounter {
                 counter,
@@ -418,7 +400,7 @@ impl<'a> ChoiceAction<'a> {
                         is_half: visibility == ir::CounterVisibility::NoMax,
                         zero: kind.zero(),
                         counter_type: ast::ValueType::new(counter_type, ctx),
-                        incr_type: ast::ValueType::new(ctx.choice.value_type(), ctx),
+                        incr_type: ast::ValueType::new(current_choice.value_type(), ctx),
                         incr_args,
                         arguments,
                     }
@@ -444,7 +426,7 @@ impl<'a> ChoiceAction<'a> {
                     .map(|(pos, input)| {
                         (ctx.input_name(pos), ast::ChoiceInstance::new(input, ctx))
                     }).collect();
-                let arguments = (0..ctx.choice.arguments().len())
+                let arguments = (0..current_choice.arguments().len())
                     .map(ir::Variable::Arg)
                     .chain((0..forall_offset).map(ir::Variable::Forall))
                     .map(|v| {
@@ -477,6 +459,40 @@ impl<'a> ChoiceAction<'a> {
                     self_condition: value_set::print(&self_condition, ctx).to_string(),
                 }
             }
+        }
+    }
+}
+
+/// AST for an `ir::RemoteFilterCall`.
+#[derive(Serialize)]
+pub struct RemoteFilterCall<'a> {
+    choice: &'a str,
+    is_symmetric: bool,
+    filter_call: FilterCall<'a>,
+    choice_full_type: ast::ValueType,
+    arguments: Vec<(ast::Variable<'a>, ast::Set<'a>)>,
+}
+
+impl<'a> RemoteFilterCall<'a> {
+    pub fn new(
+        remote_call: &'a ir::RemoteFilterCall,
+        conflicts: Vec<ast::Conflict<'a>>,
+        forall_offset: usize,
+        ctx: &ast::Context<'a>,
+    ) -> Self {
+        let set = ast::Variable::with_name("values");
+        let choice = ctx.ir_desc.get_choice(&remote_call.choice.choice);
+        let filter_call =
+            FilterCall::new(&remote_call.filter, set, conflicts, forall_offset, ctx);
+        let arguments = ast::vars_with_sets(choice, &remote_call.choice.vars, ctx);
+        let adaptator = ir::Adaptator::from_arguments(&remote_call.choice.vars);
+        let full_type = choice.value_type().full_type().adapt(&adaptator);
+        RemoteFilterCall {
+            is_symmetric: choice.arguments().is_symmetric(),
+            choice: choice.name(),
+            choice_full_type: ast::ValueType::new(full_type, ctx),
+            filter_call,
+            arguments,
         }
     }
 }
@@ -527,32 +543,19 @@ impl<'a> FilterRef<'a> {
         value_var: ast::Variable<'a>,
         ctx: &ast::Context<'a>,
     ) -> Self {
-        match *filter_ref {
-            ir::FilterRef::Inline(ref rules) => {
+        match filter_ref {
+            ir::FilterRef::Inline(rules) => {
                 let rules = rules
                     .iter()
                     .map(|r| filter::Rule::new(value_var.clone(), r, ctx))
                     .collect();
                 FilterRef::Inline { rules }
             }
-            ir::FilterRef::Local { id, ref args } => {
-                let arguments = args.iter().map(|&v| (ctx.var_name(v),)).collect();
-                FilterRef::Call {
-                    choice: "self",
-                    id,
-                    arguments,
-                    value_var,
-                }
-            }
-            ir::FilterRef::Remote {
-                ref choice,
-                id,
-                ref args,
-            } => {
+            ir::FilterRef::Function { choice, id, args } => {
                 let arguments = args.iter().map(|&v| (ctx.var_name(v),)).collect();
                 FilterRef::Call {
                     choice,
-                    id,
+                    id: *id,
                     arguments,
                     value_var,
                 }

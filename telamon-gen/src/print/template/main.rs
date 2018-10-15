@@ -126,6 +126,8 @@ pub fn init_domain_partial(store: &mut DomainStore,
             {{>account_new_incrs}}
         {{/iter_new_objects~}}
     {{/each~}}
+    // Call new propagators on existing filters.
+    {{partial_init_filters}}
     // Check if we should call the new triggers.
     {{#each triggers~}}
         let mut trigger_{{id}} = Vec::new();

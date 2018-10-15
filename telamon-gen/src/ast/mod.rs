@@ -30,7 +30,7 @@ pub use self::error::{Hint, TypeError};
 pub use self::set::SetDef;
 pub use self::trigger::TriggerDef;
 
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Debug)]
 pub struct Ast {
     pub statements: Vec<Statement>,
     pub ir_desc: ir::IrDesc,
