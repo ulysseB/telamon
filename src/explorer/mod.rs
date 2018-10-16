@@ -4,6 +4,7 @@ mod candidate;
 mod logger;
 mod monitor;
 mod parallel_list;
+mod reroll;
 mod store;
 
 pub mod choice;
