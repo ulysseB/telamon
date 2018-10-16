@@ -831,9 +831,9 @@
 
         <span class="ident">builder</span>.<span class="ident">order</span>(<span class="kw-2">&amp;</span><span class="ident">acc_dim_n</span>, <span class="kw-2">&amp;</span><span class="ident">st_y</span>.<span class="ident">inst</span>(), <span class="ident">Order</span>::<span class="ident">BEFORE</span>);
         <span class="comment">// TODO(search_space): explore inst flags</span>
-        <span class="ident">builder</span>.<span class="ident">action</span>(<span class="ident">Action</span>::<span class="ident">InstFlag</span>(<span class="ident">ld_x</span>.<span class="ident">inst</span>(), <span class="ident">InstFlag</span>::<span class="ident">MEM_CG</span>));
-        <span class="ident">builder</span>.<span class="ident">action</span>(<span class="ident">Action</span>::<span class="ident">InstFlag</span>(<span class="ident">ld_a</span>.<span class="ident">inst</span>(), <span class="ident">InstFlag</span>::<span class="ident">MEM_CG</span>));
-        <span class="ident">builder</span>.<span class="ident">action</span>(<span class="ident">Action</span>::<span class="ident">InstFlag</span>(<span class="ident">st_y</span>.<span class="ident">inst</span>(), <span class="ident">InstFlag</span>::<span class="ident">MEM_CS</span>));
+        <span class="ident">builder</span>.<span class="ident">action</span>(<span class="ident">Action</span>::<span class="ident">InstFlag</span>(<span class="ident">ld_x</span>.<span class="ident">inst</span>(), <span class="ident">InstFlag</span>::<span class="ident">CACHE_GLOBAL</span>));
+        <span class="ident">builder</span>.<span class="ident">action</span>(<span class="ident">Action</span>::<span class="ident">InstFlag</span>(<span class="ident">ld_a</span>.<span class="ident">inst</span>(), <span class="ident">InstFlag</span>::<span class="ident">CACHE_GLOBAL</span>));
+        <span class="ident">builder</span>.<span class="ident">action</span>(<span class="ident">Action</span>::<span class="ident">InstFlag</span>(<span class="ident">st_y</span>.<span class="ident">inst</span>(), <span class="ident">InstFlag</span>::<span class="ident">NO_CACHE</span>));
         <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">build_candidate</span>(<span class="ident">builder</span>.<span class="ident">get</span>(), <span class="ident">ctx</span>)]
     }
 
@@ -942,10 +942,10 @@
 
         <span class="ident">builder</span>.<span class="ident">order</span>(<span class="kw-2">&amp;</span><span class="ident">acc_dim_n</span>, <span class="kw-2">&amp;</span><span class="ident">y_a</span>, <span class="ident">Order</span>::<span class="ident">BEFORE</span>);
         <span class="comment">// TODO(search_space): explore inst flags</span>
-        <span class="ident">builder</span>.<span class="ident">action</span>(<span class="ident">Action</span>::<span class="ident">InstFlag</span>(<span class="ident">ld_x</span>.<span class="ident">inst</span>(), <span class="ident">InstFlag</span>::<span class="ident">MEM_CG</span>));
-        <span class="ident">builder</span>.<span class="ident">action</span>(<span class="ident">Action</span>::<span class="ident">InstFlag</span>(<span class="ident">ld_a</span>.<span class="ident">inst</span>(), <span class="ident">InstFlag</span>::<span class="ident">MEM_CG</span>));
-        <span class="ident">builder</span>.<span class="ident">action</span>(<span class="ident">Action</span>::<span class="ident">InstFlag</span>(<span class="ident">ld_b</span>.<span class="ident">inst</span>(), <span class="ident">InstFlag</span>::<span class="ident">MEM_CG</span>));
-        <span class="ident">builder</span>.<span class="ident">action</span>(<span class="ident">Action</span>::<span class="ident">InstFlag</span>(<span class="ident">st_y</span>.<span class="ident">inst</span>(), <span class="ident">InstFlag</span>::<span class="ident">MEM_CS</span>));
+        <span class="ident">builder</span>.<span class="ident">action</span>(<span class="ident">Action</span>::<span class="ident">InstFlag</span>(<span class="ident">ld_x</span>.<span class="ident">inst</span>(), <span class="ident">InstFlag</span>::<span class="ident">CACHE_GLOBAL</span>));
+        <span class="ident">builder</span>.<span class="ident">action</span>(<span class="ident">Action</span>::<span class="ident">InstFlag</span>(<span class="ident">ld_a</span>.<span class="ident">inst</span>(), <span class="ident">InstFlag</span>::<span class="ident">CACHE_GLOBAL</span>));
+        <span class="ident">builder</span>.<span class="ident">action</span>(<span class="ident">Action</span>::<span class="ident">InstFlag</span>(<span class="ident">ld_b</span>.<span class="ident">inst</span>(), <span class="ident">InstFlag</span>::<span class="ident">CACHE_GLOBAL</span>));
+        <span class="ident">builder</span>.<span class="ident">action</span>(<span class="ident">Action</span>::<span class="ident">InstFlag</span>(<span class="ident">st_y</span>.<span class="ident">inst</span>(), <span class="ident">InstFlag</span>::<span class="ident">NO_CACHE</span>));
         <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">build_candidate</span>(<span class="ident">builder</span>.<span class="ident">get</span>(), <span class="ident">ctx</span>)]
     }
 
@@ -1095,9 +1095,9 @@
         <span class="comment">// Order for correctness.</span>
         <span class="ident">builder</span>.<span class="ident">order</span>(<span class="kw-2">&amp;</span><span class="ident">st_c</span>.<span class="ident">inst</span>(), <span class="kw-2">&amp;</span><span class="ident">acc_dim_k</span>, <span class="ident">Order</span>::<span class="ident">AFTER</span>);
         <span class="comment">// Arbitrary constrains to reduce the search space</span>
-        <span class="comment">//builder.action(Action::InstFlag(ld_a.inst(), InstFlag::MEM_CG | InstFlag::MEM_NC));</span>
-        <span class="comment">//builder.action(Action::InstFlag(ld_b.inst(), InstFlag::MEM_CG | InstFlag::MEM_NC));</span>
-        <span class="comment">//builder.action(Action::InstFlag(st_c.inst(), InstFlag::MEM_CS));</span>
+        <span class="comment">//builder.action(Action::InstFlag(ld_a.inst(), InstFlag::CACHE_GLOBAL));</span>
+        <span class="comment">//builder.action(Action::InstFlag(ld_b.inst(), InstFlag::CACHE_GLOBAL));</span>
+        <span class="comment">//builder.action(Action::InstFlag(st_c.inst(), InstFlag::NO_CACHE));</span>
 
         <span class="comment">//builder.action(Action::DimKind(init_dim_n[0], DimKind::BLOCK));</span>
         <span class="comment">//builder.action(Action::DimKind(init_dim_m[0], DimKind::BLOCK));</span>

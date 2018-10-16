@@ -498,10 +498,14 @@
 <span id="498">498</span>
 <span id="499">499</span>
 <span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">codegen</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
-<span class="kw">use</span> <span class="ident">search_space</span>::<span class="ident">InstFlag</span>;
+<span class="kw">use</span> <span class="ident">search_space</span>::{<span class="ident">InstFlag</span>, <span class="ident">MemSpace</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Cow</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
@@ -585,6 +589,7 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">vector_factors</span>: <span class="kw-2">&amp;</span>[<span class="ident">u32</span>],
         <span class="ident">return_type</span>: <span class="ident">Type</span>,
+        <span class="ident">mem_space</span>: <span class="ident">MemSpace</span>,
         <span class="ident">flag</span>: <span class="ident">InstFlag</span>,
         <span class="ident">return_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
@@ -595,6 +600,7 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">vector_factors</span>: <span class="kw-2">&amp;</span>[<span class="ident">u32</span>],
         <span class="ident">val_type</span>: <span class="ident">Type</span>,
+        <span class="ident">mem_space</span>: <span class="ident">MemSpace</span>,
         <span class="ident">mem_flag</span>: <span class="ident">InstFlag</span>,
         <span class="ident">predicate</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>,
         <span class="ident">addr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
@@ -952,14 +958,15 @@
                 <span class="kw">let</span> <span class="ident">operand</span> <span class="op">=</span> <span class="self">Self</span>::<span class="ident">name_operand</span>(<span class="ident">vector_dims</span>, <span class="ident">operand</span>, <span class="ident">namer</span>);
                 <span class="self">self</span>.<span class="ident">print_unary_op</span>(<span class="kw-2">&amp;</span><span class="ident">vector_factors</span>, <span class="ident">operator</span>, <span class="ident">t</span>, <span class="kw-2">&amp;</span><span class="ident">name</span>, <span class="kw-2">&amp;</span><span class="ident">operand</span>)
             }
-            <span class="ident">op</span>::<span class="ident">Ld</span>(<span class="ident">ld_type</span>, <span class="ident">addr</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">print_ld</span>(
+            <span class="ident">op</span>::<span class="ident">Ld</span>(<span class="ident">ld_type</span>, <span class="ident">addr</span>, <span class="ident">pattern</span>) <span class="op">=&gt;</span> <span class="self">self</span>.<span class="ident">print_ld</span>(
                 <span class="kw-2">&amp;</span><span class="ident">vector_factors</span>,
                 <span class="self">Self</span>::<span class="ident">lower_type</span>(<span class="kw-2">*</span><span class="ident">ld_type</span>, <span class="ident">fun</span>),
+                <span class="ident">fun</span>.<span class="ident">space</span>().<span class="ident">domain</span>().<span class="ident">get_mem_space</span>(<span class="ident">pattern</span>.<span class="ident">mem_block</span>()),
                 <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">inst</span>.<span class="ident">mem_flag</span>()),
                 <span class="kw-2">&amp;</span><span class="self">Self</span>::<span class="ident">name_inst</span>(<span class="ident">vector_dims</span>, <span class="ident">inst</span>.<span class="ident">id</span>(), <span class="ident">namer</span>),
                 <span class="kw-2">&amp;</span><span class="self">Self</span>::<span class="ident">name_operand</span>(<span class="kw-2">&amp;</span>[], <span class="ident">addr</span>, <span class="ident">namer</span>),
             ),
-            <span class="ident">op</span>::<span class="ident">St</span>(<span class="ident">addr</span>, <span class="ident">val</span>, <span class="kw">_</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> {
+            <span class="ident">op</span>::<span class="ident">St</span>(<span class="ident">addr</span>, <span class="ident">val</span>, <span class="kw">_</span>, <span class="ident">pattern</span>) <span class="op">=&gt;</span> {
                 <span class="kw">let</span> <span class="ident">guard</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">inst</span>.<span class="ident">has_side_effects</span>() {
                     <span class="ident">namer</span>.<span class="ident">side_effect_guard</span>()
                 } <span class="kw">else</span> {
@@ -968,6 +975,7 @@
                 <span class="self">self</span>.<span class="ident">print_st</span>(
                     <span class="kw-2">&amp;</span><span class="ident">vector_factors</span>,
                     <span class="self">Self</span>::<span class="ident">lower_type</span>(<span class="ident">val</span>.<span class="ident">t</span>(), <span class="ident">fun</span>),
+                    <span class="ident">fun</span>.<span class="ident">space</span>().<span class="ident">domain</span>().<span class="ident">get_mem_space</span>(<span class="ident">pattern</span>.<span class="ident">mem_block</span>()),
                     <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">inst</span>.<span class="ident">mem_flag</span>()),
                     <span class="ident">guard</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="ident">x</span> <span class="kw">as</span> <span class="kw">_</span>),
                     <span class="kw-2">&amp;</span><span class="self">Self</span>::<span class="ident">name_operand</span>(<span class="kw-2">&amp;</span>[], <span class="ident">addr</span>, <span class="ident">namer</span>),

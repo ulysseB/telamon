@@ -513,7 +513,7 @@
         <span class="kw">let</span> <span class="ident">flag</span> <span class="op">=</span> <span class="kw">if</span> <span class="self">self</span>.<span class="ident">read_only</span> {
             <span class="ident">InstFlag</span>::<span class="ident">ALL</span>
         } <span class="kw">else</span> {
-            <span class="ident">InstFlag</span>::<span class="ident">MEM_COHERENT</span>
+            <span class="ident">InstFlag</span>::<span class="ident">COHERENT</span>
         };
         <span class="kw">let</span> <span class="ident">inst</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">ld_ex</span>(<span class="ident">S</span>::<span class="ident">t</span>(), <span class="kw-2">&amp;</span><span class="ident">ptr</span>, <span class="ident">pattern</span>, <span class="ident">flag</span>);
         <span class="kw">for</span> <span class="ident">dim</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">dims</span> {

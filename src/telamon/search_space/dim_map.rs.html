@@ -106,14 +106,13 @@
 <span id="106">106</span>
 <span id="107">107</span>
 <span id="108">108</span>
-<span id="109">109</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! `DimMap` and layout lowering.</span>
 <span class="kw">use</span> <span class="ident">ir</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">search_space</span>::<span class="ident">choices</span>::<span class="ident">dim_kind</span>;
 <span class="kw">use</span> <span class="ident">search_space</span>::<span class="ident">operand</span>;
-<span class="kw">use</span> <span class="ident">search_space</span>::{<span class="ident">Action</span>, <span class="ident">DimKind</span>, <span class="ident">DomainStore</span>, <span class="ident">InstFlag</span>, <span class="ident">Order</span>};
+<span class="kw">use</span> <span class="ident">search_space</span>::{<span class="ident">Action</span>, <span class="ident">DimKind</span>, <span class="ident">DomainStore</span>, <span class="ident">MemSpace</span>, <span class="ident">Order</span>};
 
 <span class="doccomment">/// Lowers a layout</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lower_layout</span>(
@@ -162,13 +161,12 @@
         ));
     }
     <span class="comment">// FIXME: allow global memory</span>
-    <span class="ident">actions</span>.<span class="ident">push</span>(<span class="ident">Action</span>::<span class="ident">InstFlag</span>(
-        <span class="ident">lowered_dim_map</span>.<span class="ident">store</span>,
-        <span class="ident">InstFlag</span>::<span class="ident">MEM_SHARED</span>,
+    <span class="ident">actions</span>.<span class="ident">push</span>(<span class="ident">Action</span>::<span class="ident">MemSpace</span>(
+        <span class="ident">lowered_dim_map</span>.<span class="ident">mem</span>.<span class="ident">into</span>(),
+        <span class="ident">MemSpace</span>::<span class="ident">SHARED</span>,
     ));
-    <span class="ident">actions</span>.<span class="ident">push</span>(<span class="ident">Action</span>::<span class="ident">InstFlag</span>(<span class="ident">lowered_dim_map</span>.<span class="ident">load</span>, <span class="ident">InstFlag</span>::<span class="ident">MEM_SHARED</span>));
-    <span class="comment">//actions.push(Action::InstFlag(st, InstFlag::MEM_COHERENT));</span>
-    <span class="comment">//actions.push(Action::InstFlag(ld, InstFlag::MEM_COHERENT));</span>
+    <span class="comment">//actions.push(Action::InstFlag(st, InstFlag::COHERENT));</span>
+    <span class="comment">//actions.push(Action::InstFlag(ld, InstFlag::COHERENT));</span>
     <span class="kw">let</span> <span class="ident">store</span> <span class="op">=</span> <span class="ident">lowered_dim_map</span>.<span class="ident">store</span>;
     <span class="ident">actions</span>.<span class="ident">push</span>(<span class="ident">Action</span>::<span class="ident">Order</span>(
         <span class="ident">store</span>.<span class="ident">into</span>(),
