@@ -22,27 +22,22 @@ end
 
 /// Specifies the version of an instruction to use.
 define enum inst_flag($inst in MemInsts):
-  /// Access the global memory using both L1 and L2 cache. Coherence is not guaranteed
-  /// between blocks.
-  value MEM_CA:
-    requires "$fun.device().supports_l1_access()"
-  /// Access the global memory using the L2 cache.
-  value MEM_CG:
+  /// Don't use caches.
+  value NO_CACHE:
+  /// Use a global cache, coherent between all threads.
+  value CACHE_GLOBAL:
     requires "$fun.device().supports_l2_access()"
-  /// Access the global memory without using caches.
-  value MEM_CS:
-  /// Access the global memory using the read-only cache. Coherence is not guaranteed.
-  value MEM_NC:
+  /// Use a cache only coherent between threads of the same block.
+  value CACHE_SHARED:
+    requires "$fun.device().supports_l1_access()"
+  /// Use a read-only cache, not guaranteed to see any read.
+  value CACHE_READ_ONLY:
     requires "$inst.operator().supports_nc_access()"
     requires "$fun.device().supports_nc_access()"
-  /// Access the shared memory.
-  value MEM_SHARED:
-  /// Access the global memory.
-  alias MEM_GLOBAL = MEM_CA | MEM_CG | MEM_CS | MEM_NC:
   /// Ensure coherency between memory accesses.
-  alias MEM_COHERENT = MEM_SHARED | MEM_CG | MEM_CS:
+  alias COHERENT = NO_CACHE | CACHE_GLOBAL:
   /// Ensure coherency within a block between memory accesses.
-  alias MEM_BLOCK_COHERENT = MEM_COHERENT | MEM_CA:
+  alias BLOCK_COHERENT = COHERENT | CACHE_SHARED:
 end
 
 // Intruction orders

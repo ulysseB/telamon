@@ -3,7 +3,7 @@ use ir;
 use itertools::Itertools;
 use search_space::choices::dim_kind;
 use search_space::operand;
-use search_space::{Action, DimKind, DomainStore, InstFlag, Order};
+use search_space::{Action, DimKind, DomainStore, MemSpace, Order};
 
 /// Lowers a layout
 pub fn lower_layout(
@@ -52,13 +52,12 @@ fn lower_dim_map(
         ));
     }
     // FIXME: allow global memory
-    actions.push(Action::InstFlag(
-        lowered_dim_map.store,
-        InstFlag::MEM_SHARED,
+    actions.push(Action::MemSpace(
+        lowered_dim_map.mem.into(),
+        MemSpace::SHARED,
     ));
-    actions.push(Action::InstFlag(lowered_dim_map.load, InstFlag::MEM_SHARED));
-    //actions.push(Action::InstFlag(st, InstFlag::MEM_COHERENT));
-    //actions.push(Action::InstFlag(ld, InstFlag::MEM_COHERENT));
+    //actions.push(Action::InstFlag(st, InstFlag::COHERENT));
+    //actions.push(Action::InstFlag(ld, InstFlag::COHERENT));
     let store = lowered_dim_map.store;
     actions.push(Action::Order(
         store.into(),

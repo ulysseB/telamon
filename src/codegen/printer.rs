@@ -1,6 +1,6 @@
 use codegen::*;
 use itertools::Itertools;
-use search_space::InstFlag;
+use search_space::{InstFlag, MemSpace};
 use std::borrow::Cow;
 use utils::*;
 
@@ -84,6 +84,7 @@ pub trait Printer {
         &mut self,
         vector_factors: &[u32],
         return_type: Type,
+        mem_space: MemSpace,
         flag: InstFlag,
         return_id: &str,
         addr: &str,
@@ -94,6 +95,7 @@ pub trait Printer {
         &mut self,
         vector_factors: &[u32],
         val_type: Type,
+        mem_space: MemSpace,
         mem_flag: InstFlag,
         predicate: Option<&str>,
         addr: &str,
@@ -451,14 +453,15 @@ pub trait Printer {
                 let operand = Self::name_operand(vector_dims, operand, namer);
                 self.print_unary_op(&vector_factors, operator, t, &name, &operand)
             }
-            op::Ld(ld_type, addr, _) => self.print_ld(
+            op::Ld(ld_type, addr, pattern) => self.print_ld(
                 &vector_factors,
                 Self::lower_type(*ld_type, fun),
+                fun.space().domain().get_mem_space(pattern.mem_block()),
                 unwrap!(inst.mem_flag()),
                 &Self::name_inst(vector_dims, inst.id(), namer),
                 &Self::name_operand(&[], addr, namer),
             ),
-            op::St(addr, val, _, _) => {
+            op::St(addr, val, _, pattern) => {
                 let guard = if inst.has_side_effects() {
                     namer.side_effect_guard()
                 } else {
@@ -467,6 +470,7 @@ pub trait Printer {
                 self.print_st(
                     &vector_factors,
                     Self::lower_type(val.t(), fun),
+                    fun.space().domain().get_mem_space(pattern.mem_block()),
                     unwrap!(inst.mem_flag()),
                     guard.as_ref().map(|x| x as _),
                     &Self::name_operand(&[], addr, namer),
