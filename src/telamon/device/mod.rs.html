@@ -93,6 +93,7 @@
 <span id="93">93</span>
 <span id="94">94</span>
 <span id="95">95</span>
+<span id="96">96</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Code generation and candidate evaluation for specific targets.</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">cuda</span>;
@@ -127,9 +128,10 @@
     <span class="kw">fn</span> <span class="ident">max_threads</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span>;
     <span class="doccomment">/// Returns the maximal unrolling factor.</span>
     <span class="kw">fn</span> <span class="ident">max_unrolling</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span>;
-    <span class="doccomment">/// Indicates the valid vectorization factors for the given operator, on the given</span>
-    <span class="doccomment">/// dimension.</span>
-    <span class="kw">fn</span> <span class="ident">vectorization_factors</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dim</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Dimension</span>, <span class="ident">op</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Operator</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u32</span>];
+    <span class="doccomment">/// Indicates if the operator can be vectorized along the dimension.</span>
+    <span class="kw">fn</span> <span class="ident">can_vectorize</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dim</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Dimension</span>, <span class="ident">op</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Operator</span>) <span class="op">-&gt;</span> <span class="ident">bool</span>;
+    <span class="doccomment">/// Indicates the maximal vectorization factor for the given operator.</span>
+    <span class="kw">fn</span> <span class="ident">max_vectorization</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">op</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Operator</span>) <span class="op">-&gt;</span> [<span class="ident">u32</span>; <span class="number">2</span>];
     <span class="doccomment">/// Returns the amount of shared memory available for each thread block.</span>
     <span class="kw">fn</span> <span class="ident">shared_mem</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span>;
     <span class="doccomment">/// Indicates if the device supports non-coherent memory accesses.</span>
