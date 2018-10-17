@@ -3,7 +3,7 @@ use codegen::*;
 use device::cuda::{Gpu, Namer};
 use ir::{self, op, Type};
 use itertools::Itertools;
-use search_space::{DimKind, Domain, InstFlag};
+use search_space::{DimKind, Domain, InstFlag, MemSpace};
 use std;
 use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;
@@ -39,25 +39,31 @@ impl CudaPrinter {
     }
 
     /// Prints a load operator.
-    fn ld_operator(flag: InstFlag) -> &'static str {
-        match flag {
-            InstFlag::MEM_SHARED => "ld.shared",
-            InstFlag::MEM_CA => "ld.global.ca",
-            InstFlag::MEM_CG => "ld.global.cg",
-            InstFlag::MEM_CS => "ld.global.cs",
-            InstFlag::MEM_NC => "ld.global.nc",
-            _ => panic!("invalid load flag {:?}", flag),
+    fn ld_operator(space: MemSpace, flag: InstFlag) -> &'static str {
+        if space == MemSpace::SHARED {
+            "ld.shared"
+        } else {
+            match flag {
+                InstFlag::CACHE_SHARED => "ld.global.ca",
+                InstFlag::CACHE_GLOBAL => "ld.global.cg",
+                InstFlag::CACHE_READ_ONLY => "ld.global.nc",
+                InstFlag::NO_CACHE => "ld.global.cs",
+                _ => panic!("invalid load flag {:?}", flag),
+            }
         }
     }
 
     /// Prints a store operator.
-    fn st_operator(flag: InstFlag) -> &'static str {
-        match flag {
-            InstFlag::MEM_SHARED => "st.shared",
-            InstFlag::MEM_CA => "st.global.wb",
-            InstFlag::MEM_CG => "st.global.cg",
-            InstFlag::MEM_CS => "st.global.cs",
-            _ => panic!("invalid store flag {:?}", flag),
+    fn st_operator(space: MemSpace, flag: InstFlag) -> &'static str {
+        if space == MemSpace::SHARED {
+            "st.shared"
+        } else {
+            match flag {
+                InstFlag::CACHE_SHARED => "st.global.wb",
+                InstFlag::CACHE_GLOBAL => "st.global.cg",
+                InstFlag::NO_CACHE => "st.global.cs",
+                _ => panic!("invalid store flag {:?}", flag),
+            }
         }
     }
 
@@ -463,11 +469,12 @@ impl Printer for CudaPrinter {
         &mut self,
         vector_factors: [u32; 2],
         return_type: Type,
+        mem_space: MemSpace,
         flag: InstFlag,
         result: &str,
         addr: &str,
     ) {
-        let operator = Self::ld_operator(flag);
+        let operator = Self::ld_operator(mem_space, flag);
         let vector = match vector_factors {
             [1, 1] => "",
             [1, 2] => ".v2",
@@ -490,6 +497,7 @@ impl Printer for CudaPrinter {
         &mut self,
         vector_factors: [u32; 2],
         val_type: Type,
+        mem_space: MemSpace,
         mem_flag: InstFlag,
         predicate: Option<&str>,
         addr: &str,
@@ -504,7 +512,7 @@ impl Printer for CudaPrinter {
         if let Some(predicate) = predicate {
             unwrap!(write!(self.buffer, "@{} ", predicate));
         }
-        let operator = Self::st_operator(mem_flag);
+        let operator = Self::st_operator(mem_space, mem_flag);
         unwrap!(writeln!(
             self.buffer,
             "{}{}.{} [{}], {};",

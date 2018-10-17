@@ -87,8 +87,13 @@ fn cache_directive() {
     };
     let mut builder = helper::Builder::new(&signature, context.device());
     let pattern = builder.unknown_access_pattern(mem_id);
-    builder.ld_ex(ir::Type::F(32), &"a", pattern.clone(), InstFlag::MEM_CG);
-    builder.st_ex(&"a", &0i32, true, pattern, InstFlag::MEM_CG);
+    builder.ld_ex(
+        ir::Type::F(32),
+        &"a",
+        pattern.clone(),
+        InstFlag::CACHE_GLOBAL,
+    );
+    builder.st_ex(&"a", &0i32, true, pattern, InstFlag::CACHE_GLOBAL);
     gen_best(&context, builder.get());
 }
 
@@ -225,11 +230,11 @@ fn global_vector_load() {
     let d0 = builder.open_dim_ex(d0_size, DimKind::VECTOR);
     let (addr, input_pattern) =
         builder.tensor_access(&"input", input.0, DATA_TYPE, &[&d0]);
-    let ld = builder.ld_ex(DATA_TYPE, &addr, input_pattern, InstFlag::MEM_CS);
+    let ld = builder.ld_ex(DATA_TYPE, &addr, input_pattern, InstFlag::NO_CACHE);
     builder.close_dim(&d0);
     // Store B in shared memory.
     let output_pattern = builder.unknown_access_pattern(output.0);
-    builder.st_ex(&"output", &ld, true, output_pattern, InstFlag::MEM_CS);
+    builder.st_ex(&"output", &ld, true, output_pattern, InstFlag::NO_CACHE);
 
     check_candidates(builder.get(), &context, || {
         let res = read_array::<i32>(output.1.as_ref())[0];

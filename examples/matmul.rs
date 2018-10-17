@@ -95,7 +95,7 @@ fn main() {
     // Don't use caches to load `A`.
     builder.action(search_space::Action::InstFlag(
         ld_a.inst(),
-        search_space::InstFlag::MEM_CS,
+        search_space::InstFlag::NO_CACHE,
     ));
     let space = builder.get();
 

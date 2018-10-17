@@ -205,7 +205,7 @@ where
         let flag = if self.read_only {
             InstFlag::ALL
         } else {
-            InstFlag::MEM_COHERENT
+            InstFlag::COHERENT
         };
         let inst = builder.ld_ex(S::t(), &ptr, pattern, flag);
         for dim in &dims {

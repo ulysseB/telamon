@@ -2,7 +2,7 @@ use codegen::*;
 use device::x86::Namer;
 use ir::{self, op, Type};
 use itertools::Itertools;
-use search_space::{DimKind, Domain, InstFlag};
+use search_space::{DimKind, Domain, InstFlag, MemSpace};
 use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;
 // TODO(cc_perf): avoid concatenating strings.
@@ -427,6 +427,7 @@ impl Printer for X86printer {
         &mut self,
         vector_factors: [u32; 2],
         return_type: Type,
+        _: MemSpace,
         _: InstFlag,
         result: &str,
         addr: &str,
@@ -445,6 +446,7 @@ impl Printer for X86printer {
         &mut self,
         vector_factors: [u32; 2],
         val_type: Type,
+        _: MemSpace,
         _: InstFlag,
         predicate: Option<&str>,
         addr: &str,
