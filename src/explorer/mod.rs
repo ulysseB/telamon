@@ -19,7 +19,9 @@ pub use self::logger::LogMessage;
 use self::choice::fix_order;
 use self::monitor::{monitor, MonitorMessage};
 use self::parallel_list::ParallelCandidateList;
+use self::reroll::{actions_from_log, candidate_from_actions};
 use self::store::Store;
+use codegen;
 
 use boxfnonce::SendBoxFnOnce;
 use crossbeam;
@@ -150,6 +152,18 @@ fn explore_space<'a, T>(
                 .add_kernel(Candidate { space, ..cand }, SendBoxFnOnce::from(callback));
         }
     });
+}
+
+pub fn reroll_last_candidate<'a>(
+    event_filename: &str,
+    context: &Context,
+    search_space: SearchSpace<'a>,
+) -> Result<f64, ()> {
+    let actions_vec_list = actions_from_log(event_filename);
+    let last_actions = unwrap!(actions_vec_list.last());
+    let cand = candidate_from_actions(last_actions, context, search_space);
+    let cand_fn = codegen::Function::build(&cand.space);
+    context.evaluate(&cand_fn, EvalMode::FindBest)
 }
 
 /// Explores the full search space.
