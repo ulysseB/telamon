@@ -315,10 +315,14 @@ fn reduce_dim_invariants() {
     let d0 = builder.open_dim(Size::new_const(4));
     let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
     let reduce = builder.ld(Type::I(64), &helper::Reduce(init), pattern);
+    builder.close_dim(&d0);
 
     let d1 = builder.open_dim(Size::new_const(4));
     builder.action(Action::IsIterationDim(reduce.into(), d1[0], Bool::TRUE));
+    builder.close_dim(&d1);
     let d2 = builder.open_dim(Size::new_const(4));
+    builder.mov(&0i32);
+
     builder.order(&d2, &init, !Order::OUTER);
     let space = builder.get();
     assert_eq!(
@@ -484,4 +488,56 @@ fn double_dim_map() {
     builder.order(&dim1_1, &dim1_2, Order::OUTER);
 
     //gen_best(&context, builder.get());
+}
+
+/// Ensures mapping multiple dimensions to the same vectorization level works.
+#[test]
+fn multi_dim_to_same_vector_level() {
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature(0);
+    let mut builder = helper::Builder::new(&signature, context.device());
+
+    builder.open_dim_ex(ir::Size::new_const(2), DimKind::INNER_VECTOR);
+    builder.open_dim_ex(ir::Size::new_const(4), DimKind::INNER_VECTOR);
+    let inner = builder.open_dim_ex(ir::Size::new_const(4), DimKind::VECTOR);
+    builder.add(&0i32, &0i32);
+
+    // Ensure the search space is valid.
+    let space = builder.get();
+    // Ensure the total vector size constraint is respected.
+    assert_eq!(space.domain().get_dim_kind(inner[0]), DimKind::OUTER_VECTOR);
+    // Try to generate a specfied candidate.
+    gen_best(&context, space);
+}
+
+/// Ensures the two levels of vectorization work correctly.
+#[test]
+fn two_level_vectorization() {
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature(0);
+    let mut builder = helper::Builder::new(&signature, context.device());
+
+    let inner_vec = builder.open_dim_ex(ir::Size::new_const(2), DimKind::INNER_VECTOR);
+    let outer_vec = builder.open_dim_ex(ir::Size::new_const(2), DimKind::OUTER_VECTOR);
+    let not_a_vec = builder.open_dim_ex(ir::Size::new_const(2), DimKind::LOOP);
+    builder.add(&0i32, &0i32);
+    // Ensure the search space is valid.
+    let space = builder.get();
+    // Ensure nesting constraints are enforced.
+    let not_a_vec_id = not_a_vec[0].into();
+    let outer_vec_id = outer_vec[0].into();
+    let inner_vec_id = inner_vec[0].into();
+    assert_eq!(
+        space.domain().get_order(not_a_vec_id, outer_vec_id),
+        Order::OUTER
+    );
+    assert_eq!(
+        space.domain().get_order(outer_vec_id, inner_vec_id),
+        Order::OUTER
+    );
+
+    // Try to generate a fully specified candidate.
+    gen_best(&context, space);
 }

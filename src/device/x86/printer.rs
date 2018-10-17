@@ -121,7 +121,7 @@ impl X86printer {
                         if let Some(name) = name {
                             let old_name = name_map.name_size(incr, Type::I(32));
                             self.print_unary_op(
-                                &[],
+                                [1, 1],
                                 ir::UnaryOp::Cast(level.t()),
                                 Type::I(32),
                                 &name,
@@ -343,7 +343,7 @@ impl Printer for X86printer {
 
     fn print_binop(
         &mut self,
-        vector_factors: &[u32],
+        vector_factors: [u32; 2],
         op: ir::BinOp,
         _: Type,
         _: op::Rounding,
@@ -351,7 +351,7 @@ impl Printer for X86printer {
         lhs: &str,
         rhs: &str,
     ) {
-        assert!(vector_factors.is_empty());
+        assert_eq!(vector_factors, [1, 1]);
         let op = match op {
             ir::BinOp::Add => "+",
             ir::BinOp::Sub => "-",
@@ -371,13 +371,13 @@ impl Printer for X86printer {
 
     fn print_unary_op(
         &mut self,
-        vector_factors: &[u32],
+        vector_factors: [u32; 2],
         operator: ir::UnaryOp,
         _: Type,
         result: &str,
         operand: &str,
     ) {
-        assert!(vector_factors.is_empty());
+        assert_eq!(vector_factors, [1, 1]);
         unwrap!(write!(self.buffer, "{} = ", result));
         match operator {
             ir::UnaryOp::Mov => (),
@@ -390,7 +390,7 @@ impl Printer for X86printer {
 
     fn print_mul(
         &mut self,
-        vector_factors: &[u32],
+        vector_factors: [u32; 2],
         _: Type,
         _: op::Rounding,
         mode: MulMode,
@@ -399,13 +399,13 @@ impl Printer for X86printer {
         op2: &str,
     ) {
         assert_ne!(mode, MulMode::High);
-        assert!(vector_factors.is_empty());
+        assert_eq!(vector_factors, [1, 1]);
         unwrap!(writeln!(self.buffer, "{} = {} * {};", result, op1, op2));
     }
 
     fn print_mad(
         &mut self,
-        vector_factors: &[u32],
+        vector_factors: [u32; 2],
         _: Type,
         _: op::Rounding,
         mode: MulMode,
@@ -414,7 +414,7 @@ impl Printer for X86printer {
         mrhs: &str,
         arhs: &str,
     ) {
-        assert!(vector_factors.is_empty());
+        assert_eq!(vector_factors, [1, 1]);
         assert_ne!(mode, MulMode::High);
         unwrap!(writeln!(
             self.buffer,
@@ -425,14 +425,14 @@ impl Printer for X86printer {
 
     fn print_ld(
         &mut self,
-        vector_factors: &[u32],
+        vector_factors: [u32; 2],
         return_type: Type,
         _: MemSpace,
         _: InstFlag,
         result: &str,
         addr: &str,
     ) {
-        assert!(vector_factors.is_empty());
+        assert_eq!(vector_factors, [1, 1]);
         unwrap!(writeln!(
             self.buffer,
             "{} = *({}*){} ;",
@@ -444,7 +444,7 @@ impl Printer for X86printer {
 
     fn print_st(
         &mut self,
-        vector_factors: &[u32],
+        vector_factors: [u32; 2],
         val_type: Type,
         _: MemSpace,
         _: InstFlag,
@@ -452,7 +452,7 @@ impl Printer for X86printer {
         addr: &str,
         val: &str,
     ) {
-        assert!(vector_factors.is_empty());
+        assert_eq!(vector_factors, [1, 1]);
         if let Some(predicate) = predicate {
             unwrap!(write!(self.buffer, "if ({})", predicate));
         }
@@ -482,20 +482,22 @@ impl Printer for X86printer {
     }
 
     fn name_operand<'a>(
-        vector_dims: &[&Dimension],
+        vector_dims: &[Vec<Dimension>; 2],
         op: &ir::Operand,
         namer: &'a NameMap,
     ) -> Cow<'a, str> {
-        assert!(vector_dims.is_empty());
+        assert!(vector_dims[0].is_empty());
+        assert!(vector_dims[1].is_empty());
         namer.name_op(op)
     }
 
     fn name_inst<'a>(
-        vector_dims: &[&Dimension],
+        vector_dims: &[Vec<Dimension>; 2],
         inst: ir::InstId,
         namer: &'a NameMap,
     ) -> Cow<'a, str> {
-        assert!(vector_dims.is_empty());
+        assert!(vector_dims[0].is_empty());
+        assert!(vector_dims[1].is_empty());
         namer.name_inst(inst).into()
     }
 }
