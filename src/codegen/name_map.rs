@@ -492,8 +492,8 @@ impl VariableNames {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use ir;
+    use super::*;
 
     /// A `Namer` for use in tests.
     #[derive(Default)]

@@ -35,6 +35,7 @@ pub struct Dimension<'a, L = ir::LoweringMap> {
     mapped_dims: VecSet<DimMappingId>,
     defined_vars: VecSet<ir::VarId>,
     inner_vars: VecSet<ir::VarId>,
+    is_parallelizable: bool,
     freeze_marker: std::marker::PhantomData<L>,
 }
 
@@ -51,6 +52,7 @@ impl<'a> Dimension<'a, ()> {
             mapped_dims: self.mapped_dims,
             defined_vars: self.defined_vars,
             inner_vars: self.inner_vars,
+            is_parallelizable: self.is_parallelizable,
             freeze_marker: std::marker::PhantomData,
         }
     }
@@ -82,6 +84,7 @@ impl<'a, L> Dimension<'a, L> {
             mapped_dims: VecSet::default(),
             defined_vars: VecSet::default(),
             inner_vars: VecSet::default(),
+            is_parallelizable: true,
             freeze_marker: std::marker::PhantomData,
         })
     }
@@ -107,6 +110,7 @@ impl<'a, L> Dimension<'a, L> {
             mapped_dims: VecSet::default(),
             defined_vars: VecSet::default(),
             inner_vars: VecSet::default(),
+            is_parallelizable: true,
             freeze_marker: std::marker::PhantomData,
         })
     }
@@ -184,6 +188,16 @@ impl<'a, L> Dimension<'a, L> {
     /// Register a variable available inside the dimension.
     pub fn register_inner_var(&mut self, var: ir::VarId) {
         self.inner_vars.insert(var);
+    }
+
+    /// Indicates the dimension cannot be parallelized.
+    pub fn set_sequential(&mut self) {
+        self.is_parallelizable = false;
+    }
+
+    /// Indicates if the dimension can be parallelized.
+    pub fn is_parallelizable(&self) -> bool {
+        self.is_parallelizable
     }
 }
 

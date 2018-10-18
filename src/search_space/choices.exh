@@ -91,6 +91,7 @@ define enum dim_kind($dim in Dimensions):
       order($dim, $other_dim) is not OUTER || dim_kind($other_dim) is VECTOR
   /// The dimension is parallel.
   alias PARALLEL = BLOCK | THREAD | VECTOR:
+    requires "$dim.is_parallelizable()"
   /// The dimension is sequential.
   alias SEQUENTIAL = LOOP | UNROLL:
 end

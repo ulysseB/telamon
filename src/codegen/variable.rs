@@ -188,11 +188,11 @@ pub fn wrap_variables<'a>(space: &'a SearchSpace) -> Vec<Variable<'a>> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use device::x86::Cpu;
     use helper;
     use ir;
     use std;
+    use super::*;
 
     fn mk_map<K, V>(content: &[(K, V)]) -> HashMap<K, V>
     where

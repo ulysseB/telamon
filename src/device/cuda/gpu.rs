@@ -448,6 +448,11 @@ impl device::Device for Gpu {
         [1, 4]
     }
 
+
+    fn has_vector_registers(&self) -> bool {
+        false
+    }
+
     fn shared_mem(&self) -> u32 {
         self.shared_mem_per_block
     }
