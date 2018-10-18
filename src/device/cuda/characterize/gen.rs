@@ -524,7 +524,7 @@ pub fn run(
     result_prefix: &[u64],
     result: &mut Table<u64>,
 ) {
-    if let Some(choice) = explorer::choice::list(space).next() {
+    if let Some(choice) = explorer::choice::default_list(space).next() {
         panic!("The benchmark is not completely scheduled: {:?}", choice);
     }
     let dev_fun = codegen::Function::build(space);

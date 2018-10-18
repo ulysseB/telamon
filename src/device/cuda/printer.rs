@@ -401,7 +401,7 @@ impl Printer for CudaPrinter {
                     _ => ir::op::Rounding::Exact,
                 };
                 let rounding = Self::rounding(rounding);
-                let op = format!("cvt.{}.{}", rounding, Self::get_type(cast_type));
+                let op = format!("cvt{}.{}", rounding, Self::get_type(cast_type));
                 std::borrow::Cow::from(op)
             }
         };
@@ -484,8 +484,8 @@ impl Printer for CudaPrinter {
         unwrap!(writeln!(
             self.buffer,
             "{}{}.{} {}, [{}];",
-            vector,
             operator,
+            vector,
             Self::get_type(return_type),
             result,
             addr
@@ -516,8 +516,8 @@ impl Printer for CudaPrinter {
         unwrap!(writeln!(
             self.buffer,
             "{}{}.{} [{}], {};",
-            vector,
             operator,
+            vector,
             Self::get_type(val_type),
             addr,
             val
