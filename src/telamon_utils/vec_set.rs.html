@@ -419,6 +419,12 @@
 <span id="419">419</span>
 <span id="420">420</span>
 <span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Sets backed by ordered vectors.</span>
 <span class="kw">use</span> <span class="ident">std</span>;
@@ -642,6 +648,12 @@
     <span class="doccomment">/// Indicates if the `VecSet` contains the given object.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="ident">T</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">data</span>.<span class="ident">binary_search</span>(<span class="ident">item</span>).<span class="ident">is_ok</span>()
+    }
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Ord</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;&gt;</span> <span class="kw">for</span> <span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">vec</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="self">Self</span>::<span class="ident">new</span>(<span class="ident">vec</span>)
     }
 }
 

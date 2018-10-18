@@ -134,6 +134,12 @@
 <span id="134">134</span>
 <span id="135">135</span>
 <span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Helper functions to build an IR instance.</span>
 <span class="kw">mod</span> <span class="ident">builder</span>;
@@ -260,6 +266,12 @@
             <span class="ident">tiling_factors</span>: <span class="ident">multiples</span>,
             <span class="ident">tile_sizes</span>,
         }
+    }
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u32</span>]<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">TilingPattern</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">dim_sizes</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u32</span>]) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="ident">TilingPattern</span>::<span class="ident">new_fixed</span>(<span class="ident">dim_sizes</span>)
     }
 }
 
