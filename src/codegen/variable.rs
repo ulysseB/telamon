@@ -25,6 +25,9 @@ impl<'a> Variable<'a> {
     }
 
     /// Indicates if the variable aliases with another.
+    ///
+    /// This just indicates a single alias. In practice, aliases can be chained so the
+    /// variable may alias we multiple other variables.
     pub fn alias(&self) -> Option<&Alias> {
         self.alias.as_ref()
     }
@@ -83,14 +86,26 @@ impl Alias {
             reverse_mapping,
         }
     }
+
+    /// Finds dimensions on which the variable must be instantiated to implement the
+    /// aliasing. Also returns their size.
+    fn find_instantiation_dims(&self, space: &SearchSpace) -> HashMap<ir::DimId, usize> {
+        self.dim_mapping
+            .iter()
+            .flat_map(|(&lhs, &rhs)| rhs.map(|rhs| (lhs, rhs)))
+            .filter(|&(lhs, rhs)| {
+                space.domain().get_order(lhs.into(), rhs.into()) != Order::MERGED
+            }).map(|(_, rhs)| {
+                let size = space.ir_instance().dim(rhs).size();
+                let int_size = unwrap!(codegen::Size::from_ir(size, space).as_int());
+                (rhs, int_size as usize)
+            }).collect()
+    }
 }
 
-/// Add a wrapper around variables to expose specified decisions. Orders variables with an
-/// alias after the variable they depend on.
-pub fn wrap_variables<'a>(space: &'a SearchSpace) -> Vec<Variable<'a>> {
-    // 1. Generate aliases.
-    let mut aliases: HashMap<_, _> = space
-        .ir_instance()
+/// Generates variables aliases.
+fn generate_aliases(space: &SearchSpace) -> HashMap<ir::VarId, Option<Alias>> {
+    space.ir_instance()
         .variables()
         .map(|var| {
             let alias = match var.def() {
@@ -100,39 +115,45 @@ pub fn wrap_variables<'a>(space: &'a SearchSpace) -> Vec<Variable<'a>> {
                     Some(Alias::new_dim_map(*alias, mappings, space.ir_instance()))
                 }
             };
-            (var.id(), (var, alias))
-        }).collect();
-    // 2. Sort variables by aliasing order and generate wrappers.
-    let ordered_aliases = space.ir_instance().variables().flat_map(|var| {
+            (var.id(), alias)
+        }).collect()
+}
+
+/// Sort variables by aliasing order.
+fn sort_variables<'a>(
+    mut aliases: HashMap<ir::VarId, Option<Alias>>,
+    space: &'a SearchSpace,
+) -> impl Iterator<Item=(&'a ir::Variable, Option<Alias>)> {
+    space.ir_instance().variables().flat_map(move |var| {
         let mut reverse_aliases = vec![];
         let mut current_var = Some(var.id());
         // Each variable depends at most on one other, so we we just walk the chain of
         // dependencies until we encountered an already sorted variable or a variable
         // with no dependency. Then we insert them in reverse order in the sorted array.
-        while let Some(alias) = current_var.and_then(|id| aliases.remove(&id)) {
-            current_var = alias.1.as_ref().map(|alias| alias.other_variable);
-            reverse_aliases.push(alias);
+        while let Some((id, alias)) = {
+            current_var.and_then(|id| aliases.remove(&id).map(|alias| (id, alias)))
+        } {
+            current_var = alias.as_ref().map(|alias| alias.other_variable);
+            reverse_aliases.push((space.ir_instance().variable(id), alias));
         }
         reverse_aliases.reverse();
         reverse_aliases
-    });
-    // 3. Generate the wrappers and record the dimensions along which variables are
-    //    instantiated. We use an `IndexMap` so that the insertion order is preserved.
+    })
+}
+
+/// Add a wrapper around variables to expose specified decisions. Orders variables with an
+/// alias after the variable they depend on.
+pub fn wrap_variables<'a>(space: &'a SearchSpace) -> Vec<Variable<'a>> {
+    let aliases = generate_aliases(space);
+    // Generate the wrappers and record the dimensions along which variables are
+    // instantiated. We use an `IndexMap` so that the insertion order is preserved.
     let mut wrapped_vars = IndexMap::new();
-    for (variable, alias_opt) in ordered_aliases {
-        // 3.1. Compute instantiation dimensions.
+    for (variable, alias_opt) in sort_variables(aliases, space) {
         let instantiation_dims = alias_opt
-            .iter()
-            .flat_map(|alias| &alias.dim_mapping)
-            .flat_map(|(&lhs, &rhs)| rhs.map(|rhs| (lhs, rhs)))
-            .filter(|&(lhs, rhs)| {
-                space.domain().get_order(lhs.into(), rhs.into()) != Order::MERGED
-            }).map(|(_, rhs)| {
-                let size = space.ir_instance().dim(rhs).size();
-                let int_size = unwrap!(codegen::Size::from_ir(size, space).as_int());
-                (rhs, int_size as usize)
-            }).collect();
-        // 3.2. Register instantiation dimensions in preceeding aliases.
+            .as_ref()
+            .map(|alias| alias.find_instantiation_dims(space))
+            .unwrap_or_default();
+        // Register instantiation dimensions in preceeding aliases.
         if let Some(ref alias) = alias_opt {
             for (&iter_dim, &size) in &instantiation_dims {
                 let alias_iter_dim = alias.reverse_mapping[&iter_dim];

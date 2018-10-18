@@ -37,7 +37,7 @@ pub enum MemoryLevel {
     RegisterNoSync,
     /// The variable must be stored in registers.
     Register,
-    /// The variable must be stored in registers or a local, fast, memroy.
+    /// The variable must be stored in registers or a local, fast, memory.
     FastMemory,
     /// The variable may be stored anywhere.
     SlowMemory,
@@ -135,8 +135,9 @@ impl VarDef {
     pub fn t<L>(&self, fun: &ir::Function<L>) -> ir::Type {
         match self {
             VarDef::Inst(inst_id) => unwrap!(fun.inst(*inst_id).t()),
-            VarDef::DimMap(value_id, ..) | VarDef::Last(value_id, ..) => {
-                fun.variable(*value_id).t()
+            VarDef::DimMap(var_id, ..) | VarDef::Last(var_id, ..) => {
+                // A variable can't depend on itself so this doesn't loop.
+                fun.variable(*var_id).t()
             }
         }
     }
