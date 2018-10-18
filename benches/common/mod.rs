@@ -43,16 +43,16 @@ impl MMSig {
         let n_size = builder.param_size("n", 32);
         let k_size = builder.param_size("k", 32);
 
-        let ld_a_m = builder.open_tiled_dim(m_size, &[16, 4]);
-        let ld_a_k = builder.open_tiled_dim(k_size.clone(), &[16]);
+        let ld_a_m = builder.open_tiled_dim(m_size, [16, 4][..].into());
+        let ld_a_k = builder.open_tiled_dim(k_size.clone(), [16][..].into());
         let (ptr, pattern) =
             builder.tensor_access(&"a", self.a, DATA_TYPE, &[&ld_a_m, &ld_a_k]);
         let ld_a = builder.ld_nc(DATA_TYPE.clone(), &ptr, pattern);
         builder.close_dim(&ld_a_m);
         builder.close_dim(&ld_a_k);
 
-        let ld_b_k = builder.open_tiled_dim(k_size, &[16]);
-        let ld_b_n = builder.open_tiled_dim(n_size, &[16, 4]);
+        let ld_b_k = builder.open_tiled_dim(k_size, [16][..].into());
+        let ld_b_n = builder.open_tiled_dim(n_size, [16, 4][..].into());
         let (ptr, pattern) =
             builder.tensor_access(&"b", self.b, DATA_TYPE, &[&ld_b_k, &ld_b_n]);
         let ld_b = builder.ld_nc(DATA_TYPE, &ptr, pattern);
@@ -93,12 +93,11 @@ impl MMSig {
 /// Descends in the search tree without saving the candidates.
 pub fn descend_without_copies(mut space: SearchSpace) {
     while let Some(mut choice) = {
-        let choice = explorer::choice::list(&space).next();
+        let choice = explorer::choice::default_list(&space).next();
         choice
     } {
         let id = rand::thread_rng().gen_range(0, choice.len());
         let res = match choice.swap_remove(id) {
-            ActionEx::TileSizes(..) => panic!(),
             ActionEx::Action(action) => space.apply_decisions(vec![action]),
             ActionEx::LowerLayout {
                 mem,
@@ -116,12 +115,11 @@ pub fn descend_without_copies(mut space: SearchSpace) {
 pub fn descend_with_copies(mut space: SearchSpace) -> Vec<SearchSpace> {
     let mut spaces = vec![];
     while let Some(mut choice) = {
-        let choice = explorer::choice::list(&space).next();
+        let choice = explorer::choice::default_list(&space).next();
         choice
     } {
         let id = rand::thread_rng().gen_range(0, choice.len());
         let res = match choice.swap_remove(id) {
-            ActionEx::TileSizes(..) => panic!(),
             ActionEx::Action(action) => space.apply_decisions(vec![action]),
             ActionEx::LowerLayout {
                 mem,
