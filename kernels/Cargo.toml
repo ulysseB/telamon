@@ -4,6 +4,9 @@ name = "telamon-kernels"
 version = "0.1.0"
 
 [dependencies]
+crossbeam = "0.3.2"
+streaming-stats = "0.2"
+dot = "0.1.4"
 env_logger = "0.5.9"
 itertools = "0.7.8"
 libc = "0.2.40"
@@ -13,6 +16,7 @@ num = "0.2.0"
 num_cpus = "1.8.0"
 rayon = "1.0.1"
 rand = "0.5.5"
+serde_json = "1.0.22"
 
 [dev-dependencies]
 futures = "0.1.23"

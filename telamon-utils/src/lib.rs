@@ -14,6 +14,7 @@ extern crate flate2;
 mod cache;
 mod dag;
 mod iterator;
+pub mod lazy;
 pub mod multimap;
 pub mod ndarray;
 mod vec_set;

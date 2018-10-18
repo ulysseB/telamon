@@ -359,6 +359,21 @@ impl MatMulP {
         self.generic = false;
         self
     }
+
+    pub fn tile_m(mut self, m_tiling: helper::TilingPattern) -> Self {
+        self.m_tiling = Some(m_tiling);
+        self
+    }
+
+    pub fn tile_n(mut self, n_tiling: helper::TilingPattern) -> Self {
+        self.n_tiling = Some(n_tiling);
+        self
+    }
+
+    pub fn tile_k(mut self, k_tiling: helper::TilingPattern) -> Self {
+        self.k_tiling = Some(k_tiling);
+        self
+    }
 }
 
 impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
@@ -418,9 +433,9 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
         // Order for correctness.
         builder.order(&st_c.inst(), &acc_dim_k, Order::AFTER);
         // Arbitrary constrains to reduce the search space
-        //builder.action(Action::InstFlag(ld_a.inst(), InstFlag::CACHE_GLOBAL));
-        //builder.action(Action::InstFlag(ld_b.inst(), InstFlag::CACHE_GLOBAL));
-        //builder.action(Action::InstFlag(st_c.inst(), InstFlag::NO_CACHE));
+        builder.action(Action::InstFlag(ld_a.inst(), InstFlag::COHERENT));
+        builder.action(Action::InstFlag(ld_b.inst(), InstFlag::COHERENT));
+        builder.action(Action::InstFlag(st_c.inst(), InstFlag::COHERENT));
 
         //builder.action(Action::DimKind(init_dim_n[0], DimKind::BLOCK));
         //builder.action(Action::DimKind(init_dim_m[0], DimKind::BLOCK));

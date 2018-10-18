@@ -1,6 +1,7 @@
 *~
 *.swp
 *.swo
+\#*#
 *.log
 Cargo.lock
 examples/out/
@@ -10,3 +11,4 @@ settings/*
 Settings.toml
 tools/tune_bandit/settings/
 tools/tune_bandit/log/
+eventlog.tfrecord.gz
