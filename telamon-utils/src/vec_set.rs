@@ -223,6 +223,12 @@ where
     }
 }
 
+impl<T: Ord> From<Vec<T>> for VecSet<T> {
+    fn from(vec: Vec<T>) -> Self {
+        Self::new(vec)
+    }
+}
+
 impl<T> Default for VecSet<T> {
     fn default() -> Self {
         VecSet { data: Vec::new() }

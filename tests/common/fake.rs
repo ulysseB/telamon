@@ -40,23 +40,26 @@ impl device::Device for Device {
         256
     }
 
-    fn vectorization_factors(&self, dim: &ir::Dimension, op: &ir::Operator) -> &[u32] {
-        const LD_ST_FACTORS: [u32; 2] = [2, 4];
-        const OTHER_FACTORS: [u32; 0] = [];
+    /// Indicates which operators can be vectorized on a dimension. We only allow memory
+    /// operators and `Add` to be vectorized (to be able to test both vectorizable and
+    /// non-vectorizable operations).
+    fn can_vectorize(&self, dim: &ir::Dimension, op: &ir::Operator) -> bool {
         match *op {
-            Operator::TmpLd(..) | Operator::TmpSt(..) => &LD_ST_FACTORS,
-            Operator::Ld(ref t, _, ref pattern)
-                if pattern.is_consecutive(dim.id(), t) =>
-            {
-                &LD_ST_FACTORS
+            Operator::TmpLd(..)
+            | Operator::TmpSt(..)
+            | Operator::BinOp(ir::BinOp::Add, ..) => true,
+            Operator::Ld(ref t, _, ref pattern) => pattern.is_consecutive(dim.id(), t),
+            Operator::St(_, ref operand, _, ref pattern) => {
+                pattern.is_consecutive(dim.id(), &operand.t())
             }
-            Operator::St(_, ref operand, _, ref pattern)
-                if pattern.is_consecutive(dim.id(), &operand.t()) =>
-            {
-                &LD_ST_FACTORS
-            }
-            _ => &OTHER_FACTORS,
+            _ => false,
         }
+    }
+
+    fn max_vectorization(&self, _: &ir::Operator) -> [u32; 2] {
+        // No need to discriminate on the operator since this is already handled by
+        // `can_vectorize`.
+        [4, 8]
     }
 
     fn max_block_dims(&self) -> u32 {

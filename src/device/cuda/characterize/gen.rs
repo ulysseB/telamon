@@ -94,7 +94,7 @@ pub fn loop_chained_adds<'a>(
     builder.close_dim(&d0);
     builder.close_dim(&d1);
     let pattern = builder.unknown_access_pattern(out_id);
-    builder.st_ex(&out, &acc, true, pattern, InstFlag::MEM_CG);
+    builder.st_ex(&out, &acc, true, pattern, InstFlag::CACHE_GLOBAL);
     builder.get()
 }
 
@@ -133,7 +133,7 @@ where
     builder.close_dim(&d0);
     builder.close_dim(&d1);
     let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
-    builder.st_ex(&out, &acc, true, pattern, InstFlag::MEM_CS);
+    builder.st_ex(&out, &acc, true, pattern, InstFlag::NO_CACHE);
     builder.get()
 }
 
@@ -159,12 +159,12 @@ pub fn init_stride_array<'a>(
     };
     let next_addr = builder.mad(&byte_stride, &1i32, &addr);
     let pattern0 = builder.unknown_access_pattern(mem_id);
-    builder.st_ex(&addr, &next_addr, true, pattern0, InstFlag::MEM_CG);
+    builder.st_ex(&addr, &next_addr, true, pattern0, InstFlag::CACHE_GLOBAL);
     dim.as_ref().map(|dim| builder.close_dim(dim));
     let last_addr = builder.mad(&byte_stride, &(n as i32 - 1), &array);
 
     let pattern1 = builder.unknown_access_pattern(mem_id);
-    builder.st_ex(&last_addr, &array, true, pattern1, InstFlag::MEM_CG);
+    builder.st_ex(&last_addr, &array, true, pattern1, InstFlag::CACHE_GLOBAL);
     dim.as_ref()
         .map(|dim| builder.order(dim, &last_addr, Order::BEFORE));
     builder.get()
@@ -194,12 +194,17 @@ pub fn load_chain<'a>(
         builder.order(&d, &d0, Order::OUTER);
     }
     let pattern0 = builder.unknown_access_pattern(mem_id);
-    let ptr = builder.ld_ex(ir::Type::I(64), &Reduce(init), pattern0, InstFlag::MEM_CG);
+    let ptr = builder.ld_ex(
+        ir::Type::I(64),
+        &Reduce(init),
+        pattern0,
+        InstFlag::CACHE_GLOBAL,
+    );
     builder.order(&d0, &d1, Order::OUTER);
     builder.close_dim(&d0);
     builder.close_dim(&d1);
     let pattern1 = builder.unknown_access_pattern(out_id);
-    builder.st_ex(&out, &ptr, true, pattern1, InstFlag::MEM_CS);
+    builder.st_ex(&out, &ptr, true, pattern1, InstFlag::NO_CACHE);
     builder.get()
 }
 
@@ -236,7 +241,7 @@ pub fn shared_load_chain<'a>(
     builder.close_dim(&d0);
     builder.close_dim(&d1);
     let pattern3 = builder.unknown_access_pattern(out_id);
-    builder.st_ex(&out, &addr, true, pattern3, InstFlag::MEM_CG);
+    builder.st_ex(&out, &addr, true, pattern3, InstFlag::CACHE_GLOBAL);
 
     builder.order(&last_st, &addr_init, Order::BEFORE);
     builder.order(&d0, &d1, Order::OUTER);
@@ -295,7 +300,7 @@ pub fn parallel_load<'a>(
         strides.push((d1_1_a, ir::Size::new_const(wrap_stride)));
     }
     let addr = builder.induction_var(&array, strides);
-    let val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_CG);
+    let val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::CACHE_GLOBAL);
     let d4_1 = builder.open_mapped_dim(&d4_0);
     let acc = builder.add(&val, &Reduce(init));
     builder.close_dim(&d0);
@@ -308,7 +313,7 @@ pub fn parallel_load<'a>(
     let d1_2_b = builder.open_mapped_dim(&d1_1_b);
     builder.order(&d1_2_a, &d1_2_b, Order::OUTER);
     let out_pattern = builder.unknown_access_pattern(out_id);
-    builder.st_ex(&out, &acc, true, out_pattern, InstFlag::MEM_CS);
+    builder.st_ex(&out, &acc, true, out_pattern, InstFlag::NO_CACHE);
 
     builder.order(&d1_0_a, &d0, Order::BEFORE);
     builder.order(&d1_0_b, &d0, Order::BEFORE);
@@ -365,7 +370,7 @@ pub fn parallel_store<'a>(
         strides.push((d1_0, ir::Size::new_const(wrap_stride)));
     }
     let addr = builder.induction_var(&array, strides);
-    builder.st_ex(&addr, &42f32, true, pattern, InstFlag::MEM_CG);
+    builder.st_ex(&addr, &42f32, true, pattern, InstFlag::CACHE_GLOBAL);
 
     builder.order(&d0, &d1_0, Order::OUTER);
     builder.order(&d0, &d1_1, Order::OUTER);
@@ -437,7 +442,7 @@ pub fn chain_in_syncthread<'a>(
 
     let d5 = builder.open_mapped_dim(&d0);
     let pattern = builder.unknown_access_pattern(out_id);
-    builder.st_ex(&out, &acc, true, pattern, InstFlag::MEM_CG);
+    builder.st_ex(&out, &acc, true, pattern, InstFlag::CACHE_GLOBAL);
 
     builder.order(&d1, &d2, Order::OUTER);
     builder.order(&d1, &d3, Order::OUTER);
@@ -485,7 +490,7 @@ pub fn load_in_loop<'a>(
         ir::Type::F(32),
         &[&thread_dim_1_0, &unroll_dim_a],
     );
-    let a_val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_CG);
+    let a_val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::CACHE_GLOBAL);
     builder.close_dim(&unroll_dim_a);
     // Mad a and b
     let unroll_dims_1 = builder.open_mapped_dim(&unroll_dim_0_0);
@@ -499,7 +504,7 @@ pub fn load_in_loop<'a>(
 
     let _ = builder.open_mapped_dim(&unroll_dims_1);
     let (addr, pattern) = builder.tensor_access(&out, out_id, ir::Type::F(32), &[]);
-    let _ = builder.st_ex(&addr, &acc, true, pattern, InstFlag::MEM_CS);
+    let _ = builder.st_ex(&addr, &acc, true, pattern, InstFlag::NO_CACHE);
 
     builder.order(&k_dim, &thread_dim_1_0, Order::INNER);
     builder.order(&unroll_dim_a, &unroll_dims_1[0], Order::BEFORE);
@@ -519,7 +524,7 @@ pub fn run(
     result_prefix: &[u64],
     result: &mut Table<u64>,
 ) {
-    if let Some(choice) = explorer::choice::list(space).next() {
+    if let Some(choice) = explorer::choice::default_list(space).next() {
         panic!("The benchmark is not completely scheduled: {:?}", choice);
     }
     let dev_fun = codegen::Function::build(space);

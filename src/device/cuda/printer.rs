@@ -3,7 +3,7 @@ use codegen::*;
 use device::cuda::{Gpu, Namer};
 use ir::{self, op, Type};
 use itertools::Itertools;
-use search_space::{DimKind, Domain, InstFlag};
+use search_space::{DimKind, Domain, InstFlag, MemSpace};
 use std;
 use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;
@@ -39,25 +39,31 @@ impl CudaPrinter {
     }
 
     /// Prints a load operator.
-    fn ld_operator(flag: InstFlag) -> &'static str {
-        match flag {
-            InstFlag::MEM_SHARED => "ld.shared",
-            InstFlag::MEM_CA => "ld.global.ca",
-            InstFlag::MEM_CG => "ld.global.cg",
-            InstFlag::MEM_CS => "ld.global.cs",
-            InstFlag::MEM_NC => "ld.global.nc",
-            _ => panic!("invalid load flag {:?}", flag),
+    fn ld_operator(space: MemSpace, flag: InstFlag) -> &'static str {
+        if space == MemSpace::SHARED {
+            "ld.shared"
+        } else {
+            match flag {
+                InstFlag::CACHE_SHARED => "ld.global.ca",
+                InstFlag::CACHE_GLOBAL => "ld.global.cg",
+                InstFlag::CACHE_READ_ONLY => "ld.global.nc",
+                InstFlag::NO_CACHE => "ld.global.cs",
+                _ => panic!("invalid load flag {:?}", flag),
+            }
         }
     }
 
     /// Prints a store operator.
-    fn st_operator(flag: InstFlag) -> &'static str {
-        match flag {
-            InstFlag::MEM_SHARED => "st.shared",
-            InstFlag::MEM_CA => "st.global.wb",
-            InstFlag::MEM_CG => "st.global.cg",
-            InstFlag::MEM_CS => "st.global.cs",
-            _ => panic!("invalid store flag {:?}", flag),
+    fn st_operator(space: MemSpace, flag: InstFlag) -> &'static str {
+        if space == MemSpace::SHARED {
+            "st.shared"
+        } else {
+            match flag {
+                InstFlag::CACHE_SHARED => "st.global.wb",
+                InstFlag::CACHE_GLOBAL => "st.global.cg",
+                InstFlag::NO_CACHE => "st.global.cs",
+                _ => panic!("invalid store flag {:?}", flag),
+            }
         }
     }
 
@@ -230,7 +236,7 @@ impl CudaPrinter {
                         if let Some(name) = name {
                             let old_name = name_map.name_size(incr, Type::I(32));
                             self.print_unary_op(
-                                &[],
+                                [1, 1],
                                 ir::UnaryOp::Cast(level.t()),
                                 Type::I(32),
                                 &name,
@@ -354,7 +360,7 @@ impl Printer for CudaPrinter {
     /// Print result = op1 op op2
     fn print_binop(
         &mut self,
-        vector_factors: &[u32],
+        vector_factors: [u32; 2],
         op: ir::BinOp,
         operands_type: Type,
         rounding: op::Rounding,
@@ -362,7 +368,7 @@ impl Printer for CudaPrinter {
         lhs: &str,
         rhs: &str,
     ) {
-        assert!(vector_factors.is_empty());
+        assert_eq!(vector_factors, [1, 1]);
         let op = Self::binary_op(op);
         let rounding = Self::rounding(rounding);
         let operands_type = Self::get_type(operands_type);
@@ -376,13 +382,13 @@ impl Printer for CudaPrinter {
     /// Prints result = operator operand.
     fn print_unary_op(
         &mut self,
-        vector_factors: &[u32],
+        vector_factors: [u32; 2],
         operator: ir::UnaryOp,
         operand_type: ir::Type,
         result: &str,
         operand: &str,
     ) {
-        assert!(vector_factors.is_empty());
+        assert_eq!(vector_factors, [1, 1]);
         let operator = match operator {
             ir::UnaryOp::Mov => std::borrow::Cow::from("mov"),
             ir::UnaryOp::Cast(cast_type) => {
@@ -395,7 +401,7 @@ impl Printer for CudaPrinter {
                     _ => ir::op::Rounding::Exact,
                 };
                 let rounding = Self::rounding(rounding);
-                let op = format!("cvt.{}.{}", rounding, Self::get_type(cast_type));
+                let op = format!("cvt{}.{}", rounding, Self::get_type(cast_type));
                 std::borrow::Cow::from(op)
             }
         };
@@ -410,7 +416,7 @@ impl Printer for CudaPrinter {
     /// Print result = op1 * op2
     fn print_mul(
         &mut self,
-        vector_factors: &[u32],
+        vector_factors: [u32; 2],
         return_type: Type,
         round: op::Rounding,
         mul_mode: MulMode,
@@ -418,7 +424,7 @@ impl Printer for CudaPrinter {
         lhs: &str,
         rhs: &str,
     ) {
-        assert!(vector_factors.is_empty());
+        assert_eq!(vector_factors, [1, 1]);
         let operator = if round == op::Rounding::Exact {
             format!("mul{}", Self::mul_mode(mul_mode))
         } else {
@@ -435,7 +441,7 @@ impl Printer for CudaPrinter {
     /// Print result = mlhs * mrhs + arhs
     fn print_mad(
         &mut self,
-        vector_factors: &[u32],
+        vector_factors: [u32; 2],
         return_type: Type,
         round: op::Rounding,
         mul_mode: MulMode,
@@ -444,7 +450,7 @@ impl Printer for CudaPrinter {
         mrhs: &str,
         arhs: &str,
     ) {
-        assert!(vector_factors.is_empty());
+        assert_eq!(vector_factors, [1, 1]);
         let operator = if round == op::Rounding::Exact {
             format!("mad{}", Self::mul_mode(mul_mode))
         } else {
@@ -461,24 +467,25 @@ impl Printer for CudaPrinter {
     /// Print result = load [addr]
     fn print_ld(
         &mut self,
-        vector_factors: &[u32],
+        vector_factors: [u32; 2],
         return_type: Type,
+        mem_space: MemSpace,
         flag: InstFlag,
         result: &str,
         addr: &str,
     ) {
-        let operator = Self::ld_operator(flag);
+        let operator = Self::ld_operator(mem_space, flag);
         let vector = match vector_factors {
-            [] => "",
-            [2] => ".v2",
-            [4] => ".v4",
+            [1, 1] => "",
+            [1, 2] => ".v2",
+            [1, 4] => ".v4",
             p => panic!("invalid vector pattern: {:?}", p),
         };
         unwrap!(writeln!(
             self.buffer,
             "{}{}.{} {}, [{}];",
-            vector,
             operator,
+            vector,
             Self::get_type(return_type),
             result,
             addr
@@ -488,28 +495,29 @@ impl Printer for CudaPrinter {
     /// Print store val [addr]
     fn print_st(
         &mut self,
-        vector_factors: &[u32],
+        vector_factors: [u32; 2],
         val_type: Type,
+        mem_space: MemSpace,
         mem_flag: InstFlag,
         predicate: Option<&str>,
         addr: &str,
         val: &str,
     ) {
         let vector = match vector_factors {
-            [] => "",
-            [2] => ".v2",
-            [4] => ".v4",
+            [1, 1] => "",
+            [1, 2] => ".v2",
+            [1, 4] => ".v4",
             p => panic!("invalid vector pattern: {:?}", p),
         };
         if let Some(predicate) = predicate {
             unwrap!(write!(self.buffer, "@{} ", predicate));
         }
-        let operator = Self::st_operator(mem_flag);
+        let operator = Self::st_operator(mem_space, mem_flag);
         unwrap!(writeln!(
             self.buffer,
             "{}{}.{} [{}], {};",
-            vector,
             operator,
+            vector,
             Self::get_type(val_type),
             addr,
             val
@@ -536,20 +544,21 @@ impl Printer for CudaPrinter {
     }
 
     fn name_operand<'a>(
-        vector_dims: &[&Dimension],
+        vector_levels: &[Vec<Dimension>; 2],
         op: &ir::Operand,
         namer: &'a NameMap,
     ) -> Cow<'a, str> {
-        if vector_dims.is_empty() {
+        assert!(vector_levels[0].is_empty());
+        if vector_levels[1].is_empty() {
             namer.name_op(op)
         } else {
-            let sizes = vector_dims
+            let sizes = vector_levels[1]
                 .iter()
                 .map(|d| unwrap!(d.size().as_int()))
                 .collect_vec();
             let names = NDRange::new(&sizes)
                 .map(|indexes| {
-                    let indexes_map = vector_dims
+                    let indexes_map = vector_levels[1]
                         .iter()
                         .zip_eq(indexes)
                         .map(|(d, idx)| (d.id(), idx))
@@ -561,20 +570,21 @@ impl Printer for CudaPrinter {
     }
 
     fn name_inst<'a>(
-        vector_dims: &[&Dimension],
+        vector_levels: &[Vec<Dimension>; 2],
         inst: ir::InstId,
         namer: &'a NameMap,
     ) -> Cow<'a, str> {
-        if vector_dims.is_empty() {
+        assert!(vector_levels[0].is_empty());
+        if vector_levels[1].is_empty() {
             Cow::Borrowed(namer.name_inst(inst))
         } else {
-            let sizes = vector_dims
+            let sizes = vector_levels[1]
                 .iter()
                 .map(|d| unwrap!(d.size().as_int()))
                 .collect_vec();
             let names = NDRange::new(&sizes)
                 .map(|indexes| {
-                    let indexes_map = vector_dims
+                    let indexes_map = vector_levels[1]
                         .iter()
                         .zip_eq(indexes)
                         .map(|(d, idx)| (d.id(), idx))

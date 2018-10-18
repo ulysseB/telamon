@@ -20,7 +20,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                 name.push_str(path.file_stem().unwrap().to_str().unwrap());
 
                 c.bench_function(&name, move |b| {
-                    b.iter(|| lexer::Lexer::new(&mut input))
+                    b.iter(|| lexer::Lexer::from_input(&mut input))
                 });
             }
         }

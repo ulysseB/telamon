@@ -47,7 +47,7 @@ impl PerfModelTest for L1LinesPressure {
         let mem0 = ir::MemId::External(0);
         let pattern = builder.tensor_access_pattern(mem0, strides.clone());
         let addr = builder.induction_var(&"array", strides);
-        let val = builder.ld_ex(t, &addr, pattern, InstFlag::MEM_CG);
+        let val = builder.ld_ex(t, &addr, pattern, InstFlag::CACHE_GLOBAL);
         let acc = builder.add(&val, &Reduce(init));
         builder.close_dim(&d0);
         builder.close_dim(&d3);
@@ -55,7 +55,7 @@ impl PerfModelTest for L1LinesPressure {
         let d1_2 = builder.open_mapped_dim(&d1_1)[0];
         let d2_2 = builder.open_mapped_dim(&d2_1)[0];
         let out_pattern = builder.unknown_access_pattern(ir::MemId::External(1));
-        builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::MEM_CS);
+        builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::NO_CACHE);
 
         builder.order(&d1_0, &d2_0, Order::OUTER);
         builder.order(&d1_0, &d0, Order::BEFORE);
@@ -109,7 +109,7 @@ impl PerfModelTest for L2LinesPressure {
         let mem0 = ir::MemId::External(0);
         let pattern = builder.tensor_access_pattern(mem0, strides.clone());
         let addr = builder.induction_var(&"array", strides);
-        let val = builder.ld_ex(t, &addr, pattern, InstFlag::MEM_CG);
+        let val = builder.ld_ex(t, &addr, pattern, InstFlag::CACHE_GLOBAL);
         let acc = builder.add(&val, &Reduce(init));
         builder.close_dim(&d0);
         builder.close_dim(&d3);
@@ -117,7 +117,7 @@ impl PerfModelTest for L2LinesPressure {
         let d1_2 = builder.open_mapped_dim(&d1_1)[0];
         let d2_2 = builder.open_mapped_dim(&d2_1)[0];
         let out_pattern = builder.unknown_access_pattern(ir::MemId::External(1));
-        builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::MEM_CS);
+        builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::NO_CACHE);
 
         builder.order(&d1_0, &d2_0, Order::OUTER);
         builder.order(&d1_0, &d0, Order::BEFORE);
@@ -173,7 +173,7 @@ impl PerfModelTest for SharedLoad {
         builder.close_dim(&d2);
         builder.close_dim(&d3);
         let out_pattern = builder.unknown_access_pattern(ir::MemId::External(0));
-        builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::MEM_CS);
+        builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::NO_CACHE);
         SharedLoad {
             d0: d0[0],
             d1: d1[0],
@@ -233,7 +233,7 @@ impl PerfModelTest for VectorSharedLoad {
         builder.close_dim(&d3);
         builder.close_dim(&d4_2);
         let out_pattern = builder.unknown_access_pattern(ir::MemId::External(0));
-        builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::MEM_CS);
+        builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::NO_CACHE);
 
         VectorSharedLoad {
             d0: d0[0],
@@ -294,7 +294,7 @@ impl PerfModelTest for SharedReplay {
         builder.close_dim(&d3_1);
         let out_pattern = builder.unknown_access_pattern(ir::MemId::External(0));
 
-        builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::MEM_CS);
+        builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::NO_CACHE);
         builder.order(&d0, &d1, Order::OUTER);
         builder.order(&d1, &d2, Order::OUTER);
         builder.order(&d4, &d3_0, Order::OUTER);
@@ -354,7 +354,7 @@ impl PerfModelTest for VectorSharedReplay {
         builder.close_dim(&d3_1);
         let out_pattern = builder.unknown_access_pattern(ir::MemId::External(0));
 
-        builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::MEM_CS);
+        builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::NO_CACHE);
         builder.order(&d0, &d1, Order::OUTER);
         builder.order(&d1, &d2, Order::OUTER);
         builder.order(&d4, &d3_0, Order::OUTER);

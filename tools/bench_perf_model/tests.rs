@@ -59,7 +59,8 @@ impl PerfModelTest for Test0 {
             ir::Type::F(32),
             &[&b1, &thread_dim_1, &a_ld_unroll_dim, &k0_dim, &thread_dim_0],
         );
-        let a_ld = builder.ld_ex(ir::Type::F(32), &a_addr, a_pattern, InstFlag::MEM_CG);
+        let a_ld =
+            builder.ld_ex(ir::Type::F(32), &a_addr, a_pattern, InstFlag::CACHE_GLOBAL);
         builder.close_dim(&a_ld_unroll_dim);
         // Load B from global memory
         let b_ld_unroll_dim = builder.open_dim_ex(tile_2_size.clone(), DimKind::VECTOR);
@@ -69,7 +70,8 @@ impl PerfModelTest for Test0 {
             ir::Type::F(32),
             &[&k0_dim, &thread_dim_1, &b0, &thread_dim_0, &b_ld_unroll_dim],
         );
-        let b_ld = builder.ld_ex(ir::Type::F(32), &b_addr, b_pattern, InstFlag::MEM_CG);
+        let b_ld =
+            builder.ld_ex(ir::Type::F(32), &b_addr, b_pattern, InstFlag::CACHE_GLOBAL);
         builder.close_dim(&b_ld_unroll_dim);
         // Store A in shared memory.
         let a_st_tmp_unroll_dim = builder.open_mapped_dim(&a_ld_unroll_dim);
@@ -146,7 +148,8 @@ impl PerfModelTest for Test1 {
             ir::Type::F(32),
             &[&thread_dim_1_0, &unroll_dim_a],
         );
-        let a_val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_CG);
+        let a_val =
+            builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::CACHE_GLOBAL);
         builder.close_dim(&unroll_dim_a);
         // Mad a and b
         let unroll_dims_1 = builder.open_mapped_dim(&unroll_dim_0_0);
@@ -160,7 +163,7 @@ impl PerfModelTest for Test1 {
 
         let _ = builder.open_mapped_dim(&unroll_dims_1);
         let (addr, pattern) = builder.tensor_access(&"out", out, ir::Type::F(32), &[]);
-        let _ = builder.st_ex(&addr, &acc, true, pattern, InstFlag::MEM_CS);
+        let _ = builder.st_ex(&addr, &acc, true, pattern, InstFlag::NO_CACHE);
 
         builder.order(&k_dim, &thread_dim_1_0, Order::INNER);
         builder.order(&unroll_dim_a, &unroll_dims_1[0], Order::BEFORE);
@@ -230,7 +233,8 @@ impl PerfModelTest for Test2 {
             ir::Type::F(32),
             &[&thread_dims_0_1, &unroll_dim_a],
         );
-        let a_val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_CG);
+        let a_val =
+            builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::CACHE_GLOBAL);
         builder.close_dim(&unroll_dim_a);
         // Load B
         let unroll_dim_b = builder.open_dim_ex(tile_2_size.clone(), DimKind::VECTOR);
@@ -240,7 +244,8 @@ impl PerfModelTest for Test2 {
             ir::Type::F(32),
             &[&thread_dims_1_1, &unroll_dim_b],
         );
-        let b_val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::MEM_SHARED);
+        let b_val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::NO_CACHE);
+        builder.action(Action::MemSpace(b_tmp_mem, MemSpace::SHARED));
         builder.close_dim(&unroll_dim_b);
         // Mad a and b
         let unroll_dims_0_1 = builder.open_mapped_dim(&unroll_dim_0_0);
@@ -273,7 +278,7 @@ impl PerfModelTest for Test2 {
                 &unroll_dims_1_2,
             ],
         );
-        let _ = builder.st_ex(&addr, &acc, true, pattern, InstFlag::MEM_CS);
+        let _ = builder.st_ex(&addr, &acc, true, pattern, InstFlag::NO_CACHE);
 
         builder.order(&k_dim, &thread_dims_0_1, Order::OUTER);
         builder.order(&thread_dim_0_0, &thread_dim_1_0, Order::OUTER);

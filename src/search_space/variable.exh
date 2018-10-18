@@ -156,15 +156,12 @@ end
 define enum mem_space($mem in MemoryRegions):
   /// The block is in the device RAM.
   value GLOBAL:
-    requires forall $inst in MemInsts:
-      "unwrap!($inst.operator().mem_used()) != $mem.mem_id()"
-        || inst_flag($inst) is MEM_GLOBAL
   /// The block is in the memory shared between the threads of a block.
   value SHARED:
     requires "$mem.as_internal().is_some()"
     requires forall $inst in MemInsts:
       "unwrap!($inst.operator().mem_used()) != $mem.mem_id()"
-        || inst_flag($inst) is MEM_SHARED
+        || inst_flag($inst) is NO_CACHE
 end
 
 /// Computes the size of each memory block.
