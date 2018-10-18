@@ -33,6 +33,10 @@ cuda = [
     "cuda-sys",
 ]
 
+[[bin]]
+name = "reroll"
+path = "tests/x86.rs"
+
 [[bench]]
 name = "cuda-search"
 path = "benches/cuda_search.rs"

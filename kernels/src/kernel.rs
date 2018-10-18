@@ -5,9 +5,10 @@ use rayon::prelude::*;
 use statistics;
 use std;
 use std::sync::{atomic, Mutex};
-use telamon::explorer::{local_selection, Candidate};
-use telamon::helper::SignatureBuilder;
+use telamon::explorer::{local_selection, reroll_last_candidate, Candidate};
+use telamon::helper::{Builder, SignatureBuilder};
 use telamon::model::Bound;
+use telamon::search_space::SearchSpace;
 use telamon::{codegen, device, explorer, ir};
 use utils::*;
 
@@ -55,6 +56,30 @@ pub trait Kernel<'a>: Sized {
         expected: &Self::ExpectedOutput,
         context: &device::Context,
     ) -> Result<(), String>;
+
+    fn reroll_last_cand<AM>(params: Self::Parameters, context: &'a mut AM)
+    where
+        AM: device::ArgMap + device::Context + 'a,
+    {
+        let kernel;
+        let signature = {
+            let mut builder = SignatureBuilder::new(Self::name(), context);
+            builder.set_random_fill(true);
+            kernel = Self::build_signature(params, &mut builder);
+            builder.get()
+        };
+        let builder = Builder::new(&signature, context.device());
+        let expected_output = kernel.get_expected_output(context);
+        let space = builder.get();
+        unwrap!(reroll_last_candidate(
+            "eventlog.tfrecord.gz",
+            context,
+            space
+        ));
+        if let Err(err) = kernel.check_result(&expected_output, context) {
+            panic!("incorrect output for kernel {}: {}", Self::name(), err)
+        }
+    }
 
     /// Generates, executes and tests the output of candidates for the kernel.
     fn test_correctness<AM>(params: Self::Parameters, num_tests: usize, context: &mut AM)

@@ -19,7 +19,6 @@ pub fn candidate_from_actions<'a>(
         .fold(Candidate::new(space, bound), |cand, action| {
             unwrap!(cand.apply_decision(context, action))
         })
-    //unimplemented!()
 }
 
 struct ActionIter {
