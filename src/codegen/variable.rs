@@ -105,7 +105,8 @@ impl Alias {
 
 /// Generates variables aliases.
 fn generate_aliases(space: &SearchSpace) -> HashMap<ir::VarId, Option<Alias>> {
-    space.ir_instance()
+    space
+        .ir_instance()
         .variables()
         .map(|var| {
             let alias = match var.def() {
@@ -123,16 +124,16 @@ fn generate_aliases(space: &SearchSpace) -> HashMap<ir::VarId, Option<Alias>> {
 fn sort_variables<'a>(
     mut aliases: HashMap<ir::VarId, Option<Alias>>,
     space: &'a SearchSpace,
-) -> impl Iterator<Item=(&'a ir::Variable, Option<Alias>)> {
+) -> impl Iterator<Item = (&'a ir::Variable, Option<Alias>)> {
     space.ir_instance().variables().flat_map(move |var| {
         let mut reverse_aliases = vec![];
         let mut current_var = Some(var.id());
         // Each variable depends at most on one other, so we we just walk the chain of
         // dependencies until we encountered an already sorted variable or a variable
         // with no dependency. Then we insert them in reverse order in the sorted array.
-        while let Some((id, alias)) = {
-            current_var.and_then(|id| aliases.remove(&id).map(|alias| (id, alias)))
-        } {
+        while let Some((id, alias)) =
+            { current_var.and_then(|id| aliases.remove(&id).map(|alias| (id, alias))) }
+        {
             current_var = alias.as_ref().map(|alias| alias.other_variable);
             reverse_aliases.push((space.ir_instance().variable(id), alias));
         }
