@@ -3,7 +3,7 @@ use device::Device;
 use helper::{AutoOperand, LogicalDim, MetaStatement, TilingPattern};
 use ir::{self, mem, op, Parameter, Type};
 use ir::{AccessPattern, Function, InstId, Operand, Operator, Signature};
-use itertools::Itertools;
+use itertools::{flatten, Itertools};
 use search_space::{Action, DimKind, InstFlag, MemSpace, Order, SearchSpace};
 use std::borrow::Borrow;
 use utils::*;
@@ -213,13 +213,45 @@ impl<'a> Builder<'a> {
         unwrap!(self.function.add_inst(op, open_dims))
     }
 
-    pub fn create_inst_variable(&mut self, inst_id: InstId) -> ir::VarId {
+    /// Returns the variable holding the result of an instruction. Creates it if
+    /// necessary.
+    pub fn get_inst_variable(&mut self, inst_id: InstId) -> ir::VarId {
         self.function
             .inst(inst_id)
             .result_variable()
             .unwrap_or_else(|| {
                 unwrap!(self.function.add_variable(ir::VarDef::Inst(inst_id)))
             })
+    }
+
+    /// Creates a new variable that takes the last value of another variable produced in
+    /// a loop nest.
+    pub fn create_last_variable(
+        &mut self,
+        var: ir::VarId,
+        logical_dims: &[&LogicalDim],
+    ) -> ir::VarId {
+        let dims = flatten(logical_dims.iter().cloned()).collect();
+        self.function
+            .add_variable(ir::VarDef::Last(var, dims))
+            .unwrap()
+    }
+
+    /// Creates a new variable that takes point-to-point the value of another variable, in
+    /// another loop nest.
+    pub fn create_dim_map_variable(
+        &mut self,
+        var: ir::VarId,
+        logical_mapping: &[(&LogicalDim, &LogicalDim)],
+    ) -> ir::VarId {
+        let mapping = logical_mapping
+            .iter()
+            .flat_map(|&(lhs, rhs)| lhs.iter().zip_eq(rhs))
+            .map(|(lhs, rhs)| self.function.map_dimensions([lhs, rhs]))
+            .collect();
+        self.function
+            .add_variable(ir::VarDef::DimMap(var, mapping))
+            .unwrap()
     }
 
     /// Applies an action on the function.

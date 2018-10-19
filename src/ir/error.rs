@@ -105,10 +105,10 @@ pub enum Error {
     )]
     DuplicateIncrement { dim: ir::DimId },
     #[fail(
-        display = "the access pattern references dimension {}, but is not nested inside",
+        display = "the operator needs to be nested in dimension {}",
         dim
     )]
-    InvalidDimInPattern { dim: ir::DimId },
+    MissingIterationDim { dim: ir::DimId },
     #[fail(
         display = "no mapping found between dimensions {} and {}",
         lhs,

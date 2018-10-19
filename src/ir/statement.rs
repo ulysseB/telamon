@@ -42,8 +42,11 @@ pub trait Statement<'a, L = ir::LoweringMap> {
     }
 
     /// Lists the variables defined at this statement.
-    fn def_variables(&self) -> &VecSet<ir::VarId>;
+    fn defined_vars(&self) -> &VecSet<ir::VarId>;
 
     /// Lists the variables defined used at this statement.
-    fn used_variables(&self) -> &VecSet<ir::VarId>;
+    fn used_vars(&self) -> &VecSet<ir::VarId>;
+
+    /// Registers a variable use in this statement.
+    fn register_defined_var(&mut self, var: ir::VarId);
 }

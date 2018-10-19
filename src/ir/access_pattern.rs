@@ -55,7 +55,7 @@ impl<'a> AccessPattern<'a> {
                 // the access pattern.
                 for (&dim, _) in dims.iter() {
                     if !iter_dims.contains(&dim) {
-                        return Err(ir::Error::InvalidDimInPattern { dim });
+                        return Err(ir::Error::MissingIterationDim { dim });
                     }
                 }
                 Ok(())

@@ -14,8 +14,8 @@ set DefStatements($var in Variables) subsetof Statements:
   item_getter = "$fun.statement($id)"
   id_getter = "$item.id()"
   iterator = "$var.def_points().map(|id| $fun.statement(id))"
-  from_superset = "if $item.def_variables().contains(&$var.id()) { Some($item) } else { None }"
-  reverse forall $stmt in Statements = "$stmt.def_variables().iter().map(|&id| $fun.variable(id))"
+  from_superset = "if $item.defined_vars().contains(&$var.id()) { Some($item) } else { None }"
+  reverse forall $stmt in Statements = "$stmt.defined_vars().iter().map(|&id| $fun.variable(id))"
   var_prefix = "def"
   new_objs = "$objs.def_statements"
 end
@@ -26,8 +26,8 @@ set UseStatements($var in Variables) subsetof Statements:
   item_getter = "$fun.statement($id)"
   id_getter = "$item.id()"
   iterator = "$var.use_points().map(|id| $fun.statement(id))"
-  from_superset = "if $item.used_variables().contains(&$var.id()) { Some($item) } else { None }"
-  reverse forall $stmt in Statements = "$stmt.used_variables().iter().map(|&id| $fun.variable(id))"
+  from_superset = "if $item.used_vars().contains(&$var.id()) { Some($item) } else { None }"
+  reverse forall $stmt in Statements = "$stmt.used_vars().iter().map(|&id| $fun.variable(id))"
   var_prefix = "use"
   new_objs = "$objs.use_statements"
 end
@@ -37,6 +37,99 @@ require forall $var in Variables:
   forall $def in DefStatements($var):
     forall $use in UseStatements($var):
       order($def, $use) is BEFORE
+
+/// Lists the dimensions on which $var can vary.
+set VarDims($var in Variables) subsetof Dimensions:
+  item_type = "ir::Dimension"
+  id_type = "ir::DimId"
+  item_getter = "$fun.dim($id)"
+  id_getter = "$item.id()"
+  iterator = "$var.dimensions().iter().map(|&dim| $fun.dim(dim))"
+  from_superset = "if $var.dimensions().contains(&$item.id()) { Some($item) } else { None }"
+  reverse forall $dim in Dimensions = "$dim.inner_vars().map(|&id| $fun.variable(id))"
+  new_objs = "$objs.var_dims"
+end
+
+/// List pairs of dimensions that must have the same size and can be use for
+/// point-to-point communication.
+set DimMappings:
+  item_type = "ir::DimMapping"
+  id_type = "ir::DimMappingId"
+  item_getter = "$fun.dim_mapping($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.dim_mappings()"
+  var_prefix = "dim_pair"
+  new_objs = "$objs.dim_mappings"
+end
+
+/// If the value is a `DimMap`, indicates which dimensions are mapped together.
+set VarMappings($var in Variables) subsetof DimMappings:
+  item_type = "ir::DimMapping"
+  id_type = "ir::DimMappingId"
+  item_getter = "$fun.dim_mapping($id)"
+  id_getter = "$item.id()"
+  iterator = "$var.mapped_dims().map(|&id| $fun.dim_mapping($id))"
+  from_superset = "(if $item.users().contains(&$var.id()) { Some($item) } else { None })"
+  reverse forall $mapping in DimMappings =
+    "$mapping.users().iter().map(|&id| $fun.variable(id))"
+  new_objs = "$var.var_mappings"
+end
+
+/// Lists the static dimensions in a dimension mapping.
+set MappedDims($pair in DimMappings) subsetof Dimensions:
+  item_type = "ir::Dimension"
+  id_type = "ir::DimId"
+  item_getter = "$fun.dim($id)"
+  id_getter = "$item.id()"
+  iterator = "$pair.dims().iter().map(|&dim| $fun.dim(dim))"
+  var_prefix = "mapped_dim"
+  from_superset =
+    "(if $item.dim_mappings().contains(&$pair.id()) { Some($item) } else { None })"
+  reverse forall $dim in Dimensions =
+    "$dim.dim_mappings().iter().map(|&id| $fun.dim_mapping(id))"
+  new_objs = "$objs.mapped_dims"
+end
+
+require forall $mapping in DimMappings:
+  forall $lhs in MappedDims($mapping):
+    forall $rhs in MappedDims($mapping):
+      order($lhs, $rhs) is ORDERED | MERGED
+
+require forall $var in Variables:
+  forall $mapping in DimMappings:
+    forall $lhs in MappedDims($mapping):
+      forall $rhs in MappedDims($mapping):
+        "$var.max_memory_level() <= ir::MemoryLevel::RegisterNoSync"
+          || order($lhs, $rhs) is MERGED
+          // TODO(ulysse): replace with mem_space($var) is REGISTER once with have that
+          // choice
+          || dim_kind($lhs) is UNROLL | VECTOR
+
+/// Lists the static dimensions in a dimension mapping.
+set StaticMappedDims($pair in DimMappings) subsetof StaticDims:
+  item_type = "ir::Dimension"
+  id_type = "ir::DimId"
+  item_getter = "$fun.dim($id)"
+  id_getter = "$item.id()"
+  iterator = "$pair.dims().iter().map(|&dim| $fun.dim(dim))\
+    .filter(|dim| dim.possible_sizes().is_some())"
+  var_prefix = "mapped_dim"
+  from_superset =
+    "(if $item.dim_mappings().contains(&$pair.id()) { Some($item) } else { None })"
+  reverse forall $dim in StaticDims =
+    "$dim.dim_mappings().iter().map(|&id| $fun.dim_mapping(id))"
+  new_objs = "$objs.static_mapped_dims"
+end
+
+// Ensure mapped dimensions have the same size. We currently have no way to constrain the
+// size of dynamic dimensions: it would require to name the reverse set of
+// `TiledDimension($logical_dim)`. However, it is enough to constrain the size of static
+// dimensions as the tiling factor of dynamic dimensions only depend on the size of static
+// dimensions.
+require forall $mapping in DimMappings:
+  forall $lhs in StaticMappedDims($mapping):
+    forall $rhs in StaticMappedDims($mapping):
+      size($lhs) == size($rhs)
 
 set MemoryRegions:
   item_type = "ir::mem::Block"

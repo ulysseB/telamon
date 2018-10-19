@@ -22,6 +22,7 @@ extern crate errno;
 extern crate getopts;
 #[macro_use]
 extern crate failure;
+extern crate indexmap;
 extern crate interval_heap;
 #[cfg(feature = "cuda")]
 extern crate ipc_channel;
