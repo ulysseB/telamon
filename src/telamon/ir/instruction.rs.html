@@ -223,6 +223,16 @@
 <span id="223">223</span>
 <span id="224">224</span>
 <span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Describes the instructions.</span>
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">DimMapScope</span>, <span class="ident">LoweringMap</span>, <span class="ident">Operand</span>, <span class="ident">Operator</span>, <span class="ident">Statement</span>, <span class="ident">StmtId</span>, <span class="ident">Type</span>};
@@ -256,10 +266,8 @@
     <span class="ident">id</span>: <span class="ident">InstId</span>,
     <span class="ident">iter_dims</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
     <span class="ident">variable</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span><span class="op">&gt;</span>,
-    <span class="comment">// We need a `VecSet` so that we can return a reference to it when implementing the `Statement`</span>
-    <span class="comment">// trait. In practice, it just contains `variable`.</span>
-    <span class="ident">def_variables</span>: <span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span><span class="op">&gt;</span>,
-    <span class="ident">used_variables</span>: <span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span><span class="op">&gt;</span>,
+    <span class="ident">defined_vars</span>: <span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span><span class="op">&gt;</span>,
+    <span class="ident">used_vars</span>: <span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> <span class="ident">Instruction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;</span> {
@@ -271,7 +279,16 @@
         <span class="ident">fun</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Function</span><span class="op">&lt;</span><span class="ident">L</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ir</span>::<span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">operator</span>.<span class="ident">check</span>(<span class="kw-2">&amp;</span><span class="ident">iter_dims</span>, <span class="ident">fun</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">used_variables</span> <span class="op">=</span> <span class="ident">operator</span>
+        <span class="kw">for</span> <span class="ident">operand</span> <span class="kw">in</span> <span class="ident">operator</span>.<span class="ident">operands</span>() {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">Variable</span>(<span class="ident">var_id</span>, ..) <span class="op">=</span> <span class="kw-2">*</span><span class="ident">operand</span> {
+                <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">dim</span> <span class="kw">in</span> <span class="ident">fun</span>.<span class="ident">variable</span>(<span class="ident">var_id</span>).<span class="ident">dimensions</span>() {
+                    <span class="kw">if</span> <span class="op">!</span><span class="ident">iter_dims</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">dim</span>) {
+                        <span class="prelude-val">Err</span>(<span class="ident">ir</span>::<span class="ident">Error</span>::<span class="ident">MissingIterationDim</span> { <span class="ident">dim</span> })<span class="question-mark">?</span>;
+                    }
+                }
+            }
+        }
+        <span class="kw">let</span> <span class="ident">used_vars</span> <span class="op">=</span> <span class="ident">operator</span>
             .<span class="ident">operands</span>()
             .<span class="ident">iter</span>()
             .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">op</span><span class="op">|</span> {
@@ -286,8 +303,8 @@
             <span class="ident">id</span>,
             <span class="ident">iter_dims</span>,
             <span class="ident">variable</span>: <span class="prelude-val">None</span>,
-            <span class="ident">def_variables</span>: <span class="ident">VecSet</span>::<span class="ident">default</span>(),
-            <span class="ident">used_variables</span>,
+            <span class="ident">defined_vars</span>: <span class="ident">VecSet</span>::<span class="ident">default</span>(),
+            <span class="ident">used_vars</span>,
         })
     }
 
@@ -395,7 +412,6 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_result_variable</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">variable</span>: <span class="ident">ir</span>::<span class="ident">VarId</span>) {
         <span class="comment">// An instruction variable cannot be set twice.</span>
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">replace</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">variable</span>, <span class="prelude-val">Some</span>(<span class="ident">variable</span>)), <span class="prelude-val">None</span>);
-        <span class="self">self</span>.<span class="ident">def_variables</span> <span class="op">=</span> <span class="ident">VecSet</span>::<span class="ident">new</span>(<span class="macro">vec</span><span class="macro">!</span>[<span class="ident">variable</span>]);
     }
 }
 
@@ -406,8 +422,8 @@
             <span class="ident">id</span>: <span class="self">self</span>.<span class="ident">id</span>,
             <span class="ident">iter_dims</span>: <span class="self">self</span>.<span class="ident">iter_dims</span>,
             <span class="ident">variable</span>: <span class="self">self</span>.<span class="ident">variable</span>,
-            <span class="ident">used_variables</span>: <span class="self">self</span>.<span class="ident">used_variables</span>,
-            <span class="ident">def_variables</span>: <span class="self">self</span>.<span class="ident">def_variables</span>,
+            <span class="ident">used_vars</span>: <span class="self">self</span>.<span class="ident">used_vars</span>,
+            <span class="ident">defined_vars</span>: <span class="self">self</span>.<span class="ident">defined_vars</span>,
         }
     }
 }
@@ -437,16 +453,20 @@
         <span class="self">self</span>.<span class="ident">id</span>.<span class="ident">into</span>()
     }
 
+    <span class="kw">fn</span> <span class="ident">defined_vars</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span><span class="op">&gt;</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">defined_vars</span>
+    }
+
     <span class="kw">fn</span> <span class="ident">as_inst</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Instruction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">L</span><span class="op">&gt;&gt;</span> {
         <span class="prelude-val">Some</span>(<span class="self">self</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">def_variables</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span><span class="op">&gt;</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">def_variables</span>
+    <span class="kw">fn</span> <span class="ident">used_vars</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span><span class="op">&gt;</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">used_vars</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">used_variables</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">VecSet</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">VarId</span><span class="op">&gt;</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">used_variables</span>
+    <span class="kw">fn</span> <span class="ident">register_defined_var</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">var</span>: <span class="ident">ir</span>::<span class="ident">VarId</span>) {
+        <span class="self">self</span>.<span class="ident">defined_vars</span>.<span class="ident">insert</span>(<span class="ident">var</span>);
     }
 }
 </pre>

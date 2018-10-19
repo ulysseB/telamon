@@ -230,10 +230,10 @@
     )]</span>
     <span class="ident">DuplicateIncrement</span> { <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">DimId</span> },
     <span class="attribute">#[<span class="ident">fail</span>(
-        <span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;the access pattern references dimension {}, but is not nested inside&quot;</span>,
+        <span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;the operator needs to be nested in dimension {}&quot;</span>,
         <span class="ident">dim</span>
     )]</span>
-    <span class="ident">InvalidDimInPattern</span> { <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">DimId</span> },
+    <span class="ident">MissingIterationDim</span> { <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">DimId</span> },
     <span class="attribute">#[<span class="ident">fail</span>(
         <span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;no mapping found between dimensions {} and {}&quot;</span>,
         <span class="ident">lhs</span>,

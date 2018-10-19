@@ -459,13 +459,45 @@
 <span id="459">459</span>
 <span id="460">460</span>
 <span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Helper struct to build a `Function`.</span>
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">Device</span>;
 <span class="kw">use</span> <span class="ident">helper</span>::{<span class="ident">AutoOperand</span>, <span class="ident">LogicalDim</span>, <span class="ident">MetaStatement</span>, <span class="ident">TilingPattern</span>};
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">mem</span>, <span class="ident">op</span>, <span class="ident">Parameter</span>, <span class="ident">Type</span>};
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="ident">AccessPattern</span>, <span class="ident">Function</span>, <span class="ident">InstId</span>, <span class="ident">Operand</span>, <span class="ident">Operator</span>, <span class="ident">Signature</span>};
-<span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
+<span class="kw">use</span> <span class="ident">itertools</span>::{<span class="ident">flatten</span>, <span class="ident">Itertools</span>};
 <span class="kw">use</span> <span class="ident">search_space</span>::{<span class="ident">Action</span>, <span class="ident">DimKind</span>, <span class="ident">InstFlag</span>, <span class="ident">MemSpace</span>, <span class="ident">Order</span>, <span class="ident">SearchSpace</span>};
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Borrow</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
@@ -675,13 +707,45 @@
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">function</span>.<span class="ident">add_inst</span>(<span class="ident">op</span>, <span class="ident">open_dims</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_inst_variable</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">inst_id</span>: <span class="ident">InstId</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">VarId</span> {
+    <span class="doccomment">/// Returns the variable holding the result of an instruction. Creates it if</span>
+    <span class="doccomment">/// necessary.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_inst_variable</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">inst_id</span>: <span class="ident">InstId</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">VarId</span> {
         <span class="self">self</span>.<span class="ident">function</span>
             .<span class="ident">inst</span>(<span class="ident">inst_id</span>)
             .<span class="ident">result_variable</span>()
             .<span class="ident">unwrap_or_else</span>(<span class="op">||</span> {
                 <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">function</span>.<span class="ident">add_variable</span>(<span class="ident">ir</span>::<span class="ident">VarDef</span>::<span class="ident">Inst</span>(<span class="ident">inst_id</span>)))
             })
+    }
+
+    <span class="doccomment">/// Creates a new variable that takes the last value of another variable produced in</span>
+    <span class="doccomment">/// a loop nest.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_last_variable</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">var</span>: <span class="ident">ir</span>::<span class="ident">VarId</span>,
+        <span class="ident">logical_dims</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">LogicalDim</span>],
+    ) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">VarId</span> {
+        <span class="kw">let</span> <span class="ident">dims</span> <span class="op">=</span> <span class="ident">flatten</span>(<span class="ident">logical_dims</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>()).<span class="ident">collect</span>();
+        <span class="self">self</span>.<span class="ident">function</span>
+            .<span class="ident">add_variable</span>(<span class="ident">ir</span>::<span class="ident">VarDef</span>::<span class="ident">Last</span>(<span class="ident">var</span>, <span class="ident">dims</span>))
+            .<span class="ident">unwrap</span>()
+    }
+
+    <span class="doccomment">/// Creates a new variable that takes point-to-point the value of another variable, in</span>
+    <span class="doccomment">/// another loop nest.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_dim_map_variable</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">var</span>: <span class="ident">ir</span>::<span class="ident">VarId</span>,
+        <span class="ident">logical_mapping</span>: <span class="kw-2">&amp;</span>[(<span class="kw-2">&amp;</span><span class="ident">LogicalDim</span>, <span class="kw-2">&amp;</span><span class="ident">LogicalDim</span>)],
+    ) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">VarId</span> {
+        <span class="kw">let</span> <span class="ident">mapping</span> <span class="op">=</span> <span class="ident">logical_mapping</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">flat_map</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>)<span class="op">|</span> <span class="ident">lhs</span>.<span class="ident">iter</span>().<span class="ident">zip_eq</span>(<span class="ident">rhs</span>))
+            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>)<span class="op">|</span> <span class="self">self</span>.<span class="ident">function</span>.<span class="ident">map_dimensions</span>([<span class="ident">lhs</span>, <span class="ident">rhs</span>]))
+            .<span class="ident">collect</span>();
+        <span class="self">self</span>.<span class="ident">function</span>
+            .<span class="ident">add_variable</span>(<span class="ident">ir</span>::<span class="ident">VarDef</span>::<span class="ident">DimMap</span>(<span class="ident">var</span>, <span class="ident">mapping</span>))
+            .<span class="ident">unwrap</span>()
     }
 
     <span class="doccomment">/// Applies an action on the function.</span>

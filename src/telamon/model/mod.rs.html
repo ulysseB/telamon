@@ -366,11 +366,6 @@
 <span id="366">366</span>
 <span id="367">367</span>
 <span id="368">368</span>
-<span id="369">369</span>
-<span id="370">370</span>
-<span id="371">371</span>
-<span id="372">372</span>
-<span id="373">373</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Building Blocks for lower bound performance models.</span>
 <span class="kw">mod</span> <span class="ident">code_point</span>;
@@ -576,20 +571,15 @@
 ) {
     <span class="kw">for</span> <span class="ident">operand</span> <span class="kw">in</span> <span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">inst</span>(<span class="ident">inst_id</span>).<span class="ident">operands</span>() {
         <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">operand</span> {
-            <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">Variable</span>(<span class="ident">pred_id</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> {
-                <span class="kw">let</span> <span class="ident">prod_inst_id</span> <span class="op">=</span>
-                    <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">variable</span>(<span class="ident">pred_id</span>).<span class="ident">prod_inst_id</span>());
+            <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">Variable</span>(<span class="ident">var_id</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> {
+                <span class="kw">let</span> <span class="ident">var</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">variable</span>(<span class="ident">var_id</span>);
+                <span class="kw">let</span> (<span class="ident">prod_inst_id</span>, <span class="ident">dim_map</span>) <span class="op">=</span>
+                    <span class="ident">var</span>.<span class="ident">def</span>().<span class="ident">production_inst</span>(<span class="ident">space</span>.<span class="ident">ir_instance</span>());
+                <span class="kw">let</span> <span class="ident">dim_map</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">DimMap</span>::<span class="ident">new</span>(<span class="ident">dim_map</span>);
                 <span class="kw">let</span> <span class="ident">pred</span> <span class="op">=</span> <span class="ident">code_points</span>.<span class="ident">ids</span>[<span class="kw-2">&amp;</span><span class="ident">CodePoint</span>::<span class="ident">Inst</span>(<span class="ident">prod_inst_id</span>)];
                 <span class="kw">let</span> <span class="ident">latency</span> <span class="op">=</span> <span class="ident">local_info</span>.<span class="ident">hw_pressure</span>[<span class="kw-2">&amp;</span><span class="ident">prod_inst_id</span>.<span class="ident">into</span>()]
                     .<span class="ident">bound</span>(<span class="ident">BottleneckLevel</span>::<span class="ident">Thread</span>, <span class="ident">thread_rates</span>);
-                <span class="ident">set_data_dep</span>(
-                    <span class="ident">space</span>,
-                    <span class="ident">pred</span>,
-                    <span class="ident">code_point</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">DimMap</span>::<span class="ident">empty</span>(),
-                    <span class="kw-2">&amp;</span><span class="ident">latency</span>,
-                    <span class="ident">level_dag</span>,
-                );
+                <span class="ident">set_data_dep</span>(<span class="ident">space</span>, <span class="ident">pred</span>, <span class="ident">code_point</span>, <span class="kw-2">&amp;</span><span class="ident">dim_map</span>, <span class="kw-2">&amp;</span><span class="ident">latency</span>, <span class="ident">level_dag</span>);
             }
             <span class="ident">ir</span>::<span class="ident">Operand</span>::<span class="ident">Inst</span>(<span class="ident">pred_id</span>, <span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">dim_map</span>, <span class="kw">_</span>) <span class="op">=&gt;</span> {
                 <span class="kw">let</span> <span class="ident">pred</span> <span class="op">=</span> <span class="ident">code_points</span>.<span class="ident">ids</span>[<span class="kw-2">&amp;</span><span class="ident">CodePoint</span>::<span class="ident">Inst</span>(<span class="ident">pred_id</span>)];
