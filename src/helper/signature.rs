@@ -1,7 +1,7 @@
 //! Helper functions to create a function signature and bind parameters.
 use device::{self, write_array, ScalarArgument};
 use helper::tensor::{DimSize, Tensor};
-use ir::{self, Parameter, Signature};
+use ir::Signature;
 use itertools::Itertools;
 use rand;
 use std::sync::Arc;
@@ -26,7 +26,6 @@ where
         let signature = Signature {
             name: name.to_string(),
             params: vec![],
-            mem_blocks: 0,
         };
         let rng = rand::XorShiftRng::new_unseeded();
         Builder {
@@ -44,12 +43,9 @@ where
 
     /// Creates a new parameter and binds it to the given value.
     pub fn scalar<T: ScalarArgument>(&mut self, name: &str, arg: T) {
-        let param = Parameter {
-            name: name.to_string(),
-            t: T::t(),
-        };
-        self.context.bind_scalar(&param, arg);
-        self.signature.params.push(param);
+        self.signature.add_scalar(name.to_string(), T::t());
+        let param = unwrap!(self.signature.params.last());
+        self.context.bind_scalar(param, arg);
     }
 
     /// Creates a new `i32` paramter and returns a size equals to this parameter. Sets the
@@ -68,21 +64,17 @@ where
         &mut self,
         name: &str,
         size: usize,
-    ) -> (ir::MemId, Arc<AM::Array>) {
-        let id = self.alloc_array_id();
-        let param = Parameter {
-            name: name.to_string(),
-            t: ir::Type::PtrTo(id),
-        };
-        let array = self.context.bind_array::<S>(&param, size);
+    ) -> Arc<AM::Array> {
+        self.signature
+            .add_array(self.context.device(), name.to_string(), S::t());
+        let param = unwrap!(self.signature.params.last());
+        let array = self.context.bind_array::<S>(param, size);
+        let rng = &mut self.rng;
         if self.random_fill {
-            let random = (0..size)
-                .map(|_| S::gen_random(&mut self.rng))
-                .collect_vec();
+            let random = (0..size).map(|_| S::gen_random(rng)).collect_vec();
             write_array(array.as_ref(), &random);
         }
-        self.signature.params.push(param);
-        (id, array)
+        array
     }
 
     /// Allocates an n-dimensional array.
@@ -99,8 +91,8 @@ where
             .iter()
             .map(|s| s.eval(self.context) as usize)
             .product::<usize>();
-        let (mem_id, array) = self.array::<S>(name, len);
-        Tensor::new(name, dim_sizes, read_only, mem_id, array)
+        let array = self.array::<S>(name, len);
+        Tensor::new(name, dim_sizes, read_only, array)
     }
 
     /// Returns the `Signature` created by the builder.
@@ -111,12 +103,5 @@ where
     /// Returns the underlying context.
     pub fn context(&self) -> &AM {
         self.context
-    }
-
-    /// Allocates an array ID.
-    fn alloc_array_id(&mut self) -> ir::MemId {
-        let id = ir::MemId::External(self.signature.mem_blocks);
-        self.signature.mem_blocks += 1;
-        id
     }
 }

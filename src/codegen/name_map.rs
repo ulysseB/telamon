@@ -1,5 +1,5 @@
 use codegen::{self, AllocationScheme, Dimension, Function, Instruction, ParamValKey};
-use ir::{self, dim, mem, DimMap, InstId, Type};
+use ir::{self, dim, DimMap, InstId, Type};
 use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
@@ -43,7 +43,7 @@ pub struct NameMap<'a, 'b> {
     /// Keeps track of parameter names, both in the code and in the arguments.
     params: HashMap<ParamValKey<'a>, (String, String)>,
     /// Keeps track of memory block address names.
-    mem_blocks: HashMap<mem::InternalId, String>,
+    mem_blocks: HashMap<ir::MemId, String>,
     /// Keeps track of the next fresh ID that can be assigned to a loop.
     num_loop: u32,
     /// Tracks the current index on expanded dimensions.
@@ -344,7 +344,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     /// Returns the name of the address of a memory block.
-    pub fn name_addr(&self, id: mem::InternalId) -> Cow<str> {
+    pub fn name_addr(&self, id: ir::MemId) -> Cow<str> {
         Cow::Borrowed(&self.mem_blocks[&id])
     }
 

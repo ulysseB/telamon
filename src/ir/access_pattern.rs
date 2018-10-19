@@ -1,5 +1,7 @@
 /// Provides a way to represent the stride of a given variable.
+use device::Device;
 use ir;
+use search_space::MemSpace;
 use utils::*;
 
 /// A stride on a given dimensions.
@@ -14,11 +16,11 @@ pub enum Stride {
 #[derive(Clone, Debug)]
 pub enum AccessPattern<'a> {
     /// Unknown access pattern.
-    Unknown { mem_id: ir::MemId },
+    Unknown(Option<ir::MemId>),
     /// Access with a fixed stride on each dimensions. Accesses on two different
     /// dimensions should not overlap.
     Tensor {
-        mem_id: ir::MemId,
+        mem_id: Option<ir::MemId>,
         dims: HashMap<ir::DimId, ir::PartialSize<'a>>,
     },
 }
@@ -27,7 +29,7 @@ impl<'a> AccessPattern<'a> {
     /// Indicates if memory accesses access to consecutive elements on the given dimension.
     pub fn is_consecutive(&self, dim: ir::DimId, t: &ir::Type) -> bool {
         match self {
-            AccessPattern::Unknown { .. } => false,
+            AccessPattern::Unknown(..) => false,
             AccessPattern::Tensor { dims, .. } => dims
                 .get(&dim)
                 .and_then(|stride| stride.as_int())
@@ -37,9 +39,9 @@ impl<'a> AccessPattern<'a> {
     }
 
     /// Returns the id of the memory block accessed.
-    pub fn mem_block(&self) -> ir::MemId {
+    pub fn mem_block(&self) -> Option<ir::MemId> {
         match *self {
-            AccessPattern::Unknown { mem_id } | AccessPattern::Tensor { mem_id, .. } => {
+            AccessPattern::Unknown(mem_id) | AccessPattern::Tensor { mem_id, .. } => {
                 mem_id
             }
         }
@@ -49,7 +51,7 @@ impl<'a> AccessPattern<'a> {
     /// given in `iter_dims`.
     pub fn check(&self, iter_dims: &HashSet<ir::DimId>) -> Result<(), ir::Error> {
         match self {
-            AccessPattern::Unknown { .. } => Ok(()),
+            AccessPattern::Unknown(..) => Ok(()),
             AccessPattern::Tensor { dims, .. } => {
                 // Ensures all dimensions referenced in the pattern are nested outside
                 // the access pattern.
@@ -61,5 +63,13 @@ impl<'a> AccessPattern<'a> {
                 Ok(())
             }
         }
+    }
+
+    /// Returns the type of pointer to use for the access.
+    pub fn pointer_type(&self, device: &Device) -> ir::Type {
+        // We either have a memory ID or the array is located in global memory.
+        self.mem_block()
+            .map(ir::Type::PtrTo)
+            .unwrap_or_else(|| device.pointer_type(MemSpace::GLOBAL))
     }
 }

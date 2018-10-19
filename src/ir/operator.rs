@@ -205,11 +205,13 @@ impl<'a, L> Operator<'a, L> {
             }
             Ld(_, ref addr, ref pattern) => {
                 pattern.check(iter_dims)?;
-                ir::TypeError::check_equals(addr.t(), Type::PtrTo(pattern.mem_block()))?;
+                let pointer_type = pattern.pointer_type(fun.device());
+                ir::TypeError::check_equals(addr.t(), pointer_type)?;
             }
             St(ref addr, _, _, ref pattern) => {
                 pattern.check(iter_dims)?;
-                ir::TypeError::check_equals(addr.t(), Type::PtrTo(pattern.mem_block()))?;
+                let pointer_type = pattern.pointer_type(fun.device());
+                ir::TypeError::check_equals(addr.t(), pointer_type)?;
             }
             TmpLd(..) | UnaryOp(..) | TmpSt(..) => (),
         }
@@ -260,6 +262,14 @@ impl<'a, L> Operator<'a, L> {
         }
     }
 
+    /// Indicates if the operator accesses memory.
+    pub fn is_mem_access(&self) -> bool {
+        match self {
+            St(..) | Ld(..) | TmpSt(..) | TmpLd(..) => true,
+            _ => false,
+        }
+    }
+
     /// Renames a basic block.
     pub fn merge_dims(&mut self, lhs: ir::DimId, rhs: ir::DimId) {
         self.operands_mut()
@@ -274,7 +284,7 @@ impl<'a, L> Operator<'a, L> {
                 Some(Cow::Borrowed(pattern))
             }
             TmpLd(_, mem_id) | TmpSt(_, mem_id) => {
-                Some(Cow::Owned(AccessPattern::Unknown { mem_id }))
+                Some(Cow::Owned(AccessPattern::Unknown(Some(mem_id))))
             }
             _ => None,
         }
@@ -282,16 +292,7 @@ impl<'a, L> Operator<'a, L> {
 
     /// Returns the memory blocks referenced by the instruction.
     pub fn mem_used(&self) -> Option<ir::MemId> {
-        self.mem_access_pattern().map(|p| p.mem_block())
-    }
-
-    /// Indicates if the operator supports non-coherent memory accesses.
-    pub fn supports_nc_access(&self) -> bool {
-        if let Ld(..) = *self {
-            true
-        } else {
-            false
-        }
+        self.mem_access_pattern().and_then(|p| p.mem_block())
     }
 
     pub fn map_operands<T, F>(self, mut f: F) -> Operator<'a, T>
