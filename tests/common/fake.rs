@@ -62,6 +62,10 @@ impl device::Device for Device {
         [4, 8]
     }
 
+    fn has_vector_registers(&self) -> bool {
+        true
+    }
+
     fn max_block_dims(&self) -> u32 {
         3
     }

@@ -248,7 +248,7 @@ impl EnumDef {
     fn register_value_constraint(
         &self,
         choice: RcStr,
-        args: Vec<VarDef>,
+        mut args: Vec<VarDef>,
         value: RcStr,
         mut constraint: Constraint,
         constraints: &mut Vec<Constraint>,
@@ -263,7 +263,8 @@ impl EnumDef {
             rhs: vec![value],
             is: false,
         };
-        constraint.forall_vars.extend(args);
+        args.extend(constraint.forall_vars.drain(..));
+        constraint.forall_vars = args;
         for disjunction in &mut constraint.disjunctions {
             disjunction.push(condition.clone());
         }

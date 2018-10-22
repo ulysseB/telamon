@@ -1,6 +1,6 @@
 set Variables:
   item_type = "ir::Variable"
-  id_type = "ir::VariableId"
+  id_type = "ir::VarId"
   item_getter = "$fun.variable($id)"
   id_getter = "$item.id()"
   iterator = "$fun.variables()"
@@ -46,8 +46,38 @@ set VarDims($var in Variables) subsetof Dimensions:
   id_getter = "$item.id()"
   iterator = "$var.dimensions().iter().map(|&dim| $fun.dim(dim))"
   from_superset = "if $var.dimensions().contains(&$item.id()) { Some($item) } else { None }"
-  reverse forall $dim in Dimensions = "$dim.inner_vars().map(|&id| $fun.variable(id))"
+  reverse forall $dim in Dimensions = "$dim.inner_vars().iter().map(|&id| $fun.variable(id))"
   new_objs = "$objs.var_dims"
+end
+
+require forall $var in Variables:
+  forall $use in UseStatements($var):
+    forall $dim in VarDims($var):
+      order($dim, $use) is OUTER
+
+/// Specifies where to store a variable.
+define enum memory_space($var in Variables):
+  value REGISTER:
+    requires forall $dim in VarDims($var):
+      "!$fun.device().has_vector_registers()" || dim_kind($dim) is not VECTOR
+  value VECTOR_REGISTER:
+    requires "$fun.device().has_vector_registers()"
+    // Ensure vector registers are the same at source and destination.
+    requires forall $mapping in VarMappings($var):
+      forall $lhs in MappedDims($mapping):
+        forall $rhs in MappedDims($mapping):
+          dim_kind($lhs) is not INNER_VECTOR || dim_kind($rhs) is INNER_VECTOR
+          dim_kind($lhs) is not OUTER_VECTOR || dim_kind($rhs) is OUTER_VECTOR
+    // The order of mapped vector dimensions is preserved.
+    requires forall $outer_mapping in VarMappings($var):
+      forall $inner_mapping in VarMappings($var):
+        forall $outer_lhs in MappedDims($outer_mapping):
+          forall $outer_rhs in MappedDims($outer_mapping):
+            forall $inner_lhs in MappedDims($inner_mapping):
+              forall $inner_rhs in MappedDims($inner_mapping):
+                dim_kind($outer_lhs) is not VECTOR || dim_kind($inner_lhs) is not VECTOR
+                || order($outer_lhs, $inner_lhs) is not OUTER
+                || order($outer_rhs, $inner_rhs) is OUTER
 end
 
 /// List pairs of dimensions that must have the same size and can be use for
@@ -68,11 +98,11 @@ set VarMappings($var in Variables) subsetof DimMappings:
   id_type = "ir::DimMappingId"
   item_getter = "$fun.dim_mapping($id)"
   id_getter = "$item.id()"
-  iterator = "$var.mapped_dims().map(|&id| $fun.dim_mapping($id))"
-  from_superset = "(if $item.users().contains(&$var.id()) { Some($item) } else { None })"
+  iterator = "$var.def().mapped_dims().map(|id| $fun.dim_mapping(id))"
+  from_superset = "if $item.users().contains(&$var.id()) { Some($item) } else { None }"
   reverse forall $mapping in DimMappings =
     "$mapping.users().iter().map(|&id| $fun.variable(id))"
-  new_objs = "$var.var_mappings"
+  new_objs = "$objs.var_mappings"
 end
 
 /// Lists the static dimensions in a dimension mapping.
@@ -101,8 +131,6 @@ require forall $var in Variables:
       forall $rhs in MappedDims($mapping):
         "$var.max_memory_level() <= ir::MemoryLevel::RegisterNoSync"
           || order($lhs, $rhs) is MERGED
-          // TODO(ulysse): replace with mem_space($var) is REGISTER once with have that
-          // choice
           || dim_kind($lhs) is UNROLL | VECTOR
 
 /// Lists the static dimensions in a dimension mapping.

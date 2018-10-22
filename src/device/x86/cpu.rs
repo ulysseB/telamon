@@ -61,6 +61,10 @@ impl device::Device for Cpu {
         [1, 1]
     }
 
+    fn has_vector_registers(&self) -> bool {
+        false
+    }
+
     fn shared_mem(&self) -> u32 {
         0
     }
