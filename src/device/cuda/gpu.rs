@@ -448,7 +448,6 @@ impl device::Device for Gpu {
         [1, 4]
     }
 
-
     fn has_vector_registers(&self) -> bool {
         false
     }
