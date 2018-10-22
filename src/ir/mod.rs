@@ -32,7 +32,7 @@ pub use self::operator::{BinOp, Operator, UnaryOp};
 pub use self::size::{PartialSize, Size};
 pub use self::statement::{Statement, StmtId};
 pub use self::types::Type;
-pub use self::variable::{VarDef, VarId, Variable};
+pub use self::variable::{MemoryLevel, VarDef, VarId, Variable};
 
 pub mod mem;
 
@@ -70,9 +70,12 @@ pub struct NewObjs {
     pub tiled_dimensions: Vec<(LogicalDimId, DimId)>,
     pub dim_mappings: Vec<DimMappingId>,
     pub mapped_dims: Vec<(DimMappingId, DimId)>,
+    pub static_mapped_dims: Vec<(DimMappingId, DimId)>,
     pub variables: Vec<VarId>,
     pub use_statements: Vec<(VarId, StmtId)>,
     pub def_statements: Vec<(VarId, StmtId)>,
+    pub var_dims: Vec<(VarId, DimId)>,
+    pub var_mappings: Vec<(VarId, DimMappingId)>,
 }
 
 impl NewObjs {
@@ -121,10 +124,13 @@ impl NewObjs {
     }
 
     /// Adds a mapping between dimensions.
-    pub fn add_dim_mapping(&mut self, mapping: &DimMapping) {
+    pub fn add_dim_mapping(&mut self, mapping: &DimMapping, fun: &Function) {
         self.dim_mappings.push(mapping.id());
         for &dim in &mapping.dims() {
             self.mapped_dims.push((mapping.id(), dim));
+            if fun.dim(dim).possible_sizes().is_some() {
+                self.static_mapped_dims.push((mapping.id(), dim));
+            }
         }
     }
 
@@ -134,6 +140,10 @@ impl NewObjs {
             .extend(var.def_points().map(|stmt| (var.id(), stmt)));
         self.use_statements
             .extend(var.use_points().map(|stmt| (var.id(), stmt)));
+        self.var_dims
+            .extend(var.dimensions().iter().map(|&dim| (var.id(), dim)));
+        self.var_mappings
+            .extend(var.def().mapped_dims().map(|id| (var.id(), id)));
     }
 }
 
@@ -157,7 +167,7 @@ impl LoweredDimMap {
         let mappings = self.st_dims_mapping.iter().chain(&self.ld_dims_mapping);
         for &(mapping, [_, new_dim]) in mappings {
             new_objs.add_dimension(fun.dim(new_dim));
-            new_objs.add_dim_mapping(fun.dim_mapping(mapping));
+            new_objs.add_dim_mapping(fun.dim_mapping(mapping), fun);
         }
     }
 

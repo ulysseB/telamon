@@ -53,10 +53,8 @@ fn inst_dim_order() {
     let mut builder = helper::Builder::new(&signature, context.device());
     let dim0 = builder.open_dim(Size::new_const(64));
     let inst0 = builder.mov(&0i32);
-    let _ = builder.create_inst_variable(inst0);
     let pattern = ir::AccessPattern::Unknown(None);
     let addr = builder.cast(&0i64, pattern.pointer_type(context.device()));
-    let _ = builder.create_inst_variable(addr);
     let inst1 = builder.st(&addr, &0i32, pattern);
     builder.close_dim(&dim0);
     let dim1 = builder.open_dim(Size::new_const(64));
@@ -88,19 +86,85 @@ fn inst_dim_order() {
 }
 
 #[test]
-/// Test that ordering is correctly enforced when an instruction takes as operand a value produced
-/// by another instruction
-fn inst_value_order() {
+/// Ensures oredering contraints for `ir::VarDef::Inst` are respected.
+fn inst_variable_order() {
     let _ = env_logger::try_init();
     let context = fake::Context::default();
     let signature = empty_signature();
     let mut builder = helper::Builder::new(&signature, context.device());
-    let inst0 = builder.mov(&1f32);
-    let v0 = builder.create_inst_variable(inst0);
-    let inst1 = builder.mov(&v0);
+    let src = builder.mov(&1f32);
+    let var = builder.get_inst_variable(src);
+    let dst = builder.mov(&var);
     let space = builder.get();
     assert_eq!(
-        space.domain().get_order(inst0.into(), inst1.into()),
+        space.domain().get_order(src.into(), dst.into()),
+        Order::BEFORE
+    );
+    gen_best(&context, space);
+}
+
+/// Ensures oredering contraints for `ir::VarDef::DimMap` are respected.
+#[test]
+fn dim_map_variable_order() {
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature(0);
+    let mut builder = helper::Builder::new(&signature, context.device());
+
+    let src_dim = builder.open_dim(ir::Size::new_const(16));
+    let src = builder.mov(&1f32);
+    let src_var = builder.get_inst_variable(src);
+    let dst_dim = builder.open_mapped_dim(&src_dim);
+    let dst_var = builder.create_dim_map_variable(src_var, &[(&src_dim, &dst_dim)]);
+    let dst = builder.mov(&dst_var);
+    // Ensure ordering constraints are respected.
+    let space = builder.get_clone();
+    assert_eq!(
+        space.domain().get_order(src.into(), dst.into()),
+        Order::BEFORE
+    );
+    assert_eq!(
+        space
+            .domain()
+            .get_order(src_dim[0].into(), dst_dim[0].into()),
+        Order::BEFORE | Order::MERGED
+    );
+    // Ensure point-to-point communication is enforced by merging dimensions if it cannot
+    // use different register names along the dimensions.
+    builder.action(Action::DimKind(src_dim[0], DimKind::LOOP));
+    let space = builder.get();
+    assert_eq!(
+        space
+            .domain()
+            .get_order(src_dim[0].into(), dst_dim[0].into()),
+        Order::MERGED
+    );
+
+    gen_best(&context, space);
+}
+
+/// Ensures oredering contraints for `ir::VarDef::Last` are respected.
+#[test]
+fn last_variable_order() {
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature(0);
+    let mut builder = helper::Builder::new(&signature, context.device());
+
+    let dim = builder.open_dim(ir::Size::new_const(16));
+    let src = builder.mov(&1f32);
+    let src_var = builder.get_inst_variable(src);
+    builder.close_dim(&dim);
+    let last_var = builder.create_last_variable(src_var, &[&dim]);
+    let dst = builder.mov(&last_var);
+
+    let space = builder.get();
+    assert_eq!(
+        space.domain().get_order(src.into(), dst.into()),
+        Order::BEFORE
+    );
+    assert_eq!(
+        space.domain().get_order(dim[0].into(), dst.into()),
         Order::BEFORE
     );
 }

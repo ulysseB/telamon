@@ -131,10 +131,8 @@ impl<'a, L> Function<'a, L> {
             self.mem_blocks.register_use(mem_id, id);
         }
         // Update the usepoint of all variables
-        for ref op in inst.operator().operands() {
-            if let Operand::Variable(val_id, _) = op {
-                self.variables[*val_id].add_use(id.into());
-            }
+        for &var_id in inst.used_vars() {
+            self.variables[var_id].add_use(id.into());
         }
         Ok(inst)
     }
@@ -146,7 +144,7 @@ impl<'a, L> Function<'a, L> {
         def: ir::VarDef,
     ) -> Result<ir::Variable, ir::Error> {
         def.check(self)?;
-        Ok(ir::Variable::new(id, def.t(self), def))
+        Ok(ir::Variable::new(id, def, self))
     }
 
     /// Adds an induction variable.
@@ -191,7 +189,7 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Returns a mutable reference to an instruction given its id.
-    pub fn inst_mut(&mut self, id: InstId) -> &mut Instruction<'a, L> {
+    pub(super) fn inst_mut(&mut self, id: InstId) -> &mut Instruction<'a, L> {
         &mut self.insts[id]
     }
 
@@ -201,8 +199,16 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Returns a mutable reference to a dimension given its ID.
-    fn dim_mut(&mut self, id: ir::DimId) -> &mut Dimension<'a, L> {
+    pub(super) fn dim_mut(&mut self, id: ir::DimId) -> &mut Dimension<'a, L> {
         &mut self.dims[id]
+    }
+
+    /// Returns a mutable reference to a statement given its id.
+    pub(super) fn statement_mut(&mut self, id: ir::StmtId) -> &mut Statement<'a, L> {
+        match id {
+            StmtId::Inst(id) => self.inst_mut(id),
+            StmtId::Dim(id) => self.dim_mut(id),
+        }
     }
 
     /// Returns a `Statement` given its id.
@@ -234,7 +240,7 @@ impl<'a, L> Function<'a, L> {
     pub fn add_variable(&mut self, def: ir::VarDef) -> Result<ir::VarId, ir::Error> {
         let id = ir::VarId(self.variables.len() as u16);
         let var = self.create_variable(id, def)?;
-        var.def().register(var.id(), self);
+        var.register(self);
         self.variables.push(var);
         Ok(id)
     }
@@ -379,6 +385,14 @@ impl<'a, L> Function<'a, L> {
         &self.dim_mappings[id]
     }
 
+    /// Retrives a mutable reference to a dimension mapping given its ID.
+    pub(super) fn dim_mapping_mut(
+        &mut self,
+        id: ir::DimMappingId,
+    ) -> &mut ir::DimMapping {
+        &mut self.dim_mappings[id]
+    }
+
     /// Tries to find a mapping between two dimensions.
     pub fn find_mapping(
         &self,
@@ -486,7 +500,7 @@ impl<'a> Function<'a, ()> {
 
     /// Specifies two dimensions must have the same size have can be used for point-to-point
     /// communication.
-    fn map_dimensions(&mut self, dims: [ir::DimId; 2]) -> ir::DimMappingId {
+    pub fn map_dimensions(&mut self, dims: [ir::DimId; 2]) -> ir::DimMappingId {
         self.find_mapping(dims[0], dims[1]).unwrap_or_else(|| {
             let id = ir::DimMappingId(self.dim_mappings.len() as u16);
             let mapping = self.create_mapping(id, dims);

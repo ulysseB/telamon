@@ -33,6 +33,9 @@ pub struct Dimension<'a, L = ir::LoweringMap> {
     is_thread_dim: bool,
     logical_dim: Option<LogicalDimId>,
     mapped_dims: VecSet<DimMappingId>,
+    defined_vars: VecSet<ir::VarId>,
+    inner_vars: VecSet<ir::VarId>,
+    is_parallelizable: bool,
     freeze_marker: std::marker::PhantomData<L>,
 }
 
@@ -47,6 +50,9 @@ impl<'a> Dimension<'a, ()> {
             iterated: self.iterated,
             logical_dim: self.logical_dim,
             mapped_dims: self.mapped_dims,
+            defined_vars: self.defined_vars,
+            inner_vars: self.inner_vars,
+            is_parallelizable: self.is_parallelizable,
             freeze_marker: std::marker::PhantomData,
         }
     }
@@ -76,6 +82,9 @@ impl<'a, L> Dimension<'a, L> {
             iterated: Vec::new(),
             is_thread_dim: false,
             mapped_dims: VecSet::default(),
+            defined_vars: VecSet::default(),
+            inner_vars: VecSet::default(),
+            is_parallelizable: true,
             freeze_marker: std::marker::PhantomData,
         })
     }
@@ -99,6 +108,9 @@ impl<'a, L> Dimension<'a, L> {
             iterated: Vec::new(),
             is_thread_dim: false,
             mapped_dims: VecSet::default(),
+            defined_vars: VecSet::default(),
+            inner_vars: VecSet::default(),
+            is_parallelizable: true,
             freeze_marker: std::marker::PhantomData,
         })
     }
@@ -167,6 +179,26 @@ impl<'a, L> Dimension<'a, L> {
         self.mapped_dims.insert(mapping.id);
         assert!(mapping.dims.contains(&self.id()));
     }
+
+    /// Returns the list of variables available inside the dimension.
+    pub fn inner_vars(&self) -> &VecSet<ir::VarId> {
+        &self.inner_vars
+    }
+
+    /// Register a variable available inside the dimension.
+    pub fn register_inner_var(&mut self, var: ir::VarId) {
+        self.inner_vars.insert(var);
+    }
+
+    /// Indicates the dimension cannot be parallelized.
+    pub fn set_sequential(&mut self) {
+        self.is_parallelizable = false;
+    }
+
+    /// Indicates if the dimension can be parallelized.
+    pub fn is_parallelizable(&self) -> bool {
+        self.is_parallelizable
+    }
 }
 
 lazy_static! {
@@ -185,12 +217,16 @@ impl<'a, L> Statement<'a, L> for Dimension<'a, L> {
         Some(self)
     }
 
-    fn def_variables(&self) -> &VecSet<ir::VarId> {
+    fn defined_vars(&self) -> &VecSet<ir::VarId> {
+        &self.defined_vars
+    }
+
+    fn used_vars(&self) -> &VecSet<ir::VarId> {
         &NO_VALUES
     }
 
-    fn used_variables(&self) -> &VecSet<ir::VarId> {
-        &NO_VALUES
+    fn register_defined_var(&mut self, var: ir::VarId) {
+        self.defined_vars.insert(var);
     }
 }
 
@@ -291,16 +327,21 @@ impl From<DimMappingId> for usize {
 }
 
 /// Specifies that two dimensions should be mapped together.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct DimMapping {
     id: DimMappingId,
     dims: [DimId; 2],
+    variables: VecSet<ir::VarId>,
 }
 
 impl DimMapping {
     /// Creates a `DimMapping`. Panics if the provided dimensions are the same.
     pub fn new(id: DimMappingId, dims: [DimId; 2]) -> Self {
-        DimMapping { id, dims }
+        DimMapping {
+            id,
+            dims,
+            variables: VecSet::default(),
+        }
     }
 
     /// Returns the unique identifier of the `DimMapping`.
@@ -311,5 +352,15 @@ impl DimMapping {
     /// Returns the mapped dims.
     pub fn dims(&self) -> [DimId; 2] {
         self.dims
+    }
+
+    /// Returns the variables that rely on this mapping.
+    pub fn users(&self) -> &VecSet<ir::VarId> {
+        &self.variables
+    }
+
+    /// Registers that a variable uses this mapping.
+    pub fn register_user(&mut self, user: ir::VarId) {
+        self.variables.insert(user);
     }
 }

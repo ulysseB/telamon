@@ -31,6 +31,9 @@ pub trait Device: Sync {
     fn max_threads(&self) -> u32;
     /// Returns the maximal unrolling factor.
     fn max_unrolling(&self) -> u32;
+    /// Indicates if the device uses vector registers or has imlicit gathers and scatters
+    /// in vector instructions.
+    fn has_vector_registers(&self) -> bool;
     /// Indicates if the operator can be vectorized along the dimension.
     fn can_vectorize(&self, dim: &ir::Dimension, op: &ir::Operator) -> bool;
     /// Indicates the maximal vectorization factor for the given operator.
