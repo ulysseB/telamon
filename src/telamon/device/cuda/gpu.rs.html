@@ -586,6 +586,10 @@
 <span id="586">586</span>
 <span id="587">587</span>
 <span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Describes CUDA-enabled GPUs.</span>
 <span class="kw">use</span> <span class="ident">codegen</span>::<span class="ident">Function</span>;
@@ -1035,6 +1039,10 @@
         <span class="comment">// No need to discriminate on the operator since this is already handled by</span>
         <span class="comment">// `can_vectorize`.</span>
         [<span class="number">1</span>, <span class="number">4</span>]
+    }
+
+    <span class="kw">fn</span> <span class="ident">has_vector_registers</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="bool-val">false</span>
     }
 
     <span class="kw">fn</span> <span class="ident">shared_mem</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span> {

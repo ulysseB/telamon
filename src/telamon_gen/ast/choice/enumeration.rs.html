@@ -390,6 +390,7 @@
 <span id="390">390</span>
 <span id="391">391</span>
 <span id="392">392</span>
+<span id="393">393</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">ops</span>::<span class="ident">Deref</span>;
 
@@ -641,7 +642,7 @@
     <span class="kw">fn</span> <span class="ident">register_value_constraint</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">choice</span>: <span class="ident">RcStr</span>,
-        <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">VarDef</span><span class="op">&gt;</span>,
+        <span class="kw-2">mut</span> <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">VarDef</span><span class="op">&gt;</span>,
         <span class="ident">value</span>: <span class="ident">RcStr</span>,
         <span class="kw-2">mut</span> <span class="ident">constraint</span>: <span class="ident">Constraint</span>,
         <span class="ident">constraints</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Constraint</span><span class="op">&gt;</span>,
@@ -656,7 +657,8 @@
             <span class="ident">rhs</span>: <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">value</span>],
             <span class="ident">is</span>: <span class="bool-val">false</span>,
         };
-        <span class="ident">constraint</span>.<span class="ident">forall_vars</span>.<span class="ident">extend</span>(<span class="ident">args</span>);
+        <span class="ident">args</span>.<span class="ident">extend</span>(<span class="ident">constraint</span>.<span class="ident">forall_vars</span>.<span class="ident">drain</span>(..));
+        <span class="ident">constraint</span>.<span class="ident">forall_vars</span> <span class="op">=</span> <span class="ident">args</span>;
         <span class="kw">for</span> <span class="ident">disjunction</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">constraint</span>.<span class="ident">disjunctions</span> {
             <span class="ident">disjunction</span>.<span class="ident">push</span>(<span class="ident">condition</span>.<span class="ident">clone</span>());
         }
