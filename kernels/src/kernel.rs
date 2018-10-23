@@ -4,14 +4,25 @@ use num_cpus;
 use rayon::prelude::*;
 use statistics;
 use std;
+use std::ffi::OsStr;
+use std::fs::File;
+use std::io::{self, BufWriter, Write};
+use std::path::Path;
 use std::sync::{atomic, Mutex};
-use telamon::explorer::{local_selection, reroll_last_candidate, Candidate};
+use telamon::explorer::{local_selection, reroll_last_candidate, Candidate, Config};
 use telamon::helper::{Builder, SignatureBuilder};
 use telamon::model::Bound;
 use telamon::search_space::SearchSpace;
 use telamon::{codegen, device, explorer, ir};
 use utils::*;
 
+use bincode;
+use flate2::write::{GzEncoder, ZlibEncoder};
+use flate2::Compression;
+use serde::ser::Serialize;
+
+use utils::tfrecord;
+use utils::tfrecord::RecordWriter;
 /// Ignore candidates with a too big bound in tests.
 const CUT: f64 = 2e8f64;
 /// Maximal number of deadends to accept before failing.
@@ -97,6 +108,8 @@ pub trait Kernel<'a>: Sized {
         let candidates = kernel.build_body(&signature, context);
         let mut num_deadends = 0;
         let mut num_runs = 0;
+        let config = Config::default();
+        let mut record_writer = unwrap!(init_eventlog(&config));
         while num_runs < num_tests {
             let order = explorer::config::NewNodeOrder::WeightedRandom;
             let ordering = explorer::config::ChoiceOrdering::default();
@@ -107,6 +120,8 @@ pub trait Kernel<'a>: Sized {
                 local_selection::descend(&ordering, order, context, candidate, CUT);
             if let Some(leaf) = leaf {
                 let device_fn = codegen::Function::build(&leaf.space);
+                let event = TreeEvent {actions: Sequence::Vec(leaf.actions.iter().cloned().collect()), score: 1.};
+                unwrap!(record_writer.write_record(&unwrap!(bincode::serialize(&event))));
                 unwrap!(
                     context.evaluate(&device_fn, device::EvalMode::FindBest),
                     "evaluation failed for kernel {}, with actions {:?}",
@@ -131,6 +146,8 @@ pub trait Kernel<'a>: Sized {
                 }
             }
         }
+        println!("{} deadends encountered", num_deadends);
+        unwrap!(unwrap!(record_writer.finish_box()).flush());
     }
 
     /// Tests the correctness of the bound of kernels and returns the list of tested leafs
@@ -347,4 +364,26 @@ pub fn analyze_bounds(mut bounds: Vec<BoundSample>) {
             );
         }
     }
+}
+
+fn init_eventlog(config: &Config) -> io::Result<Box<dyn RecordWriter<Writer = File>>> {
+    let path = Path::new(&config.event_log);
+    let raw_file = File::create(&path)?;
+    Ok(match path.extension().and_then(OsStr::to_str) {
+        Some("gz") => Box::new(GzEncoder::new(raw_file, Compression::default())),
+        Some("zz") => Box::new(ZlibEncoder::new(raw_file, Compression::default())),
+        _ => Box::new(raw_file),
+    })
+}
+
+fn init_log(config: &Config) -> io::Result<BufWriter<File>> {
+    let mut output_file = File::create(&config.log_file)?;
+    writeln!(output_file, "LOGGER\n{}", config)?;
+    Ok(BufWriter::new(output_file))
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct TreeEvent {
+        actions: Sequence<explorer::choice::ActionEx>,
+        score: f64,
 }

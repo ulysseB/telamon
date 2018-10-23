@@ -14,6 +14,11 @@ extern crate telamon;
 #[macro_use]
 extern crate telamon_utils as utils;
 
+extern crate bincode;
+extern crate flate2;
+#[macro_use]
+extern crate serde;
+
 mod kernel;
 
 pub mod linalg;
