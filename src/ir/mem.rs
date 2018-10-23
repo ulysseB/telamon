@@ -10,9 +10,9 @@ use utils::*;
 /// cbindgen:field-names=[id]
 pub struct MemId(pub u32);
 
-impl Into<usize> for MemId {
-    fn into(self) -> usize {
-        self.0 as usize
+impl From<MemId> for usize {
+    fn from(id: MemId) -> usize {
+        id.0 as usize
     }
 }
 

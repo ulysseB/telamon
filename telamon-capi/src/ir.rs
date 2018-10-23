@@ -51,9 +51,11 @@ pub unsafe extern "C" fn telamon_ir_signature_add_scalar(
 pub unsafe extern "C" fn telamon_ir_signature_add_array(
     signature: *mut ir::Signature,
     name: *const libc::c_char,
-) -> ir::mem::MemId {
+    element_type: *const ir::Type,
+    device: *const Device,
+) {
     let name = unwrap!(std::ffi::CStr::from_ptr(name).to_str());
-    (*signature).add_array(name.to_string())
+    (*signature).add_array(&*(*device).0, name.to_string(), *element_type)
 }
 
 /// Creates an integer type that must be freed with `telamon_ir_type_free`.
@@ -407,7 +409,7 @@ pub unsafe extern "C" fn telamon_ir_operator_new_cast(
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_operator_new_tensor_load(
     function: *mut Function,
-    array_id: ir::mem::MemId,
+    array_id: *const ir::MemId,
     base_address: *mut Operand,
     strided_dims: *const ir::DimId,
     strides: *const PartialSize,
@@ -434,7 +436,7 @@ pub unsafe extern "C" fn telamon_ir_operator_new_tensor_load(
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_operator_new_tensor_store(
     function: *mut Function,
-    array_id: ir::mem::MemId,
+    array_id: *const ir::MemId,
     base_address: *mut Operand,
     strided_dims: *const ir::DimId,
     strides: *const PartialSize,
@@ -460,13 +462,14 @@ pub unsafe extern "C" fn telamon_ir_operator_new_tensor_store(
 /// `strided_dims` and `strides`.
 unsafe fn tensor_access(
     function: *mut Function,
-    array_id: ir::mem::MemId,
+    array_id: *const ir::MemId,
     base_address: *mut Operand,
     strided_dims: *const ir::DimId,
     strides: *const PartialSize,
     num_strided_dims: usize,
 ) -> Result<(ir::Operand<'static, ()>, ir::AccessPattern<'static>), ir::Error> {
     let base_address = Box::from_raw(base_address).0;
+    let ptr_type = base_address.t();
     let strided_dims = std::slice::from_raw_parts(strided_dims, num_strided_dims);
     let strides = std::slice::from_raw_parts(strides, num_strided_dims);
     let address = if strided_dims.is_empty() {
@@ -477,13 +480,13 @@ unsafe fn tensor_access(
             .collect();
         let ind_var = ir::InductionVar::new(dims, base_address)?;
         let ind_var_id = (*function).0.add_ind_var(ind_var);
-        ir::Operand::InductionVar(ind_var_id, ir::Type::PtrTo(array_id))
+        ir::Operand::InductionVar(ind_var_id, ptr_type)
     };
     let dims = (0..num_strided_dims)
         .map(|i| (strided_dims[i], strides[i].0.clone()))
         .collect();
     let access_pattern = ir::AccessPattern::Tensor {
-        mem_id: array_id,
+        mem_id: if array_id.is_null() { None } else { Some(*array_id) },
         dims,
     };
     Ok((address, access_pattern))
