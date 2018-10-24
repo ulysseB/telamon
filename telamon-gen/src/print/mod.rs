@@ -113,6 +113,7 @@ lazy_static! {
         register_template!(engine, loop_nest);
         register_template!(engine, main);
         register_template!(engine, on_change);
+        register_template!(engine, partial_init_filters);
         register_template!(engine, positive_filter);
         register_template!(engine, propagate);
         register_template!(engine, restrict_counter);
@@ -233,6 +234,7 @@ impl<T: Fn(&mut Formatter) -> fmt::Result> Display for Printer<T> {
 mod ast;
 mod choice;
 mod filter;
+mod partial_init;
 mod store;
 mod value_set;
 
@@ -277,6 +279,7 @@ pub fn print(ir_desc: &ir::IrDesc) -> String {
         choices: &'a [choice::Ast<'a>] = &choices,
         enums: String = ir_desc.enums().format("\n\n").to_string(),
         partial_iterators: PartialIters<'a> = partials,
+        partial_init_filters: String = partial_init::filters(ir_desc).to_string(),
         incr_iterators: Vec<store::IncrIterator<'a>> = incr_iterators,
         triggers: Vec<Trigger<'a>> = triggers,
         runtime: String = runtime::get().to_string()

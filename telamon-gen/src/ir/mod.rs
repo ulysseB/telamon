@@ -16,11 +16,11 @@ pub use self::filter::*;
 pub use self::set::*;
 
 /// Describes the choices that constitute the IR.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct IrDesc {
     choices: IndexMap<RcStr, Choice>,
     enums: IndexMap<RcStr, Enum>,
-    set_defs: IndexMap<RcStr, std::rc::Rc<SetDef>>,
+    set_defs: IndexMap<RcStr, (std::rc::Rc<SetDef>, set::OnNewObject)>,
     triggers: Vec<Trigger>,
 }
 
@@ -56,21 +56,29 @@ impl IrDesc {
     }
 
     /// Iterates over all the sets.
-    pub fn set_defs<'a>(&'a self) -> impl Iterator<Item = &'a std::rc::Rc<SetDef>> + 'a {
+    pub fn set_defs(
+        &self,
+    ) -> impl Iterator<Item = &(std::rc::Rc<SetDef>, OnNewObject)> + '_ {
         self.set_defs.values()
     }
 
     /// Register a set definition.
     pub fn add_set_def(&mut self, def: std::rc::Rc<SetDef>) {
         let name = def.name().clone();
-        assert!(self.set_defs.insert(name, def).is_none());
+        assert!(
+            self.set_defs
+                .insert(name, (def, OnNewObject::default()))
+                .is_none()
+        );
     }
 
     /// Returns the set definition associated with a name.
     pub fn get_set_def<'a>(&'a self, name: &str) -> &'a std::rc::Rc<SetDef> {
-        self.set_defs
+        &self
+            .set_defs
             .get(name)
             .unwrap_or_else(|| panic!("Undefined set {}", name))
+            .0
     }
 
     /// Adds a filter to a choice.
@@ -110,11 +118,18 @@ impl IrDesc {
                 .map(|(i, _)| Variable::Arg(i))
                 .chain((0..forall_vars.len()).map(|i| Variable::Forall(i)))
                 .collect();
-            FilterRef::Local {
+            FilterRef::Function {
+                choice: choice.clone(),
                 id: filter_id,
                 args: arguments,
             }
         };
+        self.register_filter_on_new_objs(
+            &filter_ref,
+            &choice,
+            &forall_vars,
+            &set_constraints,
+        );
         // Add the init call.
         let filter = FilterCall {
             forall_vars,
@@ -128,6 +143,70 @@ impl IrDesc {
             .get_mut(&choice)
             .unwrap()
             .add_filter_action(filter_action);
+    }
+
+    /// Registers to run `filter` when a new object is added to a set in `foralls`.
+    fn register_filter_on_new_objs(
+        &mut self,
+        filter: &FilterRef,
+        choice: &RcStr,
+        foralls: &[Set],
+        set_constraints: &SetConstraints,
+    ) {
+        let choice = &self.choices[choice];
+        let mut choice_args = choice.arguments().sets().cloned().collect_vec();
+        // Apply the set constraints the the choice arguments.
+        for (var, set_constraint) in set_constraints.constraints() {
+            if let Variable::Arg(i) = *var {
+                choice_args[i] = set_constraint.clone();
+            } else {
+                panic!("expected an argument variable");
+            }
+        }
+        for (i, mut set) in foralls.iter().cloned().enumerate() {
+            let var = Variable::Forall(i);
+            // If the set if a reverse set, it has no proper definition so we cannot
+            // register it. Instead we re-reverse it to obtain the initial set.
+            let arg_set;
+            let reverse = if (&set).def().name().is_empty() {
+                let (rev_arg_set, rev_set) = set
+                    .reverse(Variable::Forall(i), (&set).def().arg().unwrap())
+                    .unwrap();
+                arg_set = Some(rev_arg_set);
+                set = rev_set;
+                true
+            } else {
+                arg_set = (&set).arg().map(|var| match var {
+                    Variable::Forall(id) => foralls[id].clone(),
+                    Variable::Arg(id) => choice_args[id].clone(),
+                });
+                false
+            };
+            // Constraint the set of the argument.
+            let (new_foralls, adaptator) =
+                adapt_to_var_context(&choice_args, foralls, var, reverse);
+            let set_constraints = arg_set
+                .filter(|arg_set| !(&set).def().arg().unwrap().is_subset_of(arg_set))
+                .map(|arg_set| {
+                    let arg_set = arg_set.adapt(&adaptator);
+                    SetConstraints::new(vec![(Variable::Arg(1), arg_set)])
+                }).unwrap_or_default();
+            let remote_call = RemoteFilterCall {
+                choice: ChoiceInstance::self_choice(choice).adapt(&adaptator),
+                filter: FilterCall {
+                    // `forall_vars` are supposed to iterate on multiple filters for the
+                    // same choice.  Our foralls iterate on multiple choices so we pass
+                    // them externally.
+                    forall_vars: vec![],
+                    filter_ref: filter.adapt(&adaptator),
+                },
+            };
+            let set_def = self.set_defs.get_mut((&set).def().name()).unwrap();
+            set_def
+                .1
+                .filter
+                .push((new_foralls, set_constraints, remote_call));
+        }
     }
 
     pub fn add_onchange(&mut self, choice: &str, action: OnChangeAction) {
@@ -212,13 +291,13 @@ impl IrDesc {
             .chain((0..num_foralls).map(Variable::Forall))
             .map(|v| adaptator.variable(v))
             .collect();
-        let filter_ref = FilterRef::Remote {
+        let filter_ref = FilterRef::Function {
             choice: filtered.clone(),
             id,
             args,
         };
         let filtered_args = (0..num_args).map(|i| adaptator.variable(Variable::Arg(i)));
-        let action = ChoiceAction::Filter {
+        let remote_filter = RemoteFilterCall {
             choice: ChoiceInstance {
                 choice: filtered,
                 vars: filtered_args.collect(),
@@ -231,7 +310,7 @@ impl IrDesc {
         OnChangeAction {
             forall_vars: choice_foralls,
             set_constraints,
-            action,
+            action: ChoiceAction::RemoteFilter(remote_filter),
         }
     }
 
@@ -358,6 +437,46 @@ impl Default for IrDesc {
         ir_desc.add_enum(bool_enum);
         ir_desc
     }
+}
+
+/// Adapt the environement to the point of view of a variable. In practice, this means, mapping
+/// `var` to `ir::Variable::Arg(0)`, its argument to `ir::Variable::Arg(1)` (if any) and other sets
+/// to forall variables. If reverse is `true`, Arg(0) and Arg(1) are inversed.
+fn adapt_to_var_context(
+    args: &[Set],
+    foralls: &[Set],
+    var: Variable,
+    reverse: bool,
+) -> (Vec<Set>, Adaptator) {
+    let mut adaptator = Adaptator::default();
+    adaptator.set_variable(var, Variable::Arg(if reverse { 1 } else { 0 }));
+    let arg_var = match var {
+        Variable::Arg(i) => (&args[i]).arg(),
+        Variable::Forall(i) => (&foralls[i]).arg(),
+    };
+    if let Some(arg) = arg_var {
+        adaptator.set_variable(arg, Variable::Arg(if reverse { 0 } else { 1 }));
+    } else {
+        assert!(!reverse);
+    }
+    let mut forall_index = 0;
+    let args = args
+        .iter()
+        .enumerate()
+        .map(|(i, set)| (Variable::Arg(i), set));
+    let foralls = foralls
+        .iter()
+        .enumerate()
+        .map(|(i, set)| (Variable::Forall(i), set));
+    let new_foralls = args
+        .chain(foralls)
+        .filter(|&(id, _)| id != var && Some(id) != arg_var)
+        .map(|(old_id, set)| {
+            adaptator.set_variable(old_id, Variable::Forall(forall_index));
+            forall_index += 1;
+            set.adapt(&adaptator)
+        }).collect();
+    (new_foralls, adaptator)
 }
 
 /// Indicates whether a counter sums or adds.

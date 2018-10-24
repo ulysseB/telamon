@@ -126,6 +126,12 @@ impl TilingPattern {
     }
 }
 
+impl<'a> From<&'a [u32]> for TilingPattern {
+    fn from(dim_sizes: &'a [u32]) -> Self {
+        TilingPattern::new_fixed(dim_sizes)
+    }
+}
+
 impl Default for TilingPattern {
     fn default() -> Self {
         TilingPattern {

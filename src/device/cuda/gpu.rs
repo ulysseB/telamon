@@ -229,36 +229,25 @@ impl Gpu {
     /// Returns the description of a load instruction.
     fn load_desc(&self, mem_info: &MemInfo, flags: InstFlag) -> InstDesc {
         // TODO(search_space,model): support CA and NC flags.
-        assert!(InstFlag::MEM_COHERENT.contains(flags));
+        assert!(InstFlag::COHERENT.contains(flags));
         // Compute possible latencies.
-        let gbl_latency = if flags.intersects(InstFlag::MEM_GLOBAL) {
+        let gbl_latency = if mem_info.access_global {
             let miss = mem_info.l2_miss_ratio / mem_info.l2_coalescing;
             miss * self.load_ram_latency + (1.0 - miss) * self.load_l2_latency
         } else {
             std::f64::INFINITY
         };
-        let shared_latency = if flags.intersects(InstFlag::MEM_SHARED) {
+        let shared_latency = if mem_info.access_shared {
             self.load_shared_latency as f64
         } else {
             std::f64::INFINITY
-        };
-        // Compute the smx bandwidth used.
-        let l1_lines_from_l2 = if flags.intersects(InstFlag::MEM_SHARED) {
-            0.0
-        } else {
-            mem_info.l1_coalescing
-        };
-        let l2_lines_read = if flags.intersects(InstFlag::MEM_SHARED) {
-            0.0
-        } else {
-            mem_info.l2_coalescing
         };
         InstDesc {
             latency: f64::min(gbl_latency, shared_latency),
             issue: mem_info.replay_factor,
             mem: mem_info.replay_factor,
-            l1_lines_from_l2,
-            l2_lines_read,
+            l1_lines_from_l2: mem_info.l1_coalescing,
+            l2_lines_read: mem_info.l2_coalescing,
             ram_bw: mem_info.l2_miss_ratio * f64::from(self.l2_cache_line),
             ..InstDesc::default()
         }
@@ -268,17 +257,12 @@ impl Gpu {
     fn store_desc(&self, mem_info: &MemInfo, flags: InstFlag) -> InstDesc {
         // TODO(search_space,model): support CA flags.
         // TODO(model): understand how writes use the BW.
-        assert!(InstFlag::MEM_COHERENT.contains(flags));
-        let l2_lines_stored = if flags.intersects(InstFlag::MEM_SHARED) {
-            0.0
-        } else {
-            mem_info.l2_coalescing
-        };
+        assert!(InstFlag::COHERENT.contains(flags));
         // L1 lines per L2 is not limiting.
         InstDesc {
             issue: mem_info.replay_factor,
             mem: mem_info.replay_factor,
-            l2_lines_stored,
+            l2_lines_stored: mem_info.l2_coalescing,
             ram_bw: 2.0 * mem_info.l2_miss_ratio * f64::from(self.l2_cache_line),
             ..InstDesc::default()
         }
@@ -433,22 +417,35 @@ impl device::Device for Gpu {
         512
     }
 
-    fn vectorization_factors(&self, dim: &ir::Dimension, op: &ir::Operator) -> &[u32] {
-        const LD_ST_FACTORS: [u32; 2] = [2, 4];
+    fn can_vectorize(&self, dim: &ir::Dimension, op: &ir::Operator) -> bool {
         match *op {
-            Operator::TmpLd(..) | Operator::TmpSt(..) => &LD_ST_FACTORS,
+            Operator::TmpLd(..) | Operator::TmpSt(..) => true,
             Operator::Ld(ref t, _, ref pattern)
                 if pattern.is_consecutive(dim.id(), t) =>
             {
-                &LD_ST_FACTORS
+                // TODO(ulysse): hack to avoid vectorizing by a factor of 3 until we
+                // support alignment contraints.
+                dim.possible_sizes()
+                    .map(|sizes| !sizes.contains(&3))
+                    .unwrap_or(false)
             }
             Operator::St(_, ref operand, _, ref pattern)
                 if pattern.is_consecutive(dim.id(), &operand.t()) =>
             {
-                &LD_ST_FACTORS
+                // TODO(ulysse): hack to avoid vectorizing by a factor of 3 until we
+                // support alignment contraints.
+                dim.possible_sizes()
+                    .map(|sizes| !sizes.contains(&3))
+                    .unwrap_or(false)
             }
-            _ => &[],
+            _ => false,
         }
+    }
+
+    fn max_vectorization(&self, _: &ir::Operator) -> [u32; 2] {
+        // No need to discriminate on the operator since this is already handled by
+        // `can_vectorize`.
+        [1, 4]
     }
 
     fn shared_mem(&self) -> u32 {

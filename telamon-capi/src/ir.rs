@@ -138,12 +138,12 @@ pub unsafe extern "C" fn telamon_ir_function_add_dimensions(
     dim_ids: *mut ir::DimId,
 ) -> TelamonStatus {
     let tile_sizes = std::slice::from_raw_parts(tile_sizes, num_tiles);
-    let tiling_factors = vec![tile_sizes.iter().product()];
+    let tiling_factors = vec![tile_sizes.iter().product::<u32>()];
     let tile_sizes = tile_sizes.iter().map(|&s| VecSet::new(vec![s])).collect();
     let size = Box::from_raw(size).0;
     let (ldim, dims) = unwrap_or_exit!((*function).0.add_logical_dim(
         size,
-        tiling_factors,
+        tiling_factors.into(),
         tile_sizes
     ));
     *logical_id = ldim;
@@ -336,7 +336,7 @@ pub struct Operator(ir::Operator<'static, ()>);
 pub unsafe extern "C" fn telamon_ir_operator_new_mov(
     operand: *mut Operand,
 ) -> *mut Operator {
-    let operator = ir::Operator::Mov(Box::from_raw(operand).0);
+    let operator = ir::Operator::UnaryOp(ir::UnaryOp::Mov, Box::from_raw(operand).0);
     Box::into_raw(Box::new(Operator(operator)))
 }
 
@@ -397,7 +397,7 @@ pub unsafe extern "C" fn telamon_ir_operator_new_cast(
     return_type: *const ir::Type,
 ) -> *mut Operator {
     let operand = Box::from_raw(operand).0;
-    let operator = ir::Operator::Cast(operand, *return_type);
+    let operator = ir::Operator::UnaryOp(ir::UnaryOp::Cast(*return_type), operand);
     Box::into_raw(Box::new(Operator(operator)))
 }
 

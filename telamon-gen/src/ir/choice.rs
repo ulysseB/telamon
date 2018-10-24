@@ -338,6 +338,22 @@ impl Adaptable for ValueType {
     }
 }
 
+/// A call to a filter in another choice.
+#[derive(Clone, Debug)]
+pub struct RemoteFilterCall {
+    pub choice: ir::ChoiceInstance,
+    pub filter: FilterCall,
+}
+
+impl Adaptable for RemoteFilterCall {
+    fn adapt(&self, adaptator: &ir::Adaptator) -> Self {
+        RemoteFilterCall {
+            choice: self.choice.adapt(adaptator),
+            filter: self.filter.adapt(adaptator),
+        }
+    }
+}
+
 /// A call to a filter.
 #[derive(Clone, Debug)]
 pub struct FilterCall {
@@ -358,11 +374,7 @@ impl Adaptable for FilterCall {
 #[derive(Clone, Debug)]
 pub enum FilterRef {
     Inline(Vec<ir::Rule>),
-    Local {
-        id: usize,
-        args: Vec<ir::Variable>,
-    },
-    Remote {
+    Function {
         choice: RcStr,
         id: usize,
         args: Vec<ir::Variable>,
@@ -372,19 +384,11 @@ pub enum FilterRef {
 impl Adaptable for FilterRef {
     fn adapt(&self, adaptator: &ir::Adaptator) -> Self {
         use self::FilterRef::*;
-        match *self {
-            Inline(ref rules) => Inline(rules.adapt(adaptator)),
-            Local { id, ref args } => Local {
-                id,
-                args: args.adapt(adaptator),
-            },
-            Remote {
-                ref choice,
-                id,
-                ref args,
-            } => Remote {
+        match self {
+            Inline(rules) => Inline(rules.adapt(adaptator)),
+            Function { choice, id, args } => Function {
                 choice: choice.clone(),
-                id,
+                id: *id,
                 args: args.adapt(adaptator),
             },
         }
@@ -433,10 +437,7 @@ pub enum ChoiceAction {
     /// The choice runs all its filters on itself.
     FilterSelf,
     /// The choice runs a filter on another choice.
-    Filter {
-        choice: ir::ChoiceInstance,
-        filter: FilterCall,
-    },
+    RemoteFilter(RemoteFilterCall),
     /// Increments a counter if the increment condition is statisfied.
     IncrCounter {
         counter: ir::ChoiceInstance,
@@ -464,16 +465,16 @@ impl ChoiceAction {
     fn applies_to_symmetric(&self) -> bool {
         match *self {
             // Filters for the symmetric are already produced by constraint translation.
-            ChoiceAction::FilterSelf | ChoiceAction::Filter { .. } => false,
+            ChoiceAction::FilterSelf | ChoiceAction::RemoteFilter { .. } => false,
             _ => true,
         }
     }
 
     /// Returns the list of variables to allocate.
     pub fn variables<'a>(&'a self) -> Box<Iterator<Item = &'a ir::Set> + 'a> {
-        match *self {
-            ChoiceAction::Filter { ref filter, .. } => {
-                Box::new(filter.forall_vars.iter()) as Box<_>
+        match self {
+            ChoiceAction::RemoteFilter(remote_call) => {
+                Box::new(remote_call.filter.forall_vars.iter()) as Box<_>
             }
             ChoiceAction::Trigger { .. }
             | ChoiceAction::IncrCounter { .. }
@@ -510,10 +511,7 @@ impl Adaptable for ChoiceAction {
         use self::ChoiceAction::*;
         match self {
             FilterSelf => FilterSelf,
-            Filter { choice, filter } => Filter {
-                choice: choice.adapt(adaptator),
-                filter: filter.adapt(adaptator),
-            },
+            RemoteFilter(remote_call) => RemoteFilter(remote_call.adapt(adaptator)),
             IncrCounter {
                 counter,
                 value,

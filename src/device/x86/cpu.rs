@@ -53,8 +53,12 @@ impl device::Device for Cpu {
         512
     }
 
-    fn vectorization_factors(&self, _: &ir::Dimension, _: &ir::Operator) -> &[u32] {
-        &[]
+    fn can_vectorize(&self, _: &ir::Dimension, _: &ir::Operator) -> bool {
+        false
+    }
+
+    fn max_vectorization(&self, _: &ir::Operator) -> [u32; 2] {
+        [1, 1]
     }
 
     fn shared_mem(&self) -> u32 {

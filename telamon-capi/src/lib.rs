@@ -26,6 +26,7 @@ use libc::{c_char, c_int, c_uint, size_t, uint32_t};
 use telamon::device;
 use telamon::device::x86;
 use telamon::explorer::config::Config;
+use telamon::helper::TilingPattern;
 pub use telamon_kernels::{linalg, Kernel};
 
 // Pointers to `device::Context` and `device::Device` are not C-like pointers.
@@ -70,20 +71,26 @@ impl KernelParameters {
     ) {
         match self {
             KernelParameters::MatMul(params) => {
-                linalg::MatMul::<f32>::benchmark(config, params.clone(), 0, context);
+                linalg::MatMul::<f32>::benchmark(
+                    config,
+                    params.clone(),
+                    0,
+                    true,
+                    context,
+                );
             }
         }
     }
 }
 
-/// Helper function to create a Rust vector from a C array (pointer
-/// and size) without transfering ownership (it performs a
-/// copy). Returns None when data is null.
-unsafe fn c_vec<T: Clone>(data: *const T, len: usize) -> Option<Vec<T>> {
+/// Helper function to create a TilingPattern from a buffer of u32
+/// values without transferring ownership (it performs a copy).
+/// Returns None when data is null.
+unsafe fn c_tiling_pattern(data: *const u32, len: usize) -> Option<TilingPattern> {
     if data.is_null() {
         None
     } else {
-        Some(std::slice::from_raw_parts(data, len).to_vec())
+        Some(std::slice::from_raw_parts(data, len).into())
     }
 }
 
@@ -116,9 +123,9 @@ pub unsafe extern "C" fn kernel_matmul_new(
         transpose_a: transpose_a == 1,
         transpose_b: transpose_b == 1,
         generic: generic == 1,
-        m_tiling: c_vec(tile_m, tile_m_len),
-        n_tiling: c_vec(tile_n, tile_n_len),
-        k_tiling: c_vec(tile_k, tile_k_len),
+        m_tiling: c_tiling_pattern(tile_m, tile_m_len),
+        n_tiling: c_tiling_pattern(tile_n, tile_n_len),
+        k_tiling: c_tiling_pattern(tile_k, tile_k_len),
     })))
 }
 
@@ -148,7 +155,7 @@ pub unsafe extern "C" fn kernel_optimize(
         Config::from_json(config_str)
     };
     let _bench_result = match device {
-        DeviceId::X86 => (*params).optimize_kernel(&config, &mut x86::Context::new()),
+        DeviceId::X86 => (*params).optimize_kernel(&config, &mut x86::Context::default()),
         DeviceId::Cuda => {
             #[cfg(feature = "cuda")]
             {

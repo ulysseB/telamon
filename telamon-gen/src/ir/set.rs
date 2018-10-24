@@ -48,7 +48,11 @@ pub trait SetRef<'a> {
         let mut current = self.as_ref();
         while current != superset.as_ref() {
             out.push(current.clone());
-            current = current.superset().unwrap();
+            if let Some(superset) = current.superset() {
+                current = superset;
+            } else {
+                return vec![];
+            }
         }
         out
     }
@@ -162,7 +166,6 @@ impl Set {
                 .map(|b| b.borrow())
                 .unwrap_or(reverse_def.arg().unwrap())
                 .clone();
-            assert!((&superset).arg().is_none());
             let mut reverse = Set::new(&reverse_def, Some(self_var));
             if !(&reverse).is_subset_of(arg) {
                 reverse.reverse_constraint = Some(Box::new(arg.clone()));
@@ -361,7 +364,7 @@ impl SetDef {
     }
 
     /// Returns the reverse set, for sets that have both a parameter and a superset.
-    fn reverse(&self) -> Option<std::rc::Rc<SetDef>> {
+    pub fn reverse(&self) -> Option<std::rc::Rc<SetDef>> {
         match self.reverse {
             ReverseSet::None => None,
             ReverseSet::Explicit(ref cell) => Some(cell.borrow().clone()),
@@ -466,4 +469,13 @@ impl fmt::Display for SetDefKey {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }
+}
+
+/// Indicates how to update the search space when a new object is added to the set.
+/// Assumes the set is mapped to `ir::Variable::Arg(0)` and its argument to
+/// `ir::Variable::Arg(1)` if any.
+#[derive(Debug, Default)]
+pub struct OnNewObject {
+    /// Lists the new propagators to enforce.
+    pub filter: Vec<(Vec<Set>, ir::SetConstraints, ir::RemoteFilterCall)>,
 }

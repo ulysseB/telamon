@@ -120,7 +120,10 @@ pub trait Kernel<'a>: Sized {
                 local_selection::descend(&ordering, order, context, candidate, CUT);
             if let Some(leaf) = leaf {
                 let device_fn = codegen::Function::build(&leaf.space);
-                let event = TreeEvent {actions: Sequence::Vec(leaf.actions.iter().cloned().collect()), score: 1.};
+                let event = TreeEvent {
+                    actions: Sequence::Vec(leaf.actions.iter().cloned().collect()),
+                    score: 1.,
+                };
                 unwrap!(record_writer.write_record(&unwrap!(bincode::serialize(&event))));
                 unwrap!(
                     context.evaluate(&device_fn, device::EvalMode::FindBest),
@@ -384,6 +387,6 @@ fn init_log(config: &Config) -> io::Result<BufWriter<File>> {
 
 #[derive(Serialize, Deserialize)]
 pub struct TreeEvent {
-        actions: Sequence<explorer::choice::ActionEx>,
-        score: f64,
+    actions: Sequence<explorer::choice::ActionEx>,
+    score: f64,
 }
