@@ -486,7 +486,11 @@ unsafe fn tensor_access(
         .map(|i| (strided_dims[i], strides[i].0.clone()))
         .collect();
     let access_pattern = ir::AccessPattern::Tensor {
-        mem_id: if array_id.is_null() { None } else { Some(*array_id) },
+        mem_id: if array_id.is_null() {
+            None
+        } else {
+            Some(*array_id)
+        },
         dims,
     };
     Ok((address, access_pattern))

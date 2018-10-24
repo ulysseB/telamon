@@ -108,7 +108,7 @@ fn inst_variable_order() {
 fn dim_map_variable_order() {
     let _ = env_logger::try_init();
     let context = fake::Context::default();
-    let signature = empty_signature(0);
+    let signature = empty_signature();
     let mut builder = helper::Builder::new(&signature, context.device());
 
     let src_dim = builder.open_dim(ir::Size::new_const(16));
@@ -148,7 +148,7 @@ fn dim_map_variable_order() {
 fn last_variable_order() {
     let _ = env_logger::try_init();
     let context = fake::Context::default();
-    let signature = empty_signature(0);
+    let signature = empty_signature();
     let mut builder = helper::Builder::new(&signature, context.device());
 
     let dim = builder.open_dim(ir::Size::new_const(16));
