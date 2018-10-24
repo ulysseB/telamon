@@ -4,7 +4,7 @@ use device;
 use ir::{self, Type};
 use model::{self, HwPressure};
 use num_cpus;
-use search_space::{DimKind, SearchSpace};
+use search_space::*;
 use std::io::Write;
 use utils::*;
 
@@ -69,16 +69,19 @@ impl device::Device for Cpu {
         0
     }
 
-    fn supports_nc_access(&self) -> bool {
-        false
+    fn pointer_type(&self, _: MemSpace) -> ir::Type {
+        // Use 0 as a dummy memory ID.
+        ir::Type::PtrTo(ir::MemId(0))
     }
 
-    fn supports_l1_access(&self) -> bool {
-        true
-    }
-
-    fn supports_l2_access(&self) -> bool {
-        true
+    fn supported_mem_flags(&self, op: &ir::Operator) -> InstFlag {
+        match op {
+            ir::Operator::Ld(..)
+            | ir::Operator::St(..)
+            | ir::Operator::TmpLd(..)
+            | ir::Operator::TmpSt(..) => InstFlag::BLOCK_COHERENT,
+            _ => panic!("not a memory operation"),
+        }
     }
 
     fn name(&self) -> &str {

@@ -14,33 +14,15 @@ use std;
 use utils::*;
 
 /// Generates a function base with the given arguments.
-pub fn base(params: &[(&str, ir::Type)], arrays: &[&str]) -> (Signature, Vec<ir::MemId>) {
-    let mut p = params
-        .iter()
-        .map(|&(name, t)| ir::Parameter {
-            name: name.to_string(),
-            t,
-        }).collect_vec();
-    let mut mem_blocks = 0;
-    let mem_ids = arrays
-        .iter()
-        .map(|name| {
-            let id = ir::MemId::External(mem_blocks);
-            mem_blocks += 1;
-            p.push(ir::Parameter {
-                name: name.to_string(),
-                t: ir::Type::PtrTo(id),
-            });
-            id
-        }).collect();
-    (
-        Signature {
-            name: "bench".to_string(),
-            params: p,
-            mem_blocks,
-        },
-        mem_ids,
-    )
+pub fn base(params: &[(&str, ir::Type)], arrays: &[&str], gpu: &Gpu) -> Signature {
+    let mut signature = Signature::new("bench".to_owned());
+    for &(name, t) in params {
+        signature.add_scalar(name.to_owned(), t);
+    }
+    for &name in arrays {
+        signature.add_array(gpu, name.to_owned(), ir::Type::I(8));
+    }
+    signature
 }
 
 /// Binds a parameter to a value in the given context.
@@ -48,6 +30,7 @@ pub fn bind_scalar<T: ScalarArgument>(name: &str, val: T, context: &mut Context)
     let p = ir::Parameter {
         t: T::t(),
         name: name.to_string(),
+        elem_t: None,
     };
     context.bind_scalar(&p, val);
 }
@@ -82,7 +65,6 @@ pub fn loop_chained_adds<'a>(
     loop_size: &DimSize,
     chained: u32,
     out: &str,
-    out_id: ir::MemId,
 ) -> SearchSpace<'a> {
     let mut builder = Builder::new(base, device);
     let init = builder.mov(&0f32);
@@ -93,7 +75,7 @@ pub fn loop_chained_adds<'a>(
     let acc = builder.add(&Reduce(init), &2f32);
     builder.close_dim(&d0);
     builder.close_dim(&d1);
-    let pattern = builder.unknown_access_pattern(out_id);
+    let pattern = ir::AccessPattern::Unknown(None);
     builder.st_ex(&out, &acc, true, pattern, InstFlag::CACHE_GLOBAL);
     builder.get()
 }
@@ -132,7 +114,7 @@ where
     builder.order(&d0, &d1, Order::OUTER);
     builder.close_dim(&d0);
     builder.close_dim(&d1);
-    let pattern = builder.unknown_access_pattern(ir::MemId::External(0));
+    let pattern = ir::AccessPattern::Unknown(None);
     builder.st_ex(&out, &acc, true, pattern, InstFlag::NO_CACHE);
     builder.get()
 }
@@ -142,7 +124,6 @@ where
 pub fn init_stride_array<'a>(
     signature: &'a Signature,
     device: &'a Device,
-    mem_id: ir::MemId,
     array: &str,
     n: u32,
     stride: i32,
@@ -158,12 +139,12 @@ pub fn init_stride_array<'a>(
         (None, builder.mov(&array))
     };
     let next_addr = builder.mad(&byte_stride, &1i32, &addr);
-    let pattern0 = builder.unknown_access_pattern(mem_id);
+    let pattern0 = ir::AccessPattern::Unknown(None);
     builder.st_ex(&addr, &next_addr, true, pattern0, InstFlag::CACHE_GLOBAL);
     dim.as_ref().map(|dim| builder.close_dim(dim));
     let last_addr = builder.mad(&byte_stride, &(n as i32 - 1), &array);
 
-    let pattern1 = builder.unknown_access_pattern(mem_id);
+    let pattern1 = ir::AccessPattern::Unknown(None);
     builder.st_ex(&last_addr, &array, true, pattern1, InstFlag::CACHE_GLOBAL);
     dim.as_ref()
         .map(|dim| builder.order(dim, &last_addr, Order::BEFORE));
@@ -178,9 +159,7 @@ pub fn load_chain<'a>(
     n_threads: u32,
     n_iter: &DimSize,
     n_chained: u32,
-    mem_id: ir::MemId,
     array: &str,
-    out_id: ir::MemId,
     out: &str,
 ) -> SearchSpace<'a> {
     let mut builder = Builder::new(signature, device);
@@ -193,7 +172,7 @@ pub fn load_chain<'a>(
         let d = builder.open_dim_ex(ir::Size::new_const(n_threads), DimKind::THREAD);
         builder.order(&d, &d0, Order::OUTER);
     }
-    let pattern0 = builder.unknown_access_pattern(mem_id);
+    let pattern0 = ir::AccessPattern::Unknown(None);
     let ptr = builder.ld_ex(
         ir::Type::I(64),
         &Reduce(init),
@@ -203,7 +182,7 @@ pub fn load_chain<'a>(
     builder.order(&d0, &d1, Order::OUTER);
     builder.close_dim(&d0);
     builder.close_dim(&d1);
-    let pattern1 = builder.unknown_access_pattern(out_id);
+    let pattern1 = ir::AccessPattern::Unknown(None);
     builder.st_ex(&out, &ptr, true, pattern1, InstFlag::NO_CACHE);
     builder.get()
 }
@@ -215,7 +194,6 @@ pub fn shared_load_chain<'a>(
     n_iter: &DimSize,
     n_chained: u32,
     array_size: u32,
-    out_id: ir::MemId,
     out: &str,
 ) -> SearchSpace<'a> {
     let mut builder = Builder::new(signature, device);
@@ -225,23 +203,21 @@ pub fn shared_load_chain<'a>(
     let init_addr = builder.mad(&init_dim, &4i32, &array);
     let increment = builder.cast(&4i32, ir::Type::PtrTo(array.into()));
     let next_addr = builder.add(&init_addr, &increment);
-    let pattern0 = builder.unknown_access_pattern(array.into());
-    builder.st(&init_addr, &next_addr, pattern0);
+    let array_pattern = ir::AccessPattern::Unknown(Some(array));
+    builder.st(&init_addr, &next_addr, array_pattern.clone());
     builder.close_dim(&init_dim);
-    let pattern1 = builder.unknown_access_pattern(array.into());
-    let last_st = builder.st(&init_addr, &array, pattern1);
+    let last_st = builder.st(&init_addr, &array, array_pattern.clone());
 
     let addr_init = builder.mov(&array);
     let loop_size = n_iter.into_ir_size(&builder);
     let unroll_size = builder.cst_size(n_chained);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(unroll_size, DimKind::UNROLL);
-    let pattern2 = builder.unknown_access_pattern(array.into());
-    let addr = builder.ld(ir::Type::I(32), &Reduce(addr_init), pattern2);
+    let addr = builder.ld(ir::Type::I(32), &Reduce(addr_init), array_pattern);
     builder.close_dim(&d0);
     builder.close_dim(&d1);
-    let pattern3 = builder.unknown_access_pattern(out_id);
-    builder.st_ex(&out, &addr, true, pattern3, InstFlag::CACHE_GLOBAL);
+    let out_pattern = ir::AccessPattern::Unknown(None);
+    builder.st_ex(&out, &addr, true, out_pattern, InstFlag::CACHE_GLOBAL);
 
     builder.order(&last_st, &addr_init, Order::BEFORE);
     builder.order(&d0, &d1, Order::OUTER);
@@ -259,9 +235,7 @@ pub fn parallel_load<'a>(
     n_unroll: u32,
     num_wraps: u32,
     stride: u32,
-    mem_id: ir::MemId,
     array: &str,
-    out_id: ir::MemId,
     out: &str,
 ) -> SearchSpace<'a> {
     assert!(stride * 4 <= gpu.l1_cache_line);
@@ -289,7 +263,7 @@ pub fn parallel_load<'a>(
 
     let d3 = builder.open_dim_ex(ir::Size::new_const(n_chained), DimKind::UNROLL);
     let d4_0 = builder.open_dim_ex(ir::Size::new_const(n_unroll), DimKind::UNROLL);
-    let pattern = builder.unknown_access_pattern(mem_id);
+    let pattern = ir::AccessPattern::Unknown(None);
     let wrap_stride = gpu.wrap_size * gpu.l1_cache_line;
     let mut strides = vec![
         (&d3, ir::Size::new_const(n_unroll * num_wraps * wrap_stride)),
@@ -312,7 +286,7 @@ pub fn parallel_load<'a>(
         .map(|d1_1_a| builder.open_mapped_dim(&d1_1_a));
     let d1_2_b = builder.open_mapped_dim(&d1_1_b);
     builder.order(&d1_2_a, &d1_2_b, Order::OUTER);
-    let out_pattern = builder.unknown_access_pattern(out_id);
+    let out_pattern = ir::AccessPattern::Unknown(None);
     builder.st_ex(&out, &acc, true, out_pattern, InstFlag::NO_CACHE);
 
     builder.order(&d1_0_a, &d0, Order::BEFORE);
@@ -339,7 +313,6 @@ pub fn parallel_store<'a>(
     n_unroll: u32,
     num_wraps: u32,
     stride: u32,
-    mem_id: ir::MemId,
     array: &str,
 ) -> SearchSpace<'a> {
     assert!(stride * 4 <= gpu.l1_cache_line);
@@ -359,7 +332,7 @@ pub fn parallel_store<'a>(
 
     let d3 = builder.open_dim_ex(ir::Size::new_const(n_chained), DimKind::UNROLL);
     let d4 = builder.open_dim_ex(ir::Size::new_const(n_unroll), DimKind::UNROLL);
-    let pattern = builder.unknown_access_pattern(mem_id);
+    let pattern = ir::AccessPattern::Unknown(None);
     let wrap_stride = gpu.wrap_size * gpu.l1_cache_line;
     let mut strides = vec![
         (&d3, ir::Size::new_const(n_unroll * num_wraps * wrap_stride)),
@@ -419,7 +392,6 @@ pub fn chain_in_syncthread<'a>(
     add_chained: u32,
     wrap_size: u32,
     out: &str,
-    out_id: ir::MemId,
 ) -> SearchSpace<'a> {
     let mut builder = Builder::new(signature, device);
     let loop_size = n_iter.into_ir_size(&builder);
@@ -441,7 +413,7 @@ pub fn chain_in_syncthread<'a>(
     builder.close_dim(&d4);
 
     let d5 = builder.open_mapped_dim(&d0);
-    let pattern = builder.unknown_access_pattern(out_id);
+    let pattern = ir::AccessPattern::Unknown(None);
     builder.st_ex(&out, &acc, true, pattern, InstFlag::CACHE_GLOBAL);
 
     builder.order(&d1, &d2, Order::OUTER);
@@ -466,7 +438,6 @@ pub fn load_in_loop<'a>(
     k_size: &DimSize,
     threads: u32,
     out: &str,
-    out_id: ir::MemId,
 ) -> SearchSpace<'a> {
     let mut builder = Builder::new(signature, device);
     let size_4 = builder.cst_size(4);
@@ -503,7 +474,7 @@ pub fn load_in_loop<'a>(
     builder.close_dim(&k_dim);
 
     let _ = builder.open_mapped_dim(&unroll_dims_1);
-    let (addr, pattern) = builder.tensor_access(&out, out_id, ir::Type::F(32), &[]);
+    let (addr, pattern) = builder.tensor_access(&out, None, ir::Type::F(32), &[]);
     let _ = builder.st_ex(&addr, &acc, true, pattern, InstFlag::NO_CACHE);
 
     builder.order(&k_dim, &thread_dim_1_0, Order::INNER);

@@ -1,7 +1,7 @@
 //! Helper struct to build a `Function`.
 use device::Device;
 use helper::{AutoOperand, LogicalDim, MetaStatement, TilingPattern};
-use ir::{self, mem, op, Parameter, Type};
+use ir::{self, op, Parameter, Type};
 use ir::{AccessPattern, Function, InstId, Operand, Operator, Signature};
 use itertools::{flatten, Itertools};
 use search_space::{Action, DimKind, InstFlag, MemSpace, Order, SearchSpace};
@@ -346,7 +346,7 @@ impl<'a> Builder<'a> {
     }
 
     /// Allocates a memory block in shared memory.
-    pub fn allocate_shared(&mut self, size: u32) -> mem::InternalId {
+    pub fn allocate_shared(&mut self, size: u32) -> ir::MemId {
         let id = self.allocate(size, true);
         self.actions
             .push(Action::MemSpace(id.into(), MemSpace::SHARED));
@@ -354,7 +354,7 @@ impl<'a> Builder<'a> {
     }
 
     /// Allocates a memory block.
-    pub fn allocate(&mut self, size: u32, private: bool) -> mem::InternalId {
+    pub fn allocate(&mut self, size: u32, private: bool) -> ir::MemId {
         assert!(
             private,
             "allocating non-private memory is not yet supported"
@@ -362,17 +362,12 @@ impl<'a> Builder<'a> {
         self.function.add_mem_block(size)
     }
 
-    /// Generates an access paterns with all the strides unknown on the opened dimensions.
-    pub fn unknown_access_pattern(&self, mem: ir::MemId) -> AccessPattern<'static> {
-        AccessPattern::Unknown { mem_id: mem }
-    }
-
     /// Builds both an induction variable for a tensor memory access and the corresponding
     /// access pattern.
     pub fn tensor_access(
         &mut self,
         addr: &AutoOperand<'a>,
-        mem_id: ir::MemId,
+        mem_id: Option<ir::MemId>,
         t: ir::Type,
         dims: &[&LogicalDim],
     ) -> (ir::IndVarId, ir::AccessPattern<'a>) {
@@ -389,7 +384,7 @@ impl<'a> Builder<'a> {
     /// type.
     pub fn tensor_access_pattern(
         &self,
-        mem: ir::MemId,
+        mem: Option<ir::MemId>,
         increments: Vec<(&LogicalDim, ir::Size<'a>)>,
     ) -> AccessPattern<'a> {
         let dims = self.logical_to_real_increments(increments);

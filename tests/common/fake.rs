@@ -8,7 +8,7 @@ use telamon::device::{self, ArrayArgument, ScalarArgument};
 use telamon::explorer::Candidate;
 use telamon::ir::{self, Operator};
 use telamon::model::{self, HwPressure};
-use telamon::search_space::{DimKind, SearchSpace};
+use telamon::search_space::*;
 use utils::*;
 
 use std::marker::PhantomData;
@@ -82,16 +82,21 @@ impl device::Device for Device {
         self.shared_mem_size
     }
 
-    fn supports_nc_access(&self) -> bool {
-        true
+    fn pointer_type(&self, _: MemSpace) -> ir::Type {
+        ir::Type::I(32)
     }
 
-    fn supports_l1_access(&self) -> bool {
-        true
-    }
-
-    fn supports_l2_access(&self) -> bool {
-        true
+    // Warning: this assumes only global memory accesses can use caches.
+    fn supported_mem_flags(&self, op: &ir::Operator) -> InstFlag {
+        match op {
+            // Only accesses to external memory blocks can be non-coherent.
+            ir::Operator::Ld(.., pat) if pat.mem_block().is_none() => InstFlag::ALL,
+            ir::Operator::Ld(..)
+            | ir::Operator::St(..)
+            | ir::Operator::TmpLd(..)
+            | ir::Operator::TmpSt(..) => InstFlag::COHERENT,
+            _ => panic!("invalid memory access operator"),
+        }
     }
 
     fn lower_type(&self, t: ir::Type, _: &SearchSpace) -> Option<ir::Type> {

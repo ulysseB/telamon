@@ -42,7 +42,7 @@ pub fn analyse(
     let flag = space.domain().get_inst_flag(inst.id());
     let info = match *inst.operator() {
         ir::Operator::Ld(_, _, ref pattern) | ir::Operator::St(_, _, _, ref pattern) => {
-            let mem_space = space.domain().get_mem_space(pattern.mem_block());
+            let mem_space = access_pattern_space(pattern, space);
             let is_shared = mem_space.is(MemSpace::SHARED);
             match pattern {
                 _ if flag.intersects(InstFlag::CACHE_READ_ONLY) => {
@@ -588,6 +588,7 @@ fn dynamic_nesting(lhs: &ir::Dimension, rhs: &ir::Dimension, space: &SearchSpace
 mod tests {
     use super::*;
     use device::cuda::{self, Gpu};
+    use device::Device;
     use env_logger;
     use helper;
     use ir;
@@ -604,13 +605,12 @@ mod tests {
         let mut builder = helper::Builder::new(&signature, gpu);
         let t = ir::Type::F(32);
         let size = builder.cst_size(gpu.wrap_size);
-        let addr_base = builder.cast(&0i64, ir::Type::PtrTo(ir::MemId::External(0)));
+        let addr_base = builder.cast(&0i64, gpu.pointer_type(MemSpace::GLOBAL));
         let d0 = builder.open_dim_ex(size.clone(), DimKind::THREAD);
         let d1 = builder.open_dim_ex(size.clone(), DimKind::THREAD);
         let addr = builder.mad(&d0, &(gpu.l1_cache_line as i32), &addr_base);
         let stride = ir::Size::new_const(gpu.l1_cache_line).into();
-        let pattern =
-            builder.tensor_access_pattern(ir::MemId::External(0), vec![(&d0, stride)]);
+        let pattern = builder.tensor_access_pattern(None, vec![(&d0, stride)]);
         let ld = builder.ld_ex(t, &addr, pattern, InstFlag::CACHE_GLOBAL);
         builder.order(&d0, &d1, d0_d1_order);
 
@@ -629,7 +629,6 @@ mod tests {
         ir::Signature {
             name: String::new(),
             params: vec![],
-            mem_blocks: 1,
         }
     }
 

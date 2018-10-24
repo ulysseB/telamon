@@ -16,12 +16,11 @@ lazy_static! {
     pub static ref MM: SearchSpace<'static> = MM_SIGNATURE.build_body();
 }
 
+const DATA_TYPE: ir::Type = ir::Type::F(32);
+
 /// Stores the signature and the external arrays IDs for matrix-matrix multiplication.
 struct MMSig {
     signature: ir::Signature,
-    a: ir::MemId,
-    b: ir::MemId,
-    c: ir::MemId,
 }
 
 impl MMSig {
@@ -30,14 +29,13 @@ impl MMSig {
         signature.add_scalar("m".to_string(), ir::Type::I(32));
         signature.add_scalar("n".to_string(), ir::Type::I(32));
         signature.add_scalar("k".to_string(), ir::Type::I(32));
-        let a = signature.add_array("a".to_string());
-        let b = signature.add_array("b".to_string());
-        let c = signature.add_array("c".to_string());
-        MMSig { signature, a, b, c }
+        signature.add_array(&*DEVICE, "a".to_string(), DATA_TYPE);
+        signature.add_array(&*DEVICE, "b".to_string(), DATA_TYPE);
+        signature.add_array(&*DEVICE, "c".to_string(), DATA_TYPE);
+        MMSig { signature }
     }
 
     fn build_body(&self) -> SearchSpace {
-        const DATA_TYPE: ir::Type = ir::Type::F(32);
         let mut builder = helper::Builder::new(&self.signature, &*DEVICE);
         let m_size = builder.param_size("m", 32);
         let n_size = builder.param_size("n", 32);
@@ -46,7 +44,7 @@ impl MMSig {
         let ld_a_m = builder.open_tiled_dim(m_size, [16, 4][..].into());
         let ld_a_k = builder.open_tiled_dim(k_size.clone(), [16][..].into());
         let (ptr, pattern) =
-            builder.tensor_access(&"a", self.a, DATA_TYPE, &[&ld_a_m, &ld_a_k]);
+            builder.tensor_access(&"a", None, DATA_TYPE, &[&ld_a_m, &ld_a_k]);
         let ld_a = builder.ld_nc(DATA_TYPE.clone(), &ptr, pattern);
         builder.close_dim(&ld_a_m);
         builder.close_dim(&ld_a_k);
@@ -54,7 +52,7 @@ impl MMSig {
         let ld_b_k = builder.open_tiled_dim(k_size, [16][..].into());
         let ld_b_n = builder.open_tiled_dim(n_size, [16, 4][..].into());
         let (ptr, pattern) =
-            builder.tensor_access(&"b", self.b, DATA_TYPE, &[&ld_b_k, &ld_b_n]);
+            builder.tensor_access(&"b", None, DATA_TYPE, &[&ld_b_k, &ld_b_n]);
         let ld_b = builder.ld_nc(DATA_TYPE, &ptr, pattern);
         builder.close_dim(&ld_b_k);
         builder.close_dim(&ld_b_n);
@@ -82,7 +80,7 @@ impl MMSig {
         let st_m = builder.open_mapped_dim(&acc_m);
         let st_n = builder.open_mapped_dim(&acc_n);
         let (ptr, pattern) =
-            builder.tensor_access(&"c", self.c, DATA_TYPE, &[&st_m, &st_n]);
+            builder.tensor_access(&"c", None, DATA_TYPE, &[&st_m, &st_n]);
         let st = builder.st(&ptr, &acc, pattern);
         // order for correctness.
         builder.order(&st, &acc_k, Order::AFTER);

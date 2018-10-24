@@ -169,33 +169,21 @@ set MemoryRegions:
   new_objs = "$objs.mem_blocks"
 end
 
-set InternalMemoryRegions subsetof MemoryRegions:
-  item_type = "ir::mem::InternalBlock"
-  id_type = "ir::mem::InternalId"
-  item_getter = "$fun.internal_mem_block($id)"
-  id_getter = "$item.id()"
-  iterator = "$fun.internal_mem_blocks()"
-  var_prefix = "mem"
-  from_superset = "$item.as_internal()"
-  new_objs = "$objs.internal_mem_blocks"
-end
-
 /// Indicates where a memory block is located.
 define enum mem_space($mem in MemoryRegions):
   /// The block is in the device RAM.
   value GLOBAL:
   /// The block is in the memory shared between the threads of a block.
   value SHARED:
-    requires "$mem.as_internal().is_some()"
     requires forall $inst in MemInsts:
-      "unwrap!($inst.operator().mem_used()) != $mem.mem_id()"
+      "$inst.operator().mem_used() != Some($mem.mem_id())"
         || inst_flag($inst) is NO_CACHE
 end
 
 /// Computes the size of each memory block.
 // TODO(cleanup): use dependent sets to only iterate on necessary pairs.
 // FIXME: remove cubic choice choices
-define half counter mem_size($mem in InternalMemoryRegions):
+define half counter mem_size($mem in MemoryRegions):
   base "$mem.base_size()"
   forall $lhs in StaticDims:
     forall $rhs in StaticDims:
@@ -206,7 +194,7 @@ end
 
 /// The total amount of shared memory used.
 define half counter shared_mem_used():
-  forall $mem in InternalMemoryRegions:
+  forall $mem in MemoryRegions:
     sum mem_size($mem) when: mem_space($mem) is SHARED
 end
 

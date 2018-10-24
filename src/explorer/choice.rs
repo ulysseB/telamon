@@ -1,6 +1,5 @@
 //! Choices that can be applied to split the search space.
 use explorer::config;
-use ir::mem::Block;
 use ir::{self, Statement};
 use itertools::Itertools;
 use search_space::{Action, Domain, NumSet, Order, SearchSpace};
@@ -10,7 +9,7 @@ use search_space::{Action, Domain, NumSet, Order, SearchSpace};
 pub enum ActionEx {
     Action(Action),
     LowerLayout {
-        mem: ir::mem::InternalId,
+        mem: ir::MemId,
         st_dims: Vec<ir::DimId>,
         ld_dims: Vec<ir::DimId>,
     },
@@ -152,7 +151,7 @@ pub fn list<'a>(
                         gen_choice(orders.list(), &|o| Action::Order(lhs, rhs, o))
                     })
             })),
-            ChoiceGroup::MemSpace => Box::new(fun.internal_mem_blocks().flat_map(move |block| {
+            ChoiceGroup::MemSpace => Box::new(fun.mem_blocks().flat_map(move |block| {
                 let mem_spaces = space.domain().get_mem_space(block.mem_id());
                 gen_choice(mem_spaces.list(), &|s| Action::MemSpace(block.mem_id(), s))
             })),
@@ -252,8 +251,8 @@ pub fn fix_order(mut space: SearchSpace) -> SearchSpace {
 }
 
 /// Generates the different ways to lower a layout.
-fn lower_layout_choice(space: &SearchSpace, mem: ir::mem::InternalId) -> Vec<ActionEx> {
-    let mem_block = space.ir_instance().internal_mem_block(mem);
+fn lower_layout_choice(space: &SearchSpace, mem: ir::MemId) -> Vec<ActionEx> {
+    let mem_block = space.ir_instance().mem_block(mem);
     let mapped_dims = mem_block.mapped_dims().iter().cloned().collect_vec();
     // Order dimensions until the stride is too big to matter in any way.
     let mut to_process = vec![(vec![], mapped_dims, mem_block.base_size())];

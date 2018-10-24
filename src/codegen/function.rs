@@ -1,7 +1,6 @@
 //! Describes a `Function` that is ready to execute on a device.
 use codegen::{self, cfg, dimension, Cfg, Dimension, InductionLevel, InductionVar};
 use ir;
-use ir::prelude::*;
 use itertools::Itertools;
 use search_space::{self, DimKind, Domain, MemSpace, SearchSpace};
 use std;
@@ -14,7 +13,7 @@ pub struct Function<'a> {
     block_dims: Vec<Dimension<'a>>,
     device_code_args: Vec<ParamVal<'a>>,
     induction_vars: Vec<InductionVar<'a>>,
-    mem_blocks: Vec<InternalMemoryRegion<'a>>,
+    mem_blocks: Vec<MemoryRegion<'a>>,
     init_induction_levels: Vec<InductionLevel<'a>>,
     variables: Vec<codegen::Variable<'a>>,
     // TODO(cleanup): remove dependency on the search space
@@ -121,7 +120,7 @@ impl<'a> Function<'a> {
     }
 
     /// Returns the memory blocks allocated by the function.
-    pub fn mem_blocks(&self) -> impl Iterator<Item = &InternalMemoryRegion> {
+    pub fn mem_blocks(&self) -> impl Iterator<Item = &MemoryRegion> {
         self.mem_blocks.iter()
     }
 
@@ -153,7 +152,7 @@ pub enum ParamVal<'a> {
     /// A tiled dimension size computed on the host.
     Size(codegen::Size<'a>),
     /// A pointer to a global memory block, allocated by the wrapper.
-    GlobalMem(ir::mem::InternalId, codegen::Size<'a>, ir::Type),
+    GlobalMem(ir::MemId, codegen::Size<'a>, ir::Type),
 }
 
 impl<'a> ParamVal<'a> {
@@ -216,7 +215,7 @@ hash_from_key!(ParamVal<'a>, ParamVal::key, 'a);
 pub enum ParamValKey<'a> {
     External(&'a ir::Parameter),
     Size(&'a codegen::Size<'a>),
-    GlobalMem(ir::mem::InternalId),
+    GlobalMem(ir::MemId),
 }
 
 /// Generates the list of internal memory blocks, and creates the parameters needed to
@@ -224,7 +223,7 @@ pub enum ParamValKey<'a> {
 fn register_mem_blocks<'a>(
     space: &'a SearchSpace<'a>,
     block_dims: &[Dimension<'a>],
-) -> Vec<InternalMemoryRegion<'a>> {
+) -> Vec<MemoryRegion<'a>> {
     let num_thread_blocks = block_dims.iter().fold(None, |pred, block| {
         if let Some(mut pred) = pred {
             pred *= block.size();
@@ -235,14 +234,14 @@ fn register_mem_blocks<'a>(
     });
     space
         .ir_instance()
-        .internal_mem_blocks()
-        .map(|b| InternalMemoryRegion::new(b, &num_thread_blocks, space))
+        .mem_blocks()
+        .map(|b| MemoryRegion::new(b, &num_thread_blocks, space))
         .collect()
 }
 
 /// A memory block allocated by the kernel.
-pub struct InternalMemoryRegion<'a> {
-    id: ir::mem::InternalId,
+pub struct MemoryRegion<'a> {
+    id: ir::MemId,
     size: codegen::Size<'a>,
     num_private_copies: Option<codegen::Size<'a>>,
     mem_space: MemSpace,
@@ -257,10 +256,10 @@ pub enum AllocationScheme {
     Shared,
 }
 
-impl<'a> InternalMemoryRegion<'a> {
-    /// Creates a new InternalMemoryRegion from an `ir::mem::Internal`.
+impl<'a> MemoryRegion<'a> {
+    /// Creates a new MemoryRegion from an `ir::Mem`.
     pub fn new(
-        block: &'a ir::mem::InternalBlock,
+        block: &'a ir::mem::Block,
         num_threads_groups: &Option<codegen::Size<'a>>,
         space: &'a SearchSpace<'a>,
     ) -> Self {
@@ -276,10 +275,10 @@ impl<'a> InternalMemoryRegion<'a> {
         } else {
             None
         };
-        let ptr_type = ir::Type::PtrTo(block.id().into());
+        let ptr_type = ir::Type::PtrTo(block.mem_id());
         let ptr_type = unwrap!(space.ir_instance().device().lower_type(ptr_type, space));
-        InternalMemoryRegion {
-            id: block.id(),
+        MemoryRegion {
+            id: block.mem_id(),
             size,
             mem_space,
             num_private_copies,
@@ -316,7 +315,7 @@ impl<'a> InternalMemoryRegion<'a> {
     }
 
     /// Returns the memory ID.
-    pub fn id(&self) -> ir::mem::InternalId {
+    pub fn id(&self) -> ir::MemId {
         self.id
     }
 

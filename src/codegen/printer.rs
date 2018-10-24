@@ -1,6 +1,6 @@
 use codegen::*;
 use itertools::Itertools;
-use search_space::{InstFlag, MemSpace};
+use search_space::*;
 use std::borrow::Cow;
 use utils::*;
 
@@ -345,7 +345,7 @@ pub trait Printer {
 
     fn privatise_global_block(
         &mut self,
-        block: &InternalMemoryRegion,
+        block: &MemoryRegion,
         namer: &mut NameMap,
         fun: &Function,
     ) {
@@ -460,7 +460,7 @@ pub trait Printer {
             op::Ld(ld_type, addr, pattern) => self.print_ld(
                 vector_factors,
                 Self::lower_type(*ld_type, fun),
-                fun.space().domain().get_mem_space(pattern.mem_block()),
+                access_pattern_space(pattern, fun.space()),
                 unwrap!(inst.mem_flag()),
                 &Self::name_inst(vector_levels, inst.id(), namer),
                 &Self::name_operand(&[vec![], vec![]], addr, namer),
@@ -474,7 +474,7 @@ pub trait Printer {
                 self.print_st(
                     vector_factors,
                     Self::lower_type(val.t(), fun),
-                    fun.space().domain().get_mem_space(pattern.mem_block()),
+                    access_pattern_space(pattern, fun.space()),
                     unwrap!(inst.mem_flag()),
                     guard.as_ref().map(|x| x as _),
                     &Self::name_operand(&[vec![], vec![]], addr, namer),

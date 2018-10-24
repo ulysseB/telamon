@@ -70,7 +70,7 @@ impl<'a> SearchSpace<'a> {
     /// Triggers a layout lowering.
     pub fn lower_layout(
         &mut self,
-        mem: ir::mem::InternalId,
+        mem: ir::MemId,
         st_dims: Vec<ir::DimId>,
         ld_dims: Vec<ir::DimId>,
     ) -> Result<(), ()> {
@@ -141,4 +141,16 @@ fn add_thread_dim(ir_instance: &mut ir::Function, dim: ir::DimId) -> ir::NewObjs
         new_objs.add_thread_dim(dim);
     }
     new_objs
+}
+
+/// Returns the memory space accessed by an access pattern.
+pub fn access_pattern_space(
+    pattern: &ir::AccessPattern,
+    space: &SearchSpace,
+) -> MemSpace {
+    // We either have a `MemId` or the array is an external array in global memory.
+    pattern
+        .mem_block()
+        .map(|id| space.domain().get_mem_space(id))
+        .unwrap_or(MemSpace::GLOBAL)
 }

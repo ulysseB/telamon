@@ -29,6 +29,26 @@ typedef enum {
      * Divides two operands,
      */
     BinOp_Div,
+    /*
+     * Computes the bitwise AND operation.
+     */
+    BinOp_And,
+    /*
+     * Computes the bitwise OR operation.
+     */
+    BinOp_Or,
+    /*
+     * Computes `lhs < rhs`.
+     */
+    BinOp_Lt,
+    /*
+     * Computes `lhs <= rhs`.
+     */
+    BinOp_Leq,
+    /*
+     * Computes `lhs == rhs`.
+     */
+    BinOp_Equals,
 } BinOp;
 
 /*
@@ -152,6 +172,11 @@ typedef struct String String;
 typedef struct Type Type;
 
 /*
+ * Uniquely identifies variables.
+ */
+typedef struct VarId VarId;
+
+/*
  * Provides a unique identifier for iteration dimensions.
  */
 typedef struct {
@@ -175,41 +200,38 @@ typedef struct {
 /*
  * Uniquely identifies a block.
  */
-typedef enum {
-    MemId_Internal,
-    MemId_External,
-} MemId_Tag;
-
 typedef struct {
     uint32_t id;
-} MemId_Internal_Body;
-
-typedef struct {
-    uint32_t id;
-} MemId_External_Body;
-
-typedef struct {
-    MemId_Tag tag;
-    union {
-        MemId_Internal_Body internal;
-        MemId_External_Body external;
-    };
 } MemId;
 
+/*
+ * Specifies the version of an instruction to use.
+ */
 typedef struct {
     uint8_t bits;
-} Bool;
+} InstFlag;
 
 typedef struct {
     uint16_t enabled_values;
 } NumericSet;
 
+typedef struct {
+    uint8_t bits;
+} Bool;
+
 /*
- * Specifies how iteration dimensions are implemented.
+ * Indicates how are thread dimensions mapped on the GPU.
  */
 typedef struct {
     uint8_t bits;
-} DimKind;
+} ThreadMapping;
+
+/*
+ * Specifies where to store a variable.
+ */
+typedef struct {
+    uint8_t bits;
+} MemorySpace;
 
 /*
  * Indicates where a memory block is located.
@@ -219,11 +241,11 @@ typedef struct {
 } MemSpace;
 
 /*
- * Specifies the version of an instruction to use.
+ * Specifies how iteration dimensions are implemented.
  */
 typedef struct {
     uint8_t bits;
-} InstFlag;
+} DimKind;
 
 /*
  * Provides a unique identifer for a basic block.
@@ -264,24 +286,6 @@ typedef struct {
 } DimMapping;
 
 /*
- * Indicates how are thread dimensions mapped on the GPU.
- */
-typedef struct {
-    uint8_t bits;
-} ThreadMapping;
-
-/*
- * Abstracts integer choices by a range, but only store `min`.
- */
-typedef struct {
-    uint32_t min;
-} HalfRange;
-
-typedef struct {
-    uint32_t id;
-} InternalId;
-
-/*
  * Abstracts integer choices by a range.
  */
 typedef struct {
@@ -290,44 +294,50 @@ typedef struct {
 } Range;
 
 /*
+ * Abstracts integer choices by a range, but only store `min`.
+ */
+typedef struct {
+    uint32_t min;
+} HalfRange;
+
+/*
  * A decision to apply to the domain.
  */
 typedef enum {
-    Action_IsIterationDim,
-    Action_IsThreadDim,
-    Action_Size,
-    Action_DimKind,
-    Action_MemSpace,
     Action_InstFlag,
+    Action_Size,
+    Action_IsThreadDim,
+    Action_ThreadMapping,
+    Action_IsIterationDim,
+    Action_MemorySpace,
+    Action_MemSpace,
+    Action_DimKind,
     Action_Order,
     Action_DimMapping,
-    Action_ThreadMapping,
+    Action_IncrementTilingFactor,
+    Action_TilingFactor,
+    Action_IsThreadDimClassCounter,
     Action_NumThreads,
     Action_NumThreadDims,
-    Action_IncrementUnrollFactor,
-    Action_UnrollFactor,
-    Action_IncrementNumBlockDims,
-    Action_NumBlockDims,
-    Action_NumNestedInst,
+    Action_IsIterationDimClassCounter,
     Action_IncrementMemSize,
     Action_MemSize,
     Action_SharedMemUsed,
-    Action_IncrementTilingFactor,
-    Action_TilingFactor,
-    Action_IsIterationDimClassCounter,
-    Action_IsThreadDimClassCounter,
+    Action_IncrementUnrollFactor,
+    Action_UnrollFactor,
+    Action_IncrementInnerVectorFactor,
+    Action_InnerVectorFactor,
+    Action_IncrementOuterVectorFactor,
+    Action_OuterVectorFactor,
+    Action_IncrementNumBlockDims,
+    Action_NumBlockDims,
+    Action_NumNestedInst,
 } Action_Tag;
 
 typedef struct {
     InstId inst;
-    DimId dim;
-    Bool domain;
-} Action_IsIterationDim_Body;
-
-typedef struct {
-    DimId dim;
-    Bool domain;
-} Action_IsThreadDim_Body;
+    InstFlag domain;
+} Action_InstFlag_Body;
 
 typedef struct {
     DimId dim;
@@ -336,8 +346,25 @@ typedef struct {
 
 typedef struct {
     DimId dim;
-    DimKind domain;
-} Action_DimKind_Body;
+    Bool domain;
+} Action_IsThreadDim_Body;
+
+typedef struct {
+    DimId lhs;
+    DimId rhs;
+    ThreadMapping domain;
+} Action_ThreadMapping_Body;
+
+typedef struct {
+    InstId inst;
+    DimId dim;
+    Bool domain;
+} Action_IsIterationDim_Body;
+
+typedef struct {
+    VarId var;
+    MemorySpace domain;
+} Action_MemorySpace_Body;
 
 typedef struct {
     MemId mem;
@@ -345,9 +372,9 @@ typedef struct {
 } Action_MemSpace_Body;
 
 typedef struct {
-    InstId inst;
-    InstFlag domain;
-} Action_InstFlag_Body;
+    DimId dim;
+    DimKind domain;
+} Action_DimKind_Body;
 
 typedef struct {
     StmtId lhs;
@@ -362,10 +389,20 @@ typedef struct {
 } Action_DimMapping_Body;
 
 typedef struct {
-    DimId lhs;
-    DimId rhs;
-    ThreadMapping domain;
-} Action_ThreadMapping_Body;
+    LogicalDimId logical;
+    DimId dim;
+    Bool domain;
+} Action_IncrementTilingFactor_Body;
+
+typedef struct {
+    LogicalDimId logical;
+    Range domain;
+} Action_TilingFactor_Body;
+
+typedef struct {
+    DimId dim;
+    Range domain;
+} Action_IsThreadDimClassCounter_Body;
 
 typedef struct {
     HalfRange domain;
@@ -378,6 +415,28 @@ typedef struct {
 typedef struct {
     InstId inst;
     DimId dim;
+    Range domain;
+} Action_IsIterationDimClassCounter_Body;
+
+typedef struct {
+    MemId mem;
+    DimId lhs;
+    DimId rhs;
+    Bool domain;
+} Action_IncrementMemSize_Body;
+
+typedef struct {
+    MemId mem;
+    HalfRange domain;
+} Action_MemSize_Body;
+
+typedef struct {
+    HalfRange domain;
+} Action_SharedMemUsed_Body;
+
+typedef struct {
+    InstId inst;
+    DimId dim;
     Bool domain;
 } Action_IncrementUnrollFactor_Body;
 
@@ -385,6 +444,28 @@ typedef struct {
     InstId inst;
     HalfRange domain;
 } Action_UnrollFactor_Body;
+
+typedef struct {
+    InstId inst;
+    DimId dim;
+    Bool domain;
+} Action_IncrementInnerVectorFactor_Body;
+
+typedef struct {
+    InstId inst;
+    HalfRange domain;
+} Action_InnerVectorFactor_Body;
+
+typedef struct {
+    InstId inst;
+    DimId dim;
+    Bool domain;
+} Action_IncrementOuterVectorFactor_Body;
+
+typedef struct {
+    InstId inst;
+    HalfRange domain;
+} Action_OuterVectorFactor_Body;
 
 typedef struct {
     InstId inst;
@@ -403,69 +484,36 @@ typedef struct {
 } Action_NumNestedInst_Body;
 
 typedef struct {
-    InternalId mem;
-    DimId lhs;
-    DimId rhs;
-    Bool domain;
-} Action_IncrementMemSize_Body;
-
-typedef struct {
-    InternalId mem;
-    HalfRange domain;
-} Action_MemSize_Body;
-
-typedef struct {
-    HalfRange domain;
-} Action_SharedMemUsed_Body;
-
-typedef struct {
-    LogicalDimId logical;
-    DimId dim;
-    Bool domain;
-} Action_IncrementTilingFactor_Body;
-
-typedef struct {
-    LogicalDimId logical;
-    Range domain;
-} Action_TilingFactor_Body;
-
-typedef struct {
-    InstId inst;
-    DimId dim;
-    Range domain;
-} Action_IsIterationDimClassCounter_Body;
-
-typedef struct {
-    DimId dim;
-    Range domain;
-} Action_IsThreadDimClassCounter_Body;
-
-typedef struct {
     Action_Tag tag;
     union {
-        Action_IsIterationDim_Body is_iteration_dim;
-        Action_IsThreadDim_Body is_thread_dim;
-        Action_Size_Body size;
-        Action_DimKind_Body dim_kind;
-        Action_MemSpace_Body mem_space;
         Action_InstFlag_Body inst_flag;
+        Action_Size_Body size;
+        Action_IsThreadDim_Body is_thread_dim;
+        Action_ThreadMapping_Body thread_mapping;
+        Action_IsIterationDim_Body is_iteration_dim;
+        Action_MemorySpace_Body memory_space;
+        Action_MemSpace_Body mem_space;
+        Action_DimKind_Body dim_kind;
         Action_Order_Body order;
         Action_DimMapping_Body dim_mapping;
-        Action_ThreadMapping_Body thread_mapping;
+        Action_IncrementTilingFactor_Body increment_tiling_factor;
+        Action_TilingFactor_Body tiling_factor;
+        Action_IsThreadDimClassCounter_Body is_thread_dim_class_counter;
         Action_NumThreads_Body num_threads;
         Action_NumThreadDims_Body num_thread_dims;
-        Action_IncrementUnrollFactor_Body increment_unroll_factor;
-        Action_UnrollFactor_Body unroll_factor;
-        Action_IncrementNumBlockDims_Body increment_num_block_dims;
-        Action_NumBlockDims_Body num_block_dims;
-        Action_NumNestedInst_Body num_nested_inst;
+        Action_IsIterationDimClassCounter_Body is_iteration_dim_class_counter;
         Action_IncrementMemSize_Body increment_mem_size;
         Action_MemSize_Body mem_size;
         Action_SharedMemUsed_Body shared_mem_used;
-        Action_IncrementTilingFactor_Body increment_tiling_factor;
-        Action_TilingFactor_Body tiling_factor;
-        Action_IsIterationDimClassCounter_Body is_iteration_dim_class_counter;
-        Action_IsThreadDimClassCounter_Body is_thread_dim_class_counter;
+        Action_IncrementUnrollFactor_Body increment_unroll_factor;
+        Action_UnrollFactor_Body unroll_factor;
+        Action_IncrementInnerVectorFactor_Body increment_inner_vector_factor;
+        Action_InnerVectorFactor_Body inner_vector_factor;
+        Action_IncrementOuterVectorFactor_Body increment_outer_vector_factor;
+        Action_OuterVectorFactor_Body outer_vector_factor;
+        Action_IncrementNumBlockDims_Body increment_num_block_dims;
+        Action_NumBlockDims_Body num_block_dims;
+        Action_NumNestedInst_Body num_nested_inst;
     };
 } Action;
 
@@ -746,7 +794,7 @@ Operator *telamon_ir_operator_new_mul(Operand *lhs,
  * This function also adds the necessary address computation code to `function`.
  */
 Operator *telamon_ir_operator_new_tensor_load(Function *function,
-                                              MemId array_id,
+                                              const MemId *array_id,
                                               Operand *base_address,
                                               const DimId *strided_dims,
                                               const PartialSize *strides,
@@ -760,7 +808,7 @@ Operator *telamon_ir_operator_new_tensor_load(Function *function,
  * `function`.
  */
 Operator *telamon_ir_operator_new_tensor_store(Function *function,
-                                               MemId array_id,
+                                               const MemId *array_id,
                                                Operand *base_address,
                                                const DimId *strided_dims,
                                                const PartialSize *strides,
@@ -770,7 +818,10 @@ Operator *telamon_ir_operator_new_tensor_store(Function *function,
 /*
  * Adds an array parameter to the function signature.
  */
-MemId telamon_ir_signature_add_array(Signature *signature, const char *name);
+void telamon_ir_signature_add_array(Signature *signature,
+                                    const char *name,
+                                    const Type *element_type,
+                                    const Device *device);
 
 /*
  * Adds a scalar parameter to the function signature.

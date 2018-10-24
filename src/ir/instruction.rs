@@ -109,11 +109,11 @@ impl<'a, L> Instruction<'a, L> {
     {
         self.operator = match self.operator.clone() {
             Operator::TmpLd(t, id2) => {
-                assert_eq!(ld_pattern.mem_block(), id2);
+                assert_eq!(ld_pattern.mem_block(), Some(id2));
                 Operator::Ld(t, ld_idx, ld_pattern)
             }
             Operator::TmpSt(val, id2) => {
-                assert_eq!(st_pattern.mem_block(), id2);
+                assert_eq!(st_pattern.mem_block(), Some(id2));
                 Operator::St(st_idx, val, false, st_pattern)
             }
             _ => panic!("Only TmpLd/TmpSt are changed on a layout lowering"),
@@ -134,7 +134,11 @@ impl<'a, L> Instruction<'a, L> {
 
     /// Returns 'self' if it is a memory instruction.
     pub fn as_mem_inst(&self) -> Option<&Instruction<'_, L>> {
-        self.operator.mem_used().map(|_| self)
+        if self.operator.is_mem_access() {
+            Some(self)
+        } else {
+            None
+        }
     }
 
     /// Indicates if the instruction performs a reduction.

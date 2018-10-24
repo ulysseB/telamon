@@ -2,7 +2,7 @@
 use device::ScalarArgument;
 use helper::{Builder, LogicalDim};
 use ir::Operand::*;
-use ir::{self, dim, mem, InstId, Operand};
+use ir::{self, dim, InstId, Operand};
 
 /// Represents values that can be turned into an `Operand`.
 pub trait AutoOperand<'a> {
@@ -124,7 +124,7 @@ impl<'a> AutoOperand<'a> for TmpArray {
     }
 }
 
-impl<'a> AutoOperand<'a> for mem::InternalId {
+impl<'a> AutoOperand<'a> for ir::MemId {
     fn get<'b>(&self, _: &mut Builder<'b>) -> Operand<'b, ()>
     where
         'a: 'b,

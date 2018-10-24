@@ -12,10 +12,9 @@ fn partial_bound_0() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let mut context = cuda::Context::new(&executor);
-    let z;
     let signature = {
         let mut builder = SignatureBuilder::new("test", &mut context);
-        z = builder.array::<f32>("z", 16).0;
+        builder.array::<f32>("z", 16);
         builder.get()
     };
 
@@ -29,7 +28,7 @@ fn partial_bound_0() {
     builder.close_dim(&dim_x);
 
     let dim_z = builder.open_dim_ex(size, DimKind::THREAD);
-    let (addr, pattern) = builder.tensor_access(&"z", z, ir::Type::F(32), &[&dim_z]);
+    let (addr, pattern) = builder.tensor_access(&"z", None, ir::Type::F(32), &[&dim_z]);
     let st_z = builder.st(&addr, &0f32, pattern);
 
     builder.order(&dim_x, &dim_z, Order::BEFORE);
@@ -81,10 +80,9 @@ fn partial_bound_1() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let mut context = cuda::Context::new(&executor);
-    let z;
     let signature = {
         let mut builder = SignatureBuilder::new("test", &mut context);
-        z = builder.array::<f32>("z", 256).0;
+        builder.array::<f32>("z", 256);
         builder.get()
     };
 
@@ -95,7 +93,7 @@ fn partial_bound_1() {
     builder.close_dim(&dim_x);
 
     let dim_z = builder.open_dim(size);
-    let (addr, pattern) = builder.tensor_access(&"z", z, ir::Type::F(32), &[&dim_z]);
+    let (addr, pattern) = builder.tensor_access(&"z", None, ir::Type::F(32), &[&dim_z]);
     let st_z = builder.st(&addr, &0f32, pattern);
 
     let partial_pressure = {
@@ -205,10 +203,9 @@ fn partial_bound_3() {
     let executor = cuda::Executor::init();
     let mut context = cuda::Context::new(&executor);
 
-    let a;
     let signature = {
         let mut builder = SignatureBuilder::new("test", &mut context);
-        a = builder.array::<f32>("a", 256).0;
+        builder.array::<f32>("a", 256);
         builder.get()
     };
 
@@ -216,7 +213,7 @@ fn partial_bound_3() {
 
     let size_m = builder.cst_size(256);
     let ld_a_dim = builder.open_tiled_dim(size_m, TilingPattern::new_fixed(&[4]));
-    let (addr, patt) = builder.tensor_access(&"a", a, ir::Type::F(32), &[&ld_a_dim]);
+    let (addr, patt) = builder.tensor_access(&"a", None, ir::Type::F(32), &[&ld_a_dim]);
     builder.ld(ir::Type::F(32), &addr, patt);
     builder.close_dim(&ld_a_dim);
 

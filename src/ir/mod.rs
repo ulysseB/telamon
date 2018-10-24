@@ -62,7 +62,6 @@ pub struct NewObjs {
     pub static_dims: Vec<DimId>,
     pub statements: Vec<StmtId>,
     pub mem_blocks: Vec<MemId>,
-    pub internal_mem_blocks: Vec<mem::InternalId>,
     pub mem_insts: Vec<InstId>,
     pub iteration_dims: Vec<(InstId, DimId)>,
     pub thread_dims: Vec<DimId>,
@@ -120,9 +119,8 @@ impl NewObjs {
     }
 
     /// Registers a new memory block.
-    pub fn add_mem_block(&mut self, id: mem::InternalId) {
+    pub fn add_mem_block(&mut self, id: MemId) {
         self.mem_blocks.push(id.into());
-        self.internal_mem_blocks.push(id);
     }
 
     /// Adds a mapping between dimensions.
@@ -151,7 +149,7 @@ impl NewObjs {
 
 /// A point-to-point communication lowered into a store and a load.
 pub struct LoweredDimMap {
-    pub mem: mem::InternalId,
+    pub mem: MemId,
     pub store: InstId,
     pub load: InstId,
     /// Mapping from production dimensions to store dimensions.
@@ -295,6 +293,15 @@ where
     }
 }
 
+impl<I, T> Default for SparseVec<I, T>
+where
+    I: Into<usize>,
+{
+    fn default() -> Self {
+        SparseVec::new()
+    }
+}
+
 impl<I, T> IntoIterator for SparseVec<I, T> {
     type Item = Option<T>;
     type IntoIter = <Vec<Option<T>> as IntoIterator>::IntoIter;
@@ -356,8 +363,8 @@ pub struct Counter {
 }
 
 impl Counter {
-    pub fn next_mem(&mut self) -> mem::InternalId {
-        let next = mem::InternalId(self.next_mem as u32);
+    pub fn next_mem(&mut self) -> MemId {
+        let next = MemId(self.next_mem as u32);
         self.next_mem += 1;
         next
     }

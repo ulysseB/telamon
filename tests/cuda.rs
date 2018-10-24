@@ -21,7 +21,7 @@ fn unrolled_dims() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
-    let signature = empty_signature(0);
+    let signature = empty_signature();
     let mut builder = helper::Builder::new(&signature, context.device());
     let size_64 = builder.cst_size(64);
     let d0 = builder.open_dim_ex(size_64, DimKind::UNROLL);
@@ -36,7 +36,7 @@ fn block_thread_dims() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
-    let signature = empty_signature(0);
+    let signature = empty_signature();
     let mut builder = helper::Builder::new(&signature, context.device());
     let size_64 = builder.cst_size(64);
     let d0 = builder.open_dim_ex(size_64.clone(), DimKind::BLOCK);
@@ -79,14 +79,13 @@ fn cache_directive() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let mut context = cuda::Context::new(&executor);
-    let mem_id;
     let signature = {
         let mut builder = helper::SignatureBuilder::new("params", &mut context);
-        mem_id = builder.array::<f32>("a", 1).0;
+        builder.array::<f32>("a", 1);
         builder.get()
     };
     let mut builder = helper::Builder::new(&signature, context.device());
-    let pattern = builder.unknown_access_pattern(mem_id);
+    let pattern = ir::AccessPattern::Unknown(None);
     builder.ld_ex(
         ir::Type::F(32),
         &"a",
@@ -103,7 +102,7 @@ fn thread_reduction_map() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
-    let signature = empty_signature(0);
+    let signature = empty_signature();
     let mut builder = helper::Builder::new(&signature, context.device());
     let size_32 = builder.cst_size(32);
     let d0 = builder.open_dim_ex(size_32, DimKind::THREAD);
@@ -122,7 +121,7 @@ fn inst_order() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
-    let signature = empty_signature(0);
+    let signature = empty_signature();
     let mut builder = helper::Builder::new(&signature, context.device());
 
     let size_32 = builder.cst_size(32);
@@ -143,9 +142,8 @@ fn inst_order() {
 fn induction_var_nested() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
-    let out;
     let mut context = cuda::Context::new(&executor);
-    let (k, k4);
+    let (k, k4, out);
     let signature = {
         let mut builder = helper::SignatureBuilder::new("ind_var_test", &mut context);
         k = builder.max_size("k", 12);
@@ -166,11 +164,11 @@ fn induction_var_nested() {
         &0i32,
         vec![(&d0, size_1), (&d1, size_k_tile_4), (&d2, size_k)],
     );
-    let pattern = builder.unknown_access_pattern(out.0);
+    let pattern = ir::AccessPattern::Unknown(None);
     let _ = builder.st(&"out", &ind_var, pattern);
 
     check_candidates(builder.get(), &context, || {
-        let res = read_array::<i32>(out.1.as_ref());
+        let res = read_array::<i32>(out.as_ref());
         // 1*(k/4 - 1) + (k/4)*(4 - 1) + k*(5 - 1) = 5*k - 1 = 59
         assert_eq!(res[0], 59);
     });
@@ -181,8 +179,8 @@ fn induction_var_nested() {
 fn induction_var_simple() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
-    let out;
     let mut context = cuda::Context::new(&executor);
+    let out;
     let signature = {
         let mut builder = helper::SignatureBuilder::new("ind_var_test", &mut context);
         out = builder.array::<i32>("out", 1);
@@ -193,11 +191,11 @@ fn induction_var_simple() {
     let size_4 = builder.cst_size(4);
     let d0 = builder.open_dim_ex(size_3, DimKind::LOOP);
     let ind_var = builder.induction_var(&0i32, vec![(&d0, size_4)]);
-    let pattern = builder.unknown_access_pattern(out.0);
+    let pattern = ir::AccessPattern::Unknown(None);
     let _ = builder.st(&"out", &ind_var, pattern);
 
     check_candidates(builder.get(), &context, || {
-        let res = read_array::<i32>(out.1.as_ref());
+        let res = read_array::<i32>(out.as_ref());
         assert_eq!(res[0], 8);
     });
 }
@@ -220,7 +218,7 @@ fn global_vector_load() {
         builder.get()
     };
     write_array(
-        input.1.as_ref(),
+        input.as_ref(),
         &(0..D0_LEN).map(|i| i as i32 + 10).collect_vec()[..],
     );
 
@@ -228,16 +226,15 @@ fn global_vector_load() {
     // Load B from global memory
     let d0_size = builder.cst_size(D0_LEN);
     let d0 = builder.open_dim_ex(d0_size, DimKind::VECTOR);
-    let (addr, input_pattern) =
-        builder.tensor_access(&"input", input.0, DATA_TYPE, &[&d0]);
+    let (addr, input_pattern) = builder.tensor_access(&"input", None, DATA_TYPE, &[&d0]);
     let ld = builder.ld_ex(DATA_TYPE, &addr, input_pattern, InstFlag::NO_CACHE);
     builder.close_dim(&d0);
     // Store B in shared memory.
-    let output_pattern = builder.unknown_access_pattern(output.0);
+    let output_pattern = ir::AccessPattern::Unknown(None);
     builder.st_ex(&"output", &ld, true, output_pattern, InstFlag::NO_CACHE);
 
     check_candidates(builder.get(), &context, || {
-        let res = read_array::<i32>(output.1.as_ref())[0];
+        let res = read_array::<i32>(output.as_ref())[0];
         assert_eq!(res, 13);
     });
 }
@@ -259,11 +256,11 @@ fn size_cast() {
     let size_4 = builder.cst_size(4);
     let d0 = builder.open_dim_ex(size_3, DimKind::LOOP);
     let ind_var = builder.induction_var(&0i64, vec![(&d0, size_4)]);
-    let pattern = builder.unknown_access_pattern(out.0);
+    let pattern = ir::AccessPattern::Unknown(None);
     let _ = builder.st(&"out", &ind_var, pattern);
 
     check_candidates(builder.get(), &context, || {
-        let res = read_array::<i64>(out.1.as_ref());
+        let res = read_array::<i64>(out.as_ref());
         assert_eq!(res[0], 8);
     });
 }
@@ -305,7 +302,7 @@ fn merge_0() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
-    let signature = empty_signature(0);
+    let signature = empty_signature();
 
     let mut builder = helper::Builder::new(&signature, context.device());
     let size_16 = builder.cst_size(16);
@@ -334,7 +331,7 @@ fn merge_1() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
-    let signature = empty_signature(0);
+    let signature = empty_signature();
 
     let mut builder = helper::Builder::new(&signature, context.device());
     let size_16 = builder.cst_size(16);
@@ -360,7 +357,7 @@ fn dim_map_reduce_0() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
-    let signature = empty_signature(0);
+    let signature = empty_signature();
 
     let mut builder = helper::Builder::new(&signature, context.device());
     let size_16 = builder.cst_size(16);
@@ -386,7 +383,7 @@ fn dim_map_active() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
-    let signature = empty_signature(0);
+    let signature = empty_signature();
 
     let mut builder = helper::Builder::new(&signature, context.device());
     let size_32 = builder.cst_size(32);
@@ -411,7 +408,7 @@ fn test0() {
     let _ = env_logger::try_init();
     let executor = cuda::Executor::init();
     let context = cuda::Context::new(&executor);
-    let signature = empty_signature(0);
+    let signature = empty_signature();
 
     let mut builder = helper::Builder::new(&signature, context.device());
     let size_32 = builder.cst_size(32);

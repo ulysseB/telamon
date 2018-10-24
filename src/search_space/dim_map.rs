@@ -8,7 +8,7 @@ use search_space::{Action, DimKind, DomainStore, MemSpace, Order};
 /// Lowers a layout
 pub fn lower_layout(
     fun: &mut ir::Function,
-    mem: ir::mem::InternalId,
+    mem: ir::MemId,
     st_dims: Vec<ir::DimId>,
     ld_dims: Vec<ir::DimId>,
     domain: &DomainStore,
