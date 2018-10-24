@@ -1396,3 +1396,39 @@ mod unused_set {
         assert_eq!(store.get_foo(b0.into(), b1.into()), Foo::A);
     }
 }
+
+mod chained_parameter {
+    define_ir! {
+        struct set_a;
+        struct set_b;
+        struct set_c;
+
+        type b_of_a[set_a reverse set_b]: set_b;
+        type c_of_b[set_b reverse set_c]: set_c;
+    }
+
+    generated_file!(chained_parameter);
+    use self::chained_parameter::*;
+    use std::sync::Arc;
+
+    /// Ensures chains of parametric sets work correctly.
+    #[test]
+    fn chained_parameter() {
+        let _ = ::env_logger::try_init();
+        let mut fun = ir::Function::default();
+        let a = ir::set_a::create(&mut fun, false);
+        let b0 = ir::b_of_a::create(&mut fun, a, false);
+        let b1 = ir::b_of_a::create(&mut fun, a, false);
+        let c0 = ir::c_of_b::create(&mut fun, b0, false);
+        let c1 = ir::c_of_b::create(&mut fun, b1, false);
+
+        let store = &mut DomainStore::new(&fun);
+        let mut actions = init_domain(store, &mut fun).unwrap();
+        actions.extend(vec![
+            Action::Bar(b0, NumericSet::new_eq(&[0, 1], 0, &())),
+            Action::Bar(b1, NumericSet::new_eq(&[0, 1], 1, &())),
+        ]);
+        let fun = &mut Arc::new(fun);
+        assert!(apply_decisions(actions, fun, store).is_ok());
+    }
+}

@@ -50,6 +50,7 @@ pub unsafe extern "C" fn telamon_ir_signature_add_scalar(
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_signature_add_array(
     signature: *mut ir::Signature,
+    device: *const Device,
     name: *const libc::c_char,
     element_type: *const ir::Type,
     device: *const Device,
@@ -419,6 +420,7 @@ pub unsafe extern "C" fn telamon_ir_operator_new_tensor_load(
     let tensor_access = tensor_access(
         function,
         array_id,
+        *loaded_type,
         base_address,
         strided_dims,
         strides,
@@ -443,16 +445,17 @@ pub unsafe extern "C" fn telamon_ir_operator_new_tensor_store(
     num_strided_dims: usize,
     value: *mut Operand,
 ) -> *mut Operator {
+    let value = Box::from_raw(value).0;
     let tensor_access = tensor_access(
         function,
         array_id,
+        value.t(),
         base_address,
         strided_dims,
         strides,
         num_strided_dims,
     );
     let (address, access_pattern) = unwrap_or_exit!(tensor_access, null);
-    let value = Box::from_raw(value).0;
     let operator = ir::Operator::St(address, value, true, access_pattern);
     Box::into_raw(Box::new(Operator(operator)))
 }
@@ -463,6 +466,7 @@ pub unsafe extern "C" fn telamon_ir_operator_new_tensor_store(
 unsafe fn tensor_access(
     function: *mut Function,
     array_id: *const ir::MemId,
+    element_type: ir::Type,
     base_address: *mut Operand,
     strided_dims: *const ir::DimId,
     strides: *const PartialSize,
@@ -486,6 +490,7 @@ unsafe fn tensor_access(
         .map(|i| (strided_dims[i], strides[i].0.clone()))
         .collect();
     let access_pattern = ir::AccessPattern::Tensor {
+        t: element_type,
         mem_id: if array_id.is_null() {
             None
         } else {

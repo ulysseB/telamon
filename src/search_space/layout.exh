@@ -1,0 +1,90 @@
+/// Indicates the layout of a memory block or variable.
+set LayoutDimensions:
+  item_type = "ir::LayoutDimension"
+  id_type = "ir::LayoutDimId"
+  item_getter = "$fun.layout_dimension($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.layout_dimensions()"
+  var_prefix = "layout"
+  new_objs = "$objs.layout_dims"
+end
+
+/// Maps layout dimensions to actual dimensions.
+// TODO(ulysse): support layouts with dynamic dimensions.
+set ActualDimension($layout in LayoutDimensions) subsetof StaticDims:
+  item_type = "ir::Dimension"
+  id_type = "ir::DimId"
+  item_getter = "$fun.dim($id)"
+  id_getter = "$item.id()"
+  iterator = "{ let dim = $fun.dim($layout.dim()); dim.possible_sizes().map(|_| dim) }"
+  from_superset =
+    "if $item.layout_dims().contains(&$layout.id()) { Some($item) } else { None }"
+  reverse forall $dim in StaticDims = "$dim.layout_dims().iter().map(|&id| $fun.dim(id))"
+  var_prefix = "dim"
+  new_objs = "$objs.actual_layout_dims"
+end
+
+/// Layout dimensions of a memory block.
+set MemLayoutDimensions subsetof LayoutDimensions:
+  item_type = "ir::LayoutDimension"
+  id_type = "ir::LayoutDimId"
+  item_getter = "$fun.layout_dimension($id)"
+  id_getter = "$item.id()"
+  iterator = "$fun.mem_layout_dimensions()"
+  from_superset = "if $item.is_memory_layout() { Some($item) } else { None }"
+  var_prefix = "mem_layout"
+  new_objs = "$objs.mem_layout_dims"
+end
+
+/// Indicates the layout dimensions of a memory accessed by an instruction.
+set MemAccessLayout($access in MemInsts) subsetof MemLayoutDimensions:
+  item_type = "ir::LayoutDimension"
+  id_type = "ir::LayoutDimId"
+  item_getter = "$fun.layout_dimension($id)"
+  id_getter = "$item.id()"
+  iterator = "$access.mem_access_layout().iter().map(|&id| $fun.layout_dimension(id))"
+  from_superset =
+    "if $item.access_inst() == Some($access.id()) { Some($item) } else { None }"
+  reverse forall $dim in MemLayoutDimensions =
+    "$dim.access_inst().map(|id| $fun.inst(id)).into_iter()"
+  var_prefix = "mem_layout"
+  new_objs = "$objs.mem_access_layout"
+end
+
+/// Indicates the order in which layout dimensions are ordered in memory.
+define integer rank($dim in MemLayoutDimensions): "unwrap!($dim.possible_ranks())" end
+
+require forall $inst in MemInsts:
+  forall $outer in MemAccessLayout($inst):
+    forall $inner in MemAccessLayout($inst):
+      forall $outer_dim in ActualDimension($outer):
+        forall $inner_dim in ActualDimension($inner):
+          // Vector dimensions order matches the rank.
+          order($outer_dim, $inner_dim) is not OUTER
+          || dim_kind($inner_dim) is not VECTOR
+          || dim_kind($outer_dim) is not VECTOR
+          || rank($outer) > rank($inner)
+          // Inner vectorization is on contiguous elements.
+          rank($outer) < rank($inner)
+          || dim_kind($outer_dim) is not INNER_VECTOR
+          || dim_kind($inner_dim) is INNER_VECTOR
+          || rank($inner) == "0"
+          // Ensure we don't vectorize if there is a stride.
+          order($outer_dim, $inner_dim) is not OUTER
+          || "!$outer.is_strided()"
+          || dim_kind($outer_dim) is not VECTOR
+          || dim_kind($outer_dim) != dim_kind($inner_dim)
+
+// Vectorization is on contiguous dimensions.
+require forall $inst in MemInsts:
+  forall $outer in MemAccessLayout($inst):
+    forall $mid in MemAccessLayout($inst):
+      forall $inner in MemAccessLayout($inst):
+        forall $outer_dim in ActualDimension($outer):
+          forall $mid_dim in ActualDimension($mid):
+            forall $inner_dim in ActualDimension($inner):
+              dim_kind($outer_dim) is not VECTOR
+              || dim_kind($inner_dim) is not VECTOR
+              || rank($outer) < rank($mid)
+              || rank($mid) < rank($inner)
+              || dim_kind($mid_dim) is VECTOR

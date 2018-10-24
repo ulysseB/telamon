@@ -42,11 +42,12 @@ pub trait SetRef<'a> {
             })
     }
 
-    /// Returns the path of sets to access a super-set.
-    fn path_to_superset(&self, superset: &SetRef) -> Vec<SetRefImpl<'a>> {
+    /// Returns the path of sets to access a common ancestor of `self` and `other` from
+    /// `self`. The path includes `[self, common ancestor[`.
+    fn path_to_common_ancestor(&self, other: &SetRef) -> Vec<SetRefImpl<'a>> {
         let mut out = Vec::new();
         let mut current = self.as_ref();
-        while current != superset.as_ref() {
+        while !other.is_subset_of(&current) {
             out.push(current.clone());
             if let Some(superset) = current.superset() {
                 current = superset;
@@ -58,7 +59,7 @@ pub trait SetRef<'a> {
     }
 
     /// Indicates if the first set is a sub-set of the second.
-    fn is_subset_of(&self, other: &Set) -> bool {
+    fn is_subset_of(&self, other: &SetRef) -> bool {
         let is_subset = self.as_ref() == other.as_ref()
             || self
                 .superset()
@@ -67,7 +68,7 @@ pub trait SetRef<'a> {
             || self
                 .reverse_constraint()
                 .map_or(false, |s| s.is_subset_of(other));
-        is_subset && other.reverse_constraint.is_none()
+        is_subset && other.reverse_constraint().is_none()
     }
 
     /// Returns the `SetRefImpl` corresponding to this set.
@@ -167,7 +168,7 @@ impl Set {
                 .unwrap_or(reverse_def.arg().unwrap())
                 .clone();
             let mut reverse = Set::new(&reverse_def, Some(self_var));
-            if !(&reverse).is_subset_of(arg) {
+            if !(&reverse).is_subset_of(&arg) {
                 reverse.reverse_constraint = Some(Box::new(arg.clone()));
             }
             Some((superset, reverse))
@@ -254,7 +255,7 @@ impl SetDef {
         let name = RcStr::new(name);
         let reverse =
             if let Some((set, iter)) = reverse {
-                let name = RcStr::default();
+                let name = RcStr::new(format!("reverse_{}", name));
                 let reverse = ReverseSet::None;
                 let superset = arg.as_ref().unwrap().def();
                 let from_superset = keys[&SetDefKey::FromSuperset]
@@ -369,6 +370,15 @@ impl SetDef {
             ReverseSet::None => None,
             ReverseSet::Explicit(ref cell) => Some(cell.borrow().clone()),
             ReverseSet::Implicit(ref rc) => Some(std::rc::Weak::upgrade(rc).unwrap()),
+        }
+    }
+
+    /// Indicates if the set is the reverse of an actual set.
+    pub fn is_reverse(&self) -> bool {
+        if let ReverseSet::Implicit(..) = self.reverse {
+            true
+        } else {
+            false
         }
     }
 

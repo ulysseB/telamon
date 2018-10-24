@@ -40,9 +40,9 @@ impl PerfModelTest for L1LinesPressure {
         let d2_1 = builder.open_mapped_dim(&d2_0);
         let d3 = builder.open_dim_ex(ir::Size::new_const(UNROLL), DimKind::UNROLL);
         let strides = vec![
-            (&d3, ir::Size::new_const(THREAD_Y * THREAD_X * 32 * 4)),
-            (&d1_1, ir::Size::new_const(THREAD_X * 32 * 4)),
             (&d2_1, ir::Size::new_const(STRIDE * 4)),
+            (&d1_1, ir::Size::new_const(THREAD_X * 32 * 4)),
+            (&d3, ir::Size::new_const(THREAD_Y * THREAD_X * 32 * 4)),
         ];
         let pattern = builder.tensor_access_pattern(None, strides.clone());
         let addr = builder.induction_var(&"array", strides);
@@ -101,9 +101,9 @@ impl PerfModelTest for L2LinesPressure {
         let d2_1 = builder.open_mapped_dim(&d2_0);
         let d3 = builder.open_dim_ex(ir::Size::new_const(UNROLL), DimKind::UNROLL);
         let strides = vec![
-            (&d3, ir::Size::new_const(THREAD_Y * THREAD_X * 8 * 4)),
-            (&d1_1, ir::Size::new_const(THREAD_X * 8 * 4)),
             (&d2_1, ir::Size::new_const(STRIDE * 4)),
+            (&d1_1, ir::Size::new_const(THREAD_X * 8 * 4)),
+            (&d3, ir::Size::new_const(THREAD_Y * THREAD_X * 8 * 4)),
         ];
         let pattern = builder.tensor_access_pattern(None, strides.clone());
         let addr = builder.induction_var(&"array", strides);
@@ -339,9 +339,9 @@ impl PerfModelTest for VectorSharedReplay {
         let pattern = builder.tensor_access_pattern(
             mem.into(),
             vec![
-                (&d0, ir::Size::new_const(4 * 4 * 32)),
-                (&d1, ir::Size::new_const(4 * 4)),
                 (&d3_0, ir::Size::new_const(4)),
+                (&d1, ir::Size::new_const(4 * 4)),
+                (&d0, ir::Size::new_const(4 * 4 * 32)),
             ],
         );
         let val = builder.ld(ir::Type::F(32), &addr, pattern);

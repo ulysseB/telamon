@@ -21,10 +21,15 @@ impl From<MemId> for usize {
 pub struct Block {
     id: MemId,
     uses: Vec<InstId>,
+    elements_type: ir::Type,
     base_size: u32,
+    // TODO(variables): use variables instead of passing layout dimensions here.
     mapped_dims: Vec<(ir::DimId, ir::DimId)>,
-    // TODO(search_space): enable layout transformations.
     maybe_mapped: dim::Map,
+    layout_dims: HashMap<ir::DimId, ir::LayoutDimId>,
+    // This store the temporary store and load instructions before the layout is fixed.
+    // TODO(variables): removed once we can use variables for partially specified layouts.
+    tmp_st_ld: Option<(ir::InstId, ir::InstId)>,
 }
 
 impl Block {
@@ -56,7 +61,12 @@ impl Block {
 
     /// Return the base size of the block, if it is statically known.
     pub fn base_size(&self) -> u32 {
-        self.base_size
+        self.base_size * unwrap!(self.elements_type.len_byte())
+    }
+
+    /// Indicates the type of the memory block elements.
+    pub fn elements_type(&self) -> ir::Type {
+        self.elements_type
     }
 
     /// The list of instructions referencing the memory block.
@@ -82,15 +92,10 @@ impl BlockMap {
         self.blocks.len()
     }
 
-    /// Allocates a new `Block` with the given type and sizes. Must call not merged on
-    /// the dimensions that cannot be merged upon creation.
-    pub fn alloc_block(
-        &mut self,
-        base_size: u32,
-        maybe_mapped: Option<ir::DimMap>,
-    ) -> MemId {
+    /// Allocates a new `Block` with the given type and sizes.
+    pub fn alloc_block(&mut self, t: ir::Type, len: u32) -> MemId {
         let id = MemId(self.blocks.len() as u32);
-        let block = self.create_block(id, base_size, maybe_mapped);
+        let block = self.create_block(id, t, len, None, Default::default(), None);
         self.blocks.push(block);
         id
     }
@@ -98,8 +103,11 @@ impl BlockMap {
     fn create_block(
         &mut self,
         id: MemId,
-        base_size: u32,
+        elements_type: ir::Type,
+        len: u32,
         maybe_mapped: Option<ir::DimMap>,
+        layout_dims: HashMap<ir::DimId, ir::LayoutDimId>,
+        tmp_st_ld: Option<(ir::InstId, ir::InstId)>,
     ) -> Block {
         if let Some(ref dim_map) = maybe_mapped {
             assert!(!dim_map.is_empty());
@@ -107,10 +115,13 @@ impl BlockMap {
         }
         Block {
             id,
-            base_size,
+            elements_type,
+            base_size: len,
             uses: vec![],
             mapped_dims: vec![],
-            maybe_mapped: maybe_mapped.unwrap_or_else(ir::DimMap::empty),
+            maybe_mapped: ir::DimMap::empty(),
+            layout_dims,
+            tmp_st_ld,
         }
     }
 
@@ -120,12 +131,25 @@ impl BlockMap {
 
     /// Inserts a new temporary memory. Must be inserted before not_merged is called
     /// on dimensions.
-    pub fn set_lazy_tmp<IT>(&mut self, id: MemId, t: Type, dims: IT)
-    where
+    pub fn set_lazy_tmp<IT>(
+        &mut self,
+        id: MemId,
+        t: Type,
+        dims: IT,
+        layout_dims: HashMap<ir::DimId, ir::LayoutDimId>,
+        tmp_st: ir::InstId,
+        tmp_ld: ir::InstId,
+    ) where
         IT: Iterator<Item = (ir::DimId, ir::DimId)>,
     {
-        let block =
-            self.create_block(id, unwrap!(t.len_byte()), Some(ir::DimMap::new(dims)));
+        let block = self.create_block(
+            id,
+            t,
+            1,
+            Some(ir::DimMap::new(dims)),
+            layout_dims,
+            Some((tmp_st, tmp_ld)),
+        );
         self.blocks.set_lazy(id, block);
     }
 
@@ -176,11 +200,26 @@ impl BlockMap {
         to_lower
     }
 
-    /// Lowers a fully defined layout. Returns the mapping of dimensions.
-    pub fn lower_layout(&mut self, id: MemId) -> Vec<(ir::DimId, ir::DimId)> {
+    /// Lowers a fully defined layout. Returns the load and store instructions with the
+    /// corresponding layout dimensions.
+    pub fn lower_layout(
+        &mut self,
+        id: MemId,
+    ) -> (
+        ir::InstId,
+        Vec<ir::LayoutDimId>,
+        ir::InstId,
+        Vec<ir::LayoutDimId>,
+    ) {
         assert!(self.layouts.remove(&id));
-        let block = &self.blocks[id];
+        let block = &mut self.blocks[id];
         assert!(block.is_ready());
-        block.mapped_dims.clone()
+        let (st_layouts, ld_layouts) = block
+            .mapped_dims
+            .iter()
+            .map(|(lhs, rhs)| (block.layout_dims[lhs], block.layout_dims[rhs]))
+            .unzip();
+        let (st_inst, ld_inst) = unwrap!(block.tmp_st_ld.take());
+        (st_inst, st_layouts, ld_inst, ld_layouts)
     }
 }

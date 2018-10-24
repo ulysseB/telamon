@@ -420,18 +420,14 @@ impl device::Device for Gpu {
     fn can_vectorize(&self, dim: &ir::Dimension, op: &ir::Operator) -> bool {
         match *op {
             Operator::TmpLd(..) | Operator::TmpSt(..) => true,
-            Operator::Ld(ref t, _, ref pattern)
-                if pattern.is_consecutive(dim.id(), t) =>
-            {
+            Operator::Ld(.., ref pattern) if pattern.is_layout_dimension(dim.id()) => {
                 // TODO(ulysse): hack to avoid vectorizing by a factor of 3 until we
                 // support alignment contraints.
                 dim.possible_sizes()
                     .map(|sizes| !sizes.contains(&3))
                     .unwrap_or(false)
             }
-            Operator::St(_, ref operand, _, ref pattern)
-                if pattern.is_consecutive(dim.id(), &operand.t()) =>
-            {
+            Operator::St(.., ref pattern) if pattern.is_layout_dimension(dim.id()) => {
                 // TODO(ulysse): hack to avoid vectorizing by a factor of 3 until we
                 // support alignment contraints.
                 dim.possible_sizes()

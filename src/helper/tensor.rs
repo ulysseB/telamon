@@ -196,7 +196,7 @@ where
                 .map(|(dim, (_, stride))| (dim, stride.into_ir_size(builder)))
                 .collect_vec();
             ptr = builder.induction_var(&self.name, increments.clone());
-            pattern = builder.tensor_access_pattern(None, increments);
+            pattern = builder.tensor_access_pattern(None, S::t(), increments);
         };
         let flag = if self.read_only {
             InstFlag::ALL

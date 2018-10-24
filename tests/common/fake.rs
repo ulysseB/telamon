@@ -48,10 +48,8 @@ impl device::Device for Device {
             Operator::TmpLd(..)
             | Operator::TmpSt(..)
             | Operator::BinOp(ir::BinOp::Add, ..) => true,
-            Operator::Ld(ref t, _, ref pattern) => pattern.is_consecutive(dim.id(), t),
-            Operator::St(_, ref operand, _, ref pattern) => {
-                pattern.is_consecutive(dim.id(), &operand.t())
-            }
+            Operator::Ld(.., ref pattern) => pattern.is_layout_dimension(dim.id()),
+            Operator::St(.., ref pattern) => pattern.is_layout_dimension(dim.id()),
             _ => false,
         }
     }
@@ -59,7 +57,7 @@ impl device::Device for Device {
     fn max_vectorization(&self, _: &ir::Operator) -> [u32; 2] {
         // No need to discriminate on the operator since this is already handled by
         // `can_vectorize`.
-        [4, 8]
+        [8, 4]
     }
 
     fn has_vector_registers(&self) -> bool {

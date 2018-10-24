@@ -17,7 +17,7 @@ use itertools::Itertools;
 use std;
 use std::marker::PhantomData;
 
-pub use self::access_pattern::{AccessPattern, Stride};
+pub use self::access_pattern::*;
 pub use self::dim_map::DimMap;
 pub use self::dimension::{
     DimId, DimMapping, DimMappingId, Dimension, LogicalDim, LogicalDimId,
@@ -76,15 +76,20 @@ pub struct NewObjs {
     pub def_statements: Vec<(VarId, StmtId)>,
     pub var_dims: Vec<(VarId, DimId)>,
     pub var_mappings: Vec<(VarId, DimMappingId)>,
+    pub layout_dims: Vec<LayoutDimId>,
+    pub mem_layout_dims: Vec<LayoutDimId>,
+    pub actual_layout_dims: Vec<(LayoutDimId, DimId)>,
+    pub mem_access_layout: Vec<(InstId, LayoutDimId)>,
 }
 
 impl NewObjs {
     /// Registers a new instruction.
     pub fn add_instruction(&mut self, inst: &Instruction) {
         self.add_stmt(inst);
-        for &dim in inst.iteration_dims() {
-            self.iteration_dims.push((inst.id(), dim));
-        }
+        self.iteration_dims
+            .extend(inst.iteration_dims().iter().map(|&dim| (inst.id(), dim)));
+        self.mem_access_layout
+            .extend(inst.mem_access_layout().iter().map(|&dim| (inst.id(), dim)));
         if inst.as_mem_inst().is_some() {
             self.mem_insts.push(inst.id());
         }
@@ -144,6 +149,15 @@ impl NewObjs {
             .extend(var.dimensions().iter().map(|&dim| (var.id(), dim)));
         self.var_mappings
             .extend(var.def().mapped_dims().map(|id| (var.id(), id)));
+    }
+
+    /// Adds a layout dimension.
+    pub fn add_layout_dim(&mut self, dim: &LayoutDimension) {
+        self.layout_dims.push(dim.id());
+        self.actual_layout_dims.push((dim.id(), dim.dim()));
+        if dim.is_memory_layout() {
+            self.mem_layout_dims.push(dim.id());
+        }
     }
 }
 
@@ -360,6 +374,7 @@ pub struct Counter {
     pub next_inst: usize,
     pub next_dim: usize,
     pub next_dim_mapping: u16,
+    pub next_layout_dim: usize,
 }
 
 impl Counter {
@@ -382,8 +397,14 @@ impl Counter {
     }
 
     pub fn next_dim_mapping(&mut self) -> DimMappingId {
-        let next = DimMappingId(self.next_dim_mapping as u16);
+        let next = DimMappingId(self.next_dim_mapping);
         self.next_dim_mapping += 1;
+        next
+    }
+
+    pub fn next_layout_dim(&mut self) -> LayoutDimId {
+        let next = LayoutDimId(self.next_layout_dim);
+        self.next_layout_dim += 1;
         next
     }
 }

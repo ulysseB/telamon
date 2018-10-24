@@ -560,15 +560,15 @@ fn multi_dim_to_same_vector_level() {
     let signature = empty_signature();
     let mut builder = helper::Builder::new(&signature, context.device());
 
-    builder.open_dim_ex(ir::Size::new_const(2), DimKind::INNER_VECTOR);
-    builder.open_dim_ex(ir::Size::new_const(4), DimKind::INNER_VECTOR);
+    builder.open_dim_ex(ir::Size::new_const(2), DimKind::OUTER_VECTOR);
+    builder.open_dim_ex(ir::Size::new_const(4), DimKind::OUTER_VECTOR);
     let inner = builder.open_dim_ex(ir::Size::new_const(4), DimKind::VECTOR);
     builder.add(&0i32, &0i32);
 
     // Ensure the search space is valid.
     let space = builder.get();
     // Ensure the total vector size constraint is respected.
-    assert_eq!(space.domain().get_dim_kind(inner[0]), DimKind::OUTER_VECTOR);
+    assert_eq!(space.domain().get_dim_kind(inner[0]), DimKind::INNER_VECTOR);
     // Try to generate a specfied candidate.
     gen_best(&context, space);
 }
@@ -602,4 +602,80 @@ fn two_level_vectorization() {
 
     // Try to generate a fully specified candidate.
     gen_best(&context, space);
+}
+
+/// Ensure we can map multiple dimensions to the same vectorization level.
+#[test]
+fn two_dims_to_same_level_vectorization() {
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature();
+    let mut builder = helper::Builder::new(&signature, context.device());
+
+    let array = builder.allocate_shared(ir::Type::F(32), 1024);
+    let outer_dim = builder.open_dim(ir::Size::new_const(2));
+    let inner_dim = builder.open_dim(ir::Size::new_const(2));
+    let (ptr, pattern) = builder.tensor_access(
+        &array,
+        Some(array),
+        ir::Type::F(32),
+        &[&outer_dim, &inner_dim],
+    );
+    builder.ld(ir::Type::F(32), &ptr, pattern);
+    // Ensure vectorization is possible on both dimensions.
+    let space = builder.get_clone();
+    assert_eq!(space.domain().get_dim_kind(inner_dim[0]), DimKind::ALL);
+    assert_eq!(space.domain().get_dim_kind(outer_dim[0]), DimKind::ALL);
+    // Ensure ranks and strided flags are correctly set.
+    let fun = space.ir_instance();
+    let outer_layout_dim = fun.layout_dimension(fun.dim(outer_dim[0]).layout_dims()[0]);
+    let inner_layout_dim = fun.layout_dimension(fun.dim(inner_dim[0]).layout_dims()[0]);
+    assert!(!outer_layout_dim.is_strided());
+    assert!(!inner_layout_dim.is_strided());
+    assert_eq!(&outer_layout_dim.possible_ranks().unwrap()[..], &[2]);
+    assert_eq!(&inner_layout_dim.possible_ranks().unwrap()[..], &[1]);
+    // Ensure dimensions are correctly ordered if we vectorize the outer one.
+    let mut builder = builder.clone();
+    builder.action(Action::DimKind(outer_dim[0], DimKind::INNER_VECTOR));
+    let space = builder.get();
+    assert_eq!(
+        space.domain().get_dim_kind(inner_dim[0]),
+        DimKind::INNER_VECTOR
+    );
+    assert_eq!(
+        space
+            .domain()
+            .get_order(inner_dim[0].into(), outer_dim[0].into()),
+        Order::INNER
+    );
+
+}
+
+/// Ensure we cannot map non-contiguous dimension to the same vectorization level
+#[test]
+fn non_contiguous_vector_dims() {
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature();
+    let mut builder = helper::Builder::new(&signature, context.device());
+
+    let array = builder.allocate_shared(ir::Type::F(32), 1024);
+    let outer_dim = builder.open_dim_ex(ir::Size::new_const(2), DimKind::OUTER_VECTOR);
+    let mid_dim = builder.open_dim(ir::Size::new_const(2));
+    let inner_dim = builder.open_dim_ex(ir::Size::new_const(2), DimKind::OUTER_VECTOR);
+    builder.order(&inner_dim, &mid_dim, Order::INNER);
+    builder.order(&mid_dim, &outer_dim, Order::INNER);
+    let (ptr, pattern) = builder.tensor_access(
+        &array,
+        Some(array),
+        ir::Type::F(32),
+        &[&outer_dim, &mid_dim, &inner_dim],
+    );
+    builder.ld(ir::Type::F(32), &ptr, pattern);
+
+    let space = builder.get();
+    assert_eq!(
+        space.domain().get_dim_kind(mid_dim[0]),
+        DimKind::OUTER_VECTOR
+    );
 }

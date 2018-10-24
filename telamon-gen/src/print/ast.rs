@@ -195,7 +195,7 @@ impl<'a> SetConstraint<'a> {
             .iter()
             .flat_map(|&(var, ref expected)| {
                 let (ref var, ref current) = ctx.vars[&var];
-                let sets = expected.path_to_superset(current);
+                let sets = expected.path_to_common_ancestor(current);
                 if sets.is_empty() {
                     None
                 } else {
@@ -447,20 +447,19 @@ pub struct Set<'a> {
 impl<'a> Set<'a> {
     pub fn new<S: ir::SetRef<'a>>(set: S, ctx: &Context<'a>) -> Self {
         if let Some(rev_set) = set.reverse_constraint() {
-            let mut rev_set_ast = Set::new(rev_set.clone(), ctx);
-            rev_set_ast.constraints = set
+            let constraints = set
                 .without_reverse_constraints()
-                .path_to_superset(&rev_set.superset().unwrap())
+                .path_to_common_ancestor(&rev_set)
                 .into_iter()
                 .rev()
-                .map(|s| Set::new(s, ctx))
-                .collect();
-            rev_set_ast
+                .map(|s| Set::new(s, ctx));
+            let mut rev_set = Set::new(rev_set, ctx);
+            rev_set.constraints.extend(constraints);
+            rev_set
         } else {
-            let var = set.arg().map(|v| ctx.var_name(v));
             Set {
                 def: SetDef::new(set.def()),
-                var,
+                var: set.arg().map(|v| ctx.var_name(v)),
                 constraints: vec![],
             }
         }

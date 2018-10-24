@@ -1,0 +1,71 @@
+// Tests constraints with chained parametric sets: a in SetA, b in SetB(a), c in Set(b).
+set SetA:
+  item_type = "ir::set_a::Obj"
+  id_type = "ir::set_a::Id"
+  item_getter = "ir::set_a::get($fun, $id)"
+  id_getter = "ir::set_a::Obj::id($item)"
+  iterator = "ir::set_a::iter($fun)"
+  var_prefix = "set_a"
+  new_objs = "$objs.set_a"
+end
+
+set SetB:
+  item_type = "ir::set_b::Obj"
+  id_type = "ir::set_b::Id"
+  item_getter = "ir::set_b::get($fun, $id)"
+  id_getter = "ir::set_b::Obj::id($item)"
+  iterator = "ir::set_b::iter($fun)"
+  var_prefix = "set_b"
+  new_objs = "$objs.set_b"
+end
+
+set BOfA($a in SetA) subsetof SetB:
+  item_type = "ir::set_b::Obj"
+  id_type = "ir::set_b::Id"
+  item_getter = "ir::set_b::get($fun, $id)"
+  id_getter = "ir::set_b::Obj::id($item)"
+  iterator = "ir::b_of_a::iter($fun, ir::set_a::Obj::id($a))"
+  var_prefix = "b_of_a"
+  new_objs = "$objs.b_of_a"
+  from_superset = "ir::b_of_a::from_superset($fun, $a, $item)"
+  reverse forall $b in SetB = "ir::b_of_a::reverse($fun, $b.id())"
+end
+
+set SetC:
+  item_type = "ir::set_c::Obj"
+  id_type = "ir::set_c::Id"
+  item_getter = "ir::set_c::get($fun, $id)"
+  id_getter = "ir::set_c::Obj::id($item)"
+  iterator = "ir::set_c::iter($fun)"
+  var_prefix = "set_c"
+  new_objs = "$objs.set_c"
+end
+
+set COfB($b in SetB) subsetof SetC:
+  item_type = "ir::set_c::Obj"
+  id_type = "ir::set_c::Id"
+  item_getter = "ir::set_c::get($fun, $id)"
+  id_getter = "ir::set_c::Obj::id($item)"
+  iterator = "ir::c_of_b::iter($fun, ir::set_b::Obj::id($b))"
+  var_prefix = "c_of_b"
+  new_objs = "$objs.c_of_b"
+  from_superset = "ir::c_of_b::from_superset($fun, $b, $item)"
+  reverse forall $c in SetC = "ir::c_of_b::reverse($fun, $c.id())"
+end
+
+define enum foo($lhs in SetC, $rhs in SetC):
+  value A:
+  value B:
+  antisymmetric: A -> B
+end
+
+define integer bar($b in SetB): "&[0, 1]" end
+
+require forall $a in SetA:
+  forall $b_lhs in BOfA($a):
+    forall $b_rhs in BOfA($a):
+      forall $c_lhs in COfB($b_lhs):
+        forall $c_rhs in COfB($b_rhs):
+          foo($c_lhs, $c_rhs) is A || bar($b_lhs) > bar($b_rhs)
+
+
