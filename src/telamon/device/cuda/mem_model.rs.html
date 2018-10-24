@@ -729,7 +729,6 @@
 <span id="729">729</span>
 <span id="730">730</span>
 <span id="731">731</span>
-<span id="732">732</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Memory accesses analysis.</span>
 <span class="kw">use</span> <span class="ident">binary_heap_plus</span>::<span class="ident">BinaryHeap</span>;
@@ -775,7 +774,7 @@
     <span class="kw">let</span> <span class="ident">flag</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_inst_flag</span>(<span class="ident">inst</span>.<span class="ident">id</span>());
     <span class="kw">let</span> <span class="ident">info</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">*</span><span class="ident">inst</span>.<span class="ident">operator</span>() {
         <span class="ident">ir</span>::<span class="ident">Operator</span>::<span class="ident">Ld</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">pattern</span>) <span class="op">|</span> <span class="ident">ir</span>::<span class="ident">Operator</span>::<span class="ident">St</span>(<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">pattern</span>) <span class="op">=&gt;</span> {
-            <span class="kw">let</span> <span class="ident">mem_space</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_mem_space</span>(<span class="ident">pattern</span>.<span class="ident">mem_block</span>());
+            <span class="kw">let</span> <span class="ident">mem_space</span> <span class="op">=</span> <span class="ident">access_pattern_space</span>(<span class="ident">pattern</span>, <span class="ident">space</span>);
             <span class="kw">let</span> <span class="ident">is_shared</span> <span class="op">=</span> <span class="ident">mem_space</span>.<span class="ident">is</span>(<span class="ident">MemSpace</span>::<span class="ident">SHARED</span>);
             <span class="kw">match</span> <span class="ident">pattern</span> {
                 <span class="kw">_</span> <span class="kw">if</span> <span class="ident">flag</span>.<span class="ident">intersects</span>(<span class="ident">InstFlag</span>::<span class="ident">CACHE_READ_ONLY</span>) <span class="op">=&gt;</span> {
@@ -1321,6 +1320,7 @@ fn dynamic_nesting(lhs: &amp;ir::Dimension, rhs: &amp;ir::Dimension, space: &amp
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">cuda</span>::{<span class="self">self</span>, <span class="ident">Gpu</span>};
+    <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">Device</span>;
     <span class="kw">use</span> <span class="ident">env_logger</span>;
     <span class="kw">use</span> <span class="ident">helper</span>;
     <span class="kw">use</span> <span class="ident">ir</span>;
@@ -1337,13 +1337,12 @@ fn dynamic_nesting(lhs: &amp;ir::Dimension, rhs: &amp;ir::Dimension, space: &amp
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">builder</span> <span class="op">=</span> <span class="ident">helper</span>::<span class="ident">Builder</span>::<span class="ident">new</span>(<span class="kw-2">&amp;</span><span class="ident">signature</span>, <span class="ident">gpu</span>);
         <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">F</span>(<span class="number">32</span>);
         <span class="kw">let</span> <span class="ident">size</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">cst_size</span>(<span class="ident">gpu</span>.<span class="ident">wrap_size</span>);
-        <span class="kw">let</span> <span class="ident">addr_base</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">cast</span>(<span class="kw-2">&amp;</span><span class="number">0i64</span>, <span class="ident">ir</span>::<span class="ident">Type</span>::<span class="ident">PtrTo</span>(<span class="ident">ir</span>::<span class="ident">MemId</span>::<span class="ident">External</span>(<span class="number">0</span>)));
+        <span class="kw">let</span> <span class="ident">addr_base</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">cast</span>(<span class="kw-2">&amp;</span><span class="number">0i64</span>, <span class="ident">gpu</span>.<span class="ident">pointer_type</span>(<span class="ident">MemSpace</span>::<span class="ident">GLOBAL</span>));
         <span class="kw">let</span> <span class="ident">d0</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">open_dim_ex</span>(<span class="ident">size</span>.<span class="ident">clone</span>(), <span class="ident">DimKind</span>::<span class="ident">THREAD</span>);
         <span class="kw">let</span> <span class="ident">d1</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">open_dim_ex</span>(<span class="ident">size</span>.<span class="ident">clone</span>(), <span class="ident">DimKind</span>::<span class="ident">THREAD</span>);
         <span class="kw">let</span> <span class="ident">addr</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">mad</span>(<span class="kw-2">&amp;</span><span class="ident">d0</span>, <span class="kw-2">&amp;</span>(<span class="ident">gpu</span>.<span class="ident">l1_cache_line</span> <span class="kw">as</span> <span class="ident">i32</span>), <span class="kw-2">&amp;</span><span class="ident">addr_base</span>);
         <span class="kw">let</span> <span class="ident">stride</span> <span class="op">=</span> <span class="ident">ir</span>::<span class="ident">Size</span>::<span class="ident">new_const</span>(<span class="ident">gpu</span>.<span class="ident">l1_cache_line</span>).<span class="ident">into</span>();
-        <span class="kw">let</span> <span class="ident">pattern</span> <span class="op">=</span>
-            <span class="ident">builder</span>.<span class="ident">tensor_access_pattern</span>(<span class="ident">ir</span>::<span class="ident">MemId</span>::<span class="ident">External</span>(<span class="number">0</span>), <span class="macro">vec</span><span class="macro">!</span>[(<span class="kw-2">&amp;</span><span class="ident">d0</span>, <span class="ident">stride</span>)]);
+        <span class="kw">let</span> <span class="ident">pattern</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">tensor_access_pattern</span>(<span class="prelude-val">None</span>, <span class="macro">vec</span><span class="macro">!</span>[(<span class="kw-2">&amp;</span><span class="ident">d0</span>, <span class="ident">stride</span>)]);
         <span class="kw">let</span> <span class="ident">ld</span> <span class="op">=</span> <span class="ident">builder</span>.<span class="ident">ld_ex</span>(<span class="ident">t</span>, <span class="kw-2">&amp;</span><span class="ident">addr</span>, <span class="ident">pattern</span>, <span class="ident">InstFlag</span>::<span class="ident">CACHE_GLOBAL</span>);
         <span class="ident">builder</span>.<span class="ident">order</span>(<span class="kw-2">&amp;</span><span class="ident">d0</span>, <span class="kw-2">&amp;</span><span class="ident">d1</span>, <span class="ident">d0_d1_order</span>);
 
@@ -1362,7 +1361,6 @@ fn dynamic_nesting(lhs: &amp;ir::Dimension, rhs: &amp;ir::Dimension, space: &amp
         <span class="ident">ir</span>::<span class="ident">Signature</span> {
             <span class="ident">name</span>: <span class="ident">String</span>::<span class="ident">new</span>(),
             <span class="ident">params</span>: <span class="macro">vec</span><span class="macro">!</span>[],
-            <span class="ident">mem_blocks</span>: <span class="number">1</span>,
         }
     }
 

@@ -95,8 +95,6 @@
 <span id="95">95</span>
 <span id="96">96</span>
 <span id="97">97</span>
-<span id="98">98</span>
-<span id="99">99</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Code generation and candidate evaluation for specific targets.</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">cuda</span>;
@@ -113,7 +111,7 @@
 <span class="kw">use</span> <span class="ident">codegen</span>::<span class="ident">Function</span>;
 <span class="kw">use</span> <span class="ident">ir</span>;
 <span class="kw">use</span> <span class="ident">model</span>::{<span class="self">self</span>, <span class="ident">HwPressure</span>, <span class="ident">Nesting</span>};
-<span class="kw">use</span> <span class="ident">search_space</span>::{<span class="ident">DimKind</span>, <span class="ident">SearchSpace</span>};
+<span class="kw">use</span> <span class="ident">search_space</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">io</span>::<span class="ident">Write</span>;
 <span class="kw">use</span> <span class="ident">utils</span>::<span class="kw-2">*</span>;
 
@@ -140,12 +138,10 @@
     <span class="kw">fn</span> <span class="ident">max_vectorization</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">op</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Operator</span>) <span class="op">-&gt;</span> [<span class="ident">u32</span>; <span class="number">2</span>];
     <span class="doccomment">/// Returns the amount of shared memory available for each thread block.</span>
     <span class="kw">fn</span> <span class="ident">shared_mem</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">u32</span>;
-    <span class="doccomment">/// Indicates if the device supports non-coherent memory accesses.</span>
-    <span class="kw">fn</span> <span class="ident">supports_nc_access</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span>;
-    <span class="doccomment">/// Indicates if the device supports L1 for global memory accesses.</span>
-    <span class="kw">fn</span> <span class="ident">supports_l1_access</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span>;
-    <span class="doccomment">/// Indicates if the device supports L2 for global memory accesses.</span>
-    <span class="kw">fn</span> <span class="ident">supports_l2_access</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span>;
+    <span class="doccomment">/// Indicates the type of the pointer for the given memory space.</span>
+    <span class="kw">fn</span> <span class="ident">pointer_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">mem_space</span>: <span class="ident">MemSpace</span>) <span class="op">-&gt;</span> <span class="ident">ir</span>::<span class="ident">Type</span>;
+    <span class="doccomment">/// Indicates the memory flags supported by the operator.</span>
+    <span class="kw">fn</span> <span class="ident">supported_mem_flags</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">op</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">Operator</span>) <span class="op">-&gt;</span> <span class="ident">InstFlag</span>;
     <span class="doccomment">/// Returns the name of the device.</span>
     <span class="kw">fn</span> <span class="ident">name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="kw-2">&amp;</span><span class="ident">str</span>;
 

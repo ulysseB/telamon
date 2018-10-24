@@ -285,11 +285,9 @@
 <span id="285">285</span>
 <span id="286">286</span>
 <span id="287">287</span>
-<span id="288">288</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Choices that can be applied to split the search space.</span>
 <span class="kw">use</span> <span class="ident">explorer</span>::<span class="ident">config</span>;
-<span class="kw">use</span> <span class="ident">ir</span>::<span class="ident">mem</span>::<span class="ident">Block</span>;
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">Statement</span>};
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
 <span class="kw">use</span> <span class="ident">search_space</span>::{<span class="ident">Action</span>, <span class="ident">Domain</span>, <span class="ident">NumSet</span>, <span class="ident">Order</span>, <span class="ident">SearchSpace</span>};
@@ -299,7 +297,7 @@
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ActionEx</span> {
     <span class="ident">Action</span>(<span class="ident">Action</span>),
     <span class="ident">LowerLayout</span> {
-        <span class="ident">mem</span>: <span class="ident">ir</span>::<span class="ident">mem</span>::<span class="ident">InternalId</span>,
+        <span class="ident">mem</span>: <span class="ident">ir</span>::<span class="ident">MemId</span>,
         <span class="ident">st_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
         <span class="ident">ld_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
     },
@@ -441,7 +439,7 @@
                         <span class="ident">gen_choice</span>(<span class="ident">orders</span>.<span class="ident">list</span>(), <span class="kw-2">&amp;</span><span class="op">|</span><span class="ident">o</span><span class="op">|</span> <span class="ident">Action</span>::<span class="ident">Order</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>, <span class="ident">o</span>))
                     })
             })),
-            <span class="ident">ChoiceGroup</span>::<span class="ident">MemSpace</span> <span class="op">=&gt;</span> <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">fun</span>.<span class="ident">internal_mem_blocks</span>().<span class="ident">flat_map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">block</span><span class="op">|</span> {
+            <span class="ident">ChoiceGroup</span>::<span class="ident">MemSpace</span> <span class="op">=&gt;</span> <span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">fun</span>.<span class="ident">mem_blocks</span>().<span class="ident">flat_map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">block</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="ident">mem_spaces</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_mem_space</span>(<span class="ident">block</span>.<span class="ident">mem_id</span>());
                 <span class="ident">gen_choice</span>(<span class="ident">mem_spaces</span>.<span class="ident">list</span>(), <span class="kw-2">&amp;</span><span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">Action</span>::<span class="ident">MemSpace</span>(<span class="ident">block</span>.<span class="ident">mem_id</span>(), <span class="ident">s</span>))
             })),
@@ -541,8 +539,8 @@
 }
 
 <span class="doccomment">/// Generates the different ways to lower a layout.</span>
-<span class="kw">fn</span> <span class="ident">lower_layout_choice</span>(<span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>, <span class="ident">mem</span>: <span class="ident">ir</span>::<span class="ident">mem</span>::<span class="ident">InternalId</span>) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ActionEx</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">mem_block</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">internal_mem_block</span>(<span class="ident">mem</span>);
+<span class="kw">fn</span> <span class="ident">lower_layout_choice</span>(<span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>, <span class="ident">mem</span>: <span class="ident">ir</span>::<span class="ident">MemId</span>) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ActionEx</span><span class="op">&gt;</span> {
+    <span class="kw">let</span> <span class="ident">mem_block</span> <span class="op">=</span> <span class="ident">space</span>.<span class="ident">ir_instance</span>().<span class="ident">mem_block</span>(<span class="ident">mem</span>);
     <span class="kw">let</span> <span class="ident">mapped_dims</span> <span class="op">=</span> <span class="ident">mem_block</span>.<span class="ident">mapped_dims</span>().<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect_vec</span>();
     <span class="comment">// Order dimensions until the stride is too big to matter in any way.</span>
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">to_process</span> <span class="op">=</span> <span class="macro">vec</span><span class="macro">!</span>[(<span class="macro">vec</span><span class="macro">!</span>[], <span class="ident">mapped_dims</span>, <span class="ident">mem_block</span>.<span class="ident">base_size</span>())];

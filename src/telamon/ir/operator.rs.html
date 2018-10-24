@@ -355,6 +355,7 @@
 <span id="355">355</span>
 <span id="356">356</span>
 <span id="357">357</span>
+<span id="358">358</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Defines operators.</span>
 <span class="kw">use</span> <span class="self">self</span>::<span class="ident">Operator</span>::<span class="kw-2">*</span>;
@@ -563,11 +564,13 @@
             }
             <span class="ident">Ld</span>(<span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">addr</span>, <span class="kw-2">ref</span> <span class="ident">pattern</span>) <span class="op">=&gt;</span> {
                 <span class="ident">pattern</span>.<span class="ident">check</span>(<span class="ident">iter_dims</span>)<span class="question-mark">?</span>;
-                <span class="ident">ir</span>::<span class="ident">TypeError</span>::<span class="ident">check_equals</span>(<span class="ident">addr</span>.<span class="ident">t</span>(), <span class="ident">Type</span>::<span class="ident">PtrTo</span>(<span class="ident">pattern</span>.<span class="ident">mem_block</span>()))<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">pointer_type</span> <span class="op">=</span> <span class="ident">pattern</span>.<span class="ident">pointer_type</span>(<span class="ident">fun</span>.<span class="ident">device</span>());
+                <span class="ident">ir</span>::<span class="ident">TypeError</span>::<span class="ident">check_equals</span>(<span class="ident">addr</span>.<span class="ident">t</span>(), <span class="ident">pointer_type</span>)<span class="question-mark">?</span>;
             }
             <span class="ident">St</span>(<span class="kw-2">ref</span> <span class="ident">addr</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw-2">ref</span> <span class="ident">pattern</span>) <span class="op">=&gt;</span> {
                 <span class="ident">pattern</span>.<span class="ident">check</span>(<span class="ident">iter_dims</span>)<span class="question-mark">?</span>;
-                <span class="ident">ir</span>::<span class="ident">TypeError</span>::<span class="ident">check_equals</span>(<span class="ident">addr</span>.<span class="ident">t</span>(), <span class="ident">Type</span>::<span class="ident">PtrTo</span>(<span class="ident">pattern</span>.<span class="ident">mem_block</span>()))<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">pointer_type</span> <span class="op">=</span> <span class="ident">pattern</span>.<span class="ident">pointer_type</span>(<span class="ident">fun</span>.<span class="ident">device</span>());
+                <span class="ident">ir</span>::<span class="ident">TypeError</span>::<span class="ident">check_equals</span>(<span class="ident">addr</span>.<span class="ident">t</span>(), <span class="ident">pointer_type</span>)<span class="question-mark">?</span>;
             }
             <span class="ident">TmpLd</span>(..) <span class="op">|</span> <span class="ident">UnaryOp</span>(..) <span class="op">|</span> <span class="ident">TmpSt</span>(..) <span class="op">=&gt;</span> (),
         }
@@ -618,6 +621,14 @@
         }
     }
 
+    <span class="doccomment">/// Indicates if the operator accesses memory.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_mem_access</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">St</span>(..) <span class="op">|</span> <span class="ident">Ld</span>(..) <span class="op">|</span> <span class="ident">TmpSt</span>(..) <span class="op">|</span> <span class="ident">TmpLd</span>(..) <span class="op">=&gt;</span> <span class="bool-val">true</span>,
+            <span class="kw">_</span> <span class="op">=&gt;</span> <span class="bool-val">false</span>,
+        }
+    }
+
     <span class="doccomment">/// Renames a basic block.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">merge_dims</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">lhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">rhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>) {
         <span class="self">self</span>.<span class="ident">operands_mut</span>()
@@ -632,7 +643,7 @@
                 <span class="prelude-val">Some</span>(<span class="ident">Cow</span>::<span class="ident">Borrowed</span>(<span class="ident">pattern</span>))
             }
             <span class="ident">TmpLd</span>(<span class="kw">_</span>, <span class="ident">mem_id</span>) <span class="op">|</span> <span class="ident">TmpSt</span>(<span class="kw">_</span>, <span class="ident">mem_id</span>) <span class="op">=&gt;</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">Cow</span>::<span class="ident">Owned</span>(<span class="ident">AccessPattern</span>::<span class="ident">Unknown</span> { <span class="ident">mem_id</span> }))
+                <span class="prelude-val">Some</span>(<span class="ident">Cow</span>::<span class="ident">Owned</span>(<span class="ident">AccessPattern</span>::<span class="ident">Unknown</span>(<span class="prelude-val">Some</span>(<span class="ident">mem_id</span>))))
             }
             <span class="kw">_</span> <span class="op">=&gt;</span> <span class="prelude-val">None</span>,
         }
@@ -640,16 +651,7 @@
 
     <span class="doccomment">/// Returns the memory blocks referenced by the instruction.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">mem_used</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">MemId</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">mem_access_pattern</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">mem_block</span>())
-    }
-
-    <span class="doccomment">/// Indicates if the operator supports non-coherent memory accesses.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">supports_nc_access</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Ld</span>(..) <span class="op">=</span> <span class="kw-2">*</span><span class="self">self</span> {
-            <span class="bool-val">true</span>
-        } <span class="kw">else</span> {
-            <span class="bool-val">false</span>
-        }
+        <span class="self">self</span>.<span class="ident">mem_access_pattern</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">mem_block</span>())
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">map_operands</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">F</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-&gt;</span> <span class="ident">Operator</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;</span>

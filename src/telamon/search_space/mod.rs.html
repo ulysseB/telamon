@@ -142,6 +142,18 @@
 <span id="142">142</span>
 <span id="143">143</span>
 <span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Search space datastructures and constraint propagation.</span>
 <span class="kw">use</span> <span class="ident">ir</span>;
@@ -215,7 +227,7 @@
     <span class="doccomment">/// Triggers a layout lowering.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lower_layout</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="ident">mem</span>: <span class="ident">ir</span>::<span class="ident">mem</span>::<span class="ident">InternalId</span>,
+        <span class="ident">mem</span>: <span class="ident">ir</span>::<span class="ident">MemId</span>,
         <span class="ident">st_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
         <span class="ident">ld_dims</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ir</span>::<span class="ident">DimId</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
@@ -286,6 +298,18 @@
         <span class="ident">new_objs</span>.<span class="ident">add_thread_dim</span>(<span class="ident">dim</span>);
     }
     <span class="ident">new_objs</span>
+}
+
+<span class="doccomment">/// Returns the memory space accessed by an access pattern.</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">access_pattern_space</span>(
+    <span class="ident">pattern</span>: <span class="kw-2">&amp;</span><span class="ident">ir</span>::<span class="ident">AccessPattern</span>,
+    <span class="ident">space</span>: <span class="kw-2">&amp;</span><span class="ident">SearchSpace</span>,
+) <span class="op">-&gt;</span> <span class="ident">MemSpace</span> {
+    <span class="comment">// We either have a `MemId` or the array is an external array in global memory.</span>
+    <span class="ident">pattern</span>
+        .<span class="ident">mem_block</span>()
+        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> <span class="ident">space</span>.<span class="ident">domain</span>().<span class="ident">get_mem_space</span>(<span class="ident">id</span>))
+        .<span class="ident">unwrap_or</span>(<span class="ident">MemSpace</span>::<span class="ident">GLOBAL</span>)
 }
 </pre>
 </section><section id="search" class="content hidden"></section><section class="footer"></section><aside id="help" class="hidden"><div><h1 class="hidden">Help</h1><div class="shortcuts"><h2>Keyboard Shortcuts</h2><dl><dt><kbd>?</kbd></dt><dd>Show this help dialog</dd><dt><kbd>S</kbd></dt><dd>Focus the search field</dd><dt><kbd>↑</kbd></dt><dd>Move up in search results</dd><dt><kbd>↓</kbd></dt><dd>Move down in search results</dd><dt><kbd>↹</kbd></dt><dd>Switch tab</dd><dt><kbd>&#9166;</kbd></dt><dd>Go to active search result</dd><dt><kbd>+</kbd></dt><dd>Expand all sections</dd><dt><kbd>-</kbd></dt><dd>Collapse all sections</dd></dl></div><div class="infos"><h2>Search Tricks</h2><p>Prefix searches with a type followed by a colon (e.g. <code>fn:</code>) to restrict the search to a given type.</p><p>Accepted types are: <code>fn</code>, <code>mod</code>, <code>struct</code>, <code>enum</code>, <code>trait</code>, <code>type</code>, <code>macro</code>, and <code>const</code>.</p><p>Search functions by type signature (e.g. <code>vec -> usize</code> or <code>* -> vec</code>)</p><p>Search multiple things at once by splitting your query with comma (e.g. <code>str,u8</code> or <code>String,struct:Vec,test</code>)</p></div></div></aside><script>window.rootPath = "../../../";window.currentCrate = "telamon";</script><script src="../../../aliases.js"></script><script src="../../../main.js"></script><script defer src="../../../search-index.js"></script></body></html>

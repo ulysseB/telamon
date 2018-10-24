@@ -233,6 +233,10 @@
 <span id="233">233</span>
 <span id="234">234</span>
 <span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Describes the instructions.</span>
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">DimMapScope</span>, <span class="ident">LoweringMap</span>, <span class="ident">Operand</span>, <span class="ident">Operator</span>, <span class="ident">Statement</span>, <span class="ident">StmtId</span>, <span class="ident">Type</span>};
@@ -345,11 +349,11 @@
     {
         <span class="self">self</span>.<span class="ident">operator</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">operator</span>.<span class="ident">clone</span>() {
             <span class="ident">Operator</span>::<span class="ident">TmpLd</span>(<span class="ident">t</span>, <span class="ident">id2</span>) <span class="op">=&gt;</span> {
-                <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">ld_pattern</span>.<span class="ident">mem_block</span>(), <span class="ident">id2</span>);
+                <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">ld_pattern</span>.<span class="ident">mem_block</span>(), <span class="prelude-val">Some</span>(<span class="ident">id2</span>));
                 <span class="ident">Operator</span>::<span class="ident">Ld</span>(<span class="ident">t</span>, <span class="ident">ld_idx</span>, <span class="ident">ld_pattern</span>)
             }
             <span class="ident">Operator</span>::<span class="ident">TmpSt</span>(<span class="ident">val</span>, <span class="ident">id2</span>) <span class="op">=&gt;</span> {
-                <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">st_pattern</span>.<span class="ident">mem_block</span>(), <span class="ident">id2</span>);
+                <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">st_pattern</span>.<span class="ident">mem_block</span>(), <span class="prelude-val">Some</span>(<span class="ident">id2</span>));
                 <span class="ident">Operator</span>::<span class="ident">St</span>(<span class="ident">st_idx</span>, <span class="ident">val</span>, <span class="bool-val">false</span>, <span class="ident">st_pattern</span>)
             }
             <span class="kw">_</span> <span class="op">=&gt;</span> <span class="macro">panic</span><span class="macro">!</span>(<span class="string">&quot;Only TmpLd/TmpSt are changed on a layout lowering&quot;</span>),
@@ -370,7 +374,11 @@
 
     <span class="doccomment">/// Returns &#39;self&#39; if it is a memory instruction.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_mem_inst</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Instruction</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">L</span><span class="op">&gt;&gt;</span> {
-        <span class="self">self</span>.<span class="ident">operator</span>.<span class="ident">mem_used</span>().<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="self">self</span>)
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">operator</span>.<span class="ident">is_mem_access</span>() {
+            <span class="prelude-val">Some</span>(<span class="self">self</span>)
+        } <span class="kw">else</span> {
+            <span class="prelude-val">None</span>
+        }
     }
 
     <span class="doccomment">/// Indicates if the instruction performs a reduction.</span>
