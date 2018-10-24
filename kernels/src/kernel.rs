@@ -9,7 +9,9 @@ use std::fs::File;
 use std::io::{self, BufWriter, Write};
 use std::path::Path;
 use std::sync::{atomic, Mutex};
-use telamon::explorer::{local_selection, reroll_last_candidate, Candidate, Config};
+use telamon::explorer::{
+    local_selection, reroll_last_candidate, Candidate, Config, TreeEvent,
+};
 use telamon::helper::{Builder, SignatureBuilder};
 use telamon::model::Bound;
 use telamon::search_space::SearchSpace;
@@ -82,11 +84,7 @@ pub trait Kernel<'a>: Sized {
         let builder = Builder::new(&signature, context.device());
         let expected_output = kernel.get_expected_output(context);
         let space = builder.get();
-        unwrap!(reroll_last_candidate(
-            "eventlog.tfrecord.gz",
-            context,
-            space
-        ));
+        unwrap!(reroll_last_candidate("eventlog.tfrecord", context, space));
         if let Err(err) = kernel.check_result(&expected_output, context) {
             panic!("incorrect output for kernel {}: {}", Self::name(), err)
         }
@@ -120,7 +118,7 @@ pub trait Kernel<'a>: Sized {
                 local_selection::descend(&ordering, order, context, candidate, CUT);
             if let Some(leaf) = leaf {
                 let device_fn = codegen::Function::build(&leaf.space);
-                let event = TreeEvent {
+                let event = TreeEvent::Evaluation {
                     actions: Sequence::Vec(leaf.actions.iter().cloned().collect()),
                     score: 1.,
                 };
@@ -383,10 +381,4 @@ fn init_log(config: &Config) -> io::Result<BufWriter<File>> {
     let mut output_file = File::create(&config.log_file)?;
     writeln!(output_file, "LOGGER\n{}", config)?;
     Ok(BufWriter::new(output_file))
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct TreeEvent {
-    actions: Sequence<explorer::choice::ActionEx>,
-    score: f64,
 }
