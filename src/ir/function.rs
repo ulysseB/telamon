@@ -76,6 +76,8 @@ pub struct Function<'a, L = ir::LoweringMap> {
     dim_mappings: SparseVec<ir::DimMappingId, ir::DimMapping>,
     variables: SparseVec<ir::VarId, ir::Variable>,
     layout_dims: SparseVec<ir::LayoutDimId, ir::LayoutDimension>,
+    // We list layouts of in-memory variables in a separate vector so we can iterate on
+    // them faster.
     mem_layout_dims: Vec<ir::LayoutDimId>,
 }
 

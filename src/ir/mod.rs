@@ -1,5 +1,5 @@
 //! Representation and manipulation of a set of possible implementation.
-mod access_pattern;
+mod layout;
 mod dim_map;
 mod dimension;
 mod error;
@@ -17,7 +17,7 @@ use itertools::Itertools;
 use std;
 use std::marker::PhantomData;
 
-pub use self::access_pattern::*;
+pub use self::layout::*;
 pub use self::dim_map::DimMap;
 pub use self::dimension::{
     DimId, DimMapping, DimMappingId, Dimension, LogicalDim, LogicalDimId,

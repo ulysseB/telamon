@@ -133,8 +133,18 @@ impl LayoutDimension {
         self.possible_ranks.as_ref()
     }
 
-    /// Indicates if the layout dimension is strided with regard to the immediately inner
-    /// dimension.
+    /// Indicates if the layout dimension is strided.
+    ///
+    /// A dimension is strided if the layout is fixed and the amount to increment the
+    /// pointer at each iteration is not the product of the inner dimensions. For example:
+    /// ```
+    /// let array = [42; 40];
+    /// for i in 0..4 { // Not strided
+    ///     for j in 0..8 { // Strided
+    ///         let x = array[i+10*j];
+    ///     }
+    /// }
+    /// ```
     pub fn is_strided(&self) -> bool {
         self.is_strided
     }
