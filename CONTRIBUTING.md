@@ -49,3 +49,11 @@ It's will install the [rustfmt] if needed and will format any modified rust file
 
 [pre format]: https://github.com/ulysseB/telamon/blob/master/hooks/pre-format.sh
 [rustfmt]: https://github.com/rust-lang-nursery/rustfmt
+
+# Pull Request
+
+When doing a pull request, we demand that the message includes, besides a
+description of the changes, a helper to guide the reviewer, so that he can know
+which file to read first. It should look like "main changes happen in file
+foo.rs, the file bar.rs has been heavily modified in order to support them. All
+other files are just adaptation to the new api"
