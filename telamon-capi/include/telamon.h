@@ -833,8 +833,7 @@ Operator *telamon_ir_operator_new_tensor_store(Function *function,
 void telamon_ir_signature_add_array(Signature *signature,
                                     const Device *device,
                                     const char *name,
-                                    const Type *element_type,
-                                    const Device *device);
+                                    const Type *element_type);
 
 /*
  * Adds a scalar parameter to the function signature.

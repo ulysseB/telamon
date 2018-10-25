@@ -53,7 +53,6 @@ pub unsafe extern "C" fn telamon_ir_signature_add_array(
     device: *const Device,
     name: *const libc::c_char,
     element_type: *const ir::Type,
-    device: *const Device,
 ) {
     let name = unwrap!(std::ffi::CStr::from_ptr(name).to_str());
     (*signature).add_array(&*(*device).0, name.to_string(), *element_type)

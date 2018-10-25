@@ -1419,8 +1419,8 @@ mod chained_parameter {
         let a = ir::set_a::create(&mut fun, false);
         let b0 = ir::b_of_a::create(&mut fun, a, false);
         let b1 = ir::b_of_a::create(&mut fun, a, false);
-        let c0 = ir::c_of_b::create(&mut fun, b0, false);
-        let c1 = ir::c_of_b::create(&mut fun, b1, false);
+        ir::c_of_b::create(&mut fun, b0, false);
+        ir::c_of_b::create(&mut fun, b1, false);
 
         let store = &mut DomainStore::new(&fun);
         let mut actions = init_domain(store, &mut fun).unwrap();

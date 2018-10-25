@@ -1,11 +1,11 @@
 //! Representation and manipulation of a set of possible implementation.
-mod layout;
 mod dim_map;
 mod dimension;
 mod error;
 mod function;
 mod induction_var;
 mod instruction;
+mod layout;
 mod operand;
 mod operator;
 mod size;
@@ -17,7 +17,6 @@ use itertools::Itertools;
 use std;
 use std::marker::PhantomData;
 
-pub use self::layout::*;
 pub use self::dim_map::DimMap;
 pub use self::dimension::{
     DimId, DimMapping, DimMappingId, Dimension, LogicalDim, LogicalDimId,
@@ -26,6 +25,7 @@ pub use self::error::{Error, TypeError};
 pub use self::function::{Function, Parameter, Signature};
 pub use self::induction_var::{IndVarId, InductionVar};
 pub use self::instruction::{InstId, Instruction};
+pub use self::layout::*;
 pub use self::mem::MemId;
 pub use self::operand::{DimMapScope, LoweringMap, Operand};
 pub use self::operator::{BinOp, Operator, UnaryOp};

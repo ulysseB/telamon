@@ -648,7 +648,6 @@ fn two_dims_to_same_level_vectorization() {
             .get_order(inner_dim[0].into(), outer_dim[0].into()),
         Order::INNER
     );
-
 }
 
 /// Ensure we cannot map non-contiguous dimension to the same vectorization level
