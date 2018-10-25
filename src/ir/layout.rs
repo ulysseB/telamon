@@ -139,8 +139,8 @@ impl LayoutDimension {
     /// pointer at each iteration is not the product of the inner dimensions. For example:
     /// ```
     /// let array = [42; 40];
-    /// for i in 0..4 { // Not strided
-    ///     for j in 0..8 { // Strided
+    /// for i in 0..8 { // Not strided
+    ///     for j in 0..4 { // Strided
     ///         let x = array[i+10*j];
     ///     }
     /// }
