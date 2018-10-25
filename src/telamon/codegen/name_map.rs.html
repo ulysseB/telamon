@@ -558,6 +558,8 @@
 <span id="558">558</span>
 <span id="559">559</span>
 <span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
 </pre><pre class="rust ">
 <span class="kw">use</span> <span class="ident">codegen</span>::{<span class="self">self</span>, <span class="ident">AllocationScheme</span>, <span class="ident">Dimension</span>, <span class="ident">Function</span>, <span class="ident">Instruction</span>, <span class="ident">ParamValKey</span>};
 <span class="kw">use</span> <span class="ident">ir</span>::{<span class="self">self</span>, <span class="ident">dim</span>, <span class="ident">DimMap</span>, <span class="ident">InstId</span>, <span class="ident">Type</span>};
@@ -1037,10 +1039,12 @@
             .<span class="ident">iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">index</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">index</span> {
                 <span class="ident">VarNameIndex</span>::<span class="ident">Last</span> <span class="op">=&gt;</span> <span class="ident">VarNameIndex</span>::<span class="ident">Last</span>,
-                <span class="ident">VarNameIndex</span>::<span class="ident">FromDim</span>(<span class="ident">dim</span>) <span class="op">=&gt;</span> <span class="ident">dim_mapping</span>.<span class="ident">get</span>(<span class="ident">dim</span>)
+                <span class="ident">VarNameIndex</span>::<span class="ident">FromDim</span>(<span class="ident">dim</span>) <span class="op">=&gt;</span> <span class="ident">dim_mapping</span>
+                    .<span class="ident">get</span>(<span class="ident">dim</span>)
                     <span class="comment">// Here, we have an `Option&lt;Option&lt;DimId&gt;&gt;`.</span>
                     .<span class="ident">map_or</span>(<span class="ident">VarNameIndex</span>::<span class="ident">FromDim</span>(<span class="kw-2">*</span><span class="ident">dim</span>), <span class="op">|</span><span class="ident">maps_to</span><span class="op">|</span> {
-                        <span class="ident">maps_to</span>.<span class="ident">map</span>(<span class="ident">VarNameIndex</span>::<span class="ident">FromDim</span>)
+                        <span class="ident">maps_to</span>
+                            .<span class="ident">map</span>(<span class="ident">VarNameIndex</span>::<span class="ident">FromDim</span>)
                             .<span class="ident">unwrap_or</span>(<span class="ident">VarNameIndex</span>::<span class="ident">Last</span>)
                     }),
             }).<span class="ident">collect</span>();
