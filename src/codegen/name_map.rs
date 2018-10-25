@@ -476,10 +476,12 @@ impl VariableNames {
             .iter()
             .map(|index| match index {
                 VarNameIndex::Last => VarNameIndex::Last,
-                VarNameIndex::FromDim(dim) => dim_mapping.get(dim)
+                VarNameIndex::FromDim(dim) => dim_mapping
+                    .get(dim)
                     // Here, we have an `Option<Option<DimId>>`.
                     .map_or(VarNameIndex::FromDim(*dim), |maps_to| {
-                        maps_to.map(VarNameIndex::FromDim)
+                        maps_to
+                            .map(VarNameIndex::FromDim)
                             .unwrap_or(VarNameIndex::Last)
                     }),
             }).collect();
