@@ -22,7 +22,7 @@ pub struct Block {
     id: MemId,
     uses: Vec<InstId>,
     elements_type: ir::Type,
-    base_size: u32,
+    len: u32,
     // TODO(variables): use variables instead of passing layout dimensions here.
     mapped_dims: Vec<(ir::DimId, ir::DimId)>,
     maybe_mapped: dim::Map,
@@ -59,9 +59,14 @@ impl Block {
         true
     }
 
-    /// Return the base size of the block, if it is statically known.
-    pub fn base_size(&self) -> u32 {
-        self.base_size * unwrap!(self.elements_type.len_byte())
+    /// Return the base size of the block in bytes.
+    pub fn byte_size(&self) -> u32 {
+        self.len * unwrap!(self.elements_type.len_byte())
+    }
+
+    /// Returns the size of the block in number of elements.
+    pub fn len(&self) -> u32 {
+        self.len
     }
 
     /// Indicates the type of the memory block elements.
@@ -116,7 +121,7 @@ impl BlockMap {
         Block {
             id,
             elements_type,
-            base_size: len,
+            len,
             uses: vec![],
             mapped_dims: vec![],
             maybe_mapped: ir::DimMap::empty(),

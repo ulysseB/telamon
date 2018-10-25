@@ -336,7 +336,7 @@ impl<'a, L> Function<'a, L> {
         mem: ir::MemId,
         dims: &[ir::DimId],
     ) -> (Operand<'a, L>, AccessPattern<'a>) {
-        let base_incr = self.mem_blocks.block(mem).base_size();
+        let base_incr = self.mem_blocks.block(mem).byte_size();
         let var_type = ir::Type::PtrTo(mem);
         let base_size = ir::PartialSize::new(base_incr, vec![]);
         let increments = dims
