@@ -12,22 +12,25 @@ pub enum Type {
     F(u16),
     /// Pointer type of the given memory space.
     PtrTo(ir::MemId),
+    /// A synchronisation event.
+    SyncFlag,
 }
 
 impl Type {
     /// Returns true if the type is an integer.
     pub fn is_integer(&self) -> bool {
-        match *self {
-            Type::I(_) | Type::PtrTo(_) => true,
-            Type::F(_) => false,
+        match self {
+            Type::I(..) | Type::PtrTo(..) => true,
+            _ => false,
         }
     }
 
     /// Returns true if the type is a float.
     pub fn is_float(&self) -> bool {
-        match *self {
-            Type::F(_) => true,
-            Type::I(_) | Type::PtrTo(..) => false,
+        if let Type::F(..) = self {
+            true
+        } else {
+            false
         }
     }
 
@@ -35,7 +38,7 @@ impl Type {
     pub fn len_byte(&self) -> Option<u32> {
         match *self {
             Type::I(i) | Type::F(i) => Some(u32::from(div_ceil(i, 8))),
-            Type::PtrTo(_) => None,
+            Type::PtrTo(_) | Type::SyncFlag => None,
         }
     }
 }
@@ -46,6 +49,7 @@ impl fmt::Display for Type {
             Type::I(s) => write!(f, "i{}", s),
             Type::F(s) => write!(f, "f{}", s),
             Type::PtrTo(mem) => write!(f, "ptr to {:?}", mem),
+            Type::SyncFlag => write!(f, "syncflag"),
         }
     }
 }

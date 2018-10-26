@@ -88,11 +88,13 @@ impl FlatFilter {
             let mut adaptator = ir::Adaptator::default();
             // Ensure variables are compatible.
             for (old_id, &new_id) in var_map.iter().enumerate() {
-                if other.vars[old_id] != self.vars[new_id] {
-                    continue 'var_maps;
-                }
                 let old_var = ir::Variable::Forall(old_id);
                 adaptator.set_variable(old_var, ir::Variable::Forall(new_id));
+            }
+            for (old_id, &new_id) in var_map.iter().enumerate() {
+                if other.vars[old_id].adapt(&adaptator) != self.vars[new_id] {
+                    continue 'var_maps;
+                }
             }
             // Find the input mapping.
             for (old_id, input) in other.inputs.iter().enumerate() {

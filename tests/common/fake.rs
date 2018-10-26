@@ -44,20 +44,26 @@ impl device::Device for Device {
     /// operators and `Add` to be vectorized (to be able to test both vectorizable and
     /// non-vectorizable operations).
     fn can_vectorize(&self, dim: &ir::Dimension, op: &ir::Operator) -> bool {
-        match *op {
+        match op {
             Operator::TmpLd(..)
             | Operator::TmpSt(..)
             | Operator::BinOp(ir::BinOp::Add, ..) => true,
-            Operator::Ld(.., ref pattern) => pattern.is_layout_dimension(dim.id()),
-            Operator::St(.., ref pattern) => pattern.is_layout_dimension(dim.id()),
+            Operator::Ld(.., pattern) |
+            Operator::St(.., pattern) |
+            Operator::DmaStart { src_pattern: pattern, .. } |
+            Operator::DmaWait { dst_pattern: pattern, .. } => {
+                pattern.is_layout_dimension(dim.id())
+            }
             _ => false,
         }
     }
 
-    fn max_vectorization(&self, _: &ir::Operator) -> [u32; 2] {
-        // No need to discriminate on the operator since this is already handled by
-        // `can_vectorize`.
-        [8, 4]
+    fn max_vectorization(&self, op: &ir::Operator) -> [u32; 2] {
+        match op {
+            Operator::DmaStart { .. } |
+            Operator::DmaWait { .. } => [std::u32::MAX; 2],
+            _ => [8, 4],
+        }
     }
 
     fn has_vector_registers(&self) -> bool {
@@ -92,7 +98,9 @@ impl device::Device for Device {
             ir::Operator::Ld(..)
             | ir::Operator::St(..)
             | ir::Operator::TmpLd(..)
-            | ir::Operator::TmpSt(..) => InstFlag::COHERENT,
+            | ir::Operator::TmpSt(..)
+            | ir::Operator::DmaStart { .. }
+            | ir::Operator::DmaWait { .. } => InstFlag::COHERENT,
             _ => panic!("invalid memory access operator"),
         }
     }

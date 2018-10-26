@@ -84,7 +84,7 @@ require forall $inst in MemInsts:
           forall $mid_dim in ActualDimension($mid):
             forall $inner_dim in ActualDimension($inner):
               dim_kind($outer_dim) is not VECTOR
-              || dim_kind($inner_dim) is not VECTOR
+              || dim_kind($inner_dim) != dim_kind($outer_dim)
               || rank($outer) < rank($mid)
               || rank($mid) < rank($inner)
-              || dim_kind($mid_dim) is VECTOR
+              || dim_kind($mid_dim) == dim_kind($outer_dim)

@@ -146,6 +146,30 @@ pub enum Operator<'a, L = LoweringMap> {
     /// The boolean specifies if the instruction has side effects. A store has no side
     /// effects when it writes into a cell that previously had an undefined value.
     St(Operand<'a, L>, Operand<'a, L>, bool, AccessPattern<'a>),
+    /// Starts a DMA request. The number of element to transfer is the vectorization
+    /// factor.
+    DmaStart {
+        src_ptr: Operand<'a, L>,
+        src_pattern: AccessPattern<'a>,
+        dst_ptr: Operand<'a, L>,
+        /// Indicates if the DMA can be executed multiple times without impacting the
+        /// result.
+        has_side_effects: bool,
+        /// Points to the corresponding `DmaWait` instruction. Must be set before starting
+        /// the exploration.
+        dma_wait: Option<ir::InstId>,
+    },
+    /// Waits for a DMA request to finish. The vectorization pattern must match the one of
+    /// the `DmaStart`. This instruction returns the result of the DMA.
+    DmaWait {
+        sync_flag: Operand<'a, L>,
+        dst_pattern: AccessPattern<'a>,
+        /// Indicates if the DMA can be executed multiple times without impacting the
+        /// result. Must match the corresponding flag in `DmaStart`.
+        has_side_effects: bool,
+        /// Points to the corresponding `DmaStart` instruction.
+        dma_start: ir::InstId,
+    },
     /// Represents a load from a temporary memory that is not fully defined yet.
     TmpLd(Type, ir::MemId),
     /// Represents a store to a temporary memory that is not fully defined yet.
@@ -173,28 +197,28 @@ impl<'a, L> Operator<'a, L> {
                 }
             }
         }
-        match *self {
-            BinOp(operator, ref lhs, ref rhs, rounding) => {
+        match self {
+            BinOp(operator, lhs, rhs, rounding) => {
                 if operator.requires_rounding() {
                     rounding.check(lhs.t())?;
-                } else if rounding != Rounding::Exact {
+                } else if *rounding != Rounding::Exact {
                     Err(ir::TypeError::InvalidRounding {
-                        rounding,
+                        rounding: *rounding,
                         t: lhs.t(),
                     })?;
                 }
                 ir::TypeError::check_equals(lhs.t(), rhs.t())?;
             }
-            Mul(ref lhs, ref rhs, rounding, res_type) => {
+            Mul(lhs, rhs, rounding, res_type) => {
                 rounding.check(lhs.t())?;
                 ir::TypeError::check_equals(lhs.t(), rhs.t())?;
-                match (lhs.t(), res_type) {
+                match (lhs.t(), *res_type) {
                     (x, z) if x == z => (),
                     (Type::I(32), Type::I(64)) | (Type::I(32), Type::PtrTo(_)) => (),
                     (_, t) => Err(ir::TypeError::UnexpectedType { t })?,
                 }
             }
-            Mad(ref mul_lhs, ref mul_rhs, ref add_rhs, rounding) => {
+            Mad(mul_lhs, mul_rhs, add_rhs, rounding) => {
                 rounding.check(mul_lhs.t())?;
                 ir::TypeError::check_equals(mul_lhs.t(), mul_rhs.t())?;
                 match (mul_lhs.t(), add_rhs.t()) {
@@ -203,15 +227,26 @@ impl<'a, L> Operator<'a, L> {
                     (_, t) => Err(ir::TypeError::UnexpectedType { t })?,
                 }
             }
-            Ld(_, ref addr, ref pattern) => {
+            Ld(_, addr, pattern) => {
                 pattern.check(iter_dims)?;
                 let pointer_type = pattern.pointer_type(fun.device());
                 ir::TypeError::check_equals(addr.t(), pointer_type)?;
             }
-            St(ref addr, _, _, ref pattern) => {
+            St(addr, _, _, pattern) => {
                 pattern.check(iter_dims)?;
                 let pointer_type = pattern.pointer_type(fun.device());
                 ir::TypeError::check_equals(addr.t(), pointer_type)?;
+            }
+            DmaStart {
+                src_ptr,
+                src_pattern,
+                ..
+            } => {
+                let pointer_type = src_pattern.pointer_type(fun.device());
+                ir::TypeError::check_equals(src_ptr.t(), pointer_type)?;
+            }
+            DmaWait { sync_flag, .. } => {
+                ir::TypeError::check_equals(sync_flag.t(), ir::Type::SyncFlag)?;
             }
             TmpLd(..) | UnaryOp(..) | TmpSt(..) => (),
         }
@@ -225,7 +260,8 @@ impl<'a, L> Operator<'a, L> {
             Ld(t, ..) | TmpLd(t, _) | Mul(.., t) => Some(*t),
             BinOp(operator, lhs, ..) => Some(operator.t(lhs.t())),
             UnaryOp(operator, operand) => Some(operator.t(operand.t())),
-            St(..) | TmpSt(..) => None,
+            St(..) | TmpSt(..) | DmaWait { .. } => None,
+            DmaStart { .. } => Some(ir::Type::SyncFlag),
         }
     }
 
@@ -238,6 +274,10 @@ impl<'a, L> Operator<'a, L> {
             Mad(mul_lhs, mul_rhs, add_rhs, _) => vec![mul_lhs, mul_rhs, add_rhs],
             UnaryOp(_, op) | Ld(_, op, _) | TmpSt(op, _) => vec![op],
             TmpLd(..) => vec![],
+            DmaStart {
+                src_ptr, dst_ptr, ..
+            } => vec![src_ptr, dst_ptr],
+            DmaWait { sync_flag, .. } => vec![sync_flag],
         }
     }
 
@@ -250,22 +290,36 @@ impl<'a, L> Operator<'a, L> {
             Mad(mul_lhs, mul_rhs, add_rhs, _) => vec![mul_lhs, mul_rhs, add_rhs],
             UnaryOp(_, op, ..) | Ld(_, op, ..) | TmpSt(op, _) => vec![op],
             TmpLd(..) => vec![],
+            DmaStart {
+                src_ptr, dst_ptr, ..
+            } => vec![src_ptr, dst_ptr],
+            DmaWait { sync_flag, .. } => vec![sync_flag],
         }
     }
 
     /// Returns true if the operator has side effects.
     pub fn has_side_effects(&self) -> bool {
         match self {
-            St(_, _, b, _) => *b,
-            BinOp(..) | UnaryOp(..) | Mul(..) | Mad(..) | Ld(..) | TmpLd(..)
-            | TmpSt(..) => false,
+            St(_, _, has_side_effects, _)
+            | DmaStart {
+                has_side_effects, ..
+            }
+            | DmaWait {
+                has_side_effects, ..
+            } => *has_side_effects,
+            _ => false,
         }
     }
 
     /// Indicates if the operator accesses memory.
     pub fn is_mem_access(&self) -> bool {
         match self {
-            St(..) | Ld(..) | TmpSt(..) | TmpLd(..) => true,
+            St(..)
+            | Ld(..)
+            | TmpSt(..)
+            | TmpLd(..)
+            | DmaStart { .. }
+            | DmaWait { .. } => true,
             _ => false,
         }
     }
@@ -279,12 +333,15 @@ impl<'a, L> Operator<'a, L> {
 
     /// Returns the pattern of access to the memory by the instruction, if any.
     pub fn mem_access_pattern(&self) -> Option<Cow<AccessPattern>> {
-        match *self {
-            Ld(_, _, ref pattern) | St(_, _, _, ref pattern) => {
+        match self {
+            Ld(_, _, pattern)
+            | St(_, _, _, pattern)
+            | DmaStart { src_pattern: pattern, .. }
+            | DmaWait { dst_pattern: pattern, .. } => {
                 Some(Cow::Borrowed(pattern))
             }
             TmpLd(_, mem_id) | TmpSt(_, mem_id) => {
-                Some(Cow::Owned(AccessPattern::Unknown(Some(mem_id))))
+                Some(Cow::Owned(AccessPattern::Unknown(Some(*mem_id))))
             }
             _ => None,
         }
@@ -331,6 +388,30 @@ impl<'a, L> Operator<'a, L> {
                 let oper1 = f(oper1);
                 TmpSt(oper1, id)
             }
+            DmaStart {
+                src_ptr,
+                src_pattern,
+                dst_ptr,
+                has_side_effects,
+                dma_wait,
+            } => DmaStart {
+                src_ptr: f(src_ptr),
+                src_pattern,
+                dst_ptr: f(dst_ptr),
+                has_side_effects,
+                dma_wait,
+            },
+            DmaWait {
+                sync_flag,
+                dst_pattern,
+                has_side_effects,
+                dma_start,
+            } => DmaWait {
+                sync_flag: f(sync_flag),
+                dst_pattern,
+                has_side_effects,
+                dma_start,
+            },
         }
     }
 }
@@ -352,6 +433,8 @@ impl<'a> std::fmt::Display for Operator<'a> {
             St(..) => "st",
             TmpLd(..) => "tmp_ld",
             TmpSt(..) => "tmp_st",
+            DmaStart { .. } => "dma.start",
+            DmaWait { .. } => "dma.wait",
         };
         write!(f, "{}", name)
     }

@@ -767,3 +767,97 @@ fn non_contiguous_vector_dims() {
         DimKind::OUTER_VECTOR
     );
 }
+
+/// Ensures constraints are respected for DMA instructions.
+#[test]
+fn simple_dma() {
+    const DATA_TYPE: ir::Type = ir::Type::F(32);
+
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature();
+    let mut builder = helper::Builder::new(&signature, context.device());
+
+    let buffer = builder.allocate_shared(DATA_TYPE, 256);
+    let start_dim = builder.open_dim_ex(ir::Size::new_const(256), DimKind::VECTOR);
+    let (src_ptr, src_pattern) = builder
+        .tensor_access(&0i32, None, DATA_TYPE, &[&start_dim]);
+    let (dst_ptr, _) = builder
+        .tensor_access(&buffer, Some(buffer), DATA_TYPE, &[&start_dim]);
+    let start = builder.dma_start(&src_ptr, src_pattern, &dst_ptr, false);
+    let wait_dim = builder.open_mapped_dim(&start_dim);
+    let (_, dst_pattern) = builder
+        .tensor_access(&buffer, Some(buffer), DATA_TYPE, &[&wait_dim]);
+    builder.dma_wait(start, dst_pattern);
+
+    let sync_var = builder.get_inst_variable(start);
+    let space = builder.get();
+    // Ensures start and wait have the same vectorization pattern.
+    assert_eq!(space.domain().get_dim_kind(wait_dim[0]), DimKind::VECTOR);
+    // Ensure the synchronisation flag has the correct type.
+    assert_eq!(space.ir_instance().variable(sync_var).t(), ir::Type::SyncFlag);
+    // Ensure the synchronisation flag is handled as a vector register.
+    assert_eq!(space.domain().get_memory_space(sync_var), MemorySpace::VECTOR_REGISTER);
+    // Try to generate a fully specified candidate.
+    gen_best(&context, space);
+}
+
+/// Ensures DMA start and stop instructions have the same nesting.
+#[test]
+fn dma_start_wait_nesting() {
+    const DATA_TYPE: ir::Type = ir::Type::F(32);
+
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature();
+    let mut builder = helper::Builder::new(&signature, context.device());
+
+    let buffer = builder.allocate_shared(DATA_TYPE, 256);
+    let start_dim = builder.open_dim_ex(ir::Size::new_const(256), DimKind::VECTOR);
+    let (src_ptr, src_pattern) = builder
+        .tensor_access(&0i32, None, DATA_TYPE, &[&start_dim]);
+    let (dst_ptr, _) = builder
+        .tensor_access(&buffer, Some(buffer), DATA_TYPE, &[&start_dim]);
+    let start = builder.dma_start(&src_ptr, src_pattern, &dst_ptr, false);
+    let wait_dim = builder.open_mapped_dim(&start_dim);
+    let (_, dst_pattern) = builder
+        .tensor_access(&buffer, Some(buffer), DATA_TYPE, &[&wait_dim]);
+    let wait = builder.dma_wait(start, dst_pattern);
+
+    let extra_dim = builder.open_dim(ir::Size::new_const(42));
+    builder.order(&start, &extra_dim, Order::INNER);
+    let space = builder.get();
+    assert_eq!(space.domain().get_order(wait.into(), extra_dim[0].into()), Order::INNER);
+}
+
+/// Ensure we can generate DMA with strided accesses and multiple requests in-flight.
+#[test]
+fn complex_dma() {
+    const DATA_TYPE: ir::Type = ir::Type::F(32);
+
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature();
+    let mut builder = helper::Builder::new(&signature, context.device());
+
+    let buffer = builder.allocate_shared(DATA_TYPE, 256);
+    let start_dim_0 = builder.open_dim_ex(ir::Size::new_const(4), DimKind::OUTER_VECTOR);
+    let start_dim_1 = builder.open_dim_ex(ir::Size::new_const(4), DimKind::UNROLL);
+    let start_dim_2 = builder.open_dim_ex(ir::Size::new_const(4), DimKind::INNER_VECTOR);
+    let (src_ptr, src_pattern) = builder.tensor_access(
+        &0i32, None, DATA_TYPE, &[&start_dim_0, &start_dim_1, &start_dim_2]);
+    let (dst_ptr, _) = builder.tensor_access(
+        &buffer, Some(buffer), DATA_TYPE, &[&start_dim_0, &start_dim_1, &start_dim_2]);
+    let start = builder.dma_start(&src_ptr, src_pattern, &dst_ptr, false);
+
+    let wait_dim_0 = builder.open_mapped_dim(&start_dim_0);
+    let wait_dim_1 = builder.open_mapped_dim(&start_dim_1);
+    let wait_dim_2 = builder.open_mapped_dim(&start_dim_2);
+    let (_, dst_pattern) = builder.tensor_access(
+        &buffer, Some(buffer), DATA_TYPE, &[&wait_dim_0, &wait_dim_1, &wait_dim_2]);
+    builder.dma_wait(start, dst_pattern);
+    builder.order(&start_dim_1, &wait_dim_1, Order::BEFORE);
+    let space = builder.get();
+    // Try to generate a fully specified candidate.
+    gen_best(&context, space);
+}

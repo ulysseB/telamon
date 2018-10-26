@@ -42,7 +42,7 @@ impl<'a, L> Instruction<'a, L> {
         id: InstId,
         iter_dims: HashSet<ir::DimId>,
         mem_access_layout: VecSet<ir::LayoutDimId>,
-        fun: &ir::Function<L>,
+        fun: &mut ir::Function<L>,
     ) -> Result<Self, ir::Error> {
         operator.check(&iter_dims, fun)?;
         for operand in operator.operands() {
@@ -64,6 +64,15 @@ impl<'a, L> Instruction<'a, L> {
                     None
                 }
             }).collect();
+        // Registers `self` in the corresponding `DmaStart` if applicable.
+        if let ir::op::DmaWait { dma_start, .. } = operator {
+            let start_op = &mut fun.inst_mut(dma_start).operator;
+            if let ir::op::DmaStart { dma_wait, .. } = start_op {
+                *dma_wait = Some(id);
+            } else {
+                panic!("expected a DMA start operator");
+            };
+        }
         Ok(Instruction {
             operator,
             id,

@@ -6,7 +6,7 @@ mod operand;
 generated_file!(choices);
 
 pub use self::choices::{
-    Action, Bool, Choice, DimKind, Domain, DomainStore, InstFlag, MemSpace, NumSet,
+    Action, Bool, Choice, DimKind, Domain, DomainStore, InstFlag, MemorySpace, MemSpace, NumSet,
     Order, ThreadMapping,
 };
 

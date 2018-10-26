@@ -198,6 +198,48 @@ impl<'a> Builder<'a> {
         self.inst(op::UnaryOp(ir::UnaryOp::Cast(t), val_op))
     }
 
+    /// Create an instruction that initiates a DMA access.
+    pub fn dma_start<'b: 'a>(
+        &mut self,
+        src_ptr: &AutoOperand<'b>,
+        src_pattern: ir::AccessPattern<'a>,
+        dst_ptr: &AutoOperand<'b>,
+        has_visible_side_effects: bool,
+    ) -> InstId {
+        let src_ptr = self.get_op(src_ptr);
+        let dst_ptr = self.get_op(dst_ptr);
+        self.inst(op::DmaStart {
+            src_ptr,
+            src_pattern,
+            dst_ptr,
+            has_side_effects: has_visible_side_effects,
+            dma_wait: None,
+        })
+    }
+
+    /// Creates an instruction that waits for a DMA access to finish.
+    pub fn dma_wait<'b: 'a>(
+        &mut self,
+        dma_start: ir::InstId,
+        dst_pattern: ir::AccessPattern<'a>,
+    ) -> InstId {
+        let sync_flag = dma_start.to_operand(self);
+        let has_side_effects = {
+            let start_op = self.function.inst(dma_start).operator();
+            if let ir::op::DmaStart { has_side_effects, .. } = start_op {
+                *has_side_effects
+            } else {
+                panic!("expected a DmaStart operator")
+            }
+        };
+        self.inst(op::DmaWait {
+            sync_flag,
+            dst_pattern,
+            has_side_effects,
+            dma_start,
+        })
+    }
+
     /// Restricts the order between two basic blocks. Does not restricts LINK and NPACK
     /// flags.
     pub fn order(&mut self, lhs: &MetaStatement, rhs: &MetaStatement, order: Order) {
@@ -479,7 +521,7 @@ impl<'a> Builder<'a> {
     }
 
     /// Returns the list of increment to access an n-dimensional tensor.
-    fn tensor_increments<'b>(
+    pub fn tensor_increments<'b>(
         &self,
         t: ir::Type,
         dims: &[&'b LogicalDim],
