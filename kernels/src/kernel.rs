@@ -151,6 +151,29 @@ pub trait Kernel<'a>: Sized {
         unwrap!(unwrap!(record_writer.finish_box()).flush());
     }
 
+    fn find_cut_depth<AM>(params: Self::Parameters, cut: f64, context: &mut AM)
+    where
+        AM: device::ArgMap + device::Context + 'a,
+    {
+        let kernel;
+        let signature = {
+            let mut builder = SignatureBuilder::new(Self::name(), context);
+            builder.set_random_fill(true);
+            kernel = Self::build_signature(params, &mut builder);
+            builder.get()
+        };
+        let ordering = explorer::config::ChoiceOrdering::default();
+        let candidates = kernel.build_body(&signature, context);
+        for cand in candidates {
+            let depth_opt = local_selection::first_cut(&ordering, context, cand, cut);
+            if let Some(depth) = depth_opt {
+                println!("Possibility of cut at depth {} for cut {}", depth, cut);
+            } else {
+                println!("cut too low, no suitable candidate found");
+            }
+        }
+    }
+
     /// Tests the correctness of the bound of kernels and returns the list of tested leafs
     /// along with the actual evaluation time.
     fn test_bound<AM>(

@@ -120,12 +120,14 @@ pub fn first_cut<'a>(
     context: &Context,
     candidate: Candidate<'a>,
     cut: f64,
-    ) -> usize {
+) -> Option<usize> {
     let mut candidates_queue = VecDeque::new();
     candidates_queue.push_back((candidate, 0));
     loop {
         if let Some((cand, cand_depth)) = candidates_queue.pop_front() {
-            if cand.bound.value() < cut {return cand_depth;}
+            if cand.bound.value() < cut {
+                return Some(cand_depth);
+            }
             let choice_opt = choice::list_with_conf(choice_order, &cand.space).next();
             if let Some(choice) = choice_opt {
                 let candidates = cand.apply_choice(context, choice);
@@ -134,7 +136,8 @@ pub fn first_cut<'a>(
                 }
             }
         } else {
-            panic!("Did not find any candidate with bound < {}", cut);
+            warn!("Did not find any candidate with bound < {}", cut);
+            return None;
         }
     }
 }

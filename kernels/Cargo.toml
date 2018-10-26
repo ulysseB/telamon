@@ -64,3 +64,9 @@ name = "cuda-variance"
 path = "benches/cuda_variance.rs"
 harness = false
 required-features = ["cuda"]
+
+[[bench]]
+name = "test-cut"
+path = "benches/test_cut.rs"
+harness = false
+required-features = ["cuda"]
