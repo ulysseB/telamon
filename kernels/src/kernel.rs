@@ -365,6 +365,13 @@ pub fn analyze_bounds(mut bounds: Vec<BoundSample>) {
             );
         }
     }
+
+    /// Bread first visit of the kernel
+    /// Given a particular order, returns the minimal number of expansion we should do before
+    /// cutting at least a node
+    fn depth_first_cut(cut: f32) -> usize {
+        0
+    }
 }
 
 fn init_eventlog(config: &Config) -> io::Result<Box<dyn RecordWriter<Writer = File>>> {

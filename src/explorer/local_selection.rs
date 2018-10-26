@@ -6,6 +6,7 @@ use explorer::config::{ChoiceOrdering, NewNodeOrder};
 use rand::distributions::{IndependentSample, Weighted, WeightedChoice};
 use rand::{thread_rng, Rng};
 use std;
+use std::collections::VecDeque;
 use utils::*;
 
 /// A recursive function that takes a candidate and expands it until we have a completely specified
@@ -111,4 +112,29 @@ where
         }
     }
     Some(WeightedChoice::new(&mut weighted_items).ind_sample(&mut rng))
+}
+
+/// Given an ordering, get the minimal number of expansion we need in order to cut at least one node
+pub fn first_cut<'a>(
+    choice_order: &ChoiceOrdering,
+    context: &Context,
+    candidate: Candidate<'a>,
+    cut: f64,
+    ) -> usize {
+    let mut candidates_queue = VecDeque::new();
+    candidates_queue.push_back((candidate, 0));
+    loop {
+        if let Some((cand, cand_depth)) = candidates_queue.pop_front() {
+            if cand.bound.value() < cut {return cand_depth;}
+            let choice_opt = choice::list_with_conf(choice_order, &cand.space).next();
+            if let Some(choice) = choice_opt {
+                let candidates = cand.apply_choice(context, choice);
+                for new_cand in candidates {
+                    candidates_queue.push_back((new_cand, cand_depth + 1));
+                }
+            }
+        } else {
+            panic!("Did not find any candidate with bound < {}", cut);
+        }
+    }
 }
