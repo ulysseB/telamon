@@ -74,11 +74,33 @@ impl<'a> SearchSpace<'a> {
         st_dims: Vec<ir::DimId>,
         ld_dims: Vec<ir::DimId>,
     ) -> Result<(), ()> {
+        let mut diff = DomainDiff::default();
         let actions = {
             let ir_instance = Arc::make_mut(&mut self.ir_instance);
-            dim_map::lower_layout(ir_instance, mem, st_dims, ld_dims, &self.domain)?
+            let (new_objs, mut actions) =
+                dim_map::lower_layout(ir_instance, mem, st_dims, ld_dims)?;
+            actions.extend(process_lowering(
+                ir_instance,
+                &mut self.domain,
+                &new_objs,
+                &mut diff,
+            )?);
+            actions
         };
-        self.apply_decisions(actions)
+        // Manually apply actions since telamon-gen does not expose an `apply_actions`
+        // function that takes a `diff` as argument. This code will be removed when we
+        // support dynamic layout with variables anyway.
+        for action in actions {
+            apply_action(action, &mut self.domain, &mut diff)?;
+        }
+        while !diff.is_empty() {
+            choices::propagate_changes(
+                &mut diff,
+                &mut self.ir_instance,
+                &mut self.domain,
+            )?;
+        }
+        Ok(())
     }
 }
 

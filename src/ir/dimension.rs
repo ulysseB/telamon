@@ -35,6 +35,7 @@ pub struct Dimension<'a, L = ir::LoweringMap> {
     mapped_dims: VecSet<DimMappingId>,
     defined_vars: VecSet<ir::VarId>,
     inner_vars: VecSet<ir::VarId>,
+    layout_dims: VecSet<ir::LayoutDimId>,
     is_parallelizable: bool,
     freeze_marker: std::marker::PhantomData<L>,
 }
@@ -53,6 +54,7 @@ impl<'a> Dimension<'a, ()> {
             defined_vars: self.defined_vars,
             inner_vars: self.inner_vars,
             is_parallelizable: self.is_parallelizable,
+            layout_dims: self.layout_dims,
             freeze_marker: std::marker::PhantomData,
         }
     }
@@ -63,17 +65,12 @@ impl<'a, L> Dimension<'a, L> {
     pub fn new(
         id: DimId,
         size: ir::PartialSize<'a>,
+        possible_sizes: VecSet<u32>,
         logical_dim: Option<LogicalDimId>,
     ) -> Result<Self, ir::Error> {
-        let possible_sizes = if let Some(size) = size.as_int() {
-            if size == 1 {
-                return Err(ir::Error::InvalidDimSize);
-            }
-            VecSet::new(vec![size])
-        } else {
-            VecSet::default()
-        };
-        trace!("new dim {:?}, size = {:?}", id, size);
+        if size.as_int() == Some(1) || possible_sizes.contains(&1) {
+            return Err(ir::Error::InvalidDimSize);
+        }
         Ok(Dimension {
             size,
             id,
@@ -84,6 +81,7 @@ impl<'a, L> Dimension<'a, L> {
             mapped_dims: VecSet::default(),
             defined_vars: VecSet::default(),
             inner_vars: VecSet::default(),
+            layout_dims: VecSet::default(),
             is_parallelizable: true,
             freeze_marker: std::marker::PhantomData,
         })
@@ -91,38 +89,21 @@ impl<'a, L> Dimension<'a, L> {
 
     /// Creates a dimension with a statically known size, picked in a list of
     /// possibilities.
-    pub fn new_static(
+    pub fn new_tile(
         id: DimId,
         possible_sizes: VecSet<u32>,
-        logical_dim: Option<LogicalDimId>,
+        logical_dim: LogicalDimId,
     ) -> Result<Self, ir::Error> {
-        if possible_sizes.contains(&1) {
-            return Err(ir::Error::InvalidDimSize);
-        }
-        trace!("new static {:?}, size = {:?}", id, possible_sizes);
-        Ok(Dimension {
-            size: ir::PartialSize::new_dim_size(id),
-            id,
-            possible_sizes,
-            logical_dim,
-            iterated: Vec::new(),
-            is_thread_dim: false,
-            mapped_dims: VecSet::default(),
-            defined_vars: VecSet::default(),
-            inner_vars: VecSet::default(),
-            is_parallelizable: true,
-            freeze_marker: std::marker::PhantomData,
-        })
+        assert!(!possible_sizes.is_empty());
+        let size = ir::PartialSize::new_dim_size(id);
+        Self::new(id, size, possible_sizes, Some(logical_dim))
     }
 
     /// Creates a new dimension with the same size as an existing one.
     pub fn with_same_size(id: DimId, other: &Self) -> Self {
+        let size = other.size.clone();
         // Cannot fail because the checks already passed when `other` was created.
-        unwrap!(if other.possible_sizes.is_empty() {
-            Self::new(id, other.size().clone(), None)
-        } else {
-            Self::new_static(id, other.possible_sizes.clone(), None)
-        })
+        unwrap!(Self::new(id, size, other.possible_sizes.clone(), None))
     }
 
     /// Retruns the size of the dimension.
@@ -198,6 +179,16 @@ impl<'a, L> Dimension<'a, L> {
     /// Indicates if the dimension can be parallelized.
     pub fn is_parallelizable(&self) -> bool {
         self.is_parallelizable
+    }
+
+    /// Indicates the layout dimensions that maps to this dimension.
+    pub fn layout_dims(&self) -> &VecSet<ir::LayoutDimId> {
+        &self.layout_dims
+    }
+
+    /// Reigseter that a layout dimension is mapped to this dimension.
+    pub fn register_layout_dim(&mut self, dim: ir::LayoutDimId) {
+        self.layout_dims.insert(dim);
     }
 }
 

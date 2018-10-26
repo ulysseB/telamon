@@ -124,6 +124,9 @@ require forall $mapping in DimMappings:
   forall $lhs in MappedDims($mapping):
     forall $rhs in MappedDims($mapping):
       order($lhs, $rhs) is ORDERED | MERGED
+      // For now, limit mappings to dimensions with a known size.
+      // TODO(ulysse): allow generating memory blocks with a dynamic size.
+      "$lhs.possible_sizes().is_some()" || order($lhs, $rhs) is MERGED
 
 require forall $var in Variables:
   forall $mapping in DimMappings:
@@ -200,3 +203,5 @@ end
 
 // Cannot use more shared memory that what is available.
 require shared_mem_used() <= "$fun.device().shared_mem()"
+
+include "layout.exh"

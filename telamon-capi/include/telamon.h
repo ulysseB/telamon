@@ -125,6 +125,11 @@ typedef struct Function Function;
 typedef struct KernelParameters KernelParameters;
 
 /*
+ * Uniquely identifies a `LayoutDimension`.
+ */
+typedef struct LayoutDimId LayoutDimId;
+
+/*
  * Opaque type that abstracts away the lifetime parameter of `ir::Operand` so that
  * cbindgen can generate bindings.
  */
@@ -241,7 +246,7 @@ typedef struct {
 } MemSpace;
 
 /*
- * Specifies how iteration dimensions are implemented.
+ * Indicates the layout of a memory block or variable. Specifies how iteration dimensions are implemented.
  */
 typedef struct {
     uint8_t bits;
@@ -311,6 +316,7 @@ typedef enum {
     Action_IsIterationDim,
     Action_MemorySpace,
     Action_MemSpace,
+    Action_Rank,
     Action_DimKind,
     Action_Order,
     Action_DimMapping,
@@ -370,6 +376,11 @@ typedef struct {
     MemId mem;
     MemSpace domain;
 } Action_MemSpace_Body;
+
+typedef struct {
+    LayoutDimId dim;
+    NumericSet domain;
+} Action_Rank_Body;
 
 typedef struct {
     DimId dim;
@@ -493,6 +504,7 @@ typedef struct {
         Action_IsIterationDim_Body is_iteration_dim;
         Action_MemorySpace_Body memory_space;
         Action_MemSpace_Body mem_space;
+        Action_Rank_Body rank;
         Action_DimKind_Body dim_kind;
         Action_Order_Body order;
         Action_DimMapping_Body dim_mapping;
@@ -819,9 +831,9 @@ Operator *telamon_ir_operator_new_tensor_store(Function *function,
  * Adds an array parameter to the function signature.
  */
 void telamon_ir_signature_add_array(Signature *signature,
+                                    const Device *device,
                                     const char *name,
-                                    const Type *element_type,
-                                    const Device *device);
+                                    const Type *element_type);
 
 /*
  * Adds a scalar parameter to the function signature.

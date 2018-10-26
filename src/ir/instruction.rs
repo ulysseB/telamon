@@ -32,6 +32,7 @@ pub struct Instruction<'a, L = LoweringMap> {
     variable: Option<ir::VarId>,
     defined_vars: VecSet<ir::VarId>,
     used_vars: VecSet<ir::VarId>,
+    mem_access_layout: VecSet<ir::LayoutDimId>,
 }
 
 impl<'a, L> Instruction<'a, L> {
@@ -40,6 +41,7 @@ impl<'a, L> Instruction<'a, L> {
         operator: Operator<'a, L>,
         id: InstId,
         iter_dims: HashSet<ir::DimId>,
+        mem_access_layout: VecSet<ir::LayoutDimId>,
         fun: &ir::Function<L>,
     ) -> Result<Self, ir::Error> {
         operator.check(&iter_dims, fun)?;
@@ -69,6 +71,7 @@ impl<'a, L> Instruction<'a, L> {
             variable: None,
             defined_vars: VecSet::default(),
             used_vars,
+            mem_access_layout,
         })
     }
 
@@ -100,24 +103,25 @@ impl<'a, L> Instruction<'a, L> {
     /// Applies the lowering of a layout to the instruction.
     pub fn lower_layout(
         &mut self,
-        ld_idx: Operand<'a, L>,
-        ld_pattern: ir::AccessPattern<'a>,
-        st_idx: Operand<'a, L>,
-        st_pattern: ir::AccessPattern<'a>,
+        idx: Operand<'a, L>,
+        pattern: ir::AccessPattern<'a>,
+        layout_dims: VecSet<ir::LayoutDimId>,
     ) where
         L: Clone,
     {
-        self.operator = match self.operator.clone() {
-            Operator::TmpLd(t, id2) => {
-                assert_eq!(ld_pattern.mem_block(), Some(id2));
-                Operator::Ld(t, ld_idx, ld_pattern)
+        self.operator = match self.operator {
+            Operator::TmpLd(t, id) => {
+                assert_eq!(pattern.mem_block(), Some(id));
+                Operator::Ld(t, idx, pattern)
             }
-            Operator::TmpSt(val, id2) => {
-                assert_eq!(st_pattern.mem_block(), Some(id2));
-                Operator::St(st_idx, val, false, st_pattern)
+            Operator::TmpSt(ref val, id) => {
+                assert_eq!(pattern.mem_block(), Some(id));
+                Operator::St(idx, val.clone(), false, pattern)
             }
             _ => panic!("Only TmpLd/TmpSt are changed on a layout lowering"),
         };
+        assert!(self.mem_access_layout.is_empty());
+        self.mem_access_layout = layout_dims;
     }
 
     /// Indicates the operands for wich a `DimMap` must be lowered if lhs and rhs are
@@ -181,6 +185,11 @@ impl<'a, L> Instruction<'a, L> {
         // An instruction variable cannot be set twice.
         assert_eq!(std::mem::replace(&mut self.variable, Some(variable)), None);
     }
+
+    /// Indicates the layout of the accessed memory, if any.
+    pub fn mem_access_layout(&self) -> &VecSet<ir::LayoutDimId> {
+        &self.mem_access_layout
+    }
 }
 
 impl<'a> Instruction<'a, ()> {
@@ -192,6 +201,7 @@ impl<'a> Instruction<'a, ()> {
             variable: self.variable,
             used_vars: self.used_vars,
             defined_vars: self.defined_vars,
+            mem_access_layout: self.mem_access_layout,
         }
     }
 }

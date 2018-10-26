@@ -168,7 +168,7 @@ impl IrDesc {
             // If the set if a reverse set, it has no proper definition so we cannot
             // register it. Instead we re-reverse it to obtain the initial set.
             let arg_set;
-            let reverse = if (&set).def().name().is_empty() {
+            let reverse = if (&set).def().is_reverse() {
                 let (rev_arg_set, rev_set) = set
                     .reverse(Variable::Forall(i), (&set).def().arg().unwrap())
                     .unwrap();
@@ -186,7 +186,7 @@ impl IrDesc {
             let (new_foralls, adaptator) =
                 adapt_to_var_context(&choice_args, foralls, var, reverse);
             let set_constraints = arg_set
-                .filter(|arg_set| !(&set).def().arg().unwrap().is_subset_of(arg_set))
+                .filter(|arg_set| !(&set).def().arg().unwrap().is_subset_of(&arg_set))
                 .map(|arg_set| {
                     let arg_set = arg_set.adapt(&adaptator);
                     SetConstraints::new(vec![(Variable::Arg(1), arg_set)])
@@ -388,7 +388,7 @@ impl IrDesc {
         // TODO(cleanup): reimplemente `drain_filter` when stable rust will be ready.
         for (var, ref mut set) in set_constraints.iter_mut() {
             // Reverse the set if its parameter if defined after the constraints.
-            if let Some(Variable::Forall(forall_id)) = (&*set).arg() {
+            while let Some(Variable::Forall(forall_id)) = (&*set).arg() {
                 // Assign the reverse set to foralls.
                 let forall = if forall_id < arg_foralls.len() {
                     &mut arg_foralls[forall_id]
@@ -398,7 +398,6 @@ impl IrDesc {
                 let (superset, reverse_set) = set.reverse(*var, &forall).unwrap();
                 *forall = reverse_set;
                 // Use the superset as the constraint is enforced by the forall.
-                assert!((&superset).arg().is_none());
                 *set = superset;
             }
         }
@@ -640,7 +639,7 @@ pub mod test {
             valid_values: &mut ValueSet,
         ) {
             for &(var, ref t) in set_constraints.constraints() {
-                if !(&self.var_sets[&var]).is_subset_of(t) {
+                if !(&self.var_sets[&var]).is_subset_of(&t) {
                     return;
                 }
             }

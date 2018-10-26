@@ -9,6 +9,7 @@ use std::borrow::Borrow;
 use utils::*;
 
 /// Helper to build a `Function`.
+#[derive(Clone)]
 pub struct Builder<'a> {
     function: Function<'a, ()>,
     open_dims: HashMap<ir::DimId, ir::DimId>,
@@ -346,20 +347,20 @@ impl<'a> Builder<'a> {
     }
 
     /// Allocates a memory block in shared memory.
-    pub fn allocate_shared(&mut self, size: u32) -> ir::MemId {
-        let id = self.allocate(size, true);
+    pub fn allocate_shared(&mut self, t: ir::Type, len: u32) -> ir::MemId {
+        let id = self.allocate(t, len, true);
         self.actions
             .push(Action::MemSpace(id.into(), MemSpace::SHARED));
         id
     }
 
     /// Allocates a memory block.
-    pub fn allocate(&mut self, size: u32, private: bool) -> ir::MemId {
+    pub fn allocate(&mut self, t: ir::Type, len: u32, private: bool) -> ir::MemId {
         assert!(
             private,
             "allocating non-private memory is not yet supported"
         );
-        self.function.add_mem_block(size)
+        self.function.add_mem_block(t, len)
     }
 
     /// Builds both an induction variable for a tensor memory access and the corresponding
@@ -377,18 +378,20 @@ impl<'a> Builder<'a> {
         let dims = increments.iter().cloned().collect();
         let ind_var = unwrap!(ir::InductionVar::new(increments, base));
         let ind_var_id = self.function.add_ind_var(ind_var);
-        (ind_var_id, AccessPattern::Tensor { mem_id, dims })
+        (ind_var_id, AccessPattern::Tensor { t, mem_id, dims })
     }
 
     /// Generates the access pattern corresponding to accessing a tensor of the given
-    /// type.
+    /// type. Increments must be given by increasing order.
     pub fn tensor_access_pattern(
         &self,
         mem: Option<ir::MemId>,
+        t: ir::Type,
         increments: Vec<(&LogicalDim, ir::Size<'a>)>,
     ) -> AccessPattern<'a> {
         let dims = self.logical_to_real_increments(increments);
         AccessPattern::Tensor {
+            t,
             mem_id: mem,
             dims: dims.into_iter().collect(),
         }

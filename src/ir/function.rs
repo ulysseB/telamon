@@ -75,6 +75,10 @@ pub struct Function<'a, L = ir::LoweringMap> {
     logical_dims: Vec<ir::LogicalDim<'a>>,
     dim_mappings: SparseVec<ir::DimMappingId, ir::DimMapping>,
     variables: SparseVec<ir::VarId, ir::Variable>,
+    layout_dims: SparseVec<ir::LayoutDimId, ir::LayoutDimension>,
+    // We list layouts of in-memory variables in a separate vector so we can iterate on
+    // them faster.
+    mem_layout_dims: Vec<ir::LayoutDimId>,
 }
 
 impl<'a, L> Function<'a, L> {
@@ -94,6 +98,8 @@ impl<'a, L> Function<'a, L> {
             logical_dims: Vec::new(),
             dim_mappings: SparseVec::new(),
             variables: SparseVec::new(),
+            layout_dims: SparseVec::new(),
+            mem_layout_dims: Vec::new(),
         }
     }
 
@@ -116,9 +122,10 @@ impl<'a, L> Function<'a, L> {
         id: InstId,
         op: Operator<'a, L>,
         iter_dims: HashSet<ir::DimId>,
+        mem_access_layout: VecSet<ir::LayoutDimId>,
     ) -> Result<ir::Instruction<'a, L>, ir::Error> {
         // Create and check the instruction.
-        let inst = ir::Instruction::new(op, id, iter_dims, self)?;
+        let inst = ir::Instruction::new(op, id, iter_dims, mem_access_layout, self)?;
         // Register the instruction in iteration dimensions.
         for &dim in inst.iteration_dims() {
             self.dim_mut(dim).add_iterated(id);
@@ -145,6 +152,21 @@ impl<'a, L> Function<'a, L> {
     ) -> Result<ir::Variable, ir::Error> {
         def.check(self)?;
         Ok(ir::Variable::new(id, def, self))
+    }
+
+    /// Registers a layout dimension in the function.
+    fn register_layout_dim(&mut self, dim: ir::LayoutDimension) {
+        dim.register(self);
+        if dim.is_memory_layout() {
+            self.mem_layout_dims.push(dim.id());
+        }
+        // Create holes in the sparse vector so we can ues this function both with fresh
+        // and pre-allocated IDs.
+        let id_idx: usize = dim.id().into();
+        if self.layout_dims.len() <= id_idx {
+            self.layout_dims.expand_to(id_idx + 1);
+        }
+        self.layout_dims.set_lazy(dim.id(), dim);
     }
 
     /// Adds an induction variable.
@@ -307,50 +329,15 @@ impl<'a, L> Function<'a, L> {
             .extend(self.mem_blocks.merge_dims(src, dst));
     }
 
-    /// Lowers a layout into conventional memory accesses.
-    pub(crate) fn lower_layout(
-        &mut self,
-        id: ir::MemId,
-        st_dims: Vec<ir::DimId>,
-        ld_dims: Vec<ir::DimId>,
-    ) where
-        L: Clone,
-    {
-        let pos = unwrap!(self.layouts_to_lower.iter().position(|&x| x == id));
-        self.layouts_to_lower.swap_remove(pos);
-        self.mem_blocks.lower_layout(id);
-        let (st_index, st_pattern) = self.gen_internal_index(id, &st_dims);
-        let (ld_index, ld_pattern) = self.gen_internal_index(id, &ld_dims);
-        for &mem_use in self.mem_blocks.block(id).uses() {
-            self.insts[mem_use].lower_layout(
-                ld_index.clone(),
-                ld_pattern.clone(),
-                st_index.clone(),
-                st_pattern.clone(),
-            );
-        }
-    }
-
-    /// Generates an operand repesenting a pointer to a cell of a memory block.
-    fn gen_internal_index(
-        &mut self,
-        id: ir::MemId,
-        dims: &[ir::DimId],
-    ) -> (Operand<'a, L>, AccessPattern<'a>) {
-        let ty_len = self.mem_blocks.block(id).base_size();
-        self.gen_index(id.into(), ty_len, Operand::Addr(id), &dims)
-    }
-
     /// Generates an access pattern and the corresponding induction variable to access a
     /// memory block.
-    fn gen_index(
+    fn gen_internal_index(
         &mut self,
         mem: ir::MemId,
-        base_incr: u32,
-        base_addr: Operand<'a, L>,
         dims: &[ir::DimId],
     ) -> (Operand<'a, L>, AccessPattern<'a>) {
-        let var_type = base_addr.t();
+        let base_incr = self.mem_blocks.block(mem).base_size();
+        let var_type = ir::Type::PtrTo(mem);
         let base_size = ir::PartialSize::new(base_incr, vec![]);
         let increments = dims
             .iter()
@@ -361,10 +348,11 @@ impl<'a, L> Function<'a, L> {
                 Some((dim, old_size))
             }).collect_vec();
         let pattern = ir::AccessPattern::Tensor {
+            t: self.mem_block(mem).elements_type(),
             mem_id: Some(mem),
             dims: increments.iter().cloned().collect(),
         };
-        let ind_var = unwrap!(ir::InductionVar::new(increments, base_addr));
+        let ind_var = unwrap!(ir::InductionVar::new(increments, Operand::Addr(mem)));
         let ind_var = self.add_ind_var(ind_var);
         let addr = ir::Operand::InductionVar(ind_var, var_type);
         (addr, pattern)
@@ -418,6 +406,25 @@ impl<'a, L> Function<'a, L> {
         }
         mapping
     }
+
+    /// Returns a layout dimension given its ID.
+    pub fn layout_dimension(&self, id: ir::LayoutDimId) -> &ir::LayoutDimension {
+        &self.layout_dims[id]
+    }
+
+    /// Iterates over all layout dimensions.
+    pub fn layout_dimensions(&self) -> impl Iterator<Item = &ir::LayoutDimension> + '_ {
+        self.layout_dims.iter()
+    }
+
+    /// Iterate over memory layout dimensions.
+    pub fn mem_layout_dimensions(
+        &self,
+    ) -> impl Iterator<Item = &ir::LayoutDimension> + '_ {
+        self.mem_layout_dims
+            .iter()
+            .map(move |&id| self.layout_dimension(id))
+    }
 }
 
 impl<'a> Function<'a, ()> {
@@ -438,14 +445,32 @@ impl<'a> Function<'a, ()> {
             }
         }
         let id = ir::InstId(self.insts.len() as u32);
-        let inst = self.create_inst(id, op, iter_dims)?;
+        let mem_access_layout = op
+            .mem_access_pattern()
+            .map(|pattern| {
+                let layout_ids: VecSet<_> = (self.layout_dims.len()..)
+                    .take(pattern.num_layout_dimensions())
+                    .map(ir::LayoutDimId)
+                    .collect();
+                let dims = ir::LayoutDimension::from_access_pattern(
+                    &layout_ids,
+                    id,
+                    &pattern,
+                    self,
+                );
+                for dim in dims {
+                    self.register_layout_dim(dim);
+                }
+                layout_ids
+            }).unwrap_or_default();
+        let inst = self.create_inst(id, op, iter_dims, mem_access_layout)?;
         self.insts.push(inst);
         Ok(id)
     }
 
     /// Allocates a new memory block.
-    pub fn add_mem_block(&mut self, size: u32) -> ir::MemId {
-        self.mem_blocks.alloc_block(size, None)
+    pub fn add_mem_block(&mut self, t: ir::Type, len: u32) -> ir::MemId {
+        self.mem_blocks.alloc_block(t, len)
     }
 
     /// Create a new logical dimension composed of multiple dimensions to implement
@@ -464,28 +489,30 @@ impl<'a> Function<'a, ()> {
         // Create the objects, but don't add anythin yet so we can rollback if an error
         // occurs.
         let mut dims = Vec::new();
+        let mut possible_tiled_sizes = VecSet::default();
         let logical_dim = if let Some(size) = size.as_constant() {
-            let possible_sizes =
+            possible_tiled_sizes =
                 tiling_factors.iter().map(|factor| size / factor).collect();
-            let dim =
-                Dimension::new_static(dim_ids[0], possible_sizes, Some(logical_id))?;
-            dims.push(dim);
             ir::LogicalDim::new_static(logical_id, dim_ids.clone(), size)
         } else {
-            let static_dims = dim_ids[1..].to_vec();
-            let mut tiled_size: ir::PartialSize = size.clone().into();
-            tiled_size.add_divisors(&VecSet::new(static_dims.clone()));
-            dims.push(Dimension::new(dim_ids[0], tiled_size, Some(logical_id))?);
             ir::LogicalDim::new_dynamic(
                 logical_id,
                 dim_ids[0],
-                static_dims,
+                dim_ids[1..].to_vec(),
                 tiling_factors,
-                size,
+                size.clone(),
             )
         };
+        let mut tiled_size: ir::PartialSize = size.into();
+        tiled_size.add_divisors(&VecSet::new(dim_ids[1..].to_vec()));
+        dims.push(Dimension::new(
+            dim_ids[0],
+            tiled_size,
+            possible_tiled_sizes,
+            Some(logical_id),
+        )?);
         for (&id, sizes) in dim_ids[1..].iter().zip_eq(possible_tile_sizes) {
-            dims.push(Dimension::new_static(id, sizes, Some(logical_id))?);
+            dims.push(Dimension::new_tile(id, sizes, logical_id)?);
         }
         // Register the new objects.
         for dim in &dims {
@@ -515,6 +542,7 @@ impl<'a> Function<'a, ()> {
             next_inst: self.insts.len(),
             next_dim: self.dims.len(),
             next_dim_mapping: self.dim_mappings.len() as u16,
+            next_layout_dim: self.layout_dims.len(),
         };
         let Function {
             signature,
@@ -530,6 +558,8 @@ impl<'a> Function<'a, ()> {
             logical_dims,
             mut dim_mappings,
             variables,
+            mut layout_dims,
+            mem_layout_dims,
         } = self;
 
         let mut insts = SparseVec::from_vec(
@@ -553,11 +583,13 @@ impl<'a> Function<'a, ()> {
             next_inst,
             next_dim,
             next_dim_mapping,
+            next_layout_dim,
         } = counter;
         insts.expand_to(next_inst);
         dims.expand_to(next_dim);
         mem_blocks.expand_blocks_to(next_mem);
         dim_mappings.expand_to(next_dim_mapping as usize);
+        layout_dims.expand_to(next_layout_dim);
 
         Function {
             signature,
@@ -573,6 +605,8 @@ impl<'a> Function<'a, ()> {
             logical_dims,
             dim_mappings,
             variables,
+            layout_dims,
+            mem_layout_dims,
         }
     }
 }
@@ -585,7 +619,7 @@ impl<'a> Function<'a> {
         dst_operand_pos: usize,
     ) -> Result<ir::LoweredDimMap, ()> {
         // TODO(search_space): allow temporary memory generation for reduce operators.
-        let (src_inst, data_type, lowered) = {
+        let (src_inst, data_type, (lowered, layout_dims)) = {
             match self.insts[dst_inst].operands()[dst_operand_pos] {
                 Operand::Inst(src_id, t, dim_map, ir::DimMapScope::Global(lowering)) => {
                     (*src_id, *t, lowering.lower(dim_map))
@@ -606,8 +640,14 @@ impl<'a> Function<'a> {
         let ld_dim_map = self.activate_mapped_dims(&lowered.ld_dims_mapping, false);
 
         // Activate the temporary memory block
-        self.mem_blocks
-            .set_lazy_tmp(lowered.mem, data_type, lowered.mem_dimensions());
+        self.mem_blocks.set_lazy_tmp(
+            lowered.mem,
+            data_type,
+            lowered.mem_dimensions(),
+            layout_dims,
+            lowered.store,
+            lowered.load,
+        );
 
         // Build and activate the store instruction
         let st_operand =
@@ -616,6 +656,7 @@ impl<'a> Function<'a> {
             lowered.store,
             Operator::TmpSt(st_operand, lowered.mem.into()),
             lowered.store_dims().collect(),
+            VecSet::default(),
         ));
         self.insts.set_lazy(lowered.store, st);
 
@@ -624,6 +665,7 @@ impl<'a> Function<'a> {
             lowered.load,
             Operator::TmpLd(data_type, lowered.mem.into()),
             lowered.load_dims().collect(),
+            VecSet::default(),
         ));
         self.insts.set_lazy(lowered.load, ld);
         self.insts[dst_inst].lower_dim_map(dst_operand_pos, lowered.load, ld_dim_map);
@@ -663,6 +705,40 @@ impl<'a> Function<'a> {
     pub(crate) fn dim_not_merged(&mut self, lhs: ir::DimId, rhs: ir::DimId) {
         let to_lower = self.mem_blocks.not_merged(&self.dims[lhs], rhs);
         self.layouts_to_lower.extend(to_lower);
+    }
+
+    /// Lowers a layout into conventional memory accesses.
+    pub(crate) fn lower_layout(
+        &mut self,
+        id: ir::MemId,
+        st_dims: Vec<ir::DimId>,
+        ld_dims: Vec<ir::DimId>,
+    ) -> Vec<ir::LayoutDimId> {
+        let pos = unwrap!(self.layouts_to_lower.iter().position(|&x| x == id));
+        self.layouts_to_lower.swap_remove(pos);
+        let (st_inst, st_layout, ld_inst, ld_layout) = self.mem_blocks.lower_layout(id);
+        let layout_dim_ids = ld_layout.iter().chain(&st_layout).cloned().collect();
+        let (st_index, st_pattern) = self.gen_internal_index(id, &st_dims);
+        let (ld_index, ld_pattern) = self.gen_internal_index(id, &ld_dims);
+        // Register the layout dimensions.
+        let st_layout_dims = ir::LayoutDimension::from_access_pattern(
+            &st_layout,
+            st_inst,
+            &st_pattern,
+            self,
+        );
+        let ld_layout_dims = ir::LayoutDimension::from_access_pattern(
+            &ld_layout,
+            ld_inst,
+            &ld_pattern,
+            self,
+        );
+        for layout_dim in st_layout_dims.into_iter().chain(ld_layout_dims) {
+            self.register_layout_dim(layout_dim);
+        }
+        self.insts[st_inst].lower_layout(st_index, st_pattern, VecSet::new(st_layout));
+        self.insts[ld_inst].lower_layout(ld_index, ld_pattern, VecSet::new(ld_layout));
+        layout_dim_ids
     }
 }
 

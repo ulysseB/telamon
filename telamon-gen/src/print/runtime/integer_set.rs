@@ -165,5 +165,14 @@ pub fn get() -> TokenStream {
                 eq.into_num_set(eq_universe, universe)
             }
         }
+
+        impl std::ops::BitOr for NumericSet {
+            type Output = Self;
+
+            /// Computes the union oftwo sets with the same universe.
+            fn bitor(self, rhs: Self) -> Self {
+                NumericSet { enabled_values: self.enabled_values | rhs.enabled_values }
+            }
+        }
     }
 }

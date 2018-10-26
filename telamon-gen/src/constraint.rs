@@ -144,7 +144,7 @@ fn gen_flat_filter(
             .chain(foralls.iter().flat_map(|set| set.reverse_constraint()))
             .filter(|s| s.arg().map(|v| v == var).unwrap_or(false))
             .map(|s| unwrap!(s.def().arg()))
-            .any(|s| !given_set.is_subset_of(s));
+            .any(|s| !given_set.is_subset_of(&s));
         if is_used {
             input_set_constraints.push((var, subset));
         } else {

@@ -14,12 +14,12 @@ pub struct LoweringMap {
     /// lowering.
     st_inst: ir::InstId,
     /// Maps the lhs dimensions in `map` to their lowered dimension.
-    st_map: HashMap<ir::DimId, (ir::DimId, ir::DimMappingId)>,
+    st_map: HashMap<ir::DimId, (ir::DimId, ir::DimMappingId, ir::LayoutDimId)>,
     /// Instruction ID to use for the `load` instruction when
     /// lowering.
     ld_inst: ir::InstId,
     /// Maps the rhs dimensions in `map` to their lowered dimension.
-    ld_map: HashMap<ir::DimId, (ir::DimId, ir::DimMappingId)>,
+    ld_map: HashMap<ir::DimId, (ir::DimId, ir::DimMappingId, ir::LayoutDimId)>,
 }
 
 impl LoweringMap {
@@ -39,7 +39,11 @@ impl LoweringMap {
                 let ld_dim = cnt.next_dim();
                 let st_mapping = cnt.next_dim_mapping();
                 let ld_mapping = cnt.next_dim_mapping();
-                ((src, (st_dim, st_mapping)), (dst, (ld_dim, ld_mapping)))
+                let st_layout = cnt.next_layout_dim();
+                let ld_layout = cnt.next_layout_dim();
+                let preallocated_st = (st_dim, st_mapping, st_layout);
+                let preallocated_ld = (ld_dim, ld_mapping, ld_layout);
+                ((src, preallocated_st), (dst, preallocated_ld))
             }).unzip();
 
         LoweringMap {
@@ -56,21 +60,28 @@ impl LoweringMap {
     /// refers to fresh IDs that are not activated in the
     /// ir::Function. The appropriate instructions need to be built
     /// and stored with the corresponding IDs.
-    pub(crate) fn lower(&self, map: &DimMap) -> ir::LoweredDimMap {
+    pub(crate) fn lower(
+        &self,
+        map: &DimMap,
+    ) -> (ir::LoweredDimMap, HashMap<ir::DimId, ir::LayoutDimId>) {
+        let mut layout_dims = HashMap::default();
         let (st_dims_mapping, ld_dims_mapping) = map
             .iter()
             .map(|&(src, dst)| {
-                let &(st_dim, st_mapping) = unwrap!(self.st_map.get(&src));
-                let &(ld_dim, ld_mapping) = unwrap!(self.ld_map.get(&dst));
+                let &(st_dim, st_mapping, st_layout) = unwrap!(self.st_map.get(&src));
+                let &(ld_dim, ld_mapping, ld_layout) = unwrap!(self.ld_map.get(&dst));
+                layout_dims.insert(st_dim, st_layout);
+                layout_dims.insert(ld_dim, ld_layout);
                 ((st_mapping, [src, st_dim]), (ld_mapping, [dst, ld_dim]))
             }).unzip();
-        ir::LoweredDimMap {
+        let new_objects = ir::LoweredDimMap {
             mem: self.mem_id,
             store: self.st_inst,
             load: self.ld_inst,
             st_dims_mapping,
             ld_dims_mapping,
-        }
+        };
+        (new_objects, layout_dims)
     }
 }
 

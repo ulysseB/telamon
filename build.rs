@@ -1,5 +1,6 @@
 //! Rust script to compile non-rust files.
 extern crate cc;
+extern crate env_logger;
 extern crate failure;
 extern crate glob;
 extern crate telamon_gen;
@@ -28,6 +29,7 @@ fn compile_link_cuda() {
 }
 
 fn main() {
+    env_logger::init();
     let exh_file = "src/search_space/choices.exh";
     let out_dir = std::env::var_os("OUT_DIR").unwrap();
     for file in glob::glob("src/search_space/*.exh").unwrap() {

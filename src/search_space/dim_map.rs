@@ -1,9 +1,8 @@
 //! `DimMap` and layout lowering.
 use ir;
 use itertools::Itertools;
-use search_space::choices::dim_kind;
 use search_space::operand;
-use search_space::{Action, DimKind, DomainStore, MemSpace, Order};
+use search_space::{Action, MemSpace, Order};
 
 /// Lowers a layout
 pub fn lower_layout(
@@ -11,26 +10,23 @@ pub fn lower_layout(
     mem: ir::MemId,
     st_dims: Vec<ir::DimId>,
     ld_dims: Vec<ir::DimId>,
-    domain: &DomainStore,
-) -> Result<Vec<Action>, ()> {
+) -> Result<(ir::NewObjs, Vec<Action>), ()> {
     debug!("lower_layout({:?}) triggered", mem);
-    let mut actions = Vec::new();
-    // TODO(automate): vectorization disabled -> express as an additional constraint
-    // We need to manually set every dimension except the innermost as non-vectorizable
-    // because temporary loads and stores do not restrict vectorization automatically
-    // since they are not aware of the access pattern. The constraint propagation is not
-    // aware we just specified the access pattern and so doesn't re-run the constraints.
-    for (&st_dim, &ld_dim) in st_dims.iter().rev().zip_eq(ld_dims.iter().rev()).skip(1) {
-        let not_vec = !DimKind::VECTOR;
-        actions.extend(dim_kind::restrict_delayed(st_dim, fun, domain, not_vec)?);
-        actions.extend(dim_kind::restrict_delayed(ld_dim, fun, domain, not_vec)?);
+    let new_layout_dims = fun.lower_layout(mem, st_dims, ld_dims);
+    let mut new_objs = ir::NewObjs::default();
+    for id in new_layout_dims {
+        let layout_dim = fun.layout_dimension(id);
+        new_objs.add_layout_dim(layout_dim);
+        new_objs
+            .mem_access_layout
+            .push((unwrap!(layout_dim.access_inst()), id));
     }
-    fun.lower_layout(mem, st_dims, ld_dims);
+    let mut actions = Vec::new();
     for &inst_id in fun.mem_block(mem.into()).uses() {
         let inst = fun.inst(inst_id);
         actions.extend(operand::inst_invariants(fun, inst));
     }
-    Ok(actions)
+    Ok((new_objs, actions))
 }
 
 /// Lowers a `DimMap`.

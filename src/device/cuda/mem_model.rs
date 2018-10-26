@@ -1,6 +1,7 @@
 //! Memory accesses analysis.
 use binary_heap_plus::BinaryHeap;
 use device::{cuda, Context};
+use indexmap::IndexMap;
 use ir;
 use itertools::Itertools;
 use model::size;
@@ -89,7 +90,7 @@ fn unknown_info(is_shared_access: Trivalent, gpu: &cuda::Gpu) -> MemInfo {
 fn info(
     space: &SearchSpace,
     inst: &ir::Instruction,
-    dims: &HashMap<ir::DimId, ir::PartialSize>,
+    dims: &IndexMap<ir::DimId, ir::PartialSize>,
     is_shared_access: Trivalent,
     gpu: &cuda::Gpu,
     sizes: &HashMap<ir::DimId, size::Range>,
@@ -152,7 +153,7 @@ impl ThreadDimInfo {
 fn tensor_thread_dims(
     space: &SearchSpace,
     inst: &ir::Instruction,
-    tensor_dims: &HashMap<ir::DimId, ir::PartialSize>,
+    tensor_dims: &IndexMap<ir::DimId, ir::PartialSize>,
     sizes: &HashMap<ir::DimId, size::Range>,
     ctx: &Context,
 ) -> Vec<ThreadDimInfo> {
@@ -357,7 +358,7 @@ fn increment_index(pos: usize, dims: &[ThreadDimInfo], indexes: &mut [u64]) -> b
 /// Compute the replay factor caused by shared memory accesses.
 fn shared_replay_factor(
     thread_dims: Vec<ThreadDimInfo>,
-    tensor_dims: &HashMap<ir::DimId, ir::PartialSize>,
+    tensor_dims: &IndexMap<ir::DimId, ir::PartialSize>,
     dim_sizes: &HashMap<ir::DimId, size::Range>,
     space: &SearchSpace,
     gpu: &cuda::Gpu,
