@@ -10,6 +10,7 @@ use itertools::Itertools;
 use num_cpus;
 use std;
 use std::fmt;
+use std::hash::Hash;
 
 /// Stores the configuration of the exploration.
 #[derive(Clone, Serialize, Deserialize)]
@@ -277,7 +278,7 @@ impl Default for OldNodeOrder {
 
 /// An enum listing the Group of choices we can make
 /// For example, we can make first all DimKind decisions, then all Order decisions, etc.
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Eq, Hash)]
 //#[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 pub enum ChoiceGroup {
@@ -293,7 +294,7 @@ pub enum ChoiceGroup {
 /// A list of ChoiceGroup representing the order in which we want to determine choices
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ChoiceOrdering(Vec<ChoiceGroup>);
-
+const NUM_CHOICE: usize = 7;
 impl Default for ChoiceOrdering {
     fn default() -> Self {
         ChoiceOrdering(vec![
@@ -308,6 +309,15 @@ impl Default for ChoiceOrdering {
     }
 }
 
+fn has_unique_element<T, I>(mut collection: I) -> bool
+where
+    I: Iterator<Item = T>,
+    T: Hash + Eq,
+{
+    let mut set = std::collections::HashSet::new();
+    collection.all(|x| set.insert(x))
+}
+
 impl ChoiceOrdering {
     pub fn print_serialize(&self) {
         println!("{}", unwrap!(toml::to_string(self)));
@@ -315,5 +325,10 @@ impl ChoiceOrdering {
 
     pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a ChoiceGroup> + Clone {
         self.0.iter()
+    }
+    pub fn new(choice_vec: Vec<ChoiceGroup>) -> Self {
+        assert!(choice_vec.len() == NUM_CHOICE);
+        assert!(has_unique_element(choice_vec.iter().cloned()));
+        ChoiceOrdering(choice_vec)
     }
 }

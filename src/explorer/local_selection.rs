@@ -6,7 +6,7 @@ use explorer::config::{ChoiceOrdering, NewNodeOrder};
 use rand::distributions::{IndependentSample, Weighted, WeightedChoice};
 use rand::{thread_rng, Rng};
 use std;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use utils::*;
 
 /// A recursive function that takes a candidate and expands it until we have a completely specified
@@ -123,9 +123,17 @@ pub fn first_cut<'a>(
 ) -> Option<usize> {
     let mut candidates_queue = VecDeque::new();
     candidates_queue.push_back((candidate, 0));
+    let mut num_cand_by_depth = HashMap::new();
     loop {
         if let Some((cand, cand_depth)) = candidates_queue.pop_front() {
-            if cand.bound.value() < cut {
+            {
+                let num_depth = num_cand_by_depth.entry(cand_depth).or_insert(1);
+                *num_depth += 1;
+            }
+            if cut < cand.bound.value() {
+                for (depth, val) in num_cand_by_depth.iter() {
+                    println!("Found {} candidates at depth {}", val, depth);
+                }
                 return Some(cand_depth);
             }
             let choice_opt = choice::list_with_conf(choice_order, &cand.space).next();

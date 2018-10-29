@@ -9,6 +9,7 @@ use std::fs::File;
 use std::io::{self, BufWriter, Write};
 use std::path::Path;
 use std::sync::{atomic, Mutex};
+use telamon::explorer::config::{ChoiceGroup, ChoiceOrdering};
 use telamon::explorer::{
     local_selection, reroll_last_candidate, Candidate, Config, TreeEvent,
 };
@@ -162,10 +163,21 @@ pub trait Kernel<'a>: Sized {
             kernel = Self::build_signature(params, &mut builder);
             builder.get()
         };
-        let ordering = explorer::config::ChoiceOrdering::default();
+        //let ordering = explorer::config::ChoiceOrdering::default();
+        //let ordering = vec![ChoiceGroup::,];
+        let ordering = ChoiceOrdering::new(vec![
+            ChoiceGroup::MemSpace,
+            ChoiceGroup::DimMap,
+            ChoiceGroup::DimKind,
+            ChoiceGroup::Size,
+            ChoiceGroup::LowerLayout,
+            ChoiceGroup::InstFlag,
+            ChoiceGroup::Order,
+        ]);
         let candidates = kernel.build_body(&signature, context);
         for cand in candidates {
             let depth_opt = local_selection::first_cut(&ordering, context, cand, cut);
+            println!("KERNEL {}", Self::name());
             if let Some(depth) = depth_opt {
                 println!("Possibility of cut at depth {} for cut {}", depth, cut);
             } else {
@@ -387,13 +399,6 @@ pub fn analyze_bounds(mut bounds: Vec<BoundSample>) {
                 bounds[num_errors + index]
             );
         }
-    }
-
-    /// Bread first visit of the kernel
-    /// Given a particular order, returns the minimal number of expansion we should do before
-    /// cutting at least a node
-    fn depth_first_cut(cut: f32) -> usize {
-        0
     }
 }
 
