@@ -604,6 +604,98 @@ fn two_level_vectorization() {
     gen_best(&context, space);
 }
 
+/// Ensure we can create `fby` variables.
+#[test]
+fn simple_fby() {
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature();
+    let mut builder = helper::Builder::new(&signature, context.device());
+
+    let init = builder.mov(&0f32);
+    let init_var = builder.get_inst_variable(init);
+    let dim = builder.open_dim_ex(ir::Size::new_const(16), DimKind::LOOP);
+    let fby = builder.create_fby_variable(init_var, &[&dim]);
+    let acc = builder.add(&fby, &fby);
+    let acc_var = builder.get_inst_variable(acc);
+    builder.set_loop_carried_variable(fby, acc_var);
+    builder.close_dim(&dim);
+    let res = builder.create_last_variable(acc_var, &[&dim]);
+    builder.mov(&res);
+
+    let space = builder.get();
+    assert_eq!(space.domain().get_order(init.into(), dim[0].into()), Order::BEFORE);
+    // Try to generate a fully specified candidate.
+    gen_best(&context, space);
+}
+
+/// Ensure the search cannot add additional fby dimensions. This would be incorrect as it
+/// would apply the loop-carried computation more than necessary to the variable.
+#[test]
+fn no_additional_fby_dimension() {
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature();
+    let mut builder = helper::Builder::new(&signature, context.device());
+
+    let init = builder.mov(&0f32);
+    let init_var = builder.get_inst_variable(init);
+    let dim = builder.open_dim_ex(ir::Size::new_const(16), DimKind::LOOP);
+    let fby = builder.create_fby_variable(init_var, &[&dim]);
+    let other_dim = builder.open_dim_ex(ir::Size::new_const(16), DimKind::LOOP);
+    let acc = builder.add(&fby, &fby);
+    let acc_var = builder.get_inst_variable(acc);
+    builder.set_loop_carried_variable(fby, acc_var);
+    let space = builder.get();
+    // Additional dimensions outside `acc` must also be outside `init`.
+    assert_eq!(space.domain().get_order(init.into(), other_dim[0].into()), Order::INNER);
+    // Try to generate a fully specified candidate.
+    gen_best(&context, space);
+}
+
+/// Ensure we can chain `DimMap` and `Fby` variables.
+#[test]
+fn chained_dim_map_fby() {
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature();
+    let mut builder = helper::Builder::new(&signature, context.device());
+
+    // for i in 0..4:
+    // . init[i] = 2.0
+    let init_dim = builder.open_dim(ir::Size::new_const(4));
+    let init = builder.mov(&2f32);
+    let init_var = builder.get_inst_variable(init);
+
+    // for j in 0..16:
+    // . for i in 0..4:
+    // . .  mul[i] = phi(init[i], sub[i]) * 2.0
+    let reduction_dim = builder.open_dim_ex(ir::Size::new_const(16), DimKind::LOOP);
+    let mul_dim = builder.open_mapped_dim(&init_dim);
+    let mapped_init_var =
+        builder.create_dim_map_variable(init_var, &[(&init_dim, &mul_dim)]);
+    let fby = builder.create_fby_variable(mapped_init_var, &[&reduction_dim]);
+    let mul = builder.mul(&fby, &2f32);
+    let mul_var = builder.get_inst_variable(mul);
+
+    // . for i in 0..4:
+    // . . sub[i] = mul[i] - 1
+    let sub_dim = builder.open_mapped_dim(&mul_dim);
+    let mapped_mul_var =
+        builder.create_dim_map_variable(mul_var, &[(&mul_dim, &sub_dim)]);
+    let sub = builder.add(&mapped_mul_var, &1f32);
+    let sub_var = builder.get_inst_variable(sub);
+    let mapped_sub_var =
+        builder.create_dim_map_variable(sub_var, &[(&sub_dim, &mul_dim)]);
+    builder.set_loop_carried_variable(fby, mapped_sub_var);
+
+    builder.order(&reduction_dim, &mul_dim, Order::OUTER);
+    builder.order(&reduction_dim, &sub_dim, Order::OUTER);
+    let space = builder.get();
+    // Try to generate a fully specified candidate.
+    gen_best(&context, space);
+}
+
 /// Ensure we can map multiple dimensions to the same vectorization level.
 #[test]
 fn two_dims_to_same_level_vectorization() {

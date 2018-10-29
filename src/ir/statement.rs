@@ -26,6 +26,45 @@ impl From<ir::DimId> for StmtId {
     }
 }
 
+/// Either a `StmtId` or a mutable reference to a statement.
+pub enum IdOrMut<'a: 'b, 'b, L: 'b> {
+    Id(StmtId),
+    Mut(&'b mut Statement<'a, L>),
+}
+
+impl<'a, 'b, L> From<StmtId> for IdOrMut<'a, 'b, L> {
+    fn from(id: StmtId) -> Self {
+        IdOrMut::Id(id)
+    }
+}
+
+impl<'a, 'b, L> From<&'b mut Statement<'a, L>> for IdOrMut<'a, 'b, L> {
+    fn from(stmt: &'b mut Statement<'a, L>) -> Self {
+        IdOrMut::Mut(stmt)
+    }
+}
+
+impl<'a, 'b, L> IdOrMut<'a, 'b, L> {
+    /// Returns a mutable reference to the `Statement`.
+    pub fn get_statement<'c>(
+        &'c mut self,
+        fun: &'c mut ir::Function<'a, L>,
+    ) -> &'c mut Statement<'a, L> {
+        match self {
+            IdOrMut::Id(id) => fun.statement_mut(*id),
+            IdOrMut::Mut(stmt) => *stmt,
+        }
+    }
+
+    /// Returns the id of the `Statement`.
+    pub fn id(&self) -> StmtId {
+        match self {
+            IdOrMut::Id(id) => *id,
+            IdOrMut::Mut(stmt) => stmt.stmt_id(),
+        }
+    }
+}
+
 /// Represents a basic block in an Exhaust function.
 pub trait Statement<'a, L = ir::LoweringMap> {
     /// Returns the unique identifier of the `Statement`.
@@ -49,4 +88,7 @@ pub trait Statement<'a, L = ir::LoweringMap> {
 
     /// Registers a variable use in this statement.
     fn register_defined_var(&mut self, var: ir::VarId);
+
+    /// Registers a variables used as initialization by a `fby` along this dimensions.
+    fn register_used_var(&mut self, var: ir::VarId);
 }

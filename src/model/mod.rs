@@ -38,7 +38,7 @@ use model::dependency_map::DependencyMap;
 use model::hw_pressure::FastBound;
 use model::level::{sum_pressure, Level, LevelDag, RepeatLevel};
 use model::local_info::LocalInfo;
-use search_space::SearchSpace;
+use search_space::*;
 use std::cmp;
 use utils::*;
 
@@ -196,7 +196,7 @@ fn set_data_deps(
     code_points: &CodePointDag,
     thread_rates: &HwPressure,
     inst_id: ir::InstId,
-    code_point: usize,
+    to: usize,
     levels: &mut [Level],
     level_dag: &mut LevelDag,
 ) {
@@ -204,31 +204,45 @@ fn set_data_deps(
         match *operand {
             ir::Operand::Variable(var_id, _) => {
                 let var = space.ir_instance().variable(var_id);
-                let (prod_inst_id, dim_map) =
-                    var.def().production_inst(space.ir_instance());
-                let dim_map = ir::DimMap::new(dim_map);
-                let pred = code_points.ids[&CodePoint::Inst(prod_inst_id)];
-                let latency = local_info.hw_pressure[&prod_inst_id.into()]
+                let prod_point = var.def().production_inst(space.ir_instance());
+                let from = code_points.ids[&CodePoint::Inst(prod_point.inst)];
+                let latency = local_info.hw_pressure[&prod_point.inst.into()]
                     .bound(BottleneckLevel::Thread, thread_rates);
-                set_data_dep(space, pred, code_point, &dim_map, &latency, level_dag);
+                add_dependency(space, from, to, &latency, &prod_point.dim_map, level_dag);
+                // Handle loop-carried dependencies.
+                for (var_id, ref dims) in prod_point.back_edges {
+                    let var = space.ir_instance().variable(var_id);
+                    let prod_point = var.def().production_inst(space.ir_instance());
+                    let from = code_points.ids[&CodePoint::Inst(prod_point.inst)];
+                    assert!(prod_point.back_edges.is_empty(), "cannot chain fbys");
+                    let latency = local_info.hw_pressure[&prod_point.inst.into()]
+                        .bound(BottleneckLevel::Thread, thread_rates);
+                    // No need to handle the dim map as mapped dimensions must be inner
+                    // the iteration dimensions.
+                    for level in levels.iter_mut() {
+                        if level.dims.iter().all(|d| dims.contains(d)) {
+                            level.back_edges.push((from, to, latency.clone()));
+                        }
+                    }
+                }
             }
             ir::Operand::Inst(pred_id, _, ref dim_map, _) => {
                 let pred = code_points.ids[&CodePoint::Inst(pred_id)];
                 let latency = local_info.hw_pressure[&pred_id.into()]
                     .bound(BottleneckLevel::Thread, thread_rates);
-                set_data_dep(space, pred, code_point, dim_map, &latency, level_dag);
+                set_data_dep(space, pred, to, dim_map, &latency, level_dag);
             }
             ir::Operand::Reduce(pred_id, _, ref dim_map, ref reduce_dims) => {
                 let pred = code_points.ids[&CodePoint::Inst(pred_id)];
                 let latency = local_info.hw_pressure[&pred_id.into()]
                     .bound(BottleneckLevel::Thread, thread_rates);
-                set_data_dep(space, pred, code_point, dim_map, &latency, level_dag);
+                set_data_dep(space, pred, to, dim_map, &latency, level_dag);
                 // Add the back-edge in the levels where it is possible.
                 let latency = local_info.hw_pressure[&inst_id.into()]
                     .bound(BottleneckLevel::Thread, thread_rates);
                 for level in levels.iter_mut() {
                     if level.dims.iter().all(|d| reduce_dims.contains(d)) {
-                        level.back_edges.push((code_point, latency.clone()));
+                        level.back_edges.push((to, to, latency.clone()));
                     }
                 }
             }
@@ -237,7 +251,31 @@ fn set_data_deps(
     }
 }
 
+/// Adds a dependency between `from` and `to`.
+fn add_dependency(
+    space: &SearchSpace,
+    from: usize,
+    to: usize,
+    latency: &FastBound,
+    dim_map: &HashMap<ir::DimId, ir::DimId>,
+    level_dag: &mut LevelDag,
+) {
+    assert!(from < to);
+    let mapping_dims = dim_map
+        .iter()
+        .filter(|&(&lhs, &rhs)| {
+            !space
+                .domain()
+                .get_order(lhs.into(), rhs.into())
+                .intersects(Order::MERGED)
+        }).map(|(_, &rhs)| rhs)
+        .filter(|&dim| level::must_consider_dim(space, dim))
+        .collect();
+    level_dag.add_if_processed(&VecSet::new(mapping_dims), from, to, latency);
+}
+
 /// Sets a regular data dependency between two instructions.
+// TODO(ulysse): deprecate in favor of `add_dependency`.
 fn set_data_dep(
     space: &SearchSpace,
     from: usize,
@@ -246,25 +284,12 @@ fn set_data_dep(
     latency: &FastBound,
     level_dag: &mut LevelDag,
 ) {
-    assert!(
-        from < to,
-        "cannot order node {} with node {} (from < to)",
-        from,
-        to
-    );
-    let has_src = dim_map
+    assert!(from < to);
+    let dst_dims = dim_map
         .iter()
         .map(|x| x.1)
-        .any(|d| level::must_consider_dim(space, d));
-    let dst_dims = if has_src {
-        dim_map
-            .iter()
-            .map(|x| x.1)
-            .filter(|&d| level::must_consider_dim(space, d))
-            .collect()
-    } else {
-        vec![]
-    };
+        .filter(|&d| level::must_consider_dim(space, d))
+        .collect();
     level_dag.add_if_processed(&VecSet::new(dst_dims), from, to, latency);
 }
 
@@ -283,7 +308,7 @@ fn repeat_level(
     let level_id = action.level_id;
     let entry_point = code_points.ids[&CodePoint::LevelEntry(action.level_id)];
     let exit_point = code_points.ids[&CodePoint::LevelExit(action.level_id)];
-    let (immediate_preds, predecessors, latency_to_exit);
+    let (immediate_preds, predecessors, latencies_to_exit);
     {
         let dep_map = level_dag.dependencies(from_map);
         // TODO(cc_perf): only predecessors that have an outgoing edge that is not already
@@ -291,10 +316,10 @@ fn repeat_level(
         // considered.
         predecessors = code_points.dag.predecessors(entry_point);
         immediate_preds = dep_map.deps(entry_point).keys().cloned().collect_vec();
-        latency_to_exit = dep_map.latency_to(exit_point);
+        latencies_to_exit = dep_map.latency_to(exit_point);
     }
     // Apply the levels repetition factor
-    let cycle_lat = unwrap!(latency_to_exit[entry_point].as_ref());
+    let cycle_lat = unwrap!(latencies_to_exit[entry_point].as_ref());
     for pred in immediate_preds {
         // First add the dependency without considering data dependencies from the
         // first and to the last iteration. This reduce the size of the bound
@@ -305,28 +330,35 @@ fn repeat_level(
     }
     for &pred in &predecessors {
         // Then add the bound taking into account data dependencies.
-        let init_lat = unwrap!(latency_to_exit[pred].clone());
+        let init_lat = unwrap!(latencies_to_exit[pred].clone());
         let iter_lat = cycle_lat.clone().iterate(action.iterations - 2, level_id);
         let latency = init_lat.chain(entry_point, iter_lat);
         level_dag.add_dependency(to_map, pred, entry_point, &latency);
     }
     // Apply back-edges.
-    for &(point, ref lat) in &levels[action.level_id].back_edges {
-        let latencies = level_dag.dependencies(from_map).latency_to(point);
+    for &(from, to, ref from_to_latency) in &levels[action.level_id].back_edges {
+        assert!(to <= from);
+        let latencies_to_from = level_dag.dependencies(from_map).latency_to(from);
+        let cycle = if to == from {
+            from_to_latency.clone()
+        } else {
+            unwrap!(latencies_to_from[to].clone()).chain(to, from_to_latency.clone())
+        };
         for &pred in &predecessors {
-            let init_lat_0 = unwrap!(latencies[pred].clone()).chain(point, lat.clone());
-            let init_lat_1 = unwrap!(latency_to_exit[pred].clone())
-                .chain(entry_point, unwrap!(latencies[entry_point].clone()));
-            let init_lat = cmp::max(init_lat_0, init_lat_1);
-            let latency = init_lat
+            let first_iter_via_from = unwrap!(latencies_to_from[pred].clone())
+                .chain(from, from_to_latency.clone());
+            let first_iter_via_exit = unwrap!(latencies_to_exit[pred].clone())
+                .chain(entry_point, unwrap!(latencies_to_from[entry_point].clone()));
+            let first_iter = cmp::max(first_iter_via_from, first_iter_via_exit);
+            let latency = first_iter
                 .clone()
-                .chain(point, lat.clone().iterate(action.iterations - 2, level_id));
-            level_dag.add_dependency(to_map, pred, point, &latency);
+                .chain(to, cycle.clone().iterate(action.iterations - 2, level_id));
+            level_dag.add_dependency(to_map, pred, to, &latency);
             if action.iterations >= 3 {
-                let exit_lat = unwrap!(latency_to_exit[point].clone());
-                let latency = init_lat
-                    .chain(point, lat.clone().iterate(action.iterations - 3, level_id))
-                    .chain(point, exit_lat);
+                let latency_to_exit = unwrap!(latencies_to_exit[to].clone());
+                let latency = first_iter
+                    .chain(to, cycle.clone().iterate(action.iterations - 3, level_id))
+                    .chain(to, latency_to_exit);
                 level_dag.add_dependency(to_map, pred, entry_point, &latency);
             }
         }
@@ -334,6 +366,7 @@ fn repeat_level(
 }
 
 /// Adds a dependency origination from a dim map.
+// TODO(ulysse): also handle dim_map variables
 // TODO(cleanup): refactor to reduce the number of parameters.
 #[cfg_attr(feature = "cargo-clippy", allow(clippy))]
 fn apply_dim_map(

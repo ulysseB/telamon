@@ -76,6 +76,7 @@ pub struct NewObjs {
     pub def_statements: Vec<(VarId, StmtId)>,
     pub var_dims: Vec<(VarId, DimId)>,
     pub var_mappings: Vec<(VarId, DimMappingId)>,
+    pub predecessors: Vec<(VarId, VarId)>,
     pub layout_dims: Vec<LayoutDimId>,
     pub mem_layout_dims: Vec<LayoutDimId>,
     pub actual_layout_dims: Vec<(LayoutDimId, DimId)>,
@@ -149,6 +150,8 @@ impl NewObjs {
             .extend(var.dimensions().iter().map(|&dim| (var.id(), dim)));
         self.var_mappings
             .extend(var.def().mapped_dims().map(|id| (var.id(), id)));
+        self.predecessors
+            .extend(var.predecessors().iter().map(|&id| (var.id(), id)));
     }
 
     /// Adds a layout dimension.
@@ -305,6 +308,11 @@ where
     /// slice. Holes are skipped.
     pub fn iter_mut<'a>(&'a mut self) -> impl Iterator<Item = &'a mut T> {
         self.vec.iter_mut().filter_map(Option::as_mut)
+    }
+
+    /// Returns the value stored at a given index and replaces it with a hole.
+    pub fn remove(&mut self, index: I) -> Option<T> {
+        std::mem::replace(&mut self.vec[index.into()], None)
     }
 }
 

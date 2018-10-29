@@ -32,6 +32,46 @@ set UseStatements($var in Variables) subsetof Statements:
   new_objs = "$objs.use_statements"
 end
 
+set UseInsts($var in Variables) subsetof Instructions:
+  item_type = "ir::Instruction"
+  id_type = "ir::InstId"
+  item_getter = "$fun.inst($id)"
+  id_getter = "$item.id()"
+  iterator = "$var.use_points().flat_map(|id| $fun.statement(id).as_inst())"
+  from_superset = "if $item.used_vars().contains(&$var.id()) { Some($item) } else { None }"
+  reverse forall $inst in Instructions = "$inst.used_vars().iter().map(|&id| $fun.variable(id))"
+  var_prefix = "use"
+  new_objs = "$objs.use_insts"
+end
+
+// Forbid implicit broadcast of the fby intialization variable.
+require forall $var in Variables:
+  forall $inst in UseInsts($var):
+    forall $dim in IterationDims($inst):
+      forall $def in DefStatements($var):
+        "!$var.def().is_fby() || $var.dimensions().contains(&$dim.id())"
+        || order($dim, $def) is OUTER
+
+/// Lists variables $var depends of.
+set PredecessorVars($var in Variables) subsetof Variables:
+  item_type = "ir::Variable"
+  id_type = "ir::VarId"
+  item_getter = "$fun.variable($id)"
+  id_getter = "$item.id()"
+  iterator = "$var.predecessors().iter().map(|&id| $fun.variable(id))"
+  from_superset = "if $var.predecessors().contains(&$item.id()) { Some($item) } else { None }"
+  reverse forall $var in Variables = "$var.successors().iter().map(|&id| $fun.variable(id))"
+  var_prefix = "predecessor"
+  new_objs = "$objs.predecessors"
+end
+
+// Ensure the `fby` and its `prev` variable can be stored in the same place.
+require forall $fby in Variables:
+  forall $pred in PredecessorVars($fby):
+    forall $use in UseStatements($fby):
+      forall $def in DefStatements($pred):
+        "!$fby.def().is_fby_prev($pred.id())" || order($use, $def) is BEFORE
+
 // Enforce data dependencies.
 require forall $var in Variables:
   forall $def in DefStatements($var):
@@ -49,11 +89,6 @@ set VarDims($var in Variables) subsetof Dimensions:
   reverse forall $dim in Dimensions = "$dim.inner_vars().iter().map(|&id| $fun.variable(id))"
   new_objs = "$objs.var_dims"
 end
-
-require forall $var in Variables:
-  forall $use in UseStatements($var):
-    forall $dim in VarDims($var):
-      order($dim, $use) is OUTER
 
 /// Specifies where to store a variable.
 define enum memory_space($var in Variables):

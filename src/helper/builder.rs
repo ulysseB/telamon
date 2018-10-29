@@ -255,6 +255,24 @@ impl<'a> Builder<'a> {
             .unwrap()
     }
 
+    /// Creates a variable initialized with the value of `init` and then takes a value
+    /// produced at the last iteration of `dims`. The loop-carried variable must be with
+    /// `set_loop_carried_variable`.
+    pub fn create_fby_variable(
+        &mut self,
+        init: ir::VarId,
+        dims: &[&LogicalDim]
+    ) -> ir::VarId {
+        let dims = dims.iter().flat_map(|dim| dim.iter()).collect();
+        unwrap!(self.function.add_variable(ir::VarDef::Fby { init, prev: None, dims }))
+    }
+
+    /// Set the loop-carried dependency `loop_carried` of a variable `fby` created with
+    /// `create_fby_variable`.
+    pub fn set_loop_carried_variable(&mut self, fby: ir::VarId, loop_carried: ir::VarId) {
+        unwrap!(self.function.set_loop_carried_variable(fby, loop_carried))
+    }
+
     /// Applies an action on the function.
     pub fn action(&mut self, action: Action) {
         self.actions.push(action)
