@@ -1,6 +1,6 @@
 //! Tests the memory model.
 use telamon::device::{ArgMap, Context};
-use telamon::helper::{Builder, Reduce, SignatureBuilder};
+use telamon::helper::*;
 use telamon::ir;
 use telamon::search_space::{Action, DimKind, InstFlag, Order};
 use PerfModelTest;
@@ -44,17 +44,25 @@ impl PerfModelTest for L1LinesPressure {
             (&d1_1, ir::Size::new_const(THREAD_X * 32 * 4)),
             (&d3, ir::Size::new_const(THREAD_Y * THREAD_X * 32 * 4)),
         ];
-        let pattern = builder.tensor_access_pattern(None, strides.clone());
+        let pattern = builder.tensor_access_pattern(None, t, strides.clone());
         let addr = builder.induction_var(&"array", strides);
         let val = builder.ld_ex(t, &addr, pattern, InstFlag::CACHE_GLOBAL);
-        let acc = builder.add(&val, &Reduce(init));
+        let fby = builder.create_fby_variable(init, &[&d0, &d3]);
+        let acc = builder.add(&val, &fby);
+        builder.set_loop_carried_variable(fby, acc);
         builder.close_dim(&d0);
         builder.close_dim(&d3);
 
         let d1_2 = builder.open_mapped_dim(&d1_1)[0];
         let d2_2 = builder.open_mapped_dim(&d2_1)[0];
         let out_pattern = ir::AccessPattern::Unknown(None);
-        builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::NO_CACHE);
+        builder.st_ex(
+            &"out",
+            &Last(acc, &[&d0, &d3]),
+            true,
+            out_pattern,
+            InstFlag::NO_CACHE,
+        );
 
         builder.order(&d1_0, &d2_0, Order::OUTER);
         builder.order(&d1_0, &d0, Order::BEFORE);
@@ -105,17 +113,25 @@ impl PerfModelTest for L2LinesPressure {
             (&d1_1, ir::Size::new_const(THREAD_X * 8 * 4)),
             (&d3, ir::Size::new_const(THREAD_Y * THREAD_X * 8 * 4)),
         ];
-        let pattern = builder.tensor_access_pattern(None, strides.clone());
+        let pattern = builder.tensor_access_pattern(None, t, strides.clone());
         let addr = builder.induction_var(&"array", strides);
         let val = builder.ld_ex(t, &addr, pattern, InstFlag::CACHE_GLOBAL);
-        let acc = builder.add(&val, &Reduce(init));
+        let fby = builder.create_fby_variable(init, &[&d0, &d3]);
+        let acc = builder.add(&val, &fby);
+        builder.set_loop_carried_variable(fby, acc);
         builder.close_dim(&d0);
         builder.close_dim(&d3);
 
         let d1_2 = builder.open_mapped_dim(&d1_1)[0];
         let d2_2 = builder.open_mapped_dim(&d2_1)[0];
         let out_pattern = ir::AccessPattern::Unknown(None);
-        builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::NO_CACHE);
+        builder.st_ex(
+            &"out",
+            &Last(acc, &[&d0, &d3]),
+            true,
+            out_pattern,
+            InstFlag::NO_CACHE,
+        );
 
         builder.order(&d1_0, &d2_0, Order::OUTER);
         builder.order(&d1_0, &d0, Order::BEFORE);
@@ -153,7 +169,7 @@ impl PerfModelTest for SharedLoad {
         let size_0 = builder.cst_size(32);
         let size_1 = builder.cst_size(32);
         let size_2 = builder.param_size("n", Self::N);
-        let mem = builder.allocate_shared(8 * 32 * 32 * 4);
+        let mem = builder.allocate_shared(ir::Type::F(64), 32 * 32 * 4);
         let d0 = builder.open_dim_ex(size_0, DimKind::THREAD);
         let d1 = builder.open_dim_ex(size_1, DimKind::THREAD);
         let (ptr_0, pattern) =
@@ -165,13 +181,23 @@ impl PerfModelTest for SharedLoad {
         let d2 = builder.open_dim_ex(size_2, DimKind::LOOP);
         let d3_size = builder.cst_size(100);
         let d3 = builder.open_dim_ex(d3_size, DimKind::UNROLL);
-        let ptr = builder.add(&Reduce(ptr_1), &ptr_zero);
+        let ptr_fby = builder.create_fby_variable(ptr_1, &[&d2, &d3]);
+        let ptr = builder.add(&ptr_fby, &ptr_zero);
+        builder.set_loop_carried_variable(ptr_fby, ptr);
         let ld = builder.ld(ir::Type::F(32), &ptr, pattern);
-        let acc = builder.add(&Reduce(acc_0), &ld);
+        let acc_fby = builder.create_fby_variable(acc_0, &[&d2, &d3]);
+        let acc = builder.add(&acc_fby, &ld);
+        builder.set_loop_carried_variable(acc_fby, acc);
         builder.close_dim(&d2);
         builder.close_dim(&d3);
         let out_pattern = ir::AccessPattern::Unknown(None);
-        builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::NO_CACHE);
+        builder.st_ex(
+            &"out",
+            &Last(acc, &[&d2, &d3]),
+            true,
+            out_pattern,
+            InstFlag::NO_CACHE,
+        );
         SharedLoad {
             d0: d0[0],
             d1: d1[0],
@@ -215,7 +241,7 @@ impl PerfModelTest for VectorSharedLoad {
         let size_0 = builder.cst_size(32);
         let size_1 = builder.cst_size(32);
         let size_2 = builder.param_size("n", Self::N);
-        let mem = builder.allocate_shared(64 * 4 * 4);
+        let mem = builder.allocate_shared(ir::Type::F(32), 64 * 4);
         let d0 = builder.open_dim_ex(size_0, DimKind::THREAD);
         let d1 = builder.open_dim_ex(size_1, DimKind::THREAD);
         let acc_0 = builder.mov(&0f32);
@@ -226,12 +252,20 @@ impl PerfModelTest for VectorSharedLoad {
             builder.tensor_access(&mem, mem.into(), ir::Type::F(32), &[&d3, &d4]);
         let ld = builder.ld(ir::Type::F(32), &addr, pattern);
         let d4_2 = builder.open_mapped_dim(&d4);
-        let acc = builder.add(&Reduce(acc_0), &ld);
+        let fby = builder.create_fby_variable(acc_0, &[&d2, &d3, &d4]);
+        let acc = builder.add(&fby, &ld);
+        builder.set_loop_carried_variable(fby, acc);
         builder.close_dim(&d2);
         builder.close_dim(&d3);
         builder.close_dim(&d4_2);
         let out_pattern = ir::AccessPattern::Unknown(None);
-        builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::NO_CACHE);
+        builder.st_ex(
+            &"out",
+            &Last(acc, &[&d2, &d3, &d4_2]),
+            true,
+            out_pattern,
+            InstFlag::NO_CACHE,
+        );
 
         VectorSharedLoad {
             d0: d0[0],
@@ -271,7 +305,7 @@ impl PerfModelTest for SharedReplay {
         let size_0 = builder.cst_size(32);
         let size_1 = builder.cst_size(32);
         let size_2 = builder.param_size("n", Self::N);
-        let mem = builder.allocate_shared(8 * 32 * 32 * 4);
+        let mem = builder.allocate_shared(ir::Type::F(32), 8 * 32 * 32);
         let d0 = builder.open_dim_ex(size_0, DimKind::THREAD);
         let d1 = builder.open_dim_ex(size_1, DimKind::THREAD);
         let ptr_to_mem_type = ir::Type::PtrTo(mem.into());
@@ -283,16 +317,26 @@ impl PerfModelTest for SharedReplay {
         let d2 = builder.open_dim_ex(size_2, DimKind::LOOP);
         let d4 = builder.open_dim_ex(ir::Size::new_const(32), DimKind::UNROLL);
         let d3_0 = builder.open_dim_ex(ir::Size::new_const(4), DimKind::UNROLL);
-        let addr = builder.add(&Reduce(addr_1), &ptr_zero);
+        let addr_fby = builder.create_fby_variable(addr_1, &[&d2, &d4, &d3_0]);
+        let addr = builder.add(&addr_fby, &ptr_zero);
+        builder.set_loop_carried_variable(addr_fby, addr);
         let val = builder.ld(ir::Type::F(32), &addr, pattern);
         let d3_1 = builder.open_mapped_dim(&d3_0);
-        let acc = builder.add(&val, &Reduce(init));
+        let acc_fby = builder.create_fby_variable(init, &[&d2, &d4, &d3_1]);
+        let acc = builder.add(&val, &acc_fby);
+        builder.set_loop_carried_variable(acc_fby, acc);
         builder.close_dim(&d2);
         builder.close_dim(&d4);
         builder.close_dim(&d3_1);
         let out_pattern = ir::AccessPattern::Unknown(None);
 
-        builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::NO_CACHE);
+        builder.st_ex(
+            &"out",
+            &Last(acc, &[&d2, &d4, &d3_1]),
+            true,
+            out_pattern,
+            InstFlag::NO_CACHE,
+        );
         builder.order(&d0, &d1, Order::OUTER);
         builder.order(&d1, &d2, Order::OUTER);
         builder.order(&d4, &d3_0, Order::OUTER);
@@ -323,8 +367,8 @@ impl PerfModelTest for VectorSharedReplay {
         let size_0 = builder.cst_size(32);
         let size_1 = builder.cst_size(32);
         let size_2 = builder.param_size("n", Self::N);
-        let mem_size = 8 * 32 * 32 * 4;
-        let mem = builder.allocate_shared(mem_size);
+        let mem_size = 8 * 32 * 32;
+        let mem = builder.allocate_shared(ir::Type::F(32), mem_size);
         let d0 = builder.open_dim_ex(size_0, DimKind::THREAD);
         let d1 = builder.open_dim_ex(size_1, DimKind::THREAD);
         let ptr_to_mem_type = ir::Type::PtrTo(mem.into());
@@ -334,10 +378,13 @@ impl PerfModelTest for VectorSharedReplay {
         let addr_0 = builder.mad(&idx, &16i32, &mem);
         let d2 = builder.open_dim_ex(size_2, DimKind::LOOP);
         let d4 = builder.open_dim_ex(ir::Size::new_const(32), DimKind::UNROLL);
-        let addr = builder.add(&Reduce(addr_0), &ptr_zero);
+        let addr_fby = builder.create_fby_variable(addr_0, &[&d2, &d4]);
+        let addr = builder.add(&addr_fby, &ptr_zero);
+        builder.set_loop_carried_variable(addr_fby, addr);
         let d3_0 = builder.open_dim_ex(ir::Size::new_const(4), DimKind::VECTOR);
         let pattern = builder.tensor_access_pattern(
             mem.into(),
+            ir::Type::F(32),
             vec![
                 (&d3_0, ir::Size::new_const(4)),
                 (&d1, ir::Size::new_const(4 * 4)),
@@ -346,13 +393,21 @@ impl PerfModelTest for VectorSharedReplay {
         );
         let val = builder.ld(ir::Type::F(32), &addr, pattern);
         let d3_1 = builder.open_mapped_dim(&d3_0);
-        let acc = builder.add(&val, &Reduce(init));
+        let acc_fby = builder.create_fby_variable(init, &[&d2, &d4, &d3_1]);
+        let acc = builder.add(&val, &acc_fby);
+        builder.set_loop_carried_variable(acc_fby, acc);
         builder.close_dim(&d2);
         builder.close_dim(&d4);
         builder.close_dim(&d3_1);
         let out_pattern = ir::AccessPattern::Unknown(None);
 
-        builder.st_ex(&"out", &acc, true, out_pattern, InstFlag::NO_CACHE);
+        builder.st_ex(
+            &"out",
+            &Last(acc, &[&d2, &d4, &d3_1]),
+            true,
+            out_pattern,
+            InstFlag::NO_CACHE,
+        );
         builder.order(&d0, &d1, Order::OUTER);
         builder.order(&d1, &d2, Order::OUTER);
         builder.order(&d4, &d3_0, Order::OUTER);

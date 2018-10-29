@@ -5,7 +5,7 @@ use device::cuda::{Context, Gpu, Kernel, PerfCounterSet};
 use device::{ArgMap, Device, ScalarArgument};
 use explorer;
 use helper::tensor::DimSize;
-use helper::{AutoOperand, Builder, Reduce};
+use helper::*;
 use ir::{self, Signature};
 use itertools::Itertools;
 use num::Zero;
@@ -72,11 +72,13 @@ pub fn loop_chained_adds<'a>(
     let unroll_size = builder.cst_size(chained);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(unroll_size, DimKind::UNROLL);
-    let acc = builder.add(&Reduce(init), &2f32);
+    let fby = builder.create_fby_variable(init, &[&d0, &d1]);
+    let acc = builder.add(&fby, &2f32);
+    builder.set_loop_carried_variable(fby, acc);
     builder.close_dim(&d0);
     builder.close_dim(&d1);
     let pattern = ir::AccessPattern::Unknown(None);
-    builder.st_ex(&out, &acc, true, pattern, InstFlag::CACHE_GLOBAL);
+    builder.st_ex(&out, &Last(acc, &[&d0, &d1]), true, pattern, InstFlag::CACHE_GLOBAL);
     builder.get()
 }
 
@@ -110,12 +112,14 @@ where
     let unroll_size = builder.cst_size(n_chained);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(unroll_size, DimKind::UNROLL);
-    let acc = inst_gen(&Reduce(init), &arg, &mut builder);
+    let fby = builder.create_fby_variable(init, &[&d0, &d1]);
+    let acc = inst_gen(&fby, &arg, &mut builder);
+    builder.set_loop_carried_variable(fby, acc);
     builder.order(&d0, &d1, Order::OUTER);
     builder.close_dim(&d0);
     builder.close_dim(&d1);
     let pattern = ir::AccessPattern::Unknown(None);
-    builder.st_ex(&out, &acc, true, pattern, InstFlag::NO_CACHE);
+    builder.st_ex(&out, &Last(acc, &[&d0, &d1]), true, pattern, InstFlag::NO_CACHE);
     builder.get()
 }
 
@@ -168,22 +172,29 @@ pub fn load_chain<'a>(
     let unroll_size = builder.cst_size(n_chained);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(unroll_size, DimKind::UNROLL);
-    if n_threads != 1 {
+    let d2 = if n_threads != 1 {
         let d = builder.open_dim_ex(ir::Size::new_const(n_threads), DimKind::THREAD);
         builder.order(&d, &d0, Order::OUTER);
-    }
+        Some(d)
+    } else {
+        None
+    };
     let pattern0 = ir::AccessPattern::Unknown(None);
+    let mut dims = vec![&d0, &d1];
+    dims.extend(d2.as_ref());
+    let fby = builder.create_fby_variable(init, &dims);
     let ptr = builder.ld_ex(
         ir::Type::I(64),
-        &Reduce(init),
+        &fby,
         pattern0,
         InstFlag::CACHE_GLOBAL,
     );
+    builder.set_loop_carried_variable(fby, ptr);
     builder.order(&d0, &d1, Order::OUTER);
-    builder.close_dim(&d0);
     builder.close_dim(&d1);
+    builder.close_dim(&d0);
     let pattern1 = ir::AccessPattern::Unknown(None);
-    builder.st_ex(&out, &ptr, true, pattern1, InstFlag::NO_CACHE);
+    builder.st_ex(&out, &Last(ptr, &[&d0, &d1]), true, pattern1, InstFlag::NO_CACHE);
     builder.get()
 }
 
@@ -213,11 +224,13 @@ pub fn shared_load_chain<'a>(
     let unroll_size = builder.cst_size(n_chained);
     let d0 = builder.open_dim_ex(loop_size, DimKind::LOOP);
     let d1 = builder.open_dim_ex(unroll_size, DimKind::UNROLL);
-    let addr = builder.ld(ir::Type::I(32), &Reduce(addr_init), array_pattern);
+    let fby = builder.create_fby_variable(addr_init, &[&d0, &d1]);
+    let addr = builder.ld(ir::Type::I(32), &fby, array_pattern);
+    builder.set_loop_carried_variable(fby, addr);
     builder.close_dim(&d0);
     builder.close_dim(&d1);
     let out_pattern = ir::AccessPattern::Unknown(None);
-    builder.st_ex(&out, &addr, true, out_pattern, InstFlag::CACHE_GLOBAL);
+    builder.st_ex(&out, &Last(addr, &[&d0, &d1]), true, out_pattern, InstFlag::CACHE_GLOBAL);
 
     builder.order(&last_st, &addr_init, Order::BEFORE);
     builder.order(&d0, &d1, Order::OUTER);
@@ -276,7 +289,11 @@ pub fn parallel_load<'a>(
     let addr = builder.induction_var(&array, strides);
     let val = builder.ld_ex(ir::Type::F(32), &addr, pattern, InstFlag::CACHE_GLOBAL);
     let d4_1 = builder.open_mapped_dim(&d4_0);
-    let acc = builder.add(&val, &Reduce(init));
+    let mut acc_dims = vec![&d0, &d1_1_b, &d3, &d4_1];
+    acc_dims.extend(d1_1_a.as_ref());
+    let fby = builder.create_fby_variable(init, &acc_dims);
+    let acc = builder.add(&val, &fby);
+    builder.set_loop_carried_variable(fby, acc);
     builder.close_dim(&d0);
     builder.close_dim(&d3);
     builder.close_dim(&d4_1);
@@ -287,7 +304,7 @@ pub fn parallel_load<'a>(
     let d1_2_b = builder.open_mapped_dim(&d1_1_b);
     builder.order(&d1_2_a, &d1_2_b, Order::OUTER);
     let out_pattern = ir::AccessPattern::Unknown(None);
-    builder.st_ex(&out, &acc, true, out_pattern, InstFlag::NO_CACHE);
+    builder.st_ex(&out, &Last(acc, &[&d0, &d3, &d4_1]), true, out_pattern, InstFlag::NO_CACHE);
 
     builder.order(&d1_0_a, &d0, Order::BEFORE);
     builder.order(&d1_0_b, &d0, Order::BEFORE);
@@ -406,7 +423,9 @@ pub fn chain_in_syncthread<'a>(
     let d2 = builder.open_dim_ex(sync_unroll_size, DimKind::UNROLL);
     let d3 = builder.open_mapped_dim(&d0);
     let d4 = builder.open_dim_ex(add_unroll_size, DimKind::UNROLL);
-    let acc = builder.add(&Reduce(init), &2f32);
+    let fby = builder.create_fby_variable(init, &[&d1, &d2, &d3, &d4]);
+    let acc = builder.add(&fby, &2f32);
+    builder.set_loop_carried_variable(fby, acc);
     builder.close_dim(&d1);
     builder.close_dim(&d2);
     builder.close_dim(&d3);
@@ -414,7 +433,7 @@ pub fn chain_in_syncthread<'a>(
 
     let d5 = builder.open_mapped_dim(&d0);
     let pattern = ir::AccessPattern::Unknown(None);
-    builder.st_ex(&out, &acc, true, pattern, InstFlag::CACHE_GLOBAL);
+    builder.st_ex(&out, &Last(acc, &[&d1, &d2, &d3, &d4, &d5]), true, pattern, InstFlag::CACHE_GLOBAL);
 
     builder.order(&d1, &d2, Order::OUTER);
     builder.order(&d1, &d3, Order::OUTER);
@@ -470,7 +489,9 @@ pub fn load_in_loop<'a>(
         &[(&unroll_dim_a, &unroll_dims_1)],
         ir::DimMapScope::Thread,
     );
-    let acc = builder.mad(&a_op, &2f32, &Reduce(acc_init));
+    let fby = builder.create_fby_variable(acc_init, &[&k_dim]);
+    let acc = builder.mad(&a_op, &2f32, &fby);
+    builder.set_loop_carried_variable(fby, acc);
     builder.close_dim(&k_dim);
 
     let _ = builder.open_mapped_dim(&unroll_dims_1);

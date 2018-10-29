@@ -140,12 +140,8 @@ impl<'a, 'b> NameMap<'a, 'b> {
                 name_map
                     .insts
                     .insert(inst.id(), name_map.variables[&var].clone());
-            } else {
-                if let Some((inst_id, dim_map)) = inst.as_reduction() {
-                    name_map.decl_alias(inst, inst_id, dim_map);
-                } else if inst.t().is_some() {
-                    name_map.decl_inst(inst);
-                }
+            } else if inst.t().is_some() {
+                name_map.decl_inst(inst);
             }
         }
         name_map
@@ -202,8 +198,7 @@ impl<'a, 'b> NameMap<'a, 'b> {
             ir::Operand::Float(ref val, len) => {
                 Cow::Owned(self.namer.borrow().name_float(val, len))
             }
-            ir::Operand::Inst(id, _, ref dim_map, _)
-            | ir::Operand::Reduce(id, _, ref dim_map, _) => {
+            ir::Operand::Inst(id, _, ref dim_map, _) => {
                 Cow::Borrowed(self.name_mapped_inst(id, indexes.into_owned(), dim_map))
             }
             ir::Operand::Index(id) => if let Some(idx) = indexes.get(&id) {
@@ -271,29 +266,6 @@ impl<'a, 'b> NameMap<'a, 'b> {
         let mut namer = self.namer.borrow_mut();
         let names = VariableNames::new(t, dims, *namer.deref_mut());
         assert!(self.insts.insert(inst.id(), names).is_none());
-    }
-
-    /// Declares an instruction as an alias of another.
-    fn decl_alias(&mut self, alias: &Instruction, base: InstId, dim_map: &DimMap) {
-        // We temporarily rely on `VariableNames` to generate instruction names until we
-        // remove the need to rename variables altogether.
-        let mut mapping: HashMap<_, _> = dim_map.iter().cloned().collect();
-        for &(dim, _) in alias.instantiation_dims() {
-            mapping.insert(dim, dim);
-        }
-        let mut names = self.insts[&base].clone();
-        let new_indexes = names
-            .indexes
-            .iter()
-            .map(|idx| match idx {
-                VarNameIndex::FromDim(dim) => mapping
-                    .get(dim)
-                    .map(|&dim| VarNameIndex::FromDim(dim))
-                    .unwrap_or(VarNameIndex::Last),
-                VarNameIndex::Last => VarNameIndex::Last,
-            }).collect();
-        names.indexes = new_indexes;
-        assert!(self.insts.insert(alias.id(), names).is_none());
     }
 
     /// Returns the name of an index.

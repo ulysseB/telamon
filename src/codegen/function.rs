@@ -422,13 +422,6 @@ impl<'a> Instruction<'a> {
         &self.instantiation_dims
     }
 
-    /// Indicates if the instruction performs a reduction, in wich case it returns the
-    /// instruction that initializes the reduction, the `DimMap` to readh it and the
-    /// reduction dimensions.
-    pub fn as_reduction(&self) -> Option<(ir::InstId, &ir::DimMap)> {
-        self.instruction.as_reduction().map(|(x, y, _)| (x, y))
-    }
-
     /// Returns the memory flag of the intruction, if any.
     pub fn mem_flag(&self) -> Option<search_space::InstFlag> {
         self.mem_flag

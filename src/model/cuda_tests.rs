@@ -166,11 +166,13 @@ fn partial_bound_2() {
         &mut builder,
     );
     let x_op = ld_x.dim_map(&[&acc_dim_n], ir::DimMapScope::Global(()), &mut builder);
-    let acc = builder.mad(&a_op, &x_op, &Reduce(init));
+    let fby = builder.create_fby_variable(init, &[&acc_dim_n]);
+    let acc = builder.mad(&a_op, &x_op, &fby);
+    builder.set_loop_carried_variable(fby, acc);
     builder.close_dim(&acc_dim_n);
 
     let sum = tensor::VirtualTensor::new(acc, vec![acc_dim_m.clone()]);
-    let st_y = sum.store(&y, &mut builder);
+    let st_y = sum.store(&y, &[&acc_dim_n], &mut builder);
 
     builder.action(Action::DimKind(ld_a[0][1], DimKind::UNROLL));
     builder.action(Action::DimKind(init_dim_m[1], DimKind::UNROLL));
@@ -427,7 +429,7 @@ fn final_bound_0() {
         builder.mad(&x_op, &4.33f32, &y_op),
         vec![mad_dim.clone()],
     );
-    let st_z = mad.store(&z, &mut builder);
+    let st_z = mad.store(&z, &[], &mut builder);
 
     builder.action(Action::DimKind(ld_x[0][2], DimKind::VECTOR));
     builder.action(Action::DimKind(ld_x[0][1], DimKind::THREAD));

@@ -4,6 +4,48 @@ use helper::{Builder, LogicalDim};
 use ir::Operand::*;
 use ir::{self, dim, InstId, Operand};
 
+/// Represents objects that can be converted into a variable.
+pub trait ToVariable {
+    /// Returns the corresponding variable. Allocates it in the builder if needed.
+    fn to_variable(&self, builder: &mut Builder) -> ir::VarId;
+
+    /// Converts the `self` into a variable operand.
+    fn to_operand<'a>(&self, builder: &mut Builder<'a>) -> Operand<'a, ()> {
+        let var_id = self.to_variable(builder);
+        let var = builder.function().variable(var_id);
+        Operand::Variable(var_id, var.t())
+    }
+}
+
+impl ToVariable for ir::VarId {
+    fn to_variable(&self, _: &mut Builder) -> ir::VarId {
+        *self
+    }
+}
+
+impl ToVariable for ir::InstId {
+    /// Returns a variable that holds the value produced by `self`, with point-to-point
+    /// communication to the current loop nest.
+    fn to_variable(&self, builder: &mut Builder) -> ir::VarId {
+        let inst_var = builder.get_inst_variable(*self);
+        builder.map_variable(inst_var)
+    }
+}
+
+/// Helper to take the last value of a variable in a loop nest.
+pub struct Last<'a, T: ToVariable>(pub T, pub &'a [&'a LogicalDim]);
+
+impl<'a, T: ToVariable> ToVariable for Last<'a, T> {
+    fn to_variable(&self, builder: &mut Builder) -> ir::VarId {
+        let original_var = self.0.to_variable(builder);
+        if self.1.is_empty() {
+            original_var
+        } else {
+            builder.create_last_variable(original_var, self.1)
+        }
+    }
+}
+
 /// Represents values that can be turned into an `Operand`.
 pub trait AutoOperand<'a> {
     /// Returns the corresponding `Operand`.
@@ -12,32 +54,37 @@ pub trait AutoOperand<'a> {
         'a: 'b;
 }
 
-/// Helper to build `Reduce` operands.
-pub struct Reduce(pub InstId);
-
-/// Helper to build dim maps that can be lowered to temporary memory.
-pub struct TmpArray(pub InstId);
-
-impl<'a> AutoOperand<'a> for Reduce {
+// We cannot provide a blanket implementation for all `ToVariable` objects until rust
+// supports implementation specialization.
+impl<'a> AutoOperand<'a> for ir::VarId {
     fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b, ()>
     where
         'a: 'b,
     {
-        let inst = builder.function().inst(self.0);
-        let mut mapped_dims = Vec::new();
-        let mut reduce_dims = Vec::new();
-        for (new_dim, old_dim) in builder.open_dims() {
-            if inst.iteration_dims().contains(&old_dim) {
-                if old_dim != new_dim {
-                    mapped_dims.push((old_dim, new_dim));
-                }
-            } else {
-                reduce_dims.push(new_dim);
-            }
-        }
-        Operand::new_reduce(inst, dim::Map::new(mapped_dims), reduce_dims)
+        self.to_operand(builder)
     }
 }
+
+impl<'a> AutoOperand<'a> for ir::InstId {
+    fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b, ()>
+    where
+        'a: 'b,
+    {
+        self.to_operand(builder)
+    }
+}
+
+impl<'a, 'c, T: ToVariable> AutoOperand<'a> for Last<'c, T> {
+    fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b, ()>
+    where
+        'a: 'b,
+    {
+        self.to_operand(builder)
+    }
+}
+
+/// Helper to build dim maps that can be lowered to temporary memory.
+pub struct TmpArray(pub InstId);
 
 impl<'a> AutoOperand<'a> for Operand<'a, ()> {
     fn get<'b>(&self, _: &mut Builder<'b>) -> Operand<'b, ()>
@@ -73,33 +120,6 @@ impl<'a, 'c> AutoOperand<'a> for &'c str {
                 .iter()
                 .find(|p| p.name == *self)
         ))
-    }
-}
-
-impl<'a> AutoOperand<'a> for InstId {
-    fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b, ()>
-    where
-        'a: 'b,
-    {
-        let inst = builder.function().inst(*self);
-        let mapped_dims = builder.open_dims().flat_map(|(new_dim, old_dim)| {
-            if new_dim != old_dim && inst.iteration_dims().contains(&old_dim) {
-                Some((old_dim, new_dim))
-            } else {
-                None
-            }
-        });
-        Operand::new_inst(inst, dim::Map::new(mapped_dims), ir::DimMapScope::Thread)
-    }
-}
-
-impl<'a> AutoOperand<'a> for ir::VarId {
-    fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b, ()>
-    where
-        'a: 'b,
-    {
-        let val = builder.function().variable(*self);
-        Operand::Variable(*self, val.t())
     }
 }
 

@@ -165,11 +165,24 @@ require forall $mapping in DimMappings:
 
 require forall $var in Variables:
   forall $mapping in DimMappings:
-    forall $lhs in MappedDims($mapping):
-      forall $rhs in MappedDims($mapping):
-        "$var.max_memory_level() <= ir::MemoryLevel::RegisterNoSync"
+    forall $lhs in StaticMappedDims($mapping):
+      forall $rhs in StaticMappedDims($mapping):
+        "$var.max_memory_level() > ir::MemoryLevel::RegisterNoSync"
           || order($lhs, $rhs) is MERGED
           || dim_kind($lhs) is UNROLL | VECTOR
+        // TODO(ulysse): allow lowering to memory
+        // Ensure we allow point-to-ponmt communication without memory
+        order($lhs, $rhs) is MERGED
+          || dim_kind($lhs) is UNROLL | VECTOR | THREAD
+        // .. using threads
+        order($lhs, $rhs) is MERGED
+          || dim_kind($lhs) is not THREAD
+          || thread_mapping($lhs, $rhs) is MAPPED
+        // .. or using registers.
+        order($lhs, $rhs) is MERGED
+          || dim_kind($lhs) is not UNROLL | VECTOR
+          || dim_kind($rhs) is UNROLL | VECTOR
+
 
 /// Lists the static dimensions in a dimension mapping.
 set StaticMappedDims($pair in DimMappings) subsetof StaticDims:

@@ -1,6 +1,6 @@
 //! Utilities to allocate and operate on tensors.
 use device::{read_array, ArgMap, ArrayArgument, Context, ScalarArgument};
-use helper::{Builder, LogicalDim, SignatureBuilder, TilingPattern};
+use helper::*;
 use ir;
 use itertools::Itertools;
 use ndarray::{self, ArrayD};
@@ -255,10 +255,12 @@ impl VirtualTensor {
 
     /// Stores the `VirtualTensor` in memory. Stores contiguously without taking the
     /// layout of the target tensor into account.
-    pub fn store<S>(&self, tensor: &Tensor<S>, builder: &mut Builder) -> VirtualTensor
-    where
-        S: ScalarArgument,
-    {
+    pub fn store<S: ScalarArgument>(
+        &self,
+        tensor: &Tensor<S>,
+        last: &[&LogicalDim],
+        builder: &mut Builder,
+    ) -> VirtualTensor {
         assert!(!tensor.read_only);
         let new_dims = self
             .dims
@@ -269,7 +271,7 @@ impl VirtualTensor {
             let new_dims = new_dims.iter().collect_vec();
             builder.tensor_access(&tensor.name, None, S::t(), &new_dims)
         };
-        let inst = builder.st(&ptr, &self.inst, pat);
+        let inst = builder.st(&ptr, &Last(self.inst, last), pat);
         for dim in &new_dims {
             builder.close_dim(dim);
         }

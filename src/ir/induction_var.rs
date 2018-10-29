@@ -29,9 +29,6 @@ impl<'a, L> InductionVar<'a, L> {
         }
         // TODO(cleanup): return errors instead of panicing
         match base {
-            ir::Operand::Reduce(..) => {
-                panic!("induction variables cannot perform reductions")
-            }
             ir::Operand::Inst(.., ir::DimMapScope::Global(..)) =>
             // TODO(search_space): allow dim map lowering for induction variables
             {

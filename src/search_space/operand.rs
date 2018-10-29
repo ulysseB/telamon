@@ -1,7 +1,7 @@
 //! Handle operands invariants.
 use ir::Operand::*;
 use ir::{self, DimMapScope, Statement};
-use search_space::choices::{Action, DimKind, DimMapping, Order};
+use search_space::choices::{Action, DimMapping, Order};
 
 /// Generates actions to enforce operands invariants.
 pub fn invariants(fun: &ir::Function, op: &ir::Operand, user: ir::StmtId) -> Vec<Action> {
@@ -26,21 +26,6 @@ pub fn invariants(fun: &ir::Function, op: &ir::Operand, user: ir::StmtId) -> Vec
             }
             // Order the with the source instruction.
             actions.push(Action::Order(src.into(), user, Order::BEFORE));
-            actions
-        }
-        Reduce(src, _, ref dim_map, ref reduce_dims) => {
-            let order = Order::BEFORE | Order::MERGED;
-            let mut actions = Vec::new();
-            // TODO(search_space): allow tmp mem to be generated for reduce dim maps.
-            for &(lhs, rhs) in dim_map.iter() {
-                actions.push(Action::Order(lhs.into(), rhs.into(), order));
-                actions.push(Action::DimMapping(lhs, rhs, DimMapping::MAPPED));
-            }
-            actions.push(Action::Order(src.into(), user, Order::BEFORE));
-            for &dim in reduce_dims {
-                actions.push(Action::Order(src.into(), dim.into(), Order::BEFORE));
-                actions.push(Action::DimKind(dim, DimKind::LOOP | DimKind::UNROLL));
-            }
             actions
         }
         Index(dim) => vec![Action::Order(dim.into(), user, Order::OUTER)],

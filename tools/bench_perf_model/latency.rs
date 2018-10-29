@@ -1,6 +1,6 @@
 //! Tests the latency model.
 use telamon::device::{ArgMap, Context};
-use telamon::helper::{Builder, Reduce, SignatureBuilder};
+use telamon::helper::*;
 use telamon::ir;
 use telamon::search_space::{Action, DimKind, InstFlag, Order};
 use PerfModelTest;
@@ -92,7 +92,7 @@ impl PerfModelTest for InstChain {
         let i2 = builder.mul(&"x", &i1);
         builder.close_dim(&d0);
         let pattern = ir::AccessPattern::Unknown(None);
-        builder.st_ex(&"out", &i2, true, pattern, InstFlag::NO_CACHE);
+        builder.st_ex(&"out", &Last(i2, &[&d0]), true, pattern, InstFlag::NO_CACHE);
         InstChain
     }
 }
@@ -124,7 +124,13 @@ impl PerfModelTest for LongInstChain {
         }
         builder.close_dim(&d0);
         let pattern = ir::AccessPattern::Unknown(None);
-        builder.st_ex(&"out", &inst, true, pattern, InstFlag::NO_CACHE);
+        builder.st_ex(
+            &"out",
+            &Last(inst, &[&d0]),
+            true,
+            pattern,
+            InstFlag::NO_CACHE,
+        );
         LongInstChain
     }
 }
@@ -156,11 +162,19 @@ impl PerfModelTest for UnrollReduction {
         let d1_size = builder.cst_size(100);
         let d0 = builder.open_dim_ex(d0_size, DimKind::LOOP);
         let d1 = builder.open_dim_ex(d1_size, DimKind::UNROLL);
-        let inst = builder.add(&"x", &Reduce(init));
+        let fby = builder.create_fby_variable(init, &[&d0, &d1]);
+        let inst = builder.add(&"x", &fby);
+        builder.set_loop_carried_variable(fby, inst);
         builder.close_dim(&d0);
         builder.close_dim(&d1);
         let pattern = ir::AccessPattern::Unknown(None);
-        builder.st_ex(&"out", &inst, true, pattern, InstFlag::NO_CACHE);
+        builder.st_ex(
+            &"out",
+            &Last(inst, &[&d0, &d1]),
+            true,
+            pattern,
+            InstFlag::NO_CACHE,
+        );
         UnrollReduction {
             d0: d0[0],
             d1: d1[0],
@@ -240,7 +254,9 @@ impl PerfModelTest for OrderedThreadDims {
             builder.ld_ex(ir::Type::I(32), &"out", pattern, InstFlag::CACHE_GLOBAL);
         let d1_1 = builder.open_dim_ex(size_1.clone(), DimKind::LOOP);
         let d1_2 = builder.open_dim_ex(size_2.clone(), DimKind::UNROLL);
-        let inst = builder.mul(&"x", &Reduce(init));
+        let fby = builder.create_fby_variable(init, &[&d1_1, &d1_2]);
+        let inst = builder.mul(&"x", &fby);
+        builder.set_loop_carried_variable(fby, inst);
         builder.close_dim(&d1);
         builder.close_dim(&d1_1);
         builder.close_dim(&d1_2);
@@ -249,7 +265,13 @@ impl PerfModelTest for OrderedThreadDims {
         let d2_1 = builder.open_dim_ex(size_1.clone(), DimKind::LOOP);
         let d2_2 = builder.open_dim_ex(size_2.clone(), DimKind::UNROLL);
         let pattern = ir::AccessPattern::Unknown(None);
-        builder.st_ex(&"out", &inst, true, pattern, InstFlag::CACHE_GLOBAL);
+        builder.st_ex(
+            &"out",
+            &Last(inst, &[&d1, &d1_1, &d1_2]),
+            true,
+            pattern,
+            InstFlag::CACHE_GLOBAL,
+        );
 
         builder.order(&d1, &d1_1, Order::OUTER);
         builder.order(&d1_1, &d1_2, Order::OUTER);
@@ -285,16 +307,26 @@ impl PerfModelTest for DimMap {
         let init2 = builder.mov(&"x");
         let d0 = builder.open_dim_ex(size_0, DimKind::LOOP);
         let d1 = builder.open_dim_ex(size_1.clone(), DimKind::UNROLL);
-        let i0 = builder.mul(&Reduce(init), &"x");
+        let i0_fby = builder.create_fby_variable(init, &[&d0, &d1]);
+        let i0 = builder.mul(&i0_fby, &"x");
+        builder.set_loop_carried_variable(i0_fby, i0);
         let i1 = builder.mov(&i0);
         builder.close_dim(&d1);
         let d2 = builder.open_dim_ex(size_1, DimKind::UNROLL);
         let op = builder.dim_map(i1, &[(&d1, &d2)], ir::DimMapScope::Thread);
-        let i2 = builder.mad(&op, &op, &Reduce(init2));
+        let i2_fby = builder.create_fby_variable(init2, &[&d0, &d2]);
+        let i2 = builder.mad(&op, &op, &i2_fby);
+        builder.set_loop_carried_variable(i2_fby, i2);
         builder.close_dim(&d2);
         builder.close_dim(&d0);
         let pattern = ir::AccessPattern::Unknown(None);
-        builder.st_ex(&"out", &i2, true, pattern, InstFlag::NO_CACHE);
+        builder.st_ex(
+            &"out",
+            &Last(i2, &[&d0, &d2]),
+            true,
+            pattern,
+            InstFlag::NO_CACHE,
+        );
         builder.order(&d1, &d2, Order::BEFORE);
         DimMap
     }
@@ -324,11 +356,19 @@ impl PerfModelTest for OperandPositionSlow {
         let d1_size = builder.cst_size(100);
         let d0 = builder.open_dim_ex(d0_size, DimKind::LOOP);
         let d1 = builder.open_dim_ex(d1_size, DimKind::UNROLL);
-        let inst = builder.mad(&Reduce(init), &"x", &"x");
+        let fby = builder.create_fby_variable(init, &[&d0, &d1]);
+        let inst = builder.mad(&fby, &"x", &"x");
+        builder.set_loop_carried_variable(fby, inst);
         builder.close_dim(&d0);
         builder.close_dim(&d1);
         let pattern = ir::AccessPattern::Unknown(None);
-        builder.st_ex(&"out", &inst, true, pattern, InstFlag::NO_CACHE);
+        builder.st_ex(
+            &"out",
+            &Last(inst, &[&d0, &d1]),
+            true,
+            pattern,
+            InstFlag::NO_CACHE,
+        );
         builder.order(&d0, &d1, Order::OUTER);
         OperandPositionSlow
     }
@@ -358,11 +398,19 @@ impl PerfModelTest for OperandPositionFast {
         let d1_size = builder.cst_size(100);
         let d0 = builder.open_dim_ex(d0_size, DimKind::LOOP);
         let d1 = builder.open_dim_ex(d1_size, DimKind::UNROLL);
-        let inst = builder.mad(&"x", &"x", &Reduce(init));
+        let fby = builder.create_fby_variable(init, &[&d0, &d1]);
+        let inst = builder.mad(&"x", &"x", &fby);
+        builder.set_loop_carried_variable(fby, inst);
         builder.close_dim(&d0);
         builder.close_dim(&d1);
         let pattern = ir::AccessPattern::Unknown(None);
-        builder.st_ex(&"out", &inst, true, pattern, InstFlag::NO_CACHE);
+        builder.st_ex(
+            &"out",
+            &Last(inst, &[&d0, &d1]),
+            true,
+            pattern,
+            InstFlag::NO_CACHE,
+        );
         builder.order(&d0, &d1, Order::OUTER);
         OperandPositionFast
     }

@@ -373,19 +373,18 @@ fn reduce_dim_invariants() {
     let context = fake::Context::default();
     let signature = empty_signature();
     let mut builder = helper::Builder::new(&signature, context.device());
-    let init = builder.cast(&0i64, context.device().pointer_type(MemSpace::GLOBAL));
+    let init = builder.cast(&032, context.device().pointer_type(MemSpace::GLOBAL));
     let d0 = builder.open_dim(Size::new_const(4));
     let pattern = ir::AccessPattern::Unknown(None);
-    let reduce = builder.ld(Type::I(64), &helper::Reduce(init), pattern);
+    let fby = builder.create_fby_variable(init, &[&d0]);
+    let reduce = builder.ld(Type::I(32), &fby, pattern);
+    builder.set_loop_carried_variable(fby, reduce);
     builder.close_dim(&d0);
 
     let d1 = builder.open_dim(Size::new_const(4));
     builder.action(Action::IsIterationDim(reduce.into(), d1[0], Bool::TRUE));
     builder.close_dim(&d1);
-    let d2 = builder.open_dim(Size::new_const(4));
-    builder.mov(&0i32);
 
-    builder.order(&d2, &init, !Order::OUTER);
     let space = builder.get();
     assert_eq!(
         space.domain().get_dim_kind(d0[0]),
@@ -396,10 +395,6 @@ fn reduce_dim_invariants() {
         Order::AFTER
     );
     assert!(Order::OUTER.contains(space.domain().get_order(d1[0].into(), init.into())));
-    assert_eq!(
-        space.domain().get_is_iteration_dim(reduce.into(), d2[0]),
-        Bool::FALSE
-    );
     gen_best(&context, space);
 }
 
@@ -495,7 +490,9 @@ fn unrolled_loop_unfused_reduction() {
     let inst0 = builder.mov(&0i32);
     builder.open_mapped_dim(&d0);
     let d1 = builder.open_dim_ex(ir::Size::new_const(1024), DimKind::LOOP);
-    builder.mov(&helper::Reduce(inst0));
+    let fby = builder.create_fby_variable(inst0, &[&d1]);
+    let inst1 = builder.mov(&fby);
+    builder.set_loop_carried_variable(fby, inst1);
 
     builder.order(&d0, &d1, Order::BEFORE);
     // Ensure not temporary memory has been generated.

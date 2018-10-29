@@ -1,6 +1,6 @@
 //! Helper struct to build a `Function`.
 use device::Device;
-use helper::{AutoOperand, LogicalDim, MetaStatement, TilingPattern};
+use helper::{AutoOperand, LogicalDim, MetaStatement, TilingPattern, ToVariable};
 use ir::{self, op, Parameter, Type};
 use ir::{AccessPattern, Function, InstId, Operand, Operator, Signature};
 use itertools::{flatten, Itertools};
@@ -255,21 +255,52 @@ impl<'a> Builder<'a> {
             .unwrap()
     }
 
+    /// Creates point-to-point communication to import the variable in the current loop
+    /// nest following mapped dimensions. Returns the original variable if no dimension
+    /// needs to be mapped.
+    pub fn map_variable(&mut self, var: ir::VarId) -> ir::VarId {
+        let mapped_dims = {
+            let original_var = self.function.variable(var);
+            self.open_dims
+                .iter()
+                .map(|(&lhs, &rhs)| (lhs, rhs))
+                .filter(|(new_dim, old_dim)| new_dim != old_dim)
+                .filter(|(_, old_dim)| original_var.dimensions().contains(&old_dim))
+                .collect_vec()
+        };
+        if mapped_dims.is_empty() {
+            return var;
+        }
+        let mapping = mapped_dims
+            .into_iter()
+            .map(|(new_dim, old_dim)| self.function.map_dimensions([old_dim, new_dim]))
+            .collect();
+        self.function
+            .add_variable(ir::VarDef::DimMap(var, mapping))
+            .unwrap()
+    }
+
     /// Creates a variable initialized with the value of `init` and then takes a value
     /// produced at the last iteration of `dims`. The loop-carried variable must be with
     /// `set_loop_carried_variable`.
-    pub fn create_fby_variable(
+    pub fn create_fby_variable<V: ToVariable>(
         &mut self,
-        init: ir::VarId,
+        init: V,
         dims: &[&LogicalDim]
     ) -> ir::VarId {
+        let init = init.to_variable(self);
         let dims = dims.iter().flat_map(|dim| dim.iter()).collect();
         unwrap!(self.function.add_variable(ir::VarDef::Fby { init, prev: None, dims }))
     }
 
     /// Set the loop-carried dependency `loop_carried` of a variable `fby` created with
     /// `create_fby_variable`.
-    pub fn set_loop_carried_variable(&mut self, fby: ir::VarId, loop_carried: ir::VarId) {
+    pub fn set_loop_carried_variable<V: ToVariable>(
+        &mut self,
+        fby: ir::VarId,
+        loop_carried: V
+    ) {
+        let loop_carried = loop_carried.to_variable(self);
         unwrap!(self.function.set_loop_carried_variable(fby, loop_carried))
     }
 
