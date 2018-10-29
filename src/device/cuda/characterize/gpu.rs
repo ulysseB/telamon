@@ -245,7 +245,10 @@ pub fn performance_desc(executor: &Executor, gpu: &mut cuda::Gpu) {
     let syncthread_end_latency =
         instruction::syncthread_end_latency(gpu, executor, addf32_lat);
     if syncthread_end_latency > std::f64::EPSILON {
-        warn!("syncthread end latency not taken into account: {}", syncthread_end_latency);
+        warn!(
+            "syncthread end latency not taken into account: {}",
+            syncthread_end_latency
+        );
     }
     gpu.loop_end_latency = instruction::loop_iter_end_latency(gpu, executor, addf32_lat);
     gpu.loop_iter_overhead = instruction::loop_iter_overhead(gpu, executor);
