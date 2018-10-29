@@ -738,6 +738,7 @@ impl<'a> Function<'a> {
         }
         self.insts[st_inst].lower_layout(st_index, st_pattern, VecSet::new(st_layout));
         self.insts[ld_inst].lower_layout(ld_index, ld_pattern, VecSet::new(ld_layout));
+        trace!("lowered layout for {:?} with st={:?} and ld={:?}", id, st_inst, ld_inst);
         layout_dim_ids
     }
 }

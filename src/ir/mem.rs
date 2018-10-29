@@ -17,7 +17,7 @@ impl From<MemId> for usize {
 }
 
 /// A block of memory allocated on the device by the kernel.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Block {
     id: MemId,
     uses: Vec<InstId>,
@@ -119,7 +119,7 @@ impl BlockMap {
             base_size: len,
             uses: vec![],
             mapped_dims: vec![],
-            maybe_mapped: ir::DimMap::empty(),
+            maybe_mapped: maybe_mapped.unwrap_or_else(ir::DimMap::empty),
             layout_dims,
             tmp_st_ld,
         }
@@ -187,6 +187,7 @@ impl BlockMap {
         for &id in &self.layouts {
             let mut changed = false; // Ensure we only lower once.
             let block = &mut self.blocks[id];
+            trace!("{:?}: {:?} and {:?} not merged", block, lhs_dim.id(), rhs);
             for pair in block.maybe_mapped.filter(|&mut (lhs2, rhs2)| {
                 (lhs2 == lhs && rhs2 == rhs) || (lhs2 == rhs && rhs2 == lhs)
             }) {
