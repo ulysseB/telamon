@@ -162,6 +162,7 @@ impl NewObjs {
 }
 
 /// A point-to-point communication lowered into a store and a load.
+#[derive(Debug)]
 pub struct LoweredDimMap {
     pub mem: MemId,
     pub store: InstId,

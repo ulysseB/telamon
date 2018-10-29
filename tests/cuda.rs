@@ -231,11 +231,11 @@ fn global_vector_load() {
     builder.close_dim(&d0);
     // Store B in shared memory.
     let output_pattern = ir::AccessPattern::Unknown(None);
+    builder.open_mapped_dim(&d0);
     builder.st_ex(&"output", &ld, true, output_pattern, InstFlag::NO_CACHE);
 
     check_candidates(builder.get(), &context, || {
-        let res = read_array::<i32>(output.as_ref())[0];
-        assert_eq!(res, 13);
+        assert_eq!(read_array::<i32>(output.as_ref()), &[13]);
     });
 }
 

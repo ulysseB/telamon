@@ -1,7 +1,7 @@
 //! Size evaluation and manipulation primitives.
 use device::Context;
 use ir;
-use num::integer;
+use num::{bigint::ToBigUint, Integer, ToPrimitive, Zero};
 use search_space::{NumSet, SearchSpace};
 
 /// A span of values.
@@ -36,20 +36,24 @@ pub fn bounds(size: &ir::PartialSize, space: &SearchSpace, ctx: &Context) -> Ran
         .map(|p| unwrap!(ctx.param_as_size(&p.name)) as u64)
         .product::<u64>()
         * factor as u64;
-    let mut total = Range::new_fixed(factor);
+    let mut total_min = factor.to_biguint().unwrap();
+    let mut total_max = total_min.clone();
     for &dim in dim_size_factors {
         let size = dim_bounds(dim, space);
-        total.min *= size.min;
-        total.max *= size.max;
+        total_min *= size.min;
+        total_max *= size.max;
     }
     for &dim in divisors {
         let size = dim_bounds(dim, space);
-        total.min /= integer::gcd(total.min, size.max);
-        total.max /= size.min;
+        total_min /= size.max.to_biguint().unwrap().gcd(&total_min);
+        total_max /= size.min;
     }
-    assert!(total.min > 0);
-    assert!(total.max > 0);
-    total
+    assert!(!total_min.is_zero());
+    assert!(!total_max.is_zero());
+    Range {
+        min: total_min.to_u64().unwrap(),
+        max: total_max.to_u64().unwrap(),
+    }
 }
 
 /// Returns the `Range` a static dimension size can take.
@@ -92,18 +96,22 @@ pub fn factors(
         .map(|p| unwrap!(ctx.param_as_size(&p.name)) as u64)
         .product::<u64>()
         * factor as u64;
-    let mut total = FactorRange::new_fixed(factor);
+    let mut total_gcd = factor.to_biguint().unwrap();
+    let mut total_lcm = total_gcd.clone();
     for &dim in dim_size_factors {
         let size = dim_factors(dim, space);
-        total.gcd *= size.gcd;
-        total.lcm *= size.lcm;
+        total_gcd *= size.gcd;
+        total_lcm *= size.lcm;
     }
     for &dim in divisors {
         let size = dim_factors(dim, space);
-        total.gcd /= integer::gcd(total.gcd, size.lcm);
-        total.lcm /= size.gcd;
+        total_gcd /= size.lcm.to_biguint().unwrap().gcd(&total_gcd);
+        total_lcm /= size.gcd;
     }
-    total
+    FactorRange {
+        gcd: total_gcd.to_u64().unwrap(),
+        lcm: total_lcm.to_u64().unwrap(),
+    }
 }
 
 /// Returns the `FactorRane` a static dimension size can take.
