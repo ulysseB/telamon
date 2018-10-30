@@ -44,11 +44,8 @@ impl<'a> Function<'a> {
             ).collect::<HashSet<_>>();
         let (block_dims, thread_dims, cfg) = cfg::build(space, insts, dims);
         let mem_blocks = register_mem_blocks(space, &block_dims);
-        device_code_args.extend(
-            mem_blocks
-                .iter()
-                .flat_map(|x| x.host_values(&block_dims)),
-        );
+        device_code_args
+            .extend(mem_blocks.iter().flat_map(|x| x.host_values(&block_dims)));
         debug!("compiling cfg {:?}", cfg);
         Function {
             cfg,
@@ -289,12 +286,13 @@ impl<'a> MemoryRegion<'a> {
     }
 
     /// Returns the value to pass from the host to the device to implement `self`.
-    pub fn host_values(
-        &self,
-        block_dims: &[Dimension<'a>],
-    ) -> Vec<ParamVal<'a>> {
+    pub fn host_values(&self, block_dims: &[Dimension<'a>]) -> Vec<ParamVal<'a>> {
         let mut out = if self.mem_space == MemSpace::GLOBAL {
-            vec![ParamVal::GlobalMem(self.id, self.alloc_size(), self.ptr_type)]
+            vec![ParamVal::GlobalMem(
+                self.id,
+                self.alloc_size(),
+                self.ptr_type,
+            )]
         } else {
             vec![]
         };
