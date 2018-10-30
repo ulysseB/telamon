@@ -125,7 +125,7 @@ impl<'a, L> Function<'a, L> {
         mem_access_layout: VecSet<ir::LayoutDimId>,
     ) -> Result<ir::Instruction<'a, L>, ir::Error> {
         // Create and check the instruction.
-        let inst = ir::Instruction::new(op, id, iter_dims, mem_access_layout, self)?;
+        let mut inst = ir::Instruction::new(op, id, iter_dims, mem_access_layout, self)?;
         // Register the instruction in iteration dimensions.
         for &dim in inst.iteration_dims() {
             self.dim_mut(dim).add_iterated(id);
@@ -138,8 +138,9 @@ impl<'a, L> Function<'a, L> {
             self.mem_blocks.register_use(mem_id, id);
         }
         // Update the usepoint of all variables
-        for &var_id in inst.used_vars() {
-            self.variables[var_id].add_use(id.into());
+        for var_id in inst.used_vars().clone() {
+            let stmt: &mut ir::Statement<L> = &mut inst;
+            self.register_var_use(var_id, stmt.into());
         }
         Ok(inst)
     }
@@ -256,6 +257,11 @@ impl<'a, L> Function<'a, L> {
     /// Returns a `Variable` given its id.
     pub fn variable(&self, id: ir::VarId) -> &ir::Variable {
         &self.variables[id]
+    }
+
+    /// Returns a mutable reference to a `Variable` given its id.
+    pub(super) fn variable_mut(&mut self, id: ir::VarId) -> &mut ir::Variable {
+        &mut self.variables[id]
     }
 
     /// Adds a variable to the function. Also register its definition into the relevant instruction
@@ -405,6 +411,37 @@ impl<'a, L> Function<'a, L> {
             self.dim_mut(dim).register_dim_mapping(&mapping);
         }
         mapping
+    }
+
+    /// Registers that `var` is used by `stmt`.
+    pub(super) fn register_var_use(
+        &mut self,
+        var: ir::VarId,
+        mut stmt: ir::statement::IdOrMut<'a, '_, L>,
+    ) {
+        stmt.get_statement(self).register_used_var(var);
+        let pred = {
+            let var = self.variable_mut(var);
+            var.add_use(stmt.id());
+            var.def().origin()
+        };
+        if let Some(var) = pred {
+            self.register_var_use(var, stmt);
+        }
+    }
+
+    /// Sets the loop-carried dependency of a `fby` variable.
+    pub fn set_loop_carried_variable(
+        &mut self,
+        fby: ir::VarId,
+        loop_carried: ir::VarId,
+    ) -> Result<(), ir::Error> {
+        let mut fby = unwrap!(self.variables.remove(fby));
+        fby.set_loop_carried_variable(loop_carried);
+        fby.def().check(self)?;
+        fby.register(self);
+        self.variables.set_lazy(fby.id(), fby);
+        Ok(())
     }
 
     /// Returns a layout dimension given its ID.

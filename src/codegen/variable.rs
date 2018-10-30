@@ -3,6 +3,7 @@ use codegen;
 use indexmap::IndexMap;
 use ir;
 use search_space::*;
+use std;
 use utils::*;
 
 /// Wraps an `ir::Variable` to expose specified decisions.
@@ -41,6 +42,7 @@ impl<'a> Variable<'a> {
 }
 
 /// Indicates how a variable aliases with another.
+#[derive(Debug)]
 pub struct Alias {
     other_variable: ir::VarId,
     dim_mapping: HashMap<ir::DimId, Option<ir::DimId>>,
@@ -70,14 +72,12 @@ impl Alias {
     }
 
     /// Creates a new alias that takes point-to-point the values of another variable.
-    fn new_dim_map(
-        other_variable: ir::VarId,
-        mapping_ids: &[ir::DimMappingId],
-        fun: &ir::Function,
-    ) -> Self {
-        let (dim_mapping, reverse_mapping) = mapping_ids
-            .iter()
-            .map(|&id| fun.dim_mapping(id).dims())
+    fn new_dim_map<IT>(other_variable: ir::VarId, dim_mapping: IT) -> Self
+    where
+        IT: IntoIterator<Item = [ir::DimId; 2]>,
+    {
+        let (dim_mapping, reverse_mapping) = dim_mapping
+            .into_iter()
             .map(|[lhs, rhs]| ((lhs, Some(rhs)), (rhs, lhs)))
             .unzip();
         Alias {
@@ -105,19 +105,40 @@ impl Alias {
 
 /// Generates variables aliases.
 fn generate_aliases(space: &SearchSpace) -> HashMap<ir::VarId, Option<Alias>> {
-    space
+    let fun = space.ir_instance();
+    let mut aliases: HashMap<_, _> = space
         .ir_instance()
         .variables()
-        .map(|var| {
-            let alias = match var.def() {
-                ir::VarDef::Inst(..) => None,
-                ir::VarDef::Last(alias, dims) => Some(Alias::new_last(*alias, dims)),
-                ir::VarDef::DimMap(alias, mappings) => {
-                    Some(Alias::new_dim_map(*alias, mappings, space.ir_instance()))
-                }
-            };
-            (var.id(), alias)
-        }).collect()
+        .map(|var| (var.id(), None))
+        .collect();
+    for var in space.ir_instance().variables() {
+        let alias = match var.def() {
+            ir::VarDef::Inst(..) => continue,
+            ir::VarDef::Last(alias, dims) => Alias::new_last(*alias, dims),
+            ir::VarDef::DimMap(alias, mappings) => {
+                let mappings = mappings.iter().map(|&id| fun.dim_mapping(id).dims());
+                Alias::new_dim_map(*alias, mappings)
+            }
+            ir::VarDef::Fby { init, prev, .. } => {
+                // Alias with the intruction that produce prev. We known it cannot have
+                // another alias because loop-carried variables can only be used in a
+                // single `fby`.
+                let prev = unwrap!(*prev);
+                let prod_point = fun.variable(prev).def().production_inst(fun);
+                let prod_var = unwrap!(fun.inst(prod_point.inst).result_variable());
+                let mapping = prod_point.dim_map.iter().map(|(&lhs, &rhs)| [rhs, lhs]);
+                let alias = Some(Alias::new_dim_map(var.id(), mapping));
+                let alias_entry = unwrap!(aliases.get_mut(&prod_var));
+                assert!(std::mem::replace(alias_entry, alias).is_none());
+                // Also alias with init.
+                Alias::new_last(*init, &[])
+            }
+        };
+        // Set the alias and check no alias was already set.
+        let alias_entry = unwrap!(aliases.get_mut(&var.id()));
+        assert!(std::mem::replace(alias_entry, Some(alias)).is_none());
+    }
+    aliases
 }
 
 /// Sort variables by aliasing order.
@@ -146,6 +167,7 @@ fn sort_variables<'a>(
 /// alias after the variable they depend on.
 pub fn wrap_variables<'a>(space: &'a SearchSpace) -> Vec<Variable<'a>> {
     let aliases = generate_aliases(space);
+    debug!("aliases: {:?}", aliases);
     // Generate the wrappers and record the dimensions along which variables are
     // instantiated. We use an `IndexMap` so that the insertion order is preserved.
     let mut wrapped_vars = IndexMap::new();
@@ -154,6 +176,10 @@ pub fn wrap_variables<'a>(space: &'a SearchSpace) -> Vec<Variable<'a>> {
             .as_ref()
             .map(|alias| alias.find_instantiation_dims(space))
             .unwrap_or_default();
+        debug!(
+            "instantiating {:?} on {:?} with alias {:?}",
+            variable, instantiation_dims, alias_opt
+        );
         // Register instantiation dimensions in preceeding aliases.
         if let Some(ref alias) = alias_opt {
             for (&iter_dim, &size) in &instantiation_dims {
@@ -211,10 +237,10 @@ mod tests {
         let mut builder = helper::Builder::new(&signature, &device);
         // This code builds the following function:
         // ```pseudocode
-        // for i in 0..16:
-        //   for j in 0..16:
+        // for i in 0..4:
+        //   for j in 0..8:
         //      src[i] = 0;
-        // for i in 0..16:
+        // for i in 0..4:
         //   dst = src[i]
         // ```
         // where all loops are unrolled.

@@ -246,4 +246,8 @@ impl<'a, L> Statement<'a, L> for Instruction<'a, L> {
     fn register_defined_var(&mut self, var: ir::VarId) {
         self.defined_vars.insert(var);
     }
+
+    fn register_used_var(&mut self, var: ir::VarId) {
+        self.used_vars.insert(var);
+    }
 }

@@ -34,6 +34,7 @@ pub struct Dimension<'a, L = ir::LoweringMap> {
     logical_dim: Option<LogicalDimId>,
     mapped_dims: VecSet<DimMappingId>,
     defined_vars: VecSet<ir::VarId>,
+    used_vars: VecSet<ir::VarId>,
     inner_vars: VecSet<ir::VarId>,
     layout_dims: VecSet<ir::LayoutDimId>,
     is_parallelizable: bool,
@@ -53,6 +54,7 @@ impl<'a> Dimension<'a, ()> {
             mapped_dims: self.mapped_dims,
             defined_vars: self.defined_vars,
             inner_vars: self.inner_vars,
+            used_vars: self.used_vars,
             is_parallelizable: self.is_parallelizable,
             layout_dims: self.layout_dims,
             freeze_marker: std::marker::PhantomData,
@@ -81,6 +83,7 @@ impl<'a, L> Dimension<'a, L> {
             mapped_dims: VecSet::default(),
             defined_vars: VecSet::default(),
             inner_vars: VecSet::default(),
+            used_vars: VecSet::default(),
             layout_dims: VecSet::default(),
             is_parallelizable: true,
             freeze_marker: std::marker::PhantomData,
@@ -192,13 +195,6 @@ impl<'a, L> Dimension<'a, L> {
     }
 }
 
-lazy_static! {
-    // This empty set is necessary because `Statement` must return references the the sets of
-    // variables it uses and defines but does not contains any. Thus, instead of creating fields with
-    // empty set we return a reference to this global variable.
-    static ref NO_VALUES: VecSet<ir::VarId> = VecSet::default();
-}
-
 impl<'a, L> Statement<'a, L> for Dimension<'a, L> {
     fn stmt_id(&self) -> ir::StmtId {
         self.id.into()
@@ -213,11 +209,15 @@ impl<'a, L> Statement<'a, L> for Dimension<'a, L> {
     }
 
     fn used_vars(&self) -> &VecSet<ir::VarId> {
-        &NO_VALUES
+        &self.used_vars
     }
 
     fn register_defined_var(&mut self, var: ir::VarId) {
         self.defined_vars.insert(var);
+    }
+
+    fn register_used_var(&mut self, var: ir::VarId) {
+        self.used_vars.insert(var);
     }
 }
 

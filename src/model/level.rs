@@ -26,8 +26,8 @@ pub struct Level {
     /// The latency overhead at the end of each iteration.
     pub end_latency: FastBound,
     /// Dependencies between iterations of the level. A dependency is represented by
-    /// the code point ID where the edge originates and goes to and by its latency.
-    pub back_edges: Vec<(usize, FastBound)>,
+    /// `(start_point, end_point, latency)`.
+    pub back_edges: Vec<(usize, usize, FastBound)>,
     /// The latency of all the iterations of the level.
     pub repeated_latency: Option<FastBound>,
 }
