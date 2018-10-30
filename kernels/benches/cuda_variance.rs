@@ -48,58 +48,60 @@ where
 {
     let mut context = cuda::Context::new(executor);
     info!("Generating {} candidates", NUM_TESTS);
-    let (kernel, signature) = {
-        let mut builder = helper::SignatureBuilder::new(name, &mut context);
-        builder.set_random_fill(true);
-        let kernel = K::build_signature(params.clone(), &mut builder);
-        (kernel, builder.get())
-    };
-    let candidates = kernel.build_body(&signature, &context);
-    let candidates = std::iter::repeat(())
-        .flat_map(|()| {
-            let order = explorer::config::NewNodeOrder::WeightedRandom;
-            let bounds = candidates.iter().map(|c| c.bound.value()).enumerate();
-            let candidate_idx = local_selection::pick_index(order, bounds, CUT);
-            let candidate = candidates[unwrap!(candidate_idx)].clone();
-            local_selection::descend(order, &context, candidate, CUT)
-        }).take(NUM_TESTS)
-        .collect_vec();
-    info!("Evaluating candidates, simulating a GPU-bound exploration");
-    let fast_evals = run_evaluations(&candidates, &context, NUM_FAST_SAMPLES, None);
-    info!("Evaluating candidates, simulating a CPU-bound exploration");
-    let sleep = Some(SLEEP_TIME);
-    let slow_evals = run_evaluations(&candidates, &context, NUM_SLOW_SAMPLES, sleep);
-    info!("Evaluation finished, analysing results");
-    let results = candidates
-        .iter()
-        .zip_eq(slow_evals.into_iter().zip_eq(fast_evals));
-    let mut all_diffs = 0.;
-    let mut all_cpu_gpu_diffs = 0.;
-    for (_, (cpu_bound_times, gpu_bound_times)) in results {
-        let (cpu_med, cpu_diff) = analyse_runtimes(cpu_bound_times, name, "cpu");
-        let (gpu_med, gpu_diff) = analyse_runtimes(gpu_bound_times, name, "gpu");
-        all_diffs += cpu_diff;
-        all_diffs += gpu_diff;
-        let diff_factor = 2. * (cpu_med - gpu_med).abs() / (cpu_med + gpu_med);
-        all_cpu_gpu_diffs += diff_factor;
-        if diff_factor > MAX_RELATIVE_DIFF {
-            println!(
+    K::superman(
+        params,
+        true,
+        &mut context,
+        move |_kernel, candidates, context| {
+            let candidates = std::iter::repeat(())
+                .flat_map(|()| {
+                    let order = explorer::config::NewNodeOrder::WeightedRandom;
+                    let bounds = candidates.iter().map(|c| c.bound.value()).enumerate();
+                    let candidate_idx = local_selection::pick_index(order, bounds, CUT);
+                    let candidate = candidates[unwrap!(candidate_idx)].clone();
+                    local_selection::descend(order, &context, candidate, CUT)
+                }).take(NUM_TESTS)
+                .collect_vec();
+            info!("Evaluating candidates, simulating a GPU-bound exploration");
+            let fast_evals =
+                run_evaluations(&candidates, &context, NUM_FAST_SAMPLES, None);
+            info!("Evaluating candidates, simulating a CPU-bound exploration");
+            let sleep = Some(SLEEP_TIME);
+            let slow_evals =
+                run_evaluations(&candidates, &context, NUM_SLOW_SAMPLES, sleep);
+            info!("Evaluation finished, analysing results");
+            let results = candidates
+                .iter()
+                .zip_eq(slow_evals.into_iter().zip_eq(fast_evals));
+            let mut all_diffs = 0.;
+            let mut all_cpu_gpu_diffs = 0.;
+            for (_, (cpu_bound_times, gpu_bound_times)) in results {
+                let (cpu_med, cpu_diff) = analyse_runtimes(cpu_bound_times, name, "cpu");
+                let (gpu_med, gpu_diff) = analyse_runtimes(gpu_bound_times, name, "gpu");
+                all_diffs += cpu_diff;
+                all_diffs += gpu_diff;
+                let diff_factor = 2. * (cpu_med - gpu_med).abs() / (cpu_med + gpu_med);
+                all_cpu_gpu_diffs += diff_factor;
+                if diff_factor > MAX_RELATIVE_DIFF {
+                    println!(
                 "annormal difference between cpu-bound {:.2e} and gpu-bound {:.2e} \
                  evaluations ({:.2e}x) in {}",
                 cpu_med, gpu_med, diff_factor, name
             )
-        }
-    }
-    let diff = all_diffs / (2 * NUM_TESTS) as f64;
-    let cpu_gpu_diff = all_cpu_gpu_diffs / NUM_TESTS as f64;
-    println!(
-        "average delta between the fastest and slowest evaluation: {:.2e}x",
-        diff
-    );
-    println!(
-        "average delta cpu-bound and gpu-bound evaluations: {:.2e}x",
-        cpu_gpu_diff
-    );
+                }
+            }
+            let diff = all_diffs / (2 * NUM_TESTS) as f64;
+            let cpu_gpu_diff = all_cpu_gpu_diffs / NUM_TESTS as f64;
+            println!(
+                "average delta between the fastest and slowest evaluation: {:.2e}x",
+                diff
+            );
+            println!(
+                "average delta cpu-bound and gpu-bound evaluations: {:.2e}x",
+                cpu_gpu_diff
+            );
+        },
+    )
 }
 
 /// Analyses the regularity of execution times and returns the median and the relative

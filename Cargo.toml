@@ -70,7 +70,6 @@ pbr = "1.0.0"
 prctl = "1.0.0"
 prettytable-rs = "0.6.7"
 rand = "0.5.5"
-rayon = "1.0.1"
 regex = "0.2.10"
 rpds = "0.5.0"
 serde = "1.0"
@@ -109,4 +108,5 @@ members = [
     "telamon-utils",
     "telamon-gen/cc_tests",
     "telamon-capi",
+    "telamon-cli",
 ]

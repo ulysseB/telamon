@@ -37,7 +37,7 @@ fn build_candidate<'a>(
 
 /// Creates a `DimSize`. If the instantiate flag is true, it uses a constant size,
 /// otherwise it creates a parameter with the given name.
-fn create_size<'a, AM>(
+fn create_size<'a, AM: ?Sized>(
     value: i32,
     name: &'a str,
     is_generic: bool,

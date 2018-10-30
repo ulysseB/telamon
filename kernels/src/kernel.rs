@@ -6,7 +6,8 @@ use statistics;
 use std;
 use std::sync::{atomic, Mutex};
 use telamon::explorer::{local_selection, Candidate};
-use telamon::helper::SignatureBuilder;
+use telamon::helper::signature;
+use telamon::ir::Signature;
 use telamon::model::Bound;
 use telamon::{codegen, device, explorer, ir};
 use utils::*;
@@ -18,12 +19,63 @@ const CUT: f64 = 2e8f64;
 //const MAX_DEADEND_RATIO: usize = 20;
 const MAX_DEADEND_RATIO: f32 = 0.95;
 
+pub trait KernelChecker {
+    /// The values to expect as output.
+    type ExpectedOutput;
+
+    /// Computes the expected output.
+    fn get_expected_output(&self, &dyn device::Context) -> Self::ExpectedOutput;
+
+    /// Ensures the generated code performs the correct operation.
+    fn check_result(
+        &self,
+        expected: &Self::ExpectedOutput,
+        context: &dyn device::Context,
+    ) -> Result<(), String>;
+}
+
+pub trait SignatureBuilder<'a, AM: ?Sized + 'a>
+where
+    AM: device::ArgMap + device::Context,
+{
+    type Signature: BodyBuilder<'a, AM>;
+
+    fn build_signature(&self, builder: &mut signature::Builder<AM>) -> Self::Signature;
+}
+
+pub trait BodyBuilder<'a, AM: ?Sized + 'a>
+where
+    AM: device::ArgMap + device::Context,
+{
+    fn build_body<'b>(
+        &self,
+        signature: &'b ir::Signature,
+        ctx: &'b AM,
+    ) -> Vec<Candidate<'b>>;
+}
+
+pub struct SignedKernel<K: ?Sized, C> {
+    context: C,
+    signature: Signature,
+    kernel: K,
+}
+
+use std::ops::Deref;
+
+impl<'a, AM: Deref, K: Kernel<'a>> SignedKernel<K, AM>
+where
+    AM::Target: device::Context + Sized,
+{
+    fn get_candidates(&self) -> Vec<Candidate<'_>> {
+        self.kernel
+            .build_body(&self.signature, self.context.deref())
+    }
+}
+
 /// A kernel that can be compiled, benchmarked and used for correctness tests.
 pub trait Kernel<'a>: Sized {
     /// The input parameters of the kernel.
     type Parameters: Clone;
-    /// The values to expect as output.
-    type ExpectedOutput;
 
     /// The name of the function computed by the kernel.
     fn name() -> &'static str;
@@ -31,12 +83,12 @@ pub trait Kernel<'a>: Sized {
     /// Builds the signature of the kernel in the builder and returns an object that
     /// stores enough information to later build the kernel body and check its result.
     /// The `is_generic` flag indicates if th sizes should be instantiated.
-    fn build_signature<AM>(
+    fn build_signature<AM: ?Sized + 'a>(
         parameters: Self::Parameters,
-        builder: &mut SignatureBuilder<AM>,
+        builder: &mut signature::Builder<AM>,
     ) -> Self
     where
-        AM: device::ArgMap + device::Context + 'a;
+        AM: device::ArgMap + device::Context;
 
     /// Builder the kernel body in the given builder. This builder should be based on the
     /// signature created by `build_signature`.
@@ -46,66 +98,51 @@ pub trait Kernel<'a>: Sized {
         ctx: &'b device::Context,
     ) -> Vec<Candidate<'b>>;
 
-    /// Computes the expected output.
-    fn get_expected_output(&self, &device::Context) -> Self::ExpectedOutput;
-
-    /// Ensures the generated code performs the correct operation.
-    fn check_result(
-        &self,
-        expected: &Self::ExpectedOutput,
-        context: &device::Context,
-    ) -> Result<(), String>;
-
     /// Generates, executes and tests the output of candidates for the kernel.
     fn test_correctness<AM>(params: Self::Parameters, num_tests: usize, context: &mut AM)
     where
         AM: device::ArgMap + device::Context + 'a,
+        Self: KernelChecker,
     {
-        let kernel;
-        let signature = {
-            let mut builder = SignatureBuilder::new(Self::name(), context);
-            builder.set_random_fill(true);
-            kernel = Self::build_signature(params, &mut builder);
-            builder.get()
-        };
-        let expected_output = kernel.get_expected_output(context);
-        let candidates = kernel.build_body(&signature, context);
-        let mut num_deadends = 0;
-        let mut num_runs = 0;
-        while num_runs < num_tests {
-            let order = explorer::config::NewNodeOrder::WeightedRandom;
-            let ordering = explorer::config::ChoiceOrdering::default();
-            let bounds = candidates.iter().map(|c| c.bound.value()).enumerate();
-            let candidate_idx = local_selection::pick_index(order, bounds, CUT);
-            let candidate = candidates[unwrap!(candidate_idx)].clone();
-            let leaf =
-                local_selection::descend(&ordering, order, context, candidate, CUT);
-            if let Some(leaf) = leaf {
-                let device_fn = codegen::Function::build(&leaf.space);
-                unwrap!(
-                    context.evaluate(&device_fn, device::EvalMode::FindBest),
-                    "evaluation failed for kernel {}, with actions {:?}",
-                    Self::name(),
-                    leaf.actions
-                );
-                if let Err(err) = kernel.check_result(&expected_output, context) {
-                    panic!(
-                        "incorrect output for kernel {}, with actions {:?}: {}",
+        Self::superman(params, true, context, move |kernel, candidates, context| {
+            let expected_output = kernel.get_expected_output(context);
+            let mut num_deadends = 0;
+            let mut num_runs = 0;
+            while num_runs < num_tests {
+                let order = explorer::config::NewNodeOrder::WeightedRandom;
+                let ordering = explorer::config::ChoiceOrdering::default();
+                let bounds = candidates.iter().map(|c| c.bound.value()).enumerate();
+                let candidate_idx = local_selection::pick_index(order, bounds, CUT);
+                let candidate = candidates[unwrap!(candidate_idx)].clone();
+                let leaf =
+                    local_selection::descend(&ordering, order, context, candidate, CUT);
+                if let Some(leaf) = leaf {
+                    let device_fn = codegen::Function::build(&leaf.space);
+                    unwrap!(
+                        context.evaluate(&device_fn, device::EvalMode::FindBest),
+                        "evaluation failed for kernel {}, with actions {:?}",
                         Self::name(),
-                        leaf.actions,
-                        err
-                    )
-                }
-                num_runs += 1;
-            } else {
-                num_deadends += 1;
-                if num_deadends as f32 / ((1 + num_deadends + num_runs) as f32)
-                    >= MAX_DEADEND_RATIO
-                {
-                    panic!("too many dead-ends for kernel {}, {} deadends for {} successful runs", Self::name(), num_deadends, num_runs)
+                        leaf.actions
+                    );
+                    if let Err(err) = kernel.check_result(&expected_output, context) {
+                        panic!(
+                            "incorrect output for kernel {}, with actions {:?}: {}",
+                            Self::name(),
+                            leaf.actions,
+                            err
+                        )
+                    }
+                    num_runs += 1;
+                } else {
+                    num_deadends += 1;
+                    if num_deadends as f32 / ((1 + num_deadends + num_runs) as f32)
+                        >= MAX_DEADEND_RATIO
+                    {
+                        panic!("too many dead-ends for kernel {}, {} deadends for {} successful runs", Self::name(), num_deadends, num_runs)
+                    }
                 }
             }
-        }
+        })
     }
 
     /// Tests the correctness of the bound of kernels and returns the list of tested leafs
@@ -119,80 +156,106 @@ pub trait Kernel<'a>: Sized {
     where
         AM: device::ArgMap + device::Context + 'a,
     {
-        Self::with_candidates(params, random_fill, context, move |candidates, context| {
-            let leaves = Mutex::new(Vec::new());
-            let num_tested = atomic::AtomicUsize::new(0);
-            context.async_eval(
-                num_cpus::get(),
-                device::EvalMode::TestBound,
-                &|evaluator| loop {
-                    if num_tested.fetch_add(1, atomic::Ordering::SeqCst) >= num_tests {
-                        if num_tested.fetch_sub(1, atomic::Ordering::SeqCst) > num_tests {
-                            break;
+        Self::superman(
+            params,
+            random_fill,
+            context,
+            move |_kernel, candidates, context| {
+                let leaves = Mutex::new(Vec::new());
+                let num_tested = atomic::AtomicUsize::new(0);
+                context.async_eval(
+                    num_cpus::get(),
+                    device::EvalMode::TestBound,
+                    &|evaluator| loop {
+                        if num_tested.fetch_add(1, atomic::Ordering::SeqCst) >= num_tests
+                        {
+                            if num_tested.fetch_sub(1, atomic::Ordering::SeqCst)
+                                > num_tests
+                            {
+                                break;
+                            }
                         }
-                    }
-                    if let Some((leaf, bounds)) =
-                        descend_check_bounds(&candidates, context)
-                    {
-                        let leaves = &leaves;
-                        evaluator.add_kernel(
-                            leaf,
-                            (move |leaf: Candidate, runtime: f64| {
-                                let bound = leaf.bound.clone();
-                                let mut leaves = unwrap!(leaves.lock());
-                                let mut actions =
-                                    leaf.actions.iter().cloned().collect_vec();
-                                actions.reverse();
-                                for (idx, partial_bound) in bounds.iter().enumerate() {
-                                    assert!(
-                                        partial_bound.value() <= bound.value() * 1.01,
-                                        "invalid inner bound: {} < {}, kernel {}, \
-                                         actions {:?} then {:?}",
-                                        partial_bound,
-                                        bound,
-                                        Self::name(),
-                                        &actions[..idx],
-                                        &actions[idx..]
+                        if let Some((leaf, bounds)) =
+                            descend_check_bounds(&candidates, context)
+                        {
+                            let leaves = &leaves;
+                            evaluator.add_kernel(
+                                leaf,
+                                (move |leaf: Candidate, runtime: f64| {
+                                    let bound = leaf.bound.clone();
+                                    let mut leaves = unwrap!(leaves.lock());
+                                    let mut actions =
+                                        leaf.actions.iter().cloned().collect_vec();
+                                    actions.reverse();
+                                    for (idx, partial_bound) in bounds.iter().enumerate()
+                                    {
+                                        assert!(
+                                            partial_bound.value() <= bound.value() * 1.01,
+                                            "invalid inner bound: {} < {}, kernel {}, \
+                                             actions {:?} then {:?}",
+                                            partial_bound,
+                                            bound,
+                                            Self::name(),
+                                            &actions[..idx],
+                                            &actions[idx..]
+                                        );
+                                    }
+                                    info!(
+                                        "new evaluation: {:.2e}ns, bound {}",
+                                        runtime, bound
                                     );
-                                }
-                                info!(
-                                    "new evaluation: {:.2e}ns, bound {}",
-                                    runtime, bound
-                                );
-                                leaves.push(BoundSample {
-                                    actions,
-                                    bound,
-                                    runtime,
-                                });
-                            }).into(),
-                        );
-                    } else {
-                        num_tested.fetch_sub(1, atomic::Ordering::SeqCst);
-                    }
-                },
-            );
-            unwrap!(leaves.into_inner())
-        })
+                                    leaves.push(BoundSample {
+                                        actions,
+                                        bound,
+                                        runtime,
+                                    });
+                                }).into(),
+                            );
+                        } else {
+                            num_tested.fetch_sub(1, atomic::Ordering::SeqCst);
+                        }
+                    },
+                );
+                unwrap!(leaves.into_inner())
+            },
+        )
     }
 
-    fn with_candidates<AM, T>(
+    fn koi<AM>(
         params: Self::Parameters,
         random_fill: bool,
         context: &mut AM,
-        f: impl for<'b> FnOnce(Vec<Candidate<'b>>, &AM) -> T,
+    ) -> SignedKernel<Self, &AM>
+    where
+        AM: device::ArgMap + device::Context + 'a,
+    {
+        let (kernel, signature);
+        {
+            let mut builder = signature::Builder::new(Self::name(), context);
+            builder.set_random_fill(random_fill);
+            kernel = Self::build_signature(params, &mut builder);
+            signature = builder.get();
+        }
+
+        SignedKernel {
+            signature,
+            context,
+            kernel,
+        }
+    }
+
+    fn superman<AM, T>(
+        params: Self::Parameters,
+        random_fill: bool,
+        context: &mut AM,
+        body: impl FnOnce(&Self, Vec<Candidate<'_>>, &AM) -> T,
     ) -> T
     where
         AM: device::ArgMap + device::Context + 'a,
     {
-        let kernel;
-        let signature = {
-            let mut builder = SignatureBuilder::new(Self::name(), context);
-            builder.set_random_fill(random_fill);
-            kernel = Self::build_signature(params, &mut builder);
-            builder.get()
-        };
-        let candidates = kernel.build_body(&signature, context);
-        f(candidates, context)
+        let kernel = Self::koi(params, random_fill, context);
+        let candidates = kernel.get_candidates();
+        body(&kernel.kernel, candidates, &kernel.context)
     }
 
     /// Runs the search and benchmarks the resulting candidate.
@@ -206,11 +269,11 @@ pub trait Kernel<'a>: Sized {
     where
         AM: device::ArgMap + device::Context + 'a,
     {
-        Self::with_candidates(
+        Self::superman(
             params,
             random_fill,
             context,
-            move |search_space, context| {
+            move |_kernel, search_space, context| {
                 let best = unwrap!(
                     explorer::find_best_ex(config, context, search_space),
                     "no candidates found for kernel {}",
@@ -232,21 +295,29 @@ pub trait Kernel<'a>: Sized {
     where
         AM: device::ArgMap + device::Context + 'a,
     {
-        Self::with_candidates(params, false, context, move |candidates, context| {
-            let num_deadends = (0..num_samples)
-                .into_par_iter()
-                .filter(|_| {
-                    let order = explorer::config::NewNodeOrder::WeightedRandom;
-                    let ordering = explorer::config::ChoiceOrdering::default();
-                    let inf = std::f64::INFINITY;
-                    let bounds = candidates.iter().map(|c| c.bound.value()).enumerate();
-                    let candidate_idx = local_selection::pick_index(order, bounds, inf);
-                    let candidate = candidates[unwrap!(candidate_idx)].clone();
-                    local_selection::descend(&ordering, order, context, candidate, inf)
-                        .is_none()
-                }).count();
-            num_deadends as f64 / num_samples as f64
-        })
+        Self::superman(
+            params,
+            false,
+            context,
+            move |_kernel, candidates, context| {
+                let num_deadends = (0..num_samples)
+                    .into_par_iter()
+                    .filter(|_| {
+                        let order = explorer::config::NewNodeOrder::WeightedRandom;
+                        let ordering = explorer::config::ChoiceOrdering::default();
+                        let inf = std::f64::INFINITY;
+                        let bounds =
+                            candidates.iter().map(|c| c.bound.value()).enumerate();
+                        let candidate_idx =
+                            local_selection::pick_index(order, bounds, inf);
+                        let candidate = candidates[unwrap!(candidate_idx)].clone();
+                        local_selection::descend(
+                            &ordering, order, context, candidate, inf,
+                        ).is_none()
+                    }).count();
+                num_deadends as f64 / num_samples as f64
+            },
+        )
     }
 }
 

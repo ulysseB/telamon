@@ -1,6 +1,6 @@
 //! Linera algebra kernels.
 use itertools::Itertools;
-use kernel::Kernel;
+use kernel::{self, Kernel, KernelChecker, SignatureBuilder as KernelSignatureBuilder};
 use ndarray::{Array1, Array2, Array3, ArrayD};
 use rand;
 use telamon::explorer::Candidate;
@@ -23,23 +23,22 @@ where
     z: Tensor<'a, S>,
 }
 
-impl<'a, S> Kernel<'a> for Axpy<'a, S>
+impl<'a, S: Scalar> Kernel<'a> for Axpy<'a, S>
 where
     S: Scalar,
 {
     type Parameters = (i32, bool);
-    type ExpectedOutput = ArrayD<S>;
 
     fn name() -> &'static str {
         "axpy"
     }
 
-    fn build_signature<AM>(
+    fn build_signature<AM: ?Sized + 'a>(
         (n, generic): (i32, bool),
         builder: &mut SignatureBuilder<AM>,
     ) -> Self
     where
-        AM: device::ArgMap + device::Context + 'a,
+        AM: device::ArgMap + device::Context,
     {
         let n_size = create_size(n, "n", generic, builder);
         builder.scalar("alpha", S::one());
@@ -66,6 +65,10 @@ where
         mad.store(&self.z, &mut builder);
         vec![build_candidate(builder.get(), ctx)]
     }
+}
+
+impl<'a, S: Scalar> KernelChecker for Axpy<'a, S> {
+    type ExpectedOutput = ArrayD<S>;
 
     fn get_expected_output(&self, context: &device::Context) -> ArrayD<S> {
         self.x.read_to_host(context) + self.y.read_to_host(context)
@@ -110,18 +113,17 @@ where
     S: Scalar,
 {
     type Parameters = (i32, i32, bool);
-    type ExpectedOutput = Array1<S>;
 
     fn name() -> &'static str {
         "mv"
     }
 
-    fn build_signature<AM>(
+    fn build_signature<AM: ?Sized + 'a>(
         (m, n, generic): (i32, i32, bool),
         builder: &mut SignatureBuilder<AM>,
     ) -> Self
     where
-        AM: device::ArgMap + device::Context + 'a,
+        AM: device::ArgMap + device::Context,
     {
         let m_size = create_size(m, "m", generic, builder);
         let n_size = create_size(n, "n", generic, builder);
@@ -159,6 +161,10 @@ where
         builder.action(Action::InstFlag(st_y.inst(), InstFlag::NO_CACHE));
         vec![build_candidate(builder.get(), ctx)]
     }
+}
+
+impl<'a, S: Scalar> KernelChecker for MatVec<'a, S> {
+    type ExpectedOutput = Array1<S>;
 
     fn get_expected_output(&self, context: &device::Context) -> Array1<S> {
         let a_shape = (self.m as usize, self.n as usize);
@@ -203,18 +209,17 @@ pub struct Gesummv<'a, S: Scalar> {
 
 impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
     type Parameters = (i32, i32, bool);
-    type ExpectedOutput = Array1<S>;
 
     fn name() -> &'static str {
         "gesummv"
     }
 
-    fn build_signature<AM>(
+    fn build_signature<AM: ?Sized + 'a>(
         (m, n, generic): (i32, i32, bool),
         builder: &mut SignatureBuilder<AM>,
     ) -> Self
     where
-        AM: device::ArgMap + device::Context + 'a,
+        AM: device::ArgMap + device::Context,
     {
         let m_size = create_size(m, "m", generic, builder);
         let n_size = create_size(n, "n", generic, builder);
@@ -271,6 +276,10 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
         builder.action(Action::InstFlag(st_y.inst(), InstFlag::NO_CACHE));
         vec![build_candidate(builder.get(), ctx)]
     }
+}
+
+impl<'a, S: Scalar> KernelChecker for Gesummv<'a, S> {
+    type ExpectedOutput = Array1<S>;
 
     fn get_expected_output(&self, context: &device::Context) -> Array1<S> {
         let (m, n) = (self.m as usize, self.n as usize);
@@ -303,14 +312,16 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
 
 /// Computes `C = A.B`.
 pub struct MatMul<'a, S: Scalar> {
-    pub params: MatMulP,
+    pub params: MatMulP<S>,
     a: Tensor<'a, S>,
     b: Tensor<'a, S>,
     c: Tensor<'a, S>,
 }
 
+use std::marker::PhantomData;
+
 #[derive(Clone)]
-pub struct MatMulP {
+pub struct MatMulP<S> {
     pub m: i32,
     pub n: i32,
     pub k: i32,
@@ -321,9 +332,10 @@ pub struct MatMulP {
     pub m_tiling: Option<helper::TilingPattern>,
     pub n_tiling: Option<helper::TilingPattern>,
     pub k_tiling: Option<helper::TilingPattern>,
+    pub scalar: PhantomData<S>,
 }
 
-impl MatMulP {
+impl<S: Scalar> MatMulP<S> {
     pub fn new(m: i32, n: i32, k: i32) -> Self {
         MatMulP {
             m,
@@ -336,6 +348,37 @@ impl MatMulP {
             m_tiling: None,
             n_tiling: None,
             k_tiling: None,
+            scalar: PhantomData,
+        }
+    }
+
+    pub fn scalar<T: Scalar>(self) -> MatMulP<T> {
+        let MatMulP {
+            m,
+            n,
+            k,
+            a_stride,
+            transpose_a,
+            transpose_b,
+            generic,
+            m_tiling,
+            n_tiling,
+            k_tiling,
+            scalar: _,
+        } = self;
+
+        MatMulP {
+            m,
+            n,
+            k,
+            a_stride,
+            transpose_a,
+            transpose_b,
+            generic,
+            m_tiling,
+            n_tiling,
+            k_tiling,
+            scalar: PhantomData,
         }
     }
 
@@ -376,17 +419,43 @@ impl MatMulP {
     }
 }
 
+impl<'a, S: Scalar, AM: 'a> kernel::SignatureBuilder<'a, AM> for MatMulP<S>
+where
+    AM: device::ArgMap + device::Context,
+{
+    type Signature = MatMul<'a, S>;
+
+    fn build_signature(&self, builder: &mut SignatureBuilder<AM>) -> Self::Signature {
+        MatMul::build_signature(self.clone(), builder)
+    }
+}
+
+impl<'a, S: Scalar, AM: 'a> kernel::BodyBuilder<'a, AM> for MatMul<'a, S>
+where
+    AM: device::ArgMap + device::Context,
+{
+    fn build_body<'b>(
+        &self,
+        signature: &'b ir::Signature,
+        ctx: &'b AM,
+    ) -> Vec<Candidate<'b>> {
+        <Self as Kernel<'a>>::build_body(self, signature, ctx)
+    }
+}
+
 impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
-    type Parameters = MatMulP;
-    type ExpectedOutput = Array2<S>;
+    type Parameters = MatMulP<S>;
 
     fn name() -> &'static str {
         "matmul"
     }
 
-    fn build_signature<AM>(params: MatMulP, builder: &mut SignatureBuilder<AM>) -> Self
+    fn build_signature<AM: ?Sized + 'a>(
+        params: MatMulP<S>,
+        builder: &mut SignatureBuilder<AM>,
+    ) -> Self
     where
-        AM: device::ArgMap + device::Context + 'a,
+        AM: device::ArgMap + device::Context,
     {
         let m_size = create_size(params.m, "m", params.generic, builder);
         let n_size = create_size(params.n, "n", params.generic, builder);
@@ -476,6 +545,10 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
         assert!(space.apply_decisions(actions).is_ok());*/
         vec![build_candidate(builder.get(), ctx)]
     }
+}
+
+impl<'a, S: Scalar> KernelChecker for MatMul<'a, S> {
+    type ExpectedOutput = Array2<S>;
 
     fn get_expected_output(&self, context: &device::Context) -> Array2<S> {
         let a_shape = (self.params.m as usize, self.params.k as usize);
@@ -571,15 +644,17 @@ impl BatchMMP {
 
 impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
     type Parameters = BatchMMP;
-    type ExpectedOutput = Array3<S>;
 
     fn name() -> &'static str {
         "batch_mm"
     }
 
-    fn build_signature<AM>(params: BatchMMP, builder: &mut SignatureBuilder<AM>) -> Self
+    fn build_signature<AM: ?Sized + 'a>(
+        params: BatchMMP,
+        builder: &mut SignatureBuilder<AM>,
+    ) -> Self
     where
-        AM: device::ArgMap + device::Context + 'a,
+        AM: device::ArgMap + device::Context,
     {
         let m_size = create_size(params.m, "m", params.generic, builder);
         let n_size = create_size(params.n, "n", params.generic, builder);
@@ -650,6 +725,10 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
         builder.order(&st_c.inst(), &acc_dim_k, Order::AFTER);
         vec![build_candidate(builder.get(), ctx)]
     }
+}
+
+impl<'a, S: Scalar> KernelChecker for BatchMM<'a, S> {
+    type ExpectedOutput = Array3<S>;
 
     fn get_expected_output(&self, context: &device::Context) -> Array3<S> {
         let batch = self.params.batch as usize;

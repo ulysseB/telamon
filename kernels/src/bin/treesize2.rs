@@ -1,10 +1,17 @@
 extern crate crossbeam;
+extern crate csv;
 extern crate env_logger;
+extern crate structopt;
 #[macro_use]
 extern crate log;
 extern crate dot;
+extern crate indicatif;
 extern crate rand;
+extern crate rayon;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde_json;
+extern crate serde_yaml;
 extern crate stats;
 
 extern crate telamon;
@@ -14,23 +21,29 @@ extern crate telamon_utils as utils;
 use std::borrow::Borrow;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::iter::FromIterator;
 use std::marker::PhantomData;
 use std::ops::{Deref, Index};
+use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use std::{thread, time};
 
-use rand::distributions::{IndependentSample, Weighted, WeightedChoice};
-use rand::{thread_rng, ThreadRng};
-
-use stats::Commute;
+use indicatif::ProgressBar;
+use rand::distributions::{Weighted, WeightedChoice};
+use rand::prelude::*;
+use rayon::join;
+use structopt::StructOpt;
 
 use telamon::{
-    device::{cuda::Gpu, fake::FakeContext, Context},
-    explorer::{choice, Candidate},
+    device::{cuda::Gpu, fake::FakeContext, ArgMap, Context},
+    explorer::{choice, config, Candidate},
     helper::TilingPattern,
 };
 
-use utils::lazy::Lazy;
+use utils::atomic::AtomicF64;
+use utils::ops::TryDeref;
+use utils::sync::{Lazy, Thunk};
 
 /// Newtype wrapper for probabilities.  This represents a floating
 /// point number in [0, 1].
@@ -47,22 +60,11 @@ impl Probability {
         assert!(0f64 <= p && p <= 1f64, "probability must be in [0, 1]");
         Probability(p)
     }
-
-    /// Converts the probability back to a floating point number.
-    fn into_f64(self) -> f64 {
-        self.0
-    }
 }
 
-impl From<f64> for Probability {
-    fn from(p: f64) -> Probability {
-        Probability::new(p)
-    }
-}
-
-impl Into<f64> for Probability {
-    fn into(self) -> f64 {
-        self.into_f64()
+impl From<Probability> for f64 {
+    fn from(p: Probability) -> f64 {
+        p.0
     }
 }
 
@@ -76,9 +78,33 @@ struct Sampled<T> {
     pub probability: Probability,
 }
 
+trait AsF64 {
+    fn as_f64(&self) -> f64;
+}
+
+impl AsF64 for f64 {
+    fn as_f64(&self) -> f64 {
+        *self
+    }
+}
+
+trait HasData {
+    type Data: AsF64 + Default + Clone;
+
+    fn get_data(&self) -> Self::Data;
+}
+
+impl<'a> HasData for Candidate<'a> {
+    type Data = f64;
+
+    fn get_data(&self) -> Self::Data {
+        self.bound.value()
+    }
+}
+
 trait Environment {
     type Action: Debug + Clone;
-    type State;
+    type State: HasData;
 
     fn list_actions(&self, state: &Self::State) -> Option<Vec<Self::Action>>;
 
@@ -91,6 +117,7 @@ trait Environment {
 
 struct ContextEnvironment<'a, C: Context + 'a> {
     context: &'a C,
+    ordering: choice::ChoiceOrdering,
     invalid_actions_cnt: AtomicUsize,
 }
 
@@ -99,7 +126,7 @@ impl<'a, C: Context + 'a> Environment for ContextEnvironment<'a, C> {
     type State = Candidate<'a>;
 
     fn list_actions(&self, candidate: &Candidate<'a>) -> Option<Vec<choice::ActionEx>> {
-        choice::default_list(&candidate.space).next()
+        choice::list(self.ordering.iter(), &candidate.space).next()
     }
 
     fn apply_action(
@@ -161,6 +188,7 @@ type EdgePolicyData<Spec> = <<Spec as SearchSpec>::TreePolicy as TreePolicy<
 type Evaluation<Spec> = <<Spec as SearchSpec>::Evaluator as Evaluator<
     <Spec as SearchSpec>::Environment,
 >>::Evaluation;
+type NodeData<Spec> = <State<Spec> as HasData>::Data;
 
 #[derive(Clone, Debug)]
 struct CompleteTreeSizeRatioPolicy {
@@ -177,78 +205,23 @@ struct PolicyEvaluator<P, E> {
     environment: E,
 }
 
-trait TryDeref {
-    type Target: ?Sized;
-
-    fn try_deref(&self) -> Option<&Self::Target>;
-}
-
-struct Thunk<T, F: FnOnce() -> T> {
-    lazy: Lazy<T, F>,
-}
-
-impl<T, F: FnOnce() -> T> Thunk<T, F> {
-    fn new(fun: F) -> Self {
-        Thunk {
-            lazy: Lazy::new(Arc::new(fun)),
-        }
-    }
-
-    fn unwrap(thunk: Self) -> T {
-        thunk
-            .lazy
-            .into_inner(|f| Arc::try_unwrap(f).ok().unwrap()())
-    }
-}
-
-struct ThunkRef<'a, T: 'a, F: FnOnce() -> Option<T> + 'a>(&'a Thunk<Option<T>, F>);
-
-impl<'a, T: 'a, F: FnOnce() -> Option<T> + 'a> TryDeref for ThunkRef<'a, T, F> {
-    type Target = T;
-
-    fn try_deref(&self) -> Option<&T> {
-        self.0.try_deref()
-    }
-}
-
-impl<'a, T, F: FnOnce() -> Option<T>> TryDeref for Thunk<Option<T>, F> {
-    type Target = T;
-
-    fn try_deref(&self) -> Option<&T> {
-        self.lazy
-            .force(|f| Arc::try_unwrap(f).ok().unwrap()())
-            .as_ref()
-    }
-}
-
-impl<T> TryDeref for Option<T>
-where
-    T: Deref,
-{
-    type Target = <T as Deref>::Target;
-
-    fn try_deref(&self) -> Option<&Self::Target> {
-        self.as_ref().map(Deref::deref)
-    }
-}
-
 impl<E: Environment, P: TreePolicy<E>> Evaluator<E> for PolicyEvaluator<P, E> {
-    type Evaluation = Option<f64>;
+    type Evaluation = (bool, f64);
 
     fn evaluate(
         &self,
         _state: Arc<E::State>,
         actions: Vec<(E::Action, Option<Arc<E::State>>)>,
         rng: &mut ThreadRng,
-    ) -> Option<f64> {
+    ) -> (bool, f64) {
         if actions.len() == 0 {
             trace!("Terminal node evaluated.");
 
             // Terminal node, always has size 1.
-            return 1f64.into();
+            return (true, 1f64);
         }
 
-        let (mut estimate, mut candidate);
+        let (mut proba, mut candidate);
         {
             let probabilities = self.policy.compute_probabilities(actions.iter().map(
                 |(_, candidate)| candidate.as_ref().map(|candidate| candidate.deref()),
@@ -257,14 +230,14 @@ impl<E: Environment, P: TreePolicy<E>> Evaluator<E> for PolicyEvaluator<P, E> {
             {
                 if let Some(cand) = actions[sampled.value.0].1.as_ref().map(Arc::clone) {
                     candidate = cand;
-                    estimate = sampled.probability.into_f64().recip();
+                    proba = f64::from(sampled.probability);
                 } else {
                     // The selected child was a deadend.
-                    return None;
+                    return (false, f64::from(sampled.probability));
                 }
             } else {
                 // All children were dead
-                return None;
+                return (false, 1f64);
             }
         }
 
@@ -282,7 +255,7 @@ impl<E: Environment, P: TreePolicy<E>> Evaluator<E> for PolicyEvaluator<P, E> {
 
                 let probabilities = self
                     .policy
-                    .compute_probabilities(candidates.iter().map(ThunkRef));
+                    .compute_probabilities(candidates.iter().map(Thunk::as_ref));
                 if let Some(sampled) =
                     self.policy.sample(probabilities.iter().map(Some), rng)
                 {
@@ -291,21 +264,21 @@ impl<E: Environment, P: TreePolicy<E>> Evaluator<E> for PolicyEvaluator<P, E> {
                     ) {
                         Some(c) => {
                             candidate = Arc::new(c);
-                            estimate *= sampled.probability.into_f64().recip();
+                            proba *= f64::from(sampled.probability);
                         }
                         None => {
                             // The sampled subtree was empty; this is a
                             // dead end.
-                            return None;
+                            return (false, proba * f64::from(sampled.probability));
                         }
                     }
                 } else {
                     // All subtrees were empty; this is a dead end.
-                    return None;
+                    return (false, proba);
                 }
             } else {
                 // Terminal node reached.
-                return estimate.into();
+                return (true, proba);
             }
         }
     }
@@ -345,7 +318,7 @@ impl<E: Environment> TreePolicy<E> for UniformPolicy {
         let p = 1f64 / weighted.len() as f64;
 
         Some(Sampled {
-            value: WeightedChoice::new(&mut weighted).ind_sample(rng),
+            value: WeightedChoice::new(&mut weighted).sample(rng),
             probability: Probability(p),
         })
     }
@@ -387,7 +360,7 @@ impl<'a, E: Environment<State = Candidate<'a>>> TreePolicy<E>
             return None;
         }
 
-        let sample = WeightedChoice::new(&mut probas).ind_sample(rng);
+        let sample = WeightedChoice::new(&mut probas).sample(rng);
 
         Some(Sampled {
             probability: Probability::new(sample.probability.0 / total_proba),
@@ -481,32 +454,12 @@ impl<'a, E: Environment<State = Candidate<'a>>> TreePolicy<E>
     }
 }
 
-struct AtomicF64(AtomicUsize);
-
-impl AtomicF64 {
-    pub fn new(val: f64) -> Self {
-        AtomicF64(AtomicUsize::new(val.to_bits() as usize))
-    }
-
-    pub fn load(&self) -> f64 {
-        f64::from_bits(self.0.load(Ordering::Relaxed) as u64)
-    }
-
-    pub fn try_add(&self, val: f64) -> Result<f64, ()> {
-        let cur = self.0.load(Ordering::Relaxed);
-        let new = (f64::from_bits(cur as u64) + val).to_bits() as usize;
-        if self.0.compare_and_swap(cur, new, Ordering::Relaxed) == cur {
-            Ok(f64::from_bits(cur as u64))
-        } else {
-            Err(())
-        }
-    }
-}
-
 /// A node in the tree portion of the search.
 struct Node<Spec: SearchSpec> {
     /// The outgoing edges for that node.
     edges: Edges<Edge<Spec>>,
+
+    data: NodeData<Spec>,
 
     /// Whether this is a terminal node.
     terminal: bool,
@@ -515,6 +468,9 @@ struct Node<Spec: SearchSpec> {
 
     /// The cumulated score value.
     total_estimate: AtomicF64,
+
+    /// The cumulated proba value.  See Weighted Backtrack Estimator.
+    total_proba: AtomicF64,
 
     /// The number of times this node has been visited.  Deadends are
     /// counted as visits.
@@ -527,6 +483,7 @@ struct Node<Spec: SearchSpec> {
 // gviz
 struct NodeInfo {
     estimate: f64,
+    bound: f64,
     num_visits: usize,
     num_deadends: usize,
     truncated: bool,
@@ -557,13 +514,14 @@ impl<Spec: SearchSpec> TreeInfo<Spec> {
             node_infos.push((
                 node as *const _ as usize,
                 NodeInfo {
+                    bound: node.data.as_f64(),
                     terminal: node.terminal,
                     deadend: node.is_dead(),
                     estimate: node.total_estimate.load() / num_visits as f64,
                     truncated: num_visits < min_visits,
                     explored: num_visits > 0,
-                    num_visits: num_visits,
-                    num_deadends: num_deadends,
+                    num_visits,
+                    num_deadends,
                 },
             ));
             /*
@@ -587,6 +545,7 @@ impl<Spec: SearchSpec> TreeInfo<Spec> {
                         node_infos.push((
                             edge as *const _ as usize,
                             NodeInfo {
+                                bound: std::f64::NAN,
                                 terminal: false,
                                 deadend: false,
                                 estimate: std::f64::NAN,
@@ -644,7 +603,7 @@ impl<'a, Spec: SearchSpec> dot::Labeller<'a, Nd<'a>, Ed<'a, Spec>> for TreeInfo<
                 .suffix_line(dot::LabelText::label(format!(
                     "deadends: {}",
                     n.1.num_deadends
-                )))
+                ))).suffix_line(dot::LabelText::label(format!("bound: {:.2e}", n.1.bound)))
         }
     }
 
@@ -685,29 +644,31 @@ impl<'a, Spec: SearchSpec> dot::GraphWalk<'a, Nd<'a>, Ed<'a, Spec>> for TreeInfo
 
 impl<Spec: SearchSpec> Node<Spec> {
     /// Create a new node given its edges.
-    fn new(edges: Vec<Edge<Spec>>) -> Self {
+    fn new(data: NodeData<Spec>, edges: Vec<Edge<Spec>>) -> Self {
         Node {
+            data: data,
             edges: edges.into(),
             terminal: false,
             dead: AtomicBool::new(false),
             total_estimate: AtomicF64::new(0f64),
+            total_proba: AtomicF64::new(0f64),
             num_visits: AtomicUsize::new(0usize),
             num_deadends: AtomicUsize::new(0usize),
         }
     }
 
-    fn terminal() -> Self {
+    fn terminal(data: NodeData<Spec>) -> Self {
         Node {
             terminal: true,
-            ..Self::new(Vec::new())
+            ..Self::new(data, Vec::new())
         }
     }
 
-    fn deadend() -> Self {
+    fn deadend(data: NodeData<Spec>) -> Self {
         Node {
             dead: AtomicBool::new(true),
-            total_estimate: AtomicF64::new(837483748f64),
-            ..Self::new(Vec::new())
+            total_estimate: AtomicF64::new(837_483_748f64),
+            ..Self::new(data, Vec::new())
         }
     }
 
@@ -802,7 +763,7 @@ impl<Spec: SearchSpec> ExpansionResult<Spec> {
 }
 
 struct BackpropResult {
-    depth: u64,
+    path: Vec<usize>,
     estimate: Option<f64>,
 }
 
@@ -815,7 +776,7 @@ struct Tree<Spec: SearchSpec> {
 
 impl<Spec: SearchSpec> Tree<Spec>
 where
-    Spec::Evaluator: Evaluator<Spec::Environment, Evaluation = Option<f64>>,
+    Spec::Evaluator: Evaluator<Spec::Environment, Evaluation = (bool, f64)>,
 {
     fn selection_expansion_steps<'a>(
         &'a self,
@@ -882,9 +843,12 @@ where
         trace!("Starting expansion");
 
         match self.environment.list_actions(state.borrow()) {
-            None => (Node::terminal(), ExpansionResult::terminal(state)),
+            None => (
+                Node::terminal(state.get_data()),
+                ExpansionResult::terminal(state),
+            ),
             Some(actions) => {
-                assert!(actions.len() > 0);
+                assert!(!actions.is_empty());
 
                 let children = actions
                     .into_iter()
@@ -916,7 +880,7 @@ where
                         None => {
                             edges.push(Edge {
                                 action: action.clone(),
-                                dst: Lazy::from_val(Node::deadend()),
+                                dst: Lazy::from_val(Node::deadend(Default::default())),
                                 policy_data: proba,
                             });
 
@@ -925,7 +889,10 @@ where
                     }
                 }
 
-                (Node::new(edges), ExpansionResult::new(state, actions))
+                (
+                    Node::new(state.get_data(), edges),
+                    ExpansionResult::new(state, actions),
+                )
             }
         }
     }
@@ -944,58 +911,56 @@ where
     fn backpropagation_step(
         &self,
         path: TreePath<'_, Spec>,
-        mut estimate: Evaluation<Spec>,
+        estimate: Evaluation<Spec>,
     ) -> BackpropResult {
         trace!("Starting backpropagation");
 
-        let depth = (path.path.len() + 1) as u64;
+        let edgepath = path
+            .path
+            .iter()
+            .map(|(_, edge_sample)| edge_sample.value.0)
+            .collect::<Vec<_>>();
+
+        let (terminal, mut proba) = estimate;
 
         path.leaf.num_visits.fetch_add(1, Ordering::Relaxed);
-        match estimate {
-            None => {
-                path.leaf.num_deadends.fetch_add(1, Ordering::Relaxed);
-            }
-            Some(estimate) => {
-                while path.leaf.total_estimate.try_add(estimate).is_err() {}
-            }
+        while path.leaf.total_proba.try_add(proba).is_err() {}
+        if terminal {
+            while path.leaf.total_estimate.try_add(proba.recip()).is_err() {}
+        } else {
+            path.leaf.num_deadends.fetch_add(1, Ordering::Relaxed);
         }
 
         for (node, edge_sample) in path.path.into_iter().rev() {
             node.num_visits.fetch_add(1, Ordering::Relaxed);
+            proba *= f64::from(edge_sample.probability);
+            while node.total_proba.try_add(proba).is_err() {}
 
-            match estimate {
-                None => {
-                    node.num_deadends.fetch_add(1, Ordering::Relaxed);
-                }
-                Some(ref mut estimate) => {
-                    *estimate *= edge_sample.probability.into_f64().recip();
-
-                    while node.total_estimate.try_add(*estimate).is_err() {}
-                }
+            if terminal {
+                while node.total_estimate.try_add(proba.recip()).is_err() {}
+            } else {
+                node.num_deadends.fetch_add(1, Ordering::Relaxed);
             }
         }
 
-        BackpropResult { depth, estimate }
+        BackpropResult {
+            path: edgepath,
+            estimate: if terminal { Some(proba.recip()) } else { None },
+        }
     }
 
     fn playout(&self, root: &Node<Spec>, rng: &mut ThreadRng) -> Option<BackpropResult> {
-        loop {
-            let (path, expanded) = self.selection_expansion_steps(root, rng);
+        let (path, expanded) = self.selection_expansion_steps(root, rng);
 
-            let result = if let Some(expanded) = expanded {
-                self.simulation_step(expanded, rng)
-            } else {
-                // We reached an already expanded terminal node (which
-                // may be a dead end).
-                if path.leaf.terminal {
-                    Some(1f64)
-                } else {
-                    None
-                }
-            };
+        let result = if let Some(expanded) = expanded {
+            self.simulation_step(expanded, rng)
+        } else if path.leaf.terminal {
+            (true, 1f64)
+        } else {
+            (false, 1f64)
+        };
 
-            return Some(self.backpropagation_step(path, result));
-        }
+        return Some(self.backpropagation_step(path, result));
     }
 }
 
@@ -1019,102 +984,550 @@ impl<'a, C: Context + 'a, P: TreePolicy<ContextEnvironment<'a, C>>> SearchSpec
     type TreePolicy = P;
 }
 
-use kernels::{linalg, Kernel};
+use kernels::{linalg, Kernel, Scalar};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Prefix(Vec<usize>);
+
+impl FromStr for Prefix {
+    type Err = ::std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Prefix, ::std::num::ParseIntError> {
+        Ok(Prefix(
+            s.split_terminator('.')
+                .map(str::parse)
+                .collect::<Result<Vec<_>, _>>()?,
+        ))
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ExactChoice(ExactChoiceImpl);
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum ExactChoiceImpl {
+    Auto,
+    Always,
+    Never,
+    Cached(usize),
+}
+
+impl Default for ExactChoice {
+    fn default() -> ExactChoice {
+        ExactChoice(ExactChoiceImpl::Auto)
+    }
+}
+
+impl ExactChoice {
+    fn auto() -> ExactChoice {
+        ExactChoice(ExactChoiceImpl::Auto)
+    }
+
+    fn always() -> ExactChoice {
+        ExactChoice(ExactChoiceImpl::Always)
+    }
+
+    fn never() -> ExactChoice {
+        ExactChoice(ExactChoiceImpl::Never)
+    }
+
+    fn cached(value: usize) -> ExactChoice {
+        ExactChoice(ExactChoiceImpl::Cached(value))
+    }
+
+    fn compute(
+        &self,
+        estimate: f64,
+        context: &impl Context,
+        ordering: &choice::ChoiceOrdering,
+        candidates: Vec<Candidate<'_>>,
+    ) -> Option<usize> {
+        match self.0 {
+            ExactChoiceImpl::Never => None,
+            ExactChoiceImpl::Cached(size) => Some(size),
+            ExactChoiceImpl::Auto if estimate > 5e5 => {
+                trace!(
+                    "Estimated size is larger than 5e5; skipping exact size computation."
+                );
+                return None;
+            }
+            ExactChoiceImpl::Auto | ExactChoiceImpl::Always => {
+                let num_leafs = AtomicUsize::new(0);
+                let done = AtomicBool::new(false);
+                crossbeam::scope(|scope| {
+                    scope.spawn(|| {
+                        let bar = ProgressBar::new_spinner();
+                        bar.set_style(
+                            indicatif::ProgressStyle::default_spinner()
+                                .template(concat!("[{elapsed_precise}] {spinner} {pos}")),
+                        );
+
+                        while !done.load(Ordering::Acquire) {
+                            bar.set_position(num_leafs.load(Ordering::Relaxed) as u64);
+                            thread::sleep(time::Duration::from_millis(1_000));
+                        }
+
+                        // Ensure we properly set the final position even if we were done by the
+                        // first time we ran the above loop.
+                        bar.set_position(num_leafs.load(Ordering::Relaxed) as u64);
+                        bar.finish_and_clear();
+                    });
+
+                    exact_count(context, &ordering, candidates, &num_leafs);
+                    done.store(true, Ordering::Release);
+                });
+
+                Some(num_leafs.load(Ordering::Relaxed))
+            }
+        }
+    }
+}
+
+impl FromStr for ExactChoice {
+    type Err = ::std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<ExactChoice, ::std::num::ParseIntError> {
+        match s {
+            "auto" => Ok(ExactChoice::auto()),
+            "always" | "yes" | "on" => Ok(ExactChoice::always()),
+            "never" | "no" | "off" => Ok(ExactChoice::never()),
+            _ => Ok(ExactChoice::cached(str::parse(s)?)),
+        }
+    }
+}
+
+#[derive(StructOpt, Debug, Serialize, Deserialize)]
+#[structopt(name = "treesize2")]
+struct Opt {
+    #[structopt(long = "num-playouts", default_value = "10000")]
+    num_playouts: usize,
+
+    #[structopt(long = "output", short = "o")]
+    output: String,
+
+    #[structopt(long = "prefix", default_value = "",)]
+    prefix: Prefix,
+
+    #[structopt(
+        long = "ordering",
+        default_value = "lower_layout,size,dim_kind,dim_map,mem_space,order,inst_flag"
+    )]
+    ordering: config::ChoiceOrdering,
+
+    #[structopt(long = "exact", default_value = "auto",)]
+    exact: ExactChoice,
+
+    #[structopt(long = "dummy")]
+    #[serde(rename = "dummy")]
+    dummy: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct Record {
+    id: usize,
+    estimate: f64,
+}
+
+fn exact_count<'a>(
+    context: &impl Context,
+    ordering: &choice::ChoiceOrdering,
+    mut candidates: Vec<Candidate<'a>>,
+    num_leafs: &AtomicUsize,
+) {
+    if let Some(candidate) = candidates.pop() {
+        if let Some(choice) = choice::list(ordering.iter(), &candidate.space).next() {
+            // If children is empty, we reached a deadend -- the call to exact_count will return 0.
+            let children = candidate.apply_choice(context, choice);
+            let ((), ()) = join(
+                || exact_count(context, ordering, children, num_leafs),
+                || exact_count(context, ordering, candidates, num_leafs),
+            );
+        } else {
+            // If no choice is aavailable, we reached a leaf.
+            num_leafs.fetch_add(1, Ordering::Relaxed);
+
+            // We still need to count the remaining candidates!
+            exact_count(context, ordering, candidates, num_leafs);
+        }
+    }
+}
+
+trait CandidateBuilder<'a, T, F, C>
+where
+    F: FnOnce(Vec<Candidate<'_>>, &C) -> T,
+    C: ArgMap + Context + 'a,
+{
+    fn with_candidates(&self, context: &mut C, body: F) -> T;
+}
+
+impl<'a, Params, T, F, C> CandidateBuilder<'a, T, F, C> for Params
+where
+    Params: KernelParameters<'a>,
+    F: FnOnce(Vec<Candidate<'_>>, &C) -> T,
+    C: ArgMap + Context + 'a,
+{
+    fn with_candidates(&self, context: &mut C, body: F) -> T {
+        <Params as KernelParameters<'a>>::with_candidates(self, context, body)
+    }
+}
+
+trait KernelParameters<'a> {
+    type Kernel: Kernel<'a>;
+
+    fn as_parameters(&self) -> <Self::Kernel as Kernel<'a>>::Parameters;
+
+    fn with_candidates<T, F, C>(&self, context: &mut C, body: F) -> T
+    where
+        F: FnOnce(Vec<Candidate<'_>>, &C) -> T,
+        C: ArgMap + Context + 'a,
+    {
+        Self::Kernel::superman(
+            self.as_parameters(),
+            true,
+            context,
+            move |_kernel, candidates, context| body(candidates, context),
+        )
+    }
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct AxpyParameters<S> {
+    dim: i32,
+    generic: bool,
+    scalar: PhantomData<fn() -> S>,
+}
+
+impl<S: Scalar> From<(i32, bool)> for AxpyParameters<S> {
+    fn from((dim, generic): (i32, bool)) -> Self {
+        AxpyParameters {
+            dim,
+            generic,
+            scalar: PhantomData,
+        }
+    }
+}
+
+impl<'a, S: Scalar> KernelParameters<'a> for AxpyParameters<S> {
+    type Kernel = linalg::Axpy<'a, S>;
+
+    fn as_parameters(&self) -> (i32, bool) {
+        (self.dim, self.generic)
+    }
+}
+
+#[derive(Clone)]
+pub struct MatMulParameters<S> {
+    params: linalg::MatMulP<S>,
+    scalar: PhantomData<fn() -> S>,
+}
+
+impl<S: Scalar> From<linalg::MatMulP<S>> for MatMulParameters<S> {
+    fn from(params: linalg::MatMulP<S>) -> Self {
+        MatMulParameters {
+            params,
+            scalar: PhantomData,
+        }
+    }
+}
+
+impl<'a, S: Scalar> KernelParameters<'a> for MatMulParameters<S> {
+    type Kernel = linalg::MatMul<'a, S>;
+
+    fn as_parameters(&self) -> linalg::MatMulP<S> {
+        self.params.clone()
+    }
+}
 
 fn main() {
     env_logger::init();
 
+    let opt = Opt::from_args();
+
+    let out_dir = std::path::PathBuf::from(&opt.output);
+
+    // Dummy safeguard
+    let dummy_path = out_dir.join("DUMMY");
+    std::fs::create_dir_all(&out_dir.parent().unwrap())
+        .expect("Error creating parent directory");
+
+    std::fs::create_dir(&out_dir)
+        .or_else(|err| {
+            if err.kind() == std::io::ErrorKind::AlreadyExists {
+                if opt.dummy && dummy_path.exists() {
+                    debug!("Overwriting existing dummy output.");
+
+                    Ok(())
+                } else {
+                    panic!("I will not overwrite non-dummy files.")
+                }
+            } else {
+                Err(err)
+            }
+        }).expect("Error creating directory");
+
+    if opt.dummy {
+        std::fs::write(&dummy_path, b"").expect("Error creating DUMMY file marker");
+    }
+
+    let config_path = out_dir.join("config.yaml");
+    serde_yaml::to_writer(&mut std::fs::File::create(&config_path).unwrap(), &opt)
+        .unwrap();
+
+    let estimates_path = out_dir.join("estimates.csv");
+    let descents_path = out_dir.join("descents.csv");
+    let dot_path = out_dir.join("tree.dot");
+
+    let num_playouts = opt.num_playouts;
+
+    let ordering = choice::ChoiceOrdering::from_config_ref(&opt.ordering);
+
     let proba = CompleteTreeSizeRatioPolicy { epsilon: 0.1f64 };
-    let proba = UniformPolicy {};
-    let num_playouts = 10_000;
+    // let proba = UniformPolicy {};
 
     let gpu: Gpu = serde_json::from_reader(
         &std::fs::File::open("/home/elarnon/.config/telamon/cuda_gpus.json").unwrap(),
     ).unwrap();
 
-    let estimates = linalg::MatMul::<f32>::with_candidates(
-        linalg::MatMulP::new(1024, 1024, 1024)
-            .tile_m(TilingPattern::new_fixed(&[32, 4]))
-            .tile_n(TilingPattern::new_fixed(&[32, 4]))
-            .tile_k(TilingPattern::new_fixed(&[32])),
-        true,
-        &mut FakeContext::new(gpu),
-        move |mut candidates, context| {
+    let params: Box<CandidateBuilder<'_, _, _, _>> = if true {
+        /*
+        Box::new(MatMulParameters::<f32>::from(linalg::MatMulP::new(
+            16, 16, 16,
+        )))*/
+        Box::new(AxpyParameters::<f32>::from((1 << 26, true)))
+    } else {
+        Box::new(MatMulParameters::<f32>::from(
+            linalg::MatMulP::new(1024, 1024, 1024)
+                .tile_m(TilingPattern::new_fixed(&[32, 4]))
+                .tile_n(TilingPattern::new_fixed(&[32, 4]))
+                .tile_k(TilingPattern::new_fixed(&[32])),
+        ))
+    };
+
+    let estimates = params.with_candidates(
+        &mut FakeContext::new(gpu.clone()),
+        move |root_candidates, context| {
+            let candidate = {
+                let mut candidates = root_candidates.clone();
+
+                assert!(candidates.len() == 1);
+                let mut candidate = candidates.pop().unwrap();
+
+                for &index in &opt.prefix.0 {
+                    // We need a local variable here otherwise rust gets confused about lifetimes.
+                    let choice = choice::list(ordering.iter(), &candidate.space).next();
+                    if let Some(mut choice) = choice {
+                        println!(
+                            "[{}] Selecting {:?} from {:?}",
+                            index, choice[index], choice
+                        );
+
+                        if let Ok(child) =
+                            candidate.apply_decision(context, choice.swap_remove(index))
+                        {
+                            candidate = child
+                        } else {
+                            panic!("Invalid decision.");
+                        }
+                    } else {
+                        panic!("No path.");
+                    }
+                }
+                candidate
+            };
+
             let tree = Tree {
                 _spec: TreeSizeEstimation::new(),
                 environment: ContextEnvironment {
-                    context: context,
+                    context,
+                    ordering: choice::ChoiceOrdering::from_config_ref(&opt.ordering),
                     invalid_actions_cnt: AtomicUsize::new(0),
                 },
                 policy: proba.clone(),
                 evaluator: PolicyEvaluator {
                     environment: ContextEnvironment {
-                        context: context,
+                        context,
+                        ordering: choice::ChoiceOrdering::from_config_ref(&opt.ordering),
                         invalid_actions_cnt: AtomicUsize::new(0),
                     },
                     policy: proba,
                 },
             };
 
-            let (mut root, _) = tree.expansion_step(Arc::new(candidates.swap_remove(0)));
+            let (mut root, _) = tree.expansion_step(Arc::new(candidate.clone()));
 
-            // TODO: parallel
-            let depths = Mutex::new(stats::OnlineStats::new());
-            let estimates = Mutex::new(stats::OnlineStats::new());
+            let (estimates, descents) = {
+                let mut all_estimates = (0..8)
+                    .map(|_| Vec::with_capacity(num_playouts))
+                    .collect::<Vec<_>>();
+                let mut all_descents = (0..8)
+                    .map(|_| Vec::with_capacity(num_playouts))
+                    .collect::<Vec<_>>();
+                let playouts_done = AtomicUsize::new(0);
 
-            let playouts_done = AtomicUsize::new(0);
+                crossbeam::scope(|scope| {
+                    for (ix, (estimate_mut, descent_mut)) in all_estimates
+                        .iter_mut()
+                        .zip(all_descents.iter_mut())
+                        .enumerate()
+                    {
+                        scope
+                            .builder()
+                            .name(format!("TlmnSearch #{}", ix))
+                            .spawn(|| {
+                                let rng = &mut thread_rng();
 
-            crossbeam::scope(|scope| {
-                for ix in 0..8 {
-                    scope
-                        .builder()
-                        .name(format!("Telamon - Search Thread #{}", ix))
-                        .spawn(|| {
-                            let rng = &mut thread_rng();
+                                let thread_estimates = estimate_mut;
+                                let thread_descents = descent_mut;
 
-                            let mut thread_depths = stats::OnlineStats::new();
-                            let mut thread_estimates = stats::OnlineStats::new();
+                                loop {
+                                    let playout_id =
+                                        playouts_done.fetch_add(1, Ordering::Relaxed);
+                                    if playout_id >= num_playouts {
+                                        break;
+                                    }
 
-                            while playouts_done.fetch_add(1, Ordering::Relaxed)
-                                < num_playouts
-                            {
-                                if let Some(result) = tree.playout(&root, rng) {
-                                    if let Some(estimate) = result.estimate {
-                                        thread_depths.add(result.depth);
-                                        thread_estimates.add(estimate);
-                                    } else {
-                                        thread_depths.add_null();
-                                        thread_estimates.add_null();
+                                    if let Some(result) = tree.playout(&root, rng) {
+                                        if let Some(estimate) = result.estimate {
+                                            thread_estimates.push(Record {
+                                                id: playout_id,
+                                                estimate,
+                                            });
+                                        } else {
+                                            thread_estimates.push(Record {
+                                                id: playout_id,
+                                                estimate: 0f64,
+                                            });
+                                        }
+
+                                        thread_descents.push(result.path);
                                     }
                                 }
+                            }).unwrap();
+                    }
+
+                    scope
+                        .builder()
+                        .name("TlmnMonitor".to_string())
+                        .spawn(|| {
+                            let bar = ProgressBar::new(num_playouts as u64);
+                            bar.set_style(
+                                indicatif::ProgressStyle::default_bar()
+                                    .template(concat!(
+                                        "[{elapsed_precise}] ",
+                                        "{bar:40.cyan/blue} ",
+                                        "{pos:>7}/{len:<7} ",
+                                        "{wide_msg}",
+                                        "({eta})"
+                                    )).progress_chars(r"##-"),
+                            );
+
+                            loop {
+                                let total_estimate = root.total_estimate.load();
+                                let total_proba = root.total_proba.load();
+                                let num_visits = root.num_visits.load(Ordering::Relaxed);
+                                let num_deadends =
+                                    root.num_deadends.load(Ordering::Relaxed);
+
+                                let playout_id = playouts_done.load(Ordering::Relaxed);
+                                bar.set_position(playout_id as u64);
+                                bar.set_message(&format!(
+                                    "size ~{:.2e} ~{:.2e}(deadends: {})",
+                                    total_estimate / num_visits as f64,
+                                    (num_visits - num_deadends) as f64 / total_proba,
+                                    num_deadends,
+                                ));
+
+                                if playout_id >= num_playouts {
+                                    bar.finish();
+                                    break;
+                                }
+
+                                thread::sleep(time::Duration::from_millis(1_000));
                             }
-
-                            depths.lock().unwrap().merge(thread_depths);
-                            estimates.lock().unwrap().merge(thread_estimates);
                         }).unwrap();
+                });
+
+                let mut estimates = Vec::with_capacity(num_playouts);
+                estimates.extend(
+                    all_estimates
+                        .into_iter()
+                        .flat_map(|thread_estimates| thread_estimates.into_iter()),
+                );
+
+                let mut descents = Vec::with_capacity(num_playouts);
+                descents.extend(
+                    all_descents
+                        .into_iter()
+                        .flat_map(|thread_descents| thread_descents.into_iter()),
+                );
+
+                (estimates, descents)
+            };
+
+            {
+                let mut writer = csv::Writer::from_path(&estimates_path).unwrap();
+                for result in estimates.iter() {
+                    writer.serialize(result).unwrap();
                 }
-            });
+                writer.flush().unwrap();
+            }
 
-            let estimates = estimates.into_inner().unwrap();
-            let depths = depths.into_inner().unwrap();
+            {
+                let mut writer = csv::Writer::from_path(&descents_path).unwrap();
+                writer.write_record(&["Id", "Position", "Action"]).unwrap();
+                for (ix, row) in descents.iter().enumerate() {
+                    for (pos, elt) in row.iter().enumerate() {
+                        writer
+                            .write_record(&[
+                                ix.to_string(),
+                                pos.to_string(),
+                                elt.to_string(),
+                            ]).unwrap();
+                    }
+                }
+                writer.flush().unwrap();
+            }
 
-            println!(
-                "Average depth {:.2e} with stddev {:.2e}",
-                depths.mean(),
-                depths.stddev(),
+            let estimate_stats = stats::OnlineStats::from_iter(
+                estimates
+                    .into_iter()
+                    .map(|Record { estimate, .. }| estimate),
             );
 
             println!(
                 "Estimated {:.2e} with stddev {:.2e}",
-                estimates.mean(),
-                estimates.stddev()
+                estimate_stats.mean(),
+                estimate_stats.stddev(),
             );
 
             let info = TreeInfo::new(&root, num_playouts / 10);
-            let mut f = std::fs::File::create("out.dot").unwrap();
+            let mut f = std::fs::File::create(&dot_path).unwrap();
             dot::render(&info, &mut f).unwrap();
 
+            if let Some(true_size) = opt.exact.compute(
+                estimate_stats.mean(),
+                context,
+                &choice::ChoiceOrdering::from_config_ref(&opt.ordering),
+                vec![candidate.clone()],
+            ) {
+                println!("True size: {} ({:e})", true_size, true_size as f64);
+                println!(
+                    "Error: {:>3.0}%",
+                    (true_size as f64 - estimate_stats.mean()).abs() / true_size as f64
+                        * 100f64
+                );
+            }
+
             // TODO
+            let total_proba = root.total_proba.load();
+            let num_visits = root.num_visits.load(Ordering::Relaxed);
+            let num_deadends = root.num_deadends.load(Ordering::Relaxed);
+            println!(
+                "Other: {:.2e}",
+                (num_visits - num_deadends) as f64 / total_proba,
+            );
             vec![root.total_estimate.load() / ((*root.num_visits.get_mut()) as f64)]
         },
     );

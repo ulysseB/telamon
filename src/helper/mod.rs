@@ -1,7 +1,7 @@
 //! Helper functions to build an IR instance.
 mod builder;
 mod operand;
-mod signature;
+pub mod signature;
 
 pub mod tensor;
 

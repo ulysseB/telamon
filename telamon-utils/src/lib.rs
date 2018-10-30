@@ -4,6 +4,7 @@ extern crate itertools;
 extern crate linked_hash_map;
 extern crate linked_list;
 extern crate num;
+extern crate rand;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -11,12 +12,15 @@ extern crate serde_derive;
 extern crate failure;
 extern crate flate2;
 
+pub mod atomic;
 mod cache;
 mod dag;
 mod iterator;
-pub mod lazy;
 pub mod multimap;
 pub mod ndarray;
+pub mod ops;
+pub mod sampling;
+pub mod sync;
 mod vec_set;
 #[macro_use]
 pub mod unwrap;

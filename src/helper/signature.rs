@@ -7,9 +7,9 @@ use rand::prelude::*;
 use std::sync::Arc;
 
 /// Helper struct to build a `Signature`.
-pub struct Builder<'a, AM>
+pub struct Builder<'a, AM: ?Sized + 'a>
 where
-    AM: device::ArgMap + device::Context + 'a,
+    AM: device::ArgMap + device::Context,
 {
     random_fill: bool,
     rng: rand::XorShiftRng,
@@ -17,9 +17,9 @@ where
     signature: Signature,
 }
 
-impl<'a, AM> Builder<'a, AM>
+impl<'a, AM: ?Sized + 'a> Builder<'a, AM>
 where
-    AM: device::ArgMap + device::Context + 'a,
+    AM: device::ArgMap + device::Context,
 {
     /// Creates a new builder for a function with the given name.
     pub fn new(name: &str, context: &'a mut AM) -> Self {

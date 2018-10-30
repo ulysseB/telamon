@@ -24,7 +24,7 @@ impl<'a> DimSize<'a> {
     }
 
     /// Converts the size into a numerical value for a given context.
-    pub fn eval(&self, context: &Context) -> u32 {
+    pub fn eval<C: Context + ?Sized>(&self, context: &C) -> u32 {
         self.params
             .iter()
             .map(|p| unwrap!(context.param_as_size(p)))
@@ -96,10 +96,13 @@ impl<'a> TensorBuilder<'a> {
     }
 
     /// Builds the `Tensor`.
-    pub fn finish<S, AM>(&self, builder: &mut SignatureBuilder<AM>) -> Tensor<'a, S>
+    pub fn finish<S, AM: ?Sized + 'a>(
+        &self,
+        builder: &mut SignatureBuilder<AM>,
+    ) -> Tensor<'a, S>
     where
         S: ScalarArgument,
-        AM: ArgMap + Context + 'a,
+        AM: ArgMap + Context,
     {
         let size = self
             .storage_dims
