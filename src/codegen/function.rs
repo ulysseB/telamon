@@ -44,11 +44,8 @@ impl<'a> Function<'a> {
             ).collect::<HashSet<_>>();
         let (block_dims, thread_dims, cfg) = cfg::build(space, insts, dims);
         let mem_blocks = register_mem_blocks(space, &block_dims);
-        device_code_args.extend(
-            mem_blocks
-                .iter()
-                .flat_map(|x| x.host_values(space, &block_dims)),
-        );
+        device_code_args
+            .extend(mem_blocks.iter().flat_map(|x| x.host_values(&block_dims)));
         debug!("compiling cfg {:?}", cfg);
         Function {
             cfg,
@@ -242,7 +239,8 @@ fn register_mem_blocks<'a>(
 /// A memory block allocated by the kernel.
 pub struct MemoryRegion<'a> {
     id: ir::MemId,
-    size: codegen::Size<'a>,
+    len: codegen::Size<'a>,
+    elements_type: ir::Type,
     num_private_copies: Option<codegen::Size<'a>>,
     mem_space: MemSpace,
     ptr_type: ir::Type,
@@ -265,10 +263,10 @@ impl<'a> MemoryRegion<'a> {
     ) -> Self {
         let mem_space = space.domain().get_mem_space(block.mem_id());
         assert!(mem_space.is_constrained());
-        let mut size = codegen::Size::new(block.base_size(), vec![], 1);
+        let mut len = codegen::Size::new(block.len(), vec![], 1);
         for &(dim, _) in block.mapped_dims() {
             let ir_size = space.ir_instance().dim(dim).size();
-            size *= &codegen::Size::from_ir(ir_size, space);
+            len *= &codegen::Size::from_ir(ir_size, space);
         }
         let num_private_copies = if block.is_private() && mem_space == MemSpace::GLOBAL {
             num_threads_groups.clone()
@@ -279,7 +277,8 @@ impl<'a> MemoryRegion<'a> {
         let ptr_type = unwrap!(space.ir_instance().device().lower_type(ptr_type, space));
         MemoryRegion {
             id: block.mem_id(),
-            size,
+            len,
+            elements_type: block.elements_type(),
             mem_space,
             num_private_copies,
             ptr_type,
@@ -287,24 +286,23 @@ impl<'a> MemoryRegion<'a> {
     }
 
     /// Returns the value to pass from the host to the device to implement `self`.
-    pub fn host_values(
-        &self,
-        space: &SearchSpace,
-        block_dims: &[Dimension<'a>],
-    ) -> Vec<ParamVal<'a>> {
+    pub fn host_values(&self, block_dims: &[Dimension<'a>]) -> Vec<ParamVal<'a>> {
         let mut out = if self.mem_space == MemSpace::GLOBAL {
-            let t = ir::Type::PtrTo(self.id.into());
-            let t = unwrap!(space.ir_instance().device().lower_type(t, space));
-            vec![ParamVal::GlobalMem(self.id, self.alloc_size(), t)]
+            vec![ParamVal::GlobalMem(
+                self.id,
+                self.alloc_size(),
+                self.ptr_type,
+            )]
         } else {
             vec![]
         };
+        let local_size = self.local_size();
         let size = if self.num_private_copies.is_some() {
             Some(
                 block_dims[1..]
                     .iter()
                     .map(|d| d.size())
-                    .chain(std::iter::once(&self.size))
+                    .chain(Some(&local_size))
                     .flat_map(ParamVal::from_size),
             )
         } else {
@@ -331,23 +329,39 @@ impl<'a> MemoryRegion<'a> {
         }
     }
 
-    /// Generates the size of the memory to allocate.
+    /// Returns the size in bytes of the memory to allocate.
     pub fn alloc_size(&self) -> codegen::Size<'a> {
-        let mut out = self.size.clone();
+        let element_size = unwrap!(self.elements_type.len_byte());
+        let mut out = codegen::Size::new(element_size, vec![], 1);
+        out *= &self.len;
         if let Some(ref s) = self.num_private_copies {
             out *= s
         }
         out
     }
 
-    /// Returns the size of the part of the allocated memory accessible by each thread.
-    pub fn local_size(&self) -> &codegen::Size<'a> {
-        &self.size
+    /// Returns the size of the memory block in number of elements accessible by each
+    /// thread.
+    pub fn local_len(&self) -> &codegen::Size<'a> {
+        &self.len
+    }
+
+    /// Returns the size in bytes of the memory accessible by each threads.
+    pub fn local_size(&self) -> codegen::Size<'a> {
+        let element_size = unwrap!(self.elements_type.len_byte());
+        let mut out = codegen::Size::new(element_size, vec![], 1);
+        out *= &self.len;
+        out
     }
 
     /// Returns the memory space the block is allocated in.
     pub fn mem_space(&self) -> MemSpace {
         self.mem_space
+    }
+
+    /// Indicates the types of the elements of the memory block.
+    pub fn elements_type(&self) -> ir::Type {
+        self.elements_type
     }
 
     /// Returns the type of the pointer to the memory block.
