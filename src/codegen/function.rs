@@ -342,7 +342,7 @@ impl<'a> MemoryRegion<'a> {
         out
     }
 
-    /// Retruns the size of the memory block in number of elements accessible by each
+    /// Returns the size of the memory block in number of elements accessible by each
     /// thread.
     pub fn local_len(&self) -> &codegen::Size<'a> {
         &self.len

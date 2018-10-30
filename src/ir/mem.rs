@@ -59,7 +59,8 @@ impl Block {
         true
     }
 
-    /// Return the base size of the block in bytes.
+    /// Return the base size of the block in bytes. Base size means the size without
+    /// account for `self.mapped_dims`.
     pub fn byte_size(&self) -> u32 {
         self.len * unwrap!(self.elements_type.len_byte())
     }
