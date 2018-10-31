@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["FakeArray","A fake array implementation which doesn't read or write anything."],["FakeContext","A fake context to use when we don't actually care about the evaluation results.  This wraps any device for the performance model, but always return 1 for all evaluation results."]]});
