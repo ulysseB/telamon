@@ -12,7 +12,7 @@ macro_rules! test_cut {
             let _ = env_logger::try_init();
             let executor = cuda::Executor::init();
             let mut context = cuda::Context::new(&executor);
-            <$kernel>::find_cut_depth($params, 1.0e4, &mut context);
+            <$kernel>::find_cut_depth($params, 1.0e2, &mut context);
         }
     };
 }

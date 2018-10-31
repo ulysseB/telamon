@@ -48,6 +48,7 @@ extern crate prctl;
 extern crate prettytable;
 extern crate rand;
 extern crate rpds;
+extern crate rayon;
 extern crate tokio_timer;
 #[macro_use]
 extern crate serde;
