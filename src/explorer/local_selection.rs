@@ -5,7 +5,7 @@ use explorer::choice;
 use explorer::config::{ChoiceOrdering, NewNodeOrder};
 use rand::distributions::{IndependentSample, Weighted, WeightedChoice};
 use rand::{thread_rng, Rng};
-use rayon::join;
+use rayon::prelude::*;
 use std;
 use std::collections::{HashMap, VecDeque};
 use utils::*;
@@ -154,33 +154,32 @@ pub fn first_cut<'a>(
 pub fn parallel_first_cut<'a>(
     ordering: &ChoiceOrdering,
     context: &impl Context,
-    mut candidates: Vec<(usize, Candidate<'a>)>,
+    mut candidates: Vec<Candidate<'a>>,
     cut: f64,
 ) -> Option<usize> {
-    if let Some((depth, candidate)) = candidates.pop() {
-        if cut < candidate.bound.value() {
-            return Some(depth);
-        }
-        if let Some(choice) = choice::list_with_conf(ordering, &candidate.space).next() {
-            // If children is empty, we reached a deadend -- the call to exact_count will return 0.
-            let children = candidate.apply_choice(context, choice).into_iter()
-                .map(|cand| (depth + 1, cand)).collect();
-            let (res1, res2) = join(
-                || parallel_first_cut(ordering, context, candidates, cut),
-                || parallel_first_cut(ordering, context, children, cut),
-            );
-            //let new_cand: Vec<Candidate> = children.iter().flat_map(|candidate| candidate.apply_choice(context, choice)).map(|cand| (depth + 1, cand)).collect();
-            return match (res1, res2) {
-                (None, None) => None,
-                (Some(depth), None) => Some(depth),
-                (None, Some(depth)) => Some(depth),
-                (Some(depth1), Some(depth2)) => Some(std::cmp::min(depth1, depth2)),
-            }
-        } else {
-            // We still need to count the remaining candidates!
+    let mut depth = 0;
+    loop {
+        println!("{} candidates at depth {}", candidates.len(), depth);
+        if candidates.len() == 0 {
             return None;
         }
-    } else {
-        None
+        for cand in candidates.iter() {
+            if cut < cand.bound.value() {
+                return Some(depth);
+            }
+        }
+        candidates = candidates
+            .par_iter()
+            .filter_map(|cand| {
+                if let Some(choice) = choice::list_with_conf(ordering, &cand.space).next()
+                {
+                    Some((cand, choice))
+                } else {
+                    None
+                }
+            }).flat_map(|(candidate, choice)| candidate.apply_choice(context, choice))
+            .map(|cand| cand)
+            .collect();
+        depth += 1;
     }
 }

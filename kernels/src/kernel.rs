@@ -166,24 +166,22 @@ pub trait Kernel<'a>: Sized {
         //let ordering = explorer::config::ChoiceOrdering::default();
         //let ordering = vec![ChoiceGroup::,];
         let ordering = ChoiceOrdering::new(vec![
-            ChoiceGroup::Order,
-            ChoiceGroup::MemSpace,
             ChoiceGroup::DimKind,
             ChoiceGroup::Size,
             ChoiceGroup::LowerLayout,
-            ChoiceGroup::DimMap,
             ChoiceGroup::InstFlag,
+            ChoiceGroup::Order,
+            ChoiceGroup::MemSpace,
+            ChoiceGroup::DimMap,
         ]);
         let candidates = kernel.build_body(&signature, context);
-        for cand in candidates {
-            //let depth_opt = local_selection::first_cut(&ordering, context, cand, cut);
-            let depth_opt = local_selection::parallel_first_cut(&ordering, context, vec![(0, cand)], cut);
-            println!("KERNEL {}", Self::name());
-            if let Some(depth) = depth_opt {
-                println!("Possibility of cut at depth {} for cut {}", depth, cut);
-            } else {
-                println!("cut too low, no suitable candidate found");
-            }
+        let depth_opt =
+            local_selection::parallel_first_cut(&ordering, context, candidates, cut);
+        println!("KERNEL {}", Self::name());
+        if let Some(depth) = depth_opt {
+            println!("Possibility of cut at depth {} for cut {}", depth, cut);
+        } else {
+            println!("cut too low, no suitable candidate found");
         }
     }
 
