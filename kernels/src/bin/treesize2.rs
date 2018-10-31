@@ -10,6 +10,7 @@ extern crate rand;
 extern crate rayon;
 #[macro_use]
 extern crate serde_derive;
+extern crate rpds;
 extern crate serde_json;
 extern crate serde_yaml;
 extern crate stats;
@@ -19,7 +20,7 @@ extern crate telamon_kernels as kernels;
 extern crate telamon_utils as utils;
 
 use std::borrow::Borrow;
-use std::collections::HashMap;
+use std::collections::{hash_map::Entry, BinaryHeap, HashMap};
 use std::fmt::Debug;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
@@ -30,9 +31,10 @@ use std::sync::Arc;
 use std::{thread, time};
 
 use indicatif::ProgressBar;
-use rand::distributions::{Weighted, WeightedChoice};
+use rand::distributions::{Bernoulli, Weighted, WeightedChoice};
 use rand::prelude::*;
 use rayon::join;
+use rpds::List;
 use structopt::StructOpt;
 
 use telamon::{
@@ -121,6 +123,16 @@ struct ContextEnvironment<'a, C: Context + 'a> {
     invalid_actions_cnt: AtomicUsize,
 }
 
+trait Depth {
+    fn depth(&self) -> usize;
+}
+
+impl<'a> Depth for Candidate<'a> {
+    fn depth(&self) -> usize {
+        self.actions.len()
+    }
+}
+
 impl<'a, C: Context + 'a> Environment for ContextEnvironment<'a, C> {
     type Action = choice::ActionEx;
     type State = Candidate<'a>;
@@ -178,7 +190,76 @@ trait SearchSpec: Sized {
     type Environment: Environment;
     type Evaluator: Evaluator<Self::Environment>;
     type TreePolicy: TreePolicy<Self::Environment>;
+
+    fn environment(&self) -> &Self::Environment;
+    fn evaluator(&self) -> &Self::Evaluator;
+    fn policy(&self) -> &Self::TreePolicy;
 }
+
+trait SearchSpecExt: SearchSpec {
+    fn expansion_step(
+        &self,
+        state: Arc<State<Self>>,
+    ) -> (Node<Self>, ExpansionResult<Self>) {
+        trace!("Starting expansion");
+
+        match self.environment().list_actions(state.borrow()) {
+            None => (
+                Node::terminal(state.get_data()),
+                ExpansionResult::terminal(state),
+            ),
+            Some(actions) => {
+                assert!(!actions.is_empty());
+
+                let children = actions
+                    .into_iter()
+                    .map(|action| {
+                        let child =
+                            self.environment().apply_action(state.borrow(), &action);
+                        (action, child)
+                    }).collect::<Vec<_>>();
+
+                let probas = self.policy().compute_probabilities(
+                    children.iter().map(|(_, state)| state.as_ref()),
+                );
+
+                let mut edges = Vec::with_capacity(children.len());
+                let mut actions = Vec::with_capacity(children.len());
+
+                for ((action, child), proba) in children.into_iter().zip(probas) {
+                    match child {
+                        Some(child) => {
+                            let child = Arc::new(child);
+                            edges.push(Edge {
+                                action: action.clone(),
+                                dst: Lazy::new(Arc::clone(&child)),
+                                policy_data: proba,
+                            });
+
+                            actions.push((action, Some(child)))
+                        }
+                        None => {
+                            edges.push(Edge {
+                                action: action.clone(),
+                                dst: Lazy::from_val(Node::deadend(Default::default())),
+                                policy_data: proba,
+                            });
+
+                            actions.push((action, None));
+                        }
+                    }
+                }
+
+                (
+                    Node::new(state.get_data(), edges),
+                    ExpansionResult::new(state, actions),
+                )
+            }
+        }
+    }
+}
+
+impl<Spec: SearchSpec> SearchSpecExt for Spec {}
 
 type Action<Spec> = <<Spec as SearchSpec>::Environment as Environment>::Action;
 type State<Spec> = <<Spec as SearchSpec>::Environment as Environment>::State;
@@ -280,6 +361,113 @@ impl<E: Environment, P: TreePolicy<E>> Evaluator<E> for PolicyEvaluator<P, E> {
                 // Terminal node reached.
                 return (true, proba);
             }
+        }
+    }
+}
+
+struct PartialBacktrackEvaluator<P, E> {
+    policy: P,
+    environment: E,
+}
+
+impl<E: Environment, P: TreePolicy<E>> Evaluator<E> for PartialBacktrackEvaluator<P, E>
+where
+    E::State: Depth,
+{
+    type Evaluation = (bool, f64);
+
+    fn evaluate(
+        &self,
+        state: Arc<E::State>,
+        actions: Vec<(E::Action, Option<Arc<E::State>>)>,
+        rng: &mut ThreadRng,
+    ) -> (bool, f64) {
+        if actions.len() == 0 {
+            trace!("Terminal node evaluated.");
+
+            return (true, 1f64);
+        }
+
+        let probabilities =
+            self.policy
+                .compute_probabilities(actions.iter().map(|(_, candidate)| {
+                    candidate.as_ref().map(|candidate| candidate.deref())
+                }));
+
+        // TODO: capacity
+        let mut worklist = Vec::new();
+        let mut num_terminal = 0;
+        let mut num_dead = 0;
+        let mut estimate = 0f64;
+        let depth = state.depth();
+        let num_samples = if depth > 100 { 2 } else { 1 };
+
+        for sampled in (0..num_samples)
+            .map(|_| self.policy.sample(probabilities.iter().map(Some), rng))
+            .filter_map(|x| x)
+        {
+            let proba = f64::from(sampled.probability);
+
+            if let Some(cand) = actions[sampled.value.0].1.as_ref().map(Arc::clone) {
+                worklist.push((cand, proba, depth + 1));
+            } else {
+                // The selected child was a deadend
+                num_dead += 1;
+            }
+        }
+
+        while let Some((candidate, proba, depth)) = worklist.pop() {
+            let num_samples = if depth > 100 { 2 } else { 1 };
+
+            let choice = self.environment.list_actions(&candidate);
+            if let Some(choice) = choice {
+                let arc = Arc::new(candidate);
+                let mut candidates = choice
+                    .into_iter()
+                    .map(|action| {
+                        let env_ref = &self.environment;
+                        let clone = Arc::clone(&arc);
+                        Some(Thunk::new(move || env_ref.apply_action(&clone, &action)))
+                    }).collect::<Vec<_>>();
+
+                // We can safely unwrap here because we have put only `Some` values in the
+                // candidates vector.
+                let probabilities = self.policy.compute_probabilities(
+                    candidates.iter().map(|x| x.as_ref().unwrap().as_ref()),
+                );
+
+                for sampled in (0..num_samples)
+                    .map(|_| self.policy.sample(probabilities.iter().map(Some), rng))
+                    .filter_map(|x| x)
+                {
+                    // This could fail if we sampled the same value twice.
+                    if let Some(candidate) = candidates[sampled.value.into_usize()].take()
+                    {
+                        let proba = proba * f64::from(sampled.probability);
+
+                        match Thunk::unwrap(candidate) {
+                            Some(candidate) => {
+                                worklist.push((Arc::new(candidate), proba, depth + 1));
+                            }
+                            None => {
+                                // Dead node
+                                num_dead += 1;
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Terminal node reached
+                num_terminal += 1;
+                estimate += proba.recip();
+            }
+        }
+
+        if num_terminal == 0 {
+            (false, 1f64)
+        } else {
+            // Ergh we return the *proba* not the estimate...
+            (true, (num_terminal + num_dead) as f64 / estimate)
         }
     }
 }
@@ -741,6 +929,14 @@ struct TreePath<'a, Spec: SearchSpec + 'a> {
     pub leaf: &'a Node<Spec>,
 }
 
+struct TreePathList<'a, Spec: SearchSpec + 'a> {
+    pub path: List<&'a Node<Spec>>,
+
+    pub leaf: &'a Node<Spec>,
+
+    pub weight: f64,
+}
+
 struct ExpansionResult<Spec: SearchSpec> {
     state: Arc<State<Spec>>,
     actions: Vec<(Action<Spec>, Option<Arc<State<Spec>>>)>,
@@ -768,10 +964,7 @@ struct BackpropResult {
 }
 
 struct Tree<Spec: SearchSpec> {
-    _spec: Spec,
-    policy: Spec::TreePolicy,
-    environment: Spec::Environment,
-    evaluator: Spec::Evaluator,
+    spec: Spec,
 }
 
 impl<Spec: SearchSpec> Tree<Spec>
@@ -797,7 +990,7 @@ where
 
             // We only sample non-dead children, and we let the policy
             // tell us when all our children are dead.
-            let sampled = match self.policy.sample(
+            let sampled = match self.spec.policy().sample(
                 node.edges.iter().map(|edge| {
                     if edge.dst.get().map(|node| node.is_dead()).unwrap_or(false) {
                         None
@@ -821,7 +1014,7 @@ where
 
             let mut expansion_result = None;
             let dst = edge.dst.force(|candidate| {
-                let (node, expansion) = self.expansion_step(candidate);
+                let (node, expansion) = self.spec.expansion_step(candidate);
                 expansion_result = Some(expansion);
                 node
             });
@@ -836,67 +1029,6 @@ where
         }
     }
 
-    fn expansion_step(
-        &self,
-        state: Arc<State<Spec>>,
-    ) -> (Node<Spec>, ExpansionResult<Spec>) {
-        trace!("Starting expansion");
-
-        match self.environment.list_actions(state.borrow()) {
-            None => (
-                Node::terminal(state.get_data()),
-                ExpansionResult::terminal(state),
-            ),
-            Some(actions) => {
-                assert!(!actions.is_empty());
-
-                let children = actions
-                    .into_iter()
-                    .map(|action| {
-                        let child =
-                            self.environment.apply_action(state.borrow(), &action);
-                        (action, child)
-                    }).collect::<Vec<_>>();
-
-                let probas = self.policy.compute_probabilities(
-                    children.iter().map(|(_, state)| state.as_ref()),
-                );
-
-                let mut edges = Vec::with_capacity(children.len());
-                let mut actions = Vec::with_capacity(children.len());
-
-                for ((action, child), proba) in children.into_iter().zip(probas) {
-                    match child {
-                        Some(child) => {
-                            let child = Arc::new(child);
-                            edges.push(Edge {
-                                action: action.clone(),
-                                dst: Lazy::new(Arc::clone(&child)),
-                                policy_data: proba,
-                            });
-
-                            actions.push((action, Some(child)))
-                        }
-                        None => {
-                            edges.push(Edge {
-                                action: action.clone(),
-                                dst: Lazy::from_val(Node::deadend(Default::default())),
-                                policy_data: proba,
-                            });
-
-                            actions.push((action, None));
-                        }
-                    }
-                }
-
-                (
-                    Node::new(state.get_data(), edges),
-                    ExpansionResult::new(state, actions),
-                )
-            }
-        }
-    }
-
     fn simulation_step(
         &self,
         expanded: ExpansionResult<Spec>,
@@ -904,7 +1036,8 @@ where
     ) -> Evaluation<Spec> {
         trace!("Starting simulation");
 
-        self.evaluator
+        self.spec
+            .evaluator()
             .evaluate(expanded.state, expanded.actions, rng)
     }
 
@@ -964,24 +1097,112 @@ where
     }
 }
 
-struct TreeSizeEstimation<'a, C: Context + 'a, P: TreePolicy<ContextEnvironment<'a, C>>>(
-    PhantomData<(&'a (), fn(C, P))>,
-);
+struct Stratified<Spec: SearchSpec> {
+    spec: Spec,
+}
 
-impl<'a, C: Context + 'a, P: TreePolicy<ContextEnvironment<'a, C>>>
-    TreeSizeEstimation<'a, C, P>
-{
-    fn new() -> Self {
-        TreeSizeEstimation(PhantomData)
+impl<Spec: SearchSpec> Stratified<Spec> {
+    fn selection_expansion_steps<'a>(
+        &'a self,
+        root: &'a Node<Spec>,
+        rng: &mut ThreadRng,
+    ) -> Vec<(TreePathList<'a, Spec>, Option<ExpansionResult<Spec>>)> {
+        assert!(root.edges.len() > 0);
+
+        let queue = HashMap::default();
+        let heap = BinaryHeap::default();
+
+        let root_strate = self.strate(root);
+        queue.insert(
+            root_strate.clone(),
+            TreePathList {
+                path: List::new(),
+                leaf: root,
+                weight: 1.,
+            },
+        );
+        heap.push(root_strate);
+
+        let paths = Vec::new();
+
+        while let Some(strate) = heap.pop() {
+            let path = queue.remove(&strate).expect("Missing strate in the queue.");
+
+            // We reached a terminal leaf or deadend
+            if path.leaf.is_dead() || path.leaf.terminal {
+                paths.push((path, None));
+                continue;
+            }
+
+            for edge in path.leaf.edges.iter() {
+                let node;
+                let expanded = {
+                    let mut expanded = None;
+                    node = edge.dst.force(|candidate| {
+                        let (node, expansion) = self.spec.expansion_step(candidate);
+                        expanded = Some(expansion);
+                        node
+                    });
+                    expanded
+                };
+
+                let path = TreePathList {
+                    path: path.path.push_front(path.leaf),
+                    leaf: node,
+                    weight: path.weight,
+                };
+
+                if let Some(expansion) = expanded {
+                    paths.push((path, Some(expansion)));
+                } else {
+                    let strate = self.strate(&node);
+
+                    match queue.entry(strate) {
+                        Entry::Occupied(entry) => {
+                            let path_s = entry.get_mut();
+                            path_s.weight += path.weight;
+
+                            if Bernoulli::new(path.weight / path_s.weight).sample(rng) {
+                                *path_s = path;
+                            }
+                        }
+                        Entry::Vacant(entry) => {
+                            heap.push(entry.key().clone());
+                            entry.insert(path);
+                        }
+                    }
+                }
+            }
+        }
+
+        paths
     }
+}
+
+struct TreeSizeEstimation<'a, C: Context + 'a, P: TreePolicy<ContextEnvironment<'a, C>>> {
+    policy: P,
+    environment: ContextEnvironment<'a, C>,
+    evaluator: PartialBacktrackEvaluator<P, ContextEnvironment<'a, C>>,
 }
 
 impl<'a, C: Context + 'a, P: TreePolicy<ContextEnvironment<'a, C>>> SearchSpec
     for TreeSizeEstimation<'a, C, P>
 {
     type Environment = ContextEnvironment<'a, C>;
-    type Evaluator = PolicyEvaluator<P, ContextEnvironment<'a, C>>;
+    type Evaluator = PartialBacktrackEvaluator<P, ContextEnvironment<'a, C>>;
     type TreePolicy = P;
+
+    fn environment(&self) -> &Self::Environment {
+        &self.environment
+    }
+
+    fn evaluator(&self) -> &Self::Evaluator {
+        &self.evaluator
+    }
+
+    fn policy(&self) -> &Self::TreePolicy {
+        &self.policy
+    }
 }
 
 use kernels::{linalg, Kernel, Scalar};
@@ -1338,30 +1559,35 @@ fn main() {
             };
 
             let tree = Tree {
-                _spec: TreeSizeEstimation::new(),
-                environment: ContextEnvironment {
-                    context,
-                    ordering: choice::ChoiceOrdering::from_config_ref(&opt.ordering),
-                    invalid_actions_cnt: AtomicUsize::new(0),
-                },
-                policy: proba.clone(),
-                evaluator: PolicyEvaluator {
+                spec: TreeSizeEstimation {
                     environment: ContextEnvironment {
                         context,
                         ordering: choice::ChoiceOrdering::from_config_ref(&opt.ordering),
                         invalid_actions_cnt: AtomicUsize::new(0),
                     },
-                    policy: proba,
+                    policy: proba.clone(),
+                    evaluator: PartialBacktrackEvaluator {
+                        // PolicyEvaluator {
+                        environment: ContextEnvironment {
+                            context,
+                            ordering: choice::ChoiceOrdering::from_config_ref(
+                                &opt.ordering,
+                            ),
+                            invalid_actions_cnt: AtomicUsize::new(0),
+                        },
+                        policy: proba,
+                    },
                 },
             };
 
-            let (mut root, _) = tree.expansion_step(Arc::new(candidate.clone()));
+            let (mut root, _) = tree.spec.expansion_step(Arc::new(candidate.clone()));
+            let num_threads = 8;
 
             let (estimates, descents) = {
-                let mut all_estimates = (0..8)
+                let mut all_estimates = (0..num_threads)
                     .map(|_| Vec::with_capacity(num_playouts))
                     .collect::<Vec<_>>();
-                let mut all_descents = (0..8)
+                let mut all_descents = (0..num_threads)
                     .map(|_| Vec::with_capacity(num_playouts))
                     .collect::<Vec<_>>();
                 let playouts_done = AtomicUsize::new(0);
