@@ -52,8 +52,9 @@ It's will install the [rustfmt] if needed and will format any modified rust file
 
 # Pull Request
 
-When doing a pull request, we demand that the message includes, besides a
-description of the changes, a helper to guide the reviewer, so that he can know
-which file to read first. It should look like "main changes happen in file
-foo.rs, the file bar.rs has been heavily modified in order to support them. All
-other files are just adaptation to the new api"
+When making a pull request, please include a short blurb explaining the
+per-file changes.  This acts as a guide on how to read your contribution for
+the reviewer, making the review easier and faster.  It can look like this:
+
+> The main changes happen in foo.rs, and bar.rs has been heavily modified to
+> support them.  All other changes are adaptations to the new API.
