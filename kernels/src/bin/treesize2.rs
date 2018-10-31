@@ -1527,7 +1527,7 @@ fn main() {
     };
 
     let estimates = params.with_candidates(
-        &mut FakeContext::new(gpu.clone()),
+        &mut FakeContext::new(gpu),
         move |root_candidates, context| {
             let candidate = {
                 let mut candidates = root_candidates.clone();
