@@ -286,11 +286,15 @@ impl<'a> Builder<'a> {
     pub fn create_fby_variable<V: ToVariable>(
         &mut self,
         init: V,
-        dims: &[&LogicalDim]
+        dims: &[&LogicalDim],
     ) -> ir::VarId {
         let init = init.to_variable(self);
         let dims = dims.iter().flat_map(|dim| dim.iter()).collect();
-        unwrap!(self.function.add_variable(ir::VarDef::Fby { init, prev: None, dims }))
+        unwrap!(self.function.add_variable(ir::VarDef::Fby {
+            init,
+            prev: None,
+            dims
+        }))
     }
 
     /// Set the loop-carried dependency `loop_carried` of a variable `fby` created with

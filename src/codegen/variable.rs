@@ -176,8 +176,10 @@ pub fn wrap_variables<'a>(space: &'a SearchSpace) -> Vec<Variable<'a>> {
             .as_ref()
             .map(|alias| alias.find_instantiation_dims(space))
             .unwrap_or_default();
-        debug!("instantiating {:?} on {:?} with alias {:?}",
-               variable, instantiation_dims, alias_opt);
+        debug!(
+            "instantiating {:?} on {:?} with alias {:?}",
+            variable, instantiation_dims, alias_opt
+        );
         // Register instantiation dimensions in preceeding aliases.
         if let Some(ref alias) = alias_opt {
             for (&iter_dim, &size) in &instantiation_dims {

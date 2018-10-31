@@ -344,7 +344,7 @@ impl<'a, L> Function<'a, L> {
         mem: ir::MemId,
         dims: &[ir::DimId],
     ) -> (Operand<'a, L>, AccessPattern<'a>) {
-        let base_incr = self.mem_blocks.block(mem).base_size();
+        let base_incr = self.mem_blocks.block(mem).byte_size();
         let var_type = ir::Type::PtrTo(mem);
         let base_size = ir::PartialSize::new(base_incr, vec![]);
         let increments = dims
@@ -419,7 +419,7 @@ impl<'a, L> Function<'a, L> {
     pub(super) fn register_var_use(
         &mut self,
         var: ir::VarId,
-        mut stmt: ir::statement::IdOrMut<'a, '_,  L>,
+        mut stmt: ir::statement::IdOrMut<'a, '_, L>,
     ) {
         stmt.get_statement(self).register_used_var(var);
         let pred = {
@@ -776,7 +776,12 @@ impl<'a> Function<'a> {
         }
         self.insts[st_inst].lower_layout(st_index, st_pattern, VecSet::new(st_layout));
         self.insts[ld_inst].lower_layout(ld_index, ld_pattern, VecSet::new(ld_layout));
-        trace!("lowered layout for {:?} with st={:?} and ld={:?}", id, st_inst, ld_inst);
+        trace!(
+            "lowered layout for {:?} with st={:?} and ld={:?}",
+            id,
+            st_inst,
+            ld_inst
+        );
         layout_dim_ids
     }
 }

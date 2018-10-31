@@ -107,7 +107,9 @@ impl Variable {
     /// Registers the variable in the structures it references in the function.
     pub fn register<L>(&self, fun: &mut ir::Function<L>) {
         // If the variable is not fully built, register will be called again later.
-        if !self.def().is_complete() { return; }
+        if !self.def().is_complete() {
+            return;
+        }
         for &def_point in &self.def_points {
             fun.statement_mut(def_point).register_defined_var(self.id());
         }
@@ -377,10 +379,18 @@ impl VarDef {
     pub fn predecessors(&self) -> VecSet<ir::VarId> {
         match self {
             VarDef::Inst { .. } => VecSet::default(),
-            VarDef::Last(pred, ..) |
-            VarDef::DimMap(pred, ..) |
-            VarDef::Fby { init: pred, prev: None, .. } => VecSet::new(vec![*pred]),
-            VarDef::Fby { init, prev: Some(prev), .. } => VecSet::new(vec![*init, *prev]),
+            VarDef::Last(pred, ..)
+            | VarDef::DimMap(pred, ..)
+            | VarDef::Fby {
+                init: pred,
+                prev: None,
+                ..
+            } => VecSet::new(vec![*pred]),
+            VarDef::Fby {
+                init,
+                prev: Some(prev),
+                ..
+            } => VecSet::new(vec![*init, *prev]),
         }
     }
 

@@ -235,7 +235,7 @@ end
 // TODO(cleanup): use dependent sets to only iterate on necessary pairs.
 // FIXME: remove cubic choice choices
 define half counter mem_size($mem in MemoryRegions):
-  base "$mem.base_size()"
+  base "$mem.byte_size()"
   forall $lhs in StaticDims:
     forall $rhs in StaticDims:
       mul size($lhs) when:
