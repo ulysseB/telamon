@@ -334,9 +334,7 @@ impl<E: Environment, P: TreePolicy<E>> Evaluator<E> for PolicyEvaluator<P, E> {
                         Thunk::new(move || env_ref.apply_action(&clone, &action))
                     }).collect::<Vec<_>>();
 
-                let probabilities = self
-                    .policy
-                    .compute_probabilities(candidates.iter().map(Thunk::as_ref));
+                let probabilities = self.policy.compute_probabilities(candidates.iter());
                 if let Some(sampled) =
                     self.policy.sample(probabilities.iter().map(Some), rng)
                 {
@@ -585,7 +583,7 @@ where
                 // We can safely unwrap here because we have put only `Some` values in the
                 // candidates vector.
                 let probabilities = self.policy.compute_probabilities(
-                    candidates.iter().map(|x| x.as_ref().unwrap().as_ref()),
+                    candidates.iter().map(|x| x.as_ref().unwrap()),
                 );
 
                 for sampled in (0..num_samples)
