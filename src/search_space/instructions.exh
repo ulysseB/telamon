@@ -26,14 +26,13 @@ define enum inst_flag($inst in MemInsts):
   value NO_CACHE:
   /// Use a global cache, coherent between all threads.
   value CACHE_GLOBAL:
-    requires "$fun.device().supports_l2_access()"
+    requires "$fun.device().supported_mem_flags($inst.operator()).contains(InstFlag::CACHE_GLOBAL)"
   /// Use a cache only coherent between threads of the same block.
   value CACHE_SHARED:
-    requires "$fun.device().supports_l1_access()"
+    requires "$fun.device().supported_mem_flags($inst.operator()).contains(InstFlag::CACHE_SHARED)"
   /// Use a read-only cache, not guaranteed to see any read.
   value CACHE_READ_ONLY:
-    requires "$inst.operator().supports_nc_access()"
-    requires "$fun.device().supports_nc_access()"
+    requires "$fun.device().supported_mem_flags($inst.operator()).contains(InstFlag::CACHE_READ_ONLY)"
   /// Ensure coherency between memory accesses.
   alias COHERENT = NO_CACHE | CACHE_GLOBAL:
   /// Ensure coherency within a block between memory accesses.

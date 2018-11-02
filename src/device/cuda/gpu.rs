@@ -448,20 +448,43 @@ impl device::Device for Gpu {
         [1, 4]
     }
 
+    fn has_vector_registers(&self) -> bool {
+        false
+    }
+
     fn shared_mem(&self) -> u32 {
         self.shared_mem_per_block
     }
 
-    fn supports_nc_access(&self) -> bool {
-        self.allow_nc_load
+    fn pointer_type(&self, mem_space: MemSpace) -> ir::Type {
+        match mem_space {
+            MemSpace::GLOBAL => ir::Type::I(self.addr_size),
+            MemSpace::SHARED => ir::Type::I(32),
+            _ => panic!("invalid memory space {:?}", mem_space),
+        }
     }
 
-    fn supports_l1_access(&self) -> bool {
-        self.allow_l1_for_global_mem
-    }
-
-    fn supports_l2_access(&self) -> bool {
-        true
+    // Warning: this assumes only global memory accesses can use caches.
+    fn supported_mem_flags(&self, op: &ir::Operator) -> InstFlag {
+        let mut flags = match op {
+            // Only accesses to external memory blocks can be non-coherent.
+            ir::Operator::Ld(.., pat) if pat.mem_block().is_none() => InstFlag::ALL,
+            ir::Operator::Ld(..)
+            | ir::Operator::St(..)
+            | ir::Operator::TmpLd(..)
+            | ir::Operator::TmpSt(..) => InstFlag::COHERENT,
+            _ => panic!("invalid memory access operator"),
+        };
+        // Remove the `CACHE_READ_ONLY` option if the gpu does not support `ld.nc`.
+        if !self.allow_nc_load {
+            flags.restrict(!InstFlag::CACHE_READ_ONLY);
+        }
+        // Remove the `CACHE_SHARED` option if the GPU does not allow using L1 cache for
+        // global accesses.
+        if !self.allow_l1_for_global_mem {
+            flags.restrict(!InstFlag::CACHE_SHARED);
+        }
+        flags
     }
 
     fn name(&self) -> &str {

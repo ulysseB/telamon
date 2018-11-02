@@ -16,6 +16,8 @@ use xdg;
 /// Error raised will retrieveing the GPU description
 #[derive(Debug, Fail)]
 enum Error {
+    #[fail(display = "could not open the GPU description file: {}", _0)]
+    FileNotFound(std::io::Error),
     #[fail(display = "could not parse GPU description: {}", _0)]
     Parser(serde_json::Error),
     #[fail(display = "found description for the wrong GPU: {}", _0)]
@@ -30,8 +32,9 @@ pub fn get_gpu_desc(executor: &cuda::Executor) -> cuda::Gpu {
         static ref LOCK: std::sync::Mutex<()> = Default::default();
     }
     let lock = unwrap!(LOCK.lock());
-    let gpu = serde_json::from_reader(&unwrap!(std::fs::File::open(&config_path)))
-        .map_err(Error::Parser)
+    let gpu = std::fs::File::open(&config_path)
+        .map_err(Error::FileNotFound)
+        .and_then(|f| serde_json::from_reader(&f).map_err(Error::Parser))
         .and_then(|gpu: cuda::Gpu| {
             let name = executor.device_name();
             if gpu.name == name {

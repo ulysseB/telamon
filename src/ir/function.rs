@@ -1,9 +1,9 @@
 //! Provides a representation of functions.
 use device::Device;
-use ir::mem::Block;
 use ir::{self, Dimension, InstId, Instruction, Operator, Statement, StmtId};
-use ir::{mem, AccessPattern, Operand, SparseVec, Type};
+use ir::{mem, AccessPattern, Operand, SparseVec};
 use itertools::Itertools;
+use search_space::MemSpace;
 use std;
 use utils::*;
 
@@ -13,7 +13,9 @@ pub struct Parameter {
     /// The name of the `Parameter`
     pub name: String,
     /// The type of the `Parameter`.
-    pub t: Type,
+    pub t: ir::Type,
+    /// If the parameter point to an array, indicates the element type.
+    pub elem_t: Option<ir::Type>,
 }
 
 /// Holds the signature of a function.
@@ -23,8 +25,6 @@ pub struct Signature {
     pub name: String,
     /// Arguments of the function.
     pub params: Vec<Parameter>,
-    /// The number of external memory blocks.
-    pub mem_blocks: u32,
 }
 
 impl Signature {
@@ -33,24 +33,25 @@ impl Signature {
         Signature {
             name,
             params: vec![],
-            mem_blocks: 0,
         }
     }
 
     /// Adds a scalar parameter.
     pub fn add_scalar(&mut self, name: String, t: ir::Type) {
-        self.params.push(Parameter { name, t });
+        self.params.push(Parameter {
+            name,
+            t,
+            elem_t: None,
+        });
     }
 
     /// Adds a parameter with the given name and type to the signature.
-    pub fn add_array(&mut self, name: String) -> ir::MemId {
-        let id = ir::MemId::External(self.mem_blocks);
-        self.mem_blocks += 1;
+    pub fn add_array(&mut self, device: &Device, name: String, elem_t: ir::Type) {
         self.params.push(Parameter {
             name,
-            t: ir::Type::PtrTo(id),
+            t: device.pointer_type(MemSpace::GLOBAL),
+            elem_t: Some(elem_t),
         });
-        id
     }
 }
 
@@ -69,7 +70,7 @@ pub struct Function<'a, L = ir::LoweringMap> {
     thread_dims: VecSet<ir::DimId>,
     mem_insts: Vec<ir::InstId>,
     mem_blocks: mem::BlockMap,
-    layouts_to_lower: Vec<ir::mem::InternalId>,
+    layouts_to_lower: Vec<ir::MemId>,
     induction_vars: Vec<ir::InductionVar<'a, L>>,
     logical_dims: Vec<ir::LogicalDim<'a>>,
     dim_mappings: SparseVec<ir::DimMappingId, ir::DimMapping>,
@@ -79,7 +80,6 @@ pub struct Function<'a, L = ir::LoweringMap> {
 impl<'a, L> Function<'a, L> {
     /// Creates a new function.
     pub fn new(signature: &'a Signature, device: &'a Device) -> Self {
-        let mem_blocks = mem::BlockMap::new(signature.mem_blocks);
         Function {
             signature,
             device,
@@ -88,7 +88,7 @@ impl<'a, L> Function<'a, L> {
             dims: SparseVec::new(),
             static_dims: vec![],
             thread_dims: VecSet::default(),
-            mem_blocks,
+            mem_blocks: mem::BlockMap::default(),
             layouts_to_lower: Vec::new(),
             induction_vars: Vec::new(),
             logical_dims: Vec::new(),
@@ -124,15 +124,15 @@ impl<'a, L> Function<'a, L> {
             self.dim_mut(dim).add_iterated(id);
         }
         // Register the memory blocks used.
-        if let Some(mem_id) = inst.operator().mem_used() {
+        if inst.operator().is_mem_access() {
             self.mem_insts.push(id);
+        }
+        if let Some(mem_id) = inst.operator().mem_used() {
             self.mem_blocks.register_use(mem_id, id);
         }
         // Update the usepoint of all variables
-        for ref op in inst.operator().operands() {
-            if let Operand::Variable(val_id, _) = op {
-                self.variables[*val_id].add_use(id.into());
-            }
+        for &var_id in inst.used_vars() {
+            self.variables[var_id].add_use(id.into());
         }
         Ok(inst)
     }
@@ -144,7 +144,7 @@ impl<'a, L> Function<'a, L> {
         def: ir::VarDef,
     ) -> Result<ir::Variable, ir::Error> {
         def.check(self)?;
-        Ok(ir::Variable::new(id, def.t(self), def))
+        Ok(ir::Variable::new(id, def, self))
     }
 
     /// Adds an induction variable.
@@ -189,7 +189,7 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Returns a mutable reference to an instruction given its id.
-    pub fn inst_mut(&mut self, id: InstId) -> &mut Instruction<'a, L> {
+    pub(super) fn inst_mut(&mut self, id: InstId) -> &mut Instruction<'a, L> {
         &mut self.insts[id]
     }
 
@@ -199,8 +199,16 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Returns a mutable reference to a dimension given its ID.
-    fn dim_mut(&mut self, id: ir::DimId) -> &mut Dimension<'a, L> {
+    pub(super) fn dim_mut(&mut self, id: ir::DimId) -> &mut Dimension<'a, L> {
         &mut self.dims[id]
+    }
+
+    /// Returns a mutable reference to a statement given its id.
+    pub(super) fn statement_mut(&mut self, id: ir::StmtId) -> &mut Statement<'a, L> {
+        match id {
+            StmtId::Inst(id) => self.inst_mut(id),
+            StmtId::Dim(id) => self.dim_mut(id),
+        }
     }
 
     /// Returns a `Statement` given its id.
@@ -232,7 +240,7 @@ impl<'a, L> Function<'a, L> {
     pub fn add_variable(&mut self, def: ir::VarDef) -> Result<ir::VarId, ir::Error> {
         let id = ir::VarId(self.variables.len() as u16);
         let var = self.create_variable(id, def)?;
-        var.def().register(var.id(), self);
+        var.register(self);
         self.variables.push(var);
         Ok(id)
     }
@@ -247,21 +255,9 @@ impl<'a, L> Function<'a, L> {
         self.mem_insts.iter().map(move |&id| self.inst(id))
     }
 
-    /// Returns the internal memory blocks.
-    pub fn internal_mem_blocks<'b>(
-        &'b self,
-    ) -> impl Iterator<Item = &'b mem::InternalBlock> {
-        self.mem_blocks.internal_blocks()
-    }
-
     /// Returns a memory block given its id.
     pub fn mem_block(&self, id: ir::MemId) -> &mem::Block {
         self.mem_blocks.block(id)
-    }
-
-    /// Returns an internal memory block given its id.
-    pub fn internal_mem_block(&self, id: mem::InternalId) -> &mem::InternalBlock {
-        self.mem_blocks.internal_block(id)
     }
 
     /// Retrieves an induction variable given its Id.
@@ -314,7 +310,7 @@ impl<'a, L> Function<'a, L> {
     /// Lowers a layout into conventional memory accesses.
     pub(crate) fn lower_layout(
         &mut self,
-        id: mem::InternalId,
+        id: ir::MemId,
         st_dims: Vec<ir::DimId>,
         ld_dims: Vec<ir::DimId>,
     ) where
@@ -325,7 +321,7 @@ impl<'a, L> Function<'a, L> {
         self.mem_blocks.lower_layout(id);
         let (st_index, st_pattern) = self.gen_internal_index(id, &st_dims);
         let (ld_index, ld_pattern) = self.gen_internal_index(id, &ld_dims);
-        for &mem_use in self.mem_blocks.internal_block(id).uses() {
+        for &mem_use in self.mem_blocks.block(id).uses() {
             self.insts[mem_use].lower_layout(
                 ld_index.clone(),
                 ld_pattern.clone(),
@@ -338,10 +334,10 @@ impl<'a, L> Function<'a, L> {
     /// Generates an operand repesenting a pointer to a cell of a memory block.
     fn gen_internal_index(
         &mut self,
-        id: mem::InternalId,
+        id: ir::MemId,
         dims: &[ir::DimId],
     ) -> (Operand<'a, L>, AccessPattern<'a>) {
-        let ty_len = self.mem_blocks.internal_block(id).base_size();
+        let ty_len = self.mem_blocks.block(id).base_size();
         self.gen_index(id.into(), ty_len, Operand::Addr(id), &dims)
     }
 
@@ -365,7 +361,7 @@ impl<'a, L> Function<'a, L> {
                 Some((dim, old_size))
             }).collect_vec();
         let pattern = ir::AccessPattern::Tensor {
-            mem_id: mem,
+            mem_id: Some(mem),
             dims: increments.iter().cloned().collect(),
         };
         let ind_var = unwrap!(ir::InductionVar::new(increments, base_addr));
@@ -375,7 +371,7 @@ impl<'a, L> Function<'a, L> {
     }
 
     /// Returns the list of layouts to lower.
-    pub(crate) fn layouts_to_lower(&self) -> &[ir::mem::InternalId] {
+    pub(crate) fn layouts_to_lower(&self) -> &[ir::MemId] {
         &self.layouts_to_lower
     }
 
@@ -387,6 +383,14 @@ impl<'a, L> Function<'a, L> {
     /// Retrives a dimension mapping given its ID.
     pub fn dim_mapping(&self, id: ir::DimMappingId) -> &ir::DimMapping {
         &self.dim_mappings[id]
+    }
+
+    /// Retrives a mutable reference to a dimension mapping given its ID.
+    pub(super) fn dim_mapping_mut(
+        &mut self,
+        id: ir::DimMappingId,
+    ) -> &mut ir::DimMapping {
+        &mut self.dim_mappings[id]
     }
 
     /// Tries to find a mapping between two dimensions.
@@ -440,7 +444,7 @@ impl<'a> Function<'a, ()> {
     }
 
     /// Allocates a new memory block.
-    pub fn add_mem_block(&mut self, size: u32) -> mem::InternalId {
+    pub fn add_mem_block(&mut self, size: u32) -> ir::MemId {
         self.mem_blocks.alloc_block(size, None)
     }
 
@@ -496,7 +500,7 @@ impl<'a> Function<'a, ()> {
 
     /// Specifies two dimensions must have the same size have can be used for point-to-point
     /// communication.
-    fn map_dimensions(&mut self, dims: [ir::DimId; 2]) -> ir::DimMappingId {
+    pub fn map_dimensions(&mut self, dims: [ir::DimId; 2]) -> ir::DimMappingId {
         self.find_mapping(dims[0], dims[1]).unwrap_or_else(|| {
             let id = ir::DimMappingId(self.dim_mappings.len() as u16);
             let mapping = self.create_mapping(id, dims);
@@ -507,7 +511,7 @@ impl<'a> Function<'a, ()> {
 
     pub(crate) fn freeze(self) -> Function<'a> {
         let mut counter = ir::Counter {
-            next_mem: self.mem_blocks.num_internal_blocks(),
+            next_mem: self.mem_blocks.num_blocks(),
             next_inst: self.insts.len(),
             next_dim: self.dims.len(),
             next_dim_mapping: self.dim_mappings.len() as u16,
@@ -552,7 +556,7 @@ impl<'a> Function<'a, ()> {
         } = counter;
         insts.expand_to(next_inst);
         dims.expand_to(next_dim);
-        mem_blocks.expand_internal_blocks_to(next_mem);
+        mem_blocks.expand_blocks_to(next_mem);
         dim_mappings.expand_to(next_dim_mapping as usize);
 
         Function {

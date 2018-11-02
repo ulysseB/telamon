@@ -1,5 +1,6 @@
 //! Code generation and candidate evaluation for specific targets.
 pub mod cuda;
+pub mod fake;
 #[cfg(feature = "mppa")]
 pub mod mppa;
 pub mod x86;
@@ -13,7 +14,7 @@ pub use self::context::{ArgMap, AsyncCallback, AsyncEvaluator, Context, EvalMode
 use codegen::Function;
 use ir;
 use model::{self, HwPressure, Nesting};
-use search_space::{DimKind, SearchSpace};
+use search_space::*;
 use std::io::Write;
 use utils::*;
 
@@ -31,18 +32,19 @@ pub trait Device: Sync {
     fn max_threads(&self) -> u32;
     /// Returns the maximal unrolling factor.
     fn max_unrolling(&self) -> u32;
+    /// Indicates if the device uses vector registers or has imlicit gathers and scatters
+    /// in vector instructions.
+    fn has_vector_registers(&self) -> bool;
     /// Indicates if the operator can be vectorized along the dimension.
     fn can_vectorize(&self, dim: &ir::Dimension, op: &ir::Operator) -> bool;
     /// Indicates the maximal vectorization factor for the given operator.
     fn max_vectorization(&self, op: &ir::Operator) -> [u32; 2];
     /// Returns the amount of shared memory available for each thread block.
     fn shared_mem(&self) -> u32;
-    /// Indicates if the device supports non-coherent memory accesses.
-    fn supports_nc_access(&self) -> bool;
-    /// Indicates if the device supports L1 for global memory accesses.
-    fn supports_l1_access(&self) -> bool;
-    /// Indicates if the device supports L2 for global memory accesses.
-    fn supports_l2_access(&self) -> bool;
+    /// Indicates the type of the pointer for the given memory space.
+    fn pointer_type(&self, mem_space: MemSpace) -> ir::Type;
+    /// Indicates the memory flags supported by the operator.
+    fn supported_mem_flags(&self, op: &ir::Operator) -> InstFlag;
     /// Returns the name of the device.
     fn name(&self) -> &str;
 

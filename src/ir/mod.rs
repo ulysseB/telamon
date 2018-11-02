@@ -32,7 +32,7 @@ pub use self::operator::{BinOp, Operator, UnaryOp};
 pub use self::size::{PartialSize, Size};
 pub use self::statement::{Statement, StmtId};
 pub use self::types::Type;
-pub use self::variable::{VarDef, VarId, Variable};
+pub use self::variable::{MemoryLevel, VarDef, VarId, Variable};
 
 pub mod mem;
 
@@ -62,7 +62,6 @@ pub struct NewObjs {
     pub static_dims: Vec<DimId>,
     pub statements: Vec<StmtId>,
     pub mem_blocks: Vec<MemId>,
-    pub internal_mem_blocks: Vec<mem::InternalId>,
     pub mem_insts: Vec<InstId>,
     pub iteration_dims: Vec<(InstId, DimId)>,
     pub thread_dims: Vec<DimId>,
@@ -71,9 +70,12 @@ pub struct NewObjs {
     pub tiled_dimensions: Vec<(LogicalDimId, DimId)>,
     pub dim_mappings: Vec<DimMappingId>,
     pub mapped_dims: Vec<(DimMappingId, DimId)>,
+    pub static_mapped_dims: Vec<(DimMappingId, DimId)>,
     pub variables: Vec<VarId>,
     pub use_statements: Vec<(VarId, StmtId)>,
     pub def_statements: Vec<(VarId, StmtId)>,
+    pub var_dims: Vec<(VarId, DimId)>,
+    pub var_mappings: Vec<(VarId, DimMappingId)>,
 }
 
 impl NewObjs {
@@ -117,16 +119,18 @@ impl NewObjs {
     }
 
     /// Registers a new memory block.
-    pub fn add_mem_block(&mut self, id: mem::InternalId) {
+    pub fn add_mem_block(&mut self, id: MemId) {
         self.mem_blocks.push(id.into());
-        self.internal_mem_blocks.push(id);
     }
 
     /// Adds a mapping between dimensions.
-    pub fn add_dim_mapping(&mut self, mapping: &DimMapping) {
+    pub fn add_dim_mapping(&mut self, mapping: &DimMapping, fun: &Function) {
         self.dim_mappings.push(mapping.id());
         for &dim in &mapping.dims() {
             self.mapped_dims.push((mapping.id(), dim));
+            if fun.dim(dim).possible_sizes().is_some() {
+                self.static_mapped_dims.push((mapping.id(), dim));
+            }
         }
     }
 
@@ -136,12 +140,16 @@ impl NewObjs {
             .extend(var.def_points().map(|stmt| (var.id(), stmt)));
         self.use_statements
             .extend(var.use_points().map(|stmt| (var.id(), stmt)));
+        self.var_dims
+            .extend(var.dimensions().iter().map(|&dim| (var.id(), dim)));
+        self.var_mappings
+            .extend(var.def().mapped_dims().map(|id| (var.id(), id)));
     }
 }
 
 /// A point-to-point communication lowered into a store and a load.
 pub struct LoweredDimMap {
-    pub mem: mem::InternalId,
+    pub mem: MemId,
     pub store: InstId,
     pub load: InstId,
     /// Mapping from production dimensions to store dimensions.
@@ -159,7 +167,7 @@ impl LoweredDimMap {
         let mappings = self.st_dims_mapping.iter().chain(&self.ld_dims_mapping);
         for &(mapping, [_, new_dim]) in mappings {
             new_objs.add_dimension(fun.dim(new_dim));
-            new_objs.add_dim_mapping(fun.dim_mapping(mapping));
+            new_objs.add_dim_mapping(fun.dim_mapping(mapping), fun);
         }
     }
 
@@ -285,6 +293,15 @@ where
     }
 }
 
+impl<I, T> Default for SparseVec<I, T>
+where
+    I: Into<usize>,
+{
+    fn default() -> Self {
+        SparseVec::new()
+    }
+}
+
 impl<I, T> IntoIterator for SparseVec<I, T> {
     type Item = Option<T>;
     type IntoIter = <Vec<Option<T>> as IntoIterator>::IntoIter;
@@ -346,8 +363,8 @@ pub struct Counter {
 }
 
 impl Counter {
-    pub fn next_mem(&mut self) -> mem::InternalId {
-        let next = mem::InternalId(self.next_mem as u32);
+    pub fn next_mem(&mut self) -> MemId {
+        let next = MemId(self.next_mem as u32);
         self.next_mem += 1;
         next
     }

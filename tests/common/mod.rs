@@ -10,11 +10,10 @@ use telamon::search_space::SearchSpace;
 use telamon::{codegen, explorer, ir};
 
 /// Returns an empty function base.
-pub fn empty_signature(num_block: u32) -> ir::Signature {
+pub fn empty_signature() -> ir::Signature {
     ir::Signature {
         name: "empty".to_string(),
         params: vec![],
-        mem_blocks: num_block,
     }
 }
 

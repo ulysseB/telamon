@@ -1,9 +1,9 @@
 //! Helper struct to build a `Function`.
 use device::Device;
 use helper::{AutoOperand, LogicalDim, MetaStatement, TilingPattern};
-use ir::{self, mem, op, Parameter, Type};
+use ir::{self, op, Parameter, Type};
 use ir::{AccessPattern, Function, InstId, Operand, Operator, Signature};
-use itertools::Itertools;
+use itertools::{flatten, Itertools};
 use search_space::{Action, DimKind, InstFlag, MemSpace, Order, SearchSpace};
 use std::borrow::Borrow;
 use utils::*;
@@ -213,13 +213,45 @@ impl<'a> Builder<'a> {
         unwrap!(self.function.add_inst(op, open_dims))
     }
 
-    pub fn create_inst_variable(&mut self, inst_id: InstId) -> ir::VarId {
+    /// Returns the variable holding the result of an instruction. Creates it if
+    /// necessary.
+    pub fn get_inst_variable(&mut self, inst_id: InstId) -> ir::VarId {
         self.function
             .inst(inst_id)
             .result_variable()
             .unwrap_or_else(|| {
                 unwrap!(self.function.add_variable(ir::VarDef::Inst(inst_id)))
             })
+    }
+
+    /// Creates a new variable that takes the last value of another variable produced in
+    /// a loop nest.
+    pub fn create_last_variable(
+        &mut self,
+        var: ir::VarId,
+        logical_dims: &[&LogicalDim],
+    ) -> ir::VarId {
+        let dims = flatten(logical_dims.iter().cloned()).collect();
+        self.function
+            .add_variable(ir::VarDef::Last(var, dims))
+            .unwrap()
+    }
+
+    /// Creates a new variable that takes point-to-point the value of another variable, in
+    /// another loop nest.
+    pub fn create_dim_map_variable(
+        &mut self,
+        var: ir::VarId,
+        logical_mapping: &[(&LogicalDim, &LogicalDim)],
+    ) -> ir::VarId {
+        let mapping = logical_mapping
+            .iter()
+            .flat_map(|&(lhs, rhs)| lhs.iter().zip_eq(rhs))
+            .map(|(lhs, rhs)| self.function.map_dimensions([lhs, rhs]))
+            .collect();
+        self.function
+            .add_variable(ir::VarDef::DimMap(var, mapping))
+            .unwrap()
     }
 
     /// Applies an action on the function.
@@ -314,7 +346,7 @@ impl<'a> Builder<'a> {
     }
 
     /// Allocates a memory block in shared memory.
-    pub fn allocate_shared(&mut self, size: u32) -> mem::InternalId {
+    pub fn allocate_shared(&mut self, size: u32) -> ir::MemId {
         let id = self.allocate(size, true);
         self.actions
             .push(Action::MemSpace(id.into(), MemSpace::SHARED));
@@ -322,7 +354,7 @@ impl<'a> Builder<'a> {
     }
 
     /// Allocates a memory block.
-    pub fn allocate(&mut self, size: u32, private: bool) -> mem::InternalId {
+    pub fn allocate(&mut self, size: u32, private: bool) -> ir::MemId {
         assert!(
             private,
             "allocating non-private memory is not yet supported"
@@ -330,17 +362,12 @@ impl<'a> Builder<'a> {
         self.function.add_mem_block(size)
     }
 
-    /// Generates an access paterns with all the strides unknown on the opened dimensions.
-    pub fn unknown_access_pattern(&self, mem: ir::MemId) -> AccessPattern<'static> {
-        AccessPattern::Unknown { mem_id: mem }
-    }
-
     /// Builds both an induction variable for a tensor memory access and the corresponding
     /// access pattern.
     pub fn tensor_access(
         &mut self,
         addr: &AutoOperand<'a>,
-        mem_id: ir::MemId,
+        mem_id: Option<ir::MemId>,
         t: ir::Type,
         dims: &[&LogicalDim],
     ) -> (ir::IndVarId, ir::AccessPattern<'a>) {
@@ -357,7 +384,7 @@ impl<'a> Builder<'a> {
     /// type.
     pub fn tensor_access_pattern(
         &self,
-        mem: ir::MemId,
+        mem: Option<ir::MemId>,
         increments: Vec<(&LogicalDim, ir::Size<'a>)>,
     ) -> AccessPattern<'a> {
         let dims = self.logical_to_real_increments(increments);

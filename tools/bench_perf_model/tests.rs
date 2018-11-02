@@ -1,7 +1,7 @@
 use telamon::device::{ArgMap, Context};
 use telamon::helper::{Builder, Reduce, SignatureBuilder};
 use telamon::ir;
-use telamon::search_space::{Action, DimKind, InstFlag, Order};
+use telamon::search_space::*;
 use PerfModelTest;
 
 pub struct Test0;
@@ -42,9 +42,6 @@ impl PerfModelTest for Test0 {
         let n_tiled = builder.param_size("n", Self::N as u32);
         let k_tiled = builder.param_size("k", Self::K as u32);
 
-        let a = ir::MemId::External(0);
-        let b = ir::MemId::External(1);
-
         let b0 = builder.open_dim_ex(n_tiled, DimKind::BLOCK);
         let b1 = builder.open_dim_ex(m_tiled, DimKind::BLOCK);
         // Compute AxB in acc.
@@ -55,7 +52,7 @@ impl PerfModelTest for Test0 {
         let a_ld_unroll_dim = builder.open_dim_ex(tile_2_size.clone(), DimKind::UNROLL);
         let (a_addr, a_pattern) = builder.tensor_access(
             &"a",
-            a,
+            None,
             ir::Type::F(32),
             &[&b1, &thread_dim_1, &a_ld_unroll_dim, &k0_dim, &thread_dim_0],
         );
@@ -66,7 +63,7 @@ impl PerfModelTest for Test0 {
         let b_ld_unroll_dim = builder.open_dim_ex(tile_2_size.clone(), DimKind::VECTOR);
         let (b_addr, b_pattern) = builder.tensor_access(
             &"b",
-            b,
+            None,
             ir::Type::F(32),
             &[&k0_dim, &thread_dim_1, &b0, &thread_dim_0, &b_ld_unroll_dim],
         );
@@ -130,7 +127,6 @@ impl PerfModelTest for Test1 {
         let tile_2_size = builder.cst_size(tile_2);
         let tmp_mem_size = 4 * tile_1 * tile_2;
         let a_tmp_mem = builder.allocate(tmp_mem_size, true);
-        let out = ir::MemId::External(0);
 
         // Configure dimension sizes
         let thread_dim_1_0 = builder.open_dim_ex(tile_1_size.clone(), DimKind::THREAD);
@@ -162,7 +158,7 @@ impl PerfModelTest for Test1 {
         builder.close_dim(&k_dim);
 
         let _ = builder.open_mapped_dim(&unroll_dims_1);
-        let (addr, pattern) = builder.tensor_access(&"out", out, ir::Type::F(32), &[]);
+        let (addr, pattern) = builder.tensor_access(&"out", None, ir::Type::F(32), &[]);
         let _ = builder.st_ex(&addr, &acc, true, pattern, InstFlag::NO_CACHE);
 
         builder.order(&k_dim, &thread_dim_1_0, Order::INNER);
@@ -204,7 +200,6 @@ impl PerfModelTest for Test2 {
         let tmp_mem_size = 4 * (Self::TILE_1 * Self::TILE_1 * Self::TILE_2) as u32;
         let a_tmp_mem = builder.allocate(tmp_mem_size, true);
         let b_tmp_mem = builder.allocate(tmp_mem_size, true);
-        let out = ir::MemId::External(0);
 
         // Configure dimension sizes
         let m_tiled = builder.param_size("m", Self::M as u32);
@@ -269,7 +264,7 @@ impl PerfModelTest for Test2 {
         let unroll_dims_1_2 = builder.open_mapped_dim(&unroll_dims_1_1);
         let (addr, pattern) = builder.tensor_access(
             &"out",
-            out,
+            None,
             ir::Type::F(32),
             &[
                 &thread_dims_0_2,

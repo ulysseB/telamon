@@ -1,6 +1,6 @@
 //! Describes the different kinds of operands an instruction can have.
 use self::Operand::*;
-use ir::{self, mem, DimMap, InstId, Instruction, Parameter, Type};
+use ir::{self, DimMap, InstId, Instruction, Parameter, Type};
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::traits::{Signed, Zero};
@@ -9,7 +9,7 @@ use utils::HashMap;
 #[derive(Clone, Debug)]
 pub struct LoweringMap {
     /// Memory ID to use for the temporary array
-    mem_id: ir::mem::InternalId,
+    mem_id: ir::MemId,
     /// Instruction ID to use for the `store` instruction when
     /// lowering.
     st_inst: ir::InstId,
@@ -106,7 +106,7 @@ pub enum Operand<'a, L = LoweringMap> {
     /// A parameter of the function.
     Param(&'a Parameter),
     /// The address of a memory block.
-    Addr(mem::InternalId),
+    Addr(ir::MemId),
     /// The value of the current instruction at a previous iteration.
     Reduce(InstId, Type, DimMap, Vec<ir::DimId>),
     /// A variable increased by a fixed amount at every step of some loops.

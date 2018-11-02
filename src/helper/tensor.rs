@@ -106,7 +106,7 @@ impl<'a> TensorBuilder<'a> {
             .iter()
             .map(|s| s.eval(builder.context()) as usize)
             .product::<usize>();
-        let (mem_id, array) = builder.array::<S>(self.name, size);
+        let array = builder.array::<S>(self.name, size);
         let mut stride: DimSize = unwrap!(S::t().len_byte()).into();
         let mut strides = self
             .storage_dims
@@ -125,7 +125,6 @@ impl<'a> TensorBuilder<'a> {
             .map(|&i| (self.storage_dims[i].clone(), strides[i].clone()))
             .collect();
         Tensor {
-            mem_id,
             array,
             iter_dims,
             read_only: self.read_only,
@@ -138,7 +137,6 @@ impl<'a> TensorBuilder<'a> {
 /// A tensor allocated in main memory.
 pub struct Tensor<'a, S: ScalarArgument> {
     name: &'a str,
-    mem_id: ir::MemId,
     array: std::sync::Arc<ArrayArgument + 'a>,
     iter_dims: Vec<(DimSize<'a>, DimSize<'a>)>,
     read_only: bool,
@@ -154,7 +152,6 @@ where
         name: &'a str,
         dim_sizes: Vec<DimSize<'a>>,
         read_only: bool,
-        mem_id: ir::MemId,
         array: std::sync::Arc<ArrayArgument + 'a>,
     ) -> Self {
         let mut incr: DimSize = unwrap!(S::t().len_byte()).into();
@@ -170,7 +167,6 @@ where
         iter_dims.reverse();
         Tensor {
             name,
-            mem_id,
             iter_dims,
             read_only,
             array,
@@ -200,7 +196,7 @@ where
                 .map(|(dim, (_, stride))| (dim, stride.into_ir_size(builder)))
                 .collect_vec();
             ptr = builder.induction_var(&self.name, increments.clone());
-            pattern = builder.tensor_access_pattern(self.mem_id, increments);
+            pattern = builder.tensor_access_pattern(None, increments);
         };
         let flag = if self.read_only {
             InstFlag::ALL
@@ -271,7 +267,7 @@ impl VirtualTensor {
             .collect_vec();
         let (ptr, pat) = {
             let new_dims = new_dims.iter().collect_vec();
-            builder.tensor_access(&tensor.name, tensor.mem_id, S::t(), &new_dims)
+            builder.tensor_access(&tensor.name, None, S::t(), &new_dims)
         };
         let inst = builder.st(&ptr, &self.inst, pat);
         for dim in &new_dims {

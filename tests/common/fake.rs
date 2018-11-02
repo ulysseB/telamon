@@ -1,17 +1,15 @@
 #![allow(dead_code)]
 //! Provides a fake implementations of device traits for testing.
-use std::f64;
 use std::io::Write;
-use std::sync::Arc;
 use telamon::codegen;
-use telamon::device::{self, ArrayArgument, ScalarArgument};
-use telamon::explorer::Candidate;
+use telamon::device::{self, fake::FakeContext};
 use telamon::ir::{self, Operator};
 use telamon::model::{self, HwPressure};
-use telamon::search_space::{DimKind, SearchSpace};
+use telamon::search_space::*;
 use utils::*;
 
-use std::marker::PhantomData;
+pub type Context = FakeContext<Device>;
+
 /// A fake device.
 pub struct Device {
     pub shared_mem_size: u32,
@@ -62,6 +60,10 @@ impl device::Device for Device {
         [4, 8]
     }
 
+    fn has_vector_registers(&self) -> bool {
+        true
+    }
+
     fn max_block_dims(&self) -> u32 {
         3
     }
@@ -78,16 +80,21 @@ impl device::Device for Device {
         self.shared_mem_size
     }
 
-    fn supports_nc_access(&self) -> bool {
-        true
+    fn pointer_type(&self, _: MemSpace) -> ir::Type {
+        ir::Type::I(32)
     }
 
-    fn supports_l1_access(&self) -> bool {
-        true
-    }
-
-    fn supports_l2_access(&self) -> bool {
-        true
+    // Warning: this assumes only global memory accesses can use caches.
+    fn supported_mem_flags(&self, op: &ir::Operator) -> InstFlag {
+        match op {
+            // Only accesses to external memory blocks can be non-coherent.
+            ir::Operator::Ld(.., pat) if pat.mem_block().is_none() => InstFlag::ALL,
+            ir::Operator::Ld(..)
+            | ir::Operator::St(..)
+            | ir::Operator::TmpLd(..)
+            | ir::Operator::TmpSt(..) => InstFlag::COHERENT,
+            _ => panic!("invalid memory access operator"),
+        }
     }
 
     fn lower_type(&self, t: ir::Type, _: &SearchSpace) -> Option<ir::Type> {
@@ -144,87 +151,5 @@ impl device::Device for Device {
         _: model::size::Range,
         _: &mut HwPressure,
     ) {
-    }
-}
-
-/// A fake context.
-#[derive(Default)]
-pub struct Context {
-    pub device: Device,
-}
-
-impl device::Context for Context {
-    fn device(&self) -> &device::Device {
-        &self.device
-    }
-
-    fn evaluate(&self, _: &codegen::Function, _: device::EvalMode) -> Result<f64, ()> {
-        Ok(1.0)
-    }
-
-    fn benchmark(&self, _: &codegen::Function, num_samples: usize) -> Vec<f64> {
-        vec![1.0; num_samples]
-    }
-
-    fn param_as_size(&self, _: &str) -> Option<u32> {
-        Some(1)
-    }
-
-    fn async_eval<'b, 'c>(
-        &self,
-        _: usize,
-        _: device::EvalMode,
-        inner: &(Fn(&mut device::AsyncEvaluator<'b, 'c>) + Sync),
-    ) {
-        inner(&mut Evaluator {
-            phantom: PhantomData,
-        });
-    }
-}
-
-impl device::ArgMap for Context {
-    type Array = Array;
-
-    fn bind_scalar<S: ScalarArgument>(&mut self, param: &ir::Parameter, _: S) {
-        assert_eq!(param.t, S::t());
-    }
-
-    fn bind_array<S: ScalarArgument>(
-        &mut self,
-        _: &ir::Parameter,
-        _: usize,
-    ) -> Arc<Self::Array> {
-        Arc::new(Array)
-    }
-}
-
-pub struct Array;
-
-impl ArrayArgument for Array {
-    fn read_i8(&self) -> Vec<i8> {
-        vec![]
-    }
-
-    fn write_i8(&self, _: &[i8]) {}
-}
-
-/// A fake asynchronous evaluator.
-struct Evaluator<'a, 'b> {
-    phantom: PhantomData<(&'a (), &'b ())>,
-}
-
-impl<'a, 'b, 'c> device::AsyncEvaluator<'a, 'c> for Evaluator<'a, 'b>
-where
-    'a: 'b,
-    'c: 'b,
-{
-    fn add_kernel(
-        &mut self,
-        candidate: Candidate<'a>,
-        callback: device::AsyncCallback<'a, 'c>,
-    ) {
-        // Try to compile the function to check it works.
-        codegen::Function::build(&candidate.space);
-        callback.call(candidate, 1.0);
     }
 }
