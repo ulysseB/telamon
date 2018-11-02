@@ -2,17 +2,19 @@
 extern crate env_logger;
 extern crate telamon;
 extern crate telamon_kernels;
+extern crate telamon_utils;
 
-use telamon::device::cuda;
+use telamon::device::{cuda, fake::FakeContext};
 use telamon_kernels::{linalg, Kernel};
+use telamon_utils::*;
 
 macro_rules! test_cut {
     ($name:ident, $kernel:ty, $params:expr) => {
         fn $name() {
             let _ = env_logger::try_init();
-            let executor = cuda::Executor::init();
-            let mut context = cuda::Context::new(&executor);
-            <$kernel>::find_cut_depth($params, 5.0e4, &mut context);
+            let gpu = unwrap!(cuda::characterize::get_gpu_desc_from_file());
+            let mut context = FakeContext::new(gpu);
+            <$kernel>::find_cut_depth($params, 1.0e4, &mut context);
         }
     };
 }

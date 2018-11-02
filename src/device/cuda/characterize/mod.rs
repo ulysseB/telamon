@@ -15,13 +15,22 @@ use xdg;
 
 /// Error raised will retrieveing the GPU description
 #[derive(Debug, Fail)]
-enum Error {
+pub enum GpuError {
     #[fail(display = "could not open the GPU description file: {}", _0)]
     FileNotFound(std::io::Error),
     #[fail(display = "could not parse GPU description: {}", _0)]
     Parser(serde_json::Error),
     #[fail(display = "found description for the wrong GPU: {}", _0)]
     WrongGpu(String),
+}
+
+/// Retrieve the description of the GPU from the description file. 
+/// Returns None if file is absent or corrupted
+pub fn get_gpu_desc_from_file() -> Result<cuda::Gpu, GpuError> {
+    let config_path = get_config_path();
+    std::fs::File::open(&config_path)
+        .map_err(GpuError::FileNotFound)
+        .and_then(|f| serde_json::from_reader(&f).map_err(GpuError::Parser))
 }
 
 /// Retrieve the description of the GPU from the description file. Updates it if needed.
@@ -32,15 +41,13 @@ pub fn get_gpu_desc(executor: &cuda::Executor) -> cuda::Gpu {
         static ref LOCK: std::sync::Mutex<()> = Default::default();
     }
     let lock = unwrap!(LOCK.lock());
-    let gpu = std::fs::File::open(&config_path)
-        .map_err(Error::FileNotFound)
-        .and_then(|f| serde_json::from_reader(&f).map_err(Error::Parser))
+    let gpu = get_gpu_desc_from_file()
         .and_then(|gpu: cuda::Gpu| {
             let name = executor.device_name();
             if gpu.name == name {
                 Ok(gpu)
             } else {
-                Err(Error::WrongGpu(name))
+                Err(GpuError::WrongGpu(name))
             }
         }).unwrap_or_else(|err| {
             println!("Could not read the GPU characterization file.");

@@ -5,7 +5,7 @@ use rayon::prelude::*;
 use statistics;
 use std;
 use std::ffi::OsStr;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::{self, BufWriter, Write};
 use std::path::Path;
 use std::sync::{atomic, Mutex};
@@ -174,13 +174,19 @@ pub trait Kernel<'a>: Sized {
             ChoiceGroup::MemSpace,
             ChoiceGroup::DimMap,
         ]);
+        let log_name = format!("bound_{}.log", Self::name());
+        //let mut log_file = unwrap!(File::create(log_name));
+        let mut log_file = unwrap!(OpenOptions::new().append(true).create(true).open(log_name));
         let candidates = kernel.build_body(&signature, context);
         let depth_opt =
             local_selection::parallel_first_cut(&ordering, context, candidates, cut);
         println!("KERNEL {}", Self::name());
+        writeln!(log_file, "Kernel {}, cut {:.3e}", Self::name(), cut);
         if let Some(depth) = depth_opt {
             println!("Possibility of cut at depth {} for cut {}", depth, cut);
+            unwrap!(writeln!(log_file, "depth {}", depth));
         } else {
+            unwrap!(writeln!(log_file, "no cut"));
             println!("cut too low, no suitable candidate found");
         }
     }
