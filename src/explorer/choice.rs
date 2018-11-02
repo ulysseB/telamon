@@ -19,47 +19,6 @@ pub enum ActionEx {
 // TODO(search_space): explore and lower loayouts directly from the regular actions.
 pub type Choice = Vec<ActionEx>;
 
-/// An enum listing the Group of choices we can make
-/// For example, we can make first all DimKind decisions, then all Order decisions, etc.
-#[derive(Debug, Clone)]
-pub enum ChoiceGroup {
-    LowerLayout,
-    Size,
-    DimKind,
-    DimMap,
-    Order,
-    MemSpace,
-    InstFlag,
-}
-
-impl<'a> From<&'a config::ChoiceGroup> for ChoiceGroup {
-    fn from(conf_ch_grp: &'a config::ChoiceGroup) -> Self {
-        match conf_ch_grp {
-            config::ChoiceGroup::LowerLayout => ChoiceGroup::LowerLayout,
-            config::ChoiceGroup::Size => ChoiceGroup::Size,
-            config::ChoiceGroup::DimKind => ChoiceGroup::DimKind,
-            config::ChoiceGroup::DimMap => ChoiceGroup::DimMap,
-            config::ChoiceGroup::Order => ChoiceGroup::Order,
-            config::ChoiceGroup::MemSpace => ChoiceGroup::MemSpace,
-            config::ChoiceGroup::InstFlag => ChoiceGroup::InstFlag,
-        }
-    }
-}
-
-impl From<config::ChoiceGroup> for ChoiceGroup {
-    fn from(conf_ch_grp: config::ChoiceGroup) -> Self {
-        match conf_ch_grp {
-            config::ChoiceGroup::LowerLayout => ChoiceGroup::LowerLayout,
-            config::ChoiceGroup::Size => ChoiceGroup::Size,
-            config::ChoiceGroup::DimKind => ChoiceGroup::DimKind,
-            config::ChoiceGroup::DimMap => ChoiceGroup::DimMap,
-            config::ChoiceGroup::Order => ChoiceGroup::Order,
-            config::ChoiceGroup::MemSpace => ChoiceGroup::MemSpace,
-            config::ChoiceGroup::InstFlag => ChoiceGroup::InstFlag,
-        }
-    }
-}
-
 /// This struct nests two iterators inside each other and then implements Iterator with the Item of
 /// the internal Iterator
 /// We need that because the choices are generated in different fashion for the different cases
@@ -112,27 +71,29 @@ where
 }
 
 pub fn list<'a>(
-    iter_choice: impl Iterator<Item = ChoiceGroup> + 'a,
+    iter_choice: impl IntoIterator<Item = &'a config::ChoiceGroup> + 'a,
     space: &'a SearchSpace<'a>,
 ) -> impl Iterator<Item = Choice> + 'a {
-    NestedIterator::new(iter_choice.map(
+    use explorer::config::ChoiceGroup::*;
+
+    NestedIterator::new(iter_choice.into_iter().map(
         move |choice_grp| -> Box<dyn Iterator<Item = Choice> + 'a> {
             let fun = space.ir_instance();
             match choice_grp {
-                ChoiceGroup::LowerLayout => Box::new(
+                LowerLayout => Box::new(
                     fun.layouts_to_lower()
                         .iter()
                         .map(move |&layout| lower_layout_choice(space, layout)),
                 ),
-                ChoiceGroup::Size => Box::new(fun.static_dims().flat_map(move |dim| {
+                Size => Box::new(fun.static_dims().flat_map(move |dim| {
                     let sizes = space.domain().get_size(dim.id());
                     gen_choice(sizes.list(), &|s| Action::Size(dim.id(), s))
                 })),
-                ChoiceGroup::DimKind => Box::new(fun.dims().flat_map(move |dim| {
+                DimKind => Box::new(fun.dims().flat_map(move |dim| {
                     let kinds = space.domain().get_dim_kind(dim.id());
                     gen_choice(kinds.list(), &|k| Action::DimKind(dim.id(), k))
                 })),
-                ChoiceGroup::DimMap => {
+                DimMap => {
                     Box::new(fun.static_dims().enumerate().flat_map(move |(i, lhs)| {
                         fun.static_dims().take(i).flat_map(move |rhs| {
                             let mappings =
@@ -143,7 +104,7 @@ pub fn list<'a>(
                         })
                     }))
                 }
-                ChoiceGroup::Order => {
+                Order => {
                     Box::new(fun.dims().enumerate().flat_map(move |(i, lhs)| {
                         // TODO(search_space): avoid picking ordering decisions that have little impact.
                         // For this, we should avoid dimension-instruction and dimension-vector dim
@@ -158,55 +119,26 @@ pub fn list<'a>(
                         )
                     }))
                 }
-                ChoiceGroup::MemSpace => {
-                    Box::new(fun.mem_blocks().flat_map(move |block| {
-                        let mem_spaces = space.domain().get_mem_space(block.mem_id());
-                        gen_choice(mem_spaces.list(), &|s| {
-                            Action::MemSpace(block.mem_id(), s)
-                        })
-                    }))
-                }
-                ChoiceGroup::InstFlag => {
-                    Box::new(fun.mem_insts().flat_map(move |inst| {
-                        let flags = space.domain().get_inst_flag(inst.id()).list();
-                        gen_choice(flags, &|f| Action::InstFlag(inst.id(), f))
-                    }))
-                }
+                MemSpace => Box::new(fun.mem_blocks().flat_map(move |block| {
+                    let mem_spaces = space.domain().get_mem_space(block.mem_id());
+                    gen_choice(mem_spaces.list(), &|s| {
+                        Action::MemSpace(block.mem_id(), s)
+                    })
+                })),
+                InstFlag => Box::new(fun.mem_insts().flat_map(move |inst| {
+                    let flags = space.domain().get_inst_flag(inst.id()).list();
+                    gen_choice(flags, &|f| Action::InstFlag(inst.id(), f))
+                })),
             }
         },
     ))
-}
-
-lazy_static! {
-    static ref DEFAULT_ORDERING: Vec<ChoiceGroup> = vec![
-        ChoiceGroup::LowerLayout,
-        ChoiceGroup::Size,
-        ChoiceGroup::DimKind,
-        ChoiceGroup::DimMap,
-        ChoiceGroup::MemSpace,
-        ChoiceGroup::Order,
-        ChoiceGroup::InstFlag,
-    ];
 }
 
 /// This function is to be either removed or reimplemented eventually. It is just a replacement for
 /// the previous list implementation (exposes the choices in the same order). Default should
 /// preferably be handled in config file
 pub fn default_list<'a>(space: &'a SearchSpace<'a>) -> impl Iterator<Item = Choice> + 'a {
-    list(DEFAULT_ORDERING.iter().cloned(), space)
-}
-
-pub fn list_with_conf<'a, 'b: 'a>(
-    choice_ordering: &'b config::ChoiceOrdering,
-    space: &'a SearchSpace<'a>,
-) -> impl Iterator<Item = Choice> + 'a {
-    list(
-        choice_ordering
-            .iter()
-            .cloned()
-            .map(|choice_grp| ChoiceGroup::from(choice_grp)),
-        space,
-    )
+    list(&config::DEFAULT_ORDERING, space)
 }
 
 /// Generates a choice from a list of possible values.

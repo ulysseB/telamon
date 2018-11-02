@@ -18,7 +18,7 @@ pub fn descend<'a>(
     cut: f64,
 ) -> Option<Candidate<'a>> {
     //let choice_opt = choice::list(&candidate.space).next();
-    let choice_opt = choice::list_with_conf(choice_order, &candidate.space).next();
+    let choice_opt = choice::list(choice_order, &candidate.space).next();
     if let Some(choice) = choice_opt {
         let new_nodes = candidate.apply_choice(context, choice);
         pick_candidate(node_order, new_nodes, cut)

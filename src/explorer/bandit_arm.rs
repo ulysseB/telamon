@@ -297,8 +297,7 @@ impl<'a> SubTree<'a> {
                 DescendState::InternalNode(node, false)
             }
             SubTree::UnexpandedNode(candidate) => {
-                let choice =
-                    choice::list_with_conf(choice_ordering, &candidate.space).next();
+                let choice = choice::list(choice_ordering, &candidate.space).next();
                 if let Some(choice) = choice {
                     let candidates = candidate.apply_choice(context, choice);
                     let children = Children::from_candidates(candidates, cut);
@@ -414,8 +413,7 @@ impl<'a> Children<'a> {
                     return (idx, Err(DescendState::InternalNode(node.clone(), true)))
                 }
             };
-            let choice =
-                choice::list_with_conf(&config.choice_ordering, &cand.space).next();
+            let choice = choice::list(&config.choice_ordering, &cand.space).next();
             let out = if let Some(choice) = choice {
                 let cands = cand.apply_choice(context, choice);
                 self.children[idx] = SubTree::UnexpandedNode(cand);
