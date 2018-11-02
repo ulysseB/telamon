@@ -119,7 +119,7 @@ trait Environment {
 
 struct ContextEnvironment<'a, C: Context + 'a> {
     context: &'a C,
-    ordering: choice::ChoiceOrdering,
+    ordering: &'a config::ChoiceOrdering,
     invalid_actions_cnt: AtomicUsize,
 }
 
@@ -138,7 +138,7 @@ impl<'a, C: Context + 'a> Environment for ContextEnvironment<'a, C> {
     type State = Candidate<'a>;
 
     fn list_actions(&self, candidate: &Candidate<'a>) -> Option<Vec<choice::ActionEx>> {
-        choice::list(self.ordering.iter(), &candidate.space).next()
+        choice::list(self.ordering, &candidate.space).next()
     }
 
     fn apply_action(
@@ -1420,7 +1420,7 @@ impl ExactChoice {
         &self,
         estimate: f64,
         context: &impl Context,
-        ordering: &choice::ChoiceOrdering,
+        ordering: &config::ChoiceOrdering,
         candidates: Vec<Candidate<'_>>,
     ) -> Option<usize> {
         match self.0 {
@@ -1512,12 +1512,12 @@ struct Record {
 
 fn exact_count<'a>(
     context: &impl Context,
-    ordering: &choice::ChoiceOrdering,
+    ordering: &config::ChoiceOrdering,
     mut candidates: Vec<Candidate<'a>>,
     num_leafs: &AtomicUsize,
 ) {
     if let Some(candidate) = candidates.pop() {
-        if let Some(choice) = choice::list(ordering.iter(), &candidate.space).next() {
+        if let Some(choice) = choice::list(ordering, &candidate.space).next() {
             // If children is empty, we reached a deadend -- the call to exact_count will return 0.
             let children = candidate.apply_choice(context, choice);
             let ((), ()) = join(
@@ -1661,8 +1661,6 @@ fn main() {
 
     let num_playouts = opt.num_playouts;
 
-    let ordering = choice::ChoiceOrdering::from_config_ref(&opt.ordering);
-
     // let proba = CompleteTreeSizeRatioPolicy { epsilon: 0.1f64 };
     let proba = UniformPolicy {};
 
@@ -1696,7 +1694,7 @@ fn main() {
 
                 for &index in &opt.prefix.0 {
                     // We need a local variable here otherwise rust gets confused about lifetimes.
-                    let choice = choice::list(ordering.iter(), &candidate.space).next();
+                    let choice = choice::list(&opt.ordering, &candidate.space).next();
                     if let Some(mut choice) = choice {
                         println!(
                             "[{}] Selecting {:?} from {:?}",
@@ -1721,7 +1719,7 @@ fn main() {
                 spec: TreeSizeEstimation {
                     environment: ContextEnvironment {
                         context,
-                        ordering: choice::ChoiceOrdering::from_config_ref(&opt.ordering),
+                        ordering: &opt.ordering,
                         invalid_actions_cnt: AtomicUsize::new(0),
                     },
                     policy: proba.clone(),
@@ -1731,9 +1729,7 @@ fn main() {
                         //PolicyEvaluator {
                         environment: ContextEnvironment {
                             context,
-                            ordering: choice::ChoiceOrdering::from_config_ref(
-                                &opt.ordering,
-                            ),
+                            ordering: &opt.ordering,
                             invalid_actions_cnt: AtomicUsize::new(0),
                         },
                         policy: proba,
@@ -1896,7 +1892,7 @@ fn main() {
             if let Some(true_size) = opt.exact.compute(
                 estimate_stats.mean(),
                 context,
-                &choice::ChoiceOrdering::from_config_ref(&opt.ordering),
+                &opt.ordering,
                 vec![candidate.clone()],
             ) {
                 println!("True size: {} ({:e})", true_size, true_size as f64);
