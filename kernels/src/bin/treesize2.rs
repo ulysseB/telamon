@@ -365,6 +365,158 @@ impl<E: Environment, P: TreePolicy<E>> Evaluator<E> for PolicyEvaluator<P, E> {
     }
 }
 
+trait Stratifier<E: Environment> {
+    type Strate: Hash + Eq + Ord + Clone;
+
+    fn strate(&self, state: &E::State) -> Self::Strate;
+}
+
+struct MyStratifier;
+
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
+struct OrdF64(f64);
+
+impl OrdF64 {
+    fn new(x: f64) -> Option<Self> {
+        if x.is_nan() {
+            None
+        } else {
+            Some(OrdF64(x))
+        }
+    }
+}
+
+impl Eq for OrdF64 {}
+
+impl Hash for OrdF64 {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        f64::to_bits(self.0).hash(state)
+    }
+}
+
+impl Ord for OrdF64 {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
+impl<'a, E: Environment<State = Candidate<'a>>> Stratifier<E> for MyStratifier {
+    type Strate = (usize, u64);
+
+    fn strate(&self, state: &E::State) -> Self::Strate {
+        /*
+        let log_weight = choice::default_list(&state.space)
+            .map(|choice| (choice.len() as f64).ln())
+            .sum::<f64>();
+            */
+        (
+            usize::max_value() - state.actions.len(),
+            choice::default_list(&state.space).count() as u64
+            // log_weight.to_bits() >> (std::f64::MANTISSA_DIGITS - 6),
+        )
+    }
+}
+
+struct StratifiedEvaluator<E, P, S> {
+    environment: E,
+    policy: P,
+    stratifier: S,
+}
+
+struct Stratification<'a, E: Environment + 'a, S: Stratifier<E> + 'a> {
+    environment: &'a E,
+    stratifier: &'a S,
+    queue: HashMap<S::Strate, (E::State, f64)>,
+    heap: BinaryHeap<S::Strate>,
+    pub total: f64,
+}
+
+impl<'a, E: Environment, S: Stratifier<E> + 'a> Stratification<'a, E, S> {
+    fn new(environment: &'a E, stratifier: &'a S) -> Self {
+        Stratification {
+            environment,
+            stratifier,
+            queue: HashMap::new(),
+            heap: BinaryHeap::new(),
+            total: 0.,
+        }
+    }
+
+    fn process<A: Borrow<E::State>>(
+        &mut self,
+        state: &A,
+        weight: f64,
+        rng: &mut impl Rng,
+    ) {
+        if let Some(actions) = self.environment.list_actions(state.borrow()) {
+            for action in actions {
+                if let Some(child) =
+                    self.environment.apply_action(state.borrow(), &action)
+                {
+                    let strate = self.stratifier.strate(&child);
+                    self.push(strate, child, weight, rng);
+                }
+            }
+        } else {
+            self.total += weight;
+        }
+    }
+
+    fn push(
+        &mut self,
+        strate: S::Strate,
+        state: E::State,
+        weight: f64,
+        rng: &mut impl Rng,
+    ) {
+        match self.queue.entry(strate) {
+            Entry::Occupied(mut entry) => {
+                let (ref mut s_state, ref mut s_weight) = entry.get_mut();
+                *s_weight += weight;
+
+                if Bernoulli::new(weight / *s_weight).sample(rng) {
+                    *s_state = state;
+                }
+            }
+            Entry::Vacant(entry) => {
+                self.heap.push(entry.key().clone());
+                entry.insert((state, weight));
+            }
+        }
+    }
+
+    fn pop(&mut self) -> Option<(E::State, f64)> {
+        self.heap.pop().map(|strate| {
+            self.queue
+                .remove(&strate)
+                .expect("Missing strate in the queue.")
+        })
+    }
+}
+
+impl<E: Environment, P: TreePolicy<E>, S: Stratifier<E>> Evaluator<E>
+    for StratifiedEvaluator<E, P, S>
+{
+    type Evaluation = (bool, f64);
+
+    fn evaluate(
+        &self,
+        state: Arc<E::State>,
+        _actions: Vec<(E::Action, Option<Arc<E::State>>)>,
+        rng: &mut ThreadRng,
+    ) -> Self::Evaluation {
+        let mut stratification = Stratification::new(&self.environment, &self.stratifier);
+
+        stratification.process(&state, 1., rng);
+
+        while let Some((state, weight)) = stratification.pop() {
+            stratification.process(&state, weight, rng);
+        }
+
+        (true, stratification.total.recip())
+    }
+}
+
 struct PartialBacktrackEvaluator<P, E> {
     policy: P,
     environment: E,
@@ -1097,11 +1249,20 @@ where
     }
 }
 
-struct Stratified<Spec: SearchSpec> {
-    spec: Spec,
+use std::hash::Hash;
+
+trait SpecStratifier<Spec: SearchSpec> {
+    type Strate: Hash + Eq + Ord + Clone;
+
+    fn strate(&self, node: &Node<Spec>) -> Self::Strate;
 }
 
-impl<Spec: SearchSpec> Stratified<Spec> {
+struct Stratified<Spec, S> {
+    spec: Spec,
+    stratifier: S,
+}
+
+impl<Spec: SearchSpec, S: SpecStratifier<Spec>> Stratified<Spec, S> {
     fn selection_expansion_steps<'a>(
         &'a self,
         root: &'a Node<Spec>,
@@ -1109,10 +1270,10 @@ impl<Spec: SearchSpec> Stratified<Spec> {
     ) -> Vec<(TreePathList<'a, Spec>, Option<ExpansionResult<Spec>>)> {
         assert!(root.edges.len() > 0);
 
-        let queue = HashMap::default();
-        let heap = BinaryHeap::default();
+        let mut queue = HashMap::new();
+        let mut heap = BinaryHeap::new();
 
-        let root_strate = self.strate(root);
+        let root_strate = self.stratifier.strate(root);
         queue.insert(
             root_strate.clone(),
             TreePathList {
@@ -1123,7 +1284,7 @@ impl<Spec: SearchSpec> Stratified<Spec> {
         );
         heap.push(root_strate);
 
-        let paths = Vec::new();
+        let mut paths = Vec::new();
 
         while let Some(strate) = heap.pop() {
             let path = queue.remove(&strate).expect("Missing strate in the queue.");
@@ -1155,10 +1316,10 @@ impl<Spec: SearchSpec> Stratified<Spec> {
                 if let Some(expansion) = expanded {
                     paths.push((path, Some(expansion)));
                 } else {
-                    let strate = self.strate(&node);
+                    let strate = self.stratifier.strate(&node);
 
                     match queue.entry(strate) {
-                        Entry::Occupied(entry) => {
+                        Entry::Occupied(mut entry) => {
                             let path_s = entry.get_mut();
                             path_s.weight += path.weight;
 
@@ -1179,17 +1340,17 @@ impl<Spec: SearchSpec> Stratified<Spec> {
     }
 }
 
-struct TreeSizeEstimation<'a, C: Context + 'a, P: TreePolicy<ContextEnvironment<'a, C>>> {
+struct TreeSizeEstimation<Env, Eval, P> {
+    environment: Env,
     policy: P,
-    environment: ContextEnvironment<'a, C>,
-    evaluator: PartialBacktrackEvaluator<P, ContextEnvironment<'a, C>>,
+    evaluator: Eval,
 }
 
-impl<'a, C: Context + 'a, P: TreePolicy<ContextEnvironment<'a, C>>> SearchSpec
-    for TreeSizeEstimation<'a, C, P>
+impl<Env: Environment, Eval: Evaluator<Env>, P: TreePolicy<Env>> SearchSpec
+    for TreeSizeEstimation<Env, Eval, P>
 {
-    type Environment = ContextEnvironment<'a, C>;
-    type Evaluator = PartialBacktrackEvaluator<P, ContextEnvironment<'a, C>>;
+    type Environment = Env;
+    type Evaluator = Eval;
     type TreePolicy = P;
 
     fn environment(&self) -> &Self::Environment {
@@ -1504,8 +1665,8 @@ fn main() {
 
     let ordering = choice::ChoiceOrdering::from_config_ref(&opt.ordering);
 
-    let proba = CompleteTreeSizeRatioPolicy { epsilon: 0.1f64 };
-    // let proba = UniformPolicy {};
+    // let proba = CompleteTreeSizeRatioPolicy { epsilon: 0.1f64 };
+    let proba = UniformPolicy {};
 
     let gpu: Gpu = serde_json::from_reader(
         &std::fs::File::open("/home/elarnon/.config/telamon/cuda_gpus.json").unwrap(),
@@ -1566,8 +1727,10 @@ fn main() {
                         invalid_actions_cnt: AtomicUsize::new(0),
                     },
                     policy: proba.clone(),
-                    evaluator: PartialBacktrackEvaluator {
-                        // PolicyEvaluator {
+                    evaluator: StratifiedEvaluator {
+                        stratifier: MyStratifier,
+                        //PartialBacktrackEvaluator {
+                        //PolicyEvaluator {
                         environment: ContextEnvironment {
                             context,
                             ordering: choice::ChoiceOrdering::from_config_ref(
@@ -1740,8 +1903,9 @@ fn main() {
             ) {
                 println!("True size: {} ({:e})", true_size, true_size as f64);
                 println!(
-                    "Error: {:>3.0}%",
-                    (true_size as f64 - estimate_stats.mean()).abs() / true_size as f64
+                    "Error (log scale): {:>3.0}%",
+                    ((true_size as f64).ln() - estimate_stats.mean().ln()).abs()
+                        / 10.0f64.ln()
                         * 100f64
                 );
             }

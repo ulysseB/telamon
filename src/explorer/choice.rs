@@ -3,7 +3,6 @@ use explorer::config;
 use ir::{self, Statement};
 use itertools::Itertools;
 use search_space::{Action, Domain, NumSet, Order, SearchSpace};
-use std::{error, fmt, str::FromStr};
 
 /// Either a regular action or a manually applied action.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
