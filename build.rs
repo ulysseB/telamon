@@ -4,7 +4,8 @@ extern crate failure;
 extern crate glob;
 extern crate telamon_gen;
 
-use std::path::Path;
+use std::env;
+use std::path::{Path, PathBuf};
 
 /// Orders to Cargo to link a library.
 fn add_lib(lib: &str) {
@@ -17,7 +18,19 @@ fn add_dependency(dep: &Path) {
 
 /// Compiles and links the cuda wrapper and libraries.
 fn compile_link_cuda() {
-    cc::Build::new()
+    let mut builder = cc::Build::new();
+
+    // If CUDA_HOME is defined, use the cuda headers from there.
+    match env::var_os("CUDA_HOME").map(PathBuf::from) {
+        Some(cuda_home) => {
+            builder
+                .include(cuda_home.join("include"))
+                .include(cuda_home.join("extras").join("CUPTI").join("include"));
+        }
+        None => (),
+    }
+
+    builder
         .flag("-Werror")
         .file("src/device/cuda/api/wrapper.c")
         .compile("libdevice_cuda_wrapper.a");
