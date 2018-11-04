@@ -58,6 +58,7 @@ impl<'a> ParallelCandidateList<'a> {
     }
 
     /// Insert a candidate to process.
+    #[allow(dead_code)]
     pub fn insert(&self, candidate: Candidate<'a>) {
         self.lock().0.insert(candidate);
         self.wakeup.notify_all();
