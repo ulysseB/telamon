@@ -302,7 +302,7 @@ impl<'a> Builder<'a> {
     pub fn set_loop_carried_variable<V: ToVariable>(
         &mut self,
         fby: ir::VarId,
-        loop_carried: V
+        loop_carried: V,
     ) {
         let loop_carried = loop_carried.to_variable(self);
         unwrap!(self.function.set_loop_carried_variable(fby, loop_carried))

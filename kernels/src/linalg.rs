@@ -4,8 +4,8 @@ use kernel::Kernel;
 use ndarray::{Array1, Array2, Array3, ArrayD};
 use rand;
 use telamon::explorer::Candidate;
-use telamon::helper::*;
 use telamon::helper::tensor::*;
+use telamon::helper::*;
 use telamon::ir::DimMapScope::Global as GlobalScope;
 use telamon::search_space::*;
 use telamon::{device, ir};
@@ -598,8 +598,7 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
         let m_tiling = TilingPattern::infer_pattern(self.params.m as u32, &[64]);
         let n_tiling = TilingPattern::infer_pattern(self.params.n as u32, &[64]);
         let k_tiling = TilingPattern::infer_pattern(self.params.k as u32, &[64]);
-        let batch_tiling =
-            TilingPattern::infer_pattern(self.params.batch as u32, &[128]);
+        let batch_tiling = TilingPattern::infer_pattern(self.params.batch as u32, &[128]);
         let mut builder = Builder::new(signature, ctx.device());
         let a_tiling = vec![batch_tiling.clone(), m_tiling, k_tiling.clone()];
         let ld_a = self.a.load(a_tiling, &mut builder);

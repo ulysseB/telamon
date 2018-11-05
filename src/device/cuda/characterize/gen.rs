@@ -78,7 +78,13 @@ pub fn loop_chained_adds<'a>(
     builder.close_dim(&d0);
     builder.close_dim(&d1);
     let pattern = ir::AccessPattern::Unknown(None);
-    builder.st_ex(&out, &Last(acc, &[&d0, &d1]), true, pattern, InstFlag::CACHE_GLOBAL);
+    builder.st_ex(
+        &out,
+        &Last(acc, &[&d0, &d1]),
+        true,
+        pattern,
+        InstFlag::CACHE_GLOBAL,
+    );
     builder.get()
 }
 
@@ -119,7 +125,13 @@ where
     builder.close_dim(&d0);
     builder.close_dim(&d1);
     let pattern = ir::AccessPattern::Unknown(None);
-    builder.st_ex(&out, &Last(acc, &[&d0, &d1]), true, pattern, InstFlag::NO_CACHE);
+    builder.st_ex(
+        &out,
+        &Last(acc, &[&d0, &d1]),
+        true,
+        pattern,
+        InstFlag::NO_CACHE,
+    );
     builder.get()
 }
 
@@ -183,18 +195,19 @@ pub fn load_chain<'a>(
     let mut dims = vec![&d0, &d1];
     dims.extend(d2.as_ref());
     let fby = builder.create_fby_variable(init, &dims);
-    let ptr = builder.ld_ex(
-        ir::Type::I(64),
-        &fby,
-        pattern0,
-        InstFlag::CACHE_GLOBAL,
-    );
+    let ptr = builder.ld_ex(ir::Type::I(64), &fby, pattern0, InstFlag::CACHE_GLOBAL);
     builder.set_loop_carried_variable(fby, ptr);
     builder.order(&d0, &d1, Order::OUTER);
     builder.close_dim(&d1);
     builder.close_dim(&d0);
     let pattern1 = ir::AccessPattern::Unknown(None);
-    builder.st_ex(&out, &Last(ptr, &[&d0, &d1]), true, pattern1, InstFlag::NO_CACHE);
+    builder.st_ex(
+        &out,
+        &Last(ptr, &[&d0, &d1]),
+        true,
+        pattern1,
+        InstFlag::NO_CACHE,
+    );
     builder.get()
 }
 
@@ -230,7 +243,13 @@ pub fn shared_load_chain<'a>(
     builder.close_dim(&d0);
     builder.close_dim(&d1);
     let out_pattern = ir::AccessPattern::Unknown(None);
-    builder.st_ex(&out, &Last(addr, &[&d0, &d1]), true, out_pattern, InstFlag::CACHE_GLOBAL);
+    builder.st_ex(
+        &out,
+        &Last(addr, &[&d0, &d1]),
+        true,
+        out_pattern,
+        InstFlag::CACHE_GLOBAL,
+    );
 
     builder.order(&last_st, &addr_init, Order::BEFORE);
     builder.order(&d0, &d1, Order::OUTER);
@@ -304,7 +323,13 @@ pub fn parallel_load<'a>(
     let d1_2_b = builder.open_mapped_dim(&d1_1_b);
     builder.order(&d1_2_a, &d1_2_b, Order::OUTER);
     let out_pattern = ir::AccessPattern::Unknown(None);
-    builder.st_ex(&out, &Last(acc, &[&d0, &d3, &d4_1]), true, out_pattern, InstFlag::NO_CACHE);
+    builder.st_ex(
+        &out,
+        &Last(acc, &[&d0, &d3, &d4_1]),
+        true,
+        out_pattern,
+        InstFlag::NO_CACHE,
+    );
 
     builder.order(&d1_0_a, &d0, Order::BEFORE);
     builder.order(&d1_0_b, &d0, Order::BEFORE);
@@ -433,7 +458,13 @@ pub fn chain_in_syncthread<'a>(
 
     let d5 = builder.open_mapped_dim(&d0);
     let pattern = ir::AccessPattern::Unknown(None);
-    builder.st_ex(&out, &Last(acc, &[&d1, &d2, &d3, &d4, &d5]), true, pattern, InstFlag::CACHE_GLOBAL);
+    builder.st_ex(
+        &out,
+        &Last(acc, &[&d1, &d2, &d3, &d4, &d5]),
+        true,
+        pattern,
+        InstFlag::CACHE_GLOBAL,
+    );
 
     builder.order(&d1, &d2, Order::OUTER);
     builder.order(&d1, &d3, Order::OUTER);
