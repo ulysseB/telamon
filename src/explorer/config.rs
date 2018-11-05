@@ -304,7 +304,7 @@ impl fmt::Display for ChoiceGroup {
     }
 }
 
-/// An error which can
+/// An error which can be returned when parsing a group of choices.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ParseChoiceGroupError(String);
 
