@@ -8,8 +8,7 @@ use config;
 use getopts;
 use itertools::Itertools;
 use num_cpus;
-use std;
-use std::fmt;
+use std::{self, error, fmt, str::FromStr};
 
 /// Stores the configuration of the exploration.
 #[derive(Clone, Serialize, Deserialize)]
@@ -278,7 +277,6 @@ impl Default for OldNodeOrder {
 /// An enum listing the Group of choices we can make
 /// For example, we can make first all DimKind decisions, then all Order decisions, etc.
 #[derive(Clone, Serialize, Deserialize, Debug)]
-//#[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 pub enum ChoiceGroup {
     LowerLayout,
@@ -290,30 +288,104 @@ pub enum ChoiceGroup {
     InstFlag,
 }
 
-/// A list of ChoiceGroup representing the order in which we want to determine choices
-#[derive(Clone, Serialize, Deserialize)]
-pub struct ChoiceOrdering(Vec<ChoiceGroup>);
+impl fmt::Display for ChoiceGroup {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::ChoiceGroup::*;
 
-impl Default for ChoiceOrdering {
-    fn default() -> Self {
-        ChoiceOrdering(vec![
-            ChoiceGroup::LowerLayout,
-            ChoiceGroup::Size,
-            ChoiceGroup::DimKind,
-            ChoiceGroup::DimMap,
-            ChoiceGroup::MemSpace,
-            ChoiceGroup::Order,
-            ChoiceGroup::InstFlag,
-        ])
+        f.write_str(match self {
+            LowerLayout => "lower_layout",
+            Size => "size",
+            DimKind => "dim_kind",
+            DimMap => "dim_map",
+            Order => "order",
+            MemSpace => "mem_space",
+            InstFlag => "inst_flag",
+        })
     }
 }
 
-impl ChoiceOrdering {
-    pub fn print_serialize(&self) {
-        println!("{}", unwrap!(toml::to_string(self)));
-    }
+/// An error which can be returned when parsing a group of choices.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ParseChoiceGroupError(String);
 
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a ChoiceGroup> + Clone {
+impl error::Error for ParseChoiceGroupError {}
+
+impl fmt::Display for ParseChoiceGroupError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "invalid choice group value `{}`", self.0)
+    }
+}
+
+impl FromStr for ChoiceGroup {
+    type Err = ParseChoiceGroupError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        use self::ChoiceGroup::*;
+
+        Ok(match s {
+            "lower_layout" => LowerLayout,
+            "size" => Size,
+            "dim_kind" => DimKind,
+            "dim_map" => DimMap,
+            "order" => Order,
+            "mem_space" => MemSpace,
+            "inst_flag" => InstFlag,
+            _ => return Err(ParseChoiceGroupError(s.to_string())),
+        })
+    }
+}
+
+/// A list of ChoiceGroup representing the order in which we want to determine choices
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ChoiceOrdering(Vec<ChoiceGroup>);
+
+impl<'a> IntoIterator for &'a ChoiceOrdering {
+    type Item = &'a ChoiceGroup;
+    type IntoIter = std::slice::Iter<'a, ChoiceGroup>;
+
+    fn into_iter(self) -> Self::IntoIter {
         self.0.iter()
+    }
+}
+
+pub(super) const DEFAULT_ORDERING: [ChoiceGroup; 7] = [
+    ChoiceGroup::LowerLayout,
+    ChoiceGroup::Size,
+    ChoiceGroup::DimKind,
+    ChoiceGroup::DimMap,
+    ChoiceGroup::MemSpace,
+    ChoiceGroup::Order,
+    ChoiceGroup::InstFlag,
+];
+
+impl Default for ChoiceOrdering {
+    fn default() -> Self {
+        ChoiceOrdering(DEFAULT_ORDERING.to_vec())
+    }
+}
+
+impl fmt::Display for ChoiceOrdering {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some((first, rest)) = self.0.split_first() {
+            write!(f, "{:?}", first)?;
+
+            for elem in rest {
+                write!(f, ",{:?}", elem)?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl FromStr for ChoiceOrdering {
+    type Err = ParseChoiceGroupError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(ChoiceOrdering(
+            s.split(",")
+                .map(str::parse)
+                .collect::<Result<Vec<_>, _>>()?,
+        ))
     }
 }
