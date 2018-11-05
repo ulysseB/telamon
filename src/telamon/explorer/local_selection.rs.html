@@ -133,7 +133,7 @@
     <span class="ident">cut</span>: <span class="ident">f64</span>,
 ) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
     <span class="comment">//let choice_opt = choice::list(&amp;candidate.space).next();</span>
-    <span class="kw">let</span> <span class="ident">choice_opt</span> <span class="op">=</span> <span class="ident">choice</span>::<span class="ident">list_with_conf</span>(<span class="ident">choice_order</span>, <span class="kw-2">&amp;</span><span class="ident">candidate</span>.<span class="ident">space</span>).<span class="ident">next</span>();
+    <span class="kw">let</span> <span class="ident">choice_opt</span> <span class="op">=</span> <span class="ident">choice</span>::<span class="ident">list</span>(<span class="ident">choice_order</span>, <span class="kw-2">&amp;</span><span class="ident">candidate</span>.<span class="ident">space</span>).<span class="ident">next</span>();
     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">choice</span>) <span class="op">=</span> <span class="ident">choice_opt</span> {
         <span class="kw">let</span> <span class="ident">new_nodes</span> <span class="op">=</span> <span class="ident">candidate</span>.<span class="ident">apply_choice</span>(<span class="ident">context</span>, <span class="ident">choice</span>);
         <span class="ident">pick_candidate</span>(<span class="ident">node_order</span>, <span class="ident">new_nodes</span>, <span class="ident">cut</span>)
