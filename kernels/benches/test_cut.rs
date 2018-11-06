@@ -27,7 +27,7 @@ macro_rules! test_cut {
             //let gpu = unwrap!(cuda::characterize::get_gpu_desc_from_file());
             let gpu: cuda::Gpu = unwrap!(serde_json::from_reader(&unwrap!(std::fs::File::open(get_config_path()))));
             let mut context = FakeContext::new(gpu);
-            <$kernel>::find_cut_depth($params, 1.0e4, &mut context);
+            <$kernel>::find_cut_depth($params, 4.0e4, &mut context);
         }
     };
 }

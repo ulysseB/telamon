@@ -177,6 +177,7 @@ pub trait Kernel<'a>: Sized {
         let log_name = format!("bound_{}.log", Self::name());
         //let mut log_file = unwrap!(File::create(log_name));
         let mut log_file = unwrap!(OpenOptions::new().append(true).create(true).open(log_name));
+        writeln!(log_file, "\n{}", ordering);
         let candidates = kernel.build_body(&signature, context);
         let depth_opt =
             local_selection::parallel_first_cut(&ordering, context, candidates, cut);

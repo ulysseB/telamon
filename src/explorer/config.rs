@@ -2,15 +2,15 @@
 //! is read from the `Setting.toml` file if it exists. Some parameters can be overridden
 //! from the command line.
 
-extern crate toml;
-
 use config;
 use getopts;
 use itertools::Itertools;
 use num_cpus;
+use serde_json;
 use std;
 use std::fmt;
 use std::hash::Hash;
+use toml;
 
 /// Stores the configuration of the exploration.
 #[derive(Clone, Serialize, Deserialize)]
@@ -292,9 +292,11 @@ pub enum ChoiceGroup {
 }
 
 /// A list of ChoiceGroup representing the order in which we want to determine choices
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChoiceOrdering(Vec<ChoiceGroup>);
+
 const NUM_CHOICE: usize = 7;
+
 impl Default for ChoiceOrdering {
     fn default() -> Self {
         ChoiceOrdering(vec![
@@ -306,6 +308,16 @@ impl Default for ChoiceOrdering {
             ChoiceGroup::Order,
             ChoiceGroup::InstFlag,
         ])
+    }
+}
+
+impl fmt::Display for ChoiceOrdering {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            serde_json::to_string(self).unwrap(),
+        )
     }
 }
 

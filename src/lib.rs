@@ -58,6 +58,7 @@ extern crate serde_json;
 #[macro_use]
 extern crate telamon_utils as utils;
 extern crate flate2;
+extern crate toml;
 extern crate xdg;
 
 pub mod codegen;
