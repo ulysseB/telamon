@@ -152,7 +152,9 @@ impl<'a, L> Function<'a, L> {
         def: ir::VarDef,
     ) -> Result<ir::Variable, ir::Error> {
         def.check(self)?;
-        Ok(ir::Variable::new(id, def, self))
+        let var = ir::Variable::new(id, def, self);
+        trace!("Created variable {:?}", var);
+        Ok(var)
     }
 
     /// Registers a layout dimension in the function.
@@ -668,7 +670,6 @@ impl<'a> Function<'a> {
                     );
                     return Err(());
                 }
-                Operand::Reduce(..) => return Err(()),
                 _ => panic!(),
             }
         };

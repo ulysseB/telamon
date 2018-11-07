@@ -1,5 +1,5 @@
 use telamon::device::{ArgMap, Context};
-use telamon::helper::{Builder, Reduce, SignatureBuilder};
+use telamon::helper::*;
 use telamon::ir;
 use telamon::search_space::*;
 use PerfModelTest;
@@ -34,9 +34,9 @@ impl PerfModelTest for Test0 {
     fn gen_function(builder: &mut Builder) -> Self {
         let tile_1_size = builder.cst_size(Self::TILE_1 as u32);
         let tile_2_size = builder.cst_size(Self::TILE_2 as u32);
-        let tmp_mem_size = 4 * (Self::TILE_1 * Self::TILE_1 * Self::TILE_2) as u32;
-        let a_tmp_mem = builder.allocate_shared(tmp_mem_size);
-        let b_tmp_mem = builder.allocate_shared(tmp_mem_size);
+        let tmp_mem_size = Self::TILE_1 * Self::TILE_1 * Self::TILE_2;
+        let a_tmp_mem = builder.allocate_shared(ir::Type::F(32), tmp_mem_size as u32);
+        let b_tmp_mem = builder.allocate_shared(ir::Type::F(32), tmp_mem_size as u32);
         // Configure dimension sizes
         let m_tiled = builder.param_size("m", Self::M as u32);
         let n_tiled = builder.param_size("n", Self::N as u32);
@@ -125,8 +125,8 @@ impl PerfModelTest for Test1 {
         let tile_2 = 4;
         let tile_1_size = builder.cst_size(tile_1);
         let tile_2_size = builder.cst_size(tile_2);
-        let tmp_mem_size = 4 * tile_1 * tile_2;
-        let a_tmp_mem = builder.allocate(tmp_mem_size, true);
+        let tmp_mem_size = tile_1 * tile_2;
+        let a_tmp_mem = builder.allocate(ir::Type::F(32), tmp_mem_size, true);
 
         // Configure dimension sizes
         let thread_dim_1_0 = builder.open_dim_ex(tile_1_size.clone(), DimKind::THREAD);
@@ -154,12 +154,20 @@ impl PerfModelTest for Test1 {
             &[(&unroll_dim_a, &unroll_dims_1)],
             ir::DimMapScope::Thread,
         );
-        let acc = builder.mad(&a_op, &2f32, &Reduce(acc_init));
+        let fby = builder.create_fby_variable(acc_init, &[&k_dim]);
+        let acc = builder.mad(&a_op, &2f32, &fby);
+        builder.set_loop_carried_variable(fby, acc);
         builder.close_dim(&k_dim);
 
         let _ = builder.open_mapped_dim(&unroll_dims_1);
         let (addr, pattern) = builder.tensor_access(&"out", None, ir::Type::F(32), &[]);
-        let _ = builder.st_ex(&addr, &acc, true, pattern, InstFlag::NO_CACHE);
+        let _ = builder.st_ex(
+            &addr,
+            &Last(acc, &[&k_dim]),
+            true,
+            pattern,
+            InstFlag::NO_CACHE,
+        );
 
         builder.order(&k_dim, &thread_dim_1_0, Order::INNER);
         builder.order(&unroll_dim_a, &unroll_dims_1[0], Order::BEFORE);
@@ -197,9 +205,9 @@ impl PerfModelTest for Test2 {
     fn gen_function(builder: &mut Builder) -> Self {
         let tile_1_size = builder.cst_size(Self::TILE_1 as u32);
         let tile_2_size = builder.cst_size(Self::TILE_2 as u32);
-        let tmp_mem_size = 4 * (Self::TILE_1 * Self::TILE_1 * Self::TILE_2) as u32;
-        let a_tmp_mem = builder.allocate(tmp_mem_size, true);
-        let b_tmp_mem = builder.allocate(tmp_mem_size, true);
+        let tmp_mem_size = Self::TILE_1 * Self::TILE_1 * Self::TILE_2;
+        let a_tmp_mem = builder.allocate(ir::Type::F(32), tmp_mem_size as u32, true);
+        let b_tmp_mem = builder.allocate(ir::Type::F(32), tmp_mem_size as u32, true);
 
         // Configure dimension sizes
         let m_tiled = builder.param_size("m", Self::M as u32);
@@ -255,7 +263,9 @@ impl PerfModelTest for Test2 {
             &[(&unroll_dim_b, &unroll_dims_1_1)],
             ir::DimMapScope::Thread,
         );
-        let acc = builder.mad(&a_op, &b_op, &Reduce(acc_init));
+        let fby = builder.create_fby_variable(acc_init, &[&k_dim]);
+        let acc = builder.mad(&a_op, &b_op, &fby);
+        builder.set_loop_carried_variable(fby, acc);
         builder.close_dim(&k_dim);
 
         let thread_dims_0_2 = builder.open_mapped_dim(&thread_dims_0_1);
@@ -273,7 +283,13 @@ impl PerfModelTest for Test2 {
                 &unroll_dims_1_2,
             ],
         );
-        let _ = builder.st_ex(&addr, &acc, true, pattern, InstFlag::NO_CACHE);
+        let _ = builder.st_ex(
+            &addr,
+            &Last(acc, &[&k_dim]),
+            true,
+            pattern,
+            InstFlag::NO_CACHE,
+        );
 
         builder.order(&k_dim, &thread_dims_0_1, Order::OUTER);
         builder.order(&thread_dim_0_0, &thread_dim_1_0, Order::OUTER);

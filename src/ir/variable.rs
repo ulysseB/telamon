@@ -6,6 +6,8 @@ use utils::*;
 #[derive(
     Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Serialize, Deserialize,
 )]
+#[repr(C)]
+/// cbindgen:field-names=[id]
 pub struct VarId(pub u16);
 
 impl From<VarId> for usize {

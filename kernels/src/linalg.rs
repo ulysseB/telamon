@@ -5,7 +5,7 @@ use ndarray::{Array1, Array2, Array3, ArrayD};
 use rand;
 use telamon::explorer::Candidate;
 use telamon::helper::tensor::*;
-use telamon::helper::{self, Builder, SignatureBuilder};
+use telamon::helper::*;
 use telamon::ir::DimMapScope::Global as GlobalScope;
 use telamon::search_space::*;
 use telamon::{device, ir};
@@ -54,7 +54,7 @@ where
         signature: &'b ir::Signature,
         ctx: &'b device::Context,
     ) -> Vec<Candidate<'b>> {
-        let tiling = helper::TilingPattern::infer_pattern(self.n as u32, &[1024, 4]);
+        let tiling = TilingPattern::infer_pattern(self.n as u32, &[1024, 4]);
         let mut builder = Builder::new(signature, ctx.device());
 
         let ld_x = self.x.load(vec![tiling.clone()], &mut builder);
@@ -63,7 +63,7 @@ where
         let x_op = ld_x.dim_map(&[&mad_dim], GlobalScope(()), &mut builder);
         let y_op = ld_y.dim_map(&[&mad_dim], GlobalScope(()), &mut builder);
         let mad = VirtualTensor::new(builder.mad(&x_op, &"alpha", &y_op), vec![mad_dim]);
-        mad.store(&self.z, &mut builder);
+        mad.store(&self.z, &[], &mut builder);
         vec![build_candidate(builder.get(), ctx)]
     }
 
@@ -136,8 +136,8 @@ where
         signature: &'b ir::Signature,
         ctx: &'b device::Context,
     ) -> Vec<Candidate<'b>> {
-        let m_tiling = helper::TilingPattern::infer_pattern(self.m as u32, &[128, 16]);
-        let n_tiling = helper::TilingPattern::infer_pattern(self.n as u32, &[128]);
+        let m_tiling = TilingPattern::infer_pattern(self.m as u32, &[128, 16]);
+        let n_tiling = TilingPattern::infer_pattern(self.n as u32, &[128]);
         let mut builder = Builder::new(&signature, ctx.device());
         let ld_x = self.x.load(vec![n_tiling.clone()], &mut builder);
         let ld_a = self.a.load(vec![m_tiling, n_tiling], &mut builder);
@@ -147,10 +147,12 @@ where
         let acc_dim_n = builder.open_mapped_dim(&ld_x[0]);
         let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_n], GlobalScope(()), &mut builder);
         let x_op = ld_x.dim_map(&[&acc_dim_n], GlobalScope(()), &mut builder);
-        let acc = builder.mad(&a_op, &x_op, &helper::Reduce(init));
+        let fby = builder.create_fby_variable(init, &[&acc_dim_n]);
+        let acc = builder.mad(&a_op, &x_op, &fby);
+        builder.set_loop_carried_variable(fby, acc);
         builder.close_dim(&acc_dim_n);
         let sum = VirtualTensor::new(acc, vec![acc_dim_m]);
-        let st_y = sum.store(&self.y, &mut builder);
+        let st_y = sum.store(&self.y, &[&acc_dim_n], &mut builder);
 
         builder.order(&acc_dim_n, &st_y.inst(), Order::BEFORE);
         // TODO(search_space): explore inst flags
@@ -240,9 +242,9 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
         signature: &'b ir::Signature,
         ctx: &'b device::Context,
     ) -> Vec<Candidate<'b>> {
-        let m_tiling = helper::TilingPattern::infer_pattern(self.m as u32, &[128, 16]);
-        let n_tiling = helper::TilingPattern::infer_pattern(self.n as u32, &[128]);
-        let mut builder = helper::Builder::new(&signature, ctx.device());
+        let m_tiling = TilingPattern::infer_pattern(self.m as u32, &[128, 16]);
+        let n_tiling = TilingPattern::infer_pattern(self.n as u32, &[128]);
+        let mut builder = Builder::new(&signature, ctx.device());
         let ld_x = self.x.load(vec![n_tiling.clone()], &mut builder);
         let ab_tiling = vec![m_tiling, n_tiling];
         let ld_a = self.a.load(ab_tiling.clone(), &mut builder);
@@ -255,13 +257,17 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
         let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_n], GlobalScope(()), &mut builder);
         let b_op = ld_b.dim_map(&[&acc_dim_m, &acc_dim_n], GlobalScope(()), &mut builder);
         let x_op = ld_x.dim_map(&[&acc_dim_n], GlobalScope(()), &mut builder);
-        let acc_a = builder.mad(&a_op, &x_op, &helper::Reduce(init_a));
-        let acc_b = builder.mad(&b_op, &x_op, &helper::Reduce(init_b));
+        let fby_a = builder.create_fby_variable(init_a, &[&acc_dim_n]);
+        let acc_a = builder.mad(&a_op, &x_op, &fby_a);
+        builder.set_loop_carried_variable(fby_a, acc_a);
+        let fby_b = builder.create_fby_variable(init_b, &[&acc_dim_n]);
+        let acc_b = builder.mad(&b_op, &x_op, &fby_b);
+        builder.set_loop_carried_variable(fby_b, acc_b);
         builder.close_dim(&acc_dim_n);
-        let y_a = builder.mul(&acc_a, &"alpha");
-        let sum = builder.mad(&acc_b, &"beta", &y_a);
+        let y_a = builder.mul(&Last(acc_a, &[&acc_dim_n]), &"alpha");
+        let sum = builder.mad(&Last(acc_b, &[&acc_dim_n]), &"beta", &y_a);
         let sum = VirtualTensor::new(sum, vec![acc_dim_m]);
-        let st_y = sum.store(&self.y, &mut builder);
+        let st_y = sum.store(&self.y, &[&acc_dim_n], &mut builder);
 
         builder.order(&acc_dim_n, &y_a, Order::BEFORE);
         // TODO(search_space): explore inst flags
@@ -318,9 +324,9 @@ pub struct MatMulP {
     pub transpose_a: bool,
     pub transpose_b: bool,
     pub generic: bool,
-    pub m_tiling: Option<helper::TilingPattern>,
-    pub n_tiling: Option<helper::TilingPattern>,
-    pub k_tiling: Option<helper::TilingPattern>,
+    pub m_tiling: Option<TilingPattern>,
+    pub n_tiling: Option<TilingPattern>,
+    pub k_tiling: Option<TilingPattern>,
 }
 
 impl MatMulP {
@@ -396,7 +402,7 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
         let m_tiling = infer_tiling(self.params.m, &self.params.m_tiling, &[32, 4]);
         let n_tiling = infer_tiling(self.params.n, &self.params.n_tiling, &[32, 4]);
         let k_tiling = infer_tiling(self.params.k, &self.params.k_tiling, &[32]);
-        let mut builder = helper::Builder::new(signature, ctx.device());
+        let mut builder = Builder::new(signature, ctx.device());
 
         let ld_a = self.a.load(vec![m_tiling, k_tiling.clone()], &mut builder);
         let ld_b = self.b.load(vec![k_tiling, n_tiling], &mut builder);
@@ -409,11 +415,13 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
         let acc_dim_k = builder.open_mapped_dim(&ld_a[1]);
         let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_k], GlobalScope(()), &mut builder);
         let b_op = ld_b.dim_map(&[&acc_dim_k, &acc_dim_n], GlobalScope(()), &mut builder);
-        let acc = builder.mad(&a_op, &b_op, &helper::Reduce(acc_init));
+        let fby = builder.create_fby_variable(acc_init, &[&acc_dim_k]);
+        let acc = builder.mad(&a_op, &b_op, &fby);
+        builder.set_loop_carried_variable(fby, acc);
         builder.close_dim(&acc_dim_k);
 
         let acc = VirtualTensor::new(acc, vec![acc_dim_m, acc_dim_n]);
-        let st_c = acc.store(&self.c, &mut builder);
+        let st_c = acc.store(&self.c, &[&acc_dim_k], &mut builder);
 
         // Order for correctness.
         builder.order(&st_c.inst(), &acc_dim_k, Order::AFTER);
@@ -587,12 +595,11 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
         signature: &'b ir::Signature,
         ctx: &'b device::Context,
     ) -> Vec<Candidate<'b>> {
-        let m_tiling = helper::TilingPattern::infer_pattern(self.params.m as u32, &[64]);
-        let n_tiling = helper::TilingPattern::infer_pattern(self.params.n as u32, &[64]);
-        let k_tiling = helper::TilingPattern::infer_pattern(self.params.k as u32, &[64]);
-        let batch_tiling =
-            helper::TilingPattern::infer_pattern(self.params.batch as u32, &[128]);
-        let mut builder = helper::Builder::new(signature, ctx.device());
+        let m_tiling = TilingPattern::infer_pattern(self.params.m as u32, &[64]);
+        let n_tiling = TilingPattern::infer_pattern(self.params.n as u32, &[64]);
+        let k_tiling = TilingPattern::infer_pattern(self.params.k as u32, &[64]);
+        let batch_tiling = TilingPattern::infer_pattern(self.params.batch as u32, &[128]);
+        let mut builder = Builder::new(signature, ctx.device());
         let a_tiling = vec![batch_tiling.clone(), m_tiling, k_tiling.clone()];
         let ld_a = self.a.load(a_tiling, &mut builder);
         let b_tiling = if self.params.batch_b {
@@ -625,11 +632,13 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
             };
             ld_b.dim_map(b_dims, GlobalScope(()), &mut builder)
         };
-        let acc = builder.mad(&a_op, &b_op, &helper::Reduce(acc_init));
+        let fby = builder.create_fby_variable(acc_init, &[&acc_dim_k]);
+        let acc = builder.mad(&a_op, &b_op, &fby);
+        builder.set_loop_carried_variable(fby, acc);
         builder.close_dim(&acc_dim_k);
 
         let acc = VirtualTensor::new(acc, vec![acc_batch, acc_dim_m, acc_dim_n]);
-        let st_c = acc.store(&self.c, &mut builder);
+        let st_c = acc.store(&self.c, &[&acc_dim_k], &mut builder);
 
         // Order for correctness.
         builder.order(&st_c.inst(), &acc_dim_k, Order::AFTER);

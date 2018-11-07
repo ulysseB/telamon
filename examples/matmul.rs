@@ -82,14 +82,16 @@ fn main() {
     let global_scope = ir::DimMapScope::Global(());
     let op_a = ld_a.dim_map(&[&acc_dim_m, &acc_dim_k], global_scope, &mut builder);
     let op_b = ld_b.dim_map(&[&acc_dim_k, &acc_dim_n], global_scope, &mut builder);
-    let acc = builder.mad(&op_a, &op_b, &helper::Reduce(init));
+    let fby = builder.create_fby_variable(init, &[&acc_dim_k]);
+    let acc = builder.mad(&op_a, &op_b, &fby);
+    builder.set_loop_carried_variable(fby, acc);
     builder.close_dim(&acc_dim_k);
     // Store the result in `C`.
     // for i in 0..M:
     //   for j in 0..N:
     //     store C[i][j] <- acc
     let acc = helper::tensor::VirtualTensor::new(acc, vec![acc_dim_m, acc_dim_n]);
-    acc.store(&c, &mut builder);
+    acc.store(&c, &[&acc_dim_k], &mut builder);
 
     // Step 3. Apply manual decisions and retrieve the search space.
     // Don't use caches to load `A`.

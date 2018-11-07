@@ -383,8 +383,7 @@ fn list_dim_maps(space: &SearchSpace) -> Vec<DimMap> {
         .flat_map(|inst| {
             let dst = inst.id();
             inst.operands().into_iter().flat_map(move |op| match *op {
-                ir::Operand::Inst(src, _, ref dim_map, _)
-                | ir::Operand::Reduce(src, _, ref dim_map, _) => {
+                ir::Operand::Inst(src, _, ref dim_map, _) => {
                     list_dim_map(space, src, dst, dim_map)
                 }
                 _ => None,

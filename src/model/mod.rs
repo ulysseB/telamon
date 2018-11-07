@@ -232,20 +232,6 @@ fn set_data_deps(
                     .bound(BottleneckLevel::Thread, thread_rates);
                 set_data_dep(space, pred, to, dim_map, &latency, level_dag);
             }
-            ir::Operand::Reduce(pred_id, _, ref dim_map, ref reduce_dims) => {
-                let pred = code_points.ids[&CodePoint::Inst(pred_id)];
-                let latency = local_info.hw_pressure[&pred_id.into()]
-                    .bound(BottleneckLevel::Thread, thread_rates);
-                set_data_dep(space, pred, to, dim_map, &latency, level_dag);
-                // Add the back-edge in the levels where it is possible.
-                let latency = local_info.hw_pressure[&inst_id.into()]
-                    .bound(BottleneckLevel::Thread, thread_rates);
-                for level in levels.iter_mut() {
-                    if level.dims.iter().all(|d| reduce_dims.contains(d)) {
-                        level.back_edges.push((to, to, latency.clone()));
-                    }
-                }
-            }
             _ => (),
         }
     }

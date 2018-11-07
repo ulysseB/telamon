@@ -145,20 +145,6 @@ impl<'a, L> Instruction<'a, L> {
         }
     }
 
-    /// Indicates if the instruction performs a reduction.
-    pub fn as_reduction(&self) -> Option<(InstId, &ir::DimMap, &[ir::DimId])> {
-        at_most_one(self.operands().iter().flat_map(|x| x.as_reduction()))
-    }
-
-    /// Returns 'true' if `self` is a reduction initialized by init, and if 'dim' should
-    /// have the same nesting with 'init' that with 'self'.
-    pub fn is_reduction_common_dim(&self, init: InstId, dim: ir::DimId) -> bool {
-        self.as_reduction()
-            .map(|(i, map, rd)| {
-                i == init && !rd.contains(&dim) && map.iter().all(|&(_, rhs)| dim != rhs)
-            }).unwrap_or(false)
-    }
-
     /// Rename a dimension to another ID.
     pub fn merge_dims(&mut self, lhs: ir::DimId, rhs: ir::DimId) {
         self.operator.merge_dims(lhs, rhs);

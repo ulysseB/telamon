@@ -177,11 +177,6 @@ typedef struct String String;
 typedef struct Type Type;
 
 /*
- * Uniquely identifies variables.
- */
-typedef struct VarId VarId;
-
-/*
  * Provides a unique identifier for iteration dimensions.
  */
 typedef struct {
@@ -208,6 +203,13 @@ typedef struct {
 typedef struct {
     uint32_t id;
 } MemId;
+
+/*
+ * Uniquely identifies variables.
+ */
+typedef struct {
+    uint16_t id;
+} VarId;
 
 /*
  * Specifies the version of an instruction to use.
@@ -718,22 +720,6 @@ Operand *telamon_ir_operand_new_float(const Type *t, double value);
 Operand *telamon_ir_operand_new_index(DimId dim);
 
 /*
- * Creates an operand that references the value of an instruction. The value of the
- * instruction is transmitted point-to-point between the source dimensions (`src_dims`,
- * in which the instruction is produced) and destination dimensions (`dst_dims`, in which
- * the operand is used). `num_mapped_dims` indicates the number of dimensions in
- * `src_dims` and in `dst_dims`. If `allow_tmp_mem` is non-zero, Telamon can allocate
- * memory to transfer data between the two loop nests. Otherwise, it makes sure the data
- * can be stored in registers (for example by fusing or unrolling loops).
- */
-Operand *telamon_ir_operand_new_inst(const Function *function,
-                                     InstId inst,
-                                     const DimId *src_dims,
-                                     const DimId *dst_dims,
-                                     uintptr_t num_mapped_dims,
-                                     int allow_tmp_mem);
-
-/*
  * Create a constant integer operand. The provided type must be an integer type.
  * Returns `null` if an error is encountered.
  */
@@ -744,23 +730,6 @@ Operand *telamon_ir_operand_new_int(const Type *t, int64_t value);
  * a reference to `parameter`.
  */
 Operand *telamon_ir_operand_new_parameter(const Parameter *parameter);
-
-/*
- * Creates an operand that take the value of `init_inst` the first time is is encountered
- * and then reuse the value produced by the instruction using the operand, effectivelly
- * creating a reduction. The value is is transmitted point-to-point between the source
- * dimensions (`src_dims`, in which `init_inst` is produced) and destination dimensions
- * (`dst_dims`, in which the operand is used). `num_mapped_dims` indicates the number of
- * dimensions in `src_dims` and in `dst_dims`. `reduction_dims` indicates on which
- * dimensions the reduction occurs: values are not reused accross other dimensions.
- */
-Operand *telamon_ir_operand_new_reduction(const Function *function,
-                                          InstId init_inst,
-                                          const DimId *src_dims,
-                                          const DimId *dst_dims,
-                                          uintptr_t num_mapped_dims,
-                                          const DimId *reduction_dims,
-                                          uintptr_t num_reduction_dims);
 
 /*
  * Creates a binary operator. Takes ownership of the operands.
@@ -826,6 +795,12 @@ Operator *telamon_ir_operator_new_tensor_store(Function *function,
                                                const PartialSize *strides,
                                                uintptr_t num_strided_dims,
                                                Operand *value);
+
+/*
+ * Sets `var` as the variable reused after the first iteration of `fby` variable, assuming `fby`
+ * was created with `telamon_ir_variable_new_fby`.
+ */
+TelamonStatus telamon_ir_set_loop_carried_variable(VarId fby, VarId var, Function *function);
 
 /*
  * Adds an array parameter to the function signature.
@@ -898,6 +873,53 @@ Type *telamon_ir_type_new_float(uint16_t num_bits);
  * Creates an integer type that must be freed with `telamon_ir_type_free`.
  */
 Type *telamon_ir_type_new_int(uint16_t num_bits);
+
+/*
+ * Creates an operand that references the value of another variable. The value of the
+ * variable is transmitted point-to-point between the source dimensions (`src_dims`,
+ * in which the instruction is produced) and destination dimensions (`dst_dims`, in which
+ * the operand is used). `num_mapped_dims` indicates the number of dimensions in
+ * `src_dims` and in `dst_dims`. If `allow_tmp_mem` is non-zero, Telamon can allocate
+ * memory to transfer data between the two loop nests. Otherwise, it makes sure the data
+ * can be stored in registers (for example by fusing or unrolling loops).
+ */
+TelamonStatus telamon_ir_variable_new_dim_map(VarId src,
+                                              const DimId *src_dims,
+                                              const DimId *dst_dims,
+                                              uintptr_t num_mapped_dims,
+                                              int allow_tmp_mem,
+                                              Function *function,
+                                              VarId *var_id);
+
+/*
+ * Creates an operand that take the value of `init_inst` the first time is is encountered
+ * and then reuse a value produced at a previous iteration of dimensions. The value to
+ * reuse is set separately with `telamon_ir_set_loop_carried_variable`. `fby_dims`
+ * specifies on which dimensions to reuse the value of the previous iteration and
+ * `num_fby_dims` indicates the number of dimensions in `fby_dims`.
+ */
+TelamonStatus telamon_ir_variable_new_fby(VarId init,
+                                          const DimId *fby_dims,
+                                          uintptr_t num_fby_dims,
+                                          Function *function,
+                                          VarId *var_id);
+
+/*
+ * Creates a variable that takes the value returned by an instruction and stores its id
+ * in `var_id`.
+ */
+TelamonStatus telamon_ir_variable_new_inst(InstId inst, Function *function, VarId *var_id);
+
+/*
+ * Creates a variable that takes the last value of hold by another variable at the last
+ * iteration of the `num_dims` dimensions given in `dims`. Stores the variable ID in
+ * `var_id`.
+ */
+TelamonStatus telamon_ir_variable_new_last(VarId src,
+                                           const DimId *dims,
+                                           uintptr_t num_dims,
+                                           Function *function,
+                                           VarId *var_id);
 
 /*
  * Apply a sequence of actions to a search space.

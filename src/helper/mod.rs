@@ -6,7 +6,7 @@ mod signature;
 pub mod tensor;
 
 pub use self::builder::Builder;
-pub use self::operand::{AutoOperand, Reduce, TmpArray};
+pub use self::operand::*;
 pub use self::signature::Builder as SignatureBuilder;
 
 use ir;
@@ -119,8 +119,13 @@ impl TilingPattern {
             .map(|max| {
                 VecSet::new(multiples.iter().cloned().take_while(|x| x <= max).collect())
             }).collect();
+        let tiling_factors = if multiples.is_empty() {
+            VecSet::new(vec![1])
+        } else {
+            multiples
+        };
         TilingPattern {
-            tiling_factors: multiples,
+            tiling_factors,
             tile_sizes,
         }
     }

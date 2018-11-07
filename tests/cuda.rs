@@ -107,10 +107,12 @@ fn thread_reduction_map() {
     let size_32 = builder.cst_size(32);
     let d0 = builder.open_dim_ex(size_32, DimKind::THREAD);
     let init = builder.mov(&0f32);
-    builder.open_mapped_dim(&d0.into());
+    let d1 = builder.open_mapped_dim(&d0.into());
     let cst_size_2 = builder.cst_size(2);
-    builder.open_dim_ex(cst_size_2, DimKind::LOOP);
-    builder.add(&helper::Reduce(init), &1f32);
+    let d2 = builder.open_dim_ex(cst_size_2, DimKind::LOOP);
+    let fby = builder.create_fby_variable(init, &[&d2]);
+    let acc = builder.add(&fby, &1f32);
+    builder.set_loop_carried_variable(fby, acc);
 
     gen_best(&context, builder.get());
 }
@@ -231,8 +233,9 @@ fn global_vector_load() {
     builder.close_dim(&d0);
     // Store B in shared memory.
     let output_pattern = ir::AccessPattern::Unknown(None);
-    builder.open_mapped_dim(&d0);
+    let d1 = builder.open_mapped_dim(&d0);
     builder.st_ex(&"output", &ld, true, output_pattern, InstFlag::NO_CACHE);
+    builder.action(Action::DimKind(d1[0], !DimKind::PARALLEL));
 
     check_candidates(builder.get(), &context, || {
         assert_eq!(read_array::<i32>(output.as_ref()), &[13]);
@@ -364,16 +367,16 @@ fn dim_map_reduce_0() {
 
     let inst0 = builder.mov(&0f32);
 
-    let _d0 = builder.open_dim_ex(size_16.clone(), DimKind::LOOP);
+    let d0 = builder.open_dim_ex(size_16.clone(), DimKind::LOOP);
     let d1 = builder.open_dim_ex(size_16.clone(), DimKind::LOOP);
     let inst1 = builder.mov(&0f32);
     builder.close_dim(&d1);
 
     let d2 = builder.open_dim_ex(size_16.clone(), DimKind::LOOP);
     let op = builder.dim_map(inst1, &[(&d1, &d2)], ir::DimMapScope::Global(()));
-    let inst2 = builder.add(&op, &helper::Reduce(inst0));
-
-    builder.order(&inst2, &d1, Order::AFTER);
+    let fby = builder.create_fby_variable(inst0, &[&d0, &d2]);
+    let inst2 = builder.add(&op, &fby);
+    builder.set_loop_carried_variable(fby, inst2);
 
     check_candidates(builder.get(), &context, || ());
 }

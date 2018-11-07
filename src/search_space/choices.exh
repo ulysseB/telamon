@@ -248,12 +248,6 @@ require forall $dim in StaticDims:
     dim_kind($dim) is not VECTOR || order($dim, $inst) is not OUTER
       || "$fun.device().can_vectorize($dim, $inst.operator())"
 
-require forall $dim in Dimensions:
-  forall $init in Instructions:
-    forall $reduce in Instructions:
-      "!$reduce.is_reduction_common_dim($init.id(), $dim.id())"
-        || is_iteration_dim($reduce, $dim) is FALSE || order($dim, $init) is OUTER
-
 // dim_map lowering.
 trigger forall $lhs in Dimensions:
   forall $rhs in Dimensions:
