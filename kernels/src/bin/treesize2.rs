@@ -1,5 +1,6 @@
 extern crate crossbeam;
 extern crate csv;
+extern crate directories;
 extern crate env_logger;
 extern crate structopt;
 #[macro_use]
@@ -21,15 +22,20 @@ extern crate telamon_utils as utils;
 
 use std::borrow::Borrow;
 use std::collections::{hash_map::Entry, BinaryHeap, HashMap};
-use std::fmt::Debug;
 use std::iter::FromIterator;
 use std::marker::PhantomData;
 use std::ops::{Deref, Index};
-use std::str::FromStr;
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::{
+    error,
+    fmt::{self, Debug, Display},
+    str::FromStr,
+};
 use std::{thread, time};
 
+use directories::ProjectDirs;
 use indicatif::ProgressBar;
 use rand::distributions::{Bernoulli, Weighted, WeightedChoice};
 use rand::prelude::*;
@@ -123,6 +129,16 @@ struct ContextEnvironment<'a, C: Context + 'a> {
     invalid_actions_cnt: AtomicUsize,
 }
 
+impl<'a, C: Context + 'a> Clone for ContextEnvironment<'a, C> {
+    fn clone(&self) -> Self {
+        ContextEnvironment {
+            context: &self.context,
+            ordering: &self.ordering,
+            invalid_actions_cnt: AtomicUsize::new(0),
+        }
+    }
+}
+
 trait Depth {
     fn depth(&self) -> usize;
 }
@@ -163,6 +179,21 @@ trait Evaluator<E: Environment> {
         actions: Vec<(E::Action, Option<Arc<E::State>>)>,
         rng: &mut ThreadRng,
     ) -> Self::Evaluation;
+}
+
+impl<'a, E: Environment + 'a, Eval: 'a> Evaluator<E>
+    for Box<dyn Evaluator<E, Evaluation = Eval> + Sync + 'a>
+{
+    type Evaluation = Eval;
+
+    fn evaluate(
+        &self,
+        state: Arc<E::State>,
+        actions: Vec<(E::Action, Option<Arc<E::State>>)>,
+        rng: &mut ThreadRng,
+    ) -> Self::Evaluation {
+        Evaluator::evaluate(&**self, state, actions, rng)
+    }
 }
 
 /// A tree policy represents the policy to use on the already expanded
@@ -367,9 +398,17 @@ trait Stratifier<E: Environment> {
     type Strate: Hash + Eq + Ord + Clone;
 
     fn strate(&self, state: &E::State) -> Self::Strate;
-}
 
-struct MyStratifier;
+    fn into_evaluator(self, environment: E) -> StratifiedEvaluator<E, Self>
+    where
+        Self: Sized,
+    {
+        StratifiedEvaluator {
+            stratifier: self,
+            environment,
+        }
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
 struct OrdF64(f64);
@@ -398,26 +437,43 @@ impl Ord for OrdF64 {
     }
 }
 
-impl<'a, E: Environment<State = Candidate<'a>>> Stratifier<E> for MyStratifier {
-    type Strate = (usize, u64);
+struct DepthStratifier;
+
+impl<'a, E: Environment<State = Candidate<'a>>> Stratifier<E> for DepthStratifier {
+    type Strate = usize;
 
     fn strate(&self, state: &E::State) -> Self::Strate {
-        /*
-        let log_weight = choice::default_list(&state.space)
-            .map(|choice| (choice.len() as f64).ln())
-            .sum::<f64>();
-            */
+        usize::max_value() - state.actions.len()
+    }
+}
+
+struct RemainingChoicesStratifier;
+
+impl<'a, E: Environment<State = Candidate<'a>>> Stratifier<E>
+    for RemainingChoicesStratifier
+{
+    type Strate = usize;
+
+    fn strate(&self, state: &E::State) -> Self::Strate {
+        choice::default_list(&state.space).count()
+    }
+}
+
+struct CombinedStratifier;
+
+impl<'a, E: Environment<State = Candidate<'a>>> Stratifier<E> for CombinedStratifier {
+    type Strate = (usize, usize);
+
+    fn strate(&self, state: &E::State) -> Self::Strate {
         (
             usize::max_value() - state.actions.len(),
-            choice::default_list(&state.space).count() as u64
-            // log_weight.to_bits() >> (std::f64::MANTISSA_DIGITS - 6),
+            choice::default_list(&state.space).count(),
         )
     }
 }
 
-struct StratifiedEvaluator<E, P, S> {
+struct StratifiedEvaluator<E, S> {
     environment: E,
-    policy: P,
     stratifier: S,
 }
 
@@ -492,9 +548,7 @@ impl<'a, E: Environment, S: Stratifier<E> + 'a> Stratification<'a, E, S> {
     }
 }
 
-impl<E: Environment, P: TreePolicy<E>, S: Stratifier<E>> Evaluator<E>
-    for StratifiedEvaluator<E, P, S>
-{
+impl<E: Environment, S: Stratifier<E>> Evaluator<E> for StratifiedEvaluator<E, S> {
     type Evaluation = (bool, f64);
 
     fn evaluate(
@@ -1366,21 +1420,6 @@ impl<Env: Environment, Eval: Evaluator<Env>, P: TreePolicy<Env>> SearchSpec
 
 use kernels::{linalg, Kernel, Scalar};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct Prefix(Vec<usize>);
-
-impl FromStr for Prefix {
-    type Err = ::std::num::ParseIntError;
-
-    fn from_str(s: &str) -> Result<Prefix, ::std::num::ParseIntError> {
-        Ok(Prefix(
-            s.split_terminator('.')
-                .map(str::parse)
-                .collect::<Result<Vec<_>, _>>()?,
-        ))
-    }
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ExactChoice(ExactChoiceImpl);
 
@@ -1426,9 +1465,9 @@ impl ExactChoice {
         match self.0 {
             ExactChoiceImpl::Never => None,
             ExactChoiceImpl::Cached(size) => Some(size),
-            ExactChoiceImpl::Auto if estimate > 5e5 => {
+            ExactChoiceImpl::Auto if estimate > 1e5 => {
                 trace!(
-                    "Estimated size is larger than 5e5; skipping exact size computation."
+                    "Estimated size is larger than 1e5; skipping exact size computation."
                 );
                 return None;
             }
@@ -1477,30 +1516,221 @@ impl FromStr for ExactChoice {
     }
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct ParseEvaluatorKindError(String);
+
+impl error::Error for ParseEvaluatorKindError {}
+
+impl Display for ParseEvaluatorKindError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "invalid evaluator `{}`", self.0)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum EvaluatorKind {
+    Policy,
+    PartialBacktrack,
+    Stratified,
+}
+
+impl FromStr for EvaluatorKind {
+    type Err = ParseEvaluatorKindError;
+
+    fn from_str(s: &str) -> Result<EvaluatorKind, ParseEvaluatorKindError> {
+        use EvaluatorKind::*;
+
+        match s {
+            "policy" => Ok(Policy),
+            "partial_backtrack" => Ok(PartialBacktrack),
+            "stratified" => Ok(Stratified),
+            _ => Err(ParseEvaluatorKindError(s.into())),
+        }
+    }
+}
+
+impl Display for EvaluatorKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use EvaluatorKind::*;
+
+        f.write_str(match self {
+            Policy => "policy",
+            PartialBacktrack => "partial_backtrack",
+            Stratified => "stratified",
+        })
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct ParseStratifierKindError(String);
+
+impl error::Error for ParseStratifierKindError {}
+
+impl Display for ParseStratifierKindError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "invalid stratifier `{}`", self.0)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum StratifierKind {
+    Depth,
+    RemainingChoices,
+    Combined,
+}
+
+impl FromStr for StratifierKind {
+    type Err = ParseStratifierKindError;
+
+    fn from_str(s: &str) -> Result<StratifierKind, ParseStratifierKindError> {
+        use StratifierKind::*;
+
+        match s {
+            "depth" => Ok(Depth),
+            "remaining_choices" => Ok(RemainingChoices),
+            "combined" => Ok(Combined),
+            _ => Err(ParseStratifierKindError(s.into())),
+        }
+    }
+}
+
+impl Display for StratifierKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use StratifierKind::*;
+
+        f.write_str(match self {
+            Depth => "depth",
+            RemainingChoices => "remaining_choices",
+            Combined => "combined",
+        })
+    }
+}
+
 #[derive(StructOpt, Debug, Serialize, Deserialize)]
-#[structopt(name = "treesize2")]
+#[structopt(
+    name = "treesize2",
+    raw(setting = "structopt::clap::AppSettings::ColoredHelp"),
+    about = "Estimate search tree size",
+)]
 struct Opt {
-    #[structopt(long = "num-playouts", default_value = "10000")]
+    #[structopt(
+        long = "num-playouts",
+        default_value = "10000",
+        help = "Number of playouts to perform",
+        long_help = r#"The number of playouts to perform.
+
+Descent strategies which are able to backtrack may examine a larger number of implementations."#,
+    )]
     num_playouts: usize,
 
-    #[structopt(long = "output", short = "o")]
+    #[structopt(
+        long = "output",
+        short = "o",
+        help = "Output directory",
+        long_help = r#"The output directory.  It must not exist, unless --dummy is set.
+
+The output directory will contain at least the following files:
+ - config.yaml:  The fully-parsed options which have been given
+ - estimates.csv:  A CSV file containing an estimated tree size for each playout
+
+Depending on the configuration, additional files may be present, including:
+ - tree.dot:  A graphviz file representing a portion of the search tree
+ - descents.csv:  A CSV file containing the exact actions taken for each descent.  Depending on the
+   configuration, this may or may not be complete."#,
+    )]
     output: String,
 
-    #[structopt(long = "prefix", default_value = "",)]
-    prefix: Prefix,
+    #[structopt(
+        long = "prefix",
+        require_delimiter = true,
+        value_delimiter = ".",
+        default_value = "",
+        help = "Path to the root node to use.",
+        long_help = r#"Path to the root node to use for the estimation.
+    
+This is a dot-separated sequence of indices indicating the actions to take, starting from the
+actual toplevel candidate of the kernel.  For instance, the value `0.2.1` will take the first
+action on the toplevel candidate, then the third action on the resulting candidate, then the second
+action on the resulting candidate, and finally start the estimation from that node."#,
+    )]
+    prefix: Vec<usize>,
 
     #[structopt(
         long = "ordering",
-        default_value = "lower_layout,size,dim_kind,dim_map,mem_space,order,inst_flag"
+        default_value = "lower_layout,size,dim_kind,dim_map,mem_space,order,inst_flag",
+        help = "Order in which to consider the choices",
+        long_help = r#"Order in which the choices should be taken. This is specified as a comma-separated list of choice groups."#,
     )]
     ordering: config::ChoiceOrdering,
 
-    #[structopt(long = "exact", default_value = "auto",)]
+    #[structopt(
+        long = "exact",
+        default_value = "never",
+        help = "Exact size of the estimated subtree",
+        long_help = r#"Exact size of the estimated subtree.
+
+This can be one of:
+ - An integer with a pre-computed tree size
+ - The string `always` to re-compute the exact size (may be expensive!)
+ - The string `never` to skip comparison to the exact size
+ - The string `auto` to re-compute the exact size only if the size estimate is small enough"#,
+    )]
     exact: ExactChoice,
 
-    #[structopt(long = "dummy")]
-    #[serde(rename = "dummy")]
+    #[structopt(
+        long = "dummy",
+        help = "Mark the output directory as dummy",
+        long_help = r#"Mark the output directory as dummy.
+
+This will create an empty file named DUMMY in the output directory.  Furthermore, if the output
+directory already exists and contains a file named DUMMY, the directory will be cleared of its
+content and reused.  This is intended for use when running local debugging experiments for which
+the outputs don't need to be preserved.
+
+Note that providing the --dummy flag will still prevent you from re-using an existing non-dummy
+directory."#,
+    )]
     dummy: bool,
+
+    #[structopt(
+        long = "gpu",
+        short = "g",
+        help = "Path to the GPU description file to use",
+    )]
+    cuda_gpus: Option<String>,
+
+    #[structopt(
+        long = "evaluator",
+        default_value = "policy",
+        possible_value = "policy",
+        possible_value = "partial_backtrack",
+        possible_value = "stratified",
+    )]
+    evaluator: EvaluatorKind,
+
+    #[structopt(
+        long = "stratifier",
+        default_value = "depth",
+        possible_value = "depth",
+        possible_value = "remaining_choices",
+        possible_value = "combined",
+    )]
+    stratifier: StratifierKind,
+
+    #[structopt(
+        long = "matmul",
+        conflicts_with = "axpy",
+        number_of_values = 3,
+        value_name = "M",
+        value_name = "N",
+        value_name = "K",
+    )]
+    matmul: Vec<i32>,
+
+    #[structopt(long = "axpy", value_name = "N", conflicts_with = "matmul",)]
+    axpy: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -1534,7 +1764,7 @@ fn exact_count<'a>(
     }
 }
 
-trait CandidateBuilder<'a, T, F, C>
+trait CandidateBuilder<'a, T, F, C>: Display
 where
     F: FnOnce(Vec<Candidate<'_>>, &C) -> T,
     C: ArgMap + Context + 'a,
@@ -1553,7 +1783,7 @@ where
     }
 }
 
-trait KernelParameters<'a> {
+trait KernelParameters<'a>: Display {
     type Kernel: Kernel<'a>;
 
     fn as_parameters(&self) -> <Self::Kernel as Kernel<'a>>::Parameters;
@@ -1589,6 +1819,16 @@ impl<S: Scalar> From<(i32, bool)> for AxpyParameters<S> {
     }
 }
 
+impl<S: Scalar> Display for AxpyParameters<S> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.generic {
+            write!(f, "generic ")?;
+        }
+
+        write!(f, "Axpy[{}] kernel on ?", self.dim)
+    }
+}
+
 impl<'a, S: Scalar> KernelParameters<'a> for AxpyParameters<S> {
     type Kernel = linalg::Axpy<'a, S>;
 
@@ -1609,6 +1849,20 @@ impl<S: Scalar> From<linalg::MatMulP<S>> for MatMulParameters<S> {
             params,
             scalar: PhantomData,
         }
+    }
+}
+
+impl<S: Scalar> Display for MatMulParameters<S> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.params.generic {
+            write!(f, "generic ")?;
+        }
+
+        write!(
+            f,
+            "MM[{}, {}, {}] kernel on ?",
+            self.params.m, self.params.n, self.params.k
+        )
     }
 }
 
@@ -1662,26 +1916,36 @@ fn main() {
     let num_playouts = opt.num_playouts;
 
     // let proba = CompleteTreeSizeRatioPolicy { epsilon: 0.1f64 };
-    let proba = UniformPolicy {};
+    let policy = UniformPolicy {};
 
-    let gpu: Gpu = serde_json::from_reader(
-        &std::fs::File::open("/home/elarnon/.config/telamon/cuda_gpus.json").unwrap(),
-    ).unwrap();
+    let cuda_gpus_path = opt
+        .cuda_gpus
+        .as_ref()
+        .map(|gpus| PathBuf::from(&gpus))
+        .or_else(|| {
+            ProjectDirs::from("", "", "Telamon").map(|project_dirs| {
+                project_dirs.config_dir().join("cuda_gpus.json").into()
+            })
+        }).expect("Unable to find cuda_gpus.json");
 
-    let params: Box<CandidateBuilder<'_, _, _, _>> = if true {
-        /*
-        Box::new(MatMulParameters::<f32>::from(linalg::MatMulP::new(
-            16, 16, 16,
-        )))*/
-        Box::new(AxpyParameters::<f32>::from((1 << 26, true)))
+    let gpu: Gpu =
+        serde_json::from_reader(&std::fs::File::open(cuda_gpus_path).unwrap()).unwrap();
+
+    let params: Box<dyn CandidateBuilder<'_, _, _, _>> = if opt.matmul.is_empty() {
+        Box::new(AxpyParameters::<f32>::from((
+            opt.axpy.unwrap_or(1 << 26),
+            true,
+        )))
     } else {
         Box::new(MatMulParameters::<f32>::from(
-            linalg::MatMulP::new(1024, 1024, 1024)
+            linalg::MatMulP::new(opt.matmul[0], opt.matmul[1], opt.matmul[2])
                 .tile_m(TilingPattern::new_fixed(&[32, 4]))
                 .tile_n(TilingPattern::new_fixed(&[32, 4]))
                 .tile_k(TilingPattern::new_fixed(&[32])),
         ))
     };
+
+    println!("Kernel: {}", &*params);
 
     let estimates = params.with_candidates(
         &mut FakeContext::new(gpu),
@@ -1692,7 +1956,7 @@ fn main() {
                 assert!(candidates.len() == 1);
                 let mut candidate = candidates.pop().unwrap();
 
-                for &index in &opt.prefix.0 {
+                for &index in &opt.prefix {
                     // We need a local variable here otherwise rust gets confused about lifetimes.
                     let choice = choice::list(&opt.ordering, &candidate.space).next();
                     if let Some(mut choice) = choice {
@@ -1715,25 +1979,40 @@ fn main() {
                 candidate
             };
 
+            let environment = ContextEnvironment {
+                context,
+                ordering: &opt.ordering,
+                invalid_actions_cnt: AtomicUsize::new(0),
+            };
+            let evaluator: Box<dyn Evaluator<_, Evaluation = _> + Sync + '_> = match opt
+                .evaluator
+            {
+                EvaluatorKind::Policy => Box::new(PolicyEvaluator {
+                    environment: environment.clone(),
+                    policy: policy.clone(),
+                }),
+                EvaluatorKind::PartialBacktrack => Box::new(PartialBacktrackEvaluator {
+                    environment: environment.clone(),
+                    policy: policy.clone(),
+                }),
+                EvaluatorKind::Stratified => match opt.stratifier {
+                    StratifierKind::Depth => {
+                        Box::new(DepthStratifier.into_evaluator(environment.clone()))
+                    }
+                    StratifierKind::RemainingChoices => Box::new(
+                        RemainingChoicesStratifier.into_evaluator(environment.clone()),
+                    ),
+                    StratifierKind::Combined => {
+                        Box::new(CombinedStratifier.into_evaluator(environment.clone()))
+                    }
+                },
+            };
+
             let tree = Tree {
                 spec: TreeSizeEstimation {
-                    environment: ContextEnvironment {
-                        context,
-                        ordering: &opt.ordering,
-                        invalid_actions_cnt: AtomicUsize::new(0),
-                    },
-                    policy: proba.clone(),
-                    evaluator: StratifiedEvaluator {
-                        stratifier: MyStratifier,
-                        //PartialBacktrackEvaluator {
-                        //PolicyEvaluator {
-                        environment: ContextEnvironment {
-                            context,
-                            ordering: &opt.ordering,
-                            invalid_actions_cnt: AtomicUsize::new(0),
-                        },
-                        policy: proba,
-                    },
+                    environment,
+                    policy,
+                    evaluator,
                 },
             };
 
