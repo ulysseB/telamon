@@ -166,12 +166,6 @@
 <span id="166">166</span>
 <span id="167">167</span>
 <span id="168">168</span>
-<span id="169">169</span>
-<span id="170">170</span>
-<span id="171">171</span>
-<span id="172">172</span>
-<span id="173">173</span>
-<span id="174">174</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Exploration of the search space.</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">explorer</span>::<span class="ident">candidate</span>::<span class="ident">Candidate</span>;
@@ -230,12 +224,6 @@
             <span class="ident">mutex</span>: <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Mutex</span>::<span class="ident">new</span>((<span class="ident">CandidateList</span>::<span class="ident">new</span>(), <span class="ident">num_worker</span>)),
             <span class="ident">wakeup</span>: <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Condvar</span>::<span class="ident">new</span>(),
         }
-    }
-
-    <span class="doccomment">/// Insert a candidate to process.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">insert</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">candidate</span>: <span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">lock</span>().<span class="number">0</span>.<span class="ident">insert</span>(<span class="ident">candidate</span>);
-        <span class="self">self</span>.<span class="ident">wakeup</span>.<span class="ident">notify_all</span>();
     }
 
     <span class="doccomment">/// Insert multiple candidates to process.</span>
