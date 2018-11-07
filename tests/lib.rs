@@ -621,7 +621,10 @@ fn simple_fby() {
     builder.mov(&res);
 
     let space = builder.get();
-    assert_eq!(space.domain().get_order(init.into(), dim[0].into()), Order::BEFORE);
+    assert_eq!(
+        space.domain().get_order(init.into(), dim[0].into()),
+        Order::BEFORE
+    );
     // Try to generate a fully specified candidate.
     gen_best(&context, space);
 }
@@ -645,7 +648,10 @@ fn no_additional_fby_dimension() {
     builder.set_loop_carried_variable(fby, acc_var);
     let space = builder.get();
     // Additional dimensions outside `acc` must also be outside `init`.
-    assert_eq!(space.domain().get_order(init.into(), other_dim[0].into()), Order::INNER);
+    assert_eq!(
+        space.domain().get_order(init.into(), other_dim[0].into()),
+        Order::INNER
+    );
     // Try to generate a fully specified candidate.
     gen_best(&context, space);
 }

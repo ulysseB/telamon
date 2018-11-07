@@ -264,69 +264,98 @@ pub unsafe extern "C" fn telamon_ir_operand_new_index(dim: ir::DimId) -> *mut Op
     Box::into_raw(Box::new(Operand(operand)))
 }
 
-/// Creates an operand that references the value of an instruction. The value of the
-/// instruction is transmitted point-to-point between the source dimensions (`src_dims`,
+/// Creates a variable that takes the value returned by an instruction and stores its id
+/// in `var_id`.
+#[no_mangle]
+pub unsafe extern "C" fn telamon_ir_variable_new_inst(
+    inst: ir::InstId,
+    function: *mut Function,
+    var_id: *mut ir::VarId,
+) -> TelamonStatus {
+    *var_id = unwrap_or_exit!((*function).0.add_variable(ir::VarDef::Inst(inst)));
+    TelamonStatus::Ok
+}
+
+/// Creates a variable that takes the last value of hold by another variable at the last
+/// iteration of the `num_dims` dimensions given in `dims`. Stores the variable ID in
+/// `var_id`.
+#[no_mangle]
+pub unsafe extern "C" fn telamon_ir_variable_new_last(
+    src: ir::VarId,
+    dims: *const ir::DimId,
+    num_dims: usize,
+    function: *mut Function,
+    var_id: *mut ir::VarId,
+) -> TelamonStatus {
+    let dims = VecSet::new(std::slice::from_raw_parts(dims, num_dims).to_vec());
+    *var_id = unwrap_or_exit!((*function).0.add_variable(ir::VarDef::Last(src, dims)));
+    TelamonStatus::Ok
+}
+
+/// Creates an operand that references the value of another variable. The value of the
+/// variable is transmitted point-to-point between the source dimensions (`src_dims`,
 /// in which the instruction is produced) and destination dimensions (`dst_dims`, in which
 /// the operand is used). `num_mapped_dims` indicates the number of dimensions in
 /// `src_dims` and in `dst_dims`. If `allow_tmp_mem` is non-zero, Telamon can allocate
 /// memory to transfer data between the two loop nests. Otherwise, it makes sure the data
 /// can be stored in registers (for example by fusing or unrolling loops).
 #[no_mangle]
-pub unsafe extern "C" fn telamon_ir_operand_new_inst(
-    function: *const Function,
-    inst: ir::InstId,
+pub unsafe extern "C" fn telamon_ir_variable_new_dim_map(
+    src: ir::VarId,
     src_dims: *const ir::DimId,
     dst_dims: *const ir::DimId,
     num_mapped_dims: usize,
     allow_tmp_mem: libc::c_int,
-) -> *mut Operand {
-    let inst = (*function).0.inst(inst);
-    let dim_map = dim_map_from_arrays(src_dims, dst_dims, num_mapped_dims);
-    let dim_map_scope = if allow_tmp_mem == 0 {
-        ir::DimMapScope::Thread
-    } else {
-        ir::DimMapScope::Global(())
-    };
-    let operand = ir::Operand::new_inst(inst, dim_map, dim_map_scope);
-    Box::into_raw(Box::new(Operand(operand)))
+    function: *mut Function,
+    var_id: *mut ir::VarId,
+) -> TelamonStatus {
+    let src_dims = std::slice::from_raw_parts(src_dims, num_mapped_dims);
+    let dst_dims = std::slice::from_raw_parts(dst_dims, num_mapped_dims);
+    let function = &mut *function;
+    let mappings = src_dims
+        .iter()
+        .zip(dst_dims)
+        .map(|(&src, &dst)| function.0.map_dimensions([src, dst]))
+        .collect();
+    // TODO(ulysse): take allow_tmp_mem into account
+    let def = ir::VarDef::DimMap(src, mappings);
+    *var_id = unwrap_or_exit!(function.0.add_variable(def));
+    TelamonStatus::Ok
 }
 
 /// Creates an operand that take the value of `init_inst` the first time is is encountered
-/// and then reuse the value produced by the instruction using the operand, effectivelly
-/// creating a reduction. The value is is transmitted point-to-point between the source
-/// dimensions (`src_dims`, in which `init_inst` is produced) and destination dimensions
-/// (`dst_dims`, in which the operand is used). `num_mapped_dims` indicates the number of
-/// dimensions in `src_dims` and in `dst_dims`. `reduction_dims` indicates on which
-/// dimensions the reduction occurs: values are not reused accross other dimensions.
+/// and then reuse a value produced at a previous iteration of dimensions. The value to
+/// reuse is set separately with `telamon_ir_set_loop_carried_variable`. `fby_dims`
+/// specifies on which dimensions to reuse the value of the previous iteration and
+/// `num_fby_dims` indicates the number of dimensions in `fby_dims`.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_ir_operand_new_reduction(
-    function: *const Function,
-    init_inst: ir::InstId,
-    src_dims: *const ir::DimId,
-    dst_dims: *const ir::DimId,
-    num_mapped_dims: usize,
-    reduction_dims: *const ir::DimId,
-    num_reduction_dims: usize,
-) -> *mut Operand {
-    let init = (*function).0.inst(init_inst);
-    let reduction_dims =
-        std::slice::from_raw_parts(reduction_dims, num_reduction_dims).to_vec();
-    let dim_map = dim_map_from_arrays(src_dims, dst_dims, num_mapped_dims);
-    let operand = ir::Operand::new_reduce(init, dim_map, reduction_dims);
-    Box::into_raw(Box::new(Operand(operand)))
+pub unsafe extern "C" fn telamon_ir_variable_new_fby(
+    init: ir::VarId,
+    fby_dims: *const ir::DimId,
+    num_fby_dims: usize,
+    function: *mut Function,
+    var_id: *mut ir::VarId,
+) -> TelamonStatus {
+    let dims = VecSet::new(std::slice::from_raw_parts(fby_dims, num_fby_dims).to_vec());
+    let def = ir::VarDef::Fby {
+        init,
+        prev: None,
+        dims,
+    };
+    *var_id = unwrap_or_exit!((*function).0.add_variable(def));
+    TelamonStatus::Ok
 }
 
-/// Helper function that creates a `DimMap` from C arrays of dimensions. Does not holds
-/// references after the function exits.
-unsafe fn dim_map_from_arrays(
-    src_dims: *const ir::DimId,
-    dst_dims: *const ir::DimId,
-    num_mapped_dims: usize,
-) -> ir::DimMap {
-    let src_dims = std::slice::from_raw_parts(src_dims, num_mapped_dims);
-    let dst_dims = std::slice::from_raw_parts(dst_dims, num_mapped_dims);
-    let dims = src_dims.iter().cloned().zip(dst_dims.iter().cloned());
-    ir::DimMap::new(dims)
+/// Sets `var` as the variable reused after the first iteration of `fby` variable, assuming `fby`
+/// was created with `telamon_ir_variable_new_fby`.
+#[no_mangle]
+pub unsafe extern "C" fn telamon_ir_set_loop_carried_variable(
+    fby: ir::VarId,
+    var: ir::VarId,
+    function: *mut Function,
+) -> TelamonStatus {
+    unwrap_or_exit!((*function).0.set_loop_carried_variable(fby, var));
+    TelamonStatus::Ok
 }
 
 /// Opaque type that abstracts away the lifetime parameter of `ir::Operator` so that

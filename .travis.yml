@@ -8,7 +8,7 @@ branches:
     - master
 language: rust
 cache: cargo
-sudo: false
+sudo: required
 rust:
   - stable
 addons:

@@ -124,7 +124,10 @@ impl TilingPattern {
         } else {
             multiples
         };
-        TilingPattern { tiling_factors, tile_sizes, }
+        TilingPattern {
+            tiling_factors,
+            tile_sizes,
+        }
     }
 }
 

@@ -83,7 +83,7 @@ impl MMSig {
         let st_n = builder.open_mapped_dim(&acc_n);
         let (ptr, pattern) =
             builder.tensor_access(&"c", None, DATA_TYPE, &[&st_m, &st_n]);
-        let st = builder.st(&ptr, &Last(acc, &[&acc_k]), pattern);
+        let st = builder.st(&ptr, &helper::Last(acc, &[&acc_k]), pattern);
         // order for correctness.
         builder.order(&st, &acc_k, Order::AFTER);
         builder.get()

@@ -170,7 +170,7 @@ impl<'a, L> Operand<'a, L> {
         match *self {
             Inst(_, _, ref mut dim_map, _) => {
                 dim_map.merge_dims(lhs, rhs);
-            },
+            }
             _ => (),
         }
     }

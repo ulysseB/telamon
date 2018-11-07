@@ -26,7 +26,8 @@ impl From<ir::DimId> for StmtId {
     }
 }
 
-/// Either a `StmtId` or a mutable reference to a statement.
+/// Either a `StmtId` or a mutable reference to a statement. This is usefull to abstract
+/// over a statement that is either register in the functions or being created.
 pub enum IdOrMut<'a: 'b, 'b, L: 'b> {
     Id(StmtId),
     Mut(&'b mut Statement<'a, L>),
