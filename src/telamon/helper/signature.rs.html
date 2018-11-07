@@ -111,7 +111,7 @@
 <span class="kw">use</span> <span class="ident">helper</span>::<span class="ident">tensor</span>::{<span class="ident">DimSize</span>, <span class="ident">Tensor</span>};
 <span class="kw">use</span> <span class="ident">ir</span>::<span class="ident">Signature</span>;
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
-<span class="kw">use</span> <span class="ident">rand</span>;
+<span class="kw">use</span> <span class="ident">rand</span>::<span class="ident">prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">Arc</span>;
 
 <span class="doccomment">/// Helper struct to build a `Signature`.</span>
@@ -135,7 +135,7 @@
             <span class="ident">name</span>: <span class="ident">name</span>.<span class="ident">to_string</span>(),
             <span class="ident">params</span>: <span class="macro">vec</span><span class="macro">!</span>[],
         };
-        <span class="kw">let</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">rand</span>::<span class="ident">XorShiftRng</span>::<span class="ident">new_unseeded</span>();
+        <span class="kw">let</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">rand</span>::<span class="ident">XorShiftRng</span>::<span class="ident">from_seed</span>(<span class="ident">Default</span>::<span class="ident">default</span>());
         <span class="ident">Builder</span> {
             <span class="ident">random_fill</span>: <span class="bool-val">false</span>,
             <span class="ident">context</span>,
