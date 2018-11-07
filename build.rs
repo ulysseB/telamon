@@ -21,13 +21,10 @@ fn compile_link_cuda() {
     let mut builder = cc::Build::new();
 
     // If CUDA_HOME is defined, use the cuda headers from there.
-    match env::var_os("CUDA_HOME").map(PathBuf::from) {
-        Some(cuda_home) => {
-            builder
-                .include(cuda_home.join("include"))
-                .include(cuda_home.join("extras").join("CUPTI").join("include"));
-        }
-        None => (),
+    if let Some(cuda_home) = env::var_os("CUDA_HOME").map(PathBuf::from) {
+        builder
+            .include(cuda_home.join("include"))
+            .include(cuda_home.join("extras").join("CUPTI").join("include"));
     }
 
     builder
