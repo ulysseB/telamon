@@ -3,7 +3,7 @@ use device::{self, write_array, ScalarArgument};
 use helper::tensor::{DimSize, Tensor};
 use ir::Signature;
 use itertools::Itertools;
-use rand;
+use rand::prelude::*;
 use std::sync::Arc;
 
 /// Helper struct to build a `Signature`.
@@ -27,7 +27,7 @@ where
             name: name.to_string(),
             params: vec![],
         };
-        let rng = rand::XorShiftRng::new_unseeded();
+        let rng = rand::XorShiftRng::from_seed(Default::default());
         Builder {
             random_fill: false,
             context,

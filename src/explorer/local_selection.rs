@@ -3,8 +3,8 @@ use device::Context;
 use explorer::candidate::Candidate;
 use explorer::choice;
 use explorer::config::{ChoiceOrdering, NewNodeOrder};
-use rand::distributions::{IndependentSample, Weighted, WeightedChoice};
-use rand::{thread_rng, Rng};
+use rand::distributions::{Weighted, WeightedChoice};
+use rand::prelude::*;
 use std;
 use utils::*;
 
@@ -110,5 +110,5 @@ where
             weighted_items.push(Weighted { weight, item: ind });
         }
     }
-    Some(WeightedChoice::new(&mut weighted_items).ind_sample(&mut rng))
+    Some(WeightedChoice::new(&mut weighted_items).sample(&mut rng))
 }
