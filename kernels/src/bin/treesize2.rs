@@ -24,7 +24,7 @@ use std::borrow::Borrow;
 use std::collections::{hash_map::Entry, BinaryHeap, HashMap};
 use std::iter::FromIterator;
 use std::marker::PhantomData;
-use std::ops::{Deref, Index};
+use std::ops::{Add, AddAssign, Deref, Index};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -41,6 +41,7 @@ use rand::distributions::{Bernoulli, Weighted, WeightedChoice};
 use rand::prelude::*;
 use rayon::join;
 use rpds::List;
+use stats::Commute;
 use structopt::StructOpt;
 
 use telamon::{
@@ -317,20 +318,85 @@ struct PolicyEvaluator<P, E> {
     environment: E,
 }
 
+pub struct SizeEstimate {
+    stats: stats::OnlineStats,
+    num_terminals: u32,
+    num_deadends: u32,
+}
+
+impl SizeEstimate {
+    fn new() -> Self {
+        SizeEstimate {
+            stats: stats::OnlineStats::new(),
+            num_terminals: 0,
+            num_deadends: 0,
+        }
+    }
+
+    fn terminal(estimate: f64) -> Self {
+        SizeEstimate {
+            stats: stats::OnlineStats::from_slice(&[estimate]),
+            num_terminals: 1,
+            num_deadends: 0,
+        }
+    }
+
+    fn deadend() -> Self {
+        SizeEstimate {
+            stats: stats::OnlineStats::from_slice(&[0f64]),
+            num_terminals: 0,
+            num_deadends: 1,
+        }
+    }
+
+    fn estimate(&self) -> f64 {
+        self.stats.mean()
+    }
+
+    fn stddev(&self) -> f64 {
+        self.stats.stddev()
+    }
+
+    fn num_terminals(&self) -> u32 {
+        self.num_terminals
+    }
+
+    fn num_deadends(&self) -> u32 {
+        self.num_deadends
+    }
+}
+
+impl Add for SizeEstimate {
+    type Output = SizeEstimate;
+
+    fn add(mut self, other: SizeEstimate) -> SizeEstimate {
+        self += other;
+        self
+    }
+}
+
+impl AddAssign for SizeEstimate {
+    fn add_assign(&mut self, other: SizeEstimate) {
+        self.stats.merge(other.stats);
+        self.num_terminals += other.num_terminals;
+        self.num_deadends += other.num_deadends;
+    }
+}
+
 impl<E: Environment, P: TreePolicy<E>> Evaluator<E> for PolicyEvaluator<P, E> {
-    type Evaluation = (bool, f64);
+    type Evaluation = SizeEstimate;
 
     fn evaluate(
         &self,
         _state: Arc<E::State>,
         actions: Vec<(E::Action, Option<Arc<E::State>>)>,
         rng: &mut ThreadRng,
-    ) -> (bool, f64) {
-        if actions.len() == 0 {
+    ) -> SizeEstimate {
+        if actions.is_empty() {
             trace!("Terminal node evaluated.");
 
             // Terminal node, always has size 1.
-            return (true, 1f64);
+            return SizeEstimate::terminal(1f64);
         }
 
         let (mut proba, mut candidate);
@@ -345,11 +411,11 @@ impl<E: Environment, P: TreePolicy<E>> Evaluator<E> for PolicyEvaluator<P, E> {
                     proba = f64::from(sampled.probability);
                 } else {
                     // The selected child was a deadend.
-                    return (false, f64::from(sampled.probability));
+                    return SizeEstimate::deadend();
                 }
             } else {
                 // All children were dead
-                return (false, 1f64);
+                return SizeEstimate::deadend();
             }
         }
 
@@ -369,26 +435,27 @@ impl<E: Environment, P: TreePolicy<E>> Evaluator<E> for PolicyEvaluator<P, E> {
                 if let Some(sampled) =
                     self.policy.sample(probabilities.iter().map(Some), rng)
                 {
+                    proba *= f64::from(sampled.probability);
+
                     match Thunk::unwrap(
                         candidates.swap_remove(sampled.value.into_usize()),
                     ) {
                         Some(c) => {
                             candidate = Arc::new(c);
-                            proba *= f64::from(sampled.probability);
                         }
                         None => {
                             // The sampled subtree was empty; this is a
                             // dead end.
-                            return (false, proba * f64::from(sampled.probability));
+                            return SizeEstimate::deadend();
                         }
                     }
                 } else {
                     // All subtrees were empty; this is a dead end.
-                    return (false, proba);
+                    return SizeEstimate::deadend();
                 }
             } else {
                 // Terminal node reached.
-                return (true, proba);
+                return SizeEstimate::terminal(proba.recip());
             }
         }
     }
@@ -482,7 +549,7 @@ struct Stratification<'a, E: Environment + 'a, S: Stratifier<E> + 'a> {
     stratifier: &'a S,
     queue: HashMap<S::Strate, (E::State, f64)>,
     heap: BinaryHeap<S::Strate>,
-    pub total: f64,
+    estimate: SizeEstimate,
 }
 
 impl<'a, E: Environment, S: Stratifier<E> + 'a> Stratification<'a, E, S> {
@@ -492,7 +559,7 @@ impl<'a, E: Environment, S: Stratifier<E> + 'a> Stratification<'a, E, S> {
             stratifier,
             queue: HashMap::new(),
             heap: BinaryHeap::new(),
-            total: 0.,
+            estimate: SizeEstimate::new(),
         }
     }
 
@@ -503,16 +570,22 @@ impl<'a, E: Environment, S: Stratifier<E> + 'a> Stratification<'a, E, S> {
         rng: &mut impl Rng,
     ) {
         if let Some(actions) = self.environment.list_actions(state.borrow()) {
+            let mut has_child = false;
             for action in actions {
                 if let Some(child) =
                     self.environment.apply_action(state.borrow(), &action)
                 {
+                    has_child = true;
                     let strate = self.stratifier.strate(&child);
                     self.push(strate, child, weight, rng);
                 }
             }
+
+            if !has_child {
+                self.estimate += SizeEstimate::deadend();
+            }
         } else {
-            self.total += weight;
+            self.estimate += SizeEstimate::terminal(weight);
         }
     }
 
@@ -549,7 +622,7 @@ impl<'a, E: Environment, S: Stratifier<E> + 'a> Stratification<'a, E, S> {
 }
 
 impl<E: Environment, S: Stratifier<E>> Evaluator<E> for StratifiedEvaluator<E, S> {
-    type Evaluation = (bool, f64);
+    type Evaluation = SizeEstimate;
 
     fn evaluate(
         &self,
@@ -565,7 +638,7 @@ impl<E: Environment, S: Stratifier<E>> Evaluator<E> for StratifiedEvaluator<E, S
             stratification.process(&state, weight, rng);
         }
 
-        (true, stratification.total.recip())
+        stratification.estimate
     }
 }
 
@@ -578,18 +651,18 @@ impl<E: Environment, P: TreePolicy<E>> Evaluator<E> for PartialBacktrackEvaluato
 where
     E::State: Depth,
 {
-    type Evaluation = (bool, f64);
+    type Evaluation = SizeEstimate;
 
     fn evaluate(
         &self,
         state: Arc<E::State>,
         actions: Vec<(E::Action, Option<Arc<E::State>>)>,
         rng: &mut ThreadRng,
-    ) -> (bool, f64) {
-        if actions.len() == 0 {
+    ) -> Self::Evaluation {
+        if actions.is_empty() {
             trace!("Terminal node evaluated.");
 
-            return (true, 1f64);
+            return SizeEstimate::terminal(1f64);
         }
 
         let probabilities =
@@ -600,9 +673,7 @@ where
 
         // TODO: capacity
         let mut worklist = Vec::new();
-        let mut num_terminal = 0;
-        let mut num_dead = 0;
-        let mut estimate = 0f64;
+        let mut estimate = SizeEstimate::new();
         let depth = state.depth();
         let num_samples = if depth > 100 { 2 } else { 1 };
 
@@ -616,7 +687,7 @@ where
                 worklist.push((cand, proba, depth + 1));
             } else {
                 // The selected child was a deadend
-                num_dead += 1;
+                estimate += SizeEstimate::deadend();
             }
         }
 
@@ -655,24 +726,18 @@ where
                             }
                             None => {
                                 // Dead node
-                                num_dead += 1;
+                                estimate += SizeEstimate::deadend();
                             }
                         }
                     }
                 }
             } else {
                 // Terminal node reached
-                num_terminal += 1;
-                estimate += proba.recip();
+                estimate += SizeEstimate::terminal(proba.recip());
             }
         }
 
-        if num_terminal == 0 {
-            (false, 1f64)
-        } else {
-            // Ergh we return the *proba* not the estimate...
-            (true, (num_terminal + num_dead) as f64 / estimate)
-        }
+        estimate
     }
 }
 
@@ -748,7 +813,7 @@ impl<'a, E: Environment<State = Candidate<'a>>> TreePolicy<E>
             .map(|weighted| weighted.item.probability.0)
             .sum::<f64>();
 
-        if probas.len() == 0 {
+        if probas.is_empty() {
             return None;
         }
 
@@ -820,7 +885,7 @@ impl<'a, E: Environment<State = Candidate<'a>>> TreePolicy<E>
 
         // The sampling procedure uses u32 so we need to ensure the
         // total sum of weights can fit.
-        let resolution = (u32::max_value() / len as u32) as f64;
+        let resolution = f64::from(u32::max_value() / len as u32);
 
         log_weights
             .into_iter()
@@ -860,9 +925,6 @@ struct Node<Spec: SearchSpec> {
 
     /// The cumulated score value.
     total_estimate: AtomicF64,
-
-    /// The cumulated proba value.  See Weighted Backtrack Estimator.
-    total_proba: AtomicF64,
 
     /// The number of times this node has been visited.  Deadends are
     /// counted as visits.
@@ -1038,12 +1100,11 @@ impl<Spec: SearchSpec> Node<Spec> {
     /// Create a new node given its edges.
     fn new(data: NodeData<Spec>, edges: Vec<Edge<Spec>>) -> Self {
         Node {
-            data: data,
+            data,
             edges: edges.into(),
             terminal: false,
             dead: AtomicBool::new(false),
             total_estimate: AtomicF64::new(0f64),
-            total_proba: AtomicF64::new(0f64),
             num_visits: AtomicUsize::new(0usize),
             num_deadends: AtomicUsize::new(0usize),
         }
@@ -1164,7 +1225,10 @@ impl<Spec: SearchSpec> ExpansionResult<Spec> {
 
 struct BackpropResult {
     path: Vec<usize>,
-    estimate: Option<f64>,
+    estimate: f64,
+    stddev: f64,
+    num_terminals: u32,
+    num_deadends: u32,
 }
 
 struct Tree<Spec: SearchSpec> {
@@ -1173,7 +1237,7 @@ struct Tree<Spec: SearchSpec> {
 
 impl<Spec: SearchSpec> Tree<Spec>
 where
-    Spec::Evaluator: Evaluator<Spec::Environment, Evaluation = (bool, f64)>,
+    Spec::Evaluator: Evaluator<Spec::Environment, Evaluation = SizeEstimate>,
 {
     fn selection_expansion_steps<'a>(
         &'a self,
@@ -1258,31 +1322,38 @@ where
             .map(|(_, edge_sample)| edge_sample.value.0)
             .collect::<Vec<_>>();
 
-        let (terminal, mut proba) = estimate;
+        let num_deadends = estimate.num_deadends();
+        let num_terminals = estimate.num_terminals();
+        let mut stddev = estimate.stddev();
+        let mut estimate = estimate.estimate();
 
         path.leaf.num_visits.fetch_add(1, Ordering::Relaxed);
-        while path.leaf.total_proba.try_add(proba).is_err() {}
-        if terminal {
-            while path.leaf.total_estimate.try_add(proba.recip()).is_err() {}
-        } else {
-            path.leaf.num_deadends.fetch_add(1, Ordering::Relaxed);
+
+        while path.leaf.total_estimate.try_add(estimate).is_err() {}
+        if num_deadends > 0 {
+            path.leaf
+                .num_deadends
+                .fetch_add(num_deadends as usize, Ordering::Relaxed);
         }
 
         for (node, edge_sample) in path.path.into_iter().rev() {
             node.num_visits.fetch_add(1, Ordering::Relaxed);
-            proba *= f64::from(edge_sample.probability);
-            while node.total_proba.try_add(proba).is_err() {}
+            stddev *= f64::from(edge_sample.probability).recip();
+            estimate *= f64::from(edge_sample.probability).recip();
 
-            if terminal {
-                while node.total_estimate.try_add(proba.recip()).is_err() {}
-            } else {
-                node.num_deadends.fetch_add(1, Ordering::Relaxed);
+            while node.total_estimate.try_add(estimate).is_err() {}
+            if num_deadends > 0 {
+                node.num_deadends
+                    .fetch_add(num_deadends as usize, Ordering::Relaxed);
             }
         }
 
         BackpropResult {
             path: edgepath,
-            estimate: if terminal { Some(proba.recip()) } else { None },
+            estimate,
+            stddev,
+            num_deadends,
+            num_terminals,
         }
     }
 
@@ -1292,12 +1363,12 @@ where
         let result = if let Some(expanded) = expanded {
             self.simulation_step(expanded, rng)
         } else if path.leaf.terminal {
-            (true, 1f64)
+            SizeEstimate::terminal(1f64)
         } else {
-            (false, 1f64)
+            SizeEstimate::deadend()
         };
 
-        return Some(self.backpropagation_step(path, result));
+        Some(self.backpropagation_step(path, result))
     }
 }
 
@@ -1469,7 +1540,7 @@ impl ExactChoice {
                 trace!(
                     "Estimated size is larger than 1e5; skipping exact size computation."
                 );
-                return None;
+                None
             }
             ExactChoiceImpl::Auto | ExactChoiceImpl::Always => {
                 let num_leafs = AtomicUsize::new(0);
@@ -1616,6 +1687,7 @@ impl Display for StratifierKind {
 )]
 struct Opt {
     #[structopt(
+        display_order = 1,
         long = "num-playouts",
         default_value = "10000",
         help = "Number of playouts to perform",
@@ -1626,6 +1698,7 @@ Descent strategies which are able to backtrack may examine a larger number of im
     num_playouts: usize,
 
     #[structopt(
+        display_order = 2,
         long = "output",
         short = "o",
         help = "Output directory",
@@ -1643,10 +1716,10 @@ Depending on the configuration, additional files may be present, including:
     output: String,
 
     #[structopt(
+        display_order = 3,
         long = "prefix",
         require_delimiter = true,
         value_delimiter = ".",
-        default_value = "",
         help = "Path to the root node to use.",
         long_help = r#"Path to the root node to use for the estimation.
     
@@ -1658,6 +1731,7 @@ action on the resulting candidate, and finally start the estimation from that no
     prefix: Vec<usize>,
 
     #[structopt(
+        display_order = 4,
         long = "ordering",
         default_value = "lower_layout,size,dim_kind,dim_map,mem_space,order,inst_flag",
         help = "Order in which to consider the choices",
@@ -1666,6 +1740,7 @@ action on the resulting candidate, and finally start the estimation from that no
     ordering: config::ChoiceOrdering,
 
     #[structopt(
+        display_order = 5,
         long = "exact",
         default_value = "never",
         help = "Exact size of the estimated subtree",
@@ -1680,6 +1755,7 @@ This can be one of:
     exact: ExactChoice,
 
     #[structopt(
+        display_order = 6,
         long = "dummy",
         help = "Mark the output directory as dummy",
         long_help = r#"Mark the output directory as dummy.
@@ -1695,6 +1771,7 @@ directory."#,
     dummy: bool,
 
     #[structopt(
+        display_order = 7,
         long = "gpu",
         short = "g",
         help = "Path to the GPU description file to use",
@@ -1702,34 +1779,59 @@ directory."#,
     cuda_gpus: Option<String>,
 
     #[structopt(
+        display_order = 8,
         long = "evaluator",
         default_value = "policy",
         possible_value = "policy",
-        possible_value = "partial_backtrack",
         possible_value = "stratified",
+        help = "Evaluation strategy to use",
+        long_help = r#"Evaluation strategy to use.  The available strategies are:
+
+- policy: Use the chosen policy, doing a single random probe (Knuth 1975)
+- stratified: Use a stratified evaluator (Chen 1992).  The stratifier can be selected using
+  --stratifier.
+"#,
     )]
     evaluator: EvaluatorKind,
 
     #[structopt(
+        display_order = 9,
         long = "stratifier",
         default_value = "depth",
         possible_value = "depth",
         possible_value = "remaining_choices",
         possible_value = "combined",
+        help = "Stratifier to use for the `stratified` evaluation strategy",
+        long_help = r#"Stratifier to use for the `stratified` evaluation strategy. Available stratifiers are:
+
+ - depth: Use -depth as a stratifier.  This is equivalent to using a uniform policy evaluator.
+ - remaining_choices: Use the number of remaining choices (provided no propagation takes place) as
+   a stratifier.
+ - combined: Use a lexicographic order on `(depth, remaining_choices)` as a stratifier.  This gives
+   the best results, but is slower to evaluate due to the larger branching factor.
+"#,
     )]
     stratifier: StratifierKind,
 
     #[structopt(
+        display_order = 10,
         long = "matmul",
         conflicts_with = "axpy",
         number_of_values = 3,
         value_name = "M",
         value_name = "N",
         value_name = "K",
+        help = "Use a matmul kernel",
     )]
     matmul: Vec<i32>,
 
-    #[structopt(long = "axpy", value_name = "N", conflicts_with = "matmul",)]
+    #[structopt(
+        display_order = 11,
+        long = "axpy",
+        value_name = "N",
+        conflicts_with = "matmul",
+        help = "Use an axpy kernel"
+    )]
     axpy: Option<i32>,
 }
 
@@ -1738,6 +1840,9 @@ directory."#,
 struct Record {
     id: usize,
     estimate: f64,
+    stddev: f64,
+    evaluations: u32,
+    deadends: u32,
 }
 
 fn exact_count<'a>(
@@ -1923,9 +2028,8 @@ fn main() {
         .as_ref()
         .map(|gpus| PathBuf::from(&gpus))
         .or_else(|| {
-            ProjectDirs::from("", "", "Telamon").map(|project_dirs| {
-                project_dirs.config_dir().join("cuda_gpus.json").into()
-            })
+            ProjectDirs::from("", "", "Telamon")
+                .map(|project_dirs| project_dirs.config_dir().join("cuda_gpus.json"))
         }).expect("Unable to find cuda_gpus.json");
 
     let gpu: Gpu =
@@ -2051,17 +2155,13 @@ fn main() {
                                     }
 
                                     if let Some(result) = tree.playout(&root, rng) {
-                                        if let Some(estimate) = result.estimate {
-                                            thread_estimates.push(Record {
-                                                id: playout_id,
-                                                estimate,
-                                            });
-                                        } else {
-                                            thread_estimates.push(Record {
-                                                id: playout_id,
-                                                estimate: 0f64,
-                                            });
-                                        }
+                                        thread_estimates.push(Record {
+                                            id: playout_id,
+                                            estimate: result.estimate,
+                                            stddev: result.stddev,
+                                            evaluations: result.num_terminals,
+                                            deadends: result.num_deadends,
+                                        });
 
                                         thread_descents.push(result.path);
                                     }
@@ -2087,7 +2187,6 @@ fn main() {
 
                             loop {
                                 let total_estimate = root.total_estimate.load();
-                                let total_proba = root.total_proba.load();
                                 let num_visits = root.num_visits.load(Ordering::Relaxed);
                                 let num_deadends =
                                     root.num_deadends.load(Ordering::Relaxed);
@@ -2095,9 +2194,8 @@ fn main() {
                                 let playout_id = playouts_done.load(Ordering::Relaxed);
                                 bar.set_position(playout_id as u64);
                                 bar.set_message(&format!(
-                                    "size ~{:.2e} ~{:.2e}(deadends: {})",
+                                    "size ~{:.2e} (deadends: {})",
                                     total_estimate / num_visits as f64,
-                                    (num_visits - num_deadends) as f64 / total_proba,
                                     num_deadends,
                                 ));
 
@@ -2184,13 +2282,6 @@ fn main() {
             }
 
             // TODO
-            let total_proba = root.total_proba.load();
-            let num_visits = root.num_visits.load(Ordering::Relaxed);
-            let num_deadends = root.num_deadends.load(Ordering::Relaxed);
-            println!(
-                "Other: {:.2e}",
-                (num_visits - num_deadends) as f64 / total_proba,
-            );
             vec![root.total_estimate.load() / ((*root.num_visits.get_mut()) as f64)]
         },
     );
