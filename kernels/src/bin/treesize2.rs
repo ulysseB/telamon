@@ -24,7 +24,7 @@ use std::borrow::Borrow;
 use std::collections::{hash_map::Entry, BinaryHeap, HashMap};
 use std::iter::FromIterator;
 use std::marker::PhantomData;
-use std::ops::{Add, AddAssign, Deref, Index};
+use std::ops::{Add, AddAssign, Deref, Index, Mul, MulAssign};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -41,7 +41,6 @@ use rand::distributions::{Bernoulli, Weighted, WeightedChoice};
 use rand::prelude::*;
 use rayon::join;
 use rpds::List;
-use stats::Commute;
 use structopt::StructOpt;
 
 use telamon::{
@@ -319,50 +318,76 @@ struct PolicyEvaluator<P, E> {
 }
 
 pub struct SizeEstimate {
-    stats: stats::OnlineStats,
-    num_terminals: u32,
-    num_deadends: u32,
+    terminals: f64,
+    deadends: f64,
+    deadends_ratio: f64,
+    total: f64,
 }
 
 impl SizeEstimate {
     fn new() -> Self {
         SizeEstimate {
-            stats: stats::OnlineStats::new(),
-            num_terminals: 0,
-            num_deadends: 0,
+            terminals: 0f64,
+            deadends: 0f64,
+            deadends_ratio: 0f64,
+            total: 0f64,
         }
     }
 
-    fn terminal(estimate: f64) -> Self {
+    fn terminal() -> Self {
         SizeEstimate {
-            stats: stats::OnlineStats::from_slice(&[estimate]),
-            num_terminals: 1,
-            num_deadends: 0,
+            terminals: 1f64,
+            deadends: 0f64,
+            deadends_ratio: 0f64,
+            total: 1f64,
         }
     }
 
     fn deadend() -> Self {
         SizeEstimate {
-            stats: stats::OnlineStats::from_slice(&[0f64]),
-            num_terminals: 0,
-            num_deadends: 1,
+            terminals: 0f64,
+            deadends: 1f64,
+            deadends_ratio: 1f64,
+            total: 1f64,
         }
     }
 
-    fn estimate(&self) -> f64 {
-        self.stats.mean()
+    fn num_terminals(&self) -> f64 {
+        self.terminals
     }
 
-    fn stddev(&self) -> f64 {
-        self.stats.stddev()
+    fn num_deadends(&self) -> f64 {
+        self.deadends
     }
 
-    fn num_terminals(&self) -> u32 {
-        self.num_terminals
+    fn deadends_ratio(&self) -> f64 {
+        self.deadends_ratio
     }
+}
 
-    fn num_deadends(&self) -> u32 {
-        self.num_deadends
+impl Mul<SizeEstimate> for f64 {
+    type Output = SizeEstimate;
+
+    fn mul(self, mut rhs: SizeEstimate) -> SizeEstimate {
+        rhs *= self;
+        rhs
+    }
+}
+
+impl Mul<f64> for SizeEstimate {
+    type Output = SizeEstimate;
+
+    fn mul(mut self, rhs: f64) -> SizeEstimate {
+        self *= rhs;
+        self
+    }
+}
+
+impl MulAssign<f64> for SizeEstimate {
+    fn mul_assign(&mut self, rhs: f64) {
+        self.terminals *= rhs;
+        self.deadends *= rhs;
+        self.total *= rhs;
     }
 }
 
@@ -377,9 +402,12 @@ impl Add for SizeEstimate {
 
 impl AddAssign for SizeEstimate {
     fn add_assign(&mut self, other: SizeEstimate) {
-        self.stats.merge(other.stats);
-        self.num_terminals += other.num_terminals;
-        self.num_deadends += other.num_deadends;
+        self.terminals += other.terminals;
+        self.deadends += other.deadends;
+        self.deadends_ratio = (self.deadends_ratio * self.total
+            + other.deadends_ratio * other.total)
+            / (self.total + other.total);
+        self.total += other.total;
     }
 }
 
@@ -396,7 +424,7 @@ impl<E: Environment, P: TreePolicy<E>> Evaluator<E> for PolicyEvaluator<P, E> {
             trace!("Terminal node evaluated.");
 
             // Terminal node, always has size 1.
-            return SizeEstimate::terminal(1f64);
+            return SizeEstimate::terminal();
         }
 
         let (mut proba, mut candidate);
@@ -406,12 +434,12 @@ impl<E: Environment, P: TreePolicy<E>> Evaluator<E> for PolicyEvaluator<P, E> {
             ));
             if let Some(sampled) = self.policy.sample(probabilities.iter().map(Some), rng)
             {
+                proba = f64::from(sampled.probability);
                 if let Some(cand) = actions[sampled.value.0].1.as_ref().map(Arc::clone) {
                     candidate = cand;
-                    proba = f64::from(sampled.probability);
                 } else {
                     // The selected child was a deadend.
-                    return SizeEstimate::deadend();
+                    return proba.recip() * SizeEstimate::deadend();
                 }
             } else {
                 // All children were dead
@@ -446,16 +474,16 @@ impl<E: Environment, P: TreePolicy<E>> Evaluator<E> for PolicyEvaluator<P, E> {
                         None => {
                             // The sampled subtree was empty; this is a
                             // dead end.
-                            return SizeEstimate::deadend();
+                            return proba.recip() * SizeEstimate::deadend();
                         }
                     }
                 } else {
                     // All subtrees were empty; this is a dead end.
-                    return SizeEstimate::deadend();
+                    return proba.recip() * SizeEstimate::deadend();
                 }
             } else {
                 // Terminal node reached.
-                return SizeEstimate::terminal(proba.recip());
+                return proba.recip() * SizeEstimate::terminal();
             }
         }
     }
@@ -582,10 +610,10 @@ impl<'a, E: Environment, S: Stratifier<E> + 'a> Stratification<'a, E, S> {
             }
 
             if !has_child {
-                self.estimate += SizeEstimate::deadend();
+                self.estimate += weight * SizeEstimate::deadend();
             }
         } else {
-            self.estimate += SizeEstimate::terminal(weight);
+            self.estimate += weight * SizeEstimate::terminal();
         }
     }
 
@@ -662,7 +690,7 @@ where
         if actions.is_empty() {
             trace!("Terminal node evaluated.");
 
-            return SizeEstimate::terminal(1f64);
+            return SizeEstimate::terminal();
         }
 
         let probabilities =
@@ -687,7 +715,7 @@ where
                 worklist.push((cand, proba, depth + 1));
             } else {
                 // The selected child was a deadend
-                estimate += SizeEstimate::deadend();
+                estimate += proba.recip() * SizeEstimate::deadend();
             }
         }
 
@@ -726,14 +754,14 @@ where
                             }
                             None => {
                                 // Dead node
-                                estimate += SizeEstimate::deadend();
+                                estimate += proba.recip() * SizeEstimate::deadend();
                             }
                         }
                     }
                 }
             } else {
                 // Terminal node reached
-                estimate += SizeEstimate::terminal(proba.recip());
+                estimate += proba.recip() * SizeEstimate::terminal();
             }
         }
 
@@ -926,6 +954,9 @@ struct Node<Spec: SearchSpec> {
     /// The cumulated score value.
     total_estimate: AtomicF64,
 
+    /// The cumulated deadend estimate value.
+    total_deadends: AtomicF64,
+
     /// The number of times this node has been visited.  Deadends are
     /// counted as visits.
     num_visits: AtomicUsize,
@@ -1105,6 +1136,7 @@ impl<Spec: SearchSpec> Node<Spec> {
             terminal: false,
             dead: AtomicBool::new(false),
             total_estimate: AtomicF64::new(0f64),
+            total_deadends: AtomicF64::new(0f64),
             num_visits: AtomicUsize::new(0usize),
             num_deadends: AtomicUsize::new(0usize),
         }
@@ -1120,7 +1152,8 @@ impl<Spec: SearchSpec> Node<Spec> {
     fn deadend(data: NodeData<Spec>) -> Self {
         Node {
             dead: AtomicBool::new(true),
-            total_estimate: AtomicF64::new(837_483_748f64),
+            total_estimate: AtomicF64::new(0f64),
+            total_deadends: AtomicF64::new(1f64),
             ..Self::new(data, Vec::new())
         }
     }
@@ -1226,9 +1259,8 @@ impl<Spec: SearchSpec> ExpansionResult<Spec> {
 struct BackpropResult {
     path: Vec<usize>,
     estimate: f64,
-    stddev: f64,
-    num_terminals: u32,
-    num_deadends: u32,
+    deadends: f64,
+    deadends_ratio: f64,
 }
 
 struct Tree<Spec: SearchSpec> {
@@ -1312,7 +1344,7 @@ where
     fn backpropagation_step(
         &self,
         path: TreePath<'_, Spec>,
-        estimate: Evaluation<Spec>,
+        mut estimate: Evaluation<Spec>,
     ) -> BackpropResult {
         trace!("Starting backpropagation");
 
@@ -1322,38 +1354,50 @@ where
             .map(|(_, edge_sample)| edge_sample.value.0)
             .collect::<Vec<_>>();
 
-        let num_deadends = estimate.num_deadends();
-        let num_terminals = estimate.num_terminals();
-        let mut stddev = estimate.stddev();
-        let mut estimate = estimate.estimate();
-
         path.leaf.num_visits.fetch_add(1, Ordering::Relaxed);
 
-        while path.leaf.total_estimate.try_add(estimate).is_err() {}
-        if num_deadends > 0 {
-            path.leaf
-                .num_deadends
-                .fetch_add(num_deadends as usize, Ordering::Relaxed);
+        if estimate.num_terminals() > 0. {
+            while path
+                .leaf
+                .total_estimate
+                .try_add(estimate.num_terminals())
+                .is_err()
+            {}
+        }
+        if estimate.num_deadends() > 0. {
+            while path
+                .leaf
+                .total_deadends
+                .try_add(estimate.num_deadends())
+                .is_err()
+            {}
         }
 
         for (node, edge_sample) in path.path.into_iter().rev() {
             node.num_visits.fetch_add(1, Ordering::Relaxed);
-            stddev *= f64::from(edge_sample.probability).recip();
             estimate *= f64::from(edge_sample.probability).recip();
 
-            while node.total_estimate.try_add(estimate).is_err() {}
-            if num_deadends > 0 {
-                node.num_deadends
-                    .fetch_add(num_deadends as usize, Ordering::Relaxed);
+            if estimate.num_terminals() > 0. {
+                while node
+                    .total_estimate
+                    .try_add(estimate.num_terminals())
+                    .is_err()
+                {}
+            }
+            if estimate.num_deadends() > 0. {
+                while node
+                    .total_deadends
+                    .try_add(estimate.num_deadends())
+                    .is_err()
+                {}
             }
         }
 
         BackpropResult {
             path: edgepath,
-            estimate,
-            stddev,
-            num_deadends,
-            num_terminals,
+            estimate: estimate.num_terminals(),
+            deadends: estimate.num_deadends(),
+            deadends_ratio: estimate.deadends_ratio(),
         }
     }
 
@@ -1363,7 +1407,7 @@ where
         let result = if let Some(expanded) = expanded {
             self.simulation_step(expanded, rng)
         } else if path.leaf.terminal {
-            SizeEstimate::terminal(1f64)
+            SizeEstimate::terminal()
         } else {
             SizeEstimate::deadend()
         };
@@ -1840,9 +1884,8 @@ directory."#,
 struct Record {
     id: usize,
     estimate: f64,
-    stddev: f64,
-    evaluations: u32,
-    deadends: u32,
+    deadends: f64,
+    deadends_ratio: f64,
 }
 
 fn exact_count<'a>(
@@ -2158,9 +2201,8 @@ fn main() {
                                         thread_estimates.push(Record {
                                             id: playout_id,
                                             estimate: result.estimate,
-                                            stddev: result.stddev,
-                                            evaluations: result.num_terminals,
-                                            deadends: result.num_deadends,
+                                            deadends: result.deadends,
+                                            deadends_ratio: result.deadends_ratio,
                                         });
 
                                         thread_descents.push(result.path);
@@ -2188,15 +2230,14 @@ fn main() {
                             loop {
                                 let total_estimate = root.total_estimate.load();
                                 let num_visits = root.num_visits.load(Ordering::Relaxed);
-                                let num_deadends =
-                                    root.num_deadends.load(Ordering::Relaxed);
+                                let total_deadends = root.total_deadends.load();
 
                                 let playout_id = playouts_done.load(Ordering::Relaxed);
                                 bar.set_position(playout_id as u64);
                                 bar.set_message(&format!(
                                     "size ~{:.2e} (deadends: {})",
                                     total_estimate / num_visits as f64,
-                                    num_deadends,
+                                    total_deadends / num_visits as f64,
                                 ));
 
                                 if playout_id >= num_playouts {
