@@ -129,6 +129,7 @@ struct ContextEnvironment<'a, C: Context + 'a> {
     ordering: &'a config::ChoiceOrdering,
     invalid_actions_cnt: AtomicUsize,
     cut: Option<f64>,
+    max_cut_depth: Option<usize>,
 }
 
 impl<'a, C: Context + 'a> Clone for ContextEnvironment<'a, C> {
@@ -137,6 +138,7 @@ impl<'a, C: Context + 'a> Clone for ContextEnvironment<'a, C> {
             context: &self.context,
             ordering: &self.ordering,
             cut: self.cut,
+            max_cut_depth: self.max_cut_depth,
             invalid_actions_cnt: AtomicUsize::new(0),
         }
     }
@@ -157,15 +159,20 @@ impl<'a, C: Context + 'a> Environment for ContextEnvironment<'a, C> {
     type State = Candidate<'a>;
 
     fn list_actions(&self, candidate: &Candidate<'a>) -> Option<Vec<choice::ActionEx>> {
-        if self
+        let depth_ok = self
+            .max_cut_depth
+            .map(|max_cut_depth| candidate.actions.len() > max_cut_depth)
+            .unwrap_or(true);
+        let cut_ok = self
             .cut
-            .map(|cut| candidate.bound.value() > cut)
-            .unwrap_or(false)
-        {
-            return None;
-        }
+            .map(|cut| candidate.bound.value() <= cut)
+            .unwrap_or(true);
 
-        choice::list(self.ordering, &candidate.space).next()
+        if cut_ok || depth_ok {
+            choice::list(self.ordering, &candidate.space).next()
+        } else {
+            None
+        }
     }
 
     fn apply_action(
@@ -178,14 +185,19 @@ impl<'a, C: Context + 'a> Environment for ContextEnvironment<'a, C> {
             .map_err(|()| self.invalid_actions_cnt.fetch_add(1, Ordering::Relaxed))
             .ok()
             .and_then(|child| {
-                if self
+                let depth_ok = self
+                    .max_cut_depth
+                    .map(|max_cut_depth| candidate.actions.len() > max_cut_depth)
+                    .unwrap_or(true);
+                let cut_ok = self
                     .cut
-                    .map(|cut| child.bound.value() > cut)
-                    .unwrap_or(false)
-                {
-                    None
-                } else {
+                    .map(|cut| candidate.bound.value() <= cut)
+                    .unwrap_or(true);
+
+                if cut_ok || depth_ok {
                     Some(child)
+                } else {
+                    None
                 }
             })
     }
@@ -1890,6 +1902,13 @@ directory."#,
     cut: Option<f64>,
 
     #[structopt(
+        display_order = 14,
+        long = "max-cut-depth",
+        help = "Max depth at which to cut",
+    )]
+    max_cut_depth: Option<usize>,
+
+    #[structopt(
         display_order = 11,
         long = "matmul",
         conflicts_with = "axpy",
@@ -2172,6 +2191,7 @@ fn main() {
                 ordering: &opt.ordering,
                 invalid_actions_cnt: AtomicUsize::new(0),
                 cut: opt.cut,
+                max_cut_depth: opt.max_cut_depth,
             };
             let evaluator: Box<dyn Evaluator<_, Evaluation = _> + Sync + '_> = match opt
                 .evaluator
