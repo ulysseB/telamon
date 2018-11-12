@@ -9,6 +9,7 @@ extern crate dot;
 extern crate indicatif;
 extern crate rand;
 extern crate rayon;
+extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate rpds;
@@ -111,7 +112,7 @@ impl<'a> HasData for Candidate<'a> {
 }
 
 trait Environment {
-    type Action: Debug + Clone;
+    type Action: serde::Serialize + for<'de> serde::Deserialize<'de> + Debug + Clone;
     type State: HasData;
 
     fn list_actions(&self, state: &Self::State) -> Option<Vec<Self::Action>>;
@@ -966,6 +967,7 @@ struct Node<Spec: SearchSpec> {
 }
 
 // gviz
+#[derive(Serialize, Deserialize)]
 struct NodeInfo {
     estimate: f64,
     bound: f64,
@@ -977,18 +979,20 @@ struct NodeInfo {
     explored: bool,
 }
 
-struct EdgeInfo<Spec: SearchSpec> {
-    action: Action<Spec>,
+#[derive(Serialize, Deserialize)]
+struct EdgeInfo<Action> {
+    action: Action,
 }
 
-struct TreeInfo<Spec: SearchSpec> {
+#[derive(Serialize, Deserialize)]
+struct TreeInfo<Action> {
     nodes: Vec<NodeInfo>,
-    edges: Vec<(usize, usize, EdgeInfo<Spec>)>,
+    edges: Vec<(usize, usize, EdgeInfo<Action>)>,
 }
 
-impl<Spec: SearchSpec> TreeInfo<Spec> {
-    fn new(node: &Node<Spec>, min_visits: usize) -> Self {
-        let mut worklist = vec![node];
+impl<Spec: SearchSpec> Node<Spec> {
+    fn info(&self, min_visits: usize) -> TreeInfo<Action<Spec>> {
+        let mut worklist = vec![self];
         let mut node_infos = Vec::new();
         let mut edge_infos = Vec::new();
 
@@ -1068,9 +1072,9 @@ impl<Spec: SearchSpec> TreeInfo<Spec> {
 }
 
 type Nd<'a> = (usize, &'a NodeInfo);
-type Ed<'a, Spec> = &'a (usize, usize, EdgeInfo<Spec>);
+type Ed<'a, Action> = &'a (usize, usize, EdgeInfo<Action>);
 
-impl<'a, Spec: SearchSpec> dot::Labeller<'a, Nd<'a>, Ed<'a, Spec>> for TreeInfo<Spec> {
+impl<'a, Action: Debug> dot::Labeller<'a, Nd<'a>, Ed<'a, Action>> for TreeInfo<Action> {
     fn graph_id(&'a self) -> dot::Id<'a> {
         dot::Id::new("example2").unwrap()
     }
@@ -1104,25 +1108,25 @@ impl<'a, Spec: SearchSpec> dot::Labeller<'a, Nd<'a>, Ed<'a, Spec>> for TreeInfo<
         }
     }
 
-    fn edge_label<'b>(&'b self, e: &Ed<'a, Spec>) -> dot::LabelText<'b> {
+    fn edge_label<'b>(&'b self, e: &Ed<'a, Action>) -> dot::LabelText<'b> {
         dot::LabelText::LabelStr(format!("{:?}", e.2.action).into())
     }
 }
 
-impl<'a, Spec: SearchSpec> dot::GraphWalk<'a, Nd<'a>, Ed<'a, Spec>> for TreeInfo<Spec> {
+impl<'a, Action> dot::GraphWalk<'a, Nd<'a>, Ed<'a, Action>> for TreeInfo<Action> {
     fn nodes(&'a self) -> dot::Nodes<'a, Nd<'a>> {
         self.nodes.iter().enumerate().collect()
     }
 
-    fn edges(&'a self) -> dot::Edges<'a, Ed<'a, Spec>> {
+    fn edges(&'a self) -> dot::Edges<'a, Ed<'a, Action>> {
         self.edges.iter().collect()
     }
 
-    fn source(&'a self, e: &Ed<'a, Spec>) -> Nd<'a> {
+    fn source(&'a self, e: &Ed<'a, Action>) -> Nd<'a> {
         (e.0, &self.nodes[e.0])
     }
 
-    fn target(&'a self, e: &Ed<'a, Spec>) -> Nd<'a> {
+    fn target(&'a self, e: &Ed<'a, Action>) -> Nd<'a> {
         (e.1, &self.nodes[e.1])
     }
 }
@@ -2060,6 +2064,7 @@ fn main() {
     let estimates_path = out_dir.join("estimates.csv");
     let descents_path = out_dir.join("descents.csv");
     let dot_path = out_dir.join("tree.dot");
+    let info_path = out_dir.join("fulltree.json");
 
     let num_playouts = opt.num_playouts;
 
@@ -2303,9 +2308,17 @@ fn main() {
                 estimate_stats.stddev(),
             );
 
-            let info = TreeInfo::new(&root, num_playouts / 10);
-            let mut f = std::fs::File::create(&dot_path).unwrap();
-            dot::render(&info, &mut f).unwrap();
+            {
+                let info = root.info(num_playouts / 100);
+                let mut f = std::fs::File::create(&dot_path).unwrap();
+                dot::render(&info, &mut f).unwrap();
+            }
+
+            {
+                let full_info = root.info(0);
+                let mut f = std::fs::File::create(&info_path).unwrap();
+                serde_json::to_writer(&mut f, &full_info);
+            }
 
             if let Some(true_size) = opt.exact.compute(
                 estimate_stats.mean(),
