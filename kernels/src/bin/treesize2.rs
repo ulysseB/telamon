@@ -128,6 +128,7 @@ struct ContextEnvironment<'a, C: Context + 'a> {
     context: &'a C,
     ordering: &'a config::ChoiceOrdering,
     invalid_actions_cnt: AtomicUsize,
+    cut: Option<f64>,
 }
 
 impl<'a, C: Context + 'a> Clone for ContextEnvironment<'a, C> {
@@ -135,6 +136,7 @@ impl<'a, C: Context + 'a> Clone for ContextEnvironment<'a, C> {
         ContextEnvironment {
             context: &self.context,
             ordering: &self.ordering,
+            cut: self.cut,
             invalid_actions_cnt: AtomicUsize::new(0),
         }
     }
@@ -155,6 +157,14 @@ impl<'a, C: Context + 'a> Environment for ContextEnvironment<'a, C> {
     type State = Candidate<'a>;
 
     fn list_actions(&self, candidate: &Candidate<'a>) -> Option<Vec<choice::ActionEx>> {
+        if self
+            .cut
+            .map(|cut| candidate.bound.value() > cut)
+            .unwrap_or(false)
+        {
+            return None;
+        }
+
         choice::list(self.ordering, &candidate.space).next()
     }
 
@@ -167,6 +177,17 @@ impl<'a, C: Context + 'a> Environment for ContextEnvironment<'a, C> {
             .apply_decision(self.context, action.clone())
             .map_err(|()| self.invalid_actions_cnt.fetch_add(1, Ordering::Relaxed))
             .ok()
+            .and_then(|child| {
+                if self
+                    .cut
+                    .map(|cut| child.bound.value() > cut)
+                    .unwrap_or(false)
+                {
+                    None
+                } else {
+                    Some(child)
+                }
+            })
     }
 }
 
@@ -1863,6 +1884,13 @@ directory."#,
 
     #[structopt(
         display_order = 10,
+        long = "cut",
+        help = "Value to use for cutting candidates",
+    )]
+    cut: Option<f64>,
+
+    #[structopt(
+        display_order = 11,
         long = "matmul",
         conflicts_with = "axpy",
         number_of_values = 3,
@@ -1873,8 +1901,11 @@ directory."#,
     )]
     matmul: Vec<i32>,
 
+    #[structopt(display_order = 13, long = "no-matmul-fixed-tiling",)]
+    no_matmul_fixed_tiling: bool,
+
     #[structopt(
-        display_order = 11,
+        display_order = 12,
         long = "axpy",
         value_name = "N",
         conflicts_with = "matmul",
@@ -2089,12 +2120,17 @@ fn main() {
             true,
         )))
     } else {
-        Box::new(MatMulParameters::<f32>::from(
-            linalg::MatMulP::new(opt.matmul[0], opt.matmul[1], opt.matmul[2])
-                .tile_m(TilingPattern::new_fixed(&[32, 4]))
-                .tile_n(TilingPattern::new_fixed(&[32, 4]))
-                .tile_k(TilingPattern::new_fixed(&[32])),
-        ))
+        Box::new(MatMulParameters::<f32>::from({
+            let mut mm =
+                linalg::MatMulP::new(opt.matmul[0], opt.matmul[1], opt.matmul[2]);
+            if !opt.no_matmul_fixed_tiling {
+                mm = mm
+                    .tile_m(TilingPattern::new_fixed(&[32, 4]))
+                    .tile_n(TilingPattern::new_fixed(&[32, 4]))
+                    .tile_k(TilingPattern::new_fixed(&[32]));
+            }
+            mm
+        }))
     };
 
     println!("Kernel: {}", &*params);
@@ -2135,6 +2171,7 @@ fn main() {
                 context,
                 ordering: &opt.ordering,
                 invalid_actions_cnt: AtomicUsize::new(0),
+                cut: opt.cut,
             };
             let evaluator: Box<dyn Evaluator<_, Evaluation = _> + Sync + '_> = match opt
                 .evaluator
