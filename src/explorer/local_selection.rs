@@ -159,7 +159,7 @@ pub fn parallel_first_cut<'a>(
 ) -> Option<usize> {
     let mut depth = 0;
     loop {
-        println!("{} candidates at depth {}", candidates.len(), depth);
+        warn!("{} candidates at depth {}", candidates.len(), depth);
         if candidates.len() == 0 {
             return None;
         }
@@ -168,6 +168,38 @@ pub fn parallel_first_cut<'a>(
                 return Some(depth);
             }
         }
+        if candidates.len() >= 100 {
+            let mut new_candidates2 : Vec<Candidate>;
+            let half_length = candidates.len() / 2;
+            let candidates2 = candidates.split_off(half_length);
+            new_candidates2 = candidates2
+                .par_iter()
+                .filter_map(|cand| {
+                    if let Some(choice) = choice::list_with_conf(ordering, &cand.space).next()
+                    {
+                        Some((cand, choice))
+                    } else {
+                        None
+                    }
+                }).flat_map(|(candidate, choice)| candidate.apply_choice(context, choice))
+            .map(|cand| cand)
+                .collect();
+            std::mem::drop(candidates2);
+            candidates = candidates
+                .par_iter()
+                .filter_map(|cand| {
+                    if let Some(choice) = choice::list_with_conf(ordering, &cand.space).next()
+                    {
+                        Some((cand, choice))
+                    } else {
+                        None
+                    }
+                }).flat_map(|(candidate, choice)| candidate.apply_choice(context, choice))
+            .map(|cand| cand)
+                .collect();
+            candidates.append(&mut new_candidates2);
+        }
+        else {
         candidates = candidates
             .par_iter()
             .filter_map(|cand| {
@@ -180,6 +212,7 @@ pub fn parallel_first_cut<'a>(
             }).flat_map(|(candidate, choice)| candidate.apply_choice(context, choice))
             .map(|cand| cand)
             .collect();
+        }
         depth += 1;
     }
 }
