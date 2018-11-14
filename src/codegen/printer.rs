@@ -102,6 +102,30 @@ pub trait Printer {
         val: &str,
     );
 
+    /// Starts a DMA transfer.
+    ///
+    /// `src` and `dst` have the format `(pointer, memory_space, inst_flag, stride)`.
+    fn print_dma_start(
+        &mut self,
+        _predicate: Option<&str>,
+        _vector_factors: [u32; 2],
+        _src: (&str, MemSpace, InstFlag, Option<&str>),
+        _dst: (&str, MemSpace, InstFlag, Option<&str>),
+        _sync_flag: &str,
+    ) {
+        panic!("dma is not supported for this target");
+    }
+
+    /// Waits for a DMA transfer to finish.
+    fn print_dma_wait(
+        &mut self,
+        _predicate: Option<&str>,
+        _num_elements: u32,
+        _sync_flag: &str,
+    ) {
+        panic!("dma is not supported for this target");
+    }
+
     /// print a label where to jump
     fn print_label(&mut self, label_id: &str);
 
@@ -405,6 +429,11 @@ pub trait Printer {
                 .map(|d| unwrap!(d.size().as_int()))
                 .product(),
         ];
+        let guard = if inst.has_side_effects() {
+            namer.side_effect_guard()
+        } else {
+            None
+        };
         match inst.operator() {
             op::BinOp(op, lhs, rhs, round) => {
                 let t = Self::lower_type(lhs.t(), fun);
@@ -457,25 +486,26 @@ pub trait Printer {
                 let operand = Self::name_operand(vector_levels, operand, namer);
                 self.print_unary_op(vector_factors, operator, t, &name, &operand)
             }
-            op::Ld(ld_type, addr, pattern) => self.print_ld(
-                vector_factors,
-                Self::lower_type(*ld_type, fun),
-                access_pattern_space(pattern, fun.space()),
-                unwrap!(inst.mem_flag()),
-                &Self::name_inst(vector_levels, inst.id(), namer),
-                &Self::name_operand(&[vec![], vec![]], addr, namer),
-            ),
-            op::St(addr, val, _, pattern) => {
-                let guard = if inst.has_side_effects() {
-                    namer.side_effect_guard()
-                } else {
-                    None
-                };
+            op::Ld(ld_type, addr, _) => {
+                let access = unwrap!(inst.mem_access());
+                assert!(access.stride.is_none(), "strided stores are not supported");
+                self.print_ld(
+                    vector_factors,
+                    Self::lower_type(*ld_type, fun),
+                    access.space,
+                    access.flag,
+                    &Self::name_inst(vector_levels, inst.id(), namer),
+                    &Self::name_operand(&[vec![], vec![]], addr, namer),
+                )
+            }
+            op::St(addr, val, ..) => {
+                let access = unwrap!(inst.mem_access());
+                assert!(access.stride.is_none(), "strided stores are not supported");
                 self.print_st(
                     vector_factors,
                     Self::lower_type(val.t(), fun),
-                    access_pattern_space(pattern, fun.space()),
-                    unwrap!(inst.mem_flag()),
+                    access.space,
+                    access.flag,
                     guard.as_ref().map(|x| x as _),
                     &Self::name_operand(&[vec![], vec![]], addr, namer),
                     &Self::name_operand(vector_levels, val, namer),
@@ -483,6 +513,39 @@ pub trait Printer {
             }
             op @ op::TmpLd(..) | op @ op::TmpSt(..) => {
                 panic!("non-printable instruction {:?}", op)
+            }
+            op::DmaStart {
+                src_ptr, dst_ptr, ..
+            } => {
+                let src_ptr = &Self::name_operand(&[vec![], vec![]], src_ptr, namer);
+                let src_access = unwrap!(inst.mem_access());
+                let src_stride = src_access
+                    .stride
+                    .as_ref()
+                    .map(|s| namer.name_size(s, ir::Type::I(32)));
+                let src_stride = src_stride.as_ref().map(|s| s as &str);
+                let dst_ptr = &Self::name_operand(&[vec![], vec![]], dst_ptr, namer);
+                let dst_access = unwrap!(inst.dma_wait_access());
+                let dst_stride = dst_access
+                    .stride
+                    .as_ref()
+                    .map(|s| namer.name_size(s, ir::Type::I(32)));
+                let dst_stride = dst_stride.as_ref().map(|s| s as &str);
+                let sync_flag = &Self::name_inst(&[vec![], vec![]], inst.id(), namer);
+                self.print_dma_start(
+                    guard.as_ref().map(|x| x as _),
+                    vector_factors,
+                    (src_ptr, src_access.space, src_access.flag, src_stride),
+                    (dst_ptr, dst_access.space, dst_access.flag, dst_stride),
+                    sync_flag,
+                );
+            }
+            op::DmaWait { sync_flag, .. } => {
+                self.print_dma_wait(
+                    guard.as_ref().map(|x| x as _),
+                    vector_factors[0] * vector_factors[1],
+                    &Self::name_operand(&[vec![], vec![]], sync_flag, namer),
+                );
             }
         }
     }

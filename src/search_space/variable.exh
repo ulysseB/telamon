@@ -12,7 +12,7 @@ set DefStatements($var in Variables) subsetof Statements:
   item_type = "ir::Statement"
   id_type = "ir::StmtId"
   item_getter = "$fun.statement($id)"
-  id_getter = "$item.id()"
+  id_getter = "$item.stmt_id()"
   iterator = "$var.def_points().map(|id| $fun.statement(id))"
   from_superset = "if $item.defined_vars().contains(&$var.id()) { Some($item) } else { None }"
   reverse forall $stmt in Statements = "$stmt.defined_vars().iter().map(|&id| $fun.variable(id))"
@@ -24,7 +24,7 @@ set UseStatements($var in Variables) subsetof Statements:
   item_type = "ir::Statement"
   id_type = "ir::StmtId"
   item_getter = "$fun.statement($id)"
-  id_getter = "$item.id()"
+  id_getter = "$item.stmt_id()"
   iterator = "$var.use_points().map(|id| $fun.statement(id))"
   from_superset = "if $item.used_vars().contains(&$var.id()) { Some($item) } else { None }"
   reverse forall $stmt in Statements = "$stmt.used_vars().iter().map(|&id| $fun.variable(id))"
@@ -83,7 +83,7 @@ set VarDims($var in Variables) subsetof Dimensions:
   item_type = "ir::Dimension"
   id_type = "ir::DimId"
   item_getter = "$fun.dim($id)"
-  id_getter = "$item.id()"
+  id_getter = "$item.stmt_id()"
   iterator = "$var.dimensions().iter().map(|&dim| $fun.dim(dim))"
   from_superset = "if $var.dimensions().contains(&$item.id()) { Some($item) } else { None }"
   reverse forall $dim in Dimensions = "$dim.inner_vars().iter().map(|&id| $fun.variable(id))"
@@ -114,6 +114,27 @@ define enum memory_space($var in Variables):
                 || order($outer_lhs, $inner_lhs) is not OUTER
                 || order($outer_rhs, $inner_rhs) is OUTER
 end
+
+// We model synchronisation flags as vector registers to ensure the vectorization pattern
+// is the same on the `DmaStart` and `DmaWait`.
+require forall $var in Variables:
+  "$var.t() != ir::Type::SyncFlag" || memory_space($var) is VECTOR_REGISTER
+
+// Force `DmaStart` and `DmaWait` to have the same nesting. This supposes the
+// synchronisation flag is transmitted through a DimMap(Inst(dma_start), ..) variable.
+require forall $var in Variables:
+  forall $pred in PredecessorVars($var):
+    forall $use in UseStatements($var):
+      forall $def in DefStatements($pred):
+        forall $dim in Dimensions:
+          "$var.t() != ir::Type::SyncFlag"
+          || "$var.dimensions().contains(&$dim.id())"
+          || order($use, $dim) is not INNER
+          || order($def, $dim) is INNER
+          "$var.t() != ir::Type::SyncFlag"
+          || "$pred.dimensions().contains(&$dim.id())"
+          || order($def, $dim) is not INNER
+          || order($use, $dim) is INNER
 
 /// List pairs of dimensions that must have the same size and can be use for
 /// point-to-point communication.

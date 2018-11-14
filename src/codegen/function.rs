@@ -2,7 +2,7 @@
 use codegen::{self, cfg, dimension, Cfg, Dimension, InductionLevel, InductionVar};
 use ir;
 use itertools::Itertools;
-use search_space::{self, DimKind, Domain, MemSpace, SearchSpace};
+use search_space::*;
 use std;
 use utils::*;
 
@@ -374,7 +374,8 @@ impl<'a> MemoryRegion<'a> {
 pub struct Instruction<'a> {
     instruction: &'a ir::Instruction<'a>,
     instantiation_dims: Vec<(ir::DimId, u32)>,
-    mem_flag: Option<search_space::InstFlag>,
+    mem_access: Option<MemAccess<'a>>,
+    dma_wait: Option<MemAccess<'a>>,
     t: Option<ir::Type>,
 }
 
@@ -391,16 +392,29 @@ impl<'a> Instruction<'a> {
                 let size = space.ir_instance().dim(dim).size();
                 (dim, unwrap!(codegen::Size::from_ir(size, space).as_int()))
             }).collect();
-        let mem_flag = instruction
-            .as_mem_inst()
-            .map(|inst| space.domain().get_inst_flag(inst.id()));
+        let mem_access = instruction
+            .operator()
+            .mem_access_pattern()
+            .map(|pattern| MemAccess::new(instruction, &pattern, space));
+        let op = instruction.operator();
+        let dma_wait = if let ir::op::DmaStart { dma_wait, .. } = op {
+            let inst = space.ir_instance().inst(unwrap!(*dma_wait));
+            if let ir::op::DmaWait { dst_pattern, .. } = inst.operator() {
+                Some(MemAccess::new(inst, dst_pattern, space))
+            } else {
+                panic!("expected a DmaWait operator")
+            }
+        } else {
+            None
+        };
         let t = instruction
             .t()
             .map(|t| unwrap!(space.ir_instance().device().lower_type(t, space)));
         Instruction {
             instruction,
             instantiation_dims,
-            mem_flag,
+            mem_access,
+            dma_wait,
             t,
         }
     }
@@ -416,9 +430,14 @@ impl<'a> Instruction<'a> {
         space: &'a SearchSpace<'a>,
     ) -> impl Iterator<Item = ParamVal<'a>> {
         let operands = self.instruction.operator().operands();
+        let mem_access_stride = self
+            .mem_access()
+            .and_then(|x| x.stride.as_ref())
+            .and_then(ParamVal::from_size);
         operands
             .into_iter()
             .flat_map(move |op| ParamVal::from_operand(op, space))
+            .chain(mem_access_stride)
     }
 
     /// Returns the type of the instruction.
@@ -436,9 +455,14 @@ impl<'a> Instruction<'a> {
         &self.instantiation_dims
     }
 
-    /// Returns the memory flag of the intruction, if any.
-    pub fn mem_flag(&self) -> Option<search_space::InstFlag> {
-        self.mem_flag
+    /// Returns a description of how the instruction accesses the memory.
+    pub fn mem_access(&self) -> Option<&MemAccess<'a>> {
+        self.mem_access.as_ref()
+    }
+
+    /// Indicates how the DMA wait link to this instruction, if any, accesses the memory.
+    pub fn dma_wait_access(&self) -> Option<&MemAccess<'a>> {
+        self.dma_wait.as_ref()
     }
 
     /// Indicates if the instruction has observable side effects.
@@ -449,5 +473,49 @@ impl<'a> Instruction<'a> {
     /// Indicates where to store the result of the instruction.
     pub fn result_variable(&self) -> Option<ir::VarId> {
         self.instruction.result_variable()
+    }
+}
+
+/// Describes a memory access.
+#[derive(Debug)]
+pub struct MemAccess<'a> {
+    pub stride: Option<codegen::Size<'a>>,
+    pub space: MemSpace,
+    pub flag: InstFlag,
+}
+
+impl<'a> MemAccess<'a> {
+    pub fn new(
+        inst: &ir::Instruction,
+        access_pattern: &ir::AccessPattern,
+        space: &SearchSpace,
+    ) -> Self {
+        let layout_dims = inst
+            .mem_access_layout()
+            .iter()
+            .map(|&id| {
+                let dim = space.ir_instance().layout_dimension(id);
+                let rank_universe = unwrap!(dim.possible_ranks());
+                let rank = space.domain().get_rank(id).as_constrained(rank_universe);
+                (dim, unwrap!(rank))
+            }).sorted_by(|(_, lhs), (_, rhs)| std::cmp::Ord::cmp(lhs, rhs));
+        let first_outer_vec = layout_dims.iter().find(|(dim, _)| {
+            space.domain().get_dim_kind(dim.dim()) == DimKind::OUTER_VECTOR
+        });
+        let last_inner_vec = layout_dims
+            .iter()
+            .rev()
+            .find(|(dim, _)| {
+                space.domain().get_dim_kind(dim.dim()) == DimKind::OUTER_VECTOR
+            }).map_or(0, |&(_, rank)| rank);
+        if let Some(&(dim, rank)) = first_outer_vec {
+            let is_strided = rank > last_inner_vec + 1 || dim.is_strided();
+            assert!(!is_strided, "strided access are not supported yet");
+        }
+        MemAccess {
+            stride: None,
+            space: access_pattern_space(access_pattern, space),
+            flag: space.domain().get_inst_flag(inst.id()),
+        }
     }
 }
