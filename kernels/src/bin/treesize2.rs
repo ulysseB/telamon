@@ -161,9 +161,10 @@ impl<'a, C: Context + 'a> Environment for ContextEnvironment<'a, C> {
     type State = Candidate<'a>;
 
     fn list_actions(&self, candidate: &Candidate<'a>) -> Option<Vec<choice::ActionEx>> {
+        // Candidates at depth >= max_depth are considered as terminal candidates
         let depth_ok = self
             .max_depth
-            .map(|max_depth| candidate.actions.len() <= max_depth)
+            .map(|max_depth| candidate.actions.len() < max_depth)
             .unwrap_or(true);
 
         if depth_ok {
@@ -354,11 +355,13 @@ pub struct SizeEstimate {
     deadends: f64,
     deadends_ratio: f64,
     total: f64,
+    nb_seen: usize,
 }
 
 impl SizeEstimate {
     fn new() -> Self {
         SizeEstimate {
+            nb_seen: 0,
             terminals: 0f64,
             deadends: 0f64,
             deadends_ratio: 0f64,
@@ -368,6 +371,7 @@ impl SizeEstimate {
 
     fn terminal() -> Self {
         SizeEstimate {
+            nb_seen: 1,
             terminals: 1f64,
             deadends: 0f64,
             deadends_ratio: 0f64,
@@ -377,6 +381,7 @@ impl SizeEstimate {
 
     fn deadend() -> Self {
         SizeEstimate {
+            nb_seen: 1,
             terminals: 0f64,
             deadends: 1f64,
             deadends_ratio: 1f64,
@@ -394,6 +399,10 @@ impl SizeEstimate {
 
     fn deadends_ratio(&self) -> f64 {
         self.deadends_ratio
+    }
+
+    fn seen(&self) -> usize {
+        self.nb_seen
     }
 }
 
@@ -434,6 +443,7 @@ impl Add for SizeEstimate {
 
 impl AddAssign for SizeEstimate {
     fn add_assign(&mut self, other: SizeEstimate) {
+        self.nb_seen += other.nb_seen;
         self.terminals += other.terminals;
         self.deadends += other.deadends;
         self.deadends_ratio = (self.deadends_ratio * self.total
@@ -1296,6 +1306,7 @@ struct BackpropResult {
     estimate: f64,
     deadends: f64,
     deadends_ratio: f64,
+    seen: usize,
 }
 
 struct Tree<Spec: SearchSpec> {
@@ -1433,6 +1444,7 @@ where
             estimate: estimate.num_terminals(),
             deadends: estimate.num_deadends(),
             deadends_ratio: estimate.deadends_ratio(),
+            seen: estimate.seen(),
         }
     }
 
@@ -1946,6 +1958,7 @@ struct Record {
     estimate: f64,
     deadends: f64,
     deadends_ratio: f64,
+    seen: usize,
 }
 
 fn exact_count<'a>(
@@ -2272,6 +2285,7 @@ fn main() {
                                             estimate: result.estimate,
                                             deadends: result.deadends,
                                             deadends_ratio: result.deadends_ratio,
+                                            seen: result.seen,
                                         });
 
                                         thread_descents.push(result.path);
