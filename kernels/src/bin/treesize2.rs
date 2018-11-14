@@ -130,6 +130,7 @@ struct ContextEnvironment<'a, C: Context + 'a> {
     invalid_actions_cnt: AtomicUsize,
     cut: Option<f64>,
     max_cut_depth: Option<usize>,
+    max_depth: Option<usize>,
 }
 
 impl<'a, C: Context + 'a> Clone for ContextEnvironment<'a, C> {
@@ -139,6 +140,7 @@ impl<'a, C: Context + 'a> Clone for ContextEnvironment<'a, C> {
             ordering: &self.ordering,
             cut: self.cut,
             max_cut_depth: self.max_cut_depth,
+            max_depth: self.max_depth,
             invalid_actions_cnt: AtomicUsize::new(0),
         }
     }
@@ -160,15 +162,11 @@ impl<'a, C: Context + 'a> Environment for ContextEnvironment<'a, C> {
 
     fn list_actions(&self, candidate: &Candidate<'a>) -> Option<Vec<choice::ActionEx>> {
         let depth_ok = self
-            .max_cut_depth
-            .map(|max_cut_depth| candidate.actions.len() > max_cut_depth)
-            .unwrap_or(true);
-        let cut_ok = self
-            .cut
-            .map(|cut| candidate.bound.value() <= cut)
+            .max_depth
+            .map(|max_depth| candidate.actions.len() <= max_depth)
             .unwrap_or(true);
 
-        if cut_ok || depth_ok {
+        if depth_ok {
             choice::list(self.ordering, &candidate.space).next()
         } else {
             None
@@ -1931,6 +1929,14 @@ directory."#,
         help = "Use an axpy kernel"
     )]
     axpy: Option<i32>,
+
+    #[structopt(
+        display_order = 15,
+        long = "max-depth",
+        value_name = "D",
+        help = "Maximum depth to consider",
+    )]
+    max_depth: Option<usize>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -2192,6 +2198,7 @@ fn main() {
                 invalid_actions_cnt: AtomicUsize::new(0),
                 cut: opt.cut,
                 max_cut_depth: opt.max_cut_depth,
+                max_depth: opt.max_depth,
             };
             let evaluator: Box<dyn Evaluator<_, Evaluation = _> + Sync + '_> = match opt
                 .evaluator
