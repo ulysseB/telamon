@@ -6,8 +6,10 @@ use explorer::config::{ChoiceOrdering, NewNodeOrder};
 use rand::distributions::{IndependentSample, Weighted, WeightedChoice};
 use rand::{thread_rng, Rng};
 use rayon::prelude::*;
+use rayon::join;
 use std;
 use std::collections::{HashMap, VecDeque};
+use std::sync::atomic::{Ordering, AtomicUsize};
 use utils::*;
 
 /// A recursive function that takes a candidate and expands it until we have a completely specified
@@ -214,5 +216,61 @@ pub fn parallel_first_cut<'a>(
             .collect();
         }
         depth += 1;
+    }
+}
+
+/// This function returns the minimal depth at least there is at least thres_cand nodes
+pub fn get_depth_above_threshold<'a>(
+    ordering: &ChoiceOrdering,
+    context: &impl Context,
+    candidates: Vec<Candidate<'a>>,
+    thres_cands: usize,
+    ) -> usize {
+    let mut depth = 0;
+    println!("Let's go !!!");
+    loop {
+        let cand_clones = candidates.clone();
+        let num_nodes = AtomicUsize::new(0);
+        exact_count(context, ordering, cand_clones, &num_nodes, 0, depth);
+        let num_nodes = num_nodes.into_inner();
+        println!("Found {} nodes at depth {}", num_nodes, depth);
+        if num_nodes > thres_cands {
+            return depth;
+        }
+        depth += 1;
+    }
+
+}
+
+fn exact_count<'a>(
+    context: &impl Context,
+    ordering: &ChoiceOrdering,
+    mut candidates: Vec<Candidate<'a>>,
+    num_leafs: &AtomicUsize,
+    depth: usize,
+    limit: usize,
+) {
+    match (candidates.pop(), depth == limit) {
+        (Some(candidate), false) => {
+            if let Some(choice) = choice::list_with_conf(ordering, &candidate.space).next() {
+                // If children is empty, we reached a deadend -- the call to exact_count will return 0.
+                let children = candidate.apply_choice(context, choice);
+                let ((), ()) = join(
+                    || exact_count(context, ordering, children, num_leafs, depth+1, limit),
+                    || exact_count(context, ordering, candidates, num_leafs, depth, limit),
+                    );
+            } else {
+                // We still need to count the remaining candidates!
+                exact_count(context, ordering, candidates, num_leafs, depth, limit);
+            }
+        }
+        (None, _) => {return}
+        (_, true) => {
+            // If no choice is available, we reached a leaf.
+            num_leafs.fetch_add(1, Ordering::Relaxed);
+
+            // We still need to count the remaining candidates!
+            exact_count(context, ordering, candidates, num_leafs, depth, limit);
+        }
     }
 }

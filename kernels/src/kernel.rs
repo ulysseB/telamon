@@ -152,7 +152,7 @@ pub trait Kernel<'a>: Sized {
         unwrap!(unwrap!(record_writer.finish_box()).flush());
     }
 
-    fn find_cut_depth<AM>(params: Self::Parameters, cut: f64, context: &mut AM)
+    fn count_cut_under_thres<AM>(params: Self::Parameters, cut: f64, threshold: usize, context: &mut AM)
     where
         AM: device::ArgMap + device::Context + 'a,
     {
@@ -180,16 +180,52 @@ pub trait Kernel<'a>: Sized {
         writeln!(log_file, "\n{}", ordering);
         let candidates = kernel.build_body(&signature, context);
         let depth_opt =
-            local_selection::parallel_first_cut(&ordering, context, candidates, cut);
+            local_selection::get_depth_above_threshold(&ordering, context, candidates, threshold);
         println!("KERNEL {}", Self::name());
-        writeln!(log_file, "Kernel {}, cut {:.3e}", Self::name(), cut);
-        if let Some(depth) = depth_opt {
-            println!("Possibility of cut at depth {} for cut {}", depth, cut);
-            unwrap!(writeln!(log_file, "depth {}", depth));
-        } else {
-            unwrap!(writeln!(log_file, "no cut"));
-            println!("cut too low, no suitable candidate found");
-        }
+        println!("100000 candidates or more can be found at depth {}", threshold, depth_opt);
+    }
+
+    fn find_cut_depth<AM>(params: Self::Parameters, cut: f64, context: &mut AM)
+    where
+        AM: device::ArgMap + device::Context + 'a,
+    {
+        let kernel;
+        let signature = {
+            let mut builder = SignatureBuilder::new(Self::name(), context);
+            builder.set_random_fill(true);
+            kernel = Self::build_signature(params, &mut builder);
+            builder.get()
+        };
+        //let ordering = explorer::config::ChoiceOrdering::default();
+        //let ordering = vec![ChoiceGroup::,];
+        let ordering = ChoiceOrdering::new(vec![
+            ChoiceGroup::DimKind,
+            ChoiceGroup::Size,
+            ChoiceGroup::LowerLayout,
+            ChoiceGroup::InstFlag,
+            ChoiceGroup::Order,
+            ChoiceGroup::MemSpace,
+            ChoiceGroup::DimMap,
+        ]);
+        let log_name = format!("bound_{}.log", Self::name());
+        //let mut log_file = unwrap!(File::create(log_name));
+        let mut log_file = unwrap!(OpenOptions::new().append(true).create(true).open(log_name));
+        writeln!(log_file, "\n{}", ordering);
+        let candidates = kernel.build_body(&signature, context);
+        //let depth_opt =
+        //    local_selection::parallel_first_cut(&ordering, context, candidates, cut);
+        let depth_opt =
+            local_selection::get_depth_above_threshold(&ordering, context, candidates, 100000);
+        println!("KERNEL {}", Self::name());
+        println!("100000 candidates or more can be found at depth {}", depth_opt);
+        //writeln!(log_file, "Kernel {}, cut {:.3e}", Self::name(), cut);
+        //if let Some(depth) = depth_opt {
+        //    println!("Possibility of cut at depth {} for cut {}", depth, cut);
+        //    unwrap!(writeln!(log_file, "depth {}", depth));
+        //} else {
+        //    unwrap!(writeln!(log_file, "no cut"));
+        //    println!("cut too low, no suitable candidate found");
+        //}
     }
 
     /// Tests the correctness of the bound of kernels and returns the list of tested leafs
