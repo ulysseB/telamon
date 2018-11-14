@@ -336,10 +336,14 @@ impl<'a, L> Operator<'a, L> {
         match self {
             Ld(_, _, pattern)
             | St(_, _, _, pattern)
-            | DmaStart { src_pattern: pattern, .. }
-            | DmaWait { dst_pattern: pattern, .. } => {
-                Some(Cow::Borrowed(pattern))
+            | DmaStart {
+                src_pattern: pattern,
+                ..
             }
+            | DmaWait {
+                dst_pattern: pattern,
+                ..
+            } => Some(Cow::Borrowed(pattern)),
             TmpLd(_, mem_id) | TmpSt(_, mem_id) => {
                 Some(Cow::Owned(AccessPattern::Unknown(Some(*mem_id))))
             }

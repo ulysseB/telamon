@@ -48,20 +48,23 @@ impl device::Device for Device {
             Operator::TmpLd(..)
             | Operator::TmpSt(..)
             | Operator::BinOp(ir::BinOp::Add, ..) => true,
-            Operator::Ld(.., pattern) |
-            Operator::St(.., pattern) |
-            Operator::DmaStart { src_pattern: pattern, .. } |
-            Operator::DmaWait { dst_pattern: pattern, .. } => {
-                pattern.is_layout_dimension(dim.id())
+            Operator::Ld(.., pattern)
+            | Operator::St(.., pattern)
+            | Operator::DmaStart {
+                src_pattern: pattern,
+                ..
             }
+            | Operator::DmaWait {
+                dst_pattern: pattern,
+                ..
+            } => pattern.is_layout_dimension(dim.id()),
             _ => false,
         }
     }
 
     fn max_vectorization(&self, op: &ir::Operator) -> [u32; 2] {
         match op {
-            Operator::DmaStart { .. } |
-            Operator::DmaWait { .. } => [std::u32::MAX; 2],
+            Operator::DmaStart { .. } | Operator::DmaWait { .. } => [std::u32::MAX; 2],
             _ => [8, 4],
         }
     }

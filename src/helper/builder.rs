@@ -226,7 +226,10 @@ impl<'a> Builder<'a> {
         let sync_flag = dma_start.to_operand(self);
         let has_side_effects = {
             let start_op = self.function.inst(dma_start).operator();
-            if let ir::op::DmaStart { has_side_effects, .. } = start_op {
+            if let ir::op::DmaStart {
+                has_side_effects, ..
+            } = start_op
+            {
                 *has_side_effects
             } else {
                 panic!("expected a DmaStart operator")
