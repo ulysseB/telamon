@@ -184,13 +184,15 @@ impl<'a, C: Context + 'a> Environment for ContextEnvironment<'a, C> {
             .map_err(|()| self.invalid_actions_cnt.fetch_add(1, Ordering::Relaxed))
             .ok()
             .and_then(|child| {
+                // If the child depth is more than max_cut_depth, we don't cut it.
                 let depth_ok = self
                     .max_cut_depth
-                    .map(|max_cut_depth| candidate.actions.len() > max_cut_depth)
+                    .map(|max_cut_depth| child.actions.len() > max_cut_depth)
                     .unwrap_or(true);
+                // If the child bound is less than the cut, we don't cut it.
                 let cut_ok = self
                     .cut
-                    .map(|cut| candidate.bound.value() <= cut)
+                    .map(|cut| child.bound.value() <= cut)
                     .unwrap_or(true);
 
                 if cut_ok || depth_ok {
@@ -1922,6 +1924,7 @@ directory."#,
         display_order = 11,
         long = "matmul",
         conflicts_with = "axpy",
+        conflicts_with = "batchmm",
         number_of_values = 3,
         value_name = "M",
         value_name = "N",
@@ -1933,11 +1936,15 @@ directory."#,
     #[structopt(display_order = 13, long = "no-matmul-fixed-tiling",)]
     no_matmul_fixed_tiling: bool,
 
+    #[structopt(display_order = 16, long = "matmul-stride-a")]
+    matmul_stride_a: Option<u32>,
+
     #[structopt(
         display_order = 12,
         long = "axpy",
         value_name = "N",
         conflicts_with = "matmul",
+        conflicts_with = "batchmm",
         help = "Use an axpy kernel"
     )]
     axpy: Option<i32>,
@@ -1949,6 +1956,23 @@ directory."#,
         help = "Maximum depth to consider",
     )]
     max_depth: Option<usize>,
+
+    #[structopt(
+        display_order = 17,
+        long = "batchmm",
+        value_name = "B",
+        value_name = "M",
+        value_name = "N",
+        value_name = "K",
+        number_of_values = 4,
+    )]
+    batchmm: Vec<i32>,
+
+    #[structopt(long = "bmm-static-sizes")]
+    bmm_static_sizes: bool,
+
+    #[structopt(long = "bmm-reuse-b")]
+    bmm_reuse_b: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -2095,6 +2119,35 @@ impl<'a, S: Scalar> KernelParameters<'a> for MatMulParameters<S> {
     }
 }
 
+#[derive(Clone)]
+pub struct BatchMatMulParameters<S> {
+    params: linalg::BatchMMP,
+    scalar: PhantomData<fn() -> S>,
+}
+
+impl<S: Scalar> From<linalg::BatchMMP> for BatchMatMulParameters<S> {
+    fn from(params: linalg::BatchMMP) -> Self {
+        BatchMatMulParameters {
+            params,
+            scalar: PhantomData,
+        }
+    }
+}
+
+impl<S: Scalar> Display for BatchMatMulParameters<S> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "BMM kernel on ?")
+    }
+}
+
+impl<'a, S: Scalar> KernelParameters<'a> for BatchMatMulParameters<S> {
+    type Kernel = linalg::BatchMM<'a, S>;
+
+    fn as_parameters(&self) -> linalg::BatchMMP {
+        self.params.clone()
+    }
+}
+
 fn main() {
     env_logger::init();
 
@@ -2152,12 +2205,21 @@ fn main() {
     let gpu: Gpu =
         serde_json::from_reader(&std::fs::File::open(cuda_gpus_path).unwrap()).unwrap();
 
-    let params: Box<dyn CandidateBuilder<'_, _, _, _>> = if opt.matmul.is_empty() {
-        Box::new(AxpyParameters::<f32>::from((
-            opt.axpy.unwrap_or(1 << 26),
-            true,
-        )))
-    } else {
+    let params: Box<dyn CandidateBuilder<'_, _, _, _>> = if !opt.batchmm.is_empty() {
+        assert!(opt.batchmm.len() == 4);
+        Box::new(BatchMatMulParameters::<f32>::from({
+            let batchmm = &opt.batchmm;
+            let mut bmm =
+                linalg::BatchMMP::new(batchmm[0], batchmm[1], batchmm[2], batchmm[3]);
+            if opt.bmm_static_sizes {
+                bmm = bmm.static_sizes();
+            }
+            if opt.bmm_reuse_b {
+                bmm = bmm.reuse_b();
+            }
+            bmm
+        }))
+    } else if !opt.matmul.is_empty() {
         Box::new(MatMulParameters::<f32>::from({
             let mut mm =
                 linalg::MatMulP::new(opt.matmul[0], opt.matmul[1], opt.matmul[2]);
@@ -2167,8 +2229,16 @@ fn main() {
                     .tile_n(TilingPattern::new_fixed(&[32, 4]))
                     .tile_k(TilingPattern::new_fixed(&[32]));
             }
+            if let Some(stride_a) = opt.matmul_stride_a {
+                mm = mm.stride_a(stride_a);
+            }
             mm
         }))
+    } else {
+        Box::new(AxpyParameters::<f32>::from((
+            opt.axpy.unwrap_or(1 << 26),
+            true,
+        )))
     };
 
     println!("Kernel: {}", &*params);
