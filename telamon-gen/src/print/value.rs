@@ -184,7 +184,7 @@ fn constructor_from_op(op: ir::CmpOp) -> Ident {
         ir::CmpOp::Leq => "new_leq",
         ir::CmpOp::Geq => "new_geq",
         ir::CmpOp::Eq => "new_eq",
-        ir::CmpOp::Neq => panic!("neq operations on numeric domains are not supported"),
+        ir::CmpOp::Neq => "new_neq",
     };
     // TODO(span): get the real span from the lexer
     Ident::new(name, Span::call_site())

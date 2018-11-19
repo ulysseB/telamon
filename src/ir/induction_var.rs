@@ -7,17 +7,18 @@ pub struct IndVarId(pub u32);
 
 /// A multidimentional induction variable. No dimension should appear twice in dims.
 #[derive(Clone, Debug)]
-pub struct InductionVar<'a, L = ir::LoweringMap> {
-    dims: Vec<(ir::DimId, ir::PartialSize<'a>)>,
-    base: ir::Operand<'a, L>,
+pub struct InductionVar<'a> {
+    dims: Vec<(ir::DimId, ir::MemAccessStride<'a>)>,
+    base: ir::Operand<'a>,
 }
 
-impl<'a, L> InductionVar<'a, L> {
+impl<'a> InductionVar<'a> {
     /// Creates a new induction var. Size represents the increment over each diemnsion
     /// taken independenly.
-    pub fn new(
-        dims: Vec<(ir::DimId, ir::PartialSize<'a>)>,
-        base: ir::Operand<'a, L>,
+    pub fn new<L>(
+        dims: Vec<(ir::DimId, ir::MemAccessStride<'a>)>,
+        base: ir::Operand<'a>,
+        fun: &ir::Function<L>,
     ) -> Result<Self, ir::Error> {
         ir::TypeError::check_integer(base.t())?;
         // Assert dimensions are unique.
@@ -28,40 +29,23 @@ impl<'a, L> InductionVar<'a, L> {
             }
         }
         // TODO(cleanup): return errors instead of panicing
-        match base {
-            ir::Operand::Inst(.., ir::DimMapScope::Global(..)) =>
-            // TODO(search_space): allow dim map lowering for induction variables
-            {
-                unimplemented!(
-                    "dim map lowering for induction vars is not implemented yet"
-                )
+        if let ir::Operand::Variable(var, ..) = base {
+            match fun.variable(var).use_mode() {
+                ir::VarUseMode::FromRegisters => (),
+                // TODO(search_space): allow in-memory induction variables
+                _ => unimplemented!("in-memory operands for induction variables"),
             }
-            _ => (),
         }
         Ok(InductionVar { dims, base })
     }
 
-    /// Renames a dimension.
-    pub fn merge_dims(&mut self, lhs: ir::DimId, rhs: ir::DimId) {
-        self.base.merge_dims(lhs, rhs);
-    }
-
     /// Returns the base operand of the induction variable.
-    pub fn base(&self) -> &ir::Operand<'a, L> {
+    pub fn base(&self) -> &ir::Operand<'a> {
         &self.base
     }
 
     /// Returns the list of induction dimensions along with the corresponding increments.
-    pub fn dims(&self) -> &[(ir::DimId, ir::PartialSize<'a>)] {
+    pub fn dims(&self) -> &[(ir::DimId, ir::MemAccessStride<'a>)] {
         &self.dims
-    }
-}
-
-impl<'a> InductionVar<'a, ()> {
-    pub fn freeze(self, cnt: &mut ir::Counter) -> InductionVar<'a> {
-        InductionVar {
-            dims: self.dims,
-            base: self.base.freeze(cnt),
-        }
     }
 }

@@ -43,22 +43,19 @@ pub fn analyse(
     let flag = space.domain().get_inst_flag(inst.id());
     let info = match *inst.operator() {
         ir::Operator::Ld(_, _, ref pattern) | ir::Operator::St(_, _, _, ref pattern) => {
-            let mem_space = access_pattern_space(pattern, space);
-            let is_shared = mem_space.is(MemSpace::SHARED);
+            let mem_space = array_memory_space(pattern.accessed_array(), space);
+            let is_shared = mem_space.is(MemorySpace::SHARED);
             match pattern {
                 _ if flag.intersects(InstFlag::CACHE_READ_ONLY) => {
                     unknown_info(is_shared, gpu)
                 }
-                ir::AccessPattern::Unknown { .. } => unknown_info(is_shared, gpu),
+                // TODO(ulysse): handle variable access patterns on GPU.
+                ir::AccessPattern::Variable { .. }
+                | ir::AccessPattern::Unknown { .. } => unknown_info(is_shared, gpu),
                 ir::AccessPattern::Tensor { ref dims, .. } => {
                     info(space, inst, dims, is_shared, gpu, sizes, ctx)
                 }
             }
-        }
-        ir::Operator::TmpLd(.., mem) | ir::Operator::TmpSt(.., mem) => {
-            let mem_space = space.domain().get_mem_space(mem);
-            let is_shared = mem_space.is(MemSpace::SHARED);
-            unknown_info(is_shared, gpu)
         }
         _ => panic!(),
     };

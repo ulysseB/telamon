@@ -1,5 +1,7 @@
 //! Encodes the data-flow information.
 use ir;
+use itertools::Itertools;
+use std;
 use utils::*;
 
 /// Uniquely identifies variables.
@@ -16,42 +18,140 @@ impl From<VarId> for usize {
     }
 }
 
+impl std::fmt::Display for VarId {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        self.0.fmt(fmt)
+    }
+}
+
+/// Indicates how a variable may be defined.
+#[derive(Clone, Copy, Debug)]
+pub enum VarDefMode<L> {
+    /// The variable must be defined in-place. `allow_sync` indicates if the producer and
+    /// consumer may be separated by a synchronisation barrier.
+    InPlace { allow_sync: bool },
+    /// An instruction may be inserted between the producer and consumer to copy the data
+    /// from one memory space to the other. Contains the ids to use to generate the copy
+    /// instruction, if not alread inserted.
+    Copy(Option<L>),
+}
+
+impl<L> VarDefMode<L> {
+    /// Indicates if the producer and consumer may be separated by a synchronisation
+    /// barrier.
+    pub fn allow_sync(&self) -> bool {
+        if let VarDefMode::InPlace { allow_sync } = *self {
+            allow_sync
+        } else {
+            true
+        }
+    }
+
+    /// Indicates if a copy can be (or has already been) inserted to define the variable.
+    pub fn allow_copies(&self) -> bool {
+        if let VarDefMode::Copy(..) = self {
+            true
+        } else {
+            false
+        }
+    }
+}
+
+impl VarDefMode<()> {
+    /// Preallocate IDs to lower the variable definition in memory.
+    pub fn freeze(
+        self,
+        id: ir::VarId,
+        def: &ir::VarDef,
+        dims: &[ir::DimId],
+        ids: &mut ir::Counter,
+    ) -> VarDefMode<FutureMemAccess> {
+        match self {
+            VarDefMode::InPlace { allow_sync } => VarDefMode::InPlace { allow_sync },
+            VarDefMode::Copy(None) => VarDefMode::Copy(None),
+            VarDefMode::Copy(Some(())) => {
+                let access = FutureMemAccess::new_store(id, def, dims, ids);
+                VarDefMode::Copy(Some(access))
+            }
+        }
+    }
+}
+
+/// Indicates the slowest memory level where a variable may be stored.
+///
+/// This is useful to limit the size of the search space by removing useless decisions.
+/// For example, we don't want to store in memory the operand of a store. Also, we don't
+/// want to store in RAM a value we just loaded from RAM.
+#[derive(Clone, Debug)]
+pub enum VarUseMode<L> {
+    /// The variable cannot be directly used by instructions. It can however be aliased by
+    /// an other variable that is used by instructions.
+    NoUses,
+    /// The variable must be stored in registers.
+    FromRegisters,
+    /// The variable may be stored in registers or in the given memory spaces.
+    FromMemory(L, VecSet<ir::MemorySpace>),
+}
+
+impl<L> VarUseMode<L> {
+    /// Indicates the the variable can be directly ready by instructions.
+    pub fn allow_direct_use(&self) -> bool {
+        if let VarUseMode::NoUses = self {
+            false
+        } else {
+            true
+        }
+    }
+}
+
+impl VarUseMode<()> {
+    /// Preallocate IDs to lower the variable definition in memory.
+    pub fn freeze(
+        self,
+        id: ir::VarId,
+        dims: &[ir::DimId],
+        ids: &mut ir::Counter,
+    ) -> VarUseMode<FutureMemAccess> {
+        match self {
+            VarUseMode::NoUses => VarUseMode::NoUses,
+            VarUseMode::FromRegisters => VarUseMode::FromRegisters,
+            VarUseMode::FromMemory((), spaces) => {
+                let access = FutureMemAccess::new_load(id, dims, ids);
+                VarUseMode::FromMemory(access, spaces)
+            }
+        }
+    }
+}
+
 /// A variable produced by the code.
 #[derive(Clone, Debug)]
-pub struct Variable {
+pub struct Variable<L = FutureMemAccess> {
     id: VarId,
     t: ir::Type,
     def: VarDef,
-    memory_level: MemoryLevel,
+    def_mode: VarDefMode<L>,
+    use_mode: VarUseMode<L>,
     dimensions: VecSet<ir::DimId>,
     def_points: VecSet<ir::StmtId>,
     use_points: VecSet<ir::StmtId>,
     predecessors: VecSet<ir::VarId>,
     successors: VecSet<ir::VarId>,
     consumer: Consumer,
+    layout: VecSet<ir::LayoutDimId>,
+    is_memory: bool,
+    mem_accesses: VecSet<ir::InstId>,
 }
 
-/// Indicates the slowest memory level where a variable may be stored.
-///
-/// This is usefull to limit the size of the search space by removing useless decisions.
-/// For example, we don't want to store in memory the operand of a store. Also, we don't
-/// want to store in RAM a value we just loaded from RAM.
-#[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq)]
-pub enum MemoryLevel {
-    /// The variable must be stored in registers and the producer and consumer must not be
-    /// separated by synchronisations.
-    RegisterNoSync,
-    /// The variable must be stored in registers.
-    Register,
-    /// The variable must be stored in registers or a local, fast, memory.
-    FastMemory,
-    /// The variable may be stored anywhere.
-    SlowMemory,
-}
-
-impl Variable {
+impl<L> Variable<L> {
     /// Creates a new variable with the given Id.
-    pub fn new<L>(id: VarId, def: VarDef, fun: &ir::Function<L>) -> Self {
+    pub fn new(
+        id: VarId,
+        def: VarDef,
+        layout: VecSet<ir::LayoutDimId>,
+        def_mode: VarDefMode<L>,
+        use_mode: VarUseMode<L>,
+        fun: &ir::Function<L>,
+    ) -> Self {
         let t = def.t(fun);
         let def_points = def.def_points(fun);
         let dimensions = def.dimensions(fun);
@@ -60,14 +160,17 @@ impl Variable {
             id,
             t,
             def,
-            // TODO(ulysse): allow lowering to memory.
-            memory_level: MemoryLevel::Register,
             dimensions,
+            def_mode,
+            use_mode,
             def_points,
             use_points: Default::default(),
             predecessors,
             successors: Default::default(),
             consumer: Consumer::None,
+            layout,
+            is_memory: false,
+            mem_accesses: Default::default(),
         }
     }
 
@@ -91,6 +194,11 @@ impl Variable {
         self.def_points.iter().cloned()
     }
 
+    /// Registers a new statement that defines the variable.
+    pub fn add_def_point(&mut self, stmt: ir::StmtId) {
+        self.def_points.insert(stmt);
+    }
+
     /// Indicates the statements that uses the variable.
     pub fn use_points(&self) -> impl Iterator<Item = ir::StmtId> + '_ {
         self.use_points.iter().cloned()
@@ -107,7 +215,7 @@ impl Variable {
     }
 
     /// Registers the variable in the structures it references in the function.
-    pub fn register<L>(&self, fun: &mut ir::Function<L>) {
+    pub fn register(&self, fun: &mut ir::Function<L>) {
         // If the variable is not fully built, register will be called again later.
         if !self.def().is_complete() {
             return;
@@ -117,9 +225,6 @@ impl Variable {
         }
         for &dim in &self.dimensions {
             fun.dim_mut(dim).register_inner_var(self.id());
-        }
-        for mapping in self.def.mapped_dims() {
-            fun.dim_mapping_mut(mapping).register_user(self.id());
         }
         match self.def() {
             VarDef::Inst(inst_id) => {
@@ -143,11 +248,54 @@ impl Variable {
         for &predecessor in &self.predecessors {
             fun.variable_mut(predecessor).add_successor(self.id);
         }
+        self.link_predecessors_layout(fun);
     }
 
-    /// Indicates where the variable can be stored.
-    pub fn max_memory_level(&self) -> MemoryLevel {
-        self.memory_level
+    /// Links `self` layout to the layout of preceding variables. This effectively
+    /// create 1-1 mapping between the layout that ensures they have the same layout.
+    fn link_predecessors_layout(&self, fun: &mut ir::Function<L>) {
+        let self_layout: HashMap<_, _> = self
+            .layout
+            .iter()
+            .map(|&id| (fun.layout_dimension(id).dim(), id))
+            .collect();
+        let default_mapping = HashMap::default();
+        let dim_mapping = if let VarDef::DimMap(_, map) = self.def() {
+            map
+        } else {
+            &default_mapping
+        };
+        let layout_mapping = self
+            .predecessors()
+            .iter()
+            .flat_map(|&var| fun.variable(var).layout())
+            .flat_map(|&layout_dim| {
+                let mut dim = fun.layout_dimension(layout_dim).dim();
+                dim = dim_mapping.get(&dim).cloned().unwrap_or(dim);
+                self_layout
+                    .get(&dim)
+                    .map(|&self_dim| (layout_dim, self_dim))
+            }).collect_vec();
+        for (pred_layout_dim, layout_dim) in layout_mapping {
+            fun.layout_dimension_mut(pred_layout_dim)
+                .add_successor(layout_dim);
+            fun.layout_dimension_mut(layout_dim)
+                .add_predecessor(pred_layout_dim);
+        }
+    }
+
+    /// Indicates if the variable may be in the given memory space.
+    pub fn is_valid_memory_space(&self, space: ir::MemorySpace) -> bool {
+        match &self.use_mode {
+            VarUseMode::FromRegisters => false,
+            VarUseMode::FromMemory(_, spaces) => spaces.contains(&space),
+            VarUseMode::NoUses => true,
+        }
+    }
+
+    /// Indicates how the variable may be used.
+    pub fn use_mode(&self) -> &VarUseMode<L> {
+        &self.use_mode
     }
 
     /// Indicates the variables this variable directly depends on.
@@ -188,6 +336,108 @@ impl Variable {
         }
         self.predecessors.insert(loop_carried_var);
     }
+
+    /// Indicates the dimensions that compose the layout of the variable.
+    pub fn layout(&self) -> &VecSet<ir::LayoutDimId> {
+        &self.layout
+    }
+
+    /// Indicates if the variable may be defined by copying its input.
+    pub fn def_mode(&self) -> &VarDefMode<L> {
+        &self.def_mode
+    }
+
+    /// Indicates if the variable corresponds to a block of memory to allocate.
+    pub fn is_memory(&self) -> bool {
+        self.is_memory
+    }
+
+    /// Sets the variable as a memory block to allocate.
+    pub fn set_is_memory(&mut self) {
+        self.is_memory = true;
+    }
+
+    /// Lists the memory instructions that access this variable.
+    pub fn mem_accesses(&self) -> &VecSet<ir::InstId> {
+        &self.mem_accesses
+    }
+
+    /// Registers that a memory instruction accesses this variable.
+    pub fn register_mem_access(&mut self, inst: ir::InstId, dir: MemAccessDirection) {
+        self.mem_accesses.insert(inst);
+        match dir {
+            MemAccessDirection::Load => self.use_points.insert(inst.into()),
+            MemAccessDirection::Store => self.def_points.insert(inst.into()),
+        };
+    }
+
+    /// Indicates if a variable is used and overwritten by another.
+    pub fn consumer(&self) -> Consumer {
+        self.consumer
+    }
+}
+
+impl Variable<()> {
+    /// Preallocate the objects needed to lower the definition and the uses of the
+    /// variable if it ends-up stored in memory.
+    pub fn freeze(self, counter: &mut ir::Counter) -> Variable<FutureMemAccess> {
+        let Variable {
+            id,
+            t,
+            def,
+            def_mode,
+            use_mode,
+            dimensions,
+            def_points,
+            use_points,
+            predecessors,
+            successors,
+            consumer,
+            layout,
+            is_memory,
+            mem_accesses,
+        } = self;
+        let def_mode = def_mode.freeze(id, &def, &dimensions, counter);
+        let use_mode = use_mode.freeze(id, &dimensions, counter);
+        Variable {
+            id,
+            t,
+            def,
+            dimensions,
+            def_mode,
+            use_mode,
+            def_points,
+            use_points,
+            predecessors,
+            successors,
+            consumer,
+            layout,
+            is_memory,
+            mem_accesses,
+        }
+    }
+}
+
+impl Variable {
+    /// Returns the IDs to use to generate a memory access to the variable. May only be
+    /// called once.
+    pub fn lower_uses(&mut self) -> Option<FutureMemAccess> {
+        match std::mem::replace(&mut self.use_mode, VarUseMode::NoUses) {
+            VarUseMode::FromMemory(access, ..) => Some(access),
+            VarUseMode::NoUses => None,
+            VarUseMode::FromRegisters => panic!("cannot lower the variable to memory"),
+        }
+    }
+
+    /// Returns the IDs to use to generate a memery access that defines the variable.
+    /// Returns `None` if the no copy instruction shoud be generated.
+    pub fn lower_def(&mut self) -> Option<FutureMemAccess> {
+        match std::mem::replace(&mut self.def_mode, VarDefMode::Copy(None)) {
+            VarDefMode::InPlace { .. } => panic!("the variable must be defined in place"),
+            VarDefMode::Copy(None) => None,
+            VarDefMode::Copy(Some(access)) => Some(access),
+        }
+    }
 }
 
 /// Specifies how is a `Variable` defined.
@@ -197,7 +447,7 @@ pub enum VarDef {
     /// Takes the variable produced by an instruction.
     Inst(ir::InstId),
     /// Takes point-to-point the values of a variable produced in another loop nest.
-    DimMap(ir::VarId, VecSet<ir::DimMappingId>),
+    DimMap(ir::VarId, HashMap<ir::DimId, ir::DimId>),
     /// Takes the last value of a variable in a loop nest.
     Last(ir::VarId, VecSet<ir::DimId>),
     /// Takes the value of `init` at the first iteration of `dims` and the values of
@@ -288,13 +538,7 @@ impl VarDef {
                 let var = fun.variable(*var_id);
                 VecSet::new(var.dimensions.difference(dims).cloned().collect())
             }
-            VarDef::DimMap(var_id, mapping_ids) => {
-                let mapping: HashMap<_, _> = mapping_ids
-                    .iter()
-                    .map(|&id| {
-                        let dims = fun.dim_mapping(id).dims();
-                        (dims[0], dims[1])
-                    }).collect();
+            VarDef::DimMap(var_id, mapping) => {
                 let dims = fun
                     .variable(*var_id)
                     .dimensions()
@@ -312,14 +556,6 @@ impl VarDef {
                     .collect();
                 VecSet::new(dims)
             }
-        }
-    }
-
-    /// Lists the point-to-point communications implied by this value.
-    pub fn mapped_dims(&self) -> impl Iterator<Item = ir::DimMappingId> + '_ {
-        match self {
-            VarDef::DimMap(_, mappings) => mappings.iter().cloned(),
-            _ => [].iter().cloned(),
         }
     }
 
@@ -342,10 +578,9 @@ impl VarDef {
                 }
                 prod_point
             }
-            VarDef::DimMap(prev, mapping_ids) => {
+            VarDef::DimMap(prev, mapping) => {
                 let mut prod_point = fun.variable(*prev).def().production_inst(fun);
-                for &mapping_id in mapping_ids {
-                    let [src, dst] = fun.dim_mapping(mapping_id).dims();
+                for (&src, &dst) in mapping {
                     prod_point.dim_map.insert(src, dst);
                 }
                 prod_point
@@ -429,7 +664,7 @@ pub struct ProductionPoint<'a> {
 
 /// Indicates if a variable is used and overwritten by another.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum Consumer {
+pub enum Consumer {
     /// The variable is not overwritten by another.
     None,
     /// The variable is used to initialize a loop-carried variable.
@@ -448,5 +683,141 @@ fn set_consumer<L>(var: VarId, consumer: Consumer, fun: &mut ir::Function<L>) {
     };
     for pred in predecessors {
         set_consumer(pred, consumer, fun);
+    }
+}
+
+/// Indicates how to create a new memory access with pre-allocated IDs. This is useful
+/// to ensure memory accesses created by lowering constructs have deterministic IDs.
+#[derive(Clone, Debug)]
+pub struct FutureMemAccess {
+    pub inst: FutureInstruction,
+    pub output_var: Option<FutureVariable>,
+    pub dim_map_var: FutureVariable,
+    pub dim_mapping: Vec<(ir::DimId, ir::DimId)>,
+    pub access_pattern: ir::AccessPattern<'static>,
+}
+
+/// Indicates if the memory access is a load or a store.
+pub enum MemAccessDirection {
+    Load,
+    Store,
+}
+
+impl FutureMemAccess {
+    /// Allocates IDs for a future memory access.
+    fn new_load(
+        loaded_var: ir::VarId,
+        dims: &[ir::DimId],
+        ids: &mut ir::Counter,
+    ) -> Self {
+        let inst = FutureInstruction::new(dims.len(), ids);
+        let dim_mapping = dims
+            .iter()
+            .cloned()
+            .zip_eq(inst.dimensions.iter().cloned())
+            .collect_vec();
+        let output_var = FutureVariable::new(VarDef::Inst(inst.id), dims.len(), ids);
+        let dim_map_map: HashMap<_, _> =
+            dim_mapping.iter().map(|&(lhs, rhs)| (rhs, lhs)).collect();
+        let access_pattern = ir::AccessPattern::Variable {
+            id: loaded_var,
+            dims: dim_map_map.clone(),
+        };
+        let dim_map_def = VarDef::DimMap(output_var.id, dim_map_map);
+        FutureMemAccess {
+            inst,
+            output_var: Some(output_var),
+            dim_map_var: FutureVariable::new(dim_map_def, dims.len(), ids),
+            dim_mapping,
+            access_pattern,
+        }
+    }
+
+    /// Allocates IDs for a future memory access.
+    fn new_store(
+        dst_id: ir::VarId,
+        dst_def: &ir::VarDef,
+        dims: &[ir::DimId],
+        ids: &mut ir::Counter,
+    ) -> Self {
+        let mut inst = FutureInstruction::new(dims.len(), ids);
+        let dim_mapping = dims
+            .iter()
+            .cloned()
+            .zip_eq(inst.dimensions.iter().cloned())
+            .collect_vec();
+        let access_pattern = ir::AccessPattern::Variable {
+            id: dst_id,
+            dims: dim_mapping.iter().map(|&(lhs, rhs)| (rhs, lhs)).collect(),
+        };
+        let mut dim_map_map: HashMap<_, _> = dim_mapping.iter().cloned().collect();
+        let src_id = match dst_def {
+            VarDef::Inst(..) | VarDef::Fby { .. } => {
+                panic!("variable does not support copies")
+            }
+            VarDef::DimMap(src, mapping) => {
+                for (&src_dim, &dst_dim) in mapping {
+                    let new_dim = unwrap!(dim_map_map.remove(&dst_dim));
+                    dim_map_map.insert(src_dim, new_dim);
+                }
+                *src
+            }
+            VarDef::Last(src, last_dims) => {
+                inst.dimensions.extend(last_dims.iter().cloned());
+                *src
+            }
+        };
+        let dim_map_def = VarDef::DimMap(src_id, dim_map_map);
+        let num_dims = inst.dimensions.len();
+        FutureMemAccess {
+            inst,
+            output_var: None,
+            dim_map_var: FutureVariable::new(dim_map_def, num_dims, ids),
+            dim_mapping,
+            access_pattern,
+        }
+    }
+}
+
+/// Indicates how to create a new instruction with pre-allocated IDs. This is useful to
+/// ensure variables created by lowering constructs have deterministic IDs.
+#[derive(Clone, Debug)]
+pub struct FutureInstruction {
+    pub id: ir::InstId,
+    pub dimensions: HashSet<ir::DimId>,
+    pub layout: VecSet<ir::LayoutDimId>,
+}
+
+impl FutureInstruction {
+    /// Allocates IDs for a future instruction.
+    fn new(num_dims: usize, ids: &mut ir::Counter) -> Self {
+        let dimensions = (0..num_dims).map(|_| ids.next_dim()).collect();
+        let layout = (0..num_dims).map(|_| ids.next_layout_dim()).collect();
+        FutureInstruction {
+            id: ids.next_inst(),
+            dimensions,
+            layout,
+        }
+    }
+}
+
+/// Indicates how to create a new variable with pre-allocated IDs. This is useful to
+/// ensure variables created by lowering constructs have deterministic IDs.
+#[derive(Clone, Debug)]
+pub struct FutureVariable {
+    pub id: ir::VarId,
+    pub def: ir::VarDef,
+    pub layout: VecSet<ir::LayoutDimId>,
+}
+
+impl FutureVariable {
+    /// Allocate IDs for a future variable.
+    fn new(def: ir::VarDef, num_dims: usize, ids: &mut ir::Counter) -> Self {
+        let layout = (0..num_dims).map(|_| ids.next_layout_dim()).collect();
+        FutureVariable {
+            id: ids.next_variable(),
+            def,
+            layout,
+        }
     }
 }

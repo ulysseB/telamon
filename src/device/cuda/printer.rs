@@ -3,7 +3,7 @@ use codegen::*;
 use device::cuda::{Gpu, Namer};
 use ir::{self, op, Type};
 use itertools::Itertools;
-use search_space::{DimKind, Domain, InstFlag, MemSpace};
+use search_space::*;
 use std;
 use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;
@@ -39,31 +39,29 @@ impl CudaPrinter {
     }
 
     /// Prints a load operator.
-    fn ld_operator(space: MemSpace, flag: InstFlag) -> &'static str {
-        if space == MemSpace::SHARED {
-            "ld.shared"
-        } else {
-            match flag {
+    fn ld_operator(space: ir::MemorySpace, flag: InstFlag) -> &'static str {
+        match space {
+            ir::MemorySpace::Shared => "ld.shared",
+            ir::MemorySpace::Global => match flag {
                 InstFlag::CACHE_SHARED => "ld.global.ca",
                 InstFlag::CACHE_GLOBAL => "ld.global.cg",
                 InstFlag::CACHE_READ_ONLY => "ld.global.nc",
                 InstFlag::NO_CACHE => "ld.global.cs",
                 _ => panic!("invalid load flag {:?}", flag),
-            }
+            },
         }
     }
 
     /// Prints a store operator.
-    fn st_operator(space: MemSpace, flag: InstFlag) -> &'static str {
-        if space == MemSpace::SHARED {
-            "st.shared"
-        } else {
-            match flag {
+    fn st_operator(space: ir::MemorySpace, flag: InstFlag) -> &'static str {
+        match space {
+            ir::MemorySpace::Shared => "st.shared",
+            ir::MemorySpace::Global => match flag {
                 InstFlag::CACHE_SHARED => "st.global.wb",
                 InstFlag::CACHE_GLOBAL => "st.global.cg",
                 InstFlag::NO_CACHE => "st.global.cs",
                 _ => panic!("invalid store flag {:?}", flag),
-            }
+            },
         }
     }
 
@@ -111,7 +109,7 @@ impl CudaPrinter {
             vec_name = &name[1..],
             name = name,
             t = ptr_type_name,
-            size = unwrap!(block.alloc_size().as_int())
+            size = unwrap!(block.size().as_int())
         ));
     }
 
@@ -217,12 +215,8 @@ impl CudaPrinter {
             self.buffer.push_str(&"\n");
             //MEM DECL
             for block in function.mem_blocks() {
-                match block.alloc_scheme() {
-                    AllocationScheme::Shared => self.shared_mem_decl(block, name_map),
-                    AllocationScheme::PrivatisedGlobal => {
-                        self.privatise_global_block(block, name_map, function)
-                    }
-                    AllocationScheme::Global => (),
+                if block.memory_space() == ir::MemorySpace::Shared {
+                    self.shared_mem_decl(block, name_map);
                 }
             }
             // Compute size casts
@@ -469,7 +463,7 @@ impl Printer for CudaPrinter {
         &mut self,
         vector_factors: [u32; 2],
         return_type: Type,
-        mem_space: MemSpace,
+        mem_space: ir::MemorySpace,
         flag: InstFlag,
         result: &str,
         addr: &str,
@@ -497,7 +491,7 @@ impl Printer for CudaPrinter {
         &mut self,
         vector_factors: [u32; 2],
         val_type: Type,
-        mem_space: MemSpace,
+        mem_space: ir::MemorySpace,
         mem_flag: InstFlag,
         predicate: Option<&str>,
         addr: &str,
@@ -571,12 +565,14 @@ impl Printer for CudaPrinter {
 
     fn name_inst<'a>(
         vector_levels: &[Vec<Dimension>; 2],
-        inst: ir::InstId,
+        inst: &Instruction,
         namer: &'a NameMap,
     ) -> Cow<'a, str> {
+        let var = unwrap!(inst.result_variable());
+        let op = ir::Operand::Variable(var, unwrap!(inst.t()));
         assert!(vector_levels[0].is_empty());
         if vector_levels[1].is_empty() {
-            Cow::Borrowed(namer.name_inst(inst))
+            namer.name_op(&op)
         } else {
             let sizes = vector_levels[1]
                 .iter()
@@ -589,7 +585,7 @@ impl Printer for CudaPrinter {
                         .zip_eq(indexes)
                         .map(|(d, idx)| (d.id(), idx))
                         .collect_vec();
-                    namer.indexed_inst_name(inst, &indexes_map)
+                    namer.indexed_op_name(&op, &indexes_map)
                 }).format(", ");
             Cow::Owned(format!("{{{}}}", names))
         }

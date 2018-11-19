@@ -206,3 +206,23 @@ impl<'a> From<Size<'a>> for PartialSize<'a> {
         PartialSize::new(size.factor, size.params)
     }
 }
+
+/// Either a fixed size or a sized defined as the stride, in bytes, between accesses on a
+/// layout dimension.
+#[derive(Clone, Debug)]
+pub enum MemAccessStride<'a> {
+    Size(PartialSize<'a>),
+    LayoutStride(ir::LayoutDimId),
+}
+
+impl<'a> From<PartialSize<'a>> for MemAccessStride<'a> {
+    fn from(size: PartialSize<'a>) -> Self {
+        MemAccessStride::Size(size)
+    }
+}
+
+impl<'a> From<ir::LayoutDimId> for MemAccessStride<'a> {
+    fn from(layout_dim: ir::LayoutDimId) -> Self {
+        MemAccessStride::LayoutStride(layout_dim)
+    }
+}

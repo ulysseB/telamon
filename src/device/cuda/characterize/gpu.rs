@@ -39,6 +39,7 @@ pub fn functional_desc(executor: &cuda::Executor) -> cuda::Gpu {
         num_smx: executor.device_attribute(SmxCount) as u32,
         max_block_per_smx: block_per_smx(sm_major, sm_minor),
         smx_clock: f64::from(executor.device_attribute(ClockRate)) / 1.0E+6,
+        num_registers: executor.device_attribute(MaxRegistersPerBlock) as u32,
 
         thread_rates: EMPTY_INST_DESC,
         smx_rates: EMPTY_INST_DESC,

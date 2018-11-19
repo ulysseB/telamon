@@ -1,5 +1,6 @@
 //! Describes a `Function` that is ready to execute on a device.
 use codegen::{self, cfg, dimension, Cfg, Dimension, InductionLevel, InductionVar};
+use indexmap::IndexMap;
 use ir;
 use itertools::Itertools;
 use search_space::*;
@@ -15,7 +16,7 @@ pub struct Function<'a> {
     induction_vars: Vec<InductionVar<'a>>,
     mem_blocks: Vec<MemoryRegion<'a>>,
     init_induction_levels: Vec<InductionLevel<'a>>,
-    variables: Vec<codegen::Variable<'a>>,
+    variables: IndexMap<ir::VarId, codegen::Variable<'a>>,
     // TODO(cleanup): remove dependency on the search space
     space: &'a SearchSpace<'a>,
 }
@@ -23,9 +24,10 @@ pub struct Function<'a> {
 impl<'a> Function<'a> {
     /// Creates a device `Function` from an IR instance.
     pub fn build(space: &'a SearchSpace<'a>) -> Function<'a> {
+        let variables = codegen::variable::wrap_variables(space);
         let mut dims = dimension::group_merged_dimensions(space);
         let (induction_vars, init_induction_levels) =
-            dimension::register_induction_vars(&mut dims, space);
+            dimension::register_induction_vars(&mut dims, &variables, space);
         trace!("dims = {:?}", dims);
         let insts = space
             .ir_instance()
@@ -43,9 +45,8 @@ impl<'a> Function<'a> {
                     .flat_map(|l| l.host_values(space)),
             ).collect::<HashSet<_>>();
         let (block_dims, thread_dims, cfg) = cfg::build(space, insts, dims);
-        let mem_blocks = register_mem_blocks(space, &block_dims);
-        device_code_args
-            .extend(mem_blocks.iter().flat_map(|x| x.host_values(&block_dims)));
+        let mem_blocks = register_mem_blocks(space);
+        device_code_args.extend(mem_blocks.iter().flat_map(|x| x.host_values()));
         debug!("compiling cfg {:?}", cfg);
         Function {
             cfg,
@@ -55,7 +56,7 @@ impl<'a> Function<'a> {
             device_code_args: device_code_args.into_iter().collect(),
             space,
             mem_blocks,
-            variables: codegen::variable::wrap_variables(space),
+            variables,
             init_induction_levels,
         }
     }
@@ -72,7 +73,7 @@ impl<'a> Function<'a> {
 
     /// Iterate on the function variables.
     pub fn variables(&self) -> impl Iterator<Item = &codegen::Variable> {
-        self.variables.iter()
+        self.variables.values()
     }
 
     /// Iterates other all `codegen::Dimension`.
@@ -131,6 +132,11 @@ impl<'a> Function<'a> {
     /// be computed in the provided order.
     pub fn init_induction_levels(&self) -> &[InductionLevel] {
         &self.init_induction_levels
+    }
+
+    /// Returns the stride between elements accessed by along a layout dimension.
+    pub fn layout_dim_stride(&self, dim: ir::LayoutDimId) -> &codegen::Size<'a> {
+        codegen::layout_dim_stride(dim, &self.variables, self.space)
     }
 }
 
@@ -217,151 +223,93 @@ pub enum ParamValKey<'a> {
 
 /// Generates the list of internal memory blocks, and creates the parameters needed to
 /// back them.
-fn register_mem_blocks<'a>(
-    space: &'a SearchSpace<'a>,
-    block_dims: &[Dimension<'a>],
-) -> Vec<MemoryRegion<'a>> {
-    let num_thread_blocks = block_dims.iter().fold(None, |pred, block| {
-        if let Some(mut pred) = pred {
-            pred *= block.size();
-            Some(pred)
-        } else {
-            Some(block.size().clone())
-        }
-    });
+fn register_mem_blocks<'a>(space: &'a SearchSpace<'a>) -> Vec<MemoryRegion<'a>> {
+    let var_blocks = space
+        .ir_instance()
+        .memory_vars()
+        .map(|var| MemoryRegion::new_var(var, space));
     space
         .ir_instance()
         .mem_blocks()
-        .map(|b| MemoryRegion::new(b, &num_thread_blocks, space))
+        .map(|b| MemoryRegion::new_fixed(b, space))
+        .chain(var_blocks)
         .collect()
 }
 
 /// A memory block allocated by the kernel.
 pub struct MemoryRegion<'a> {
-    id: ir::MemId,
+    id: ir::ArrayId,
     len: codegen::Size<'a>,
     elements_type: ir::Type,
-    num_private_copies: Option<codegen::Size<'a>>,
-    mem_space: MemSpace,
+    memory_space: ir::MemorySpace,
     ptr_type: ir::Type,
-}
-
-/// Indicates how is a memory block allocated.
-#[derive(PartialEq, Eq)]
-pub enum AllocationScheme {
-    Global,
-    PrivatisedGlobal,
-    Shared,
 }
 
 impl<'a> MemoryRegion<'a> {
     /// Creates a new MemoryRegion from an `ir::Mem`.
-    pub fn new(
-        block: &'a ir::mem::Block,
-        num_threads_groups: &Option<codegen::Size<'a>>,
-        space: &'a SearchSpace<'a>,
-    ) -> Self {
-        let mem_space = space.domain().get_mem_space(block.mem_id());
-        assert!(mem_space.is_constrained());
-        let mut len = codegen::Size::new(block.len(), vec![], 1);
-        for &(dim, _) in block.mapped_dims() {
-            let ir_size = space.ir_instance().dim(dim).size();
-            len *= &codegen::Size::from_ir(ir_size, space);
-        }
-        let num_private_copies = if block.is_private() && mem_space == MemSpace::GLOBAL {
-            num_threads_groups.clone()
-        } else {
-            None
-        };
-        let ptr_type = ir::Type::PtrTo(block.mem_id());
-        let ptr_type = unwrap!(space.ir_instance().device().lower_type(ptr_type, space));
+    pub fn new_fixed(block: &ir::mem::Block, space: &SearchSpace) -> Self {
+        let ptr_type = ir::Type::PtrTo(block.id.into());
         MemoryRegion {
-            id: block.mem_id(),
-            len,
-            elements_type: block.elements_type(),
-            mem_space,
-            num_private_copies,
-            ptr_type,
+            id: block.id.into(),
+            len: codegen::Size::new(block.len, vec![], 1),
+            elements_type: block.elements_type,
+            memory_space: block.space,
+            ptr_type: unwrap!(space.ir_instance().device().lower_type(ptr_type, space)),
+        }
+    }
+
+    /// Creates a new memory region to store an `ir::Variable`.
+    pub fn new_var(var: &ir::Variable, space: &SearchSpace<'a>) -> Self {
+        let ptr_type = ir::Type::PtrTo(ir::ArrayId::Variable(var.id()));
+        let len = var
+            .layout()
+            .iter()
+            .filter(|&&layout_dim| {
+                space.domain().get_is_instantiated(layout_dim) == IsInstantiated::TRUE
+            }).map(|&layout_dim| {
+                let dim = space.ir_instance().layout_dimension(layout_dim).dim();
+                space.ir_instance().dim(dim).size()
+            }).product();
+        MemoryRegion {
+            id: ir::ArrayId::Variable(var.id()),
+            len: codegen::Size::from_ir(&len, space),
+            elements_type: var.t(),
+            memory_space: fixed_memory_space(space.domain().get_memory_space(var.id())),
+            ptr_type: unwrap!(space.ir_instance().device().lower_type(ptr_type, space)),
         }
     }
 
     /// Returns the value to pass from the host to the device to implement `self`.
-    pub fn host_values(&self, block_dims: &[Dimension<'a>]) -> Vec<ParamVal<'a>> {
-        let mut out = if self.mem_space == MemSpace::GLOBAL {
-            vec![ParamVal::GlobalMem(
-                self.id,
-                self.alloc_size(),
-                self.ptr_type,
-            )]
-        } else {
-            vec![]
-        };
-        let local_size = self.local_size();
-        let size = if self.num_private_copies.is_some() {
-            Some(
-                block_dims[1..]
-                    .iter()
-                    .map(|d| d.size())
-                    .chain(Some(&local_size))
-                    .flat_map(ParamVal::from_size),
-            )
-        } else {
-            None
-        };
-        out.extend(size.into_iter().flat_map(|x| x));
-        out
+    pub fn host_values(&self) -> Option<ParamVal<'a>> {
+        ParamVal::from_size(&self.size())
     }
 
     /// Returns the memory ID.
-    pub fn id(&self) -> ir::MemId {
+    pub fn id(&self) -> ir::ArrayId {
         self.id
     }
 
-    /// Indicates how is the memory block allocated.
-    pub fn alloc_scheme(&self) -> AllocationScheme {
-        match self.mem_space {
-            MemSpace::SHARED => AllocationScheme::Shared,
-            MemSpace::GLOBAL if self.num_private_copies.is_some() => {
-                AllocationScheme::PrivatisedGlobal
-            }
-            MemSpace::GLOBAL => AllocationScheme::Global,
-            _ => unreachable!(),
-        }
-    }
-
-    /// Returns the size in bytes of the memory to allocate.
-    pub fn alloc_size(&self) -> codegen::Size<'a> {
-        let element_size = unwrap!(self.elements_type.len_byte());
-        let mut out = codegen::Size::new(element_size, vec![], 1);
-        out *= &self.len;
-        if let Some(ref s) = self.num_private_copies {
-            out *= s
-        }
-        out
-    }
-
-    /// Returns the size of the memory block in number of elements accessible by each
-    /// thread.
-    pub fn local_len(&self) -> &codegen::Size<'a> {
+    /// Returns the size of the memory block in number of elements.
+    pub fn len(&self) -> &codegen::Size<'a> {
         &self.len
     }
 
-    /// Returns the size in bytes of the memory accessible by each threads.
-    pub fn local_size(&self) -> codegen::Size<'a> {
+    /// Retrns the size of the memory in bytes.
+    pub fn size(&self) -> codegen::Size<'a> {
         let element_size = unwrap!(self.elements_type.len_byte());
         let mut out = codegen::Size::new(element_size, vec![], 1);
         out *= &self.len;
         out
-    }
-
-    /// Returns the memory space the block is allocated in.
-    pub fn mem_space(&self) -> MemSpace {
-        self.mem_space
     }
 
     /// Indicates the types of the elements of the memory block.
     pub fn elements_type(&self) -> ir::Type {
         self.elements_type
+    }
+
+    /// Indicates where to allocate the memory block.
+    pub fn memory_space(&self) -> ir::MemorySpace {
+        self.memory_space
     }
 
     /// Returns the type of the pointer to the memory block.
@@ -480,7 +428,7 @@ impl<'a> Instruction<'a> {
 #[derive(Debug)]
 pub struct MemAccess<'a> {
     pub stride: Option<codegen::Size<'a>>,
-    pub space: MemSpace,
+    pub space: ir::MemorySpace,
     pub flag: InstFlag,
 }
 
@@ -512,10 +460,20 @@ impl<'a> MemAccess<'a> {
             let is_strided = rank > last_inner_vec + 1 || dim.is_strided();
             assert!(!is_strided, "strided access are not supported yet");
         }
+        let array = access_pattern.accessed_array();
         MemAccess {
             stride: None,
-            space: access_pattern_space(access_pattern, space),
+            space: fixed_memory_space(array_memory_space(array, space)),
             flag: space.domain().get_inst_flag(inst.id()),
         }
+    }
+}
+
+/// Converts a `SearchSpace::MemorySpace` into an `ir::MemorySpace`.
+fn fixed_memory_space(space: MemorySpace) -> ir::MemorySpace {
+    match space {
+        MemorySpace::GLOBAL => ir::MemorySpace::Global,
+        MemorySpace::SHARED => ir::MemorySpace::Shared,
+        space => panic!("invalid memory space {:?}", space),
     }
 }

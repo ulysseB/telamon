@@ -229,6 +229,20 @@ impl<'a> SetRef<'a> for SetRefImpl<'a> {
     }
 }
 
+impl<'a> Adaptable for SetRefImpl<'a> {
+    fn adapt(&self, adaptator: &ir::Adaptator) -> Self {
+        let reverse_constraint = self
+            .reverse_constraint
+            .as_ref()
+            .map(|set| Box::new(set.adapt(adaptator)));
+        SetRefImpl {
+            def: self.def,
+            var: self.var.map(|v| adaptator.variable(v)),
+            reverse_constraint,
+        }
+    }
+}
+
 /// Defines a set of objects.
 #[derive(Clone)]
 pub struct SetDef {

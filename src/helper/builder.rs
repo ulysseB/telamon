@@ -4,7 +4,7 @@ use helper::{AutoOperand, LogicalDim, MetaStatement, TilingPattern, ToVariable};
 use ir::{self, op, Parameter, Type};
 use ir::{AccessPattern, Function, InstId, Operand, Operator, Signature};
 use itertools::{flatten, Itertools};
-use search_space::{Action, DimKind, InstFlag, MemSpace, Order, SearchSpace};
+use search_space::*;
 use std::borrow::Borrow;
 use utils::*;
 
@@ -39,7 +39,7 @@ impl<'a> Builder<'a> {
     }
 
     /// Returns an operand from an `AutoOperand`.
-    fn get_op<'b: 'a>(&mut self, op: &AutoOperand<'b>) -> Operand<'a, ()> {
+    fn get_op<'b: 'a>(&mut self, op: &AutoOperand<'b>) -> Operand<'a> {
         op.get(self)
     }
 
@@ -254,7 +254,7 @@ impl<'a> Builder<'a> {
     }
 
     /// Inserts an instruction in the function.
-    fn inst(&mut self, op: Operator<'a, ()>) -> InstId {
+    fn inst(&mut self, op: Operator<'a>) -> InstId {
         let open_dims = self.open_dims.iter().map(|(&x, _)| x).collect();
         unwrap!(self.function.add_inst(op, open_dims))
     }
@@ -266,7 +266,10 @@ impl<'a> Builder<'a> {
             .inst(inst_id)
             .result_variable()
             .unwrap_or_else(|| {
-                unwrap!(self.function.add_variable(ir::VarDef::Inst(inst_id)))
+                let def = ir::VarDef::Inst(inst_id);
+                let def_mode = ir::VarDefMode::InPlace { allow_sync: false };
+                let use_mode = ir::VarUseMode::FromRegisters;
+                unwrap!(self.function.add_variable(def, def_mode, use_mode))
             })
     }
 
@@ -278,9 +281,10 @@ impl<'a> Builder<'a> {
         logical_dims: &[&LogicalDim],
     ) -> ir::VarId {
         let dims = flatten(logical_dims.iter().cloned()).collect();
-        self.function
-            .add_variable(ir::VarDef::Last(var, dims))
-            .unwrap()
+        let def_mode = ir::VarDefMode::InPlace { allow_sync: false };
+        let use_mode = self.function.variable(var).use_mode().clone();
+        let def = ir::VarDef::Last(var, dims);
+        unwrap!(self.function.add_variable(def, def_mode, use_mode))
     }
 
     /// Creates a new variable that takes point-to-point the value of another variable, in
@@ -289,40 +293,57 @@ impl<'a> Builder<'a> {
         &mut self,
         var: ir::VarId,
         logical_mapping: &[(&LogicalDim, &LogicalDim)],
+        def_mode: ir::VarDefMode<()>,
+        use_mode: ir::VarUseMode<()>,
     ) -> ir::VarId {
         let mapping = logical_mapping
             .iter()
             .flat_map(|&(lhs, rhs)| lhs.iter().zip_eq(rhs))
-            .map(|(lhs, rhs)| self.function.map_dimensions([lhs, rhs]))
             .collect();
-        self.function
-            .add_variable(ir::VarDef::DimMap(var, mapping))
-            .unwrap()
+        let def = ir::VarDef::DimMap(var, mapping);
+        self.function.add_variable(def, def_mode, use_mode).unwrap()
+    }
+
+    /// Creates a `DimMap` variable based on an instruction. This function is here as an
+    /// helper to match the semantics of the old `Builder::dim_map` method.
+    pub fn map_instruction(
+        &mut self,
+        inst: ir::InstId,
+        logical_mapping: &[(&LogicalDim, &LogicalDim)],
+        allow_copies: bool,
+        mem_spaces: Vec<ir::MemorySpace>,
+    ) -> ir::VarId {
+        let var = self.get_inst_variable(inst);
+        let def_mode = if allow_copies {
+            ir::VarDefMode::Copy(Some(()))
+        } else {
+            ir::VarDefMode::InPlace { allow_sync: true }
+        };
+        let use_mode = if mem_spaces.is_empty() {
+            ir::VarUseMode::FromRegisters
+        } else {
+            ir::VarUseMode::FromMemory((), VecSet::new(mem_spaces))
+        };
+        self.create_dim_map_variable(var, logical_mapping, def_mode, use_mode)
     }
 
     /// Creates point-to-point communication to import the variable in the current loop
     /// nest following mapped dimensions. Returns the original variable if no dimension
     /// needs to be mapped.
     pub fn map_variable(&mut self, var: ir::VarId) -> ir::VarId {
-        let mapped_dims = {
+        let mapping = {
             let original_var = self.function.variable(var);
             self.open_dims
                 .iter()
-                .map(|(&lhs, &rhs)| (lhs, rhs))
-                .filter(|(new_dim, old_dim)| new_dim != old_dim)
-                .filter(|(_, old_dim)| original_var.dimensions().contains(&old_dim))
-                .collect_vec()
+                .map(|(&lhs, &rhs)| (rhs, lhs))
+                .filter(|(old_dim, new_dim)| new_dim != old_dim)
+                .filter(|(old_dim, _)| original_var.dimensions().contains(&old_dim))
+                .collect()
         };
-        if mapped_dims.is_empty() {
-            return var;
-        }
-        let mapping = mapped_dims
-            .into_iter()
-            .map(|(new_dim, old_dim)| self.function.map_dimensions([old_dim, new_dim]))
-            .collect();
-        self.function
-            .add_variable(ir::VarDef::DimMap(var, mapping))
-            .unwrap()
+        let def_mode = ir::VarDefMode::InPlace { allow_sync: false };
+        let use_mode = self.function.variable(var).use_mode().clone();
+        let def = ir::VarDef::DimMap(var, mapping);
+        unwrap!(self.function.add_variable(def, def_mode, use_mode))
     }
 
     /// Creates a variable initialized with the value of `init` and then takes a value
@@ -335,11 +356,14 @@ impl<'a> Builder<'a> {
     ) -> ir::VarId {
         let init = init.to_variable(self);
         let dims = dims.iter().flat_map(|dim| dim.iter()).collect();
-        unwrap!(self.function.add_variable(ir::VarDef::Fby {
+        let def = ir::VarDef::Fby {
             init,
             prev: None,
-            dims
-        }))
+            dims,
+        };
+        let def_mode = ir::VarDefMode::InPlace { allow_sync: false };
+        let use_mode = self.function.variable(init).use_mode().clone();
+        unwrap!(self.function.add_variable(def, def_mode, use_mode))
     }
 
     /// Set the loop-carried dependency `loop_carried` of a variable `fby` created with
@@ -446,19 +470,12 @@ impl<'a> Builder<'a> {
 
     /// Allocates a memory block in shared memory.
     pub fn allocate_shared(&mut self, t: ir::Type, len: u32) -> ir::MemId {
-        let id = self.allocate(t, len, true);
-        self.actions
-            .push(Action::MemSpace(id.into(), MemSpace::SHARED));
-        id
+        self.function.add_mem_block(t, len, ir::MemorySpace::Shared)
     }
 
     /// Allocates a memory block.
-    pub fn allocate(&mut self, t: ir::Type, len: u32, private: bool) -> ir::MemId {
-        assert!(
-            private,
-            "allocating non-private memory is not yet supported"
-        );
-        self.function.add_mem_block(t, len)
+    pub fn allocate_global(&mut self, t: ir::Type, len: u32) -> ir::MemId {
+        self.function.add_mem_block(t, len, ir::MemorySpace::Global)
     }
 
     /// Builds both an induction variable for a tensor memory access and the corresponding
@@ -474,7 +491,11 @@ impl<'a> Builder<'a> {
         let logical_increments = self.tensor_increments(t, dims);
         let increments = self.logical_to_real_increments(logical_increments);
         let dims = increments.iter().cloned().collect();
-        let ind_var = unwrap!(ir::InductionVar::new(increments, base));
+        let increments = increments
+            .into_iter()
+            .map(|(dim, inc)| (dim, inc.into()))
+            .collect();
+        let ind_var = unwrap!(ir::InductionVar::new(increments, base, &self.function));
         let ind_var_id = self.function.add_ind_var(ind_var);
         (ind_var_id, AccessPattern::Tensor { t, mem_id, dims })
     }
@@ -502,9 +523,13 @@ impl<'a> Builder<'a> {
         dims: Vec<(&LogicalDim, ir::Size<'a>)>,
     ) -> ir::IndVarId {
         let base = self.get_op(base);
-        let dims = self.logical_to_real_increments(dims);
-        self.function
-            .add_ind_var(unwrap!(ir::InductionVar::new(dims, base)))
+        let dims = self
+            .logical_to_real_increments(dims)
+            .into_iter()
+            .map(|(dim, inc)| (dim, inc.into()))
+            .collect();
+        let ind_var = ir::InductionVar::new(dims, base, &self.function);
+        self.function.add_ind_var(unwrap!(ind_var))
     }
 
     /// Converts increments on logical dimensions to increment on real dimensions.
@@ -543,20 +568,6 @@ impl<'a> Builder<'a> {
             }).collect()
     }
 
-    /// Creates a dim-map operand.
-    pub fn dim_map(
-        &self,
-        base: ir::InstId,
-        dim_map: &[(&LogicalDim, &LogicalDim)],
-        scope: ir::DimMapScope<()>,
-    ) -> ir::Operand<'a, ()> {
-        let dim_map = dim_map
-            .iter()
-            .flat_map(|&(lhs, rhs)| lhs.iter().zip_eq(rhs.iter()));
-        let inst = self.function.inst(base);
-        ir::Operand::new_inst(inst, ir::DimMap::new(dim_map), scope)
-    }
-
     /// Finds a paramter given its name.
     pub fn find_param(&self, param: &str) -> &'a Parameter {
         unwrap!(
@@ -569,7 +580,7 @@ impl<'a> Builder<'a> {
     }
 
     /// Returns a reference to the function being built.
-    pub(super) fn function(&self) -> &ir::Function<'a, ()> {
+    pub fn function(&self) -> &ir::Function<'a, ()> {
         &self.function
     }
 

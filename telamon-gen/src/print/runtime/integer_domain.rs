@@ -25,7 +25,7 @@ pub fn get() -> TokenStream {
                 let len = new_universe.binary_search(&self.max(self_universe))
                     .map(|x| x + 1)
                     .unwrap_or_else(|x| x) - start;
-                let enabled_values = ((1 << len) - 1) << start;
+                let enabled_values = (((1u32 << len) - 1) << start) as u16;
                 NumericSet { enabled_values }
             }
 

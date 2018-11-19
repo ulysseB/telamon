@@ -9,7 +9,7 @@ pub fn get() -> TokenStream {
         #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
         #[repr(C)]
         pub struct NumericSet {
-            enabled_values: u16
+            pub enabled_values: u16
         }
 
         #[allow(dead_code)]
@@ -20,8 +20,11 @@ pub fn get() -> TokenStream {
 
             /// Returns the set containing all the possibilities. Assumes the universe is
             /// sorted.
-            pub fn all(univers: &[u32]) -> Self {
-                NumericSet { enabled_values: (1 << univers.len()) - 1 }
+            pub fn all(universe: &[u32]) -> Self {
+                debug_assert!(universe.len() <= Self::MAX_LEN);
+                NumericSet {
+                    enabled_values: ((1u32 << universe.len()) - 1) as u16
+                }
             }
 
             /// Inserts alternatives into the domain. Both domains should be from the same
@@ -42,6 +45,7 @@ pub fn get() -> TokenStream {
             pub fn list_values<'a>(&self, universe: &'a [u32])
                 -> impl Iterator<Item=u32> + 'a
             {
+                debug_assert!(universe.len() <= Self::MAX_LEN);
                 let enabled_values = self.enabled_values;
                 universe.iter().enumerate()
                     .filter(move |(i, _)| ((1u16 << i) & enabled_values) != 0)
@@ -62,6 +66,17 @@ pub fn get() -> TokenStream {
             /// Returns the least common multiple of possible values.
             pub fn lcm(&self, universe: &[u32]) -> u32 {
                 self.list_values(universe).fold1(num::integer::lcm).unwrap_or(1)
+            }
+
+            /// Returns a `NumericSet` containing the values in `self` but not in `neq`.
+            fn new_neq(universe: &[u32], neq: Self, neq_universe: &[u32]) -> Self {
+                let all = Self::all(universe);
+                if neq.is_constrained() {
+                    let mask = Self::new_eq(universe, neq, neq_universe);
+                    NumericSet { enabled_values: !mask.enabled_values & all.enabled_values }
+                } else {
+                    all
+                }
             }
         }
 
@@ -104,6 +119,8 @@ pub fn get() -> TokenStream {
                 universe: &[u32],
                 num_set_universe: &[u32]
             ) -> NumericSet {
+                debug_assert!(universe.len() <= Self::MAX_LEN);
+                debug_assert!(num_set_universe.len() <= Self::MAX_LEN);
                 let mut self_idx = 0;
                 let mut enabled_values = 0;
                 'values: for (idx, &value) in num_set_universe.iter().enumerate() {
@@ -131,7 +148,7 @@ pub fn get() -> TokenStream {
                 let start = universe.binary_search(&min.min(min_universe))
                     .map(|x| x+1).unwrap_or_else(|x| x);
                 let len = universe.len() - start;
-                let enabled_values = ((1 << len) - 1) << start;
+                let enabled_values = (((1u32 << len) - 1) << start) as u16;
                 NumericSet { enabled_values }
             }
 
@@ -139,7 +156,7 @@ pub fn get() -> TokenStream {
                                  max: D, max_universe: &D::Universe) -> Self {
                 let len = universe.binary_search(&max.max(max_universe))
                     .unwrap_or_else(|x| x);
-                let enabled_values = (1 << len) - 1;
+                let enabled_values = ((1u32 << len) - 1) as u16;
                 NumericSet { enabled_values }
             }
 
@@ -148,7 +165,7 @@ pub fn get() -> TokenStream {
                 let start = universe.binary_search(&min.min(min_universe))
                     .unwrap_or_else(|x| x);
                 let len = universe.len() - start;
-                let enabled_values = ((1 << len) - 1) << start;
+                let enabled_values = (((1u32 << len) - 1) << start) as u16;
                 NumericSet { enabled_values }
             }
 
@@ -156,7 +173,7 @@ pub fn get() -> TokenStream {
                                   max: D, max_universe: &D::Universe) -> Self {
                 let len = universe.binary_search(&max.max(max_universe))
                     .map(|x| x+1).unwrap_or_else(|x| x);
-                let enabled_values = (1 << len) - 1;
+                let enabled_values = ((1u32 << len) - 1) as u16;
                 NumericSet { enabled_values }
             }
 

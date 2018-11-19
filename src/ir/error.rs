@@ -115,6 +115,8 @@ pub enum Error {
         rhs
     )]
     MissingDimMapping { lhs: ir::DimId, rhs: ir::DimId },
+    #[fail(display = "variable {} cannot be used in operands", var)]
+    ForbiddenVarUse { var: ir::VarId },
 }
 
 impl From<TypeError> for Error {

@@ -281,13 +281,13 @@ impl Default for OldNodeOrder {
 //#[serde(tag = "type")]
 #[serde(rename_all = "snake_case")]
 pub enum ChoiceGroup {
-    LowerLayout,
     Size,
     DimKind,
     DimMap,
     Order,
     MemSpace,
     InstFlag,
+    Rank,
 }
 
 /// A list of ChoiceGroup representing the order in which we want to determine choices
@@ -297,11 +297,11 @@ pub struct ChoiceOrdering(Vec<ChoiceGroup>);
 impl Default for ChoiceOrdering {
     fn default() -> Self {
         ChoiceOrdering(vec![
-            ChoiceGroup::LowerLayout,
             ChoiceGroup::Size,
             ChoiceGroup::DimKind,
             ChoiceGroup::DimMap,
             ChoiceGroup::MemSpace,
+            ChoiceGroup::Rank,
             ChoiceGroup::Order,
             ChoiceGroup::InstFlag,
         ])

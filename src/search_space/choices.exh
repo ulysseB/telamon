@@ -169,24 +169,8 @@ require forall $lhs in StaticDims:
   forall $rhs in StaticDims:
     size($lhs) == size($rhs) || order($lhs, $rhs) is not MERGED
 
-/// Specifies the valid mappings between two dimensions.
-define enum dim_mapping($lhs in Dimensions, $rhs in Dimensions):
-  symmetric
-  /// The dimensions cannot be mapped through registers.
-  value NOT_MAPPED:
-  /// Values may be transmitted using multiple registers within a thread
-  value UNROLL_MAP:
-    requires dim_kind($lhs) is UNROLL | VECTOR || order($lhs, $rhs) is MERGED
-  /// Values may be transmitted using one register for each thread.
-  value THREAD_MAP:
-    requires dim_kind($lhs) is THREAD
-  /// Values are transmitted through registers.
-  alias MAPPED = UNROLL_MAP | THREAD_MAP:
-end
-
 require forall $lhs in StaticDims:
   forall $rhs in StaticDims:
-    dim_mapping($lhs, $rhs) is not THREAD_MAP || thread_mapping($lhs, $rhs) is MAPPED
     thread_mapping($lhs, $rhs) is not MAPPED || size($lhs) == size($rhs)
 
 /// Limits the number of nested unrolled loop.
@@ -247,21 +231,3 @@ require forall $dim in StaticDims:
     // to iteration dimensions.
     dim_kind($dim) is not VECTOR || order($dim, $inst) is not OUTER
       || "$fun.device().can_vectorize($dim, $inst.operator())"
-
-// dim_map lowering.
-trigger forall $lhs in Dimensions:
-  forall $rhs in Dimensions:
-    "::search_space::dim_map::dim_not_mapped($lhs, $rhs, ir_instance)"
-      when dim_mapping($lhs, $rhs) is NOT_MAPPED && "$lhs.id() < $rhs.id()"
-
-// Layout Lowering.
-trigger forall $lhs in Dimensions:
-  forall $rhs in Dimensions:
-    "::search_space::dim_map::dim_not_merged($lhs, $rhs, ir_instance)"
-      when order($lhs, $rhs) is not MERGED && "$lhs.id() < $rhs.id()"
-
-// Merge lowering
-trigger forall $lhs in Dimensions:
-  forall $rhs in Dimensions:
-    "::search_space::merge_dims($lhs, $rhs, ir_instance)"
-      when order($lhs, $rhs) is MERGED && "$lhs.id() > $rhs.id()"

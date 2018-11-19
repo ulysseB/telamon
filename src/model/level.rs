@@ -349,25 +349,26 @@ pub struct DimMap {
 
 fn list_dim_map(
     space: &SearchSpace,
-    src: ir::InstId,
+    prod_point: &ir::ProductionPoint,
     dst: ir::InstId,
-    dim_map: &ir::DimMap,
 ) -> Option<DimMap> {
-    let src_dims = dim_map
-        .iter()
-        .map(|x| x.0)
+    let src_dims = prod_point
+        .dim_map
+        .keys()
+        .cloned()
         .filter(|&d| must_consider_dim(space, d))
         .collect::<VecSet<_>>();
-    let dst_dims = dim_map
-        .iter()
-        .map(|x| x.1)
+    let dst_dims = prod_point
+        .dim_map
+        .values()
+        .cloned()
         .filter(|&d| must_consider_dim(space, d))
         .collect::<VecSet<_>>();
     if dst_dims.is_empty() || src_dims.is_empty() {
         None
     } else {
         Some(DimMap {
-            src,
+            src: prod_point.inst,
             dst,
             src_dims,
             dst_dims,
@@ -383,8 +384,13 @@ fn list_dim_maps(space: &SearchSpace) -> Vec<DimMap> {
         .flat_map(|inst| {
             let dst = inst.id();
             inst.operands().into_iter().flat_map(move |op| match *op {
-                ir::Operand::Inst(src, _, ref dim_map, _) => {
-                    list_dim_map(space, src, dst, dim_map)
+                ir::Operand::Variable(var, ..) => {
+                    let prod_point = space
+                        .ir_instance()
+                        .variable(var)
+                        .def()
+                        .production_inst(space.ir_instance());
+                    list_dim_map(space, &prod_point, dst)
                 }
                 _ => None,
             })

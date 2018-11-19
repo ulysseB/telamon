@@ -1,13 +1,14 @@
 //! Search space datastructures and constraint propagation.
 use ir;
 
-mod dim_map;
-mod operand;
 generated_file!(choices);
+mod operand;
+mod variable;
 
 pub use self::choices::{
-    Action, Bool, Choice, DimKind, Domain, DomainStore, InstFlag, MemSpace, MemorySpace,
-    NumSet, Order, ThreadMapping,
+    Action, Bool, Choice, DimKind, Domain, DomainStore, HalfRange, InstFlag,
+    IsInstantiated, MemorySpace, NumDomain, NumSet, NumericSet, Order, ThreadMapping,
+    VarDefMode,
 };
 
 use self::choices::{apply_action, init_domain, DomainDiff};
@@ -66,42 +67,6 @@ impl<'a> SearchSpace<'a> {
     pub fn apply_decisions(&mut self, actions: Vec<Action>) -> Result<(), ()> {
         choices::apply_decisions(actions, &mut self.ir_instance, &mut self.domain)
     }
-
-    /// Triggers a layout lowering.
-    pub fn lower_layout(
-        &mut self,
-        mem: ir::MemId,
-        st_dims: Vec<ir::DimId>,
-        ld_dims: Vec<ir::DimId>,
-    ) -> Result<(), ()> {
-        let mut diff = DomainDiff::default();
-        let actions = {
-            let ir_instance = Arc::make_mut(&mut self.ir_instance);
-            let (new_objs, mut actions) =
-                dim_map::lower_layout(ir_instance, mem, st_dims, ld_dims)?;
-            actions.extend(process_lowering(
-                ir_instance,
-                &mut self.domain,
-                &new_objs,
-                &mut diff,
-            )?);
-            actions
-        };
-        // Manually apply actions since telamon-gen does not expose an `apply_actions`
-        // function that takes a `diff` as argument. This code will be removed when we
-        // support dynamic layout with variables anyway.
-        for action in actions {
-            apply_action(action, &mut self.domain, &mut diff)?;
-        }
-        while !diff.is_empty() {
-            choices::propagate_changes(
-                &mut diff,
-                &mut self.ir_instance,
-                &mut self.domain,
-            )?;
-        }
-        Ok(())
-    }
 }
 
 /// Update the domain after a lowering.
@@ -127,18 +92,18 @@ fn process_lowering(
             ir_instance.inst(inst),
         ));
     }
+    // Manually restrict the possible ranks until we find why this is not automatically
+    // performed by Telamon-Gen
+    // TODO(ulysse): fix telamon_gen.
+    for &mem in &new_objs.memory_vars {
+        let num_mem_dims = domain.get_num_mem_dims(mem);
+        for &id in ir_instance.variable(mem).layout() {
+            let universe = unwrap!(ir_instance.layout_dimension(id).possible_ranks());
+            let ranks = NumericSet::new_leq(universe, num_mem_dims, &());
+            actions.push(Action::Rank(id, ranks));
+        }
+    }
     Ok(actions)
-}
-
-/// Trigger to call when two dimensions are merged.
-fn merge_dims(
-    lhs: ir::DimId,
-    rhs: ir::DimId,
-    ir_instance: &mut ir::Function,
-) -> Result<(ir::NewObjs, Vec<Action>), ()> {
-    debug!("merge {:?} and {:?}", lhs, rhs);
-    ir_instance.merge(lhs, rhs);
-    Ok(Default::default())
 }
 
 /// Adds a iteration dimension to a basic block.
@@ -166,13 +131,13 @@ fn add_thread_dim(ir_instance: &mut ir::Function, dim: ir::DimId) -> ir::NewObjs
 }
 
 /// Returns the memory space accessed by an access pattern.
-pub fn access_pattern_space(
-    pattern: &ir::AccessPattern,
-    space: &SearchSpace,
-) -> MemSpace {
-    // We either have a `MemId` or the array is an external array in global memory.
-    pattern
-        .mem_block()
-        .map(|id| space.domain().get_mem_space(id))
-        .unwrap_or(MemSpace::GLOBAL)
+pub fn array_memory_space(array: ir::ArrayId, space: &SearchSpace) -> MemorySpace {
+    match array {
+        ir::ArrayId::External => MemorySpace::GLOBAL,
+        ir::ArrayId::Static(id) => match space.ir_instance().mem_block(id).space {
+            ir::MemorySpace::Global => MemorySpace::GLOBAL,
+            ir::MemorySpace::Shared => MemorySpace::SHARED,
+        },
+        ir::ArrayId::Variable(var) => space.domain().get_memory_space(var),
+    }
 }

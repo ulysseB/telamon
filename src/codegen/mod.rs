@@ -7,6 +7,8 @@ mod printer;
 mod size;
 mod variable;
 
+use self::variable::layout_dim_stride;
+
 pub use self::cfg::Cfg;
 pub use self::dimension::{Dimension, InductionLevel, InductionVar};
 pub use self::function::*;

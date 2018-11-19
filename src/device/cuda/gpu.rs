@@ -5,7 +5,7 @@ use device::cuda::CudaPrinter;
 use device::{self, cuda, Device};
 use ir::{self, Operator, Type};
 use model::{self, HwPressure};
-use search_space::{DimKind, Domain, InstFlag, MemSpace, SearchSpace};
+use search_space::*;
 use std;
 use std::io::Write;
 use utils::*;
@@ -116,6 +116,8 @@ pub struct Gpu {
     pub max_block_per_smx: u32,
     /// The clock of an SMX, in GHz.
     pub smx_clock: f64,
+    /// Maximum number of registers per thread block.
+    pub num_registers: u32,
 
     /// Amount of processing power available on a single thread.
     pub thread_rates: InstDesc,
@@ -186,6 +188,7 @@ impl Gpu {
             shared_bank_stride: 8,
             num_smx: 4,
             max_block_per_smx: 16,
+            num_registers: 32 * 1024,
 
             smx_clock: -1.,
             load_l2_latency: -1.,
@@ -333,12 +336,12 @@ impl Gpu {
             (&BinOp(ir::BinOp::Div, ..), Some(Type::F(64))) => self.div_f64_inst.into(),
             (&BinOp(ir::BinOp::Div, ..), Some(Type::I(32))) => self.div_i32_inst.into(),
             (&BinOp(ir::BinOp::Div, ..), Some(Type::I(64))) => self.div_i64_inst.into(),
-            (&Ld(..), _) | (&TmpLd(..), _) => {
+            (&Ld(..), _) => {
                 let flag = space.domain().get_inst_flag(inst.id());
                 let mem_info = mem_model::analyse(space, self, inst, dim_sizes, ctx);
                 self.load_desc(&mem_info, flag).into()
             }
-            (&St(..), _) | (&TmpSt(..), _) => {
+            (&St(..), _) => {
                 let flag = space.domain().get_inst_flag(inst.id());
                 let mem_info = mem_model::analyse(space, self, inst, dim_sizes, ctx);
                 self.store_desc(&mem_info, flag).into()
@@ -354,7 +357,9 @@ impl Gpu {
         let mut block_per_smx = self.max_block_per_smx;
         let num_thread = space.domain().get_num_threads().min;
         min_assign(&mut block_per_smx, self.thread_per_smx / num_thread);
-        let shared_mem_used = space.domain().get_shared_mem_used().min;
+        let shared_mem_used = space.domain().get_shared_mem_used().min
+            + self.shared_mem()
+            - space.ir_instance().available_shared_mem();
         if shared_mem_used != 0 {
             min_assign(
                 &mut block_per_smx,
@@ -419,7 +424,6 @@ impl device::Device for Gpu {
 
     fn can_vectorize(&self, dim: &ir::Dimension, op: &ir::Operator) -> bool {
         match *op {
-            Operator::TmpLd(..) | Operator::TmpSt(..) => true,
             Operator::Ld(.., ref pattern) if pattern.is_layout_dimension(dim.id()) => {
                 // TODO(ulysse): hack to avoid vectorizing by a factor of 3 until we
                 // support alignment contraints.
@@ -452,11 +456,10 @@ impl device::Device for Gpu {
         self.shared_mem_per_block
     }
 
-    fn pointer_type(&self, mem_space: MemSpace) -> ir::Type {
+    fn pointer_type(&self, mem_space: ir::MemorySpace) -> ir::Type {
         match mem_space {
-            MemSpace::GLOBAL => ir::Type::I(self.addr_size),
-            MemSpace::SHARED => ir::Type::I(32),
-            _ => panic!("invalid memory space {:?}", mem_space),
+            ir::MemorySpace::Global => ir::Type::I(self.addr_size),
+            ir::MemorySpace::Shared => ir::Type::I(32),
         }
     }
 
@@ -464,11 +467,12 @@ impl device::Device for Gpu {
     fn supported_mem_flags(&self, op: &ir::Operator) -> InstFlag {
         let mut flags = match op {
             // Only accesses to external memory blocks can be non-coherent.
-            ir::Operator::Ld(.., pat) if pat.mem_block().is_none() => InstFlag::ALL,
-            ir::Operator::Ld(..)
-            | ir::Operator::St(..)
-            | ir::Operator::TmpLd(..)
-            | ir::Operator::TmpSt(..) => InstFlag::COHERENT,
+            ir::Operator::Ld(.., pat)
+                if pat.accessed_array() == ir::ArrayId::External =>
+            {
+                InstFlag::ALL
+            }
+            ir::Operator::Ld(..) | ir::Operator::St(..) => InstFlag::COHERENT,
             _ => panic!("invalid memory access operator"),
         };
         // Remove the `CACHE_READ_ONLY` option if the gpu does not support `ld.nc`.
@@ -489,9 +493,9 @@ impl device::Device for Gpu {
 
     fn lower_type(&self, t: ir::Type, space: &SearchSpace) -> Option<ir::Type> {
         match t {
-            Type::PtrTo(mem_id) => match space.domain().get_mem_space(mem_id) {
-                MemSpace::GLOBAL => Some(Type::I(self.addr_size)),
-                MemSpace::SHARED => Some(Type::I(32)),
+            Type::PtrTo(id) => match array_memory_space(id, space) {
+                MemorySpace::GLOBAL => Some(Type::I(self.addr_size)),
+                MemorySpace::SHARED => Some(Type::I(32)),
                 _ => None,
             },
             _ => Some(t),
@@ -592,6 +596,18 @@ impl device::Device for Gpu {
         if num_skipped > 0. {
             pressure.repeat_and_add_bottlenecks(num_skipped, &self.skipped_pressure());
         }
+    }
+
+    fn num_registers(&self) -> u32 {
+        self.num_registers
+    }
+
+    fn num_vector_registers(&self) -> u32 {
+        0
+    }
+
+    fn num_sync_flags(&self) -> u32 {
+        0
     }
 }
 

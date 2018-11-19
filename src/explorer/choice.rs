@@ -1,61 +1,36 @@
 //! Choices that can be applied to split the search space.
 use explorer::config;
-use ir::{self, Statement};
+use ir::Statement;
 use itertools::Itertools;
-use search_space::{Action, Domain, NumSet, Order, SearchSpace};
-
-/// Either a regular action or a manually applied action.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ActionEx {
-    Action(Action),
-    LowerLayout {
-        mem: ir::MemId,
-        st_dims: Vec<ir::DimId>,
-        ld_dims: Vec<ir::DimId>,
-    },
-}
+use search_space::{Action, Domain, Order, SearchSpace};
 
 /// Represents a choice that splits a search space in multiple ones.
 // TODO(search_space): explore and lower loayouts directly from the regular actions.
-pub type Choice = Vec<ActionEx>;
+pub type Choice = Vec<Action>;
 
 /// An enum listing the Group of choices we can make
 /// For example, we can make first all DimKind decisions, then all Order decisions, etc.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum ChoiceGroup {
-    LowerLayout,
     Size,
     DimKind,
     DimMap,
     Order,
     MemSpace,
     InstFlag,
-}
-
-impl<'a> From<&'a config::ChoiceGroup> for ChoiceGroup {
-    fn from(conf_ch_grp: &'a config::ChoiceGroup) -> Self {
-        match conf_ch_grp {
-            config::ChoiceGroup::LowerLayout => ChoiceGroup::LowerLayout,
-            config::ChoiceGroup::Size => ChoiceGroup::Size,
-            config::ChoiceGroup::DimKind => ChoiceGroup::DimKind,
-            config::ChoiceGroup::DimMap => ChoiceGroup::DimMap,
-            config::ChoiceGroup::Order => ChoiceGroup::Order,
-            config::ChoiceGroup::MemSpace => ChoiceGroup::MemSpace,
-            config::ChoiceGroup::InstFlag => ChoiceGroup::InstFlag,
-        }
-    }
+    Rank,
 }
 
 impl From<config::ChoiceGroup> for ChoiceGroup {
     fn from(conf_ch_grp: config::ChoiceGroup) -> Self {
         match conf_ch_grp {
-            config::ChoiceGroup::LowerLayout => ChoiceGroup::LowerLayout,
             config::ChoiceGroup::Size => ChoiceGroup::Size,
             config::ChoiceGroup::DimKind => ChoiceGroup::DimKind,
             config::ChoiceGroup::DimMap => ChoiceGroup::DimMap,
             config::ChoiceGroup::Order => ChoiceGroup::Order,
             config::ChoiceGroup::MemSpace => ChoiceGroup::MemSpace,
             config::ChoiceGroup::InstFlag => ChoiceGroup::InstFlag,
+            config::ChoiceGroup::Rank => ChoiceGroup::Rank,
         }
     }
 }
@@ -119,11 +94,6 @@ pub fn list<'a>(
         move |choice_grp| -> Box<dyn Iterator<Item = Choice> + 'a> {
             let fun = space.ir_instance();
             match choice_grp {
-                ChoiceGroup::LowerLayout => Box::new(
-                    fun.layouts_to_lower()
-                        .iter()
-                        .map(move |&layout| lower_layout_choice(space, layout)),
-                ),
                 ChoiceGroup::Size => Box::new(fun.static_dims().flat_map(move |dim| {
                     let sizes = space.domain().get_size(dim.id());
                     gen_choice(sizes.list(), &|s| Action::Size(dim.id(), s))
@@ -158,18 +128,22 @@ pub fn list<'a>(
                         )
                     }))
                 }
-                ChoiceGroup::MemSpace => {
-                    Box::new(fun.mem_blocks().flat_map(move |block| {
-                        let mem_spaces = space.domain().get_mem_space(block.mem_id());
-                        gen_choice(mem_spaces.list(), &|s| {
-                            Action::MemSpace(block.mem_id(), s)
-                        })
-                    }))
-                }
+                ChoiceGroup::MemSpace => Box::new(fun.variables().flat_map(move |var| {
+                    let mem_spaces = space.domain().get_memory_space(var.id());
+                    gen_choice(mem_spaces.list(), &|s| Action::MemorySpace(var.id(), s))
+                })),
                 ChoiceGroup::InstFlag => {
                     Box::new(fun.mem_insts().flat_map(move |inst| {
                         let flags = space.domain().get_inst_flag(inst.id()).list();
                         gen_choice(flags, &|f| Action::InstFlag(inst.id(), f))
+                    }))
+                }
+                ChoiceGroup::Rank => {
+                    // TODO(ulysse): only explore ranks that are smaller or equal to the
+                    // number of instantiated decisions.
+                    Box::new(fun.mem_layout_dimensions().flat_map(move |dim| {
+                        let ranks = space.domain().get_rank(dim.id()).list();
+                        gen_choice(ranks, &|r| Action::Rank(dim.id(), r))
                     }))
                 }
             }
@@ -179,11 +153,11 @@ pub fn list<'a>(
 
 lazy_static! {
     static ref DEFAULT_ORDERING: Vec<ChoiceGroup> = vec![
-        ChoiceGroup::LowerLayout,
         ChoiceGroup::Size,
         ChoiceGroup::DimKind,
         ChoiceGroup::DimMap,
         ChoiceGroup::MemSpace,
+        ChoiceGroup::Rank,
         ChoiceGroup::Order,
         ChoiceGroup::InstFlag,
     ];
@@ -214,11 +188,7 @@ fn gen_choice<T, IT>(values: IT, action_gen: &Fn(T) -> Action) -> Option<Choice>
 where
     IT: IntoIterator<Item = T>,
 {
-    let choice = values
-        .into_iter()
-        .map(action_gen)
-        .map(ActionEx::Action)
-        .collect_vec();
+    let choice = values.into_iter().map(action_gen).collect_vec();
     if choice.len() <= 1 {
         None
     } else {
@@ -262,40 +232,4 @@ pub fn fix_order(mut space: SearchSpace) -> SearchSpace {
         unwrap!(space.apply_decisions(vec![action]), "{:?}", action);
     }
     space
-}
-
-/// Generates the different ways to lower a layout.
-fn lower_layout_choice(space: &SearchSpace, mem: ir::MemId) -> Vec<ActionEx> {
-    let mem_block = space.ir_instance().mem_block(mem);
-    let mapped_dims = mem_block.mapped_dims().iter().cloned().collect_vec();
-    // Order dimensions until the stride is too big to matter in any way.
-    let mut to_process = vec![(vec![], mapped_dims, mem_block.byte_size())];
-    let mut actions = Vec::new();
-    while let Some((ordered_dims, remaining_dims, ordered_size)) = to_process.pop() {
-        // TODO(search_space): parametrize the max stride for layout ordering
-        if ordered_size >= 32 * 8 || remaining_dims.is_empty() {
-            let (st_dims, ld_dims) = remaining_dims
-                .into_iter()
-                .chain(ordered_dims.into_iter().rev())
-                .unzip();
-            actions.push(ActionEx::LowerLayout {
-                mem,
-                st_dims,
-                ld_dims,
-            });
-        } else {
-            for i in 0..remaining_dims.len() {
-                let mut remaining_dims = remaining_dims.clone();
-                let mut ordered_dims = ordered_dims.clone();
-                let dim_pair = remaining_dims.swap_remove(i);
-                let possible_sizes =
-                    unwrap!(space.ir_instance().dim(dim_pair.0).possible_sizes());
-                let size = space.domain().get_size(dim_pair.0).min(possible_sizes);
-                let ordered_size = ordered_size * size;
-                ordered_dims.push(dim_pair);
-                to_process.push((ordered_dims, remaining_dims, ordered_size));
-            }
-        }
-    }
-    actions
 }

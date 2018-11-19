@@ -84,7 +84,7 @@ pub trait Printer {
         &mut self,
         vector_factors: [u32; 2],
         return_type: Type,
-        mem_space: MemSpace,
+        mem_space: ir::MemorySpace,
         flag: InstFlag,
         return_id: &str,
         addr: &str,
@@ -95,7 +95,7 @@ pub trait Printer {
         &mut self,
         vector_factors: [u32; 2],
         val_type: Type,
-        mem_space: MemSpace,
+        mem_space: ir::MemorySpace,
         mem_flag: InstFlag,
         predicate: Option<&str>,
         addr: &str,
@@ -109,8 +109,8 @@ pub trait Printer {
         &mut self,
         _predicate: Option<&str>,
         _vector_factors: [u32; 2],
-        _src: (&str, MemSpace, InstFlag, Option<&str>),
-        _dst: (&str, MemSpace, InstFlag, Option<&str>),
+        _src: (&str, ir::MemorySpace, InstFlag, Option<&str>),
+        _dst: (&str, ir::MemorySpace, InstFlag, Option<&str>),
         _sync_flag: &str,
     ) {
         panic!("dma is not supported for this target");
@@ -145,7 +145,7 @@ pub trait Printer {
     /// Names an instruction, vectorized on the given dimensions.
     fn name_inst<'a>(
         vector_levels: &[Vec<Dimension>; 2],
-        inst: ir::InstId,
+        inst: &Instruction,
         namer: &'a NameMap,
     ) -> Cow<'a, str>;
 
@@ -367,48 +367,6 @@ pub trait Printer {
         namer.unset_current_index(dim);
     }
 
-    fn privatise_global_block(
-        &mut self,
-        block: &MemoryRegion,
-        namer: &mut NameMap,
-        fun: &Function,
-    ) {
-        if fun.block_dims().is_empty() {
-            return;
-        }
-        let addr = namer.name_addr(block.id());
-        let addr_type = Self::lower_type(Type::PtrTo(block.id().into()), fun);
-        let size = namer.name_size(&block.local_size(), Type::I(32));
-        let d0 = namer.name_index(fun.block_dims()[0].id()).to_string();
-        let var = fun.block_dims()[1..].iter().fold(d0, |old_var, dim| {
-            let var = namer.gen_name(Type::I(32));
-            let size = namer.name_size(dim.size(), Type::I(32));
-            let idx = namer.name_index(dim.id());
-            self.print_mad(
-                [1, 1],
-                Type::I(32),
-                op::Rounding::Exact,
-                MulMode::Low,
-                &var,
-                &old_var,
-                &size,
-                &idx,
-            );
-            var
-        });
-        let mode = MulMode::from_type(Type::I(32), addr_type);
-        self.print_mad(
-            [1, 1],
-            addr_type,
-            op::Rounding::Exact,
-            mode,
-            &addr,
-            &var,
-            &size,
-            &addr,
-        );
-    }
-
     /// Prints an instruction.
     fn inst(
         &mut self,
@@ -442,7 +400,7 @@ pub trait Printer {
                     *op,
                     t,
                     *round,
-                    &Self::name_inst(vector_levels, inst.id(), namer),
+                    &Self::name_inst(vector_levels, inst, namer),
                     &Self::name_operand(vector_levels, lhs, namer),
                     &Self::name_operand(vector_levels, rhs, namer),
                 )
@@ -456,7 +414,7 @@ pub trait Printer {
                     low_ret_type,
                     *round,
                     mode,
-                    &Self::name_inst(vector_levels, inst.id(), namer),
+                    &Self::name_inst(vector_levels, inst, namer),
                     &Self::name_operand(vector_levels, lhs, namer),
                     &Self::name_operand(vector_levels, rhs, namer),
                 )
@@ -470,7 +428,7 @@ pub trait Printer {
                     unwrap!(inst.t()),
                     *round,
                     mode,
-                    &Self::name_inst(vector_levels, inst.id(), namer),
+                    &Self::name_inst(vector_levels, inst, namer),
                     &Self::name_operand(vector_levels, mul_lhs, namer),
                     &Self::name_operand(vector_levels, mul_rhs, namer),
                     &Self::name_operand(vector_levels, add_rhs, namer),
@@ -482,7 +440,7 @@ pub trait Printer {
                     op => op,
                 };
                 let t = Self::lower_type(operand.t(), fun);
-                let name = Self::name_inst(vector_levels, inst.id(), namer);
+                let name = Self::name_inst(vector_levels, inst, namer);
                 let operand = Self::name_operand(vector_levels, operand, namer);
                 self.print_unary_op(vector_factors, operator, t, &name, &operand)
             }
@@ -494,7 +452,7 @@ pub trait Printer {
                     Self::lower_type(*ld_type, fun),
                     access.space,
                     access.flag,
-                    &Self::name_inst(vector_levels, inst.id(), namer),
+                    &Self::name_inst(vector_levels, inst, namer),
                     &Self::name_operand(&[vec![], vec![]], addr, namer),
                 )
             }
@@ -510,9 +468,6 @@ pub trait Printer {
                     &Self::name_operand(&[vec![], vec![]], addr, namer),
                     &Self::name_operand(vector_levels, val, namer),
                 );
-            }
-            op @ op::TmpLd(..) | op @ op::TmpSt(..) => {
-                panic!("non-printable instruction {:?}", op)
             }
             op::DmaStart {
                 src_ptr, dst_ptr, ..
@@ -531,7 +486,7 @@ pub trait Printer {
                     .as_ref()
                     .map(|s| namer.name_size(s, ir::Type::I(32)));
                 let dst_stride = dst_stride.as_ref().map(|s| s as &str);
-                let sync_flag = &Self::name_inst(&[vec![], vec![]], inst.id(), namer);
+                let sync_flag = &Self::name_inst(&[vec![], vec![]], inst, namer);
                 self.print_dma_start(
                     guard.as_ref().map(|x| x as _),
                     vector_factors,

@@ -25,6 +25,14 @@ fn increment_operator(kind: ir::CounterKind) -> TokenStream {
     }
 }
 
+/// Returns the operation performed by the counter, saturating to `u32::MAX`.
+fn saturating_operator(kind: ir::CounterKind) -> TokenStream {
+    match kind {
+        ir::CounterKind::Add => quote!(saturating_add),
+        ir::CounterKind::Mul => quote!(saturating_mul),
+    }
+}
+
 /// Returns the operator performing the inverse operation of `op`.
 fn inverse_operator(op: ir::CounterKind) -> TokenStream {
     match op {
@@ -66,9 +74,10 @@ pub fn restrict_incr_amount(
     let apply_restriction =
         print::choice::restrict(incr_amount, &restricted_value_name.into(), delayed, ctx);
     let min_incr_amount = current_incr_amount.get_min(ctx);
+    let op = saturating_operator(op);
     quote! {
         else if incr_status.is_true() {
-            let max_val = new_values.max #neg_op current.min #op #min_incr_amount;
+            let max_val = (new_values.max #neg_op current.min).#op(#min_incr_amount);
             let value = #restricted_value;
             #apply_restriction
         }

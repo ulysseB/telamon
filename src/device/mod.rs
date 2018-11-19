@@ -41,7 +41,7 @@ pub trait Device: Sync {
     /// Returns the amount of shared memory available for each thread block.
     fn shared_mem(&self) -> u32;
     /// Indicates the type of the pointer for the given memory space.
-    fn pointer_type(&self, mem_space: MemSpace) -> ir::Type;
+    fn pointer_type(&self, mem_space: ir::MemorySpace) -> ir::Type;
     /// Indicates the memory flags supported by the operator.
     fn supported_mem_flags(&self, op: &ir::Operator) -> InstFlag;
     /// Returns the name of the device.
@@ -88,6 +88,12 @@ pub trait Device: Sync {
     /// Lowers a type using the memory space information. Returns `None` if some
     /// information is not yet specified.
     fn lower_type(&self, t: ir::Type, space: &SearchSpace) -> Option<ir::Type>;
+    /// Indicates the number of registers per block of threads.
+    fn num_registers(&self) -> u32;
+    /// Indicates the number of vector register per block of threads, default to 0.
+    fn num_vector_registers(&self) -> u32;
+    /// Indicates the number of synchronisation flags on the device, defaults to 0.
+    fn num_sync_flags(&self) -> u32;
 
     /// Builds and outputs a constrained IR instance.
     fn gen_code(&self, implementation: &SearchSpace, out: &mut Write) {

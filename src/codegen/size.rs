@@ -13,6 +13,12 @@ pub struct Size<'a> {
     divisor: u32,
 }
 
+lazy_static! {
+    // We are forced to use lazy_static until we can allocate empty vectors at compile
+    // time (planned for rust 1.31, on 2018-12-06).
+    pub static ref ZERO: Size<'static> = Size::new(0, vec![], 1);
+}
+
 impl<'a> Size<'a> {
     /// Creates a new 'Size'.
     pub fn new(factor: u32, dividend: Vec<&'a ir::Parameter>, divisor: u32) -> Self {
@@ -70,6 +76,12 @@ impl<'a> Size<'a> {
         let gcd = num::integer::gcd(self.factor, self.divisor);
         self.factor /= gcd;
         self.divisor /= gcd;
+    }
+}
+
+impl<'a> Default for Size<'a> {
+    fn default() -> Self {
+        Self::new(1, vec![], 1)
     }
 }
 

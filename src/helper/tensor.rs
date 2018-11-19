@@ -242,15 +242,16 @@ impl VirtualTensor {
         VirtualTensor { inst, dims }
     }
 
-    /// Creates an operand that yeilds the values of the tensor in the given loop nest.
-    pub fn dim_map<'a>(
+    /// Creates a variable that holds the values of the tensor in the given loop nest.
+    pub fn dim_map(
         &self,
         dims: &[&LogicalDim],
-        scope: ir::DimMapScope<()>,
-        builder: &mut Builder<'a>,
-    ) -> ir::Operand<'a, ()> {
+        allow_copies: bool,
+        mem_spaces: Vec<ir::MemorySpace>,
+        builder: &mut Builder,
+    ) -> ir::VarId {
         let mapping = self.dims.iter().zip_eq(dims.iter().cloned()).collect_vec();
-        builder.dim_map(self.inst, &mapping, scope)
+        builder.map_instruction(self.inst, &mapping, allow_copies, mem_spaces)
     }
 
     /// Stores the `VirtualTensor` in memory. Stores contiguously without taking the

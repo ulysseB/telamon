@@ -10,9 +10,9 @@ mod common;
 
 use common::*;
 use telamon::device::Context;
-use telamon::helper;
 use telamon::ir::{self, Size, Type};
 use telamon::search_space::*;
+use telamon::{codegen, helper};
 
 /// Obtains the best implementation for an empty function.
 #[test]
@@ -115,7 +115,14 @@ fn dim_map_variable_order() {
     let src = builder.mov(&1f32);
     let src_var = builder.get_inst_variable(src);
     let dst_dim = builder.open_mapped_dim(&src_dim);
-    let dst_var = builder.create_dim_map_variable(src_var, &[(&src_dim, &dst_dim)]);
+    let def_mode = ir::VarDefMode::InPlace { allow_sync: false };
+    let use_mode = ir::VarUseMode::FromRegisters;
+    let dst_var = builder.create_dim_map_variable(
+        src_var,
+        &[(&src_dim, &dst_dim)],
+        def_mode,
+        use_mode,
+    );
     let dst = builder.mov(&dst_var);
     // Ensure ordering constraints are respected.
     let space = builder.get_clone();
@@ -308,7 +315,8 @@ fn vector_dims() {
     let context = fake::Context::default();
     let signature = empty_signature();
     let mut builder = helper::Builder::new(&signature, context.device());
-    let base_addr = builder.cast(&0i64, context.device().pointer_type(MemSpace::GLOBAL));
+    let ptr_type = context.device().pointer_type(ir::MemorySpace::Global);
+    let base_addr = builder.cast(&0i64, ptr_type);
     let d0 = builder.open_dim(Size::new_const(4));
     // Test with one vectorizable instruction
     let (addr, pattern) = builder.tensor_access(&base_addr, None, Type::I(8), &[&d0]);
@@ -373,7 +381,8 @@ fn reduce_dim_invariants() {
     let context = fake::Context::default();
     let signature = empty_signature();
     let mut builder = helper::Builder::new(&signature, context.device());
-    let init = builder.cast(&032, context.device().pointer_type(MemSpace::GLOBAL));
+    let ptr_type = context.device().pointer_type(ir::MemorySpace::Global);
+    let init = builder.cast(&032, ptr_type);
     let d0 = builder.open_dim(Size::new_const(4));
     let pattern = ir::AccessPattern::Unknown(None);
     let fby = builder.create_fby_variable(init, &[&d0]);
@@ -471,12 +480,23 @@ fn temporary_memory_gen_simple() {
     let d0 = builder.open_dim_ex(Size::new_const(4), DimKind::LOOP);
     let inst0 = builder.mov(&0i32);
     let d1 = builder.open_mapped_dim(&d0);
-    builder.mov(&helper::TmpArray(inst0));
+    let var = builder.map_instruction(
+        inst0,
+        &[(&d0, &d1)],
+        true,
+        vec![ir::MemorySpace::Shared],
+    );
+    builder.mov(&var);
     builder.order(&d0, &d1, !Order::MERGED);
     // Ensure load and store instruction have been generated.
-    let instance = builder.get();
-    assert!(instance.ir_instance().insts().count() >= 4);
-    gen_best(&context, instance);
+    let space = builder.get();
+    assert_eq!(space.ir_instance().insts().count(), 4);
+    // The variable has a single instantiated dimension, so its rank must be 1.
+    let layout_dim = space.ir_instance().variable(var).layout()[0];
+    assert_eq!(space.domain().get_is_instantiated(layout_dim), IsInstantiated::TRUE);
+    const RANK_1: NumericSet = NumericSet { enabled_values: 0b10 };
+    assert_eq!(space.domain().get_rank(layout_dim), RANK_1);
+    gen_best(&context, space);
 }
 
 /// Ensures un-fused loops are correctly handle in persence of reduction.
@@ -511,10 +531,12 @@ fn two_thread_dim_map() {
     let dim0_0 = builder.open_dim_ex(ir::Size::new_const(32), DimKind::THREAD);
     let dim0_1 = builder.open_dim_ex(ir::Size::new_const(32), DimKind::THREAD);
     let x = builder.mov(&0i32);
-    // Transpose twice the variable using temporary memory.
+    // Transpose the variable using temporary memory.
     let dim1_0 = builder.open_mapped_dim(&dim0_1);
     let dim1_1 = builder.open_mapped_dim(&dim0_0);
-    builder.mov(&helper::TmpArray(x));
+    let mapping = [(&dim0_1, &dim1_0), (&dim0_0, &dim1_1)];
+    let var = builder.map_instruction(x, &mapping, true, vec![ir::MemorySpace::Shared]);
+    builder.mov(&var);
     // Set the nesting order.
     builder.order(&dim0_0, &dim0_1, Order::OUTER);
     builder.order(&dim1_0, &dim1_1, Order::OUTER);
@@ -539,6 +561,7 @@ fn double_dim_map() {
     let dim1_1 = builder.open_mapped_dim(&dim0_0);
     let dim1_2 = builder.open_mapped_dim(&dim0_2);
     builder.mov(&x);
+
     builder.mov(&x);
     // Fix the nesting order.
     builder.order(&dim0_0, &dim0_1, Order::OUTER);
@@ -673,10 +696,16 @@ fn chained_dim_map_fby() {
     // for j in 0..16:
     // . for i in 0..4:
     // . .  mul[i] = phi(init[i], sub[i]) * 2.0
+    let def_mode = ir::VarDefMode::InPlace { allow_sync: true };
+    let use_mode = ir::VarUseMode::FromRegisters;
     let reduction_dim = builder.open_dim_ex(ir::Size::new_const(16), DimKind::LOOP);
     let mul_dim = builder.open_mapped_dim(&init_dim);
-    let mapped_init_var =
-        builder.create_dim_map_variable(init_var, &[(&init_dim, &mul_dim)]);
+    let mapped_init_var = builder.create_dim_map_variable(
+        init_var,
+        &[(&init_dim, &mul_dim)],
+        def_mode,
+        use_mode.clone(),
+    );
     let fby = builder.create_fby_variable(mapped_init_var, &[&reduction_dim]);
     let mul = builder.mul(&fby, &2f32);
     let mul_var = builder.get_inst_variable(mul);
@@ -684,12 +713,20 @@ fn chained_dim_map_fby() {
     // . for i in 0..4:
     // . . sub[i] = mul[i] - 1
     let sub_dim = builder.open_mapped_dim(&mul_dim);
-    let mapped_mul_var =
-        builder.create_dim_map_variable(mul_var, &[(&mul_dim, &sub_dim)]);
+    let mapped_mul_var = builder.create_dim_map_variable(
+        mul_var,
+        &[(&mul_dim, &sub_dim)],
+        def_mode,
+        use_mode.clone(),
+    );
     let sub = builder.add(&mapped_mul_var, &1f32);
     let sub_var = builder.get_inst_variable(sub);
-    let mapped_sub_var =
-        builder.create_dim_map_variable(sub_var, &[(&sub_dim, &mul_dim)]);
+    let mapped_sub_var = builder.create_dim_map_variable(
+        sub_var,
+        &[(&sub_dim, &mul_dim)],
+        def_mode,
+        use_mode,
+    );
     builder.set_loop_carried_variable(fby, mapped_sub_var);
 
     builder.order(&reduction_dim, &mul_dim, Order::OUTER);
@@ -887,4 +924,475 @@ fn complex_dma() {
     let space = builder.get();
     // Try to generate a fully specified candidate.
     gen_best(&context, space);
+}
+
+/// Ensures `is_instantited` is correctly set when needed.
+#[test]
+fn is_instantiated() {
+    let _ = env_logger::try_init();
+    let mut context = fake::Context::default();
+    let n;
+    let signature = {
+        let mut builder = helper::SignatureBuilder::new("unroll_dims", &mut context);
+        n = builder.max_size("n", 4);
+        builder.get()
+    };
+    let mut builder = helper::Builder::new(&signature, context.device());
+    let n_size = n.into_ir_size(&builder);
+    let dyn_dim = builder.open_dim(n_size);
+    let thread_dim = builder.open_dim_ex(ir::Size::new_const(4), DimKind::THREAD);
+    let d1_0 = builder.open_dim(ir::Size::new_const(4));
+    let d2_0 = builder.open_dim(ir::Size::new_const(4));
+    let i0 = builder.mov(&0f32);
+    let v0 = builder.get_inst_variable(i0);
+    let d1_1 = builder.open_mapped_dim(&d1_0);
+    let d2_1 = builder.open_mapped_dim(&d2_0);
+    let v1_def_mode = ir::VarDefMode::InPlace { allow_sync: true };
+    let v1_use_mode = ir::VarUseMode::FromRegisters;
+    let v1 = builder.create_dim_map_variable(
+        v0,
+        &[(&d1_0, &d1_1), (&d2_0, &d2_1)],
+        v1_def_mode,
+        v1_use_mode,
+    );
+    builder.mov(&v1);
+    builder.order(&d1_0, &d1_1, Order::BEFORE);
+    // Retrieve the layout dimensions corresponding to each dimension.
+    let layout_dyn_dim = builder.function().dim(dyn_dim[0]).layout_dims()[0];
+    let layout_thread = builder.function().dim(thread_dim[0]).layout_dims()[0];
+    let layout_d1_1 = builder.function().dim(d1_1[0]).layout_dims()[0];
+    let layout_d2_0 = builder.function().dim(d2_0[0]).layout_dims()[0];
+    let layout_d2_1 = builder.function().dim(d2_1[0]).layout_dims()[0];
+
+    builder.action(Action::IsInstantiated(layout_d2_0, IsInstantiated::FALSE));
+    let space = builder.get();
+    // Dimensions with a dynamic size are not instantiated.
+    assert_eq!(
+        space.domain().get_is_instantiated(layout_dyn_dim),
+        IsInstantiated::FALSE
+    );
+    // Thread dimensions are instantiated.
+    assert_eq!(
+        space.domain().get_is_instantiated(layout_thread),
+        IsInstantiated::TRUE
+    );
+    // Non-merged dimensions are instantiated.
+    assert_eq!(
+        space.domain().get_is_instantiated(layout_d1_1),
+        IsInstantiated::TRUE
+    );
+    // Non-instantiated dimensions are merged.
+    assert_eq!(
+        space.domain().get_order(d2_0[0].into(), d2_1[0].into()),
+        Order::MERGED
+    );
+    // Instantiation is transmitted to successors.
+    assert_eq!(
+        space.domain().get_is_instantiated(layout_d2_1),
+        IsInstantiated::FALSE
+    );
+}
+
+/// Ensures the is_instantiated flag is not transmitted if the value is coppied.
+#[test]
+fn is_instantiated_on_copy() {
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature();
+    let mut builder = helper::Builder::new(&signature, context.device());
+
+    // Produce `v0` in a loop nest.
+    let d0 = builder.open_dim(ir::Size::new_const(8));
+    let i0 = builder.mov(&0f32);
+    let v0 = builder.get_inst_variable(i0);
+    let v0_layout = builder.function().variable(v0).layout()[0];
+    // Store `v0` in an in-memory variable `v1`.
+    let d1 = builder.open_mapped_dim(&d0);
+    let fake_copy = ir::VarDefMode::Copy(None); // Don't materialize the copy.
+    let no_uses = ir::VarUseMode::NoUses; // Don't place a copy in registers.
+    let v1 = builder.create_dim_map_variable(v0, &[(&d0, &d1)], fake_copy, no_uses);
+    let v1_layout = builder.function().variable(v1).layout()[0];
+    builder.action(Action::MemorySpace(v1, MemorySpace::SHARED));
+    builder.action(Action::IsInstantiated(v1_layout, IsInstantiated::TRUE));
+    // Alias `v1` in `v2`.
+    let fake_copy = ir::VarDefMode::Copy(None); // Don't materialize the copy.
+    let no_uses = ir::VarUseMode::NoUses; // Don't place a copy in registers.
+    let v2 = builder.create_dim_map_variable(v1, &[], fake_copy, no_uses);
+    let v2_layout = builder.function().variable(v2).layout()[0];
+    // Create a dummy instruction in d1 so the code is valid.
+    builder.mov(&0f32);
+
+    let space = builder.get();
+    // v1 should be a copy of v0 and v2 alias with v1.
+    assert_eq!(space.domain().get_var_def_mode(v1), VarDefMode::COPY);
+    assert_eq!(space.domain().get_var_def_mode(v2), VarDefMode::IN_PLACE);
+    assert_eq!(space.domain().get_memory_space(v2), MemorySpace::SHARED);
+    assert_eq!(
+        space.domain().get_is_instantiated(v0_layout),
+        IsInstantiated::ALL
+    );
+    assert_eq!(
+        space.domain().get_is_instantiated(v2_layout),
+        IsInstantiated::TRUE
+    );
+}
+
+/// Ensures the is_instantited flag is transmitted to and from memory accesses.
+#[test]
+fn is_instantiated_to_mem_accesses() {
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature();
+    let mut builder = helper::Builder::new(&signature, context.device());
+    // Produce `v0` in a loop nest.
+    let d0 = builder.open_dim(ir::Size::new_const(8));
+    let i0 = builder.mov(&0f32);
+    let v0 = builder.get_inst_variable(i0);
+    // Create an in-memory copy of `v0` in a separate loop nest.
+    let d1 = builder.open_mapped_dim(&d0);
+    let fake_copy = ir::VarDefMode::Copy(None); // Don't materialize the copy.
+    let no_uses = ir::VarUseMode::NoUses; // Don't place a copy in registers.
+    let v1 = builder.create_dim_map_variable(v0, &[(&d0, &d1)], fake_copy, no_uses);
+    let v1_layout = builder.function().variable(v1).layout()[0];
+    // Create a dummy instruction in d1 so the code is valid.
+    builder.mov(&0f32);
+    builder.close_dim(&d1);
+    // Manually create an instruction to copy `v0` in `v1`. Use a fake address.
+    builder.reopen_dim(&d0);
+    let pattern = ir::AccessPattern::Variable {
+        id: v1,
+        dims: std::iter::once((d0[0], d1[0])).collect(),
+    };
+    let st = builder.st(&ir::Operand::Addr(ir::ArrayId::Variable(v1)), &v0, pattern);
+    let st_layout = builder.function().inst(st).mem_access_layout()[0];
+
+    // Try to set the layout dimension of the variable as instantiated.
+    let mut builder_clone = builder.clone();
+    builder_clone.action(Action::IsInstantiated(v1_layout, IsInstantiated::TRUE));
+    let space = builder_clone.get();
+    assert_eq!(
+        space.domain().get_is_instantiated(st_layout),
+        IsInstantiated::TRUE
+    );
+    // Try to set the layout dimension of the variable as not instantiated.
+    let mut builder_clone = builder.clone();
+    builder_clone.action(Action::IsInstantiated(v1_layout, IsInstantiated::FALSE));
+    let space = builder_clone.get();
+    assert_eq!(
+        space.domain().get_is_instantiated(st_layout),
+        IsInstantiated::FALSE
+    );
+    // Try to set the layout dimension of the memory_access as instantiated.
+    builder.action(Action::IsInstantiated(st_layout, IsInstantiated::TRUE));
+    let space = builder.get();
+    assert_eq!(
+        space.domain().get_is_instantiated(v1_layout),
+        IsInstantiated::TRUE
+    );
+}
+
+/// Ensures the number of registers is limited
+#[test]
+fn limit_registers() {
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature();
+    let mut builder = helper::Builder::new(&signature, context.device());
+
+    builder.open_dim_ex(ir::Size::new_const(1024), DimKind::THREAD);
+    // Create a variable in a loop nest.
+    let d1 = builder.open_dim(ir::Size::new_const(64));
+    let i0 = builder.mov(&0f32);
+    // Consume it in another loop nest.
+    let d2 = builder.open_mapped_dim(&d1);
+    let v1 = builder.map_instruction(i0, &[(&d1, &d2)], false, vec![]);
+    let v1_layout = builder.function().dim(d2[0]).layout_dims()[0];
+    builder.mov(&v1);
+    builder.action(Action::MemorySpace(v1, !MemorySpace::VECTOR_REGISTER));
+
+    let space = builder.get();
+    // Because the number of registers is limited to 32 * 1024, d1 and d2 cannot
+    // communicate through registers. Instead, they must be merged.
+    assert_eq!(
+        space.domain().get_order(d1[0].into(), d2[0].into()),
+        Order::MERGED
+    );
+    assert_eq!(
+        space.domain().get_is_instantiated(v1_layout),
+        IsInstantiated::FALSE
+    );
+}
+
+/// Ensures the number of synchronisation registers is limited, but not too much.
+#[test]
+fn limit_synchronisation_registers() {
+    const DATA_TYPE: ir::Type = ir::Type::F(32);
+
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature();
+    let mut builder = helper::Builder::new(&signature, context.device());
+    builder.open_dim_ex(ir::Size::new_const(1024), DimKind::THREAD);
+    // Create a DMA start in a loop nest. Use fake addresses.
+    let d1 = builder.open_dim_ex(ir::Size::new_const(8), !DimKind::VECTOR);
+    let (src_ptr, src_pattern) = builder.tensor_access(&0i32, None, DATA_TYPE, &[&d1]);
+    let (dst_ptr, _) = builder.tensor_access(&0i32, None, DATA_TYPE, &[&d1]);
+    let start = builder.dma_start(&src_ptr, src_pattern, &dst_ptr, false);
+    // Create a DMA wait in a separate loop nest.
+    let d2 = builder.open_mapped_dim(&d1);
+    let (_, dst_pattern) = builder.tensor_access(&0i32, None, DATA_TYPE, &[&d2]);
+    builder.dma_wait(start, dst_pattern);
+
+    let space = builder.get();
+    // Because the number of registers is limited to 4 * 1024, d1 and d2 cannot
+    // communicate through registers. Instead, they must be merged.
+    assert_eq!(
+        space.domain().get_order(d1[0].into(), d2[0].into()),
+        Order::MERGED
+    );
+}
+
+/// Ensures ranks are unique and limited by the number of instantiated decisions.
+#[test]
+fn ranks_unique_and_bounded() {
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature();
+    let mut builder = helper::Builder::new(&signature, context.device());
+
+    // Produce `v0` in a loop nest.
+    let d0_0 = builder.open_dim(ir::Size::new_const(8));
+    let d1_0 = builder.open_dim(ir::Size::new_const(8));
+    let d2_0 = builder.open_dim(ir::Size::new_const(8));
+    let i0 = builder.mov(&0f32);
+    let v0 = builder.get_inst_variable(i0);
+    // Store `v0` in an in-memory variable `v1`.
+    let d0_1 = builder.open_mapped_dim(&d0_0);
+    let d1_1 = builder.open_mapped_dim(&d1_0);
+    let d2_1 = builder.open_mapped_dim(&d1_0);
+    let fake_copy = ir::VarDefMode::Copy(None); // Don't materialize the copy.
+    let no_uses = ir::VarUseMode::NoUses; // Don't place a copy in registers.
+    let mapping = [(&d0_0, &d0_1), (&d1_0, &d1_1), (&d2_0, &d2_1)];
+    let v1 = builder.create_dim_map_variable(v0, &mapping, fake_copy, no_uses);
+    let d0_layout = builder.function().dim(d0_1[0]).layout_dims()[0];
+    let d1_layout = builder.function().dim(d1_1[0]).layout_dims()[0];
+    let d2_layout = builder.function().dim(d2_1[0]).layout_dims()[0];
+    builder.action(Action::MemorySpace(v1, MemorySpace::SHARED));
+    builder.action(Action::IsInstantiated(d2_layout, IsInstantiated::FALSE));
+
+    let mut space = builder.get();
+    // We can't apply the decision before generating the search space because we need
+    // layout dimensions to be registered as memory layout dimensions.
+    let d0_rank = Action::Rank(
+        d0_layout,
+        NumericSet {
+            enabled_values: 0b010,
+        },
+    );
+    assert!(space.apply_decisions(vec![d0_rank]).is_ok());
+    // Only two dimensions may be instantiated so the rank is less that 3 (represented by
+    // 0b1000). It cannot be 1 (represented by 0b010) as it is already taken but can be 0
+    // (represented by 0b0001).
+    assert_eq!(
+        space.domain().get_rank(d1_layout),
+        NumericSet {
+            enabled_values: 0b101
+        }
+    );
+}
+
+/// Ranks are correctly transmitted to aliasing variables.
+#[test]
+fn ranks_aliasing_variables() {
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature();
+    let mut builder = helper::Builder::new(&signature, context.device());
+    // Produce `v0` in a loop nest.
+    let d0_0 = builder.open_dim(ir::Size::new_const(8));
+    let d1_0 = builder.open_dim(ir::Size::new_const(8));
+    let i0 = builder.mov(&0f32);
+    let v0 = builder.get_inst_variable(i0);
+    // Store `v0` in an in-memory variable `v1.
+    let d0_1 = builder.open_mapped_dim(&d0_0);
+    let d1_1 = builder.open_mapped_dim(&d1_0);
+    let fake_copy = ir::VarDefMode::Copy(None); // Don't materialize the copy.
+    let no_uses = ir::VarUseMode::NoUses; // Don't place a copy in registers.
+    let mapping = [(&d0_0, &d0_1), (&d1_0, &d1_1)];
+    let v1 = builder.create_dim_map_variable(v0, &mapping, fake_copy, no_uses);
+    let v1_d0_layout = builder.function().dim(d0_1[0]).layout_dims()[0];
+    let v1_d1_layout = builder.function().dim(d1_1[0]).layout_dims()[0];
+    builder.action(Action::MemorySpace(v1, MemorySpace::SHARED));
+    // Alias `v1` in `v2`.
+    let fake_copy = ir::VarDefMode::Copy(None); // Don't materialize the copy.
+    let no_uses = ir::VarUseMode::NoUses; // Don't place a copy in registers.
+    let _v2 = builder.create_dim_map_variable(v1, &[], fake_copy, no_uses);
+    let v2_d0_layout = builder.function().dim(d0_1[0]).layout_dims()[1];
+    let v2_d1_layout = builder.function().dim(d1_1[0]).layout_dims()[1];
+    // Create a dummy instruction in d1 so the code is valid.
+    builder.mov(&0f32);
+
+    let mut space = builder.get();
+    // We can't apply the decision before generating the search space because we need
+    // layout dimensions to be registered as memory layout dimensions.
+    const RANK_1: NumericSet = NumericSet {
+        enabled_values: 0b010,
+    };
+    const RANK_2: NumericSet = NumericSet {
+        enabled_values: 0b100,
+    };
+    let v1_d0_rank = Action::Rank(v1_d0_layout, RANK_1);
+    let v2_d1_rank = Action::Rank(v2_d1_layout, RANK_2);
+    assert!(space.apply_decisions(vec![v1_d0_rank, v2_d1_rank]).is_ok());
+    assert_eq!(space.domain().get_rank(v1_d1_layout), RANK_2);
+    assert_eq!(space.domain().get_rank(v2_d0_layout), RANK_1);
+}
+
+/// Ranks are correctly transmitted to memory accesses.
+#[test]
+fn ranks_to_memory_access() {
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature();
+    let mut builder = helper::Builder::new(&signature, context.device());
+    // Produce `v0` in a loop nest.
+    let d0_0 = builder.open_dim(ir::Size::new_const(8));
+    let d1_0 = builder.open_dim(ir::Size::new_const(8));
+    let i0 = builder.mov(&0f32);
+    let v0 = builder.get_inst_variable(i0);
+    // Store `v0` in an in-memory variable `v1.
+    let d0_1 = builder.open_mapped_dim(&d0_0);
+    let d1_1 = builder.open_mapped_dim(&d1_0);
+    let fake_copy = ir::VarDefMode::Copy(None); // Don't materialize the copy.
+    let no_uses = ir::VarUseMode::NoUses; // Don't place a copy in registers.
+    let mapping = [(&d0_0, &d0_1), (&d1_0, &d1_1)];
+    let v1 = builder.create_dim_map_variable(v0, &mapping, fake_copy, no_uses);
+    let v1_d0_layout = builder.function().dim(d0_1[0]).layout_dims()[0];
+    let v1_d1_layout = builder.function().dim(d1_1[0]).layout_dims()[0];
+    builder.action(Action::MemorySpace(v1, MemorySpace::SHARED));
+    // Create a dummy instruction in d1 so the code is valid.
+    builder.mov(&0f32);
+    builder.close_dim(&d0_1);
+    builder.close_dim(&d1_1);
+    // Manually create an instruction to copy `v0` in `v1`. Use a fake address.
+    builder.reopen_dim(&d0_0);
+    builder.reopen_dim(&d1_0);
+    let pattern = ir::AccessPattern::Variable {
+        id: v1,
+        dims: vec![(d0_0[0], d0_1[0]), (d1_0[0], d1_1[0])]
+            .into_iter()
+            .collect(),
+    };
+    let _st = builder.st(&ir::Operand::Addr(ir::ArrayId::Variable(v1)), &v0, pattern);
+    let st_d0_layout = builder.function().dim(d0_0[0]).layout_dims()[1];
+    let st_d1_layout = builder.function().dim(d1_0[0]).layout_dims()[1];
+
+    let mut space = builder.get();
+    // We can't apply the decision before generating the search space because we need
+    // layout dimensions to be registered as memory layout dimensions.
+    const RANK_1: NumericSet = NumericSet {
+        enabled_values: 0b010,
+    };
+    const RANK_2: NumericSet = NumericSet {
+        enabled_values: 0b100,
+    };
+    let v1_d0_rank = Action::Rank(v1_d0_layout, RANK_1);
+    let st_d1_rank = Action::Rank(st_d1_layout, RANK_2);
+    assert!(space.apply_decisions(vec![v1_d0_rank, st_d1_rank]).is_ok());
+    assert_eq!(space.domain().get_rank(v1_d1_layout), RANK_2);
+    assert_eq!(space.domain().get_rank(st_d0_layout), RANK_1);
+}
+
+/// Ensures we correctly compute the amount of shared memory used.
+#[test]
+fn total_memory_use() {
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature();
+    let mut builder = helper::Builder::new(&signature, context.device());
+    // Produce `v0` in a loop nest.
+    let d0_0 = builder.open_dim(ir::Size::new_const(8));
+    let d1_0 = builder.open_dim(ir::Size::new_const(16));
+    let i0 = builder.mov(&0f32);
+    let v0 = builder.get_inst_variable(i0);
+    // Store `v0` in an in-memory variable `v1`.
+    let d0_1 = builder.open_mapped_dim(&d0_0);
+    let d1_1 = builder.open_mapped_dim(&d1_0);
+    let fake_copy = ir::VarDefMode::Copy(None); // Don't materialize the copy.
+    let no_uses = ir::VarUseMode::NoUses; // Don't place a copy in registers.
+    let mapping = [(&d0_0, &d0_1), (&d1_0, &d1_1)];
+    let v1 = builder.create_dim_map_variable(v0, &mapping, fake_copy, no_uses);
+    let v1_d0_layout = builder.function().dim(d0_1[0]).layout_dims()[0];
+    let v1_d1_layout = builder.function().dim(d1_1[0]).layout_dims()[0];
+    builder.action(Action::MemorySpace(v1, MemorySpace::SHARED));
+    // Instantiate `v1_d0_layout` but not `v2_d0_layout`.
+    builder.action(Action::IsInstantiated(v1_d0_layout, IsInstantiated::TRUE));
+    builder.action(Action::IsInstantiated(v1_d1_layout, IsInstantiated::FALSE));
+    // Create a dummy instruction in d1 so the code is valid.
+    builder.mov(&0f32);
+
+    let space = builder.get();
+    assert_eq!(space.domain().get_shared_mem_used(), HalfRange { min: 8 });
+}
+
+/// Ensures the correct strides are generated for dynamic layouts.
+#[test]
+fn codegen_strides() {
+    let _ = env_logger::try_init();
+    let context = fake::Context::default();
+    let signature = empty_signature();
+    let mut builder = helper::Builder::new(&signature, context.device());
+    // Produce `v0` in a loop nest.
+    let d0_0 = builder.open_dim_ex(ir::Size::new_const(8), DimKind::LOOP);
+    let d1_0 = builder.open_dim_ex(ir::Size::new_const(16), DimKind::LOOP);
+    let d2_0 = builder.open_dim_ex(ir::Size::new_const(32), DimKind::LOOP);
+    builder.order(&d0_0, &d1_0, Order::OUTER);
+    builder.order(&d1_0, &d2_0, Order::OUTER);
+    let i0 = builder.mov(&0f32);
+    let v0 = builder.get_inst_variable(i0);
+    // Store `v0` in an in-memory variable `v1`.
+    let d0_1 = builder.open_mapped_dim(&d0_0);
+    let d1_1 = builder.open_mapped_dim(&d1_0);
+    let d2_1 = builder.open_mapped_dim(&d2_0);
+    builder.action(Action::DimKind(d0_1[0], DimKind::LOOP));
+    builder.action(Action::DimKind(d1_1[0], DimKind::LOOP));
+    builder.action(Action::DimKind(d2_1[0], DimKind::LOOP));
+    builder.order(&d0_1, &d1_1, Order::OUTER);
+    builder.order(&d1_1, &d2_1, Order::OUTER);
+    builder.order(&d1_0, &d1_1, Order::BEFORE);
+    builder.order(&d2_0, &d2_1, Order::BEFORE);
+    let fake_copy = ir::VarDefMode::Copy(None); // Don't materialize the copy.
+    let no_uses = ir::VarUseMode::NoUses; // Don't place a copy in registers.
+    let mapping = [(&d0_0, &d0_1), (&d1_0, &d1_1), (&d2_0, &d2_1)];
+    let v1 = builder.create_dim_map_variable(v0, &mapping, fake_copy, no_uses);
+    let d0_layout = builder.function().dim(d0_1[0]).layout_dims()[0];
+    let d1_layout = builder.function().dim(d1_1[0]).layout_dims()[0];
+    let d2_layout = builder.function().dim(d2_1[0]).layout_dims()[0];
+    builder.action(Action::MemorySpace(v1, MemorySpace::SHARED));
+    // Constrain ranks. d0 -> not instantiated, d1 -> 1, d2 -> 2
+    builder.action(Action::IsInstantiated(d0_layout, IsInstantiated::FALSE));
+    let mut space = builder.get();
+    const RANK_1: NumericSet = NumericSet {
+        enabled_values: 0b010,
+    };
+    const RANK_2: NumericSet = NumericSet {
+        enabled_values: 0b100,
+    };
+    let d1_rank = Action::Rank(d1_layout, RANK_1);
+    let d2_rank = Action::Rank(d2_layout, RANK_2);
+    assert!(space.apply_decisions(vec![d1_rank, d2_rank]).is_ok());
+    // Check strides.
+    let code = codegen::Function::build(&space);
+    assert_eq!(
+        code.layout_dim_stride(d0_layout),
+        &codegen::Size::new(0, vec![], 1)
+    );
+    assert_eq!(
+        code.layout_dim_stride(d1_layout),
+        &codegen::Size::new(1, vec![], 1)
+    );
+    assert_eq!(
+        code.layout_dim_stride(d2_layout),
+        &codegen::Size::new(16, vec![], 1)
+    );
 }

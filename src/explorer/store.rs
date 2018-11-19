@@ -1,7 +1,7 @@
 use device::Context;
 use explorer::candidate::Candidate;
-use explorer::choice::ActionEx;
 use rpds::List;
+use search_space::Action;
 use serde::Serialize;
 
 /// A Trait defining a structure containing the candidates, meant to explore the
@@ -21,7 +21,7 @@ pub trait Store<'a>: Sync {
     /// Commit the result of an evaluation back to Store
     fn commit_evaluation(
         &self,
-        actions: &List<ActionEx>,
+        actions: &List<Action>,
         payload: Self::PayLoad,
         eval: f64,
     );

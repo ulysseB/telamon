@@ -8,6 +8,7 @@ use explorer::store::Store;
 use explorer::{choice, local_selection};
 use itertools::Itertools;
 use rpds::List;
+use search_space::Action;
 use std;
 use std::f64;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -29,7 +30,7 @@ impl TreeStats {
 #[derive(Serialize, Deserialize)]
 pub enum TreeEvent {
     Evaluation {
-        actions: Sequence<choice::ActionEx>,
+        actions: Sequence<Action>,
         score: f64,
     },
 }
@@ -174,7 +175,7 @@ impl<'a, 'b> Store<'a> for Tree<'a, 'b> {
 
     fn commit_evaluation(
         &self,
-        actions: &List<choice::ActionEx>,
+        actions: &List<Action>,
         mut path: Self::PayLoad,
         eval: f64,
     ) {

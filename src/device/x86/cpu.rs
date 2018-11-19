@@ -69,17 +69,13 @@ impl device::Device for Cpu {
         0
     }
 
-    fn pointer_type(&self, _: MemSpace) -> ir::Type {
-        // Use 0 as a dummy memory ID.
-        ir::Type::PtrTo(ir::MemId(0))
+    fn pointer_type(&self, _: ir::MemorySpace) -> ir::Type {
+        ir::Type::PtrTo(ir::ArrayId::External)
     }
 
     fn supported_mem_flags(&self, op: &ir::Operator) -> InstFlag {
         match op {
-            ir::Operator::Ld(..)
-            | ir::Operator::St(..)
-            | ir::Operator::TmpLd(..)
-            | ir::Operator::TmpSt(..) => InstFlag::BLOCK_COHERENT,
+            ir::Operator::Ld(..) | ir::Operator::St(..) => InstFlag::BLOCK_COHERENT,
             _ => panic!("not a memory operation"),
         }
     }
@@ -149,5 +145,17 @@ impl device::Device for Cpu {
     fn multiplicative_indvar_pressure(&self, _t: &ir::Type) -> HwPressure {
         //TODO(model): implement minimal model
         model::HwPressure::zero(self)
+    }
+
+    fn num_registers(&self) -> u32 {
+        std::u32::MAX
+    }
+
+    fn num_vector_registers(&self) -> u32 {
+        0
+    }
+
+    fn num_sync_flags(&self) -> u32 {
+        0
     }
 }

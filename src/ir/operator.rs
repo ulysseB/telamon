@@ -1,9 +1,7 @@
 //! Defines operators.
 use self::Operator::*;
-use ir::{self, AccessPattern, LoweringMap, Operand, Type};
-use itertools::Itertools;
+use ir::{self, AccessPattern, Operand, Type};
 use std;
-use std::borrow::Cow;
 use utils::*;
 
 /// The rounding mode of an arithmetic operation.
@@ -130,28 +128,28 @@ impl UnaryOp {
 
 /// The operation performed by an instruction.
 #[derive(Clone, Debug)]
-pub enum Operator<'a, L = LoweringMap> {
+pub enum Operator<'a> {
     /// A binary arithmetic operator.
-    BinOp(BinOp, Operand<'a, L>, Operand<'a, L>, Rounding),
+    BinOp(BinOp, Operand<'a>, Operand<'a>, Rounding),
     /// Unary arithmetic operator.
-    UnaryOp(UnaryOp, Operand<'a, L>),
+    UnaryOp(UnaryOp, Operand<'a>),
     /// Performs a multiplication with the given return type.
-    Mul(Operand<'a, L>, Operand<'a, L>, Rounding, Type),
+    Mul(Operand<'a>, Operand<'a>, Rounding, Type),
     /// Performs s multiplication between the first two operands and adds the
     /// result to the third.
-    Mad(Operand<'a, L>, Operand<'a, L>, Operand<'a, L>, Rounding),
+    Mad(Operand<'a>, Operand<'a>, Operand<'a>, Rounding),
     /// Loads a value of the given type from the given address.
-    Ld(Type, Operand<'a, L>, AccessPattern<'a>),
+    Ld(Type, Operand<'a>, AccessPattern<'a>),
     /// Stores the second operand at the address given by the first.
     /// The boolean specifies if the instruction has side effects. A store has no side
     /// effects when it writes into a cell that previously had an undefined value.
-    St(Operand<'a, L>, Operand<'a, L>, bool, AccessPattern<'a>),
+    St(Operand<'a>, Operand<'a>, bool, AccessPattern<'a>),
     /// Starts a DMA request. The number of element to transfer is the vectorization
     /// factor.
     DmaStart {
-        src_ptr: Operand<'a, L>,
+        src_ptr: Operand<'a>,
         src_pattern: AccessPattern<'a>,
-        dst_ptr: Operand<'a, L>,
+        dst_ptr: Operand<'a>,
         /// Indicates if the DMA can be executed multiple times without impacting the
         /// result.
         has_side_effects: bool,
@@ -162,7 +160,7 @@ pub enum Operator<'a, L = LoweringMap> {
     /// Waits for a DMA request to finish. The vectorization pattern must match the one of
     /// the `DmaStart`. This instruction returns the result of the DMA.
     DmaWait {
-        sync_flag: Operand<'a, L>,
+        sync_flag: Operand<'a>,
         dst_pattern: AccessPattern<'a>,
         /// Indicates if the DMA can be executed multiple times without impacting the
         /// result. Must match the corresponding flag in `DmaStart`.
@@ -170,15 +168,11 @@ pub enum Operator<'a, L = LoweringMap> {
         /// Points to the corresponding `DmaStart` instruction.
         dma_start: ir::InstId,
     },
-    /// Represents a load from a temporary memory that is not fully defined yet.
-    TmpLd(Type, ir::MemId),
-    /// Represents a store to a temporary memory that is not fully defined yet.
-    TmpSt(Operand<'a, L>, ir::MemId),
 }
 
-impl<'a, L> Operator<'a, L> {
+impl<'a> Operator<'a> {
     /// Ensures the types of the operands are valid.
-    pub fn check(
+    pub fn check<L>(
         &self,
         iter_dims: &HashSet<ir::DimId>,
         fun: &ir::Function<L>,
@@ -187,15 +181,7 @@ impl<'a, L> Operator<'a, L> {
             .map(|t| fun.device().check_type(t))
             .unwrap_or(Ok(()))?;
         for operand in self.operands() {
-            fun.device().check_type(operand.t())?;
-            // Ensure dimension mappings are registered.
-            if let Some(dim_map) = operand.mapped_dims() {
-                for &(lhs, rhs) in dim_map {
-                    if fun.find_mapping(lhs, rhs).is_none() {
-                        Err(ir::Error::MissingDimMapping { lhs, rhs })?;
-                    }
-                }
-            }
+            operand.check(fun)?;
         }
         match self {
             BinOp(operator, lhs, rhs, rounding) => {
@@ -248,7 +234,7 @@ impl<'a, L> Operator<'a, L> {
             DmaWait { sync_flag, .. } => {
                 ir::TypeError::check_equals(sync_flag.t(), ir::Type::SyncFlag)?;
             }
-            TmpLd(..) | UnaryOp(..) | TmpSt(..) => (),
+            UnaryOp(..) => (),
         }
         Ok(())
     }
@@ -257,23 +243,22 @@ impl<'a, L> Operator<'a, L> {
     pub fn t(&self) -> Option<Type> {
         match self {
             Mad(_, _, op, _) => Some(op.t()),
-            Ld(t, ..) | TmpLd(t, _) | Mul(.., t) => Some(*t),
+            Ld(t, ..) | Mul(.., t) => Some(*t),
             BinOp(operator, lhs, ..) => Some(operator.t(lhs.t())),
             UnaryOp(operator, operand) => Some(operator.t(operand.t())),
-            St(..) | TmpSt(..) | DmaWait { .. } => None,
+            St(..) | DmaWait { .. } => None,
             DmaStart { .. } => Some(ir::Type::SyncFlag),
         }
     }
 
     /// Retruns the list of operands.
-    pub fn operands(&self) -> Vec<&Operand<'a, L>> {
+    pub fn operands(&self) -> Vec<&Operand<'a>> {
         match self {
             BinOp(_, lhs, rhs, _) | Mul(lhs, rhs, _, _) | St(lhs, rhs, _, _) => {
                 vec![lhs, rhs]
             }
             Mad(mul_lhs, mul_rhs, add_rhs, _) => vec![mul_lhs, mul_rhs, add_rhs],
-            UnaryOp(_, op) | Ld(_, op, _) | TmpSt(op, _) => vec![op],
-            TmpLd(..) => vec![],
+            UnaryOp(_, op) | Ld(_, op, _) => vec![op],
             DmaStart {
                 src_ptr, dst_ptr, ..
             } => vec![src_ptr, dst_ptr],
@@ -282,14 +267,13 @@ impl<'a, L> Operator<'a, L> {
     }
 
     /// Retruns the list of mutable references to operands.
-    pub fn operands_mut<'b>(&'b mut self) -> Vec<&'b mut Operand<'a, L>> {
+    pub fn operands_mut<'b>(&'b mut self) -> Vec<&'b mut Operand<'a>> {
         match self {
             BinOp(_, lhs, rhs, _) | Mul(lhs, rhs, _, _) | St(lhs, rhs, _, _) => {
                 vec![lhs, rhs]
             }
             Mad(mul_lhs, mul_rhs, add_rhs, _) => vec![mul_lhs, mul_rhs, add_rhs],
-            UnaryOp(_, op, ..) | Ld(_, op, ..) | TmpSt(op, _) => vec![op],
-            TmpLd(..) => vec![],
+            UnaryOp(_, op, ..) | Ld(_, op, ..) => vec![op],
             DmaStart {
                 src_ptr, dst_ptr, ..
             } => vec![src_ptr, dst_ptr],
@@ -314,25 +298,13 @@ impl<'a, L> Operator<'a, L> {
     /// Indicates if the operator accesses memory.
     pub fn is_mem_access(&self) -> bool {
         match self {
-            St(..)
-            | Ld(..)
-            | TmpSt(..)
-            | TmpLd(..)
-            | DmaStart { .. }
-            | DmaWait { .. } => true,
+            St(..) | Ld(..) | DmaStart { .. } | DmaWait { .. } => true,
             _ => false,
         }
     }
 
-    /// Renames a basic block.
-    pub fn merge_dims(&mut self, lhs: ir::DimId, rhs: ir::DimId) {
-        self.operands_mut()
-            .iter_mut()
-            .foreach(|x| x.merge_dims(lhs, rhs));
-    }
-
     /// Returns the pattern of access to the memory by the instruction, if any.
-    pub fn mem_access_pattern(&self) -> Option<Cow<AccessPattern>> {
+    pub fn mem_access_pattern(&self) -> Option<&AccessPattern> {
         match self {
             Ld(_, _, pattern)
             | St(_, _, _, pattern)
@@ -343,86 +315,50 @@ impl<'a, L> Operator<'a, L> {
             | DmaWait {
                 dst_pattern: pattern,
                 ..
-            } => Some(Cow::Borrowed(pattern)),
-            TmpLd(_, mem_id) | TmpSt(_, mem_id) => {
-                Some(Cow::Owned(AccessPattern::Unknown(Some(*mem_id))))
+            } => Some(pattern),
+            _ => None,
+        }
+    }
+
+    /// Indicates which in-memory variable is accessed by the instruction, if any.
+    pub fn accessed_mem_var(&self) -> Option<ir::VarId> {
+        self.loaded_mem_var().or(self.stored_mem_var())
+    }
+
+    /// Indicates which in-memory variable is used by the instruction, if any.
+    pub fn loaded_mem_var(&self) -> Option<ir::VarId> {
+        match self {
+            Ld(_, _, pattern)
+            | DmaStart {
+                src_pattern: pattern,
+                ..
+            } => {
+                if let ir::ArrayId::Variable(id) = pattern.accessed_array() {
+                    Some(id)
+                } else {
+                    None
+                }
             }
             _ => None,
         }
     }
 
-    /// Returns the memory blocks referenced by the instruction.
-    pub fn mem_used(&self) -> Option<ir::MemId> {
-        self.mem_access_pattern().and_then(|p| p.mem_block())
-    }
-
-    pub fn map_operands<T, F>(self, mut f: F) -> Operator<'a, T>
-    where
-        F: FnMut(Operand<'a, L>) -> Operand<'a, T>,
-    {
+    /// Indicates which in-memory variable is stored by the instruction, if any.
+    pub fn stored_mem_var(&self) -> Option<ir::VarId> {
         match self {
-            BinOp(op, oper1, oper2, rounding) => {
-                let oper1 = f(oper1);
-                let oper2 = f(oper2);
-                BinOp(op, oper1, oper2, rounding)
+            St(.., pattern)
+            | DmaWait {
+                dst_pattern: pattern,
+                ..
+            } => {
+                if let ir::ArrayId::Variable(id) = pattern.accessed_array() {
+                    Some(id)
+                } else {
+                    None
+                }
             }
-            UnaryOp(operator, operand) => UnaryOp(operator, f(operand)),
-            Mul(oper1, oper2, rounding, t) => {
-                let oper1 = f(oper1);
-                let oper2 = f(oper2);
-                Mul(oper1, oper2, rounding, t)
-            }
-            Mad(oper1, oper2, oper3, rounding) => {
-                let oper1 = f(oper1);
-                let oper2 = f(oper2);
-                let oper3 = f(oper3);
-                Mad(oper1, oper2, oper3, rounding)
-            }
-            Ld(t, oper1, ap) => {
-                let oper1 = f(oper1);
-                Ld(t, oper1, ap)
-            }
-            St(oper1, oper2, side_effects, ap) => {
-                let oper1 = f(oper1);
-                let oper2 = f(oper2);
-                St(oper1, oper2, side_effects, ap)
-            }
-            TmpLd(t, id) => TmpLd(t, id),
-            TmpSt(oper1, id) => {
-                let oper1 = f(oper1);
-                TmpSt(oper1, id)
-            }
-            DmaStart {
-                src_ptr,
-                src_pattern,
-                dst_ptr,
-                has_side_effects,
-                dma_wait,
-            } => DmaStart {
-                src_ptr: f(src_ptr),
-                src_pattern,
-                dst_ptr: f(dst_ptr),
-                has_side_effects,
-                dma_wait,
-            },
-            DmaWait {
-                sync_flag,
-                dst_pattern,
-                has_side_effects,
-                dma_start,
-            } => DmaWait {
-                sync_flag: f(sync_flag),
-                dst_pattern,
-                has_side_effects,
-                dma_start,
-            },
+            _ => None,
         }
-    }
-}
-
-impl<'a> Operator<'a, ()> {
-    pub fn freeze(self, cnt: &mut ir::Counter) -> Operator<'a> {
-        self.map_operands(|oper| oper.freeze(cnt))
     }
 }
 
@@ -435,8 +371,6 @@ impl<'a> std::fmt::Display for Operator<'a> {
             Mad(..) => "mad",
             Ld(..) => "ld",
             St(..) => "st",
-            TmpLd(..) => "tmp_ld",
-            TmpSt(..) => "tmp_st",
             DmaStart { .. } => "dma.start",
             DmaWait { .. } => "dma.wait",
         };

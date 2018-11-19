@@ -1,3 +1,5 @@
+include "layout.exh"
+
 set Variables:
   item_type = "ir::Variable"
   id_type = "ir::VarId"
@@ -44,14 +46,6 @@ set UseInsts($var in Variables) subsetof Instructions:
   new_objs = "$objs.use_insts"
 end
 
-// Forbid implicit broadcast of the fby intialization variable.
-require forall $var in Variables:
-  forall $inst in UseInsts($var):
-    forall $dim in IterationDims($inst):
-      forall $def in DefStatements($var):
-        "!$var.def().is_fby() || $var.dimensions().contains(&$dim.id())"
-        || order($dim, $def) is OUTER
-
 /// Lists variables $var depends of.
 set PredecessorVars($var in Variables) subsetof Variables:
   item_type = "ir::Variable"
@@ -64,6 +58,48 @@ set PredecessorVars($var in Variables) subsetof Variables:
   var_prefix = "predecessor"
   new_objs = "$objs.predecessors"
 end
+
+/// Lists the dimensions on which $var can vary.
+set VarLayout($var in Variables) subsetof LayoutDimensions:
+  item_type = "ir::LayoutDimension"
+  id_type = "ir::LayoutDimId"
+  item_getter = "$fun.layout_dimension($id)"
+  id_getter = "$item.id()"
+  iterator = "$var.layout().iter().map(|&dim| $fun.layout_dimension(dim))"
+  from_superset = "if $var.layout().contains(&$item.id()) { Some($item) } else { None }"
+  reverse forall $dim in LayoutDimensions =
+    "$dim.variable().into_iter().map(|id| $fun.variable(id))"
+  new_objs = "$objs.var_layout"
+end
+
+/// Intersection of `VarLayout` and `MemLayoutDimensions`.
+set VarMemLayout($var in Variables) subsetof MemLayoutDimensions:
+  item_type = "ir::LayoutDimension"
+  id_type = "ir::LayoutDimId"
+  item_getter = "$fun.layout_dimension($id)"
+  id_getter = "$item.id()"
+  iterator = "$var.layout().iter().map(|&dim| $fun.layout_dimension(dim))\
+    .filter(|dim| dim.is_memory_layout())"
+  from_superset = "if $var.layout().contains(&$item.id()) && $item.is_memory_layout()\
+    { Some($item) } else { None }"
+  reverse forall $dim in MemLayoutDimensions =
+    "$dim.variable().into_iter().map(|id| $fun.variable(id))"
+  new_objs = "$objs.mem_var_layout"
+end
+
+// Only dimensions with a known size may be instantiated.
+require forall $var in Variables:
+  forall $dim in VarLayout($var):
+    "$fun.dim($dim.dim()).possible_sizes().is_some()" || is_instantiated($dim) is FALSE
+
+
+// Forbid implicit broadcast of the fby intialization variable.
+require forall $var in Variables:
+  forall $inst in UseInsts($var):
+    forall $dim in IterationDims($inst):
+      forall $def in DefStatements($var):
+        "!$var.def().is_fby() || $var.dimensions().contains(&$dim.id())"
+        || order($dim, $def) is OUTER
 
 // Ensure the `fby` and its `prev` variable can be stored in the same place.
 require forall $fby in Variables:
@@ -78,41 +114,39 @@ require forall $var in Variables:
     forall $use in UseStatements($var):
       order($def, $use) is BEFORE
 
-/// Lists the dimensions on which $var can vary.
-set VarDims($var in Variables) subsetof Dimensions:
-  item_type = "ir::Dimension"
-  id_type = "ir::DimId"
-  item_getter = "$fun.dim($id)"
-  id_getter = "$item.stmt_id()"
-  iterator = "$var.dimensions().iter().map(|&dim| $fun.dim(dim))"
-  from_superset = "if $var.dimensions().contains(&$item.id()) { Some($item) } else { None }"
-  reverse forall $dim in Dimensions = "$dim.inner_vars().iter().map(|&id| $fun.variable(id))"
-  new_objs = "$objs.var_dims"
-end
-
 /// Specifies where to store a variable.
 define enum memory_space($var in Variables):
   value REGISTER:
-    requires forall $dim in VarDims($var):
-      "!$fun.device().has_vector_registers()" || dim_kind($dim) is not VECTOR
+    requires forall $layout_dim in VarLayout($var):
+      forall $dim in ActualDimension($layout_dim):
+        "!$fun.device().has_vector_registers()" || dim_kind($dim) is not VECTOR
   value VECTOR_REGISTER:
     requires "$fun.device().has_vector_registers()"
     // Ensure vector registers are the same at source and destination.
-    requires forall $mapping in VarMappings($var):
-      forall $lhs in MappedDims($mapping):
-        forall $rhs in MappedDims($mapping):
-          dim_kind($lhs) is not INNER_VECTOR || dim_kind($rhs) is INNER_VECTOR
-          dim_kind($lhs) is not OUTER_VECTOR || dim_kind($rhs) is OUTER_VECTOR
+    requires forall $rhs in VarLayout($var):
+      forall $lhs in PredecessorLayout($rhs):
+        forall $lhs_dim in ActualDimension($lhs):
+          forall $rhs_dim in ActualDimension($rhs):
+            dim_kind($lhs_dim) is not INNER_VECTOR || dim_kind($rhs_dim) is INNER_VECTOR
+            dim_kind($lhs_dim) is not OUTER_VECTOR || dim_kind($rhs_dim) is OUTER_VECTOR
     // The order of mapped vector dimensions is preserved.
-    requires forall $outer_mapping in VarMappings($var):
-      forall $inner_mapping in VarMappings($var):
-        forall $outer_lhs in MappedDims($outer_mapping):
-          forall $outer_rhs in MappedDims($outer_mapping):
-            forall $inner_lhs in MappedDims($inner_mapping):
-              forall $inner_rhs in MappedDims($inner_mapping):
-                dim_kind($outer_lhs) is not VECTOR || dim_kind($inner_lhs) is not VECTOR
-                || order($outer_lhs, $inner_lhs) is not OUTER
-                || order($outer_rhs, $inner_rhs) is OUTER
+    requires forall $outer_rhs in VarLayout($var):
+      forall $inner_rhs in VarLayout($var):
+        forall $outer_lhs in PredecessorLayout($outer_rhs):
+          forall $inner_lhs in PredecessorLayout($inner_rhs):
+            forall $outer_lhs_dim in ActualDimension($outer_lhs):
+              forall $outer_rhs_dim in ActualDimension($outer_rhs):
+                forall $inner_lhs_dim in ActualDimension($inner_lhs):
+                  forall $inner_rhs_dim in ActualDimension($inner_rhs):
+                    dim_kind($outer_lhs_dim) is not VECTOR
+                      || dim_kind($inner_lhs_dim) is not VECTOR
+                      || order($outer_lhs_dim, $inner_lhs_dim) is not OUTER
+                      || order($outer_rhs_dim, $inner_rhs_dim) is OUTER
+  value GLOBAL:
+    requires "$var.is_valid_memory_space(ir::MemorySpace::Global)"
+  value SHARED:
+    requires "$var.is_valid_memory_space(ir::MemorySpace::Shared)"
+  alias MEMORY = GLOBAL | SHARED:
 end
 
 // We model synchronisation flags as vector registers to ensure the vectorization pattern
@@ -136,141 +170,187 @@ require forall $var in Variables:
           || order($def, $dim) is not INNER
           || order($use, $dim) is INNER
 
-/// List pairs of dimensions that must have the same size and can be use for
-/// point-to-point communication.
-set DimMappings:
-  item_type = "ir::DimMapping"
-  id_type = "ir::DimMappingId"
-  item_getter = "$fun.dim_mapping($id)"
-  id_getter = "$item.id()"
-  iterator = "$fun.dim_mappings()"
-  var_prefix = "dim_pair"
-  new_objs = "$objs.dim_mappings"
+
+
+/// Counts the number of time the variable is instantiated.
+define half counter num_instances($var in Variables):
+  forall $dim in VarLayout($var):
+    forall $actual_dim in ActualStaticDimension($dim):
+      mul size($actual_dim) when:
+        is_instantiated($dim) is TRUE
+end
+/// Counts the number of time the variable is instantiated on non-vector dimensions.
+define half counter num_vector_instances($var in Variables):
+  forall $dim in VarLayout($var):
+    forall $actual_dim in ActualStaticDimension($dim):
+      mul size($actual_dim) when:
+        is_instantiated($dim) is TRUE
+        dim_kind($actual_dim) is not INNER_VECTOR
 end
 
-/// If the value is a `DimMap`, indicates which dimensions are mapped together.
-set VarMappings($var in Variables) subsetof DimMappings:
-  item_type = "ir::DimMapping"
-  id_type = "ir::DimMappingId"
-  item_getter = "$fun.dim_mapping($id)"
-  id_getter = "$item.id()"
-  iterator = "$var.def().mapped_dims().map(|id| $fun.dim_mapping(id))"
-  from_superset = "if $item.users().contains(&$var.id()) { Some($item) } else { None }"
-  reverse forall $mapping in DimMappings =
-    "$mapping.users().iter().map(|&id| $fun.variable(id))"
-  new_objs = "$objs.var_mappings"
-end
+// Roughly limit the size taken by varaibles to the amount of memory available. This
+// considers each variable on its own so it does not avoid spilling but avoids generating
+// utterly bad candidates.
+require forall $var in Variables:
+  memory_space($var) is not REGISTER
+    || num_instances($var) < "$fun.device().num_registers()"
+  memory_space($var) is not VECTOR_REGISTER
+    || "$var.t() == ir::Type::SyncFlag"
+    || num_vector_instances($var) < "$fun.device().num_vector_registers()"
+  memory_space($var) is not VECTOR_REGISTER
+    || "$var.t() != ir::Type::SyncFlag"
+    || num_vector_instances($var) < "$fun.device().num_sync_flags()"
+  memory_space($var) is not SHARED
+    || num_instances($var) < "$fun.available_shared_mem()"
 
-/// Lists the static dimensions in a dimension mapping.
-set MappedDims($pair in DimMappings) subsetof Dimensions:
-  item_type = "ir::Dimension"
-  id_type = "ir::DimId"
-  item_getter = "$fun.dim($id)"
-  id_getter = "$item.id()"
-  iterator = "$pair.dims().iter().map(|&dim| $fun.dim(dim))"
-  var_prefix = "mapped_dim"
-  from_superset =
-    "(if $item.dim_mappings().contains(&$pair.id()) { Some($item) } else { None })"
-  reverse forall $dim in Dimensions =
-    "$dim.dim_mappings().iter().map(|&id| $fun.dim_mapping(id))"
-  new_objs = "$objs.mapped_dims"
-end
 
-require forall $mapping in DimMappings:
-  forall $lhs in MappedDims($mapping):
-    forall $rhs in MappedDims($mapping):
-      order($lhs, $rhs) is ORDERED | MERGED
-      // For now, limit mappings to dimensions with a known size.
-      // TODO(ulysse): allow generating memory blocks with a dynamic size.
-      "$lhs.possible_sizes().is_some()" || order($lhs, $rhs) is MERGED
+/// Indicates if a variable is defined by copying the value of its predecessors or by just
+/// aliasing with them.
+define enum var_def_mode($var in Variables):
+  value COPY:
+    // We don't support copies with more than one predecessor (in Fby) and it doesn't
+    // makes sens with 0.
+    requires "$var.predecessors().len() == 1"
+    requires forall $pred in PredecessorVars($var):
+      // TODO(ulysse): support copies from memory.
+      memory_space($pred) is not MEMORY
+      // TODO(ulysse): enable REGISTER <-> VECTOR_REGISTER transfers.
+      memory_space($var) is not REGISTER || memory_space($pred) is not VECTOR_REGISTER
+      memory_space($var) is not VECTOR_REGISTER || memory_space($pred) is not REGISTER
+    requires "$var.def_mode().allow_copies()"
+  value IN_PLACE:
+    requires forall $pred in PredecessorVars($var):
+      memory_space($var) == memory_space($pred)
+    requires forall $layout_dim in VarLayout($var):
+      forall $pred in PredecessorLayout($layout_dim):
+        is_instantiated($layout_dim) == is_instantiated($pred)
+end
 
 require forall $var in Variables:
-  forall $mapping in DimMappings:
-    forall $lhs in StaticMappedDims($mapping):
-      forall $rhs in StaticMappedDims($mapping):
-        "$var.max_memory_level() > ir::MemoryLevel::RegisterNoSync"
-          || order($lhs, $rhs) is MERGED
-          || dim_kind($lhs) is UNROLL | VECTOR
-        // TODO(ulysse): allow lowering to memory
-        // Ensure we allow point-to-ponmt communication without memory
-        order($lhs, $rhs) is MERGED
-          || dim_kind($lhs) is UNROLL | VECTOR | THREAD
-        // .. using threads
-        order($lhs, $rhs) is MERGED
-          || dim_kind($lhs) is not THREAD
-          || thread_mapping($lhs, $rhs) is MAPPED
-        // .. or using registers.
-        order($lhs, $rhs) is MERGED
-          || dim_kind($lhs) is not UNROLL | VECTOR
-          || dim_kind($rhs) is UNROLL | VECTOR
+  forall $rhs in VarLayout($var):
+    forall $lhs in PredecessorLayout($rhs):
+      forall $lhs_dim in ActualDimension($lhs):
+        forall $rhs_dim in ActualDimension($rhs):
+          // Ensure we only insert synchronisation where allowed.
+          "$var.def_mode().allow_sync()"
+            || order($lhs_dim, $rhs_dim) is MERGED
+            || dim_kind($rhs_dim) is not THREAD
+          // Ensure we allow point-to-point communication.
+          order($lhs_dim, $rhs_dim) is MERGED
+            || memory_space($var) is MEMORY
+            || dim_kind($lhs_dim) is UNROLL | VECTOR | THREAD
+          // .. using registers.
+          order($lhs_dim, $rhs_dim) is MERGED
+            || memory_space($var) is MEMORY
+            || dim_kind($lhs_dim) is not UNROLL | VECTOR
+            || dim_kind($rhs_dim) is UNROLL | VECTOR
+  // .. or using threads
+require forall $var in Variables:
+  forall $rhs in VarLayout($var):
+    forall $lhs in PredecessorLayout($rhs):
+      forall $lhs_dim in ActualStaticDimension($lhs):
+        forall $rhs_dim in ActualStaticDimension($rhs):
+          order($lhs_dim, $rhs_dim) is MERGED
+            || memory_space($var) is MEMORY
+            || dim_kind($lhs_dim) is not THREAD
+            || thread_mapping($lhs_dim, $rhs_dim) is MAPPED
 
+// Ensure all copies from one memory space to the other are stores.
+// TODO(ulysse): this artificial constraint is only needed because we don't have a generic
+// memory copy instruction so we must now which instruction to generate. We should remove
+// it and have a generic instruction instead.
+// TODO(ulysse): It also allows us to avoid adding aliasing variables to the `Memory` set.
+// Indeed only one variable in a chain of aliasing ones copies its content to memory. This
+// is particularily useful for Fby variables since we don't have a good way yet to track
+// aliasing in such cases.
+require forall $var in Variables:
+  forall $pred in PredecessorVars($var):
+    memory_space($pred) is not MEMORY || memory_space($var) is MEMORY
 
-/// Lists the static dimensions in a dimension mapping.
-set StaticMappedDims($pair in DimMappings) subsetof StaticDims:
-  item_type = "ir::Dimension"
-  id_type = "ir::DimId"
-  item_getter = "$fun.dim($id)"
+// Lowers accesses to a variable and adds decisions to select the variable layout when it
+// is placed in memory.
+trigger forall $var in Variables:
+  "::search_space::variable::lower_to_memory($var, ir_instance)" when
+    memory_space($var) is MEMORY
+
+// Lowers a variable definition when a copy is needed.
+trigger forall $var in Variables:
+  "::search_space::variable::lower_def($var, ir_instance)" when
+    var_def_mode($var) is COPY
+
+// The variable is instantiated along parallel dimensions.
+require forall $var in Variables:
+  forall $layout_dim in VarLayout($var):
+    forall $dim in ActualDimension($layout_dim):
+      dim_kind($dim) is not BLOCK
+        || memory_space($var) is not GLOBAL
+        || is_instantiated($layout_dim) is TRUE
+
+// Ranks are unique.
+require forall $var in Variables:
+  forall $lhs in VarMemLayout($var):
+    forall $rhs in VarMemLayout($var):
+      rank($lhs) == "0" || rank($lhs) != rank($rhs)
+
+// Ranks are transmitted along mappings.
+require forall $var in Variables:
+  forall $dim in VarMemLayout($var):
+    forall $pred in PredecessorMemLayouts($dim):
+      var_def_mode($var) is COPY || rank($dim) == rank($pred)
+
+/// Lists variables that are allocated in memory and do not alias with any preceeding
+/// variable.
+set Memory subsetof Variables:
+  item_type = "ir::Variable"
+  id_type = "ir::VarId"
+  item_getter = "$fun.variable($id)"
   id_getter = "$item.id()"
-  iterator = "$pair.dims().iter().map(|&dim| $fun.dim(dim))\
-    .filter(|dim| dim.possible_sizes().is_some())"
-  var_prefix = "mapped_dim"
-  from_superset =
-    "(if $item.dim_mappings().contains(&$pair.id()) { Some($item) } else { None })"
-  reverse forall $dim in StaticDims =
-    "$dim.dim_mappings().iter().map(|&id| $fun.dim_mapping(id))"
-  new_objs = "$objs.static_mapped_dims"
-end
-
-// Ensure mapped dimensions have the same size. We currently have no way to constrain the
-// size of dynamic dimensions: it would require to name the reverse set of
-// `TiledDimension($logical_dim)`. However, it is enough to constrain the size of static
-// dimensions as the tiling factor of dynamic dimensions only depend on the size of static
-// dimensions.
-require forall $mapping in DimMappings:
-  forall $lhs in StaticMappedDims($mapping):
-    forall $rhs in StaticMappedDims($mapping):
-      size($lhs) == size($rhs)
-
-set MemoryRegions:
-  item_type = "ir::mem::Block"
-  id_type = "ir::MemId"
-  item_getter = "$fun.mem_block($id)"
-  id_getter = "$item.mem_id()"
-  iterator = "$fun.mem_blocks()"
+  iterator = "$fun.memory_vars()"
+  from_superset = "if $item.is_memory() { Some($item) } else { None }"
   var_prefix = "mem"
-  new_objs = "$objs.mem_blocks"
+  new_objs = "$objs.memory_vars"
 end
 
-/// Indicates where a memory block is located.
-define enum mem_space($mem in MemoryRegions):
-  /// The block is in the device RAM.
-  value GLOBAL:
-  /// The block is in the memory shared between the threads of a block.
-  value SHARED:
-    requires forall $inst in MemInsts:
-      "$inst.operator().mem_used() != Some($mem.mem_id())"
-        || inst_flag($inst) is NO_CACHE
-end
+// Ensure memory instructions are in memory.
+require forall $mem in Memory:
+  memory_space($mem) is MEMORY
 
-/// Computes the size of each memory block.
-// TODO(cleanup): use dependent sets to only iterate on necessary pairs.
-// FIXME: remove cubic choice choices
-define half counter mem_size($mem in MemoryRegions):
-  base "$mem.byte_size()"
-  forall $lhs in StaticDims:
-    forall $rhs in StaticDims:
-      mul size($lhs) when:
-        "$mem.maps_dims($lhs.id(), $rhs.id())"
-        order($lhs, $rhs) is not MERGED
-end
-
-/// The total amount of shared memory used.
+/// Counts the total amount of shared memory used.
 define half counter shared_mem_used():
-  forall $mem in MemoryRegions:
-    sum mem_size($mem) when: mem_space($mem) is SHARED
+  forall $mem in Memory:
+    sum num_instances($mem) when:
+      memory_space($mem) is SHARED
 end
 
-// Cannot use more shared memory that what is available.
-require shared_mem_used() <= "$fun.device().shared_mem()"
+require shared_mem_used() < "$fun.available_shared_mem()"
 
-include "layout.exh"
+/// Counts the number of instantiated decisions.
+define counter num_mem_dims($var in Memory):
+  forall $dim in VarMemLayout($var):
+    sum "1" when: is_instantiated($dim) is TRUE
+end
+
+// Limit the rank to the number of instantiated dimensions.
+require forall $var in Memory:
+  forall $layout in VarMemLayout($var):
+    rank($layout) <= num_mem_dims($var)
+
+/// Lists the in-memory variables accessed by an instruction.
+set AccessedVar($inst in MemInsts) subsetof Variables:
+  item_type = "ir::Variable"
+  id_type = "ir::VarId"
+  item_getter = "$fun.variable($id)"
+  id_getter = "$item.id()"
+  iterator = "$inst.operator().accessed_mem_var().into_iter().map(|id| $fun.variable(id))"
+  from_superset =
+    "if $item.mem_accesses().contains($inst.id()) { Some($item) } else { None }"
+  reverse forall $var in Variables =
+    "$var.mem_accesses().iter().map(|&id| $fun.inst(id))"
+  var_prefix = "var"
+  new_objs = "$objs.accessed_var"
+end
+
+require forall $inst in MemInsts:
+  forall $var in AccessedVar($inst):
+    memory_space($var) is MEMORY
+    memory_space($var) is GLOBAL || inst_flag($inst) is NO_CACHE

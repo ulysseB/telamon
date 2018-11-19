@@ -1,9 +1,8 @@
 //! Exploration of the search space.
 use device::Context;
-use explorer::choice::ActionEx;
 use model::{bound, Bound};
 use rpds::List;
-use search_space::SearchSpace;
+use search_space::{Action, SearchSpace};
 use std;
 use std::cmp::{Ordering, PartialOrd};
 
@@ -19,7 +18,7 @@ pub struct Candidate<'a> {
     /// The depth of the candidate in the search tree.
     pub depth: usize,
     /// The list of actions already taken.
-    pub actions: List<ActionEx>,
+    pub actions: List<Action>,
 }
 
 impl<'a> Candidate<'a> {
@@ -36,7 +35,7 @@ impl<'a> Candidate<'a> {
     pub fn apply_choice(
         &self,
         context: &Context,
-        choice: Vec<ActionEx>,
+        choice: Vec<Action>,
     ) -> Vec<Candidate<'a>> {
         let res = choice
             .into_iter()
@@ -52,21 +51,10 @@ impl<'a> Candidate<'a> {
     }
 
     /// Applies a choice to a candidate.
-    pub fn apply_decision(
-        &self,
-        context: &Context,
-        action: ActionEx,
-    ) -> Result<Self, ()> {
+    pub fn apply_decision(&self, context: &Context, action: Action) -> Result<Self, ()> {
         debug!("applying action {:?}", action);
         let mut space = self.space.clone();
-        match action {
-            ActionEx::Action(action) => space.apply_decisions(vec![action]),
-            ActionEx::LowerLayout {
-                mem,
-                ref st_dims,
-                ref ld_dims,
-            } => space.lower_layout(mem, st_dims.clone(), ld_dims.clone()),
-        }?;
+        space.apply_decisions(vec![action])?;
         let bound = bound(&space, context);
         let delta = 1.0e-2 * self.bound.value();
         if bound.value() + delta < self.bound.value() {

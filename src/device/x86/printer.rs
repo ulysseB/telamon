@@ -2,7 +2,7 @@ use codegen::*;
 use device::x86::Namer;
 use ir::{self, op, Type};
 use itertools::Itertools;
-use search_space::{DimKind, Domain, InstFlag, MemSpace};
+use search_space::*;
 use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;
 // TODO(cc_perf): avoid concatenating strings.
@@ -99,16 +99,6 @@ impl X86printer {
                     var_name = name_map.name_param_val(val.key()),
                     name = name_map.name_param(val.key())
                 ));
-            }
-            // MEM DECL
-            for block in function.mem_blocks() {
-                match block.alloc_scheme() {
-                    AllocationScheme::Shared => panic!("No shared mem in cpu!!"),
-                    AllocationScheme::PrivatisedGlobal => {
-                        self.privatise_global_block(block, name_map, function)
-                    }
-                    AllocationScheme::Global => (),
-                }
             }
             // Compute size casts
             for dim in function.dimensions() {
@@ -427,7 +417,7 @@ impl Printer for X86printer {
         &mut self,
         vector_factors: [u32; 2],
         return_type: Type,
-        _: MemSpace,
+        _: ir::MemorySpace,
         _: InstFlag,
         result: &str,
         addr: &str,
@@ -446,7 +436,7 @@ impl Printer for X86printer {
         &mut self,
         vector_factors: [u32; 2],
         val_type: Type,
-        _: MemSpace,
+        _: ir::MemorySpace,
         _: InstFlag,
         predicate: Option<&str>,
         addr: &str,
@@ -493,11 +483,14 @@ impl Printer for X86printer {
 
     fn name_inst<'a>(
         vector_dims: &[Vec<Dimension>; 2],
-        inst: ir::InstId,
+        inst: &Instruction,
         namer: &'a NameMap,
     ) -> Cow<'a, str> {
         assert!(vector_dims[0].is_empty());
         assert!(vector_dims[1].is_empty());
-        namer.name_inst(inst).into()
+        let var = unwrap!(inst.result_variable());
+        namer
+            .name_op(&ir::Operand::Variable(var, unwrap!(inst.t())))
+            .into()
     }
 }

@@ -224,9 +224,17 @@ fn comparison(
     rhs: &print::Value,
     ctx: &Context,
 ) -> TokenStream {
-    let lhs_universe = print::value::universe(lhs.value_type(), ctx);
-    let rhs_universe = print::value::universe(rhs.value_type(), ctx);
-    quote!(#lhs.#op(#lhs_universe, #rhs, #rhs_universe))
+    if let ir::ValueType::Enum(..) = lhs.value_type() {
+        match op {
+            ir::CmpOp::Eq => quote!((#lhs.is_constrained() && #lhs.intersects(#rhs))),
+            ir::CmpOp::Neq => quote!(!#lhs.intersects(#rhs)),
+            _ => panic!("unsupported operator on enums"),
+        }
+    } else {
+        let lhs_universe = print::value::universe(lhs.value_type(), ctx);
+        let rhs_universe = print::value::universe(rhs.value_type(), ctx);
+        quote!(#lhs.#op(#lhs_universe, #rhs, #rhs_universe))
+    }
 }
 
 impl quote::ToTokens for ir::CmpOp {

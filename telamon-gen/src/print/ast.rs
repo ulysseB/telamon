@@ -1,7 +1,6 @@
 //! AST building blocks for the generated code.
 use indexmap::IndexMap;
-use ir;
-use ir::SetRef;
+use ir::{self, Adaptable, SetRef};
 use itertools::Itertools;
 use print;
 use quote::ToTokens;
@@ -173,11 +172,10 @@ impl<'a> ChoiceInstance<'a> {
     /// Creates the choice instance from an `ir::ChoiceInstance` and a context.
     pub fn new(instance: &ir::ChoiceInstance, ctx: &Context<'a>) -> Self {
         let choice = ctx.ir_desc.get_choice(&instance.choice);
-        let vars = instance.vars.iter().map(|&v| ctx.var_name(v));
-        let sets = choice.arguments().sets().map(|s| Set::new(s, ctx));
+        let arguments = vars_with_sets(choice, &instance.vars, ctx);
         ChoiceInstance {
             name: choice.name(),
-            arguments: vars.zip_eq(sets).collect(),
+            arguments,
         }
     }
 }
@@ -195,17 +193,25 @@ impl<'a> SetConstraint<'a> {
             .iter()
             .flat_map(|&(var, ref expected)| {
                 let (ref var, ref current) = ctx.vars[&var];
-                let sets = expected.path_to_common_ancestor(current);
+                let sets = Self::path_to_set(current, expected, ctx);
                 if sets.is_empty() {
                     None
                 } else {
-                    let sets = sets.into_iter().rev().map(|s| Set::new(s, ctx)).collect();
                     Some(SetConstraint {
                         var: var.clone(),
                         sets,
                     })
                 }
             }).collect()
+    }
+
+    pub fn path_to_set(
+        from: &'a ir::Set,
+        to: &'a ir::Set,
+        ctx: &Context<'a>,
+    ) -> Vec<Set<'a>> {
+        let sets = to.path_to_common_ancestor(&from.as_ref());
+        sets.into_iter().rev().map(|s| Set::new(s, ctx)).collect()
     }
 }
 
@@ -497,8 +503,13 @@ pub fn vars_with_sets<'a>(
     vars: &[ir::Variable],
     ctx: &Context<'a>,
 ) -> Vec<(Variable<'a>, Set<'a>)> {
-    vars.iter()
-        .map(|&v| ctx.var_name(v))
-        .zip_eq(choice.arguments().sets().map(|s| Set::new(s, ctx)))
-        .collect()
+    let mut adaptator = ir::Adaptator::default();
+    for (i, &var) in vars.iter().enumerate() {
+        adaptator.set_variable(ir::Variable::Arg(i), var);
+    }
+    let sets = choice
+        .arguments()
+        .sets()
+        .map(|s| Set::new(s.as_ref().adapt(&adaptator), ctx));
+    vars.iter().map(|&v| ctx.var_name(v)).zip_eq(sets).collect()
 }

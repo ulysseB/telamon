@@ -1,5 +1,5 @@
 //! Describes the instructions.
-use ir::{self, DimMapScope, LoweringMap, Operand, Operator, Statement, StmtId, Type};
+use ir::{self, Operand, Operator, Statement, StmtId, Type};
 use std;
 use utils::*;
 
@@ -25,8 +25,8 @@ impl std::fmt::Display for InstId {
 
 /// Represents an instruction.
 #[derive(Clone, Debug)]
-pub struct Instruction<'a, L = LoweringMap> {
-    operator: Operator<'a, L>,
+pub struct Instruction<'a> {
+    operator: Operator<'a>,
     id: InstId,
     iter_dims: HashSet<ir::DimId>,
     variable: Option<ir::VarId>,
@@ -35,10 +35,10 @@ pub struct Instruction<'a, L = LoweringMap> {
     mem_access_layout: VecSet<ir::LayoutDimId>,
 }
 
-impl<'a, L> Instruction<'a, L> {
+impl<'a> Instruction<'a> {
     /// Creates a new instruction and type-check the operands.
-    pub fn new(
-        operator: Operator<'a, L>,
+    pub fn new<L>(
+        operator: Operator<'a>,
         id: InstId,
         iter_dims: HashSet<ir::DimId>,
         mem_access_layout: VecSet<ir::LayoutDimId>,
@@ -63,7 +63,9 @@ impl<'a, L> Instruction<'a, L> {
                 } else {
                     None
                 }
-            }).collect();
+            }).chain(operator.loaded_mem_var())
+            .collect();
+        let defined_vars = operator.stored_mem_var().into_iter().collect();
         // Registers `self` in the corresponding `DmaStart` if applicable.
         if let ir::op::DmaWait { dma_start, .. } = operator {
             let start_op = &mut fun.inst_mut(dma_start).operator;
@@ -78,14 +80,14 @@ impl<'a, L> Instruction<'a, L> {
             id,
             iter_dims,
             variable: None,
-            defined_vars: VecSet::default(),
+            defined_vars,
             used_vars,
             mem_access_layout,
         })
     }
 
     /// Returns an iterator over the operands of this instruction.
-    pub fn operands(&self) -> Vec<&Operand<'a, L>> {
+    pub fn operands(&self) -> Vec<&Operand<'a>> {
         self.operator.operands()
     }
 
@@ -95,7 +97,7 @@ impl<'a, L> Instruction<'a, L> {
     }
 
     /// Returns the operator of the instruction.
-    pub fn operator(&self) -> &Operator<'_, L> {
+    pub fn operator(&self) -> &Operator<'_> {
         &self.operator
     }
 
@@ -109,54 +111,13 @@ impl<'a, L> Instruction<'a, L> {
         self.operator.has_side_effects()
     }
 
-    /// Applies the lowering of a layout to the instruction.
-    pub fn lower_layout(
-        &mut self,
-        idx: Operand<'a, L>,
-        pattern: ir::AccessPattern<'a>,
-        layout_dims: VecSet<ir::LayoutDimId>,
-    ) where
-        L: Clone,
-    {
-        self.operator = match self.operator {
-            Operator::TmpLd(t, id) => {
-                assert_eq!(pattern.mem_block(), Some(id));
-                Operator::Ld(t, idx, pattern)
-            }
-            Operator::TmpSt(ref val, id) => {
-                assert_eq!(pattern.mem_block(), Some(id));
-                Operator::St(idx, val.clone(), false, pattern)
-            }
-            _ => panic!("Only TmpLd/TmpSt are changed on a layout lowering"),
-        };
-        assert!(self.mem_access_layout.is_empty());
-        self.mem_access_layout = layout_dims;
-    }
-
-    /// Indicates the operands for wich a `DimMap` must be lowered if lhs and rhs are
-    /// not mapped.
-    pub fn dim_maps_to_lower(&self, lhs: ir::DimId, rhs: ir::DimId) -> Vec<usize> {
-        self.operator()
-            .operands()
-            .iter()
-            .enumerate()
-            .filter(|&(_, op)| op.should_lower_map(lhs, rhs))
-            .map(|(id, _)| id)
-            .collect()
-    }
-
     /// Returns 'self' if it is a memory instruction.
-    pub fn as_mem_inst(&self) -> Option<&Instruction<'_, L>> {
+    pub fn as_mem_inst(&self) -> Option<&Instruction<'_>> {
         if self.operator.is_mem_access() {
             Some(self)
         } else {
             None
         }
-    }
-
-    /// Rename a dimension to another ID.
-    pub fn merge_dims(&mut self, lhs: ir::DimId, rhs: ir::DimId) {
-        self.operator.merge_dims(lhs, rhs);
     }
 
     /// The list of dimensions the instruction must be nested in.
@@ -187,41 +148,21 @@ impl<'a, L> Instruction<'a, L> {
     }
 }
 
-impl<'a> Instruction<'a, ()> {
-    pub fn freeze(self, cnt: &mut ir::Counter) -> Instruction<'a> {
-        Instruction {
-            operator: self.operator.freeze(cnt),
-            id: self.id,
-            iter_dims: self.iter_dims,
-            variable: self.variable,
-            used_vars: self.used_vars,
-            defined_vars: self.defined_vars,
-            mem_access_layout: self.mem_access_layout,
-        }
-    }
-}
-
 impl<'a> Instruction<'a> {
-    /// Lowers the `DimMap` of an operand into an access to a temporary memory.
-    pub fn lower_dim_map(
-        &mut self,
-        op_id: usize,
-        new_src: InstId,
-        new_dim_map: ir::DimMap,
-    ) {
-        let operand = &mut *self.operator.operands_mut()[op_id];
-        match *operand {
-            Operand::Inst(ref mut src, _, ref mut dim_map, ref mut can_lower) => {
-                *src = new_src;
-                *dim_map = new_dim_map;
-                *can_lower = DimMapScope::Local;
+    /// Retargets operands referencing `old` to use `new` instead. Also adds `new` to the
+    /// set of variables used.
+    pub fn rename_var(&mut self, old: ir::VarId, new: ir::VarId) {
+        self.used_vars.insert(new);
+        for operand in self.operator.operands_mut() {
+            match operand {
+                Operand::Variable(var, ..) if *var == old => *var = new,
+                _ => (),
             }
-            _ => panic!(),
         }
     }
 }
 
-impl<'a, L> Statement<'a, L> for Instruction<'a, L> {
+impl<'a> Statement<'a> for Instruction<'a> {
     fn stmt_id(&self) -> StmtId {
         self.id.into()
     }
@@ -230,7 +171,7 @@ impl<'a, L> Statement<'a, L> for Instruction<'a, L> {
         &self.defined_vars
     }
 
-    fn as_inst(&self) -> Option<&Instruction<'a, L>> {
+    fn as_inst(&self) -> Option<&Instruction<'a>> {
         Some(self)
     }
 

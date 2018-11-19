@@ -13,6 +13,14 @@ for (pos, &{{#if set.arg~}}(arg, obj){{else}}obj{{/if~}})
                 {{>conflict var=../this.[0]}}
             {{~/each~}}
     {{~/each~}}
+    {{#if set.arg~}}
+        if let Some(arg) = Some(arg)
+            {{#each arg_from_superset}}
+                .and_then(|v| {{>set.from_superset this item="v"}})
+            {{/each}}
+        {
+    {{/if~}}
     {{>@partial-block ../this}}
+    {{#if set.arg~}} } {{/if~}}
     {{#each loop_nest.levels}} } {{/each}}
 }

@@ -120,27 +120,30 @@ pub fn incr_iterators<'a>(ir_desc: &'a ir::IrDesc) -> Vec<IncrIterator<'a>> {
                         .map(ir::Variable::Forall)
                         .collect_vec()
                 };
+                // Test if the set has an argument and retrives its own set.
+                let arg_set = set.arg().map(|arg| ctx.var_def(arg).1);
+                let arg_from_superset = arg_set.map_or(vec![], |arg_set| {
+                    let given_set = unwrap!(set.def().arg());
+                    ast::SetConstraint::path_to_set(given_set, arg_set, &ctx)
+                });
                 // Setup the conflicts of the new object argument.
-                let arg_conflicts = set
-                    .arg()
-                    .map(|arg| {
-                        let arg_set = set.def().arg().unwrap();
-                        match arg {
-                            ir::Variable::Arg(_) => {
-                                let list = ast::new_objs_list(arg_set.def(), "new_objs");
-                                vec![ast::Conflict::NewObjs {
-                                    list,
-                                    set: arg_set.def(),
-                                }]
-                            }
-                            ir::Variable::Forall(_) => {
-                                PartialIterator::new_objs_conflicts(ir_desc, set)
-                                    .collect()
-                            }
-                        }.into_iter()
-                        .flat_map(|conflict| conflict.generate_ast(arg_set, ctx))
-                        .collect()
-                    }).unwrap_or(vec![]);
+                let arg_conflicts = set.arg().map_or(vec![], |arg| {
+                    let arg_set = ctx.var_def(arg).1;
+                    match arg {
+                        ir::Variable::Arg(_) => {
+                            let list = ast::new_objs_list(arg_set.def(), "new_objs");
+                            vec![ast::Conflict::NewObjs {
+                                list,
+                                set: arg_set.def(),
+                            }]
+                        }
+                        ir::Variable::Forall(_) => {
+                            PartialIterator::new_objs_conflicts(ir_desc, set).collect()
+                        }
+                    }.into_iter()
+                    .flat_map(|conflict| conflict.generate_ast(arg_set, ctx))
+                    .collect()
+                });
                 // Create the loop nest.
                 let ref mut conflicts =
                     PartialIterator::current_new_obj_conflicts(set).collect();
@@ -162,6 +165,7 @@ pub fn incr_iterators<'a>(ir_desc: &'a ir::IrDesc) -> Vec<IncrIterator<'a>> {
                     iter: PartialIterator {
                         loop_nest,
                         set: set_ast,
+                        arg_from_superset,
                         arg_conflicts,
                     },
                     incr,
@@ -202,6 +206,7 @@ pub struct IncrIterator<'a> {
 #[derive(Debug, Serialize)]
 pub struct PartialIterator<'a> {
     set: ast::SetDef<'a>,
+    arg_from_superset: Vec<ast::Set<'a>>,
     arg_conflicts: Vec<ast::ConflictAst<'a>>,
     loop_nest: ast::LoopNest<'a>,
 }
@@ -222,14 +227,18 @@ impl<'a> PartialIterator<'a> {
                 .chain(pos + 1..args.len())
                 .map(|i| args[i].0)
                 .collect_vec();
-            if let Some(set_arg) = set.arg() {
-                loop_args.retain(|&v| v != set_arg);
-                ctx.mut_var_name(set_arg, Variable::with_name("arg"));
-            }
+            let arg_set = set.arg().map(|arg| {
+                loop_args.retain(|&v| v != arg);
+                ctx.mut_var_name(arg, Variable::with_name("arg"));
+                ctx.var_def(arg).1
+            });
+            // Ensure `arg` is in the correct set.
+            let arg_from_superset = arg_set.map_or(vec![], |arg_set| {
+                ast::SetConstraint::path_to_set(unwrap!(set.def().arg()), arg_set, &ctx)
+            });
             let arg_conflicts = {
                 let ctx = &ctx;
-                set.def()
-                    .arg()
+                arg_set
                     .into_iter()
                     .flat_map(move |arg| {
                         PartialIterator::new_objs_conflicts(ir_desc, set)
@@ -243,6 +252,7 @@ impl<'a> PartialIterator<'a> {
             let set_ast = ast::SetDef::new(set.def());
             let iter = PartialIterator {
                 set: set_ast,
+                arg_from_superset,
                 loop_nest,
                 arg_conflicts,
             };

@@ -372,12 +372,16 @@ impl Condition {
                 }
             }
             Condition::CmpInput { lhs, rhs, op } => {
-                assert_eq!(lhs.name, rhs.name);
-                let choice = ir_desc.get_choice(&lhs.name);
+                let lhs_choice = ir_desc.get_choice(&lhs.name);
+                let rhs_choice = ir_desc.get_choice(&lhs.name);
+                assert_eq!(
+                    lhs_choice.value_type().as_enum(),
+                    rhs_choice.value_type().as_enum()
+                );
                 let lhs_input = add_input(lhs, ir_desc, var_map, inputs);
                 let rhs_input = add_input(rhs, ir_desc, var_map, inputs);
-                assert!(choice.choice_def().is_valid_operator(op));
-                assert!(choice.choice_def().is_valid_operator(op.inverse()));
+                assert!(lhs_choice.choice_def().is_valid_operator(op));
+                assert!(lhs_choice.choice_def().is_valid_operator(op.inverse()));
                 ir::Condition::CmpInput {
                     lhs: lhs_input,
                     rhs: rhs_input,

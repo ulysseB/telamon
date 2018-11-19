@@ -94,6 +94,8 @@ pub enum DeviceAttribute {
     MaxSharedMemoryPerBlock = 8,
     /// Wrap size in threads.
     WrapSize = 10,
+    /// Maximum number of registers available in a thread block.
+    MaxRegistersPerBlock = 12,
     /// Typical clock frequency in kilohertz.
     ClockRate = 13,
     /// Number of SMX on a device.

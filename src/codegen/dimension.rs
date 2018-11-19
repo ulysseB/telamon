@@ -1,4 +1,5 @@
 use codegen;
+use indexmap::IndexMap;
 use ir;
 use itertools::Itertools;
 use search_space::{DimKind, Domain, Order, SearchSpace};
@@ -243,13 +244,14 @@ impl<'a> InductionVarValue<'a> {
 /// kernel.
 pub fn register_induction_vars<'a>(
     dims: &mut Vec<Dimension<'a>>,
+    variables: &IndexMap<ir::VarId, codegen::Variable<'a>>,
     space: &'a SearchSpace<'a>,
 ) -> (Vec<InductionVar<'a>>, Vec<InductionLevel<'a>>) {
     let mut ind_levels_map = MultiHashMap::default();
     let mut ind_vars = Vec::new();
     let mut precomputed_levels = Vec::new();
     for (id, ind_var) in space.ir_instance().induction_vars() {
-        let (const_levels, mut_levels) = get_ind_var_levels(ind_var, space);
+        let (const_levels, mut_levels) = get_ind_var_levels(ind_var, variables, space);
         let mut outer_value = InductionVarValue::new(id, ind_var.base(), space);
         let precomputed = const_levels
             .into_iter()
@@ -305,11 +307,23 @@ type IndVarIncrement<'a> = (ir::DimId, codegen::Size<'a>);
 /// in the order in which levels should be computed.
 fn get_ind_var_levels<'a>(
     ind_var: &'a ir::InductionVar<'a>,
-    space: &SearchSpace,
+    variables: &IndexMap<ir::VarId, codegen::Variable<'a>>,
+    space: &SearchSpace<'a>,
 ) -> (Vec<IndVarIncrement<'a>>, Vec<IndVarIncrement<'a>>) {
     let (mut const_levels, mut mut_levels) = (Vec::new(), Vec::new());
     for &(dim, ref size) in ind_var.dims() {
-        let size = codegen::Size::from_ir(size, space);
+        let size = match size {
+            ir::MemAccessStride::Size(size) => codegen::Size::from_ir(size, space),
+            ir::MemAccessStride::LayoutStride(id) => {
+                let layout_dim = space.ir_instance().layout_dimension(*id);
+                let var_id = unwrap!(layout_dim.accessed_variable());
+                let accessed_var = space.ir_instance().variable(var_id);
+                let element_size = unwrap!(accessed_var.t().len_byte());
+                let mut stride = codegen::Size::new(element_size, vec![], 1);
+                stride *= codegen::layout_dim_stride(*id, variables, space);
+                stride
+            }
+        };
         match space.domain().get_dim_kind(dim) {
             DimKind::INNER_VECTOR | DimKind::OUTER_VECTOR => (),
             DimKind::LOOP | DimKind::UNROLL => mut_levels.push((dim, size)),

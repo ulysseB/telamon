@@ -8,7 +8,7 @@ use std::sync::{atomic, Mutex};
 use telamon::explorer::{local_selection, Candidate};
 use telamon::helper::SignatureBuilder;
 use telamon::model::Bound;
-use telamon::{codegen, device, explorer, ir};
+use telamon::{codegen, device, explorer, ir, search_space};
 use utils::*;
 
 /// Ignore candidates with a too big bound in tests.
@@ -270,7 +270,7 @@ fn descend_check_bounds<'a>(
 
 /// A sample of the accuracy of bounds.
 pub struct BoundSample {
-    actions: Vec<explorer::choice::ActionEx>,
+    actions: Vec<search_space::Action>,
     bound: Bound,
     runtime: f64,
 }

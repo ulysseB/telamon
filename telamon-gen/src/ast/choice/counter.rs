@@ -171,7 +171,16 @@ impl CounterDef {
         let bool_choice: RcStr = "Bool".into();
         let name = RcStr::new("increment_".to_string() + counter);
         let def = ir::ChoiceDef::Enum(bool_choice.clone());
-        let variables = counter_vars.iter().chain(iter_vars).cloned().collect();
+        let mut adaptator = ir::Adaptator::default();
+        for i in 0..iter_vars.len() {
+            let arg_id = counter_vars.len() + i;
+            adaptator.set_variable(ir::Variable::Forall(i), ir::Variable::Arg(arg_id));
+        }
+        let variables = counter_vars
+            .iter()
+            .chain(iter_vars)
+            .map(|(name, set)| (name.clone(), set.adapt(&adaptator)))
+            .collect();
         let args = ir::ChoiceArguments::new(variables, false, false);
         let incr_choice = ir::Choice::new(name.clone(), None, args, def);
         ir_desc.add_choice(incr_choice);

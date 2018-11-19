@@ -1,5 +1,4 @@
 //! Representation and manipulation of a set of possible implementation.
-mod dim_map;
 mod dimension;
 mod error;
 mod function;
@@ -13,33 +12,27 @@ mod statement;
 mod types;
 mod variable;
 
-use itertools::Itertools;
 use std;
 use std::marker::PhantomData;
 
-pub use self::dim_map::DimMap;
-pub use self::dimension::{
-    DimId, DimMapping, DimMappingId, Dimension, LogicalDim, LogicalDimId,
-};
+pub use self::dimension::{DimId, Dimension, LogicalDim, LogicalDimId};
 pub use self::error::{Error, TypeError};
 pub use self::function::{Function, Parameter, Signature};
 pub use self::induction_var::{IndVarId, InductionVar};
 pub use self::instruction::{InstId, Instruction};
 pub use self::layout::*;
-pub use self::mem::MemId;
-pub use self::operand::{DimMapScope, LoweringMap, Operand};
+pub use self::mem::{ArrayId, MemId, MemorySpace};
+pub use self::operand::Operand;
 pub use self::operator::{BinOp, Operator, UnaryOp};
-pub use self::size::{PartialSize, Size};
+pub use self::size::{MemAccessStride, PartialSize, Size};
 pub use self::statement::{Statement, StmtId};
 pub use self::types::Type;
-pub use self::variable::{MemoryLevel, VarDef, VarId, Variable};
+pub use self::variable::{
+    FutureInstruction, FutureMemAccess, FutureVariable, ProductionPoint, VarDef,
+    VarDefMode, VarId, VarUseMode, Variable,
+};
 
 pub mod mem;
-
-/// Defines iteration dimensions properties.
-pub mod dim {
-    pub use super::dim_map::DimMap as Map;
-}
 
 /// Defines operators.
 pub mod op {
@@ -61,26 +54,27 @@ pub struct NewObjs {
     pub dimensions: Vec<DimId>,
     pub static_dims: Vec<DimId>,
     pub statements: Vec<StmtId>,
-    pub mem_blocks: Vec<MemId>,
     pub mem_insts: Vec<InstId>,
     pub iteration_dims: Vec<(InstId, DimId)>,
     pub thread_dims: Vec<DimId>,
     pub logical_dims: Vec<LogicalDimId>,
     pub tile_dimensions: Vec<(LogicalDimId, DimId)>,
     pub tiled_dimensions: Vec<(LogicalDimId, DimId)>,
-    pub dim_mappings: Vec<DimMappingId>,
-    pub mapped_dims: Vec<(DimMappingId, DimId)>,
-    pub static_mapped_dims: Vec<(DimMappingId, DimId)>,
     pub variables: Vec<VarId>,
+    pub var_layout: Vec<(VarId, LayoutDimId)>,
+    pub mem_var_layout: Vec<(VarId, LayoutDimId)>,
     pub use_statements: Vec<(VarId, StmtId)>,
     pub def_statements: Vec<(VarId, StmtId)>,
-    pub var_dims: Vec<(VarId, DimId)>,
-    pub var_mappings: Vec<(VarId, DimMappingId)>,
     pub predecessors: Vec<(VarId, VarId)>,
     pub layout_dims: Vec<LayoutDimId>,
     pub mem_layout_dims: Vec<LayoutDimId>,
     pub actual_layout_dims: Vec<(LayoutDimId, DimId)>,
+    pub actual_layout_static_dims: Vec<(LayoutDimId, DimId)>,
     pub mem_access_layout: Vec<(InstId, LayoutDimId)>,
+    pub predecessor_layout_dims: Vec<(LayoutDimId, LayoutDimId)>,
+    pub predecessor_mem_layout_dims: Vec<(LayoutDimId, LayoutDimId)>,
+    pub memory_vars: Vec<VarId>,
+    pub accessed_var: Vec<(InstId, VarId)>,
 }
 
 impl NewObjs {
@@ -89,12 +83,16 @@ impl NewObjs {
         self.add_stmt(inst);
         self.iteration_dims
             .extend(inst.iteration_dims().iter().map(|&dim| (inst.id(), dim)));
-        self.mem_access_layout
-            .extend(inst.mem_access_layout().iter().map(|&dim| (inst.id(), dim)));
         if inst.as_mem_inst().is_some() {
             self.mem_insts.push(inst.id());
         }
         self.instructions.push(inst.id());
+        for &layout_dim in inst.mem_access_layout() {
+            self.mem_access_layout.push((inst.id(), layout_dim));
+        }
+        for var in inst.operator().accessed_mem_var() {
+            self.accessed_var.push((inst.id(), var));
+        }
     }
 
     /// Registers a new dimension.
@@ -112,6 +110,8 @@ impl NewObjs {
     /// Registers a new statement
     pub fn add_stmt(&mut self, stmt: &Statement) {
         self.statements.push(stmt.stmt_id());
+        self.use_statements
+            .extend(stmt.used_vars().iter().map(|&var| (var, stmt.stmt_id())));
     }
 
     /// Sets a dimension as a new iteration dimension.
@@ -124,87 +124,43 @@ impl NewObjs {
         self.thread_dims.push(dim)
     }
 
-    /// Registers a new memory block.
-    pub fn add_mem_block(&mut self, id: MemId) {
-        self.mem_blocks.push(id.into());
-    }
-
-    /// Adds a mapping between dimensions.
-    pub fn add_dim_mapping(&mut self, mapping: &DimMapping, fun: &Function) {
-        self.dim_mappings.push(mapping.id());
-        for &dim in &mapping.dims() {
-            self.mapped_dims.push((mapping.id(), dim));
-            if fun.dim(dim).possible_sizes().is_some() {
-                self.static_mapped_dims.push((mapping.id(), dim));
-            }
-        }
-    }
-
-    pub fn add_variable(&mut self, var: &Variable) {
+    /// Registers a new variable.
+    pub fn add_variable(&mut self, var: &Variable, fun: &Function) {
         self.variables.push(var.id());
         self.def_statements
             .extend(var.def_points().map(|stmt| (var.id(), stmt)));
-        self.use_statements
-            .extend(var.use_points().map(|stmt| (var.id(), stmt)));
-        self.var_dims
-            .extend(var.dimensions().iter().map(|&dim| (var.id(), dim)));
-        self.var_mappings
-            .extend(var.def().mapped_dims().map(|id| (var.id(), id)));
         self.predecessors
             .extend(var.predecessors().iter().map(|&id| (var.id(), id)));
+        for &layout_dim in var.layout() {
+            self.add_layout_dim(fun.layout_dimension(layout_dim), fun);
+        }
+        if var.is_memory() {
+            self.memory_vars.push(var.id());
+        }
     }
 
     /// Adds a layout dimension.
-    pub fn add_layout_dim(&mut self, dim: &LayoutDimension) {
+    pub fn add_layout_dim(&mut self, dim: &LayoutDimension, fun: &Function) {
         self.layout_dims.push(dim.id());
         self.actual_layout_dims.push((dim.id(), dim.dim()));
+        if fun.dim(dim.dim()).possible_sizes().is_some() {
+            self.actual_layout_static_dims.push((dim.id(), dim.dim()));
+        }
         if dim.is_memory_layout() {
             self.mem_layout_dims.push(dim.id());
         }
-    }
-}
-
-/// A point-to-point communication lowered into a store and a load.
-#[derive(Debug)]
-pub struct LoweredDimMap {
-    pub mem: MemId,
-    pub store: InstId,
-    pub load: InstId,
-    /// Mapping from production dimensions to store dimensions.
-    pub st_dims_mapping: Vec<(DimMappingId, [DimId; 2])>,
-    /// Mapping from consumption dimensions to load dimensions.
-    pub ld_dims_mapping: Vec<(DimMappingId, [DimId; 2])>,
-}
-
-impl LoweredDimMap {
-    /// Adds the objects created by the lowering to the list of new objects.
-    pub fn register_new_objs(&self, fun: &Function, new_objs: &mut NewObjs) {
-        new_objs.add_mem_block(self.mem);
-        new_objs.add_instruction(fun.inst(self.store));
-        new_objs.add_instruction(fun.inst(self.load));
-        let mappings = self.st_dims_mapping.iter().chain(&self.ld_dims_mapping);
-        for &(mapping, [_, new_dim]) in mappings {
-            new_objs.add_dimension(fun.dim(new_dim));
-            new_objs.add_dim_mapping(fun.dim_mapping(mapping), fun);
+        for &pred in dim.predecessors() {
+            self.predecessor_layout_dims.push((dim.id(), pred));
+            if fun.layout_dimension(pred).is_memory_layout() {
+                self.predecessor_mem_layout_dims.push((dim.id(), pred));
+            }
         }
-    }
-
-    /// Returns the dimensions of the memory layout to create. For each dimension, gives
-    /// a pair `(store dim, load dim)`.
-    pub fn mem_dimensions(&self) -> impl Iterator<Item = (DimId, DimId)> + '_ {
-        let st_dims = self.st_dims_mapping.iter().map(|&(_, [_, dim])| dim);
-        let ld_dims = self.ld_dims_mapping.iter().map(|&(_, [_, dim])| dim);
-        st_dims.zip_eq(ld_dims)
-    }
-
-    /// Returns the dimensions that store the variable.
-    pub fn store_dims(&self) -> impl Iterator<Item = DimId> + '_ {
-        self.st_dims_mapping.iter().map(|&(_, [_, dim])| dim)
-    }
-
-    /// Returns the dimensions that load the variable.
-    pub fn load_dims(&self) -> impl Iterator<Item = DimId> + '_ {
-        self.ld_dims_mapping.iter().map(|&(_, [_, dim])| dim)
+        if let Some(var) = dim.variable() {
+            self.var_layout.push((var, dim.id()));
+            if dim.is_memory_layout() {
+                self.mem_var_layout.push((var, dim.id()));
+            }
+        }
     }
 }
 
@@ -304,12 +260,6 @@ where
         self.vec.iter().filter_map(Option::as_ref)
     }
 
-    /// Returns a mutable iterator over the filled elements of the
-    /// slice. Holes are skipped.
-    pub fn iter_mut<'a>(&'a mut self) -> impl Iterator<Item = &'a mut T> {
-        self.vec.iter_mut().filter_map(Option::as_mut)
-    }
-
     /// Returns the value stored at a given index and replaces it with a hole.
     pub fn remove(&mut self, index: I) -> Option<T> {
         std::mem::replace(&mut self.vec[index.into()], None)
@@ -375,24 +325,16 @@ where
 
 /// A wrapper used to count extra dimensions that will be needed in
 /// the future and allocates IDs for them. This is used when freezing
-/// in order to pre-allocate IDs for the various objects (internal
-/// memory block, instructions, dimensions, etc.) required for future
-/// lowering.
+/// in order to pre-allocate IDs for the various objects (variables,
+/// instructions, dimensions, etc.) required for future lowering.
 pub struct Counter {
-    pub next_mem: usize,
     pub next_inst: usize,
     pub next_dim: usize,
-    pub next_dim_mapping: u16,
     pub next_layout_dim: usize,
+    pub next_variable: usize,
 }
 
 impl Counter {
-    pub fn next_mem(&mut self) -> MemId {
-        let next = MemId(self.next_mem as u32);
-        self.next_mem += 1;
-        next
-    }
-
     pub fn next_inst(&mut self) -> InstId {
         let next = InstId(self.next_inst as u32);
         self.next_inst += 1;
@@ -405,15 +347,15 @@ impl Counter {
         next
     }
 
-    pub fn next_dim_mapping(&mut self) -> DimMappingId {
-        let next = DimMappingId(self.next_dim_mapping);
-        self.next_dim_mapping += 1;
-        next
-    }
-
     pub fn next_layout_dim(&mut self) -> LayoutDimId {
         let next = LayoutDimId(self.next_layout_dim);
         self.next_layout_dim += 1;
+        next
+    }
+
+    pub fn next_variable(&mut self) -> VarId {
+        let next = VarId(self.next_variable as u16);
+        self.next_variable += 1;
         next
     }
 }

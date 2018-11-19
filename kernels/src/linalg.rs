@@ -6,11 +6,12 @@ use rand;
 use telamon::explorer::Candidate;
 use telamon::helper::tensor::*;
 use telamon::helper::*;
-use telamon::ir::DimMapScope::Global as GlobalScope;
 use telamon::search_space::*;
 use telamon::{device, ir};
 use utils::*;
 use {build_candidate, create_size, infer_tiling, Scalar};
+
+const SHARED: ir::MemorySpace = ir::MemorySpace::Shared;
 
 /// Computes `z = alpha*x+y`.
 pub struct Axpy<'a, S>
@@ -60,8 +61,8 @@ where
         let ld_x = self.x.load(vec![tiling.clone()], &mut builder);
         let ld_y = self.y.load(vec![tiling], &mut builder);
         let mad_dim = builder.open_mapped_dim(&ld_x[0]);
-        let x_op = ld_x.dim_map(&[&mad_dim], GlobalScope(()), &mut builder);
-        let y_op = ld_y.dim_map(&[&mad_dim], GlobalScope(()), &mut builder);
+        let x_op = ld_x.dim_map(&[&mad_dim], true, vec![SHARED], &mut builder);
+        let y_op = ld_y.dim_map(&[&mad_dim], true, vec![SHARED], &mut builder);
         let mad = VirtualTensor::new(builder.mad(&x_op, &"alpha", &y_op), vec![mad_dim]);
         mad.store(&self.z, &[], &mut builder);
         vec![build_candidate(builder.get(), ctx)]
@@ -145,8 +146,9 @@ where
         let init = builder.mov(&0f32);
         let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
         let acc_dim_n = builder.open_mapped_dim(&ld_x[0]);
-        let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_n], GlobalScope(()), &mut builder);
-        let x_op = ld_x.dim_map(&[&acc_dim_n], GlobalScope(()), &mut builder);
+        let a_op =
+            ld_a.dim_map(&[&acc_dim_m, &acc_dim_n], true, vec![SHARED], &mut builder);
+        let x_op = ld_x.dim_map(&[&acc_dim_n], true, vec![SHARED], &mut builder);
         let fby = builder.create_fby_variable(init, &[&acc_dim_n]);
         let acc = builder.mad(&a_op, &x_op, &fby);
         builder.set_loop_carried_variable(fby, acc);
@@ -254,9 +256,11 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
         let init_b = builder.mov(&0f32);
         let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
         let acc_dim_n = builder.open_mapped_dim(&ld_x[0]);
-        let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_n], GlobalScope(()), &mut builder);
-        let b_op = ld_b.dim_map(&[&acc_dim_m, &acc_dim_n], GlobalScope(()), &mut builder);
-        let x_op = ld_x.dim_map(&[&acc_dim_n], GlobalScope(()), &mut builder);
+        let a_op =
+            ld_a.dim_map(&[&acc_dim_m, &acc_dim_n], true, vec![SHARED], &mut builder);
+        let b_op =
+            ld_b.dim_map(&[&acc_dim_m, &acc_dim_n], true, vec![SHARED], &mut builder);
+        let x_op = ld_x.dim_map(&[&acc_dim_n], true, vec![SHARED], &mut builder);
         let fby_a = builder.create_fby_variable(init_a, &[&acc_dim_n]);
         let acc_a = builder.mad(&a_op, &x_op, &fby_a);
         builder.set_loop_carried_variable(fby_a, acc_a);
@@ -413,8 +417,10 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
         let acc_dim_m = builder.open_mapped_dim(&init_dim_m);
         let acc_dim_n = builder.open_mapped_dim(&init_dim_n);
         let acc_dim_k = builder.open_mapped_dim(&ld_a[1]);
-        let a_op = ld_a.dim_map(&[&acc_dim_m, &acc_dim_k], GlobalScope(()), &mut builder);
-        let b_op = ld_b.dim_map(&[&acc_dim_k, &acc_dim_n], GlobalScope(()), &mut builder);
+        let a_op =
+            ld_a.dim_map(&[&acc_dim_m, &acc_dim_k], true, vec![SHARED], &mut builder);
+        let b_op =
+            ld_b.dim_map(&[&acc_dim_k, &acc_dim_n], true, vec![SHARED], &mut builder);
         let fby = builder.create_fby_variable(acc_init, &[&acc_dim_k]);
         let acc = builder.mad(&a_op, &b_op, &fby);
         builder.set_loop_carried_variable(fby, acc);
@@ -620,7 +626,8 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
         let acc_dim_k = builder.open_mapped_dim(&ld_a[2]);
         let a_op = ld_a.dim_map(
             &[&acc_batch, &acc_dim_m, &acc_dim_k],
-            GlobalScope(()),
+            true,
+            vec![SHARED],
             &mut builder,
         );
         let b_op = {
@@ -630,7 +637,7 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
             } else {
                 &b_dims[1..]
             };
-            ld_b.dim_map(b_dims, GlobalScope(()), &mut builder)
+            ld_b.dim_map(b_dims, true, vec![SHARED], &mut builder)
         };
         let fby = builder.create_fby_variable(acc_init, &[&acc_dim_k]);
         let acc = builder.mad(&a_op, &b_op, &fby);

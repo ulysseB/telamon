@@ -45,9 +45,7 @@ impl device::Device for Device {
     /// non-vectorizable operations).
     fn can_vectorize(&self, dim: &ir::Dimension, op: &ir::Operator) -> bool {
         match op {
-            Operator::TmpLd(..)
-            | Operator::TmpSt(..)
-            | Operator::BinOp(ir::BinOp::Add, ..) => true,
+            Operator::BinOp(ir::BinOp::Add, ..) => true,
             Operator::Ld(.., pattern)
             | Operator::St(.., pattern)
             | Operator::DmaStart {
@@ -89,7 +87,7 @@ impl device::Device for Device {
         self.shared_mem_size
     }
 
-    fn pointer_type(&self, _: MemSpace) -> ir::Type {
+    fn pointer_type(&self, _: ir::MemorySpace) -> ir::Type {
         ir::Type::I(32)
     }
 
@@ -97,11 +95,14 @@ impl device::Device for Device {
     fn supported_mem_flags(&self, op: &ir::Operator) -> InstFlag {
         match op {
             // Only accesses to external memory blocks can be non-coherent.
-            ir::Operator::Ld(.., pat) if pat.mem_block().is_none() => InstFlag::ALL,
-            ir::Operator::Ld(..)
-            | ir::Operator::St(..)
-            | ir::Operator::TmpLd(..)
-            | ir::Operator::TmpSt(..)
+            ir::Operator::Ld(.., pat) => {
+                if pat.accessed_array() == ir::ArrayId::External {
+                    InstFlag::ALL
+                } else {
+                    InstFlag::COHERENT
+                }
+            }
+            ir::Operator::St(..)
             | ir::Operator::DmaStart { .. }
             | ir::Operator::DmaWait { .. } => InstFlag::COHERENT,
             _ => panic!("invalid memory access operator"),
@@ -162,6 +163,18 @@ impl device::Device for Device {
         _: model::size::Range,
         _: &mut HwPressure,
     ) {
+    }
+
+    fn num_registers(&self) -> u32 {
+        32 * 1024
+    }
+
+    fn num_vector_registers(&self) -> u32 {
+        16 * 1024
+    }
+
+    fn num_sync_flags(&self) -> u32 {
+        4 * 1024
     }
 }
 

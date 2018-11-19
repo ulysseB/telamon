@@ -25,44 +25,21 @@ impl std::fmt::Display for DimId {
 
 /// Represents an iteration dimension.
 #[derive(Clone, Debug)]
-pub struct Dimension<'a, L = ir::LoweringMap> {
+pub struct Dimension<'a> {
     id: DimId,
     size: ir::PartialSize<'a>,
     possible_sizes: VecSet<u32>,
     iterated: Vec<ir::InstId>,
     is_thread_dim: bool,
     logical_dim: Option<LogicalDimId>,
-    mapped_dims: VecSet<DimMappingId>,
     defined_vars: VecSet<ir::VarId>,
     used_vars: VecSet<ir::VarId>,
     inner_vars: VecSet<ir::VarId>,
     layout_dims: VecSet<ir::LayoutDimId>,
     is_parallelizable: bool,
-    freeze_marker: std::marker::PhantomData<L>,
 }
 
-impl<'a> Dimension<'a, ()> {
-    /// Sets the dimension as frozen.
-    pub fn freeze(self) -> Dimension<'a> {
-        Dimension {
-            id: self.id,
-            is_thread_dim: self.is_thread_dim,
-            size: self.size,
-            possible_sizes: self.possible_sizes,
-            iterated: self.iterated,
-            logical_dim: self.logical_dim,
-            mapped_dims: self.mapped_dims,
-            defined_vars: self.defined_vars,
-            inner_vars: self.inner_vars,
-            used_vars: self.used_vars,
-            is_parallelizable: self.is_parallelizable,
-            layout_dims: self.layout_dims,
-            freeze_marker: std::marker::PhantomData,
-        }
-    }
-}
-
-impl<'a, L> Dimension<'a, L> {
+impl<'a> Dimension<'a> {
     /// Creates a new dimension.
     pub fn new(
         id: DimId,
@@ -80,13 +57,11 @@ impl<'a, L> Dimension<'a, L> {
             possible_sizes,
             iterated: Vec::new(),
             is_thread_dim: false,
-            mapped_dims: VecSet::default(),
             defined_vars: VecSet::default(),
             inner_vars: VecSet::default(),
             used_vars: VecSet::default(),
             layout_dims: VecSet::default(),
             is_parallelizable: true,
-            freeze_marker: std::marker::PhantomData,
         })
     }
 
@@ -153,17 +128,6 @@ impl<'a, L> Dimension<'a, L> {
         self.logical_dim
     }
 
-    /// Returns the list of dimensions mapping containing this one.
-    pub fn dim_mappings(&self) -> &VecSet<DimMappingId> {
-        &self.mapped_dims
-    }
-
-    /// Register a dimension mapping.
-    pub fn register_dim_mapping(&mut self, mapping: &DimMapping) {
-        self.mapped_dims.insert(mapping.id);
-        assert!(mapping.dims.contains(&self.id()));
-    }
-
     /// Returns the list of variables available inside the dimension.
     pub fn inner_vars(&self) -> &VecSet<ir::VarId> {
         &self.inner_vars
@@ -195,12 +159,12 @@ impl<'a, L> Dimension<'a, L> {
     }
 }
 
-impl<'a, L> Statement<'a, L> for Dimension<'a, L> {
+impl<'a> Statement<'a> for Dimension<'a> {
     fn stmt_id(&self) -> ir::StmtId {
         self.id.into()
     }
 
-    fn as_dim(&self) -> Option<&Dimension<'a, L>> {
+    fn as_dim(&self) -> Option<&Dimension<'a>> {
         Some(self)
     }
 
@@ -304,54 +268,5 @@ impl<'a> LogicalDim<'a> {
     /// dimensions.
     pub fn total_size(&self) -> &ir::Size<'a> {
         &self.total_size
-    }
-}
-
-/// Uniquely identifies a pair of mapped dimensions.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct DimMappingId(pub u16);
-
-impl From<DimMappingId> for usize {
-    fn from(id: DimMappingId) -> usize {
-        id.0 as usize
-    }
-}
-
-/// Specifies that two dimensions should be mapped together.
-#[derive(Clone, Debug)]
-pub struct DimMapping {
-    id: DimMappingId,
-    dims: [DimId; 2],
-    variables: VecSet<ir::VarId>,
-}
-
-impl DimMapping {
-    /// Creates a `DimMapping`. Panics if the provided dimensions are the same.
-    pub fn new(id: DimMappingId, dims: [DimId; 2]) -> Self {
-        DimMapping {
-            id,
-            dims,
-            variables: VecSet::default(),
-        }
-    }
-
-    /// Returns the unique identifier of the `DimMapping`.
-    pub fn id(&self) -> DimMappingId {
-        self.id
-    }
-
-    /// Returns the mapped dims.
-    pub fn dims(&self) -> [DimId; 2] {
-        self.dims
-    }
-
-    /// Returns the variables that rely on this mapping.
-    pub fn users(&self) -> &VecSet<ir::VarId> {
-        &self.variables
-    }
-
-    /// Registers that a variable uses this mapping.
-    pub fn register_user(&mut self, user: ir::VarId) {
-        self.variables.insert(user);
     }
 }

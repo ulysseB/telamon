@@ -48,3 +48,10 @@ require forall $inst in Instructions:
   forall $dim in Dimensions:
     "$inst.iteration_dims().contains(&$dim.id())" || "!$inst.has_side_effects()"
       || is_iteration_dim($inst, $dim) is FALSE
+
+// Limit cache directives for memory accesses to preallocated arrays.
+require forall $inst in MemInsts:
+  "match unwrap!($inst.operator().mem_access_pattern()).accessed_array() {\
+    ir::ArrayId::Static(mem) => $fun.mem_block(mem).space == ir::MemorySpace::Global,
+    _ => true,
+  }" || inst_flag($inst) is NO_CACHE

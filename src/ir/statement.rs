@@ -26,31 +26,31 @@ impl From<ir::DimId> for StmtId {
     }
 }
 
-/// Either a `StmtId` or a mutable reference to a statement. This is usefull to abstract
+/// Either a `StmtId` or a mutable reference to a statement. This is useful to abstract
 /// over a statement that is either register in the functions or being created.
-pub enum IdOrMut<'a: 'b, 'b, L: 'b> {
+pub enum IdOrMut<'a: 'b, 'b> {
     Id(StmtId),
-    Mut(&'b mut Statement<'a, L>),
+    Mut(&'b mut Statement<'a>),
 }
 
-impl<'a, 'b, L> From<StmtId> for IdOrMut<'a, 'b, L> {
+impl<'a, 'b> From<StmtId> for IdOrMut<'a, 'b> {
     fn from(id: StmtId) -> Self {
         IdOrMut::Id(id)
     }
 }
 
-impl<'a, 'b, L> From<&'b mut Statement<'a, L>> for IdOrMut<'a, 'b, L> {
-    fn from(stmt: &'b mut Statement<'a, L>) -> Self {
+impl<'a, 'b> From<&'b mut Statement<'a>> for IdOrMut<'a, 'b> {
+    fn from(stmt: &'b mut Statement<'a>) -> Self {
         IdOrMut::Mut(stmt)
     }
 }
 
-impl<'a, 'b, L> IdOrMut<'a, 'b, L> {
+impl<'a, 'b> IdOrMut<'a, 'b> {
     /// Returns a mutable reference to the `Statement`.
-    pub fn get_statement<'c>(
+    pub fn get_statement<'c, L>(
         &'c mut self,
         fun: &'c mut ir::Function<'a, L>,
-    ) -> &'c mut Statement<'a, L> {
+    ) -> &'c mut Statement<'a> {
         match self {
             IdOrMut::Id(id) => fun.statement_mut(*id),
             IdOrMut::Mut(stmt) => *stmt,
@@ -67,17 +67,17 @@ impl<'a, 'b, L> IdOrMut<'a, 'b, L> {
 }
 
 /// Represents a basic block in an Exhaust function.
-pub trait Statement<'a, L = ir::LoweringMap> {
+pub trait Statement<'a> {
     /// Returns the unique identifier of the `Statement`.
     fn stmt_id(&self) -> StmtId;
 
     /// Returns 'self' if it is an instruction.
-    fn as_inst(&self) -> Option<&ir::Instruction<'a, L>> {
+    fn as_inst(&self) -> Option<&ir::Instruction<'a>> {
         None
     }
 
     /// Returns 'self' if it is a dimension
-    fn as_dim(&self) -> Option<&ir::Dimension<'a, L>> {
+    fn as_dim(&self) -> Option<&ir::Dimension<'a>> {
         None
     }
 

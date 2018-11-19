@@ -2,7 +2,7 @@
 use device::ScalarArgument;
 use helper::{Builder, LogicalDim};
 use ir::Operand::*;
-use ir::{self, dim, InstId, Operand};
+use ir::{self, Operand};
 
 /// Represents objects that can be converted into a variable.
 pub trait ToVariable {
@@ -10,7 +10,7 @@ pub trait ToVariable {
     fn to_variable(&self, builder: &mut Builder) -> ir::VarId;
 
     /// Converts the `self` into a variable operand.
-    fn to_operand<'a>(&self, builder: &mut Builder<'a>) -> Operand<'a, ()> {
+    fn to_operand<'a>(&self, builder: &mut Builder<'a>) -> Operand<'a> {
         let var_id = self.to_variable(builder);
         let var = builder.function().variable(var_id);
         Operand::Variable(var_id, var.t())
@@ -49,7 +49,7 @@ impl<'a, T: ToVariable> ToVariable for Last<'a, T> {
 /// Represents values that can be turned into an `Operand`.
 pub trait AutoOperand<'a> {
     /// Returns the corresponding `Operand`.
-    fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b, ()>
+    fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b>
     where
         'a: 'b;
 }
@@ -57,7 +57,7 @@ pub trait AutoOperand<'a> {
 // We cannot provide a blanket implementation for all `ToVariable` objects until rust
 // supports implementation specialization.
 impl<'a> AutoOperand<'a> for ir::VarId {
-    fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b, ()>
+    fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b>
     where
         'a: 'b,
     {
@@ -66,7 +66,7 @@ impl<'a> AutoOperand<'a> for ir::VarId {
 }
 
 impl<'a> AutoOperand<'a> for ir::InstId {
-    fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b, ()>
+    fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b>
     where
         'a: 'b,
     {
@@ -75,7 +75,7 @@ impl<'a> AutoOperand<'a> for ir::InstId {
 }
 
 impl<'a, 'c, T: ToVariable> AutoOperand<'a> for Last<'c, T> {
-    fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b, ()>
+    fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b>
     where
         'a: 'b,
     {
@@ -83,11 +83,8 @@ impl<'a, 'c, T: ToVariable> AutoOperand<'a> for Last<'c, T> {
     }
 }
 
-/// Helper to build dim maps that can be lowered to temporary memory.
-pub struct TmpArray(pub InstId);
-
-impl<'a> AutoOperand<'a> for Operand<'a, ()> {
-    fn get<'b>(&self, _: &mut Builder<'b>) -> Operand<'b, ()>
+impl<'a> AutoOperand<'a> for Operand<'a> {
+    fn get<'b>(&self, _: &mut Builder<'b>) -> Operand<'b>
     where
         'a: 'b,
     {
@@ -99,7 +96,7 @@ impl<'a, T> AutoOperand<'a> for T
 where
     T: ScalarArgument,
 {
-    fn get<'b>(&self, _: &mut Builder<'b>) -> Operand<'b, ()>
+    fn get<'b>(&self, _: &mut Builder<'b>) -> Operand<'b>
     where
         'a: 'b,
     {
@@ -108,7 +105,7 @@ where
 }
 
 impl<'a, 'c> AutoOperand<'a> for &'c str {
-    fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b, ()>
+    fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b>
     where
         'a: 'b,
     {
@@ -123,38 +120,17 @@ impl<'a, 'c> AutoOperand<'a> for &'c str {
     }
 }
 
-impl<'a> AutoOperand<'a> for TmpArray {
-    fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b, ()>
-    where
-        'a: 'b,
-    {
-        let inst = builder.function().inst(self.0);
-        let mapped_dims = builder.open_dims().flat_map(|(new_dim, old_dim)| {
-            if new_dim != old_dim && inst.iteration_dims().contains(&old_dim) {
-                Some((old_dim, new_dim))
-            } else {
-                None
-            }
-        });
-        Operand::new_inst(
-            inst,
-            dim::Map::new(mapped_dims),
-            ir::DimMapScope::Global(()),
-        )
-    }
-}
-
 impl<'a> AutoOperand<'a> for ir::MemId {
-    fn get<'b>(&self, _: &mut Builder<'b>) -> Operand<'b, ()>
+    fn get<'b>(&self, _: &mut Builder<'b>) -> Operand<'b>
     where
         'a: 'b,
     {
-        Operand::Addr(*self)
+        Operand::Addr((*self).into())
     }
 }
 
 impl<'a> AutoOperand<'a> for LogicalDim {
-    fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b, ()>
+    fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b>
     where
         'a: 'b,
     {
@@ -169,7 +145,7 @@ impl<'a> AutoOperand<'a> for LogicalDim {
 }
 
 impl<'a> AutoOperand<'a> for ir::IndVarId {
-    fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b, ()>
+    fn get<'b>(&self, builder: &mut Builder<'b>) -> Operand<'b>
     where
         'a: 'b,
     {

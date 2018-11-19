@@ -1,5 +1,5 @@
-use codegen::{self, AllocationScheme, Dimension, Function, Instruction, ParamValKey};
-use ir::{self, dim, DimMap, InstId, Type};
+use codegen::{self, Dimension, Function, ParamValKey};
+use ir::{self, Type};
 use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
@@ -36,8 +36,6 @@ pub struct NameMap<'a, 'b> {
     namer: std::cell::RefCell<&'b mut Namer>,
     /// Keeps track of the names of the variables used in the kernel
     variables: HashMap<ir::VarId, VariableNames>,
-    /// Keeps track of the name of the values produced by instructions.
-    insts: HashMap<InstId, VariableNames>,
     /// Keeps track of loop index names.
     indexes: HashMap<ir::DimId, RcStr>,
     /// Keeps track of parameter names, both in the code and in the arguments.
@@ -96,15 +94,16 @@ impl<'a, 'b> NameMap<'a, 'b> {
         }
         // Name shared memory blocks. Global mem blocks are named by parameters.
         for mem_block in function.mem_blocks() {
-            if mem_block.alloc_scheme() == AllocationScheme::Shared {
-                let name = namer.name(mem_block.ptr_type());
-                mem_blocks.insert(mem_block.id(), name);
+            if mem_block.memory_space() != ir::MemorySpace::Global {
+                if let ir::ArrayId::Static(id) = mem_block.id() {
+                    let name = namer.name(mem_block.ptr_type());
+                    mem_blocks.insert(id, name);
+                }
             }
         }
         let variables = VariableNames::create(function, namer);
         let mut name_map = NameMap {
             namer: std::cell::RefCell::new(namer),
-            insts: HashMap::default(),
             variables,
             num_loop: 0,
             current_indexes: HashMap::default(),
@@ -132,17 +131,6 @@ impl<'a, 'b> NameMap<'a, 'b> {
                             computed by the outermost induction level"
                 ),
             };
-        }
-        // Setup the name of variables holding instruction results.
-        for inst in function.cfg().instructions() {
-            // If the instruction has a return variable, use its name instead.
-            if let Some(var) = inst.result_variable() {
-                name_map
-                    .insts
-                    .insert(inst.id(), name_map.variables[&var].clone());
-            } else if inst.t().is_some() {
-                name_map.decl_inst(inst);
-            }
         }
         name_map
     }
@@ -198,36 +186,18 @@ impl<'a, 'b> NameMap<'a, 'b> {
             ir::Operand::Float(ref val, len) => {
                 Cow::Owned(self.namer.borrow().name_float(val, len))
             }
-            ir::Operand::Inst(id, _, ref dim_map, _) => {
-                Cow::Borrowed(self.name_mapped_inst(id, indexes.into_owned(), dim_map))
-            }
             ir::Operand::Index(id) => if let Some(idx) = indexes.get(&id) {
                 Cow::Owned(format!("{}", idx))
             } else {
                 Cow::Borrowed(&self.indexes[&id])
             },
             ir::Operand::Param(p) => self.name_param_val(ParamValKey::External(p)),
-            ir::Operand::Addr(id) => self.name_addr(id),
+            ir::Operand::Addr(id) => Cow::Borrowed(self.name_addr(id)),
             ir::Operand::InductionVar(id, _) => self.name_induction_var(id, None),
-            ir::Operand::Variable(val_id, _t) => {
-                Cow::Borrowed(&self.variables[&val_id].get_name(&indexes))
+            ir::Operand::Variable(var_id, _) => {
+                Cow::Borrowed(&self.variables[&var_id].get_name(&indexes))
             }
         }
-    }
-
-    /// Returns the name of the instruction.
-    pub fn name_inst(&self, inst: ir::InstId) -> &str {
-        self.name_mapped_inst(inst, self.current_indexes.clone(), &dim::Map::empty())
-    }
-
-    pub fn indexed_inst_name(
-        &self,
-        inst: ir::InstId,
-        indexes: &[(ir::DimId, u32)],
-    ) -> &str {
-        let mut indexes_map = self.current_indexes.clone();
-        indexes_map.extend(indexes.iter().map(|&(dim, idx)| (dim, idx as usize)));
-        self.name_mapped_inst(inst, indexes_map, &DimMap::empty())
     }
 
     pub fn indexed_op_name(
@@ -238,34 +208,6 @@ impl<'a, 'b> NameMap<'a, 'b> {
         let mut indexes_map = self.current_indexes.clone();
         indexes_map.extend(indexes.iter().map(|&(dim, idx)| (dim, idx as usize)));
         self.name_op_with_indexes(op, Cow::Owned(indexes_map))
-    }
-
-    /// Returns the name of the instruction.
-    fn name_mapped_inst(
-        &self,
-        id: InstId,
-        mut indexes: HashMap<ir::DimId, usize>,
-        dim_map: &DimMap,
-    ) -> &str {
-        for &(lhs, rhs) in dim_map.iter() {
-            indexes.remove(&rhs).map(|idx| indexes.insert(lhs, idx));
-        }
-        self.insts[&id].get_name(&indexes)
-    }
-
-    /// Declares an instruction to the namer.
-    fn decl_inst(&mut self, inst: &Instruction) {
-        // We temporarily rely on `VariableNames` to generate instruction names until we
-        // remove the need to rename variables altogether.
-        let t = inst.t().unwrap();
-        let dims = inst
-            .instantiation_dims()
-            .iter()
-            .map(|&(dim, size)| (dim, size as usize));
-        use std::ops::DerefMut;
-        let mut namer = self.namer.borrow_mut();
-        let names = VariableNames::new(t, dims, *namer.deref_mut());
-        assert!(self.insts.insert(inst.id(), names).is_none());
     }
 
     /// Returns the name of an index.
@@ -301,8 +243,14 @@ impl<'a, 'b> NameMap<'a, 'b> {
     }
 
     /// Returns the name of the address of a memory block.
-    pub fn name_addr(&self, id: ir::MemId) -> Cow<str> {
-        Cow::Borrowed(&self.mem_blocks[&id])
+    pub fn name_addr(&self, id: ir::ArrayId) -> &str {
+        match id {
+            ir::ArrayId::Static(id) => &self.mem_blocks[&id],
+            ir::ArrayId::Variable(id) => {
+                &self.variables[&id].get_name(&Default::default())
+            }
+            ir::ArrayId::External => panic!("cannot name external arrays"),
+        }
     }
 
     /// Assigns a name to an induction variable.

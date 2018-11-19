@@ -226,12 +226,6 @@ fn set_data_deps(
                     }
                 }
             }
-            ir::Operand::Inst(pred_id, _, ref dim_map, _) => {
-                let pred = code_points.ids[&CodePoint::Inst(pred_id)];
-                let latency = local_info.hw_pressure[&pred_id.into()]
-                    .bound(BottleneckLevel::Thread, thread_rates);
-                set_data_dep(space, pred, to, dim_map, &latency, level_dag);
-            }
             _ => (),
         }
     }
@@ -258,25 +252,6 @@ fn add_dependency(
         .filter(|&dim| level::must_consider_dim(space, dim))
         .collect();
     level_dag.add_if_processed(&VecSet::new(mapping_dims), from, to, latency);
-}
-
-/// Sets a regular data dependency between two instructions.
-// TODO(ulysse): deprecate in favor of `add_dependency`.
-fn set_data_dep(
-    space: &SearchSpace,
-    from: usize,
-    to: usize,
-    dim_map: &ir::DimMap,
-    latency: &FastBound,
-    level_dag: &mut LevelDag,
-) {
-    assert!(from < to);
-    let dst_dims = dim_map
-        .iter()
-        .map(|x| x.1)
-        .filter(|&d| level::must_consider_dim(space, d))
-        .collect();
-    level_dag.add_if_processed(&VecSet::new(dst_dims), from, to, latency);
 }
 
 /// Applies a `RepeatLevel`.
@@ -352,7 +327,6 @@ fn repeat_level(
 }
 
 /// Adds a dependency origination from a dim map.
-// TODO(ulysse): also handle dim_map variables
 // TODO(cleanup): refactor to reduce the number of parameters.
 #[cfg_attr(feature = "cargo-clippy", allow(clippy))]
 fn apply_dim_map(
