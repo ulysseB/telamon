@@ -168,7 +168,7 @@ pub fn print(fun: &Function, time: bool, out: &mut io::Write) -> io::Result<()> 
 /// Prints a multiplicative induction var level.
 fn parallel_induction_level(
     dim: ir::DimId,
-    level: &InductionVarLevel,
+    level: &InductionLevel,
     name_map: &NameMap,
     out: &mut fmt::Write,
 ) -> fmt::Result {
@@ -309,11 +309,11 @@ fn instruction(
         write!(out, "  {} = ", name_map.name_inst(inst))?;
     }
     match *inst.operator() {
-        ir::op::Add(ref lhs, ref rhs, rounding) => {
+        ir::op::BinOp(ir::BinOp::Add, ref lhs, ref rhs, rounding) => {
             assert!(check_rounding(rounding));
             write!(out, "{} + {}", name_map.name(lhs), name_map.name(rhs))
         }
-        ir::op::Sub(ref lhs, ref rhs, rounding) => {
+        ir::op::BinOp(ir::BinOp::Sub, ref lhs, ref rhs, rounding) => {
             assert!(check_rounding(rounding));
             write!(out, "{} - {}", name_map.name(lhs), name_map.name(rhs))
         }
@@ -338,11 +338,11 @@ fn instruction(
             let add_rhs = name_map.name(add_rhs);
             write!(out, "({}){} * ({}){} + {}", t, mul_lhs, t, mul_rhs, add_rhs)
         }
-        ir::op::Div(ref lhs, ref rhs, rounding) => {
+        ir::op::BinOp(ir::BinOp::Div, ref lhs, ref rhs, rounding) => {
             assert!(check_rounding(rounding));
             write!(out, "{}/{}", name_map.name(lhs), name_map.name(rhs))
         }
-        ir::op::Mov(ref op) => write!(out, "{}", name_map.name(op)),
+        ir::op::UnaryOp(ir::UnaryOp::Mov, ref op) => write!(out, "{}", name_map.name(op)),
         ir::op::Ld(ref t, ref addr, _) => {
             write!(out, "*({}*){}", type_name(t), name_map.name(addr))
         }
@@ -351,10 +351,10 @@ fn instruction(
             let addr = name_map.name(addr);
             write!(out, "*(({}*){}) = {}", val_type, addr, name_map.name(val))
         }
-        ir::op::Cast(ref op, ir::Type::PtrTo(_)) => {
+        ir::op::UnaryOp(ir::UnaryOp::Cast(ir::Type::PtrTo(_)), ref op) => {
             write!(out, "(void*)(intptr_t) {}", name_map.name(op))
         }
-        ir::op::Cast(ref op, ref t) => {
+        ir::op::UnaryOp(ir::UnaryOp::Cast(ref t), ref op) => {
             write!(out, "({}) {}", type_name(t), name_map.name(op))
         }
         ir::op::TmpLd(..) | ir::op::TmpSt(..) => panic!("non-printable instruction"),

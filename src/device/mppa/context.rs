@@ -82,18 +82,14 @@ impl<'a> Context<'a> {
     }
 }
 
-impl<'a> device::Context<'a> for Context<'a> {
-    fn device(&self) -> &device::Device {
-        &self.device
+impl<'a> Context<'a> {
+    fn get_param(&self, name: &str) -> &device::Argument {
+        self.parameters[name].as_ref()
     }
 
     fn bind_param(&mut self, param: &ir::Parameter, value: Box<device::Argument + 'a>) {
         assert_eq!(param.t, value.t());
         self.parameters.insert(param.name.to_string(), value);
-    }
-
-    fn get_param(&self, name: &str) -> &device::Argument {
-        self.parameters[name].as_ref()
     }
 
     fn allocate_array(&mut self, id: ir::MemId, size: usize) -> Box<device::Argument> {
@@ -105,6 +101,16 @@ impl<'a> device::Context<'a> for Context<'a> {
         })
     }
 
+    fn bound(&self, _: &SearchSpace) -> f64 {
+        0.0 // FIXME: bound the execution time
+    }
+}
+
+impl<'a> device::Context<'a> for Context<'a> {
+    fn device(&self) -> &device::Device {
+        &self.device
+    }
+
     fn evaluate(&self, fun: &device::Function) -> f64 {
         let (kernel, out_mem) = self.setup_kernel(fun);
         self.executor.execute_kernel(&kernel);
@@ -112,10 +118,6 @@ impl<'a> device::Context<'a> for Context<'a> {
         self.executor.read_buffer(&out_mem, &mut t, &[]);
         self.writeback_slots.push(out_mem);
         t[0] as f64
-    }
-
-    fn bound(&self, _: &SearchSpace) -> f64 {
-        0.0 // FIXME: bound the execution time
     }
 
     fn async_eval<'b, 'c>(
