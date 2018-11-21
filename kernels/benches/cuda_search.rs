@@ -13,7 +13,7 @@ use cuda_sys::cuda::*;
 use telamon::device::cuda;
 use telamon::explorer::config::Config;
 use telamon_kernels::statistics::estimate_mean;
-use telamon_kernels::{linalg, Kernel};
+use telamon_kernels::{linalg, Kernel, MemInit};
 
 fn main() {
     env_logger::init();
@@ -104,8 +104,13 @@ fn benchmark<'a, K, REF>(
     //config.distance_to_best.get_or_insert(20.);
 
     let mut context = cuda::Context::new(executor);
-    let runtime =
-        K::benchmark(&config, params.clone(), NUM_CODE_RUNS, true, &mut context);
+    let runtime = K::benchmark(
+        &config,
+        params.clone(),
+        NUM_CODE_RUNS,
+        MemInit::RandomFill,
+        &mut context,
+    );
     for _ in 0..4 {
         reference(&params, &context);
     }

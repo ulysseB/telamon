@@ -61,7 +61,7 @@ where
             let bounds = candidates.iter().map(|c| c.bound.value()).enumerate();
             let candidate_idx = local_selection::pick_index(order, bounds, CUT);
             let candidate = candidates[unwrap!(candidate_idx)].clone();
-            local_selection::descend(order, &context, candidate, CUT)
+            local_selection::descend(&Default::default(), order, &context, candidate, CUT)
         }).take(NUM_TESTS)
         .collect_vec();
     info!("Evaluating candidates, simulating a GPU-bound exploration");

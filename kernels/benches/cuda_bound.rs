@@ -4,7 +4,7 @@ extern crate telamon;
 extern crate telamon_kernels;
 
 use telamon::device::cuda;
-use telamon_kernels::{analyze_bounds, linalg, Kernel};
+use telamon_kernels::{analyze_bounds, linalg, Kernel, MemInit};
 
 fn main() {
     env_logger::init();
@@ -29,7 +29,7 @@ where
     K: Kernel<'a>,
 {
     let mut context = cuda::Context::new(executor);
-    let bounds = K::test_bound(params, num_runs, true, &mut context);
+    let bounds = K::test_bound(params, num_runs, MemInit::RandomFill, &mut context);
     println!("bounds for kernel {}", K::name());
     analyze_bounds(bounds);
 }

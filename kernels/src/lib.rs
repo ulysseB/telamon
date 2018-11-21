@@ -19,7 +19,7 @@ mod kernel;
 pub mod linalg;
 pub mod statistics;
 
-pub use kernel::{analyze_bounds, Kernel};
+pub use kernel::{analyze_bounds, Kernel, KernelBuilder, MemInit, ScopedCandidates};
 
 use telamon::device::{self, ArgMap, Context};
 use telamon::helper::tensor::DimSize;

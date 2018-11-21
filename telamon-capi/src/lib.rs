@@ -27,7 +27,7 @@ use telamon::device;
 use telamon::device::x86;
 use telamon::explorer::config::Config;
 use telamon::helper::TilingPattern;
-pub use telamon_kernels::{linalg, Kernel};
+pub use telamon_kernels::{linalg, Kernel, MemInit};
 
 // Pointers to `device::Context` and `device::Device` are not C-like pointers.
 // Instead, they are fat pointers containing both a regular pointer to the
@@ -75,7 +75,7 @@ impl KernelParameters {
                     config,
                     params.clone(),
                     0,
-                    true,
+                    MemInit::RandomFill,
                     context,
                 );
             }
