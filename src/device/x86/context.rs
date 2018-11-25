@@ -4,7 +4,7 @@ use crossbeam;
 use device::context::AsyncCallback;
 use device::x86::compile;
 use device::x86::cpu::Cpu;
-use device::x86::cpu_argument::{ArgLock, Argument, CpuArray, CpuScalarArg};
+use device::x86::cpu_argument::{ArgLock, Argument, CpuArray};
 use device::x86::printer::X86printer;
 use device::{self, Device, EvalMode, ScalarArgument};
 use explorer;
@@ -70,23 +70,24 @@ impl Default for Context {
     }
 }
 
-impl device::ArgMap for Context {
-    type Array = CpuArray;
-
-    fn bind_scalar<S: ScalarArgument>(&mut self, param: &ir::Parameter, value: S) {
-        assert_eq!(param.t, S::t());
-        self.bind_param(
-            param.name.clone(),
-            Arc::new(Box::new(value) as Box<CpuScalarArg>),
-        );
-    }
-
-    fn bind_array<S: ScalarArgument>(
+impl<'a> device::ArgMap<'a> for Context {
+    fn bind_erased_scalar(
         &mut self,
         param: &ir::Parameter,
+        value: Box<dyn ScalarArgument>,
+    ) {
+        assert_eq!(param.t, value.get_type());
+
+        self.bind_param(param.name.clone(), Arc::new(value));
+    }
+
+    fn bind_erased_array(
+        &mut self,
+        param: &ir::Parameter,
+        t: ir::Type,
         len: usize,
-    ) -> Arc<Self::Array> {
-        let size = len * std::mem::size_of::<S>();
+    ) -> Arc<dyn device::ArrayArgument + 'a> {
+        let size = len * unwrap!(t.len_byte()) as usize;
         let array = Arc::new(self.allocate_array(size));
         self.bind_param(param.name.clone(), Arc::clone(&array) as Arc<Argument>);
         array

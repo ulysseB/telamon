@@ -23,6 +23,12 @@ where
     }
 }
 
+impl Argument for Box<dyn device::ScalarArgument> {
+    fn as_size(&self) -> Option<u32> {
+        device::ScalarArgument::as_size(self.as_ref())
+    }
+}
+
 /// An array on the CUDA device.
 #[derive(Clone)]
 pub struct Array<'a, T> {

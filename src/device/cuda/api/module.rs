@@ -160,3 +160,13 @@ where
         device::ScalarArgument::as_size(self)
     }
 }
+
+impl Argument for Box<dyn device::ScalarArgument> {
+    fn raw_ptr(&self) -> *const libc::c_void {
+        device::ScalarArgument::raw_ptr(self.as_ref())
+    }
+
+    fn as_size(&self) -> Option<u32> {
+        device::ScalarArgument::as_size(self.as_ref())
+    }
+}

@@ -64,7 +64,7 @@ pub enum KernelParameters {
 
 impl KernelParameters {
     /// Runs the search for a best candidate.
-    fn optimize_kernel<C: device::ArgMap + device::Context>(
+    fn optimize_kernel<'a, C: device::ArgMap<'a> + device::Context>(
         &self,
         config: &Config,
         context: &mut C,
