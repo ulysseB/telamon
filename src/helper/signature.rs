@@ -1,5 +1,5 @@
 //! Helper functions to create a function signature and bind parameters.
-use device::{self, write_array, ScalarArgument};
+use device::{self, ArgMapExt, ArrayArgumentExt, ScalarArgument};
 use helper::tensor::{DimSize, Tensor};
 use ir::Signature;
 use itertools::Itertools;
@@ -9,7 +9,7 @@ use std::sync::Arc;
 /// Helper struct to build a `Signature`.
 pub struct Builder<'a, AM>
 where
-    AM: device::ArgMap + device::Context + 'a,
+    AM: device::Context + 'a,
 {
     random_fill: bool,
     rng: rand::XorShiftRng,
@@ -19,7 +19,7 @@ where
 
 impl<'a, AM> Builder<'a, AM>
 where
-    AM: device::ArgMap + device::Context + 'a,
+    AM: device::Context + 'a,
 {
     /// Creates a new builder for a function with the given name.
     pub fn new(name: &str, context: &'a mut AM) -> Self {
@@ -42,7 +42,10 @@ where
     }
 
     /// Creates a new parameter and binds it to the given value.
-    pub fn scalar<T: ScalarArgument>(&mut self, name: &str, arg: T) {
+    pub fn scalar<'b, T: ScalarArgument>(&mut self, name: &str, arg: T)
+    where
+        AM: device::ArgMap<'b>,
+    {
         self.signature.add_scalar(name.to_string(), T::t());
         let param = unwrap!(self.signature.params.last());
         self.context.bind_scalar(param, arg);
@@ -50,7 +53,10 @@ where
 
     /// Creates a new `i32` paramter and returns a size equals to this parameter. Sets the
     /// maximal size to the current size.
-    pub fn max_size<'b>(&mut self, name: &'b str, size: u32) -> DimSize<'b> {
+    pub fn max_size<'b>(&mut self, name: &'b str, size: u32) -> DimSize<'b>
+    where
+        AM: device::ArgMap<'b>,
+    {
         self.scalar(name, size as i32);
         DimSize {
             factor: 1,
@@ -60,11 +66,14 @@ where
     }
 
     /// Creates a new parameter and binds it to a freshly allocated an array.
-    pub fn array<S: ScalarArgument>(
+    pub fn array<'b, S: ScalarArgument>(
         &mut self,
         name: &str,
         size: usize,
-    ) -> Arc<AM::Array> {
+    ) -> Arc<dyn device::ArrayArgument + 'b>
+    where
+        AM: device::ArgMap<'b>,
+    {
         self.signature
             .add_array(self.context.device(), name.to_string(), S::t());
         let param = unwrap!(self.signature.params.last());
@@ -72,7 +81,7 @@ where
         let rng = &mut self.rng;
         if self.random_fill {
             let random = (0..size).map(|_| S::gen_random(rng)).collect_vec();
-            write_array(array.as_ref(), &random);
+            array.as_ref().write(&random);
         }
         array
     }
@@ -85,7 +94,7 @@ where
         read_only: bool,
     ) -> Tensor<'b, S>
     where
-        <AM as device::ArgMap>::Array: 'b,
+        AM: device::ArgMap<'b>,
     {
         let len = dim_sizes
             .iter()

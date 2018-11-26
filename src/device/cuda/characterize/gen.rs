@@ -2,7 +2,7 @@
 use codegen;
 use device::cuda::characterize::Table;
 use device::cuda::{Context, Gpu, Kernel, PerfCounterSet};
-use device::{ArgMap, Device, ScalarArgument};
+use device::{ArgMapExt, Device, ScalarArgument};
 use explorer;
 use helper::tensor::DimSize;
 use helper::{AutoOperand, Builder, Reduce};

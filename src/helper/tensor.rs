@@ -1,5 +1,5 @@
 //! Utilities to allocate and operate on tensors.
-use device::{read_array, ArgMap, ArrayArgument, Context, ScalarArgument};
+use device::{ArgMap, ArrayArgument, ArrayArgumentExt, Context, ScalarArgument};
 use helper::{Builder, LogicalDim, SignatureBuilder, TilingPattern};
 use ir;
 use itertools::Itertools;
@@ -99,7 +99,7 @@ impl<'a> TensorBuilder<'a> {
     pub fn finish<S, AM>(&self, builder: &mut SignatureBuilder<AM>) -> Tensor<'a, S>
     where
         S: ScalarArgument,
-        AM: ArgMap + Context + 'a,
+        AM: ArgMap<'a> + Context + 'a,
     {
         let size = self
             .storage_dims
@@ -213,7 +213,7 @@ where
     /// Reads the tensor value in the context and copies it on the host.
     pub fn read_to_host(&self, context: &Context) -> ArrayD<S> {
         use ndarray::ShapeBuilder;
-        let mut raw = read_array::<S>(self.array.as_ref());
+        let mut raw = self.array.as_ref().read::<S>();
         let (sizes, strides): (Vec<_>, _) = self
             .iter_dims
             .iter()

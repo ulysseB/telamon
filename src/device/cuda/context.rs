@@ -1,7 +1,7 @@
 ///! Defines the CUDA evaluation context.
 use crossbeam;
 use device::context::AsyncCallback;
-use device::cuda::api::{self, Argument};
+use device::cuda::api::Argument;
 use device::cuda::kernel::Thunk;
 use device::cuda::{Executor, Gpu, JITDaemon, Kernel};
 use device::{self, Device, EvalMode, ScalarArgument};
@@ -125,20 +125,23 @@ impl<'a> Context<'a> {
     }
 }
 
-impl<'a> device::ArgMap for Context<'a> {
-    type Array = api::Array<'a, i8>;
-
-    fn bind_scalar<S: ScalarArgument>(&mut self, param: &ir::Parameter, value: S) {
-        assert_eq!(param.t, S::t());
+impl<'a> device::ArgMap<'a> for Context<'a> {
+    fn bind_erased_scalar(
+        &mut self,
+        param: &ir::Parameter,
+        value: Box<dyn ScalarArgument>,
+    ) {
+        assert_eq!(param.t, value.get_type());
         self.bind_param(param.name.clone(), Arc::new(value));
     }
 
-    fn bind_array<S: ScalarArgument>(
+    fn bind_erased_array(
         &mut self,
         param: &ir::Parameter,
+        t: ir::Type,
         len: usize,
-    ) -> Arc<Self::Array> {
-        let size = len * std::mem::size_of::<S>();
+    ) -> Arc<dyn device::ArrayArgument + 'a> {
+        let size = len * unwrap!(t.len_byte()) as usize;
         let array = Arc::new(self.executor.allocate_array::<i8>(size));
         self.bind_param(param.name.clone(), array.clone());
         array
