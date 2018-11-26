@@ -1,6 +1,7 @@
 use std;
 use std::cell::RefCell;
 
+use failure;
 use libc;
 
 use telamon;
@@ -25,6 +26,8 @@ pub enum Error {
     UnknownError,
     #[fail(display = "{}", _0)]
     StrUtf8Error(#[cause] std::str::Utf8Error),
+    #[fail(display = "{}", _0)]
+    Custom(failure::Error),
 }
 
 impl From<telamon::ir::Error> for Error {
@@ -51,6 +54,12 @@ impl From<()> for Error {
     }
 }
 
+impl From<failure::Error> for Error {
+    fn from(err: failure::Error) -> Error {
+        Error::Custom(err)
+    }
+}
+
 /// Prints the error message in a string. Returns `null` if no error was
 /// present. The caller is responsible for freeing the string with `free`.
 #[no_mangle]
@@ -60,10 +69,16 @@ pub unsafe extern "C" fn telamon_strerror() -> *mut libc::c_char {
             .borrow()
             .as_ref()
             .map(|error| {
-                let string = unwrap!(std::ffi::CString::new(error.to_string()));
-                libc::strdup(string.as_ptr())
+                std::ffi::CString::new(error.to_string())
+                    .map(std::ffi::CString::into_raw)
+                    .unwrap_or(std::ptr::null_mut())
             }).unwrap_or(std::ptr::null_mut())
     })
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn telamon_str_free(str: *mut libc::c_char) {
+    std::mem::drop(std::ffi::CString::from_raw(str))
 }
 
 thread_local! {

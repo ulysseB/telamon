@@ -6,7 +6,7 @@ use utils::*;
 
 /// Uniquely identifies a block.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
-#[repr(C)]
+#[repr(transparent)]
 /// cbindgen:field-names=[id]
 pub struct MemId(pub u32);
 

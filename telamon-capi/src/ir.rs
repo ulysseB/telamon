@@ -2,12 +2,11 @@
 use libc;
 use num::rational::Ratio;
 use std;
+
 use telamon::ir;
 use telamon_utils::*;
-use Device;
 
-pub use telamon::ir::op::Rounding;
-
+use super::context::Context;
 use super::error::TelamonStatus;
 
 /// Creates a function signature that must be deallocated with
@@ -52,10 +51,14 @@ pub unsafe extern "C" fn telamon_ir_signature_add_array(
     signature: *mut ir::Signature,
     name: *const libc::c_char,
     element_type: *const ir::Type,
-    device: *const Device,
+    context: *const Context,
 ) {
     let name = unwrap!(std::ffi::CStr::from_ptr(name).to_str());
-    (*signature).add_array(&*(*device).0, name.to_string(), *element_type)
+    (*signature).add_array(
+        (*context).as_inner().device(),
+        name.to_string(),
+        *element_type,
+    )
 }
 
 /// Creates an integer type that must be freed with `telamon_ir_type_free`.
@@ -92,11 +95,11 @@ impl Into<ir::Function<'static, ()>> for Function {
 #[no_mangle]
 pub unsafe extern "C" fn telamon_ir_function_new(
     signature: *const ir::Signature,
-    device: *const Device,
+    context: *const Context,
 ) -> *mut Function {
     Box::into_raw(Box::new(Function(ir::Function::new(
         &*signature,
-        &*(*device).0,
+        (*context).as_inner().device(),
     ))))
 }
 

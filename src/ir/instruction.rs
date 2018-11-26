@@ -7,7 +7,7 @@ use utils::*;
 #[derive(
     Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
 )]
-#[repr(C)]
+#[repr(transparent)]
 /// cbindgen:field-names=[id]
 pub struct InstId(pub u32);
 

@@ -1,11 +1,11 @@
 //! IR instances compiled into CUDA kernels.
 use codegen;
 use codegen::ParamVal;
-use device;
 #[cfg(feature = "cuda")]
 use device::cuda::PerfCounterSet;
 use device::cuda::{api, Context, Gpu, JITDaemon};
 use device::Context as ContextTrait;
+use device::{self, Argument};
 use itertools::Itertools;
 use std;
 
@@ -271,7 +271,7 @@ impl<'a> std::fmt::Debug for ThunkArgs<'a> {
 
 /// An argument of a kernel ready to evaluate.
 enum ThunkArg<'a> {
-    ArgRef(&'a api::Argument),
+    ArgRef(&'a Argument),
     Size(i32),
     TmpArray(usize),
 }

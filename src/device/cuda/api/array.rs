@@ -1,7 +1,7 @@
 //! Allows the execution of kernels on the GPU.
-use device;
 use device::cuda::api::wrapper::*;
-use device::cuda::api::Argument;
+use device::{self, Argument};
+use ir;
 use libc;
 use num::integer::div_rem;
 use std;
@@ -104,9 +104,16 @@ pub fn compare_f32(lhs: &Array<f32>, rhs: &Array<f32>) -> f32 {
         .fold(0.0, f32::max)
 }
 
-impl<'a, T> Argument for Array<'a, T> {
+impl<'a, T> Argument for Array<'a, T>
+where
+    T: device::ScalarArgument,
+{
     fn raw_ptr(&self) -> *const libc::c_void {
         self.array as *const libc::c_void
+    }
+
+    fn t(&self) -> ir::Type {
+        T::t()
     }
 }
 

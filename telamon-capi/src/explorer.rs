@@ -1,12 +1,12 @@
 use std;
 use std::ffi::CStr;
 
-use libc::c_char;
+use libc::{c_char, size_t};
 use telamon::explorer::{self, Config};
 
+use super::context::Context;
 use super::error::TelamonStatus;
 use super::search_space::SearchSpace;
-use super::Context;
 
 /// Allocate a new explorer configuration object with suitable
 /// defaults.
@@ -14,13 +14,26 @@ use super::Context;
 /// The resulting config object must be freed using
 /// `telamon_config_free`.
 #[no_mangle]
-pub extern "C" fn telamon_config_new() -> *mut Config {
+pub extern "C" fn telamon_explorer_config_new() -> *mut Config {
     Box::into_raw(Box::new(Config::default()))
+}
+
+/// Create an explorer configuration object from a JSON-encoded string.
+///
+/// The resulting object must be destroyed using `telamon_explorer_config_free`.
+#[no_mangle]
+pub extern "C" fn telamon_explorer_config_from_json(
+    buf: *const c_char,
+    len: size_t,
+) -> *mut Config {
+    let slice = std::slice::from_raw_parts(buf as *const u8, len);
+    let config_str = unwrap_or_exit!(std::str::from_utf8(slice), null);
+    Box::into_raw(Box::new(Config::from_json(config_str)))
 }
 
 /// Frees an explorer configuration.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_config_free(config: *mut Config) {
+pub unsafe extern "C" fn telamon_explorer_config_free(config: *mut Config) {
     std::mem::drop(Box::from_raw(config))
 }
 
@@ -64,9 +77,14 @@ pub unsafe extern "C" fn telamon_explore(
         .cloned()
         .map(|search_space| search_space.0)
         .collect();
-    let best = explorer::find_best(&*config, &*(*context).0, search_space);
-    best.map(SearchSpace)
-        .map(Box::new)
-        .map(Box::into_raw)
-        .unwrap_or_else(std::ptr::null_mut)
+    let best =
+        explorer::find_best(&*config, (*context).as_inner().as_ref(), search_space);
+
+    unwrap_or_exit!(
+        best.map(SearchSpace)
+            .map(Box::new)
+            .map(Box::into_raw)
+            .ok_or(()),
+        null
+    )
 }

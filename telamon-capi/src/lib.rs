@@ -16,43 +16,28 @@ extern crate failure;
 #[macro_use]
 pub mod error;
 
-#[cfg(feature = "cuda")]
 pub mod cuda;
 pub mod explorer;
 pub mod ir;
 pub mod search_space;
 
+pub mod context;
+
 use libc::{c_char, c_int, c_uint, size_t, uint32_t};
+
 use telamon::device;
-use telamon::device::x86;
 use telamon::explorer::config::Config;
 use telamon::helper::TilingPattern;
-pub use telamon_kernels::{linalg, Kernel, MemInit};
+pub use telamon_kernels::{
+    linalg, DynKernel, Kernel, KernelBuilder, MemInit, SignedKernel,
+};
 
-// Pointers to `device::Context` and `device::Device` are not C-like pointers.
-// Instead, they are fat pointers containing both a regular pointer to the
-// object and a pointer to the vtable. Thus, we define wrappers to encapsulate
-// the pointers in an opaque type and we return pointers to the wrappers to C
-// users.
+use error::TelamonStatus;
 
-/// Description of the evaluation context. In particular, in contains the
-/// mapping between argument names and argument values.
-pub struct Context(pub(crate) *const device::Context);
-
-/// Description of the targeted device.
-pub struct Device(*const device::Device);
-
-/// Initializes the logger.
+/// Initializes Telamon.  This must be called before calling any other APIs.
 #[no_mangle]
-pub extern "C" fn env_logger_try_init() {
+pub extern "C" fn telamon_init() {
     let _ = env_logger::try_init();
-}
-
-/// Supported device types for running kernels.
-#[repr(C)]
-pub enum DeviceId {
-    X86,
-    Cuda,
 }
 
 /// Supported kernels.
@@ -63,24 +48,53 @@ pub enum KernelParameters {
 }
 
 impl KernelParameters {
+    fn erase<'a, K, C>(
+        (sig, context): (SignedKernel<'a, K>, &'a C),
+    ) -> (Box<DynKernel<'a>>, &'a dyn device::Context)
+    where
+        K: Kernel<'a> + 'a,
+        C: device::Context + 'a,
+    {
+        (Box::new(sig), context)
+    }
+
+    fn build<'a, C: device::ArgMap + device::Context + 'a>(
+        &self,
+        context: &'a mut C,
+    ) -> (Box<DynKernel<'a>>, &'a dyn device::Context) {
+        let builder = KernelBuilder::default().mem_init(MemInit::RandomFill);
+
+        match self {
+            KernelParameters::MatMul(params) => Self::erase(
+                builder.build::<linalg::MatMul<f32>, _>(params.clone(), context),
+            ),
+        }
+    }
+
     /// Runs the search for a best candidate.
     fn optimize_kernel<C: device::ArgMap + device::Context>(
         &self,
         config: &Config,
         context: &mut C,
-    ) {
-        match self {
-            KernelParameters::MatMul(params) => {
-                linalg::MatMul::<f32>::benchmark(
-                    config,
-                    params.clone(),
-                    0,
-                    MemInit::RandomFill,
-                    context,
-                );
-            }
-        }
+    ) -> Vec<f64> {
+        let (sig, context) = self.build(context);
+        sig.benchmark(context, config, 0)
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn telamon_kernel_build(
+    kernel: *const KernelParameters,
+    context: *mut context::Context,
+    kernel_out: *mut *mut DynKernel<'static>,
+    context_out: *mut *mut context::ContextRef,
+) -> TelamonStatus {
+    let (kernel, context) = (&*kernel).build(&mut *context);
+
+    *kernel_out = Box::into_raw(kernel);
+    *context_out = Box::into_raw(Box::new(context::ContextRef(context)));
+
+    TelamonStatus::Ok
 }
 
 /// Helper function to create a TilingPattern from a buffer of u32
@@ -100,7 +114,7 @@ unsafe fn c_tiling_pattern(data: *const u32, len: usize) -> Option<TilingPattern
 /// from during the call, but no pointer to the corresponding data is
 /// kept afterwards.
 #[no_mangle]
-pub unsafe extern "C" fn kernel_matmul_new(
+pub unsafe extern "C" fn telamon_kernel_matmul_new(
     m: c_int,
     n: c_int,
     k: c_int,
@@ -133,39 +147,6 @@ pub unsafe extern "C" fn kernel_matmul_new(
 /// functions. The `params` pointer becomes invalid and must not be used again
 /// after calling `kernel_free`.
 #[no_mangle]
-pub unsafe extern "C" fn kernel_free(params: *mut KernelParameters) -> () {
+pub unsafe extern "C" fn telamon_kernel_free(params: *mut KernelParameters) -> () {
     std::mem::drop(Box::from_raw(params));
-}
-
-/// Optimize a kernel on a given device. `config_data` points to a JSON-encoded
-/// string of length `config_len` containing the configuration parameters for
-/// the explorer.
-#[no_mangle]
-pub unsafe extern "C" fn kernel_optimize(
-    params: *mut KernelParameters,
-    device: DeviceId,
-    config_data: *const c_char,
-    config_len: size_t,
-) -> bool {
-    let config = {
-        let config_str = {
-            let slice = std::slice::from_raw_parts(config_data as *const u8, config_len);
-            std::str::from_utf8(slice).expect("Invalid configuration string")
-        };
-        Config::from_json(config_str)
-    };
-    let _bench_result = match device {
-        DeviceId::X86 => (*params).optimize_kernel(&config, &mut x86::Context::default()),
-        DeviceId::Cuda => {
-            #[cfg(feature = "cuda")]
-            {
-                let executor = device::cuda::Executor::init();
-                let mut context = device::cuda::Context::new(&executor);
-                (*params).optimize_kernel(&config, &mut context);
-            }
-            #[cfg(not(feature = "cuda"))]
-            return false;
-        }
-    };
-    true
 }

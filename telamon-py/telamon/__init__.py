@@ -1,107 +1,201 @@
+import abc
 import contextlib
+import functools
 import json
+import weakref
+
 import numpy as np
 from telamon._capi import ffi, lib
 
-# Initialize Rust logger early.
-lib.env_logger_try_init()
+# Initialize Telamon as early as possible.
+lib.telamon_init()
 
 
 class TelamonError(Exception):
-    """Base error class for Telamon errors."""
+    """Exception wrapper for Telamon errors."""
 
+    def __init__(self):
+        strerror = lib.telamon_strerror()
+        if strerror == ffi.NULL:
+            strerror = "<unknown>"
+        else:
+            strerror = ffi.gc(strerror, lib.telamon_str_free)
+            strerror = ffi.string(strerror).decode('utf-8', 'replace')
 
-# FIXME: The device stack should be a thread-local variable.
-_DEVICE_STACK = []
+        super().__init__(strerror)
 
+def _objptr(arg):
+    """Helper function to automatically unwrap the `_objptr` field of wrapped
+    cffi objects."""
 
-@contextlib.contextmanager
-def device(device_spec: str):
-    """A context manager setting the device to execute kernels on.
+    if isinstance(arg, tuple):
+        return tuple(_objptr(arg) for arg in arg)
 
-    .. code-block::
-        # Executed on the default device
-        tl.MatMul(1024, 1024, 1024).optimize()
+    return getattr(arg, '_objptr', arg)
 
-        # Executed on the GPU (if available)
-        with tl.device('GPU'):
-            tl.MatMul(1024, 1024, 1024).optimize()
+def managed(new, delete=None):
+    """Decorator for creating functions creating owned objects.
 
-    Args:
-        device_spec: The device specification to use. One of "CPU" or "GPU".
+    This returns a function behaving like `new`, except for two points:
+
+     - When `new` returns `NULL`, a `TelamonError` is raised
+     - Otherwise, `delete` is registered as a cffi destructor on the returned
+       pointer with `ffi.gc`
     """
 
-    if device_spec.upper() == "CPU":
-        device_id = lib.DeviceId_X86
-    elif device_spec.upper() == "GPU":
-        device_id = lib.DeviceId_Cuda
-    else:
-        raise ValueError(
-            'Invalid device specification: {}; expected "CPU" or "GPU"'.format(
-                device_spec
-            )
-        )
+    @functools.wraps(new)
+    def wrapped(*args):
+        objptr = new(*_objptr(args))
+        if objptr == ffi.NULL:
+            raise TelamonError()
+        if delete is not None:
+            objptr = ffi.gc(objptr, delete)
+        return objptr
 
-    _DEVICE_STACK.append(device_id)
-    try:
-        yield
-    finally:
-        popped_id = _DEVICE_STACK.pop()
-        assert popped_id == device_id
+    return wrapped
+
+def checked(func):
+    """Decorator for creating checked functions.
+
+    This returns a function behaving like `func`, except that it raises a
+    `TelamonError` if `func` returns a non-`Ok` value.
+    """
+
+    @functools.wraps(func)
+    def wrapped(*args):
+        if func(*_objptr(args)) != lib.TelamonStatus_Ok:
+            raise TelamonError()
+
+    return wrapped
+
+_DEPS = weakref.WeakKeyDictionary()
+
+def _record_dependencies(src, *dst):
+    assert src not in _DEPS
+    _DEPS[src] = dst
+
+class Device(abc.ABC):
+    """An abstract base class representing Telamon devices."""
+
+    @abc.abstractmethod
+    def _new_context(self):
+        raise NotImplementedError
 
 
-def _get_current_device_id():
-    return lib.DeviceId_X86 if not _DEVICE_STACK else _DEVICE_STACK[-1]
+class X86Device(Device):
+    """An x86 device."""
+
+    _ffi_context_new = staticmethod(managed(
+        lib.telamon_x86_context_new, lib.telamon_context_free))
+
+    def _new_context(self):
+        return self._ffi_context_new()
 
 
-class RustObject:
-    """Thin wrapper around a Rust object."""
+class CudaDevice(Device):
+    """A CUDA device."""
 
-    __slots__ = ("_objptr",)
+    _ffi_executor_new = staticmethod(managed(
+        lib.telamon_cuda_executor_new, lib.telamon_cuda_executor_free))
+    _ffi_context_new = staticmethod(managed(
+        lib.telamon_cuda_context_new, lib.telamon_context_free))
 
-    # The deallocation function. This should be defined by subclasses, but we
-    # allow it to be left as `None` for non-allocated types that are moved out
-    # of the C API directly (e.g. integers or booleans).
-    _dealloc_ = None
+    def __init__(self):
+        self._executor = self._ffi_executor_new()
+
+    def _new_context(self):
+        context = self._ffi_context_new(self._executor)
+
+        # Record the context -> executor dependency to ensure objects get
+        # garbage collected in the right order.
+        _record_dependencies(context, self._executor)
+
+        return context
+
+class Context:
+    """A Telamon context."""
 
     def __init__(self, objptr):
         self._objptr = objptr
 
-    @property
-    def objptr(self):
-        assert self._objptr is not None
-        return self._objptr
 
-    def __del__(self):
-        # This should not happen as __del__ usually shouldn't be called more
-        # than once, but we may as well be extra careful and not send a null
-        # pointer to the deallocation function.
-        if self._objptr is None:
-            return
+class ExplorerConfig:
+    """Telamon Explorer configuration."""
 
-        dealloc = self.__class__._dealloc_
-        if dealloc is not None:
-            dealloc(self._objptr)
+    _ffi_from_json = staticmethod(
+        managed(
+            lib.telamon_explorer_config_from_json,
+            lib.telamon_explorer_config_free))
 
-        # Prevent double free/use after free.
-        self._objptr = None
+    def __init__(self, config=None):
+        config_buf = ffi.from_buffer(json.dumps(config or {}).encode())
+        self._objptr = self._ffi_from_json(config_buf, len(config_buf))
 
 
-class Kernel(RustObject):
+class SignedKernel:
+    """A built kernel with associated signature."""
+
+    _ffi_benchmark = staticmethod(
+        checked(lib.telamon_signed_kernel_benchmark))
+
+    def __init__(self, objptr, *, context: Context):
+        self._objptr = objptr
+        self.context = context
+
+    def benchmark(
+            self,
+            num_samples: int,
+            *,
+            context: Context = None,
+            config: ExplorerConfig = None,
+    ):
+        """Benchmark the kernel."""
+
+        if context is None:
+            context = self.context
+
+        if not isinstance(config, ExplorerConfig):
+            config = ExplorerConfig(config)
+
+        out = np.ndarray(num_samples, dtype=np.float64)
+        self._ffi_benchmark(
+            self,
+            context,
+            config,
+            num_samples,
+            ffi.cast('double *', out.ctypes.data))
+        return out
+
+
+class Kernel:
     """Base class for Python objects representing Telamon kernels."""
 
-    _dealloc_ = lib.kernel_free
+    _ffi_build = staticmethod(checked(lib.telamon_kernel_build))
 
-    def optimize(self, config=None):
-        config_bytes = json.dumps(config or {}).encode()
+    def build(self, device: Device) -> (SignedKernel, Context):
+        # pylint:disable=protected-access
+        context = device._new_context()
+        # pylint:enable=protected-access
 
-        if not lib.kernel_optimize(
-            self.objptr,
-            _get_current_device_id(),
-            ffi.new("char[]", config_bytes),
-            len(config_bytes),
-        ):
-            raise TelamonError("Optimization failed.")
+        context_ref = ffi.new("Context*")
+        signed_kernel = ffi.new("SignedKernel*")
+
+        self._ffi_build(self, context, signed_kernel, context_ref)
+
+        # The SignedKernel is owned and may contain a reference to the context.
+        signed_kernel = ffi.gc(signed_kernel, lib.telamon_signed_kernel_free)
+        _record_dependencies(signed_kernel, context)
+
+        # The context_ref is a reference to the context
+        _record_dependencies(context_ref, context)
+
+        return SignedKernel(
+            signed_kernel,
+            context=Context(context_ref),
+        )
+
+    def optimize(self, device: Device, config=None):
+        return self.build(device).benchmark(0, config=config)
 
 
 class _Tiling:
@@ -155,6 +249,9 @@ class _Tiling:
 class MatMul(Kernel):
     """A Matrix Multiply kernel."""
 
+    _ffi_new = staticmethod(managed(
+        lib.telamon_kernel_matmul_new, lib.telamon_kernel_free))
+
     def __init__(
         self,
         m: int,
@@ -181,7 +278,7 @@ class MatMul(Kernel):
         k_tiles = _Tiling(k_tiles, copy=False)
 
         super().__init__(
-            lib.kernel_matmul_new(
+            self._ffi_new(
                 m,
                 n,
                 k,

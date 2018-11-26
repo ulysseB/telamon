@@ -19,13 +19,15 @@ before_script:
   - flex --version
 jobs:
   include:
+    # We use `cargo check` to test all targets, including all
+    # benches/binaries/etc. then we run the tests only
     - stage: test
-      script: cargo check --all --all-targets --tests --benches
-    - script: cargo test
+      script: cargo check --all-targets --profile test && cargo test
     - script: cd telamon-utils && cargo test
-    - script: cd telamon-gen && cargo test
+    - script: cd telamon-gen && cargo check --all-targets --profile test && cargo test
     - script: cd telamon-gen/cc_tests && cargo test
-    - script: cd kernels && cargo test --release
+      # Kernel tests are slow; we run them in release mode.
+    - script: cd kernels && cargo check --all-targets --profile test && cargo test --release
     - script: cd telamon-gen && LEX="flex" cargo build --features "lex"
     - script: cargo fmt --all -- --check
       before_script: rustup component add rustfmt-preview

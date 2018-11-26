@@ -7,8 +7,8 @@ use explorer::Candidate;
 use ir;
 
 use super::{
-    ArgMap, ArrayArgument, AsyncCallback, AsyncEvaluator, Context, Device, EvalMode,
-    ScalarArgument,
+    ArgMap, Argument, ArrayArgument, AsyncCallback, AsyncEvaluator, Context, Device,
+    ErasedArgMap, EvalMode, ScalarArgument,
 };
 
 /// A fake context to use when we don't actually care about the
@@ -91,6 +91,22 @@ impl<D: Device> ArgMap for FakeContext<D> {
         _: &ir::Parameter,
         _: usize,
     ) -> Arc<Self::Array> {
+        Arc::new(FakeArray)
+    }
+}
+
+impl<'a, D: Device> ErasedArgMap<'a> for FakeContext<D> {
+    fn erased_bind_scalar(&mut self, param: &ir::Parameter, value: Box<dyn Argument>) {
+        assert_eq!(param.t, value.t());
+
+        self.parameters.insert(param.name.clone(), value.as_size());
+    }
+
+    fn erased_bind_array(
+        &mut self,
+        param: &ir::Parameter,
+        len: usize,
+    ) -> Arc<dyn ArrayArgument + 'a> {
         Arc::new(FakeArray)
     }
 }

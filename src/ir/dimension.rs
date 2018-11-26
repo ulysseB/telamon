@@ -7,7 +7,7 @@ use utils::*;
 #[derive(
     Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
 )]
-#[repr(C)]
+#[repr(transparent)]
 /// cbindgen:field-names=[id]
 pub struct DimId(pub u32);
 
@@ -232,7 +232,7 @@ impl<'a, L> Statement<'a, L> for Dimension<'a, L> {
 
 /// Provides a unique identifier for logic dimensions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[repr(C)]
+#[repr(transparent)]
 pub struct LogicalDimId(pub u32);
 
 /// A logic dimension composed of multiple `Dimension`s.

@@ -17,7 +17,7 @@ use std::time::Duration;
 use telamon::device::{cuda, Context};
 use telamon::explorer::local_selection;
 use telamon::{device, explorer, helper};
-use telamon_kernels::{linalg, Kernel};
+use telamon_kernels::{linalg, Kernel, KernelBuilder, MemInit};
 use utils::*;
 
 /// The number of candidates to try.
@@ -38,37 +38,35 @@ fn main() {
     let executor = cuda::Executor::init();
     let small_malmul = linalg::MatMulP::new(128, 128, 128);
     let big_malmul = linalg::MatMulP::new(256, 256, 256);
-    accuracy::<linalg::MatMul<f32>>(&small_malmul, "matmul_128", &executor);
-    accuracy::<linalg::MatMul<f32>>(&big_malmul, "matmul_256", &executor);
+    accuracy::<linalg::MatMul<f32>>(small_malmul, "matmul_128", &executor);
+    accuracy::<linalg::MatMul<f32>>(big_malmul, "matmul_256", &executor);
 }
 
-fn accuracy<'a, K>(params: &K::Parameters, name: &str, executor: &'a cuda::Executor)
+fn accuracy<'a, K>(params: K::Parameters, name: &str, executor: &'a cuda::Executor)
 where
     K: Kernel<'a>,
 {
     let mut context = cuda::Context::new(executor);
     info!("Generating {} candidates", NUM_TESTS);
-    let (kernel, signature) = {
-        let mut builder = helper::SignatureBuilder::new(name, &mut context);
-        builder.set_random_fill(true);
-        let kernel = K::build_signature(params.clone(), &mut builder);
-        (kernel, builder.get())
-    };
-    let candidates = kernel.build_body(&signature, &context);
+    let (sig, context) = KernelBuilder::default()
+        .name(name.to_string())
+        .mem_init(MemInit::RandomFill)
+        .build::<K, _>(params, &mut context);
+    let candidates = sig.build_candidates(context);
     let candidates = std::iter::repeat(())
         .flat_map(|()| {
             let order = explorer::config::NewNodeOrder::WeightedRandom;
             let bounds = candidates.iter().map(|c| c.bound.value()).enumerate();
             let candidate_idx = local_selection::pick_index(order, bounds, CUT);
             let candidate = candidates[unwrap!(candidate_idx)].clone();
-            local_selection::descend(&Default::default(), order, &context, candidate, CUT)
+            local_selection::descend(&Default::default(), order, context, candidate, CUT)
         }).take(NUM_TESTS)
         .collect_vec();
     info!("Evaluating candidates, simulating a GPU-bound exploration");
-    let fast_evals = run_evaluations(&candidates, &context, NUM_FAST_SAMPLES, None);
+    let fast_evals = run_evaluations(&candidates, context, NUM_FAST_SAMPLES, None);
     info!("Evaluating candidates, simulating a CPU-bound exploration");
     let sleep = Some(SLEEP_TIME);
-    let slow_evals = run_evaluations(&candidates, &context, NUM_SLOW_SAMPLES, sleep);
+    let slow_evals = run_evaluations(&candidates, context, NUM_SLOW_SAMPLES, sleep);
     info!("Evaluation finished, analysing results");
     let results = candidates
         .iter()

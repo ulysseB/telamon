@@ -67,7 +67,7 @@ impl<'a> Kernel<'a> {
         &self,
         blocks: &[u32; 3],
         threads: &[u32; 3],
-        args: &[&Argument],
+        args: &[&device::Argument],
     ) -> Result<u64, ()> {
         unsafe {
             let arg_raw_ptrs = args.iter().map(|x| x.raw_ptr()).collect_vec();
@@ -94,7 +94,7 @@ impl<'a> Kernel<'a> {
         &self,
         blocks: &[u32; 3],
         threads: &[u32; 3],
-        args: &[&Argument],
+        args: &[&device::Argument],
         counters: &PerfCounterSet,
     ) -> Vec<u64> {
         counters.instrument(unsafe { &*self.function }, blocks, threads, args)
@@ -106,7 +106,7 @@ impl<'a> Kernel<'a> {
         &self,
         blocks: &[u32; 3],
         threads: &[u32; 3],
-        args: &[&Argument],
+        args: &[&device::Argument],
     ) -> f64 {
         unsafe {
             let arg_raw_ptrs = args.iter().map(|x| x.raw_ptr()).collect_vec();
@@ -137,26 +137,3 @@ impl<'a> Drop for Kernel<'a> {
 
 unsafe impl<'a> Sync for Kernel<'a> {}
 unsafe impl<'a> Send for Kernel<'a> {}
-
-/// An object that can be passed to a CUDA kernel.
-pub trait Argument: Sync + Send {
-    /// Returns a pointer to the object.
-    fn raw_ptr(&self) -> *const libc::c_void;
-    /// Returns the argument value if it can represent a size.
-    fn as_size(&self) -> Option<u32> {
-        None
-    }
-}
-
-impl<T> Argument for T
-where
-    T: device::ScalarArgument,
-{
-    fn raw_ptr(&self) -> *const libc::c_void {
-        device::ScalarArgument::raw_ptr(self)
-    }
-
-    fn as_size(&self) -> Option<u32> {
-        device::ScalarArgument::as_size(self)
-    }
-}

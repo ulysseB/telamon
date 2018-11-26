@@ -9,6 +9,47 @@ use rand::Rng;
 use std;
 use std::fmt::Display;
 
+pub trait Argument: Sync + Send {
+    fn as_size(&self) -> Option<u32> {
+        None
+    }
+
+    fn raw_ptr(&self) -> *const libc::c_void;
+
+    fn t(&self) -> ir::Type;
+}
+
+impl<T> Argument for T
+where
+    T: ScalarArgument,
+{
+    fn as_size(&self) -> Option<u32> {
+        ScalarArgument::as_size(self)
+    }
+
+    fn raw_ptr(&self) -> *const libc::c_void {
+        ScalarArgument::raw_ptr(self)
+    }
+
+    fn t(&self) -> ir::Type {
+        <Self as ScalarArgument>::t()
+    }
+}
+
+impl<'a> Argument for Box<dyn Argument + 'a> {
+    fn as_size(&self) -> Option<u32> {
+        Argument::as_size(self.as_ref())
+    }
+
+    fn raw_ptr(&self) -> *const libc::c_void {
+        Argument::raw_ptr(self.as_ref())
+    }
+
+    fn t(&self) -> ir::Type {
+        Argument::t(self.as_ref())
+    }
+}
+
 /// Represents a value that can be used as a `Function` argument. Must ensures the type
 /// is a scalar and does not contains any reference.
 pub unsafe trait ScalarArgument:
@@ -18,14 +59,20 @@ pub unsafe trait ScalarArgument:
     fn as_size(&self) -> Option<u32> {
         None
     }
+
     /// Returns the type of the argument.
     fn t() -> ir::Type;
+
     /// Returns a raw pointer to the object.
     fn raw_ptr(&self) -> *const libc::c_void;
+
     /// Returns an operand holding the argument value as a constant.
     fn as_operand<L>(&self) -> ir::Operand<'static, L>;
+
     /// Generates a random instance of the argument type.
-    fn gen_random<R: Rng>(&mut R) -> Self;
+    fn gen_random<R: Rng>(&mut R) -> Self
+    where
+        Self: Sized;
 }
 
 unsafe impl ScalarArgument for f32 {

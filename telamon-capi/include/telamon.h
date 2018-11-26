@@ -99,20 +99,11 @@ typedef enum {
 typedef struct Config Config;
 
 /*
- * Description of the evaluation context. In particular, in contains the
- * mapping between argument names and argument values.
+ * A CUDA evaluation context.
  */
 typedef struct Context Context;
 
-/*
- * Opaque type that contains the mapping of kernel parameters to actual values.
- */
-typedef struct CudaEnvironment CudaEnvironment;
-
-/*
- * Description of the targeted device.
- */
-typedef struct Device Device;
+typedef struct CudaExecutor CudaExecutor;
 
 /*
  * A function ready to execute on a device, derived from a constrained IR instance.
@@ -172,37 +163,24 @@ typedef struct String String;
 typedef struct Type Type;
 
 /*
- * Uniquely identifies variables.
- */
-typedef struct VarId VarId;
-
-/*
  * Provides a unique identifier for iteration dimensions.
  */
-typedef struct {
-    uint32_t id;
-} DimId;
+typedef uint32_t DimId;
 
 /*
  * Provides a unique identifier for logic dimensions.
  */
-typedef struct {
-    uint32_t _0;
-} LogicalDimId;
+typedef uint32_t LogicalDimId;
 
 /*
  * Uniquely identifies an instruction.
  */
-typedef struct {
-    uint32_t id;
-} InstId;
+typedef uint32_t InstId;
 
 /*
  * Uniquely identifies a block.
  */
-typedef struct {
-    uint32_t id;
-} MemId;
+typedef uint32_t MemId;
 
 /*
  * Specifies the version of an instruction to use.
@@ -225,6 +203,11 @@ typedef struct {
 typedef struct {
     uint8_t bits;
 } ThreadMapping;
+
+/*
+ * Uniquely identifies variables.
+ */
+typedef uint16_t VarId;
 
 /*
  * Specifies where to store a variable.
@@ -518,11 +501,6 @@ typedef struct {
 } Action;
 
 /*
- * Initializes the logger.
- */
-void env_logger_try_init(void);
-
-/*
  * Deallocates kernel parameters created through one of the `kernel_*_new`
  * functions. The `params` pointer becomes invalid and must not be used again
  * after calling `kernel_free`.
@@ -561,6 +539,44 @@ bool kernel_optimize(KernelParameters *params,
                      size_t config_len);
 
 /*
+ * Allocates and binds an array to the given parameter. `size` is given in bytes.
+ *
+ * The allocated array is managed by the context and doesn't need to be explicitely
+ * destroyed.
+ */
+TelamonStatus telamon_bind_array(Context *context, const Parameter *param, size_t size);
+
+/*
+ * Binds a `double` to a parameter.
+ */
+TelamonStatus telamon_bind_double(Context *context, const Parameter *param, double value);
+
+/*
+ * Binds a `float` to a parameter.
+ */
+TelamonStatus telamon_bind_float(Context *context, const Parameter *param, float value);
+
+/*
+ * Binds an `int16_t` to a parameter.
+ */
+TelamonStatus telamon_bind_int16(Context *context, const Parameter *param, int16_t value);
+
+/*
+ * Binds an `int32_t` to a parameter.
+ */
+TelamonStatus telamon_bind_int32(Context *context, const Parameter *param, int32_t value);
+
+/*
+ * Binds an `int64_t` to a parameter.
+ */
+TelamonStatus telamon_bind_int64(Context *context, const Parameter *param, int64_t value);
+
+/*
+ * Binds an `int8_t` to a parameter.
+ */
+TelamonStatus telamon_bind_int8(Context *context, const Parameter *param, int8_t value);
+
+/*
  * Frees an explorer configuration.
  */
 void telamon_config_free(Config *config);
@@ -575,63 +591,20 @@ void telamon_config_free(Config *config);
 Config *telamon_config_new(void);
 
 /*
- * Allocates and binds an array to the given parameter. `size` is given in bytes.
- *
- * The allocated array is managed by the context and doesn't need to be explicitely
- * destroyed.
+ * Create a CUDA context from an executor.  The context keeps a pointer to the executor and must
+ * be freed (using `telamon_context_free`) before freeing the executor.
  */
-void telamon_cuda_bind_array(CudaEnvironment *env, const Parameter *param, size_t size);
+Context *telamon_cuda_context_new(const CudaExecutor *executor);
 
 /*
- * Binds a `double` to a parameter.
+ * Destroys a CUDA executor.
  */
-void telamon_cuda_bind_double(CudaEnvironment *env, const Parameter *param, double value);
+void telamon_cuda_executor_free(CudaExecutor *executor);
 
 /*
- * Binds a `float` to a parameter.
+ * Create a new CUDA executor.
  */
-void telamon_cuda_bind_float(CudaEnvironment *env, const Parameter *param, float value);
-
-/*
- * Binds an `int16_t` to a parameter.
- */
-void telamon_cuda_bind_int16(CudaEnvironment *env, const Parameter *param, int16_t value);
-
-/*
- * Binds an `int32_t` to a parameter.
- */
-void telamon_cuda_bind_int32(CudaEnvironment *env, const Parameter *param, int32_t value);
-
-/*
- * Binds an `int64_t` to a parameter.
- */
-void telamon_cuda_bind_int64(CudaEnvironment *env, const Parameter *param, int64_t value);
-
-/*
- * Binds an `int8_t` to a parameter.
- */
-void telamon_cuda_bind_int8(CudaEnvironment *env, const Parameter *param, int8_t value);
-
-/*
- * Destroys a CUDA context.
- */
-void telamon_cuda_environment_free(CudaEnvironment *env);
-
-/*
- * Returns a pointer to a CUDA environement. The caller is responsible for deallocating
- * the pointer by calling `telamon_cuda_destroy_environment`.
- */
-CudaEnvironment *telamon_cuda_environment_new(void);
-
-/*
- * Returns a pointer to ithe evaluation context.
- */
-const Context *telamon_cuda_get_context(const CudaEnvironment *env);
-
-/*
- * Returns a pointer to the description of the target device.
- */
-const Device *telamon_cuda_get_device(const CudaEnvironment *env);
+CudaExecutor *telamon_cuda_executor_new(void);
 
 /*
  * Run the exploration according to the configuration.
@@ -651,6 +624,11 @@ SearchSpace *telamon_explore(const Config *config,
                              const Context *context,
                              uintptr_t num_search_spaces,
                              const SearchSpace *search_space);
+
+/*
+ * Initializes Telamon.  This must be called before calling any other APIs.
+ */
+void telamon_init(void);
 
 /*
  * Returns the size of a dimension.
@@ -692,7 +670,7 @@ void telamon_ir_function_free(Function *function);
  * Creates a function to optimize. The function must be freed with
  * `telamon_ir_function_free`. `signature` and `device` must outlive the function.
  */
-Function *telamon_ir_function_new(const Signature *signature, const Device *device);
+Function *telamon_ir_function_new(const Signature *signature, const Context *context);
 
 /*
  * Creates a constant floating point operand. The provided type must be a float type.
@@ -821,7 +799,7 @@ Operator *telamon_ir_operator_new_tensor_store(Function *function,
 void telamon_ir_signature_add_array(Signature *signature,
                                     const char *name,
                                     const Type *element_type,
-                                    const Device *device);
+                                    const Context *context);
 
 /*
  * Adds a scalar parameter to the function signature.
