@@ -13,7 +13,7 @@ pub use self::counter::{PerfCounter, PerfCounterSet};
 pub use self::error::*;
 pub use self::executor::*;
 pub use self::jit_daemon::JITDaemon;
-pub use self::module::{Kernel, Module};
+pub use self::module::{Argument, Kernel, Module};
 
 use self::jit_daemon::DaemonSpawner;
 

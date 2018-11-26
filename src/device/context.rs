@@ -1,6 +1,6 @@
 //! Describes the context for which a function must be optimized.
 use codegen::{self, Function};
-use device::{Argument, ArrayArgument, Device, ScalarArgument};
+use device::{ArrayArgument, Device, ScalarArgument};
 use explorer::Candidate;
 use ir;
 use num;
@@ -14,7 +14,7 @@ pub type AsyncCallback<'a, 'b> = SendBoxFnOnce<'b, (Candidate<'a>, f64)>;
 /// Describes the context for which a function must be optimized.
 pub trait Context: Sync {
     /// Returns the description of the device the code runs on.
-    fn device(&self) -> &dyn Device;
+    fn device(&self) -> &Device;
     /// Returns the execution time of a fully specified implementation in nanoseconds.
     ///
     /// This function should be called multiple times to obtain accurate execution time.
@@ -49,16 +49,6 @@ pub trait Context: Sync {
         );
         result
     }
-}
-
-pub trait ErasedArgMap<'a> {
-    fn erased_bind_scalar(&mut self, param: &ir::Parameter, value: Box<dyn Argument>);
-
-    fn erased_bind_array(
-        &mut self,
-        param: &ir::Parameter,
-        len: usize,
-    ) -> Arc<dyn ArrayArgument + 'a>;
 }
 
 /// Binds the argument names to their values.

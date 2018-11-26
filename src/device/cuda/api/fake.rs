@@ -2,9 +2,26 @@
 //! is not installed. This allows us to reference the CUDA-specific types without cuda
 //! installed and to run tests on functions that do not rely on the executor.
 
+use device;
 use device::cuda::api;
-use device::{self, Argument};
 use std::marker::PhantomData;
+
+/// An argument that can be passed to the executor.
+pub trait Argument: Send + Sync {
+    /// Returns the argument value if it can represent a size.
+    fn as_size(&self) -> Option<u32> {
+        None
+    }
+}
+
+impl<T> Argument for T
+where
+    T: device::ScalarArgument,
+{
+    fn as_size(&self) -> Option<u32> {
+        device::ScalarArgument::as_size(self)
+    }
+}
 
 /// An array on the CUDA device.
 #[derive(Clone)]
@@ -26,7 +43,7 @@ where
     }
 }
 
-// impl<'a, T> Argument for Array<'a, T> where T: device::ScalarArgument {}
+impl<'a, T> Argument for Array<'a, T> where T: device::ScalarArgument {}
 
 /// Interface with a CUDA device.
 pub enum Executor {}

@@ -1,13 +1,13 @@
-use device::{self, Argument};
+use device::{self, ScalarArgument};
 use libc;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Mutex, MutexGuard};
 
 pub enum ArgLock<'a> {
     Scalar(*mut libc::c_void),
     Arr(MutexGuard<'a, Vec<i8>>),
 }
 
-pub trait CpuArgument: Sync + Send {
+pub trait Argument: Sync + Send {
     fn size(&self) -> Option<u32>;
     fn arg_lock(&self) -> ArgLock;
 }
@@ -26,7 +26,7 @@ impl CpuArray {
     }
 }
 
-impl CpuArgument for CpuArray {
+impl Argument for CpuArray {
     fn size(&self) -> Option<u32> {
         Some(self.size())
     }
@@ -51,12 +51,30 @@ impl device::ArrayArgument for CpuArray {
     }
 }
 
-impl<'a> CpuArgument for Box<dyn Argument + 'a> {
+pub trait CpuScalarArg: Sync + Send {
+    fn as_size(&self) -> Option<u32>;
+    fn scal_raw_ptr(&self) -> *mut libc::c_void;
+}
+
+impl<T> CpuScalarArg for T
+where
+    T: ScalarArgument,
+{
+    fn as_size(&self) -> Option<u32> {
+        self.as_size()
+    }
+
+    fn scal_raw_ptr(&self) -> *mut libc::c_void {
+        ScalarArgument::raw_ptr(self) as *mut libc::c_void
+    }
+}
+
+impl Argument for Box<CpuScalarArg> {
     fn size(&self) -> Option<u32> {
         self.as_size()
     }
 
     fn arg_lock(&self) -> ArgLock {
-        ArgLock::Scalar(self.raw_ptr() as *mut libc::c_void)
+        ArgLock::Scalar(self.scal_raw_ptr())
     }
 }

@@ -4,9 +4,9 @@ use crossbeam;
 use device::context::AsyncCallback;
 use device::x86::compile;
 use device::x86::cpu::Cpu;
-use device::x86::cpu_argument::{ArgLock, CpuArgument, CpuArray};
+use device::x86::cpu_argument::{ArgLock, Argument, CpuArray, CpuScalarArg};
 use device::x86::printer::X86printer;
-use device::{self, Argument, ArrayArgument, Device, EvalMode, ScalarArgument};
+use device::{self, Device, EvalMode, ScalarArgument};
 use explorer;
 use ir;
 use itertools::Itertools;
@@ -24,16 +24,16 @@ const EVAL_BUFFER_SIZE: usize = 100;
 /// A CPU evaluation context.
 pub struct Context {
     cpu_model: Cpu,
-    parameters: HashMap<String, Arc<CpuArgument>>,
+    parameters: HashMap<String, Arc<Argument>>,
 }
 
 impl Context {
     /// Returns a parameter given its name.
-    pub fn get_param(&self, name: &str) -> &CpuArgument {
+    pub fn get_param(&self, name: &str) -> &Argument {
         self.parameters[name].as_ref()
     }
 
-    fn bind_param(&mut self, name: String, value: Arc<CpuArgument>) {
+    fn bind_param(&mut self, name: String, value: Arc<Argument>) {
         //assert_eq!(param.t, value.t());
         self.parameters.insert(name, value);
     }
@@ -77,7 +77,7 @@ impl device::ArgMap for Context {
         assert_eq!(param.t, S::t());
         self.bind_param(
             param.name.clone(),
-            Arc::new(Box::new(value) as Box<dyn Argument>),
+            Arc::new(Box::new(value) as Box<CpuScalarArg>),
         );
     }
 
@@ -88,29 +88,7 @@ impl device::ArgMap for Context {
     ) -> Arc<Self::Array> {
         let size = len * std::mem::size_of::<S>();
         let array = Arc::new(self.allocate_array(size));
-        self.bind_param(param.name.clone(), Arc::clone(&array));
-        array
-    }
-}
-
-impl<'a> device::ErasedArgMap<'a> for Context {
-    fn erased_bind_scalar(&mut self, param: &ir::Parameter, value: Box<dyn Argument>) {
-        assert_eq!(param.t, value.t());
-
-        self.bind_param(param.name.clone(), value);
-    }
-
-    fn erased_bind_array(
-        &mut self,
-        param: &ir::Parameter,
-        len: usize,
-    ) -> Arc<dyn ArrayArgument + 'a> {
-        let size = len * unwrap!(param.t.len_byte()) as usize;
-        let array = Arc::new(self.allocate_array(size));
-        self.bind_param(
-            param.name.clone(),
-            Arc::clone(&array) as Arc<dyn CpuArgument>,
-        );
+        self.bind_param(param.name.clone(), Arc::clone(&array) as Arc<Argument>);
         array
     }
 }
@@ -121,7 +99,7 @@ impl device::Context for Context {
     }
 
     fn param_as_size(&self, name: &str) -> Option<u32> {
-        self.get_param(name).as_size()
+        self.get_param(name).size()
     }
 
     /// Evaluation in sequential mode
@@ -184,7 +162,7 @@ enum HoldThunk<'a> {
 }
 
 enum ThunkArg {
-    ArgRef(Arc<dyn CpuArgument>),
+    ArgRef(Arc<Argument>),
     Size(i32),
     TmpArray(u32),
 }
