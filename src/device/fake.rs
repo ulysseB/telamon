@@ -77,20 +77,23 @@ impl<D: Device> Context for FakeContext<D> {
     }
 }
 
-impl<D: Device> ArgMap for FakeContext<D> {
-    type Array = FakeArray;
-
-    fn bind_scalar<S: ScalarArgument>(&mut self, param: &ir::Parameter, value: S) {
-        assert_eq!(param.t, S::t());
+impl<'a, D: Device + 'a> ArgMap<'a> for FakeContext<D> {
+    fn bind_erased_scalar(
+        &mut self,
+        param: &ir::Parameter,
+        value: Box<dyn ScalarArgument>,
+    ) {
+        assert_eq!(param.t, value.get_type());
 
         self.parameters.insert(param.name.clone(), value.as_size());
     }
 
-    fn bind_array<S: ScalarArgument>(
+    fn bind_erased_array(
         &mut self,
         _: &ir::Parameter,
+        _: ir::Type,
         _: usize,
-    ) -> Arc<Self::Array> {
+    ) -> Arc<dyn ArrayArgument + 'a> {
         Arc::new(FakeArray)
     }
 }

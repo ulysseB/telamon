@@ -36,7 +36,7 @@ pub trait Kernel<'a>: Sized {
         builder: &mut SignatureBuilder<AM>,
     ) -> Self
     where
-        AM: device::ArgMap + device::Context + 'a;
+        AM: device::ArgMap<'a> + device::Context;
 
     /// Builder the kernel body in the given builder. This builder should be based on the
     /// signature created by `build_signature`.
@@ -59,7 +59,7 @@ pub trait Kernel<'a>: Sized {
     /// Generates, executes and tests the output of candidates for the kernel.
     fn test_correctness<AM>(params: Self::Parameters, num_tests: usize, context: &mut AM)
     where
-        AM: device::ArgMap + device::Context + 'a,
+        AM: device::ArgMap<'a> + device::Context,
     {
         let kernel;
         let signature = {
@@ -117,7 +117,7 @@ pub trait Kernel<'a>: Sized {
         context: &mut AM,
     ) -> Vec<BoundSample>
     where
-        AM: device::ArgMap + device::Context + 'a,
+        AM: device::ArgMap<'a> + device::Context,
     {
         let kernel;
         let signature = {
@@ -184,7 +184,7 @@ pub trait Kernel<'a>: Sized {
         context: &mut AM,
     ) -> Vec<f64>
     where
-        AM: device::ArgMap + device::Context + 'a,
+        AM: device::ArgMap<'a> + device::Context,
     {
         let kernel;
         let signature = {
@@ -211,7 +211,7 @@ pub trait Kernel<'a>: Sized {
         context: &mut AM,
     ) -> f64
     where
-        AM: device::ArgMap + device::Context + 'a,
+        AM: device::ArgMap<'a> + device::Context,
     {
         let kernel;
         let signature = {

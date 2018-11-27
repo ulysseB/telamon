@@ -39,7 +39,7 @@ where
         builder: &mut SignatureBuilder<AM>,
     ) -> Self
     where
-        AM: device::ArgMap + device::Context + 'a,
+        AM: device::ArgMap<'a> + device::Context,
     {
         let n_size = create_size(n, "n", generic, builder);
         builder.scalar("alpha", S::one());
@@ -121,7 +121,7 @@ where
         builder: &mut SignatureBuilder<AM>,
     ) -> Self
     where
-        AM: device::ArgMap + device::Context + 'a,
+        AM: device::ArgMap<'a> + device::Context,
     {
         let m_size = create_size(m, "m", generic, builder);
         let n_size = create_size(n, "n", generic, builder);
@@ -214,7 +214,7 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
         builder: &mut SignatureBuilder<AM>,
     ) -> Self
     where
-        AM: device::ArgMap + device::Context + 'a,
+        AM: device::ArgMap<'a> + device::Context,
     {
         let m_size = create_size(m, "m", generic, builder);
         let n_size = create_size(n, "n", generic, builder);
@@ -371,7 +371,7 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
 
     fn build_signature<AM>(params: MatMulP, builder: &mut SignatureBuilder<AM>) -> Self
     where
-        AM: device::ArgMap + device::Context + 'a,
+        AM: device::ArgMap<'a> + device::Context,
     {
         let m_size = create_size(params.m, "m", params.generic, builder);
         let n_size = create_size(params.n, "n", params.generic, builder);
@@ -564,7 +564,7 @@ impl<'a, S: Scalar> Kernel<'a> for BatchMM<'a, S> {
 
     fn build_signature<AM>(params: BatchMMP, builder: &mut SignatureBuilder<AM>) -> Self
     where
-        AM: device::ArgMap + device::Context + 'a,
+        AM: device::ArgMap<'a> + device::Context,
     {
         let m_size = create_size(params.m, "m", params.generic, builder);
         let n_size = create_size(params.n, "n", params.generic, builder);

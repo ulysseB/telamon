@@ -52,18 +52,38 @@ pub trait Context: Sync {
 }
 
 /// Binds the argument names to their values.
-pub trait ArgMap {
-    type Array: ArrayArgument;
+pub trait ArgMap<'a>: Context + 'a {
+    fn bind_erased_scalar(
+        &mut self,
+        param: &ir::Parameter,
+        value: Box<dyn ScalarArgument>,
+    );
 
+    fn bind_erased_array(
+        &mut self,
+        param: &ir::Parameter,
+        t: ir::Type,
+        len: usize,
+    ) -> Arc<dyn ArrayArgument + 'a>;
+}
+
+pub trait ArgMapExt<'a>: ArgMap<'a> {
     /// Binds a parameter to a given value.
-    fn bind_scalar<S: ScalarArgument>(&mut self, param: &ir::Parameter, value: S);
+    fn bind_scalar<S: ScalarArgument>(&mut self, param: &ir::Parameter, value: S) {
+        self.bind_erased_scalar(param, Box::new(value))
+    }
+
     /// Allocates an array of the given size in bytes.
     fn bind_array<S: ScalarArgument>(
         &mut self,
         param: &ir::Parameter,
-        size: usize,
-    ) -> Arc<Self::Array>;
+        len: usize,
+    ) -> Arc<dyn ArrayArgument + 'a> {
+        self.bind_erased_array(param, S::t(), len)
+    }
 }
+
+impl<'a, T: ?Sized> ArgMapExt<'a> for T where T: ArgMap<'a> {}
 
 /// An evaluation context that runs kernels asynchronously on the target device.
 pub trait AsyncEvaluator<'a, 'b> {

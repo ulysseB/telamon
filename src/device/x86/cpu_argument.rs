@@ -51,30 +51,12 @@ impl device::ArrayArgument for CpuArray {
     }
 }
 
-pub trait CpuScalarArg: Sync + Send {
-    fn as_size(&self) -> Option<u32>;
-    fn scal_raw_ptr(&self) -> *mut libc::c_void;
-}
-
-impl<T> CpuScalarArg for T
-where
-    T: ScalarArgument,
-{
-    fn as_size(&self) -> Option<u32> {
-        self.as_size()
-    }
-
-    fn scal_raw_ptr(&self) -> *mut libc::c_void {
-        ScalarArgument::raw_ptr(self) as *mut libc::c_void
-    }
-}
-
-impl Argument for Box<CpuScalarArg> {
+impl Argument for Box<dyn ScalarArgument> {
     fn size(&self) -> Option<u32> {
         self.as_size()
     }
 
     fn arg_lock(&self) -> ArgLock {
-        ArgLock::Scalar(self.scal_raw_ptr())
+        ArgLock::Scalar(self.as_ref().raw_ptr() as *mut libc::c_void)
     }
 }

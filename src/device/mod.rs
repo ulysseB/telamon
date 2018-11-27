@@ -8,8 +8,10 @@ pub mod x86;
 mod argument;
 mod context;
 
-pub use self::argument::{read_array, write_array, ArrayArgument, ScalarArgument};
-pub use self::context::{ArgMap, AsyncCallback, AsyncEvaluator, Context, EvalMode};
+pub use self::argument::{ArrayArgument, ArrayArgumentExt, ScalarArgument};
+pub use self::context::{
+    ArgMap, ArgMapExt, AsyncCallback, AsyncEvaluator, Context, EvalMode,
+};
 
 use codegen::Function;
 use ir;

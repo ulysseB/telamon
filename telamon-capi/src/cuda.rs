@@ -2,7 +2,7 @@
 use env_logger;
 use libc;
 use std;
-use telamon::device::{cuda, ArgMap};
+use telamon::device::{cuda, ArgMapExt};
 use telamon::ir;
 use Context;
 use Device;
