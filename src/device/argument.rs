@@ -40,14 +40,17 @@ pub unsafe trait ScalarArgument:
         Self: Sized;
 }
 
+// Returns the size of a type in bits.  Used for the `ScalarArgument` implementations below.
 macro_rules! size_bits {
     ($ty:ty) => {
         8 * std::mem::size_of::<$ty>() as u16
     };
 }
 
-macro_rules! scalar_argument {
-    ($ty:ident float [ ($start:expr) .. ($stop:expr) ]) => {
+// `ScalarArgument` implementation for floating point types.  Requires that the type is a
+// floating-point scalar type (see safety requirements for `ScalarArgument`).
+macro_rules! float_scalar_argument {
+    (unsafe impl ScalarArgument for $ty:ident [ ($start:expr) .. ($stop:expr) ]) => {
         unsafe impl ScalarArgument for $ty {
             fn t() -> ir::Type {
                 ir::Type::F(size_bits!($ty))
@@ -70,8 +73,16 @@ macro_rules! scalar_argument {
             }
         }
     };
+}
 
-    ($ty:ident int [ ($start:expr) .. ($stop:expr) ]) => {
+float_scalar_argument!(unsafe impl ScalarArgument for f32 [(0.) .. (1.)]);
+float_scalar_argument!(unsafe impl ScalarArgument for f64 [(0.) .. (1.)]);
+
+// `ScalarArgument` implementation for integer types.  Requires that the type is an integer scalar
+// type (see safety requirements for `ScalarArgument`).
+macro_rules! int_scalar_argument {
+
+    (unsafe impl ScalarArgument for $ty:ident [ ($start:expr) .. ($stop:expr) ]) => {
         unsafe impl ScalarArgument for $ty {
             fn as_size(&self) -> Option<u32> {
                 if std::mem::size_of::<$ty>() <= std::mem::size_of::<u32>() {
@@ -104,12 +115,10 @@ macro_rules! scalar_argument {
     };
 }
 
-scalar_argument!(f32 float [(0.) .. (  1.)]);
-scalar_argument!(f64 float [(0.) .. (  1.)]);
-scalar_argument!(i8  int   [(0 ) .. ( 10)]);
-scalar_argument!(i16 int   [(0 ) .. (100)]);
-scalar_argument!(i32 int   [(0 ) .. (100)]);
-scalar_argument!(i64 int   [(0 ) .. (100)]);
+int_scalar_argument!(unsafe impl ScalarArgument for i8  [(0) .. ( 10)]);
+int_scalar_argument!(unsafe impl ScalarArgument for i16 [(0) .. (100)]);
+int_scalar_argument!(unsafe impl ScalarArgument for i32 [(0) .. (100)]);
+int_scalar_argument!(unsafe impl ScalarArgument for i64 [(0) .. (100)]);
 
 /// Represents an array on the device.
 pub trait ArrayArgument: Send + Sync {
