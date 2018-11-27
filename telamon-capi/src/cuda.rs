@@ -1,7 +1,7 @@
 //! C API wrappers for manipulating Telamon CUDA context through FFI.
 use context::Context;
-use device;
 use std;
+use telamon::device;
 
 use failure;
 
@@ -9,7 +9,7 @@ pub struct CudaExecutor(device::cuda::Executor);
 
 /// Create a new CUDA executor.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_cuda_executor_new() -> *mut CudaExecutor {
+pub extern "C" fn telamon_cuda_executor_new() -> *mut CudaExecutor {
     unwrap_or_exit!(
         device::cuda::Executor::try_init()
             .map(|executor| Box::into_raw(Box::new(CudaExecutor(executor))))
@@ -26,9 +26,9 @@ pub unsafe extern "C" fn telamon_cuda_context_new(
 ) -> *mut Context {
     exit_if_null!(executor, null);
 
-    Box::into_raw(Box::new(Context(Box::into_raw(Box::new(
-        device::cuda::Context::new(&(*executor).0),
-    )))))
+    Box::into_raw(Box::new(Context::new(device::cuda::Context::new(
+        &(*executor).0,
+    ))))
 }
 
 /// Destroys a CUDA executor.

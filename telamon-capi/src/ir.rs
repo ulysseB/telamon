@@ -63,13 +63,13 @@ pub unsafe extern "C" fn telamon_ir_signature_add_array(
 
 /// Creates an integer type that must be freed with `telamon_ir_type_free`.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_ir_type_new_int(num_bits: u16) -> *mut ir::Type {
+pub extern "C" fn telamon_ir_type_new_int(num_bits: u16) -> *mut ir::Type {
     Box::into_raw(Box::new(ir::Type::I(num_bits)))
 }
 
 /// Creates a floating point type that must be freed with `telamon_ir_type_free`.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_ir_type_new_float(num_bits: u16) -> *mut ir::Type {
+pub extern "C" fn telamon_ir_type_new_float(num_bits: u16) -> *mut ir::Type {
     Box::into_raw(Box::new(ir::Type::F(num_bits)))
 }
 
@@ -262,7 +262,7 @@ pub unsafe extern "C" fn telamon_ir_operand_new_parameter(
 
 /// Creates an operand that returns the current index on a dimension.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_ir_operand_new_index(dim: ir::DimId) -> *mut Operand {
+pub extern "C" fn telamon_ir_operand_new_index(dim: ir::DimId) -> *mut Operand {
     let operand = ir::Operand::Index(dim);
     Box::into_raw(Box::new(Operand(operand)))
 }

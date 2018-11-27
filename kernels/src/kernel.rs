@@ -277,7 +277,7 @@ impl<'a> KernelBuilder<'a> {
         context: &'b mut AM,
     ) -> (SignedKernel<'a, K>, &'b AM)
     where
-        AM: device::ArgMap + device::Context + 'a,
+        AM: device::ArgMap<'a> + device::Context,
         K: Kernel<'a> + 'b,
     {
         let name = self.get_kernel_name::<K>();

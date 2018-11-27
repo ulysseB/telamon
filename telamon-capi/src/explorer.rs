@@ -22,7 +22,7 @@ pub extern "C" fn telamon_explorer_config_new() -> *mut Config {
 ///
 /// The resulting object must be destroyed using `telamon_explorer_config_free`.
 #[no_mangle]
-pub extern "C" fn telamon_explorer_config_from_json(
+pub unsafe extern "C" fn telamon_explorer_config_from_json(
     buf: *const c_char,
     len: size_t,
 ) -> *mut Config {

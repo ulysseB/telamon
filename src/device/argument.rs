@@ -81,7 +81,6 @@ float_scalar_argument!(unsafe impl ScalarArgument for f64 [(0.) .. (1.)]);
 // `ScalarArgument` implementation for integer types.  Requires that the type is an integer scalar
 // type (see safety requirements for `ScalarArgument`).
 macro_rules! int_scalar_argument {
-
     (unsafe impl ScalarArgument for $ty:ident [ ($start:expr) .. ($stop:expr) ]) => {
         unsafe impl ScalarArgument for $ty {
             fn as_size(&self) -> Option<u32> {

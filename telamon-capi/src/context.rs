@@ -1,9 +1,86 @@
 use libc;
 use std::sync::Arc;
 
-use telamon::{device, ir};
+use telamon::{
+    codegen,
+    device::{self, ArgMapExt},
+    ir,
+};
 
 use error::TelamonStatus;
+
+pub trait DContext<'a>: device::ArgMap<'a> + device::Context {
+    fn as_context(&self) -> &(dyn device::Context + 'a);
+}
+
+impl<'a, C> DContext<'a> for C
+where
+    C: device::ArgMap<'a> + device::Context,
+{
+    fn as_context(&self) -> &(dyn device::Context + 'a) {
+        self
+    }
+}
+
+impl<'a> device::Context for Box<dyn DContext<'a>> {
+    fn device(&self) -> &device::Device {
+        (&**self).device()
+    }
+
+    fn evaluate(
+        &self,
+        space: &codegen::Function,
+        mode: device::EvalMode,
+    ) -> Result<f64, ()> {
+        (&**self).evaluate(space, mode)
+    }
+
+    fn benchmark(&self, space: &codegen::Function, num_samples: usize) -> Vec<f64> {
+        (&**self).benchmark(space, num_samples)
+    }
+
+    fn async_eval<'b, 'c>(
+        &self,
+        num_workers: usize,
+        mode: device::EvalMode,
+        inner: &(Fn(&mut device::AsyncEvaluator<'b, 'c>) + Sync),
+    ) {
+        (&**self).async_eval(num_workers, mode, inner)
+    }
+
+    fn param_as_size(&self, name: &str) -> Option<u32> {
+        (&**self).param_as_size(name)
+    }
+
+    fn eval_size(&self, size: &codegen::Size) -> u32 {
+        (&**self).eval_size(size)
+    }
+}
+
+impl<'a> device::ArgMap<'a> for Box<dyn DContext<'a>> {
+    fn bind_erased_scalar(
+        &mut self,
+        param: &ir::Parameter,
+        value: Box<dyn device::ScalarArgument>,
+    ) {
+        (&mut **self).bind_erased_scalar(param, value)
+    }
+
+    fn bind_erased_array(
+        &mut self,
+        param: &ir::Parameter,
+        t: ir::Type,
+        len: usize,
+    ) -> Arc<dyn device::ArrayArgument + 'a> {
+        (&mut **self).bind_erased_array(param, t, len)
+    }
+}
+
+impl<'a> AsRef<dyn device::Context + 'a> for dyn DContext<'a> {
+    fn as_ref(&self) -> &(dyn device::Context + 'a) {
+        (*self).as_context()
+    }
+}
 
 // Pointers to `device::Context` are not C-like pointers.  Instead, they are fat pointers
 // containing both a regular pointer to the object and a pointer to the vtable. Thus, we
@@ -12,9 +89,14 @@ use error::TelamonStatus;
 
 /// Description of the evaluation context. In particular, in contains the mapping between
 /// argument names and argument values.
-pub struct Context(pub(crate) *mut dyn DContext<'static>);
+pub struct Context(Box<dyn DContext<'static>>);
 
 pub struct ContextRef(pub(crate) *const dyn device::Context);
+
+#[no_mangle]
+pub unsafe extern "C" fn telamon_context_ref_free(context_ref: *mut ContextRef) {
+    std::mem::drop(Box::from_raw(context_ref))
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn telamon_context_free(context: *mut Context) {
@@ -22,103 +104,24 @@ pub unsafe extern "C" fn telamon_context_free(context: *mut Context) {
 }
 
 impl Context {
-    pub unsafe fn as_inner(&self) -> &dyn DContext<'_> {
-        std::mem::transmute::<&dyn DContext<'static>, &dyn DContext<'_>>(&*self.0)
+    pub fn new<'a, C: device::ArgMap<'a> + device::Context>(context: C) -> Self {
+        unsafe {
+            Context(std::mem::transmute::<
+                Box<dyn DContext<'a>>,
+                Box<dyn DContext<'static>>,
+            >(Box::new(context)))
+        }
     }
 
-    pub unsafe fn as_inner_mut(&mut self) -> &mut dyn DContext<'_> {
-        std::mem::transmute::<&mut dyn DContext<'static>, &mut dyn DContext<'_>>(
-            &mut *self.0,
+    pub unsafe fn as_inner(&self) -> &dyn DContext<'_> {
+        std::mem::transmute::<&dyn DContext<'static>, &dyn DContext<'_>>(&self.0)
+    }
+
+    pub unsafe fn as_inner_mut<'a>(&mut self) -> &mut Box<dyn DContext<'a>> {
+        std::mem::transmute::<&mut Box<dyn DContext<'static>>, &mut Box<dyn DContext<'a>>>(
+            &mut self.0,
         )
     }
-}
-
-pub trait DContext<'a>: device::Context {
-    fn bind_scalar(&mut self, param: &telamon::ir::Parameter, value: &dyn DValue);
-
-    fn bind_array(
-        &mut self,
-        param: &::telamon::ir::Parameter,
-        size: usize,
-    ) -> Arc<dyn device::ArrayArgument + 'a>;
-
-    fn as_context(&self) -> &(dyn device::Context + 'a);
-}
-
-impl<'a> AsRef<dyn device::Context + 'a> for dyn DContext<'a> {
-    fn as_ref(&self) -> &(dyn device::Context + 'a) {
-        self.as_context()
-    }
-}
-
-macro_rules! dtype {
-    ($($to:ident : $dt:ident => $ty:ident ,)*) => {
-        #[repr(C)]
-        pub enum DType { $($dt,)* }
-
-        pub trait DValue {
-            fn dtype(&self) -> DType;
-
-            $(
-                fn $to(&self) -> $ty {
-                    panic!(concat!("Can't convert to ", stringify!($ty)));
-                }
-            )*
-        }
-
-        $(
-            impl DValue for $ty {
-                fn dtype(&self) -> DType {
-                    DType::$dt
-                }
-
-                fn $to(&self) -> $ty {
-                    *self
-                }
-            }
-        )*
-
-        impl<'a, AM> DContext<'a> for AM
-        where
-            AM: device::ArgMap + device::Context + 'a,
-            AM::Array: 'a,
-        {
-            fn bind_scalar(
-                &mut self,
-                param: &telamon::ir::Parameter,
-                value: &dyn DValue,
-            ) {
-                match value.dtype() {
-                    $(
-                        DType::$dt => device::ArgMap::bind_scalar::<$ty>(
-                            self, param, value.$to(),
-                        )
-                    ),*
-                }
-            }
-
-            fn bind_array(
-                &mut self,
-                param: &telamon::ir::Parameter,
-                size: usize,
-            ) -> Arc<dyn device::ArrayArgument + 'a> {
-                device::ArgMap::bind_array::<i8>(self, param, size)
-            }
-
-            fn as_context(&self) -> &(dyn device::Context + 'a){
-                self
-            }
-        }
-    }
-}
-
-dtype! {
-    to_i8  : I8  => i8,
-    to_i16 : I16 => i16,
-    to_i32 : I32 => i32,
-    to_i64 : I64 => i64,
-    to_f32 : F32 => f32,
-    to_f64 : F64 => f64,
 }
 
 /// Allocates and binds an array to the given parameter. `size` is given in bytes.
@@ -134,7 +137,7 @@ pub unsafe extern "C" fn telamon_bind_array(
     exit_if_null!(context);
     exit_if_null!(param);
 
-    (*context).as_inner_mut().bind_array(&*param, size);
+    (*context).as_inner_mut().bind_array::<i8>(&*param, size);
 
     TelamonStatus::Ok
 }
@@ -149,7 +152,7 @@ pub unsafe extern "C" fn telamon_bind_int8(
     exit_if_null!(context);
     exit_if_null!(param);
 
-    (*context).as_inner_mut().bind_scalar(&*param, &value);
+    (*context).as_inner_mut().bind_scalar(&*param, value);
 
     TelamonStatus::Ok
 }
@@ -164,7 +167,7 @@ pub unsafe extern "C" fn telamon_bind_int16(
     exit_if_null!(context);
     exit_if_null!(param);
 
-    (*context).as_inner_mut().bind_scalar(&*param, &value);
+    (*context).as_inner_mut().bind_scalar(&*param, value);
 
     TelamonStatus::Ok
 }
@@ -179,7 +182,7 @@ pub unsafe extern "C" fn telamon_bind_int32(
     exit_if_null!(context);
     exit_if_null!(param);
 
-    (*context).as_inner_mut().bind_scalar(&*param, &value);
+    (*context).as_inner_mut().bind_scalar(&*param, value);
 
     TelamonStatus::Ok
 }
@@ -194,7 +197,7 @@ pub unsafe extern "C" fn telamon_bind_int64(
     exit_if_null!(context);
     exit_if_null!(param);
 
-    (*context).as_inner_mut().bind_scalar(&*param, &value);
+    (*context).as_inner_mut().bind_scalar(&*param, value);
 
     TelamonStatus::Ok
 }
@@ -209,7 +212,7 @@ pub unsafe extern "C" fn telamon_bind_float(
     exit_if_null!(context);
     exit_if_null!(param);
 
-    (*context).as_inner_mut().bind_scalar(&*param, &value);
+    (*context).as_inner_mut().bind_scalar(&*param, value);
 
     TelamonStatus::Ok
 }
@@ -224,7 +227,7 @@ pub unsafe extern "C" fn telamon_bind_double(
     exit_if_null!(context);
     exit_if_null!(param);
 
-    (*context).as_inner_mut().bind_scalar(&*param, &value);
+    (*context).as_inner_mut().bind_scalar(&*param, value);
 
     TelamonStatus::Ok
 }

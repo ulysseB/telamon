@@ -63,7 +63,7 @@ impl From<failure::Error> for Error {
 /// Prints the error message in a string. Returns `null` if no error was
 /// present. The caller is responsible for freeing the string with `free`.
 #[no_mangle]
-pub unsafe extern "C" fn telamon_strerror() -> *mut libc::c_char {
+pub extern "C" fn telamon_strerror() -> *mut libc::c_char {
     ERROR.with(|error| {
         error
             .borrow()

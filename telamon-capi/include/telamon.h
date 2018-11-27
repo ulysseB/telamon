@@ -52,14 +52,6 @@ typedef enum {
 } BinOp;
 
 /*
- * Supported device types for running kernels.
- */
-typedef enum {
-    DeviceId_X86,
-    DeviceId_Cuda,
-} DeviceId;
-
-/*
  * The rounding mode of an arithmetic operation.
  */
 typedef enum {
@@ -102,6 +94,8 @@ typedef struct Config Config;
  * A CUDA evaluation context.
  */
 typedef struct Context Context;
+
+typedef struct ContextRef ContextRef;
 
 typedef struct CudaExecutor CudaExecutor;
 
@@ -501,44 +495,6 @@ typedef struct {
 } Action;
 
 /*
- * Deallocates kernel parameters created through one of the `kernel_*_new`
- * functions. The `params` pointer becomes invalid and must not be used again
- * after calling `kernel_free`.
- */
-void kernel_free(KernelParameters *params);
-
-/*
- * Instanciate a new kernel for matrix-matrix multiplication. The
- * caller is responsible for deallocating the returned pointer using
- * kernel_free. The tile_m, tile_n and tile_k parameters are read
- * from during the call, but no pointer to the corresponding data is
- * kept afterwards.
- */
-KernelParameters *kernel_matmul_new(int m,
-                                    int n,
-                                    int k,
-                                    unsigned int a_stride,
-                                    int transpose_a,
-                                    int transpose_b,
-                                    int generic,
-                                    const uint32_t *tile_m,
-                                    size_t tile_m_len,
-                                    const uint32_t *tile_n,
-                                    size_t tile_n_len,
-                                    const uint32_t *tile_k,
-                                    size_t tile_k_len);
-
-/*
- * Optimize a kernel on a given device. `config_data` points to a JSON-encoded
- * string of length `config_len` containing the configuration parameters for
- * the explorer.
- */
-bool kernel_optimize(KernelParameters *params,
-                     DeviceId device,
-                     const char *config_data,
-                     size_t config_len);
-
-/*
  * Allocates and binds an array to the given parameter. `size` is given in bytes.
  *
  * The allocated array is managed by the context and doesn't need to be explicitely
@@ -576,19 +532,9 @@ TelamonStatus telamon_bind_int64(Context *context, const Parameter *param, int64
  */
 TelamonStatus telamon_bind_int8(Context *context, const Parameter *param, int8_t value);
 
-/*
- * Frees an explorer configuration.
- */
-void telamon_config_free(Config *config);
+void telamon_context_free(Context *context);
 
-/*
- * Allocate a new explorer configuration object with suitable
- * defaults.
- *
- * The resulting config object must be freed using
- * `telamon_config_free`.
- */
-Config *telamon_config_new(void);
+void telamon_context_ref_free(ContextRef *context_ref);
 
 /*
  * Create a CUDA context from an executor.  The context keeps a pointer to the executor and must
@@ -624,6 +570,27 @@ SearchSpace *telamon_explore(const Config *config,
                              const Context *context,
                              uintptr_t num_search_spaces,
                              const SearchSpace *search_space);
+
+/*
+ * Frees an explorer configuration.
+ */
+void telamon_explorer_config_free(Config *config);
+
+/*
+ * Create an explorer configuration object from a JSON-encoded string.
+ *
+ * The resulting object must be destroyed using `telamon_explorer_config_free`.
+ */
+Config *telamon_explorer_config_from_json(const char *buf, size_t len);
+
+/*
+ * Allocate a new explorer configuration object with suitable
+ * defaults.
+ *
+ * The resulting config object must be freed using
+ * `telamon_config_free`.
+ */
+Config *telamon_explorer_config_new(void);
 
 /*
  * Initializes Telamon.  This must be called before calling any other APIs.
@@ -866,6 +833,49 @@ Type *telamon_ir_type_new_float(uint16_t num_bits);
 Type *telamon_ir_type_new_int(uint16_t num_bits);
 
 /*
+ * Build the kernel in a given `context`.
+ *
+ * This function has two outputs passed as pointers:
+ *
+ *
+ * # Safety
+ *
+ *
+ */
+TelamonStatus telamon_kernel_build(const KernelParameters *kernel,
+                                   Context *context,
+                                   DynKernel **kernel_out,
+                                   ContextRef **context_out);
+
+/*
+ * Deallocates kernel parameters created through one of the `kernel_*_new`
+ * functions. The `params` pointer becomes invalid and must not be used again
+ * after calling `kernel_free`.
+ */
+void telamon_kernel_free(KernelParameters *params);
+
+/*
+ * Instanciate a new kernel for matrix-matrix multiplication. The
+ * caller is responsible for deallocating the returned pointer using
+ * kernel_free. The tile_m, tile_n and tile_k parameters are read
+ * from during the call, but no pointer to the corresponding data is
+ * kept afterwards.
+ */
+KernelParameters *telamon_kernel_matmul_new(int m,
+                                            int n,
+                                            int k,
+                                            unsigned int a_stride,
+                                            int transpose_a,
+                                            int transpose_b,
+                                            int generic,
+                                            const uint32_t *tile_m,
+                                            size_t tile_m_len,
+                                            const uint32_t *tile_n,
+                                            size_t tile_n_len,
+                                            const uint32_t *tile_k,
+                                            size_t tile_k_len);
+
+/*
  * Apply a sequence of actions to a search space.
  *
  * # Safety
@@ -908,6 +918,8 @@ TelamonStatus telamon_search_space_free(SearchSpace *search_space);
 SearchSpace *telamon_search_space_new(const Function *ir_instance,
                                       uintptr_t num_actions,
                                       const Action *actions);
+
+void telamon_str_free(char *str);
 
 /*
  * Prints the error message in a string. Returns `null` if no error was

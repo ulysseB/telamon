@@ -1,0 +1,36 @@
+---
+params:
+    - output: blah
+    - grid:
+        ordering:
+            - lower_layout,size,dim_kind,dim_map,mem_space,order,inst_flag
+            - lower_layout,dim_kind,size,dim_map,mem_space,order,inst_flag
+            - lower_layout,dim_kind,dim_map,size,mem_space,order,inst_flag
+            - lower_layout,dim_map,dim_kind,size,mem_space,order,inst_flag
+            - lower_layout,dim_map,size,dim_kind,mem_space,order,inst_flag
+            - size,lower_layout,dim_kind,dim_map,mem_space,order,inst_flag
+            - dim_kind,lower_layout,size,dim_map,mem_space,order,inst_flag
+            - size,dim_kind,dim_map,mem_space,order,inst_flag,lower_layout
+            - dim_kind,size,dim_map,mem_space,order,inst_flag,lower_layout
+
+    - name: kernel
+      grid:
+        - axpy:
+            - 67108864
+        - matmul:
+            - [256, 256, 32]
+          generic:
+            - false
+        - matmul:
+            - [1024, 1024, 1024]
+
+    - name: evaluator
+      grid:
+        - num_playouts: 1000
+          evaluator: stratified
+          stratifier: combined
+        - num_playouts: 100000
+          evaluator: policy
+
+# -- --grid ordering a b c d
+#    --grid --matmul 256 256 32
