@@ -716,7 +716,7 @@
         <span class="ident">builder</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SignatureBuilder</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="self">Self</span>
     <span class="kw">where</span>
-        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span> <span class="op">+</span> <span class="lifetime">&#39;a</span>,
+        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     {
         <span class="kw">let</span> <span class="ident">n_size</span> <span class="op">=</span> <span class="ident">create_size</span>(<span class="ident">n</span>, <span class="string">&quot;n&quot;</span>, <span class="ident">generic</span>, <span class="ident">builder</span>);
         <span class="ident">builder</span>.<span class="ident">scalar</span>(<span class="string">&quot;alpha&quot;</span>, <span class="ident">S</span>::<span class="ident">one</span>());
@@ -798,7 +798,7 @@
         <span class="ident">builder</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SignatureBuilder</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="self">Self</span>
     <span class="kw">where</span>
-        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span> <span class="op">+</span> <span class="lifetime">&#39;a</span>,
+        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     {
         <span class="kw">let</span> <span class="ident">m_size</span> <span class="op">=</span> <span class="ident">create_size</span>(<span class="ident">m</span>, <span class="string">&quot;m&quot;</span>, <span class="ident">generic</span>, <span class="ident">builder</span>);
         <span class="kw">let</span> <span class="ident">n_size</span> <span class="op">=</span> <span class="ident">create_size</span>(<span class="ident">n</span>, <span class="string">&quot;n&quot;</span>, <span class="ident">generic</span>, <span class="ident">builder</span>);
@@ -891,7 +891,7 @@
         <span class="ident">builder</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SignatureBuilder</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="self">Self</span>
     <span class="kw">where</span>
-        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span> <span class="op">+</span> <span class="lifetime">&#39;a</span>,
+        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     {
         <span class="kw">let</span> <span class="ident">m_size</span> <span class="op">=</span> <span class="ident">create_size</span>(<span class="ident">m</span>, <span class="string">&quot;m&quot;</span>, <span class="ident">generic</span>, <span class="ident">builder</span>);
         <span class="kw">let</span> <span class="ident">n_size</span> <span class="op">=</span> <span class="ident">create_size</span>(<span class="ident">n</span>, <span class="string">&quot;n&quot;</span>, <span class="ident">generic</span>, <span class="ident">builder</span>);
@@ -1048,7 +1048,7 @@
 
     <span class="kw">fn</span> <span class="ident">build_signature</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>(<span class="ident">params</span>: <span class="ident">MatMulP</span>, <span class="ident">builder</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SignatureBuilder</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="self">Self</span>
     <span class="kw">where</span>
-        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span> <span class="op">+</span> <span class="lifetime">&#39;a</span>,
+        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     {
         <span class="kw">let</span> <span class="ident">m_size</span> <span class="op">=</span> <span class="ident">create_size</span>(<span class="ident">params</span>.<span class="ident">m</span>, <span class="string">&quot;m&quot;</span>, <span class="ident">params</span>.<span class="ident">generic</span>, <span class="ident">builder</span>);
         <span class="kw">let</span> <span class="ident">n_size</span> <span class="op">=</span> <span class="ident">create_size</span>(<span class="ident">params</span>.<span class="ident">n</span>, <span class="string">&quot;n&quot;</span>, <span class="ident">params</span>.<span class="ident">generic</span>, <span class="ident">builder</span>);
@@ -1241,7 +1241,7 @@
 
     <span class="kw">fn</span> <span class="ident">build_signature</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>(<span class="ident">params</span>: <span class="ident">BatchMMP</span>, <span class="ident">builder</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SignatureBuilder</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="self">Self</span>
     <span class="kw">where</span>
-        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span> <span class="op">+</span> <span class="lifetime">&#39;a</span>,
+        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     {
         <span class="kw">let</span> <span class="ident">m_size</span> <span class="op">=</span> <span class="ident">create_size</span>(<span class="ident">params</span>.<span class="ident">m</span>, <span class="string">&quot;m&quot;</span>, <span class="ident">params</span>.<span class="ident">generic</span>, <span class="ident">builder</span>);
         <span class="kw">let</span> <span class="ident">n_size</span> <span class="op">=</span> <span class="ident">create_size</span>(<span class="ident">params</span>.<span class="ident">n</span>, <span class="string">&quot;n&quot;</span>, <span class="ident">params</span>.<span class="ident">generic</span>, <span class="ident">builder</span>);

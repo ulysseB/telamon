@@ -362,7 +362,7 @@
         <span class="ident">builder</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SignatureBuilder</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="self">Self</span>
     <span class="kw">where</span>
-        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span> <span class="op">+</span> <span class="lifetime">&#39;a</span>;
+        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span>;
 
     <span class="doccomment">/// Builder the kernel body in the given builder. This builder should be based on the</span>
     <span class="doccomment">/// signature created by `build_signature`.</span>
@@ -385,7 +385,7 @@
     <span class="doccomment">/// Generates, executes and tests the output of candidates for the kernel.</span>
     <span class="kw">fn</span> <span class="ident">test_correctness</span><span class="op">&lt;</span><span class="ident">AM</span><span class="op">&gt;</span>(<span class="ident">params</span>: <span class="self">Self</span>::<span class="ident">Parameters</span>, <span class="ident">num_tests</span>: <span class="ident">usize</span>, <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AM</span>)
     <span class="kw">where</span>
-        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span> <span class="op">+</span> <span class="lifetime">&#39;a</span>,
+        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     {
         <span class="kw">let</span> <span class="ident">kernel</span>;
         <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> {
@@ -443,7 +443,7 @@
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AM</span>,
     ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BoundSample</span><span class="op">&gt;</span>
     <span class="kw">where</span>
-        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span> <span class="op">+</span> <span class="lifetime">&#39;a</span>,
+        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     {
         <span class="kw">let</span> <span class="ident">kernel</span>;
         <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> {
@@ -510,7 +510,7 @@
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AM</span>,
     ) <span class="op">-&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>
     <span class="kw">where</span>
-        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span> <span class="op">+</span> <span class="lifetime">&#39;a</span>,
+        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     {
         <span class="kw">let</span> <span class="ident">kernel</span>;
         <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> {
@@ -537,7 +537,7 @@
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AM</span>,
     ) <span class="op">-&gt;</span> <span class="ident">f64</span>
     <span class="kw">where</span>
-        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span> <span class="op">+</span> <span class="lifetime">&#39;a</span>,
+        <span class="ident">AM</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span>,
     {
         <span class="kw">let</span> <span class="ident">kernel</span>;
         <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> {

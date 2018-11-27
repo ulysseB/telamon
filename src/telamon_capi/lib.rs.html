@@ -236,7 +236,7 @@
 
 <span class="kw">impl</span> <span class="ident">KernelParameters</span> {
     <span class="doccomment">/// Runs the search for a best candidate.</span>
-    <span class="kw">fn</span> <span class="ident">optimize_kernel</span><span class="op">&lt;</span><span class="ident">C</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span><span class="op">&gt;</span>(
+    <span class="kw">fn</span> <span class="ident">optimize_kernel</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">C</span>: <span class="ident">device</span>::<span class="ident">ArgMap</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">device</span>::<span class="ident">Context</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Config</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">C</span>,
