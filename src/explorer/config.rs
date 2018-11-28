@@ -192,9 +192,6 @@ pub struct BanditConfig {
     /// The biggest delta is, the more focused on the previous best candidates the
     /// exploration is.
     pub delta: f64,
-    /// If true, does not expand tree until end - instead, starts a montecarlo descend after each
-    /// expansion of a node
-    pub monte_carlo: bool,
     /// Order in which the different choices are going to be determined
     pub choice_ordering: ChoiceOrdering,
 }
@@ -227,7 +224,6 @@ impl Default for BanditConfig {
             threshold: 10,
             delta: 1.,
             choice_ordering: ChoiceOrdering::default(),
-            monte_carlo: true,
         }
     }
 }

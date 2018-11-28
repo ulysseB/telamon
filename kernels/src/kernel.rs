@@ -75,8 +75,7 @@ pub trait Kernel<'a>: Sized {
         while num_runs < num_tests {
             let order = explorer::config::NewNodeOrder::WeightedRandom;
             let ordering = explorer::config::ChoiceOrdering::default();
-            let bounds = candidates.iter().map(|c| c.bound.value()).enumerate();
-            let candidate_idx = local_selection::pick_index(order, bounds, CUT);
+            let candidate_idx = order.pick_candidate(&candidates, CUT);
             let candidate = candidates[unwrap!(candidate_idx)].clone();
             let leaf =
                 local_selection::descend(&ordering, order, context, candidate, CUT);
@@ -226,8 +225,7 @@ pub trait Kernel<'a>: Sized {
                 let order = explorer::config::NewNodeOrder::WeightedRandom;
                 let ordering = explorer::config::ChoiceOrdering::default();
                 let inf = std::f64::INFINITY;
-                let bounds = candidates.iter().map(|c| c.bound.value()).enumerate();
-                let candidate_idx = local_selection::pick_index(order, bounds, inf);
+                let candidate_idx = order.pick_candidate(&candidates, inf);
                 let candidate = candidates[unwrap!(candidate_idx)].clone();
                 local_selection::descend(&ordering, order, context, candidate, inf)
                     .is_none()
@@ -245,10 +243,7 @@ fn descend_check_bounds<'a>(
     let mut candidates = std::borrow::Cow::Borrowed(candidates);
     let mut bounds = Vec::new();
     loop {
-        let idx = if let Some(idx) = {
-            let idx_bounds = candidates.iter().map(|c| c.bound.value()).enumerate();
-            local_selection::pick_index(order, idx_bounds, CUT)
-        } {
+        let idx = if let Some(idx) = order.pick_candidate(&candidates, CUT) {
             idx
         } else {
             return None;

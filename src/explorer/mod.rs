@@ -72,8 +72,12 @@ pub fn find_best_ex<'a>(
                         .spawn(|| (unwrap!(logger::log(config, log_receiver))))
                 );
 
-                let tree =
-                    bandit_arm::Tree::new(candidates, band_config, log_sender.clone());
+                let tree = bandit_arm::Tree::new(
+                    candidates,
+                    band_config,
+                    band_config,
+                    log_sender.clone(),
+                );
                 unwrap!(
                     scope
                         .builder()
