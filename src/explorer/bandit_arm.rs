@@ -275,10 +275,10 @@ enum SubTree<'a, P: TreePolicy> {
 
 impl<'a, P: TreePolicy> From<Node<'a, P>> for SubTree<'a, P> {
     fn from(node: Node<'a, P>) -> Self {
-        if node.bound().is_some() {
-            SubTree::InternalNode(Arc::new(node))
-        } else {
+        if node.is_deadend() {
             SubTree::Empty
+        } else {
+            SubTree::InternalNode(Arc::new(node))
         }
     }
 }
@@ -340,7 +340,7 @@ impl<'a, P: TreePolicy> Edge<'a, P> {
         *unwrap!(self.bound.read())
     }
 
-    /// Trims the branch if it has with an evaluation time guaranteed to be worse than
+    /// Trims the branch if it has an evaluation time guaranteed to be worse than
     /// `cut`. Returns the childrens to trim if any,
     fn trim(&self, cut: f64) -> Option<Arc<RwLock<SubTree<'a, P>>>> {
         if self.bound() >= cut {
@@ -364,16 +364,18 @@ impl<'a, P: TreePolicy> Edge<'a, P> {
                         return SubTree::InternalNode(Arc::clone(node))
                     }
                     SubTree::Leaf(_) => {
-                        // Need write access
+                        // Need write access, see below
                     }
                 }
             }
 
-            // Some times we do need write access to expand a leaf candidate... but some other
-            // thread could beat us to the punch and expand it before, so we loop.
+            // Some times we do need write acces to expand a leaf candidate... but another thread
+            // could beat us to the punch and expand it before us, in which case we won't see a
+            // leaf below and loop again (where the first read access should not fail).
             {
                 let dst = &mut *unwrap!(self.dst.write());
                 if let SubTree::Leaf(_) = dst {
+                    // We got write access to the leaf; expand it.
                     if let SubTree::Leaf(candidate) =
                         std::mem::replace(dst, SubTree::Empty)
                     {
@@ -382,13 +384,13 @@ impl<'a, P: TreePolicy> Edge<'a, P> {
                             let node = Node::from_candidates(
                                 env.apply_choice(&candidate, choice),
                             );
-                            if node.bound().is_some() {
+                            if node.is_deadend() {
+                                // Actual dead-end; leave the SubTree::Empty there.
+                                return SubTree::Empty;
+                            } else {
                                 // Newly expanded node, with no stats yet.
                                 *dst = SubTree::InternalNode(Arc::new(node));
                                 return SubTree::Leaf(candidate);
-                            } else {
-                                // Actual dead-end; leave the SubTree::Empty there.
-                                return SubTree::Empty;
                             }
                         } else {
                             // Fully specified implementation; we leave the SubTree::Empty here because if
@@ -401,6 +403,9 @@ impl<'a, P: TreePolicy> Edge<'a, P> {
                         // We checked we were in the Leaf case before the mem::replace
                         unreachable!()
                     }
+                } else {
+                    // The leaf was expanded by another thread; try again on the expanded node.
+                    continue;
                 }
             }
         }
@@ -431,6 +436,10 @@ impl<'a, P: TreePolicy> Node<'a, P> {
             .iter()
             .map(|edge| edge.bound())
             .min_by(|&lhs, &rhs| cmp_f64(lhs, rhs))
+    }
+
+    fn is_deadend(&self) -> bool {
+        self.bound().is_none()
     }
 
     /// Trim children (that is, replace with an empty `SubTree`) children whose bounds are
