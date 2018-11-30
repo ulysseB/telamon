@@ -1,0 +1,19 @@
+Add UCT tree policy
+
+This patch adds a new tree policy based on the UCT formula for selecting
+children.
+
+It also adds an `expandconfig` utility to load an explorer configuration file
+and dump it with default values added.  `expandconfig` can also be used as a
+guide to see available options in TOML syntax, and as a validator for existing
+configuration files.
+
+telamon/
+ * src/explorer/bandit_arm.rs:
+	Add UCT policy implementation.  This also slightly changes the `Node`
+	and `Edge` structures so that they only depend on the actual statistic
+        structures used, not on the policy type.
+ * src/explorer/config.rs:  Add UCT configuration options.
+ * src/explorer/mod.rs:  Dispatch config to the proper policy.
+ * src/bin/expandconfig.rs: Added.
+ * Cargo.toml:  Add `expandconfig` utility.

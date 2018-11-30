@@ -1,11 +1,10 @@
 ///! Exploration of the search space.
 use device::Context;
 use explorer::candidate::Candidate;
-use explorer::config::{BanditConfig, NewNodeOrder, OldNodeOrder};
+use explorer::config::{self, BanditConfig, NewNodeOrder};
 use explorer::logger::LogMessage;
 use explorer::store::Store;
 use explorer::{choice, local_selection};
-use itertools::Itertools;
 use rpds::List;
 use std;
 use std::f64;
@@ -51,20 +50,21 @@ impl<'a> Env<'a> {
 }
 
 /// Policy to use when descending in the tree.
-pub trait TreePolicy: Sync + Sized {
-    /// Statistics stored on the nodes.
-    type NodeStats: Default + Send + Sync;
-
+pub trait TreePolicy: Sized {
     /// Statistics stored on the edges.
-    type EdgeStats: Default + Send + Sync;
+    type EdgeStats: Default;
 
     /// Pick a child in the given environment.  Returns an index for the child, or `None` if the
     /// node has no children.
-    fn pick_child(&self, env: &Env<'_>, node: &Node<'_, Self>) -> Option<usize>;
+    fn pick_child(
+        &self,
+        env: &Env<'_>,
+        node: &Node<'_, Self::EdgeStats>,
+    ) -> Option<usize>;
 
     /// Record an evaluation across an edge.  This indicates that an evaluation of `eval` was found
     /// in a path which contains edge `node.children[idx]`.
-    fn backpropagate(&self, node: &Node<Self>, idx: usize, eval: f64);
+    fn backpropagate(&self, node: &Node<'_, Self::EdgeStats>, idx: usize, eval: f64);
 }
 
 /// Global tree statistics
@@ -91,7 +91,7 @@ pub enum TreeEvent {
 
 /// A search tree to perform a multi-armed bandit search.
 pub struct Tree<'a, 'b, P: TreePolicy> {
-    root: Edge<'a, P>,
+    root: Edge<'a, P::EdgeStats>,
     stop: AtomicBool,
     cut: RwLock<f64>,
     config: &'b BanditConfig,
@@ -121,7 +121,7 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
 
     /// Removes the dead ends along the given path. Assumes the path points to a dead-end.
     /// Updates bounds along the way.
-    fn clean_deadends(&self, mut path: Path<'a, P>, cut: f64) {
+    fn clean_deadends(&self, mut path: Path<'a, P::EdgeStats>, cut: f64) {
         // A `None` bound indicates the path points to a dead-end.
         let mut bound = None;
         while let Some((node, pos)) = path.0.pop() {
@@ -153,8 +153,12 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
     }
 }
 
-impl<'a, 'b, P: TreePolicy> Store<'a> for Tree<'a, 'b, P> {
-    type PayLoad = Path<'a, P>;
+impl<'a, 'b, P: TreePolicy> Store<'a> for Tree<'a, 'b, P>
+where
+    P: Send + Sync,
+    P::EdgeStats: Send + Sync,
+{
+    type PayLoad = Path<'a, P::EdgeStats>;
 
     type Event = TreeEvent;
 
@@ -215,6 +219,7 @@ impl<'a, 'b, P: TreePolicy> Store<'a> for Tree<'a, 'b, P> {
                 match state {
                     SubTree::Empty => {
                         self.clean_deadends(path, env.cut);
+
                         self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
                         break;
                     }
@@ -228,9 +233,11 @@ impl<'a, 'b, P: TreePolicy> Store<'a> for Tree<'a, 'b, P> {
                         ).map(|c| (c, path));
                     }
                     SubTree::InternalNode(node) => {
-                        if let Some((idx, next)) = node.descend(&env, &self.policy) {
+                        node.trim(env.cut);
+
+                        if let Some(idx) = self.policy.pick_child(&env, &node) {
                             path.0.push((Arc::downgrade(&node), idx));
-                            state = next;
+                            state = node.children[idx].descend(&env);
                         } else {
                             state = SubTree::Empty;
                         }
@@ -254,27 +261,21 @@ impl<'a, 'b, P: TreePolicy> Store<'a> for Tree<'a, 'b, P> {
 }
 
 /// Path to follow to reach a leaf in the tree.
-#[derive(Clone)]
-pub struct Path<'a, P: TreePolicy>(Vec<(Weak<Node<'a, P>>, usize)>);
-
-impl<'a, P: TreePolicy> Default for Path<'a, P> {
-    fn default() -> Self {
-        Path(vec![])
-    }
-}
+#[derive(Clone, Default)]
+pub struct Path<'a, E>(Vec<(Weak<Node<'a, E>>, usize)>);
 
 /// The search tree that will be traversed
-enum SubTree<'a, P: TreePolicy> {
+enum SubTree<'a, E> {
     /// The subtree has been expanded and has children.
-    InternalNode(Arc<Node<'a, P>>),
+    InternalNode(Arc<Node<'a, E>>),
     /// The subtree has not been expanded yet.  This is a leaf in the MCTS tree.
     Leaf(Box<Candidate<'a>>),
     /// The subtree is empty.
     Empty,
 }
 
-impl<'a, P: TreePolicy> From<Node<'a, P>> for SubTree<'a, P> {
-    fn from(node: Node<'a, P>) -> Self {
+impl<'a, E: Default> From<Node<'a, E>> for SubTree<'a, E> {
+    fn from(node: Node<'a, E>) -> Self {
         if node.is_deadend() {
             SubTree::Empty
         } else {
@@ -283,7 +284,7 @@ impl<'a, P: TreePolicy> From<Node<'a, P>> for SubTree<'a, P> {
     }
 }
 
-impl<'a, P: TreePolicy> SubTree<'a, P> {
+impl<'a, E: Default> SubTree<'a, E> {
     fn bound(&self) -> Option<f64> {
         match self {
             SubTree::InternalNode(node) => node.bound(),
@@ -294,34 +295,34 @@ impl<'a, P: TreePolicy> SubTree<'a, P> {
 }
 
 /// An edge in the tree
-struct Edge<'a, P: TreePolicy> {
+struct Edge<'a, E> {
     /// The destination of the edge.  This may not be expanded yet.
-    dst: Arc<RwLock<SubTree<'a, P>>>,
+    dst: Arc<RwLock<SubTree<'a, E>>>,
 
     /// Edge statistics
-    stats: P::EdgeStats,
+    stats: E,
 
     /// The current bound for the pointed-to node.
     bound: RwLock<f64>,
 }
 
-impl<'a, P: TreePolicy> From<SubTree<'a, P>> for Edge<'a, P> {
-    fn from(subtree: SubTree<'a, P>) -> Self {
+impl<'a, E: Default> From<SubTree<'a, E>> for Edge<'a, E> {
+    fn from(subtree: SubTree<'a, E>) -> Self {
         Edge {
-            stats: P::EdgeStats::default(),
+            stats: E::default(),
             bound: RwLock::new(subtree.bound().unwrap_or(std::f64::INFINITY)),
             dst: Arc::new(RwLock::new(subtree)),
         }
     }
 }
 
-impl<'a, P: TreePolicy> From<Candidate<'a>> for Edge<'a, P> {
+impl<'a, E: Default> From<Candidate<'a>> for Edge<'a, E> {
     fn from(candidate: Candidate<'a>) -> Self {
         SubTree::Leaf(Box::new(candidate)).into()
     }
 }
 
-impl<'a, P: TreePolicy> Edge<'a, P> {
+impl<'a, E: Default> Edge<'a, E> {
     /// Kill the edge, replacing it with a dead end.  The bound is erased.
     fn kill(&self) {
         *unwrap!(self.dst.write()) = SubTree::Empty;
@@ -342,7 +343,7 @@ impl<'a, P: TreePolicy> Edge<'a, P> {
 
     /// Trims the branch if it has an evaluation time guaranteed to be worse than
     /// `cut`. Returns the childrens to trim if any,
-    fn trim(&self, cut: f64) -> Option<Arc<RwLock<SubTree<'a, P>>>> {
+    fn trim(&self, cut: f64) -> Option<Arc<RwLock<SubTree<'a, E>>>> {
         if self.bound() >= cut {
             self.kill();
             None
@@ -354,7 +355,7 @@ impl<'a, P: TreePolicy> Edge<'a, P> {
     }
 
     /// Descend one level in the tree, expanding it if necessary.
-    fn descend(&self, env: &Env<'_>) -> SubTree<'a, P> {
+    fn descend(&self, env: &Env<'_>) -> SubTree<'a, E> {
         loop {
             // Most of the time we only need read access
             {
@@ -413,20 +414,15 @@ impl<'a, P: TreePolicy> Edge<'a, P> {
 }
 
 /// Holds the children of a `SubTree::InternalNode`.
-pub struct Node<'a, P: TreePolicy> {
-    children: Vec<Edge<'a, P>>,
-
-    /// Node statistics
-    _stats: P::NodeStats,
+pub struct Node<'a, E> {
+    children: Vec<Edge<'a, E>>,
 }
 
-impl<'a, P: TreePolicy> Node<'a, P> {
+impl<'a, E: Default> Node<'a, E> {
     /// Creates a new children containing the given candidates, if any.
     fn from_candidates(candidates: Vec<Candidate<'a>>) -> Self {
-        let children = candidates.into_iter().map(Edge::from).collect_vec();
         Node {
-            children,
-            _stats: Default::default(),
+            children: candidates.into_iter().map(Edge::from).collect(),
         }
     }
 
@@ -449,129 +445,219 @@ impl<'a, P: TreePolicy> Node<'a, P> {
             edge.trim(cut);
         }
     }
+}
 
-    /// Descend one level in the tree, expanding it if necessary.
-    fn descend(&self, env: &Env<'_>, policy: &P) -> Option<(usize, SubTree<'a, P>)> {
-        self.trim(env.cut);
+impl TreePolicy for NewNodeOrder {
+    type EdgeStats = ();
 
-        policy
-            .pick_child(env, self)
-            .map(|idx| (idx, self.children[idx].descend(env)))
+    fn pick_child(&self, env: &Env<'_>, node: &Node<'_, ()>) -> Option<usize> {
+        self.pick_index(
+            node.children.iter().map(|edge| edge.bound()).enumerate(),
+            env.cut,
+        )
+    }
+
+    fn backpropagate(&self, _node: &Node<()>, _idx: usize, _eval: f64) {}
+}
+
+pub struct UCTPolicy {
+    factor: f64,
+}
+
+impl From<config::UCTConfig> for UCTPolicy {
+    fn from(config: config::UCTConfig) -> Self {
+        let config::UCTConfig { factor } = config;
+        UCTPolicy { factor }
     }
 }
 
-impl<'a> TreePolicy for &'a BanditConfig {
-    type NodeStats = ();
-    type EdgeStats = TAGStats;
+impl TreePolicy for UCTPolicy {
+    type EdgeStats = UCTStats;
 
-    fn pick_child(&self, env: &Env<'_>, node: &Node<'_, Self>) -> Option<usize> {
-        // Pick a new node if there are any remaining.
-        let new_nodes = node
+    fn pick_child(&self, env: &Env<'_>, node: &Node<'_, UCTStats>) -> Option<usize> {
+        // Ignore nodes which were cut
+        let children = node
             .children
             .iter()
             .enumerate()
-            .filter(|(_, edge)| edge.stats.num_visits() == 0)
-            .map(|(idx, edge)| (idx, edge.bound()));
+            .filter(|(_, edge)| edge.bound() < env.cut);
 
-        self.new_nodes_order
-            .pick_index(new_nodes, env.cut)
-            .or_else(|| match self.old_nodes_order {
-                OldNodeOrder::Bound => NewNodeOrder::Bound.pick_index(
-                    node.children.iter().map(|edge| edge.bound()).enumerate(),
-                    env.cut,
-                ),
-                OldNodeOrder::WeightedRandom => NewNodeOrder::WeightedRandom.pick_index(
-                    node.children.iter().map(|edge| edge.bound()).enumerate(),
-                    env.cut,
-                ),
-                OldNodeOrder::Bandit => {
-                    pick_tag_arm(self.delta, self.threshold, node, env.cut)
-                }
+        // Pick an edge which was not explored yet, if there is some...
+        NewNodeOrder::WeightedRandom
+            .pick_index(
+                children
+                    .clone()
+                    .filter(|(_, edge)| edge.stats.num_visits() == 0)
+                    .map(|(idx, edge)| (idx, edge.bound())),
+                env.cut,
+            ).or_else(|| {
+                // Otherwise apply the UCT formula
+                let stats = children
+                    .map(|(idx, edge)| {
+                        (
+                            idx,
+                            (
+                                edge.stats.sum_evaluations(),
+                                edge.stats.num_visits() as f64,
+                            ),
+                        )
+                    }).collect::<Vec<_>>();
+
+                let ln_total_visits = stats
+                    .iter()
+                    .map(|(_idx, (_sum, visits))| visits)
+                    .sum::<f64>()
+                    .ln();
+
+                stats
+                    .into_iter()
+                    .map(|(idx, (sum, visits))| {
+                        (
+                            idx,
+                            sum / visits
+                                + self.factor * (ln_total_visits / visits).sqrt(),
+                        )
+                    }).max_by(|lhs, rhs| cmp_f64(lhs.1, rhs.1))
+                    .map(|(idx, _)| idx)
             }).map(|idx| {
                 node.children[idx].stats.down();
                 idx
             })
     }
 
-    fn backpropagate(&self, node: &Node<Self>, idx: usize, eval: f64) {
-        node.children[idx].stats.up(self, eval);
+    fn backpropagate(&self, node: &Node<UCTStats>, idx: usize, eval: f64) {
+        node.children[idx].stats.up(eval);
     }
 }
 
-/// Picks a candidate below the bound using TAG formula.
-fn pick_tag_arm<'a>(
-    delta: f64,
-    threshold: usize,
-    node: &Node<'a, &'_ BanditConfig>,
-    cut: f64,
-) -> Option<usize> {
-    // Ignore cut children
-    let children = node
-        .children
-        .iter()
-        .enumerate()
-        .filter(|(_, edge)| edge.bound() < cut);
+pub struct UCTStats {
+    sum_evaluations: RwLock<f64>,
 
-    // Compute the threshold to use so that we only have `config.threshold` children
-    let threshold = {
-        let mut evalns = Evaluations::with_capacity(threshold);
-        for (_, edge) in children.clone() {
-            // Evaluations are sorted; we can bail out early.
-            for &eval in &*unwrap!(edge.stats.evaluations.read()) {
-                if !evalns.record(eval, threshold) {
-                    break;
-                }
-            }
-        }
-        evalns.max()?
-    };
-
-    // Total number of visits on this node, excluding ones which were cut
-    let num_visits = children
-        .clone()
-        .map(|(_, edge)| edge.stats.num_visits())
-        .sum::<usize>();
-
-    // Total number of children, excluding ones which were cut
-    let num_children = children.clone().count();
-
-    children
-        .map(|(ix, edge)| {
-            let num_successes =
-                unwrap!(edge.stats.evaluations.read()).count_lte(threshold);
-            let score = heval(
-                delta,
-                num_successes,
-                edge.stats.num_visits(),
-                num_visits,
-                num_children,
-            );
-            (ix, score)
-        }).max_by(|x1, x2| cmp_f64(x1.1, x2.1))
-        .map(|(ix, _)| ix)
+    num_visits: AtomicUsize,
 }
 
-/// gives a "score" to a branch of the tree at a given node n_successes is the number of
-/// successes of that branch (that is, the number of leaves that belong to the THRESHOLD
-/// best of that node and which come from that particular branch).
-/// * `n_branch_trials` is the number of trials of that branch (both failed and succeeded),
-/// * `n_trials` is  the number of trials of the node and k the number of branches in the
-///   node.
-fn heval(
+impl Default for UCTStats {
+    fn default() -> Self {
+        UCTStats {
+            sum_evaluations: RwLock::new(0f64),
+            num_visits: AtomicUsize::new(0),
+        }
+    }
+}
+
+impl UCTStats {
+    fn down(&self) {
+        self.num_visits.fetch_add(1, Ordering::Relaxed);
+    }
+
+    fn up(&self, eval: f64) {
+        *unwrap!(self.sum_evaluations.write()) += eval;
+    }
+
+    fn sum_evaluations(&self) -> f64 {
+        *unwrap!(self.sum_evaluations.read())
+    }
+
+    fn num_visits(&self) -> usize {
+        self.num_visits.load(Ordering::Relaxed)
+    }
+}
+
+pub struct TAGPolicy {
     delta: f64,
-    n_successes: usize,
-    n_branch_trials: usize,
-    n_trials: usize,
-    n_branches: usize,
-) -> f64 {
-    assert!(n_branches > 0);
-    assert!(n_branch_trials <= n_trials);
-    if n_branch_trials == 0 {
-        std::f64::INFINITY
-    } else {
-        let alpha = (2. * (n_trials * n_branches) as f64 / delta).ln().max(0.);
-        let sqrt_body = alpha * (2. * n_successes as f64 + alpha);
-        (n_successes as f64 + alpha + sqrt_body.sqrt()) / n_branch_trials as f64
+    threshold: usize,
+}
+
+impl From<config::TAGConfig> for TAGPolicy {
+    fn from(config: config::TAGConfig) -> Self {
+        let config::TAGConfig { delta, threshold } = config;
+        TAGPolicy { delta, threshold }
+    }
+}
+
+impl TAGPolicy {
+    /// gives a "score" to a branch of the tree at a given node n_successes is the number of
+    /// successes of that branch (that is, the number of leaves that belong to the THRESHOLD
+    /// best of that node and which come from that particular branch).
+    /// * `n_branch_trials` is the number of trials of that branch (both failed and succeeded),
+    /// * `n_trials` is  the number of trials of the node and k the number of branches in the
+    ///   node.
+    fn heval(
+        &self,
+        n_successes: usize,
+        n_branch_trials: usize,
+        n_trials: usize,
+        n_branches: usize,
+    ) -> f64 {
+        assert!(n_branches > 0);
+        assert!(n_branch_trials <= n_trials);
+
+        if n_branch_trials == 0 {
+            std::f64::INFINITY
+        } else {
+            let alpha = (2. * (n_trials * n_branches) as f64 / self.delta)
+                .ln()
+                .max(0.);
+            let sqrt_body = alpha * (2. * n_successes as f64 + alpha);
+            (n_successes as f64 + alpha + sqrt_body.sqrt()) / n_branch_trials as f64
+        }
+    }
+}
+
+impl TreePolicy for TAGPolicy {
+    type EdgeStats = TAGStats;
+
+    fn pick_child(&self, env: &Env<'_>, node: &Node<'_, TAGStats>) -> Option<usize> {
+        // Ignore cut children
+        let children = node
+            .children
+            .iter()
+            .enumerate()
+            .filter(|(_, edge)| edge.bound() < env.cut);
+
+        // Compute the threshold to use so that we only have `config.threshold` children
+        let threshold = {
+            let mut evalns = Evaluations::with_capacity(self.threshold);
+            for (_, edge) in children.clone() {
+                // Evaluations are sorted; we can bail out early.
+                for &eval in &*unwrap!(edge.stats.evaluations.read()) {
+                    if !evalns.record(eval, self.threshold) {
+                        break;
+                    }
+                }
+            }
+            evalns.max()?
+        };
+
+        // Total number of visits on this node, excluding ones which were cut
+        let num_visits = children
+            .clone()
+            .map(|(_, edge)| edge.stats.num_visits())
+            .sum::<usize>();
+
+        // Total number of children, excluding ones which were cut
+        let num_children = children.clone().count();
+
+        children
+            .map(|(ix, edge)| {
+                let num_successes =
+                    unwrap!(edge.stats.evaluations.read()).count_lte(threshold);
+                let score = self.heval(
+                    num_successes,
+                    edge.stats.num_visits(),
+                    num_visits,
+                    num_children,
+                );
+                (ix, score)
+            }).max_by(|x1, x2| cmp_f64(x1.1, x2.1))
+            .map(|(idx, _)| {
+                node.children[idx].stats.down();
+                idx
+            })
+    }
+
+    fn backpropagate(&self, node: &Node<TAGStats>, idx: usize, eval: f64) {
+        node.children[idx].stats.up(eval, self.threshold)
     }
 }
 
@@ -601,8 +687,8 @@ impl TAGStats {
     }
 
     /// Called when backpropagating across this edge after an evaluation
-    fn up(&self, config: &BanditConfig, eval: f64) {
-        unwrap!(self.evaluations.write()).record(eval, config.threshold);
+    fn up(&self, eval: f64, threshold: usize) {
+        unwrap!(self.evaluations.write()).record(eval, threshold);
     }
 
     /// The number of visits through this edge.

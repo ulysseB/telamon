@@ -19,6 +19,9 @@ name = "bench-perf-model"
 path = "tools/bench_perf_model/main.rs"
 required-features = ["cuda"]
 
+[[bin]]
+name = "expandconfig"
+
 [[bench]]
 name = "descent"
 harness = false
