@@ -146,8 +146,10 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
 
         // If we did not returned before, we have reached the root of the tree.
         if let Some(bound) = bound {
+            trace!("upgrading root bound to {}", bound);
             self.root.update_bound(bound);
         } else {
+            trace!("killing root");
             self.root.kill();
         }
     }
@@ -197,6 +199,7 @@ where
         // Retry loop (in case of deadends)
         loop {
             if self.stop.load(Ordering::Relaxed) {
+                debug!("stopping: requested");
                 return None;
             }
 
@@ -210,6 +213,7 @@ where
             // Bail out early if the root is a deadend
             let mut state = self.root.descend(&env);
             if let SubTree::Empty = state {
+                debug!("stopping: deadend at root");
                 return None;
             }
 
@@ -224,13 +228,21 @@ where
                         break;
                     }
                     SubTree::Leaf(leaf) => {
-                        return local_selection::descend(
+                        if let Some(implementation) = local_selection::descend(
                             &env.config.choice_ordering,
                             env.config.new_nodes_order,
                             env.context,
                             *leaf,
                             env.cut,
-                        ).map(|c| (c, path));
+                        ) {
+                            return Some((implementation, path));
+                        } else {
+                            // Deadend encountered while descending; try again from the root.
+                            // TODO(bclement): We probably should backprop explicitely here
+                            self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
+
+                            break;
+                        }
                     }
                     SubTree::InternalNode(node) => {
                         node.trim(env.cut);
@@ -239,6 +251,7 @@ where
                             path.0.push((Arc::downgrade(&node), idx));
                             state = node.children[idx].descend(&env);
                         } else {
+                            trace!("no child available: deadend");
                             state = SubTree::Empty;
                         }
                     }
@@ -398,6 +411,7 @@ impl<'a, E: Default> Edge<'a, E> {
                             // we come back, this becomes a dead-end.  It may not be the smartest thing to
                             // do because it could throw off the search, but that is probably pretty rate
                             // anyways.
+                            debug!("implementation reached at depth {}", candidate.depth);
                             return SubTree::Leaf(candidate);
                         }
                     } else {
@@ -608,49 +622,69 @@ impl TreePolicy for TAGPolicy {
     type EdgeStats = TAGStats;
 
     fn pick_child(&self, env: &Env<'_>, node: &Node<'_, TAGStats>) -> Option<usize> {
-        // Ignore cut children
+        // Ignore cut children.  Also, we compute the number of visits beforehand to ensure that it
+        // doesn't get changed by concurrent accesses.
         let children = node
             .children
             .iter()
             .enumerate()
-            .filter(|(_, edge)| edge.bound() < env.cut);
+            .filter(|(_, edge)| edge.bound() < env.cut)
+            .map(|(idx, edge)| (idx, edge, edge.stats.num_visits()))
+            .collect::<Vec<_>>();
 
-        // Compute the threshold to use so that we only have `config.threshold` children
-        let threshold = {
-            let mut evalns = Evaluations::with_capacity(self.threshold);
-            for (_, edge) in children.clone() {
-                // Evaluations are sorted; we can bail out early.
-                for &eval in &*unwrap!(edge.stats.evaluations.read()) {
-                    if !evalns.record(eval, self.threshold) {
-                        break;
+        // Pick an edge which was not explored yet, if there is some
+        NewNodeOrder::WeightedRandom
+            .pick_index(
+                children
+                    .iter()
+                    .filter(|(_, _, num_visits)| *num_visits == 0)
+                    .map(|(idx, edge, _)| (*idx, edge.bound())),
+                env.cut,
+            ).or_else(|| {
+                // Compute the threshold to use so that we only have `config.threshold` children
+                let threshold = {
+                    let mut evalns = Evaluations::with_capacity(self.threshold);
+                    for (_, edge, _) in children.iter() {
+                        // Evaluations are sorted; we can bail out early.
+                        for &eval in &*unwrap!(edge.stats.evaluations.read()) {
+                            if !evalns.record(eval, self.threshold) {
+                                break;
+                            }
+                        }
                     }
-                }
-            }
-            evalns.max()?
-        };
 
-        // Total number of visits on this node, excluding ones which were cut
-        let num_visits = children
-            .clone()
-            .map(|(_, edge)| edge.stats.num_visits())
-            .sum::<usize>();
+                    // It could happen that all edges have num_visits > 0 but still we don't have
+                    // any recorded visits if none of the descents have finished yet.
+                    evalns.max().unwrap_or(std::f64::INFINITY)
+                };
 
-        // Total number of children, excluding ones which were cut
-        let num_children = children.clone().count();
+                // Total number of visits on this node, excluding ones which were cut
+                let total_num_visits = children
+                    .iter()
+                    .map(|(_, _, num_visits)| num_visits)
+                    .sum::<usize>();
 
-        children
-            .map(|(ix, edge)| {
-                let num_successes =
-                    unwrap!(edge.stats.evaluations.read()).count_lte(threshold);
-                let score = self.heval(
-                    num_successes,
-                    edge.stats.num_visits(),
-                    num_visits,
-                    num_children,
-                );
-                (ix, score)
-            }).max_by(|x1, x2| cmp_f64(x1.1, x2.1))
-            .map(|(idx, _)| {
+                // Total number of children, excluding ones which were cut
+                let num_children = children.len();
+
+                children
+                    .into_iter()
+                    .map(|(ix, edge, num_visits)| {
+                        // Note that num_successes could very rarely be larger than num_visits, if
+                        // the total number of visits is currently lower than the threshold and a
+                        // lot of descents have been performed during this function's evaluation.
+                        let num_successes =
+                            unwrap!(edge.stats.evaluations.read()).count_lte(threshold);
+                        let score = self.heval(
+                            num_successes,
+                            num_visits,
+                            total_num_visits,
+                            num_children,
+                        );
+                        (ix, score)
+                    }).max_by(|x1, x2| cmp_f64(x1.1, x2.1))
+                    .map(|(idx, _)| idx)
+            }).map(|idx| {
                 node.children[idx].stats.down();
                 idx
             })
