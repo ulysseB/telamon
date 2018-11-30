@@ -7,8 +7,7 @@ use utils::*;
 #[derive(
     Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
 )]
-#[repr(C)]
-/// cbindgen:field-names=[id]
+#[repr(transparent)]
 pub struct InstId(pub u32);
 
 impl Into<usize> for InstId {

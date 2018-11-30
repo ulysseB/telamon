@@ -172,37 +172,24 @@ typedef struct String String;
 typedef struct Type Type;
 
 /*
- * Uniquely identifies variables.
- */
-typedef struct VarId VarId;
-
-/*
  * Provides a unique identifier for iteration dimensions.
  */
-typedef struct {
-    uint32_t id;
-} DimId;
+typedef uint32_t DimId;
 
 /*
  * Provides a unique identifier for logic dimensions.
  */
-typedef struct {
-    uint32_t _0;
-} LogicalDimId;
+typedef uint32_t LogicalDimId;
 
 /*
  * Uniquely identifies an instruction.
  */
-typedef struct {
-    uint32_t id;
-} InstId;
+typedef uint32_t InstId;
 
 /*
  * Uniquely identifies a block.
  */
-typedef struct {
-    uint32_t id;
-} MemId;
+typedef uint32_t MemId;
 
 /*
  * Specifies the version of an instruction to use.
@@ -225,6 +212,11 @@ typedef struct {
 typedef struct {
     uint8_t bits;
 } ThreadMapping;
+
+/*
+ * Uniquely identifies variables.
+ */
+typedef uint16_t VarId;
 
 /*
  * Specifies where to store a variable.
