@@ -1,4 +1,5 @@
 extern crate getopts;
+extern crate serde_yaml;
 extern crate toml;
 
 extern crate telamon;
@@ -7,6 +8,11 @@ use std::env;
 use std::io::{Read, Write};
 
 use getopts::Options;
+
+enum Format {
+    Toml,
+    Yaml,
+}
 
 /// Expand a configuration.
 ///
@@ -17,7 +23,7 @@ use getopts::Options;
 ///
 ///  - output: Path to the output file.  If "-", the configuration is printed to the standard
 ///    output.
-fn expand_config(input: Option<&str>, output: &str) {
+fn expand_config(input: Option<&str>, output: &str, format: Format) {
     let input_str = input
         .map(|input| {
             let mut input_str = String::new();
@@ -37,7 +43,11 @@ fn expand_config(input: Option<&str>, output: &str) {
         }).unwrap_or_else(|| "".to_string());
 
     let config: telamon::explorer::config::Config = toml::from_str(&input_str).unwrap();
-    let output_str = toml::to_string(&config).unwrap();
+
+    let output_str = match format {
+        Format::Toml => toml::to_string(&config).unwrap(),
+        Format::Yaml => serde_yaml::to_string(&config).unwrap(),
+    };
 
     match output {
         "-" => print!("{}", output_str),
@@ -66,6 +76,7 @@ fn main() {
     let mut opts = Options::new();
     opts.optflag("h", "help", "Prints help information");
     opts.optopt("o", "output", "Path to the output file", "PATH");
+    opts.optopt("f", "format", "Output format", "[toml|yaml]");
 
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => m,
@@ -84,5 +95,19 @@ fn main() {
         None
     };
 
-    expand_config(input, &output);
+    let format = match matches
+        .opt_str("f")
+        .unwrap_or_else(|| "toml".to_string())
+        .to_lowercase()
+        .as_ref()
+    {
+        "yaml" => Format::Yaml,
+        "toml" => Format::Toml,
+        _ => {
+            print_usage(&program, opts);
+            return;
+        }
+    };
+
+    expand_config(input, &output, format);
 }
