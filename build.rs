@@ -22,6 +22,19 @@ fn compile_link_cuda() {
 
     // If CUDA_HOME is defined, use the cuda headers from there.
     if let Some(cuda_home) = env::var_os("CUDA_HOME").map(PathBuf::from) {
+        println!(
+            "cargo:rustc-link-search=native={}",
+            cuda_home.join("lib64").display()
+        );
+        println!(
+            "cargo:rustc-link-search=native={}",
+            cuda_home
+                .join("extras")
+                .join("CUPTI")
+                .join("lib64")
+                .display()
+        );
+
         builder
             .include(cuda_home.join("include"))
             .include(cuda_home.join("extras").join("CUPTI").join("include"));
