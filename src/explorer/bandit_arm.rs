@@ -654,7 +654,7 @@ impl TreePolicy for TAGPolicy {
                     }
 
                     // It could happen that all edges have num_visits > 0 but still we don't have
-                    // any recorded visits if none of the descents have finished yet.
+                    // any recorded evaluations if none of the descents have finished yet.
                     evalns.max().unwrap_or(std::f64::INFINITY)
                 };
 
