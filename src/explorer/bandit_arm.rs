@@ -237,8 +237,8 @@ where
                         ) {
                             return Some((implementation, path));
                         } else {
-                            // Deadend encountered while descending; try again from the root.
-                            // TODO(bclement): We probably should backprop explicitely here
+                            // Deadend reached while exploring; restart from the root
+                            // TODO(bclement): We should backpropagate explicitely here.
                             self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
 
                             break;
@@ -658,32 +658,39 @@ impl TreePolicy for TAGPolicy {
                     evalns.max().unwrap_or(std::f64::INFINITY)
                 };
 
-                // Total number of visits on this node, excluding ones which were cut
-                let total_num_visits = children
+                // Precompute statistics for each child to ensure the number of visits of a child is not
+                // incremented concurrently after we have computed the sum.
+                let stats = children
+                    .map(|(ix, edge)| {
+                        (
+                            ix,
+                            unwrap!(edge.stats.evaluations.read()).count_lte(threshold),
+                            edge.stats.num_visits(),
+                        )
+                    }).collect::<Vec<_>>();
+
+                // Total number of visits on the node
+                let num_visits = stats
                     .iter()
                     .map(|(_, _, num_visits)| num_visits)
                     .sum::<usize>();
 
                 // Total number of children, excluding ones which were cut
-                let num_children = children.len();
+                let num_children = stats.len();
 
-                children
+                stats
                     .into_iter()
-                    .map(|(ix, edge, num_visits)| {
-                        // Note that num_successes could very rarely be larger than num_visits, if
-                        // the total number of visits is currently lower than the threshold and a
-                        // lot of descents have been performed during this function's evaluation.
-                        let num_successes =
-                            unwrap!(edge.stats.evaluations.read()).count_lte(threshold);
-                        let score = self.heval(
-                            num_successes,
+                    .map(|(ix, child_successes, child_visits)| {
+                        let score = heval(
+                            delta,
+                            child_successes,
+                            child_visits,
                             num_visits,
-                            total_num_visits,
                             num_children,
                         );
                         (ix, score)
                     }).max_by(|x1, x2| cmp_f64(x1.1, x2.1))
-                    .map(|(idx, _)| idx)
+                    .map(|(ix, _)| ix)
             }).map(|idx| {
                 node.children[idx].stats.down();
                 idx
