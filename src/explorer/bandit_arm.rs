@@ -24,10 +24,7 @@ impl<'a> Env<'a> {
     /// List the available actions for a given candidate.
     ///
     /// If `list_actions` return `None`, the candidate is a fully-specified implementation.
-    pub fn list_actions(
-        &self,
-        candidate: &Candidate<'_>,
-    ) -> Option<Vec<choice::ActionEx>> {
+    pub fn list_actions(&self, candidate: &Candidate<'_>) -> Option<Vec<choice::ActionEx>> {
         choice::list(&self.config.choice_ordering, &candidate.space).next()
     }
 
@@ -368,9 +365,7 @@ impl<'a, P: TreePolicy> Edge<'a, P> {
             {
                 match &*unwrap!(self.dst.read()) {
                     SubTree::Empty => return SubTree::Empty,
-                    SubTree::InternalNode(node) => {
-                        return SubTree::InternalNode(Arc::clone(node))
-                    }
+                    SubTree::InternalNode(node) => return SubTree::InternalNode(Arc::clone(node)),
                     SubTree::Leaf(_) => {
                         // Need write access, see below
                     }
@@ -384,14 +379,10 @@ impl<'a, P: TreePolicy> Edge<'a, P> {
                 let dst = &mut *unwrap!(self.dst.write());
                 if let SubTree::Leaf(_) = dst {
                     // We got write access to the leaf; expand it.
-                    if let SubTree::Leaf(candidate) =
-                        std::mem::replace(dst, SubTree::Empty)
-                    {
+                    if let SubTree::Leaf(candidate) = std::mem::replace(dst, SubTree::Empty) {
                         let choice = env.list_actions(&candidate);
                         if let Some(choice) = choice {
-                            let node = Node::from_candidates(
-                                env.apply_choice(&candidate, choice),
-                            );
+                            let node = Node::from_candidates(env.apply_choice(&candidate, choice));
                             if node.is_deadend() {
                                 // Actual dead-end; leave the SubTree::Empty there.
                                 return SubTree::Empty;
@@ -492,9 +483,7 @@ impl<'a> TreePolicy for &'a BanditConfig {
                     node.children.iter().map(|edge| edge.bound()).enumerate(),
                     env.cut,
                 ),
-                OldNodeOrder::Bandit => {
-                    pick_tag_arm(self.delta, self.threshold, node, env.cut)
-                }
+                OldNodeOrder::Bandit => pick_tag_arm(self.delta, self.threshold, node, env.cut),
             }).map(|idx| {
                 node.children[idx].stats.down();
                 idx
@@ -531,7 +520,10 @@ fn pick_tag_arm<'a>(
                 }
             }
         }
-        evalns.max()?
+
+        // It could happen that all edges have num_visits > 0 but still we don't have
+        // any recorded evaluations if none of the descents have finished yet.
+        evalns.max().unwrap_or(std::f64::INFINITY)
     };
 
     // Precompute statistics for each child to ensure the number of visits of a child is not
