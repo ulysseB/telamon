@@ -19,6 +19,9 @@ name = "bench-perf-model"
 path = "tools/bench_perf_model/main.rs"
 required-features = ["cuda"]
 
+[[bin]]
+name = "expandconfig"
+
 [[bench]]
 name = "descent"
 harness = false
@@ -76,6 +79,7 @@ rpds = "0.5.0"
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0.22"
+serde_yaml = "0.8"
 bincode = "1.0"
 std-semaphore = "0.1.0"
 tempfile = "3.0.1"
