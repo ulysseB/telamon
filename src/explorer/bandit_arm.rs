@@ -628,23 +628,21 @@ impl TreePolicy for TAGPolicy {
             .children
             .iter()
             .enumerate()
-            .filter(|(_, edge)| edge.bound() < env.cut)
-            .map(|(idx, edge)| (idx, edge, edge.stats.num_visits()))
-            .collect::<Vec<_>>();
+            .filter(|(_, edge)| edge.bound() < env.cut);
 
         // Pick an edge which was not explored yet, if there is some
         NewNodeOrder::WeightedRandom
             .pick_index(
                 children
-                    .iter()
-                    .filter(|(_, _, num_visits)| *num_visits == 0)
-                    .map(|(idx, edge, _)| (*idx, edge.bound())),
+                    .clone()
+                    .filter(|(_, edge)| edge.stats.num_visits() == 0)
+                    .map(|(idx, edge)| (idx, edge.bound())),
                 env.cut,
             ).or_else(|| {
                 // Compute the threshold to use so that we only have `config.threshold` children
                 let threshold = {
                     let mut evalns = Evaluations::with_capacity(self.threshold);
-                    for (_, edge, _) in children.iter() {
+                    for (_, edge) in children.clone() {
                         // Evaluations are sorted; we can bail out early.
                         for &eval in &*unwrap!(edge.stats.evaluations.read()) {
                             if !evalns.record(eval, self.threshold) {
@@ -681,8 +679,7 @@ impl TreePolicy for TAGPolicy {
                 stats
                     .into_iter()
                     .map(|(ix, child_successes, child_visits)| {
-                        let score = heval(
-                            delta,
+                        let score = self.heval(
                             child_successes,
                             child_visits,
                             num_visits,
