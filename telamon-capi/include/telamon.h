@@ -5,7 +5,7 @@
  * This file has been generated usin cbindgen.
  *
  * To generate this file:
- *  1. Get the latest cbindgen using `cargo install --force cbindgen --git https://github.com/Elarnon/cbindgen`
+ *  1. Get the latest cbindgen using `cargo install --force cbindgen`
  *  2. Run `rustup run nightly cbindgen telamon-capi -o telamon-capi/include/telamon.h`
  */
 

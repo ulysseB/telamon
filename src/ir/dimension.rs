@@ -8,7 +8,6 @@ use utils::*;
     Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
 )]
 #[repr(transparent)]
-/// cbindgen:field-names=[id]
 pub struct DimId(pub u32);
 
 impl Into<usize> for DimId {
