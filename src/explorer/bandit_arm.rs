@@ -219,13 +219,21 @@ impl<'a, 'b, P: TreePolicy> Store<'a> for Tree<'a, 'b, P> {
                         break;
                     }
                     SubTree::Leaf(leaf) => {
-                        return local_selection::descend(
+                        if let Some(candidate) = local_selection::descend(
                             &env.config.choice_ordering,
                             env.config.new_nodes_order,
                             env.context,
                             *leaf,
                             env.cut,
-                        ).map(|c| (c, path));
+                        ) {
+                            return Some((candidate, path));
+                        } else {
+                            // Deadend reached while exploring; restart from the root
+                            // TODO(bclement): We should backpropagate explicitely here.
+                            self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
+
+                            break;
+                        }
                     }
                     SubTree::InternalNode(node) => {
                         if let Some((idx, next)) = node.descend(&env, &self.policy) {
@@ -526,23 +534,33 @@ fn pick_tag_arm<'a>(
         evalns.max()?
     };
 
-    // Total number of visits on this node, excluding ones which were cut
-    let num_visits = children
-        .clone()
-        .map(|(_, edge)| edge.stats.num_visits())
+    // Precompute statistics for each child to ensure the number of visits of a child is not
+    // incremented concurrently after we have computed the sum.
+    let stats = children
+        .map(|(ix, edge)| {
+            (
+                ix,
+                unwrap!(edge.stats.evaluations.read()).count_lte(threshold),
+                edge.stats.num_visits(),
+            )
+        }).collect::<Vec<_>>();
+
+    // Total number of visits on the node
+    let num_visits = stats
+        .iter()
+        .map(|(_, _, num_visits)| num_visits)
         .sum::<usize>();
 
     // Total number of children, excluding ones which were cut
-    let num_children = children.clone().count();
+    let num_children = stats.len();
 
-    children
-        .map(|(ix, edge)| {
-            let num_successes =
-                unwrap!(edge.stats.evaluations.read()).count_lte(threshold);
+    stats
+        .into_iter()
+        .map(|(ix, child_successes, child_visits)| {
             let score = heval(
                 delta,
-                num_successes,
-                edge.stats.num_visits(),
+                child_successes,
+                child_visits,
                 num_visits,
                 num_children,
             );
