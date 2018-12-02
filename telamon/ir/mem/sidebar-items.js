@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["Block","A block of memory allocated on the device by the kernel."],["BlockMap","Holds the blocks of memory to allocate on the device."],["MemId","Uniquely identifies a block. cbindgen:field-names=[id]"]]});
+initSidebarItems({"struct":[["Block","A block of memory allocated on the device by the kernel."],["BlockMap","Holds the blocks of memory to allocate on the device."],["MemId","Uniquely identifies a block."]]});
