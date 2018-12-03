@@ -24,7 +24,10 @@ impl<'a> Env<'a> {
     /// List the available actions for a given candidate.
     ///
     /// If `list_actions` return `None`, the candidate is a fully-specified implementation.
-    pub fn list_actions(&self, candidate: &Candidate<'_>) -> Option<Vec<choice::ActionEx>> {
+    pub fn list_actions(
+        &self,
+        candidate: &Candidate<'_>,
+    ) -> Option<Vec<choice::ActionEx>> {
         choice::list(&self.config.choice_ordering, &candidate.space).next()
     }
 
@@ -365,7 +368,9 @@ impl<'a, P: TreePolicy> Edge<'a, P> {
             {
                 match &*unwrap!(self.dst.read()) {
                     SubTree::Empty => return SubTree::Empty,
-                    SubTree::InternalNode(node) => return SubTree::InternalNode(Arc::clone(node)),
+                    SubTree::InternalNode(node) => {
+                        return SubTree::InternalNode(Arc::clone(node))
+                    }
                     SubTree::Leaf(_) => {
                         // Need write access, see below
                     }
@@ -379,10 +384,14 @@ impl<'a, P: TreePolicy> Edge<'a, P> {
                 let dst = &mut *unwrap!(self.dst.write());
                 if let SubTree::Leaf(_) = dst {
                     // We got write access to the leaf; expand it.
-                    if let SubTree::Leaf(candidate) = std::mem::replace(dst, SubTree::Empty) {
+                    if let SubTree::Leaf(candidate) =
+                        std::mem::replace(dst, SubTree::Empty)
+                    {
                         let choice = env.list_actions(&candidate);
                         if let Some(choice) = choice {
-                            let node = Node::from_candidates(env.apply_choice(&candidate, choice));
+                            let node = Node::from_candidates(
+                                env.apply_choice(&candidate, choice),
+                            );
                             if node.is_deadend() {
                                 // Actual dead-end; leave the SubTree::Empty there.
                                 return SubTree::Empty;
@@ -483,7 +492,9 @@ impl<'a> TreePolicy for &'a BanditConfig {
                     node.children.iter().map(|edge| edge.bound()).enumerate(),
                     env.cut,
                 ),
-                OldNodeOrder::Bandit => pick_tag_arm(self.delta, self.threshold, node, env.cut),
+                OldNodeOrder::Bandit => {
+                    pick_tag_arm(self.delta, self.topk, node, env.cut)
+                }
             }).map(|idx| {
                 node.children[idx].stats.down();
                 idx
@@ -498,7 +509,7 @@ impl<'a> TreePolicy for &'a BanditConfig {
 /// Picks a candidate below the bound using TAG formula.
 fn pick_tag_arm<'a>(
     delta: f64,
-    threshold: usize,
+    topk: usize,
     node: &Node<'a, &'_ BanditConfig>,
     cut: f64,
 ) -> Option<usize> {
@@ -509,13 +520,13 @@ fn pick_tag_arm<'a>(
         .enumerate()
         .filter(|(_, edge)| edge.bound() < cut);
 
-    // Compute the threshold to use so that we only have `config.threshold` children
+    // Compute the threshold to use so that we only have `config.topk` children
     let threshold = {
-        let mut evalns = Evaluations::with_capacity(threshold);
+        let mut evalns = Evaluations::with_capacity(topk);
         for (_, edge) in children.clone() {
             // Evaluations are sorted; we can bail out early.
             for &eval in &*unwrap!(edge.stats.evaluations.read()) {
-                if !evalns.record(eval, threshold) {
+                if !evalns.record(eval, topk) {
                     break;
                 }
             }
@@ -612,7 +623,7 @@ impl TAGStats {
 
     /// Called when backpropagating across this edge after an evaluation
     fn up(&self, config: &BanditConfig, eval: f64) {
-        unwrap!(self.evaluations.write()).record(eval, config.threshold);
+        unwrap!(self.evaluations.write()).record(eval, config.topk);
     }
 
     /// The number of visits through this edge.
@@ -650,14 +661,14 @@ impl Evaluations {
         }
     }
 
-    /// Record a new evaluation.  Returns `true` if the evaluation is among the top `threshold`.
-    fn record(&mut self, eval: f64, threshold: usize) -> bool {
+    /// Record a new evaluation.  Returns `true` if the evaluation is among the top `topk`.
+    fn record(&mut self, eval: f64, topk: usize) -> bool {
         let pos = self
             .0
             .binary_search_by(|&probe| cmp_f64(probe, eval))
             .unwrap_or_else(|e| e);
-        if pos < threshold {
-            if self.0.len() >= threshold {
+        if pos < topk {
+            if self.0.len() >= topk {
                 self.0.pop();
             }
             self.0.insert(pos, eval);

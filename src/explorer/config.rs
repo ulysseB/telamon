@@ -188,7 +188,7 @@ pub struct BanditConfig {
     /// Indicates how to choose between nodes with at least one children evaluated.
     pub old_nodes_order: OldNodeOrder,
     /// The number of best execution times to remember.
-    pub threshold: usize,
+    pub topk: usize,
     /// The biggest delta is, the more focused on the previous best candidates the
     /// exploration is.
     pub delta: f64,
@@ -221,7 +221,7 @@ impl Default for BanditConfig {
         BanditConfig {
             new_nodes_order: NewNodeOrder::default(),
             old_nodes_order: OldNodeOrder::default(),
-            threshold: 10,
+            topk: 10,
             delta: 1.,
             choice_ordering: ChoiceOrdering::default(),
         }
