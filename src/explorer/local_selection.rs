@@ -20,40 +20,39 @@ pub fn descend<'a>(
     //let choice_opt = choice::list(&candidate.space).next();
     let choice_opt = choice::list(choice_order, &candidate.space).next();
     if let Some(choice) = choice_opt {
-        let new_nodes = candidate.apply_choice(context, choice);
-        pick_candidate(node_order, new_nodes, cut)
-            .and_then(|node| descend(choice_order, node_order, context, node, cut))
+        let mut new_nodes = candidate.apply_choice(context, choice);
+        let idx = node_order.pick_candidate(&new_nodes, cut)?;
+        let node = new_nodes.swap_remove(idx);
+        descend(choice_order, node_order, context, node, cut)
     } else {
         Some(candidate)
     }
 }
 
-/// Called in montecarlo_descend, dispatch the choice of the next candidate according to our
-/// configuration
-pub fn pick_candidate<'a>(
-    order: NewNodeOrder,
-    mut new_nodes: Vec<Candidate<'a>>,
-    cut: f64,
-) -> Option<Candidate<'a>> {
-    let idx = {
+impl NewNodeOrder {
+    /// Called in montecarlo_descend, dispatch the choice of the next candidate according to our
+    /// configuration
+    pub fn pick_candidate<'a>(
+        &self,
+        new_nodes: &[Candidate<'a>],
+        cut: f64,
+    ) -> Option<usize> {
         let items = new_nodes.iter().map(|c| c.bound.value()).enumerate();
-        pick_index(order, items, cut)
-    };
-    idx.map(|idx| new_nodes.remove(idx))
-}
+        self.pick_index(items, cut)
+    }
 
-/// Returns the index of the next candidate to consider.
-pub fn pick_index<IT>(order: NewNodeOrder, nodes: IT, cut: f64) -> Option<usize>
-where
-    IT: IntoIterator<Item = (usize, f64)>,
-    IT::IntoIter: Clone,
-{
-    let nodes = nodes.into_iter().filter(|&(_, b)| b < cut);
-    match order {
-        NewNodeOrder::Api => nodes.into_iter().next().map(|(idx, _)| idx),
-        NewNodeOrder::WeightedRandom => choose_cand_weighted(nodes, cut),
-        NewNodeOrder::Bound => choose_cand_best(nodes),
-        NewNodeOrder::Random => choose_cand_rand(nodes),
+    /// Returns the index of the next candidate to consider.
+    pub fn pick_index<IT>(&self, nodes: IT, cut: f64) -> Option<usize>
+    where
+        IT: Iterator<Item = (usize, f64)> + Clone,
+    {
+        let nodes = nodes.filter(|&(_, b)| b < cut);
+        match self {
+            NewNodeOrder::Api => nodes.into_iter().next().map(|(idx, _)| idx),
+            NewNodeOrder::WeightedRandom => choose_cand_weighted(nodes, cut),
+            NewNodeOrder::Bound => choose_cand_best(nodes),
+            NewNodeOrder::Random => choose_cand_rand(nodes),
+        }
     }
 }
 
