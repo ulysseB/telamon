@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+#
+# A hook script to verify what is about to be committed.  Called by "git
+# commit" with no arguments.  The hook exits with non-zero status after issuing
+# an appropriate message if it wants to stop the commit.
+#
+# This hook runs rustfmt on the staged Rust files.
+#
+# To enable, add it to git's hooks:
+#
+#     ln -rs hooks/pre-commit .git/hooks/pre-commit
+
+# Find all staged rust files, and exit early if there aren't any.
+RUST_FILES=($(git diff --name-only --cached --diff-filter=AM | \
+    grep --color=never '.rs$'))
+if [ ! "$RUST_FILES" ]; then
+    exit 0
+fi
+
+# Check for rustfmt
+if ! command -v rustfmt >/dev/null; then
+    echo -ne '\033[0;31m'
+    echo 'rustfmt not in path; can not format.  Please install rustfmt:'
+    echo '    rustup component add rustfmt-preview'
+    echo -ne '\033[0m'
+    exit 2
+fi
+
+# Check for unstaged changes to files in the index
+CHANGED_FILES=($(git diff --name-only ${RUST_FILES[@]}))
+if [ "$CHANGED_FILES" ]; then
+    echo -ne '\033[0;31m'
+    echo 'You have unstaged changes to some files in your commit; skipping '
+    echo 'auto-format.  Please stage, stash, or revert these changes.  You '
+    echo 'may find `git stash -k` helpful here.'
+    echo
+    echo 'Files with unstaged changes:'
+    for file in ${CHANGED_FILES[@]}; do
+        echo "  $file"
+    done
+    echo -ne '\033[0m'
+    exit 1
+fi
+
+# Format all staged files, then exit with an error code if any have uncommited
+# changes.
+rustfmt ${RUST_FILES[@]}
+
+CHANGED_FILES=($(git diff --name-only ${RUST_FILES[@]}))
+if [ "$CHANGED_FILES" ]; then
+    echo -ne '\033[0;33m'
+    echo 'Reformatted staged files.  Please review and stage the changes.'
+    echo
+    echo 'Files updated:'
+    for file in ${CHANGED_FILES[@]}; do
+        echo "  $file"
+    done
+    echo -ne '\033[0m'
+    exit 1
+else
+    exit 0
+fi
