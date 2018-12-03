@@ -41,8 +41,8 @@ struct Opt {
         short = "f",
         long = "format",
         default_value = "toml",
-        possible_value = "toml",
-        possible_value = "yaml"
+        case_insensitive = true,
+        raw(possible_values = "Format::VARIANTS"),
     )]
     format: Format,
 }
@@ -110,6 +110,10 @@ enum Format {
     Yaml,
 }
 
+impl Format {
+    const VARIANTS: &'static [&'static str; 2] = &["toml", "yaml"];
+}
+
 impl fmt::Display for Format {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Format::*;
@@ -121,28 +125,30 @@ impl fmt::Display for Format {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParseFormatError {
-    _priv: (),
-}
-
-impl fmt::Display for ParseFormatError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        "valid formats are `toml` and `yaml`".fmt(f)
-    }
-}
-
 impl std::str::FromStr for Format {
     type Err = ParseFormatError;
 
     fn from_str(s: &str) -> Result<Format, Self::Err> {
         use Format::*;
 
-        match &*s.to_lowercase() {
-            "toml" => Ok(Toml),
-            "yaml" => Ok(Yaml),
-            _ => Err(ParseFormatError { _priv: () }),
+        if s.eq_ignore_ascii_case("toml") {
+            Ok(Toml)
+        } else if s.eq_ignore_ascii_case("yaml") {
+            Ok(Yaml)
+        } else {
+            Err(ParseFormatError { _priv: () })
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ParseFormatError {
+    _priv: (),
+}
+
+impl fmt::Display for ParseFormatError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "valid values: {}", Format::VARIANTS.join(", "))
     }
 }
 
