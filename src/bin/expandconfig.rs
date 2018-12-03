@@ -136,15 +136,13 @@ impl std::str::FromStr for Format {
         } else if s.eq_ignore_ascii_case("yaml") {
             Ok(Yaml)
         } else {
-            Err(ParseFormatError { _priv: () })
+            Err(ParseFormatError {})
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct ParseFormatError {
-    _priv: (),
-}
+struct ParseFormatError {}
 
 impl fmt::Display for ParseFormatError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
