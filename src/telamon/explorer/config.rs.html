@@ -385,10 +385,6 @@
 <span id="385">385</span>
 <span id="386">386</span>
 <span id="387">387</span>
-<span id="388">388</span>
-<span id="389">389</span>
-<span id="390">390</span>
-<span id="391">391</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Defines a structure to store the configuration of the exploration. The configuration</span>
 <span class="doccomment">//! is read from the `Setting.toml` file if it exists. Some parameters can be overridden</span>
@@ -580,13 +576,10 @@
     <span class="doccomment">/// Indicates how to choose between nodes with at least one children evaluated.</span>
     <span class="kw">pub</span> <span class="ident">old_nodes_order</span>: <span class="ident">OldNodeOrder</span>,
     <span class="doccomment">/// The number of best execution times to remember.</span>
-    <span class="kw">pub</span> <span class="ident">threshold</span>: <span class="ident">usize</span>,
+    <span class="kw">pub</span> <span class="ident">topk</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// The biggest delta is, the more focused on the previous best candidates the</span>
     <span class="doccomment">/// exploration is.</span>
     <span class="kw">pub</span> <span class="ident">delta</span>: <span class="ident">f64</span>,
-    <span class="doccomment">/// If true, does not expand tree until end - instead, starts a montecarlo descend after each</span>
-    <span class="doccomment">/// expansion of a node</span>
-    <span class="kw">pub</span> <span class="ident">monte_carlo</span>: <span class="ident">bool</span>,
     <span class="doccomment">/// Order in which the different choices are going to be determined</span>
     <span class="kw">pub</span> <span class="ident">choice_ordering</span>: <span class="ident">ChoiceOrdering</span>,
 }
@@ -616,10 +609,9 @@
         <span class="ident">BanditConfig</span> {
             <span class="ident">new_nodes_order</span>: <span class="ident">NewNodeOrder</span>::<span class="ident">default</span>(),
             <span class="ident">old_nodes_order</span>: <span class="ident">OldNodeOrder</span>::<span class="ident">default</span>(),
-            <span class="ident">threshold</span>: <span class="number">10</span>,
+            <span class="ident">topk</span>: <span class="number">10</span>,
             <span class="ident">delta</span>: <span class="number">1.</span>,
             <span class="ident">choice_ordering</span>: <span class="ident">ChoiceOrdering</span>::<span class="ident">default</span>(),
-            <span class="ident">monte_carlo</span>: <span class="bool-val">true</span>,
         }
     }
 }

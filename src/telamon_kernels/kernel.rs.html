@@ -318,11 +318,6 @@
 <span id="318">318</span>
 <span id="319">319</span>
 <span id="320">320</span>
-<span id="321">321</span>
-<span id="322">322</span>
-<span id="323">323</span>
-<span id="324">324</span>
-<span id="325">325</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Abstracts kernels so we can build generic methods to test them.</span>
 <span class="kw">use</span> <span class="ident">itertools</span>::<span class="ident">Itertools</span>;
@@ -401,8 +396,7 @@
         <span class="kw">while</span> <span class="ident">num_runs</span> <span class="op">&lt;</span> <span class="ident">num_tests</span> {
             <span class="kw">let</span> <span class="ident">order</span> <span class="op">=</span> <span class="ident">explorer</span>::<span class="ident">config</span>::<span class="ident">NewNodeOrder</span>::<span class="ident">WeightedRandom</span>;
             <span class="kw">let</span> <span class="ident">ordering</span> <span class="op">=</span> <span class="ident">explorer</span>::<span class="ident">config</span>::<span class="ident">ChoiceOrdering</span>::<span class="ident">default</span>();
-            <span class="kw">let</span> <span class="ident">bounds</span> <span class="op">=</span> <span class="ident">candidates</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">bound</span>.<span class="ident">value</span>()).<span class="ident">enumerate</span>();
-            <span class="kw">let</span> <span class="ident">candidate_idx</span> <span class="op">=</span> <span class="ident">local_selection</span>::<span class="ident">pick_index</span>(<span class="ident">order</span>, <span class="ident">bounds</span>, <span class="ident">CUT</span>);
+            <span class="kw">let</span> <span class="ident">candidate_idx</span> <span class="op">=</span> <span class="ident">order</span>.<span class="ident">pick_candidate</span>(<span class="kw-2">&amp;</span><span class="ident">candidates</span>, <span class="ident">CUT</span>);
             <span class="kw">let</span> <span class="ident">candidate</span> <span class="op">=</span> <span class="ident">candidates</span>[<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">candidate_idx</span>)].<span class="ident">clone</span>();
             <span class="kw">let</span> <span class="ident">leaf</span> <span class="op">=</span>
                 <span class="ident">local_selection</span>::<span class="ident">descend</span>(<span class="kw-2">&amp;</span><span class="ident">ordering</span>, <span class="ident">order</span>, <span class="ident">context</span>, <span class="ident">candidate</span>, <span class="ident">CUT</span>);
@@ -552,8 +546,7 @@
                 <span class="kw">let</span> <span class="ident">order</span> <span class="op">=</span> <span class="ident">explorer</span>::<span class="ident">config</span>::<span class="ident">NewNodeOrder</span>::<span class="ident">WeightedRandom</span>;
                 <span class="kw">let</span> <span class="ident">ordering</span> <span class="op">=</span> <span class="ident">explorer</span>::<span class="ident">config</span>::<span class="ident">ChoiceOrdering</span>::<span class="ident">default</span>();
                 <span class="kw">let</span> <span class="ident">inf</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span>;
-                <span class="kw">let</span> <span class="ident">bounds</span> <span class="op">=</span> <span class="ident">candidates</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">bound</span>.<span class="ident">value</span>()).<span class="ident">enumerate</span>();
-                <span class="kw">let</span> <span class="ident">candidate_idx</span> <span class="op">=</span> <span class="ident">local_selection</span>::<span class="ident">pick_index</span>(<span class="ident">order</span>, <span class="ident">bounds</span>, <span class="ident">inf</span>);
+                <span class="kw">let</span> <span class="ident">candidate_idx</span> <span class="op">=</span> <span class="ident">order</span>.<span class="ident">pick_candidate</span>(<span class="kw-2">&amp;</span><span class="ident">candidates</span>, <span class="ident">inf</span>);
                 <span class="kw">let</span> <span class="ident">candidate</span> <span class="op">=</span> <span class="ident">candidates</span>[<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">candidate_idx</span>)].<span class="ident">clone</span>();
                 <span class="ident">local_selection</span>::<span class="ident">descend</span>(<span class="kw-2">&amp;</span><span class="ident">ordering</span>, <span class="ident">order</span>, <span class="ident">context</span>, <span class="ident">candidate</span>, <span class="ident">inf</span>)
                     .<span class="ident">is_none</span>()
@@ -571,10 +564,7 @@
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">candidates</span> <span class="op">=</span> <span class="ident">std</span>::<span class="ident">borrow</span>::<span class="ident">Cow</span>::<span class="ident">Borrowed</span>(<span class="ident">candidates</span>);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">bounds</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
     <span class="kw">loop</span> {
-        <span class="kw">let</span> <span class="ident">idx</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">idx</span>) <span class="op">=</span> {
-            <span class="kw">let</span> <span class="ident">idx_bounds</span> <span class="op">=</span> <span class="ident">candidates</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">bound</span>.<span class="ident">value</span>()).<span class="ident">enumerate</span>();
-            <span class="ident">local_selection</span>::<span class="ident">pick_index</span>(<span class="ident">order</span>, <span class="ident">idx_bounds</span>, <span class="ident">CUT</span>)
-        } {
+        <span class="kw">let</span> <span class="ident">idx</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">idx</span>) <span class="op">=</span> <span class="ident">order</span>.<span class="ident">pick_candidate</span>(<span class="kw-2">&amp;</span><span class="ident">candidates</span>, <span class="ident">CUT</span>) {
             <span class="ident">idx</span>
         } <span class="kw">else</span> {
             <span class="kw">return</span> <span class="prelude-val">None</span>;

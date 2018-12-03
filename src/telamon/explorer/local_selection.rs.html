@@ -111,7 +111,6 @@
 <span id="111">111</span>
 <span id="112">112</span>
 <span id="113">113</span>
-<span id="114">114</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Provides different methods to select a candidate in a list.</span>
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">Context</span>;
@@ -135,40 +134,39 @@
     <span class="comment">//let choice_opt = choice::list(&amp;candidate.space).next();</span>
     <span class="kw">let</span> <span class="ident">choice_opt</span> <span class="op">=</span> <span class="ident">choice</span>::<span class="ident">list</span>(<span class="ident">choice_order</span>, <span class="kw-2">&amp;</span><span class="ident">candidate</span>.<span class="ident">space</span>).<span class="ident">next</span>();
     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">choice</span>) <span class="op">=</span> <span class="ident">choice_opt</span> {
-        <span class="kw">let</span> <span class="ident">new_nodes</span> <span class="op">=</span> <span class="ident">candidate</span>.<span class="ident">apply_choice</span>(<span class="ident">context</span>, <span class="ident">choice</span>);
-        <span class="ident">pick_candidate</span>(<span class="ident">node_order</span>, <span class="ident">new_nodes</span>, <span class="ident">cut</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">node</span><span class="op">|</span> <span class="ident">descend</span>(<span class="ident">choice_order</span>, <span class="ident">node_order</span>, <span class="ident">context</span>, <span class="ident">node</span>, <span class="ident">cut</span>))
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_nodes</span> <span class="op">=</span> <span class="ident">candidate</span>.<span class="ident">apply_choice</span>(<span class="ident">context</span>, <span class="ident">choice</span>);
+        <span class="kw">let</span> <span class="ident">idx</span> <span class="op">=</span> <span class="ident">node_order</span>.<span class="ident">pick_candidate</span>(<span class="kw-2">&amp;</span><span class="ident">new_nodes</span>, <span class="ident">cut</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">new_nodes</span>.<span class="ident">swap_remove</span>(<span class="ident">idx</span>);
+        <span class="ident">descend</span>(<span class="ident">choice_order</span>, <span class="ident">node_order</span>, <span class="ident">context</span>, <span class="ident">node</span>, <span class="ident">cut</span>)
     } <span class="kw">else</span> {
         <span class="prelude-val">Some</span>(<span class="ident">candidate</span>)
     }
 }
 
-<span class="doccomment">/// Called in montecarlo_descend, dispatch the choice of the next candidate according to our</span>
-<span class="doccomment">/// configuration</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pick_candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
-    <span class="ident">order</span>: <span class="ident">NewNodeOrder</span>,
-    <span class="kw-2">mut</span> <span class="ident">new_nodes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>,
-    <span class="ident">cut</span>: <span class="ident">f64</span>,
-) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> {
-    <span class="kw">let</span> <span class="ident">idx</span> <span class="op">=</span> {
+<span class="kw">impl</span> <span class="ident">NewNodeOrder</span> {
+    <span class="doccomment">/// Called in montecarlo_descend, dispatch the choice of the next candidate according to our</span>
+    <span class="doccomment">/// configuration</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pick_candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">new_nodes</span>: <span class="kw-2">&amp;</span>[<span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>],
+        <span class="ident">cut</span>: <span class="ident">f64</span>,
+    ) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">items</span> <span class="op">=</span> <span class="ident">new_nodes</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">bound</span>.<span class="ident">value</span>()).<span class="ident">enumerate</span>();
-        <span class="ident">pick_index</span>(<span class="ident">order</span>, <span class="ident">items</span>, <span class="ident">cut</span>)
-    };
-    <span class="ident">idx</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">idx</span><span class="op">|</span> <span class="ident">new_nodes</span>.<span class="ident">remove</span>(<span class="ident">idx</span>))
-}
+        <span class="self">self</span>.<span class="ident">pick_index</span>(<span class="ident">items</span>, <span class="ident">cut</span>)
+    }
 
-<span class="doccomment">/// Returns the index of the next candidate to consider.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pick_index</span><span class="op">&lt;</span><span class="ident">IT</span><span class="op">&gt;</span>(<span class="ident">order</span>: <span class="ident">NewNodeOrder</span>, <span class="ident">nodes</span>: <span class="ident">IT</span>, <span class="ident">cut</span>: <span class="ident">f64</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>
-<span class="kw">where</span>
-    <span class="ident">IT</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> (<span class="ident">usize</span>, <span class="ident">f64</span>)<span class="op">&gt;</span>,
-    <span class="ident">IT</span>::<span class="ident">IntoIter</span>: <span class="ident">Clone</span>,
-{
-    <span class="kw">let</span> <span class="ident">nodes</span> <span class="op">=</span> <span class="ident">nodes</span>.<span class="ident">into_iter</span>().<span class="ident">filter</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="kw">_</span>, <span class="ident">b</span>)<span class="op">|</span> <span class="ident">b</span> <span class="op">&lt;</span> <span class="ident">cut</span>);
-    <span class="kw">match</span> <span class="ident">order</span> {
-        <span class="ident">NewNodeOrder</span>::<span class="ident">Api</span> <span class="op">=&gt;</span> <span class="ident">nodes</span>.<span class="ident">into_iter</span>().<span class="ident">next</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">idx</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">idx</span>),
-        <span class="ident">NewNodeOrder</span>::<span class="ident">WeightedRandom</span> <span class="op">=&gt;</span> <span class="ident">choose_cand_weighted</span>(<span class="ident">nodes</span>, <span class="ident">cut</span>),
-        <span class="ident">NewNodeOrder</span>::<span class="ident">Bound</span> <span class="op">=&gt;</span> <span class="ident">choose_cand_best</span>(<span class="ident">nodes</span>),
-        <span class="ident">NewNodeOrder</span>::<span class="ident">Random</span> <span class="op">=&gt;</span> <span class="ident">choose_cand_rand</span>(<span class="ident">nodes</span>),
+    <span class="doccomment">/// Returns the index of the next candidate to consider.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pick_index</span><span class="op">&lt;</span><span class="ident">IT</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">nodes</span>: <span class="ident">IT</span>, <span class="ident">cut</span>: <span class="ident">f64</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>
+    <span class="kw">where</span>
+        <span class="ident">IT</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> (<span class="ident">usize</span>, <span class="ident">f64</span>)<span class="op">&gt;</span> <span class="op">+</span> <span class="ident">Clone</span>,
+    {
+        <span class="kw">let</span> <span class="ident">nodes</span> <span class="op">=</span> <span class="ident">nodes</span>.<span class="ident">filter</span>(<span class="op">|</span><span class="kw-2">&amp;</span>(<span class="kw">_</span>, <span class="ident">b</span>)<span class="op">|</span> <span class="ident">b</span> <span class="op">&lt;</span> <span class="ident">cut</span>);
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">NewNodeOrder</span>::<span class="ident">Api</span> <span class="op">=&gt;</span> <span class="ident">nodes</span>.<span class="ident">into_iter</span>().<span class="ident">next</span>().<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">idx</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">idx</span>),
+            <span class="ident">NewNodeOrder</span>::<span class="ident">WeightedRandom</span> <span class="op">=&gt;</span> <span class="ident">choose_cand_weighted</span>(<span class="ident">nodes</span>, <span class="ident">cut</span>),
+            <span class="ident">NewNodeOrder</span>::<span class="ident">Bound</span> <span class="op">=&gt;</span> <span class="ident">choose_cand_best</span>(<span class="ident">nodes</span>),
+            <span class="ident">NewNodeOrder</span>::<span class="ident">Random</span> <span class="op">=&gt;</span> <span class="ident">choose_cand_rand</span>(<span class="ident">nodes</span>),
+        }
     }
 }
 
