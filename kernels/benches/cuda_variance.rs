@@ -58,8 +58,7 @@ where
     let candidates = std::iter::repeat(())
         .flat_map(|()| {
             let order = explorer::config::NewNodeOrder::WeightedRandom;
-            let bounds = candidates.iter().map(|c| c.bound.value()).enumerate();
-            let candidate_idx = local_selection::pick_index(order, bounds, CUT);
+            let candidate_idx = order.pick_candidate(&candidates, CUT);
             let candidate = candidates[unwrap!(candidate_idx)].clone();
             local_selection::descend(&Default::default(), order, &context, candidate, CUT)
         }).take(NUM_TESTS)
