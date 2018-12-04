@@ -474,6 +474,9 @@ impl TreePolicy for NewNodeOrder {
     fn backpropagate(&self, _node: &Node<()>, _idx: usize, _eval: f64) {}
 }
 
+/// TODO(bclement):  The UCT formula is wrong, because 1) we are optimising as a reward while we
+/// actually have a cost and 2) the scale is wrong (evaluations are in the e6+ range but we do as
+/// if they were in 0-1).
 pub struct UCTPolicy {
     factor: f64,
 }
