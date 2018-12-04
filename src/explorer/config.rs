@@ -185,15 +185,71 @@ pub struct BanditConfig {
     /// Indicates how to select between nodes of the search tree when none of their
     /// children have been evaluated.
     pub new_nodes_order: NewNodeOrder,
+    /// Order in which the different choices are going to be determined
+    pub choice_ordering: ChoiceOrdering,
     /// Indicates how to choose between nodes with at least one children evaluated.
-    pub old_nodes_order: OldNodeOrder,
+    pub tree_policy: TreePolicy,
+}
+
+/// Tree policy configuration
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
+pub enum TreePolicy {
+    /// Take the candidate with the best bound.
+    Bound,
+    /// Consider the nodes with a probability proportional to the distance between the
+    /// cut and the bound.
+    WeightedRandom,
+    /// TAG algorithm
+    #[serde(rename = "tag")]
+    TAG(TAGConfig),
+    /// UCT algorithm
+    #[serde(rename = "uct")]
+    UCT(UCTConfig),
+}
+
+impl Default for TreePolicy {
+    fn default() -> Self {
+        TreePolicy::TAG(TAGConfig::default())
+    }
+}
+
+/// Configuration for the TAG algorithm
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(default)]
+#[serde(deny_unknown_fields)]
+pub struct TAGConfig {
     /// The number of best execution times to remember.
     pub topk: usize,
     /// The biggest delta is, the more focused on the previous best candidates the
     /// exploration is.
     pub delta: f64,
-    /// Order in which the different choices are going to be determined
-    pub choice_ordering: ChoiceOrdering,
+}
+
+impl Default for TAGConfig {
+    fn default() -> Self {
+        TAGConfig {
+            topk: 10,
+            delta: 1.,
+        }
+    }
+}
+
+/// Configuration for the UCT algorithm
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(default)]
+#[serde(deny_unknown_fields)]
+pub struct UCTConfig {
+    pub factor: f64,
+}
+
+impl Default for UCTConfig {
+    fn default() -> Self {
+        UCTConfig {
+            factor: 2f64.sqrt(),
+        }
+    }
 }
 
 impl BanditConfig {
@@ -220,9 +276,7 @@ impl Default for BanditConfig {
     fn default() -> Self {
         BanditConfig {
             new_nodes_order: NewNodeOrder::default(),
-            old_nodes_order: OldNodeOrder::default(),
-            topk: 10,
-            delta: 1.,
+            tree_policy: TreePolicy::default(),
             choice_ordering: ChoiceOrdering::default(),
         }
     }
@@ -247,26 +301,6 @@ pub enum NewNodeOrder {
 impl Default for NewNodeOrder {
     fn default() -> Self {
         NewNodeOrder::WeightedRandom
-    }
-}
-
-/// Indicates how to choose between nodes of the search tree with at least one descendent
-/// evaluated.
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum OldNodeOrder {
-    /// Use the weights from the bandit algorithm.
-    Bandit,
-    /// Take the candidate with the best bound.
-    Bound,
-    /// Consider the nodes with a probability proportional to the distance between the
-    /// cut and the bound.
-    WeightedRandom,
-}
-
-impl Default for OldNodeOrder {
-    fn default() -> Self {
-        OldNodeOrder::Bandit
     }
 }
 

@@ -12,7 +12,7 @@ pub mod local_selection;
 
 pub use self::bandit_arm::TreeEvent;
 pub use self::candidate::Candidate;
-pub use self::config::{Config, SearchAlgorithm};
+pub use self::config::{BanditConfig, Config, SearchAlgorithm};
 pub use self::logger::LogMessage;
 
 use self::choice::fix_order;
@@ -54,6 +54,52 @@ pub fn find_best<'a>(
     find_best_ex(config, context, candidates).map(|c| c.space)
 }
 
+struct TreeBuilder<'l, 'a> {
+    candidates: Vec<Candidate<'a>>,
+    config: &'l Config,
+    bandit_config: &'l BanditConfig,
+    context: &'l dyn Context,
+}
+
+impl<'l, 'a: 'l> TreeBuilder<'l, 'a> {
+    fn build<P: bandit_arm::TreePolicy>(self, policy: P) -> Option<Candidate<'a>>
+    where
+        P: 'l + Send + Sync,
+        P::EdgeStats: Send + Sync,
+    {
+        let TreeBuilder {
+            candidates,
+            config,
+            bandit_config,
+            context,
+        } = self;
+
+        crossbeam::scope(|scope| {
+            let (log_sender, log_receiver) = sync::mpsc::sync_channel(100);
+            unwrap!(
+                scope
+                    .builder()
+                    .name("Telamon - Logger".to_string())
+                    .spawn(|| (unwrap!(logger::log(config, log_receiver))))
+            );
+
+            let tree = bandit_arm::Tree::new(
+                candidates,
+                bandit_config,
+                policy,
+                log_sender.clone(),
+            );
+
+            unwrap!(
+                scope
+                    .builder()
+                    .name("Telamon - Search".to_string())
+                    .spawn(move || launch_search(config, tree, context, log_sender))
+            )
+        }).join()
+    }
+}
+
 /// Same as `find_best`, but allows to specify pre-existing actions and also returns the
 /// actionsfor the best candidate.
 pub fn find_best_ex<'a>(
@@ -62,29 +108,27 @@ pub fn find_best_ex<'a>(
     candidates: Vec<Candidate<'a>>,
 ) -> Option<Candidate<'a>> {
     match config.algorithm {
-        config::SearchAlgorithm::MultiArmedBandit(ref band_config) => {
-            crossbeam::scope(|scope| {
-                let (log_sender, log_receiver) = sync::mpsc::sync_channel(100);
-                unwrap!(
-                    scope
-                        .builder()
-                        .name("Telamon - Logger".to_string())
-                        .spawn(|| (unwrap!(logger::log(config, log_receiver))))
-                );
-
-                let tree = bandit_arm::Tree::new(
-                    candidates,
-                    band_config,
-                    band_config,
-                    log_sender.clone(),
-                );
-                unwrap!(
-                    scope
-                        .builder()
-                        .name("Telamon - Search".to_string())
-                        .spawn(move || launch_search(config, tree, context, log_sender))
-                )
-            }).join()
+        config::SearchAlgorithm::MultiArmedBandit(ref bandit_config) => {
+            let builder = TreeBuilder {
+                candidates,
+                config,
+                bandit_config,
+                context,
+            };
+            match &bandit_config.tree_policy {
+                self::config::TreePolicy::UCT(uct_config) => {
+                    builder.build(bandit_arm::UCTPolicy::from(uct_config.clone()))
+                }
+                self::config::TreePolicy::TAG(tag_config) => {
+                    builder.build(bandit_arm::TAGPolicy::from(tag_config.clone()))
+                }
+                self::config::TreePolicy::Bound => {
+                    builder.build(self::config::NewNodeOrder::Bound)
+                }
+                self::config::TreePolicy::WeightedRandom => {
+                    builder.build(self::config::NewNodeOrder::WeightedRandom)
+                }
+            }
         }
         config::SearchAlgorithm::BoundOrder => crossbeam::scope(|scope| {
             let (log_sender, log_receiver) = sync::mpsc::sync_channel(100);
