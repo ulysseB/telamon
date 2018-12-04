@@ -385,6 +385,40 @@
 <span id="385">385</span>
 <span id="386">386</span>
 <span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Defines a structure to store the configuration of the exploration. The configuration</span>
 <span class="doccomment">//! is read from the `Setting.toml` file if it exists. Some parameters can be overridden</span>
@@ -573,15 +607,71 @@
     <span class="doccomment">/// Indicates how to select between nodes of the search tree when none of their</span>
     <span class="doccomment">/// children have been evaluated.</span>
     <span class="kw">pub</span> <span class="ident">new_nodes_order</span>: <span class="ident">NewNodeOrder</span>,
+    <span class="doccomment">/// Order in which the different choices are going to be determined</span>
+    <span class="kw">pub</span> <span class="ident">choice_ordering</span>: <span class="ident">ChoiceOrdering</span>,
     <span class="doccomment">/// Indicates how to choose between nodes with at least one children evaluated.</span>
-    <span class="kw">pub</span> <span class="ident">old_nodes_order</span>: <span class="ident">OldNodeOrder</span>,
+    <span class="kw">pub</span> <span class="ident">tree_policy</span>: <span class="ident">TreePolicy</span>,
+}
+
+<span class="doccomment">/// Tree policy configuration</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">tag</span> <span class="op">=</span> <span class="string">&quot;type&quot;</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;snake_case&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreePolicy</span> {
+    <span class="doccomment">/// Take the candidate with the best bound.</span>
+    <span class="ident">Bound</span>,
+    <span class="doccomment">/// Consider the nodes with a probability proportional to the distance between the</span>
+    <span class="doccomment">/// cut and the bound.</span>
+    <span class="ident">WeightedRandom</span>,
+    <span class="doccomment">/// TAG algorithm</span>
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;tag&quot;</span>)]</span>
+    <span class="ident">TAG</span>(<span class="ident">TAGConfig</span>),
+    <span class="doccomment">/// UCT algorithm</span>
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;uct&quot;</span>)]</span>
+    <span class="ident">UCT</span>(<span class="ident">UCTConfig</span>),
+}
+
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">TreePolicy</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="ident">TreePolicy</span>::<span class="ident">TAG</span>(<span class="ident">TAGConfig</span>::<span class="ident">default</span>())
+    }
+}
+
+<span class="doccomment">/// Configuration for the TAG algorithm</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">deny_unknown_fields</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TAGConfig</span> {
     <span class="doccomment">/// The number of best execution times to remember.</span>
     <span class="kw">pub</span> <span class="ident">topk</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// The biggest delta is, the more focused on the previous best candidates the</span>
     <span class="doccomment">/// exploration is.</span>
     <span class="kw">pub</span> <span class="ident">delta</span>: <span class="ident">f64</span>,
-    <span class="doccomment">/// Order in which the different choices are going to be determined</span>
-    <span class="kw">pub</span> <span class="ident">choice_ordering</span>: <span class="ident">ChoiceOrdering</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">TAGConfig</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="ident">TAGConfig</span> {
+            <span class="ident">topk</span>: <span class="number">10</span>,
+            <span class="ident">delta</span>: <span class="number">1.</span>,
+        }
+    }
+}
+
+<span class="doccomment">/// Configuration for the UCT algorithm</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">deny_unknown_fields</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UCTConfig</span> {
+    <span class="kw">pub</span> <span class="ident">factor</span>: <span class="ident">f64</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">UCTConfig</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="ident">UCTConfig</span> {
+            <span class="ident">factor</span>: <span class="number">2f64</span>.<span class="ident">sqrt</span>(),
+        }
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">BanditConfig</span> {
@@ -608,9 +698,7 @@
     <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="ident">BanditConfig</span> {
             <span class="ident">new_nodes_order</span>: <span class="ident">NewNodeOrder</span>::<span class="ident">default</span>(),
-            <span class="ident">old_nodes_order</span>: <span class="ident">OldNodeOrder</span>::<span class="ident">default</span>(),
-            <span class="ident">topk</span>: <span class="number">10</span>,
-            <span class="ident">delta</span>: <span class="number">1.</span>,
+            <span class="ident">tree_policy</span>: <span class="ident">TreePolicy</span>::<span class="ident">default</span>(),
             <span class="ident">choice_ordering</span>: <span class="ident">ChoiceOrdering</span>::<span class="ident">default</span>(),
         }
     }
@@ -635,26 +723,6 @@
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">NewNodeOrder</span> {
     <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="ident">NewNodeOrder</span>::<span class="ident">WeightedRandom</span>
-    }
-}
-
-<span class="doccomment">/// Indicates how to choose between nodes of the search tree with at least one descendent</span>
-<span class="doccomment">/// evaluated.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;snake_case&quot;</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">OldNodeOrder</span> {
-    <span class="doccomment">/// Use the weights from the bandit algorithm.</span>
-    <span class="ident">Bandit</span>,
-    <span class="doccomment">/// Take the candidate with the best bound.</span>
-    <span class="ident">Bound</span>,
-    <span class="doccomment">/// Consider the nodes with a probability proportional to the distance between the</span>
-    <span class="doccomment">/// cut and the bound.</span>
-    <span class="ident">WeightedRandom</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">OldNodeOrder</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="ident">OldNodeOrder</span>::<span class="ident">Bandit</span>
     }
 }
 
