@@ -241,15 +241,45 @@ impl Default for TAGConfig {
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct UCTConfig {
-    pub factor: f64,
+    /// Constant multiplier for the exploration term.  This is normalized using the `normalization`
+    /// term.
+    pub exploration_factor: f64,
+    /// Normalization to use for the exploration term.
+    pub normalization: Option<Normalization>,
+    /// Reduction function to use when computing the state value.
+    pub value_reduction: ValueReduction,
 }
 
 impl Default for UCTConfig {
     fn default() -> Self {
         UCTConfig {
-            factor: 2f64.sqrt(),
+            exploration_factor: 2f64.sqrt(),
+            normalization: None,
+            // We use best value reduction by default because the mean value does not make much
+            // sense considering that we can have infinite/very large values due to both timeouts
+            // and cutting later in the evaluation process.
+            value_reduction: ValueReduction::Best,
         }
     }
+}
+
+#[derive(Copy, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ValueReduction {
+    /// Use the mean evaluation time.  This yields the regular UCT value function.
+    Mean,
+    /// Use the best evaluation time.  This yields an algorithm similar to maxUCT from
+    ///
+    ///     Trial-based Heuristic Tree Search for Finite Horizon MDPs,
+    ///     Thomas Keller and Malte Helmert
+    Best,
+}
+
+#[derive(Copy, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Normalization {
+    /// Normalize the exploration term according to the current global best.
+    GlobalBest,
 }
 
 impl BanditConfig {

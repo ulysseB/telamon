@@ -479,12 +479,44 @@ impl TreePolicy for NewNodeOrder {
 /// if they were in 0-1).
 pub struct UCTPolicy {
     factor: f64,
+    normalization: Option<config::Normalization>,
+    value_reduction: config::ValueReduction,
 }
 
 impl From<config::UCTConfig> for UCTPolicy {
     fn from(config: config::UCTConfig) -> Self {
-        let config::UCTConfig { factor } = config;
-        UCTPolicy { factor }
+        let config::UCTConfig {
+            exploration_factor,
+            normalization,
+            value_reduction,
+        } = config;
+        UCTPolicy {
+            factor: exploration_factor,
+            normalization,
+            value_reduction,
+        }
+    }
+}
+
+impl UCTPolicy {
+    fn exploration_factor(&self, env: &Env<'_>) -> f64 {
+        use self::config::Normalization::*;
+
+        match self.normalization {
+            Some(GlobalBest) => self.factor * env.cut,
+            None => self.factor,
+        }
+    }
+
+    fn value(&self, stats: &UCTStats) -> (f64, f64) {
+        use self::config::ValueReduction::*;
+
+        let num_visits = stats.num_visits() as f64;
+
+        match self.value_reduction {
+            Best => (stats.best_evaluation(), num_visits),
+            Mean => (stats.sum_evaluations() / num_visits, num_visits),
+        }
     }
 }
 
@@ -510,15 +542,8 @@ impl TreePolicy for UCTPolicy {
             ).or_else(|| {
                 // Otherwise apply the UCT formula
                 let stats = children
-                    .map(|(idx, edge)| {
-                        (
-                            idx,
-                            (
-                                edge.stats.sum_evaluations(),
-                                edge.stats.num_visits() as f64,
-                            ),
-                        )
-                    }).collect::<Vec<_>>();
+                    .map(|(idx, edge)| (idx, self.value(&edge.stats)))
+                    .collect::<Vec<_>>();
 
                 let ln_total_visits = stats
                     .iter()
@@ -531,8 +556,9 @@ impl TreePolicy for UCTPolicy {
                     .map(|(idx, (sum, visits))| {
                         (
                             idx,
-                            sum / visits
-                                + self.factor * (ln_total_visits / visits).sqrt(),
+                            -sum / visits
+                                + self.exploration_factor(env)
+                                    * (ln_total_visits / visits).sqrt(),
                         )
                     }).max_by(|lhs, rhs| cmp_f64(lhs.1, rhs.1))
                     .map(|(idx, _)| idx)
@@ -548,6 +574,8 @@ impl TreePolicy for UCTPolicy {
 }
 
 pub struct UCTStats {
+    best_evaluation: RwLock<f64>,
+
     sum_evaluations: RwLock<f64>,
 
     num_visits: AtomicUsize,
@@ -556,6 +584,7 @@ pub struct UCTStats {
 impl Default for UCTStats {
     fn default() -> Self {
         UCTStats {
+            best_evaluation: RwLock::new(std::f64::INFINITY),
             sum_evaluations: RwLock::new(0f64),
             num_visits: AtomicUsize::new(0),
         }
@@ -568,7 +597,18 @@ impl UCTStats {
     }
 
     fn up(&self, eval: f64) {
+        {
+            let mut best = unwrap!(self.best_evaluation.write());
+            if eval < *best {
+                *best = eval;
+            }
+        }
+
         *unwrap!(self.sum_evaluations.write()) += eval;
+    }
+
+    fn best_evaluation(&self) -> f64 {
+        *unwrap!(self.best_evaluation.read())
     }
 
     fn sum_evaluations(&self) -> f64 {
