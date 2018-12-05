@@ -547,16 +547,16 @@ impl TreePolicy for UCTPolicy {
 
                 let ln_total_visits = stats
                     .iter()
-                    .map(|(_idx, (_sum, visits))| visits)
+                    .map(|(_idx, (_value, visits))| visits)
                     .sum::<f64>()
                     .ln();
 
                 stats
                     .into_iter()
-                    .map(|(idx, (sum, visits))| {
+                    .map(|(idx, (value, visits))| {
                         (
                             idx,
-                            -sum / visits
+                            -value
                                 + self.exploration_factor(env)
                                     * (ln_total_visits / visits).sqrt(),
                         )
