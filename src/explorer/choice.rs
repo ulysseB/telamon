@@ -5,7 +5,7 @@ use itertools::Itertools;
 use search_space::{Action, Domain, NumSet, Order, SearchSpace};
 
 /// Either a regular action or a manually applied action.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ActionEx {
     Action(Action),
     LowerLayout {
