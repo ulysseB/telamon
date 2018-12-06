@@ -241,26 +241,50 @@ impl Default for TAGConfig {
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct UCTConfig {
-    /// Constant multiplier for the exploration term.  This is normalized using the `normalization`
-    /// term.
-    pub exploration_factor: f64,
+    /// Constant multiplier for the exploration term.  This is controls the
+    /// exploration-exploitation tradeoff, and is normalized using the `normalization` term.
+    pub exploration_constant: f64,
     /// Normalization to use for the exploration term.
     pub normalization: Option<Normalization>,
     /// Reduction function to use when computing the state value.
     pub value_reduction: ValueReduction,
+    /// Target to use as a reward.
+    pub reward: Reward,
+    /// Formula to use for the exploration term.
+    pub formula: Formula,
 }
 
 impl Default for UCTConfig {
     fn default() -> Self {
         UCTConfig {
-            exploration_factor: 2f64.sqrt(),
+            exploration_constant: 2f64.sqrt(),
             normalization: None,
             // We use best value reduction by default because the mean value does not make much
             // sense considering that we can have infinite/very large values due to both timeouts
             // and cutting later in the evaluation process.
             value_reduction: ValueReduction::Best,
+            reward: Reward::Speed,
+            formula: Formula::UCT,
         }
     }
+}
+
+#[derive(Copy, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Formula {
+    /// Regular UCT formula: sqrt(log(\sum visits) / visits)
+    UCT,
+    /// AlphaGo PUCT variant: p * sqrt(\sum visits) / visits
+    /// Currently only uniform prior is supported (p = 1 / k where k is the number of children).
+    AlphaPUCT,
+}
+
+#[derive(Copy, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Reward {
+    NegTime,
+    Speed,
+    LogSpeed,
 }
 
 #[derive(Copy, Clone, Serialize, Deserialize)]

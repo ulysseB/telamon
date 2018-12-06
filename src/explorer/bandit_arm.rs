@@ -478,44 +478,82 @@ impl TreePolicy for NewNodeOrder {
 /// actually have a cost and 2) the scale is wrong (evaluations are in the e6+ range but we do as
 /// if they were in 0-1).
 pub struct UCTPolicy {
-    factor: f64,
+    exploration_constant: f64,
     normalization: Option<config::Normalization>,
     value_reduction: config::ValueReduction,
+    reward: config::Reward,
+    formula: config::Formula,
 }
 
 impl From<config::UCTConfig> for UCTPolicy {
     fn from(config: config::UCTConfig) -> Self {
         let config::UCTConfig {
-            exploration_factor,
+            exploration_constant,
             normalization,
             value_reduction,
+            reward,
+            formula,
         } = config;
         UCTPolicy {
-            factor: exploration_factor,
+            exploration_constant,
             normalization,
             value_reduction,
+            reward,
+            formula,
         }
     }
 }
 
 impl UCTPolicy {
     fn exploration_factor(&self, env: &Env<'_>) -> f64 {
-        use self::config::Normalization::*;
+        use self::config::Normalization;
 
         match self.normalization {
-            Some(GlobalBest) => self.factor * env.cut,
-            None => self.factor,
+            Some(Normalization::GlobalBest) => {
+                self.exploration_constant * self.reward(env.cut).abs()
+            }
+            None => self.exploration_constant,
         }
     }
 
-    fn value(&self, stats: &UCTStats) -> (f64, f64) {
-        use self::config::ValueReduction::*;
+    fn exploration_term(
+        &self,
+        env: &Env<'_>,
+        visits: f64,
+        total_visits: f64,
+        num_children: usize,
+    ) -> f64 {
+        use self::config::Formula;
 
-        let num_visits = stats.num_visits() as f64;
+        self.exploration_factor(env) * match self.formula {
+            Formula::UCT => (total_visits.ln() / visits).sqrt(),
+            Formula::AlphaPUCT => {
+                // TODO(bclement): Support non-uniform priors here.
+                (num_children as f64).recip() * total_visits.sqrt() / (1. + visits)
+            }
+        }
+    }
 
-        match self.value_reduction {
-            Best => (stats.best_evaluation(), num_visits),
-            Mean => (stats.sum_evaluations() / num_visits, num_visits),
+    fn value(&self, stats: &UCTStats) -> (f64, usize) {
+        use self::config::ValueReduction;
+
+        let num_visits = stats.num_visits();
+
+        let value = match self.value_reduction {
+            ValueReduction::Best => stats.best_evaluation(),
+            ValueReduction::Mean => stats.sum_evaluations() / num_visits as f64,
+        };
+
+        (value, num_visits)
+    }
+
+    fn reward(&self, evaln: f64) -> f64 {
+        use self::config::Reward;
+
+        match self.reward {
+            Reward::NegTime => -evaln,
+            Reward::Speed => evaln.recip(),
+            Reward::LogSpeed => -evaln.ln(),
         }
     }
 }
@@ -524,41 +562,46 @@ impl TreePolicy for UCTPolicy {
     type EdgeStats = UCTStats;
 
     fn pick_child(&self, env: &Env<'_>, node: &Node<'_, UCTStats>) -> Option<usize> {
-        // Ignore nodes which were cut
-        let children = node
+        let stats = node
             .children
             .iter()
             .enumerate()
-            .filter(|(_, edge)| edge.bound() < env.cut);
+            .map(|(idx, edge)| (idx, edge.bound(), self.value(&edge.stats)))
+            .filter(|(_, bound, (_value, _visits))| *bound < env.cut)
+            .collect::<Vec<_>>();
 
         // Pick an edge which was not explored yet, if there is some...
         NewNodeOrder::WeightedRandom
             .pick_index(
-                children
-                    .clone()
-                    .filter(|(_, edge)| edge.stats.num_visits() == 0)
-                    .map(|(idx, edge)| (idx, edge.bound())),
+                stats
+                    .iter()
+                    .filter(|(_, _bound, (_value, visits))| {
+                        // Use the default policy if one of the following is true:
+                        //  1. The node was never visited
+                        //  2. The cut is infinite (we never got back any evaluation results yet)
+                        env.cut.is_infinite() || *visits == 0
+                    }).map(|(idx, bound, (_value, _visits))| (*idx, *bound)),
                 env.cut,
             ).or_else(|| {
                 // Otherwise apply the UCT formula
-                let stats = children
-                    .map(|(idx, edge)| (idx, self.value(&edge.stats)))
-                    .collect::<Vec<_>>();
-
-                let ln_total_visits = stats
+                let total_visits = stats
                     .iter()
-                    .map(|(_idx, (_value, visits))| visits)
-                    .sum::<f64>()
-                    .ln();
+                    .map(|(_idx, _bound, (_value, visits))| visits)
+                    .sum::<usize>() as f64;
+
+                let num_children = stats.len();
 
                 stats
                     .into_iter()
-                    .map(|(idx, (value, visits))| {
+                    .map(|(idx, _bound, (value, visits))| {
                         (
                             idx,
-                            -value
-                                + self.exploration_factor(env)
-                                    * (ln_total_visits / visits).sqrt(),
+                            value + self.exploration_term(
+                                env,
+                                visits as f64,
+                                total_visits,
+                                num_children,
+                            ),
                         )
                     }).max_by(|lhs, rhs| cmp_f64(lhs.1, rhs.1))
                     .map(|(idx, _)| idx)
@@ -569,7 +612,7 @@ impl TreePolicy for UCTPolicy {
     }
 
     fn backpropagate(&self, node: &Node<UCTStats>, idx: usize, eval: f64) {
-        node.children[idx].stats.up(eval);
+        node.children[idx].stats.up(self.reward(eval));
     }
 }
 
@@ -584,7 +627,7 @@ pub struct UCTStats {
 impl Default for UCTStats {
     fn default() -> Self {
         UCTStats {
-            best_evaluation: RwLock::new(std::f64::INFINITY),
+            best_evaluation: RwLock::new(std::f64::NEG_INFINITY),
             sum_evaluations: RwLock::new(0f64),
             num_visits: AtomicUsize::new(0),
         }
@@ -599,7 +642,7 @@ impl UCTStats {
     fn up(&self, eval: f64) {
         {
             let mut best = unwrap!(self.best_evaluation.write());
-            if eval < *best {
+            if eval > *best {
                 *best = eval;
             }
         }
