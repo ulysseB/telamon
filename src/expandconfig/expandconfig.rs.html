@@ -277,7 +277,7 @@ be used as a simple validator of an explorer configuration file by discarding th
             })<span class="question-mark">?</span>,
         };
 
-        <span class="macro">write</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">create_output</span>()<span class="question-mark">?</span>, <span class="string">&quot;{}&quot;</span>, <span class="ident">output_str</span>);
+        <span class="macro">write</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">create_output</span>()<span class="question-mark">?</span>, <span class="string">&quot;{}&quot;</span>, <span class="ident">output_str</span>)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(())
     }
