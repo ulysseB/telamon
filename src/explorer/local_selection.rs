@@ -1,12 +1,12 @@
 //! Provides different methods to select a candidate in a list.
-use device::Context;
-use explorer::candidate::Candidate;
-use explorer::choice;
-use explorer::config::{ChoiceOrdering, NewNodeOrder};
+use crate::device::Context;
+use crate::explorer::candidate::Candidate;
+use crate::explorer::choice;
+use crate::explorer::config::{ChoiceOrdering, NewNodeOrder};
 use rand::distributions::{Weighted, WeightedChoice};
 use rand::prelude::*;
 use std;
-use utils::*;
+use crate::utils::*;
 
 /// A recursive function that takes a candidate and expands it until we have a completely specified
 /// candidate that we can pass to the evaluator, or we find a dead-end

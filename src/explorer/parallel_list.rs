@@ -1,9 +1,9 @@
 //! Exploration of the search space.
-pub use explorer::candidate::Candidate;
+pub use crate::explorer::candidate::Candidate;
 
-use device::Context;
-use explorer::choice;
-use explorer::store::Store;
+use crate::device::Context;
+use crate::explorer::choice;
+use crate::explorer::store::Store;
 use interval_heap::IntervalHeap;
 use rpds::List;
 use std;

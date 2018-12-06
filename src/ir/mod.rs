@@ -50,8 +50,8 @@ pub mod op {
 
 /// Defines traits to import in the environment to use the IR.
 pub mod prelude {
-    pub use ir::mem::Block as MemoryRegion;
-    pub use ir::statement::Statement;
+    pub use crate::ir::mem::Block as MemoryRegion;
+    pub use crate::ir::statement::Statement;
 }
 
 /// Stores the objects created by a lowering.

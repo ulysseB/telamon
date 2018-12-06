@@ -2,9 +2,9 @@ use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use codegen;
-use explorer::Candidate;
-use ir;
+use crate::codegen;
+use crate::explorer::Candidate;
+use crate::ir;
 
 use super::{
     ArgMap, ArrayArgument, AsyncCallback, AsyncEvaluator, Context, Device, EvalMode,

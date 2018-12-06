@@ -1,6 +1,6 @@
-use ir;
+use crate::ir;
 use std;
-use utils::*;
+use crate::utils::*;
 
 /// A fully specified size.
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -1,7 +1,7 @@
-use ir;
+use crate::ir;
 use linked_list;
 use linked_list::LinkedList;
-use utils::*;
+use crate::utils::*;
 
 /// Represents a mapping between dimenions.
 #[derive(Clone, Debug)]

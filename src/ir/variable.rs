@@ -1,6 +1,6 @@
 //! Encodes the data-flow information.
-use ir;
-use utils::*;
+use crate::ir;
+use crate::utils::*;
 
 /// Uniquely identifies variables.
 #[derive(

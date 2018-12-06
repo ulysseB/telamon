@@ -1,5 +1,5 @@
 //! Maps rust types to telamon data types.
-use ir;
+use crate::ir;
 use libc;
 use num::integer::div_rem;
 use num::rational::Ratio;
@@ -35,7 +35,7 @@ pub unsafe trait ScalarArgument:
         Self: Sized;
 
     /// Generates a random instance of the argument type.
-    fn gen_random<R: Rng>(&mut R) -> Self
+    fn gen_random<R: Rng>(_: &mut R) -> Self
     where
         Self: Sized;
 }

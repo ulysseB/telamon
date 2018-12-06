@@ -1,17 +1,17 @@
 ///! Defines the CUDA evaluation context.
 use crossbeam;
-use device::context::AsyncCallback;
-use device::cuda::api::Argument;
-use device::cuda::kernel::Thunk;
-use device::cuda::{Executor, Gpu, JITDaemon, Kernel};
-use device::{self, Device, EvalMode, ScalarArgument};
-use explorer;
-use ir;
+use crate::device::context::AsyncCallback;
+use crate::device::cuda::api::Argument;
+use crate::device::cuda::kernel::Thunk;
+use crate::device::cuda::{Executor, Gpu, JITDaemon, Kernel};
+use crate::device::{self, Device, EvalMode, ScalarArgument};
+use crate::explorer;
+use crate::ir;
 use itertools::{process_results, Itertools};
 use std;
 use std::f64;
 use std::sync::{atomic, mpsc, Arc};
-use utils::*;
+use crate::utils::*;
 
 /// Max number of candidates waiting to be evaluated.
 const EVAL_BUFFER_SIZE: usize = 100;

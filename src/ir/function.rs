@@ -1,11 +1,11 @@
 //! Provides a representation of functions.
-use device::Device;
-use ir::{self, Dimension, InstId, Instruction, Operator, Statement, StmtId};
-use ir::{mem, AccessPattern, Operand, SparseVec};
+use crate::device::Device;
+use crate::ir::{self, Dimension, InstId, Instruction, Operator, Statement, StmtId};
+use crate::ir::{mem, AccessPattern, Operand, SparseVec};
 use itertools::Itertools;
-use search_space::MemSpace;
+use crate::search_space::MemSpace;
 use std;
-use utils::*;
+use crate::utils::*;
 
 /// Represents an argument of a function.
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]

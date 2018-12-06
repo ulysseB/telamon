@@ -8,7 +8,7 @@ extern crate log;
 
 mod common;
 
-use common::*;
+use crate::common::*;
 use telamon::device::Context;
 use telamon::helper;
 use telamon::ir::{self, Size, Type};

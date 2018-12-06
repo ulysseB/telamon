@@ -1,8 +1,8 @@
 /// Provides a way to represent the stride of a given variable.
-use device::Device;
-use ir;
-use search_space::MemSpace;
-use utils::*;
+use crate::device::Device;
+use crate::ir;
+use crate::search_space::MemSpace;
+use crate::utils::*;
 
 /// A stride on a given dimensions.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]

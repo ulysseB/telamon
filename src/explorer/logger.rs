@@ -6,14 +6,14 @@ use std::sync::mpsc;
 use std::time::Duration;
 
 use bincode;
-use explorer::config::Config;
-use explorer::monitor;
+use crate::explorer::config::Config;
+use crate::explorer::monitor;
 use flate2::write::{GzEncoder, ZlibEncoder};
 use flate2::Compression;
 use serde::ser::Serialize;
 
-use utils::tfrecord;
-use utils::tfrecord::RecordWriter;
+use crate::utils::tfrecord;
+use crate::utils::tfrecord::RecordWriter;
 
 #[derive(Serialize, Deserialize)]
 pub enum LogMessage<E> {

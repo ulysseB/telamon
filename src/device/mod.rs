@@ -13,12 +13,12 @@ pub use self::context::{
     ArgMap, ArgMapExt, AsyncCallback, AsyncEvaluator, Context, EvalMode,
 };
 
-use codegen::Function;
-use ir;
-use model::{self, HwPressure, Nesting};
-use search_space::*;
+use crate::codegen::Function;
+use crate::ir;
+use crate::model::{self, HwPressure, Nesting};
+use crate::search_space::*;
 use std::io::Write;
-use utils::*;
+use crate::utils::*;
 
 /// Holds the specifications of a target.
 pub trait Device: Sync {

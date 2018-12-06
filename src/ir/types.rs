@@ -1,7 +1,7 @@
 /// Describes the types instruction and operands can take.
-use ir;
+use crate::ir;
 use std::fmt;
-use utils::*;
+use crate::utils::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 /// Values and intructions types.

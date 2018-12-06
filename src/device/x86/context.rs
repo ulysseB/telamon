@@ -1,14 +1,14 @@
 ///! Defines the CPU evaluation context.
-use codegen::ParamVal;
+use crate::codegen::ParamVal;
 use crossbeam;
-use device::context::AsyncCallback;
-use device::x86::compile;
-use device::x86::cpu::Cpu;
-use device::x86::cpu_argument::{ArgLock, Argument, CpuArray};
-use device::x86::printer::X86printer;
-use device::{self, Device, EvalMode, ScalarArgument};
-use explorer;
-use ir;
+use crate::device::context::AsyncCallback;
+use crate::device::x86::compile;
+use crate::device::x86::cpu::Cpu;
+use crate::device::x86::cpu_argument::{ArgLock, Argument, CpuArray};
+use crate::device::x86::printer::X86printer;
+use crate::device::{self, Device, EvalMode, ScalarArgument};
+use crate::explorer;
+use crate::ir;
 use itertools::Itertools;
 use libc;
 use std;
@@ -16,7 +16,7 @@ use std::f64;
 use std::io::Write;
 use std::sync::{mpsc, Arc, MutexGuard};
 use tempfile;
-use utils::*;
+use crate::utils::*;
 
 /// Max number of candidates waiting to be evaluated.
 const EVAL_BUFFER_SIZE: usize = 100;

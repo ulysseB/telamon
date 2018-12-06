@@ -1,11 +1,11 @@
-use codegen::*;
+use crate::codegen::*;
 use itertools::Itertools;
-use search_space::*;
+use crate::search_space::*;
 use std::borrow::Cow;
-use utils::*;
+use crate::utils::*;
 
-use ir::{self, op, Type};
-use search_space::DimKind;
+use crate::ir::{self, op, Type};
+use crate::search_space::DimKind;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum MulMode {
