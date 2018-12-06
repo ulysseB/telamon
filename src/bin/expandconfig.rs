@@ -98,7 +98,7 @@ impl Opt {
             })?,
         };
 
-        write!(self.create_output()?, "{}", output_str);
+        write!(self.create_output()?, "{}", output_str)?;
 
         Ok(())
     }
