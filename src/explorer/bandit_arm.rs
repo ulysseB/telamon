@@ -526,8 +526,8 @@ impl UCTPolicy {
         use self::config::Formula;
 
         self.exploration_factor(env) * match self.formula {
-            Formula::UCT => (total_visits.ln() / visits).sqrt(),
-            Formula::AlphaPUCT => {
+            Formula::Uct => (total_visits.ln() / visits).sqrt(),
+            Formula::AlphaPuct => {
                 // TODO(bclement): Support non-uniform priors here.
                 (num_children as f64).recip() * total_visits.sqrt() / (1. + visits)
             }

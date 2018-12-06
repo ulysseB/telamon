@@ -264,7 +264,7 @@ impl Default for UCTConfig {
             // and cutting later in the evaluation process.
             value_reduction: ValueReduction::Best,
             reward: Reward::Speed,
-            formula: Formula::UCT,
+            formula: Formula::Uct,
         }
     }
 }
@@ -273,10 +273,10 @@ impl Default for UCTConfig {
 #[serde(rename_all = "snake_case")]
 pub enum Formula {
     /// Regular UCT formula: sqrt(log(\sum visits) / visits)
-    UCT,
+    Uct,
     /// AlphaGo PUCT variant: p * sqrt(\sum visits) / visits
     /// Currently only uniform prior is supported (p = 1 / k where k is the number of children).
-    AlphaPUCT,
+    AlphaPuct,
 }
 
 #[derive(Copy, Clone, Serialize, Deserialize)]
