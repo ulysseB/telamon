@@ -91,7 +91,8 @@ pub enum TreeEvent {
 
 /// A search tree to perform a multi-armed bandit search.
 pub struct Tree<'a, 'b, P: TreePolicy> {
-    root: Edge<'a, P::EdgeStats>,
+    root: RwLock<Option<Arc<Node<'a, P::EdgeStats>>>>,
+    bound: RwLock<f64>,
     stop: AtomicBool,
     cut: RwLock<f64>,
     config: &'b BanditConfig,
@@ -108,10 +109,14 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
         policy: P,
         log_sender: std::sync::mpsc::SyncSender<LogMessage<TreeEvent>>,
     ) -> Self {
+        let root = Node::from_candidates(candidates);
+        let bound = root.bound().unwrap_or(std::f64::INFINITY);
+
         Tree {
-            root: SubTree::from(Node::from_candidates(candidates)).into(),
+            root: RwLock::new(Some(root)),
             stop: AtomicBool::new(false),
             cut: RwLock::new(std::f64::INFINITY),
+            bound: RwLock::new(bound),
             config,
             policy,
             stats: TreeStats::default(),
@@ -147,10 +152,10 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
         // If we did not returned before, we have reached the root of the tree.
         if let Some(bound) = bound {
             trace!("upgrading root bound to {}", bound);
-            self.root.update_bound(bound);
+            *unwrap!(self.bound.write()) = bound;
         } else {
             trace!("killing root");
-            self.root.kill();
+            *unwrap!(self.root.write()) = None;
         }
     }
 }
@@ -166,12 +171,15 @@ where
 
     fn update_cut(&self, new_cut: f64) {
         *unwrap!(self.cut.write()) = new_cut;
-        let mut stack = self.root.trim(new_cut).into_iter().collect::<Vec<_>>();
-        while let Some(subtree) = stack.pop() {
-            if let SubTree::InternalNode(node) = &*unwrap!(subtree.read()) {
-                for edge in &node.children {
-                    stack.extend(edge.trim(new_cut))
-                }
+
+        let mut stack = match &*unwrap!(self.root.read()) {
+            Some(node) => vec![Arc::clone(node)],
+            None => Vec::new(),
+        };
+
+        while let Some(node) = stack.pop() {
+            for edge in &node.children {
+                stack.extend(edge.trim(new_cut))
             }
         }
         info!("trimming finished");
@@ -211,11 +219,13 @@ where
             };
 
             // Bail out early if the root is a deadend
-            let mut state = self.root.descend(&env);
-            if let SubTree::Empty = state {
-                debug!("stopping: deadend at root");
-                return None;
-            }
+            let mut state = SubTree::InternalNode(match &*unwrap!(self.root.read()) {
+                Some(node) => Arc::clone(node),
+                None => {
+                    debug!("stopping: deadend at root");
+                    return None;
+                }
+            });
 
             // Descent loop
             let mut path = Path::default();
@@ -310,29 +320,13 @@ impl<'a, E: Default> SubTree<'a, E> {
 /// An edge in the tree
 struct Edge<'a, E> {
     /// The destination of the edge.  This may not be expanded yet.
-    dst: Arc<RwLock<SubTree<'a, E>>>,
+    dst: RwLock<SubTree<'a, E>>,
 
     /// Edge statistics
     stats: E,
 
     /// The current bound for the pointed-to node.
     bound: RwLock<f64>,
-}
-
-impl<'a, E: Default> From<SubTree<'a, E>> for Edge<'a, E> {
-    fn from(subtree: SubTree<'a, E>) -> Self {
-        Edge {
-            stats: E::default(),
-            bound: RwLock::new(subtree.bound().unwrap_or(std::f64::INFINITY)),
-            dst: Arc::new(RwLock::new(subtree)),
-        }
-    }
-}
-
-impl<'a, E: Default> From<Candidate<'a>> for Edge<'a, E> {
-    fn from(candidate: Candidate<'a>) -> Self {
-        SubTree::Leaf(Box::new(candidate)).into()
-    }
 }
 
 impl<'a, E: Default> Edge<'a, E> {
@@ -356,14 +350,17 @@ impl<'a, E: Default> Edge<'a, E> {
 
     /// Trims the branch if it has an evaluation time guaranteed to be worse than
     /// `cut`. Returns the childrens to trim if any,
-    fn trim(&self, cut: f64) -> Option<Arc<RwLock<SubTree<'a, E>>>> {
+    fn trim(&self, cut: f64) -> Option<Arc<Node<'a, E>>> {
         if self.bound() >= cut {
             self.kill();
             None
-        } else if let SubTree::InternalNode(_) = *unwrap!(self.dst.read()) {
-            Some(Arc::clone(&self.dst))
         } else {
-            None
+            let subtree = unwrap!(self.dst.read());
+            if let SubTree::InternalNode(node) = &*subtree {
+                Some(Arc::clone(node))
+            } else {
+                None
+            }
         }
     }
 
@@ -378,7 +375,7 @@ impl<'a, E: Default> Edge<'a, E> {
                         return SubTree::InternalNode(Arc::clone(node))
                     }
                     SubTree::Leaf(_) => {
-                        // Need write access, see below
+                        // Need write access to expand, see below
                     }
                 }
             }
@@ -388,7 +385,7 @@ impl<'a, E: Default> Edge<'a, E> {
             // leaf below and loop again (where the first read access should not fail).
             {
                 let dst = &mut *unwrap!(self.dst.write());
-                if let SubTree::Leaf(_) = dst {
+                if let SubTree::Leaf(_) = &*dst {
                     // We got write access to the leaf; expand it.
                     if let SubTree::Leaf(candidate) =
                         std::mem::replace(dst, SubTree::Empty)
@@ -403,7 +400,7 @@ impl<'a, E: Default> Edge<'a, E> {
                                 return SubTree::Empty;
                             } else {
                                 // Newly expanded node, with no stats yet.
-                                *dst = SubTree::InternalNode(Arc::new(node));
+                                *dst = SubTree::InternalNode(node);
                                 return SubTree::Leaf(candidate);
                             }
                         } else {
@@ -434,10 +431,16 @@ pub struct Node<'a, E> {
 
 impl<'a, E: Default> Node<'a, E> {
     /// Creates a new children containing the given candidates, if any.
-    fn from_candidates(candidates: Vec<Candidate<'a>>) -> Self {
-        Node {
-            children: candidates.into_iter().map(Edge::from).collect(),
-        }
+    fn from_candidates(candidates: Vec<Candidate<'a>>) -> Arc<Self> {
+        Arc::new(Node {
+            children: candidates
+                .into_iter()
+                .map(|candidate| Edge {
+                    bound: RwLock::new(candidate.bound.value()),
+                    dst: RwLock::new(SubTree::Leaf(Box::new(candidate))),
+                    stats: Default::default(),
+                }).collect::<Vec<_>>(),
+        })
     }
 
     /// Returns the lowest bound of the children, if any.
