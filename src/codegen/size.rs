@@ -1,6 +1,6 @@
-use ir;
+use crate::ir;
 use num;
-use search_space::{NumSet, SearchSpace};
+use crate::search_space::{NumSet, SearchSpace};
 use std;
 
 /// The size of an iteration dimension. The size is of the form:

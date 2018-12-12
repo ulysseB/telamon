@@ -1,6 +1,6 @@
 //! Provides a generic decription of basic blocks.
-use ir;
-use utils::*;
+use crate::ir;
+use crate::utils::*;
 
 /// Provides a unique identifer for a basic block.
 #[derive(

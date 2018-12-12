@@ -3,6 +3,7 @@ name = "telamon"
 authors = ["Ulysse Beaugnon <ulysse.beaugnon@ens.fr>"]
 license = "Apache-2.0"
 version = "0.2.0"
+edition = "2018"
 
 readme = "README.md"
 repository = "https://github.com/ulysseB/telamon/"

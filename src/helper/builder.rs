@@ -1,12 +1,12 @@
 //! Helper struct to build a `Function`.
-use device::Device;
-use helper::{AutoOperand, LogicalDim, MetaStatement, TilingPattern};
-use ir::{self, op, Parameter, Type};
-use ir::{AccessPattern, Function, InstId, Operand, Operator, Signature};
+use crate::device::Device;
+use crate::helper::{AutoOperand, LogicalDim, MetaStatement, TilingPattern};
+use crate::ir::{self, op, Parameter, Type};
+use crate::ir::{AccessPattern, Function, InstId, Operand, Operator, Signature};
 use itertools::{flatten, Itertools};
-use search_space::{Action, DimKind, InstFlag, MemSpace, Order, SearchSpace};
+use crate::search_space::{Action, DimKind, InstFlag, MemSpace, Order, SearchSpace};
 use std::borrow::Borrow;
-use utils::*;
+use crate::utils::*;
 
 /// Helper to build a `Function`.
 pub struct Builder<'a> {

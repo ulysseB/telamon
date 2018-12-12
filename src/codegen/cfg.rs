@@ -1,7 +1,7 @@
-use codegen::{Dimension, InductionLevel, Instruction};
-use ir;
+use crate::codegen::{Dimension, InductionLevel, Instruction};
+use crate::ir;
 use itertools::{self, Itertools};
-use search_space::*;
+use crate::search_space::*;
 use std::{self, fmt};
 
 /// Represents a CFG of the targeted device.

@@ -1,8 +1,8 @@
 //! Provides helpers to create instruction operands.
-use device::ScalarArgument;
-use helper::{Builder, LogicalDim};
-use ir::Operand::*;
-use ir::{self, dim, InstId, Operand};
+use crate::device::ScalarArgument;
+use crate::helper::{Builder, LogicalDim};
+use crate::ir::Operand::*;
+use crate::ir::{self, dim, InstId, Operand};
 
 /// Represents values that can be turned into an `Operand`.
 pub trait AutoOperand<'a> {

@@ -30,17 +30,17 @@ pub use self::local_info::Nesting;
 //  is issued. For this, either double the nodes or subtract the size of buffers to the next
 //  issue.
 
-use device::{Context, Device};
-use ir;
+use crate::device::{Context, Device};
+use crate::ir;
 use itertools::Itertools;
-use model::code_point::{CodePoint, CodePointDag};
-use model::dependency_map::DependencyMap;
-use model::hw_pressure::FastBound;
-use model::level::{sum_pressure, Level, LevelDag, RepeatLevel};
-use model::local_info::LocalInfo;
-use search_space::SearchSpace;
+use crate::model::code_point::{CodePoint, CodePointDag};
+use crate::model::dependency_map::DependencyMap;
+use crate::model::hw_pressure::FastBound;
+use crate::model::level::{sum_pressure, Level, LevelDag, RepeatLevel};
+use crate::model::local_info::LocalInfo;
+use crate::search_space::SearchSpace;
 use std::cmp;
-use utils::*;
+use crate::utils::*;
 
 /// Returns a lower bound on the execution time of all the implementation candidates in
 /// `space`, when executed in `context`.

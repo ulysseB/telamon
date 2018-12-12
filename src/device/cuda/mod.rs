@@ -27,13 +27,13 @@ pub use self::gpu::{Gpu, InstDesc};
 pub use self::kernel::Kernel;
 pub use self::printer::CudaPrinter;
 
-use codegen;
-use ir;
+use crate::codegen;
+use crate::ir;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::ToPrimitive;
 use std;
-use utils::*;
+use crate::utils::*;
 
 #[derive(Default)]
 struct Namer {

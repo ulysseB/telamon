@@ -1,7 +1,7 @@
 //! Represents iteration dimensions.
-use ir::{self, Statement};
+use crate::ir::{self, Statement};
 use std;
-use utils::*;
+use crate::utils::*;
 
 /// Provides a unique identifier for iteration dimensions.
 #[derive(

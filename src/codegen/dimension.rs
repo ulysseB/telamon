@@ -1,9 +1,9 @@
-use codegen;
-use ir;
+use crate::codegen;
+use crate::ir;
 use itertools::Itertools;
-use search_space::{DimKind, Domain, Order, SearchSpace};
+use crate::search_space::{DimKind, Domain, Order, SearchSpace};
 use std;
-use utils::*;
+use crate::utils::*;
 
 /// An iteration dimension composed of one or mure fused dimensions.
 #[derive(Debug)]

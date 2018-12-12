@@ -6,7 +6,7 @@ extern crate telamon_utils as utils;
 use std::io;
 use std::io::Seek;
 use telamon::explorer::TreeEvent;
-use utils::tfrecord::{ReadError, RecordReader};
+use crate::utils::tfrecord::{ReadError, RecordReader};
 
 fn main() -> Result<(), ReadError> {
     let mut f = std::fs::File::open("eventlog.tfrecord")?;

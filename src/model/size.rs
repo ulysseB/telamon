@@ -1,8 +1,8 @@
 //! Size evaluation and manipulation primitives.
-use device::Context;
-use ir;
+use crate::device::Context;
+use crate::ir;
 use num::{bigint::ToBigUint, Integer, ToPrimitive, Zero};
-use search_space::{NumSet, SearchSpace};
+use crate::search_space::{NumSet, SearchSpace};
 
 /// A span of values.
 #[derive(Debug, Copy, Clone)]

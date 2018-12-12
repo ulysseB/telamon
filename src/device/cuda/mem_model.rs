@@ -1,13 +1,13 @@
 //! Memory accesses analysis.
 use binary_heap_plus::BinaryHeap;
-use device::{cuda, Context};
-use ir;
+use crate::device::{cuda, Context};
+use crate::ir;
 use itertools::Itertools;
-use model::size;
+use crate::model::size;
 use num::Integer;
-use search_space::*;
+use crate::search_space::*;
 use std;
-use utils::*;
+use crate::utils::*;
 
 // TODO(model): the pressure changes depending on the list of outer dimensions. Try to
 // take this into account be computing the pressure incrementatly when applying levels.

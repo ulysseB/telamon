@@ -1,9 +1,9 @@
 //! Exploration of the search space.
-use device::Context;
-use explorer::choice::ActionEx;
-use model::{bound, Bound};
+use crate::device::Context;
+use crate::explorer::choice::ActionEx;
+use crate::model::{bound, Bound};
 use rpds::List;
-use search_space::SearchSpace;
+use crate::search_space::SearchSpace;
 use std;
 use std::cmp::{Ordering, PartialOrd};
 

@@ -22,12 +22,12 @@ use self::store::Store;
 
 use boxfnonce::SendBoxFnOnce;
 use crossbeam;
-use device::{Context, EvalMode};
+use crate::device::{Context, EvalMode};
 use futures::executor::block_on;
 use futures::prelude::*;
 use futures::{channel, SinkExt};
-use model::bound;
-use search_space::SearchSpace;
+use crate::model::bound;
+use crate::search_space::SearchSpace;
 use std::sync;
 
 // TODO(cc_perf): To improve performances, the following should be considered:

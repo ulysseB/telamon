@@ -1,10 +1,10 @@
 //! This file exposes a single function, monitor, that is launched in a special
 //! thread and pulls the evaluations results, store them and then updates the
 //! Store accordingly.
-use explorer::candidate::Candidate;
-use explorer::config::Config;
-use explorer::logger::LogMessage;
-use explorer::store::Store;
+use crate::explorer::candidate::Candidate;
+use crate::explorer::config::Config;
+use crate::explorer::logger::LogMessage;
+use crate::explorer::store::Store;
 use futures::channel;
 use futures::executor::block_on;
 use futures::prelude::*;

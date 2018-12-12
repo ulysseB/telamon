@@ -1,7 +1,7 @@
 //! Describes the instructions.
-use ir::{self, DimMapScope, LoweringMap, Operand, Operator, Statement, StmtId, Type};
+use crate::ir::{self, DimMapScope, LoweringMap, Operand, Operator, Statement, StmtId, Type};
 use std;
-use utils::*;
+use crate::utils::*;
 
 /// Uniquely identifies an instruction.
 #[derive(

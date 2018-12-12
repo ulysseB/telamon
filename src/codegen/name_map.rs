@@ -1,12 +1,12 @@
-use codegen::{self, AllocationScheme, Dimension, Function, Instruction, ParamValKey};
-use ir::{self, dim, DimMap, InstId, Type};
+use crate::codegen::{self, AllocationScheme, Dimension, Function, Instruction, ParamValKey};
+use crate::ir::{self, dim, DimMap, InstId, Type};
 use itertools::Itertools;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use std;
 use std::borrow::Cow;
 use std::collections::hash_map;
-use utils::*;
+use crate::utils::*;
 
 // TODO(cleanup): refactor
 
@@ -24,9 +24,9 @@ pub trait Namer {
     /// Generates a name for a parameter.
     fn name_param(&mut self, p: ParamValKey) -> String;
     /// Provides a name for a floating point constant.
-    fn name_float(&self, &Ratio<BigInt>, u16) -> String;
+    fn name_float(&self, _: &Ratio<BigInt>, _: u16) -> String;
     /// Provides a name for an integer constant.
-    fn name_int(&self, &BigInt, u16) -> String;
+    fn name_int(&self, _: &BigInt, _: u16) -> String;
 }
 
 /// Maps variables to names.
@@ -501,7 +501,7 @@ impl VariableNames {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ir;
+    use crate::ir;
 
     /// A `Namer` for use in tests.
     #[derive(Default)]

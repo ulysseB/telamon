@@ -1,7 +1,7 @@
 //! Helper functions to create a function signature and bind parameters.
-use device::{self, ArgMapExt, ArrayArgumentExt, ScalarArgument};
-use helper::tensor::{DimSize, Tensor};
-use ir::Signature;
+use crate::device::{self, ArgMapExt, ArrayArgumentExt, ScalarArgument};
+use crate::helper::tensor::{DimSize, Tensor};
+use crate::ir::Signature;
 use itertools::Itertools;
 use rand::prelude::*;
 use std::sync::Arc;

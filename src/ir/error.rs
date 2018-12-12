@@ -1,5 +1,5 @@
 //! Error management for IR creation.
-use ir;
+use crate::ir;
 use std;
 
 /// Errors that can be raised when creating an IR instance.
