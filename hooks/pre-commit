@@ -44,7 +44,7 @@ fi
 
 # Format all staged files, then exit with an error code if any have uncommited
 # changes.
-rustfmt ${RUST_FILES[@]}
+rustfmt ${RUST_FILES[@]} || exit 1
 
 CHANGED_FILES=($(git diff --name-only ${RUST_FILES[@]}))
 if [ "$CHANGED_FILES" ]; then

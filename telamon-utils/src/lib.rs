@@ -19,14 +19,12 @@ pub mod ndarray;
 mod vec_set;
 #[macro_use]
 pub mod unwrap;
-pub mod sequence;
 pub mod tfrecord;
 
 pub use self::cache::Cache;
 pub use self::dag::Dag;
 pub use self::iterator::*;
 pub use self::ndarray::{NDArray, NDRange};
-pub use self::sequence::Sequence;
 pub use self::vec_set::VecSet;
 use fnv::FnvHasher;
 use num::Integer;
