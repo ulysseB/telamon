@@ -3,7 +3,7 @@ use device::Context;
 use explorer::candidate::Candidate;
 use explorer::choice;
 use explorer::config::{ChoiceOrdering, NewNodeOrder};
-use rand::distributions::{Weighted, WeightedChoice};
+use rand::distributions::{Weighted, WeightedChoice, WeightedIndex};
 use rand::prelude::*;
 use std;
 use utils::*;
@@ -23,6 +23,64 @@ pub fn descend<'a>(
         let idx = node_order.pick_candidate(&new_nodes, cut)?;
         let node = new_nodes.swap_remove(idx);
         descend(choice_order, node_order, context, node, cut)
+    } else {
+        Some(candidate)
+    }
+}
+
+fn softmax(values: &[f64]) -> Vec<f64> {
+    // normalize before computing softmax
+    let fmin = values.iter().min_by(|x, y| cmp_f64(**x, **y)).unwrap();
+    let div = values.iter().map(|x| (x - fmin).exp()).sum::<f64>();
+    values.iter().map(|x| (x - fmin).exp() / div).collect()
+}
+
+pub fn rave<'a>(
+    choice_order: &ChoiceOrdering,
+    node_order: NewNodeOrder,
+    context: &Context,
+    candidate: Candidate<'a>,
+    cut: f64,
+    rave_visits: usize,
+    amaf: &Fn(&choice::ActionEx) -> Option<f64>,
+) -> Option<Candidate<'a>> {
+    let choice_opt = choice::list(choice_order, &candidate.space).next();
+    if let Some(choice) = choice_opt {
+        if let Some(amafs) = choice
+            .iter()
+            .map(|action| amaf(action).map(|eval| -eval / cut))
+            .collect::<Option<Vec<_>>>()
+        {
+            let mut choice = choice;
+            let mut rng = thread_rng();
+            let mut probs = softmax(&amafs[..]);
+            while probs.iter().sum::<f64>() > 0. {
+                let dist = WeightedIndex::new(&probs).unwrap();
+                let index = dist.sample(&mut rng);
+                if let Ok(child) =
+                    candidate.apply_decision(context, choice[index].clone())
+                {
+                    return Some(child);
+                } else {
+                    probs[index] = 0.0;
+                }
+            }
+
+            None
+        } else {
+            let mut new_nodes = candidate.apply_choice(context, choice);
+            let idx = node_order.pick_candidate(&new_nodes, cut)?;
+            let node = new_nodes.swap_remove(idx);
+            rave(
+                choice_order,
+                node_order,
+                context,
+                node,
+                cut,
+                rave_visits,
+                amaf,
+            )
+        }
     } else {
         Some(candidate)
     }

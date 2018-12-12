@@ -196,8 +196,26 @@ where
             score: eval,
         })));
 
+        // Collect the actions into a vector.  Note that the `actions` Sequence is in reverse order
+        // (i.e. first actions last), so we also reverse the vector to simplify the indexing below.
+        let actions = {
+            let mut actions = actions.iter().cloned().collect::<Vec<_>>();
+            actions.reverse();
+            actions
+        };
+
         while let Some((node, idx)) = path.0.pop() {
             if let Some(node) = node.upgrade() {
+                for action in &actions[path.0.len()..] {
+                    let mut amaf = unwrap!(node.amaf.write());
+                    let stats =
+                        amaf.entry(action.clone()).or_insert_with(Default::default);
+                    // TODO(bclement): We should probably have a `record` method which bundles
+                    // `down` and `up`.
+                    stats.down();
+                    stats.up(eval);
+                }
+
                 self.policy.backpropagate(&node, idx, eval);
             }
         }
@@ -238,12 +256,32 @@ where
                         break;
                     }
                     SubTree::Leaf(leaf) => {
-                        if let Some(implementation) = local_selection::descend(
+                        // Figure out the last ancestor with at least 50 descents.  If none, take
+                        // the root.  If none, exploration is finished.
+                        let node = path
+                            .0
+                            .iter()
+                            .rev()
+                            .filter(|(node, _)| {
+                                node.upgrade()
+                                    .map(|node| node.num_visits() >= 50)
+                                    .unwrap_or(false)
+                            }).next()
+                            .map(|(node, _)| Weak::upgrade(node))
+                            .unwrap_or(Weak::upgrade(&path.0[0].0))?;
+
+                        let amaf = &*unwrap!(node.amaf.read());
+
+                        if let Some(implementation) = local_selection::rave(
                             &env.config.choice_ordering,
                             env.config.new_nodes_order,
                             env.context,
                             *leaf,
                             env.cut,
+                            node.num_visits(),
+                            &move |action| {
+                                amaf.get(action).map(|amaf| amaf.best_evaluation())
+                            },
                         ) {
                             return Some((implementation, path));
                         } else {
@@ -284,6 +322,7 @@ where
 }
 
 /// Path to follow to reach a leaf in the tree.
+// TODO(bclement): Consider using `Arc` here.
 #[derive(Clone, Default)]
 pub struct Path<'a, E>(Vec<(Weak<Node<'a, E>>, usize)>);
 
@@ -427,6 +466,10 @@ impl<'a, E: Default> Edge<'a, E> {
 /// Holds the children of a `SubTree::InternalNode`.
 pub struct Node<'a, E> {
     children: Vec<Edge<'a, E>>,
+
+    num_visits: AtomicUsize,
+
+    amaf: RwLock<HashMap<choice::ActionEx, UCTStats>>,
 }
 
 impl<'a, E: Default> Node<'a, E> {
@@ -440,7 +483,17 @@ impl<'a, E: Default> Node<'a, E> {
                     dst: RwLock::new(SubTree::Leaf(Box::new(candidate))),
                     stats: Default::default(),
                 }).collect::<Vec<_>>(),
+            amaf: RwLock::new(HashMap::default()),
+            num_visits: AtomicUsize::new(0),
         })
+    }
+
+    fn down(&self) {
+        self.num_visits.fetch_add(1, Ordering::Relaxed);
+    }
+
+    fn num_visits(&self) -> usize {
+        self.num_visits.load(Ordering::Relaxed)
     }
 
     /// Returns the lowest bound of the children, if any.
@@ -609,6 +662,7 @@ impl TreePolicy for UCTPolicy {
                     }).max_by(|lhs, rhs| cmp_f64(lhs.1, rhs.1))
                     .map(|(idx, _)| idx)
             }).map(|idx| {
+                node.down();
                 node.children[idx].stats.down();
                 idx
             })
@@ -778,6 +832,7 @@ impl TreePolicy for TAGPolicy {
                     }).max_by(|x1, x2| cmp_f64(x1.1, x2.1))
                     .map(|(ix, _)| ix)
             }).map(|idx| {
+                node.down();
                 node.children[idx].stats.down();
                 idx
             })

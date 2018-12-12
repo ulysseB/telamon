@@ -12,10 +12,7 @@ ndarray = "0.11.2"
 num = "0.2.0"
 num_cpus = "1.8.0"
 rayon = "1.0.1"
-rand = "0.5.5"
-
-[dev-dependencies]
-futures = "0.1.23"
+rand = "0.6.1"
 
 [dependencies.cuda-sys]
 optional = true
@@ -26,6 +23,9 @@ path = "../"
 
 [dependencies.telamon-utils]
 path = "../telamon-utils"
+
+[dev-dependencies]
+futures = "0.1.23"
 
 [features]
 cuda = [
