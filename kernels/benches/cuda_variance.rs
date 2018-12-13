@@ -61,7 +61,8 @@ where
             let candidate_idx = order.pick_candidate(&candidates, CUT);
             let candidate = candidates[unwrap!(candidate_idx)].clone();
             local_selection::descend(&Default::default(), order, &context, candidate, CUT)
-        }).take(NUM_TESTS)
+        })
+        .take(NUM_TESTS)
         .collect_vec();
     info!("Evaluating candidates, simulating a GPU-bound exploration");
     let fast_evals = run_evaluations(&candidates, &context, NUM_FAST_SAMPLES, None);
@@ -137,7 +138,8 @@ fn run_evaluations(
                         (move |_, runtime| {
                             unwrap!(sender.send(()));
                             unwrap!(results.lock()).push(runtime);
-                        }).into(),
+                        })
+                        .into(),
                     );
                     unwrap!(waiter.wait());
                     std::thread::sleep(duration);
@@ -146,7 +148,8 @@ fn run_evaluations(
                         candidate.clone(),
                         (move |_, runtime| {
                             unwrap!(results.lock()).push(runtime);
-                        }).into(),
+                        })
+                        .into(),
                     );
                 }
             }

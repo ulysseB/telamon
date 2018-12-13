@@ -95,11 +95,13 @@ impl Alias {
             .flat_map(|(&lhs, &rhs)| rhs.map(|rhs| (lhs, rhs)))
             .filter(|&(lhs, rhs)| {
                 space.domain().get_order(lhs.into(), rhs.into()) != Order::MERGED
-            }).map(|(_, rhs)| {
+            })
+            .map(|(_, rhs)| {
                 let size = space.ir_instance().dim(rhs).size();
                 let int_size = unwrap!(codegen::Size::from_ir(size, space).as_int());
                 (rhs, int_size as usize)
-            }).collect()
+            })
+            .collect()
     }
 }
 
@@ -117,7 +119,8 @@ fn generate_aliases(space: &SearchSpace) -> HashMap<ir::VarId, Option<Alias>> {
                 }
             };
             (var.id(), alias)
-        }).collect()
+        })
+        .collect()
 }
 
 /// Sort variables by aliasing order.

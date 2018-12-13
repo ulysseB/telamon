@@ -467,7 +467,8 @@ fn type_check_code(code: RcStr, var_map: &VarMap) -> ir::Code {
             } else {
                 Some((var_map.get_var(&var), RcStr::new(var)))
             }
-        }).collect();
+        })
+        .collect();
     ir::Code { code, vars }
 }
 

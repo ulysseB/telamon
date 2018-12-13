@@ -59,11 +59,9 @@ pub unsafe extern "C" fn telamon_search_space_apply(
     num_actions: usize,
     actions: *const search_space::Action,
 ) -> TelamonStatus {
-    unwrap_or_exit!(
-        (*search_space)
-            .0
-            .apply_decisions(std::slice::from_raw_parts(actions, num_actions).to_vec())
-    );
+    unwrap_or_exit!((*search_space)
+        .0
+        .apply_decisions(std::slice::from_raw_parts(actions, num_actions).to_vec()));
     TelamonStatus::Ok
 }
 

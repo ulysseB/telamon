@@ -490,12 +490,11 @@ pub trait Printer {
     // TODO(cleanup): remove this function once values are preprocessed by codegen. If values
     // are preprocessed, types will be already lowered.
     fn lower_type(t: ir::Type, fun: &Function) -> ir::Type {
-        unwrap!(
-            fun.space()
-                .ir_instance()
-                .device()
-                .lower_type(t, fun.space())
-        )
+        unwrap!(fun
+            .space()
+            .ir_instance()
+            .device()
+            .lower_type(t, fun.space()))
     }
 
     fn mul_mode(from: Type, to: Type) -> MulMode {

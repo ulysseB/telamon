@@ -46,7 +46,8 @@ fn partial_bound_0() {
             &[],
             &ir::PartialSize::default(),
         )
-    }.get_bottleneck(3);
+    }
+    .get_bottleneck(3);
 
     builder.action(Action::ThreadMapping(
         dim_z[0],
@@ -65,7 +66,8 @@ fn partial_bound_0() {
             &[],
             &ir::PartialSize::default(),
         )
-    }.get_bottleneck(3);
+    }
+    .get_bottleneck(3);
 
     assert!(
         final_pressure * 1.001 >= partial_pressure,
@@ -108,7 +110,8 @@ fn partial_bound_1() {
             &[],
             &ir::PartialSize::default(),
         )
-    }.get_bottleneck(5);
+    }
+    .get_bottleneck(5);
 
     builder.action(Action::DimKind(dim_z[0], DimKind::THREAD));
     let final_pressure = {
@@ -123,7 +126,8 @@ fn partial_bound_1() {
             &[],
             &ir::PartialSize::default(),
         )
-    }.get_bottleneck(5);
+    }
+    .get_bottleneck(5);
 
     assert!(
         final_pressure * 1.001 >= partial_pressure,
@@ -250,7 +254,8 @@ fn partial_bound_3() {
             &[],
             &ir::PartialSize::default(),
         )
-    }.get_bottleneck(4);
+    }
+    .get_bottleneck(4);
 
     builder.action(Action::ThreadMapping(
         init_dim_n[0],
@@ -269,7 +274,8 @@ fn partial_bound_3() {
             &[],
             &ir::PartialSize::default(),
         )
-    }.get_bottleneck(4);
+    }
+    .get_bottleneck(4);
 
     assert!(
         final_pressure * 1.001 >= partial_pressure,
@@ -312,7 +318,8 @@ fn partial_bound_4() {
             &[],
             &ir::PartialSize::default(),
         )
-    }.get_bottleneck(3);
+    }
+    .get_bottleneck(3);
 
     builder.action(Action::ThreadMapping(
         ld_a[0][0],
@@ -331,7 +338,8 @@ fn partial_bound_4() {
             &[],
             &ir::PartialSize::default(),
         )
-    }.get_bottleneck(3);
+    }
+    .get_bottleneck(3);
 
     assert!(
         final_pressure * 1.001 >= partial_pressure,
@@ -374,7 +382,8 @@ fn partial_bound_5() {
             &[],
             &ir::PartialSize::default(),
         )
-    }.get_bottleneck(4);
+    }
+    .get_bottleneck(4);
 
     builder.action(Action::DimKind(ld_a[0][0], DimKind::UNROLL));
 
@@ -389,7 +398,8 @@ fn partial_bound_5() {
             &[],
             &ir::PartialSize::default(),
         )
-    }.get_bottleneck(4);
+    }
+    .get_bottleneck(4);
 
     assert!(
         final_pressure * 1.001 >= partial_pressure,

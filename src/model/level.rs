@@ -57,7 +57,8 @@ impl Level {
                 local_info.dim_overhead[d]
                     .1
                     .bound(BottleneckLevel::Thread, &thread_rates)
-            }).min()
+            })
+            .min()
             .unwrap_or_else(FastBound::zero);
         let latency = pressure.bound(BottleneckLevel::Thread, &thread_rates);
         // Compute the block-level pressure.
@@ -260,7 +261,8 @@ pub fn generate(
             } else {
                 vec![outer_dims]
             }
-        }).collect_vec();
+        })
+        .collect_vec();
     let dim_maps = list_dim_maps(space);
     // Add the nesting of dim maps
     for dim_map in &dim_maps {
@@ -310,7 +312,8 @@ pub fn generate(
                     .cloned()
                     .collect::<VecSet<_>>()
             })
-        }).flat_map(|dims| {
+        })
+        .flat_map(|dims| {
             // We only need to keep the sequential part of multi-dim levels as they are only
             // needed to iterate on the dimensions.
             if dims.len() <= 1 {
@@ -321,7 +324,8 @@ pub fn generate(
                     .filter(|&d| {
                         let kind = space.domain().get_dim_kind(d);
                         (kind & !DimKind::BLOCK).is(DimKind::SEQUENTIAL).is_true()
-                    }).collect::<VecSet<_>>();
+                    })
+                    .collect::<VecSet<_>>();
                 if sequential.is_empty() {
                     None
                 } else {
@@ -389,7 +393,8 @@ fn list_dim_maps(space: &SearchSpace) -> Vec<DimMap> {
                 }
                 _ => None,
             })
-        }).collect()
+        })
+        .collect()
 }
 
 /// Indicates how a the sequential dimensions of a level should be repeated in the latency
@@ -415,7 +420,8 @@ impl RepeatLevel {
             .filter(|&&d| {
                 let kind = space.domain().get_dim_kind(d);
                 (kind & !DimKind::BLOCK).is(DimKind::SEQUENTIAL).is_true()
-            }).map(|&d| space.ir_instance().dim(d).size())
+            })
+            .map(|&d| space.ir_instance().dim(d).size())
             .product::<ir::PartialSize>();
         let iterations = size::bounds(&iterations, space, ctx).min;
         if iterations <= 1 {

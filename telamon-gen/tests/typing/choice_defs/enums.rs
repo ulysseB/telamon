@@ -18,8 +18,10 @@ mod undefined {
                     symmetric
                     value A:
                     value B:
-              end".to_vec()
-            )).unwrap()
+              end"
+                .to_vec()
+            ))
+            .unwrap()
             .type_check()
             .err(),
             Some(TypeError::Undefined {
@@ -52,8 +54,10 @@ mod undefined {
                 b"define enum foo():
                 value A:
                 alias AB = A | B:
-              end".to_vec()
-            )).unwrap()
+              end"
+                .to_vec()
+            ))
+            .unwrap()
             .type_check()
             .err(),
             Some(TypeError::Undefined {
@@ -91,8 +95,10 @@ mod undefined {
                 antisymmetric:
                   A -> B
                 value A:
-              end".to_vec()
-            )).unwrap()
+              end"
+                .to_vec()
+            ))
+            .unwrap()
             .type_check()
             .err(),
             Some(TypeError::Undefined {
@@ -129,8 +135,10 @@ mod redefinition {
                 symmetric
                 value A:
                 value B:
-              end".to_vec()
-            )).unwrap()
+              end"
+                .to_vec()
+            ))
+            .unwrap()
             .type_check()
             .err(),
             Some(TypeError::Redefinition {
@@ -157,8 +165,10 @@ mod redefinition {
               end
 
 		      define enum foo():
-              end".to_vec()
-            )).unwrap()
+              end"
+                .to_vec()
+            ))
+            .unwrap()
             .type_check()
             .err(),
             Some(TypeError::Redefinition {
@@ -212,8 +222,10 @@ mod redefinition {
                 value C:
                 alias AB = A | B:
                 alias AB = A | B:
-              end".to_vec()
-            )).unwrap()
+              end"
+                .to_vec()
+            ))
+            .unwrap()
             .type_check()
             .err(),
             Some(TypeError::Redefinition {
@@ -261,8 +273,10 @@ mod redefinition {
                 value A:
                 value B:
                 value A:
-              end".to_vec()
-            )).unwrap()
+              end"
+                .to_vec()
+            ))
+            .unwrap()
             .type_check()
             .err(),
             Some(TypeError::Redefinition {
@@ -322,8 +336,10 @@ mod redefinition {
                   A -> B
                 value A:
                 value B:
-              end".to_vec()
-            )).unwrap()
+              end"
+                .to_vec()
+            ))
+            .unwrap()
             .type_check()
             .err(),
             Some(TypeError::Redefinition {
@@ -363,8 +379,10 @@ mod redefinition {
                     symmetric
                     value A:
                     value B:
-                  end".to_vec()
-                )).unwrap()
+                  end"
+                    .to_vec()
+                ))
+                .unwrap()
                 .type_check()
                 .err(),
                 Some(TypeError::Redefinition {
@@ -403,8 +421,10 @@ mod parameter {
                       A -> B
                     value A:
                     value B:
-                  end".to_vec()
-                )).unwrap()
+                  end"
+                    .to_vec()
+                ))
+                .unwrap()
                 .type_check()
                 .err(),
                 Some(TypeError::BadSymmetricArg {
@@ -432,8 +452,10 @@ mod parameter {
                       A -> B
                     value A:
                     value B:
-                  end".to_vec()
-                )).unwrap()
+                  end"
+                    .to_vec()
+                ))
+                .unwrap()
                 .type_check()
                 .err(),
                 Some(TypeError::BadSymmetricArg {
@@ -482,8 +504,10 @@ mod parameter {
                       A -> B
                     value A:
                     value B:
-                  end".to_vec()
-                )).unwrap()
+                  end"
+                    .to_vec()
+                ))
+                .unwrap()
                 .type_check()
                 .err(),
                 Some(TypeError::BadSymmetricArg {
@@ -540,8 +564,10 @@ mod parameter {
                     symmetric
                     value A:
                     value B:
-                  end".to_vec()
-                )).unwrap()
+                  end"
+                    .to_vec()
+                ))
+                .unwrap()
                 .type_check()
                 .err(),
                 Some(TypeError::BadSymmetricArg {
@@ -568,8 +594,10 @@ mod parameter {
                     symmetric
                     value A:
                     value B:
-                  end".to_vec()
-                )).unwrap()
+                  end"
+                    .to_vec()
+                ))
+                .unwrap()
                 .type_check()
                 .err(),
                 Some(TypeError::BadSymmetricArg {
@@ -605,8 +633,10 @@ mod parameter {
                     symmetric
                     value A:
                     value B:
-                  end".to_vec()
-                )).unwrap()
+                  end"
+                    .to_vec()
+                ))
+                .unwrap()
                 .type_check()
                 .err(),
                 Some(TypeError::BadSymmetricArg {
@@ -690,8 +720,10 @@ mod parameter {
                     symmetric
                     value A:
                     value B:
-                  end".to_vec()
-                )).unwrap()
+                  end"
+                    .to_vec()
+                ))
+                .unwrap()
                 .type_check()
                 .err(),
                 Some(TypeError::BadSymmetricArg {
@@ -757,8 +789,10 @@ fn conflict() {
               A -> B
             value A:
             value B:
-          end".to_vec()
-        )).unwrap()
+          end"
+            .to_vec()
+        ))
+        .unwrap()
         .type_check()
         .err(),
         Some(TypeError::Conflict {

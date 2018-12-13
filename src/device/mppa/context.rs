@@ -61,7 +61,8 @@ impl<'a> Context<'a> {
             .map(|p| {
                 let arg = self.get_param(&p.name);
                 (arg.size_of(), arg.raw_ptr())
-            }).unzip();
+            })
+            .unzip();
         let out_mem = self.writeback_slots.pop();
         arg_sizes.push(std::mem::size_of::<*mut libc::c_void>());
         args.push(out_mem.raw_ptr());
