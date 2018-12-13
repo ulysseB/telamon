@@ -894,7 +894,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreeEvent</span> {
     <span class="ident">Evaluation</span> {
-        <span class="ident">actions</span>: <span class="ident">Sequence</span><span class="op">&lt;</span><span class="ident">choice</span>::<span class="ident">ActionEx</span><span class="op">&gt;</span>,
+        <span class="ident">actions</span>: <span class="ident">List</span><span class="op">&lt;</span><span class="ident">choice</span>::<span class="ident">ActionEx</span><span class="op">&gt;</span>,
         <span class="ident">score</span>: <span class="ident">f64</span>,
     },
 }
@@ -994,7 +994,7 @@
         <span class="ident">eval</span>: <span class="ident">f64</span>,
     ) {
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">log</span>.<span class="ident">send</span>(<span class="ident">LogMessage</span>::<span class="ident">Event</span>(<span class="ident">TreeEvent</span>::<span class="ident">Evaluation</span> {
-            <span class="ident">actions</span>: <span class="ident">Sequence</span>::<span class="ident">List</span>(<span class="ident">actions</span>.<span class="ident">clone</span>()),
+            <span class="ident">actions</span>: <span class="ident">actions</span>.<span class="ident">clone</span>(),
             <span class="ident">score</span>: <span class="ident">eval</span>,
         })));
 
