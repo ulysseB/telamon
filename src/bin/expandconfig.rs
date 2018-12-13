@@ -28,12 +28,7 @@ struct Opt {
     input: Option<OsString>,
 
     /// Path to the output file.  Use stdout if not specified.
-    #[structopt(
-        short = "o",
-        long = "output",
-        default_value = "-",
-        parse(from_os_str)
-    )]
+    #[structopt(short = "o", long = "output", default_value = "-", parse(from_os_str))]
     output: OsString,
 
     /// Output format.
@@ -42,7 +37,7 @@ struct Opt {
         long = "format",
         default_value = "toml",
         case_insensitive = true,
-        raw(possible_values = "Format::VARIANTS"),
+        raw(possible_values = "Format::VARIANTS")
     )]
     format: Format,
 }

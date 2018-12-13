@@ -423,7 +423,8 @@ impl<'a> Builder<'a> {
                         size *= self.function.dim(dim).size();
                         (dim, increment)
                     })
-            }).collect()
+            })
+            .collect()
     }
 
     /// Returns the list of increment to access an n-dimensional tensor.
@@ -439,7 +440,8 @@ impl<'a> Builder<'a> {
                 let increment = size.clone();
                 *size *= self.function.logical_dim(dim.id()).total_size();
                 Some((dim, increment))
-            }).collect()
+            })
+            .collect()
     }
 
     /// Creates a dim-map operand.
@@ -458,13 +460,12 @@ impl<'a> Builder<'a> {
 
     /// Finds a paramter given its name.
     pub fn find_param(&self, param: &str) -> &'a Parameter {
-        unwrap!(
-            self.function
-                .signature()
-                .params
-                .iter()
-                .find(|p| p.name == param)
-        )
+        unwrap!(self
+            .function
+            .signature()
+            .params
+            .iter()
+            .find(|p| p.name == param))
     }
 
     /// Returns a reference to the function being built.

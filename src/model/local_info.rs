@@ -56,7 +56,8 @@ impl<'a> LocalInfo<'a> {
                             .hw_pressure(space, &dim_sizes, &nesting, stmt, context)
                     };
                 (stmt.stmt_id(), pressure)
-            }).collect();
+            })
+            .collect();
         let mut dim_overhead = space
             .ir_instance()
             .dims()
@@ -71,7 +72,8 @@ impl<'a> LocalInfo<'a> {
                 } else {
                     (d.id(), context.device().loop_iter_pressure(kind))
                 }
-            }).collect();
+            })
+            .collect();
         let parallelism = parallelism(&nesting, space, context);
         // Add the pressure induced by induction variables.
         let mut thread_overhead = HwPressure::zero(context.device());
@@ -212,7 +214,8 @@ impl<'a> Nesting<'a> {
                     let mapping = space.domain().get_thread_mapping(dim.id(), other);
                     mapping.intersects(ThreadMapping::MAPPED)
                 })
-            }).map(|d| d.size())
+            })
+            .map(|d| d.size())
             .product::<ir::PartialSize>();
         let max_threads_per_block = outer_dims
             .iter()
@@ -250,12 +253,12 @@ impl<'a> Nesting<'a> {
                     continue;
                 }
                 let order = space.domain().get_order(dim.into(), stmt);
-                if Order::OUTER.contains(order) && outer.iter().cloned().all(
-                    |outer: ir::DimId| {
+                if Order::OUTER.contains(order)
+                    && outer.iter().cloned().all(|outer: ir::DimId| {
                         let ord = space.domain().get_order(dim.into(), outer.into());
                         !ord.contains(Order::MERGED)
-                    },
-                ) {
+                    })
+                {
                     outer.push(dim);
                 }
             }
@@ -342,6 +345,7 @@ fn parallelism(
                 min_num_threads: size::bounds(&size_threads_and_blocks, space, ctx).min,
                 lcm_num_blocks,
             }
-        }).fold1(|lhs, rhs| lhs.combine(&rhs))
+        })
+        .fold1(|lhs, rhs| lhs.combine(&rhs))
         .unwrap_or_default()
 }

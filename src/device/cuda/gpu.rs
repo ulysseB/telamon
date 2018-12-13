@@ -375,7 +375,8 @@ impl Gpu {
         (InstDesc {
             issue: 1.0,
             ..InstDesc::default()
-        }).into()
+        })
+        .into()
     }
 
     /// Computes the ratio `num_wraps*wrap_size/num_threads`. This ratio may be `>1`

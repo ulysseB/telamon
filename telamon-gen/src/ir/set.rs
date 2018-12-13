@@ -278,7 +278,8 @@ impl SetDef {
                     ),
                     (SetDefKey::Iter, iter),
                     (SetDefKey::FromSuperset, from_superset),
-                ].into_iter()
+                ]
+                .into_iter()
                 .collect();
                 for key in &[SetDefKey::ItemType, SetDefKey::IdType] {
                     assert_eq!(set.def.keys[key], keys[key],
@@ -374,11 +375,12 @@ impl SetDef {
 
     /// Indicates if the first set is a sub-set of the second.
     pub fn is_subset_of_def(&self, other: &SetDef) -> bool {
-        self == other || self
-            .superset
-            .as_ref()
-            .map(|s| s.def.is_subset_of_def(other))
-            .unwrap_or(false)
+        self == other
+            || self
+                .superset
+                .as_ref()
+                .map(|s| s.def.is_subset_of_def(other))
+                .unwrap_or(false)
     }
 }
 

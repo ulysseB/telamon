@@ -84,11 +84,10 @@ fn parser_invalid_token() {
 
 #[test]
 fn parser_integer_token() {
-    assert!(
-        parser::parse_ast(Lexer::new(
-            b"define integer mychoice($myarg in MySet): \"mycode\" end".to_vec()
-        )).is_ok()
-    );
+    assert!(parser::parse_ast(Lexer::new(
+        b"define integer mychoice($myarg in MySet): \"mycode\" end".to_vec()
+    ))
+    .is_ok());
 }
 
 #[test]
@@ -105,8 +104,8 @@ fn parser_include_set() {
     let include = format!("include \"{}\"", filename);
 
     // test the parse validity.
-    assert!(
-        parser::parse_ast(Lexer::new(include.as_bytes().to_vec()).collect::<Vec<_>>())
-            .is_ok()
-    );
+    assert!(parser::parse_ast(
+        Lexer::new(include.as_bytes().to_vec()).collect::<Vec<_>>()
+    )
+    .is_ok());
 }

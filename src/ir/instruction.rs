@@ -60,7 +60,8 @@ impl<'a, L> Instruction<'a, L> {
                 } else {
                     None
                 }
-            }).collect();
+            })
+            .collect();
         Ok(Instruction {
             operator,
             id,
@@ -151,7 +152,8 @@ impl<'a, L> Instruction<'a, L> {
         self.as_reduction()
             .map(|(i, map, rd)| {
                 i == init && !rd.contains(&dim) && map.iter().all(|&(_, rhs)| dim != rhs)
-            }).unwrap_or(false)
+            })
+            .unwrap_or(false)
     }
 
     /// Rename a dimension to another ID.

@@ -62,7 +62,8 @@ pub unsafe extern "C" fn telamon_strerror() -> *mut libc::c_char {
             .map(|error| {
                 let string = unwrap!(std::ffi::CString::new(error.to_string()));
                 libc::strdup(string.as_ptr())
-            }).unwrap_or(std::ptr::null_mut())
+            })
+            .unwrap_or(std::ptr::null_mut())
     })
 }
 

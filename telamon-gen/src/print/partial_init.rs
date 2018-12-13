@@ -77,7 +77,7 @@ fn iter_new_objects(
         .unwrap_or(obj_id.clone().into_token_stream());
     let arg_def = arg_id.as_ref().map(|id| {
         let getter = id.fetch_object(None);
-        quote!{ let #arg = #getter; }
+        quote! { let #arg = #getter; }
     });
     let arg = arg.map(|x| x.clone().into());
     let obj_getter = obj_id.fetch_object(arg.as_ref());

@@ -359,7 +359,8 @@ impl<'a, L> Function<'a, L> {
                 let old_size = size.clone();
                 *size *= self.dim(dim).size();
                 Some((dim, old_size))
-            }).collect_vec();
+            })
+            .collect_vec();
         let pattern = ir::AccessPattern::Tensor {
             mem_id: Some(mem),
             dims: increments.iter().cloned().collect(),

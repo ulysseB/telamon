@@ -124,10 +124,9 @@ impl DaemonSpawner {
     pub fn spawn_jit(&self, opt_level: usize) -> JITDaemon {
         let (ptx_sender, ptx_receiver) = unwrap!(ipc::bytes_channel());
         let (cubin_sender, cubin_receiver) = unwrap!(ipc::bytes_channel());
-        unwrap!(
-            self.sender
-                .send(Some((ptx_receiver, cubin_sender, opt_level)))
-        );
+        unwrap!(self
+            .sender
+            .send(Some((ptx_receiver, cubin_sender, opt_level))));
         let daemon = unwrap!(self.receiver.recv());
         JITDaemon {
             daemon,

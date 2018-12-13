@@ -9,11 +9,7 @@ pub enum TypeError {
     InvalidType { t: ir::Type },
     #[fail(display = "{} must have a return type", inst)]
     ExpectedReturnType { inst: ir::InstId },
-    #[fail(
-        display = "{} rounding is incompatible with type `{}`",
-        rounding,
-        t
-    )]
+    #[fail(display = "{} rounding is incompatible with type `{}`", rounding, t)]
     InvalidRounding {
         rounding: ir::op::Rounding,
         t: ir::Type,
@@ -99,21 +95,11 @@ pub enum Error {
     Type(#[cause] TypeError),
     #[fail(display = "dimensions must have a size of at least 2")]
     InvalidDimSize,
-    #[fail(
-        display = "dimension {} appears twice in the increment list",
-        dim
-    )]
+    #[fail(display = "dimension {} appears twice in the increment list", dim)]
     DuplicateIncrement { dim: ir::DimId },
-    #[fail(
-        display = "the operator needs to be nested in dimension {}",
-        dim
-    )]
+    #[fail(display = "the operator needs to be nested in dimension {}", dim)]
     MissingIterationDim { dim: ir::DimId },
-    #[fail(
-        display = "no mapping found between dimensions {} and {}",
-        lhs,
-        rhs
-    )]
+    #[fail(display = "no mapping found between dimensions {} and {}", lhs, rhs)]
     MissingDimMapping { lhs: ir::DimId, rhs: ir::DimId },
 }
 

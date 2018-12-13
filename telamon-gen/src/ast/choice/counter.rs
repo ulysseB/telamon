@@ -196,7 +196,8 @@ impl CounterDef {
                 .map(|mut cond| {
                     cond.negate();
                     cond
-                }).collect(),
+                })
+                .collect(),
         );
         constraints.push(Constraint::new(all_vars_defs, disjunctions));
         // Generate the choice instance.
@@ -236,7 +237,8 @@ impl CounterDef {
                     def.name.clone(),
                     var_map.decl_argument(&ir_desc, def.to_owned()),
                 )
-            }).collect_vec();
+            })
+            .collect_vec();
         let base = type_check_code(RcStr::new(self.body.to_owned().base), &var_map);
         // Generate the increment
         let iter_vars = self

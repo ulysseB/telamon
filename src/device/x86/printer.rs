@@ -176,7 +176,8 @@ impl X86printer {
                     t = Self::get_type(*par_type),
                     i = i
                 ),
-            }).collect_vec()
+            })
+            .collect_vec()
             .join(";\n  ")
     }
 
