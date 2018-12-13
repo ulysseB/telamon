@@ -44,11 +44,14 @@ pub fn rave<'a>(
     rave_visits: usize,
     amaf: &Fn(&choice::ActionEx) -> Option<f64>,
 ) -> Option<Candidate<'a>> {
+if candidate.bound.value() >= cut {
+warn!("Invalid dude.");
+}
     let choice_opt = choice::list(choice_order, &candidate.space).next();
     if let Some(choice) = choice_opt {
         if let Some(amafs) = choice
             .iter()
-            .map(|action| amaf(action).map(|eval| -eval / cut))
+            .map(|action| amaf(action).map(|eval| if !eval.is_finite() { -1. } else { -eval / (10. * cut) } ))
             .collect::<Option<Vec<_>>>()
         {
             let mut choice = choice;
@@ -60,7 +63,12 @@ pub fn rave<'a>(
                 if let Ok(child) =
                     candidate.apply_decision(context, choice[index].clone())
                 {
-                    return Some(child);
+                    if child.bound.value() >= cut {
+// warn!("Skipping vs {}", cut);
+                        probs[index] = 0.0;
+                    } else {
+                        return rave(choice_order, node_order, context, child, cut, rave_visits, amaf);
+                    }
                 } else {
                     probs[index] = 0.0;
                 }
@@ -156,7 +164,7 @@ where
             });
         } else {
             assert!(
-                x <= cut,
+                x < cut,
                 "Compare bound fail, cut {:.3e}, cand: {:.3e}",
                 cut,
                 x

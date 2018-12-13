@@ -156,7 +156,7 @@ fn launch_search<'a, T: Store<'a>>(
     context: &Context,
     log_sender: sync::mpsc::SyncSender<LogMessage<T::Event>>,
 ) -> Option<Candidate<'a>> {
-    let (monitor_sender, monitor_receiver) = channel::mpsc::channel(100);
+    let (monitor_sender, monitor_receiver) = channel::mpsc::channel(24);
     let maybe_candidate = crossbeam::scope(|scope| {
         let best_cand_opt = scope
             .builder()
