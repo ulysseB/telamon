@@ -412,7 +412,7 @@ impl<'a, E: Default> Edge<'a, E> {
                 match &*unwrap!(self.dst.read()) {
                     SubTree::Empty => return SubTree::Empty,
                     SubTree::InternalNode(node) => {
-                        return SubTree::InternalNode(Arc::clone(node))
+                        return SubTree::InternalNode(Arc::clone(node));
                     }
                     SubTree::Leaf(_) => {
                         // Need write access to expand, see below
