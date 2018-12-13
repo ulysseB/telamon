@@ -84,7 +84,7 @@ impl Default for TreeStats {
 #[derive(Serialize, Deserialize)]
 pub enum TreeEvent {
     Evaluation {
-        actions: Sequence<choice::ActionEx>,
+        actions: List<choice::ActionEx>,
         score: f64,
     },
 }
@@ -184,7 +184,7 @@ where
         eval: f64,
     ) {
         unwrap!(self.log.send(LogMessage::Event(TreeEvent::Evaluation {
-            actions: Sequence::List(actions.clone()),
+            actions: actions.clone(),
             score: eval,
         })));
 

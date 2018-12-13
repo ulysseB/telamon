@@ -18,7 +18,7 @@ fn main() -> Result<(), ReadError> {
                 TreeEvent::Evaluation {
                     actions,
                     score: _score,
-                } => println!("{:?}", actions.to_vec()),
+                } => println!("{:?}", actions.into_iter().collect::<Vec<_>>()),
             },
             Err(err) => {
                 // If we reached eof and no bytes were read, we were
