@@ -37,14 +37,16 @@ impl<'a> Filter<'a> {
                     ir::Variable::Forall(pos - choice.arguments().len())
                 };
                 (ctx.var_name(var), ast::Set::new(t, ctx))
-            }).collect();
+            })
+            .collect();
         let bindings = filter
             .inputs
             .iter()
             .enumerate()
             .map(|(id, input)| {
                 (ctx.input_name(id), ast::ChoiceInstance::new(input, &ctx))
-            }).collect();
+            })
+            .collect();
         let values_var = ast::Variable::with_name("values");
         let body = PositiveFilter::new(&filter.rules, choice, &ctx, values_var.clone());
         let type_name = ast::ValueType::new(choice.value_type().full_type(), ctx);
@@ -135,7 +137,8 @@ impl<'a> PositiveFilter<'a> {
                         let sub_filter =
                             PositiveFilter::new(sub_filter, choice, ctx, set.clone());
                         (value_set::print(values, ctx).to_string(), sub_filter)
-                    }).collect();
+                    })
+                    .collect();
                 PositiveFilter::Switch {
                     var: ctx.input_name(switch),
                     cases,

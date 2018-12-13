@@ -138,7 +138,8 @@ impl FlatFilter {
                     rule.alternatives.inverse(ir_desc);
                 }
                 rule
-            }).collect();
+            })
+            .collect();
         let inputs = self
             .inputs
             .iter()

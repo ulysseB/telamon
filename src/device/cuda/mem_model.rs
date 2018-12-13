@@ -166,7 +166,8 @@ fn tensor_thread_dims(
                 Trivalent::Maybe => Some((dim, false)),
                 Trivalent::True => Some((dim, true)),
             },
-        ).chain(external_dims);
+        )
+        .chain(external_dims);
     let mut out = Vec::new();
     for (id, is_active_thread) in dims {
         let size = sizes[&id];
@@ -216,7 +217,8 @@ fn external_thread_dims<'a>(
                 }
                 let mapping = space.domain().get_thread_mapping(dim.id(), other);
                 mapping.is(ThreadMapping::MAPPED)
-            }).fold(Trivalent::False, |l, r| l | r);
+            })
+            .fold(Trivalent::False, |l, r| l | r);
         match is_mapped {
             Trivalent::True => None,
             Trivalent::Maybe => Some((dim.id(), false)),
@@ -257,9 +259,11 @@ fn sort_thread_dims(
                     }
                     let mapping = space.domain().get_thread_mapping(d.id, other);
                     mapping.is(ThreadMapping::MAPPED_OUT).is_true()
-                }).count();
+                })
+                .count();
             (num_inner, d)
-        }).collect();
+        })
+        .collect();
     heap.extend(dim_groups.remove(&0));
     let mut out = Vec::new();
     let mut total_size = 1;
@@ -333,7 +337,8 @@ fn wrap_access_offsets(
                     dim.stride.min
                 };
                 indexes[i] * stride
-            }).sum();
+            })
+            .sum();
         if incr {
             break;
         } // We reached the end of all loops.
@@ -483,103 +488,103 @@ fn miss_ratios(inst: &ir::Instruction,
         let has_other_access = false; /*other_accesses.iter().any(|other| {
             fun.order(other.stmt_id(), dim.stmt_id()).intersects(Order::INNER)
         });*/
-        if has_other_access {
-            // TODO(model): better handle other accesses to the same memory block
-            0.0
-        } else {
-            let size = sizes[&dim.id()];
-            let stride = eval_stride(pattern, dim.id(), sizes).unwrap_or(0);
-            let reuse_distance = reuse_distance(inst, dim, pattern, space, sizes, gpu);
-            let mshr_miss = if reuse_distance > gpu.mshr_per_smx {
-                1.0
-            } else if size == 1 {
-                0.0
-            } else {
-                let num_lines = 1 + (stride*(size as i32-1))/gpu.l1_cache_line as i32;
-                f64::min(num_lines as f64/size as f64, 1.0)
-            };
-            trace!("dim: {:?}, kind: {:?}, reuse_distance: {}, stride: {}, mshr_miss: {}",
-                   dim, space.domain().get_dim_kind(dim.id()), reuse_distance, stride, mshr_miss);
-            mshr_miss
-        }
-    }).product();
-    // TODO(model): take other accesses into account.
-    // TODO(model): compute L2 miss
-    // TODO(model): take flags into account.
-    // TODO(model): handle block dimensions.
-    trace!("Inst {:?} = mshr_miss: {}", inst.id(), mshr_miss);
-    // fixme: does not account for reuse in the first iterations
-    0.0
+if has_other_access {
+// TODO(model): better handle other accesses to the same memory block
+0.0
+} else {
+let size = sizes[&dim.id()];
+let stride = eval_stride(pattern, dim.id(), sizes).unwrap_or(0);
+let reuse_distance = reuse_distance(inst, dim, pattern, space, sizes, gpu);
+let mshr_miss = if reuse_distance > gpu.mshr_per_smx {
+1.0
+} else if size == 1 {
+0.0
+} else {
+let num_lines = 1 + (stride*(size as i32-1))/gpu.l1_cache_line as i32;
+f64::min(num_lines as f64/size as f64, 1.0)
+};
+trace!("dim: {:?}, kind: {:?}, reuse_distance: {}, stride: {}, mshr_miss: {}",
+dim, space.domain().get_dim_kind(dim.id()), reuse_distance, stride, mshr_miss);
+mshr_miss
+}
+}).product();
+// TODO(model): take other accesses into account.
+// TODO(model): compute L2 miss
+// TODO(model): take flags into account.
+// TODO(model): handle block dimensions.
+trace!("Inst {:?} = mshr_miss: {}", inst.id(), mshr_miss);
+// fixme: does not account for reuse in the first iterations
+0.0
 }
 
 /// Computes the reuse distance between two iterations of `dim` for the given pattern.
 fn reuse_distance(inst: &ir::Instruction,
-                  dim: &ir::Dimension,
-                  pattern: &ir::AccessPattern,
-                  space: &SearchSpace,
-                  sizes: &HashMap<ir::DimId, u32>,
-                  gpu: &cuda::Gpu) -> u32 {
-    space.ir_instance().dims().filter(|&other_dim| {
-        other_dim.id() != dim.id() &&
-        space.domain().get_order(other_dim.stmt_id(), inst.stmt_id()) == Order::ACTIVE_OUT &&
-        dynamic_nesting(dim, other_dim, space) == Some(Ordering::Greater)
-    }).map(|other_dim| {
-        let stride = eval_stride(pattern, other_dim.id(), sizes).unwrap_or(0) as u32;
-        let size = sizes[&other_dim.id()] as u32;
-        1 + std::cmp::min(size - 1, stride*(size-1)/gpu.l1_cache_line)
-    }).product::<u32>() - 1
+dim: &ir::Dimension,
+pattern: &ir::AccessPattern,
+space: &SearchSpace,
+sizes: &HashMap<ir::DimId, u32>,
+gpu: &cuda::Gpu) -> u32 {
+space.ir_instance().dims().filter(|&other_dim| {
+other_dim.id() != dim.id() &&
+space.domain().get_order(other_dim.stmt_id(), inst.stmt_id()) == Order::ACTIVE_OUT &&
+dynamic_nesting(dim, other_dim, space) == Some(Ordering::Greater)
+}).map(|other_dim| {
+let stride = eval_stride(pattern, other_dim.id(), sizes).unwrap_or(0) as u32;
+let size = sizes[&other_dim.id()] as u32;
+1 + std::cmp::min(size - 1, stride*(size-1)/gpu.l1_cache_line)
+}).product::<u32>() - 1
 }
 
 /// Evaluate the stride of an access pattern of a given dimension.
 fn eval_stride(pattern: &ir::AccessPattern,
-               dim: ir::DimId,
-               sizes: &HashMap<ir::DimId, u32>) -> ir::Stride {
-    match *pattern {
-        ir::AccessPattern::Unknown { .. } => ir::Stride::Unknown,
-        ir::AccessPattern::Tensor { ref stride, ref dims, .. } => {
-            let mut it = dims.iter().skip_while(|other| **other != dim);
-            if it.next().is_some() {
-                ir::Stride::Int(it.map(|d| sizes[d] as i32).product::<i32>() * stride)
-            } else {
-                ir::Stride::Int(0)
-            }
-        },
-    }
+dim: ir::DimId,
+sizes: &HashMap<ir::DimId, u32>) -> ir::Stride {
+match *pattern {
+ir::AccessPattern::Unknown { .. } => ir::Stride::Unknown,
+ir::AccessPattern::Tensor { ref stride, ref dims, .. } => {
+let mut it = dims.iter().skip_while(|other| **other != dim);
+if it.next().is_some() {
+ir::Stride::Int(it.map(|d| sizes[d] as i32).product::<i32>() * stride)
+} else {
+ir::Stride::Int(0)
+}
+},
+}
 }
 
 /// Compare the nesting of two dimension in the dynamic schedule. Yeilds a valid partial order.
 fn dynamic_nesting(lhs: &ir::Dimension, rhs: &ir::Dimension, space: &SearchSpace)
-        -> Option<Ordering> {
-    if lhs.id() == rhs.id() { return Some(Ordering::Equal); }
-    let order = space.domain().get_order(lhs.stmt_id(), rhs.stmt_id());
-    let lhs_kind = space.domain().get_dim_kind(lhs.id());
-    let rhs_kind = space.domain().get_dim_kind(rhs.id());
-    let lhs_is_thread = lhs_kind.is(DimKind::THREAD);
-    let rhs_is_thread = rhs_kind.is(DimKind::THREAD);
-    let lhs_is_vector = lhs_kind.is(DimKind::VECTOR);
-    let rhs_is_vector = rhs_kind.is(DimKind::VECTOR);
-    match (lhs_is_thread, rhs_is_thread, lhs_is_vector, rhs_is_vector) {
-        // Handle ordering with vectors
-        (_, _, Trivalent::True, _) => Some(Ordering::Less),
-        (_, _, _, Trivalent::True) => Some(Ordering::Greater),
-        // Thread/Non-Thread ordering
-        (Trivalent::True, Trivalent::False, _, Trivalent::Maybe) => None,
-        (Trivalent::True, Trivalent::False, _, Trivalent::False) => Some(Ordering::Less),
-        // Non-Thread/Thread ordering
-        (Trivalent::False, Trivalent::True, Trivalent::Maybe, _) => None,
-        (Trivalent::False, Trivalent::True, Trivalent::False, _) => Some(Ordering::Greater),
-        // Non-Thread/Non-Thread and Thread/Thread ordering
-        (Trivalent::False, Trivalent::False, _, _) |
-        (Trivalent::True, Trivalent::True, _, _) => {
-            // Order per nesting order.
-            if order.is(Order::INNER).is_true() { Some(Ordering::Less) }
-            else if order.is(Order::OUTER).is_true() { Some(Ordering::Greater) }
-            else { None }
-        },
-        // In some cases, we can't say anything.
-        (_, Trivalent::Maybe, _, _) |
-        (Trivalent::Maybe, _, _, _) => None
-    }
+-> Option<Ordering> {
+if lhs.id() == rhs.id() { return Some(Ordering::Equal); }
+let order = space.domain().get_order(lhs.stmt_id(), rhs.stmt_id());
+let lhs_kind = space.domain().get_dim_kind(lhs.id());
+let rhs_kind = space.domain().get_dim_kind(rhs.id());
+let lhs_is_thread = lhs_kind.is(DimKind::THREAD);
+let rhs_is_thread = rhs_kind.is(DimKind::THREAD);
+let lhs_is_vector = lhs_kind.is(DimKind::VECTOR);
+let rhs_is_vector = rhs_kind.is(DimKind::VECTOR);
+match (lhs_is_thread, rhs_is_thread, lhs_is_vector, rhs_is_vector) {
+// Handle ordering with vectors
+(_, _, Trivalent::True, _) => Some(Ordering::Less),
+(_, _, _, Trivalent::True) => Some(Ordering::Greater),
+// Thread/Non-Thread ordering
+(Trivalent::True, Trivalent::False, _, Trivalent::Maybe) => None,
+(Trivalent::True, Trivalent::False, _, Trivalent::False) => Some(Ordering::Less),
+// Non-Thread/Thread ordering
+(Trivalent::False, Trivalent::True, Trivalent::Maybe, _) => None,
+(Trivalent::False, Trivalent::True, Trivalent::False, _) => Some(Ordering::Greater),
+// Non-Thread/Non-Thread and Thread/Thread ordering
+(Trivalent::False, Trivalent::False, _, _) |
+(Trivalent::True, Trivalent::True, _, _) => {
+// Order per nesting order.
+if order.is(Order::INNER).is_true() { Some(Ordering::Less) }
+else if order.is(Order::OUTER).is_true() { Some(Ordering::Greater) }
+else { None }
+},
+// In some cases, we can't say anything.
+(_, Trivalent::Maybe, _, _) |
+(Trivalent::Maybe, _, _, _) => None
+}
 }
 */
 

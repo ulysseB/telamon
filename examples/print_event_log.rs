@@ -131,9 +131,10 @@ impl Node {
         while let Some((node, depth)) = worklist.pop() {
             nodes.push((node as *const Node, node));
 
-            if max_depth.map(|max_depth| depth < max_depth).unwrap_or(true) && min_evals
-                .map(|min_evals| node.evaluations.len() > min_evals)
-                .unwrap_or(true)
+            if max_depth.map(|max_depth| depth < max_depth).unwrap_or(true)
+                && min_evals
+                    .map(|min_evals| node.evaluations.len() > min_evals)
+                    .unwrap_or(true)
             {
                 for (action, edge) in node.children.iter() {
                     edges.push((node as *const Node, &*edge.node as *const Node, edge));

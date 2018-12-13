@@ -627,15 +627,14 @@ mod counter_def {
         );
         // Test the counter value is correctly restricted.
         let diff = &mut DomainDiff::default();
-        assert!(
-            counter_of_counter::restrict(
-                dim1.into(),
-                fun,
-                store,
-                Range { min: 2, max: 2 },
-                diff
-            ).is_ok()
-        );
+        assert!(counter_of_counter::restrict(
+            dim1.into(),
+            fun,
+            store,
+            Range { min: 2, max: 2 },
+            diff
+        )
+        .is_ok());
         assert_eq!(store.get_foo(dim1.into()), Foo::B);
     }
 
@@ -695,7 +694,8 @@ mod counter_alloc {
             Arc::make_mut(fun),
             &new_objs,
             &mut DomainDiff::default(),
-        ).unwrap();
+        )
+        .unwrap();
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert_eq!(store.get_num_foo_a(inst0), Range { min: 0, max: 1 });
         assert_eq!(store.get_foo(inst0, dim0), Foo::ALL);
@@ -713,7 +713,8 @@ mod counter_alloc {
             Arc::make_mut(fun),
             &new_objs,
             &mut DomainDiff::default(),
-        ).unwrap();
+        )
+        .unwrap();
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert_eq!(store.get_num_foo_a(inst1), Range { min: 0, max: 2 });
         assert_eq!(store.get_foo(inst1, dim0), Foo::ALL);
@@ -736,11 +737,9 @@ mod counter_alloc {
         // counter modification itself.
         let diff = &mut DomainDiff::default();
         store.set_bar(inst0, dim0, Bar::B);
-        assert!(
-            store
-                .restrict_num_bar(inst0, Range { min: 0, max: 1 }, diff)
-                .is_ok()
-        );
+        assert!(store
+            .restrict_num_bar(inst0, Range { min: 0, max: 1 }, diff)
+            .is_ok());
         let expected_diff = (Range { min: 0, max: 1 }, Range { min: 0, max: 0 });
         assert_eq!(diff.num_bar.get(&(inst0,)), Some(&expected_diff));
         // Allocate three dimensions.
@@ -902,7 +901,8 @@ mod lowering {
             Arc::make_mut(fun),
             &new_objs,
             &mut DomainDiff::default(),
-        ).unwrap();
+        )
+        .unwrap();
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert!(ir::inst::get(fun, inst4).condition());
         assert!(!ir::inst::get(fun, inst3).condition());
@@ -990,7 +990,8 @@ mod parametric_set {
             Arc::make_mut(fun),
             &new_objs,
             &mut DomainDiff::default(),
-        ).unwrap();
+        )
+        .unwrap();
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert_eq!(store.get_foo(inst0, op2), Foo::A);
         assert_eq!(store.get_foo(inst2, op3), Foo::ALL);
@@ -1391,7 +1392,8 @@ mod unused_set {
             Arc::make_mut(fun),
             &new_objs,
             &mut DomainDiff::default(),
-        ).unwrap();
+        )
+        .unwrap();
         assert!(apply_decisions(actions, fun, store).is_ok());
         assert_eq!(store.get_foo(b0.into(), b1.into()), Foo::A);
     }

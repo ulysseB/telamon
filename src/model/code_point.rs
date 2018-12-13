@@ -125,7 +125,8 @@ fn code_point_dag(space: &SearchSpace, levels: &[Level]) -> Dag<CodePoint> {
             .cartesian_product(rhs.blocks(levels))
             .map(|(lhs, rhs)| {
                 convert_order(space, lhs, rhs, lesser_cond, greater_cond, if_equals)
-            }).fold1(|x, y| if x == y { x } else { None });
+            })
+            .fold1(|x, y| if x == y { x } else { None });
         //trace!("ord {:?} {:?} {:?}", lhs, out, rhs);
         unwrap!(out)
     })

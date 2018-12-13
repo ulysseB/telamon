@@ -266,7 +266,8 @@ where
                                 node.upgrade()
                                     .map(|node| node.num_visits() >= 50)
                                     .unwrap_or(false)
-                            }).next()
+                            })
+                            .next()
                             .map(|(node, _)| Weak::upgrade(node))
                             .unwrap_or(Weak::upgrade(&path.0[0].0))?;
 
@@ -482,7 +483,8 @@ impl<'a, E: Default> Node<'a, E> {
                     bound: RwLock::new(candidate.bound.value()),
                     dst: RwLock::new(SubTree::Leaf(Box::new(candidate))),
                     stats: Default::default(),
-                }).collect::<Vec<_>>(),
+                })
+                .collect::<Vec<_>>(),
             amaf: RwLock::new(HashMap::default()),
             num_visits: AtomicUsize::new(0),
         })
@@ -581,13 +583,14 @@ impl UCTPolicy {
     ) -> f64 {
         use self::config::Formula;
 
-        self.exploration_factor(env) * match self.formula {
-            Formula::Uct => (total_visits.ln() / visits).sqrt(),
-            Formula::AlphaPuct => {
-                // TODO(bclement): Support non-uniform priors here.
-                (num_children as f64).recip() * total_visits.sqrt() / (1. + visits)
+        self.exploration_factor(env)
+            * match self.formula {
+                Formula::Uct => (total_visits.ln() / visits).sqrt(),
+                Formula::AlphaPuct => {
+                    // TODO(bclement): Support non-uniform priors here.
+                    (num_children as f64).recip() * total_visits.sqrt() / (1. + visits)
+                }
             }
-        }
     }
 
     fn value(&self, stats: &UCTStats) -> (f64, usize) {
@@ -636,9 +639,11 @@ impl TreePolicy for UCTPolicy {
                         //  1. The node was never visited
                         //  2. The cut is infinite (we never got back any evaluation results yet)
                         env.cut.is_infinite() || *visits == 0
-                    }).map(|(idx, bound, (_value, _visits))| (*idx, *bound)),
+                    })
+                    .map(|(idx, bound, (_value, _visits))| (*idx, *bound)),
                 env.cut,
-            ).or_else(|| {
+            )
+            .or_else(|| {
                 // Otherwise apply the UCT formula
                 let total_visits = stats
                     .iter()
@@ -652,16 +657,19 @@ impl TreePolicy for UCTPolicy {
                     .map(|(idx, _bound, (value, visits))| {
                         (
                             idx,
-                            value + self.exploration_term(
-                                env,
-                                visits as f64,
-                                total_visits,
-                                num_children,
-                            ),
+                            value
+                                + self.exploration_term(
+                                    env,
+                                    visits as f64,
+                                    total_visits,
+                                    num_children,
+                                ),
                         )
-                    }).max_by(|lhs, rhs| cmp_f64(lhs.1, rhs.1))
+                    })
+                    .max_by(|lhs, rhs| cmp_f64(lhs.1, rhs.1))
                     .map(|(idx, _)| idx)
-            }).map(|idx| {
+            })
+            .map(|idx| {
                 node.down();
                 node.children[idx].stats.down();
                 idx
@@ -781,7 +789,8 @@ impl TreePolicy for TAGPolicy {
                     .filter(|(_, edge)| edge.stats.num_visits() == 0)
                     .map(|(idx, edge)| (idx, edge.bound())),
                 env.cut,
-            ).or_else(|| {
+            )
+            .or_else(|| {
                 // Compute the threshold to use so that we only have `config.topk` children
                 let threshold = {
                     let mut evalns = Evaluations::with_capacity(self.topk);
@@ -808,7 +817,8 @@ impl TreePolicy for TAGPolicy {
                             unwrap!(edge.stats.evaluations.read()).count_lte(threshold),
                             edge.stats.num_visits(),
                         )
-                    }).collect::<Vec<_>>();
+                    })
+                    .collect::<Vec<_>>();
 
                 // Total number of visits on the node
                 let num_visits = stats
@@ -829,9 +839,11 @@ impl TreePolicy for TAGPolicy {
                             num_children,
                         );
                         (ix, score)
-                    }).max_by(|x1, x2| cmp_f64(x1.1, x2.1))
+                    })
+                    .max_by(|x1, x2| cmp_f64(x1.1, x2.1))
                     .map(|(ix, _)| ix)
-            }).map(|idx| {
+            })
+            .map(|idx| {
                 node.down();
                 node.children[idx].stats.down();
                 idx

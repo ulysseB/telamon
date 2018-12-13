@@ -50,7 +50,8 @@ pub fn find_best<'a>(
         .map(|space| {
             let bound = bound(&space, context);
             Candidate::new(space, bound)
-        }).collect();
+        })
+        .collect();
     find_best_ex(config, context, candidates).map(|c| c.space)
 }
 
@@ -76,12 +77,10 @@ impl<'l, 'a: 'l> TreeBuilder<'l, 'a> {
 
         crossbeam::scope(|scope| {
             let (log_sender, log_receiver) = sync::mpsc::sync_channel(100);
-            unwrap!(
-                scope
-                    .builder()
-                    .name("Telamon - Logger".to_string())
-                    .spawn(|| (unwrap!(logger::log(config, log_receiver))))
-            );
+            unwrap!(scope
+                .builder()
+                .name("Telamon - Logger".to_string())
+                .spawn(|| (unwrap!(logger::log(config, log_receiver)))));
 
             let tree = bandit_arm::Tree::new(
                 candidates,
@@ -90,13 +89,12 @@ impl<'l, 'a: 'l> TreeBuilder<'l, 'a> {
                 log_sender.clone(),
             );
 
-            unwrap!(
-                scope
-                    .builder()
-                    .name("Telamon - Search".to_string())
-                    .spawn(move || launch_search(config, tree, context, log_sender))
-            )
-        }).join()
+            unwrap!(scope
+                .builder()
+                .name("Telamon - Search".to_string())
+                .spawn(move || launch_search(config, tree, context, log_sender)))
+        })
+        .join()
     }
 }
 
@@ -132,18 +130,17 @@ pub fn find_best_ex<'a>(
         }
         config::SearchAlgorithm::BoundOrder => crossbeam::scope(|scope| {
             let (log_sender, log_receiver) = sync::mpsc::sync_channel(100);
-            unwrap!(
-                scope
-                    .builder()
-                    .name("Telamon - Logger".to_string())
-                    .spawn(|| (unwrap!(logger::log(config, log_receiver))))
-            );
+            unwrap!(scope
+                .builder()
+                .name("Telamon - Logger".to_string())
+                .spawn(|| (unwrap!(logger::log(config, log_receiver)))));
 
             let candidate_list = ParallelCandidateList::new(config.num_workers);
             unwrap!(scope.builder().name("Telamon - Search".to_string()).spawn(
                 move || launch_search(config, candidate_list, context, log_sender)
             ))
-        }).join(),
+        })
+        .join(),
     }
 }
 
@@ -164,7 +161,8 @@ fn launch_search<'a, T: Store<'a>>(
             .spawn(|| monitor(config, &candidate_store, monitor_receiver, log_sender));
         explore_space(config, &candidate_store, monitor_sender, context);
         unwrap!(best_cand_opt)
-    }).join();
+    })
+    .join();
     // At this point all threads have ended and nobody is going to be
     // exploring the candidate store anymore, so the stats printer
     // should have a consistent view on the tree.

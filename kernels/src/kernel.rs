@@ -164,7 +164,8 @@ pub trait Kernel<'a>: Sized {
                                 bound,
                                 runtime,
                             });
-                        }).into(),
+                        })
+                        .into(),
                     );
                 } else {
                     num_tested.fetch_sub(1, atomic::Ordering::SeqCst);
@@ -229,7 +230,8 @@ pub trait Kernel<'a>: Sized {
                 let candidate = candidates[unwrap!(candidate_idx)].clone();
                 local_selection::descend(&ordering, order, context, candidate, inf)
                     .is_none()
-            }).count();
+            })
+            .count();
         num_deadends as f64 / num_samples as f64
     }
 }

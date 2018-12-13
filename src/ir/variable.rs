@@ -185,7 +185,8 @@ impl VarDef {
                     .map(|&id| {
                         let dims = fun.dim_mapping(id).dims();
                         (dims[0], dims[1])
-                    }).collect();
+                    })
+                    .collect();
                 let dims = fun
                     .variable(*var_id)
                     .dimensions()

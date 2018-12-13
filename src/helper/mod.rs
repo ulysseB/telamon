@@ -118,7 +118,8 @@ impl TilingPattern {
             .iter()
             .map(|max| {
                 VecSet::new(multiples.iter().cloned().take_while(|x| x <= max).collect())
-            }).collect();
+            })
+            .collect();
         TilingPattern {
             tiling_factors: multiples,
             tile_sizes,

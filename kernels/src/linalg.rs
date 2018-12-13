@@ -162,9 +162,10 @@ where
 
     fn get_expected_output(&self, context: &device::Context) -> Array1<S> {
         let a_shape = (self.m as usize, self.n as usize);
-        unwrap!(self.a.read_to_host(context).into_shape(a_shape)).dot(&unwrap!(
-            self.x.read_to_host(context).into_shape(self.n as usize)
-        ))
+        unwrap!(self.a.read_to_host(context).into_shape(a_shape)).dot(&unwrap!(self
+            .x
+            .read_to_host(context)
+            .into_shape(self.n as usize)))
     }
 
     fn check_result(

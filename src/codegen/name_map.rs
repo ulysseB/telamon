@@ -74,7 +74,8 @@ impl<'a, 'b> NameMap<'a, 'b> {
                     mem_blocks.insert(id, var_name.clone());
                 }
                 (val.key(), (var_name, param_name))
-            }).collect();
+            })
+            .collect();
         // Name dimensions indexes.
         let mut indexes = HashMap::default();
         for dim in function.dimensions() {
@@ -206,11 +207,13 @@ impl<'a, 'b> NameMap<'a, 'b> {
             | ir::Operand::Reduce(id, _, ref dim_map, _) => {
                 Cow::Borrowed(self.name_mapped_inst(id, indexes.into_owned(), dim_map))
             }
-            ir::Operand::Index(id) => if let Some(idx) = indexes.get(&id) {
-                Cow::Owned(format!("{}", idx))
-            } else {
-                Cow::Borrowed(&self.indexes[&id])
-            },
+            ir::Operand::Index(id) => {
+                if let Some(idx) = indexes.get(&id) {
+                    Cow::Owned(format!("{}", idx))
+                } else {
+                    Cow::Borrowed(&self.indexes[&id])
+                }
+            }
             ir::Operand::Param(p) => self.name_param_val(ParamValKey::External(p)),
             ir::Operand::Addr(id) => self.name_addr(id),
             ir::Operand::InductionVar(id, _) => self.name_induction_var(id, None),
@@ -291,7 +294,8 @@ impl<'a, 'b> NameMap<'a, 'b> {
                     .map(|&dim| VarNameIndex::FromDim(dim))
                     .unwrap_or(VarNameIndex::Last),
                 VarNameIndex::Last => VarNameIndex::Last,
-            }).collect();
+            })
+            .collect();
         names.indexes = new_indexes;
         assert!(self.insts.insert(alias.id(), names).is_none());
     }
@@ -427,7 +431,8 @@ impl VariableNames {
             .map(|(index, size)| match index {
                 VarNameIndex::FromDim(dim) => dim_indexes.get(dim).cloned().unwrap_or(0),
                 VarNameIndex::Last => size - 1,
-            }).collect_vec();
+            })
+            .collect_vec();
         &self.names[&indexes]
     }
 
@@ -484,7 +489,8 @@ impl VariableNames {
                             .map(VarNameIndex::FromDim)
                             .unwrap_or(VarNameIndex::Last)
                     }),
-            }).collect();
+            })
+            .collect();
         VariableNames {
             indexes,
             names: self.names.clone(),

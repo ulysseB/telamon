@@ -198,7 +198,8 @@ where
     K: Eq + Hash,
     V: Eq,
     S: BuildHasher,
-{}
+{
+}
 
 impl<K, V, S> std::fmt::Debug for MultiHashMap<K, V, S>
 where

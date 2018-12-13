@@ -96,7 +96,8 @@ impl<'a> Context<'a> {
             .iter()
             .map(|input| {
                 print::ValueIdent::new_ident(&input.choice, input.value_type(ir_desc))
-            }).collect();
+            })
+            .collect();
         Context {
             ir_desc,
             vars,
@@ -205,7 +206,8 @@ impl<'a> SetConstraint<'a> {
                         sets,
                     })
                 }
-            }).collect()
+            })
+            .collect()
     }
 }
 
@@ -269,14 +271,10 @@ impl<'a> Conflict<'a> {
             Conflict::NewObjs {
                 ref list,
                 set: conflict_set,
-            }
-                if conflict_set.name() == set.def().name() =>
-            {
-                Some(ConflictAst::NewObjs {
-                    list: list.clone(),
-                    set: Set::new(set, ctx),
-                })
-            }
+            } if conflict_set.name() == set.def().name() => Some(ConflictAst::NewObjs {
+                list: list.clone(),
+                set: Set::new(set, ctx),
+            }),
             Conflict::NewObjs { .. } => None,
         }
     }
@@ -415,7 +413,8 @@ impl Display for ValueType {
             ValueType::Range => "Range",
             ValueType::HalfRange => "HalfRange",
             ValueType::NumericSet(..) => "NumericSet",
-        }.fmt(f)
+        }
+        .fmt(f)
     }
 }
 
@@ -424,7 +423,8 @@ impl Display for ir::CounterKind {
         match *self {
             ir::CounterKind::Add => "+",
             ir::CounterKind::Mul => "*",
-        }.fmt(f)
+        }
+        .fmt(f)
     }
 }
 

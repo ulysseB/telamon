@@ -30,10 +30,11 @@ impl<'a> Size<'a> {
     pub fn from_ir(size: &ir::PartialSize<'a>, space: &SearchSpace) -> Self {
         let (cst_factor, param_factors, dim_size_factors) = size.factors();
         let dim_size_divisors = size.divisors();
-        let factor = cst_factor * dim_size_factors
-            .iter()
-            .map(|&d| dim_size(d, space))
-            .product::<u32>();
+        let factor = cst_factor
+            * dim_size_factors
+                .iter()
+                .map(|&d| dim_size(d, space))
+                .product::<u32>();
         let divisor = dim_size_divisors
             .iter()
             .map(|&d| dim_size(d, space))

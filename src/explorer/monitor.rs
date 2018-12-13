@@ -139,7 +139,8 @@ where
                     status,
                 )
             }),
-    ).map(|_| ())
+    )
+    .map(|_| ())
 }
 
 /// Given a receiver channel, builds a future that returns whenever the tree
@@ -173,7 +174,8 @@ where
                         log_sender,
                         status,
                     )
-                }).map(|_| ()),
+                })
+                .map(|_| ()),
             time,
         ),
     )

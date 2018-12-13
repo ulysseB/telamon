@@ -312,7 +312,8 @@ impl CudaPrinter {
                     extra_cleanup.push(format!("CHECK_CUDA(cuMemFree({}));", extra_var));
                     format!("&{}", extra_var)
                 }
-            }).collect_vec()
+            })
+            .collect_vec()
             .join(", ");
         let extern_params = fun
             .params
@@ -564,7 +565,8 @@ impl Printer for CudaPrinter {
                         .map(|(d, idx)| (d.id(), idx))
                         .collect_vec();
                     namer.indexed_op_name(op, &indexes_map)
-                }).format(", ");
+                })
+                .format(", ");
             Cow::Owned(format!("{{{}}}", names))
         }
     }
@@ -590,7 +592,8 @@ impl Printer for CudaPrinter {
                         .map(|(d, idx)| (d.id(), idx))
                         .collect_vec();
                     namer.indexed_inst_name(inst, &indexes_map)
-                }).format(", ");
+                })
+                .format(", ");
             Cow::Owned(format!("{{{}}}", names))
         }
     }

@@ -65,11 +65,10 @@ impl IrDesc {
     /// Register a set definition.
     pub fn add_set_def(&mut self, def: std::rc::Rc<SetDef>) {
         let name = def.name().clone();
-        assert!(
-            self.set_defs
-                .insert(name, (def, OnNewObject::default()))
-                .is_none()
-        );
+        assert!(self
+            .set_defs
+            .insert(name, (def, OnNewObject::default()))
+            .is_none());
     }
 
     /// Returns the set definition associated with a name.
@@ -190,7 +189,8 @@ impl IrDesc {
                 .map(|arg_set| {
                     let arg_set = arg_set.adapt(&adaptator);
                     SetConstraints::new(vec![(Variable::Arg(1), arg_set)])
-                }).unwrap_or_default();
+                })
+                .unwrap_or_default();
             let remote_call = RemoteFilterCall {
                 choice: ChoiceInstance::self_choice(choice).adapt(&adaptator),
                 filter: FilterCall {
@@ -244,7 +244,8 @@ impl IrDesc {
                     .iter()
                     .enumerate()
                     .map(|(i, set)| (Variable::Forall(i), set)),
-            ).map(|(v, set)| (v, set_constraints.find_set(v).unwrap_or(set).clone()))
+            )
+            .map(|(v, set)| (v, set_constraints.find_set(v).unwrap_or(set).clone()))
             .collect::<HashMap<_, _>>();
         // If the changed choice is symmetric, the inverse filter should also be called.
         if self.get_choice(&changed.choice).arguments().is_symmetric() {
@@ -475,7 +476,8 @@ fn adapt_to_var_context(
             adaptator.set_variable(old_id, Variable::Forall(forall_index));
             forall_index += 1;
             set.adapt(&adaptator)
-        }).collect();
+        })
+        .collect();
     (new_foralls, adaptator)
 }
 
@@ -696,7 +698,8 @@ pub mod test {
                         }
                         _ => panic!(),
                     },
-                ).collect_vec();
+                )
+                .collect_vec();
             let num_values = values.iter().map(|x| x.len()).collect_vec();
             NDRange::new(&num_values)
                 .map(|indexes| {
@@ -705,7 +708,8 @@ pub mod test {
                         .zip_eq(indexes)
                         .map(|(x, y)| x[y])
                         .collect_vec()
-                }).flat_map(|values| {
+                })
+                .flat_map(|values| {
                     let cond_vec = static_conds.iter().map(|_| 2).collect_vec();
                     NDRange::new(&cond_vec)
                         .map(|cond_values| {
@@ -719,7 +723,8 @@ pub mod test {
                                 .map(|&v| {
                                     let v = std::iter::once(v.clone()).collect();
                                     ValueSet::enum_values(enum_.name().clone(), v)
-                                }).collect();
+                                })
+                                .collect();
                             EvalContext {
                                 ir_desc: ir_desc,
                                 enum_: enum_,
@@ -731,8 +736,10 @@ pub mod test {
                                     .zip_eq(cond_values)
                                     .collect(),
                             }
-                        }).collect_vec()
-                }).collect_vec()
+                        })
+                        .collect_vec()
+                })
+                .collect_vec()
                 .into_iter()
         }
     }

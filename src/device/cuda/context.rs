@@ -190,12 +190,10 @@ impl<'a> device::Context for Context<'a> {
                     ptx_daemon: self.executor.spawn_jit(Self::opt_level(mode)),
                     blocked_time,
                 };
-                unwrap!(
-                    scope
-                        .builder()
-                        .name("Telamon - Explorer Thread".to_string())
-                        .spawn(move || inner(&mut evaluator))
-                );
+                unwrap!(scope
+                    .builder()
+                    .name("Telamon - Explorer Thread".to_string())
+                    .spawn(move || inner(&mut evaluator)));
             }
             // Start the evaluation thread.
             let eval_thread_name = "Telamon - GPU Evaluation Thread".to_string();

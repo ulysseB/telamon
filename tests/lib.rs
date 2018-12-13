@@ -185,12 +185,10 @@ fn nested_thread_dims() {
     builder.mov(&0i32);
     builder.order(&d0, &d3, Order::INNER);
     let space = builder.get();
-    assert!(
-        !space
-            .domain()
-            .get_dim_kind(d3[0])
-            .intersects(DimKind::THREAD)
-    );
+    assert!(!space
+        .domain()
+        .get_dim_kind(d3[0])
+        .intersects(DimKind::THREAD));
     assert_eq!(
         space.domain().get_order(d0[0].into(), d3[0].into()),
         Order::INNER
@@ -217,12 +215,10 @@ fn max_thread_on_addinst() {
     let d1 = builder.open_dim(Size::new_const(2));
     builder.mov(&0i32);
     let space = builder.get();
-    assert!(
-        !space
-            .domain()
-            .get_dim_kind(d1[0])
-            .intersects(DimKind::THREAD)
-    );
+    assert!(!space
+        .domain()
+        .get_dim_kind(d1[0])
+        .intersects(DimKind::THREAD));
     gen_best(&context, space);
 }
 
@@ -238,12 +234,10 @@ fn max_thread_on_setkind() {
     builder.mov(&0i32);
     builder.action(Action::DimKind(d0[0], DimKind::THREAD));
     let space = builder.get();
-    assert!(
-        !space
-            .domain()
-            .get_dim_kind(d1[0])
-            .intersects(DimKind::THREAD)
-    );
+    assert!(!space
+        .domain()
+        .get_dim_kind(d1[0])
+        .intersects(DimKind::THREAD));
     gen_best(&context, space);
 }
 
@@ -313,13 +307,11 @@ fn vector_dims() {
     // Test with one vectorizable instruction
     let (addr, pattern) = builder.tensor_access(&base_addr, None, Type::I(8), &[&d0]);
     builder.ld(Type::I(8), &addr, pattern.clone());
-    assert!(
-        builder
-            .get_clone()
-            .domain()
-            .get_dim_kind(d0[0])
-            .intersects(DimKind::VECTOR)
-    );
+    assert!(builder
+        .get_clone()
+        .domain()
+        .get_dim_kind(d0[0])
+        .intersects(DimKind::VECTOR));
     // Test with two insts and a non-vectorizable inst.
     builder.ld(Type::I(8), &addr, pattern);
     builder.close_dim(&d0);
@@ -327,18 +319,14 @@ fn vector_dims() {
     builder.mul(&0i32, &0i32);
     builder.close_dim(&d1);
     let space = builder.get();
-    assert!(
-        !space
-            .domain()
-            .get_dim_kind(d0[0])
-            .intersects(DimKind::VECTOR)
-    );
-    assert!(
-        !space
-            .domain()
-            .get_dim_kind(d1[0])
-            .intersects(DimKind::VECTOR)
-    );
+    assert!(!space
+        .domain()
+        .get_dim_kind(d0[0])
+        .intersects(DimKind::VECTOR));
+    assert!(!space
+        .domain()
+        .get_dim_kind(d1[0])
+        .intersects(DimKind::VECTOR));
     gen_best(&context, space);
 }
 
