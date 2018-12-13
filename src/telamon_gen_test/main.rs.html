@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `telamon-gen/cc_tests/src/main.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>main.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css"><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script src="../../storage.js"></script></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">   1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `telamon-gen/cc_tests/src/main.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>main.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css"><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script src="../../storage.js"></script></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">   1</span>
 <span id="2">   2</span>
 <span id="3">   3</span>
 <span id="4">   4</span>
@@ -1396,6 +1396,8 @@
 <span id="1396">1396</span>
 <span id="1397">1397</span>
 <span id="1398">1398</span>
+<span id="1399">1399</span>
+<span id="1400">1400</span>
 </pre><pre class="rust ">
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">dead_code</span>, <span class="ident">unused_imports</span>)]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">itertools</span>;
@@ -2026,15 +2028,14 @@
         );
         <span class="comment">// Test the counter value is correctly restricted.</span>
         <span class="kw">let</span> <span class="ident">diff</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>::<span class="ident">default</span>();
-        <span class="macro">assert</span><span class="macro">!</span>(
-            <span class="ident">counter_of_counter</span>::<span class="ident">restrict</span>(
-                <span class="ident">dim1</span>.<span class="ident">into</span>(),
-                <span class="ident">fun</span>,
-                <span class="ident">store</span>,
-                <span class="ident">Range</span> { <span class="ident">min</span>: <span class="number">2</span>, <span class="ident">max</span>: <span class="number">2</span> },
-                <span class="ident">diff</span>
-            ).<span class="ident">is_ok</span>()
-        );
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">counter_of_counter</span>::<span class="ident">restrict</span>(
+            <span class="ident">dim1</span>.<span class="ident">into</span>(),
+            <span class="ident">fun</span>,
+            <span class="ident">store</span>,
+            <span class="ident">Range</span> { <span class="ident">min</span>: <span class="number">2</span>, <span class="ident">max</span>: <span class="number">2</span> },
+            <span class="ident">diff</span>
+        )
+        .<span class="ident">is_ok</span>());
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">dim1</span>.<span class="ident">into</span>()), <span class="ident">Foo</span>::<span class="ident">B</span>);
     }
 
@@ -2094,7 +2095,8 @@
             <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="ident">fun</span>),
             <span class="kw-2">&amp;</span><span class="ident">new_objs</span>,
             <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>::<span class="ident">default</span>(),
-        ).<span class="ident">unwrap</span>();
+        )
+        .<span class="ident">unwrap</span>();
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">apply_decisions</span>(<span class="ident">actions</span>, <span class="ident">fun</span>, <span class="ident">store</span>).<span class="ident">is_ok</span>());
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">store</span>.<span class="ident">get_num_foo_a</span>(<span class="ident">inst0</span>), <span class="ident">Range</span> { <span class="ident">min</span>: <span class="number">0</span>, <span class="ident">max</span>: <span class="number">1</span> });
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">inst0</span>, <span class="ident">dim0</span>), <span class="ident">Foo</span>::<span class="ident">ALL</span>);
@@ -2112,7 +2114,8 @@
             <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="ident">fun</span>),
             <span class="kw-2">&amp;</span><span class="ident">new_objs</span>,
             <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>::<span class="ident">default</span>(),
-        ).<span class="ident">unwrap</span>();
+        )
+        .<span class="ident">unwrap</span>();
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">apply_decisions</span>(<span class="ident">actions</span>, <span class="ident">fun</span>, <span class="ident">store</span>).<span class="ident">is_ok</span>());
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">store</span>.<span class="ident">get_num_foo_a</span>(<span class="ident">inst1</span>), <span class="ident">Range</span> { <span class="ident">min</span>: <span class="number">0</span>, <span class="ident">max</span>: <span class="number">2</span> });
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">inst1</span>, <span class="ident">dim0</span>), <span class="ident">Foo</span>::<span class="ident">ALL</span>);
@@ -2135,11 +2138,9 @@
         <span class="comment">// counter modification itself.</span>
         <span class="kw">let</span> <span class="ident">diff</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>::<span class="ident">default</span>();
         <span class="ident">store</span>.<span class="ident">set_bar</span>(<span class="ident">inst0</span>, <span class="ident">dim0</span>, <span class="ident">Bar</span>::<span class="ident">B</span>);
-        <span class="macro">assert</span><span class="macro">!</span>(
-            <span class="ident">store</span>
-                .<span class="ident">restrict_num_bar</span>(<span class="ident">inst0</span>, <span class="ident">Range</span> { <span class="ident">min</span>: <span class="number">0</span>, <span class="ident">max</span>: <span class="number">1</span> }, <span class="ident">diff</span>)
-                .<span class="ident">is_ok</span>()
-        );
+        <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">store</span>
+            .<span class="ident">restrict_num_bar</span>(<span class="ident">inst0</span>, <span class="ident">Range</span> { <span class="ident">min</span>: <span class="number">0</span>, <span class="ident">max</span>: <span class="number">1</span> }, <span class="ident">diff</span>)
+            .<span class="ident">is_ok</span>());
         <span class="kw">let</span> <span class="ident">expected_diff</span> <span class="op">=</span> (<span class="ident">Range</span> { <span class="ident">min</span>: <span class="number">0</span>, <span class="ident">max</span>: <span class="number">1</span> }, <span class="ident">Range</span> { <span class="ident">min</span>: <span class="number">0</span>, <span class="ident">max</span>: <span class="number">0</span> });
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">diff</span>.<span class="ident">num_bar</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span>(<span class="ident">inst0</span>,)), <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">expected_diff</span>));
         <span class="comment">// Allocate three dimensions.</span>
@@ -2301,7 +2302,8 @@
             <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="ident">fun</span>),
             <span class="kw-2">&amp;</span><span class="ident">new_objs</span>,
             <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>::<span class="ident">default</span>(),
-        ).<span class="ident">unwrap</span>();
+        )
+        .<span class="ident">unwrap</span>();
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">apply_decisions</span>(<span class="ident">actions</span>, <span class="ident">fun</span>, <span class="ident">store</span>).<span class="ident">is_ok</span>());
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">get</span>(<span class="ident">fun</span>, <span class="ident">inst4</span>).<span class="ident">condition</span>());
         <span class="macro">assert</span><span class="macro">!</span>(<span class="op">!</span><span class="ident">ir</span>::<span class="ident">inst</span>::<span class="ident">get</span>(<span class="ident">fun</span>, <span class="ident">inst3</span>).<span class="ident">condition</span>());
@@ -2389,7 +2391,8 @@
             <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="ident">fun</span>),
             <span class="kw-2">&amp;</span><span class="ident">new_objs</span>,
             <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>::<span class="ident">default</span>(),
-        ).<span class="ident">unwrap</span>();
+        )
+        .<span class="ident">unwrap</span>();
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">apply_decisions</span>(<span class="ident">actions</span>, <span class="ident">fun</span>, <span class="ident">store</span>).<span class="ident">is_ok</span>());
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">inst0</span>, <span class="ident">op2</span>), <span class="ident">Foo</span>::<span class="ident">A</span>);
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">inst2</span>, <span class="ident">op3</span>), <span class="ident">Foo</span>::<span class="ident">ALL</span>);
@@ -2790,7 +2793,8 @@
             <span class="ident">Arc</span>::<span class="ident">make_mut</span>(<span class="ident">fun</span>),
             <span class="kw-2">&amp;</span><span class="ident">new_objs</span>,
             <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">DomainDiff</span>::<span class="ident">default</span>(),
-        ).<span class="ident">unwrap</span>();
+        )
+        .<span class="ident">unwrap</span>();
         <span class="macro">assert</span><span class="macro">!</span>(<span class="ident">apply_decisions</span>(<span class="ident">actions</span>, <span class="ident">fun</span>, <span class="ident">store</span>).<span class="ident">is_ok</span>());
         <span class="macro">assert_eq</span><span class="macro">!</span>(<span class="ident">store</span>.<span class="ident">get_foo</span>(<span class="ident">b0</span>.<span class="ident">into</span>(), <span class="ident">b1</span>.<span class="ident">into</span>()), <span class="ident">Foo</span>::<span class="ident">A</span>);
     }

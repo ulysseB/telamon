@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/ir/error.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>error.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css"><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script src="../../../storage.js"></script></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/ir/error.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>error.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css"><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script src="../../../storage.js"></script></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
 <span id="4">  4</span>
@@ -108,20 +108,6 @@
 <span id="108">108</span>
 <span id="109">109</span>
 <span id="110">110</span>
-<span id="111">111</span>
-<span id="112">112</span>
-<span id="113">113</span>
-<span id="114">114</span>
-<span id="115">115</span>
-<span id="116">116</span>
-<span id="117">117</span>
-<span id="118">118</span>
-<span id="119">119</span>
-<span id="120">120</span>
-<span id="121">121</span>
-<span id="122">122</span>
-<span id="123">123</span>
-<span id="124">124</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Error management for IR creation.</span>
 <span class="kw">use</span> <span class="ident">ir</span>;
@@ -134,11 +120,7 @@
     <span class="ident">InvalidType</span> { <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span> },
     <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;{} must have a return type&quot;</span>, <span class="ident">inst</span>)]</span>
     <span class="ident">ExpectedReturnType</span> { <span class="ident">inst</span>: <span class="ident">ir</span>::<span class="ident">InstId</span> },
-    <span class="attribute">#[<span class="ident">fail</span>(
-        <span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;{} rounding is incompatible with type `{}`&quot;</span>,
-        <span class="ident">rounding</span>,
-        <span class="ident">t</span>
-    )]</span>
+    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;{} rounding is incompatible with type `{}`&quot;</span>, <span class="ident">rounding</span>, <span class="ident">t</span>)]</span>
     <span class="ident">InvalidRounding</span> {
         <span class="ident">rounding</span>: <span class="ident">ir</span>::<span class="ident">op</span>::<span class="ident">Rounding</span>,
         <span class="ident">t</span>: <span class="ident">ir</span>::<span class="ident">Type</span>,
@@ -224,21 +206,11 @@
     <span class="ident">Type</span>(<span class="attribute">#[<span class="ident">cause</span>]</span> <span class="ident">TypeError</span>),
     <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;dimensions must have a size of at least 2&quot;</span>)]</span>
     <span class="ident">InvalidDimSize</span>,
-    <span class="attribute">#[<span class="ident">fail</span>(
-        <span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;dimension {} appears twice in the increment list&quot;</span>,
-        <span class="ident">dim</span>
-    )]</span>
+    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;dimension {} appears twice in the increment list&quot;</span>, <span class="ident">dim</span>)]</span>
     <span class="ident">DuplicateIncrement</span> { <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">DimId</span> },
-    <span class="attribute">#[<span class="ident">fail</span>(
-        <span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;the operator needs to be nested in dimension {}&quot;</span>,
-        <span class="ident">dim</span>
-    )]</span>
+    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;the operator needs to be nested in dimension {}&quot;</span>, <span class="ident">dim</span>)]</span>
     <span class="ident">MissingIterationDim</span> { <span class="ident">dim</span>: <span class="ident">ir</span>::<span class="ident">DimId</span> },
-    <span class="attribute">#[<span class="ident">fail</span>(
-        <span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;no mapping found between dimensions {} and {}&quot;</span>,
-        <span class="ident">lhs</span>,
-        <span class="ident">rhs</span>
-    )]</span>
+    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;no mapping found between dimensions {} and {}&quot;</span>, <span class="ident">lhs</span>, <span class="ident">rhs</span>)]</span>
     <span class="ident">MissingDimMapping</span> { <span class="ident">lhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span>, <span class="ident">rhs</span>: <span class="ident">ir</span>::<span class="ident">DimId</span> },
 }
 

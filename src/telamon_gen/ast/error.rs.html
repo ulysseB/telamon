@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `telamon-gen/src/ast/error.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>error.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css"><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script src="../../../storage.js"></script></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1"> 1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `telamon-gen/src/ast/error.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>error.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css"><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script src="../../../storage.js"></script></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1"> 1</span>
 <span id="2"> 2</span>
 <span id="3"> 3</span>
 <span id="4"> 4</span>
@@ -74,15 +74,6 @@
 <span id="74">74</span>
 <span id="75">75</span>
 <span id="76">76</span>
-<span id="77">77</span>
-<span id="78">78</span>
-<span id="79">79</span>
-<span id="80">80</span>
-<span id="81">81</span>
-<span id="82">82</span>
-<span id="83">83</span>
-<span id="84">84</span>
-<span id="85">85</span>
 </pre><pre class="rust ">
 <span class="doccomment">/// TypeError describes the Ast error top level.</span>
 <span class="kw">use</span> <span class="ident">ast</span>::{<span class="ident">ChoiceDef</span>, <span class="ident">Statement</span>};
@@ -129,11 +120,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Fail</span>, <span class="ident">PartialEq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TypeError</span> {
     <span class="doccomment">/// Redefinition of a name and hint.</span>
-    <span class="attribute">#[<span class="ident">fail</span>(
-        <span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;redefinition {:?} and {:?}&quot;</span>,
-        <span class="ident">object_kind</span>,
-        <span class="ident">object_name</span>
-    )]</span>
+    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;redefinition {:?} and {:?}&quot;</span>, <span class="ident">object_kind</span>, <span class="ident">object_name</span>)]</span>
     <span class="ident">Redefinition</span> {
         <span class="ident">object_kind</span>: <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">Hint</span><span class="op">&gt;</span>,
         <span class="ident">object_name</span>: <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -144,8 +131,7 @@
     <span class="doccomment">/// Unvalid arguments of a symmetric enum.</span>
     <span class="attribute">#[<span class="ident">fail</span>(
         <span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;unvalid symmetric arguments {:?} and {:?}&quot;</span>,
-        <span class="ident">object_name</span>,
-        <span class="ident">object_variables</span>
+        <span class="ident">object_name</span>, <span class="ident">object_variables</span>
     )]</span>
     <span class="ident">BadSymmetricArg</span> {
         <span class="ident">object_name</span>: <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -153,11 +139,7 @@
     },
     <span class="doccomment">/// Missing</span>
     <span class="doccomment">/// Happens when the Set&#39;s object has a missing field.</span>
-    <span class="attribute">#[<span class="ident">fail</span>(
-        <span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;missing entry {:?} of set {:?}&quot;</span>,
-        <span class="ident">object_name</span>,
-        <span class="ident">object_field</span>
-    )]</span>
+    <span class="attribute">#[<span class="ident">fail</span>(<span class="ident">display</span> <span class="op">=</span> <span class="string">&quot;missing entry {:?} of set {:?}&quot;</span>, <span class="ident">object_name</span>, <span class="ident">object_field</span>)]</span>
     <span class="ident">MissingEntry</span> {
         <span class="ident">object_name</span>: <span class="ident">String</span>,
         <span class="ident">object_field</span>: <span class="ident">Spanned</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,

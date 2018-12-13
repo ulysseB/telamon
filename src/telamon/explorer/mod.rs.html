@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/explorer/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css"><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script src="../../../storage.js"></script></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source to the Rust file `src/explorer/mod.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>mod.rs.html -- source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css"><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script src="../../../storage.js"></script></head><body class="rustdoc source"><!--[if lte IE 8]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu">&#9776;</div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!"><img src="../../../brush.svg" width="18" alt="Pick another theme!"></button><div id="theme-choices"></div></div><script src="../../../theme.js"></script><nav class="sub"><form class="search-form js-only"><div class="search-container"><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><a id="settings-menu" href="../../../settings.html"><img src="../../../wheel.svg" width="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
 <span id="4">  4</span>
@@ -228,8 +228,6 @@
 <span id="228">228</span>
 <span id="229">229</span>
 <span id="230">230</span>
-<span id="231">231</span>
-<span id="232">232</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! exploration of the search space.</span>
 <span class="kw">mod</span> <span class="ident">bandit_arm</span>;
@@ -283,7 +281,8 @@
         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">space</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">bound</span> <span class="op">=</span> <span class="ident">bound</span>(<span class="kw-2">&amp;</span><span class="ident">space</span>, <span class="ident">context</span>);
             <span class="ident">Candidate</span>::<span class="ident">new</span>(<span class="ident">space</span>, <span class="ident">bound</span>)
-        }).<span class="ident">collect</span>();
+        })
+        .<span class="ident">collect</span>();
     <span class="ident">find_best_ex</span>(<span class="ident">config</span>, <span class="ident">context</span>, <span class="ident">candidates</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">space</span>)
 }
 
@@ -309,12 +308,10 @@
 
         <span class="ident">crossbeam</span>::<span class="ident">scope</span>(<span class="op">|</span><span class="ident">scope</span><span class="op">|</span> {
             <span class="kw">let</span> (<span class="ident">log_sender</span>, <span class="ident">log_receiver</span>) <span class="op">=</span> <span class="ident">sync</span>::<span class="ident">mpsc</span>::<span class="ident">sync_channel</span>(<span class="number">100</span>);
-            <span class="macro">unwrap</span><span class="macro">!</span>(
-                <span class="ident">scope</span>
-                    .<span class="ident">builder</span>()
-                    .<span class="ident">name</span>(<span class="string">&quot;Telamon - Logger&quot;</span>.<span class="ident">to_string</span>())
-                    .<span class="ident">spawn</span>(<span class="op">||</span> (<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">logger</span>::<span class="ident">log</span>(<span class="ident">config</span>, <span class="ident">log_receiver</span>))))
-            );
+            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">scope</span>
+                .<span class="ident">builder</span>()
+                .<span class="ident">name</span>(<span class="string">&quot;Telamon - Logger&quot;</span>.<span class="ident">to_string</span>())
+                .<span class="ident">spawn</span>(<span class="op">||</span> (<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">logger</span>::<span class="ident">log</span>(<span class="ident">config</span>, <span class="ident">log_receiver</span>)))));
 
             <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="ident">bandit_arm</span>::<span class="ident">Tree</span>::<span class="ident">new</span>(
                 <span class="ident">candidates</span>,
@@ -323,13 +320,12 @@
                 <span class="ident">log_sender</span>.<span class="ident">clone</span>(),
             );
 
-            <span class="macro">unwrap</span><span class="macro">!</span>(
-                <span class="ident">scope</span>
-                    .<span class="ident">builder</span>()
-                    .<span class="ident">name</span>(<span class="string">&quot;Telamon - Search&quot;</span>.<span class="ident">to_string</span>())
-                    .<span class="ident">spawn</span>(<span class="kw">move</span> <span class="op">||</span> <span class="ident">launch_search</span>(<span class="ident">config</span>, <span class="ident">tree</span>, <span class="ident">context</span>, <span class="ident">log_sender</span>))
-            )
-        }).<span class="ident">join</span>()
+            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">scope</span>
+                .<span class="ident">builder</span>()
+                .<span class="ident">name</span>(<span class="string">&quot;Telamon - Search&quot;</span>.<span class="ident">to_string</span>())
+                .<span class="ident">spawn</span>(<span class="kw">move</span> <span class="op">||</span> <span class="ident">launch_search</span>(<span class="ident">config</span>, <span class="ident">tree</span>, <span class="ident">context</span>, <span class="ident">log_sender</span>)))
+        })
+        .<span class="ident">join</span>()
     }
 }
 
@@ -365,18 +361,17 @@
         }
         <span class="ident">config</span>::<span class="ident">SearchAlgorithm</span>::<span class="ident">BoundOrder</span> <span class="op">=&gt;</span> <span class="ident">crossbeam</span>::<span class="ident">scope</span>(<span class="op">|</span><span class="ident">scope</span><span class="op">|</span> {
             <span class="kw">let</span> (<span class="ident">log_sender</span>, <span class="ident">log_receiver</span>) <span class="op">=</span> <span class="ident">sync</span>::<span class="ident">mpsc</span>::<span class="ident">sync_channel</span>(<span class="number">100</span>);
-            <span class="macro">unwrap</span><span class="macro">!</span>(
-                <span class="ident">scope</span>
-                    .<span class="ident">builder</span>()
-                    .<span class="ident">name</span>(<span class="string">&quot;Telamon - Logger&quot;</span>.<span class="ident">to_string</span>())
-                    .<span class="ident">spawn</span>(<span class="op">||</span> (<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">logger</span>::<span class="ident">log</span>(<span class="ident">config</span>, <span class="ident">log_receiver</span>))))
-            );
+            <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">scope</span>
+                .<span class="ident">builder</span>()
+                .<span class="ident">name</span>(<span class="string">&quot;Telamon - Logger&quot;</span>.<span class="ident">to_string</span>())
+                .<span class="ident">spawn</span>(<span class="op">||</span> (<span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">logger</span>::<span class="ident">log</span>(<span class="ident">config</span>, <span class="ident">log_receiver</span>)))));
 
             <span class="kw">let</span> <span class="ident">candidate_list</span> <span class="op">=</span> <span class="ident">ParallelCandidateList</span>::<span class="ident">new</span>(<span class="ident">config</span>.<span class="ident">num_workers</span>);
             <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">scope</span>.<span class="ident">builder</span>().<span class="ident">name</span>(<span class="string">&quot;Telamon - Search&quot;</span>.<span class="ident">to_string</span>()).<span class="ident">spawn</span>(
                 <span class="kw">move</span> <span class="op">||</span> <span class="ident">launch_search</span>(<span class="ident">config</span>, <span class="ident">candidate_list</span>, <span class="ident">context</span>, <span class="ident">log_sender</span>)
             ))
-        }).<span class="ident">join</span>(),
+        })
+        .<span class="ident">join</span>(),
     }
 }
 
@@ -397,7 +392,8 @@
             .<span class="ident">spawn</span>(<span class="op">||</span> <span class="ident">monitor</span>(<span class="ident">config</span>, <span class="kw-2">&amp;</span><span class="ident">candidate_store</span>, <span class="ident">monitor_receiver</span>, <span class="ident">log_sender</span>));
         <span class="ident">explore_space</span>(<span class="ident">config</span>, <span class="kw-2">&amp;</span><span class="ident">candidate_store</span>, <span class="ident">monitor_sender</span>, <span class="ident">context</span>);
         <span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">best_cand_opt</span>)
-    }).<span class="ident">join</span>();
+    })
+    .<span class="ident">join</span>();
     <span class="comment">// At this point all threads have ended and nobody is going to be</span>
     <span class="comment">// exploring the candidate store anymore, so the stats printer</span>
     <span class="comment">// should have a consistent view on the tree.</span>
