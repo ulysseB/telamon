@@ -1,7 +1,9 @@
 //! Represents iteration dimensions.
 use crate::ir::{self, Statement};
 use std;
-use crate::utils::*;
+use telamon_utils::*;
+use lazy_static::lazy_static;
+use log::trace;
 
 /// Provides a unique identifier for iteration dimensions.
 #[derive(

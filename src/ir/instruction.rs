@@ -1,7 +1,7 @@
 //! Describes the instructions.
 use crate::ir::{self, DimMapScope, LoweringMap, Operand, Operator, Statement, StmtId, Type};
 use std;
-use crate::utils::*;
+use telamon_utils::*;
 
 /// Uniquely identifies an instruction.
 #[derive(

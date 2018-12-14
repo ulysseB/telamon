@@ -1,6 +1,6 @@
 //! Encodes the data-flow information.
 use crate::ir;
-use crate::utils::*;
+use telamon_utils::*;
 
 /// Uniquely identifies variables.
 #[derive(

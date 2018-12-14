@@ -5,6 +5,7 @@ use crate::device::Context;
 use crate::explorer::choice;
 use crate::explorer::store::Store;
 use interval_heap::IntervalHeap;
+use log::{info, warn};
 use rpds::List;
 use std;
 use std::f64;

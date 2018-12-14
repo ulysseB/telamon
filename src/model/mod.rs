@@ -11,6 +11,8 @@ pub mod size;
 pub use self::hw_pressure::{BottleneckLevel, Bound, HwPressure};
 pub use self::local_info::Nesting;
 
+use log::{debug, trace};
+
 // TODO(model): One some instruction, the latency dependens on the operand position.
 // TODO(model): Some instructions are divided into multiple sub-instructions. When adding
 //  ordering dependencies, this must be taken into account as the last sub-instruction
@@ -40,7 +42,7 @@ use crate::model::level::{sum_pressure, Level, LevelDag, RepeatLevel};
 use crate::model::local_info::LocalInfo;
 use crate::search_space::SearchSpace;
 use std::cmp;
-use crate::utils::*;
+use telamon_utils::*;
 
 /// Returns a lower bound on the execution time of all the implementation candidates in
 /// `space`, when executed in `context`.

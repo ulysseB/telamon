@@ -4,6 +4,7 @@ use itertools::Itertools;
 use crate::search_space::choices::dim_kind;
 use crate::search_space::operand;
 use crate::search_space::{Action, DimKind, DomainStore, MemSpace, Order};
+use log::debug;
 
 /// Lowers a layout
 pub fn lower_layout(

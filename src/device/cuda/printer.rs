@@ -8,7 +8,7 @@ use std;
 use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;
 use std::io::Write;
-use crate::utils::*;
+use utils::*;
 
 #[derive(Default)]
 pub struct CudaPrinter {

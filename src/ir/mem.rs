@@ -1,6 +1,6 @@
 //! A module for handling accesses to the device memory.
 use crate::ir::{self, dim, InstId, Type};
-use crate::utils::*;
+use telamon_utils::*;
 
 // TODO(cleanup): move layouts into internal blocks.
 

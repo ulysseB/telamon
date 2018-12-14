@@ -18,7 +18,7 @@ use crate::ir;
 use crate::model::{self, HwPressure, Nesting};
 use crate::search_space::*;
 use std::io::Write;
-use crate::utils::*;
+use telamon_utils::*;
 
 /// Holds the specifications of a target.
 pub trait Device: Sync {

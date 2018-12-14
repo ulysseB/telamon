@@ -1,10 +1,13 @@
 //! Describes a `Function` that is ready to execute on a device.
 use crate::codegen::{self, cfg, dimension, Cfg, Dimension, InductionLevel, InductionVar};
 use crate::ir;
-use itertools::Itertools;
 use crate::search_space::{self, DimKind, Domain, MemSpace, SearchSpace};
+use telamon_utils::*;
+
+use itertools::Itertools;
+use log::{debug, trace};
+use matches::matches;
 use std;
-use crate::utils::*;
 
 /// A function ready to execute on a device, derived from a constrained IR instance.
 pub struct Function<'a> {

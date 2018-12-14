@@ -3,7 +3,7 @@ use crate::ir;
 use itertools::Itertools;
 use crate::search_space::{DimKind, Domain, Order, SearchSpace};
 use std;
-use crate::utils::*;
+use telamon_utils::*;
 
 /// An iteration dimension composed of one or mure fused dimensions.
 #[derive(Debug)]

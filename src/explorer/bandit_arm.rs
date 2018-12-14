@@ -5,12 +5,13 @@ use crate::explorer::config::{self, BanditConfig, NewNodeOrder};
 use crate::explorer::logger::LogMessage;
 use crate::explorer::store::Store;
 use crate::explorer::{choice, local_selection};
+use log::{debug, info, trace, warn};
 use rpds::List;
 use std;
 use std::f64;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock, Weak};
-use crate::utils::*;
+use telamon_utils::*;
 
 /// An environment in which candidates can be refined.
 pub struct Env<'a> {

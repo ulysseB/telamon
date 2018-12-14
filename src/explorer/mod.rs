@@ -20,14 +20,16 @@ use self::monitor::{monitor, MonitorMessage};
 use self::parallel_list::ParallelCandidateList;
 use self::store::Store;
 
+use crate::device::{Context, EvalMode};
+use crate::model::bound;
+use crate::search_space::SearchSpace;
+
 use boxfnonce::SendBoxFnOnce;
 use crossbeam;
-use crate::device::{Context, EvalMode};
 use futures::executor::block_on;
 use futures::prelude::*;
 use futures::{channel, SinkExt};
-use crate::model::bound;
-use crate::search_space::SearchSpace;
+use log::{info, warn};
 use std::sync;
 
 // TODO(cc_perf): To improve performances, the following should be considered:

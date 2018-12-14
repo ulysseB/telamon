@@ -6,7 +6,7 @@ use telamon::device::{self, fake::FakeContext};
 use telamon::ir::{self, Operator};
 use telamon::model::{self, HwPressure};
 use telamon::search_space::*;
-use crate::utils::*;
+use utils::*;
 
 pub type Context = FakeContext<Device>;
 

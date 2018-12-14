@@ -7,6 +7,7 @@ use device::cuda::PerfCounterSet;
 use crate::device::cuda::{api, Context, Gpu, JITDaemon};
 use crate::device::Context as ContextTrait;
 use itertools::Itertools;
+use log::warn;
 use std;
 
 /// An IR instance compiled into a CUDA kernel.

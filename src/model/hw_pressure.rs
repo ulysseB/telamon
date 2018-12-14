@@ -6,7 +6,7 @@ use crate::model::{CodePoint, Level};
 use crate::search_space::{DimKind, Domain};
 use std::rc::Rc;
 use std::{cmp, fmt, iter};
-use crate::utils::*;
+use utils::*;
 
 /// A lower bound on the execution time.
 #[derive(Debug, Clone)]

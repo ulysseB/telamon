@@ -4,7 +4,7 @@ use crate::ir::{self, AccessPattern, LoweringMap, Operand, Type};
 use itertools::Itertools;
 use std;
 use std::borrow::Cow;
-use crate::utils::*;
+use telamon_utils::*;
 
 /// The rounding mode of an arithmetic operation.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

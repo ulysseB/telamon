@@ -2,7 +2,7 @@ use crate::codegen::*;
 use itertools::Itertools;
 use crate::search_space::*;
 use std::borrow::Cow;
-use crate::utils::*;
+use telamon_utils::*;
 
 use crate::ir::{self, op, Type};
 use crate::search_space::DimKind;

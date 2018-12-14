@@ -2,8 +2,10 @@
 use crate::device::Context;
 use crate::explorer::choice::ActionEx;
 use crate::model::{bound, Bound};
-use rpds::List;
 use crate::search_space::SearchSpace;
+
+use log::{debug, info, trace};
+use rpds::List;
 use std;
 use std::cmp::{Ordering, PartialOrd};
 

@@ -12,52 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-extern crate binary_heap_plus;
-extern crate boxfnonce;
-extern crate config;
-extern crate crossbeam;
-#[cfg(test)]
-extern crate env_logger;
-extern crate errno;
-extern crate getopts;
 #[macro_use]
 extern crate failure;
-extern crate indexmap;
-extern crate interval_heap;
-#[cfg(feature = "cuda")]
-extern crate ipc_channel;
-extern crate itertools;
-extern crate libloading;
-extern crate tempfile;
-#[macro_use]
-extern crate lazy_static;
-extern crate libc;
-extern crate linked_list;
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate matches;
-extern crate futures;
-extern crate ndarray;
-extern crate num;
-extern crate num_cpus;
-#[cfg(feature = "mppa")]
-extern crate parking_lot;
-#[cfg(feature = "cuda")]
-extern crate prctl;
-#[cfg(feature = "cuda")]
-extern crate prettytable;
-extern crate rand;
-extern crate rpds;
-extern crate tokio_timer;
 #[macro_use]
 extern crate serde;
-extern crate bincode;
-extern crate serde_json;
 #[macro_use]
 extern crate telamon_utils as utils;
-extern crate flate2;
-extern crate xdg;
 
 pub mod codegen;
 #[macro_use]

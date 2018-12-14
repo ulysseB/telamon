@@ -10,13 +10,14 @@ use crate::device::{self, Device, EvalMode, ScalarArgument};
 use crate::explorer;
 use crate::ir;
 use itertools::Itertools;
+use log::debug;
 use libc;
 use std;
 use std::f64;
 use std::io::Write;
 use std::sync::{mpsc, Arc, MutexGuard};
 use tempfile;
-use crate::utils::*;
+use telamon_utils::*;
 
 /// Max number of candidates waiting to be evaluated.
 const EVAL_BUFFER_SIZE: usize = 100;

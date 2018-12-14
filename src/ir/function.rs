@@ -2,10 +2,11 @@
 use crate::device::Device;
 use crate::ir::{self, Dimension, InstId, Instruction, Operator, Statement, StmtId};
 use crate::ir::{mem, AccessPattern, Operand, SparseVec};
-use itertools::Itertools;
 use crate::search_space::MemSpace;
+use telamon_utils::*;
+use itertools::Itertools;
+use log::debug;
 use std;
-use crate::utils::*;
 
 /// Represents an argument of a function.
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]

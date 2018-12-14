@@ -1,6 +1,6 @@
 //! Provides a generic decription of basic blocks.
 use crate::ir;
-use crate::utils::*;
+use telamon_utils::*;
 
 /// Provides a unique identifer for a basic block.
 #[derive(

@@ -1,5 +1,6 @@
 //! Search space datastructures and constraint propagation.
 use crate::ir;
+use log::debug;
 
 mod dim_map;
 mod operand;

@@ -5,7 +5,7 @@ use itertools::Itertools;
 use crate::model::{size, HwPressure};
 use num::integer::lcm;
 use crate::search_space::{DimKind, Domain, Order, SearchSpace, ThreadMapping};
-use crate::utils::*;
+use telamon_utils::*;
 
 /// Local information on the different objects.
 #[derive(Debug)]

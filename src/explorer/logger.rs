@@ -12,8 +12,8 @@ use flate2::write::{GzEncoder, ZlibEncoder};
 use flate2::Compression;
 use serde::ser::Serialize;
 
-use crate::utils::tfrecord;
-use crate::utils::tfrecord::RecordWriter;
+use telamon_utils::tfrecord;
+use telamon_utils::tfrecord::RecordWriter;
 
 #[derive(Serialize, Deserialize)]
 pub enum LogMessage<E> {

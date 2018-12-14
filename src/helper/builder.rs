@@ -4,9 +4,10 @@ use crate::helper::{AutoOperand, LogicalDim, MetaStatement, TilingPattern};
 use crate::ir::{self, op, Parameter, Type};
 use crate::ir::{AccessPattern, Function, InstId, Operand, Operator, Signature};
 use itertools::{flatten, Itertools};
+use log::debug;
 use crate::search_space::{Action, DimKind, InstFlag, MemSpace, Order, SearchSpace};
 use std::borrow::Borrow;
-use crate::utils::*;
+use telamon_utils::*;
 
 /// Helper to build a `Function`.
 pub struct Builder<'a> {

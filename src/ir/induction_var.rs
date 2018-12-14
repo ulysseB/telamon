@@ -1,5 +1,5 @@
 use crate::ir;
-use crate::utils::*;
+use telamon_utils::*;
 
 /// Unique identifier for `InductionVar`
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]

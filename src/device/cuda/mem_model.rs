@@ -3,11 +3,12 @@ use binary_heap_plus::BinaryHeap;
 use crate::device::{cuda, Context};
 use crate::ir;
 use itertools::Itertools;
+use log::trace;
 use crate::model::size;
 use num::Integer;
 use crate::search_space::*;
 use std;
-use crate::utils::*;
+use telamon_utils::*;
 
 // TODO(model): the pressure changes depending on the list of outer dimensions. Try to
 // take this into account be computing the pressure incrementatly when applying levels.

@@ -1,3 +1,4 @@
+use log::{debug, trace};
 use super::ir;
 #[allow(unused_imports)]
 use super::ir::prelude::*;
