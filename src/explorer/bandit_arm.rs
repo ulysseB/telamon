@@ -92,6 +92,7 @@ pub enum TreeEvent {
 /// A search tree to perform a multi-armed bandit search.
 pub struct Tree<'a, 'b, P: TreePolicy> {
     root: RwLock<Option<Arc<Node<'a, P::EdgeStats>>>>,
+    initial_candidates: Vec<Candidate<'a>>,
     bound: RwLock<f64>,
     stop: AtomicBool,
     cut: RwLock<f64>,
@@ -109,11 +110,12 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
         policy: P,
         log_sender: std::sync::mpsc::SyncSender<LogMessage<TreeEvent>>,
     ) -> Self {
-        let root = Node::from_candidates(candidates);
+        let root = Node::from_candidates(candidates.clone());
         let bound = root.bound().unwrap_or(std::f64::INFINITY);
 
         Tree {
             root: RwLock::new(Some(root)),
+            initial_candidates: candidates,
             stop: AtomicBool::new(false),
             cut: RwLock::new(std::f64::INFINITY),
             bound: RwLock::new(bound),
@@ -172,17 +174,25 @@ where
     fn update_cut(&self, new_cut: f64) {
         *unwrap!(self.cut.write()) = new_cut;
 
-        let mut stack = match &*unwrap!(self.root.read()) {
-            Some(node) => vec![Arc::clone(node)],
-            None => Vec::new(),
-        };
+        if self.config.restart_after_cut {
+            *unwrap!(self.root.write()) =
+                Some(Node::from_candidates(self.initial_candidates.clone()));
 
-        while let Some(node) = stack.pop() {
-            for edge in &node.children {
-                stack.extend(edge.trim(new_cut))
+            info!("cut: tree has been reset");
+        } else {
+            let mut stack = match &*unwrap!(self.root.read()) {
+                Some(node) => vec![Arc::clone(node)],
+                None => Vec::new(),
+            };
+
+            while let Some(node) = stack.pop() {
+                for edge in &node.children {
+                    stack.extend(edge.trim(new_cut))
+                }
             }
+
+            info!("cut: trimming finished");
         }
-        info!("trimming finished");
     }
 
     fn commit_evaluation(
@@ -195,6 +205,10 @@ where
             actions: Sequence::List(actions.clone()),
             score: eval,
         })));
+
+        // TODO(bclement):
+        // let eval = if eval.is_finite() { Some(eval) } else { None }
+        // self.backpropagate(path, eval);
 
         // Collect the actions into a vector.  Note that the `actions` Sequence is in reverse order
         // (i.e. first actions last), so we also reverse the vector to simplify the indexing below.
@@ -253,35 +267,39 @@ where
                         self.clean_deadends(path, env.cut);
 
                         self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
+
+                        // TODO(bclement): go back to undo what we did; THIS IS DEADEND.
+                        // self.backpropagate(path, None);
                         break;
                     }
                     SubTree::Leaf(leaf) => {
-                        // Figure out the last ancestor with at least 50 descents.  If none, take
-                        // the root.  If none, exploration is finished.
-                        let node = path
-                            .0
-                            .iter()
-                            .rev()
-                            .filter(|(node, _)| {
-                                node.upgrade()
-                                    .map(|node| node.num_visits() >= 50)
-                                    .unwrap_or(false)
-                            })
-                            .next()
-                            .map(|(node, _)| Weak::upgrade(node))
-                            .unwrap_or(Weak::upgrade(&path.0[0].0))?;
-
-                        let amaf = &*unwrap!(node.amaf.read());
-
                         if let Some(implementation) = local_selection::rave(
                             &env.config.choice_ordering,
                             env.config.new_nodes_order,
                             env.context,
                             *leaf,
                             env.cut,
-                            node.num_visits(),
-                            &move |action| {
-                                amaf.get(action).map(|amaf| amaf.best_evaluation())
+                            &|action| {
+                                path.0.iter().fold(None, |acc, (node, _idx)| {
+                                    if self.config.use_rave_rollouts {
+                                        node.upgrade().and_then(|node| {
+                                            if let Some(amaf) =
+                                                unwrap!(node.amaf.read()).get(action)
+                                            {
+                                                let eval = amaf.best_evaluation();
+                                                if let Some(acc) = acc {
+                                                    Some(0.5 * acc + 0.5 * eval)
+                                                } else {
+                                                    Some(eval)
+                                                }
+                                            } else {
+                                                acc
+                                            }
+                                        })
+                                    } else {
+                                        None
+                                    }
+                                })
                             },
                         ) {
                             return Some((implementation, path));
@@ -289,6 +307,7 @@ where
                             // Deadend reached while exploring; restart from the root
                             // TODO(bclement): We should backpropagate explicitely here.
                             self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
+                            // self.backpropagate(path, None);
 
                             break;
                         }

@@ -41,30 +41,25 @@ pub fn rave<'a>(
     context: &Context,
     candidate: Candidate<'a>,
     cut: f64,
-    rave_visits: usize,
     amaf: &Fn(&choice::ActionEx) -> Option<f64>,
 ) -> Option<Candidate<'a>> {
-    if candidate.bound.value() >= cut {
-        warn!("Invalid dude.");
-    }
-    let choice_opt = choice::list(choice_order, &candidate.space).next();
-    if let Some(choice) = choice_opt {
-        if let Some(amafs) = choice
-            .iter()
-            .map(|action| {
-                amaf(action).map(|eval| {
-                    if !eval.is_finite() {
-                        -1.
-                    } else {
-                        -eval / (10. * cut)
-                    }
-                })
-            })
-            .collect::<Option<Vec<_>>>()
-        {
+    let choice = choice::list(choice_order, &candidate.space).next();
+    if let Some(choice) = choice {
+        let amafs = choice.iter().map(amaf).collect::<Vec<_>>();
+
+        // If all the decisions have a prior value, use it
+        if amafs.iter().all(|amaf| amaf.is_some()) {
             let mut choice = choice;
             let mut rng = thread_rng();
-            let mut probs = softmax(&amafs[..]);
+            let mut probs = softmax(
+                &amafs
+                    .into_iter()
+                    .map(|amaf| amaf.unwrap())
+                    .collect::<Vec<_>>()[..],
+            );
+
+            // Pick decisions according to the probabilities.  If this results in an invalid
+            // candidate, try again until all choices have been exhausted.
             while probs.iter().sum::<f64>() > 0. {
                 let dist = WeightedIndex::new(&probs).unwrap();
                 let index = dist.sample(&mut rng);
@@ -72,18 +67,9 @@ pub fn rave<'a>(
                     candidate.apply_decision(context, choice[index].clone())
                 {
                     if child.bound.value() >= cut {
-                        // warn!("Skipping vs {}", cut);
                         probs[index] = 0.0;
                     } else {
-                        return rave(
-                            choice_order,
-                            node_order,
-                            context,
-                            child,
-                            cut,
-                            rave_visits,
-                            amaf,
-                        );
+                        return rave(choice_order, node_order, context, child, cut, amaf);
                     }
                 } else {
                     probs[index] = 0.0;
@@ -92,18 +78,27 @@ pub fn rave<'a>(
 
             None
         } else {
-            let mut new_nodes = candidate.apply_choice(context, choice);
-            let idx = node_order.pick_candidate(&new_nodes, cut)?;
-            let node = new_nodes.swap_remove(idx);
-            rave(
-                choice_order,
-                node_order,
-                context,
-                node,
-                cut,
-                rave_visits,
-                amaf,
-            )
+            // Otherwise, pick one at random which doesn't have a prior value yet.
+            let actions = choice
+                .into_iter()
+                .zip(amafs.into_iter())
+                .filter_map(
+                    |(action, amaf)| {
+                        if amaf.is_none() {
+                            Some(action)
+                        } else {
+                            None
+                        }
+                    },
+                )
+                .collect::<Vec<_>>();
+
+            let node = {
+                let mut new_nodes = candidate.apply_choice(context, actions);
+                let idx = node_order.pick_candidate(&new_nodes, cut)?;
+                new_nodes.swap_remove(idx)
+            };
+            rave(choice_order, node_order, context, node, cut, amaf)
         }
     } else {
         Some(candidate)

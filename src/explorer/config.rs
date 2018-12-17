@@ -182,11 +182,17 @@ impl Default for SearchAlgorithm {
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct BanditConfig {
+    /// Indicates whether a restart should be performed after a new best implementation has been
+    /// found.
+    pub restart_after_cut: bool,
+    /// Indicates whether to use RAVE in rollouts.  The `new_nodes_order` policy will be used when
+    /// no estimates are available for some decisions.
+    pub use_rave_rollouts: bool,
+    /// Order in which the different choices are going to be determined
+    pub choice_ordering: ChoiceOrdering,
     /// Indicates how to select between nodes of the search tree when none of their
     /// children have been evaluated.
     pub new_nodes_order: NewNodeOrder,
-    /// Order in which the different choices are going to be determined
-    pub choice_ordering: ChoiceOrdering,
     /// Indicates how to choose between nodes with at least one children evaluated.
     pub tree_policy: TreePolicy,
 }
@@ -329,6 +335,8 @@ impl BanditConfig {
 impl Default for BanditConfig {
     fn default() -> Self {
         BanditConfig {
+            restart_after_cut: false,
+            use_rave_rollouts: false,
             new_nodes_order: NewNodeOrder::default(),
             tree_policy: TreePolicy::default(),
             choice_ordering: ChoiceOrdering::default(),

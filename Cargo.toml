@@ -100,6 +100,7 @@ tempdir = "0.3.7"
 criterion = "0.2.4"
 jemalloc-ctl = "0.1"
 dot = "0.1"
+csv = "1"
 
 [features]
 cuda = []

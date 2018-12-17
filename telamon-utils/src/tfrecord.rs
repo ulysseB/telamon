@@ -84,6 +84,25 @@ fn masked_crc32(bytes: &[u8]) -> u32 {
     ((crc >> 15) | (crc << 17)).wrapping_add(0xa282_ead8u32)
 }
 
+// Wrapper around Read::read which retries when receiving an Interrupted error
+fn retry_read<R: Read + ?Sized>(read: &mut R, mut buf: &mut [u8]) -> io::Result<usize> {
+    let mut nread = 0;
+    while !buf.is_empty() {
+        match read.read(buf) {
+            Ok(0) => break,
+            Ok(n) => {
+                let tmp = buf;
+                buf = &mut tmp[n..];
+                nread += n;
+            }
+            Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {}
+            Err(e) => return Err(e),
+        }
+    }
+
+    Ok(nread)
+}
+
 /// A trait extension for reading records.
 ///
 /// Inspired from the C++ implementation at: *
@@ -91,28 +110,50 @@ fn masked_crc32(bytes: &[u8]) -> u32 {
 ///  *
 ///  https://github.com/tensorflow/tensorflow/blob/f318765ad5a50b2fbd7cc08dd4ebc249b3924270/tensorflow/core/lib/io/record_reader.cc
 pub trait RecordReader: Read {
-    /// Read a single record.
-    fn read_record(&mut self) -> Result<Vec<u8>, ReadError> {
+    /// Read a single record, placing the bytes into `buf`.
+    ///
+    /// All bytes read from this source will be appended to the specified buffer `buf`.
+    ///
+    /// If successful, this function returns the total number of bytes read, including the tfrecord
+    /// header and footer sizes.  If the total number of bytes read is `0`, then the reader has
+    /// reached end of file.
+    ///
+    /// # Errors
+    ///
+    /// If this function encounters an error of the kind `ErrorKind::Interrupted` then the error is
+    /// ignored and the operation will continue.
+    ///
+    /// If any other read error is encountered then this function immediately returns.  Any bytes
+    /// which have already been read will be appended to `buf`.  If an error occurs while reading
+    /// the initial tfrecord header, buf is unchanged.
+    fn read_record(&mut self, buf: &mut Vec<u8>) -> Result<usize, ReadError> {
         let len = {
             let mut len_bytes = [0u8; 8];
-            self.read_exact(&mut len_bytes)?;
+            if retry_read(self, &mut len_bytes)? == 0 {
+                return Ok(0);
+            }
+
             if self.read_u32::<LittleEndian>()? != masked_crc32(&len_bytes) {
                 return Err(ReadError::CorruptedRecord);
             }
+
             // We `unwrap` here because reading from the on-stack
             // buffer cannnot fail.
-            len_bytes.as_ref().read_u64::<LittleEndian>().unwrap()
+            (&len_bytes[..]).read_u64::<LittleEndian>().unwrap()
         };
 
-        let mut record_bytes = Vec::with_capacity(len as usize);
-        let nread = self.take(len).read_to_end(&mut record_bytes)? as u64;
+        // TODO(bclement): Consider adding a safety check that we are not allocating too large a
+        // value here.
+        buf.reserve_exact(len as usize);
+        let nread = self.take(len).read_to_end(&mut buf)? as u64;
         if nread != len {
             return Err(ReadError::TruncatedRecord);
         }
         if self.read_u32::<LittleEndian>()? != masked_crc32(&record_bytes) {
             return Err(ReadError::CorruptedRecord);
         }
-        Ok(record_bytes)
+
+        Ok(8 + 4 + 4 + nread)
     }
 }
 

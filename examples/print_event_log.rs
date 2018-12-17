@@ -1,14 +1,23 @@
 extern crate bincode;
+extern crate csv;
 extern crate dot;
+extern crate flate2;
+extern crate structopt;
+
 extern crate telamon;
 extern crate telamon_utils as utils;
 
 use std::collections::HashMap;
 
-use std::io;
-use std::io::Seek;
+use std::ffi::OsStr;
+use std::fs::File;
+use std::io::{self, Read};
+use std::path::PathBuf;
 use telamon::explorer::{choice::ActionEx, TreeEvent};
 use utils::tfrecord::{ReadError, RecordReader};
+
+use flate2::read::{GzDecoder, ZlibDecoder};
+use structopt::StructOpt;
 
 struct Edge {
     action: ActionEx,
@@ -181,8 +190,36 @@ where
     }
 }
 
+#[derive(Debug, StructOpt)]
+#[structopt(name = "print_event_log")]
+struct Opt {
+    #[structopt(
+        parse(from_os_str),
+        short = "i",
+        long = "input",
+        default_value = "eventlog.tfrecord.gz"
+    )]
+    eventlog: PathBuf,
+
+    #[structopt(long = "topk", default_value = "10")]
+    topk: usize,
+}
+
+impl Opt {
+    fn open_eventlog(&self) -> io::Result<Box<dyn Read>> {
+        let raw_file = File::open(&self.eventlog)?;
+        Ok(match self.eventlog.extension().and_then(OsStr::to_str) {
+            Some("gz") => Box::new(GzDecoder::new(raw_file)),
+            Some("zz") => Box::new(ZlibDecoder::new(raw_file)),
+            _ => Box::new(raw_file),
+        })
+    }
+}
+
 fn main() -> Result<(), ReadError> {
-    let mut f = std::fs::File::open("eventlog.tfrecord")?;
+    let opt = Opt::from_args();
+
+    let mut f = opt.open_eventlog()?;
     let mut root = Node {
         children: Default::default(),
         evaluations: vec![],
@@ -190,44 +227,71 @@ fn main() -> Result<(), ReadError> {
         tag: None,
     };
 
-    let mut offset;
+    let mut evals = Vec::new();
+
     let mut id = 0;
     loop {
         id += 1;
 
-        offset = f.seek(io::SeekFrom::Current(0))?;
-
+        println!("koi {}", id);
         match f.read_record() {
             Ok(record) => match bincode::deserialize(&record).unwrap() {
                 TreeEvent::Evaluation { actions, score } => {
+                    println!("ok");
                     root.evaluations.push(score);
-                    let actions = actions.to_vec();
-                    dig(&mut root.children, actions.iter().rev().cloned(), score, id);
 
-                    // println!("{:?}", actions.to_vec());
+                    let actions = {
+                        let mut actions = actions.to_vec();
+                        actions.reverse();
+                        actions
+                    };
+
+                    dig(&mut root.children, actions, score, id);
+
+                    evals.push(score);
                 }
             },
             Err(err) => {
+                println!("err");
                 // If we reached eof and no bytes were read, we were
                 // at the end of a well-formed file and we can safely
                 // exit. Otherwise, we propagate the error.
                 if let ReadError::IOError(ref error) = err {
-                    if error.kind() == io::ErrorKind::UnexpectedEof
-                        && offset == f.seek(io::SeekFrom::Current(0))?
-                    {
+                    if error.kind() == io::ErrorKind::UnexpectedEof {
                         break;
                     }
                 }
                 return Err(err);
             }
         }
+        println!("done");
     }
 
-    root.compute_top(10);
+    println!("Computing top{} for all nodes...", opt.topk);
+    root.compute_top(opt.topk);
 
+    // Print the graph
+    println!(
+        "Writing graph to {}...",
+        format!("graph-top{}.dot", opt.topk)
+    );
     {
-        let mut f = std::fs::File::create("graph.dot").unwrap();
+        let mut f = std::fs::File::create(format!("graph-top{}.dot", opt.topk)).unwrap();
         dot::render(&root.info(), &mut f).unwrap();
+    }
+
+    // Print the csv
+    println!("Writing out.csv...");
+    {
+        let mut f = std::fs::File::create("out.csv")?;
+        let mut writer = csv::Writer::from_writer(&mut f);
+        writer.write_record(&["Id", "Time"]).unwrap();
+        for (id, eval) in evals.iter().enumerate() {
+            writer
+                .write_record(&[id.to_string(), eval.to_string()])
+                .unwrap();
+        }
+        writer.flush()?;
     }
 
     Ok(())
