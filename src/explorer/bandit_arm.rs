@@ -385,7 +385,11 @@ where
                                             })
                                         })
                                         .unwrap_or(10. * cut);
-                                    Some(-eval / cut)
+                                    if cut.is_finite() && eval.is_finite() {
+                                        Some(-eval / cut)
+                                    } else {
+                                        Some(-1.)
+                                    }
                                 },
                             )
                         } else {
