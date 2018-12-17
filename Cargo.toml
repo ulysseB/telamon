@@ -37,6 +37,9 @@ required-features = ["cuda"]
 [[example]]
 name = "print_event_log"
 
+[[example]]
+name = "parse_event_log"
+
 [build-dependencies]
 cc = "1.0.12"
 failure = "0.1.1"
@@ -99,6 +102,8 @@ gcc = "0.3.54"
 tempdir = "0.3.7"
 criterion = "0.2.4"
 jemalloc-ctl = "0.1"
+dot = "0.1"
+csv = "1"
 
 [features]
 cuda = []
