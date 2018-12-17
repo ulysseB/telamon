@@ -12,7 +12,8 @@
 
 # Find all staged rust files, and exit early if there aren't any.
 RUST_FILES=($(git diff --name-only --cached --diff-filter=AM | \
-    grep --color=never '.rs$'))
+    grep --color=never '.rs$' | \
+    grep --color=never -v '/template/'))
 if [ ! "$RUST_FILES" ]; then
     exit 0
 fi

@@ -6,7 +6,7 @@ use proc_macro2::TokenStream;
 /// Defines the `NumericSet` type.
 pub fn get() -> TokenStream {
     quote! {
-        #[derive(Copy, Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
+        #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, Serialize, Deserialize)]
         #[repr(C)]
         pub struct NumericSet {
             enabled_values: u16
