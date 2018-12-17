@@ -97,6 +97,8 @@ pub enum TreeEvent {
         // The time, in nanoseconds, at which the evaluation was performed.  Note that this is
         // somewhat noisy, in particular due to threading.
         time: f64,
+        // Thread ID
+        thread: String,
     },
 }
 
@@ -285,6 +287,7 @@ where
                 Some(path.1)
             },
             time: time.as_secs() as f64 + time.subsec_nanos() as f64 * 1e-9,
+            thread: format!("{:?}", std::thread::current().id()),
         })));
 
         // TODO(bclement):
@@ -362,22 +365,27 @@ where
                                 *leaf,
                                 env.cut,
                                 &|action| {
-                                    path.0.iter().fold(None, |acc, (node, _idx)| {
-                                        node.upgrade().and_then(|node| {
-                                            if let Some(amaf) =
-                                                unwrap!(node.amaf.read()).get(action)
-                                            {
-                                                let eval = amaf.best_evaluation();
-                                                if let Some(acc) = acc {
-                                                    Some(0.5 * acc + 0.5 * eval)
+                                    let eval = path
+                                        .0
+                                        .iter()
+                                        .fold(None, |acc, (node, _idx)| {
+                                            node.upgrade().and_then(|node| {
+                                                if let Some(amaf) =
+                                                    unwrap!(node.amaf.read()).get(action)
+                                                {
+                                                    let eval = amaf.best_evaluation();
+                                                    if let Some(acc) = acc {
+                                                        Some(0.5 * acc + 0.5 * eval)
+                                                    } else {
+                                                        Some(eval)
+                                                    }
                                                 } else {
-                                                    Some(eval)
+                                                    acc
                                                 }
-                                            } else {
-                                                acc
-                                            }
+                                            })
                                         })
-                                    })
+                                        .unwrap_or(10 * cut);
+                                    Some(-eval / cut)
                                 },
                             )
                         } else {

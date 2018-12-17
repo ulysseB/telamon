@@ -79,20 +79,22 @@ pub fn rave<'a>(
 
             None
         } else {
-            // Otherwise, pick one at random which doesn't have a prior value yet.
-            let actions = choice
-                .into_iter()
-                .zip(amafs.into_iter())
-                .filter_map(
-                    |(action, amaf)| {
-                        if amaf.is_none() {
-                            Some(action)
-                        } else {
-                            None
-                        }
-                    },
-                )
-                .collect::<Vec<_>>();
+            // Otherwise, pick one at random which doesn't have a prior value yet.  Actually, don't
+            // do this, because it can lock the search in an invalid portion of the space.
+            let actions = choice;
+            /*
+            .into_iter()
+            .zip(amafs.into_iter())
+            .filter_map(
+                |(action, amaf)| {
+                    if amaf.is_none() {
+                        Some(action)
+                    } else {
+                        None
+                    }
+                },
+            )
+            .collect::<Vec<_>>();*/
 
             let node = {
                 let mut new_nodes = candidate.apply_choice(context, actions);
