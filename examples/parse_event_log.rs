@@ -230,21 +230,19 @@ fn main() -> Result<(), ReadError> {
     let mut evals = Vec::new();
 
     for (id, record_bytes) in f.records().enumerate() {
-        match bincode::deserialize(&record_bytes?).unwrap() {
-            TreeEvent::Evaluation { actions, score } => {
-                root.evaluations.push(score);
+        let evt: TreeEvent = bincode::deserialize(&record_bytes?).unwrap();
+        let score = evt.score().unwrap_or(std::f64::INFINITY);
+        root.evaluations.push(score);
 
-                let actions = {
-                    let mut actions = actions.iter().cloned().collect::<Vec<_>>();
-                    actions.reverse();
-                    actions
-                };
+        let actions = {
+            let mut actions = evt.actions().cloned().collect::<Vec<_>>();
+            actions.reverse();
+            actions
+        };
 
-                dig(&mut root.children, actions, score, id);
+        dig(&mut root.children, actions, score, id);
 
-                evals.push(score);
-            }
-        }
+        evals.push(score);
     }
 
     println!("Computing top{} for all nodes...", opt.topk);

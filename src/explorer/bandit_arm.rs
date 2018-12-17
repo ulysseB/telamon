@@ -81,12 +81,78 @@ impl Default for TreeStats {
     }
 }
 
+// These are serialized in eventlog.  Avoid updating them as much as possible; prefer adding new
+// entries, as that is less likely to break existing files.
 #[derive(Serialize, Deserialize)]
 pub enum TreeEvent {
     Evaluation {
         actions: List<choice::ActionEx>,
         score: f64,
     },
+
+    EvaluationV2 {
+        actions: List<choice::ActionEx>,
+        score: Option<f64>,
+        cut: Option<f64>,
+        // The time, in nanoseconds, at which the evaluation was performed.  Note that this is
+        // somewhat noisy, in particular due to threading.
+        time: f64,
+    },
+}
+
+#[derive(Debug)]
+pub enum EventError {
+    VersionRequired { current: u32, required: u32 },
+}
+
+impl std::fmt::Display for EventError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            EventError::VersionRequired(version) => write!(
+                f,
+                "field not available in event version {} (required: {})",
+                current, required
+            ),
+        }
+    }
+}
+
+impl TreeEvent {
+    pub fn actions(&self) -> impl Iterator<Item = &'_ choice::ActionEx> {
+        match self {
+            TreeEvent::Evaluation { actions, .. }
+            | TreeEvent::EvaluationV2 { actions, .. } => actions.iter(),
+        }
+    }
+
+    pub fn score(&self) -> Option<f64> {
+        match self {
+            TreeEvent::Evaluation { score, .. } => {
+                if score.is_infinite() {
+                    None
+                } else {
+                    Some(score)
+                }
+            }
+            TreeEvent::EvaluationV2 { score, .. } => score,
+        }
+    }
+
+    pub fn cut(&self) -> Result<Option<f64>, EventError> {
+        match self {
+            TreeEvent::Evaluation { .. } => Err(EventError::VersionRequired(1, 2)),
+            TreeEvent::EvaluationV2 { cut, .. } => Ok(cut),
+        }
+    }
+
+    pub fn time(&self) -> Result<std::time::Duration, EventError> {
+        match self {
+            TreeEvent::Evaluation { .. } => Err(EventError::VersionRequired(1, 2)),
+            TreeEvent::EvaluationV2 { duration, .. } => {
+                Ok(std::time::Duration::from_nanos((duration * 1e9) as u64))
+            }
+        }
+    }
 }
 
 /// A search tree to perform a multi-armed bandit search.
@@ -100,6 +166,7 @@ pub struct Tree<'a, 'b, P: TreePolicy> {
     policy: P,
     stats: TreeStats,
     log: std::sync::mpsc::SyncSender<LogMessage<TreeEvent>>,
+    start_time: std::time::Instant,
 }
 
 impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
@@ -123,6 +190,7 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
             policy,
             stats: TreeStats::default(),
             log: log_sender,
+            start_time: Instant::now(),
         }
     }
 
@@ -201,9 +269,16 @@ where
         mut path: Self::PayLoad,
         eval: f64,
     ) {
-        unwrap!(self.log.send(LogMessage::Event(TreeEvent::Evaluation {
+        let time = self.start_time.elapsed();
+        unwrap!(self.log.send(LogMessage::Event(TreeEvent::EvaluationV2 {
             actions: actions.clone(),
-            score: eval,
+            score: if eval.is_infinite() { None } else { Some(eval) },
+            cut: if path.1.is_infinite() {
+                None
+            } else {
+                Some(path.1)
+            },
+            time: time.as_secs() as f64 + time.subsec_nanos() as f64 * 1e-9,
         })));
 
         // TODO(bclement):
@@ -260,7 +335,7 @@ where
             });
 
             // Descent loop
-            let mut path = Path::default();
+            let mut path = Path::with_cut(cut);
             loop {
                 match state {
                     SubTree::Empty => {
@@ -273,15 +348,15 @@ where
                         break;
                     }
                     SubTree::Leaf(leaf) => {
-                        if let Some(implementation) = local_selection::rave(
-                            &env.config.choice_ordering,
-                            env.config.new_nodes_order,
-                            env.context,
-                            *leaf,
-                            env.cut,
-                            &|action| {
-                                path.0.iter().fold(None, |acc, (node, _idx)| {
-                                    if self.config.use_rave_rollouts {
+                        let selected = if self.config.use_rave_rollouts {
+                            local_selection::rave(
+                                &env.config.choice_ordering,
+                                env.config.new_nodes_order,
+                                env.context,
+                                *leaf,
+                                env.cut,
+                                &|action| {
+                                    path.0.iter().fold(None, |acc, (node, _idx)| {
                                         node.upgrade().and_then(|node| {
                                             if let Some(amaf) =
                                                 unwrap!(node.amaf.read()).get(action)
@@ -296,12 +371,20 @@ where
                                                 acc
                                             }
                                         })
-                                    } else {
-                                        None
-                                    }
-                                })
-                            },
-                        ) {
+                                    })
+                                },
+                            )
+                        } else {
+                            local_selection::descend(
+                                &env.config.choice_ordering,
+                                env.config.new_nodes_order,
+                                env.context,
+                                *leaf,
+                                env.cut,
+                            )
+                        };
+
+                        if let Some(implementation) = selected {
                             return Some((implementation, path));
                         } else {
                             // Deadend reached while exploring; restart from the root
@@ -343,8 +426,14 @@ where
 
 /// Path to follow to reach a leaf in the tree.
 // TODO(bclement): Consider using `Arc` here.
-#[derive(Clone, Default)]
-pub struct Path<'a, E>(Vec<(Weak<Node<'a, E>>, usize)>);
+#[derive(Clone)]
+pub struct Path<'a, E>(Vec<(Weak<Node<'a, E>>, usize)>, f64);
+
+impl<'a, E> Path<'a, E> {
+    fn with_cut(cut: f64) -> Self {
+        Path(Vec::new(), cut)
+    }
+}
 
 /// The search tree that will be traversed
 enum SubTree<'a, E> {

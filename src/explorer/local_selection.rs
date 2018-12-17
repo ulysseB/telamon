@@ -45,6 +45,7 @@ pub fn rave<'a>(
 ) -> Option<Candidate<'a>> {
     let choice = choice::list(choice_order, &candidate.space).next();
     if let Some(choice) = choice {
+        // Compute the AMAFs once at the beginning to avoid races.
         let amafs = choice.iter().map(amaf).collect::<Vec<_>>();
 
         // If all the decisions have a prior value, use it
