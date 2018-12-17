@@ -105,10 +105,16 @@ pub enum EventError {
     VersionRequired { current: u32, required: u32 },
 }
 
+impl EventError {
+    fn version_required(current: u32, required: u32) -> Self {
+        EventError::VersionRequired { current, required }
+    }
+}
+
 impl std::fmt::Display for EventError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            EventError::VersionRequired(version) => write!(
+            EventError::VersionRequired { current, required } => write!(
                 f,
                 "field not available in event version {} (required: {})",
                 current, required
@@ -131,25 +137,25 @@ impl TreeEvent {
                 if score.is_infinite() {
                     None
                 } else {
-                    Some(score)
+                    Some(*score)
                 }
             }
-            TreeEvent::EvaluationV2 { score, .. } => score,
+            TreeEvent::EvaluationV2 { score, .. } => *score,
         }
     }
 
     pub fn cut(&self) -> Result<Option<f64>, EventError> {
         match self {
-            TreeEvent::Evaluation { .. } => Err(EventError::VersionRequired(1, 2)),
-            TreeEvent::EvaluationV2 { cut, .. } => Ok(cut),
+            TreeEvent::Evaluation { .. } => Err(EventError::version_required(1, 2)),
+            TreeEvent::EvaluationV2 { cut, .. } => Ok(*cut),
         }
     }
 
     pub fn time(&self) -> Result<std::time::Duration, EventError> {
         match self {
-            TreeEvent::Evaluation { .. } => Err(EventError::VersionRequired(1, 2)),
-            TreeEvent::EvaluationV2 { duration, .. } => {
-                Ok(std::time::Duration::from_nanos((duration * 1e9) as u64))
+            TreeEvent::Evaluation { .. } => Err(EventError::version_required(1, 2)),
+            TreeEvent::EvaluationV2 { time, .. } => {
+                Ok(std::time::Duration::from_nanos((time * 1e9) as u64))
             }
         }
     }
@@ -190,7 +196,7 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
             policy,
             stats: TreeStats::default(),
             log: log_sender,
-            start_time: Instant::now(),
+            start_time: std::time::Instant::now(),
         }
     }
 
