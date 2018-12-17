@@ -37,6 +37,9 @@ required-features = ["cuda"]
 [[example]]
 name = "print_event_log"
 
+[[example]]
+name = "parse_event_log"
+
 [build-dependencies]
 cc = "1.0.12"
 failure = "0.1.1"
