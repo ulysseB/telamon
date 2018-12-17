@@ -384,7 +384,7 @@ where
                                                 }
                                             })
                                         })
-                                        .unwrap_or(10 * cut);
+                                        .unwrap_or(10. * cut);
                                     Some(-eval / cut)
                                 },
                             )
