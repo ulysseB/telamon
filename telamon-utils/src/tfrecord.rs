@@ -156,9 +156,40 @@ pub trait RecordReader: Read {
 
         Ok(8 + 4 + 4 + nread)
     }
+
+    /// Transforms this `Read` instance to an `Iterator` over the contained records.
+    ///
+    /// The returned type implements `Iterator` where the `Item` is `Result<u8, ReadError>`.  The
+    /// yielded item is `Ok` if a record was successfuly read and `Err` otherwise.  EOF is mapped
+    /// to returning `None` from this iterator.
+    fn records(self) -> Records<Self>
+    where
+        Self: Sized,
+    {
+        Records { read: self }
+    }
 }
 
 impl<R: Read + ?Sized> RecordReader for R {}
+
+/// A simple iterator over the records stored in a file.
+#[derive(Debug)]
+pub struct Records<R> {
+    read: R,
+}
+
+impl<R: Read> Iterator for Records<R> {
+    type Item = Result<Vec<u8>, ReadError>;
+
+    fn next(&mut self) -> Option<Result<Vec<u8>, ReadError>> {
+        let mut buf = Vec::new();
+        match self.read.read_record(&mut buf) {
+            Ok(0) => None,
+            Ok(..) => Some(Ok(buf)),
+            Err(e) => Some(Err(e)),
+        }
+    }
+}
 
 /// A trait extension for writing records.
 ///

@@ -229,21 +229,8 @@ fn main() -> Result<(), ReadError> {
 
     let mut evals = Vec::new();
 
-    let mut id = 0;
-    let mut buf = Vec::new();
-    loop {
-        id += 1;
-
-        // Parse the record.  We reuse the same buffer for all records to avoid too many
-        // allocations.  Note that this means we keep a total allocated memory of the longest
-        // record seen so far.
-        buf.clear();
-        let nread = f.read_record(&mut buf)?;
-        if nread == 0 {
-            break;
-        }
-
-        match bincode::deserialize(&buf).unwrap() {
+    for (id, record_bytes) in f.records().enumerate() {
+        match bincode::deserialize(&record_bytes?).unwrap() {
             TreeEvent::Evaluation { actions, score } => {
                 root.evaluations.push(score);
 
