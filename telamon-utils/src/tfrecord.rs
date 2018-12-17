@@ -143,13 +143,14 @@ pub trait RecordReader: Read {
         };
 
         // TODO(bclement): Consider adding a safety check that we are not allocating too large a
-        // value here.
+        // buffer here.
+        let buf_start = buf.len();
         buf.reserve_exact(len as usize);
-        let nread = self.take(len).read_to_end(&mut buf)? as u64;
-        if nread != len {
+        let nread = self.take(len).read_to_end(buf)?;
+        if nread as u64 != len {
             return Err(ReadError::TruncatedRecord);
         }
-        if self.read_u32::<LittleEndian>()? != masked_crc32(&record_bytes) {
+        if self.read_u32::<LittleEndian>()? != masked_crc32(&buf[buf_start..]) {
             return Err(ReadError::CorruptedRecord);
         }
 
