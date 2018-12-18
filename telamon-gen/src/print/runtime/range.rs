@@ -5,7 +5,7 @@ use proc_macro2::TokenStream;
 pub fn get() -> TokenStream {
     quote! {
         /// Abstracts integer choices by a range.
-        #[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+        #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
         #[repr(C)]
         pub struct Range {
             pub min: u32,
@@ -125,7 +125,7 @@ pub fn get() -> TokenStream {
         }
 
         /// Abstracts integer choices by a range, but only store `min`.
-        #[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
+        #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
         #[repr(C)]
         pub struct HalfRange { pub min: u32 }
 

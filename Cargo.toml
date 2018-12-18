@@ -22,6 +22,9 @@ required-features = ["cuda"]
 [[bin]]
 name = "expandconfig"
 
+[[bin]]
+name = "parse_event_log"
+
 [[bench]]
 name = "descent"
 harness = false
@@ -87,6 +90,8 @@ tempfile = "3.0.1"
 toml = "0.4"
 xdg = "^2.1"
 flate2 = "1.0.2"
+dot = "0.1"
+csv = "1"
 
 [dependencies.telamon-utils]
 path = "telamon-utils"
