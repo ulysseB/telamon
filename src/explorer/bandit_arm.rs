@@ -904,23 +904,25 @@ impl TreePolicy for TAGPolicy {
         let children = node
             .children
             .iter()
+            .map(|edge| (edge, edge.stats.num_visits()))
             .enumerate()
-            .filter(|(_, edge)| edge.bound() < env.cut);
+            .filter(|(_idx, (edge, _num_visits))| edge.bound() < env.cut)
+            .collect::<Vec<_>>();
 
         // Pick an edge which was not explored yet, if there is some
         NewNodeOrder::WeightedRandom
             .pick_index(
                 children
-                    .clone()
-                    .filter(|(_, edge)| edge.stats.num_visits() == 0)
-                    .map(|(idx, edge)| (idx, edge.bound())),
+                    .iter()
+                    .filter(|(_, (edge, num_visits))| *num_visits == 0)
+                    .map(|(idx, (edge, _num_visits))| (*idx, edge.bound())),
                 env.cut,
             )
-            .or_else(|| {
+            .or_else(move || {
                 // Compute the threshold to use so that we only have `config.topk` children
                 let threshold = {
                     let mut evalns = Evaluations::with_capacity(self.topk);
-                    for (_, edge) in children.clone() {
+                    for (_idx, (edge, _num_visits)) in &children {
                         // Evaluations are sorted; we can bail out early.
                         for &eval in &*unwrap!(edge.stats.evaluations.read()) {
                             if !evalns.record(eval, self.topk) {
@@ -934,14 +936,13 @@ impl TreePolicy for TAGPolicy {
                     evalns.max().unwrap_or(std::f64::INFINITY)
                 };
 
-                // Precompute statistics for each child to ensure the number of visits of a child is not
-                // incremented concurrently after we have computed the sum.
                 let stats = children
-                    .map(|(ix, edge)| {
+                    .into_iter()
+                    .map(|(ix, (edge, num_visits))| {
                         (
                             ix,
                             unwrap!(edge.stats.evaluations.read()).count_lte(threshold),
-                            edge.stats.num_visits(),
+                            num_visits,
                         )
                     })
                     .collect::<Vec<_>>();
