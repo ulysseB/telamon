@@ -2,6 +2,7 @@ var ALIASES = {};
 ALIASES['expandconfig'] = {};
 ALIASES['expandconfig'] = {};
 ALIASES['expandconfig'] = {};
+ALIASES['parse_event_log'] = {};
 ALIASES['telamon'] = {};
 ALIASES['telamon'] = {};
 ALIASES['telamon'] = {};

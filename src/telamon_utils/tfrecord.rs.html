@@ -203,6 +203,79 @@
 <span id="203">203</span>
 <span id="204">204</span>
 <span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! This module provides Read and Write extensions for reading and</span>
 <span class="doccomment">//! writing TFRecord files. TFRecord is a simple container file format</span>
@@ -290,6 +363,25 @@
     ((<span class="ident">crc</span> <span class="op">&gt;&gt;</span> <span class="number">15</span>) <span class="op">|</span> (<span class="ident">crc</span> <span class="op">&lt;&lt;</span> <span class="number">17</span>)).<span class="ident">wrapping_add</span>(<span class="number">0xa282_ead8u32</span>)
 }
 
+<span class="comment">// Wrapper around Read::read which retries when receiving an Interrupted error</span>
+<span class="kw">fn</span> <span class="ident">retry_read</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span> <span class="op">+</span> <span class="question-mark">?</span><span class="ident">Sized</span><span class="op">&gt;</span>(<span class="ident">read</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>, <span class="kw-2">mut</span> <span class="ident">buf</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> [<span class="ident">u8</span>]) <span class="op">-&gt;</span> <span class="ident">io</span>::<span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span> {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nread</span> <span class="op">=</span> <span class="number">0</span>;
+    <span class="kw">while</span> <span class="op">!</span><span class="ident">buf</span>.<span class="ident">is_empty</span>() {
+        <span class="kw">match</span> <span class="ident">read</span>.<span class="ident">read</span>(<span class="ident">buf</span>) {
+            <span class="prelude-val">Ok</span>(<span class="number">0</span>) <span class="op">=&gt;</span> <span class="kw">break</span>,
+            <span class="prelude-val">Ok</span>(<span class="ident">n</span>) <span class="op">=&gt;</span> {
+                <span class="kw">let</span> <span class="ident">tmp</span> <span class="op">=</span> <span class="ident">buf</span>;
+                <span class="ident">buf</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tmp</span>[<span class="ident">n</span>..];
+                <span class="ident">nread</span> <span class="op">+=</span> <span class="ident">n</span>;
+            }
+            <span class="prelude-val">Err</span>(<span class="kw-2">ref</span> <span class="ident">e</span>) <span class="kw">if</span> <span class="ident">e</span>.<span class="ident">kind</span>() <span class="op">==</span> <span class="ident">io</span>::<span class="ident">ErrorKind</span>::<span class="ident">Interrupted</span> <span class="op">=&gt;</span> {}
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+        }
+    }
+
+    <span class="prelude-val">Ok</span>(<span class="ident">nread</span>)
+}
+
 <span class="doccomment">/// A trait extension for reading records.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// Inspired from the C++ implementation at: *</span>
@@ -297,32 +389,86 @@
 <span class="doccomment">///  *</span>
 <span class="doccomment">///  https://github.com/tensorflow/tensorflow/blob/f318765ad5a50b2fbd7cc08dd4ebc249b3924270/tensorflow/core/lib/io/record_reader.cc</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">RecordReader</span>: <span class="ident">Read</span> {
-    <span class="doccomment">/// Read a single record.</span>
-    <span class="kw">fn</span> <span class="ident">read_record</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ReadError</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// Read a single record, placing the bytes into `buf`.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// All bytes read from this source will be appended to the specified buffer `buf`.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// If successful, this function returns the total number of bytes read, including the tfrecord</span>
+    <span class="doccomment">/// header and footer sizes.  If the total number of bytes read is `0`, then the reader has</span>
+    <span class="doccomment">/// reached end of file.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// # Errors</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// If this function encounters an error of the kind `ErrorKind::Interrupted` then the error is</span>
+    <span class="doccomment">/// ignored and the operation will continue.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// If any other read error is encountered then this function immediately returns.  Any bytes</span>
+    <span class="doccomment">/// which have already been read will be appended to `buf`.  If an error occurs while reading</span>
+    <span class="doccomment">/// the initial tfrecord header, buf is unchanged.</span>
+    <span class="kw">fn</span> <span class="ident">read_record</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">buf</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">ReadError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">len</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">len_bytes</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="number">8</span>];
-            <span class="self">self</span>.<span class="ident">read_exact</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">len_bytes</span>)<span class="question-mark">?</span>;
+            <span class="kw">if</span> <span class="ident">retry_read</span>(<span class="self">self</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">len_bytes</span>)<span class="question-mark">?</span> <span class="op">==</span> <span class="number">0</span> {
+                <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="number">0</span>);
+            }
+
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">read_u32</span>::<span class="op">&lt;</span><span class="ident">LittleEndian</span><span class="op">&gt;</span>()<span class="question-mark">?</span> <span class="op">!=</span> <span class="ident">masked_crc32</span>(<span class="kw-2">&amp;</span><span class="ident">len_bytes</span>) {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ReadError</span>::<span class="ident">CorruptedRecord</span>);
             }
+
             <span class="comment">// We `unwrap` here because reading from the on-stack</span>
             <span class="comment">// buffer cannnot fail.</span>
-            <span class="ident">len_bytes</span>.<span class="ident">as_ref</span>().<span class="ident">read_u64</span>::<span class="op">&lt;</span><span class="ident">LittleEndian</span><span class="op">&gt;</span>().<span class="ident">unwrap</span>()
+            (<span class="kw-2">&amp;</span><span class="ident">len_bytes</span>[..]).<span class="ident">read_u64</span>::<span class="op">&lt;</span><span class="ident">LittleEndian</span><span class="op">&gt;</span>().<span class="ident">unwrap</span>()
         };
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">record_bytes</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">with_capacity</span>(<span class="ident">len</span> <span class="kw">as</span> <span class="ident">usize</span>);
-        <span class="kw">let</span> <span class="ident">nread</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">take</span>(<span class="ident">len</span>).<span class="ident">read_to_end</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">record_bytes</span>)<span class="question-mark">?</span> <span class="kw">as</span> <span class="ident">u64</span>;
-        <span class="kw">if</span> <span class="ident">nread</span> <span class="op">!=</span> <span class="ident">len</span> {
+        <span class="comment">// TODO(bclement): Consider adding a safety check that we are not allocating too large a</span>
+        <span class="comment">// buffer here.</span>
+        <span class="kw">let</span> <span class="ident">buf_start</span> <span class="op">=</span> <span class="ident">buf</span>.<span class="ident">len</span>();
+        <span class="ident">buf</span>.<span class="ident">reserve_exact</span>(<span class="ident">len</span> <span class="kw">as</span> <span class="ident">usize</span>);
+        <span class="kw">let</span> <span class="ident">nread</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">take</span>(<span class="ident">len</span>).<span class="ident">read_to_end</span>(<span class="ident">buf</span>)<span class="question-mark">?</span>;
+        <span class="kw">if</span> <span class="ident">nread</span> <span class="kw">as</span> <span class="ident">u64</span> <span class="op">!=</span> <span class="ident">len</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ReadError</span>::<span class="ident">TruncatedRecord</span>);
         }
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">read_u32</span>::<span class="op">&lt;</span><span class="ident">LittleEndian</span><span class="op">&gt;</span>()<span class="question-mark">?</span> <span class="op">!=</span> <span class="ident">masked_crc32</span>(<span class="kw-2">&amp;</span><span class="ident">record_bytes</span>) {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">read_u32</span>::<span class="op">&lt;</span><span class="ident">LittleEndian</span><span class="op">&gt;</span>()<span class="question-mark">?</span> <span class="op">!=</span> <span class="ident">masked_crc32</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>[<span class="ident">buf_start</span>..]) {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ReadError</span>::<span class="ident">CorruptedRecord</span>);
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">record_bytes</span>)
+
+        <span class="prelude-val">Ok</span>(<span class="number">8</span> <span class="op">+</span> <span class="number">4</span> <span class="op">+</span> <span class="number">4</span> <span class="op">+</span> <span class="ident">nread</span>)
+    }
+
+    <span class="doccomment">/// Transforms this `Read` instance to an `Iterator` over the contained records.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// The returned type implements `Iterator` where the `Item` is `Result&lt;u8, ReadError&gt;`.  The</span>
+    <span class="doccomment">/// yielded item is `Ok` if a record was successfuly read and `Err` otherwise.  EOF is mapped</span>
+    <span class="doccomment">/// to returning `None` from this iterator.</span>
+    <span class="kw">fn</span> <span class="ident">records</span>(<span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">Records</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>
+    <span class="kw">where</span>
+        <span class="self">Self</span>: <span class="ident">Sized</span>,
+    {
+        <span class="ident">Records</span> { <span class="ident">read</span>: <span class="self">self</span> }
     }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span> <span class="op">+</span> <span class="question-mark">?</span><span class="ident">Sized</span><span class="op">&gt;</span> <span class="ident">RecordReader</span> <span class="kw">for</span> <span class="ident">R</span> {}
+
+<span class="doccomment">/// A simple iterator over the records stored in a file.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Records</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> {
+    <span class="ident">read</span>: <span class="ident">R</span>,
+}
+
+<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span> <span class="ident">Iterator</span> <span class="kw">for</span> <span class="ident">Records</span><span class="op">&lt;</span><span class="ident">R</span><span class="op">&gt;</span> {
+    <span class="kw">type</span> <span class="ident">Item</span> <span class="op">=</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ReadError</span><span class="op">&gt;</span>;
+
+    <span class="kw">fn</span> <span class="ident">next</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ReadError</span><span class="op">&gt;&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="ident">new</span>();
+        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">read</span>.<span class="ident">read_record</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">buf</span>) {
+            <span class="prelude-val">Ok</span>(<span class="number">0</span>) <span class="op">=&gt;</span> <span class="prelude-val">None</span>,
+            <span class="prelude-val">Ok</span>(..) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(<span class="ident">buf</span>)),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)),
+        }
+    }
+}
 
 <span class="doccomment">/// A trait extension for writing records.</span>
 <span class="doccomment">///</span>
