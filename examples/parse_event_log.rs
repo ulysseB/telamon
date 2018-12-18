@@ -1,3 +1,5 @@
+/// This allows dumping a CSV of all the evaluations that were performed during a run, as well as a
+/// graphviz (.dot) graph recapitulating the run.
 extern crate bincode;
 extern crate csv;
 extern crate dot;
@@ -71,13 +73,13 @@ struct TreeInfo<'a> {
     edges: Vec<(usize, usize, &'a Edge)>,
 }
 
-type Nd<'a> = (usize, &'a &'a Node);
+type Nd<'a> = (usize, &'a Node);
 
 type Ed<'a> = &'a (usize, usize, &'a Edge);
 
 impl<'a> dot::GraphWalk<'a, Nd<'a>, Ed<'a>> for TreeInfo<'a> {
     fn nodes(&'a self) -> dot::Nodes<'a, Nd<'a>> {
-        self.nodes.iter().enumerate().collect()
+        self.nodes.iter().cloned().enumerate().collect()
     }
 
     fn edges(&'a self) -> dot::Edges<'a, Ed<'a>> {
@@ -85,11 +87,11 @@ impl<'a> dot::GraphWalk<'a, Nd<'a>, Ed<'a>> for TreeInfo<'a> {
     }
 
     fn source(&'a self, edge: &Ed<'a>) -> Nd<'a> {
-        (edge.0, &self.nodes[edge.0])
+        (edge.0, self.nodes[edge.0])
     }
 
     fn target(&'a self, edge: &Ed<'a>) -> Nd<'a> {
-        (edge.1, &self.nodes[edge.1])
+        (edge.1, self.nodes[edge.1])
     }
 }
 
@@ -129,20 +131,17 @@ impl<'a> dot::Labeller<'a, Nd<'a>, Ed<'a>> for TreeInfo<'a> {
 }
 
 impl Node {
-    fn info(&self) -> TreeInfo<'_> {
+    fn info(&self, max_depth: Option<u32>, min_evals: Option<u32>) -> TreeInfo<'_> {
         let mut worklist = vec![(self, 0)];
         let mut nodes = vec![];
         let mut edges = vec![];
-
-        let max_depth = None;
-        let min_evals = Some(1000);
 
         while let Some((node, depth)) = worklist.pop() {
             nodes.push((node as *const Node, node));
 
             if max_depth.map(|max_depth| depth < max_depth).unwrap_or(true)
                 && min_evals
-                    .map(|min_evals| node.evaluations.len() > min_evals)
+                    .map(|min_evals| node.evaluations.len() as u32 > min_evals)
                     .unwrap_or(true)
             {
                 for (action, edge) in node.children.iter() {
@@ -168,7 +167,9 @@ impl Node {
     }
 }
 
-fn dig<II>(children: &mut HashMap<ActionEx, Edge>, actions: II, eval: f64, id: usize)
+/// Recursively walks the tree defined by `children` and records an evaluation value of `eval`
+/// along the path.
+fn record<II>(children: &mut HashMap<ActionEx, Edge>, actions: II, eval: f64, id: usize)
 where
     II: IntoIterator<Item = ActionEx>,
 {
@@ -186,7 +187,7 @@ where
         });
 
         edge.node.evaluations.push(eval);
-        dig(&mut edge.node.children, it, eval, id)
+        record(&mut edge.node.children, it, eval, id)
     }
 }
 
@@ -203,6 +204,16 @@ struct Opt {
 
     #[structopt(long = "topk", default_value = "10")]
     topk: usize,
+
+    /// Maximum depth after which nodes should be hidden in the graph output.  Nodes at a depth
+    /// larger than max_depth are not displayed.
+    #[structopt(long = "max-depth")]
+    max_depth: Option<u32>,
+
+    /// Minimum number of evaluations below which children should be hidden in the graph output.
+    /// Nodes with less than `min_evals` evaluations are displayed, but not their children.
+    #[structopt(long = "min-evals")]
+    min_evals: Option<u32>,
 }
 
 impl Opt {
@@ -240,7 +251,7 @@ fn main() -> Result<(), ReadError> {
                     actions
                 };
 
-                dig(&mut root.children, actions, score, id);
+                record(&mut root.children, actions, score, id);
 
                 evals.push(score);
             }
@@ -257,7 +268,7 @@ fn main() -> Result<(), ReadError> {
     );
     {
         let mut f = std::fs::File::create(format!("graph-top{}.dot", opt.topk)).unwrap();
-        dot::render(&root.info(), &mut f).unwrap();
+        dot::render(&root.info(opt.max_depth, opt.min_evals), &mut f).unwrap();
     }
 
     // Print the csv
