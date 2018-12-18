@@ -144,7 +144,7 @@ impl Node {
                     .map(|min_evals| node.evaluations.len() as u32 > min_evals)
                     .unwrap_or(true)
             {
-                for (action, edge) in node.children.iter() {
+                for (_action, edge) in node.children.iter() {
                     edges.push((node as *const Node, &*edge.node as *const Node, edge));
 
                     worklist.push((&edge.node, depth + 1));
@@ -230,7 +230,7 @@ impl Opt {
 fn main() -> Result<(), ReadError> {
     let opt = Opt::from_args();
 
-    let mut f = opt.open_eventlog()?;
+    let f = opt.open_eventlog()?;
     let mut root = Node {
         children: Default::default(),
         evaluations: vec![],
