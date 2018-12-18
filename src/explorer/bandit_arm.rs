@@ -192,7 +192,7 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
             root: RwLock::new(Some(root)),
             initial_candidates: candidates,
             stop: AtomicBool::new(false),
-            cut: RwLock::new(std::f64::INFINITY),
+            cut: RwLock::new(config.initial_cut.unwrap_or(std::f64::INFINITY)),
             bound: RwLock::new(bound),
             config,
             policy,

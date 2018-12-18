@@ -188,6 +188,9 @@ pub struct BanditConfig {
     /// Indicates whether to use RAVE in rollouts.  The `new_nodes_order` policy will be used when
     /// no estimates are available for some decisions.
     pub use_rave_rollouts: bool,
+    /// Indicates the initial cut to use (in nanoseconds).  This can be used when an existing
+    /// program (e.g. from a precedent run) is known to take that much amount of time.
+    pub initial_cut: Option<f64>,
     /// Order in which the different choices are going to be determined
     pub choice_ordering: ChoiceOrdering,
     /// Indicates how to select between nodes of the search tree when none of their
@@ -337,6 +340,7 @@ impl Default for BanditConfig {
         BanditConfig {
             restart_after_cut: false,
             use_rave_rollouts: false,
+            initial_cut: None,
             new_nodes_order: NewNodeOrder::default(),
             tree_policy: TreePolicy::default(),
             choice_ordering: ChoiceOrdering::default(),
