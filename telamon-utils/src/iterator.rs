@@ -2,7 +2,7 @@
 use itertools::Itertools;
 use linked_list;
 use std;
-use HashMap;
+use crate::HashMap;
 
 /// Iterates over a linked list while removing some items.
 pub fn filter_list<'a, T, F>(

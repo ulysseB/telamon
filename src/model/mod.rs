@@ -42,7 +42,7 @@ use crate::model::level::{sum_pressure, Level, LevelDag, RepeatLevel};
 use crate::model::local_info::LocalInfo;
 use crate::search_space::SearchSpace;
 use std::cmp;
-use telamon_utils::*;
+use utils::*;
 
 /// Returns a lower bound on the execution time of all the implementation candidates in
 /// `space`, when executed in `context`.

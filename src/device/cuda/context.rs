@@ -12,7 +12,7 @@ use log::{debug, info};
 use std;
 use std::f64;
 use std::sync::{atomic, mpsc, Arc};
-use telamon_utils::*;
+use utils::*;
 
 /// Max number of candidates waiting to be evaluated.
 const EVAL_BUFFER_SIZE: usize = 100;

@@ -1,7 +1,7 @@
 use crate::ir;
 use linked_list;
 use linked_list::LinkedList;
-use telamon_utils::*;
+use utils::*;
 
 /// Represents a mapping between dimenions.
 #[derive(Clone, Debug)]

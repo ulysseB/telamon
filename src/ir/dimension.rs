@@ -1,7 +1,7 @@
 //! Represents iteration dimensions.
 use crate::ir::{self, Statement};
 use std;
-use telamon_utils::*;
+use utils::*;
 use lazy_static::lazy_static;
 use log::trace;
 

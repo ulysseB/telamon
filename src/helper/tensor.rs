@@ -6,7 +6,7 @@ use itertools::Itertools;
 use ndarray::{self, ArrayD};
 use crate::search_space::InstFlag;
 use std;
-use telamon_utils::*;
+use utils::*;
 
 /// A dimension size, before tiling.
 #[derive(Clone)]

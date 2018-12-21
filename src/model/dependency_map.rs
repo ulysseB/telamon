@@ -2,7 +2,8 @@
 use itertools::Itertools;
 use crate::model::FastBound;
 use std::collections::hash_map;
-use telamon_utils::*;
+
+use utils::*;
 
 /// Holds the latency between each node and its dependencies. Nodes must be sorted.
 #[derive(Clone, Debug)]

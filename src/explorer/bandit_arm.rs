@@ -11,7 +11,7 @@ use std;
 use std::f64;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock, Weak};
-use telamon_utils::*;
+use utils::*;
 
 /// An environment in which candidates can be refined.
 pub struct Env<'a> {

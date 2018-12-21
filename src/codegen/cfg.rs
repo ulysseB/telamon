@@ -4,6 +4,7 @@ use crate::search_space::*;
 use itertools::{self, Itertools};
 use log::debug;
 use std::{self, fmt};
+use utils::unwrap;
 
 /// Represents a CFG of the targeted device.
 pub enum Cfg<'a> {

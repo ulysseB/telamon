@@ -7,7 +7,7 @@ use itertools::{flatten, Itertools};
 use log::debug;
 use crate::search_space::{Action, DimKind, InstFlag, MemSpace, Order, SearchSpace};
 use std::borrow::Borrow;
-use telamon_utils::*;
+use utils::*;
 
 /// Helper to build a `Function`.
 pub struct Builder<'a> {

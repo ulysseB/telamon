@@ -33,7 +33,7 @@ use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::ToPrimitive;
 use std;
-use telamon_utils::*;
+use utils::*;
 
 #[derive(Default)]
 struct Namer {

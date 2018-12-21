@@ -5,7 +5,7 @@ use crate::explorer::Candidate;
 use crate::ir;
 use num;
 use std::sync::Arc;
-
+use utils::unwrap;
 use boxfnonce::SendBoxFnOnce;
 
 /// A callback that is called after evaluating a kernel.

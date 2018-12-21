@@ -9,6 +9,7 @@ use log::{info, warn};
 use rpds::List;
 use std;
 use std::f64;
+use utils::unwrap;
 
 impl<'a> Store<'a> for ParallelCandidateList<'a> {
     type PayLoad = ();

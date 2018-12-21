@@ -1,8 +1,3 @@
-/// This example shows how to iterate over the events stored in an eventlog.
-extern crate bincode;
-extern crate telamon;
-extern crate telamon_utils as utils;
-
 use std::io;
 use std::io::Seek;
 use telamon::explorer::TreeEvent;

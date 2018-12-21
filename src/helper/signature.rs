@@ -5,6 +5,7 @@ use crate::ir::Signature;
 use itertools::Itertools;
 use rand::prelude::*;
 use std::sync::Arc;
+use utils::unwrap;
 
 /// Helper struct to build a `Signature`.
 pub struct Builder<'a, AM>

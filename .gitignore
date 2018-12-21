@@ -1,7 +1,7 @@
-*~
-*.swp
-*.swo
-*.log
+~
+.swp
+.swo
+.log
 Cargo.lock
 examples/out/
 target/

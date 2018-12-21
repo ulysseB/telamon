@@ -2,6 +2,7 @@ use crate::ir;
 use num;
 use crate::search_space::{NumSet, SearchSpace};
 use std;
+use utils::unwrap;
 
 /// The size of an iteration dimension. The size is of the form:
 /// `(factor * dividend_0 * dividend_1 * ...)) / divisor`

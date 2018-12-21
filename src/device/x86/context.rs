@@ -17,7 +17,7 @@ use std::f64;
 use std::io::Write;
 use std::sync::{mpsc, Arc, MutexGuard};
 use tempfile;
-use telamon_utils::*;
+use utils::*;
 
 /// Max number of candidates waiting to be evaluated.
 const EVAL_BUFFER_SIZE: usize = 100;

@@ -1,6 +1,7 @@
 use crate::ir;
 use std;
-use telamon_utils::*;
+
+use utils::*;
 
 /// A fully specified size.
 #[derive(Clone, Debug, PartialEq, Eq)]

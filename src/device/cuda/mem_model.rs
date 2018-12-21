@@ -8,7 +8,7 @@ use crate::model::size;
 use num::Integer;
 use crate::search_space::*;
 use std;
-use telamon_utils::*;
+use utils::*;
 
 // TODO(model): the pressure changes depending on the list of outer dimensions. Try to
 // take this into account be computing the pressure incrementatly when applying levels.

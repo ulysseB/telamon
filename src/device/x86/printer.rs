@@ -5,6 +5,7 @@ use itertools::Itertools;
 use crate::search_space::{DimKind, Domain, InstFlag, MemSpace};
 use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;
+use utils::unwrap;
 // TODO(cc_perf): avoid concatenating strings.
 
 #[derive(Default)]

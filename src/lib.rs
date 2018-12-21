@@ -16,8 +16,9 @@
 extern crate failure;
 #[macro_use]
 extern crate serde;
-#[macro_use]
-extern crate telamon_utils as utils;
+//#[macro_use]
+//extern crate telamon_utils as utils;
+
 
 pub mod codegen;
 #[macro_use]

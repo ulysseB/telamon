@@ -11,7 +11,7 @@ pub use self::signature::Builder as SignatureBuilder;
 
 use crate::ir;
 use std;
-use telamon_utils::*;
+use utils::*;
 
 /// A groups of dimensions that act as a single logical dimension.
 #[derive(Clone)]

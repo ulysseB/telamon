@@ -15,7 +15,7 @@ use crate::ir;
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::ToPrimitive;
-use telamon_utils::*;
+use utils::*;
 
 #[derive(Default)]
 struct Namer {

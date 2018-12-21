@@ -4,7 +4,8 @@ use itertools::Itertools;
 use crate::model::Level;
 use crate::search_space::{Domain, Order, SearchSpace};
 use std::cmp::Ordering;
-use telamon_utils::*;
+
+use utils::*;
 
 /// A poi t of the code that is relevant to compute latency.
 #[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]

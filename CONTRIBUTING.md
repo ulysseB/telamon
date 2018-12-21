@@ -32,9 +32,9 @@ Support tools are stored in the `tools/` folder. Currently, the two main tools a
 
 By default, we stick to the [official style guidelines][official_guide]. Here we only list
 modifications and precisions:
-* Lines should be at most 90 characters long.
-* Every function, structure or trait definiton should have a corresponding comment.
-* Every test or binary should start with `let _ = env_logger::try_init()` and include the
+ Lines should be at most 90 characters long.
+ Every function, structure or trait definiton should have a corresponding comment.
+ Every test or binary should start with `let _ = env_logger::try_init()` and include the
   [env_logger](crates.io/crates/env_logger) crate to enable logging.
 
 [official_guide]:(https://github.com/rust-lang-nursery/fmt-rfcs/blob/master/guide/guide.md)

@@ -6,7 +6,7 @@ use crate::model::{self, HwPressure};
 use num_cpus;
 use crate::search_space::*;
 use std::io::Write;
-use telamon_utils::*;
+use utils::*;
 
 /// Represents CUDA GPUs.
 #[derive(Clone)]

@@ -5,6 +5,7 @@ use num::integer::div_rem;
 use num::rational::Ratio;
 use rand::Rng;
 use std;
+use utils::unwrap;
 
 /// Represents a value that can be used as a `Function` argument. Must ensures the type is a scalar
 /// and does not contains any reference.  Also must ensure that no two implementers should have the

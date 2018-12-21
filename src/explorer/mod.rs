@@ -31,6 +31,7 @@ use futures::prelude::*;
 use futures::{channel, SinkExt};
 use log::{info, warn};
 use std::sync;
+use utils::unwrap;
 
 // TODO(cc_perf): To improve performances, the following should be considered:
 // * choices should be ranked once and then reused for multiple steps.

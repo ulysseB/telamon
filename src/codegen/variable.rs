@@ -3,7 +3,7 @@ use crate::codegen;
 use indexmap::IndexMap;
 use crate::ir;
 use crate::search_space::*;
-use telamon_utils::*;
+use utils::*;
 
 /// Wraps an `ir::Variable` to expose specified decisions.
 pub struct Variable<'a> {

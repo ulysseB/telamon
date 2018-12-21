@@ -6,7 +6,7 @@ use num::rational::Ratio;
 use std;
 use std::borrow::Cow;
 use std::collections::hash_map;
-use telamon_utils::*;
+use utils::*;
 
 // TODO(cleanup): refactor
 

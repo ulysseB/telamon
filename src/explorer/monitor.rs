@@ -13,6 +13,7 @@ use std;
 use std::sync;
 use std::time::{Duration, Instant};
 use tokio_timer::*;
+use utils::unwrap;
 
 pub type MonitorMessage<'a, T> = (Candidate<'a>, f64, <T as Store<'a>>::PayLoad);
 

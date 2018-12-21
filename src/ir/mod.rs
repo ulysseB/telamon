@@ -16,6 +16,7 @@ mod variable;
 use itertools::Itertools;
 use std;
 use std::marker::PhantomData;
+use utils::unwrap;
 
 pub use self::access_pattern::{AccessPattern, Stride};
 pub use self::dim_map::DimMap;

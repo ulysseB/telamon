@@ -3,6 +3,7 @@ use crate::device::Context;
 use crate::ir;
 use num::{bigint::ToBigUint, Integer, ToPrimitive, Zero};
 use crate::search_space::{NumSet, SearchSpace};
+use utils::*;
 
 /// A span of values.
 #[derive(Debug, Copy, Clone)]

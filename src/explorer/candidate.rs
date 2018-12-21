@@ -10,6 +10,7 @@ use std;
 use std::cmp::{Ordering, PartialOrd};
 
 use itertools::Itertools;
+use utils::unwrap;
 
 /// A node of the search tree.
 #[derive(Clone)]

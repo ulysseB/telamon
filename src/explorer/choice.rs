@@ -4,6 +4,7 @@ use crate::ir::{self, Statement};
 use itertools::Itertools;
 use crate::search_space::{Action, Domain, NumSet, Order, SearchSpace};
 use log::trace;
+use utils::unwrap;
 
 /// Either a regular action or a manually applied action.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

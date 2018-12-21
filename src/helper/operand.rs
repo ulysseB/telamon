@@ -4,6 +4,8 @@ use crate::helper::{Builder, LogicalDim};
 use crate::ir::Operand::*;
 use crate::ir::{self, dim, InstId, Operand};
 
+use utils::unwrap;
+
 /// Represents values that can be turned into an `Operand`.
 pub trait AutoOperand<'a> {
     /// Returns the corresponding `Operand`.

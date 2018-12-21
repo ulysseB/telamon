@@ -14,7 +14,8 @@ use crate::model::{size, BottleneckLevel, DependencyMap, FastBound, HwPressure, 
 use crate::search_space::{DimKind, Domain, SearchSpace};
 use std;
 use std::cmp::Ordering;
-use telamon_utils::*;
+
+use utils::*;
 
 /// A level at which latency should be computed.
 #[derive(Debug)]
