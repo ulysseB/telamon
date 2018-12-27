@@ -64,7 +64,12 @@ pub trait TreePolicy: Sized {
 
     /// Record an evaluation across an edge.  This indicates that an evaluation of `eval` was found
     /// in a path which contains edge `node.children[idx]`.
-    fn backpropagate(&self, node: &Node<'_, Self::EdgeStats>, idx: usize, eval: f64);
+    fn backpropagate(
+        &self,
+        node: &Node<'_, Self::EdgeStats>,
+        idx: usize,
+        eval: Option<f64>,
+    );
 }
 
 /// Global tree statistics
@@ -204,10 +209,10 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
 
     /// Removes the dead ends along the given path. Assumes the path points to a dead-end.
     /// Updates bounds along the way.
-    fn clean_deadends(&self, mut path: Path<'a, P::EdgeStats>, cut: f64) {
+    fn clean_deadends(&self, path: &Path<'a, P::EdgeStats>, cut: f64) {
         // A `None` bound indicates the path points to a dead-end.
         let mut bound = None;
-        while let Some((node, pos)) = path.0.pop() {
+        for &(ref node, pos) in &path.0 {
             if let Some(node) = node.upgrade() {
                 if let Some(bound) = bound {
                     node.children[pos].update_bound(bound);
@@ -234,6 +239,18 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
         } else {
             trace!("killing root");
             *unwrap!(self.root.write()) = None;
+        }
+    }
+
+    fn backpropagate(&self, mut path: Path<'a, P::EdgeStats>, eval: Option<f64>) {
+        if eval.is_none() {
+            self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
+        }
+
+        while let Some((node, idx)) = path.0.pop() {
+            if let Some(node) = node.upgrade() {
+                self.policy.backpropagate(&node, idx, eval);
+            }
         }
     }
 }
@@ -290,10 +307,6 @@ where
             thread: format!("{:?}", std::thread::current().id()),
         })));
 
-        // TODO(bclement):
-        // let eval = if eval.is_finite() { Some(eval) } else { None }
-        // self.backpropagate(path, eval);
-
         // Collect the actions into a vector.  Note that the `actions` Sequence is in reverse order
         // (i.e. first actions last), so we also reverse the vector to simplify the indexing below.
         let actions = {
@@ -311,10 +324,14 @@ where
                     // TODO(bclement): We should probably have a `record` method which bundles
                     // `down` and `up`.
                     stats.down();
-                    stats.up(eval);
+                    stats.up(if eval.is_finite() { Some(eval) } else { None });
                 }
 
-                self.policy.backpropagate(&node, idx, eval);
+                self.policy.backpropagate(
+                    &node,
+                    idx,
+                    if eval.is_finite() { Some(eval) } else { None },
+                );
             }
         }
     }
@@ -348,12 +365,8 @@ where
             loop {
                 match state {
                     SubTree::Empty => {
-                        self.clean_deadends(path, env.cut);
-
-                        self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
-
-                        // TODO(bclement): go back to undo what we did; THIS IS DEADEND.
-                        // self.backpropagate(path, None);
+                        self.clean_deadends(&path, env.cut);
+                        self.backpropagate(path, None);
                         break;
                     }
                     SubTree::Leaf(leaf) => {
@@ -406,9 +419,8 @@ where
                             return Some((implementation, path));
                         } else {
                             // Deadend reached while exploring; restart from the root
-                            // TODO(bclement): We should backpropagate explicitely here.
-                            self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
-                            // self.backpropagate(path, None);
+                            // TODO(bclement): Consider whether we should do a soft restart.
+                            self.backpropagate(path, None);
 
                             break;
                         }
@@ -655,7 +667,7 @@ impl TreePolicy for NewNodeOrder {
         )
     }
 
-    fn backpropagate(&self, _node: &Node<()>, _idx: usize, _eval: f64) {}
+    fn backpropagate(&self, _node: &Node<()>, _idx: usize, _eval: Option<f64>) {}
 }
 
 /// TODO(bclement):  The UCT formula is wrong, because 1) we are optimising as a reward while we
@@ -722,7 +734,7 @@ impl UCTPolicy {
     fn value(&self, stats: &UCTStats) -> (f64, usize) {
         use self::config::ValueReduction;
 
-        let num_visits = stats.num_visits();
+        let num_visits = stats.num_visits_with_virtual_loss();
 
         let value = match self.value_reduction {
             ValueReduction::Best => stats.best_evaluation(),
@@ -802,8 +814,8 @@ impl TreePolicy for UCTPolicy {
             })
     }
 
-    fn backpropagate(&self, node: &Node<UCTStats>, idx: usize, eval: f64) {
-        node.children[idx].stats.up(self.reward(eval));
+    fn backpropagate(&self, node: &Node<UCTStats>, idx: usize, eval: Option<f64>) {
+        node.children[idx].stats.up(eval.map(|x| self.reward(x)));
     }
 }
 
@@ -813,6 +825,8 @@ pub struct UCTStats {
     sum_evaluations: RwLock<f64>,
 
     num_visits: AtomicUsize,
+
+    virtual_loss: AtomicUsize,
 }
 
 impl Default for UCTStats {
@@ -821,24 +835,32 @@ impl Default for UCTStats {
             best_evaluation: RwLock::new(std::f64::NEG_INFINITY),
             sum_evaluations: RwLock::new(0f64),
             num_visits: AtomicUsize::new(0),
+            virtual_loss: AtomicUsize::new(0),
         }
     }
 }
 
 impl UCTStats {
     fn down(&self) {
-        self.num_visits.fetch_add(1, Ordering::Relaxed);
+        self.virtual_loss.fetch_add(1, Ordering::Relaxed);
     }
 
-    fn up(&self, eval: f64) {
-        {
-            let mut best = unwrap!(self.best_evaluation.write());
-            if eval > *best {
-                *best = eval;
+    fn up(&self, eval: Option<f64>) {
+        if let Some(eval) = eval {
+            {
+                let mut best = unwrap!(self.best_evaluation.write());
+                if eval > *best {
+                    *best = eval;
+                }
             }
-        }
 
-        *unwrap!(self.sum_evaluations.write()) += eval;
+            *unwrap!(self.sum_evaluations.write()) += eval;
+
+            self.num_visits.fetch_add(1, Ordering::Relaxed);
+            self.virtual_loss.fetch_sub(1, Ordering::Relaxed);
+        } else {
+            self.virtual_loss.fetch_sub(1, Ordering::Relaxed);
+        }
     }
 
     fn best_evaluation(&self) -> f64 {
@@ -849,8 +871,9 @@ impl UCTStats {
         *unwrap!(self.sum_evaluations.read())
     }
 
-    fn num_visits(&self) -> usize {
+    fn num_visits_with_virtual_loss(&self) -> usize {
         self.num_visits.load(Ordering::Relaxed)
+            + self.virtual_loss.load(Ordering::Relaxed)
     }
 }
 
@@ -977,7 +1000,7 @@ impl TreePolicy for TAGPolicy {
             })
     }
 
-    fn backpropagate(&self, node: &Node<TAGStats>, idx: usize, eval: f64) {
+    fn backpropagate(&self, node: &Node<TAGStats>, idx: usize, eval: Option<f64>) {
         node.children[idx].stats.up(eval, self.topk)
     }
 }
@@ -1004,12 +1027,20 @@ impl Default for TAGStats {
 impl TAGStats {
     /// Called when the edge is selected during a descent
     fn down(&self) {
+        // TODO(bclement): Add virtual loss
         self.num_visits.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Called when backpropagating across this edge after an evaluation
-    fn up(&self, eval: f64, topk: usize) {
-        unwrap!(self.evaluations.write()).record(eval, topk);
+    fn up(&self, eval: Option<f64>, topk: usize) {
+        if let Some(eval) = eval {
+            unwrap!(self.evaluations.write()).record(eval, topk);
+
+        // TODO(bclement): Remove virtual loss, add 1
+        } else {
+            // TODO(bclement): Remove virtual loss
+            self.num_visits.fetch_sub(1, Ordering::Relaxed);
+        }
     }
 
     /// The number of visits through this edge.
