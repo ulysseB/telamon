@@ -105,6 +105,15 @@ pub enum TreeEvent {
         // Thread ID
         thread: String,
     },
+
+    DeadEnd {
+        actions: List<choice::ActionEx>,
+        expanded: bool,
+    },
+
+    Expansion {
+        actions: List<choice::ActionEx>,
+    },
 }
 
 #[derive(Debug)]
@@ -212,7 +221,7 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
     fn clean_deadends(&self, path: &Path<'a, P::EdgeStats>, cut: f64) {
         // A `None` bound indicates the path points to a dead-end.
         let mut bound = None;
-        for &(ref node, pos) in &path.0 {
+        for &(ref node, pos) in path.0.iter().rev() {
             if let Some(node) = node.upgrade() {
                 if let Some(bound) = bound {
                     node.children[pos].update_bound(bound);
@@ -242,12 +251,12 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
         }
     }
 
-    fn backpropagate(&self, mut path: Path<'a, P::EdgeStats>, eval: Option<f64>) {
+    fn backpropagate(&self, path: &Path<'a, P::EdgeStats>, eval: Option<f64>) {
         if eval.is_none() {
             self.stats.num_deadends.fetch_add(1, Ordering::Relaxed);
         }
 
-        while let Some((node, idx)) = path.0.pop() {
+        for &(ref node, idx) in path.0.iter().rev() {
             if let Some(node) = node.upgrade() {
                 self.policy.backpropagate(&node, idx, eval);
             }
@@ -317,6 +326,7 @@ where
 
         while let Some((node, idx)) = path.0.pop() {
             if let Some(node) = node.upgrade() {
+                // Only consider actions in the rollout part
                 for action in &actions[path.0.len()..] {
                     let mut amaf = unwrap!(node.amaf.write());
                     let stats =
@@ -365,11 +375,14 @@ where
             loop {
                 match state {
                     SubTree::Empty => {
+                        // TODO(log): Log the deadend.
                         self.clean_deadends(&path, env.cut);
-                        self.backpropagate(path, None);
+                        self.backpropagate(&path, None);
                         break;
                     }
                     SubTree::Leaf(leaf) => {
+                        let actions = leaf.actions.clone();
+
                         let selected = if self.config.use_rave_rollouts {
                             local_selection::rave(
                                 &env.config.choice_ordering,
@@ -416,11 +429,22 @@ where
                         };
 
                         if let Some(implementation) = selected {
+                            unwrap!(self.log.send(LogMessage::Event(
+                                TreeEvent::Expansion { actions }
+                            )));
+
                             return Some((implementation, path));
                         } else {
                             // Deadend reached while exploring; restart from the root
                             // TODO(bclement): Consider whether we should do a soft restart.
-                            self.backpropagate(path, None);
+                            unwrap!(self.log.send(LogMessage::Event(
+                                TreeEvent::DeadEnd {
+                                    expanded: false,
+                                    actions,
+                                }
+                            )));
+
+                            self.backpropagate(&path, None);
 
                             break;
                         }
@@ -432,6 +456,7 @@ where
                             path.0.push((Arc::downgrade(&node), idx));
                             state = node.children[idx].descend(&env);
                         } else {
+                            // TODO: log the deadend.  But we don't have the actions anymore...
                             trace!("no child available: deadend");
                             state = SubTree::Empty;
                         }
