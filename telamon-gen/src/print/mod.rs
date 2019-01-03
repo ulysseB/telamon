@@ -7,6 +7,9 @@ mod value;
 // Re-export commonly used items.
 use crate::print::ast::Context;
 use crate::print::value::{Value, ValueIdent};
+use lazy_static::lazy_static;
+use log::debug;
+use serde_derive::Serialize;
 
 /// Reset the state of the printer. This should only be used for testing purpose, when
 /// one whats to compare the outputs of the printer oer sevral runs.
@@ -60,7 +63,7 @@ macro_rules! render {
     ($($tmpl:ident)/+, $(< $($lifetime: tt),* >, )*
      $($name:ident: $ty: ty = $val: expr),*) => {
         {
-            #[derive(Serialize)]
+            #[derive(serde_derive::Serialize)]
             struct Data<$($($lifetime),*),*> { $($name: $ty),* };
             let data = Data { $($name: $val),* };
             let template = concat_sep!(".", $(stringify!($tmpl)),*);

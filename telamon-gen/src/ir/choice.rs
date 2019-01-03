@@ -2,6 +2,7 @@
 use crate::ir::{self, Adaptable};
 use itertools::{Either, Itertools};
 use std;
+use serde_derive::Serialize;
 use utils::*;
 
 pub fn dummy_choice() -> Choice {

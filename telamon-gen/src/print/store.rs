@@ -2,6 +2,7 @@
 use crate::print;
 use proc_macro2::{Ident, Span};
 use quote::ToTokens;
+use serde_derive::Serialize;
 
 /// Returns the name of the getter method for `choice`. If `get_old` is true, the method
 /// will only take into account decisions that have been propagated.

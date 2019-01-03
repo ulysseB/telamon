@@ -4,6 +4,7 @@ use itertools::Itertools;
 use std;
 use std::collections::hash_map;
 use utils::*;
+use log::debug;
 
 /// Lists the rules to apply for each combinaison of input.
 #[derive(Debug)]

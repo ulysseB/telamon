@@ -8,8 +8,9 @@ use crate::ast::{
     CounterBody, CounterVal, HashSet, VarDef, VarMap,
 };
 use crate::ir::{self, Adaptable};
-use itertools::Itertools;
 use crate::lexer::Spanned;
+use itertools::Itertools;
+use log::trace;
 use utils::RcStr;
 
 #[derive(Clone, Debug)]

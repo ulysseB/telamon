@@ -11,6 +11,7 @@ use crate::ir;
 use crate::lexer::Spanned;
 
 use itertools::Itertools;
+use log::trace;
 use utils::{HashMap, RcStr};
 
 /// A toplevel definition or constraint.

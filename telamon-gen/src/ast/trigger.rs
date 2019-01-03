@@ -7,6 +7,7 @@ use crate::ir::{self, Adaptable};
 use utils::RcStr;
 
 use itertools::Itertools;
+use log::trace;
 
 #[derive(Clone, Debug)]
 pub struct TriggerDef {

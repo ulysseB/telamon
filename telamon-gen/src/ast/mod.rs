@@ -13,6 +13,7 @@ use indexmap::IndexMap;
 use crate::ir;
 use itertools::Itertools;
 use crate::print;
+use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::{hash_map, BTreeSet};
 use std::fmt;

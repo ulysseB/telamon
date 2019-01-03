@@ -4,6 +4,7 @@ use crate::ir;
 use crate::ir::SetRef;
 use itertools::Itertools;
 use crate::print;
+use lazy_static::lazy_static;
 use quote::ToTokens;
 use serde::{Serialize, Serializer};
 use std::fmt::{self, Display, Formatter};

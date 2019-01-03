@@ -1,6 +1,7 @@
 //! Prints the manipulation of individual domains.
 use crate::ir;
 use crate::print;
+use lazy_static::lazy_static;
 use proc_macro2::{Delimiter, Group, Ident, Span, TokenStream};
 use quote::{self, ToTokens};
 use std::sync::atomic::{AtomicUsize, Ordering};

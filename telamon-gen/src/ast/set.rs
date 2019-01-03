@@ -14,6 +14,7 @@ use crate::ast::{
 
 use indexmap::IndexMap;
 use itertools::Itertools;
+use log::trace;
 use crate::lexer::Spanned;
 use utils::{HashMap, RcStr};
 

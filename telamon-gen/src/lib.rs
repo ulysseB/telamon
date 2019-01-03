@@ -1,27 +1,5 @@
 // Enables `quote!` to work on bigger chunks of code.
 #![recursion_limit = "256"]
-#[cfg(test)]
-extern crate env_logger;
-extern crate handlebars;
-#[macro_use]
-extern crate lazy_static;
-#[macro_use]
-extern crate log;
-extern crate itertools;
-extern crate proc_macro2;
-extern crate regex;
-extern crate rustfmt;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-extern crate errno;
-#[macro_use]
-extern crate failure;
-extern crate indexmap;
-extern crate libc;
-
-extern crate lalrpop_util;
 
 use utils::generated_file;
 pub mod ast;
@@ -36,6 +14,7 @@ mod truth_table;
 
 use utils::*;
 
+use log::{debug, info};
 use std::{fs, io, path};
 
 
