@@ -95,9 +95,6 @@ dot = "0.1"
 csv = "1"
 utils = {package = "telamon-utils", path = "telamon-utils"}
 
-#[dependencies.telamon-utils]
-#path = "telamon-utils"
-
 [dependencies.tokio-timer]
 git = "https://github.com/ulysseB/tokio-timer.git"
 

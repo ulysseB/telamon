@@ -17,7 +17,6 @@ mod iterator;
 pub mod multimap;
 pub mod ndarray;
 mod vec_set;
-//#[macro_use]
 pub mod unwrap;
 pub mod tfrecord;
 
