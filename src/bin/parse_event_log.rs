@@ -1,13 +1,5 @@
 /// This allows dumping a CSV of all the evaluations that were performed during a run, as well as a
 /// graphviz (.dot) graph recapitulating the run.
-extern crate bincode;
-extern crate csv;
-extern crate dot;
-extern crate flate2;
-extern crate structopt;
-
-extern crate telamon;
-extern crate telamon_utils as utils;
 
 use std::collections::HashMap;
 
