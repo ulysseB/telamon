@@ -1,6 +1,7 @@
 //! Error management for IR creation.
 use crate::ir;
 use std;
+use failure::Fail;
 
 /// Errors that can be raised when creating an IR instance.
 #[derive(Debug, Fail)]

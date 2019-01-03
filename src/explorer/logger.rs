@@ -8,9 +8,10 @@ use std::time::Duration;
 use bincode;
 use crate::explorer::config::Config;
 use crate::explorer::monitor;
+use failure::Fail;
 use flate2::write::{GzEncoder, ZlibEncoder};
 use flate2::Compression;
-use serde::ser::Serialize;
+use serde::{Serialize, Deserialize};
 
 use utils::tfrecord;
 use utils::tfrecord::RecordWriter;

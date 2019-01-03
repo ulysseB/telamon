@@ -4,6 +4,7 @@ use std;
 use utils::*;
 use lazy_static::lazy_static;
 use log::trace;
+use serde::{Serialize, Deserialize};
 
 /// Provides a unique identifier for iteration dimensions.
 #[derive(

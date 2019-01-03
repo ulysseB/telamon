@@ -8,6 +8,7 @@ use crate::model::{self, HwPressure};
 use crate::search_space::{DimKind, Domain, InstFlag, MemSpace, SearchSpace};
 use std;
 use std::io::Write;
+use serde::{Serialize, Deserialize};
 use utils::*;
 
 // FIXME: fix performance model

@@ -7,6 +7,8 @@ use std;
 use std::sync::Arc;
 use num;
 use itertools::Itertools;
+use serde::Serialize;
+use serde::Deserialize;
 #[allow(unused_imports)]
 use utils::*;
 

@@ -1,5 +1,6 @@
 //! Describes the instructions.
 use crate::ir::{self, DimMapScope, LoweringMap, Operand, Operator, Statement, StmtId, Type};
+use serde::{Serialize, Deserialize};
 use std;
 
 use utils::*;
