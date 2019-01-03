@@ -1,8 +1,8 @@
 //! Prints the definition and manipulation of choices.
-use ir::{self, SetRef};
-use print;
+use crate::ir::{self, SetRef};
+use crate::print;
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::ToTokens;
+use quote::{ToTokens, quote};
 
 /// Prints the ids of the variables of a `ChoiceInstance`.
 pub fn ids(choice_instance: &ir::ChoiceInstance, ctx: &print::Context) -> TokenStream {
@@ -43,9 +43,9 @@ pub fn restrict(
 }
 
 // TODO(cleanup): use TokenStream insted of templates
-use ir::Adaptable;
+use crate::ir::Adaptable;
 use itertools::Itertools;
-use print::{ast, filter, value_set};
+use crate::print::{ast, filter, value_set};
 
 #[derive(Serialize)]
 pub struct Ast<'a> {
@@ -205,7 +205,7 @@ struct ComputeCounter<'a> {
 
 impl<'a> ComputeCounter<'a> {
     fn new(choice: &'a ir::Choice, ir_desc: &'a ir::IrDesc) -> Option<Self> {
-        use ir::ChoiceDef::Counter;
+        use crate::ir::ChoiceDef::Counter;
         let def = choice.choice_def();
         if let Counter {
             ref incr_iter,
@@ -585,7 +585,7 @@ struct RestrictCounter<'a> {
 
 impl<'a> RestrictCounter<'a> {
     fn new(choice: &'a ir::Choice, ir_desc: &'a ir::IrDesc) -> Option<Self> {
-        use ir::ChoiceDef::Counter;
+        use crate::ir::ChoiceDef::Counter;
         let def = choice.choice_def();
         if let Counter {
             ref incr_iter,

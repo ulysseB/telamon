@@ -1,14 +1,14 @@
 use std::ops::Deref;
 
-use ast::constrain::Constraint;
-use ast::context::CheckerContext;
-use ast::error::{Hint, TypeError};
-use ast::{
+use crate::ast::constrain::Constraint;
+use crate::ast::context::CheckerContext;
+use crate::ast::error::{Hint, TypeError};
+use crate::ast::{
     ChoiceInstance, Condition, EnumStatement, EnumStatements, HashSet, SetRef, Symmetry,
     VarDef, VarMap,
 };
-use ir;
-use lexer::Spanned;
+use crate::ir;
+use crate::lexer::Spanned;
 
 use itertools::Itertools;
 use utils::{HashMap, RcStr};
@@ -277,7 +277,7 @@ impl EnumDef {
     fn register_enum(&self, ir_desc: &mut ir::IrDesc, constraints: &mut Vec<Constraint>) {
         trace!("defining enum {}", self.name.data);
         let doc = self.doc.clone().map(RcStr::new);
-        let enum_name = RcStr::new(::to_type_name(&self.name.data));
+        let enum_name = RcStr::new(crate::to_type_name(&self.name.data));
         let choice_name = RcStr::new(self.name.data.to_owned());
         let mut stmts = EnumStatements::default();
         for s in self.statements.iter().cloned() {

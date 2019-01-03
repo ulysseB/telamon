@@ -4,6 +4,7 @@ mod integer_set;
 mod range;
 
 use proc_macro2::TokenStream;
+use quote::quote;
 
 /// Returns the token stream defining the runtime.
 pub fn get() -> TokenStream {

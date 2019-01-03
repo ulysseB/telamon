@@ -1,5 +1,6 @@
 //! Define a domain to represent bounded sets of disjoint integers.
 use proc_macro2::TokenStream;
+use quote::quote;
 // FIXME: move insert to the domain
 // FIXME: move all to IntegerDomain
 

@@ -1,5 +1,5 @@
 //! Prints the domain store definition.
-use print;
+use crate::print;
 use proc_macro2::{Ident, Span};
 use quote::ToTokens;
 
@@ -15,12 +15,12 @@ pub fn getter_name(choice: &str, get_old: bool) -> Ident {
 }
 
 //TODO(cleanup): use TokenStream instead of templates
-use ir;
-use ir::SetRef;
+use crate::ir;
+use crate::ir::SetRef;
 use itertools::Itertools;
-use print::ast::{self, LoopNest, Variable};
-use print::choice::Ast as ChoiceAst;
-use print::value_set;
+use crate::print::ast::{self, LoopNest, Variable};
+use crate::print::choice::Ast as ChoiceAst;
+use crate::print::value_set;
 use std::iter;
 use utils::*;
 

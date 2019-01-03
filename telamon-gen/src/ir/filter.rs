@@ -1,5 +1,5 @@
 //! Filter on choices.
-use ir::{self, Adaptable, SetRef};
+use crate::ir::{self, Adaptable, SetRef};
 use itertools::Itertools;
 use std;
 use std::collections::BTreeSet;

@@ -1,9 +1,9 @@
 //! AST building blocks for the generated code.
 use indexmap::IndexMap;
-use ir;
-use ir::SetRef;
+use crate::ir;
+use crate::ir::SetRef;
 use itertools::Itertools;
-use print;
+use crate::print;
 use quote::ToTokens;
 use serde::{Serialize, Serializer};
 use std::fmt::{self, Display, Formatter};

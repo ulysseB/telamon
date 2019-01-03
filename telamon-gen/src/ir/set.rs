@@ -1,5 +1,5 @@
 use indexmap::IndexMap;
-use ir::{self, Adaptable};
+use crate::ir::{self, Adaptable};
 use std;
 use std::borrow::Borrow;
 use std::fmt;

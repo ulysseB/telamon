@@ -1,5 +1,5 @@
 //! Truth tables.
-use ir;
+use crate::ir;
 use itertools::Itertools;
 use std;
 use std::collections::hash_map;
@@ -323,9 +323,9 @@ fn table_min_split<'a, 'b>(table: &'a mut TableView<'b>) -> Option<TableSplit<'a
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use constraint::Constraint;
-    use ir;
-    use ir::test::{mk_enum_values_set, EvalContext};
+    use crate::constraint::Constraint;
+    use crate::ir;
+    use crate::ir::test::{mk_enum_values_set, EvalContext};
     use itertools::Itertools;
 
     /// Returns the values allowed by the given `Cell`.

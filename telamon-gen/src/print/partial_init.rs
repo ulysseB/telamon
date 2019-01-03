@@ -1,8 +1,8 @@
 /// Prints code that handles the insertion of new objects during the search.
-use ir::{self, SetRef};
-use print;
+use crate::ir::{self, SetRef};
+use crate::print;
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::ToTokens;
+use quote::{quote, ToTokens};
 
 /// Runs necessary filters after new objects are allocated. This only runs new filters on
 /// old objects.

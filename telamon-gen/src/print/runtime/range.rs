@@ -1,5 +1,6 @@
 //! Defines `Range` and `HalfRange` types.
 use proc_macro2::TokenStream;
+use quote::quote;
 
 /// Returns the tokens defining `Range` and `HalfRange`.
 pub fn get() -> TokenStream {

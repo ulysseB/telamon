@@ -1,9 +1,9 @@
-use ast::context::CheckerContext;
-use ast::error::TypeError;
-use ast::{type_check_code, Condition, VarDef, VarMap};
-use constraint::dedup_inputs;
+use crate::ast::context::CheckerContext;
+use crate::ast::error::TypeError;
+use crate::ast::{type_check_code, Condition, VarDef, VarMap};
+use crate::constraint::dedup_inputs;
 
-use ir::{self, Adaptable};
+use crate::ir::{self, Adaptable};
 use utils::RcStr;
 
 use itertools::Itertools;

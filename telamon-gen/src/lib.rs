@@ -9,16 +9,12 @@ extern crate lazy_static;
 extern crate log;
 extern crate itertools;
 extern crate proc_macro2;
-#[macro_use]
-extern crate quote;
 extern crate regex;
 extern crate rustfmt;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
-#[macro_use]
-extern crate telamon_utils as utils;
 extern crate errno;
 #[macro_use]
 extern crate failure;
@@ -27,6 +23,7 @@ extern crate libc;
 
 extern crate lalrpop_util;
 
+use utils::generated_file;
 pub mod ast;
 mod constraint;
 mod flat_filter;
@@ -37,9 +34,10 @@ pub mod error;
 mod print;
 mod truth_table;
 
+use utils::*;
+
 use std::{fs, io, path};
 
-use utils::*;
 
 /// Converts a choice name to a rust type name.
 fn to_type_name(name: &str) -> String {

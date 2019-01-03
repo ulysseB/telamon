@@ -1,8 +1,8 @@
 //! Lalrpop parser for constraints description.
-use ast;
-use ir;
+use crate::ast;
+use crate::ir;
 
-use lexer::*;
+use crate::lexer::*;
 use utils::*;
 
 grammar;

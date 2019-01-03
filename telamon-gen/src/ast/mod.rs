@@ -10,16 +10,16 @@ mod set;
 mod trigger;
 
 use indexmap::IndexMap;
-use ir;
+use crate::ir;
 use itertools::Itertools;
-use print;
+use crate::print;
 use regex::Regex;
 use std::collections::{hash_map, BTreeSet};
 use std::fmt;
 use utils::{HashMap, HashSet, RcStr};
 
-pub use constraint::dedup_inputs;
-pub use constraint::Constraint as TypedConstraint;
+pub use crate::constraint::dedup_inputs;
+pub use crate::constraint::Constraint as TypedConstraint;
 
 pub use super::lexer::{Position, Spanned};
 

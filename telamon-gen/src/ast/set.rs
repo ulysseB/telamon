@@ -2,19 +2,19 @@ use std::iter::once;
 use std::mem;
 use std::ops::Deref;
 
-use ast::choice::{ChoiceDef, CounterDef};
-use ast::constrain::Constraint;
-use ast::context::CheckerContext;
-use ast::error::{Hint, TypeError};
-use ast::trigger::TriggerDef;
-use ast::{
+use crate::ast::choice::{ChoiceDef, CounterDef};
+use crate::ast::constrain::Constraint;
+use crate::ast::context::CheckerContext;
+use crate::ast::error::{Hint, TypeError};
+use crate::ast::trigger::TriggerDef;
+use crate::ast::{
     ir, print, Check, ChoiceInstance, Condition, CounterBody, CounterVal, Quotient,
     SetRef, VarDef, VarMap,
 };
 
 use indexmap::IndexMap;
 use itertools::Itertools;
-use lexer::Spanned;
+use crate::lexer::Spanned;
 use utils::{HashMap, RcStr};
 
 #[derive(Debug, Clone)]
@@ -401,7 +401,7 @@ impl SetDef {
         }
         let mut keymap: IndexMap<ir::SetDefKey, String> = IndexMap::default();
         let mut reverse = None;
-        for (key, var, mut value) in self
+        for (key, var, value) in self
             .keys
             .iter()
             .map(|(k, v, s)| (k.data, v, s))
