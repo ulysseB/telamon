@@ -26,8 +26,9 @@ extern crate crc;
 use std::fs::File;
 use std::io::{self, BufWriter, Read, Write};
 
-use self::byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
-use self::crc::crc32::checksum_castagnoli;
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use crc::crc32::checksum_castagnoli;
+use failure::Fail;
 use flate2::write::{GzEncoder, ZlibEncoder};
 
 /// The error type for errors occuring while reading a tfrecord file.
