@@ -109,5 +109,9 @@ where
             weighted_items.push(Weighted { weight, item: ind });
         }
     }
-    Some(WeightedChoice::new(&mut weighted_items).sample(&mut rng))
+    if weighted_items.is_empty() {
+        None
+    } else {
+        Some(WeightedChoice::new(&mut weighted_items).sample(&mut rng))
+    }
 }
