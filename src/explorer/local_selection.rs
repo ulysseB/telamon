@@ -110,8 +110,8 @@ where
         }
     }
     if weighted_items.is_empty() {
-        None 
+        None
     } else {
-    Some(WeightedChoice::new(&mut weighted_items).sample(&mut rng))
+        Some(WeightedChoice::new(&mut weighted_items).sample(&mut rng))
     }
 }
