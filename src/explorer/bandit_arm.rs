@@ -143,7 +143,9 @@ impl TreeEvent {
     pub fn actions(&self) -> impl Iterator<Item = &'_ choice::ActionEx> {
         match self {
             TreeEvent::Evaluation { actions, .. }
-            | TreeEvent::EvaluationV2 { actions, .. } => actions.iter(),
+            | TreeEvent::EvaluationV2 { actions, .. }
+            | TreeEvent::DeadEnd { actions, .. }
+            | TreeEvent::Expansion { actions, .. } => actions.iter(),
         }
     }
 
@@ -157,6 +159,9 @@ impl TreeEvent {
                 }
             }
             TreeEvent::EvaluationV2 { score, .. } => *score,
+            TreeEvent::DeadEnd { .. } | TreeEvent::Expansion { .. } => {
+                panic!("Invalid event.")
+            }
         }
     }
 
@@ -164,6 +169,9 @@ impl TreeEvent {
         match self {
             TreeEvent::Evaluation { .. } => Err(EventError::version_required(1, 2)),
             TreeEvent::EvaluationV2 { cut, .. } => Ok(*cut),
+            TreeEvent::DeadEnd { .. } | TreeEvent::Expansion { .. } => {
+                panic!("Invalid event.")
+            }
         }
     }
 
@@ -172,6 +180,9 @@ impl TreeEvent {
             TreeEvent::Evaluation { .. } => Err(EventError::version_required(1, 2)),
             TreeEvent::EvaluationV2 { time, .. } => {
                 Ok(std::time::Duration::from_nanos((time * 1e9) as u64))
+            }
+            TreeEvent::DeadEnd { .. } | TreeEvent::Expansion { .. } => {
+                panic!("Invalid event.")
             }
         }
     }
