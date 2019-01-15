@@ -228,6 +228,8 @@ pub struct TAGConfig {
     /// The biggest delta is, the more focused on the previous best candidates the
     /// exploration is.
     pub delta: f64,
+    /// Whether to backpropagate deadends.
+    pub bp_dead: bool,
 }
 
 impl Default for TAGConfig {
@@ -235,6 +237,7 @@ impl Default for TAGConfig {
         TAGConfig {
             topk: 10,
             delta: 1.,
+            bp_dead: false,
         }
     }
 }
