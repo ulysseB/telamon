@@ -111,7 +111,7 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
         Tree {
             root: SubTree::from(Node::from_candidates(candidates)).into(),
             stop: AtomicBool::new(false),
-            cut: RwLock::new(std::f64::INFINITY),
+            cut: RwLock::new(config.initial_cut.unwrap_or(std::f64::INFINITY)),
             config,
             policy,
             stats: TreeStats::default(),
