@@ -1,11 +1,8 @@
 //! Measures the memory used by an IR instance.
-extern crate env_logger;
-extern crate itertools;
-extern crate jemalloc_ctl;
 #[macro_use]
 extern crate lazy_static;
-#[macro_use]
-extern crate telamon_utils;
+
+use utils::unwrap;
 
 mod common;
 
