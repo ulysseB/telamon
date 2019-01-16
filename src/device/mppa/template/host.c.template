@@ -13,35 +13,32 @@
 #define UTASK_ERROR (1)
 
 typedef struct{{
-       long long core_toggle;
-       long long count[UTASK_BARRIER_NB];
-       long long rearm_count;
-       long long out_state;
+       long long count[UTASK_BARRIER_NB] __attribute((aligned(8)));
+       long long core_toggle __attribute((aligned(8)));
+       long long count_init;
 }}__utask_barrier_t;
 
-int my_pthread_barrier_init(pthread_barrier_t *barrier,
-                               const pthread_barrierattr_t *attr __attribute__((unused)),
-                               unsigned int count){{
-        int i;
-       if(barrier == NULL) return UTASK_ERROR;
-       *barrier = (pthread_barrier_t) malloc(sizeof(__utask_barrier_t));
-       if((void*)*barrier == NULL){{
-               errno = ENOMEM;
-               return UTASK_ERROR;
-       }}
-       __utask_barrier_t *__barrier = (__utask_barrier_t *)*barrier;
-       __barrier->core_toggle = 0;
-       for (i = 0; i < UTASK_BARRIER_NB; i++)
-       {{
-               __barrier->count[i] = count;
-       }}
-       __barrier->rearm_count = count;
-       __barrier->out_state = 0;
-       __builtin_k1_wpurge();
-       __builtin_k1_fence();
-       return UTASK_SUCCESS;
-}}
+int
+my_pthread_barrier_init(pthread_barrier_t *barrier,
+            const pthread_barrierattr_t *attr __attribute__((unused)),
+            unsigned int count)
+{{
+   *barrier = (pthread_barrier_t) malloc(sizeof(__utask_barrier_t));
+   if((void*)*barrier == NULL){{
+      errno = ENOMEM;
+      return UTASK_ERROR;
+   }}
+   __utask_barrier_t *__barrier = (__utask_barrier_t *)*barrier;
+   __barrier->core_toggle = 0;
+   __barrier->count[0] = count;
+   __barrier->count[1] = count;
+   __barrier->count_init = count;
+   __builtin_k1_wpurge();
+   __builtin_k1_fence();
+   mOS_dinval();
 
+   return UTASK_SUCCESS;
+}}
 
 typedef struct thread_dim_id {{
 pthread_barrier_t * barrier;
