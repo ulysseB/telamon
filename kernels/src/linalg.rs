@@ -210,7 +210,7 @@ where S: Scalar
 }
 
 /// Computes `y = (alpha*A + beta*B).x`.
-pub struct Gesummv<'a, S: Scalar> {
+pub struct Gesummv<'a, S: Scalar + PartialOrd> {
     m: i32,
     n: i32,
     alpha: S,
@@ -221,7 +221,7 @@ pub struct Gesummv<'a, S: Scalar> {
     y: Tensor<'a, S>,
 }
 
-impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
+impl<'a, S: Scalar + PartialOrd> Kernel<'a> for Gesummv<'a, S> {
     type Parameters = (i32, i32, bool);
     type ExpectedOutput = Array1<S>;
 
@@ -328,14 +328,26 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
             .zip_eq(expected)
             .any(|(&y0, &y1)| (y0 - y1).is_err_ok())
         {
-            let x = self.x.read_to_host(context);
-            let a = self.a.read_to_host(context);
-            let b = self.b.read_to_host(context);
+            //let x = self.x.read_to_host(context);
+            //let a = self.a.read_to_host(context);
+            //let b = self.b.read_to_host(context);
+            let min_err = y.iter()
+                .zip_eq(expected)
+                .map(|(&y0, &y1)| (y0 - y1))
+                .min_by(|e0, e1| unwrap!(e0.partial_cmp(e1)));
+            let max_err = y.iter()
+                .zip_eq(expected)
+                .map(|(&y0, &y1)| (y0 - y1))
+                .max_by(|e0, e1| unwrap!(e0.partial_cmp(e1)));
             Err(format!(
-                "expected: {}, got {} with alpha = {}, beta = {}, x = {}, a = {} and b \
-                 = {}",
-                expected, y, self.alpha, self.beta, x, a, b
+                "Got an error of {} or {} which is bigger than expected",
+                unwrap!(max_err), unwrap!(min_err)
             ))
+            //Err(format!(
+            //    "expected: {}, got {} with alpha = {}, beta = {}, x = {}, a = {} and b \
+            //     = {}",
+            //    expected, y, self.alpha, self.beta, x, a, b
+            //))
         } else {
             Ok(())
         }
@@ -343,7 +355,7 @@ impl<'a, S: Scalar> Kernel<'a> for Gesummv<'a, S> {
 }
 
 /// Computes `C = A.B`.
-pub struct MatMul<'a, S: Scalar> {
+pub struct MatMul<'a, S: Scalar + PartialOrd> {
     pub params: MatMulP,
     a: Tensor<'a, S>,
     b: Tensor<'a, S>,
@@ -396,7 +408,7 @@ impl MatMulP {
     }
 }
 
-impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
+impl<'a, S: Scalar + PartialOrd> Kernel<'a> for MatMul<'a, S> {
     type Parameters = MatMulP;
     type ExpectedOutput = Array2<S>;
 
@@ -524,11 +536,19 @@ impl<'a, S: Scalar> Kernel<'a> for MatMul<'a, S> {
             .zip_eq(expected)
             .any(|(&c0, &c1)| (c0 - c1).is_err_ok())
         {
-            let a = self.a.read_to_host(context);
-            let b = self.b.read_to_host(context);
+            let min_err = c.iter()
+                .zip_eq(expected)
+                .map(|(&c0, &c1)| (c0 - c1))
+                .min_by(|f1, f2| unwrap!(f1.partial_cmp(f2)))
+                ;
+            let max_err = c.iter()
+                .zip_eq(expected)
+                .map(|(&c0, &c1)| (c0 - c1))
+                .max_by(|f1, f2| unwrap!(f1.partial_cmp(f2)))
+                ;
             Err(format!(
-                "expected: {}, got {} with a = {} and b = {}",
-                expected, c, a, b
+                "got an error of {} or {} which is bigger than expected",
+                unwrap!(max_err), unwrap!(min_err)
             ))
         } else {
             Ok(())

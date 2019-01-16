@@ -1,8 +1,11 @@
+int err;
 thread_arg_t thread_args;
  thread_args.args = args;
  thread_dim_id_t tid;
  tid.t0 = 0;
  tid.barrier = &barrier;
  thread_args.tid = &tid;
-pthread_barrier_init(&barrier, NULL, 1);
+err = my_pthread_barrier_init(&barrier, NULL, 1);
+if (err) {{printf("err %d in BARRIER INIT\n", err); return;}}
+  else {{printf("INIT went well\n");}}
 exec_wrap((void *)&thread_args);

@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -6,6 +7,41 @@
 #include <mppa_async.h>
 #include <mppa_power.h>
 #include <mppa_remote.h>
+
+#define UTASK_BARRIER_NB (2)
+#define UTASK_SUCCESS (0)
+#define UTASK_ERROR (1)
+
+typedef struct{{
+       long long core_toggle;
+       long long count[UTASK_BARRIER_NB];
+       long long rearm_count;
+       long long out_state;
+}}__utask_barrier_t;
+
+int my_pthread_barrier_init(pthread_barrier_t *barrier,
+                               const pthread_barrierattr_t *attr __attribute__((unused)),
+                               unsigned int count){{
+        int i;
+       if(barrier == NULL) return UTASK_ERROR;
+       *barrier = (pthread_barrier_t) malloc(sizeof(__utask_barrier_t));
+       if((void*)*barrier == NULL){{
+               errno = ENOMEM;
+               return UTASK_ERROR;
+       }}
+       __utask_barrier_t *__barrier = (__utask_barrier_t *)*barrier;
+       __barrier->core_toggle = 0;
+       for (i = 0; i < UTASK_BARRIER_NB; i++)
+       {{
+               __barrier->count[i] = count;
+       }}
+       __barrier->rearm_count = count;
+       __barrier->out_state = 0;
+       __builtin_k1_wpurge();
+       __builtin_k1_fence();
+       return UTASK_SUCCESS;
+}}
+
 
 typedef struct thread_dim_id {{
 pthread_barrier_t * barrier;
@@ -42,4 +78,5 @@ void entry_point({cl_arg_def}, void* __timer_ptr) {{
   {thread_join}
   timestamp = __k1_read_dsu_timestamp() - timestamp;
   *(unsigned long *)__timer_ptr = timestamp;
+  printf("KERNEL END\n");
 }}

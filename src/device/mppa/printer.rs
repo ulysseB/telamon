@@ -56,7 +56,7 @@ impl MppaPrinter {
         // Compute thread indexes.
         for (ind, dim) in function.thread_dims().iter().enumerate() {
             decls.push(format!(
-                "{} = tid.t{};\n",
+                "{} = tid->t{};\n",
                 name_map.name_index(dim.id()),
                 ind
             ));
@@ -254,7 +254,7 @@ impl MppaPrinter {
         let mut tid_struct = String::new();
         for (ind, _) in func.thread_dims().iter().enumerate() {
             tid_struct.push_str(&format!(
-                "tids[{index}.t{dim_id} = d{dim_id};\n",
+                "tids[{index}].t{dim_id} = d{dim_id};\n",
                 index = self.build_index_call(func),
                 dim_id = ind
             ));
@@ -648,15 +648,15 @@ impl Printer for MppaPrinter {
     fn print_cond_jump(&mut self, label_id: &str, cond: &str) {
         unwrap!(writeln!(
             self.out_function,
-            "if({}) {{goto LABEL_{};}} else {{printf(\"PASSED LOOP {} \\n\");}}",
-            cond, label_id, label_id
+            "if({}) {{goto LABEL_{};}}",
+            cond, label_id
         ));
     }
 
     fn print_sync(&mut self) {
         unwrap!(writeln!(
             self.out_function,
-            "printf(\"NOW WAITING BARRIER\\n\");//pthread_barrier_wait(tid->barrier);"
+            "printf(\"WAITING AT BARRIER\\n\");if (pthread_barrier_wait(tid->barrier)) {{printf(\"barrier error\\n\"); return;}}else{{printf(\"WAITING SUCCESSFUL\\n\");}}\n",
         ));
     }
 }
