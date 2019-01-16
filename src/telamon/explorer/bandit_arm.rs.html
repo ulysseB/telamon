@@ -791,22 +791,6 @@
 <span id="791">791</span>
 <span id="792">792</span>
 <span id="793">793</span>
-<span id="794">794</span>
-<span id="795">795</span>
-<span id="796">796</span>
-<span id="797">797</span>
-<span id="798">798</span>
-<span id="799">799</span>
-<span id="800">800</span>
-<span id="801">801</span>
-<span id="802">802</span>
-<span id="803">803</span>
-<span id="804">804</span>
-<span id="805">805</span>
-<span id="806">806</span>
-<span id="807">807</span>
-<span id="808">808</span>
-<span id="809">809</span>
 </pre><pre class="rust ">
 <span class="doccomment">///! Exploration of the search space.</span>
 <span class="kw">use</span> <span class="ident">device</span>::<span class="ident">Context</span>;
@@ -901,7 +885,8 @@
 
 <span class="doccomment">/// A search tree to perform a multi-armed bandit search.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Tree</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, <span class="ident">P</span>: <span class="ident">TreePolicy</span><span class="op">&gt;</span> {
-    <span class="ident">root</span>: <span class="ident">Edge</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">P</span>::<span class="ident">EdgeStats</span><span class="op">&gt;</span>,
+    <span class="ident">root</span>: <span class="ident">RwLock</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">P</span>::<span class="ident">EdgeStats</span><span class="op">&gt;&gt;</span><span class="op">&gt;&gt;</span>,
+    <span class="ident">bound</span>: <span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
     <span class="ident">stop</span>: <span class="ident">AtomicBool</span>,
     <span class="ident">cut</span>: <span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
     <span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">BanditConfig</span>,
@@ -918,10 +903,14 @@
         <span class="ident">policy</span>: <span class="ident">P</span>,
         <span class="ident">log_sender</span>: <span class="ident">std</span>::<span class="ident">sync</span>::<span class="ident">mpsc</span>::<span class="ident">SyncSender</span><span class="op">&lt;</span><span class="ident">LogMessage</span><span class="op">&lt;</span><span class="ident">TreeEvent</span><span class="op">&gt;&gt;</span>,
     ) <span class="op">-&gt;</span> <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="ident">root</span> <span class="op">=</span> <span class="ident">Node</span>::<span class="ident">try_from_candidates</span>(<span class="ident">candidates</span>);
+        <span class="kw">let</span> <span class="ident">bound</span> <span class="op">=</span> <span class="ident">root</span>.<span class="ident">as_ref</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">root</span><span class="op">|</span> <span class="ident">root</span>.<span class="ident">bound</span>());
+
         <span class="ident">Tree</span> {
-            <span class="ident">root</span>: <span class="ident">SubTree</span>::<span class="ident">from</span>(<span class="ident">Node</span>::<span class="ident">from_candidates</span>(<span class="ident">candidates</span>)).<span class="ident">into</span>(),
+            <span class="ident">root</span>: <span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">root</span>),
             <span class="ident">stop</span>: <span class="ident">AtomicBool</span>::<span class="ident">new</span>(<span class="bool-val">false</span>),
-            <span class="ident">cut</span>: <span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span>),
+            <span class="ident">cut</span>: <span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">config</span>.<span class="ident">initial_cut</span>.<span class="ident">unwrap_or</span>(<span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span>)),
+            <span class="ident">bound</span>: <span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">bound</span>.<span class="ident">unwrap_or</span>(<span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span>)),
             <span class="ident">config</span>,
             <span class="ident">policy</span>,
             <span class="ident">stats</span>: <span class="ident">TreeStats</span>::<span class="ident">default</span>(),
@@ -957,10 +946,10 @@
         <span class="comment">// If we did not returned before, we have reached the root of the tree.</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">bound</span>) <span class="op">=</span> <span class="ident">bound</span> {
             <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;upgrading root bound to {}&quot;</span>, <span class="ident">bound</span>);
-            <span class="self">self</span>.<span class="ident">root</span>.<span class="ident">update_bound</span>(<span class="ident">bound</span>);
+            <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">bound</span>.<span class="ident">write</span>()) <span class="op">=</span> <span class="ident">bound</span>;
         } <span class="kw">else</span> {
             <span class="macro">trace</span><span class="macro">!</span>(<span class="string">&quot;killing root&quot;</span>);
-            <span class="self">self</span>.<span class="ident">root</span>.<span class="ident">kill</span>();
+            <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">root</span>.<span class="ident">write</span>()) <span class="op">=</span> <span class="prelude-val">None</span>;
         }
     }
 }
@@ -976,15 +965,19 @@
 
     <span class="kw">fn</span> <span class="ident">update_cut</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">new_cut</span>: <span class="ident">f64</span>) {
         <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">cut</span>.<span class="ident">write</span>()) <span class="op">=</span> <span class="ident">new_cut</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stack</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">root</span>.<span class="ident">trim</span>(<span class="ident">new_cut</span>).<span class="ident">into_iter</span>().<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;&gt;</span>();
-        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">subtree</span>) <span class="op">=</span> <span class="ident">stack</span>.<span class="ident">pop</span>() {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">SubTree</span>::<span class="ident">InternalNode</span>(<span class="ident">node</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="ident">subtree</span>.<span class="ident">read</span>()) {
-                <span class="kw">for</span> <span class="ident">edge</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">node</span>.<span class="ident">children</span> {
-                    <span class="ident">stack</span>.<span class="ident">extend</span>(<span class="ident">edge</span>.<span class="ident">trim</span>(<span class="ident">new_cut</span>))
-                }
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stack</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">root</span>.<span class="ident">read</span>()) {
+            <span class="prelude-val">Some</span>(<span class="ident">node</span>) <span class="op">=&gt;</span> <span class="macro">vec</span><span class="macro">!</span>[<span class="ident">Arc</span>::<span class="ident">clone</span>(<span class="ident">node</span>)],
+            <span class="prelude-val">None</span> <span class="op">=&gt;</span> <span class="ident">Vec</span>::<span class="ident">new</span>(),
+        };
+
+        <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">node</span>) <span class="op">=</span> <span class="ident">stack</span>.<span class="ident">pop</span>() {
+            <span class="kw">for</span> <span class="ident">edge</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">node</span>.<span class="ident">children</span> {
+                <span class="ident">stack</span>.<span class="ident">extend</span>(<span class="ident">edge</span>.<span class="ident">trim</span>(<span class="ident">new_cut</span>))
             }
         }
-        <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;trimming finished&quot;</span>);
+
+        <span class="macro">info</span><span class="macro">!</span>(<span class="string">&quot;cut: trimming finished&quot;</span>);
     }
 
     <span class="kw">fn</span> <span class="ident">commit_evaluation</span>(
@@ -1021,11 +1014,13 @@
             };
 
             <span class="comment">// Bail out early if the root is a deadend</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">state</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">root</span>.<span class="ident">descend</span>(<span class="kw-2">&amp;</span><span class="ident">env</span>);
-            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">SubTree</span>::<span class="ident">Empty</span> <span class="op">=</span> <span class="ident">state</span> {
-                <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;stopping: deadend at root&quot;</span>);
-                <span class="kw">return</span> <span class="prelude-val">None</span>;
-            }
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">SubTree</span>::<span class="ident">InternalNode</span>(<span class="kw">match</span> <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">root</span>.<span class="ident">read</span>()) {
+                <span class="prelude-val">Some</span>(<span class="ident">node</span>) <span class="op">=&gt;</span> <span class="ident">Arc</span>::<span class="ident">clone</span>(<span class="ident">node</span>),
+                <span class="prelude-val">None</span> <span class="op">=&gt;</span> {
+                    <span class="macro">debug</span><span class="macro">!</span>(<span class="string">&quot;stopping: deadend at root&quot;</span>);
+                    <span class="kw">return</span> <span class="prelude-val">None</span>;
+                }
+            });
 
             <span class="comment">// Descent loop</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">path</span> <span class="op">=</span> <span class="ident">Path</span>::<span class="ident">default</span>();
@@ -1097,52 +1092,16 @@
     <span class="ident">Empty</span>,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">Default</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span><span class="op">&gt;&gt;</span> <span class="kw">for</span> <span class="ident">SubTree</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">node</span>: <span class="ident">Node</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="kw">if</span> <span class="ident">node</span>.<span class="ident">is_deadend</span>() {
-            <span class="ident">SubTree</span>::<span class="ident">Empty</span>
-        } <span class="kw">else</span> {
-            <span class="ident">SubTree</span>::<span class="ident">InternalNode</span>(<span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">node</span>))
-        }
-    }
-}
-
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">Default</span><span class="op">&gt;</span> <span class="ident">SubTree</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">bound</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">SubTree</span>::<span class="ident">InternalNode</span>(<span class="ident">node</span>) <span class="op">=&gt;</span> <span class="ident">node</span>.<span class="ident">bound</span>(),
-            <span class="ident">SubTree</span>::<span class="ident">Leaf</span>(<span class="ident">candidate</span>) <span class="op">=&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">candidate</span>.<span class="ident">bound</span>.<span class="ident">value</span>()),
-            <span class="ident">SubTree</span>::<span class="ident">Empty</span> <span class="op">=&gt;</span> <span class="prelude-val">None</span>,
-        }
-    }
-}
-
 <span class="doccomment">/// An edge in the tree</span>
 <span class="kw">struct</span> <span class="ident">Edge</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span><span class="op">&gt;</span> {
     <span class="doccomment">/// The destination of the edge.  This may not be expanded yet.</span>
-    <span class="ident">dst</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">SubTree</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span><span class="op">&gt;&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">dst</span>: <span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">SubTree</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span><span class="op">&gt;&gt;</span>,
 
     <span class="doccomment">/// Edge statistics</span>
     <span class="ident">stats</span>: <span class="ident">E</span>,
 
     <span class="doccomment">/// The current bound for the pointed-to node.</span>
     <span class="ident">bound</span>: <span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
-}
-
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">Default</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">SubTree</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span><span class="op">&gt;&gt;</span> <span class="kw">for</span> <span class="ident">Edge</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">subtree</span>: <span class="ident">SubTree</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="ident">Edge</span> {
-            <span class="ident">stats</span>: <span class="ident">E</span>::<span class="ident">default</span>(),
-            <span class="ident">bound</span>: <span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">subtree</span>.<span class="ident">bound</span>().<span class="ident">unwrap_or</span>(<span class="ident">std</span>::<span class="ident">f64</span>::<span class="ident">INFINITY</span>)),
-            <span class="ident">dst</span>: <span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">subtree</span>)),
-        }
-    }
-}
-
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">Default</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span> <span class="kw">for</span> <span class="ident">Edge</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">candidate</span>: <span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="ident">SubTree</span>::<span class="ident">Leaf</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">candidate</span>)).<span class="ident">into</span>()
-    }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">Default</span><span class="op">&gt;</span> <span class="ident">Edge</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span><span class="op">&gt;</span> {
@@ -1166,14 +1125,17 @@
 
     <span class="doccomment">/// Trims the branch if it has an evaluation time guaranteed to be worse than</span>
     <span class="doccomment">/// `cut`. Returns the childrens to trim if any,</span>
-    <span class="kw">fn</span> <span class="ident">trim</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">cut</span>: <span class="ident">f64</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">SubTree</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span><span class="op">&gt;&gt;</span><span class="op">&gt;&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">trim</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">cut</span>: <span class="ident">f64</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span><span class="op">&gt;&gt;</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">bound</span>() <span class="op">&gt;=</span> <span class="ident">cut</span> {
             <span class="self">self</span>.<span class="ident">kill</span>();
             <span class="prelude-val">None</span>
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="kw">let</span> <span class="ident">SubTree</span>::<span class="ident">InternalNode</span>(<span class="kw">_</span>) <span class="op">=</span> <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">dst</span>.<span class="ident">read</span>()) {
-            <span class="prelude-val">Some</span>(<span class="ident">Arc</span>::<span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">dst</span>))
         } <span class="kw">else</span> {
-            <span class="prelude-val">None</span>
+            <span class="kw">let</span> <span class="ident">subtree</span> <span class="op">=</span> <span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">dst</span>.<span class="ident">read</span>());
+            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">SubTree</span>::<span class="ident">InternalNode</span>(<span class="ident">node</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="ident">subtree</span> {
+                <span class="prelude-val">Some</span>(<span class="ident">Arc</span>::<span class="ident">clone</span>(<span class="ident">node</span>))
+            } <span class="kw">else</span> {
+                <span class="prelude-val">None</span>
+            }
         }
     }
 
@@ -1188,7 +1150,7 @@
                         <span class="kw">return</span> <span class="ident">SubTree</span>::<span class="ident">InternalNode</span>(<span class="ident">Arc</span>::<span class="ident">clone</span>(<span class="ident">node</span>));
                     }
                     <span class="ident">SubTree</span>::<span class="ident">Leaf</span>(<span class="kw">_</span>) <span class="op">=&gt;</span> {
-                        <span class="comment">// Need write access, see below</span>
+                        <span class="comment">// Need write access to expand, see below</span>
                     }
                 }
             }
@@ -1198,23 +1160,22 @@
             <span class="comment">// leaf below and loop again (where the first read access should not fail).</span>
             {
                 <span class="kw">let</span> <span class="ident">dst</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw-2">*</span><span class="macro">unwrap</span><span class="macro">!</span>(<span class="self">self</span>.<span class="ident">dst</span>.<span class="ident">write</span>());
-                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">SubTree</span>::<span class="ident">Leaf</span>(<span class="kw">_</span>) <span class="op">=</span> <span class="ident">dst</span> {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">SubTree</span>::<span class="ident">Leaf</span>(<span class="kw">_</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="ident">dst</span> {
                     <span class="comment">// We got write access to the leaf; expand it.</span>
                     <span class="kw">if</span> <span class="kw">let</span> <span class="ident">SubTree</span>::<span class="ident">Leaf</span>(<span class="ident">candidate</span>) <span class="op">=</span>
                         <span class="ident">std</span>::<span class="ident">mem</span>::<span class="ident">replace</span>(<span class="ident">dst</span>, <span class="ident">SubTree</span>::<span class="ident">Empty</span>)
                     {
                         <span class="kw">let</span> <span class="ident">choice</span> <span class="op">=</span> <span class="ident">env</span>.<span class="ident">list_actions</span>(<span class="kw-2">&amp;</span><span class="ident">candidate</span>);
                         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">choice</span>) <span class="op">=</span> <span class="ident">choice</span> {
-                            <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node</span>::<span class="ident">from_candidates</span>(
+                            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">node</span>) <span class="op">=</span> <span class="ident">Node</span>::<span class="ident">try_from_candidates</span>(
                                 <span class="ident">env</span>.<span class="ident">apply_choice</span>(<span class="kw-2">&amp;</span><span class="ident">candidate</span>, <span class="ident">choice</span>),
-                            );
-                            <span class="kw">if</span> <span class="ident">node</span>.<span class="ident">is_deadend</span>() {
+                            ) {
+                                <span class="comment">// Newly expanded node, with no stats yet.</span>
+                                <span class="kw-2">*</span><span class="ident">dst</span> <span class="op">=</span> <span class="ident">SubTree</span>::<span class="ident">InternalNode</span>(<span class="ident">node</span>);
+                                <span class="kw">return</span> <span class="ident">SubTree</span>::<span class="ident">Leaf</span>(<span class="ident">candidate</span>);
+                            } <span class="kw">else</span> {
                                 <span class="comment">// Actual dead-end; leave the SubTree::Empty there.</span>
                                 <span class="kw">return</span> <span class="ident">SubTree</span>::<span class="ident">Empty</span>;
-                            } <span class="kw">else</span> {
-                                <span class="comment">// Newly expanded node, with no stats yet.</span>
-                                <span class="kw-2">*</span><span class="ident">dst</span> <span class="op">=</span> <span class="ident">SubTree</span>::<span class="ident">InternalNode</span>(<span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">node</span>));
-                                <span class="kw">return</span> <span class="ident">SubTree</span>::<span class="ident">Leaf</span>(<span class="ident">candidate</span>);
                             }
                         } <span class="kw">else</span> {
                             <span class="comment">// Fully specified implementation; we leave the SubTree::Empty here because if</span>
@@ -1244,9 +1205,20 @@
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span>: <span class="ident">Default</span><span class="op">&gt;</span> <span class="ident">Node</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">E</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Creates a new children containing the given candidates, if any.</span>
-    <span class="kw">fn</span> <span class="ident">from_candidates</span>(<span class="ident">candidates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>) <span class="op">-&gt;</span> <span class="self">Self</span> {
-        <span class="ident">Node</span> {
-            <span class="ident">children</span>: <span class="ident">candidates</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Edge</span>::<span class="ident">from</span>).<span class="ident">collect</span>(),
+    <span class="kw">fn</span> <span class="ident">try_from_candidates</span>(<span class="ident">candidates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Candidate</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;&gt;</span>) <span class="op">-&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;&gt;</span> {
+        <span class="kw">if</span> <span class="ident">candidates</span>.<span class="ident">is_empty</span>() {
+            <span class="prelude-val">None</span>
+        } <span class="kw">else</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">Arc</span>::<span class="ident">new</span>(<span class="ident">Node</span> {
+                <span class="ident">children</span>: <span class="ident">candidates</span>
+                    .<span class="ident">into_iter</span>()
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">candidate</span><span class="op">|</span> <span class="ident">Edge</span> {
+                        <span class="ident">bound</span>: <span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">candidate</span>.<span class="ident">bound</span>.<span class="ident">value</span>()),
+                        <span class="ident">dst</span>: <span class="ident">RwLock</span>::<span class="ident">new</span>(<span class="ident">SubTree</span>::<span class="ident">Leaf</span>(<span class="ident">Box</span>::<span class="ident">new</span>(<span class="ident">candidate</span>))),
+                        <span class="ident">stats</span>: <span class="ident">Default</span>::<span class="ident">default</span>(),
+                    })
+                    .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;&gt;</span>(),
+            }))
         }
     }
 
@@ -1256,10 +1228,6 @@
             .<span class="ident">iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">edge</span><span class="op">|</span> <span class="ident">edge</span>.<span class="ident">bound</span>())
             .<span class="ident">min_by</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">lhs</span>, <span class="kw-2">&amp;</span><span class="ident">rhs</span><span class="op">|</span> <span class="ident">cmp_f64</span>(<span class="ident">lhs</span>, <span class="ident">rhs</span>))
-    }
-
-    <span class="kw">fn</span> <span class="ident">is_deadend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-&gt;</span> <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">bound</span>().<span class="ident">is_none</span>()
     }
 
     <span class="doccomment">/// Trim children (that is, replace with an empty `SubTree`) children whose bounds are</span>

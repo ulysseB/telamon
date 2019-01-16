@@ -419,6 +419,10 @@
 <span id="419">419</span>
 <span id="420">420</span>
 <span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
 </pre><pre class="rust ">
 <span class="doccomment">//! Defines a structure to store the configuration of the exploration. The configuration</span>
 <span class="doccomment">//! is read from the `Setting.toml` file if it exists. Some parameters can be overridden</span>
@@ -604,6 +608,9 @@
 <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span>)]</span>
 <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">deny_unknown_fields</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BanditConfig</span> {
+    <span class="doccomment">/// Indicates the initial cut to use (in nanoseconds).  This can be used when an existing</span>
+    <span class="doccomment">/// program (e.g. from a precedent run) is known to take that much amount of time.</span>
+    <span class="kw">pub</span> <span class="ident">initial_cut</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Indicates how to select between nodes of the search tree when none of their</span>
     <span class="doccomment">/// children have been evaluated.</span>
     <span class="kw">pub</span> <span class="ident">new_nodes_order</span>: <span class="ident">NewNodeOrder</span>,
@@ -697,6 +704,7 @@
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">BanditConfig</span> {
     <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-&gt;</span> <span class="self">Self</span> {
         <span class="ident">BanditConfig</span> {
+            <span class="ident">initial_cut</span>: <span class="prelude-val">None</span>,
             <span class="ident">new_nodes_order</span>: <span class="ident">NewNodeOrder</span>::<span class="ident">default</span>(),
             <span class="ident">tree_policy</span>: <span class="ident">TreePolicy</span>::<span class="ident">default</span>(),
             <span class="ident">choice_ordering</span>: <span class="ident">ChoiceOrdering</span>::<span class="ident">default</span>(),
