@@ -249,6 +249,14 @@ where
                 }
             });
 
+            // Rollout configuration
+            let rollout = local_selection::Rollout {
+                choice_order: &env.config.choice_ordering,
+                node_order: &env.config.new_nodes_order,
+                context: env.context,
+                cut: env.cut,
+            };
+
             // Descent loop
             let mut path = Path::default();
             loop {
@@ -260,15 +268,28 @@ where
                         break;
                     }
                     SubTree::Leaf(leaf) => {
-                        if let Some(implementation) = local_selection::descend(
-                            &env.config.choice_ordering,
-                            env.config.new_nodes_order,
-                            env.context,
-                            *leaf,
-                            env.cut,
-                        ) {
+                        let mut rollout_path = Vec::new();
+                        if let Some(implementation) =
+                            rollout.descend_with_path(*leaf, &mut rollout_path)
+                        {
                             return Some((implementation, path));
                         } else {
+                            let mut live = false;
+                            for (i, candidate) in rollout_path.iter().rev().enumerate() {
+                                if rollout.is_live(candidate) {
+                                    live = true;
+                                    debug!("Backtrack {} steps after deadend.", i);
+                                    break;
+                                }
+                            }
+
+                            if !live {
+                                debug!(
+                                    "Leaf is dead (with depth at least {}).",
+                                    rollout_path.len()
+                                );
+                            }
+
                             // Deadend reached while exploring; restart from the root
                             self.backpropagate(&path, None);
 
