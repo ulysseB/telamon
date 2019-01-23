@@ -262,7 +262,8 @@ where
             loop {
                 match state {
                     SubTree::Empty => {
-                        // TODO(log): Log the deadend.
+                        info!("Deadend found in the tree.");
+
                         self.clean_deadends(&path, env.cut);
                         self.backpropagate(&path, None);
                         break;
@@ -274,20 +275,26 @@ where
                         {
                             return Some((implementation, path));
                         } else {
-                            let mut live = false;
-                            for (i, candidate) in rollout_path.iter().rev().enumerate() {
-                                if rollout.is_live(candidate) {
-                                    live = true;
-                                    debug!("Backtrack {} steps after deadend.", i);
-                                    break;
-                                }
-                            }
+                            info!("Deadend found during rollout.");
 
-                            if !live {
-                                debug!(
-                                    "Leaf is dead (with depth at least {}).",
-                                    rollout_path.len()
-                                );
+                            if log_enabled!(log::Level::Debug) {
+                                let mut live = false;
+                                for (i, candidate) in
+                                    rollout_path.iter().rev().enumerate()
+                                {
+                                    if rollout.is_live(candidate) {
+                                        live = true;
+                                        debug!("Backtrack {} steps after deadend.", i);
+                                        break;
+                                    }
+                                }
+
+                                if !live {
+                                    debug!(
+                                        "Leaf is dead (with depth at least {}).",
+                                        rollout_path.len()
+                                    );
+                                }
                             }
 
                             // Deadend reached while exploring; restart from the root
