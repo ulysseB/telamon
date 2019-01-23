@@ -273,6 +273,8 @@ where
                         if let Some(implementation) =
                             rollout.descend_with_path(*leaf, &mut rollout_path)
                         {
+                            info!("Implementation found.");
+
                             return Some((implementation, path));
                         } else {
                             info!("Deadend found during rollout.");
