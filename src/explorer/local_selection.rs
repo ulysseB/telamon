@@ -8,6 +8,100 @@ use rand::prelude::*;
 use std;
 use utils::*;
 
+/// A random rollout configuration
+pub struct Rollout<'a> {
+    /// The order in which choices should be considered during the rollout
+    pub choice_order: &'a ChoiceOrdering,
+    /// The policy to use when selecting among the available actions
+    pub node_order: &'a NewNodeOrder,
+    /// The context to use for propagation
+    pub context: &'a Context,
+    /// Current best score.  Used in a branch-and-bound fashion with the lower-bound from the
+    /// performance model, and possibly in other policy-specific computations.
+    pub cut: f64,
+}
+
+pub enum RolloutError {
+    /// The candidate is a dead-end
+    DeadEnd,
+    /// The candidate is fully specified
+    Implementation,
+}
+
+impl<'a> Rollout<'a> {
+    pub fn is_live(&self, candidate: &Candidate<'_>) -> bool {
+        if candidate.bound.value() > self.cut {
+            return false;
+        }
+
+        if let Some(choice) = choice::list(self.choice_order, &candidate.space).next() {
+            for action in choice {
+                if let Some(child) = candidate.apply_decision(self.context, action).ok() {
+                    if self.is_live(&child) {
+                        // Fully-specified candidate found in this subtree
+                        return true;
+                    }
+                }
+            }
+
+            false
+        } else {
+            // This is a fully-specified candidate
+            true
+        }
+    }
+
+    /// Perform one rollout step: select a set of actions according to the choice ordering, apply
+    /// them, and select among the resulting candidates according to the rollout policy.
+    fn step<'c>(&self, candidate: &Candidate<'c>) -> Result<Candidate<'c>, RolloutError> {
+        if let Some(choice) = choice::list(self.choice_order, &candidate.space).next() {
+            let mut children = candidate.apply_choice(self.context, choice);
+            if let Some(idx) = self.node_order.pick_candidate(&children, self.cut) {
+                Ok(children.swap_remove(idx))
+            } else {
+                Err(RolloutError::DeadEnd)
+            }
+        } else {
+            Err(RolloutError::Implementation)
+        }
+    }
+
+    /// Repeatedly perform rollout steps on the `candidate` until it is fully specified or a
+    /// deadend is reached, in which case `None` is returned.
+    pub fn descend<'c>(&self, mut candidate: Candidate<'c>) -> Option<Candidate<'c>> {
+        loop {
+            match self.step(&candidate) {
+                Ok(next) => candidate = next,
+                Err(RolloutError::DeadEnd) => break None,
+                Err(RolloutError::Implementation) => break Some(candidate),
+            }
+        }
+    }
+
+    /// Identical to `descend`, except that all intermediate candidates (including the initial
+    /// candidate) are appended to the back of the `path`.  This makes it easier to backtrack or
+    /// investigate the tree locally after a dead-end.
+    pub fn descend_with_path<'c>(
+        &self,
+        mut candidate: Candidate<'c>,
+        path: &mut Vec<Candidate<'c>>,
+    ) -> Option<Candidate<'c>> {
+        loop {
+            match self.step(&candidate) {
+                Ok(next) => {
+                    path.push(candidate);
+                    candidate = next;
+                }
+                Err(RolloutError::Implementation) => break Some(candidate),
+                Err(RolloutError::DeadEnd) => {
+                    path.push(candidate);
+                    break None;
+                }
+            }
+        }
+    }
+}
+
 /// A recursive function that takes a candidate and expands it until we have a completely specified
 /// candidate that we can pass to the evaluator, or we find a dead-end
 pub fn descend<'a>(
@@ -17,16 +111,13 @@ pub fn descend<'a>(
     candidate: Candidate<'a>,
     cut: f64,
 ) -> Option<Candidate<'a>> {
-    //let choice_opt = choice::list(&candidate.space).next();
-    let choice_opt = choice::list(choice_order, &candidate.space).next();
-    if let Some(choice) = choice_opt {
-        let mut new_nodes = candidate.apply_choice(context, choice);
-        let idx = node_order.pick_candidate(&new_nodes, cut)?;
-        let node = new_nodes.swap_remove(idx);
-        descend(choice_order, node_order, context, node, cut)
-    } else {
-        Some(candidate)
+    Rollout {
+        choice_order,
+        node_order: &node_order,
+        context,
+        cut,
     }
+    .descend(candidate)
 }
 
 impl NewNodeOrder {
