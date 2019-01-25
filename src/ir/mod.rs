@@ -190,6 +190,13 @@ impl LoweredDimMap {
     }
 }
 
+/// Helper trait for types used as keys in a sparse vector.  Used for creating the values for
+/// key iteration.
+pub trait SparseKey: Into<usize> {
+    /// Create a new sparse key from an usize.
+    fn from_usize(key: usize) -> Self;
+}
+
 /// A vector with holes. This provides a similar interface as a
 /// standard `Vec` does, but also provides a `set_lazy` method which
 /// can be used to assign new values past the end of the vector and
@@ -208,7 +215,7 @@ pub(crate) struct SparseVec<I, T> {
 
 impl<T, I> SparseVec<I, T>
 where
-    I: Into<usize>,
+    I: SparseKey,
 {
     /// Creates a new sparse vector.
     pub fn new() -> Self {
@@ -291,11 +298,27 @@ where
     pub fn iter_mut<'a>(&'a mut self) -> impl Iterator<Item = &'a mut T> {
         self.vec.iter_mut().filter_map(Option::as_mut)
     }
+
+    /// Returns an iterator over all the keys in the sparse vector, including holes.
+    pub fn dense_keys(&'_ self) -> SparseVecDenseKeys<I> {
+        SparseVecDenseKeys {
+            range: 0..self.capacity,
+            _marker: PhantomData,
+        }
+    }
+
+    /// Returns an iterator over all the elements of the sparse vector, including holes.
+    pub fn dense_values(&'_ self) -> SparseVecDenseValues<'_, T> {
+        SparseVecDenseValues {
+            iter: self.vec.iter(),
+            holes: self.capacity - self.vec.len(),
+        }
+    }
 }
 
 impl<I, T> Default for SparseVec<I, T>
 where
-    I: Into<usize>,
+    I: SparseKey,
 {
     fn default() -> Self {
         SparseVec::new()
@@ -311,12 +334,101 @@ impl<I, T> IntoIterator for SparseVec<I, T> {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct SparseVecDenseKeys<I> {
+    range: std::ops::Range<usize>,
+    _marker: PhantomData<I>,
+}
+
+impl<I> Iterator for SparseVecDenseKeys<I>
+where
+    I: SparseKey,
+{
+    type Item = I;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.range.next().map(I::from_usize)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.len();
+        (len, Some(len))
+    }
+}
+
+impl<I> std::iter::FusedIterator for SparseVecDenseKeys<I> where I: SparseKey {}
+
+impl<I> ExactSizeIterator for SparseVecDenseKeys<I>
+where
+    I: SparseKey,
+{
+    fn len(&self) -> usize {
+        self.range.len()
+    }
+}
+
+impl<I> DoubleEndedIterator for SparseVecDenseKeys<I>
+where
+    I: SparseKey,
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.range.next_back().map(I::from_usize)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SparseVecDenseValues<'a, T> {
+    iter: std::slice::Iter<'a, Option<T>>,
+    holes: usize,
+}
+
+impl<'a, T> Iterator for SparseVecDenseValues<'a, T> {
+    type Item = Option<&'a T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(item) = self.iter.next() {
+            Some(item.as_ref())
+        } else if self.holes > 0 {
+            self.holes -= 1;
+            Some(None)
+        } else {
+            None
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.len();
+        (len, Some(len))
+    }
+}
+
+impl<'a, T> std::iter::FusedIterator for SparseVecDenseValues<'a, T> {}
+
+impl<'a, T> ExactSizeIterator for SparseVecDenseValues<'a, T> {
+    fn len(&self) -> usize {
+        self.iter.len() + self.holes
+    }
+}
+
+impl<'a, T> DoubleEndedIterator for SparseVecDenseValues<'a, T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.holes > 0 {
+            self.holes -= 1;
+            Some(None)
+        } else if let Some(item) = self.iter.next_back() {
+            Some(item.as_ref())
+        } else {
+            None
+        }
+    }
+}
+
 /// Implements the indexing operation (`vec[index]`). The `index` must
 /// be of type `I` as declared in the `SparseVec` type. Panics when
 /// accessing an index which is out of bounds *or* contains a hole.
 impl<T, I> ::std::ops::Index<I> for SparseVec<I, T>
 where
-    I: Into<usize>,
+    I: SparseKey,
 {
     type Output = T;
 
@@ -331,7 +443,7 @@ where
 /// contains a hole.
 impl<T, I> ::std::ops::IndexMut<I> for SparseVec<I, T>
 where
-    I: Into<usize>,
+    I: SparseKey,
 {
     fn index_mut(&mut self, index: I) -> &mut T {
         unwrap!(self.vec[index.into()].as_mut())
@@ -340,7 +452,7 @@ where
 
 impl<I, T> std::iter::Extend<T> for SparseVec<I, T>
 where
-    I: Into<usize>,
+    I: SparseKey,
 {
     fn extend<ITER: IntoIterator<Item = T>>(&mut self, iter: ITER) {
         self.make_holes();

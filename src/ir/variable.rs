@@ -10,8 +10,14 @@ use utils::*;
 pub struct VarId(pub u16);
 
 impl From<VarId> for usize {
-    fn from(val_id: VarId) -> Self {
-        val_id.0 as usize
+    fn from(var_id: VarId) -> Self {
+        var_id.0 as usize
+    }
+}
+
+impl ir::SparseKey for VarId {
+    fn from_usize(key: usize) -> Self {
+        VarId(key as u16)
     }
 }
 

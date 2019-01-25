@@ -1,5 +1,5 @@
 //! Represents iteration dimensions.
-use ir::{self, Statement};
+use ir::{self, SparseKey, Statement};
 use std;
 use utils::*;
 
@@ -13,6 +13,12 @@ pub struct DimId(pub u32);
 impl Into<usize> for DimId {
     fn into(self) -> usize {
         self.0 as usize
+    }
+}
+
+impl SparseKey for DimId {
+    fn from_usize(key: usize) -> Self {
+        DimId(key as u32)
     }
 }
 
@@ -322,6 +328,12 @@ pub struct DimMappingId(pub u16);
 impl From<DimMappingId> for usize {
     fn from(id: DimMappingId) -> usize {
         id.0 as usize
+    }
+}
+
+impl SparseKey for DimMappingId {
+    fn from_usize(key: usize) -> Self {
+        DimMappingId(key as u16)
     }
 }
 

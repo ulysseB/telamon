@@ -1,5 +1,5 @@
 //! A module for handling accesses to the device memory.
-use ir::{self, dim, InstId, Type};
+use ir::{self, dim, InstId, SparseKey, Type};
 use utils::*;
 
 // TODO(cleanup): move layouts into internal blocks.
@@ -12,6 +12,12 @@ pub struct MemId(pub u32);
 impl From<MemId> for usize {
     fn from(id: MemId) -> usize {
         id.0 as usize
+    }
+}
+
+impl SparseKey for MemId {
+    fn from_usize(key: usize) -> Self {
+        MemId(key as u32)
     }
 }
 

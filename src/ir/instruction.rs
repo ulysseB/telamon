@@ -1,5 +1,7 @@
 //! Describes the instructions.
-use ir::{self, DimMapScope, LoweringMap, Operand, Operator, Statement, StmtId, Type};
+use ir::{
+    self, DimMapScope, LoweringMap, Operand, Operator, SparseKey, Statement, StmtId, Type,
+};
 use std;
 use utils::*;
 
@@ -10,9 +12,15 @@ use utils::*;
 #[repr(transparent)]
 pub struct InstId(pub u32);
 
-impl Into<usize> for InstId {
-    fn into(self) -> usize {
-        self.0 as usize
+impl From<InstId> for usize {
+    fn from(id: InstId) -> usize {
+        id.0 as usize
+    }
+}
+
+impl SparseKey for InstId {
+    fn from_usize(key: usize) -> Self {
+        InstId(key as u32)
     }
 }
 
