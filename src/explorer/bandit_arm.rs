@@ -87,10 +87,60 @@ impl Default for TreeStats {
 }
 
 #[derive(Serialize, Deserialize)]
+pub enum DeadEndSource {
+    /// Dead-end encountered in the tree
+    Tree,
+    /// Dead-end encountered in the rollout phase
+    Rollout {
+        /// List of actions defining the dead-end candidate
+        actions: List<choice::ActionEx>,
+        /// Depth in the tree.  The remaining actions were selected during rollout.
+        depth: usize,
+        /// Performance model bound
+        bound: f64,
+        /// Current cut value
+        cut: f64,
+    },
+}
+
+/// The possible tree events.
+/// WARNING:  Changing the enums *will break* any pre-existing eventlog files.  Adding new cases
+/// *at the end only* is safe.
+#[derive(Serialize, Deserialize)]
 pub enum TreeEvent {
     Evaluation {
         actions: List<choice::ActionEx>,
         score: f64,
+    },
+
+    /// A fully-specified implementation was found and evaluated
+    EvaluationV2 {
+        /// List of actions defining the implementation
+        actions: List<choice::ActionEx>,
+        /// Depth in the tree.  The remaining actions were selected during rollout.
+        depth: usize,
+        /// Execution time
+        score: f64,
+        /// Performance model lower bound
+        bound: f64,
+        /// Cut value when the implementation was found
+        cut: f64,
+        /// Time at which the implementation was found
+        start_time: f64,
+        /// Time at which the evaluation finished
+        end_time: f64,
+        /// ID of the thread that found this implementation
+        thread: String,
+    },
+
+    /// A dead-end was reached
+    DeadEnd {
+        /// Source of this deadend
+        source: DeadEndSource,
+        /// Time at which the deadend was found after the start of the program
+        time: f64,
+        /// ID of the thread that found the deadend
+        thread: String,
     },
 }
 
@@ -104,6 +154,7 @@ pub struct Tree<'a, 'b, P: TreePolicy> {
     policy: P,
     stats: TreeStats,
     log: std::sync::mpsc::SyncSender<LogMessage<TreeEvent>>,
+    start_time: std::time::Instant,
 }
 
 impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
@@ -126,7 +177,17 @@ impl<'a, 'b, P: TreePolicy> Tree<'a, 'b, P> {
             policy,
             stats: TreeStats::default(),
             log: log_sender,
+            start_time: std::time::Instant::now(),
         }
+    }
+
+    fn thread(&self) -> String {
+        format!("{:?}", std::thread::current().id())
+    }
+
+    fn timestamp(&self) -> f64 {
+        let time = self.start_time.elapsed();
+        time.as_secs() as f64 + time.subsec_nanos() as f64 * 1e-9
     }
 
     /// Removes the dead ends along the given path. Assumes the path points to a dead-end.
@@ -182,7 +243,7 @@ where
     P: Send + Sync,
     P::EdgeStats: Send + Sync,
 {
-    type PayLoad = Path<'a, P::EdgeStats>;
+    type PayLoad = ImplInfo<'a, P::EdgeStats>;
 
     type Event = TreeEvent;
 
@@ -206,15 +267,21 @@ where
     fn commit_evaluation(
         &self,
         actions: &List<choice::ActionEx>,
-        mut path: Self::PayLoad,
+        mut info: Self::PayLoad,
         eval: f64,
     ) {
-        unwrap!(self.log.send(LogMessage::Event(TreeEvent::Evaluation {
+        unwrap!(self.log.send(LogMessage::Event(TreeEvent::EvaluationV2 {
             actions: actions.clone(),
+            depth: info.path.0.len(),
             score: eval,
+            bound: info.bound,
+            cut: info.cut,
+            start_time: info.time,
+            end_time: self.timestamp(),
+            thread: info.thread,
         })));
 
-        while let Some((node, idx)) = path.0.pop() {
+        while let Some((node, idx)) = info.path.0.pop() {
             if let Some(node) = node.upgrade() {
                 self.policy.backpropagate(
                     &node,
@@ -263,6 +330,11 @@ where
                 match state {
                     SubTree::Empty => {
                         info!("Deadend found in the tree.");
+                        unwrap!(self.log.send(LogMessage::Event(TreeEvent::DeadEnd {
+                            source: DeadEndSource::Tree,
+                            time: self.timestamp(),
+                            thread: self.thread(),
+                        })));
 
                         self.clean_deadends(&path, env.cut);
                         self.backpropagate(&path, None);
@@ -275,9 +347,34 @@ where
                         {
                             info!("Implementation found.");
 
-                            return Some((implementation, path));
+                            let info = ImplInfo {
+                                path,
+                                bound: implementation.bound.value(),
+                                cut: env.cut,
+                                time: self.timestamp(),
+                                thread: self.thread(),
+                            };
+
+                            return Some((implementation, info));
                         } else {
                             info!("Deadend found during rollout.");
+
+                            if let Some(dead) = rollout_path.last() {
+                                unwrap!(self.log.send(LogMessage::Event(
+                                    TreeEvent::DeadEnd {
+                                        source: DeadEndSource::Rollout {
+                                            actions: dead.actions.clone(),
+                                            depth: path.0.len(),
+                                            bound: dead.bound.value(),
+                                            cut: env.cut,
+                                        },
+                                        time: self.timestamp(),
+                                        thread: self.thread(),
+                                    }
+                                )));
+                            } else {
+                                warn!("Empty rollout.");
+                            }
 
                             if log_enabled!(log::Level::Debug) {
                                 let mut live = false;
@@ -332,6 +429,21 @@ where
             self.stats.num_deadends.load(Ordering::Relaxed)
         );
     }
+}
+
+/// Informations on a fully-specified implementation
+#[derive(Clone)]
+pub struct ImplInfo<'a, E> {
+    /// Path to the implementation (in the tree)
+    path: Path<'a, E>,
+    /// Bound from the performance model
+    bound: f64,
+    /// Cut at the time the implementation was found
+    cut: f64,
+    /// Time at which the implementation was found
+    time: f64,
+    /// ID of the thread which found the implementation
+    thread: String,
 }
 
 /// Path to follow to reach a leaf in the tree.

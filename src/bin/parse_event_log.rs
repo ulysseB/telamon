@@ -242,7 +242,8 @@ fn main() -> Result<(), ReadError> {
 
     for (id, record_bytes) in f.records().enumerate() {
         match bincode::deserialize(&record_bytes?).unwrap() {
-            TreeEvent::Evaluation { actions, score } => {
+            TreeEvent::Evaluation { actions, score }
+            | TreeEvent::EvaluationV2 { actions, score, .. } => {
                 root.evaluations.push(score);
 
                 let actions = {
@@ -255,6 +256,7 @@ fn main() -> Result<(), ReadError> {
 
                 evals.push(score);
             }
+            TreeEvent::DeadEnd { .. } => (),
         }
     }
 
