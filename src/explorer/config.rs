@@ -201,13 +201,27 @@ pub struct BanditConfig {
 pub enum TreePolicy {
     /// Take the candidate with the best bound.
     Bound,
+
     /// Consider the nodes with a probability proportional to the distance between the
     /// cut and the bound.
     WeightedRandom,
-    /// TAG algorithm
+
+    /// Policies based on TAG, as described in
+    ///
+    ///   Bandit-Based Optimization on Graphs with Application to Library Performance Tuning
+    ///   De Mesmay, Rimmel, Voronenko, Püschel
+    ///   ICML 2009
+    ///
+    /// Those policies make decisions based on the relative proportions of the top N samples in
+    /// each branch, without relying directly on the values.  This obviates the issue of selecting
+    /// a good threshold value for good vs bad samples (we don't know what a good value is until
+    /// after we have found it!), but introduces an issue with staleness:
     #[serde(rename = "tag")]
     TAG(TAGConfig),
-    /// UCT algorithm
+
+    /// Policies based on UCT, including variants such as p-UCT.  Those policies optimize a reduced
+    /// value (such as average score or best score) among the samples seen in a branch, along with
+    /// an uncertainty term to boost rarely explored branches.
     #[serde(rename = "uct")]
     UCT(UCTConfig),
 }
