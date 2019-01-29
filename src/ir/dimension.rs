@@ -1,14 +1,18 @@
 //! Represents iteration dimensions.
 use ir::{self, SparseKey, Statement};
-use std;
+use std::{self, fmt};
 use utils::*;
 
 /// Provides a unique identifier for iteration dimensions.
-#[derive(
-    Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize,
-)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[repr(transparent)]
 pub struct DimId(pub u32);
+
+impl fmt::Debug for DimId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "@{}", self.0)
+    }
+}
 
 impl Into<usize> for DimId {
     fn into(self) -> usize {

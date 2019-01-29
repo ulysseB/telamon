@@ -1,11 +1,13 @@
 //! Choices that can be applied to split the search space.
+use std::fmt;
+
 use explorer::config;
 use ir::{self, Statement};
 use itertools::Itertools;
 use search_space::{Action, Domain, NumSet, Order, SearchSpace};
 
 /// Either a regular action or a manually applied action.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ActionEx {
     Action(Action),
     LowerLayout {
@@ -13,6 +15,24 @@ pub enum ActionEx {
         st_dims: Vec<ir::DimId>,
         ld_dims: Vec<ir::DimId>,
     },
+}
+
+impl fmt::Debug for ActionEx {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            // Actions are already explicitely self-describing enough
+            ActionEx::Action(action) => write!(f, "{:?}", action),
+            ActionEx::LowerLayout {
+                mem,
+                st_dims,
+                ld_dims,
+            } => write!(
+                f,
+                "LowerLayout {{ mem: {:?}, st_dims: {:?}, ld_dims: {:?} }}",
+                mem, st_dims, ld_dims
+            ),
+        }
+    }
 }
 
 /// Represents a choice that splits a search space in multiple ones.

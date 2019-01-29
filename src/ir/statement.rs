@@ -1,17 +1,27 @@
 //! Provides a generic decription of basic blocks.
+use std::fmt;
+
 use ir;
 use utils::*;
 
 /// Provides a unique identifer for a basic block.
-#[derive(
-    Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
-)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[repr(C)]
 pub enum StmtId {
     /// cbindgen:field-names=[id]
     Inst(ir::InstId),
     /// cbindgen:field-names=[id]
     Dim(ir::DimId),
+}
+
+impl fmt::Debug for StmtId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Inner types print a specific sigil already
+        match self {
+            StmtId::Inst(inst_id) => write!(f, "{:?}", inst_id),
+            StmtId::Dim(dim_id) => write!(f, "{:?}", dim_id),
+        }
+    }
 }
 
 impl From<ir::InstId> for StmtId {

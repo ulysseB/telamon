@@ -192,7 +192,7 @@ where
 }
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "print_event_log")]
+#[structopt(name = "parse_event_log")]
 struct Opt {
     #[structopt(
         parse(from_os_str),

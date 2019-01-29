@@ -2,15 +2,19 @@
 use ir::{
     self, DimMapScope, LoweringMap, Operand, Operator, SparseKey, Statement, StmtId, Type,
 };
-use std;
+use std::{self, fmt};
 use utils::*;
 
 /// Uniquely identifies an instruction.
-#[derive(
-    Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
-)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[repr(transparent)]
 pub struct InstId(pub u32);
+
+impl fmt::Debug for InstId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "~{}", self.0)
+    }
+}
 
 impl From<InstId> for usize {
     fn from(id: InstId) -> usize {
