@@ -11,7 +11,6 @@ extern crate num_cpus;
 extern crate rand;
 extern crate rayon;
 extern crate telamon;
-#[macro_use]
 extern crate telamon_utils as utils;
 
 mod kernel;
@@ -19,7 +18,7 @@ mod kernel;
 pub mod linalg;
 pub mod statistics;
 
-pub use kernel::{analyze_bounds, Kernel};
+pub use crate::kernel::{analyze_bounds, Kernel};
 
 use telamon::device::{self, ArgMap, Context};
 use telamon::helper::tensor::DimSize;

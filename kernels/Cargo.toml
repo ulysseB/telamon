@@ -2,6 +2,7 @@
 authors = ["Ulysse Beaugnon <ulysse.beaugnon@ens.fr>"]
 name = "telamon-kernels"
 version = "0.1.0"
+edition = "2018"
 
 [dependencies]
 env_logger = "0.5.9"

@@ -2,9 +2,9 @@
 use crate::device::{ArgMap, ArrayArgument, ArrayArgumentExt, Context, ScalarArgument};
 use crate::helper::{Builder, LogicalDim, SignatureBuilder, TilingPattern};
 use crate::ir;
-use itertools::Itertools;
-use ndarray::{self, ArrayD};
 use crate::search_space::InstFlag;
+use ::ndarray::{self, ArrayD};
+use itertools::Itertools;
 use std;
 use utils::*;
 
