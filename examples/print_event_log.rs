@@ -1,5 +1,3 @@
-use std::io;
-use std::io::Seek;
 use telamon::explorer::TreeEvent;
 use utils::tfrecord::{ReadError, RecordReader};
 

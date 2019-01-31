@@ -1,8 +1,8 @@
 //! Prints sets of values.
 use crate::ir;
-use itertools::Itertools;
 use crate::print;
 use crate::print::ast::{self, Context};
+use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::quote;
 use std::collections::BTreeSet;

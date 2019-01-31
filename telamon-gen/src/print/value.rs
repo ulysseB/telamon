@@ -45,7 +45,11 @@ impl Value {
     ) -> Self {
         let getter = print::store::getter_name(&choice_instance.choice, get_old);
         let ids = print::choice::ids(choice_instance, ctx);
-        let diff = if get_old { quote::quote!(diff) } else { quote::quote!() };
+        let diff = if get_old {
+            quote::quote!(diff)
+        } else {
+            quote::quote!()
+        };
         let tokens = quote::quote!(store.#getter(#ids#diff));
         Self::new(tokens, choice_instance.value_type(ctx.ir_desc))
     }
@@ -173,7 +177,8 @@ pub fn integer_domain_constructor(
     let constructor = constructor_from_op(constructor_op);
     let to_universe = universe(&to_type, ctx);
     let from_universe = universe(from.value_type(), ctx);
-    let tokens = quote::quote!(#to_type::#constructor(#to_universe, #from, #from_universe));
+    let tokens =
+        quote::quote!(#to_type::#constructor(#to_universe, #from, #from_universe));
     Value::new(tokens, to_type)
 }
 

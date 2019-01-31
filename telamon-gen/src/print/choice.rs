@@ -2,7 +2,7 @@
 use crate::ir::{self, SetRef};
 use crate::print;
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::{ToTokens, quote};
+use quote::{quote, ToTokens};
 use serde_derive::Serialize;
 
 /// Prints the ids of the variables of a `ChoiceInstance`.
@@ -45,8 +45,8 @@ pub fn restrict(
 
 // TODO(cleanup): use TokenStream insted of templates
 use crate::ir::Adaptable;
-use itertools::Itertools;
 use crate::print::{ast, filter, value_set};
+use itertools::Itertools;
 
 #[derive(Serialize)]
 pub struct Ast<'a> {

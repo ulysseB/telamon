@@ -15,8 +15,7 @@ mod truth_table;
 use utils::*;
 
 use log::{debug, info};
-use std::{fs, io, path};
-
+use std::{fs, io, path, process};
 
 /// Converts a choice name to a rust type name.
 fn to_type_name(name: &str) -> String {
@@ -37,27 +36,44 @@ fn to_type_name(name: &str) -> String {
     result
 }
 
-/// Process a file and stores the result in an other file.
+/// Process a file and stores the result in an other file.  This is meant to be used from build.rs
+/// files and may print output to be interpreted by cargo on stdout.
 pub fn process_file(
     input_path: &path::Path,
     output_path: &path::Path,
     format: bool,
 ) -> Result<(), error::Error> {
     let mut output = fs::File::create(path::Path::new(output_path)).unwrap();
-    let input_path_str = input_path.to_string_lossy();
     info!(
         "compiling {} to {}",
-        input_path_str,
-        output_path.to_string_lossy()
+        input_path.display(),
+        output_path.display()
     );
-    process(None, &mut output, format, input_path)
+    process(None, &mut output, input_path)?;
+
+    if format {
+        match process::Command::new("rustfmt")
+            .arg(output_path.as_os_str())
+            .status()
+        {
+            Ok(status) => {
+                if !status.success() {
+                    println!("cargo:warning=failed to rustfmt {}", output_path.display());
+                }
+            }
+            Err(_) => {
+                println!("cargo:warning=failed to execute rustfmt");
+            }
+        }
+    }
+
+    Ok(())
 }
 
 /// Parses a constraint description file.
 pub fn process<T: io::Write>(
     input: Option<&mut io::Read>,
     output: &mut T,
-    format: bool,
     input_path: &path::Path,
 ) -> Result<(), error::Error> {
     // Parse and check the input.
@@ -105,32 +121,7 @@ pub fn process<T: io::Write>(
             ir_desc.add_filter(choice.clone(), new_filter, vars, set_constraints);
         }
     }
-    // Print and format the output.
-    let code = print::print(&ir_desc);
-    if format {
-        let fmt_input = rustfmt::Input::Text(code);
-        let mut fmt_config = rustfmt::config::Config::default();
-        fmt_config
-            .set()
-            .write_mode(rustfmt::config::WriteMode::Plain);
-        fmt_config.set().wrap_comments(true);
-        fmt_config.set().take_source_hints(false);
-        fmt_config.set().single_line_if_else_max_width(90);
-        fmt_config.set().reorder_imported_names(true);
-        fmt_config.set().reorder_imports(true);
-        fmt_config.set().fn_single_line(true);
-        fmt_config.set().struct_variant_width(90);
-        fmt_config.set().struct_lit_width(90);
-        fmt_config.set().fn_call_width(90);
-        fmt_config.set().max_width(90);
-        let fmt_res = rustfmt::format_input(fmt_input, &fmt_config, Some(output));
-        let (_, _, fmt_report) = fmt_res.unwrap();
-        if fmt_report.has_warnings() {
-            println!("{}", fmt_report);
-        }
-    } else {
-        write!(output, "{}", code).unwrap();
-    }
+    write!(output, "{}", print::print(&ir_desc)).unwrap();
     Ok(())
 }
 
@@ -145,7 +136,7 @@ mod tests {
         let path = Path::new("../src/search_space/choices.exh");
         let ref_out = {
             let mut ref_out = Vec::new();
-            super::process(None, &mut ref_out, false, &path).unwrap();
+            super::process(None, &mut ref_out, &path).unwrap();
             ref_out
         };
         // Ideally we would want to run this loop more than once, but
@@ -153,7 +144,7 @@ mod tests {
         for _ in 0..1 {
             print::reset();
             let mut out_buf = Vec::new();
-            super::process(None, &mut out_buf, false, &path).unwrap();
+            super::process(None, &mut out_buf, &path).unwrap();
             assert_eq!(
                 ::std::str::from_utf8(&out_buf),
                 ::std::str::from_utf8(&ref_out)

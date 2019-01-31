@@ -9,10 +9,10 @@ mod error;
 mod set;
 mod trigger;
 
-use indexmap::IndexMap;
 use crate::ir;
-use itertools::Itertools;
 use crate::print;
+use indexmap::IndexMap;
+use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::{hash_map, BTreeSet};

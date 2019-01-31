@@ -1,5 +1,5 @@
-use indexmap::IndexMap;
 use crate::ir::{self, Adaptable};
+use indexmap::IndexMap;
 use serde_derive::Serialize;
 use std;
 use std::borrow::Borrow;

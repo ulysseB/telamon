@@ -12,10 +12,10 @@ use crate::ast::{
     SetRef, VarDef, VarMap,
 };
 
+use crate::lexer::Spanned;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use log::trace;
-use crate::lexer::Spanned;
 use utils::{HashMap, RcStr};
 
 #[derive(Debug, Clone)]

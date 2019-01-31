@@ -21,8 +21,8 @@ pub fn reset() {
 }
 
 // TODO(cleanup): rewrite the fllowing with token streams instead of string templates
-use handlebars::{self, Handlebars, Helper, RenderContext, RenderError, Renderable};
 use crate::ir;
+use handlebars::{self, Handlebars, Helper, RenderContext, RenderError, Renderable};
 use itertools::Itertools;
 use serde_json::value::Value as JsonValue;
 use std::cmp::Ordering;
@@ -757,8 +757,8 @@ fn bits_type(num_values: usize) -> &'static str {
 mod test {
     use super::ENGINE;
     use crate::ir::test::{EvalContext, StaticCond};
-    use itertools::Itertools;
     use crate::print;
+    use itertools::Itertools;
     use std;
 
     impl<'a> std::fmt::Display for EvalContext<'a> {

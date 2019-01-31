@@ -1,6 +1,6 @@
 use crate::lexer::{ErrorKind, LexicalError, Position, Span, Spanned, Token};
-use lalrpop_util::ParseError;
 use failure::Fail;
+use lalrpop_util::ParseError;
 use std::fmt;
 use std::path::PathBuf;
 
