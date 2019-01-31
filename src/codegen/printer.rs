@@ -1,6 +1,6 @@
 use crate::codegen::*;
-use itertools::Itertools;
 use crate::search_space::*;
+use itertools::Itertools;
 use std::borrow::Cow;
 use utils::*;
 

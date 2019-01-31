@@ -1,10 +1,10 @@
 //! Represents iteration dimensions.
 use crate::ir::{self, Statement};
-use std;
-use utils::*;
 use lazy_static::lazy_static;
 use log::trace;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
+use std;
+use utils::*;
 
 /// Provides a unique identifier for iteration dimensions.
 #[derive(

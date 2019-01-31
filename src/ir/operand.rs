@@ -4,7 +4,7 @@ use crate::ir::{self, DimMap, InstId, Instruction, Parameter, Type};
 use num::bigint::BigInt;
 use num::rational::Ratio;
 use num::traits::{Signed, Zero};
-use utils::{HashMap, unwrap};
+use utils::{unwrap, HashMap};
 
 #[derive(Clone, Debug)]
 pub struct LoweringMap {

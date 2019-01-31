@@ -5,9 +5,9 @@ mod dag;
 mod iterator;
 pub mod multimap;
 pub mod ndarray;
-mod vec_set;
-pub mod unwrap;
 pub mod tfrecord;
+pub mod unwrap;
+mod vec_set;
 
 pub use self::cache::Cache;
 pub use self::dag::Dag;

@@ -9,9 +9,11 @@
 
 use crate::device::Context;
 use crate::ir;
-use itertools::{self, Itertools};
-use crate::model::{size, BottleneckLevel, DependencyMap, FastBound, HwPressure, LocalInfo};
+use crate::model::{
+    size, BottleneckLevel, DependencyMap, FastBound, HwPressure, LocalInfo,
+};
 use crate::search_space::{DimKind, Domain, SearchSpace};
+use itertools::{self, Itertools};
 use std;
 use std::cmp::Ordering;
 

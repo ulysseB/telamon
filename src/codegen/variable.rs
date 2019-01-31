@@ -1,8 +1,8 @@
 //! Code generation for `ir::Variable`.
 use crate::codegen;
-use indexmap::IndexMap;
 use crate::ir;
 use crate::search_space::*;
+use indexmap::IndexMap;
 use utils::*;
 
 /// Wraps an `ir::Variable` to expose specified decisions.

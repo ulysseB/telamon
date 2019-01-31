@@ -5,13 +5,13 @@ use std::path::Path;
 use std::sync::mpsc;
 use std::time::Duration;
 
-use bincode;
 use crate::explorer::config::Config;
 use crate::explorer::monitor;
+use bincode;
 use failure::Fail;
 use flate2::write::{GzEncoder, ZlibEncoder};
 use flate2::Compression;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use utils::tfrecord;
 use utils::tfrecord::RecordWriter;

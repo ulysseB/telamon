@@ -6,9 +6,9 @@ use crate::device::{self, cuda, Device};
 use crate::ir::{self, Operator, Type};
 use crate::model::{self, HwPressure};
 use crate::search_space::{DimKind, Domain, InstFlag, MemSpace, SearchSpace};
+use serde::{Deserialize, Serialize};
 use std;
 use std::io::Write;
-use serde::{Serialize, Deserialize};
 use utils::*;
 
 // FIXME: fix performance model

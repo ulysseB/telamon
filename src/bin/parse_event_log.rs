@@ -1,6 +1,5 @@
 /// This allows dumping a CSV of all the evaluations that were performed during a run, as well as a
 /// graphviz (.dot) graph recapitulating the run.
-
 use std::collections::HashMap;
 
 use std::ffi::OsStr;

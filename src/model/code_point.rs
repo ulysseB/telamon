@@ -1,8 +1,8 @@
 //! Locations of the code relevant to compute latency.
 use crate::ir;
-use itertools::Itertools;
 use crate::model::Level;
 use crate::search_space::{Domain, Order, SearchSpace};
+use itertools::Itertools;
 use std::cmp::Ordering;
 
 use utils::*;

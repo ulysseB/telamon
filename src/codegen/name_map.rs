@@ -1,4 +1,6 @@
-use crate::codegen::{self, AllocationScheme, Dimension, Function, Instruction, ParamValKey};
+use crate::codegen::{
+    self, AllocationScheme, Dimension, Function, Instruction, ParamValKey,
+};
 use crate::ir::{self, dim, DimMap, InstId, Type};
 use itertools::Itertools;
 use num::bigint::BigInt;

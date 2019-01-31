@@ -1,9 +1,11 @@
 //! Describes a `Function` that is ready to execute on a device.
-use crate::codegen::{self, cfg, dimension, Cfg, Dimension, InductionLevel, InductionVar};
+use crate::codegen::{
+    self, cfg, dimension, Cfg, Dimension, InductionLevel, InductionVar,
+};
 use crate::ir;
 use crate::search_space::{self, DimKind, Domain, MemSpace, SearchSpace};
-use utils::*;
 use utils::unwrap;
+use utils::*;
 
 use itertools::Itertools;
 use log::{debug, trace};

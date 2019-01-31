@@ -1,6 +1,6 @@
 use crate::ir;
-use num;
 use crate::search_space::{NumSet, SearchSpace};
+use num;
 use std;
 use utils::unwrap;
 

@@ -3,10 +3,10 @@ use crate::codegen::{self, Function};
 use crate::device::{ArrayArgument, Device, ScalarArgument};
 use crate::explorer::Candidate;
 use crate::ir;
+use boxfnonce::SendBoxFnOnce;
 use num;
 use std::sync::Arc;
 use utils::unwrap;
-use boxfnonce::SendBoxFnOnce;
 
 /// A callback that is called after evaluating a kernel.
 pub type AsyncCallback<'a, 'b> = SendBoxFnOnce<'b, (Candidate<'a>, f64)>;

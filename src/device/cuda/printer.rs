@@ -2,8 +2,8 @@
 use crate::codegen::*;
 use crate::device::cuda::{Gpu, Namer};
 use crate::ir::{self, op, Type};
-use itertools::Itertools;
 use crate::search_space::{DimKind, Domain, InstFlag, MemSpace};
+use itertools::Itertools;
 use std;
 use std::borrow::Cow;
 use std::fmt::Write as WriteFmt;

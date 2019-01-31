@@ -1,5 +1,3 @@
-///! Defines the CUDA evaluation context.
-use crossbeam;
 use crate::device::context::AsyncCallback;
 use crate::device::cuda::api::Argument;
 use crate::device::cuda::kernel::Thunk;
@@ -7,6 +5,8 @@ use crate::device::cuda::{Executor, Gpu, JITDaemon, Kernel};
 use crate::device::{self, Device, EvalMode, ScalarArgument};
 use crate::explorer;
 use crate::ir;
+///! Defines the CUDA evaluation context.
+use crossbeam;
 use itertools::{process_results, Itertools};
 use log::{debug, info};
 use std;

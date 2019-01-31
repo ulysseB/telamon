@@ -3,10 +3,10 @@ use crate::device::Device;
 use crate::ir::{self, Dimension, InstId, Instruction, Operator, Statement, StmtId};
 use crate::ir::{mem, AccessPattern, Operand, SparseVec};
 use crate::search_space::MemSpace;
-use utils::*;
 use itertools::Itertools;
 use log::debug;
 use std;
+use utils::*;
 
 /// Represents an argument of a function.
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]

@@ -9,7 +9,7 @@ use futures::channel;
 use futures::executor::block_on;
 use futures::prelude::*;
 use log::warn;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std;
 use std::sync;
 use std::time::{Duration, Instant};

@@ -1,10 +1,10 @@
 //! Choices that can be applied to split the search space.
 use crate::explorer::config;
 use crate::ir::{self, Statement};
-use itertools::Itertools;
 use crate::search_space::{Action, Domain, NumSet, Order, SearchSpace};
+use itertools::Itertools;
 use log::trace;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use utils::unwrap;
 
 /// Either a regular action or a manually applied action.

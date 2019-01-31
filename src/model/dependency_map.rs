@@ -1,6 +1,6 @@
 //! Holds the latency between each node and its dependencies.
-use itertools::Itertools;
 use crate::model::FastBound;
+use itertools::Itertools;
 use std::collections::hash_map;
 
 use utils::*;

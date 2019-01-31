@@ -1,5 +1,4 @@
 /// Error created when initializing the Executor.
-
 use failure::Fail;
 
 #[derive(Debug, Fail)]

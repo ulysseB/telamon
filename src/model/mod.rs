@@ -34,13 +34,13 @@ use log::{debug, trace};
 
 use crate::device::{Context, Device};
 use crate::ir;
-use itertools::Itertools;
 use crate::model::code_point::{CodePoint, CodePointDag};
 use crate::model::dependency_map::DependencyMap;
 use crate::model::hw_pressure::FastBound;
 use crate::model::level::{sum_pressure, Level, LevelDag, RepeatLevel};
 use crate::model::local_info::LocalInfo;
 use crate::search_space::SearchSpace;
+use itertools::Itertools;
 use std::cmp;
 use utils::*;
 

@@ -1,6 +1,5 @@
 ///! Defines the CPU evaluation context.
 use crate::codegen::ParamVal;
-use crossbeam;
 use crate::device::context::AsyncCallback;
 use crate::device::x86::compile;
 use crate::device::x86::cpu::Cpu;
@@ -9,9 +8,10 @@ use crate::device::x86::printer::X86printer;
 use crate::device::{self, Device, EvalMode, ScalarArgument};
 use crate::explorer;
 use crate::ir;
+use crossbeam;
 use itertools::Itertools;
-use log::debug;
 use libc;
+use log::debug;
 use std;
 use std::f64;
 use std::io::Write;

@@ -2,10 +2,10 @@
 use crate::codegen;
 use crate::codegen::ParamVal;
 use crate::device;
-#[cfg(feature = "cuda")]
-use device::cuda::PerfCounterSet;
 use crate::device::cuda::{api, Context, Gpu, JITDaemon};
 use crate::device::Context as ContextTrait;
+#[cfg(feature = "cuda")]
+use device::cuda::PerfCounterSet;
 use itertools::Itertools;
 use log::warn;
 use std;

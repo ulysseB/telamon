@@ -3,8 +3,8 @@ use crate::codegen::Function;
 use crate::device;
 use crate::ir::{self, Type};
 use crate::model::{self, HwPressure};
-use num_cpus;
 use crate::search_space::*;
+use num_cpus;
 use std::io::Write;
 use utils::*;
 

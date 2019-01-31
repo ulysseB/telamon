@@ -7,7 +7,7 @@ use crate::explorer::store::Store;
 use crate::explorer::{choice, local_selection};
 use log::{debug, info, trace, warn};
 use rpds::List;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std;
 use std::f64;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
