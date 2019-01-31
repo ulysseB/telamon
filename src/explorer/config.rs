@@ -184,6 +184,9 @@ impl Default for SearchAlgorithm {
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct BanditConfig {
+    /// Indicates the initial cut to use (in nanoseconds).  This can be used when an existing
+    /// program (e.g. from a precedent run) is known to take that much amount of time.
+    pub initial_cut: Option<f64>,
     /// Indicates how to select between nodes of the search tree when none of their
     /// children have been evaluated.
     pub new_nodes_order: NewNodeOrder,
@@ -277,6 +280,7 @@ impl BanditConfig {
 impl Default for BanditConfig {
     fn default() -> Self {
         BanditConfig {
+            initial_cut: None,
             new_nodes_order: NewNodeOrder::default(),
             tree_policy: TreePolicy::default(),
             choice_ordering: ChoiceOrdering::default(),
